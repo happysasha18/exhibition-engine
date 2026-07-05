@@ -1,0 +1,97 @@
+/* exhibition.css — the adaptive exhibition (EX), in the project's converged gallery language.
+   Inherits the Room's tokens (gallery/shared/tokens.css): dark reactive ground, generous breath,
+   soft shadow, Newsreader serif, mono meta. NOT the prototype's cramped centered grid. */
+
+:root{ --ex-tms:620ms; }               /* overwritten from config.exhibition.transition_ms (INV-28) */
+
+body{ min-height:100vh; overflow-x:hidden; }
+
+/* reactive shadow ground — a soft light that settles toward the focused work (feel only) */
+body::before{ content:""; position:fixed; inset:-24vmax; z-index:0; pointer-events:none;
+  transition:background 1.1s var(--ease);
+  background:radial-gradient(42vmax 42vmax at var(--ex-gx,50%) var(--ex-gy,40%),
+    rgba(var(--ground),.55), rgba(var(--ground),.16) 42%, transparent 72%); }
+
+.ex-head{ position:relative; z-index:2; padding:30px 34px 6px; display:flex; flex-wrap:wrap;
+  align-items:baseline; gap:16px; }
+.ex-head h1{ font-family:var(--ui); font-weight:200; letter-spacing:.4em; text-transform:uppercase;
+  font-size:15px; margin:0; color:var(--ink); }
+.ex-head .ex-hint{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted-2); }
+
+/* the live spread — a considered handful, breathing on the dark ground.
+   No tall void below: the "open more" row must sit INSIDE the first viewport (INV-29). */
+.ex-stage{ position:relative; z-index:1; display:flex; flex-wrap:wrap; justify-content:center;
+  align-items:center; align-content:center; gap:clamp(16px,2.2vw,32px);
+  padding:clamp(14px,3vh,34px) clamp(16px,3vw,44px) 10px;
+  max-width:1500px; margin:0 auto;
+  /* the spread owns the viewport's middle — a hung row, not a strip pinned to the header */
+  min-height:calc(100vh - 220px); }
+
+.ex-work{ margin:0; position:relative; cursor:pointer;
+  transition:transform var(--ex-tms) var(--ease), opacity .6s var(--ease), filter .5s var(--ease);
+  transform-origin:center; }
+.ex-work img{ display:block; max-height:46vh; max-width:min(42vw,460px); width:auto; height:auto;
+  border-radius:2px; box-shadow:0 26px 74px rgba(0,0,0,.55);
+  transition:box-shadow .45s var(--ease), transform .45s var(--ease); }
+.ex-work:hover img{ box-shadow:0 34px 96px rgba(0,0,0,.72); transform:translateY(-4px); }   /* highlight only */
+
+/* laptop / wide: the spread hangs as a WALL — a strict grid of --ex-row columns
+   (config.exhibition.row_size, INV-27/28): the hang keeps its rhythm, exactly row_size per row;
+   the wall may flow past the fold (visible continuation), never a dead void */
+@media (min-width:1024px){
+  .ex-stage{ display:grid; grid-template-columns:repeat(var(--ex-row,4), minmax(0,1fr));
+    justify-items:center; align-items:center; }
+  .ex-work img{ max-width:100%; max-height:30vh; }
+}
+
+/* focus — the picked work stays lit and leads; the others recede gently, never hidden (EX-WALK) */
+.ex-work.picked img{ box-shadow:0 36px 110px rgba(0,0,0,.72), 0 0 0 1px rgba(201,100,66,.55);
+  transform:scale(1.02); }
+.ex-work.picked:hover img{ transform:scale(1.02) translateY(-3px); }
+.ex-work.dim{ opacity:.55; filter:saturate(.75); }
+.ex-work.dim:hover{ opacity:.96; filter:none; }
+
+/* distinct open-work affordance — a corner link OUT to the shareable /w/ page (never the resonance tap) */
+.ex-open{ position:absolute; top:9px; right:9px; z-index:3; width:30px; height:30px; border-radius:999px;
+  display:grid; place-items:center; text-decoration:none; color:var(--ink);
+  background:rgba(8,8,7,.55); border:1px solid var(--hair); font-size:14px; line-height:1;
+  opacity:0; transition:opacity .3s var(--ease), background .3s; backdrop-filter:blur(6px); }
+.ex-work:hover .ex-open, .ex-open:focus{ opacity:1; }
+.ex-open:hover{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
+
+/* going further — unfold the arc (Room's pill idiom), never a reset. This row lives WITH the
+   spread, inside the first viewport (INV-29) — the quiet "all works" catalogue reveal sits beside it */
+.ex-more-wrap{ position:relative; z-index:2; display:flex; justify-content:center; align-items:center;
+  gap:22px; padding:8px 0 42px; }
+.ex-more{ font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--accent); cursor:pointer; background:transparent; border:1px solid rgba(201,100,66,.42);
+  border-radius:999px; padding:9px 18px; transition:background .3s, color .3s; }
+.ex-more:hover{ background:var(--accent); color:#0c0b0a; }
+.ex-more[hidden]{ display:none; }
+
+/* the threshold (EX-DOOR) — door works + the quiet skip, nothing else; wordless.
+   The skip and the exit share the more-row's idiom but stay quieter than "open more". */
+.ex-skip, .ex-exit{ font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--muted-2); cursor:pointer; background:transparent; border:1px solid var(--hair);
+  border-radius:999px; padding:9px 18px; transition:color .3s, border-color .3s; }
+.ex-skip:hover, .ex-exit:hover{ color:var(--ink); border-color:var(--muted-2); }
+.ex-skip[hidden], .ex-exit[hidden]{ display:none !important; }
+.ex-door-work:focus-visible{ outline:none; }
+.ex-door-work:focus-visible img{ box-shadow:0 34px 96px rgba(0,0,0,.72), 0 0 0 2px var(--accent); }
+body.ex-door .ex-stage{ min-height:calc(100vh - 280px); }   /* the skip stays inside the first
+  viewport — a cold visitor is never stranded before five images (INV-29 covers the door) */
+
+/* phone — a narrow tap-first single column, nothing hidden behind the edge (INV-27) */
+@media (max-width:640px){
+  .ex-stage{ flex-direction:column; flex-wrap:nowrap; gap:14px; padding:12px 12px 12vh; }
+  .ex-work img{ max-height:none; max-width:88vw; }
+  .ex-open{ opacity:1; }                    /* no hover on touch — keep the affordance visible */
+  .ex-head{ padding:20px 18px 4px; }
+}
+
+/* JS-on: the crawlable static index NEVER paints (the FOUC guard: an inline head script marks
+   html.js before <body> parses; the mark is dropped if the walk fails to arrive → static returns) */
+html.js #ex-static{ display:none; }
+body.ex-live #ex-static{ display:none; }
+body:not(.ex-live) .ex-stage, body:not(.ex-live) .ex-more-wrap{ display:none; }
