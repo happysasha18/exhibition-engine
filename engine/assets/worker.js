@@ -6,9 +6,12 @@
 const TAG_RE = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/;
 const RTL = ["ar", "he", "fa", "ur", "yi", "iw", "dv", "ps", "ckb"];
 
+const TOKEN_RE = /^[a-z0-9]{16,40}$/;
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    if (url.pathname === "/api/visitor") return visitor(req, env, url);
     if (url.pathname !== "/api/i18n") return new Response("not found", { status: 404 });
     const lang = (url.searchParams.get("lang") || "").toLowerCase();
     const v = url.searchParams.get("v") || "";
@@ -44,6 +47,39 @@ export default {
     return json(JSON.stringify(out));
   },
 };
+
+// EX-MEMORY (INV-43): the coat-check record — seen-work ids under a random token, nothing else.
+// MERGE-never-replace (two tabs may write, M3), ~500 newest kept (M2), every write re-arms the
+// ~180-day expiry; shaped tokens/ids only — free-form strings never reach KV keys.
+async function visitor(req, env, url) {
+  if (req.method === "GET") {
+    const t = url.searchParams.get("t") || "";
+    if (!TOKEN_RE.test(t)) return new Response("bad request", { status: 400 });
+    const rec = await env.TLV_I18N.get("v:" + t);
+    return json(rec || '{"seen":[]}');
+  }
+  if (req.method === "PUT" || req.method === "POST") {
+    const body = await req.text();
+    if (body.length > 2048) return new Response("too big", { status: 413 });
+    let p;
+    try { p = JSON.parse(body); } catch (e) { return new Response("bad request", { status: 400 }); }
+    const t = String(p.t || "");
+    if (!TOKEN_RE.test(t) || !Array.isArray(p.add)) {
+      return new Response("bad request", { status: 400 });
+    }
+    const adds = p.add.map(String).filter((x) => /^\d{5,25}$/.test(x)).slice(0, 100);
+    let cur;
+    try { cur = JSON.parse((await env.TLV_I18N.get("v:" + t)) || '{"seen":[]}'); }
+    catch (e) { cur = { seen: [] }; }
+    const set = new Set(Array.isArray(cur.seen) ? cur.seen : []);
+    for (const a of adds) set.add(a);
+    const seen = Array.from(set).slice(-500);          // the cap keeps the NEWEST
+    await env.TLV_I18N.put("v:" + t, JSON.stringify({ seen }),
+                           { expirationTtl: 15552000 });
+    return json(JSON.stringify({ ok: true, n: seen.length }));
+  }
+  return new Response("method not allowed", { status: 405 });
+}
 
 function json(body) {
   return new Response(body, {
@@ -99,8 +135,10 @@ function shape() {
     properties: {
       strings: {
         type: "object",
-        properties: { ask: s, exit: s, more: s, q_more: s, q_spent: s, share_label: s, share_copied: s },
-        required: ["ask", "exit", "more", "q_more", "q_spent", "share_label", "share_copied"],
+        properties: { ask: s, exit: s, more: s, q_more: s, q_spent: s, share_label: s,
+                      share_copied: s, series: s, room_back: s },
+        required: ["ask", "exit", "more", "q_more", "q_spent", "share_label", "share_copied",
+                   "series", "room_back"],
         additionalProperties: false,
       },
       greet: {
@@ -128,7 +166,7 @@ function validate(out, src) {
   try {
     const filled = (x) => typeof x === "string" && x.trim().length > 0;
     if (!["ltr", "rtl"].includes(out.dir)) return false;
-    for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied"]) {
+    for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied", "series", "room_back"]) {
       if (!filled(out[k])) return false;
     }
     if (!filled(out.more) || out.more.indexOf("{n}") < 0) return false;

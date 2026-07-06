@@ -35,7 +35,11 @@ a checkpoint, resumable. The engine ships with the live-spec method as its worki
 E1. **Adopt the method IN this repo** — live-spec adoption pass: SPEC.md seed (the journey above
     as scenarios), ARCHITECTURE skeleton, TEST_MATRIX seed, its own `.live-spec/` profile. The
     founding kind question rides here (recommendation: a guided generator — CLI + skill hybrid).
-E2. **build.py absorbs tlvphoto's day** — generalize what the instance hardcoded tonight
+E2. ✅ **DONE 2026-07-07 ~01:50 — build.py absorbed tlvphoto's day WHOLE**: the generic bake now
+    carries clean addresses, consent, the any-locale worker, visitor memory, the living hand's
+    pool tones, series rooms, the quiet copyright — **proven BYTE-IDENTICAL against tlvphoto's
+    own live bake (259 files, empty diff; the proof command in CHECKPOINT)**. Identity via
+    site.json (example updated to TLV PHOTOS); favicons via --instance-assets. Was: — generalize what the instance hardcoded tonight
     (copyright line, clean addresses, i18n source/worker emission, consent snippet, config flags)
     behind the五 instance strings contract; re-prove the bake BYTE-IDENTICAL against tlvphoto's
     own (the drift report's re-sync list is the checklist).

@@ -1,42 +1,19 @@
 #!/usr/bin/env python3
-"""gallery-engine static bake — generic builder that regenerates a deployable site bundle
-from precomputed content data and a site.json instance config.
+"""exhibition-engine static bake — the GENERIC builder: a deployable exhibition bundle from a
+content directory + a site.json instance identity. Absorbed the instance's full day 2026-07-07
+(clean addresses, consent, the any-locale worker, visitor memory, series rooms, the living hand,
+the quiet copyright) — proven byte-identical against the instance's own bake (see CHECKPOINT).
 
-Reads only precomputed artifacts — no AI, no heavy compute:
-  <content>/gallery/gallery_data.json  the AUTHORITATIVE work set (id, img, title, section, place, size)
-  <content>/vector.json                axes['AX-6_palette'].value  → the palette swatches
-  <content>/content_tags.json          id → subject (caption), tags
-  <content>/gallery/door_candidates.json  (optional) door pool provenance
-
-Emits <out>/ (self-contained static):
-  index.html                 the adaptive EXHIBITION root (EX) — crawlable JS-off face + live walk
-  exhibition.js  .css        the client walk + its converged-gallery styling
-  exhibition_data.json       per-work normalized feature vectors (neutral coords, no axis names)
-  w/<slug>-<idtail>.html     one crawlable work page each
-  sitemap.xml  robots.txt    exhibition root + every work page
-  config.json                feature flags (AI OFF) + the exhibition feel-knobs (A/B) + site_url
-  api/.gitkeep               reserved empty namespace for later serverless AI
-  gallery/                   shared images + design tokens (copied)
-
-Deterministic: same inputs → same bytes. The visible page never prints an axis readout;
-the caption lives in <meta>/alt/JSON-LD only (caption_visible:false).
+Content contract (<content>/): gallery/gallery_data.json + gallery/assets + gallery/shared ·
+vector.json · content_tags.json · gallery/door_candidates.json (optional) · data/greetings.json ·
+finalist_series.json (optional).
 
 Usage:
-  python engine/build.py \\
-      --content ~/tlvphoto \\
-      --site ~/gallery-engine/example/site.json \\
-      --out /tmp/site \\
-      --site-url https://tlvphotos.com \\
-      --ga-id G-00J4KGDHCG
-
-Instance assets (favicon.svg/png, apple-touch-icon.png) are looked up in:
-  1. <content>/instance-assets/   (if present)
-  2. --instance-assets <dir>       (if passed)
-  (whichever is found first wins; both absent → skip, bundle has no favicons)
-
-Extracted 2026-07-06 from the private tlvphoto instance; bake proven byte-identical.
+  python engine/build.py --content <dir> --site example/site.json --out <dir> \
+      --site-url https://… [--ga-id G-…] [--enable ai_i18n] [--instance-assets <dir>]
 """
 import argparse
+import datetime
 import hashlib
 import html
 import json
@@ -44,20 +21,24 @@ import re
 import shutil
 from pathlib import Path
 
-# Set by build() — module-level so helper functions can read them without threading a param
-# through every call (mirrors the original structure exactly).
-OUT = None              # type: Path
-ROOT = None             # type: Path  — the content directory
+# Set by build() — module-level so helpers read them without threading params (the original's shape)
+OUT = None               # the output bundle dir
+ROOT = None              # the CONTENT dir
 CREATOR = ""
 SITE_NAME = ""
-ROOT_TITLE = ""         # site_name + " — " + creator (pre-composed for the exhibition <title>)
-ROOT_DESCRIPTION = ""   # the root page description (instance-specific prose)
-COLLECTION_NAME = ""    # name for the CollectionPage JSON-LD entry
+ROOT_TITLE = ""
+ROOT_DESCRIPTION = ""
+COLLECTION_NAME = ""
+COPYRIGHT = ""           # composed in build() — the year is the bake run's own
+_ENGINE_ASSETS = None
+_INSTANCE_ASSETS = None
 
 DEFAULT_FLAGS = {
-    "ai_greeting": False,     # canned greeting only; serverless Haiku swaps in later behind /api
-    "ai_assemble": False,     # deterministic client-side kinship only
-    "caption_visible": False, # the machine caption stays in meta/alt/JSON-LD, never visible
+    "ai_greeting": False,     # canned greeting only; serverless Haiku swaps in later behind /api  (INV-19)
+    "ai_assemble": False,     # deterministic client-side kinship only                              (INV-19)
+    "ai_i18n": False,         # the any-locale worker (EX-I18N); ships false, flipped at deploy    (INV-19)
+    "visitor_memory": False,  # the coat-check token + seen-list edge (EX-MEMORY); flipped at deploy
+    "caption_visible": False, # the machine caption stays in meta/alt/JSON-LD, never visible        (RESOLVED 2026-07-05)
 }
 
 
@@ -93,7 +74,7 @@ def place_of(item):
 
 
 def indexable_title(item, caption):
-    """The crawlable title — never empty: his title → caption → section+place → default."""
+    """The crawlable title — never empty (INV-23): his title → caption → section+place → default."""
     if (item.get("title") or "").strip():
         return item["title"].strip()
     if caption.strip():
@@ -156,6 +137,7 @@ a{color:inherit}
 .grid a{display:block;aspect-ratio:1;border-radius:4px;overflow:hidden;background:#161619}
 .grid img{width:100%;height:100%;object-fit:cover;display:block}
 .site-h1{font-weight:600;font-size:clamp(26px,5vw,44px);margin:0 0 .3em}
+.sign{color:#7c7c88;font-size:12.5px;margin-top:2.4em}
 """
 
 
@@ -165,9 +147,13 @@ GA_ID = ""   # set by build(ga_id=…) — empty ⇒ NO analytics tag anywhere (
 def ga_snippet():
     if not GA_ID:
         return ""
+    # consent speaks FIRST (EX-PULSE): the museum runs no ads — every advertising storage/use
+    # denied; analytics measurement granted [default — no cookie wall on a quiet museum]
     return (
         f'<script async src="https://www.googletagmanager.com/gtag/js?id={esc(GA_ID)}"></script>\n'
         "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}"
+        "gtag('consent','default',{'ad_storage':'denied','ad_user_data':'denied',"
+        "'ad_personalization':'denied','analytics_storage':'granted'});"
         f"gtag('js',new Date());gtag('config','{esc(GA_ID)}');</script>\n"
     )
 
@@ -206,7 +192,7 @@ def head(title, description, canonical, og_image, og_type, jsonld, extra_og="", 
 def render_work(item, caption, palette, site_url):
     wid = item["id"]
     slug = work_slug(item.get("title", ""), caption, wid)
-    canonical = f"{site_url}/w/{slug}.html"
+    canonical = f"{site_url}/w/{slug}"   # clean address (WP-CLEAN); the file stays .html on disk
     img_rel = f"/gallery/{item['img']}"          # gallery/assets/<section>/<id>.jpg → /gallery/assets/...
     og_image = f"{site_url}/gallery/{item['img']}"
     idx_title = indexable_title(item, caption)
@@ -256,6 +242,7 @@ def render_work(item, caption, palette, site_url):
 <div class="palette" aria-hidden="true">{swatches}</div>
 {meta}
 <a class="enter" href="/">Enter the exhibition &rarr;</a>
+<p class="sign">{COPYRIGHT}</p>
 </article>
 </main>
 </body>
@@ -266,13 +253,13 @@ def render_work(item, caption, palette, site_url):
 
 
 def exhibition_vectors(vector_items):
-    """Per-work kinship vector for the client walk — deterministic.
+    """Per-work kinship vector for the client walk — deterministic, INV-1-safe.
 
     Every axis of vector.json that is numeric in ANY work becomes a coordinate (the radial family
     is null on non-radial images → treated as 0, a meaningful 'no radial structure'). Each coordinate
     is min-max normalized across the collection to [0,1] so no axis dominates by scale. The output uses
     a NEUTRAL key ('v') and bare coordinate arrays — no axis name, no labelled score ever reaches a
-    file the visitor can read. Returns (vectors {id:[floats]}, version tag).
+    file the visitor can read (INV-1). Returns (vectors {id:[floats]}, version tag).
     """
     axes = sorted({k for it in vector_items for k, v in it["axes"].items()
                    if isinstance((v.get("value") if isinstance(v, dict) else v), (int, float))})
@@ -291,19 +278,19 @@ def exhibition_vectors(vector_items):
     for wid, row in raw.items():
         vectors[wid] = [round((row[j] - mins[j]) / (maxs[j] - mins[j]), 6) if maxs[j] > mins[j] else 0.0
                         for j in range(n)]
-    # version changes whenever the axis SET changes → old localStorage arcs are discarded
+    # version changes whenever the axis SET changes → old localStorage arcs are discarded (INV-26)
     version = hashlib.sha1((",".join(axes)).encode("utf-8")).hexdigest()[:8]
     return vectors, version
 
 
 def render_exhibition(items, captions, slugs, site_url):
-    """The exhibition root `/` (EX). ONE surface, two faces: the served HTML is the crawlable
+    """The exhibition root `/` (EX). ONE surface, two faces (INV-25): the served HTML is the crawlable
     JS-off face — a real heading, indexable intro about the COLLECTION (never a work's vector), and a
     static index linking every work to its /w/ page; `exhibition.js` then re-renders it into the live
     adaptive walk. Carries its own root og:image (a fixed representative work so a shared homepage link
     unfurls) + canonical + WebSite/CollectionPage JSON-LD."""
     canonical = f"{site_url}/"
-    hero = items[0]                                   # deterministic representative work
+    hero = items[0]                                   # deterministic representative work (INV-21)
     og_image = f"{site_url}/gallery/{hero['img']}"
     title = ROOT_TITLE
     desc = ROOT_DESCRIPTION
@@ -321,7 +308,7 @@ def render_exhibition(items, captions, slugs, site_url):
     # works flash for seconds — evening review 2026-07-05). The inline script marks <html> as js-alive
     # BEFORE <body> parses, so CSS hides the static face pre-paint; if the walk hasn't come alive
     # within 2.5s (broken/missing JS or data), the mark is removed and the static face returns —
-    # progressive enhancement keeps a bounded worst case, never a blank page.
+    # progressive enhancement keeps a bounded worst case, never a blank page (INV-25/CS-8).
     extra_head = ('<script>document.documentElement.classList.add("js");'
                   'setTimeout(function(){if(!document.body||!document.body.classList.contains("ex-live"))'
                   'document.documentElement.classList.remove("js")},2500);</script>\n'
@@ -332,7 +319,7 @@ def render_exhibition(items, captions, slugs, site_url):
         cap = captions.get(it["id"], "")
         alt = cap or indexable_title(it, cap)
         cards.append(
-            f'<a href="/w/{slugs[it["id"]]}.html"><img src="/gallery/{esc(it["img"])}" '
+            f'<a href="/w/{slugs[it["id"]]}"><img src="/gallery/{esc(it["img"])}" '
             f'alt="{esc(alt)}" loading="lazy"></a>'
         )
     grid = "".join(cards)
@@ -342,12 +329,10 @@ def render_exhibition(items, captions, slugs, site_url):
 <span class="ex-hint" id="ex-hint">an exhibition that assembles itself around you</span>
 </div>
 <div class="ex-stage" id="ex-stage"></div>
-<div class="ex-more-wrap" id="ex-more-wrap">
-<button class="ex-more" id="ex-more" type="button" hidden>open more &darr;</button>
-</div>
 <main class="wrap" id="ex-static">
 <p class="lede">{esc(desc)}</p>
 <nav class="grid" aria-label="All works">{grid}</nav>
+<p class="sign">{COPYRIGHT}</p>
 </main>
 <script src="/exhibition.js" defer></script>
 </body>
@@ -358,12 +343,12 @@ def render_exhibition(items, captions, slugs, site_url):
 
 # ---------------------------------------------------------------- bundle
 
-def copy_gallery(out_dir, content_dir):
-    """Copy the shared images + design tokens into the bundle (self-contained). The old
+def copy_gallery():
+    """Copy the shared images + design tokens into the bundle (self-contained, INV-18). The old
     Room/Door prototypes are RETIRED — the exhibition (EX) is now the single converged front door,
     so no prototype HTML ships; only the assets and the shared tokens the exhibition renders in."""
-    dst = out_dir / "gallery"
-    src = content_dir / "gallery"
+    dst = OUT / "gallery"
+    src = ROOT / "gallery"
     (dst).mkdir(parents=True, exist_ok=True)
     if (src / "gallery_data.json").exists():
         shutil.copy2(src / "gallery_data.json", dst / "gallery_data.json")
@@ -372,16 +357,15 @@ def copy_gallery(out_dir, content_dir):
             shutil.copytree(src / sub, dst / sub, dirs_exist_ok=True)
 
 
-def copy_exhibition_assets(out_dir, engine_assets_dir, instance_assets_dir):
-    """Copy the exhibition client (JS + CSS) to the bundle root, and instance assets.
-    Kept as source files (not inlined) so they are lintable and cache-friendly; every feel-knob
-    is read from config.json at runtime, not substituted at bake time."""
+def copy_exhibition_assets():
+    """The exhibition client (JS+CSS) comes from the ENGINE's own assets; favicons from the
+    instance's assets dir (absent → the bundle simply has none). Source files, never inlined."""
     for name in ("exhibition.js", "exhibition.css"):
-        shutil.copy2(engine_assets_dir / name, out_dir / name)
+        shutil.copy2(_ENGINE_ASSETS / name, OUT / name)
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
-        src = instance_assets_dir / name if instance_assets_dir else None
-        if src and src.exists():
-            shutil.copy2(src, out_dir / name)
+        cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
+        if cand and cand.exists():
+            shutil.copy2(cand, OUT / name)
 
 
 def write(path, text):
@@ -390,12 +374,12 @@ def write(path, text):
         fh.write(text)
 
 
-def door_pool(items_by_id, captions, content_dir):
+def door_pool(items_by_id, captions):
     """The door pool (EX-DOOR): the door-candidates provenance ids intersected with the LIVING
     gallery works — an id that left the gallery silently drops out. Each entry carries the alt
     text a door work needs (his title → caption → quiet label; the door asks wordlessly, but a
     keyboard/screen-reader visitor still meets real words). Returns [] when the source is absent."""
-    src = content_dir / "gallery" / "door_candidates.json"
+    src = ROOT / "gallery" / "door_candidates.json"
     if not src.exists():
         return []
     pool = []
@@ -404,39 +388,62 @@ def door_pool(items_by_id, captions, content_dir):
         if not item:
             continue                                   # not a living work → drop (thin-pool degrade)
         cap = captions.get(item["id"], "")
-        pool.append({"id": item["id"], "alt": indexable_title(item, cap)})
+        pool.append({"id": item["id"], "alt": indexable_title(item, cap),
+                     # the candidates' own tone numbers ride along for the living hand's
+                     # hour-lean (EX-DOOR-3) — data, never rendered (INV-1)
+                     "luma": round(float(e.get("luma", 0.5)), 3),
+                     "warmth": round(float(e.get("warmth", 0.5)), 3)})
     return pool
 
 
-def build(site_url, ga_id="", content_dir=None, out_dir=None,
-          engine_assets_dir=None, instance_assets_dir=None, site_config=None):
-    """Build the site bundle.
+def greetings():
+    """The door's greeting strings (EX-GREET-BAKE): the committed cache authored by
+    scripts/gen_greetings.py — Haiku at AUTHORING time (drafts stand in until the key lands);
+    the bake only READS it (INV-21). Absent or malformed → None: no greet block ships and the
+    client stands on its built-in lines — the door never blocks entry (EX-GREET)."""
+    src = ROOT / "data" / "greetings.json"
+    try:
+        g = json.loads(src.read_text(encoding="utf-8"))
+        langs = g["langs"]
+        assert g["fallback"] in langs
+        for L in langs.values():
+            assert L["ask"].strip() and "skip" not in L           # skip retired (EX-DOOR-2a)
+            assert L["exit"].strip() and "{n}" in L["more"]       # the walk's closing copy
+            assert L["q_more"].strip() and L["q_spent"].strip()   # (his word 2026-07-06)
+            assert all(L["greet"][p] for p in ("night", "morning", "day", "evening"))
+        return {"fallback": g["fallback"], "aliases": g.get("aliases", {}), "langs": langs}
+    except Exception:
+        return None
 
-    Args:
-        site_url: base URL (https://...) — used for canonicals, og:image, sitemap, robots
-        ga_id: GA4 measurement id (G-…); empty = no analytics tag
-        content_dir: Path to content directory (holds gallery/, vector.json, etc.)
-        out_dir: Path to write the output bundle into
-        engine_assets_dir: Path to engine/assets/ (holds exhibition.js, exhibition.css)
-        instance_assets_dir: Path to instance assets dir (holds favicons)
-        site_config: dict with keys: site_name, creator, root_title, root_description,
-                     collection_name  (unused here — root_title/desc are derived from
-                     site_name+creator exactly as the original did; collection_name goes into JSON-LD)
-    """
-    global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION, COLLECTION_NAME
+
+def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
+          engine_assets_dir=None, instance_assets_dir=None, site_config=None):
+    """``enable``: flag names switched ON for this bake; every worker flag ships false by
+    default, the flip is a deploy argument. Identity comes from site.json — the engine knows
+    no instance."""
+    global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
+    global COLLECTION_NAME, COPYRIGHT, _ENGINE_ASSETS, _INSTANCE_ASSETS
     GA_ID = ga_id
     OUT = out_dir
     ROOT = content_dir
-
-    # Instance identity from site.json
+    _ENGINE_ASSETS = engine_assets_dir
+    _INSTANCE_ASSETS = instance_assets_dir
     SITE_NAME = site_config["site_name"]
     CREATOR = site_config["creator"]
     ROOT_TITLE = site_config["root_title"]
     ROOT_DESCRIPTION = site_config["root_description"]
     COLLECTION_NAME = site_config["collection_name"]
-
+    COPYRIGHT = f"© {datetime.date.today().year} {CREATOR} · {SITE_NAME}"
+    if OUT.exists():
+        shutil.rmtree(OUT)                             # a fresh bundle, deterministic
+    OUT.mkdir(parents=True)
+    flags = dict(DEFAULT_FLAGS)
+    for name in (enable or []):
+        if name not in flags:
+            raise SystemExit(f"unknown flag: {name} (the bake owns the schema)")
+        flags[name] = True
     gallery = load_json("gallery/gallery_data.json")
-    items = sorted(gallery["items"], key=lambda i: i["id"])  # deterministic order
+    items = sorted(gallery["items"], key=lambda i: i["id"])  # deterministic order (INV-21)
     vector = {it["id"]: it for it in load_json("vector.json")["items"]}
     captions = {c["id"]: (c.get("subject") or "").strip() for c in load_json("content_tags.json")}
 
@@ -447,9 +454,9 @@ def build(site_url, ga_id="", content_dir=None, out_dir=None,
             palettes[wid] = ax6["value"]
 
     # fresh bundle
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True)
+    if OUT.exists():
+        shutil.rmtree(OUT)
+    OUT.mkdir(parents=True)
 
     # work pages
     slugs = {}
@@ -458,38 +465,69 @@ def build(site_url, ga_id="", content_dir=None, out_dir=None,
         pal = palette_of(it["id"], palettes, it.get("dom"))
         slug, doc = render_work(it, cap, pal, site_url)
         slugs[it["id"]] = slug
-        write(out_dir / "w" / f"{slug}.html", doc)
+        write(OUT / "w" / f"{slug}.html", doc)
 
     # the exhibition root `/` (EX) — crawlable JS-off face + the client walk
-    write(out_dir / "index.html", render_exhibition(items, captions, slugs, site_url))
-    copy_exhibition_assets(out_dir, engine_assets_dir, instance_assets_dir)
+    write(OUT / "index.html", render_exhibition(items, captions, slugs, site_url))
+    copy_exhibition_assets()
 
-    # the client walk's baked data: per-work normalized kinship vectors (neutral coords) +
+    # the client walk's baked data: per-work normalized kinship vectors (neutral coords, INV-1) +
     # a lean work list (id, image, its /w/ slug, dims, dominant colour for the reactive ground)
     vectors, ex_version = exhibition_vectors(load_json("vector.json")["items"])
     ex_works = [{
         "id": it["id"],
         "img": f"/gallery/{it['img']}",
-        "slug": f"/w/{slugs[it['id']]}.html",
+        "slug": f"/w/{slugs[it['id']]}",     # clean address (WP-CLEAN)
         "w": it.get("w", ""), "h": it.get("h", ""),
         "dom": it.get("dom"),
+        # the hang's caption zone (EX-HANG): his title + the archive's facts — presentation,
+        # never a readout (INV-1 as amended 2026-07-06); machine captions stay meta-only
+        "title": (it.get("title") or "").strip(),
+        "sec": it.get("section", ""),
+        "place": place_of(it),
     } for it in items]
-    exdata = {"version": ex_version, "works": ex_works,
+    # (per-work series mark joins after the series block computes below)
+    # EX-SERIES (INV-46): real series only (3+), the variant from the series' own size,
+    # NEVER the machine's theme label (INV-1) — the guest reads only «серия · N»
+    ser_src = load_json("finalist_series.json").get("series", [])
+    id_of = lambda m: m.split("_", 1)[1].rsplit(".", 1)[0]
+    live_ids = {it["id"] for it in items}
+    ex_series = []
+    ser_of = {}
+    for srec in ser_src:
+        members = [id_of(m) for m in srec.get("members", []) if id_of(m) in live_ids]
+        if len(members) < 3:
+            continue
+        idx = len(ex_series)
+        ex_series.append({"variant": "polaroids" if len(members) >= 8 else "lane",
+                          "members": members})
+        for mid in members:
+            ser_of[mid] = idx
+    for w in ex_works:
+        if w["id"] in ser_of:
+            w["ser"] = ser_of[w["id"]]                 # the pill's own mark (EX-SERIES)
+    exdata = {"version": ex_version, "works": ex_works, "series": ex_series,
+              # the walk's own face signs off with the same composed line (EX-COPY)
+              "copyright": COPYRIGHT,
               "v": {it["id"]: vectors[it["id"]] for it in items if it["id"] in vectors},
               # the threshold's pool ships INSIDE this one artifact — one fetch, under the same
-              # bounded arrival the walk grants (EX-DOOR; prover F1)
-              "door": {"pool": door_pool({it["id"]: it for it in items}, captions, content_dir)}}
-    write(out_dir / "exhibition_data.json",
+              # bounded arrival INV-25 grants the walk (EX-DOOR; prover F1)
+              "door": {"pool": door_pool({it["id"]: it for it in items}, captions)}}
+    # the greeting rides the SAME artifact — one fetch, INV-25's bounded arrival (EX-GREET)
+    greet = greetings()
+    if greet:
+        exdata["greet"] = greet
+    write(OUT / "exhibition_data.json",
           json.dumps(exdata, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 
     # sitemap: exhibition root + every work page, each once
-    urls = [f"{site_url}/"] + [f"{site_url}/w/{slugs[it['id']]}.html" for it in items]
+    urls = [f"{site_url}/"] + [f"{site_url}/w/{slugs[it['id']]}" for it in items]
     sm = ['<?xml version="1.0" encoding="UTF-8"?>',
           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for u in urls:
         sm.append(f"  <url><loc>{esc(u)}</loc></url>")
     sm.append("</urlset>")
-    write(out_dir / "sitemap.xml", "\n".join(sm) + "\n")
+    write(OUT / "sitemap.xml", "\n".join(sm) + "\n")
 
     # robots: disallow on a preview host, allow on production
     is_preview = "pages.dev" in site_url
@@ -497,81 +535,85 @@ def build(site_url, ga_id="", content_dir=None, out_dir=None,
         robots = f"User-agent: *\nDisallow: /\nSitemap: {site_url}/sitemap.xml\n"
     else:
         robots = f"User-agent: *\nAllow: /\nSitemap: {site_url}/sitemap.xml\n"
-    write(out_dir / "robots.txt", robots)
+    write(OUT / "robots.txt", robots)
 
-    # config.json — flags (AI OFF) + the exhibition feel-knobs (every one A/B-tunable) +
+    # config.json — flags (AI OFF) + the exhibition feel-knobs (every one A/B-tunable, INV-28) +
     # site_url + experiment registry seam
-    config = dict(DEFAULT_FLAGS)
+    config = dict(flags)
     config["exhibition"] = {
-        "spread_size": 10,       # works on the wall (3–12) — a gallery hang, never the whole catalogue
-        "row_size": 4,           # works per row on a laptop/wide screen — the wall's rhythm
-        "cold_spread": "diverse",  # how the first spread is chosen: 'diverse' (farthest-point) | 'first'
-        "arc_shape": "widening",   # how a tap's arc samples near→far: 'widening' (holds contrast) | 'nearest'
-        "transition_ms": 620,    # reflow duration = the tap-lock window (feel of the reassembly)
+        "spread_size": 10,       # works in the hang (3–12) — never the whole catalogue
+        "cold_spread": "diverse",  # the silent-entry hang: 'diverse' (farthest-point) | 'first'
+        "arc_shape": "widening",   # how the arc samples near→far: 'widening' (holds contrast) | 'nearest'
+        "tempo": 1.35,           # the ONE motion multiplier over the --d-* tokens (EX-MOTION, design 04)
+        # transition_ms LEFT the schema with the tempo law (EX-MOTION tombstone, 2026-07-06) —
+        # the crossing rides the cross token (1.2s × tempo)
         "kinship_axes": "all",   # which axes drive distance: 'all' | [indices] (core-vs-descriptive)
-        "unfold_step": 5,        # works appended per "open more" along the current arc
-        "max_unfolds": 2,        # unfold steps before "more" retires — the arc ENDS
+        "unfold_step": 5,        # works appended per «ещё 5» along the current arc
+        "max_unfolds": 2,        # unfold steps before «ещё 5» retires — the arc ENDS (INV-30)
         "door_size": 5,          # works at the threshold, 3–5 (EX-DOOR)
+        "greeting": "ask",       # where the door's greeting hangs: ask (his pick) | top | off (EX-GREET)
+        # row_size LEFT the schema with the grid wall (EX-WALL tombstone, 2026-07-06)
     }
     config["site_url"] = site_url
     config["ga_measurement_id"] = ga_id   # analytics id lives in config, never in a template
     config["experiments"] = {}      # variant → flag → metric (empty registry)
-    write(out_dir / "config.json", json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    write(OUT / "config.json", json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
-    # reserved empty /api namespace for later serverless AI
-    write(out_dir / "api" / ".gitkeep", "")
+    # reserved empty /api namespace for later serverless AI (CS-7)
+    write(OUT / "api" / ".gitkeep", "")
+
+    # ---- EX-I18N (INV-42): the any-locale worker ships ONLY under its flag ----------
+    # The worker reads /i18n_source.json from its own deployment (deterministic, sorted —
+    # prover I4); _routes.json keeps every static byte pure CDN (only /api/* invokes it).
+    if flags["ai_i18n"] or flags["visitor_memory"]:
+        shutil.copyfile(_ENGINE_ASSETS / "worker.js", OUT / "_worker.js")
+        write(OUT / "_routes.json",
+              json.dumps({"version": 1, "include": ["/api/*"], "exclude": []}) + "\n")
+    if flags["ai_i18n"]:
+        en = ((greet or {}).get("langs") or {}).get("en") or {}
+        i18n_src = {
+            "version": ex_version,
+            "strings": {k: en.get(k, "") for k in
+                        ("ask", "exit", "more", "q_more", "q_spent",
+                         "share_label", "share_copied", "series", "room_back")},
+            "greet": en.get("greet") or {},
+            # brand + the © signature are EXCLUDED by construction (never translatable)
+            "titles": {it["id"]: it["title"].strip()
+                       for it in items if (it.get("title") or "").strip()},
+        }
+        write(OUT / "i18n_source.json",
+              json.dumps(i18n_src, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 
     # shared images + design tokens (the exhibition renders in them)
-    copy_gallery(out_dir, content_dir)
+    copy_gallery()
 
     return {"works": len(items), "site_url": site_url, "preview": is_preview}
 
 
 def main():
-    # Engine root: the parent of this file's parent (gallery-engine/)
-    _engine_dir = Path(__file__).resolve().parent
-    _engine_assets_default = _engine_dir / "assets"
-
-    ap = argparse.ArgumentParser(
-        description="gallery-engine static bake — builds a deployable site bundle from content data"
-    )
-    ap.add_argument("--content", required=True,
-                    help="path to content directory (holds gallery/, vector.json, content_tags.json, etc.)")
-    ap.add_argument("--site", required=True,
-                    help="path to site.json (instance config: site_name, creator, …)")
-    ap.add_argument("--out", required=True,
-                    help="output directory (written fresh each run)")
-    ap.add_argument("--site-url", default="https://example.com",
-                    help="base URL for absolute og:image / canonical (use the *.pages.dev host for preview)")
-    ap.add_argument("--ga-id", default="",
-                    help="GA4 measurement id (G-…); empty = no analytics tag baked")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--content", required=True, help="the content directory")
+    ap.add_argument("--site", required=True, help="site.json — the instance identity")
+    ap.add_argument("--out", required=True, help="output bundle directory")
+    ap.add_argument("--site-url", required=True)
+    ap.add_argument("--ga-id", default="")
+    ap.add_argument("--enable", action="append", default=[],
+                    help="switch a config flag ON for this bake (deploy sets values)")
     ap.add_argument("--instance-assets", default=None,
-                    help="directory holding favicon.svg/png, apple-touch-icon.png (fallback if not in <content>/instance-assets/)")
+                    help="favicons dir (fallback when <content>/instance-assets is absent)")
     args = ap.parse_args()
-
     content_dir = Path(args.content).resolve()
     out_dir = Path(args.out).resolve()
-    site_url = args.site_url.rstrip("/")
-
     with open(args.site, encoding="utf-8") as fh:
         site_config = json.load(fh)
-
-    # Instance assets: prefer <content>/instance-assets/, fall back to --instance-assets
-    instance_assets_dir = content_dir / "instance-assets"
-    if not instance_assets_dir.exists() and args.instance_assets:
-        instance_assets_dir = Path(args.instance_assets).resolve()
-    elif not instance_assets_dir.exists():
-        instance_assets_dir = None
-
-    summary = build(
-        site_url,
-        ga_id=args.ga_id,
-        content_dir=content_dir,
-        out_dir=out_dir,
-        engine_assets_dir=_engine_assets_default,
-        instance_assets_dir=instance_assets_dir,
-        site_config=site_config,
-    )
+    inst = content_dir / "instance-assets"
+    if not inst.exists():
+        inst = Path(args.instance_assets).resolve() if args.instance_assets else None
+    engine_assets = Path(__file__).resolve().parent / "assets"
+    summary = build(args.site_url.rstrip("/"), ga_id=args.ga_id, enable=args.enable,
+                    content_dir=content_dir, out_dir=out_dir,
+                    engine_assets_dir=engine_assets, instance_assets_dir=inst,
+                    site_config=site_config)
     print(f"baked {summary['works']} work pages + exhibition root → {out_dir}")
     print(f"site_url={summary['site_url']}  robots={'DISALLOW (preview)' if summary['preview'] else 'ALLOW (prod)'}")
 

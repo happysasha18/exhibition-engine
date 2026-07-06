@@ -16,6 +16,10 @@
   const PLACE_KEY = "tlv.place";                      // the per-tab place marker (INV-32c)
   const TEMPO_KEY = "tlv-tempo";                      // the motion override (EX-MOTION-R)
   const SPENT_KEY = "tlv.spent";                      // the hash hand-over, consumed once (EX-SHARE-IN)
+  const VISITOR_KEY = "tlv.visitor";                  // the coat-check token (EX-MEMORY)
+  const HAND_KEY = "tlv.hand";                        // the last dealt threshold hand (EX-DOOR-3)
+  const SEENC_KEY = "tlv.seenc";                      // the seen-list's local copy (EX-DOOR-3)
+  const LANG_KEY = "tlv.lang";                        // the guest's chosen tongue (EX-LANG)
 
   // ---- EX-TIMING (INV-38): the museum keeps time — for its builder only -------
   // Marks are free and invisible (INV-1: no DOM text; INV-18: no beacon, nothing
@@ -53,6 +57,10 @@
     try { localStorage.removeItem(TEMPO_KEY); } catch (e) {}
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}
     try { sessionStorage.removeItem(SPENT_KEY); } catch (e) {}  // the hash re-seeds a FIRST arrival
+    try { localStorage.removeItem(VISITOR_KEY); } catch (e) {}   // forgetting is whole (EX-MEMORY)
+    try { localStorage.removeItem(HAND_KEY); } catch (e) {}
+    try { localStorage.removeItem(SEENC_KEY); } catch (e) {}
+    try { localStorage.removeItem(LANG_KEY); } catch (e) {}     // the browser's tongue returns
     const q = new URLSearchParams(location.search);
     q.delete("reset");
     const rest = q.toString();
@@ -109,9 +117,19 @@
   // cache riding exhibition_data.json (EX-GREET-BAKE) — no cache, no greeting, the door
   // stands on its built-in lines (it never blocks entry).
   const GREET = data.greet || null;
+  // ONE reader of the guest's tongue (EX-LANG, prover L1): the chosen override outranks the
+  // browser everywhere a language is read — the greeting, the strings, the any-locale fetch.
+  let langOverride = null;
+  try {
+    const lo = localStorage.getItem(LANG_KEY);
+    if (lo && /^[a-z]{2,3}$/.test(lo)) langOverride = lo;
+  } catch (e) {}
+  function viewerLang() {
+    return (langOverride || navigator.language || "").toLowerCase().slice(0, 2);
+  }
   function greetLang() {
     if (!GREET || !GREET.langs) return null;
-    let code = (navigator.language || "").toLowerCase().slice(0, 2);
+    let code = viewerLang();
     code = (GREET.aliases || {})[code] || code;
     if (!GREET.langs[code]) code = GREET.fallback || "en";
     const t = GREET.langs[code];
@@ -136,6 +154,7 @@
   const replaceFace = (st) => { try { history.replaceState({ tlv: st }, ""); } catch (e) {} };
 
   // ---- baked data -----------------------------------------------------------
+  const SERIES = data.series || [];                    // real series only (3+), variant each
   const VER = String(data.version || "1");
   const works = data.works;                 // [{id,img,slug,w,h,dom,title,sec,place}]
   const byId = Object.fromEntries(works.map((w) => [w.id, w]));
@@ -193,9 +212,69 @@
     return order;
   }
 
-  // the set is CURATED, not rotated (EX-DOOR-2d): always the pool's first hand, in pool
-  // order — the order IS the curation; the date rotation retired 2026-07-06 (his design word)
-  function doorSet() { return doorPool.slice(0, DOOR_SIZE); }
+  // EX-DOOR-3 (INV-44): the hand LIVES — rotation + novelty + the hour, under HIS LAW
+  // (a new hand repeats at most a THIRD of the previous one). The pool stays curated
+  // (EX-DOOR-2d); his file order is the tie-break voice; a pool of exactly door_size
+  // stands the law down (the hand IS the pool).
+  function dealHand() {
+    const n = Math.min(DOOR_SIZE, doorPool.length);
+    if (doorPool.length <= n) return doorPool.slice(0, n);
+    let prev = [];
+    try {
+      const h = JSON.parse(localStorage.getItem(HAND_KEY) || "null");
+      if (h && h.v === VER && Array.isArray(h.ids)) prev = h.ids;
+    } catch (e) {}
+    let seen = new Set();
+    try {
+      const c = JSON.parse(localStorage.getItem(SEENC_KEY) || "null");
+      if (c && Array.isArray(c.ids)) seen = new Set(c.ids.map(String));
+    } catch (e) {}
+    const hour = new Date().getHours();
+    const part = hour < 6 ? "night" : hour < 12 ? "morning" : hour < 18 ? "day" : "evening";
+    const tone = (e) => {
+      const l = Number(e.luma), w = Number(e.warmth);
+      if (!Number.isFinite(l) || !Number.isFinite(w)) return 0;
+      if (part === "night") return 1 - l;              // the darker faces
+      if (part === "evening") return w;                // the warmer
+      return l;                                        // morning + day lean bright
+    };
+    const scored = doorPool.map((e, i) => ({
+      e,
+      s: (seen.has(String(e.id)) ? 0 : 2)              // novelty first (his pick)
+         + tone(e) * 0.9                               // the hour leans
+         - i * 0.01                                    // his order breaks ties
+         + Math.random() * 0.25,                       // the rotation's own breath
+    }));
+    scored.sort((a, b) => b.s - a.s);
+    const maxRepeat = Math.floor(n / 3);               // HIS LAW: ≤ a third repeats
+    const hand = [];
+    let repeats = 0;
+    for (const c of scored) {
+      const isPrev = prev.indexOf(c.e.id) >= 0;
+      if (isPrev && repeats >= maxRepeat) continue;
+      hand.push(c.e);
+      if (isPrev) repeats += 1;
+      if (hand.length === n) break;
+    }
+    for (const c of scored) {                          // the law can never starve the hand
+      if (hand.length === n) break;
+      if (hand.indexOf(c.e) < 0) hand.push(c.e);
+    }
+    try { localStorage.setItem(HAND_KEY, JSON.stringify({ v: VER, ids: hand.map((e) => e.id) })); } catch (e) {}
+    return hand;
+  }
+  function standingHand() {                            // the session keeps its set (INV-31/2d)
+    try {
+      const h = JSON.parse(localStorage.getItem(HAND_KEY) || "null");
+      if (h && h.v === VER && Array.isArray(h.ids)) {
+        const by = Object.fromEntries(doorPool.map((e) => [e.id, e]));
+        const sp = h.ids.map((id) => by[id]).filter(Boolean);
+        if (sp.length >= Math.min(DOOR_SIZE, doorPool.length)) return sp;
+      }
+    } catch (e) {}
+    return null;
+  }
+  function doorSet() { return standingHand() || dealHand(); }
 
   // one line, always (EX-DOOR-2b — card 01's algorithm IS the norm): a row when landscape
   // (W/H > 1.02), a column when portrait; windows shrink first, the count drops second
@@ -359,6 +438,7 @@
     g.hidden = !line;                    // ambient: Back to a cold step re-greets at the CURRENT hour
     door.classList.toggle("greet-top", GPLACE === "top");
     doorRender();
+    if (cold) hintArm(); else hintOff(); // the re-opened door never hints (EX-DOOR-2g)
   }
 
   // layout-aware render — re-runs on resize; rebuilds only when count/orientation change
@@ -391,6 +471,33 @@
   }
   let rsz;
   addEventListener("resize", () => { clearTimeout(rsz); rsz = setTimeout(doorRender, 150); });
+
+  // ---- the idle hint (EX-DOOR-2g): a cold untouched door breathes its first halo ----
+  // Behavior, never a word; ANY interaction retires it; the re-opened door never hints.
+  let hintT = null;
+  let hintPulseT = null;
+  function hintOff() {
+    clearTimeout(hintT); hintT = null;
+    clearTimeout(hintPulseT); hintPulseT = null;
+    const w = door.querySelector(".exd-window.hint");
+    if (w) w.classList.remove("hint");
+  }
+  function hintPulse() {
+    if (!atDoor || REDUCED) return;
+    const w = door.querySelector(".exd-window");
+    if (!w) return;
+    w.classList.remove("hint");
+    void w.offsetWidth;                                // restart the one-cycle breath
+    w.classList.add("hint");
+    hintPulseT = setTimeout(hintPulse, Math.round(7000 * TEMPO));
+  }
+  function hintArm() {
+    hintOff();
+    if (REDUCED) return;                               // stillness wins (EX-MOTION-R)
+    hintT = setTimeout(hintPulse, Math.round(3000 * TEMPO));
+  }
+  ["pointerover", "touchstart", "keydown", "mousedown"].forEach((e) =>
+    door.addEventListener(e, hintOff, { passive: true }));
 
   // ---- ceremony B «через чёрное» (EX-DOOR-2e; cards 01 + 05 are the norm) ----
   // from the general to the particular: the veil takes the door → the wordmark alone drifts
@@ -455,6 +562,7 @@
   }
 
   function closeDoor() {
+    hintOff();
     atDoor = false;
     entered = true;
     door.hidden = true;
@@ -477,6 +585,11 @@
   addEventListener("popstate", (ev) => {               // Back/Forward walk the faces (INV-32)
     ceremonyCancel();                                  // navigation wins mid-ceremony (EX-DOOR-2e)
     const st = ev.state && ev.state.tlv;
+    closeSide();                                       // a step away closes the side room (EX-SERIES)
+    if (st && st.face === "series" && typeof st.ser === "number") {
+      openSide(st.ser, false);                         // Forward re-opens without a new step
+      return;
+    }
     if (st && st.face === "door") {
       // the door AS IT STOOD: rebuild the carried spread from the pool (never a fresh roll)
       const byPool = Object.fromEntries(doorPool.map((e) => [e.id, e]));
@@ -509,16 +622,23 @@
     const w = byId[x.target.dataset.id];
     if (!w) return;
     breathe(x.target.querySelector("img.work"));       // late pixels meet the breath (EX-LOAD)
+    if (window.__tlvSeen) window.__tlvSeen(w.id);      // the coat-check report (EX-MEMORY)
     // the walk tracks its place per frame in view (INV-32c re-carried after the ↗ retired)
     try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: w.id })); } catch (e) {}
     // a late callback must never re-live the tone ON the door (EX-ACCENT rests at the seams)
     if (!atDoor) ground(w.dom);
     counter.querySelector(".now").textContent = String(+x.target.dataset.n).padStart(2, "0");
     counter.classList.add("show");
-    // his words and the archive's facts only — never machine prose, never a readout (INV-1)
+    // his words and the archive's facts only — never machine prose, never a readout (INV-1);
+    // a REAL series (3+) grows its quiet pill — «серия · N», never the machine's theme (EX-SERIES)
+    const serIdx = (typeof w.ser === "number" && SERIES[w.ser]) ? w.ser : null;
+    const serWord = ((greetLang() || { t: {} }).t.series) || "серия";
     cap.innerHTML =
       `<div class="title ${w.title ? "" : "untitled"}">${w.title || "untitled"}</div>` +
-      `<div class="meta">${w.sec || ""}${w.place ? " · " + w.place : ""}</div>`;
+      `<div class="meta">${w.sec || ""}${w.place ? " · " + w.place : ""}</div>` +
+      (serIdx == null ? "" :
+        `<button type="button" class="ex-series" data-ser="${serIdx}">` +
+        `${serWord} · ${SERIES[serIdx].members.length}</button>`);
     cap.classList.add("show");
   }), { threshold: 0.55 });
 
@@ -634,7 +754,6 @@
   // Card 02's law: while the hand moves, nothing yanks; a beat of stillness glides the room
   // to the nearest frame; ANY new input cancels mid-flight — the museum never wrestles.
   let glideRaf = null;
-  let settleT = null;
   let gliding = false;                                 // the glide's own motion never re-arms
   let progAt = 0;                                      // …not even its tail event after a cancel
   function glideCancel() {
@@ -667,16 +786,28 @@
   const TOUCHY = matchMedia("(hover: none)").matches;
   let lastY = 0;
   let travel = 0;                                      // the hand's last direction: +down / -up
-  addEventListener("scroll", () => {
-    if (gliding || performance.now() - progAt < 80) { lastY = scrollY; return; }
-    travel = scrollY > lastY ? 1 : (scrollY < lastY ? -1 : travel);
-    lastY = scrollY;
-    clearTimeout(settleT);
-    settleT = setTimeout(() => {                       // an idleness detector, not a motion —
-      if (atDoor || busy) return;                      // it does not scale with tempo (spec);
-      const vh = innerHeight;                          // never fights the door or a ceremony (G3)
+  // the idleness detector samples POSITION PER FRAME, never trusts event timing: momentum
+  // (iOS, mac trackpads) delivers scroll events in bursts with long gaps — a timer fires in a
+  // gap and the glide FIGHTS the still-moving native scroll (his iPhone jerk, 2026-07-07).
+  // Only ~0.28s of true WALL-TIME stillness opens the glide — Still no tempo scaling (a detector).
+  let watchRaf = null;
+  function watchCancel() {
+    if (watchRaf) { cancelAnimationFrame(watchRaf); watchRaf = null; }
+  }
+  function watchSettle() {
+    if (watchRaf) return;                              // one watcher at a time
+    let last = scrollY;
+    let movedAt = performance.now();
+    const tick = (now) => {
+      watchRaf = null;
+      if (gliding || atDoor || busy) return;           // the glide/door/ceremony own motion now
+      const y = scrollY;
+      if (Math.abs(y - last) >= 0.6) movedAt = now;    // stillness is WALL TIME, frames only
+      last = y;                                        // sample it (60 vs 120Hz must not matter)
+      if (now - movedAt < 280) { watchRaf = requestAnimationFrame(tick); return; }
+      const vh = innerHeight;                          // TRUE stillness — settle (EX-GLIDE)
       const max = document.documentElement.scrollHeight - vh;
-      const raw = scrollY / vh;
+      const raw = y / vh;
       let k = Math.round(raw);
       if (TOUCHY && travel) {
         const frac = raw - Math.floor(raw);
@@ -684,7 +815,14 @@
         else k = frac <= 0.88 ? Math.floor(raw) : Math.ceil(raw);
       }
       glideTo(Math.min(max, Math.max(0, k * vh)));
-    }, 160);
+    };
+    watchRaf = requestAnimationFrame(tick);
+  }
+  addEventListener("scroll", () => {
+    if (gliding || performance.now() - progAt < 80) { lastY = scrollY; return; }
+    travel = scrollY > lastY ? 1 : (scrollY < lastY ? -1 : travel);
+    lastY = scrollY;
+    watchSettle();
   }, { passive: true });
 
   function renderHang() {
@@ -694,6 +832,73 @@
     appendFrames(order.slice(0, shown), 1);
     scrollTo(0, 0);
   }
+
+  // ---- EX-SERIES (INV-46): the side room — theme and variations, a look ASIDE --------
+  // A FACE over the walk: opening lays ONE history step; the page locks beneath (the
+  // threshold's own law); chip, Esc and Back all land the guest on the exact frame left.
+  const side = document.createElement("div");
+  side.id = "ex-side";
+  side.hidden = true;
+  side.innerHTML = '<button type="button" class="exs-back"></button>' +
+                   '<div class="exs-stage" id="exs-stage"></div>';
+  document.body.appendChild(side);
+  let sideOpen = false;
+  function openSide(idx, laystep) {
+    const S = SERIES[idx];
+    if (!S || sideOpen) return;
+    sideOpen = true;
+    const st = side.querySelector("#exs-stage");
+    st.className = "exs-stage " + S.variant;           // the series' own character picks the face
+    st.innerHTML = "";
+    S.members.forEach((id, i) => {
+      const w = byId[id];
+      if (!w) return;
+      if (S.variant === "lane") {
+        const im = new Image();
+        im.src = w.img;
+        st.appendChild(im);
+        return;
+      }
+      const p = document.createElement("div");         // the polaroid table
+      p.className = "exs-print";
+      p.style.left = (8 + (i % 5) * 17 + (i * 7) % 5) + "%";
+      p.style.top = (12 + Math.floor(i / 5) * 26 + (i * 11) % 7) + "%";
+      p.style.setProperty("--rot", ((((i * 37) % 13) - 6)) + "deg");
+      p.innerHTML = '<img src="' + w.img + '" alt="">';
+      p.addEventListener("click", () => {
+        const was = p.classList.contains("lift");
+        st.querySelectorAll(".exs-print").forEach((x) => x.classList.remove("lift"));
+        if (!was) {
+          const r = p.getBoundingClientRect();
+          p.style.setProperty("--cx", (innerWidth / 2 - (r.left + r.width / 2)) + "px");
+          p.style.setProperty("--cy", (innerHeight / 2 - (r.top + r.height / 2)) + "px");
+          p.classList.add("lift");
+        }
+      });
+      st.appendChild(p);
+    });
+    const T = (greetLang() || { t: {} }).t;
+    side.querySelector(".exs-back").textContent = T.room_back || "← комната";
+    side.hidden = false;
+    document.body.classList.add("ex-side");            // the lock law, reused (EX-DOOR-2f)
+    if (laystep !== false) pushFace({ face: "series", ser: idx });
+    pulse("series_open");
+  }
+  function closeSide() {
+    if (!sideOpen) return;
+    sideOpen = false;
+    side.hidden = true;
+    document.body.classList.remove("ex-side");
+  }
+  cap.addEventListener("click", (ev) => {
+    const b = ev.target.closest && ev.target.closest(".ex-series");
+    if (!b) return;
+    openSide(+b.dataset.ser);
+  });
+  side.querySelector(".exs-back").addEventListener("click", () => history.back());
+  addEventListener("keydown", (ev) => {                // Esc = the same honest road as Back
+    if (ev.key === "Escape" && sideOpen) history.back();
+  });
 
   // ---- the walk TRACKS its place (INV-32c — the law outlived the ↗, its first carrier):
   // the io callback above writes the per-tab marker per frame in view; any return within
@@ -763,7 +968,7 @@
     replaceFace({ face: "walk" });                     // the standing entry is a walk step (INV-32)
     restorePlace();                                    // the ↗ round-trip keeps the place (INV-32c)
   } else if (doorAvailable) {
-    const sp = doorSet();
+    const sp = dealHand();                             // a cold ARRIVAL deals a fresh hand (EX-DOOR-3)
     renderDoor(sp, true);                              // a cold visitor meets the threshold — greeted
     replaceFace({ face: "door", spread: sp.map((e) => e.id), cold: true });
   } else {
@@ -808,36 +1013,133 @@
       if (b) b.textContent = T.exit || b.textContent;
     }
   }
-  if (cfg.ai_i18n === true && GREET && GREET.langs) {
-    const code = (navigator.language || "").toLowerCase().slice(0, 2);
-    const known = (GREET.aliases || {})[code] || code;
-    if (/^[a-z]{2,3}$/.test(code) && !GREET.langs[known]) {
-      const CK = "tlv.i18n." + VER + "." + code;       // version-keyed browser copy — stale
-      let cached = null;                               // copies retire themselves (prover I2)
-      try { cached = JSON.parse(localStorage.getItem(CK) || "null"); } catch (e) {}
-      const applySet = (set) => {
-        if (!set || !set.ask || !set.dir) return;      // strict shape or nothing (prover I1)
-        GREET.langs[code] = set;                       // greetLang() now finds the visitor
-        if (set.titles) {
-          for (const id in set.titles) {
-            if (byId[id] && (byId[id].title || "").trim()) byId[id].title = set.titles[id];
-          }
-        }
-        respeak();
-      };
-      if (cached) applySet(cached);
-      else {
-        setTimeout(() => {                             // deferred — never the arrival's fetch (INV-25)
-          fetch("/api/i18n?lang=" + code + "&v=" + encodeURIComponent(VER))
-            .then((r) => (r.ok ? r.json() : null))
-            .then((set) => {
-              if (!set) return;
-              try { localStorage.setItem(CK, JSON.stringify(set)); } catch (e) {}
-              applySet(set);
-            })
-            .catch(() => {});                          // a dead worker changes nothing
-        }, 400);
+  // ---- EX-MEMORY (INV-43): the coat-check token — the museum remembers a guest ----
+  // A random token (no name, no mail — a cloakroom number); the frames the visitor actually
+  // met report in ONE debounced call, fire-and-forget; a failed report is dropped silently.
+  if (cfg.visitor_memory === true) {
+    let tok = null;
+    try { tok = localStorage.getItem(VISITOR_KEY); } catch (e) {}
+    if (!tok || !/^[a-z0-9]{16,40}$/.test(tok)) {
+      let r = "";
+      try {
+        const b = new Uint8Array(12);
+        crypto.getRandomValues(b);
+        r = Array.from(b, (x) => (x % 36).toString(36)).join("");
+      } catch (e) { r = Math.random().toString(36).slice(2, 14); }
+      tok = r + Date.now().toString(36);
+      try { localStorage.setItem(VISITOR_KEY, tok); } catch (e) {}
+    }
+    const pending = new Set();
+    let seenT = null;
+    const flush = () => {
+      clearTimeout(seenT); seenT = null;
+      if (!pending.size) return;
+      const add = Array.from(pending); pending.clear();
+      try {                                            // the seen-list's local copy grows too —
+        const c = JSON.parse(localStorage.getItem(SEENC_KEY) || "null") || { v: VER, ids: [] };
+        const st = new Set((c.ids || []).map(String));
+        add.forEach((a) => st.add(String(a)));
+        localStorage.setItem(SEENC_KEY, JSON.stringify({ v: VER, ids: Array.from(st).slice(-500) }));
+      } catch (e) {}                                   // — the NEXT deal's novelty voice (EX-DOOR-3)
+      try {
+        fetch("/api/visitor", {
+          method: "PUT", keepalive: true,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ t: tok, add: add }),
+        }).catch(() => {});
+      } catch (e) {}
+    };
+    window.__tlvSeen = (id) => {
+      pending.add(String(id));
+      clearTimeout(seenT);
+      seenT = setTimeout(flush, 3000);                 // one debounced report per walk stretch
+    };
+    addEventListener("pagehide", flush);
+  }
+
+  const I18N_ON = cfg.ai_i18n === true && GREET && GREET.langs;
+  function applySet(code, set) {
+    if (!set || !set.ask || !set.dir) return;          // strict shape or nothing (prover I1)
+    GREET.langs[code] = set;                           // greetLang() now finds the guest
+    if (set.titles) {
+      for (const id in set.titles) {
+        if (byId[id] && (byId[id].title || "").trim()) byId[id].title = set.titles[id];
       }
     }
+    respeak();
+  }
+  function requestSet(code) {                          // cached-or-fetch, the ONE road (EX-LANG)
+    if (!I18N_ON) return;
+    const CK = "tlv.i18n." + VER + "." + code;
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(CK) || "null"); } catch (e) {}
+    if (cached) { applySet(code, cached); return; }
+    fetch("/api/i18n?lang=" + code + "&v=" + encodeURIComponent(VER))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((set) => {
+        if (!set) return;
+        try { localStorage.setItem(CK, JSON.stringify(set)); } catch (e) {}
+        applySet(code, set);
+      })
+      .catch(() => {});                                // a dead worker changes nothing
+  }
+  if (I18N_ON) {
+    const code = viewerLang();
+    const known = (GREET.aliases || {})[code] || code;
+    if (/^[a-z]{2,3}$/.test(code) && !GREET.langs[known]) {
+      setTimeout(() => requestSet(code), 400);         // deferred — never the arrival's fetch
+    }
+  }
+
+  // ---- EX-LANG (INV-45): the corner mark — the guest chooses the museum's tongue ----
+  if (GREET && GREET.langs) {
+    const box = document.createElement("div");
+    box.className = "exd-lang";
+    box.id = "exd-lang";
+    const cur = document.createElement("button");
+    cur.type = "button"; cur.className = "exl-cur";
+    const list = document.createElement("div");
+    list.className = "exl-list"; list.hidden = true;
+    box.appendChild(cur); box.appendChild(list);
+    door.appendChild(box);                             // the threshold's corner chrome, both faces
+    const browserCode = (navigator.language || "").toLowerCase().slice(0, 2);
+    const codes = Object.keys(GREET.langs).slice();
+    if (I18N_ON && /^[a-z]{2,3}$/.test(browserCode)
+        && !GREET.langs[(GREET.aliases || {})[browserCode] || browserCode]
+        && codes.indexOf(browserCode) < 0) {
+      codes.push(browserCode);                         // the guest's own outsider tongue
+    }
+    const markOf = () => {
+      const c = viewerLang();
+      return ((GREET.aliases || {})[c] || c).toUpperCase().slice(0, 2) || "EN";
+    };
+    const redraw = () => {
+      cur.textContent = markOf();
+      list.querySelectorAll(".exl-item").forEach((b) =>
+        b.classList.toggle("cur", b.dataset.lang === viewerLang()));
+    };
+    codes.forEach((c) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "exl-item";
+      b.dataset.lang = c;
+      b.textContent = c.toUpperCase();
+      b.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        langOverride = c;
+        try { localStorage.setItem(LANG_KEY, c); } catch (e) {}
+        list.hidden = true;
+        const known = (GREET.aliases || {})[c] || c;
+        if (GREET.langs[known]) respeak();             // a baked tongue answers at once
+        else requestSet(c);                            // an outsider rides the one layer
+        redraw();
+      });
+      list.appendChild(b);
+    });
+    cur.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      list.hidden = !list.hidden;
+    });
+    door.addEventListener("click", () => { list.hidden = true; });
+    redraw();
   }
 })();

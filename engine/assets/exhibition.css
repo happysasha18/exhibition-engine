@@ -20,8 +20,8 @@ body:not(.ex-live) .ex-stage{ display:none; }
 /* the threshold locks the page behind it (EX-DOOR-2f) — nothing scrolls under the veil,
    the walk holds its place for Back; the ROOT is the scroller, so the root takes the lock
    (clip where supported forbids even programmatic scroll; hidden is the fallback) */
-html:has(> body.ex-door){ overflow:hidden; overflow:clip; }
-body.ex-door{ overflow:hidden; }
+html:has(> body.ex-door), html:has(> body.ex-side){ overflow:hidden; overflow:clip; }
+body.ex-door, body.ex-side{ overflow:hidden; }
 
 /* ================= THE DOOR (door.html verbatim language) ================= */
 #ex-door{ position:fixed; inset:0; z-index:100; display:flex; flex-direction:column;
@@ -70,6 +70,27 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    (his word 2026-07-06: «лёгкий ореол норм, но никак не высвечивание»); pointer devices only */
 @media (hover:hover){ .exd-window:hover::after{ opacity:.75; } }
 .exd-window:focus-visible::after{ opacity:.75; }
+/* the idle hint (EX-DOOR-2g): the first window's halo breathes once — behavior, never a word */
+.exd-window.hint::after{ animation:exd-hintbreath calc(2.4s*var(--tempo)) var(--ease); }
+@keyframes exd-hintbreath{ 0%,100%{ opacity:0; } 45%{ opacity:.75; } }
+@media (prefers-reduced-motion:reduce){ .exd-window.hint::after{ animation:none; } }
+/* the corner mark (EX-LANG) — the guest chooses the tongue; ≥44px, clears the wordmark */
+.exd-lang{ position:fixed; top:14px; right:16px; z-index:125; }
+.exl-cur{ min-width:44px; min-height:44px; font-family:var(--mono); font-size:10px;
+  letter-spacing:.16em; color:var(--muted-2); background:rgba(8,8,7,.5);
+  border:1px solid var(--hair); border-radius:999px; cursor:pointer;
+  transition:color calc(.3s*var(--tempo)), border-color calc(.3s*var(--tempo)); }
+.exl-cur:hover, .exl-cur:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
+.exl-list{ position:absolute; right:0; top:50px; display:flex; flex-direction:column; gap:2px;
+  background:rgba(14,13,11,.96); border:1px solid var(--hair); border-radius:12px; padding:7px;
+  backdrop-filter:blur(8px); }
+.exl-list[hidden]{ display:none; }
+.exl-item{ min-width:44px; min-height:34px; font-family:var(--mono); font-size:10px;
+  letter-spacing:.16em; color:var(--muted-2); background:none; border:none; border-radius:8px;
+  cursor:pointer; padding:7px 14px; }
+.exl-item:hover, .exl-item:focus-visible{ color:var(--ink); background:rgba(255,255,255,.05); }
+.exl-item.cur{ color:var(--accent); }
+#ex-door.leaving .exd-lang{ opacity:0; transition:opacity var(--d-cross) var(--ease); }
 #ex-door.leaving .exd-facade, #ex-door.leaving .exd-ask{
   opacity:0; transition:opacity var(--d-cross) var(--ease); }
 
@@ -114,6 +135,42 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 #ex-breath[hidden]{ display:none; }
 @keyframes exb-breathe{ 0%,100%{ opacity:.22; transform:scaleX(.6); } 50%{ opacity:.9; transform:scaleX(1); } }
 @media (prefers-reduced-motion:reduce){ #ex-breath{ animation:none; opacity:.5; } }
+
+/* the series pill (EX-SERIES) — the caption margin's quiet third line; a real button */
+.ex-series{ pointer-events:auto; margin-top:10px; font-family:var(--mono); font-size:10px;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--muted-2); background:rgba(8,8,7,.5);
+  border:1px solid var(--hair); border-radius:999px; padding:7px 13px; cursor:pointer;
+  transition:color calc(.3s*var(--tempo)), border-color calc(.3s*var(--tempo)); }
+.ex-series:hover, .ex-series:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
+
+/* the side room (EX-SERIES) — a face over the walk; the walk waits beneath, locked */
+#ex-side{ position:fixed; inset:0; z-index:90; background:rgba(8,7,6,.97); }
+#ex-side[hidden]{ display:none; }
+.exs-back{ position:fixed; left:22px; top:50%; transform:translateY(-50%); z-index:95;
+  font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--muted-2); background:rgba(8,8,7,.6); border:1px solid var(--hair);
+  border-radius:999px; padding:9px 15px; cursor:pointer; min-height:44px; }
+.exs-back:hover, .exs-back:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
+.exs-stage{ position:absolute; inset:0; }
+.exs-stage.lane{ display:flex; align-items:center; gap:7vw; padding:0 16vw;
+  overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+.exs-stage.lane::-webkit-scrollbar{ display:none; }
+.exs-stage.lane img{ max-height:56vh; max-width:64vw; flex:none; border-radius:2px;
+  box-shadow:0 10px 34px rgba(0,0,0,.22); }
+.exs-stage.polaroids{ background:radial-gradient(130% 110% at 50% 12%, #1c1913 0%, #12100c 62%, #0d0c09 100%); }
+.exs-print{ position:absolute; background:var(--paper,#f4f1e8); padding:7px 7px 28px;
+  border-radius:1px; cursor:pointer; box-shadow:0 14px 40px rgba(0,0,0,.5);
+  transform:rotate(var(--rot));
+  transition:transform calc(.8s*var(--tempo)) var(--ease), box-shadow calc(.8s*var(--tempo)) var(--ease); }
+.exs-print img{ width:clamp(84px,10.5vw,150px); height:clamp(84px,10.5vw,150px);
+  object-fit:cover; display:block; }
+.exs-print:hover{ transform:rotate(var(--rot)) translate(0,-8px); }
+.exs-print.lift{ transform:translate(var(--cx),var(--cy)) rotate(0deg) scale(1.9); z-index:30;
+  box-shadow:0 44px 100px rgba(0,0,0,.7); }
+@media (max-width:640px){
+  .exs-print img{ width:clamp(72px,17vw,110px); height:clamp(72px,17vw,110px); }
+  .exs-back{ left:12px; }
+}
 
 /* caption zone — fixed, bottom-left, ALWAYS in the dark margin, never on the photo (INV-1/INV-27) */
 .exh-capzone{ position:fixed; left:34px; bottom:30px; z-index:30; max-width:38vw; pointer-events:none;

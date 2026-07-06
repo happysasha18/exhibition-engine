@@ -177,3 +177,9 @@ Goal: engine/build.py absorbs tlvphoto's day; byte-proof vs tlvphoto's own bake.
   --site-url https://tlvphotos.com --ga-id G-00J4KGDHCG --enable ai_i18n --enable visitor_memory`
   then `diff -r /tmp/ebake ~/tlvphoto/site` → EMPTY.
 - Content contract grew (document in README at E7): + data/greetings.json + finalist_series.json.
+
+## E2 LANDED 2026-07-07 01:50
+- Port = today's instance bake + the eight transforms (all applied; see the plan above).
+- Assets re-synced again (the night had moved past the 00:40 sync): exhibition.js/css, worker.js.
+- PROOF RUN: 259 files, `diff -r` EMPTY, against ~/tlvphoto/site (itself deploy-verified live).
+- example/site.json refreshed to the living brand (TLV PHOTOS).
