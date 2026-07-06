@@ -53,21 +53,40 @@ def chrome_available():
 # ---------------------------------------------------------------- local http server
 
 @contextlib.contextmanager
-def serve(root):
-    """Serve ``root`` over http on a free port; yields the base URL. Quiet, threaded."""
+def serve(root, hold=None):
+    """Serve ``root`` over http on a free port; yields the base URL. Quiet, threaded.
+
+    ``hold`` (optional): a MUTABLE dict ``{"match": substring, "delay": seconds}`` — any GET whose
+    path contains ``match`` is held ``delay`` seconds before the bytes go out. It exists so the
+    EX-LOAD rows can meet a slow image DETERMINISTICALLY (a real request, really late) without
+    CDP throttling starving the boot's own JSON fetches. The dict is read per-request, so a test
+    may relax it mid-run."""
     root = str(root)
+    hold = hold if hold is not None else {}
 
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *a, **k):
             super().__init__(*a, directory=root, **k)
 
         def do_GET(self):
+            # the live host serves clean extensionless addresses (WP-CLEAN) — map them to the
+            # .html files on disk the same way, so browser rows walk a visitor's real addresses
+            clean = self.path.split("?", 1)[0].split("#", 1)[0]
+            if clean not in ("", "/") and "." not in clean.rsplit("/", 1)[-1]:
+                if Path(root + clean + ".html").is_file():
+                    self.path = clean + ".html"
+            m = hold.get("match")
+            if m and m in self.path:
+                time.sleep(float(hold.get("delay", 0)))
             # never let Chrome revalidate to a 304 — a config.json patched between reloads (the A/B
             # test) must be read fresh, not served from the browser cache.
             for h in ("If-Modified-Since", "If-None-Match"):
                 if h in self.headers:
                     del self.headers[h]
-            return super().do_GET()
+            try:
+                return super().do_GET()
+            except (ConnectionResetError, BrokenPipeError):
+                pass    # the browser left mid-transfer (e.g. teardown during a held image)
 
         def end_headers(self):
             self.send_header("Cache-Control", "no-store, must-revalidate")
@@ -281,6 +300,13 @@ class Browser:
         self._cmd("Emulation.setDeviceMetricsOverride",
                   width=width, height=height, deviceScaleFactor=1, mobile=mobile)
 
+    def emulate_media(self, **features):
+        """Emulate CSS media features for documents created after the call, e.g.
+        ``emulate_media(prefers_reduced_motion="reduce")`` (underscores map to hyphens);
+        no arguments clears the emulation. Both CSS media queries and matchMedia honor it."""
+        feats = [{"name": k.replace("_", "-"), "value": v} for k, v in features.items()]
+        self._cmd("Emulation.setEmulatedMedia", media="", features=feats)
+
     def sleep(self, seconds):
         time.sleep(seconds)
 
@@ -294,18 +320,24 @@ class Browser:
         return res.get("result", {}).get("value")
 
     # -- native input (real hit-testing + real :hover)
-    def _center(self, selector):
+    def _center(self, selector, wait=6.0):
         # scroll the element into the viewport first — native mouse events use viewport coords,
-        # so an off-screen target would silently receive no click.
-        box = self.evaluate(
-            "(()=>{const e=document.querySelector(%s);if(!e)return null;"
-            "e.scrollIntoView({block:'center',inline:'center'});"
-            "const r=e.getBoundingClientRect();"
-            "return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height};})()"
-            % json.dumps(selector))
-        if not box or box["w"] == 0:
-            raise RuntimeError(f"element not clickable: {selector}")
-        return box["x"], box["y"]
+        # so an off-screen target would silently receive no click. The element is POLLED into
+        # clickability (up to ``wait``s): fixed sleeps lie under parallel-suite CPU load — the
+        # flake the problem ledger owned 2026-07-07 (a click raced the door's own render).
+        end = time.time() + wait
+        while True:
+            box = self.evaluate(
+                "(()=>{const e=document.querySelector(%s);if(!e)return null;"
+                "e.scrollIntoView({block:'center',inline:'center',behavior:'instant'});"  # never let CSS
+                "const r=e.getBoundingClientRect();"   # smooth-scroll race the coordinate read
+                "return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height};})()"
+                % json.dumps(selector))
+            if box and box["w"] > 0:
+                return box["x"], box["y"]
+            if time.time() >= end:
+                raise RuntimeError(f"element not clickable: {selector}")
+            time.sleep(0.1)
 
     def _mouse(self, kind, x, y, buttons=0, button="none", clicks=0):
         self._cmd("Input.dispatchMouseEvent", type=kind, x=x, y=y,
@@ -326,11 +358,60 @@ class Browser:
         self._mouse("mouseReleased", x, y, buttons=1, button="left", clicks=1)
         self.sleep(settle)
 
+    def wheel(self, x=None, y=None, delta_y=400):
+        """A real mouse-wheel tick at (x,y) — the USER's scroll, the one an overflow lock
+        must stop (programmatic scrollTo bypasses locks and is not a visitor's road)."""
+        x = self.width // 2 if x is None else x
+        y = self.height // 2 if y is None else y
+        self._cmd("Input.dispatchMouseEvent", type="mouseWheel", x=x, y=y,
+                  deltaX=0, deltaY=delta_y, buttons=0, button="none", clickCount=0)
+
     def click_xy(self, x, y, settle=0.7):
         self._mouse("mouseMoved", x, y)
         self._mouse("mousePressed", x, y, buttons=1, button="left", clicks=1)
         self._mouse("mouseReleased", x, y, buttons=1, button="left", clicks=1)
         self.sleep(settle)
+
+    # -- pre-load instrumentation (EX-SHARE tests)
+    def inject(self, src):
+        """Run ``src`` in every document created after this call (survives navigate/reload) —
+        the road for stubbing browser APIs BEFORE the page's own script wakes, e.g. capturing
+        ``navigator.clipboard.writeText`` into a window array."""
+        self._cmd("Page.addScriptToEvaluateOnNewDocument", source=src)
+
+    def key(self, key, code=None):
+        """Dispatch a real key press (down+up), e.g. key('Escape') or key('Tab')."""
+        code = code or key
+        for kind in ("rawKeyDown", "keyUp"):
+            self._cmd("Input.dispatchKeyEvent", type=kind, key=key, code=code,
+                      windowsVirtualKeyCode={"Tab": 9, "Escape": 27, "Enter": 13}.get(key, 0))
+
+    def touch(self, enabled=True, points=1):
+        """Emulate a touch device — flips the CSS `(hover:none)`/`(pointer:coarse)` media the
+        way a real phone reports them (setEmulatedMedia alone does not). Reload to re-evaluate."""
+        self._cmd("Emulation.setTouchEmulationEnabled", enabled=enabled, maxTouchPoints=points)
+
+    # -- network shaping (EX-LOAD tests)
+    def block(self, patterns):
+        """Block matching URLs (CDP wildcard patterns) — requests fail with an ``error`` event,
+        the way a dead image really fails. An empty list unblocks."""
+        self._cmd("Network.enable")
+        self._cmd("Network.setBlockedURLs", urls=list(patterns))
+
+    # -- visitor identity (EX-GREET tests)
+    def pretend(self, lang, hour):
+        """Pre-load override of the visitor's language + clock: every document created after
+        this call reports ``navigator.language == lang`` and ``Date#getHours() == hour``.
+        Registered via CDP on-new-document script, so it survives navigate/reload within this
+        Browser. Calling again re-defines (configurable) — the LAST pretend wins."""
+        src = (
+            "Object.defineProperty(Navigator.prototype,'language',"
+            f"{{get:()=>{json.dumps(lang)},configurable:true}});"
+            "Object.defineProperty(Navigator.prototype,'languages',"
+            f"{{get:()=>[{json.dumps(lang)}],configurable:true}});"
+            f"Date.prototype.getHours=function(){{return {int(hour)};}};"
+        )
+        self._cmd("Page.addScriptToEvaluateOnNewDocument", source=src)
 
     # -- storage helpers
     def local_storage(self):
