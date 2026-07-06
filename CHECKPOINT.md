@@ -158,3 +158,22 @@ All four pairs match.
 WATCHED: Task brief listed headless.py destination as `engine/tests/headless.py` and WRITE-OWNERSHIP item 4 named that path. The engine repo uses `engine/harness/` (not `engine/tests/`) — headless.py already existed there from the original extraction (Step 2 above). Mirrored the repo's own layout and wrote to `engine/harness/headless.py` instead of inventing a second tests directory. Senior to confirm this is the right call; if `engine/tests/` is intentional, one more copy is needed.
 
 Status: DONE — NOT COMMITTED (pending senior review)
+
+## E2 port session — opened 2026-07-07 01:45 (the senior)
+Goal: engine/build.py absorbs tlvphoto's day; byte-proof vs tlvphoto's own bake.
+- Base fact: engine born from tlvphoto build_site @ a68c220 (2026-07-05 23:16); the day's diff =
+  a68c220..HEAD on scripts/build_site.py (251 lines; /tmp/day.patch — does NOT apply, the
+  parameterization rewrote context).
+- Port shape: TODAY's tlvphoto build_site.py + the v0 parameterization transforms:
+  (1) docstring → engine's; (2) ROOT/OUT → globals set in build(content_dir,out_dir);
+  (3) CREATOR/SITE_NAME/ROOT_TITLE/ROOT_DESCRIPTION/COLLECTION_NAME ← site_config;
+  (4) COPYRIGHT → global composed INSIDE build() (year+creator+site_name);
+  (5) exhibition js/css/worker ← engine_assets_dir (copy_exhibition_assets), favicons ←
+      instance_assets_dir (content/instance-assets first);
+  (6) render_exhibition prose ← the three globals; (7) main() = engine CLI + --enable;
+  (8) everything else verbatim (clean urls · consent · i18n source/worker/_routes · memory flag ·
+      series block · pool tones · sign lines · hand pool).
+- Proof: `python engine/build.py --content ~/tlvphoto --site example/site.json --out /tmp/ebake
+  --site-url https://tlvphotos.com --ga-id G-00J4KGDHCG --enable ai_i18n --enable visitor_memory`
+  then `diff -r /tmp/ebake ~/tlvphoto/site` → EMPTY.
+- Content contract grew (document in README at E7): + data/greetings.json + finalist_series.json.
