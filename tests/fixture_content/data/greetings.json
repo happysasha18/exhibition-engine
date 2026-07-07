@@ -1,0 +1,32 @@
+{
+  "fallback": "en",
+  "aliases": {},
+  "langs": {
+    "en": {
+      "dir": "ltr",
+      "ask": "what feels closer now",
+      "greet": {
+        "night": [
+          "A synthetic quiet night"
+        ],
+        "morning": [
+          "A synthetic morning"
+        ],
+        "day": [
+          "A synthetic day"
+        ],
+        "evening": [
+          "A synthetic evening"
+        ]
+      },
+      "exit": "exit",
+      "more": "{n} more",
+      "q_more": "walk on?",
+      "q_spent": "onward — a new choice",
+      "share_label": "copy the link",
+      "share_copied": "link copied",
+      "series": "series",
+      "room_back": "← room"
+    }
+  }
+}

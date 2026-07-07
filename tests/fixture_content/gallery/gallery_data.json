@@ -1,0 +1,228 @@
+{
+  "items": [
+    {
+      "id": "synth-01",
+      "section": "urban",
+      "img": "assets/urban/synth-01.png",
+      "title": "Synthetic Corner",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        198,
+        79,
+        79
+      ],
+      "city": "Tel Aviv",
+      "country": "IL"
+    },
+    {
+      "id": "synth-02",
+      "section": "urban",
+      "img": "assets/urban/synth-02.png",
+      "title": "Synthetic Alley",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        79,
+        198,
+        113
+      ],
+      "city": "Tel Aviv",
+      "country": "IL"
+    },
+    {
+      "id": "synth-03",
+      "section": "urban",
+      "img": "assets/urban/synth-03.png",
+      "title": "Synthetic Facade",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        147,
+        79,
+        198
+      ],
+      "city": "Jerusalem",
+      "country": "IL"
+    },
+    {
+      "id": "synth-04",
+      "section": "urban",
+      "img": "assets/urban/synth-04.png",
+      "title": "Synthetic Window",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        198,
+        180,
+        79
+      ],
+      "city": "Haifa",
+      "country": "IL"
+    },
+    {
+      "id": "synth-05",
+      "section": "urban",
+      "img": "assets/urban/synth-05.png",
+      "title": "Synthetic Rooftop",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        79,
+        182,
+        198
+      ],
+      "city": "Tel Aviv",
+      "country": "IL"
+    },
+    {
+      "id": "synth-06",
+      "section": "urban",
+      "img": "assets/urban/synth-06.png",
+      "title": "Synthetic Door",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        198,
+        79,
+        149
+      ]
+    },
+    {
+      "id": "synth-07",
+      "section": "urban",
+      "img": "assets/urban/synth-07.png",
+      "title": "Synthetic Stairway",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        115,
+        198,
+        79
+      ]
+    },
+    {
+      "id": "synth-08",
+      "section": "landscape",
+      "img": "assets/landscape/synth-08.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        79,
+        81,
+        198
+      ],
+      "city": "Galilee",
+      "country": "IL"
+    },
+    {
+      "id": "synth-09",
+      "section": "landscape",
+      "img": "assets/landscape/synth-09.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        198,
+        111,
+        79
+      ],
+      "city": "Negev",
+      "country": "IL"
+    },
+    {
+      "id": "synth-10",
+      "section": "landscape",
+      "img": "assets/landscape/synth-10.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        79,
+        198,
+        145
+      ]
+    },
+    {
+      "id": "synth-11",
+      "section": "landscape",
+      "img": "assets/landscape/synth-11.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        179,
+        79,
+        198
+      ],
+      "city": "Dead Sea",
+      "country": "IL"
+    },
+    {
+      "id": "synth-12",
+      "section": "landscape",
+      "img": "assets/landscape/synth-12.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        184,
+        198,
+        79
+      ]
+    },
+    {
+      "id": "synth-13",
+      "section": "abstract",
+      "img": "assets/abstract/synth-13.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        79,
+        151,
+        198
+      ]
+    },
+    {
+      "id": "synth-14",
+      "section": "abstract",
+      "img": "assets/abstract/synth-14.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        198,
+        79,
+        117
+      ]
+    },
+    {
+      "id": "synth-15",
+      "section": "abstract",
+      "img": "assets/abstract/synth-15.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        83,
+        198,
+        79
+      ]
+    },
+    {
+      "id": "synth-16",
+      "section": "abstract",
+      "img": "assets/abstract/synth-16.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        109,
+        79,
+        198
+      ]
+    }
+  ]
+}
