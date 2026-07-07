@@ -879,8 +879,28 @@
   let sideOpen = false;
   function openSide(idx, laystep) {
     const S = SERIES[idx];
-    if (!S || sideOpen) return;
+    if (!S || sideOpen || busy) return;
     sideOpen = true;
+    // the room opens THROUGH THE SAME BLACK the door crosses (his 09:53 word: «такой же
+    // транзишен как с двери в комнату») — a shortened breath of the entry ceremony; the
+    // ceremony's own cancel law carries it (any arriving face wins, no stranded veil)
+    busy = true;
+    const g = ++cerGen;
+    const ok = () => g === cerGen;
+    veil.hidden = false;
+    veil.style.transitionDuration = (0.33 * TEMPO) + "s";
+    requestAnimationFrame(() => veil.classList.add("on"));
+    cerAfter(0.4, () => { if (!ok()) return;           // the room dresses under the black
+      dressSide(S, idx, laystep);
+      veil.style.transitionDuration = (0.53 * TEMPO) + "s";
+      veil.classList.remove("on");                     // …and is revealed in one breath
+    });
+    cerAfter(0.95, () => { if (!ok()) return;
+      veil.hidden = true;
+      busy = false;
+    });
+  }
+  function dressSide(S, idx, laystep) {
     const st = side.querySelector("#exs-stage");
     st.className = "exs-stage " + S.variant;           // the series' own character picks the face
     st.innerHTML = "";
@@ -921,7 +941,8 @@
   function closeSide() {
     if (!sideOpen) return;
     sideOpen = false;
-    side.hidden = true;
+    ceremonyCancel();                                  // a crossing still in flight dies with
+    side.hidden = true;                                // the room — no stranded veil, no lock
     document.body.classList.remove("ex-side");
   }
   cap.addEventListener("click", (ev) => {
