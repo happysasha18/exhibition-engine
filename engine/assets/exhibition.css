@@ -75,15 +75,20 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 @keyframes exd-hintbreath{ 0%,100%{ opacity:0; } 45%{ opacity:.75; } }
 @media (prefers-reduced-motion:reduce){ .exd-window.hint::after{ animation:none; } }
 /* the corner mark (EX-LANG) — the guest chooses the tongue; ≥44px, clears the wordmark */
-.exd-lang{ position:fixed; top:14px; right:16px; z-index:125; }
+/* EX-ARRIVE: born at opacity:0, breathes in via .show on the next rAF after DOM insertion */
+.exd-lang{ position:fixed; top:14px; right:16px; z-index:125;
+  opacity:0; transition:opacity var(--d-soft) var(--ease); }
+.exd-lang.show{ opacity:1; }
 .exl-cur{ min-width:44px; min-height:44px; font-family:var(--mono); font-size:10px;
   letter-spacing:.16em; color:var(--muted-2); background:rgba(8,8,7,.5);
   border:1px solid var(--hair); border-radius:999px; cursor:pointer;
   transition:color calc(.3s*var(--tempo)), border-color calc(.3s*var(--tempo)); }
 .exl-cur:hover, .exl-cur:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
+/* EX-ARRIVE: opacity:0 base; .show added via rAF on open; removed before timeout-hide on close */
 .exl-list{ position:absolute; right:0; top:50px; display:flex; flex-direction:column; gap:2px;
   background:rgba(14,13,11,.96); border:1px solid var(--hair); border-radius:12px; padding:7px;
-  backdrop-filter:blur(8px); }
+  backdrop-filter:blur(8px); opacity:0; transition:opacity var(--d-soft) var(--ease); }
+.exl-list.show{ opacity:1; }
 .exl-list[hidden]{ display:none; }
 .exl-item{ min-width:44px; min-height:34px; font-family:var(--mono); font-size:10px;
   letter-spacing:.16em; color:var(--muted-2); background:none; border:none; border-radius:8px;
@@ -117,30 +122,39 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 
 /* the toast — one quiet line; the success face leaves by itself (×tempo), the clipboard-refusal
    face carries the LINK and holds until dismissed (tap/Esc) so a hand can copy it */
+/* EX-ARRIVE: opacity:0 base; .show rAF-added on each call to toast(); removed in toastOff() */
 #ex-toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:9vh; z-index:40;
   font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--ink);
   background:rgba(8,8,7,.72); border:1px solid var(--hair); border-radius:999px;
   padding:9px 16px; max-width:82vw; overflow-wrap:anywhere; text-align:center;
-  transition:opacity var(--d-soft) var(--ease); backdrop-filter:blur(6px); }
+  opacity:0; transition:opacity var(--d-soft) var(--ease); backdrop-filter:blur(6px); }
+#ex-toast.show{ opacity:1; }
 #ex-toast[hidden]{ display:none; }
 #ex-toast.hold{ cursor:pointer; }
 
 /* EX-LOAD: the loading breath — one thin hairline in the accent tone, wordless (INV-1);
    it appears only past the grace beat and retires the moment the pixels land */
+/* EX-ARRIVE: exb-enter fades in from opacity:0 over d-soft; exb-breathe takes over after that */
 #ex-breath{ position:fixed; left:calc(50% - 32px); top:50%; width:64px; height:2px; z-index:20;
   border-radius:1px;
   background:var(--accent,#b3a284); pointer-events:none;
   box-shadow:0 0 8px 0 var(--accent,#b3a284);       /* a faint halo lifts it off the dark ground */
-  animation:exb-breathe calc(2.2s*var(--tempo)) ease-in-out infinite; }
+  animation:exb-enter var(--d-soft) var(--ease) forwards,
+            exb-breathe calc(2.2s*var(--tempo)) ease-in-out var(--d-soft) infinite; }
 #ex-breath[hidden]{ display:none; }
+/* exb-enter: element enters at the breathe's minimum size — opacity 0→.22, scaleX constant .6 */
+@keyframes exb-enter{ from{ opacity:0; transform:scaleX(.6); } to{ opacity:.22; transform:scaleX(.6); } }
 @keyframes exb-breathe{ 0%,100%{ opacity:.22; transform:scaleX(.6); } 50%{ opacity:.9; transform:scaleX(1); } }
 @media (prefers-reduced-motion:reduce){ #ex-breath{ animation:none; opacity:.5; } }
 
 /* the series pill (EX-SERIES) — the caption margin's quiet third line; a real button */
+/* EX-ARRIVE: every innerHTML rebuild creates a fresh pill at opacity:0; exs-fade breathes it in */
 .ex-series{ pointer-events:auto; margin-top:10px; font-family:var(--mono); font-size:10px;
   letter-spacing:.18em; text-transform:uppercase; color:var(--muted-2); background:rgba(8,8,7,.5);
   border:1px solid var(--hair); border-radius:999px; padding:7px 13px; cursor:pointer;
+  opacity:0; animation:exs-fade var(--d-soft) var(--ease) forwards;
   transition:color calc(.3s*var(--tempo)), border-color calc(.3s*var(--tempo)); }
+@keyframes exs-fade{ to{ opacity:1; } }
 .ex-series:hover, .ex-series:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
 
 /* the side room (EX-SERIES) — a face over the walk; the walk waits beneath, locked */
@@ -172,15 +186,38 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   .exs-back{ left:12px; }
 }
 
-/* caption zone — fixed, bottom-left, ALWAYS in the dark margin, never on the photo (INV-1/INV-27) */
-.exh-capzone{ position:fixed; left:34px; bottom:30px; z-index:30; max-width:38vw; pointer-events:none;
+/* the wall label — fixed, bottom-left, ALWAYS in the dark margin, never on the photo (INV-1/INV-27).
+   A museum plaque: three voices down one column — the work's NAME (serif), the told LINE (serif
+   italic — the narrator lives ON the label, EX-STORY-LINE; :empty when the voice is silent), the
+   FACTS (mono; a red dot = sold). The letters are lightly tinted by --tone (the focused work's
+   DIMMED live accent, set in ground()); the hairline stays plain bone — his call. */
+.exh-capzone{ position:fixed; left:34px; bottom:30px; z-index:30; max-width:42vw; pointer-events:none;
+  padding:12px 0 12px 15px; border-left:1px solid rgba(179,162,132,.20);
   opacity:0; transform:translateY(8px); transition:opacity var(--d-soft) var(--ease), transform var(--d-soft) var(--ease); }
 .exh-capzone.show{ opacity:1; transform:none; }
-.exh-capzone .title{ font-family:var(--serif); font-weight:300; font-size:clamp(20px,2.4vw,34px);
-  color:var(--ink); line-height:1.1; }
+/* the readability scrim (his word 2026-07-07): a feathered dark backing BEHIND the label — over
+   the dark margin it's imperceptible, and where the column grows tall / the phone band reaches
+   onto a bright work it keeps the letters legible. Backs INV-27 rather than replacing it: the
+   label still lives in the margin; the scrim only insures the growth + mobile-band cases. */
+.exh-capzone::before{ content:""; position:absolute; z-index:-1; inset:-10px -46px -16px -24px;
+  background:radial-gradient(125% 105% at 7% 93%, rgba(8,7,6,.70) 0%, rgba(8,7,6,.40) 44%, transparent 78%);
+  pointer-events:none; }
+.exh-capzone .title{ font-family:var(--serif); font-weight:300; font-size:clamp(20px,2.2vw,30px);
+  line-height:1.1; color:color-mix(in oklab, var(--ink), var(--tone,var(--ink)) 15%);
+  transition:color var(--d-ground) var(--ease); }
 .exh-capzone .title.untitled{ color:var(--muted); font-style:italic; font-size:clamp(16px,1.8vw,22px); }
-.exh-capzone .meta{ font-family:var(--mono); font-size:11px; letter-spacing:.18em;
-  text-transform:uppercase; color:var(--muted-2); margin-top:8px; }
+.exh-capzone .told{ font-family:var(--serif); font-style:italic; font-weight:300; margin-top:9px;
+  font-size:clamp(15px,1.55vw,20px); line-height:1.36; max-width:34ch;
+  color:color-mix(in oklab, var(--told), var(--tone,var(--told)) 22%);
+  opacity:0; animation:exs-fade var(--d-soft) var(--ease) forwards;   /* EX-ARRIVE: fades in on the tempo */
+  transition:color var(--d-ground) var(--ease); }
+.exh-capzone .told:empty{ display:none; }        /* the voice silent (story off / not yet spoken) — no ghost gap */
+.exh-capzone .meta{ display:flex; align-items:center; gap:9px; margin-top:12px;
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:color-mix(in oklab, var(--muted-2), var(--tone,var(--muted-2)) 34%); }
+.exh-capzone .dot{ width:8px; height:8px; border-radius:50%; background:#c0392b; flex:none;
+  box-shadow:0 0 0 3px rgba(192,57,43,.14); }         /* продано — the gallery convention, the dot alone */
+.exh-capzone .dot[hidden]{ display:none; }
 .exh-counter{ position:fixed; top:26px; left:34px; z-index:30; font-family:var(--mono); font-size:11px;
   letter-spacing:.2em; color:var(--muted-2); opacity:0; transition:opacity calc(.5s*var(--tempo)); }
 .exh-counter.show{ opacity:1; }
@@ -188,8 +225,18 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 body.ex-door .exh-capzone, body.ex-door .exh-counter{ opacity:0; }
 
 /* the closing screen — onward while the budget lasts, the door always (INV-29/30/31) */
+/* EX-ARRIVE: the closing screen arrives in a LIGHT STAGGER (his call) — the
+   question first, the choices a beat later, the signature last; each fades from
+   opacity:0 on the house tempo. JS adds .show via rAF on the frame after appendChild. */
 .exh-fin{ height:100vh; display:grid; place-content:center;
   text-align:center; gap:26px; }
+.exh-fin .q,.exh-fin .row,.exh-fin .exh-sign{
+  opacity:0; transition:opacity var(--d-soft) var(--ease); }
+.exh-fin.show .q{ opacity:1; }
+.exh-fin.show .row{ opacity:1; transition-delay:calc(.28s*var(--tempo)); }
+.exh-fin.show .exh-sign{ opacity:1; transition-delay:calc(.56s*var(--tempo)); }
+@media (prefers-reduced-motion:reduce){
+  .exh-fin .q,.exh-fin .row,.exh-fin .exh-sign{ transition:none; } }
 .exh-fin .q{ font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase;
   color:var(--faint); }
 .exh-fin .row{ display:flex; gap:18px; justify-content:center; }
@@ -208,7 +255,8 @@ body.ex-door .exh-capzone, body.ex-door .exh-counter{ opacity:0; }
 @media (max-width:640px){
   .exh-frame img.work{ max-height:70vh; max-width:92vw; }
   .exh-frame{ padding-bottom:14vh; }
-  .exh-capzone{ left:16px; right:16px; bottom:14px; max-width:none; }
-  .exh-capzone .title{ font-size:18px; }
+  .exh-capzone{ left:16px; right:16px; bottom:14px; max-width:none; padding-left:13px; }
+  .exh-capzone .title{ font-size:22px; }
+  .exh-capzone .told{ max-width:100%; }
   .ex-share{ right:16px; bottom:16px; }             /* clear of the caption band's corner */
 }

@@ -37,6 +37,7 @@ DEFAULT_FLAGS = {
     "ai_greeting": False,     # canned greeting only; serverless Haiku swaps in later behind /api  (INV-19)
     "ai_assemble": False,     # deterministic client-side kinship only                              (INV-19)
     "ai_i18n": False,         # the any-locale worker (EX-I18N); ships false, flipped at deploy    (INV-19)
+    "ai_story": False,        # the told story — runtime Haiku narrator (EX-STORY); ships false     (INV-19)
     "visitor_memory": False,  # the coat-check token + seen-list edge (EX-MEMORY); flipped at deploy
     "caption_visible": False, # the machine caption stays in meta/alt/JSON-LD, never visible        (RESOLVED 2026-07-05)
 }
@@ -416,6 +417,33 @@ def greetings():
         return None
 
 
+def tod_marks_load():
+    """EX-STORY-ORDER: the authored time-of-day marks (id → {"marks":[…]}), an OPTIONAL instance
+    file. Absent/malformed → {} (every work reads `free`, the arc unchanged). The marks are a public
+    axis (day/zenith/sunset/night/free) — data for the light-lean, never rendered (INV-1)."""
+    src = ROOT / "data" / "time_of_day.json"
+    try:
+        return json.loads(src.read_text(encoding="utf-8")).get("marks", {}) or {}
+    except Exception:
+        return {}
+
+
+def story_notes_load():
+    """EX-STORY-EDGE (ST3): the PRIVATE per-work authored notes (id → note text), an OPTIONAL,
+    INSTANCE-OWNED file kept OUT of the public bundle — it is baked only INTO _worker.js and only
+    when the story ships. Absent → no notes: fragments carry the public grounding (title/place/
+    subject/light) alone. The engine never hardcodes an instance's note filename — an instance
+    supplies `<content>/story_notes.json` (a flat {id: note} map); the raw notes stay off every
+    public byte. (Proposal (b) in PORT_REPORT: this keeps the private notes instance-private.)"""
+    src = ROOT / "story_notes.json"
+    try:
+        raw = json.loads(src.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    notes = raw.get("notes", raw) if isinstance(raw, dict) else {}
+    return {str(k): str(v).strip() for k, v in notes.items() if str(v).strip()}
+
+
 def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
           engine_assets_dir=None, instance_assets_dir=None, site_config=None):
     """``enable``: flag names switched ON for this bake; every worker flag ships false by
@@ -474,6 +502,11 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # the client walk's baked data: per-work normalized kinship vectors (neutral coords, INV-1) +
     # a lean work list (id, image, its /w/ slug, dims, dominant colour for the reactive ground)
     vectors, ex_version = exhibition_vectors(load_json("vector.json")["items"])
+    # EX-STORY-ORDER (INV-47): the authored light marks lean the told story's order (a work reads as
+    # a SET, `free` = unconstrained). OPTIONAL instance data — absent → every work is `free`, the
+    # light-lean a no-op and the arc unchanged (the byte-identical guard, ST1). Data, never rendered.
+    tod_marks = tod_marks_load()
+    tod_of = lambda wid: (tod_marks.get(str(wid), {}) or {}).get("marks") or ["free"]
     ex_works = [{
         "id": it["id"],
         "img": f"/gallery/{it['img']}",
@@ -485,6 +518,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         "title": (it.get("title") or "").strip(),
         "sec": it.get("section", ""),
         "place": place_of(it),
+        "tod": tod_of(it["id"]),             # the light marks (EX-STORY-ORDER) — data, never rendered
     } for it in items]
     # (per-work series mark joins after the series block computes below)
     # EX-SERIES (INV-46): real series only (3+), the variant from the series' own size,
@@ -553,6 +587,14 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         "door_size": 5,          # works at the threshold, 3–5 (EX-DOOR)
         "greeting": "ask",       # where the door's greeting hangs: ask (his pick) | top | off (EX-GREET)
         # row_size LEFT the schema with the grid wall (EX-WALL tombstone, 2026-07-06)
+        # the told story's feel-knobs (EX-STORY-AB / EX-STORY-ORDER, INV-47) — on/off is the top-level
+        # ai_story flag (INV-19); these are the A/B tunables (INV-28). params_version feeds the story
+        # cache key so a knob flip never serves a stale order (prover ST4).
+        "story": {
+            "variant": "B",        # the writing mode that ships first: B (cheap light/hour plot)
+            "light_weight": 0.6,   # how hard the light leans the order: 0 = pure kinship, high = a strict march
+            "params_version": 1,   # bump on any light_weight/prompt/marks change → the cache key moves
+        },
     }
     config["site_url"] = site_url
     config["ga_measurement_id"] = ga_id   # analytics id lives in config, never in a template
@@ -562,11 +604,38 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # reserved empty /api namespace for later serverless AI (CS-7)
     write(OUT / "api" / ".gitkeep", "")
 
-    # ---- EX-I18N (INV-42): the any-locale worker ships ONLY under its flag ----------
-    # The worker reads /i18n_source.json from its own deployment (deterministic, sorted —
-    # prover I4); _routes.json keeps every static byte pure CDN (only /api/* invokes it).
-    if flags["ai_i18n"] or flags["visitor_memory"]:
-        shutil.copyfile(_ENGINE_ASSETS / "worker.js", OUT / "_worker.js")
+    # ---- EX-STORY-EDGE (INV-47, ST3): the PRIVATE per-work story fragments ----------
+    # title/place/subject/light are public grounding; the note is the instance's own words (the model
+    # adapts, never quotes). Fragments are EMBEDDED into _worker.js (the one bundle file Cloudflare
+    # Pages never serves as an asset), NEVER a public static byte, and only when the story ships — so
+    # raw notes never leave the edge. Deterministic (sorted) so the bake stays reviewable.
+    story_notes = story_notes_load()
+    story_fragments = {}
+    if flags["ai_story"]:
+        for it in items:
+            wid = str(it["id"])
+            frag = {"title": (it.get("title") or "").strip(),
+                    "place": place_of(it),
+                    "subject": captions.get(it["id"], ""),
+                    "tod": tod_of(it["id"])}
+            note = story_notes.get(wid, "")
+            if note:
+                frag["note"] = note                    # private — off the bundle, only into _worker.js
+            story_fragments[wid] = frag
+
+    # ---- EX-I18N (INV-42) / EX-STORY-EDGE: the edge worker ships ONLY under its flags ----------
+    # The worker reads /i18n_source.json from its own deployment (deterministic, sorted — prover I4);
+    # the story fragments are baked INTO the worker file; _routes.json keeps every static byte pure
+    # CDN (only /api/* invokes it).
+    if flags["ai_i18n"] or flags["visitor_memory"] or flags["ai_story"]:
+        worker_src = (_ENGINE_ASSETS / "worker.js").read_text(encoding="utf-8")
+        worker_src = worker_src.replace(
+            '/*__STORY_FRAGMENTS__*/{}/*__/STORY_FRAGMENTS__*/',
+            json.dumps(story_fragments, ensure_ascii=False, sort_keys=True))
+        worker_src = worker_src.replace(
+            '/*__STORY_PV__*/"0"/*__/STORY_PV__*/',
+            json.dumps(str(config["exhibition"]["story"]["params_version"])))
+        write(OUT / "_worker.js", worker_src)
         write(OUT / "_routes.json",
               json.dumps({"version": 1, "include": ["/api/*"], "exclude": []}) + "\n")
     if flags["ai_i18n"]:

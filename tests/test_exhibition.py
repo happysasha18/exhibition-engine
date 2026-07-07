@@ -155,10 +155,13 @@ check("INV-24 sitemap lists exhibition root `/` exactly once + robots→sitemap"
       f"root count={locs.count(f'{SITE_URL}/')}")
 
 low_raw = INDEX_RAW.lower()
-js_raw = (TMP / "exhibition.js").read_text().lower()
-check("TS deferred — no told-story control in exhibition (html + client js)",
-      not any(t in low_raw for t in TS_FORBIDDEN) and not any(t in js_raw for t in TS_FORBIDDEN),
-      f"hits={[t for t in TS_FORBIDDEN if t in low_raw or t in js_raw]}")
+# EX-STORY landed: the told story is now a real client+edge feature, so the client JS legitimately
+# carries its code. The standing INV-1 invariant, though, HOLDS and is what this row guards: the
+# narrator's words are client-rendered and silent when off — they must NEVER appear in the crawlable
+# served HTML (no told-story text, no narrative prose baked into a static byte).
+check("EX-STORY / INV-1 — no told-story text or narrative prose in the served exhibition HTML",
+      not any(t in low_raw for t in TS_FORBIDDEN),
+      f"hits={[t for t in TS_FORBIDDEN if t in low_raw]}")
 
 attr_vals = " ".join(v or "" for a in (P.anchors + P.imgs + P.metas) for v in a.values()).lower()
 data_star = re.findall(r'data-[a-z-]+="([^"]*)"', INDEX_RAW)

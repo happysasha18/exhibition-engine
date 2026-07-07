@@ -7,11 +7,22 @@ const TAG_RE = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/;
 const RTL = ["ar", "he", "fa", "ur", "yi", "iw", "dv", "ps", "ckb"];
 
 const TOKEN_RE = /^[a-z0-9]{16,40}$/;
+const ID_RE = /^\d{5,25}$/;
+
+// EX-STORY-EDGE (INV-47, ST3): the PRIVATE per-work story fragments — his own notes among them —
+// are BAKED IN here by N10, never a public static byte. `_worker.js` is the one bundle file
+// Cloudflare Pages does NOT serve as an asset, so the raw notes never leave the edge; only the
+// GENERATED line reaches a guest. The placeholder below is filled at bake time (empty ⇒ the story
+// route degrades to silence). STORY_PARAMS_VERSION rides the cache key so a knob/prompt/marks
+// change never serves a stale story (the i18n `v` discipline, ST4).
+const STORY_FRAGMENTS = /*__STORY_FRAGMENTS__*/{}/*__/STORY_FRAGMENTS__*/;
+const STORY_PARAMS_VERSION = /*__STORY_PV__*/"0"/*__/STORY_PV__*/;
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === "/api/visitor") return visitor(req, env, url);
+    if (url.pathname === "/api/story") return story(req, env);
     if (url.pathname !== "/api/i18n") return new Response("not found", { status: 404 });
     const lang = (url.searchParams.get("lang") || "").toLowerCase();
     const v = url.searchParams.get("v") || "";
@@ -79,6 +90,148 @@ async function visitor(req, env, url) {
     return json(JSON.stringify({ ok: true, n: seen.length }));
   }
   return new Response("method not allowed", { status: 405 });
+}
+
+// EX-STORY-EDGE (INV-47): the told story, written on demand over ONLY the private fragments.
+// The guest's POST carries just the ORDERED ids + variant + language; the answer is kept in KV
+// forever under a key of that ordered sequence + variant + language + the story-params version
+// (ST4) — one model call per distinct walk, $0 after. A malformed answer is never served; if the
+// voice cannot speak (no fragments baked, model down/refuses, malformed) the walk simply carries
+// no lines and loses nothing (CS-8, INV-19 — the story is enhancement, its absence is silence).
+async function story(req, env) {
+  if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
+  // no fragments baked in (story shipped off / not this bundle) ⇒ silence, never a broken frame
+  if (!STORY_FRAGMENTS || !Object.keys(STORY_FRAGMENTS).length) {
+    return new Response("no story", { status: 404 });
+  }
+  const raw = await req.text();
+  if (raw.length > 4096) return new Response("too big", { status: 413 });
+  let p;
+  try { p = JSON.parse(raw); } catch (e) { return new Response("bad request", { status: 400 }); }
+  const ids = Array.isArray(p.ids) ? p.ids.map(String) : null;
+  const variant = String(p.variant || "");
+  const lang = String(p.lang || "").toLowerCase();
+  // shaped input only — an id is digits, the variant one of A/B/C, the tag the i18n grammar (ST/I5);
+  // free-form text never reaches the prompt or a KV key
+  if (!ids || !ids.length || ids.length > 60 || !ids.every((x) => ID_RE.test(x))
+      || !/^[ABC]$/.test(variant) || !TAG_RE.test(lang)) {
+    return new Response("bad request", { status: 400 });
+  }
+  // only ids we actually hold a fragment for — the ORDER the client sent is preserved (the cache key)
+  const known = ids.filter((id) => STORY_FRAGMENTS[id]);
+  if (!known.length) return new Response("no story", { status: 404 });
+
+  // the ordered sequence hashes into a bounded KV key (a raw join can exceed KV's key limit)
+  const seq = await sha256hex(known.join(","));
+  const key = "s:" + STORY_PARAMS_VERSION + ":" + variant + ":" + lang + ":" + seq;
+  const hit = await env.TLV_I18N.get(key);            // cache first — one model call per walk, ever
+  if (hit) return json(hit);
+
+  const lock = "lock:" + key;                         // best-effort single flight (a burst warms once)
+  if (await env.TLV_I18N.get(lock)) {
+    return new Response("warming", { status: 503, headers: { "Retry-After": "3" } });
+  }
+  await env.TLV_I18N.put(lock, "1", { expirationTtl: 60 });
+
+  let out;
+  try {
+    out = await narrate(env.ANTHROPIC_API_KEY, known, variant, lang);
+  } catch (e) {
+    return new Response("model unavailable: " + ((e && e.message) || "?"), { status: 502 });
+  }
+  if (!validateStory(out, known)) return new Response("malformed", { status: 502 });
+  const body = JSON.stringify({ story_variant: variant, lines: out.lines });
+  await env.TLV_I18N.put(key, body);
+  return json(body);
+}
+
+async function narrate(apiKey, ids, variant, lang) {
+  // ONLY the curated fragments cross to the model — title/place/subject/light are public grounding,
+  // the note is his own words (adapted, never quoted). The client already fixed the ORDER (the light
+  // lean is deterministic, in the browser — EX-STORY-ORDER); the model writes lines, never sequence.
+  const works = ids.map((id, i) => {
+    const f = STORY_FRAGMENTS[id] || {};
+    return {
+      n: i + 1, id: String(id),
+      title: f.title || "", place: f.place || "",
+      subject: f.subject || "", light: (f.tod || []).join("+"),
+      note: f.note || "",
+    };
+  });
+  const prompt =
+    'You are a quiet narrator walking beside a visitor through a small photography exhibition. ' +
+    'For EACH work write ONE short line — the association the picture leaves, the way one murmurs ' +
+    'beside a print. Reply in the language with BCP-47 tag "' + lang + '". Laws: at most a dozen ' +
+    'words per line; slightly abstract and associative, never a plain description of the photograph; ' +
+    'where a work carries the artist\'s own NOTE, let the line grow from its sense (adapt, never quote ' +
+    'it raw); with no note, stay to what the title, place, subject, and light honestly give. NEVER ' +
+    'invent a name, person, event, weather, or history the fragments do not hold. NEVER reveal ' +
+    'technique — no camera, lens, exposure, editing, filter, montage, or cut is ever named. No ' +
+    'exclamation marks, no salesmanship. The works are in walking order and lean into a small arc — a ' +
+    'way in, a turn, a quiet close — so let each line sit beside its neighbours. Reply with JSON only: ' +
+    '"lines" is an array of {"id","line","source"} covering EVERY work in the given order, ids ' +
+    'verbatim; "source" is "note" when the artist\'s note shaped the line, otherwise "facts".\n' +
+    'Works, in walking order:\n' + JSON.stringify(works);
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5",
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }],
+      output_config: { format: { type: "json_schema", schema: storyShape() } },
+    }),
+  });
+  if (!r.ok) throw new Error("model " + r.status);
+  const msg = await r.json();
+  if (msg.stop_reason === "refusal") throw new Error("refused");
+  const text = (msg.content || []).find((b) => b.type === "text");
+  return JSON.parse(text.text);
+}
+
+function storyShape() {
+  const s = { type: "string" };
+  return {
+    type: "object",
+    properties: {
+      lines: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: { id: s, line: s, source: { type: "string", enum: ["note", "facts"] } },
+          required: ["id", "line", "source"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["lines"],
+    additionalProperties: false,
+  };
+}
+
+function validateStory(out, ids) {
+  try {
+    if (!out || !Array.isArray(out.lines)) return false;
+    const byId = {};
+    for (const l of out.lines) {
+      if (!l || typeof l.line !== "string" || !l.line.trim()) return false;
+      if (l.source !== "note" && l.source !== "facts") return false;
+      byId[String(l.id)] = true;
+    }
+    for (const id of ids) if (!byId[String(id)]) return false;   // every work in the walk spoke
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function sha256hex(str) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function json(body) {

@@ -43,7 +43,13 @@
   function pulse(beat, workId) {
     try {
       if (typeof window.gtag !== "function") return;
-      window.gtag("event", beat, workId ? { work: String(workId) } : {});
+      const params = workId ? { work: String(workId) } : {};
+      // EX-STORY-AB: when a told story walks beside the guest its variant rides the EXISTING
+      // unfold/exit beats as a dimension — no sixth beat is added (INV-41 stands)
+      if (storyVariant && (beat === "walk_unfold" || beat === "walk_exit")) {
+        params.story_variant = storyVariant;
+      }
+      window.gtag("event", beat, params);
     } catch (e) {}
   }
 
@@ -212,6 +218,69 @@
     return order;
   }
 
+  // ---- the told story's ORDER (EX-STORY-ORDER, INV-47) ----------------------
+  // The light leans the order, and only leans it. Beside kinship (the arc's own metric) the story
+  // adds ONE soft term — the hour-discontinuity over the authored time-of-day mark SETS — weighted
+  // by story.light_weight (0 = pure kinship, high = a strict light march). Computed DETERMINISTICALLY
+  // in code: the model writes lines, never the sequence (prover ST7), so the same pick yields the
+  // same order and a stable cache key. It runs ONLY when the story is on; with the voice off the arc
+  // stands exactly as today (the byte-identical guard, ST1). A two-hour work is a hinge; a `free`
+  // work is a zero-cost wildcard — the arc drops it wherever it needs a breath or the turn.
+  const SPINE = { day: 0, zenith: 0, sunset: 1, night: 2 };  // the light's own axis, dusk between
+  function hourGap(todA, todB) {
+    if (!todA || !todB || todA.indexOf("free") >= 0 || todB.indexOf("free") >= 0) return 0;
+    let best = Infinity;
+    for (const a of todA) { if (!(a in SPINE)) continue;
+      for (const b of todB) { if (b in SPINE) best = Math.min(best, Math.abs(SPINE[a] - SPINE[b])); } }
+    return best === Infinity ? 0 : best;
+  }
+  const todOf = (id) => (byId[id] && byId[id].tod) || ["free"];
+  const STORY = (EX && EX.story) || {};
+  function storyOrder(ids, opts) {
+    opts = opts || {};
+    const w = Number.isFinite(+opts.lightWeight) ? +opts.lightWeight : (STORY.light_weight || 0);
+    const pool = ids.slice();
+    const pick = opts.pick != null && pool.indexOf(opts.pick) >= 0 ? opts.pick : pool[0];
+    const order = [pick];
+    const used = new Set([pick]);
+    while (order.length < pool.length) {
+      const prev = order[order.length - 1];
+      let best = null, bc = Infinity;
+      for (const id of pool) {                 // greedy: kinship + w × the light seam, ties by pool order
+        if (used.has(id)) continue;
+        const c = dist(vec(prev), vec(id)) + w * hourGap(todOf(prev), todOf(id));
+        if (c < bc) { bc = c; best = id; }
+      }
+      order.push(best); used.add(best);
+    }
+    return order;
+  }
+  // the story layer's own reachable surface (the walk calls storyOrder when ai_story is on; the
+  // suite calls it directly). No axis name or vector ever crosses it — only ids and hour marks.
+  try { window.TLVStory = { order: storyOrder, hourGap: hourGap }; window.CONFIG = cfg; } catch (e) {}
+
+  // ---- the told story's VOICE (EX-STORY-LINE / EX-STORY-EDGE, INV-47) --------------------------
+  // On when ai_story ships true. The hang leans by light (assembleOrder), and the ordered pick-set
+  // is sent to /api/story; each returned line settles into its work's plaque told-slot (STORYLINES).
+  // Any failure — flag off, worker down, malformed — is SILENCE: no line, the walk whole (CS-8).
+  const STORY_ON = cfg.ai_story === true;
+  const STORY_VARIANT = STORY.variant || "B";
+  const LIGHT_W = Number.isFinite(+STORY.light_weight) ? +STORY.light_weight : 0.6;
+  const STORYLINES = Object.create(null);
+  let storyVariant = null;    // the mode the served story reported — rides the GA beats (EX-STORY-AB)
+  let storyKey = "";          // the ordered-id set last told (a resize/return never refetches)
+  let storyGen = 0;           // a later fetch always wins over an in-flight earlier one
+  // the hang's order: the kinship arc, leaned by light ONLY when the story is on (EX-STORY-ORDER,
+  // ST1 — off is byte-for-byte today's arc). A greedy failure falls back to the plain arc.
+  function assembleOrder(pickId) {
+    const base = arcOrder(pickId);
+    if (!STORY_ON || base.length < 2) return base;
+    try {
+      const leaned = storyOrder(base, { pick: pickId, lightWeight: LIGHT_W });
+      return (leaned && leaned.length === base.length) ? leaned : base;
+    } catch (e) { return base; }
+  }
+
   // EX-DOOR-3 (INV-44): the hand LIVES — rotation + novelty + the hour, under HIS LAW
   // (a new hand repeats at most a THIRD of the previous one). The pool stays curated
   // (EX-DOOR-2d); his file order is the tie-break voice; a pool of exactly door_size
@@ -315,7 +384,7 @@
     if (!st || st.v !== VER) return false;            // old-version state → clean start (the door)
     if (st.pick != null) {
       if (!byId[st.pick]) return false;               // pick gone from the gallery → clean start
-      pick = st.pick; order = arcOrder(pick);
+      pick = st.pick; order = assembleOrder(pick);
     }
     // the unfold budget DERIVES from shown, never trusted (INV-30 holds on restore)
     shown = clampInt(st.shown, SPREAD, SPREAD, Math.min(order.length, CAP));
@@ -345,11 +414,16 @@
     document.documentElement.style.setProperty("--accent", `rgb(${a.join(",")})`);
     document.documentElement.style.setProperty(
       "--accent-2", `rgb(${a.map((v) => Math.round(v * 0.86)).join(",")})`);
+    // --tone: the wall label's DIMMED accent — the same live tone at low brightness, lightly
+    // tinting the plaque's letters work→work (EX-STORY-LINE, his call ×0.66)
+    document.documentElement.style.setProperty(
+      "--tone", `rgb(${a.map((v) => Math.round(v * 0.66)).join(",")})`);
   }
   const groundRest = () => {
     document.body.style.setProperty("--ground", "12,11,10");
     document.documentElement.style.removeProperty("--accent");    // back to resting bone
     document.documentElement.style.removeProperty("--accent-2");
+    document.documentElement.style.removeProperty("--tone");       // the plaque rests plain, no tint
   };
 
   // ---- EX-LOAD (INV-37): the loading breath — no frame in view stays empty ----
@@ -526,7 +600,7 @@
     const g = ++cerGen;
     const ok = () => g === cerGen;
     pick = w.id;
-    order = arcOrder(pick);
+    order = assembleOrder(pick);
     shown = SPREAD;                                    // a fresh arc = a fresh budget (INV-30/31)
     veil.hidden = false;
     veil.style.transitionDuration = (0.33 * TEMPO) + "s";
@@ -615,6 +689,7 @@
   cap.className = "exh-capzone"; cap.id = "exh-cap";
   document.body.appendChild(counter);
   document.body.appendChild(cap);
+  let focusedId = null;                                 // the work the caption currently speaks for
 
   const io = new IntersectionObserver((es) => es.forEach((x) => {
     if (!x.isIntersecting) return;
@@ -633,14 +708,61 @@
     // a REAL series (3+) grows its quiet pill — «серия · N», never the machine's theme (EX-SERIES)
     const serIdx = (typeof w.ser === "number" && SERIES[w.ser]) ? w.ser : null;
     const serWord = ((greetLang() || { t: {} }).t.series) || "серия";
+    // the wall label's three voices: the NAME, the told LINE (empty until the narrator speaks —
+    // EX-STORY-LINE fills it from STORYLINES), the FACTS with a red dot when the work is sold
     cap.innerHTML =
       `<div class="title ${w.title ? "" : "untitled"}">${w.title || "untitled"}</div>` +
-      `<div class="meta">${w.sec || ""}${w.place ? " · " + w.place : ""}</div>` +
+      `<div class="told"></div>` +
+      `<div class="meta"><span class="dot"${w.sold ? "" : " hidden"}></span>` +
+      `<span class="t">${w.sec || ""}${w.place ? " · " + w.place : ""}</span></div>` +
       (serIdx == null ? "" :
         `<button type="button" class="ex-series" data-ser="${serIdx}">` +
         `${serWord} · ${SERIES[serIdx].members.length}</button>`);
     cap.classList.add("show");
+    focusedId = w.id;
+    fillTold();                                        // the narrator's line for this work, if spoken
   }), { threshold: 0.55 });
+
+  // ---- the told line settles onto the plaque (EX-STORY-LINE) ------------------
+  // fillTold paints the focused work's line into the wall label's told-slot (as textContent — the
+  // model's words never become markup); it breathes in on the tempo even when it lands late.
+  function fillTold() {
+    const toldEl = cap.querySelector(".told");
+    if (!toldEl) return;
+    const line = focusedId != null ? STORYLINES[String(focusedId)] : "";
+    if (!line) { toldEl.textContent = ""; return; }    // silent → :empty hides it, no ghost gap
+    if (toldEl.textContent === line) return;
+    toldEl.textContent = line;
+    toldEl.style.animation = "none"; void toldEl.offsetWidth; toldEl.style.animation = "";  // EX-ARRIVE
+  }
+
+  // tellStory asks /api/story for the CURRENT ordered pick-set and settles the lines it returns.
+  // Gen-guarded (a later walk wins) and set-guarded (a resize/return never refetches). Every failure
+  // path is silence — the walk carries no lines and loses nothing (CS-8, INV-19). The «ещё 5» unfold
+  // grows the set and re-tells over the extended order (ST2, its own cache key at the edge).
+  function tellStory() {
+    if (!STORY_ON) return;
+    const ids = order.slice(0, shown).map(String);
+    if (!ids.length) return;
+    const key = ids.join(",");
+    if (key === storyKey) return;                      // this exact set already told
+    storyKey = key;
+    const gen = ++storyGen;
+    const lang = (viewerLang() || "en").toLowerCase();
+    fetch("/api/story", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: ids, variant: STORY_VARIANT, lang: lang }),
+    }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
+      if (gen !== storyGen) return;                    // a newer walk superseded this one
+      if (!data || !Array.isArray(data.lines)) return; // no story → silence
+      storyVariant = data.story_variant || STORY_VARIANT;   // the mode now rides the GA beats
+      for (const l of data.lines) {
+        if (l && l.id != null && typeof l.line === "string") STORYLINES[String(l.id)] = l.line;
+      }
+      fillTold();                                      // settle the line under the work in view
+    }).catch(() => {});                                // a dead worker changes nothing
+  }
 
   // ---- EX-SHARE: the quiet per-frame affordance — it copies, never navigates ----
   // (the ↗ corner link out to /w/ RETIRED with it, 2026-07-06 evening; /w/ pages stay
@@ -670,14 +792,16 @@
   let toastTimer = null;
   function toastOff() {
     clearTimeout(toastTimer); toastTimer = null;
+    toastEl.classList.remove("show", "hold");             // EX-ARRIVE: drop the show class first
     toastEl.hidden = true;
-    toastEl.classList.remove("hold");
   }
   function toast(text, hold) {
     clearTimeout(toastTimer); toastTimer = null;
+    toastEl.classList.remove("show");                     // EX-ARRIVE: reset so rAF re-fires the fade
     toastEl.textContent = text;
     toastEl.classList.toggle("hold", !!hold);
     toastEl.hidden = false;
+    requestAnimationFrame(() => { toastEl.classList.add("show"); }); // EX-ARRIVE: breath in
     if (!hold) toastTimer = setTimeout(toastOff, Math.round(3000 * TEMPO));
   }
   toastEl.addEventListener("click", toastOff);
@@ -737,6 +861,7 @@
       // the archive signs its rooms (EX-COPY) — one baked line; missing field renders nothing
       (data.copyright ? `<div class="exh-sign">${data.copyright}</div>` : "");
     stage.appendChild(fin);
+    requestAnimationFrame(() => { fin.classList.add("show"); }); // EX-ARRIVE: breath in from opacity:0
     fin.querySelector("#ex-unfold")?.addEventListener("click", () => {
       if (spentUnfolds() >= MAXU || shown >= order.length) return;   // the unfolding ENDS (INV-30)
       tlog("unfold");
@@ -745,6 +870,7 @@
       shown = Math.min(order.length, shown + UNFOLD, CAP);
       appendFrames(order.slice(s, shown), s + 1);
       save();
+      tellStory();                                     // the voice extends over the grown set (ST2)
     });
     fin.querySelector("#ex-return")?.addEventListener("click", doorReturn);
     counter.querySelector(".tot").textContent = String(shown).padStart(2, "0");
@@ -777,8 +903,13 @@
     const t0 = performance.now();
     // v4 «въезжает вальяжно» (his 09:43 word — the spring's darty middle was the miss): a
     // STATELY roll-in — sine in-out, the calmest of the classic curves (lowest peak speed,
-    // soft at both ends), over a long clock; the docking itself stays visibly slow
-    const ease = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
+    // soft at both ends), over a long clock; the docking itself stays visibly slow.
+    // v5 «отчаливает чуть тяжелее, как корабль от причала» (his 2026-07-07 word): the launch
+    // clock is warped a touch slower right off the pier (u = t^LAUNCH) — the room casts off with
+    // weight instead of tearing off the spot; the sine roll keeps the calm middle and the same
+    // soft dock he liked (u→1 with slope→0 at the end). LAUNCH is the cast-off weight, his dial.
+    const LAUNCH = 1.4;
+    const ease = (t) => { const u = Math.pow(t, LAUNCH); return 0.5 - 0.5 * Math.cos(Math.PI * u); };
     gliding = true;
     const step = (now) => {
       const p = Math.min(1, (now - t0) / dur);
@@ -865,6 +996,7 @@
     stage.innerHTML = "";
     appendFrames(order.slice(0, shown), 1);
     scrollTo(0, 0);
+    tellStory();                                         // the voice, if the story is on (set-guarded)
   }
 
   // ---- EX-SERIES (INV-46): the side room — theme and variations, a look ASIDE --------
@@ -1157,6 +1289,22 @@
     list.className = "exl-list"; list.hidden = true;
     box.appendChild(cur); box.appendChild(list);
     door.appendChild(box);                             // the threshold's corner chrome, both faces
+    // EX-ARRIVE: the mark is born at opacity:0; the next frame adds .show to breathe it in
+    requestAnimationFrame(() => { box.classList.add("show"); });
+
+    // EX-ARRIVE: the dropdown opens and closes by breath (d-soft) so it never pops
+    let listCloseTimer = null;
+    function listOpen() {
+      clearTimeout(listCloseTimer); listCloseTimer = null;
+      list.hidden = false;
+      requestAnimationFrame(() => { list.classList.add("show"); });
+    }
+    function listClose() {
+      clearTimeout(listCloseTimer); listCloseTimer = null;
+      list.classList.remove("show");
+      listCloseTimer = setTimeout(() => { list.hidden = true; }, Math.round(600 * TEMPO));
+    }
+
     const browserCode = (navigator.language || "").toLowerCase().slice(0, 2);
     const codes = Object.keys(GREET.langs).slice();
     if (I18N_ON && /^[a-z]{2,3}$/.test(browserCode)
@@ -1182,7 +1330,7 @@
         ev.stopPropagation();
         langOverride = c;
         try { localStorage.setItem(LANG_KEY, c); } catch (e) {}
-        list.hidden = true;
+        listClose();
         const known = (GREET.aliases || {})[c] || c;
         if (GREET.langs[known]) respeak();             // a baked tongue answers at once
         else requestSet(c);                            // an outsider rides the one layer
@@ -1192,9 +1340,9 @@
     });
     cur.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      list.hidden = !list.hidden;
+      list.hidden ? listOpen() : listClose();
     });
-    door.addEventListener("click", () => { list.hidden = true; });
+    door.addEventListener("click", () => { listClose(); });
     redraw();
   }
 })();
