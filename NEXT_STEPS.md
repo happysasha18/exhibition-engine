@@ -43,9 +43,16 @@ E2. ✅ **DONE 2026-07-07 ~01:50 — build.py absorbed tlvphoto's day WHOLE**: t
     (copyright line, clean addresses, i18n source/worker emission, consent snippet, config flags)
     behind the五 instance strings contract; re-prove the bake BYTE-IDENTICAL against tlvphoto's
     own (the drift report's re-sync list is the checklist).
-E3. **The engine's own test suite** — adopt tlvphoto's 13 suites with an engine-side import shim
-    + fixture content (a tiny synthetic archive, clearly labelled), so the engine is green
-    WITHOUT Alexander's private content.
+E3. ✅ **DONE 2026-07-07 ~10:58 — the engine is green ALONE: 17/17 suites on a synthetic
+    archive** (24 synthetic works, one series, zero private content; worker slices 1+2,
+    senior-verified — assertions never weakened, instance-specific values parameterized from
+    the fixture manifest; report `tests/E3_REPORT.md`). Byte-proof RE-TAKEN same hour against
+    the instance's own bake after the day's changes: 256 files, empty diff. **⇒ BOTH bars of
+    the SHRUNK transition gate (his 2026-07-07 pick) are green — E8 cutover opens on his word.**
+    Standing law: re-run the byte-proof after every engine change (command in CHECKPOINT §5)
+    and re-sync walk assets verbatim from the instance same session. Known engine gaps, honest:
+    no vector-COMPUTATION stage yet (fixture ships ready vectors; the compute stage is
+    instance-side — that's E5's axis journey), and the new-user path E4–E6 is still vision.
 E4. **The guided journey, stage 1–2** (runtime + ingest): the explain-then-run walkthrough
     (CLI prompts or a local page), Ollama install check, archive contract.
 E5. **The guided journey, stage 3** (axes): productize the axis definition/measure/curate loop —
