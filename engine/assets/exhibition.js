@@ -766,9 +766,11 @@
     const d = to - from;
     if (Math.abs(d) < 2) return;                       // a sub-2px correction is noise
     // the card's curve: length grows with distance, capped; scaled by tempo/default, capped ×1.25
-    const dur = Math.min(1100, 420 + Math.abs(d) * 0.4) * Math.min(1.25, TEMPO / 1.35);
+    const dur = Math.min(1400, 560 + Math.abs(d) * 0.5) * Math.min(1.25, TEMPO / 1.35);
     const t0 = performance.now();
-    const ease = (t) => 1 - Math.pow(1 - t, 3);
+    // soft both ways (his 2026-07-07 word: «мягче»): the glide breathes in before it moves —
+    // an ease-out alone launches at full speed from stillness and reads as a yank
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     gliding = true;
     const step = (now) => {
       const p = Math.min(1, (now - t0) / dur);
