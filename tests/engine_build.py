@@ -49,14 +49,14 @@ def load_json(relpath):
         return json.load(fh)
 
 
-def build(site_url):
+def build(site_url, ga_id="", enable=None):
     """Bake the synthetic fixture into OUT.  The caller must set OUT first."""
     engine_assets = _ENGINE_ROOT / "engine" / "assets"
     inst_assets = FIXTURE / "instance-assets"
     return _engine.build(
         site_url,
-        ga_id="",
-        enable=[],
+        ga_id=ga_id,
+        enable=enable or [],
         content_dir=FIXTURE,
         out_dir=OUT,
         engine_assets_dir=engine_assets,

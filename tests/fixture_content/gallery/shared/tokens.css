@@ -1,2 +1,31 @@
 /* SYNTH EXHIBITION — synthetic design tokens for engine fixture testing */
-:root{--cross:1.2s;--d-appear:0.4s;--d-vanish:0.3s}
+:root{
+  /* motion clock */
+  --tempo:    1.35;
+  --ease:     cubic-bezier(0.3,0,0.2,1);
+  /* duration tokens — every literal multiplies var(--tempo) */
+  --d-cross:  calc(1.2 * var(--tempo) * 1s);
+  --d-appear: calc(0.4 * var(--tempo) * 1s);
+  --d-vanish: calc(0.3 * var(--tempo) * 1s);
+  --d-rise:   calc(1.4 * var(--tempo) * 1s);
+  --d-reveal: calc(0.8 * var(--tempo) * 1s);
+  --d-soft:   calc(0.5 * var(--tempo) * 1s);
+  --d-ground: calc(1.7 * var(--tempo) * 1s);
+  /* accent: #b3a284 bone at rest; exhibition.js overrides on live work */
+  --accent:   #b3a284;
+  /* palette — synthetic near-black surface */
+  --ink:      #f4f1e8;
+  --muted:    rgba(244,241,232,0.55);
+  --muted-2:  rgba(244,241,232,0.35);
+  --body-2:   rgba(244,241,232,0.70);
+  --faint:    rgba(244,241,232,0.20);
+  --hair:     rgba(244,241,232,0.12);
+  /* typography */
+  --serif:    Georgia,serif;
+  --mono:     'Courier New',Courier,monospace;
+}
+/* reduced-motion: the CSS clock collapses so --tempo is readable even when
+   exhibition.js skips setProperty (engine: if(!REDUCED) setProperty) */
+@media(prefers-reduced-motion:reduce){
+  :root{ --tempo: 0.05; }
+}

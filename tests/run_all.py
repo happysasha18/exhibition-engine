@@ -17,7 +17,11 @@ HERE = Path(__file__).resolve().parent
 
 # SUITES must match the set of test_*.py files in tests/ exactly (gate INV-5r).
 # Add a suite name here AS SOON as tests/test_<name>.py is created.
-SUITES = ["site"]
+SUITES = [
+    "site", "exhibition", "door", "vector", "back", "greet",
+    "series", "motion", "reset", "load", "share", "glide",
+    "pulse", "hand", "i18n", "lang", "memory",
+]
 
 
 def main():

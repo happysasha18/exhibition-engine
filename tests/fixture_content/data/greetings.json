@@ -1,22 +1,28 @@
 {
   "fallback": "en",
-  "aliases": {},
+  "aliases": {
+    "iw": "he"
+  },
   "langs": {
     "en": {
       "dir": "ltr",
       "ask": "what feels closer now",
       "greet": {
         "night": [
-          "A synthetic quiet night"
+          "A synthetic quiet night",
+          "Another synthetic night"
         ],
         "morning": [
-          "A synthetic morning"
+          "A synthetic morning",
+          "Another synthetic morning"
         ],
         "day": [
-          "A synthetic day"
+          "A synthetic day",
+          "Another synthetic day"
         ],
         "evening": [
-          "A synthetic evening"
+          "A synthetic evening",
+          "Another synthetic evening"
         ]
       },
       "exit": "exit",
@@ -27,6 +33,186 @@
       "share_copied": "link copied",
       "series": "series",
       "room_back": "← room"
+    },
+    "ru": {
+      "dir": "ltr",
+      "ask": "что ближе сейчас",
+      "greet": {
+        "night": [
+          "Синтетическая тихая ночь",
+          "Ещё одна синтетическая ночь"
+        ],
+        "morning": [
+          "Синтетическое утро",
+          "Ещё одно синтетическое утро"
+        ],
+        "day": [
+          "Синтетический день",
+          "Ещё один синтетический день"
+        ],
+        "evening": [
+          "Синтетический вечер",
+          "Ещё один синтетический вечер"
+        ]
+      },
+      "exit": "выход",
+      "more": "ещё {n}",
+      "q_more": "идём дальше?",
+      "q_spent": "вперёд — новый выбор",
+      "share_label": "скопировать ссылку",
+      "share_copied": "ссылка скопирована",
+      "series": "серия",
+      "room_back": "← комната"
+    },
+    "he": {
+      "dir": "rtl",
+      "ask": "מה קרוב אליך עכשיו",
+      "greet": {
+        "night": [
+          "לילה שקט סינתטי",
+          "עוד לילה סינתטי"
+        ],
+        "morning": [
+          "בוקר סינתטי",
+          "עוד בוקר סינתטי"
+        ],
+        "day": [
+          "יום סינתטי",
+          "עוד יום סינתטי"
+        ],
+        "evening": [
+          "ערב סינתטי",
+          "עוד ערב סינתטי"
+        ]
+      },
+      "exit": "יציאה",
+      "more": "עוד {n}",
+      "q_more": "ממשיכים?",
+      "q_spent": "קדימה — בחירה חדשה",
+      "share_label": "העתק קישור",
+      "share_copied": "הקישור הועתק",
+      "series": "סדרה",
+      "room_back": "← חדר"
+    },
+    "de": {
+      "dir": "ltr",
+      "ask": "was fühlt sich näher an",
+      "greet": {
+        "night": [
+          "Eine synthetische stille Nacht",
+          "Noch eine synthetische Nacht"
+        ],
+        "morning": [
+          "Ein synthetischer Morgen",
+          "Noch ein synthetischer Morgen"
+        ],
+        "day": [
+          "Ein synthetischer Tag",
+          "Noch ein synthetischer Tag"
+        ],
+        "evening": [
+          "Ein synthetischer Abend",
+          "Noch ein synthetischer Abend"
+        ]
+      },
+      "exit": "beenden",
+      "more": "noch {n}",
+      "q_more": "weiter?",
+      "q_spent": "vorwärts — eine neue Wahl",
+      "share_label": "Link kopieren",
+      "share_copied": "Link kopiert",
+      "series": "Serie",
+      "room_back": "← Raum"
+    },
+    "fr": {
+      "dir": "ltr",
+      "ask": "qu'est-ce qui semble plus proche",
+      "greet": {
+        "night": [
+          "Une nuit synthétique tranquille",
+          "Une autre nuit synthétique"
+        ],
+        "morning": [
+          "Un matin synthétique",
+          "Un autre matin synthétique"
+        ],
+        "day": [
+          "Un jour synthétique",
+          "Un autre jour synthétique"
+        ],
+        "evening": [
+          "Un soir synthétique",
+          "Un autre soir synthétique"
+        ]
+      },
+      "exit": "quitter",
+      "more": "encore {n}",
+      "q_more": "on continue?",
+      "q_spent": "en avant — un nouveau choix",
+      "share_label": "copier le lien",
+      "share_copied": "lien copié",
+      "series": "série",
+      "room_back": "← salle"
+    },
+    "es": {
+      "dir": "ltr",
+      "ask": "qué se siente más cercano",
+      "greet": {
+        "night": [
+          "Una noche sintética tranquila",
+          "Otra noche sintética"
+        ],
+        "morning": [
+          "Una mañana sintética",
+          "Otra mañana sintética"
+        ],
+        "day": [
+          "Un día sintético",
+          "Otro día sintético"
+        ],
+        "evening": [
+          "Una tarde sintética",
+          "Otra tarde sintética"
+        ]
+      },
+      "exit": "salir",
+      "more": "{n} más",
+      "q_more": "¿seguimos?",
+      "q_spent": "adelante — una nueva elección",
+      "share_label": "copiar enlace",
+      "share_copied": "enlace copiado",
+      "series": "serie",
+      "room_back": "← sala"
+    },
+    "uk": {
+      "dir": "ltr",
+      "ask": "що ближче зараз",
+      "greet": {
+        "night": [
+          "Синтетична тиха ніч",
+          "Ще одна синтетична ніч"
+        ],
+        "morning": [
+          "Синтетичний ранок",
+          "Ще один синтетичний ранок"
+        ],
+        "day": [
+          "Синтетичний день",
+          "Ще один синтетичний день"
+        ],
+        "evening": [
+          "Синтетичний вечір",
+          "Ще один синтетичний вечір"
+        ]
+      },
+      "exit": "вихід",
+      "more": "ще {n}",
+      "q_more": "йдемо далі?",
+      "q_spent": "вперед — новий вибір",
+      "share_label": "скопіювати посилання",
+      "share_copied": "посилання скопійовано",
+      "series": "серія",
+      "room_back": "← кімната"
     }
   }
 }

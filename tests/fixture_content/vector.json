@@ -2207,6 +2207,1110 @@
           "confidence": 0.99
         }
       }
+    },
+    {
+      "id": "synth-17",
+      "img": "assets/urban/synth-17.png",
+      "title": "Synthetic Arch",
+      "section": "urban",
+      "axes": {
+        "AX-01_brightness": {
+          "value": 0.4859,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-02_key": {
+          "value": 0.2912,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-03_contrast": {
+          "value": 0.0799,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-04_radial": {
+          "value": 0.1402,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-05_texture": {
+          "value": 0.2955,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-07_warmth": {
+          "value": 0.2846,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-08_colorful": {
+          "value": 0.6819,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-09_edge": {
+          "value": 0.9105,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-10_symmetry": {
+          "value": 0.3015,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-11_human": {
+          "value": 0.7097,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-12_urban": {
+          "value": 0.1327,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-13_nature": {
+          "value": 0.5985,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-14_geometry": {
+          "value": 0.9344,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-15_darkness": {
+          "value": 0.4897,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-16_grain": {
+          "value": 0.9462,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-17_depth": {
+          "value": 0.1066,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-18_motion": {
+          "value": 0.7526,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-19_saturation": {
+          "value": 0.8731,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-20_hue_shift": {
+          "value": 0.7579,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-21_midtone": {
+          "value": 0.2397,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-22_highlight": {
+          "value": 0.145,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-23_shadow": {
+          "value": 0.5904,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-24_fine_detail": {
+          "value": 0.4395,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-25_composition": {
+          "value": 0.5939,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-26_mood": {
+          "value": 0.2814,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-27_density": {
+          "value": 0.2032,
+          "source": "synthetic",
+          "confidence": 0.99
+        }
+      }
+    },
+    {
+      "id": "synth-18",
+      "img": "assets/urban/synth-18.png",
+      "title": "Synthetic Market",
+      "section": "urban",
+      "axes": {
+        "AX-01_brightness": {
+          "value": 0.8766,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-02_key": {
+          "value": 0.8986,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-03_contrast": {
+          "value": 0.5777,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-04_radial": {
+          "value": 0.7421,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-05_texture": {
+          "value": 0.114,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-07_warmth": {
+          "value": 0.2761,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-08_colorful": {
+          "value": 0.1441,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-09_edge": {
+          "value": 0.832,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-10_symmetry": {
+          "value": 0.3167,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-11_human": {
+          "value": 0.8928,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-12_urban": {
+          "value": 0.7029,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-13_nature": {
+          "value": 0.1982,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-14_geometry": {
+          "value": 0.3622,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-15_darkness": {
+          "value": 0.5415,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-16_grain": {
+          "value": 0.4428,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-17_depth": {
+          "value": 0.7554,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-18_motion": {
+          "value": 0.6756,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-19_saturation": {
+          "value": 0.6374,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-20_hue_shift": {
+          "value": 0.9484,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-21_midtone": {
+          "value": 0.8315,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-22_highlight": {
+          "value": 0.3745,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-23_shadow": {
+          "value": 0.8698,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-24_fine_detail": {
+          "value": 0.6356,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-25_composition": {
+          "value": 0.4744,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-26_mood": {
+          "value": 0.1908,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-27_density": {
+          "value": 0.511,
+          "source": "synthetic",
+          "confidence": 0.99
+        }
+      }
+    },
+    {
+      "id": "synth-19",
+      "img": "assets/landscape/synth-19.png",
+      "title": "",
+      "section": "landscape",
+      "axes": {
+        "AX-01_brightness": {
+          "value": 0.1262,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-02_key": {
+          "value": 0.8718,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-03_contrast": {
+          "value": 0.1568,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-04_radial": {
+          "value": 0.1445,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-05_texture": {
+          "value": 0.6168,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-07_warmth": {
+          "value": 0.1872,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-08_colorful": {
+          "value": 0.4683,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-09_edge": {
+          "value": 0.8715,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-10_symmetry": {
+          "value": 0.1242,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-11_human": {
+          "value": 0.1653,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-12_urban": {
+          "value": 0.1735,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-13_nature": {
+          "value": 0.2467,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-14_geometry": {
+          "value": 0.1763,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-15_darkness": {
+          "value": 0.6558,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-16_grain": {
+          "value": 0.2312,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-17_depth": {
+          "value": 0.463,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-18_motion": {
+          "value": 0.216,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-19_saturation": {
+          "value": 0.8478,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-20_hue_shift": {
+          "value": 0.624,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-21_midtone": {
+          "value": 0.5137,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-22_highlight": {
+          "value": 0.724,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-23_shadow": {
+          "value": 0.2184,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-24_fine_detail": {
+          "value": 0.2233,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-25_composition": {
+          "value": 0.3074,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-26_mood": {
+          "value": 0.1945,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-27_density": {
+          "value": 0.8984,
+          "source": "synthetic",
+          "confidence": 0.99
+        }
+      }
+    },
+    {
+      "id": "synth-20",
+      "img": "assets/landscape/synth-20.png",
+      "title": "",
+      "section": "landscape",
+      "axes": {
+        "AX-01_brightness": {
+          "value": 0.4902,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-02_key": {
+          "value": 0.4042,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-03_contrast": {
+          "value": 0.9302,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-04_radial": {
+          "value": 0.8659,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-05_texture": {
+          "value": 0.887,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-07_warmth": {
+          "value": 0.6241,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-08_colorful": {
+          "value": 0.3937,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-09_edge": {
+          "value": 0.6733,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-10_symmetry": {
+          "value": 0.2273,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-11_human": {
+          "value": 0.0605,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-12_urban": {
+          "value": 0.4442,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-13_nature": {
+          "value": 0.61,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-14_geometry": {
+          "value": 0.0572,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-15_darkness": {
+          "value": 0.7581,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-16_grain": {
+          "value": 0.7632,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-17_depth": {
+          "value": 0.3822,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-18_motion": {
+          "value": 0.6746,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-19_saturation": {
+          "value": 0.8918,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-20_hue_shift": {
+          "value": 0.5043,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-21_midtone": {
+          "value": 0.3838,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-22_highlight": {
+          "value": 0.2328,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-23_shadow": {
+          "value": 0.5587,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-24_fine_detail": {
+          "value": 0.2567,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-25_composition": {
+          "value": 0.6065,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-26_mood": {
+          "value": 0.4837,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-27_density": {
+          "value": 0.7059,
+          "source": "synthetic",
+          "confidence": 0.99
+        }
+      }
+    },
+    {
+      "id": "synth-21",
+      "img": "assets/abstract/synth-21.png",
+      "title": "",
+      "section": "abstract",
+      "axes": {
+        "AX-01_brightness": {
+          "value": 0.1504,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-02_key": {
+          "value": 0.4989,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-03_contrast": {
+          "value": 0.3976,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-04_radial": {
+          "value": 0.1588,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-05_texture": {
+          "value": 0.7311,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-07_warmth": {
+          "value": 0.7913,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-08_colorful": {
+          "value": 0.0981,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-09_edge": {
+          "value": 0.4962,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-10_symmetry": {
+          "value": 0.1628,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-11_human": {
+          "value": 0.192,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-12_urban": {
+          "value": 0.6596,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-13_nature": {
+          "value": 0.634,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-14_geometry": {
+          "value": 0.6912,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-15_darkness": {
+          "value": 0.2092,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-16_grain": {
+          "value": 0.9293,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-17_depth": {
+          "value": 0.7843,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-18_motion": {
+          "value": 0.3258,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-19_saturation": {
+          "value": 0.2365,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-20_hue_shift": {
+          "value": 0.3487,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-21_midtone": {
+          "value": 0.734,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-22_highlight": {
+          "value": 0.4788,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-23_shadow": {
+          "value": 0.3706,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-24_fine_detail": {
+          "value": 0.4124,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-25_composition": {
+          "value": 0.1647,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-26_mood": {
+          "value": 0.2355,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-27_density": {
+          "value": 0.6087,
+          "source": "synthetic",
+          "confidence": 0.99
+        }
+      }
+    },
+    {
+      "id": "synth-22",
+      "img": "assets/abstract/synth-22.png",
+      "title": "",
+      "section": "abstract",
+      "axes": {
+        "AX-01_brightness": {
+          "value": 0.2371,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-02_key": {
+          "value": 0.0685,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-03_contrast": {
+          "value": 0.2934,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-04_radial": {
+          "value": 0.3914,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-05_texture": {
+          "value": 0.4116,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-07_warmth": {
+          "value": 0.2835,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-08_colorful": {
+          "value": 0.3166,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-09_edge": {
+          "value": 0.2289,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-10_symmetry": {
+          "value": 0.7558,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-11_human": {
+          "value": 0.7928,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-12_urban": {
+          "value": 0.1947,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-13_nature": {
+          "value": 0.2842,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-14_geometry": {
+          "value": 0.9384,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-15_darkness": {
+          "value": 0.6132,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-16_grain": {
+          "value": 0.2703,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-17_depth": {
+          "value": 0.0924,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-18_motion": {
+          "value": 0.7496,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-19_saturation": {
+          "value": 0.2289,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-20_hue_shift": {
+          "value": 0.6021,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-21_midtone": {
+          "value": 0.8217,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-22_highlight": {
+          "value": 0.5447,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-23_shadow": {
+          "value": 0.6117,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-24_fine_detail": {
+          "value": 0.5552,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-25_composition": {
+          "value": 0.2579,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-26_mood": {
+          "value": 0.0684,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-27_density": {
+          "value": 0.4874,
+          "source": "synthetic",
+          "confidence": 0.99
+        }
+      }
+    },
+    {
+      "id": "synth-23",
+      "img": "assets/abstract/synth-23.png",
+      "title": "",
+      "section": "abstract",
+      "axes": {
+        "AX-01_brightness": {
+          "value": 0.128,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-02_key": {
+          "value": 0.0503,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-03_contrast": {
+          "value": 0.153,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-04_radial": {
+          "value": 0.2523,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-05_texture": {
+          "value": 0.5377,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-07_warmth": {
+          "value": 0.7885,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-08_colorful": {
+          "value": 0.4748,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-09_edge": {
+          "value": 0.2067,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-10_symmetry": {
+          "value": 0.8579,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-11_human": {
+          "value": 0.867,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-12_urban": {
+          "value": 0.542,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-13_nature": {
+          "value": 0.444,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-14_geometry": {
+          "value": 0.4712,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-15_darkness": {
+          "value": 0.3285,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-16_grain": {
+          "value": 0.4648,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-17_depth": {
+          "value": 0.6262,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-18_motion": {
+          "value": 0.5745,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-19_saturation": {
+          "value": 0.9039,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-20_hue_shift": {
+          "value": 0.7903,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-21_midtone": {
+          "value": 0.7104,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-22_highlight": {
+          "value": 0.6689,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-23_shadow": {
+          "value": 0.8956,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-24_fine_detail": {
+          "value": 0.4264,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-25_composition": {
+          "value": 0.6985,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-26_mood": {
+          "value": 0.2352,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-27_density": {
+          "value": 0.2436,
+          "source": "synthetic",
+          "confidence": 0.99
+        }
+      }
+    },
+    {
+      "id": "synth-24",
+      "img": "assets/abstract/synth-24.png",
+      "title": "",
+      "section": "abstract",
+      "axes": {
+        "AX-01_brightness": {
+          "value": 0.0543,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-02_key": {
+          "value": 0.22,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-03_contrast": {
+          "value": 0.5696,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-04_radial": {
+          "value": 0.086,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-05_texture": {
+          "value": 0.2448,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-07_warmth": {
+          "value": 0.3483,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-08_colorful": {
+          "value": 0.8818,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-09_edge": {
+          "value": 0.698,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-10_symmetry": {
+          "value": 0.083,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-11_human": {
+          "value": 0.811,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-12_urban": {
+          "value": 0.786,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-13_nature": {
+          "value": 0.5655,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-14_geometry": {
+          "value": 0.423,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-15_darkness": {
+          "value": 0.4165,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-16_grain": {
+          "value": 0.7542,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-17_depth": {
+          "value": 0.5623,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-18_motion": {
+          "value": 0.2405,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-19_saturation": {
+          "value": 0.2737,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-20_hue_shift": {
+          "value": 0.0878,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-21_midtone": {
+          "value": 0.7208,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-22_highlight": {
+          "value": 0.4386,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-23_shadow": {
+          "value": 0.2121,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-24_fine_detail": {
+          "value": 0.6431,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-25_composition": {
+          "value": 0.941,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-26_mood": {
+          "value": 0.9063,
+          "source": "synthetic",
+          "confidence": 0.99
+        },
+        "AX-27_density": {
+          "value": 0.333,
+          "source": "synthetic",
+          "confidence": 0.99
+        }
+      }
     }
   ]
 }

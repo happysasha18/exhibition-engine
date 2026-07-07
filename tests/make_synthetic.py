@@ -36,18 +36,46 @@ WORKS = [
     ("synth-11", "landscape", "",                  "Dead Sea",  "IL"),
     ("synth-12", "landscape", "",                  "",          ""),
     ("synth-13", "abstract",  "",                  "",          ""),
-    ("synth-14", "abstract",  "",                  "",          ""),  # series member
-    ("synth-15", "abstract",  "",                  "",          ""),  # series member
-    ("synth-16", "abstract",  "",                  "",          ""),  # series member
+    ("synth-14", "abstract",  "",                  "",          ""),  # lane series member
+    ("synth-15", "abstract",  "",                  "",          ""),  # lane series member
+    ("synth-16", "abstract",  "",                  "",          ""),  # lane series member
+    # synth-17..24 added so that CAP (spread+max_unfolds×unfold_step = 10+2×5 = 20) < len(WORKS)
+    ("synth-17", "urban",     "Synthetic Arch",    "Berlin",    "DE"),
+    ("synth-18", "urban",     "Synthetic Market",  "Paris",     "FR"),
+    ("synth-19", "landscape", "",                  "Alps",      "CH"),
+    ("synth-20", "landscape", "",                  "Coast",     "ES"),
+    ("synth-21", "abstract",  "",                  "",          ""),
+    ("synth-22", "abstract",  "",                  "",          ""),
+    ("synth-23", "abstract",  "",                  "",          ""),
+    ("synth-24", "abstract",  "",                  "",          ""),
 ]
 
-# Three works form one series (>= 3 required by engine; variant → "lane")
-SERIES_MEMBERS = ["synth-14", "synth-15", "synth-16"]
+# Two series:
+#   polaroids (8+ members → variant "polaroids"): synth-01..08
+#   lane      (3 members → variant "lane"):        synth-14..16
+SERIES_POLAROIDS = ["synth-01", "synth-02", "synth-03", "synth-04",
+                    "synth-05", "synth-06", "synth-07", "synth-08"]
+SERIES_LANE      = ["synth-14", "synth-15", "synth-16"]
 
-# Five door-pool candidates
-DOOR_IDS = ["synth-01", "synth-03", "synth-06", "synth-09", "synth-11"]
+# Ten door-pool candidates: 5 dark (luma≈0.15–0.22) + 5 bright (luma≈0.78–0.88).
+# Clear dark/bright split so the hour-lean test (night→dark / day→bright) is reliable.
+# Pool must exceed door_size (5) so the living-hand law engages.
+DOOR_ENTRIES = [
+    # dark works
+    ("synth-01", 0.15, 0.30),
+    ("synth-03", 0.17, 0.55),
+    ("synth-06", 0.20, 0.40),
+    ("synth-09", 0.18, 0.25),
+    ("synth-11", 0.22, 0.35),
+    # bright works
+    ("synth-02", 0.85, 0.70),
+    ("synth-04", 0.80, 0.65),
+    ("synth-05", 0.82, 0.75),
+    ("synth-07", 0.88, 0.45),
+    ("synth-12", 0.78, 0.60),
+]
 
-# 26 numeric kinship axes (all scalar, no special palette axis)
+# 26 numeric kinship axes (all scalar)
 AXES = [
     "AX-01_brightness", "AX-02_key",        "AX-03_contrast",   "AX-04_radial",
     "AX-05_texture",    "AX-07_warmth",      "AX-08_colorful",   "AX-09_edge",
@@ -75,7 +103,152 @@ CAPTIONS = [
     "A synthetic shape unresolved.",
     "A synthetic mark without name.",
     "A synthetic trace of light.",
+    "A synthetic arch spanning void.",
+    "A synthetic market at dawn.",
+    "A synthetic alpine field.",
+    "A synthetic coast at rest.",
+    "An abstract synthetic plane.",
+    "A synthetic shadow cast long.",
+    "A synthetic blur in motion.",
+    "A synthetic edge without end.",
 ]
+
+# ── 7 synthetic languages for greetings.json ─────────────────────────────────
+# All strings are visibly synthetic; 2+ variants per daypart for the date-seeded test.
+# RU exit == "выход"; HE dir == "rtl" and ask == "מה קרוב אליך עכשיו".
+# All 7 langs must have series + room_back.
+GREETINGS = {
+    "fallback": "en",
+    "aliases": {"iw": "he"},
+    "langs": {
+        "en": {
+            "dir": "ltr",
+            "ask": "what feels closer now",
+            "greet": {
+                "night":   ["A synthetic quiet night", "Another synthetic night"],
+                "morning": ["A synthetic morning",     "Another synthetic morning"],
+                "day":     ["A synthetic day",          "Another synthetic day"],
+                "evening": ["A synthetic evening",      "Another synthetic evening"],
+            },
+            "exit":         "exit",
+            "more":         "{n} more",
+            "q_more":       "walk on?",
+            "q_spent":      "onward — a new choice",
+            "share_label":  "copy the link",
+            "share_copied": "link copied",
+            "series":       "series",
+            "room_back":    "← room",
+        },
+        "ru": {
+            "dir": "ltr",
+            "ask": "что ближе сейчас",
+            "greet": {
+                "night":   ["Синтетическая тихая ночь", "Ещё одна синтетическая ночь"],
+                "morning": ["Синтетическое утро",       "Ещё одно синтетическое утро"],
+                "day":     ["Синтетический день",        "Ещё один синтетический день"],
+                "evening": ["Синтетический вечер",       "Ещё один синтетический вечер"],
+            },
+            "exit":         "выход",
+            "more":         "ещё {n}",
+            "q_more":       "идём дальше?",
+            "q_spent":      "вперёд — новый выбор",
+            "share_label":  "скопировать ссылку",
+            "share_copied": "ссылка скопирована",
+            "series":       "серия",
+            "room_back":    "← комната",
+        },
+        "he": {
+            "dir": "rtl",
+            "ask": "מה קרוב אליך עכשיו",
+            "greet": {
+                "night":   ["לילה שקט סינתטי",  "עוד לילה סינתטי"],
+                "morning": ["בוקר סינתטי",       "עוד בוקר סינתטי"],
+                "day":     ["יום סינתטי",         "עוד יום סינתטי"],
+                "evening": ["ערב סינתטי",         "עוד ערב סינתטי"],
+            },
+            "exit":         "יציאה",
+            "more":         "עוד {n}",
+            "q_more":       "ממשיכים?",
+            "q_spent":      "קדימה — בחירה חדשה",
+            "share_label":  "העתק קישור",
+            "share_copied": "הקישור הועתק",
+            "series":       "סדרה",
+            "room_back":    "← חדר",
+        },
+        "de": {
+            "dir": "ltr",
+            "ask": "was fühlt sich näher an",
+            "greet": {
+                "night":   ["Eine synthetische stille Nacht", "Noch eine synthetische Nacht"],
+                "morning": ["Ein synthetischer Morgen",       "Noch ein synthetischer Morgen"],
+                "day":     ["Ein synthetischer Tag",           "Noch ein synthetischer Tag"],
+                "evening": ["Ein synthetischer Abend",         "Noch ein synthetischer Abend"],
+            },
+            "exit":         "beenden",
+            "more":         "noch {n}",
+            "q_more":       "weiter?",
+            "q_spent":      "vorwärts — eine neue Wahl",
+            "share_label":  "Link kopieren",
+            "share_copied": "Link kopiert",
+            "series":       "Serie",
+            "room_back":    "← Raum",
+        },
+        "fr": {
+            "dir": "ltr",
+            "ask": "qu'est-ce qui semble plus proche",
+            "greet": {
+                "night":   ["Une nuit synthétique tranquille", "Une autre nuit synthétique"],
+                "morning": ["Un matin synthétique",            "Un autre matin synthétique"],
+                "day":     ["Un jour synthétique",              "Un autre jour synthétique"],
+                "evening": ["Un soir synthétique",              "Un autre soir synthétique"],
+            },
+            "exit":         "quitter",
+            "more":         "encore {n}",
+            "q_more":       "on continue?",
+            "q_spent":      "en avant — un nouveau choix",
+            "share_label":  "copier le lien",
+            "share_copied": "lien copié",
+            "series":       "série",
+            "room_back":    "← salle",
+        },
+        "es": {
+            "dir": "ltr",
+            "ask": "qué se siente más cercano",
+            "greet": {
+                "night":   ["Una noche sintética tranquila", "Otra noche sintética"],
+                "morning": ["Una mañana sintética",          "Otra mañana sintética"],
+                "day":     ["Un día sintético",               "Otro día sintético"],
+                "evening": ["Una tarde sintética",            "Otra tarde sintética"],
+            },
+            "exit":         "salir",
+            "more":         "{n} más",
+            "q_more":       "¿seguimos?",
+            "q_spent":      "adelante — una nueva elección",
+            "share_label":  "copiar enlace",
+            "share_copied": "enlace copiado",
+            "series":       "serie",
+            "room_back":    "← sala",
+        },
+        "uk": {
+            "dir": "ltr",
+            "ask": "що ближче зараз",
+            "greet": {
+                "night":   ["Синтетична тиха ніч",  "Ще одна синтетична ніч"],
+                "morning": ["Синтетичний ранок",     "Ще один синтетичний ранок"],
+                "day":     ["Синтетичний день",       "Ще один синтетичний день"],
+                "evening": ["Синтетичний вечір",      "Ще один синтетичний вечір"],
+            },
+            "exit":         "вихід",
+            "more":         "ще {n}",
+            "q_more":       "йдемо далі?",
+            "q_spent":      "вперед — новий вибір",
+            "share_label":  "скопіювати посилання",
+            "share_copied": "посилання скопійовано",
+            "series":       "серія",
+            "room_back":    "← кімната",
+        },
+    },
+}
 
 
 # ── minimal PNG generator ─────────────────────────────────────────────────────
@@ -189,56 +362,67 @@ def make():
     write(FIXTURE / "content_tags.json",
           json.dumps(tags, ensure_ascii=False, indent=2) + "\n")
 
-    # gallery/door_candidates.json  (5 entries, >= 5 required for door_size=5)
+    # gallery/door_candidates.json — 10 entries (5 dark + 5 bright), pool > door_size=5
     door = []
-    for wid in DOOR_IDS:
+    for wid, luma, warmth in DOOR_ENTRIES:
         it = work_by_id[wid]
-        door.append({"id": wid, "img": it["img"],
-                     "luma":   round(_axis_val(wid, "luma"),   3),
-                     "warmth": round(_axis_val(wid, "warmth"), 3)})
+        door.append({"id": wid, "img": it["img"], "luma": luma, "warmth": warmth})
     write(FIXTURE / "gallery" / "door_candidates.json",
           json.dumps(door, ensure_ascii=False, indent=2) + "\n")
 
-    # gallery/shared/tokens.css  (must exist; exhibition.html links it)
+    # gallery/shared/tokens.css — ALL duration literals use calc(N * var(--tempo)) form
+    # so that the motion test's "no rogue literals" scan passes.
+    # --ease and all --d-* tokens are required by exhibition.css; without them transitions
+    # and animations use var() fallbacks or become invalid (transitionDuration collapses to 0s).
+    # --accent: #b3a284 is the "bone" resting value; --tempo base + reduced-motion media query
+    # ensures the motion test can read --tempo even when REDUCED (engine skips setProperty).
     write(FIXTURE / "gallery" / "shared" / "tokens.css",
           "/* SYNTH EXHIBITION — synthetic design tokens for engine fixture testing */\n"
-          ":root{--cross:1.2s;--d-appear:0.4s;--d-vanish:0.3s}\n")
+          ":root{\n"
+          "  /* motion clock */\n"
+          "  --tempo:    1.35;\n"
+          "  --ease:     cubic-bezier(0.3,0,0.2,1);\n"
+          "  /* duration tokens — every literal multiplies var(--tempo) */\n"
+          "  --d-cross:  calc(1.2 * var(--tempo) * 1s);\n"
+          "  --d-appear: calc(0.4 * var(--tempo) * 1s);\n"
+          "  --d-vanish: calc(0.3 * var(--tempo) * 1s);\n"
+          "  --d-rise:   calc(1.4 * var(--tempo) * 1s);\n"
+          "  --d-reveal: calc(0.8 * var(--tempo) * 1s);\n"
+          "  --d-soft:   calc(0.5 * var(--tempo) * 1s);\n"
+          "  --d-ground: calc(1.7 * var(--tempo) * 1s);\n"
+          "  /* accent: #b3a284 bone at rest; exhibition.js overrides on live work */\n"
+          "  --accent:   #b3a284;\n"
+          "  /* palette — synthetic near-black surface */\n"
+          "  --ink:      #f4f1e8;\n"
+          "  --muted:    rgba(244,241,232,0.55);\n"
+          "  --muted-2:  rgba(244,241,232,0.35);\n"
+          "  --body-2:   rgba(244,241,232,0.70);\n"
+          "  --faint:    rgba(244,241,232,0.20);\n"
+          "  --hair:     rgba(244,241,232,0.12);\n"
+          "  /* typography */\n"
+          "  --serif:    Georgia,serif;\n"
+          "  --mono:     'Courier New',Courier,monospace;\n"
+          "}\n"
+          "/* reduced-motion: the CSS clock collapses so --tempo is readable even when\n"
+          "   exhibition.js skips setProperty (engine: if(!REDUCED) setProperty) */\n"
+          "@media(prefers-reduced-motion:reduce){\n"
+          "  :root{ --tempo: 0.05; }\n"
+          "}\n")
 
-    # finalist_series.json  (one 3-work series → variant "lane")
-    # member format: "NNNN_<id>.jpg"  →  id_of() strips prefix+suffix
-    members = [f"{i+1:04d}_{m}.jpg" for i, m in enumerate(SERIES_MEMBERS)]
+    # finalist_series.json — polaroids(8) + lane(3)
+    # member format: "NNNN_<id>.jpg"  (id_of strips prefix + .jpg suffix)
+    pol_members  = [f"{i+1:04d}_{m}.jpg" for i, m in enumerate(SERIES_POLAROIDS)]
+    lane_members = [f"{i+1:04d}_{m}.jpg" for i, m in enumerate(SERIES_LANE)]
     write(FIXTURE / "finalist_series.json",
-          json.dumps({"series": [{"members": members}]}, ensure_ascii=False, indent=2) + "\n")
+          json.dumps({"series": [{"members": pol_members},
+                                  {"members": lane_members}]},
+                     ensure_ascii=False, indent=2) + "\n")
 
-    # data/greetings.json  (must satisfy the greetings() assertions in build.py)
-    greet_doc = {
-        "fallback": "en",
-        "aliases": {},
-        "langs": {
-            "en": {
-                "dir": "ltr",
-                "ask": "what feels closer now",
-                "greet": {
-                    "night":   ["A synthetic quiet night"],
-                    "morning": ["A synthetic morning"],
-                    "day":     ["A synthetic day"],
-                    "evening": ["A synthetic evening"],
-                },
-                "exit":         "exit",
-                "more":         "{n} more",
-                "q_more":       "walk on?",
-                "q_spent":      "onward — a new choice",
-                "share_label":  "copy the link",
-                "share_copied": "link copied",
-                "series":       "series",
-                "room_back":    "← room",
-            }
-        },
-    }
+    # data/greetings.json — 7 languages; satisfies all greetings() assertions in build.py
     write(FIXTURE / "data" / "greetings.json",
-          json.dumps(greet_doc, ensure_ascii=False, indent=2) + "\n")
+          json.dumps(GREETINGS, ensure_ascii=False, indent=2) + "\n")
 
-    # instance-assets/  (favicons — copied to bundle root by copy_exhibition_assets())
+    # instance-assets/ — favicons (copied to bundle root by copy_exhibition_assets())
     fav_svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
         '<rect width="32" height="32" fill="#1a1a2e"/>'
@@ -250,9 +434,12 @@ def make():
     write(FIXTURE / "instance-assets" / "favicon.png", tiny_png)
     write(FIXTURE / "instance-assets" / "apple-touch-icon.png", tiny_png)
 
+    n_pol = len(SERIES_POLAROIDS)
+    n_lane = len(SERIES_LANE)
+    n_door = len(DOOR_ENTRIES)
     print(f"fixture_content/ → {FIXTURE}")
-    print(f"  {len(WORKS)} works  ·  1 series ({len(SERIES_MEMBERS)} members)  "
-          f"·  {len(DOOR_IDS)} door candidates  ·  {len(AXES)} kinship axes")
+    print(f"  {len(WORKS)} works  ·  polaroids({n_pol}) + lane({n_lane}) series  "
+          f"·  {n_door} door candidates  ·  {len(AXES)} kinship axes  ·  7 languages")
 
 
 if __name__ == "__main__":

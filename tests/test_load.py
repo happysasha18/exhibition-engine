@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""The loading breath + crossing re-clocked (EX-LOAD / INV-37 · EX-TIMING / INV-38) — adapted
+for exhibition-engine synthetic fixture. Run: python tests/test_load.py
+"""
+import json
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tests"))
+import engine_build as build_site  # noqa: E402
+from headless import serve, Browser, chrome_available  # noqa: E402
+
+SITE_URL = "https://synth.example.com"
+results = []
+
+
+def check(name, cond, detail=""):
+    results.append((name, "PASS" if cond else "FAIL", detail))
+
+
+def skip(name, detail):
+    results.append((name, "SKIP", detail))
+
+
+TMP = Path(tempfile.mkdtemp(prefix="synth_load_"))
+build_site.OUT = TMP
+build_site.build(SITE_URL)
+
+DATA = json.loads((TMP / "exhibition_data.json").read_text(encoding="utf-8"))
+VER = str(DATA["version"])
+PICK = DATA["door"]["pool"][0]["id"]
+WALK = json.dumps({"v": VER, "pick": PICK, "shown": 10})
+
+# ---- data row: asset-weight budget
+heavy = []
+for w in DATA["works"]:
+    p = TMP / w["img"].lstrip("/")
+    if p.exists() and p.stat().st_size > 1_200_000:
+        heavy.append(f"{w['id']} {p.stat().st_size // 1024}KB")
+check("N10 budget: every baked work derivative ≤ 1.2 MB (the breath is for networks, not bloat)",
+      not heavy, " | ".join(heavy[:5]))
+
+BROWSER_ROWS = [
+    "EX-DOOR-2e the clock is one third (pick→reveal ≈1.8 beats ×tempo, caption right behind)",
+    "EX-LOAD the cold return breathes, then reveals (held image → breath → work fades in)",
+    "EX-LOAD a healthy line never sees it (no tlv:breath mark on a normal crossing)",
+    "EX-LOAD a dead image never traps (breath retires, caption+counter hold, walk alive)",
+    "EX-TIMING marks are laid, export on ask; nothing in the DOM (INV-1)",
+]
+
+BREATH_ON = "(()=>{const b=document.getElementById('ex-breath');return !!b && !b.hidden})()"
+MARKS = ("JSON.stringify(Object.fromEntries(performance.getEntriesByType('mark')"
+         ".filter(m=>m.name.startsWith('tlv:')).map(m=>[m.name.slice(4),m.startTime])))")
+FIRST_IMG = "document.querySelector('.exh-frame img.work')"
+
+if not chrome_available():
+    for r in BROWSER_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+else:
+    HOLD = {}
+    with serve(TMP, hold=HOLD) as base:
+        # 0 · the clock is one third
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            br.clear_storage()
+            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.reload()
+            br.sleep(1.0)
+            br.click(".exd-window:nth-child(1)", settle=0.1)
+            br.sleep(2.4)
+            marks = json.loads(br.evaluate(MARKS) or "{}")
+            have = all(k in marks for k in ("pick", "hang", "reveal", "caption"))
+            delta = (marks.get("reveal", 9e9) - marks.get("pick", 0)) / 1000.0
+            cap_gap = (marks.get("caption", 9e9) - marks.get("reveal", 0)) / 1000.0
+            revealed = br.evaluate(
+                f"+getComputedStyle({FIRST_IMG}).opacity") or 0
+            check(BROWSER_ROWS[0],
+                  have and 0.72 <= delta <= 1.25 and cap_gap < 0.4 and revealed > 0.5,
+                  f"marks={sorted(marks)} pick→reveal={delta:.2f}s "
+                  f"caption+{cap_gap:.2f}s work_opacity={revealed}")
+
+        # 1 · the cold return breathes
+        HOLD.update(match=PICK, delay=2.0)
+        with Browser(width=1280, height=900) as br:
+            br.navigate("about:blank")
+            br.navigate(base + "/")
+            br.evaluate(f"localStorage.setItem('tlv.exhibition', {json.dumps(WALK)})")
+            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.reload()
+            br.sleep(0.8)
+            mid = br.evaluate(
+                "(()=>{const i=" + FIRST_IMG + ";return {breath:" + BREATH_ON + ","
+                "complete:i&&i.complete,text:(document.getElementById('ex-breath')||{}).textContent||''};})()")
+            br.sleep(2.6)
+            after = br.evaluate(
+                "(()=>{const i=" + FIRST_IMG + ";return {breath:" + BREATH_ON + ","
+                "ok:i&&i.complete&&i.naturalWidth>0,op:+getComputedStyle(i).opacity};})()")
+            check(BROWSER_ROWS[1],
+                  mid["breath"] and not mid["complete"] and mid["text"].strip() == ""
+                  and not after["breath"] and after["ok"] and after["op"] > 0.5,
+                  f"mid={mid} after={after}")
+        HOLD.clear()
+
+        # 2 · a healthy line never sees the breath
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            br.clear_storage()
+            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.reload()
+            br.sleep(1.0)
+            br.click(".exd-window:nth-child(1)", settle=0.1)
+            br.sleep(2.4)
+            marks = json.loads(br.evaluate(MARKS) or "{}")
+            revealed = br.evaluate(f"+getComputedStyle({FIRST_IMG}).opacity") or 0
+            check(BROWSER_ROWS[2],
+                  "breath" not in marks and not br.evaluate(BREATH_ON) and revealed > 0.5,
+                  f"marks={sorted(marks)} breath_on={br.evaluate(BREATH_ON)} op={revealed}")
+
+        # 3 · a dead image never traps
+        with Browser(width=1280, height=900) as br:
+            br.block([f"*{PICK}*"])
+            br.navigate(base + "/")
+            br.evaluate(f"localStorage.setItem('tlv.exhibition', {json.dumps(WALK)})")
+            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.reload()
+            br.sleep(1.5)
+            state = br.evaluate(
+                "(()=>{const i=" + FIRST_IMG + ";return {breath:" + BREATH_ON + ","
+                "dead:i&&i.complete&&i.naturalWidth===0,"
+                "cap:(document.getElementById('exh-cap')||{}).textContent||'',"
+                "counter:document.querySelector('.exh-counter.show')!==null,"
+                "alive:1+1===2};})()")
+            check(BROWSER_ROWS[3],
+                  not state["breath"] and state["dead"] and state["cap"].strip() != ""
+                  and state["counter"] and state["alive"],
+                  f"state={state}")
+            br.block([])
+
+        # 4 · the museum keeps time
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/?timings")
+            br.clear_storage()
+            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.reload()
+            br.sleep(1.0)
+            br.click(".exd-window:nth-child(1)", settle=0.1)
+            br.sleep(2.4)
+            marks = json.loads(br.evaluate(MARKS) or "{}")
+            need = {"boot", "data", "door", "pick", "hang", "reveal", "caption"}
+            exported = br.evaluate(
+                "typeof TLVTimings==='function' && TLVTimings().length >= 7")
+            dom_clean = not br.evaluate("document.body.innerText.includes('tlv:')")
+            check(BROWSER_ROWS[4],
+                  need.issubset(marks) and bool(exported) and dom_clean,
+                  f"marks={sorted(marks)} exported={exported} dom_clean={dom_clean}")
+
+shutil.rmtree(TMP, ignore_errors=True)
+
+fails = [r for r in results if r[1] == "FAIL"]
+skips = [r for r in results if r[1] == "SKIP"]
+for name, st, detail in results:
+    print(f"[{st}] {name}" + (f"  — {detail}" if detail and st != "PASS" else ""))
+print(f"\n{len(results)} rows: {len(results)-len(fails)-len(skips)} pass, "
+      f"{len(fails)} fail, {len(skips)} skip")
+sys.exit(1 if fails else 0)

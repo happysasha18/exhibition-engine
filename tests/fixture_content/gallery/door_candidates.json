@@ -2,31 +2,61 @@
   {
     "id": "synth-01",
     "img": "assets/urban/synth-01.png",
-    "luma": 0.195,
-    "warmth": 0.255
+    "luma": 0.15,
+    "warmth": 0.3
   },
   {
     "id": "synth-03",
     "img": "assets/urban/synth-03.png",
-    "luma": 0.782,
-    "warmth": 0.58
+    "luma": 0.17,
+    "warmth": 0.55
   },
   {
     "id": "synth-06",
     "img": "assets/urban/synth-06.png",
-    "luma": 0.789,
-    "warmth": 0.132
+    "luma": 0.2,
+    "warmth": 0.4
   },
   {
     "id": "synth-09",
     "img": "assets/landscape/synth-09.png",
-    "luma": 0.554,
-    "warmth": 0.074
+    "luma": 0.18,
+    "warmth": 0.25
   },
   {
     "id": "synth-11",
     "img": "assets/landscape/synth-11.png",
-    "luma": 0.052,
-    "warmth": 0.697
+    "luma": 0.22,
+    "warmth": 0.35
+  },
+  {
+    "id": "synth-02",
+    "img": "assets/urban/synth-02.png",
+    "luma": 0.85,
+    "warmth": 0.7
+  },
+  {
+    "id": "synth-04",
+    "img": "assets/urban/synth-04.png",
+    "luma": 0.8,
+    "warmth": 0.65
+  },
+  {
+    "id": "synth-05",
+    "img": "assets/urban/synth-05.png",
+    "luma": 0.82,
+    "warmth": 0.75
+  },
+  {
+    "id": "synth-07",
+    "img": "assets/urban/synth-07.png",
+    "luma": 0.88,
+    "warmth": 0.45
+  },
+  {
+    "id": "synth-12",
+    "img": "assets/landscape/synth-12.png",
+    "luma": 0.78,
+    "warmth": 0.6
   }
 ]

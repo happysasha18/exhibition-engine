@@ -223,6 +223,118 @@
         79,
         198
       ]
+    },
+    {
+      "id": "synth-17",
+      "section": "urban",
+      "img": "assets/urban/synth-17.png",
+      "title": "Synthetic Arch",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        198,
+        143,
+        79
+      ],
+      "city": "Berlin",
+      "country": "DE"
+    },
+    {
+      "id": "synth-18",
+      "section": "urban",
+      "img": "assets/urban/synth-18.png",
+      "title": "Synthetic Market",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        79,
+        198,
+        177
+      ],
+      "city": "Paris",
+      "country": "FR"
+    },
+    {
+      "id": "synth-19",
+      "section": "landscape",
+      "img": "assets/landscape/synth-19.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        198,
+        79,
+        186
+      ],
+      "city": "Alps",
+      "country": "CH"
+    },
+    {
+      "id": "synth-20",
+      "section": "landscape",
+      "img": "assets/landscape/synth-20.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        153,
+        198,
+        79
+      ],
+      "city": "Coast",
+      "country": "ES"
+    },
+    {
+      "id": "synth-21",
+      "section": "abstract",
+      "img": "assets/abstract/synth-21.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        79,
+        119,
+        198
+      ]
+    },
+    {
+      "id": "synth-22",
+      "section": "abstract",
+      "img": "assets/abstract/synth-22.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        198,
+        79,
+        85
+      ]
+    },
+    {
+      "id": "synth-23",
+      "section": "abstract",
+      "img": "assets/abstract/synth-23.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        79,
+        198,
+        107
+      ]
+    },
+    {
+      "id": "synth-24",
+      "section": "abstract",
+      "img": "assets/abstract/synth-24.png",
+      "title": "",
+      "w": 64,
+      "h": 64,
+      "dom": [
+        141,
+        79,
+        198
+      ]
     }
   ]
 }
