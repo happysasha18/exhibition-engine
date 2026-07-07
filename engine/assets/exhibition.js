@@ -767,12 +767,18 @@
     const from = scrollY;
     const d = to - from;
     if (Math.abs(d) < 2) return;                       // a sub-2px correction is noise
-    // the card's curve: length grows with distance, capped; scaled by tempo/default, capped ×1.25
-    const dur = Math.min(1400, 560 + Math.abs(d) * 0.5) * Math.min(1.25, TEMPO / 1.35);
+    // v3 (his 09:31 word: «красивую кривую, асимметричный гистерезис»): length grows with
+    // distance, capped; scaled by tempo/default, capped ×1.25 — and a settle that must move
+    // AGAINST the hand's last direction (a back-correction) takes a third longer: the room
+    // never tugs back briskly (the hysteresis half)
+    const dur = Math.min(2400, 950 + Math.abs(d) * 0.75)
+      * Math.min(1.25, TEMPO / 1.35)
+      * (travel && Math.sign(d) !== travel ? 1.3 : 1);
     const t0 = performance.now();
-    // soft both ways (his 2026-07-07 word: «мягче»): the glide breathes in before it moves —
-    // an ease-out alone launches at full speed from stillness and reads as a yank
-    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    // v4 «въезжает вальяжно» (his 09:43 word — the spring's darty middle was the miss): a
+    // STATELY roll-in — sine in-out, the calmest of the classic curves (lowest peak speed,
+    // soft at both ends), over a long clock; the docking itself stays visibly slow
+    const ease = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
     gliding = true;
     const step = (now) => {
       const p = Math.min(1, (now - t0) / dur);
