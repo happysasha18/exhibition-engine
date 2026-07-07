@@ -755,6 +755,7 @@
   // to the nearest frame; ANY new input cancels mid-flight — the museum never wrestles.
   let glideRaf = null;
   let gliding = false;                                 // the glide's own motion never re-arms
+  let glideGoal = null;                                // where the running glide is headed
   let progAt = 0;                                      // …not even its tail event after a cancel
   function glideCancel() {
     if (glideRaf) { cancelAnimationFrame(glideRaf); glideRaf = null; }
@@ -762,6 +763,7 @@
   }
   function glideTo(to) {
     glideCancel();
+    glideGoal = to;
     const from = scrollY;
     const d = to - from;
     if (Math.abs(d) < 2) return;                       // a sub-2px correction is noise
@@ -781,8 +783,32 @@
     };
     glideRaf = requestAnimationFrame(step);
   }
-  ["wheel", "touchstart", "keydown"].forEach((e) =>    // the hand always wins
-    addEventListener(e, glideCancel, { passive: true }));
+  // desktop keys PAGE by frame (his word 2026-07-07 morning: «пробел или кнопки вниз/вверх
+  // должны плавно допрокручивать на следующую картинку») — the paging keys answer with the
+  // same soft glide; every OTHER key stays the hand that wins and cancels
+  const PAGE_KEYS = { "ArrowDown": 1, "PageDown": 1, " ": 1, "ArrowUp": -1, "PageUp": -1 };
+  ["wheel", "touchstart"].forEach((e) =>               // the hand always wins — and takes
+    addEventListener(e, () => { glideCancel(); glideGoal = null; },  // the goal with it
+      { passive: true }));
+  addEventListener("keydown", (e) => {                 // a non-paging key cancels like a hand
+    if (!PAGE_KEYS[e.key]) glideCancel();
+  }, { passive: true });
+  addEventListener("keydown", (e) => {
+    if (!PAGE_KEYS[e.key]) return;
+    if (atDoor || busy || sideOpen) return;            // the walk's faces keep their own keys
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    let dir = PAGE_KEYS[e.key];
+    if (e.key === " " && e.shiftKey) dir = -1;         // shift+space pages back, as everywhere
+    e.preventDefault();                                // the native jump never fights the glide
+    if (e.repeat) return;                              // a held key = one frame per press
+    const vh = innerHeight;
+    const max = document.documentElement.scrollHeight - vh;
+    const base = gliding && glideGoal != null ? glideGoal : scrollY;
+    const k = Math.round(base / vh) + dir;             // chained presses ride the running goal
+    glideTo(Math.min(max, Math.max(0, k * vh)));
+  }, { passive: false });
   // on a touch device the settle CONTINUES the hand's direction — a flick that entered the
   // next frame never gets pulled back (his phone report); a pointer keeps plain-nearest
   const TOUCHY = matchMedia("(hover: none)").matches;
