@@ -44,9 +44,9 @@ two days:
    is never re-inferred (INV-7). A measurement that has no anchor reports null, never zero —
    a mandala score on a picture with no detectable centre is a lie either way (INV-10).
 6. **The vocabulary keeps growing.** Today, three days after the first round, a new axis was
-   born the same way: time-of-day (night/day/zenith/sunset/unclear), proposed per-image by a
-   local vision model, awaiting his correction pass. The journey has a rhythm; a new axis is
-   simply one more verse of the same song.
+   born the same way: time-of-day (night · day · zenith · sunset · **free**), proposed
+   per-image by a local vision model, awaiting his correction pass. The journey has a rhythm; a
+   new axis is simply one more verse of the same song.
 
 ### The productized loop
 
@@ -58,6 +58,40 @@ The engine proposes candidates; only measurable things become axes; the human se
 pictures with the machine's guesses attached and strikes what is wrong in their own words;
 the machine re-learns and tries again on what the human left untouched; the loop stops when
 the striking stops.
+
+### A mark is a SET, and "free" is a value — not a failure
+
+_This is law for every categorical mark the engine proposes (his word, 2026-07-07). It is
+written here because the first instinct — one picture, one label — is wrong, and getting it
+wrong quietly poisons every surface that reads the mark._
+
+A categorical axis is **not one-to-one** with its works. A picture can honestly read as two
+hours at once — a warm daytime sky sliding toward dusk is **day AND sunset** — so a mark is a
+SET, never a single value. The engine proposes the set; the correction page lets the human
+add and strike members freely (checkboxes, not one radio).
+
+Two properties make the set worth the trouble:
+
+- **Overlap is generous, not eager.** A mark is added only when it genuinely reads. A faintly
+  pink sky stays *day*; *sunset* joins only when a low golden sun truly drives the light. The
+  guard against over-tagging is the same everywhere: the dominant reading is always allowed
+  alone; a second mark earns its place, it is not sprinkled on.
+
+- **"Free" is a positive, exclusive value.** When a work is not tied to any category — an
+  abstract, a macro, an interior, a flat even light — it is marked **free**, and free means
+  *unconstrained*, NOT *the model could not tell*. The distinction is the whole point: an
+  unconstrained work can sit anywhere a downstream surface places it without clashing, which
+  is composition room, not missing data. A page must never phrase this state as uncertainty
+  ("unclear", "unknown", "?"); it names it as freedom. Free is worn alone, never beside an hour.
+
+Why the set and the free value matter downstream: they are exactly what lets a plot flow
+without hard seams. A surface that orders works by such a mark (the told story's light plot is
+the first customer) treats an overlapping work as a **hinge** between its two hours — the seam
+disappears — and a free work as a **wildcard** it can drop wherever it needs a breath or a
+turn, at zero cost to the order. A single-label axis cannot do either; it forces every seam to
+be a jump and every abstract work to lie about an hour it does not own. So the rule is a
+product rule, not a data-modelling nicety: **mark the set, honour the freedom, and never let a
+categorical axis pretend a picture belongs to exactly one bucket.**
 
 ### Stage design (the guided journey's stage 3, E5)
 
