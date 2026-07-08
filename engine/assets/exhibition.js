@@ -810,7 +810,9 @@
   stage.addEventListener("click", (ev) => {            // ONE delegated listener, O(1) per frame
     const b = ev.target.closest && ev.target.closest(".ex-share");
     if (!b) return;
-    const link = ROOT_URL + "/#w-" + b.dataset.share;
+    // The copied line carries UTM attribution (EX-SHARE-BTN) so a shared arrival separates
+    // from Direct/bot noise — the utm rides before the hash (GA reads the query, the room reads #w-<id>)
+    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral#w-" + b.dataset.share;
     const S = shareStrings();
     const write = (navigator.clipboard && navigator.clipboard.writeText)
       ? navigator.clipboard.writeText(link)

@@ -134,9 +134,12 @@ else:
                   and len(copied) == 1 and toast is not None and same_place,
                   f"frames={len(frames)} per_frame={per_frame} copied={copied} "
                   f"toast={toast!r} same_place={same_place}")
+            # EX-SHARE-BTN UTM: the copied link carries ?utm_source=share&utm_medium=referral
+            # before the hash so shared arrivals separate from Direct/bot noise in analytics
+            utm_link = f"{SITE_URL}/?utm_source=share&utm_medium=referral#w-{frames[0]}"
             check(BROWSER_ROWS[1],
-                  copied == [f"{SITE_URL}/#w-{frames[0]}"],
-                  f"copied={copied} want={SITE_URL}/#w-{frames[0]} (page had ?x=1)")
+                  copied == [utm_link],
+                  f"copied={copied} want={utm_link} (page had ?x=1)")
 
             # 4 · no share off the frames
             br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
@@ -188,7 +191,7 @@ else:
             br.key("Escape")
             br.sleep(0.4)
             gone = br.evaluate(TOAST) is None
-            link = f"{SITE_URL}/#w-{frames[0]}"
+            link = f"{SITE_URL}/?utm_source=share&utm_medium=referral#w-{frames[0]}"
             check(BROWSER_ROWS[3],
                   link in toast1 and link in toast2 and gone,
                   f"toast1={toast1!r} still={toast2!r} gone_after_esc={gone}")
