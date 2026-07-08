@@ -554,12 +554,17 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     write(OUT / "exhibition_data.json",
           json.dumps(exdata, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 
-    # sitemap: exhibition root + every work page, each once
-    urls = [f"{site_url}/"] + [f"{site_url}/w/{slugs[it['id']]}" for it in items]
+    # sitemap: exhibition root + every work page, each once; each work carries its photograph as an
+    # <image:image> so Google Images can discover all works (INV-53 — the SEO audit's #1 photo-site win)
     sm = ['<?xml version="1.0" encoding="UTF-8"?>',
-          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
-    for u in urls:
-        sm.append(f"  <url><loc>{esc(u)}</loc></url>")
+          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
+          ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+          f"  <url><loc>{esc(site_url)}/</loc></url>"]
+    for it in items:
+        wu = f"{site_url}/w/{slugs[it['id']]}"
+        img = f"{site_url}/gallery/{it['img']}"
+        sm.append(f"  <url><loc>{esc(wu)}</loc>"
+                  f"<image:image><image:loc>{esc(img)}</image:loc></image:image></url>")
     sm.append("</urlset>")
     write(OUT / "sitemap.xml", "\n".join(sm) + "\n")
 

@@ -269,6 +269,21 @@ robots = (TMP / "robots.txt").read_text()
 check("INV-17 robots allows prod + points at sitemap",
       "Allow: /" in robots and "sitemap.xml" in robots.lower())
 
+# INV-53 image sitemap: xmlns:image namespace on <urlset> + one <image:image> per work page
+sm_raw = (TMP / "sitemap.xml").read_text(encoding="utf-8")
+ns_img = "http://www.google.com/schemas/sitemap-image/1.1"
+check("INV-53 sitemap carries xmlns:image namespace",
+      f'xmlns:image="{ns_img}"' in sm_raw,
+      "xmlns:image missing from <urlset>")
+ns_both = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9", "image": ns_img}
+img_locs = [e.text for e in sm.findall(".//image:loc", ns_both)]
+check("INV-53 sitemap has one <image:image> per work page (every work, no duplicates)",
+      len(img_locs) == len(ITEMS) and len(set(img_locs)) == len(img_locs),
+      f"{len(img_locs)} image:loc vs {len(ITEMS)} expected")
+check("INV-53 image:loc URLs point to /gallery/ assets on site root",
+      all(u.startswith(SITE_URL + "/gallery/") for u in img_locs),
+      f"first bad image:loc: {next((u for u in img_locs if not u.startswith(SITE_URL + '/gallery/')), None)!r}")
+
 
 # ---------------------------------------------------------------- INV-18 self-contained + INV-19 + CF + CS-7
 
