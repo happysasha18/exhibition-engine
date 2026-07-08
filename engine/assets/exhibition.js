@@ -344,6 +344,30 @@
     return null;
   }
   function doorSet() { return standingHand() || dealHand(); }
+  function shuffle(a) {                                 // Fisher–Yates, in place
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function refreshHand() {
+    // EX-DOOR-RELOAD (INV-54): the gentle cousin of the cold deal — a RELOAD keeps the door face and
+    // swaps in ≤40% NEW works, so the threshold feels alive on reload yet cannot be reloaded into a
+    // tour of the whole library (dealHand's ≥⅔-new is only a COLD arrival or the exit's fresh quiz).
+    const standing = standingHand();
+    if (!standing) return dealHand();                  // no stored hand → a normal deal
+    const n = standing.length;
+    const swapN = Math.floor(n * 0.4);                 // ≤40% turns over; the rest is held
+    if (swapN < 1 || doorPool.length <= n) return standing;   // too small / no room → hold it whole
+    const idx = shuffle(standing.map((_, i) => i)).slice(0, swapN);
+    const drop = new Set(idx);
+    const kept = standing.filter((_, i) => !drop.has(i));
+    const held = new Set(standing.map((e) => e.id));    // never re-add a work already in the hand
+    const fresh = shuffle(doorPool.filter((e) => !held.has(e.id)));
+    const hand = shuffle(kept.concat(fresh.slice(0, swapN)));
+    try { localStorage.setItem(HAND_KEY, JSON.stringify({ v: VER, ids: hand.map((e) => e.id) })); } catch (e) {}
+    return hand;
+  }
 
   // one line, always (EX-DOOR-2b — card 01's algorithm IS the norm): a row when landscape
   // (W/H > 1.02), a column when portrait; windows shrink first, the count drops second
@@ -652,7 +676,9 @@
     groundRest();
     const sp = doorSet();                              // the SAME curated set — a fresh quiz
     renderDoor(sp, false);                             // is a fresh PICK (EX-DOOR-2d)
-    pushFace({ face: "door", spread: sp.map((e) => e.id) });  // the step carries its spread
+    // `returned:true` marks a door reached BY EXITING a walk (vs a cold arrival) — a reload of THIS
+    // door holds it (INV-54), while a cold door + an injected/returning walk still opens the walk
+    pushFace({ face: "door", spread: sp.map((e) => e.id), returned: true });
     scrollTo(0, 0);
   }
 
@@ -1146,11 +1172,24 @@
   });
 
   // ---- boot -----------------------------------------------------------------
+  // the face the tab last stood on survives a reload in history.state (INV-54): a reload HOLDS it —
+  // the door stays the door, the walk stays the walk; only a PICK ever commits a walk behind the door.
+  // A door is "held" on reload ONLY when it was reached by EXITING a walk (`returned`) — a cold door,
+  // and a cold door with a returning/injected walk, keep the normal paths (greeting / the walk).
+  const prior = (history.state && history.state.tlv) || null;
+  const returnedDoor = !!(prior && prior.face === "door" && prior.returned);
   entered = restore();
   document.body.classList.add("ex-live");              // hide the static index, wake the live face
   const handed = consumeHash();
   if (handed) {
     arriveByHash(handed);                              // the shared work itself is the welcome
+  } else if (returnedDoor && doorAvailable) {
+    // EX-DOOR-RELOAD (INV-54): the visitor walked, EXITED back to the door, then reloaded — HOLD the
+    // door, never drop into the walk saved behind it. The held door refreshes gently: ≥60% kept, ≤40%
+    // new. The `returned` mark rides on so repeated reloads keep holding the door.
+    const sp = refreshHand();
+    renderDoor(sp, false);                             // the exit already spent the greeting
+    replaceFace({ face: "door", spread: sp.map((e) => e.id), returned: true });
   } else if (entered) {
     if (pick) ground(byId[pick] && byId[pick].dom);
     renderHang();                                      // a return visit continues its walk — no door

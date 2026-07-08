@@ -134,6 +134,7 @@ BROWSER_ROWS = [
     "EX-COPY the walk signs off (one quiet © line on the closing screen; door + frames bare)",
     "EX-DOOR-2f the door locks the page (nothing scrolls behind the threshold, cold or re-opened)",
     "EX-DOOR-2g the door hints by behavior (idle cold door: the first halo breathes; interaction retires it; re-opened door never hints)",
+    "EX-DOOR-RELOAD a reload of the returned door holds the door (≥60% kept, ≤40% new; repeated reloads still hold)",
 ]
 
 DOOR_IDS = "Array.from(document.querySelectorAll('.exd-window')).map(b=>b.dataset.id)"
@@ -533,6 +534,39 @@ else:
             "document.querySelector('.exd-window').classList.contains('hint')")
         check(BROWSER_ROWS[23], hinted and retired and not reopened,
               f"mid={mid} after={after} reopened_hints={reopened}")
+
+        # 24 · EX-DOOR-RELOAD: reload of a returned door holds the door
+        # walk → exit (returned:true in history.state) → reload → still at door; ≥60% kept, ≤40% new
+        fresh(br, base)
+        enter(br)                                        # pick, enter the walk
+        br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
+        br.sleep(0.4)
+        first_hand = json.loads(br.evaluate(
+            "localStorage.getItem('tlv.hand')") or "null") or {}
+        first_ids = set(first_hand.get("ids", []))
+        br.click("#ex-return", settle=0.8)               # exit → doorReturn() pushes returned:true
+        state_before = br.evaluate(
+            "(()=>{const s=history.state; return s&&s.tlv?JSON.stringify(s.tlv):null;})()")
+        st_before = json.loads(state_before or "null") or {}
+        returned_marker = st_before.get("returned") is True
+        br.reload(); br.sleep(1.2)                       # reload the returned door
+        after_door = br.evaluate(AT_DOOR)
+        after_frames = br.evaluate(N_FRAMES)
+        after_hand = json.loads(br.evaluate(
+            "localStorage.getItem('tlv.hand')") or "null") or {}
+        after_ids = set(after_hand.get("ids", []))
+        # ≥60% must be kept from the first hand when there is room to swap
+        kept = first_ids & after_ids
+        n_hand = len(after_ids)
+        enough_kept = len(kept) >= int(n_hand * 0.6) if n_hand else True
+        # reload again — must still hold the door, not drop into the walk
+        br.reload(); br.sleep(1.2)
+        still_at_door = br.evaluate(AT_DOOR)
+        check(BROWSER_ROWS[24],
+              returned_marker and after_door and after_frames == 0
+              and enough_kept and still_at_door,
+              f"returned={returned_marker} door={after_door} frames={after_frames} "
+              f"kept={len(kept)}/{n_hand}≥60%={enough_kept} 2nd_reload={still_at_door}")
 
     # 4 · missing pool degrades to the diverse hang
     BROKEN = Path(tempfile.mkdtemp(prefix="synth_door_broken_"))
