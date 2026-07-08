@@ -837,8 +837,8 @@ requiring reconciliation:
 
 | Code | Description |
 |------|-------------|
-| `⟨DELTA-1⟩` | The door wordmark is hardcoded as a literal string in `exhibition.js` rather than injected from `site_name` at bake time. Every other instance-facing string is config-driven; this one is not. Reconcile: bake should substitute the wordmark from `site_config["site_name"]`. |
-| `⟨DELTA-2⟩` | No display-cap on work images. The engine's bake copies images as-is into the bundle; the tlvphoto reference spec (`EX-PROTECT-RES`) capped the long edge of web derivatives at a display size to limit what a grab yields. This cap logic is not yet in `engine/build.py`. |
+| `⟨DELTA-1⟩` | **RESOLVED** — `build.py` writes `site_name` from `site_config` into `config.json`; `exhibition.js` reads `cfg.site_name` via `textContent` (no literal). `test_site.py` asserts both. |
+| `⟨DELTA-2⟩` | **RESOLVED** — `engine/build.py` gains `_stamp`, `_copy_assets_capped`, updated `copy_gallery(display_max, mark_text)`, `build(display_max)`, and `--display-max` CLI arg. Mark text is `site_url`-derived (no instance literal). `test_site.py` asserts INV-56 (pinned skip when Pillow absent). |
 | `⟨DELTA-3⟩` | No `dateCreated` in the work-page JSON-LD `VisualArtwork` record. The engine's generic Work entity has no date field in `gallery_data.json`; an instance may extend the content contract to add one. |
 | `⟨DELTA-4⟩` | The `series_open` analytics beat is implemented in `exhibition.js` but was not part of tlvphoto's spec. It is specified above as an engine-native sixth beat (`EX-PULSE`). |
 | `⟨DELTA-5⟩` | The `sold` flag and its red dot in the caption zone are implemented in `exhibition.js` but the bake does not forward the `sold` field from `gallery_data.json` items into `exhibition_data.json`. The red dot is currently always hidden. Reconcile: add `"sold": bool(it.get("sold"))` to `ex_works` in `build.py`. |

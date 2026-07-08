@@ -373,6 +373,39 @@ check("EX-COPY the year is the bake's own (composed at bake, never hand-written)
       "exhibition_data.copyright missing or drifted from the composed line")
 
 
+# ---------------------------------------------------------------- INV-56 display cap + site-URL watermark (EX-PROTECT-RES)
+# The deploy bakes with --display-max; tests omit it so they stay fast (verbatim copy).
+# When Pillow is available: exercise _copy_assets_capped directly — an over-cap image
+# downscales (LANCZOS) AND the marked bottom-right corner differs from the plain resize.
+# Pinned skip if Pillow absent.
+try:
+    from PIL import Image as _PILImage56
+    _pil56 = True
+except ImportError:
+    _pil56 = False
+if _pil56:
+    import tempfile as _tf56
+    # synthetic 400×300 image — always over the cap so downscale is guaranteed
+    _synth56 = _PILImage56.new("RGB", (400, 300), (200, 180, 160))
+    _ta56 = Path(_tf56.mkdtemp()) / "assets"; _ta56.mkdir(parents=True)
+    _synth56.save(str(_ta56 / "t.jpg"))
+    _tbp56 = Path(_tf56.mkdtemp()) / "plain"
+    _tbm56 = Path(_tf56.mkdtemp()) / "marked"
+    build_site._copy_assets_capped(_ta56, _tbp56, 200)                               # cap only
+    build_site._copy_assets_capped(_ta56, _tbm56, 200, mark_text="example.com")      # cap + mark
+    _pi56 = _PILImage56.open(_tbp56 / "t.jpg")
+    _mi56 = _PILImage56.open(_tbm56 / "t.jpg")
+    _long56 = max(_mi56.size)
+    _w56, _h56 = _mi56.size
+    _cp56 = _pi56.crop((int(_w56 * 0.6), int(_h56 * 0.85), _w56, _h56)).tobytes()
+    _cm56 = _mi56.crop((int(_w56 * 0.6), int(_h56 * 0.85), _w56, _h56)).tobytes()
+    check("INV-56 served image capped to the display long edge + wears the site-URL mark",
+          0 < _long56 <= 200 and _mi56.size == _pi56.size and _cp56 != _cm56,
+          f"long edge={_long56}px · mark-drew-bottom-right={_cp56 != _cm56}")
+else:
+    check("INV-56 served image capped + marked", True, "Pillow absent — pinned skip")
+
+
 # ---------------------------------------------------------------- WP-CLEAN: extensionless references
 
 # every baked REFERENCE is clean /w/<slug>-<idtail>; the files themselves stay .html on disk

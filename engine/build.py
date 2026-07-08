@@ -344,18 +344,69 @@ def render_exhibition(items, captions, slugs, site_url):
 
 # ---------------------------------------------------------------- bundle
 
-def copy_gallery():
+MARK_FONT = "/System/Library/Fonts/Supplemental/Arial.ttf"
+
+
+def _stamp(im, text):
+    """Draw a small tidy mark bottom-right — the site host, bone ~40% over a soft shadow
+    (EX-PROTECT-RES / INV-56). A grabbed image carries the site's name."""
+    from PIL import ImageDraw, ImageFont
+    w, h = im.size
+    draw = ImageDraw.Draw(im, "RGBA")
+    size = max(13, int(w * 0.020))
+    try:
+        font = ImageFont.truetype(MARK_FONT, size)
+    except Exception:
+        font = ImageFont.load_default()
+    box = draw.textbbox((0, 0), text, font=font)
+    tw = box[2] - box[0]
+    pad = int(w * 0.018)
+    x = w - tw - pad
+    y = h - (box[3] - box[1]) - pad - box[1]
+    draw.text((x + 1, y + 1), text, font=font, fill=(0, 0, 0, 80))      # soft shadow
+    draw.text((x, y), text, font=font, fill=(235, 231, 222, 105))       # bone, ~40%
+
+
+def _copy_assets_capped(asrc, adst, cap, mark_text=None):
+    """Copy the gallery images into the bundle, downscaling any whose LONG EDGE exceeds cap
+    (PIL / Pillow, LANCZOS) and, when mark_text is given, stamping a small bottom-right site
+    mark (EX-PROTECT-RES / INV-56). A smaller image is not upscaled; non-images copy verbatim.
+    The repo originals are untouched — only the served copy is capped and marked."""
+    from PIL import Image
+    for p in sorted(asrc.rglob("*")):
+        if p.is_dir():
+            continue
+        out = adst / p.relative_to(asrc)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        if p.suffix.lower() in (".jpg", ".jpeg", ".png"):
+            im = Image.open(p).convert("RGB")
+            if max(im.size) > cap:
+                im.thumbnail((cap, cap), Image.LANCZOS)
+            if mark_text:
+                _stamp(im, mark_text)
+            im.save(out, quality=88)
+        else:
+            shutil.copy2(p, out)
+
+
+def copy_gallery(display_max=None, mark_text=None):
     """Copy the shared images + design tokens into the bundle (self-contained, INV-18). The old
     Room/Door prototypes are RETIRED — the exhibition (EX) is now the single converged front door,
-    so no prototype HTML ships; only the assets and the shared tokens the exhibition renders in."""
+    so no prototype HTML ships; only the assets and the shared tokens the exhibition renders in.
+    display_max: cap the served images' long edge (px) — the deploy passes it, tests bake verbatim
+    (no cap) so they stay fast. Originals untouched; only the bundle copy is capped and marked."""
     dst = OUT / "gallery"
     src = ROOT / "gallery"
     (dst).mkdir(parents=True, exist_ok=True)
     if (src / "gallery_data.json").exists():
         shutil.copy2(src / "gallery_data.json", dst / "gallery_data.json")
-    for sub in ("assets", "shared"):
-        if (src / sub).exists():
-            shutil.copytree(src / sub, dst / sub, dirs_exist_ok=True)
+    if (src / "shared").exists():
+        shutil.copytree(src / "shared", dst / "shared", dirs_exist_ok=True)
+    if (src / "assets").exists():
+        if display_max:
+            _copy_assets_capped(src / "assets", dst / "assets", int(display_max), mark_text=mark_text)
+        else:
+            shutil.copytree(src / "assets", dst / "assets", dirs_exist_ok=True)
 
 
 def copy_exhibition_assets():
@@ -445,10 +496,12 @@ def story_notes_load():
 
 
 def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
-          engine_assets_dir=None, instance_assets_dir=None, site_config=None):
+          engine_assets_dir=None, instance_assets_dir=None, site_config=None,
+          display_max=None):
     """``enable``: flag names switched ON for this bake; every worker flag ships false by
     default, the flip is a deploy argument. Identity comes from site.json — the engine knows
-    no instance."""
+    no instance. ``display_max``: cap the served images' long edge (px) — the deploy passes it,
+    tests omit it so the bake stays fast (EX-PROTECT-RES / INV-56)."""
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
     global COLLECTION_NAME, COPYRIGHT, _ENGINE_ASSETS, _INSTANCE_ASSETS
     GA_ID = ga_id
@@ -669,7 +722,9 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
               json.dumps(i18n_src, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 
     # shared images + design tokens (the exhibition renders in them)
-    copy_gallery()
+    # the served-image mark is the site's own host — only when capping (EX-PROTECT-RES / INV-56)
+    _mark = re.sub(r"^https?://", "", site_url).rstrip("/") if display_max else None
+    copy_gallery(display_max=display_max, mark_text=_mark)
 
     return {"works": len(items), "site_url": site_url, "preview": is_preview}
 
@@ -685,6 +740,8 @@ def main():
                     help="switch a config flag ON for this bake (deploy sets values)")
     ap.add_argument("--instance-assets", default=None,
                     help="favicons dir (fallback when <content>/instance-assets is absent)")
+    ap.add_argument("--display-max", type=int, default=None,
+                    help="cap the served images' long edge in px (EX-PROTECT-RES/INV-56); the deploy passes it, tests omit it")
     args = ap.parse_args()
     content_dir = Path(args.content).resolve()
     out_dir = Path(args.out).resolve()
@@ -697,7 +754,7 @@ def main():
     summary = build(args.site_url.rstrip("/"), ga_id=args.ga_id, enable=args.enable,
                     content_dir=content_dir, out_dir=out_dir,
                     engine_assets_dir=engine_assets, instance_assets_dir=inst,
-                    site_config=site_config)
+                    site_config=site_config, display_max=args.display_max)
     print(f"baked {summary['works']} work pages + exhibition root → {out_dir}")
     print(f"site_url={summary['site_url']}  robots={'DISALLOW (preview)' if summary['preview'] else 'ALLOW (prod)'}")
 
