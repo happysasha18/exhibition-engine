@@ -58,6 +58,14 @@ check("EX-MEMORY edge contract: merge-not-replace, ~500 cap, 2KB guard, shaped t
 check("EX-MEMORY the flagged-off bundle mints nothing server-side",
       not (TMP_OFF / "_worker.js").exists(),
       "worker shipped without any worker flag")
+# ID_RE must accept slug ids (e.g. synth-01) not just digits — /api/story and /api/visitor
+# both validate ids through this regex; the engine's own content uses slug ids exclusively.
+check("EX-MEMORY ID_RE accepts slug ids (synth-01 shape), not digits-only",
+      _worker_exists
+      and bool(re.search(r"\[a-z0-9\]\[a-z0-9_\-\]\{2,60\}", w))   # new slug-capable shape
+      and r"ID_RE = /^\d{5,25}$/" not in w,                          # old numeric-only gone
+      f"worker_exists={_worker_exists}" + (
+          " ID_RE is still digits-only; slug ids like synth-01 will 400" if _worker_exists else ""))
 
 BROWSER_ROWS = [
     "EX-MEMORY token mints once + ONE debounced report of walked frames; reload keeps the token",

@@ -7,7 +7,7 @@ const TAG_RE = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/;
 const RTL = ["ar", "he", "fa", "ur", "yi", "iw", "dv", "ps", "ckb"];
 
 const TOKEN_RE = /^[a-z0-9]{16,40}$/;
-const ID_RE = /^\d{5,25}$/;
+const ID_RE = /^[a-z0-9][a-z0-9_-]{2,60}$/i;
 
 // EX-STORY-EDGE (INV-47, ST3): the PRIVATE per-work story fragments — his own notes among them —
 // are BAKED IN here by N10, never a public static byte. `_worker.js` is the one bundle file
@@ -78,7 +78,7 @@ async function visitor(req, env, url) {
     if (!TOKEN_RE.test(t) || !Array.isArray(p.add)) {
       return new Response("bad request", { status: 400 });
     }
-    const adds = p.add.map(String).filter((x) => /^\d{5,25}$/.test(x)).slice(0, 100);
+    const adds = p.add.map(String).filter((x) => ID_RE.test(x)).slice(0, 100);
     let cur;
     try { cur = JSON.parse((await env.TLV_I18N.get("v:" + t)) || '{"seen":[]}'); }
     catch (e) { cur = { seen: [] }; }
