@@ -289,9 +289,9 @@ function shape() {
       strings: {
         type: "object",
         properties: { ask: s, exit: s, more: s, q_more: s, q_spent: s, share_label: s,
-                      share_copied: s, series: s, room_back: s },
+                      share_copied: s, series: s, room_back: s, enjoy: s },
         required: ["ask", "exit", "more", "q_more", "q_spent", "share_label", "share_copied",
-                   "series", "room_back"],
+                   "series", "room_back", "enjoy"],
         additionalProperties: false,
       },
       greet: {
@@ -319,7 +319,7 @@ function validate(out, src) {
   try {
     const filled = (x) => typeof x === "string" && x.trim().length > 0;
     if (!["ltr", "rtl"].includes(out.dir)) return false;
-    for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied", "series", "room_back"]) {
+    for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied", "series", "room_back", "enjoy"]) {
       if (!filled(out[k])) return false;
     }
     if (!filled(out.more) || out.more.indexOf("{n}") < 0) return false;

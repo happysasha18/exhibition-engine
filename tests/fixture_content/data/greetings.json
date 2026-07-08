@@ -32,7 +32,8 @@
       "share_label": "copy the link",
       "share_copied": "link copied",
       "series": "series",
-      "room_back": "← room"
+      "room_back": "← room",
+      "enjoy": "enjoy"
     },
     "ru": {
       "dir": "ltr",
@@ -62,7 +63,8 @@
       "share_label": "скопировать ссылку",
       "share_copied": "ссылка скопирована",
       "series": "серия",
-      "room_back": "← комната"
+      "room_back": "← комната",
+      "enjoy": "на здоровье"
     },
     "he": {
       "dir": "rtl",
@@ -92,7 +94,8 @@
       "share_label": "העתק קישור",
       "share_copied": "הקישור הועתק",
       "series": "סדרה",
-      "room_back": "← חדר"
+      "room_back": "← חדר",
+      "enjoy": "ליהנות"
     },
     "de": {
       "dir": "ltr",
@@ -122,7 +125,8 @@
       "share_label": "Link kopieren",
       "share_copied": "Link kopiert",
       "series": "Serie",
-      "room_back": "← Raum"
+      "room_back": "← Raum",
+      "enjoy": "bitte sehr"
     },
     "fr": {
       "dir": "ltr",
@@ -152,7 +156,8 @@
       "share_label": "copier le lien",
       "share_copied": "lien copié",
       "series": "série",
-      "room_back": "← salle"
+      "room_back": "← salle",
+      "enjoy": "avec plaisir"
     },
     "es": {
       "dir": "ltr",
@@ -182,7 +187,8 @@
       "share_label": "copiar enlace",
       "share_copied": "enlace copiado",
       "series": "serie",
-      "room_back": "← sala"
+      "room_back": "← sala",
+      "enjoy": "con gusto"
     },
     "uk": {
       "dir": "ltr",
@@ -212,7 +218,8 @@
       "share_label": "скопіювати посилання",
       "share_copied": "посилання скопійовано",
       "series": "серія",
-      "room_back": "← кімната"
+      "room_back": "← кімната",
+      "enjoy": "будь ласка"
     }
   }
 }

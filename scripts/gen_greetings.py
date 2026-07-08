@@ -66,6 +66,10 @@ def validate(cache_path):
         if not (L.get("q_spent") or "").strip():
             return False, f"lang {code}: q_spent is empty"
 
+        # EX-PROTECT (INV-49): the enjoy line must be present in every baked locale
+        if not (L.get("enjoy") or "").strip():
+            return False, f"lang {code}: enjoy is empty"
+
         greet = L.get("greet") or {}
         for part in DAYPARTS:
             strings = greet.get(part)

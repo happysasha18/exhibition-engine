@@ -106,6 +106,11 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   /* a quiet lift, not a black rim — the heavy 90px/.55 shadow read as «ободки из абсолютно
      чёрного» on the tinted ground (his word 2026-07-06 22:08) */
   box-shadow:0 10px 34px rgba(0,0,0,.22); opacity:0;
+  /* EX-PROTECT (INV-49): the soft deter — no text-select drag, no ghost drag-image,
+     no iOS long-press save sheet; a casual grab meets the gracious line, not the raw save */
+  user-select:none; -webkit-user-select:none; -webkit-user-drag:none; -webkit-touch-callout:none;
+  /* no pinch-zoom to magnify/lift the work — pan (scroll) still passes through */
+  touch-action:pan-x pan-y;
   transition:opacity var(--d-reveal) var(--ease); }
 .exh-frame.seen img.work{ opacity:1; }
 

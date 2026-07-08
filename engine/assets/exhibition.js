@@ -848,6 +848,35 @@
          .catch(() => toast(link, true));              // never a silent failure (EX-SHARE-BTN)
   });
 
+  // ---- EX-PROTECT (INV-49): a grabbed work meets a GIFT, not the browser's raw save ----
+  // A right-click / long-press (contextmenu) or a drag on a work is intercepted and answered by
+  // the SAME toast the share line rides — a quiet localized «enjoy» + the site host, arriving on
+  // the house breath (EX-ARRIVE). It is a gracious line, never a scold or an error.
+  // (CSS `user-select:none` / `touch-action:pan-x pan-y` / `-webkit-touch-callout:none` on
+  // img.work handle the soft layer; these listeners handle contextmenu + drag + pinch-zoom.)
+  function enjoyLine() {
+    const T = (greetLang() || { t: {} }).t;
+    const host = ROOT_URL.replace(/^https?:\/\//, "");   // «example.com», appended in code
+    const enjoy = T.enjoy || "enjoy";                     // locale string; English built-in fallback
+    return enjoy + " · " + host;                          // never blank (EX-PROTECT empty/error facet)
+  }
+  function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
+    const img = ev.target.closest && ev.target.closest(".exh-frame img.work");
+    if (!img) return;                                      // only the hung work; chrome is left alone
+    ev.preventDefault();                                   // the raw save / drag ghost never fires
+    toast(enjoyLine());                                    // rides the breath, leaves by itself
+  }
+  stage.addEventListener("contextmenu", onGrab);
+  stage.addEventListener("dragstart", onGrab);
+  // EX-PROTECT: also refuse the pinch-zoom that would let a phone magnify a work to inspect/lift
+  // its detail (Safari fires gesture events; the `touch-action` fence on img.work does the same on
+  // Blink). Silent — a pinch is exploratory, not a save, so no gift line, only no zoom.
+  function onPinch(ev) {
+    if (ev.target.closest && ev.target.closest(".exh-frame img.work")) ev.preventDefault();
+  }
+  stage.addEventListener("gesturestart", onPinch);
+  stage.addEventListener("gesturechange", onPinch);
+
   function frameHTML(id, n) {
     const w = byId[id];
     const S = shareStrings();

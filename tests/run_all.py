@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 SUITES = [
     "site", "exhibition", "door", "vector", "back", "greet",
     "series", "motion", "reset", "load", "share", "glide",
-    "pulse", "hand", "i18n", "lang", "memory",
+    "pulse", "hand", "i18n", "lang", "memory", "protect",
 ]
 
 
