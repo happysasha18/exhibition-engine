@@ -803,7 +803,12 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "strings": {k: en.get(k, "") for k in
                         ("ask", "exit", "more", "q_more", "q_spent",
                          "share_label", "share_copied", "series", "room_back",
-                         "enjoy", "quiz_ask")},  # EX-PROTECT/EX-QUIZ chip labels join the set
+                         # EX-PROTECT / EX-QUIZ visitor-facing chrome joins the localized set so
+                         # every quiz + gift string speaks the guest's tongue for ALL locales
+                         # (the client keeps ENGLISH source-tongue fallbacks); the QUESTION content
+                         # stays instance-supplied, never in this chrome set
+                         "enjoy", "quiz_ask", "quiz_submit", "quiz_wrong",
+                         "gift_ask", "gift_yes", "gift_no", "gift_buy")},
             "greet": en.get("greet") or {},
             # brand + the © signature are EXCLUDED by construction (never translatable)
             "titles": {it["id"]: it["title"].strip()

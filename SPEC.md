@@ -474,15 +474,26 @@ A quiz-bearing work advertises a subtle **«question?» chip** (`quiz_ask`, loca
 **placement** (any of `plaque`, `door`) and its **probability** (0..1, one coin per walk) are
 **config knobs** (`exhibition.quiz`, `INV-28`) — an instance tunes where and how often the question
 appears with no code change; the default is both placements at probability 1. Tapping the chip
-opens a modal card: the prompt, an input, and a response zone. The typed answer POSTs to
-`/api/quiz`; the edge **normalizes both sides** (lower-case, Unicode letters) and compares against
-the private accept-set — **the answer is judged at the edge, never a served byte, never a model
-call**, under the quiz's **own** hourly per-IP attempt fence (`q:<hour>:<ip>`, separate from the
-model rate-limit and day budget). A **miss** shows the next public hint (client-indexed by attempt);
-a network error shows a quiet retry line; **the answer never reaches the DOM**. A **hit** replies
-`{ok:true, prize}`, is remembered per work in `tlv.quiz.<id>`, and opens the **gift ceremony** at
-the prize's better resolution. Off / no accept-set / unknown id ⇒ the route 404s and the walk loses
-nothing. `EX-QUIZ` `EX-QUIZ-EDGE` `EX-QUIZ-PRIZE` `INV-59` `INV-60`
+opens a modal card: the prompt, an input, and a response zone. The card's accent is driven by the
+**focused work's own live tint** (the per-work accent the walk already computes) so it reads with
+the picture in view, never a fixed hue. The typed answer POSTs to `/api/quiz`; the edge
+**normalizes both sides hard** — NFKC-fold, lower-case, then letters only (spaces, hyphens, and
+punctuation dropped) — and compares against the private accept-set. **The answer is judged at the
+edge, never a served byte, never a model call.** The client sends the **raw** typed answer and never
+normalizes, so client↔edge normalization is **parity by construction**. The judge runs under the
+quiz's **own** hourly per-IP attempt fence (`q:<hour>:<ip>`, separate from the model rate-limit and
+day budget); the fence **degrades gracefully when no KV namespace is bound** (a preview or local
+deploy) — it treats the guess as unlimited rather than throwing, so `/api/quiz` still judges with
+zero infra, while production keeps its KV and keeps the fence. A **miss** (or an unreachable edge)
+shows **one** gentle localized line (`quiz_wrong`) and then **closes** (~1s×tempo) — no hint trail,
+no lingering; **the answer never reaches the DOM**. A **hit** replies `{ok:true, prize}`, is
+remembered per work in `tlv.quiz.<id>`, and opens the **gift ceremony** at the prize's better
+resolution. **Reopening the card resets it** to a clean dialog (input, feedback, and any close timer
+cleared). Every visitor-facing quiz + gift chrome string (`quiz_submit`, `quiz_wrong`, and the gift
+ceremony strings below) resolves through the **localized string set** (`EX-I18N`) for every locale,
+with **English source-tongue fallbacks** in the client — no non-English literal ever ships; the
+**question content** itself stays instance-supplied. Off / no accept-set / unknown id ⇒ the route
+404s and the walk loses nothing. `EX-QUIZ` `EX-QUIZ-EDGE` `EX-QUIZ-PRIZE` `INV-59` `INV-60`
 
 ### The loading breath
 
@@ -879,7 +890,7 @@ the worker.
 | `INV-51` | Edge guard: three fences before any model call |
 | `INV-52` | Sound pause holds the offset; resume continues from it |
 | `INV-56` | The shown image is clean; the site-host mark rides only a taken copy (client canvas on grab, baked on the prize, baked when the serve is capped). Mark text is the config host, never a literal |
-| `INV-59` | The quiz answer is judged at the edge against a private accept-set — never a served byte, never a model call; its own per-IP hourly attempt fence, separate from the model rate-limit and day budget |
+| `INV-59` | The quiz answer is judged at the edge against a private accept-set — never a served byte, never a model call; normalization is hard (NFKC-fold, lower-case, letters only) and parity-by-construction (the client sends the raw answer); its own per-IP hourly attempt fence, separate from the model rate-limit and day budget, degrades gracefully to unlimited when no KV is bound so a preview/local deploy still judges |
 | `INV-60` | The quiz flag off is byte-identical to a quiz-less walk; on / no accept-set / unknown id degrades to silence, the walk loses nothing |
 
 ### Deltas from the tlvphoto reference implementation
@@ -896,3 +907,4 @@ requiring reconciliation:
 | `⟨DELTA-5⟩` | The `sold` flag and its red dot in the caption zone are implemented in `exhibition.js` but the bake does not forward the `sold` field from `gallery_data.json` items into `exhibition_data.json`. The red dot is currently always hidden. Reconcile: add `"sold": bool(it.get("sold"))` to `ex_works` in `build.py`. |
 | `⟨DELTA-6⟩` | **RESOLVED** — the quiz (`EX-QUIZ`/`INV-59`/`INV-60`), the gift ceremony (`EX-PROTECT-GIFT`), and the client-side mark-split on take (`EX-PROTECT-RES`/`INV-56`) are ported and generalized: quiz data is an instance-supplied `<content>/quiz.json`, placement + probability are `exhibition.quiz` config knobs, the download filename is a slug of the config `site_name`, and the mark text is the config host — no work id, host, or brand literal in the engine. `test_quiz.py` (11 rows) + updated `test_protect.py` assert them. |
 | `⟨DELTA-7⟩` | **DEFERRED (minor)** — the quiz *prompt* localization (tlvphoto's `quizzes` block in `i18n_source.json` + the worker's `translate` merge) is not ported; the public prompt ships in the base language only. The chip label (`quiz_ask`) IS localized. Low value until an instance needs translated prompts; the mechanism is a small additive follow-on. |
+| `⟨DELTA-8⟩` | **RESOLVED** — the tlvphoto quiz+door fix batch (2026-07-08) generic parts ported: (1) the `/api/quiz` attempt fence degrades gracefully when no KV is bound (`overQuizRate` returns unlimited instead of throwing — preview/local judges); (2) `normAnswer` NFKC-folds + lower-cases + keeps letters only, with the client sending the raw answer (parity by construction); (3) all quiz+gift chrome (`quiz_submit`, `quiz_wrong`, `gift_ask`/`gift_yes`/`gift_no`/`gift_buy`) joins the localized string set (worker `shape`/`validate` + `i18n_source`) with English client fallbacks; (4) a wrong answer shows one localized line then closes (~1s), no hint trail; (5) reopening resets the card; (6) the card's accent is the focused work's live tint. `test_quiz.py` asserts them. The door-variety + load-flash-banner deltas are tlvphoto-surface-specific and were NOT ported (no clean generic equivalent — see report). |

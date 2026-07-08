@@ -158,13 +158,69 @@ check("EX-QUIZ-PRIZE prize is a display-grade gallery derivative in the bundle, 
       prize_in_worker and prize_in_bundle,
       f"prize_in_worker={prize_in_worker} prize_in_bundle={prize_in_bundle} files={[p.name for p in prize_files]}")
 
-# 8 · EX-QUIZ a miss nudges (never scolds); the answer is never in the client JS
-hints_indexed = "hints" in js_src and "quizMissCount" in js_src
-quiet_retry = "one moment" in js_src
+# 8 · EX-QUIZ a miss shows ONE localized line then CLOSES (no hint trail, DELTA-8/4); a reopen
+#      resets the card (DELTA-8/5); the card tints to the focused work (DELTA-8/6); answer never in JS
+miss_closes = ("quiz_wrong" in js_src and "missAndClose" in js_src and "quizCloseT" in js_src)
+no_hint_trail = "quizMissCount" not in js_src and "one moment" not in js_src   # the trail + retry line gone
+reset_on_reopen = "RESET ON REOPEN" in js_src and "clearTimeout(quizCloseT)" in js_src
+card_tint = "IMAGE-TINT ACCENT" in js_src and 'quizCard.style.setProperty("--accent"' in js_src
+client_no_norm = "normAnswer" not in js_src   # the client sends the RAW answer; only the edge normalizes
 accept_in_client = any(s in js_src for s in ACCEPT_UNIQUE)
-check("EX-QUIZ a miss shows the next public hint; network error = quiet retry; answer never in client",
-      hints_indexed and quiet_retry and not accept_in_client,
-      f"hints={hints_indexed} retry={quiet_retry} accept_in_client={accept_in_client}")
+check("EX-QUIZ a miss shows one localized line then closes (no hint trail); reopen resets; card tints to the work; client sends raw; answer never in JS",
+      miss_closes and no_hint_trail and reset_on_reopen and card_tint and client_no_norm and not accept_in_client,
+      f"miss_closes={miss_closes} no_trail={no_hint_trail} reset={reset_on_reopen} tint={card_tint} "
+      f"client_no_norm={client_no_norm} accept_in_client={accept_in_client}")
+
+# 8a · DELTA-8/1 KV-resilient edge judge: the quiz attempt fence degrades gracefully with no KV
+#       bound (preview/local) — treats the guess as unlimited rather than throwing, so /api/quiz
+#       still JUDGES; production keeps the KV binding and keeps the fence.
+_oqr = (re.split(r"\n(?:async )?function ", worker_on.split("async function overQuizRate(", 1)[1])[0]
+        if "async function overQuizRate(" in worker_on else "")
+kv_guard = "!env.TLV_I18N) return false;" in _oqr   # the graceful-degrade guard lives in the fence itself
+check("EX-QUIZ-EDGE (DELTA-8/1) attempt fence degrades gracefully when no KV is bound (preview/local still judges)",
+      kv_guard, f"kv_guard={kv_guard}")
+
+# 8b · DELTA-8/2 hard normalization + parity: the edge NFKC-folds, lower-cases, keeps letters only.
+#       Replicate normAnswer in Python and verify the spaced / no-space / hyphenated / UPPER variants
+#       all collapse to ONE form and land on a baked accept form — parity the client never has to do.
+worker_norm_hard = 'normalize("NFKC")' in worker_on and r"[^\p{L}]" in worker_on
+import unicodedata
+
+
+def _norm(s):   # a faithful Python twin of the worker's normAnswer (NFKC + lower + letters only)
+    return "".join(ch for ch in unicodedata.normalize("NFKC", (s or "").lower()) if ch.isalpha())
+
+
+variants = ["the urban family", "theurbanfamily", "the-urban-family", "THE URBAN FAMILY", "The Urban Family"]
+normed = {_norm(v) for v in variants}
+accept_forms = {_norm(a) for a in ["urban", "the urban family", "city"]}
+parity_ok = worker_norm_hard and len(normed) == 1 and next(iter(normed)) in accept_forms
+check("EX-QUIZ-EDGE (DELTA-8/2) hard NFKC+lower+letters-only normalization; spaced/no-space/hyphen/UPPER all match one accept form",
+      parity_ok, f"norm_hard={worker_norm_hard} normed={normed} in_accept={next(iter(normed)) in accept_forms if normed else None}")
+
+# 8c · DELTA-8/3 localized quiz+gift chrome: every visitor-facing quiz/gift string joins the
+#       localized set (i18n_source + worker shape/validate) with ENGLISH client fallbacks. The
+#       QUESTION content is NOT in the chrome set (it stays instance-supplied).
+CHROME = ["quiz_submit", "quiz_wrong", "gift_ask", "gift_yes", "gift_no", "gift_buy"]
+# ai_i18n ships off by default; the string SET is asserted from a bake with i18n on
+TMP_I18N = Path(tempfile.mkdtemp(prefix="synth_quiz_i18n_"))
+build_site.OUT = TMP_I18N
+build_site.build(SITE_URL, enable=["quiz", "ai_i18n"])
+i18n_src = json.loads((TMP_I18N / "i18n_source.json").read_text())
+src_strings = i18n_src.get("strings", {})
+in_source = all(k in src_strings for k in CHROME)
+# the always-shown chrome carries real English text; gift_buy is the optional buy line (may be empty)
+en_filled = all(str(src_strings.get(k, "")).strip() for k in CHROME if k != "gift_buy")
+in_shape = all(k in worker_on for k in CHROME)
+in_validate = all(k in worker_on for k in ["quiz_submit", "quiz_wrong", "gift_ask", "gift_yes", "gift_no"])
+client_fallbacks = all(f in js_src for f in ['|| "answer"', '|| "not this time"', '|| "like it?"',
+                                             '|| "a gift :)"', '|| "not now"'])
+question_not_chrome = "prompt" not in CHROME  # the QUESTION stays instance-supplied, never chrome
+shutil.rmtree(TMP_I18N, ignore_errors=True)
+check("EX-QUIZ (DELTA-8/3) quiz+gift chrome localizes through the string set (i18n_source + worker shape/validate) with English client fallbacks; question stays instance-supplied",
+      in_source and en_filled and in_shape and in_validate and client_fallbacks and question_not_chrome,
+      f"in_source={in_source} en_filled={en_filled} in_shape={in_shape} in_validate={in_validate} "
+      f"fallbacks={client_fallbacks}")
 
 # 9 · EX-PROTECT-GIFT + EX-PROTECT-RES: the gift ceremony + client-side mark-split on TAKE
 gift_card_js = "ex-gift-card" in js_src and "function openGift(" in js_src
@@ -185,7 +241,7 @@ check("EX-PROTECT-GIFT gift ceremony hands over only on a yes; EX-PROTECT-RES ma
 
 BROWSER_ROWS = [
     "EX-QUIZ browser: the plaque chip renders for a quizzed work; the card opens on the tempo; Esc closes",
-    "EX-QUIZ browser: a wrong answer shows the next hint; a right answer opens the gift ceremony; answer never in DOM",
+    "EX-QUIZ browser: a wrong answer shows one localized line then the card CLOSES; a reopen + right answer opens the gift ceremony; answer never in DOM",
 ]
 
 if not chrome_available():
@@ -250,15 +306,23 @@ else:
             try:
                 if not br.evaluate("!!(document.querySelector('#exh-cap .ex-quiz-chip'))"):
                     raise RuntimeError("chip absent")
+                # a WRONG answer: one localized line, then the card auto-closes (~1000×tempo)
                 br.click('#exh-cap .ex-quiz-chip', settle=0.6)
                 br.evaluate("(()=>{var i=document.querySelector('#ex-quiz-card .quiz-input');"
                             "if(i)i.value='nope';})()")
                 br.evaluate("(()=>{var f=document.querySelector('#ex-quiz-card .quiz-form');"
                             "if(f)f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));})()")
-                br.sleep(0.8)
-                after_miss = br.evaluate("(()=>{var o=document.querySelector('#ex-quiz-card .quiz-out');"
-                                         "var dom=document.body.innerText.indexOf('the urban family')>=0;"
-                                         "return {outText:o?o.textContent.trim():null, acceptInDom:dom};})()")
+                br.sleep(0.6)   # past the fetch + the ~100ms (tempo 0.1) auto-close
+                after_miss = br.evaluate(
+                    "(()=>{var o=document.querySelector('#ex-quiz-card .quiz-out');"
+                    "var c=document.getElementById('ex-quiz-card');"
+                    "var dom=document.body.innerText.indexOf('the urban family')>=0;"
+                    "return {outText:o?o.textContent.trim():null, acceptInDom:dom,"
+                    " closed: !c||c.hidden||!c.classList.contains('show')};})()")
+                # a REOPEN resets the card (cleared feedback), then a RIGHT answer opens the gift
+                br.click('#exh-cap .ex-quiz-chip', settle=0.6)
+                reset_out = br.evaluate("(()=>{var o=document.querySelector('#ex-quiz-card .quiz-out');"
+                                        "return o?o.textContent.trim():null;})()")
                 br.evaluate("(()=>{var i=document.querySelector('#ex-quiz-card .quiz-input');"
                             "if(i)i.value='urban';})()")
                 br.evaluate("(()=>{var f=document.querySelector('#ex-quiz-card .quiz-form');"
@@ -271,13 +335,16 @@ else:
             except Exception:
                 import traceback
                 traceback.print_exc()
-            hint_shown = after_miss is not None and after_miss.get("outText") not in (None, "")
+                reset_out = None
+            miss_line_shown = after_miss is not None and after_miss.get("outText") not in (None, "")
+            miss_closed = after_miss is not None and after_miss.get("closed") is True
             accept_not_in_dom = after_miss is None or not after_miss.get("acceptInDom", False)
+            reset_clean = reset_out in (None, "")   # the reopen cleared the prior feedback (fresh card)
             prize_shown = after_win is not None and after_win.get("shown")
             check(BROWSER_ROWS[1],
-                  hint_shown and accept_not_in_dom and prize_shown,
-                  f"hint={hint_shown} accept_not_in_dom={accept_not_in_dom} prize={prize_shown} "
-                  f"miss={after_miss} win={after_win}")
+                  miss_line_shown and miss_closed and accept_not_in_dom and reset_clean and prize_shown,
+                  f"miss_line={miss_line_shown} miss_closed={miss_closed} accept_not_in_dom={accept_not_in_dom} "
+                  f"reset_clean={reset_clean} prize={prize_shown} miss={after_miss} win={after_win}")
 
 shutil.rmtree(TMP_OFF, ignore_errors=True)
 shutil.rmtree(TMP_ON, ignore_errors=True)

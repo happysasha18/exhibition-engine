@@ -34,7 +34,13 @@
       "series": "series",
       "room_back": "← room",
       "enjoy": "enjoy",
-      "quiz_ask": "question?"
+      "quiz_ask": "question?",
+      "quiz_submit": "answer",
+      "quiz_wrong": "not this time",
+      "gift_ask": "like it?",
+      "gift_yes": "a gift :)",
+      "gift_no": "not now",
+      "gift_buy": ""
     },
     "ru": {
       "dir": "ltr",
@@ -66,7 +72,13 @@
       "series": "серия",
       "room_back": "← комната",
       "enjoy": "на здоровье",
-      "quiz_ask": "вопрос?"
+      "quiz_ask": "вопрос?",
+      "quiz_submit": "ответить",
+      "quiz_wrong": "не в этот раз",
+      "gift_ask": "нравится?",
+      "gift_yes": "подарок :)",
+      "gift_no": "не сейчас",
+      "gift_buy": ""
     },
     "he": {
       "dir": "rtl",
@@ -98,7 +110,13 @@
       "series": "סדרה",
       "room_back": "← חדר",
       "enjoy": "ליהנות",
-      "quiz_ask": "שאלה?"
+      "quiz_ask": "שאלה?",
+      "quiz_submit": "לענות",
+      "quiz_wrong": "לא הפעם",
+      "gift_ask": "אהבת?",
+      "gift_yes": "מתנה :)",
+      "gift_no": "לא עכשיו",
+      "gift_buy": ""
     },
     "de": {
       "dir": "ltr",
@@ -130,7 +148,13 @@
       "series": "Serie",
       "room_back": "← Raum",
       "enjoy": "bitte sehr",
-      "quiz_ask": "Frage?"
+      "quiz_ask": "Frage?",
+      "quiz_submit": "antworten",
+      "quiz_wrong": "diesmal nicht",
+      "gift_ask": "gefällt es?",
+      "gift_yes": "ein Geschenk :)",
+      "gift_no": "nicht jetzt",
+      "gift_buy": ""
     },
     "fr": {
       "dir": "ltr",
@@ -162,7 +186,13 @@
       "series": "série",
       "room_back": "← salle",
       "enjoy": "avec plaisir",
-      "quiz_ask": "question ?"
+      "quiz_ask": "question ?",
+      "quiz_submit": "répondre",
+      "quiz_wrong": "pas cette fois",
+      "gift_ask": "ça vous plaît ?",
+      "gift_yes": "un cadeau :)",
+      "gift_no": "pas maintenant",
+      "gift_buy": ""
     },
     "es": {
       "dir": "ltr",
@@ -194,7 +224,13 @@
       "series": "serie",
       "room_back": "← sala",
       "enjoy": "con gusto",
-      "quiz_ask": "¿pregunta?"
+      "quiz_ask": "¿pregunta?",
+      "quiz_submit": "responder",
+      "quiz_wrong": "esta vez no",
+      "gift_ask": "¿te gusta?",
+      "gift_yes": "un regalo :)",
+      "gift_no": "ahora no",
+      "gift_buy": ""
     },
     "uk": {
       "dir": "ltr",
@@ -226,7 +262,13 @@
       "series": "серія",
       "room_back": "← кімната",
       "enjoy": "будь ласка",
-      "quiz_ask": "питання?"
+      "quiz_ask": "питання?",
+      "quiz_submit": "відповісти",
+      "quiz_wrong": "не цього разу",
+      "gift_ask": "подобається?",
+      "gift_yes": "подарунок :)",
+      "gift_no": "не зараз",
+      "gift_buy": ""
     }
   }
 }

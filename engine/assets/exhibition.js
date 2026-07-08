@@ -1003,8 +1003,10 @@
   // opens a modal card: the public prompt, an input, and the response zone. The typed answer is
   // POSTed to /api/quiz — the answer is judged at the EDGE against a private accept-set, NEVER a
   // served byte (INV-59). A hit closes the card and OPENS THE GIFT CEREMONY at the prize's better
-  // resolution (the prize already wears its baked mark). A miss shows the next graded hint. A won
-  // quiz is remembered per work so a return goes straight to the reward.
+  // resolution (the prize already wears its baked mark). A miss shows ONE gentle localized line
+  // (quiz_wrong) and then closes (~1s) — no hint trail. A won quiz is remembered per work so a
+  // return goes straight to the reward. Every chrome string localizes through EX-I18N with an
+  // ENGLISH source-tongue fallback; a reopen resets the card to a clean, fresh dialog.
   function quizLabel() {
     const T = (greetLang() || { t: {} }).t;
     return T.quiz_ask || "question?";
@@ -1032,21 +1034,35 @@
 
   let quizOpen = false;
   let quizWorkId = null;
-  let quizMissCount = 0;
+  let quizCloseT = null;      // the wrong-answer auto-close timer (a miss lingers ~1s, then closes)
 
   function quizCardOpen(id) {
     const w = byId[id];
     if (!w || !w.quiz) return;
     quizWorkId = id;
-    quizMissCount = 0;
+
+    // RESET ON REOPEN: every open starts clean — no memory of a prior attempt (empty input, cleared
+    // feedback, the wrong-line cleared, the close timer cancelled) so a reopen is fresh each time.
+    clearTimeout(quizCloseT); quizCloseT = null;
+    const inp0 = quizCard.querySelector(".quiz-input");
+    inp0.value = "";
+    const out = quizCard.querySelector(".quiz-out");
+    out.className = "quiz-out"; out.innerHTML = "";
+
+    // IMAGE-TINT ACCENT: the card's accent is THIS work's own live tone, so the button + focus ring
+    // tint to the picture in view rather than resting on a fixed hue (the same per-work accent the
+    // walk computes). A door-opened card (no document-level ground) still tints correctly.
+    try {
+      const a = liveAccent(w.dom);
+      quizCard.style.setProperty("--accent", `rgb(${a.join(",")})`);
+      quizCard.style.setProperty("--accent-2", `rgb(${a.map((v) => Math.round(v * 0.86)).join(",")})`);
+    } catch (e) {}
+
     let solved = null;
     try { solved = localStorage.getItem(QUIZ_LS(id)); } catch (e) {}
     quizCard.querySelector(".quiz-prompt").textContent = w.quiz.prompt || "";
     const T = (greetLang() || { t: {} }).t;
     quizCard.querySelector(".quiz-submit").textContent = T.quiz_submit || "answer";
-    quizCard.querySelector(".quiz-input").value = "";
-    const out = quizCard.querySelector(".quiz-out");
-    out.className = "quiz-out"; out.innerHTML = "";
     if (solved) {
       // already earned — straight to the gift ceremony, no need to re-ask the question
       let prize = null;
@@ -1062,6 +1078,7 @@
 
   function quizCardClose() {
     if (!quizOpen) return;
+    clearTimeout(quizCloseT); quizCloseT = null;
     quizCard.classList.remove("show");
     setTimeout(() => { quizCard.hidden = true; }, Math.round(350 * TEMPO));
     quizOpen = false;
@@ -1078,31 +1095,32 @@
     if (!raw) return;
     const out = quizCard.querySelector(".quiz-out");
     out.className = "quiz-out"; out.innerHTML = "";
+
+    // a wrong answer (or an unreachable edge) → ONE gentle localized line, then CLOSE (no hint trail,
+    // no lingering). The answer never reaches the DOM. English source-tongue fallback, never a literal.
+    const missAndClose = () => {
+      const T = (greetLang() || { t: {} }).t;
+      out.className = "quiz-out quiz-miss";
+      out.textContent = T.quiz_wrong || "not this time";
+      inp.value = "";
+      clearTimeout(quizCloseT);
+      quizCloseT = setTimeout(() => quizCardClose(), Math.round(1000 * TEMPO));
+    };
+
     fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: String(id), answer: raw }),
-    }).then((r) => r.json()).then((data) => {
+    }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
       if (data && data.ok) {
         // a right answer — remember it, close the quiz, let the BETTER-res reward emerge solemnly
         try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ prize: data.prize })); } catch (e) {}
         quizCardClose();
         openGift("/" + data.prize, PRIZE_DL, true);       // the prize already wears its mark
       } else {
-        // a miss — show the next hint (client-indexed by attempt count)
-        quizMissCount += 1;
-        const hints = (w.quiz && w.quiz.hints) || [];
-        const hint = hints[Math.min(quizMissCount - 1, hints.length - 1)] || "";
-        out.className = "quiz-out quiz-miss";
-        out.textContent = hint || "try again";
-        inp.value = "";
-        try { inp.focus(); } catch (e) {}
+        missAndClose();                    // a miss (or a non-OK edge) reads the same: gentle line, close
       }
-    }).catch((e) => {
-      // network error (429 / 503 / fetch fail) → a quiet retryable line, the answer never in the DOM
-      out.className = "quiz-out quiz-retry";
-      out.textContent = "one moment";
-    });
+    }).catch(() => { missAndClose(); });    // a fetch failure closes the same way — never a nonsense line
   }
 
   quizCard.querySelector(".quiz-form").addEventListener("submit", (ev) => {

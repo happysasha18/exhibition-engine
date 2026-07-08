@@ -312,6 +312,10 @@ function json(body) {
 // This is the ONLY rate-limit counter a guess ever touches. The model-path rate-limit ("rl:")
 // and the day model-call budget are never incremented here — a guess costs nothing (no model call).
 async function overQuizRate(env, req) {
+  // No KV bound (e.g. a preview environment with no namespace) ⇒ skip the flood fence rather than
+  // throw. A guess is a deterministic compare with no cost, so an unlimited fence loses nothing; this
+  // lets /api/quiz JUDGE with zero infra setup. Production keeps TLV_I18N and keeps the fence.
+  if (!env || !env.TLV_I18N) return false;
   const win = Math.floor(Date.now() / 3600000);        // hourly bucket
   const k = "q:" + win + ":" + clientIp(req);
   const n = parseInt((await env.TLV_I18N.get(k)) || "0", 10) + 1;
@@ -319,13 +323,14 @@ async function overQuizRate(env, req) {
   return n > QUIZ_TRIES_PER_HOUR;
 }
 
-// EX-QUIZ-EDGE (INV-59): normalize at the edge — lower-case, Unicode letters only, so that
-// spacing, punctuation, and case never decide a verdict (e.g. "New York", "new-york", and
-// "newyork" all land on one normalized form). This is the ONE normalizer the accept-set was baked
-// against; the client never normalizes (it sends the raw typed answer). Works across Latin and
-// Cyrillic and other scripts (the \p{L} Unicode property covers them all).
+// EX-QUIZ-EDGE (INV-59): normalize at the edge — HARD canonicalization so spacing, punctuation,
+// hyphens, and case never decide a verdict. NFKC-fold, lower-case, then keep letters only — so
+// "New York", "new-york", "newyork", and "NEW YORK" all collapse to one normalized form (and the
+// same across Cyrillic and other scripts, the \p{L} property covers them all). This is the ONE
+// normalizer the accept-set was baked against; the client never normalizes (it sends the raw typed
+// answer), so JS↔worker parity holds by construction.
 function normAnswer(s) {
-  return (s || "").toLowerCase().replace(/[^\p{L}]/gu, "");
+  return (s || "").normalize("NFKC").toLowerCase().replace(/[^\p{L}]/gu, "");
 }
 
 // EX-QUIZ-EDGE (INV-59): POST {id, answer} → bare win/miss verdict (no model, no budget touch).
@@ -411,9 +416,11 @@ function shape() {
       strings: {
         type: "object",
         properties: { ask: s, exit: s, more: s, q_more: s, q_spent: s, share_label: s,
-                      share_copied: s, series: s, room_back: s, enjoy: s, quiz_ask: s },
+                      share_copied: s, series: s, room_back: s, enjoy: s, quiz_ask: s,
+                      quiz_submit: s, quiz_wrong: s, gift_ask: s, gift_yes: s, gift_no: s, gift_buy: s },
         required: ["ask", "exit", "more", "q_more", "q_spent", "share_label", "share_copied",
-                   "series", "room_back", "enjoy", "quiz_ask"],
+                   "series", "room_back", "enjoy", "quiz_ask",
+                   "quiz_submit", "quiz_wrong", "gift_ask", "gift_yes", "gift_no", "gift_buy"],
         additionalProperties: false,
       },
       greet: {
@@ -441,7 +448,11 @@ function validate(out, src) {
   try {
     const filled = (x) => typeof x === "string" && x.trim().length > 0;
     if (!["ltr", "rtl"].includes(out.dir)) return false;
-    for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied", "series", "room_back", "enjoy", "quiz_ask"]) {
+    // the always-shown chrome must be filled; gift_buy is the OPTIONAL buy line (empty by default),
+    // so it is translatable (in the shape) but never required non-empty (a gallery may not sell)
+    for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied", "series",
+                     "room_back", "enjoy", "quiz_ask",
+                     "quiz_submit", "quiz_wrong", "gift_ask", "gift_yes", "gift_no"]) {
       if (!filled(out[k])) return false;
     }
     if (!filled(out.more) || out.more.indexOf("{n}") < 0) return false;
