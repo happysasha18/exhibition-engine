@@ -312,3 +312,88 @@ body.ex-door #ex-sound{ right:70px; }
   .exh-capzone .told{ max-width:100%; }
   .ex-share{ right:16px; bottom:16px; }             /* clear of the caption band's corner */
 }
+
+/* ================= EX-QUIZ (INV-59/60) + the gift ceremony ================= */
+/* The quiz chip: a subtle plaque chip on works that carry a question (EX-QUIZ).
+   EX-ARRIVE: born at opacity:0, breathes in via animation (exs-fade, the series pill's curve). */
+.ex-quiz-chip{ pointer-events:auto; margin-top:10px; font-family:var(--mono); font-size:10px;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--accent); background:rgba(8,8,7,.5);
+  border:1px solid color-mix(in srgb, var(--accent) 42%, transparent); border-radius:999px;
+  padding:7px 13px; cursor:pointer;
+  opacity:0; animation:exs-fade var(--d-soft) var(--ease) forwards;
+  transition:color calc(.3s*var(--tempo)), border-color calc(.3s*var(--tempo)); }
+.ex-quiz-chip:hover,.ex-quiz-chip:focus-visible{ background:var(--accent); color:#0c0b0a; }
+@media (prefers-reduced-motion:reduce){ .ex-quiz-chip{ animation:none; opacity:1; } }
+
+/* The quiz card modal: one at a time, modal, rides var(--d-soft) in/out — no hardcoded durations.
+   EX-ARRIVE: opacity:0 base; .show added via rAF on open; removed before hide on close. */
+#ex-quiz-card{ position:fixed; inset:0; z-index:150; display:flex; align-items:center;
+  justify-content:center; padding:24px 16px;
+  background:rgba(5,5,4,.85); backdrop-filter:blur(8px);
+  opacity:0; transition:opacity var(--d-soft) var(--ease); }
+#ex-quiz-card.show{ opacity:1; }
+#ex-quiz-card[hidden]{ display:none; }
+@media (prefers-reduced-motion:reduce){ #ex-quiz-card{ transition:none; } }
+
+.quiz-inner{ max-width:560px; width:100%; text-align:center;
+  background:rgba(14,13,11,.97); border:1px solid var(--hair); border-radius:14px;
+  padding:clamp(22px,4vw,38px); box-shadow:0 20px 60px rgba(0,0,0,.5); }
+.quiz-prompt{ font-family:var(--serif); font-weight:300; font-size:clamp(17px,2vw,22px);
+  color:var(--ink); margin-bottom:18px; line-height:1.3; }
+.quiz-form{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:14px; }
+.quiz-input{ background:rgba(20,18,15,.9); color:var(--ink);
+  border:1px solid rgba(255,255,255,.14); border-radius:8px;
+  padding:10px 14px; font:16px inherit; width:220px; text-align:center; outline:none;
+  transition:border-color calc(.3s*var(--tempo)) var(--ease); }
+.quiz-input:focus{ border-color:var(--accent); }
+.quiz-submit{ background:var(--accent); color:#161310; border:none; border-radius:8px;
+  padding:10px 18px; font:600 13px inherit; cursor:pointer; letter-spacing:.06em;
+  transition:background calc(.3s*var(--tempo)) var(--ease); }
+.quiz-submit:hover,.quiz-submit:focus-visible{ background:var(--accent-2, var(--accent)); }
+/* the response zone — hint on miss, prize on win; both arrive on the house tempo */
+.quiz-out{ min-height:60px; margin-top:10px; font-size:13.5px; line-height:1.55; }
+.quiz-miss{ color:var(--accent); }
+.quiz-retry{ color:var(--muted-2); }
+.quiz-win{ color:var(--ink); }
+.quiz-prize-img{ width:100%; max-width:400px; border-radius:8px;
+  box-shadow:0 10px 34px rgba(0,0,0,.22); display:block; margin:0 auto 14px; }
+.quiz-prize-line{ margin-bottom:10px; color:var(--ink); font-size:14px; }
+.quiz-dl{ display:inline-block; margin-top:8px; color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);
+  border-radius:999px; padding:9px 18px; text-decoration:none; font-family:var(--mono);
+  font-size:11px; letter-spacing:.12em;
+  transition:background calc(.3s*var(--tempo)), color calc(.3s*var(--tempo)); }
+.quiz-dl:hover,.quiz-dl:focus-visible{ background:var(--accent); color:#0c0b0a; }
+
+/* The gift ceremony — «like it? · a gift :)» EMERGES SOLEMNLY: a slow dim, the image rising and
+   settling on the reveal clock, the print never leaving. Two episodes share it — the plain gift
+   (grab → the shown image, marked client-side) and the quiz reward (win → the baked prize). */
+#ex-gift-card{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+  padding:24px; background:rgba(8,8,7,0); transition:background var(--d-ground); }
+#ex-gift-card.show{ background:rgba(8,8,7,.88); }
+#ex-gift-card[hidden]{ display:none; }
+#ex-gift-card .gift-inner{ max-width:min(88vw,560px); text-align:center; opacity:0;
+  transform:translateY(34px) scale(.94);
+  transition:opacity var(--d-reveal), transform var(--d-reveal);
+  transition-timing-function:cubic-bezier(.2,.7,.15,1); }
+#ex-gift-card.show .gift-inner{ opacity:1; transform:none; }
+#ex-gift-card .gift-thumb{ width:100%; max-height:58vh; object-fit:contain; border-radius:8px;
+  box-shadow:0 30px 100px rgba(0,0,0,.6); }
+#ex-gift-card .gift-ask{ margin:24px 0 2px; font-size:20px; font-weight:300; letter-spacing:.02em; color:var(--ink); }
+#ex-gift-card .gift-act{ display:flex; gap:12px; justify-content:center; margin-top:18px; }
+#ex-gift-card .gift-yes{ background:var(--accent); color:#161310; border:none; border-radius:999px;
+  padding:12px 28px; font:600 15px var(--sans,inherit); cursor:pointer; min-height:44px; }
+#ex-gift-card .gift-no{ background:none; color:var(--muted-2); border:none; padding:12px 16px;
+  font:14px var(--sans,inherit); cursor:pointer; min-height:44px; }
+#ex-gift-card .gift-line{ margin-top:16px; font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--muted-2); }
+#ex-gift-card .gift-buy{ margin-top:9px; font-size:11.5px; color:var(--muted); letter-spacing:.01em; }
+@media (prefers-reduced-motion:reduce){
+  #ex-gift-card{ transition:none; }
+  #ex-gift-card .gift-inner{ transition:none; }
+}
+
+/* the «question?» chip on a door tile whose work carries a quiz (opens the quiz, never enters the walk) */
+.exd-quiz{ position:absolute; bottom:8px; right:8px; z-index:3; font-family:var(--mono);
+  font-size:9.5px; letter-spacing:.12em; color:var(--ink); background:rgba(8,8,7,.62);
+  border:1px solid var(--hair); border-radius:999px; padding:4px 10px; cursor:pointer; backdrop-filter:blur(3px); }
+.exd-quiz:hover,.exd-quiz:focus-visible{ border-color:var(--accent); color:var(--accent); }

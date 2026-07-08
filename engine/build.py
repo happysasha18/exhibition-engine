@@ -40,6 +40,7 @@ DEFAULT_FLAGS = {
     "ai_story": False,        # the told story — runtime Haiku narrator (EX-STORY); ships false     (INV-19)
     "visitor_memory": False,  # the coat-check token + seen-list edge (EX-MEMORY); flipped at deploy
     "caption_visible": False, # the machine caption stays in meta/alt/JSON-LD, never visible        (RESOLVED 2026-07-05)
+    "quiz": False,            # per-work question + signed wallpaper gift (EX-QUIZ / INV-59); ships false (INV-19)
 }
 
 
@@ -495,6 +496,64 @@ def story_notes_load():
     return {str(k): str(v).strip() for k, v in notes.items() if str(v).strip()}
 
 
+def quiz_load():
+    """EX-QUIZ (INV-59/60): the per-work quiz data, an OPTIONAL, INSTANCE-OWNED file. The engine
+    hardcodes no work id and no answer — an instance supplies `<content>/quiz.json`:
+
+        {"quizzes": {"<workid>": {"prompt": "…", "hints": ["…"],
+                                  "accept": ["…"], "prize": "gallery/<file>"}}}
+
+    Returns {id: entry}. The PUBLIC half (prompt + hints) rides the walk's baked data; the PRIVATE
+    half (accept-set + prize path) is baked only INTO _worker.js and only when the quiz ships — so an
+    answer never becomes a public byte. Absent/malformed → {}: quiz on but no data ⇒ the walk is
+    byte-identical (no quiz key on any work, QUIZ_ANSWERS stays {} and the route 404s, INV-60)."""
+    src = ROOT / "quiz.json"
+    try:
+        raw = json.loads(src.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    quizzes = raw.get("quizzes", raw) if isinstance(raw, dict) else {}
+    out = {}
+    for wid, q in quizzes.items():
+        if not isinstance(q, dict):
+            continue
+        out[str(wid)] = q
+    return out
+
+
+def _bake_quiz_prizes(quiz_private, site_url):
+    """EX-QUIZ-PRIZE (EX-PROTECT-RES / INV-56): bake the prize wallpaper derivative for each quiz
+    work — a display-grade copy of the work with the site host stamped bottom-right (the same mark
+    the grab-download and the served cap use). The print master NEVER enters the bundle; only the
+    baked derivative ships (INV-18). Source is the already-baked gallery derivative (the web-size
+    copy) when present, else the repo original. Pillow absent → verbatim copy (still a derivative).
+    mark_text is the site host, exactly like the served-image cap (site-driven, never a literal)."""
+    gallery_data = json.loads((ROOT / "gallery" / "gallery_data.json").read_text(encoding="utf-8"))
+    items_by_id = {str(it["id"]): it for it in gallery_data["items"]}
+    mark_text = re.sub(r"^https?://", "", site_url).rstrip("/")
+    for work_id, priv in sorted(quiz_private.items()):
+        prize_path = priv.get("prize", "")
+        if not str(prize_path).startswith("gallery/"):
+            continue
+        item = items_by_id.get(str(work_id))
+        if not item:
+            continue
+        src_img = OUT / "gallery" / item["img"]
+        if not src_img.exists():
+            src_img = ROOT / "gallery" / item["img"]
+        if not src_img.exists():
+            continue
+        dst = OUT / prize_path
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            from PIL import Image
+            im = Image.open(src_img).convert("RGB")
+            _stamp(im, mark_text)
+            im.save(dst, quality=88)
+        except Exception:
+            shutil.copy2(src_img, dst)
+
+
 def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
           engine_assets_dir=None, instance_assets_dir=None, site_config=None,
           display_max=None):
@@ -560,6 +619,13 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # light-lean a no-op and the arc unchanged (the byte-identical guard, ST1). Data, never rendered.
     tod_marks = tod_marks_load()
     tod_of = lambda wid: (tod_marks.get(str(wid), {}) or {}).get("marks") or ["free"]
+    # EX-QUIZ (INV-59/60): the instance's per-work quiz data (optional). Split here: the PUBLIC
+    # prompt+hints ride the walk (below), the PRIVATE accept-set+prize go only into _worker.js.
+    quiz_all = quiz_load()
+    quiz_public = {wid: {"prompt": q.get("prompt", ""), "hints": list(q.get("hints", []))}
+                   for wid, q in quiz_all.items() if q.get("prompt")}
+    quiz_private = {wid: {"accept": list(q.get("accept", [])), "prize": q.get("prize", "")}
+                    for wid, q in quiz_all.items() if q.get("accept") and q.get("prize")}
     ex_works = [{
         "id": it["id"],
         "img": f"/gallery/{it['img']}",
@@ -573,6 +639,13 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         "place": place_of(it),
         "tod": tod_of(it["id"]),             # the light marks (EX-STORY-ORDER) — data, never rendered
     } for it in items]
+    # EX-QUIZ (INV-60): the public quiz data joins only when the quiz flag is on; flag off → no quiz
+    # key on any work, the walk is byte-identical to a quiz-less walk. PUBLIC prompt + hints only.
+    if flags["quiz"]:
+        for w in ex_works:
+            q = quiz_public.get(str(w["id"]))
+            if q:
+                w["quiz"] = q                # no accept-set, no prize path — those stay private
     # (per-work series mark joins after the series block computes below)
     # EX-SERIES (INV-46): real series only (3+), the variant from the series' own size,
     # NEVER the machine's theme label (INV-1) — the guest reads only «серия · N»
@@ -662,6 +735,16 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "title": "",           # track/album title (shown in «»)
             "url": "",             # artist website (shown as a link)
         },
+        # EX-QUIZ (INV-59/60): the quiz's PLACEMENT + PROBABILITY — an instance tunes where a
+        # quiz-bearing work advertises its question and how often, with NO code change (INV-28).
+        # placement: which surfaces carry the «question?» chip — any of "plaque" | "door".
+        # probability: the per-walk chance (0..1) a quiz chip appears at all; 1.0 = always (the
+        # default, matching a plain quiz), lower = the question is a rarer easter-egg. The client
+        # flips one coin per walk against this — off ⇒ no chip renders, the walk loses nothing.
+        "quiz": {
+            "placement": ["plaque", "door"],
+            "probability": 1.0,
+        },
     }
     config["site_name"] = SITE_NAME        # the instance's brand — read by exhibition.js for the door wordmark (INV-28)
     config["site_url"] = site_url
@@ -695,7 +778,11 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # The worker reads /i18n_source.json from its own deployment (deterministic, sorted — prover I4);
     # the story fragments are baked INTO the worker file; _routes.json keeps every static byte pure
     # CDN (only /api/* invokes it).
-    if flags["ai_i18n"] or flags["visitor_memory"] or flags["ai_story"]:
+    # EX-QUIZ-EDGE (INV-59): the PRIVATE accept-sets + prize paths bake into the non-served worker,
+    # never a public byte. Only when the quiz ships; flag off ⇒ QUIZ_ANSWERS stays {} and the route
+    # 404s (INV-60). Keyed by string work id, sorted so the bake stays reviewable.
+    quiz_answers = quiz_private if flags["quiz"] else {}
+    if flags["ai_i18n"] or flags["visitor_memory"] or flags["ai_story"] or flags["quiz"]:
         worker_src = (_ENGINE_ASSETS / "worker.js").read_text(encoding="utf-8")
         worker_src = worker_src.replace(
             '/*__STORY_FRAGMENTS__*/{}/*__/STORY_FRAGMENTS__*/',
@@ -703,6 +790,9 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         worker_src = worker_src.replace(
             '/*__STORY_PV__*/"0"/*__/STORY_PV__*/',
             json.dumps(str(config["exhibition"]["story"]["params_version"])))
+        worker_src = worker_src.replace(
+            '/*__QUIZ_ANSWERS__*/{}/*__/QUIZ_ANSWERS__*/',
+            json.dumps(quiz_answers, ensure_ascii=False, sort_keys=True))
         write(OUT / "_worker.js", worker_src)
         write(OUT / "_routes.json",
               json.dumps({"version": 1, "include": ["/api/*"], "exclude": []}) + "\n")
@@ -712,7 +802,8 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "version": ex_version,
             "strings": {k: en.get(k, "") for k in
                         ("ask", "exit", "more", "q_more", "q_spent",
-                         "share_label", "share_copied", "series", "room_back")},
+                         "share_label", "share_copied", "series", "room_back",
+                         "enjoy", "quiz_ask")},  # EX-PROTECT/EX-QUIZ chip labels join the set
             "greet": en.get("greet") or {},
             # brand + the © signature are EXCLUDED by construction (never translatable)
             "titles": {it["id"]: it["title"].strip()
@@ -725,6 +816,11 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # the served-image mark is the site's own host — only when capping (EX-PROTECT-RES / INV-56)
     _mark = re.sub(r"^https?://", "", site_url).rstrip("/") if display_max else None
     copy_gallery(display_max=display_max, mark_text=_mark)
+
+    # EX-QUIZ-PRIZE (EX-PROTECT-RES / INV-56): the signed wallpaper derivative for each quiz work —
+    # baked AFTER the gallery so its source is the display-grade copy, never the print master (INV-18).
+    if flags["quiz"]:
+        _bake_quiz_prizes(quiz_private, site_url)
 
     return {"works": len(items), "site_url": site_url, "preview": is_preview}
 

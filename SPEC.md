@@ -431,14 +431,58 @@ within a session — a fresh page load starts the loop from the top. `INV-52`
 ### The gracious deterrent
 
 When a visitor tries to **grab a hung work** (right-click / `contextmenu`, drag / `dragstart`, or
-pinch-zoom / `gesturestart`) the engine intercepts. For a grab: `preventDefault` and show a
-**quiet, localized gift line** on the existing share toast — the instance's `enjoy` string from
-the greeting cache plus the site host appended in code (e.g. «enjoy · example.com»), arriving on
-the house breath and leaving by itself. For a pinch-zoom: `preventDefault` silently — a pinch is
-exploratory, not a save, so no toast. A **soft CSS layer** rests on every `img.work`:
-`user-select:none`, `-webkit-user-drag:none` (no drag ghost), `-webkit-touch-callout:none`
-(kills the iOS long-press save sheet). This is a gift and a gentle nudge, never hard DRM —
-devtools, view-source, and screenshots still work, said plainly. `EX-PROTECT` `INV-49`
+pinch-zoom / `gesturestart`) the engine intercepts. A **desktop right-click** (a fine pointer)
+opens the **gift ceremony** (below) — the picture is offered, never dumped. A **drag or a touch
+grab** shows a **quiet, localized gift line** on the existing share toast instead — the instance's
+`enjoy` string from the greeting cache plus the site host appended in code (e.g. «enjoy ·
+example.com»), arriving on the house breath and leaving by itself. For a pinch-zoom:
+`preventDefault` silently — a pinch is exploratory, not a save, so no toast. A **soft CSS layer**
+rests on every `img.work`: `user-select:none`, `-webkit-user-drag:none` (no drag ghost),
+`-webkit-touch-callout:none` (kills the iOS long-press save sheet). This is a gift and a gentle
+nudge, never hard DRM — devtools, view-source, and screenshots still work, said plainly.
+`EX-PROTECT` `INV-49`
+
+### The gift ceremony
+
+The picture is never dumped by a blunt auto-download. A desktop right-click on a work, and a won
+quiz, both **open a solemn card** — a thumbnail rising into place on the reveal clock (`EX-ARRIVE`),
+the localized ask («like it?» / `gift_ask`), a **yes** button («a gift :)» / `gift_yes`) and a
+quiet **no** («not now» / `gift_no`), the gracious `enjoy · host` line, and an optional buy line
+(`gift_buy`, empty by default). The file is handed over **only on the yes** — never automatically.
+Esc or a click outside closes it. `EX-PROTECT-GIFT`
+
+### The clean image, the marked take
+
+The **shown** image is clean — no watermark burned into what a visitor looks at. The site-host mark
+is stamped **only on a taken copy**: a grab-download marks the picture **client-side via canvas**
+(the host from config drawn bottom-right, a soft shadow under a bone fill) at the moment of the
+yes; a browser that refuses the canvas still receives the clean file (never blocked). The **served
+gallery copies** carry no mark unless the deploy caps them (`--display-max`), in which case the same
+host mark is baked server-side (`_stamp`). The **quiz prize** is a pre-marked gallery derivative
+and goes out raw. The download filename is a **slug of the site name** from config (e.g.
+`<site>-<original>.jpg`, `<site>-wallpaper.jpg`) — no hardcoded brand. The mark text is the site
+host from config, never a literal. `EX-PROTECT-RES` `INV-56`
+
+### The work's question and its gift
+
+An instance may attach a **quiz** to any work through an optional `<content>/quiz.json`
+(`{"quizzes": {"<id>": {"prompt", "hints", "accept", "prize"}}}`). The **question is public** —
+localized like a title, baked onto the work — while the **answer is private**: the accept-set and
+the prize path are baked **only into `_worker.js`** (the one bundle Pages never serves) and only
+when the `quiz` flag ships on; flag off ⇒ no quiz key on any work and the walk is byte-identical.
+A quiz-bearing work advertises a subtle **«question?» chip** (`quiz_ask`, localized). Its
+**placement** (any of `plaque`, `door`) and its **probability** (0..1, one coin per walk) are
+**config knobs** (`exhibition.quiz`, `INV-28`) — an instance tunes where and how often the question
+appears with no code change; the default is both placements at probability 1. Tapping the chip
+opens a modal card: the prompt, an input, and a response zone. The typed answer POSTs to
+`/api/quiz`; the edge **normalizes both sides** (lower-case, Unicode letters) and compares against
+the private accept-set — **the answer is judged at the edge, never a served byte, never a model
+call**, under the quiz's **own** hourly per-IP attempt fence (`q:<hour>:<ip>`, separate from the
+model rate-limit and day budget). A **miss** shows the next public hint (client-indexed by attempt);
+a network error shows a quiet retry line; **the answer never reaches the DOM**. A **hit** replies
+`{ok:true, prize}`, is remembered per work in `tlv.quiz.<id>`, and opens the **gift ceremony** at
+the prize's better resolution. Off / no accept-set / unknown id ⇒ the route 404s and the walk loses
+nothing. `EX-QUIZ` `EX-QUIZ-EDGE` `EX-QUIZ-PRIZE` `INV-59` `INV-60`
 
 ### The loading breath
 
@@ -761,7 +805,12 @@ the worker.
 | `EX-SHARE` | The share feature as a whole |
 | `EX-SOUND` | The ambient loop: off by default, lazy fetch, credit from config |
 | `EX-SOUND-PAUSE` | Pause holds the moment; resume continues from it |
-| `EX-PROTECT` | The gracious deterrent (grab → gift toast; pinch → silent refuse) |
+| `EX-PROTECT` | The gracious deterrent (desktop right-click → gift ceremony; drag/touch → gift toast; pinch → silent refuse) |
+| `EX-PROTECT-GIFT` | The gift ceremony: the picture is offered on a solemn card, handed over only on a yes |
+| `EX-PROTECT-RES` | The clean shown image; the site-host mark rides only a taken copy (client canvas / prize / capped serve) |
+| `EX-QUIZ` | The work's public question + chip (placement + probability config knobs) |
+| `EX-QUIZ-EDGE` | The private answer judged at the edge; own attempt fence; never a served byte, never a model call |
+| `EX-QUIZ-PRIZE` | The prize is a marked gallery derivative; the master never ships |
 | `EX-LOAD` | The loading breath: solemn hairline while pixels travel |
 | `EX-SERIES` | The series side room: pill, crossing, lane / polaroids, honest close |
 | `EX-STORY` | The told story: one line per work, leaned by light, degrades to silence |
@@ -829,6 +878,9 @@ the worker.
 | `INV-49` | The gracious deterrent is a gift, never a scold; no hard DRM |
 | `INV-51` | Edge guard: three fences before any model call |
 | `INV-52` | Sound pause holds the offset; resume continues from it |
+| `INV-56` | The shown image is clean; the site-host mark rides only a taken copy (client canvas on grab, baked on the prize, baked when the serve is capped). Mark text is the config host, never a literal |
+| `INV-59` | The quiz answer is judged at the edge against a private accept-set — never a served byte, never a model call; its own per-IP hourly attempt fence, separate from the model rate-limit and day budget |
+| `INV-60` | The quiz flag off is byte-identical to a quiz-less walk; on / no accept-set / unknown id degrades to silence, the walk loses nothing |
 
 ### Deltas from the tlvphoto reference implementation
 
@@ -842,3 +894,5 @@ requiring reconciliation:
 | `⟨DELTA-3⟩` | No `dateCreated` in the work-page JSON-LD `VisualArtwork` record. The engine's generic Work entity has no date field in `gallery_data.json`; an instance may extend the content contract to add one. |
 | `⟨DELTA-4⟩` | The `series_open` analytics beat is implemented in `exhibition.js` but was not part of tlvphoto's spec. It is specified above as an engine-native sixth beat (`EX-PULSE`). |
 | `⟨DELTA-5⟩` | The `sold` flag and its red dot in the caption zone are implemented in `exhibition.js` but the bake does not forward the `sold` field from `gallery_data.json` items into `exhibition_data.json`. The red dot is currently always hidden. Reconcile: add `"sold": bool(it.get("sold"))` to `ex_works` in `build.py`. |
+| `⟨DELTA-6⟩` | **RESOLVED** — the quiz (`EX-QUIZ`/`INV-59`/`INV-60`), the gift ceremony (`EX-PROTECT-GIFT`), and the client-side mark-split on take (`EX-PROTECT-RES`/`INV-56`) are ported and generalized: quiz data is an instance-supplied `<content>/quiz.json`, placement + probability are `exhibition.quiz` config knobs, the download filename is a slug of the config `site_name`, and the mark text is the config host — no work id, host, or brand literal in the engine. `test_quiz.py` (11 rows) + updated `test_protect.py` assert them. |
+| `⟨DELTA-7⟩` | **DEFERRED (minor)** — the quiz *prompt* localization (tlvphoto's `quizzes` block in `i18n_source.json` + the worker's `translate` merge) is not ported; the public prompt ships in the base language only. The chip label (`quiz_ask`) IS localized. Low value until an instance needs translated prompts; the mechanism is a small additive follow-on. |

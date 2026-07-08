@@ -268,6 +268,20 @@
   const STORY_ON = cfg.ai_story === true;
   const STORY_VARIANT = STORY.variant || "B";
   const LIGHT_W = Number.isFinite(+STORY.light_weight) ? +STORY.light_weight : 0.6;
+
+  // ---- EX-QUIZ (INV-59/60): the per-work question chip + card ----------------------------------
+  // On when the quiz flag ships true AND the work carries public quiz data (baked into `w.quiz`).
+  // PLACEMENT and PROBABILITY are config knobs (INV-28): an instance tunes where the «question?»
+  // chip advertises (plaque and/or door) and how often it appears, with no code change. The
+  // probability is one coin per WALK — a run either wears its quiz chips or it does not, so the
+  // question reads as a rare find rather than blinking per-scroll. Defaults: both placements, p=1.
+  const QUIZ_ON = cfg.quiz === true;
+  const QUIZ_CFG = (EX && EX.quiz) || {};
+  const QUIZ_PLACE = Array.isArray(QUIZ_CFG.placement) ? QUIZ_CFG.placement : ["plaque", "door"];
+  const QUIZ_P = Number.isFinite(+QUIZ_CFG.probability) ? Math.max(0, Math.min(1, +QUIZ_CFG.probability)) : 1;
+  const QUIZ_WALK = QUIZ_ON && Math.random() < QUIZ_P;   // the per-walk coin — decided once, here
+  const QUIZ_AT = (where) => QUIZ_WALK && QUIZ_PLACE.indexOf(where) >= 0;
+  const QUIZ_LS = (id) => "tlv.quiz." + id;             // per-work solved-memory key (not the coat-check)
   const STORYLINES = Object.create(null);
   let storyVariant = null;    // the mode the served story reported — rides the GA beats (EX-STORY-AB)
   let storyKey = "";          // the ordered-id set last told (a resize/return never refetches)
@@ -566,6 +580,12 @@
       b.style.setProperty("--glow", `rgb(${a.join(",")})`);
       b.style.animationDelay = ((0.55 + i * 0.2) * TEMPO).toFixed(2) + "s";
       b.innerHTML = `<img src="${w.img}" alt="${alt}">`;
+      if (QUIZ_AT("door") && w.quiz) {                    // a work that asks a question wears «question?» at the door too
+        const q = document.createElement("span");
+        q.className = "exd-quiz"; q.textContent = quizLabel();
+        q.addEventListener("click", (ev) => { ev.stopPropagation(); quizCardOpen(w.id); }); // the chip opens the quiz, NOT the walk
+        b.appendChild(q);
+      }
       b.addEventListener("click", () => doorPick(w));
       facade.appendChild(b);
     });
@@ -746,7 +766,10 @@
       `<span class="t">${w.sec || ""}${w.place ? " · " + w.place : ""}</span></div>` +
       (serIdx == null ? "" :
         `<button type="button" class="ex-series" data-ser="${serIdx}">` +
-        `${serWord} · ${SERIES[serIdx].members.length}</button>`);
+        `${serWord} · ${SERIES[serIdx].members.length}</button>`) +
+      // EX-QUIZ (INV-59/60): a subtle plaque chip — only when the work carries a quiz, the flag is
+      // on, this walk drew the quiz coin, and "plaque" is a configured placement
+      (QUIZ_AT("plaque") && w.quiz ? quizChipHTML(w.id) : "");
     cap.classList.add("show");
     focusedId = w.id;
     fillTold();                                        // the narrator's line for this work, if spoken
@@ -863,11 +886,106 @@
     const enjoy = T.enjoy || "enjoy";                     // locale string; English built-in fallback
     return enjoy + " · " + host;                          // never blank (EX-PROTECT empty/error facet)
   }
+  // EX-PROTECT-RES (INV-56): the download filename base — a slug of the site's own name from config
+  // (INV-28), never a hardcoded brand. A grabbed file is «<site>-<original>.jpg».
+  const DL_BASE = ((cfg.site_name || "gallery").toLowerCase().replace(/[^a-z0-9]+/g, "-")
+                   .replace(/^-+|-+$/g, "")) || "gallery";
+  // ---- EX-PROTECT-GIFT: the picture is OFFERED, never dumped ----
+  // The gift CEREMONY (his word 2026-07-08): a right-click on a work is answered by a gentle card
+  // «like it? · a gift :)» and the picture is handed over only on a yes — never a blunt auto-download.
+  // A won quiz ends in the SAME ceremony at better resolution. Rides the house breath (EX-ARRIVE);
+  // Esc / click-outside close it.
+  const giftCard = document.createElement("div");
+  giftCard.id = "ex-gift-card";
+  giftCard.setAttribute("role", "dialog");
+  giftCard.setAttribute("aria-modal", "true");
+  giftCard.hidden = true;
+  giftCard.innerHTML =
+    '<div class="gift-inner">' +
+      '<img class="gift-thumb" alt="">' +
+      '<div class="gift-ask"></div>' +
+      '<div class="gift-act">' +
+        '<button type="button" class="gift-yes"></button>' +
+        '<button type="button" class="gift-no"></button>' +
+      '</div>' +
+      '<div class="gift-line"></div>' +
+      '<div class="gift-buy"></div>' +
+    '</div>';
+  document.body.appendChild(giftCard);
+  let giftOpen = false;
+  function giftName(src, name) {
+    return name || (DL_BASE + "-" + ((src.split("/").pop() || "photo").split("?")[0]));
+  }
+  function rawDownload(src, name) {
+    try {
+      const a = document.createElement("a");
+      a.href = src; a.download = giftName(src, name);
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { /* the walk loses nothing if a browser refuses the save */ }
+  }
+  // EX-PROTECT-RES (INV-56): the SHOWN image is CLEAN; the site-host mark is stamped ONLY on a TAKEN
+  // copy, HERE, client-side via canvas. The quiz prize already wears its own baked mark (preMarked)
+  // and goes out raw. A browser that refuses the canvas still gets the clean file (never blocked).
+  function giftDownload(src, name, preMarked) {
+    if (preMarked) { rawDownload(src, name); return; }
+    const host = ROOT_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const im = new Image();
+    im.onload = () => {
+      try {
+        const cv = document.createElement("canvas");
+        cv.width = im.naturalWidth || im.width; cv.height = im.naturalHeight || im.height;
+        const ctx = cv.getContext("2d");
+        ctx.drawImage(im, 0, 0);
+        const fs = Math.max(13, Math.round(cv.width * 0.022)), pad = Math.round(fs * 0.9);
+        ctx.font = "600 " + fs + "px -apple-system,'Segoe UI',sans-serif";
+        ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "rgba(0,0,0,.34)"; ctx.fillText(host, cv.width - pad + 1, cv.height - pad + 1);
+        ctx.fillStyle = "rgba(235,231,222,.66)"; ctx.fillText(host, cv.width - pad, cv.height - pad);
+        cv.toBlob((blob) => {
+          if (!blob) { rawDownload(src, name); return; }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = giftName(src, name);
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }, "image/jpeg", 0.92);
+      } catch (e) { rawDownload(src, name); }
+    };
+    im.onerror = () => rawDownload(src, name);
+    im.src = src;
+  }
+  function openGift(src, name, preMarked) {
+    const T = (greetLang() || { t: {} }).t;
+    giftCard.querySelector(".gift-thumb").src = src;
+    giftCard.querySelector(".gift-ask").textContent = T.gift_ask || "like it?";
+    const yes = giftCard.querySelector(".gift-yes");
+    yes.textContent = T.gift_yes || "a gift :)";
+    giftCard.querySelector(".gift-no").textContent = T.gift_no || "not now";
+    giftCard.querySelector(".gift-line").textContent = enjoyLine();   // «enjoy · example.com»
+    giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "";
+    yes.onclick = () => { giftDownload(src, name, preMarked); closeGift(); };
+    giftCard.hidden = false; giftOpen = true;
+    requestAnimationFrame(() => giftCard.classList.add("show"));       // EX-ARRIVE breath
+  }
+  function closeGift() {
+    if (!giftOpen) return;
+    giftCard.classList.remove("show");
+    setTimeout(() => { giftCard.hidden = true; }, Math.round(350 * TEMPO));
+    giftOpen = false;
+  }
+  giftCard.querySelector(".gift-no").addEventListener("click", closeGift);
+  giftCard.addEventListener("click", (ev) => { if (!ev.target.closest(".gift-inner")) closeGift(); });
+  addEventListener("keydown", (ev) => { if (ev.key === "Escape" && giftOpen) closeGift(); });
   function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
     const img = ev.target.closest && ev.target.closest(".exh-frame img.work");
     if (!img) return;                                      // only the hung work; chrome is left alone
     ev.preventDefault();                                   // the raw save / drag ghost never fires
-    toast(enjoyLine());                                    // rides the breath, leaves by itself
+    // DESKTOP right-click → the gift ceremony; TOUCH (or a drag) → just the gracious line, no download
+    if (ev.type === "contextmenu" && !matchMedia("(pointer: coarse)").matches) {
+      openGift(img.currentSrc || img.getAttribute("src") || img.src); // OFFER, never dump
+    } else {
+      toast(enjoyLine());                                   // rides the breath, leaves by itself
+    }
   }
   stage.addEventListener("contextmenu", onGrab);
   stage.addEventListener("dragstart", onGrab);
@@ -879,6 +997,131 @@
   }
   stage.addEventListener("gesturestart", onPinch);
   stage.addEventListener("gesturechange", onPinch);
+
+  // ---- EX-QUIZ (INV-59/60): the chip + card + edge round-trip ----------------------------------
+  // A subtle chip advertises a work's question (placement/probability decided above). Tapping it
+  // opens a modal card: the public prompt, an input, and the response zone. The typed answer is
+  // POSTed to /api/quiz — the answer is judged at the EDGE against a private accept-set, NEVER a
+  // served byte (INV-59). A hit closes the card and OPENS THE GIFT CEREMONY at the prize's better
+  // resolution (the prize already wears its baked mark). A miss shows the next graded hint. A won
+  // quiz is remembered per work so a return goes straight to the reward.
+  function quizLabel() {
+    const T = (greetLang() || { t: {} }).t;
+    return T.quiz_ask || "question?";
+  }
+  function quizChipHTML(id) {
+    return `<button type="button" class="ex-quiz-chip" data-quiz="${id}">${quizLabel()}</button>`;
+  }
+  const PRIZE_DL = DL_BASE + "-wallpaper.jpg";           // the prize download name (site-slug, INV-28)
+
+  const quizCard = document.createElement("div");
+  quizCard.id = "ex-quiz-card";
+  quizCard.setAttribute("role", "dialog");
+  quizCard.setAttribute("aria-modal", "true");
+  quizCard.hidden = true;
+  quizCard.innerHTML =
+    '<div class="quiz-inner">' +
+      '<div class="quiz-prompt"></div>' +
+      '<form class="quiz-form">' +
+        '<input class="quiz-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off">' +
+        '<button type="submit" class="quiz-submit"></button>' +
+      '</form>' +
+      '<div class="quiz-out"></div>' +
+    '</div>';
+  document.body.appendChild(quizCard);
+
+  let quizOpen = false;
+  let quizWorkId = null;
+  let quizMissCount = 0;
+
+  function quizCardOpen(id) {
+    const w = byId[id];
+    if (!w || !w.quiz) return;
+    quizWorkId = id;
+    quizMissCount = 0;
+    let solved = null;
+    try { solved = localStorage.getItem(QUIZ_LS(id)); } catch (e) {}
+    quizCard.querySelector(".quiz-prompt").textContent = w.quiz.prompt || "";
+    const T = (greetLang() || { t: {} }).t;
+    quizCard.querySelector(".quiz-submit").textContent = T.quiz_submit || "answer";
+    quizCard.querySelector(".quiz-input").value = "";
+    const out = quizCard.querySelector(".quiz-out");
+    out.className = "quiz-out"; out.innerHTML = "";
+    if (solved) {
+      // already earned — straight to the gift ceremony, no need to re-ask the question
+      let prize = null;
+      try { prize = JSON.parse(solved).prize; } catch (e) {}
+      if (prize) { openGift("/" + prize, PRIZE_DL, true); return; }   // already marked
+    }
+    quizCard.hidden = false;
+    quizOpen = true;
+    requestAnimationFrame(() => { quizCard.classList.add("show"); });
+    const inp = quizCard.querySelector(".quiz-input");
+    setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
+  }
+
+  function quizCardClose() {
+    if (!quizOpen) return;
+    quizCard.classList.remove("show");
+    setTimeout(() => { quizCard.hidden = true; }, Math.round(350 * TEMPO));
+    quizOpen = false;
+    quizWorkId = null;
+  }
+
+  function quizSubmit() {
+    const id = quizWorkId;
+    if (!id) return;
+    const w = byId[id];
+    if (!w || !w.quiz) return;
+    const inp = quizCard.querySelector(".quiz-input");
+    const raw = (inp.value || "").trim();
+    if (!raw) return;
+    const out = quizCard.querySelector(".quiz-out");
+    out.className = "quiz-out"; out.innerHTML = "";
+    fetch("/api/quiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: String(id), answer: raw }),
+    }).then((r) => r.json()).then((data) => {
+      if (data && data.ok) {
+        // a right answer — remember it, close the quiz, let the BETTER-res reward emerge solemnly
+        try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ prize: data.prize })); } catch (e) {}
+        quizCardClose();
+        openGift("/" + data.prize, PRIZE_DL, true);       // the prize already wears its mark
+      } else {
+        // a miss — show the next hint (client-indexed by attempt count)
+        quizMissCount += 1;
+        const hints = (w.quiz && w.quiz.hints) || [];
+        const hint = hints[Math.min(quizMissCount - 1, hints.length - 1)] || "";
+        out.className = "quiz-out quiz-miss";
+        out.textContent = hint || "try again";
+        inp.value = "";
+        try { inp.focus(); } catch (e) {}
+      }
+    }).catch((e) => {
+      // network error (429 / 503 / fetch fail) → a quiet retryable line, the answer never in the DOM
+      out.className = "quiz-out quiz-retry";
+      out.textContent = "one moment";
+    });
+  }
+
+  quizCard.querySelector(".quiz-form").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    quizSubmit();
+  });
+  // the chip tap opens the card (delegated on the caption zone)
+  cap.addEventListener("click", (ev) => {
+    const b = ev.target.closest && ev.target.closest(".ex-quiz-chip");
+    if (!b) return;
+    const id = b.dataset.quiz;
+    if (quizOpen && quizWorkId === id) return;            // already open for this work — do nothing
+    if (quizOpen) quizCardClose();                        // close any open card first (one at a time)
+    setTimeout(() => quizCardOpen(id), quizOpen ? Math.round(350 * TEMPO) : 0);
+  });
+  addEventListener("keydown", (ev) => { if (ev.key === "Escape" && quizOpen) quizCardClose(); });
+  quizCard.addEventListener("click", (ev) => {
+    if (!ev.target.closest(".quiz-inner")) quizCardClose();
+  });
 
   function frameHTML(id, n) {
     const w = byId[id];

@@ -18,6 +18,17 @@ const ID_RE = /^[a-z0-9][a-z0-9_-]{2,60}$/i;
 const STORY_FRAGMENTS = /*__STORY_FRAGMENTS__*/{}/*__/STORY_FRAGMENTS__*/;
 const STORY_PARAMS_VERSION = /*__STORY_PV__*/"0"/*__/STORY_PV__*/;
 
+// EX-QUIZ-EDGE (INV-59): the PRIVATE per-work answer sets — accepted spellings + the prize path —
+// are BAKED IN here by the builder, never a public static byte. The placeholder below is filled at
+// bake time (empty ⇒ the quiz route 404s). Map: workId → { accept: [raw strings], prize: "gallery/…" }.
+// Like the story fragments, this rides in `_worker.js`, the one bundle file Pages never serves.
+const QUIZ_ANSWERS = /*__QUIZ_ANSWERS__*/{}/*__/QUIZ_ANSWERS__*/;
+
+// EX-QUIZ-EDGE (INV-59): the quiz's OWN hourly rate-limit, keyed separately from the model bucket.
+// A flood of guesses never touches rl: or the day model-call budget — this is the ONLY key a guess
+// increments, and the ceiling is its own (the model allowance is untouched, EX-QUIZ-EDGE F1).
+const QUIZ_TRIES_PER_HOUR = 60;
+
 // EX-EDGE-GUARD (INV-51): the model is real money — a bot or a flood must never turn a model route
 // into a bill. Three fences, all decided BEFORE any Anthropic call: (1) a bot gets ENGLISH straight
 // from the baked source, no model call; (2) a single IP is rate-limited per hour; (3) a hard daily
@@ -62,6 +73,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname === "/api/visitor") return visitor(req, env, url);
     if (url.pathname === "/api/story") return story(req, env);
+    if (url.pathname === "/api/quiz") return quiz(req, env);
     if (url.pathname !== "/api/i18n") return new Response("not found", { status: 404 });
     const lang = (url.searchParams.get("lang") || "").toLowerCase();
     const v = url.searchParams.get("v") || "";
@@ -296,6 +308,60 @@ function json(body) {
   });
 }
 
+// EX-QUIZ-EDGE (INV-59): the quiz's OWN attempt fence — keyed "q:<hour>:<ip>", its own ceiling.
+// This is the ONLY rate-limit counter a guess ever touches. The model-path rate-limit ("rl:")
+// and the day model-call budget are never incremented here — a guess costs nothing (no model call).
+async function overQuizRate(env, req) {
+  const win = Math.floor(Date.now() / 3600000);        // hourly bucket
+  const k = "q:" + win + ":" + clientIp(req);
+  const n = parseInt((await env.TLV_I18N.get(k)) || "0", 10) + 1;
+  await env.TLV_I18N.put(k, String(n), { expirationTtl: 3600 });
+  return n > QUIZ_TRIES_PER_HOUR;
+}
+
+// EX-QUIZ-EDGE (INV-59): normalize at the edge — lower-case, Unicode letters only, so that
+// spacing, punctuation, and case never decide a verdict (e.g. "New York", "new-york", and
+// "newyork" all land on one normalized form). This is the ONE normalizer the accept-set was baked
+// against; the client never normalizes (it sends the raw typed answer). Works across Latin and
+// Cyrillic and other scripts (the \p{L} Unicode property covers them all).
+function normAnswer(s) {
+  return (s || "").toLowerCase().replace(/[^\p{L}]/gu, "");
+}
+
+// EX-QUIZ-EDGE (INV-59): POST {id, answer} → bare win/miss verdict (no model, no budget touch).
+// Shape-check → rate-check → look up the PRIVATE accept-set → normalize both sides → compare.
+// A hit replies {ok:true, prize:"gallery/…"}; a miss replies {ok:false}.
+// Off / no accept-set / unknown id ⇒ 404 and the walk loses nothing (INV-19 / CS-8).
+async function quiz(req, env) {
+  if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
+  // no answers baked in (quiz shipped off / nothing baked) ⇒ 404, silence
+  if (!QUIZ_ANSWERS || !Object.keys(QUIZ_ANSWERS).length) {
+    return new Response("no quiz", { status: 404 });
+  }
+  const raw = await req.text();
+  if (raw.length > 512) return new Response("too big", { status: 413 });
+  let p;
+  try { p = JSON.parse(raw); } catch (e) { return new Response("bad request", { status: 400 }); }
+  // shaped input only — id is the engine's id grammar (same as the story), answer is bounded
+  const id = String(p.id || "");
+  const answer = String(p.answer || "");
+  if (!ID_RE.test(id) || answer.length > 100) {
+    return new Response("bad request", { status: 400 });
+  }
+  // look up the work's private accept-set; absent id ⇒ 404
+  const entry = QUIZ_ANSWERS[id];
+  if (!entry) return new Response("no quiz", { status: 404 });
+  // the quiz's OWN attempt fence (not the model bucket — a guess never spends a model allowance)
+  if (await overQuizRate(env, req)) {
+    return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
+  }
+  // normalize the typed answer against each accepted form; the same normalizer the accept-set used
+  const normed = normAnswer(answer);
+  const hit = (entry.accept || []).some((a) => normAnswer(a) === normed);
+  if (hit) return json(JSON.stringify({ ok: true, prize: entry.prize }));
+  return json(JSON.stringify({ ok: false }));
+}
+
 async function translate(apiKey, lang, src) {
   const prompt =
     'You localize the interface of a quiet photography museum site into the language with ' +
@@ -345,9 +411,9 @@ function shape() {
       strings: {
         type: "object",
         properties: { ask: s, exit: s, more: s, q_more: s, q_spent: s, share_label: s,
-                      share_copied: s, series: s, room_back: s, enjoy: s },
+                      share_copied: s, series: s, room_back: s, enjoy: s, quiz_ask: s },
         required: ["ask", "exit", "more", "q_more", "q_spent", "share_label", "share_copied",
-                   "series", "room_back", "enjoy"],
+                   "series", "room_back", "enjoy", "quiz_ask"],
         additionalProperties: false,
       },
       greet: {
@@ -375,7 +441,7 @@ function validate(out, src) {
   try {
     const filled = (x) => typeof x === "string" && x.trim().length > 0;
     if (!["ltr", "rtl"].includes(out.dir)) return false;
-    for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied", "series", "room_back", "enjoy"]) {
+    for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied", "series", "room_back", "enjoy", "quiz_ask"]) {
       if (!filled(out[k])) return false;
     }
     if (!filled(out.more) || out.more.indexOf("{n}") < 0) return false;
