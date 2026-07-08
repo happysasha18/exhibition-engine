@@ -65,13 +65,15 @@ check("EX-PROTECT JS: enjoyLine, onGrab, contextmenu/dragstart/gesturestart/gest
       js_ok, "one or more EX-PROTECT symbols missing from exhibition.js")
 
 BROWSER_ROWS = [
-    "EX-PROTECT right-click on a work triggers the enjoy toast (not a browser save sheet)",
+    "EX-PROTECT-GIFT desktop right-click on a work opens the gift ceremony (not a browser save sheet)",
     "EX-PROTECT drag on a work is prevented (no drag ghost, enjoy toast fires)",
-    "EX-PROTECT the enjoy toast carries the site host from ROOT_URL",
+    "EX-PROTECT-GIFT the gift ceremony line carries the site host from ROOT_URL",
     "EX-PROTECT right-click on chrome (share button) is NOT intercepted (browser menu still works)",
 ]
 
 TOAST = "(()=>{const t=document.getElementById('ex-toast');return t&&!t.hidden?t.textContent:null;})()"
+GIFT = ("(()=>{const g=document.getElementById('ex-gift-card');"
+        "return g&&!g.hidden?(g.querySelector('.gift-line')||{}).textContent||'':null;})()")
 AT_DOOR = "document.body.classList.contains('ex-door')"
 FRAME_IDS = "Array.from(document.querySelectorAll('.exh-frame')).map(f=>f.dataset.id)"
 
@@ -91,17 +93,17 @@ if not chrome_available():
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
     with serve(TMP) as base:
-        # 0 · right-click fires the enjoy toast
+        # 0 · desktop right-click OPENS THE GIFT CEREMONY (offered, never dumped) — EX-PROTECT-GIFT
         with Browser(width=1280, height=900) as br:
             enter(br, base)
             br.evaluate("document.querySelector('.exh-frame img.work')"
                         ".dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))")
             br.sleep(0.4)
-            toast = br.evaluate(TOAST)
-            # the enjoy toast must be visible and non-empty
+            gift = br.evaluate(GIFT)
+            # the gift card must be visible with a non-empty gift line
             check(BROWSER_ROWS[0],
-                  toast is not None and len(toast.strip()) > 0,
-                  f"toast={toast!r}")
+                  gift is not None and len(gift.strip()) > 0,
+                  f"gift_line={gift!r}")
 
         # 1 · drag on a work is prevented (dragstart fires toast, no drag ghost)
         with Browser(width=1280, height=900) as br:
@@ -114,18 +116,18 @@ else:
                   toast is not None and len(toast.strip()) > 0,
                   f"toast={toast!r}")
 
-        # 2 · the enjoy toast carries the site host (stripped of protocol)
+        # 2 · the gift ceremony line carries the site host (stripped of protocol)
         with Browser(width=1280, height=900) as br:
             enter(br, base)
             br.evaluate("document.querySelector('.exh-frame img.work')"
                         ".dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))")
             br.sleep(0.4)
-            toast = br.evaluate(TOAST) or ""
+            gift = br.evaluate(GIFT) or ""
             # site host = hostname from SITE_URL without protocol
             host = SITE_URL.replace("https://", "").replace("http://", "")
             check(BROWSER_ROWS[2],
-                  host in toast,
-                  f"toast={toast!r} want host={host!r}")
+                  host in gift,
+                  f"gift_line={gift!r} want host={host!r}")
 
         # 3 · right-click on a share button is NOT intercepted
         with Browser(width=1280, height=900) as br:

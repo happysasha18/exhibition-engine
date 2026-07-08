@@ -33,7 +33,8 @@
       "share_copied": "link copied",
       "series": "series",
       "room_back": "← room",
-      "enjoy": "enjoy"
+      "enjoy": "enjoy",
+      "quiz_ask": "question?"
     },
     "ru": {
       "dir": "ltr",
@@ -64,7 +65,8 @@
       "share_copied": "ссылка скопирована",
       "series": "серия",
       "room_back": "← комната",
-      "enjoy": "на здоровье"
+      "enjoy": "на здоровье",
+      "quiz_ask": "вопрос?"
     },
     "he": {
       "dir": "rtl",
@@ -95,7 +97,8 @@
       "share_copied": "הקישור הועתק",
       "series": "סדרה",
       "room_back": "← חדר",
-      "enjoy": "ליהנות"
+      "enjoy": "ליהנות",
+      "quiz_ask": "שאלה?"
     },
     "de": {
       "dir": "ltr",
@@ -126,7 +129,8 @@
       "share_copied": "Link kopiert",
       "series": "Serie",
       "room_back": "← Raum",
-      "enjoy": "bitte sehr"
+      "enjoy": "bitte sehr",
+      "quiz_ask": "Frage?"
     },
     "fr": {
       "dir": "ltr",
@@ -157,7 +161,8 @@
       "share_copied": "lien copié",
       "series": "série",
       "room_back": "← salle",
-      "enjoy": "avec plaisir"
+      "enjoy": "avec plaisir",
+      "quiz_ask": "question ?"
     },
     "es": {
       "dir": "ltr",
@@ -188,7 +193,8 @@
       "share_copied": "enlace copiado",
       "series": "serie",
       "room_back": "← sala",
-      "enjoy": "con gusto"
+      "enjoy": "con gusto",
+      "quiz_ask": "¿pregunta?"
     },
     "uk": {
       "dir": "ltr",
@@ -219,7 +225,8 @@
       "share_copied": "посилання скопійовано",
       "series": "серія",
       "room_back": "← кімната",
-      "enjoy": "будь ласка"
+      "enjoy": "будь ласка",
+      "quiz_ask": "питання?"
     }
   }
 }
