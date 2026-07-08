@@ -610,6 +610,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "url": "",             # artist website (shown as a link)
         },
     }
+    config["site_name"] = SITE_NAME        # the instance's brand — read by exhibition.js for the door wordmark (INV-28)
     config["site_url"] = site_url
     config["ga_measurement_id"] = ga_id   # analytics id lives in config, never in a template
     config["experiments"] = {}      # variant → flag → metric (empty registry)

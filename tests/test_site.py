@@ -322,6 +322,17 @@ for f, p in parsed.items():
             bad_host += 1
 check("CS-7 absolute URLs all use config site_url", bad_host == 0, f"{bad_host} off-host URLs")
 
+# DELTA-1: the door wordmark comes from config, not a hardcoded literal (INV-28).
+# config.json must carry site_name; exhibition.js must read cfg.site_name, not the literal brand.
+_cfg_raw = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+check("DELTA-1 config.json carries site_name from site_config",
+      _cfg_raw.get("site_name") == build_site.SITE_CONFIG["site_name"],
+      f"want {build_site.SITE_CONFIG['site_name']!r} got {_cfg_raw.get('site_name')!r}")
+_js_src = (ROOT / "engine" / "assets" / "exhibition.js").read_text(encoding="utf-8")
+check("DELTA-1 exhibition.js wordmark reads cfg.site_name (no hardcoded brand literal)",
+      "TLV PHOTOS" not in _js_src and "cfg.site_name" in _js_src,
+      "wordmark still hardcoded or cfg.site_name not referenced in exhibition.js")
+
 
 # ---------------------------------------------------------------- INV-21 reproducible bake
 

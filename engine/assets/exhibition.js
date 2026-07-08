@@ -500,10 +500,11 @@
   door.hidden = true;                                  // born hidden — a restored walk must never
                                                        // wake under a dark cover (2026-07-06 bug)
   door.innerHTML =
-    '<div class="exd-wm">TLV PHOTOS</div>' +   // the brand is PLURAL, never translated (5j)
+    '<div class="exd-wm"></div>' +                    // brand from config.site_name (INV-28)
     '<div class="exd-greet" id="exd-greet" hidden></div>' +
     '<div class="exd-ask">что ближе сейчас</div>' +
     '<div class="exd-facade" id="exd-facade"></div>';  // no silent entry — the pick IS the
+  door.querySelector(".exd-wm").textContent = cfg.site_name || "";
   document.body.appendChild(door);                     // entry (EX-DOOR-2a, his design word)
   const veil = document.createElement("div");          // the ceremony's black (EX-DOOR-2e)
   veil.id = "ex-veil";
