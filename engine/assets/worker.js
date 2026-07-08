@@ -18,6 +18,45 @@ const ID_RE = /^[a-z0-9][a-z0-9_-]{2,60}$/i;
 const STORY_FRAGMENTS = /*__STORY_FRAGMENTS__*/{}/*__/STORY_FRAGMENTS__*/;
 const STORY_PARAMS_VERSION = /*__STORY_PV__*/"0"/*__/STORY_PV__*/;
 
+// EX-EDGE-GUARD (INV-51): the model is real money — a bot or a flood must never turn a model route
+// into a bill. Three fences, all decided BEFORE any Anthropic call: (1) a bot gets ENGLISH straight
+// from the baked source, no model call; (2) a single IP is rate-limited per hour; (3) a hard daily
+// cap on model calls degrades gracefully — i18n falls to the English source, the story falls to
+// silence (INV-19, absence loses nothing). Counters live in the same KV, self-expiring; a real
+// guest crossing normally never meets any of them.
+const BOT_RE = /bot|crawl|spider|slurp|curl|wget|python|java|scrapy|headless|phantom|lighthouse|monitor|preview|fetch|http[-_]?client|facebookexternalhit|embedly|bImag/i;
+const RL_PER_HOUR = 40;          // model-triggering requests one IP may make in an hour
+const DAY_MODEL_CAP = 800;       // hard ceiling on model calls per day, ALL sources together
+
+function isBot(req) {
+  const ua = req.headers.get("user-agent") || "";
+  return !ua.trim() || BOT_RE.test(ua);          // no UA or a known non-human agent
+}
+function clientIp(req) {
+  return req.headers.get("cf-connecting-ip") || "0.0.0.0";
+}
+async function overRate(env, req) {
+  const win = Math.floor(Date.now() / 3600000);  // hourly bucket
+  const k = "rl:" + win + ":" + clientIp(req);
+  const n = parseInt((await env.TLV_I18N.get(k)) || "0", 10) + 1;
+  await env.TLV_I18N.put(k, String(n), { expirationTtl: 3600 });
+  return n > RL_PER_HOUR;
+}
+async function overBudget(env) {
+  const k = "budget:" + new Date().toISOString().slice(0, 10);
+  return parseInt((await env.TLV_I18N.get(k)) || "0", 10) >= DAY_MODEL_CAP;
+}
+async function chargeModelCall(env) {                 // count a call the moment we commit to it
+  const k = "budget:" + new Date().toISOString().slice(0, 10);
+  const n = parseInt((await env.TLV_I18N.get(k)) || "0", 10) + 1;
+  await env.TLV_I18N.put(k, String(n), { expirationTtl: 172800 });
+}
+function englishFrom(src) {                            // the baked English, served AS the "translation"
+  const titles = {};
+  for (const id of Object.keys(src.titles || {})) titles[id] = src.titles[id];
+  return Object.assign({}, src.strings, { greet: src.greet, titles: titles, dir: "ltr" });
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -40,12 +79,20 @@ export default {
     const src = await srcRes.json();
     if (v !== String(src.version)) return new Response("stale version", { status: 409 });
 
+    // EX-EDGE-GUARD: a bot, or a day already at its cap, gets ENGLISH from the source — no model
+    // call, and NOT cached under this lang (a real speaker of it later still earns a real pass)
+    if (isBot(req) || await overBudget(env)) return json(JSON.stringify(englishFrom(src)));
+    if (await overRate(env, req)) {
+      return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
+    }
+
     const lock = "lock:" + key;                         // best-effort single flight (a burst
     if (await env.TLV_I18N.get(lock)) {                 // warms, it never fans out)
       return new Response("warming", { status: 503, headers: { "Retry-After": "3" } });
     }
     await env.TLV_I18N.put(lock, "1", { expirationTtl: 60 });
 
+    await chargeModelCall(env);                         // count it the moment we commit to the model
     let out;
     try {
       out = await translate(env.ANTHROPIC_API_KEY, lang, src);
@@ -127,12 +174,21 @@ async function story(req, env) {
   const hit = await env.TLV_I18N.get(key);            // cache first — one model call per walk, ever
   if (hit) return json(hit);
 
+  // EX-EDGE-GUARD: a cached walk is still served above; an UNCACHED one that would call the model
+  // is refused to a bot or a capped day (silence — the story is enhancement, INV-19), and a flooding
+  // IP is throttled — the narrator never becomes a money tap.
+  if (isBot(req) || await overBudget(env)) return new Response("no story", { status: 404 });
+  if (await overRate(env, req)) {
+    return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
+  }
+
   const lock = "lock:" + key;                         // best-effort single flight (a burst warms once)
   if (await env.TLV_I18N.get(lock)) {
     return new Response("warming", { status: 503, headers: { "Retry-After": "3" } });
   }
   await env.TLV_I18N.put(lock, "1", { expirationTtl: 60 });
 
+  await chargeModelCall(env);                          // count it the moment we commit to the model
   let out;
   try {
     out = await narrate(env.ANTHROPIC_API_KEY, known, variant, lang);
