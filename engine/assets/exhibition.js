@@ -20,6 +20,7 @@
   const HAND_KEY = "tlv.hand";                        // the last dealt threshold hand (EX-DOOR-3)
   const SEENC_KEY = "tlv.seenc";                      // the seen-list's local copy (EX-DOOR-3)
   const LANG_KEY = "tlv.lang";                        // the guest's chosen tongue (EX-LANG)
+  const SND_KEY = "tlv.sound";                         // the ambient player's on/off + volume (EX-SOUND)
 
   // ---- EX-TIMING (INV-38): the museum keeps time — for its builder only -------
   // Marks are free and invisible (INV-1: no DOM text; INV-18: no beacon, nothing
@@ -67,6 +68,7 @@
     try { localStorage.removeItem(HAND_KEY); } catch (e) {}
     try { localStorage.removeItem(SEENC_KEY); } catch (e) {}
     try { localStorage.removeItem(LANG_KEY); } catch (e) {}     // the browser's tongue returns
+    try { localStorage.removeItem(SND_KEY); } catch (e) {}      // the museum forgets the sound choice (EX-SOUND)
     const q = new URLSearchParams(location.search);
     q.delete("reset");
     const rest = q.toString();
@@ -1415,4 +1417,168 @@
     door.addEventListener("click", () => { listClose(); });
     redraw();
   }
+
+  // ---- EX-SOUND (INV-48): the ambient loop walks beside the guest ----------------------------
+  // OFF by default — a fresh visit is silent and the audio is fetched ONLY on the first turn-on
+  // (the perf fence), never on cold load. Gapless via Web Audio: decode into a looping
+  // AudioBufferSourceNode. Fade in ~1.2s ×tempo, out ~0.8s and on leaving / unload (pagehide,
+  // best-effort). Volume default 0.3 with a ≥44px touch-friendly slider. The on/off + volume
+  // persist in tlv.sound (versioned); a return ON ARMS on the first gesture (autoplay is blocked
+  // without one) rather than fetching on cold load. A missing/failed file fails SILENT (INV-1).
+  // Two beats ride the EXISTING EX-PULSE wire: sound_on / sound_off (no new analytics plumbing).
+  // EX-SOUND-PAUSE (INV-52): off is a PAUSE that holds the moment, on RESUMES from it.
+  // Config keys (config.json → exhibition): sound_url (audio file, empty = player hidden),
+  // sound_credit.artist / sound_credit.title / sound_credit.url (the credit tray text + link).
+  (function sound() {
+    const SND_URL = (EX.sound_url || "").trim();
+    if (!SND_URL) return;                                // no audio configured — player stays hidden
+    const CREDIT = EX.sound_credit || {};
+    const FADE_IN = 1.2, FADE_OUT = 0.8, DEFAULT_VOL = 0.3;
+
+    const box = document.createElement("div");
+    box.id = "ex-sound";
+    // the tray sits to the LEFT of the button (slides out on hover / while playing / focus-within);
+    // the credit uses config-driven artist/title/url — never hardcoded content (INV-1)
+    const artistHtml = CREDIT.artist ? `<span class="t"><b>${CREDIT.artist}</b></span>` : "";
+    const titleHtml = CREDIT.title ? `<span class="t">«${CREDIT.title}»</span>` : "";
+    const linkHtml = CREDIT.url
+      ? `<a href="${CREDIT.url}" target="_blank" rel="noopener">${CREDIT.url.replace(/^https?:\/\//, "")}</a>`
+      : "";
+    box.innerHTML =
+      '<div class="exsnd-tray">' +
+        '<span class="exsnd-cred">' + artistHtml + titleHtml + linkHtml + '</span>' +
+        '<input class="exsnd-vol" type="range" min="0" max="1" step="0.01" value="0.3"' +
+          ' aria-label="volume">' +
+      '</div>' +
+      '<button class="exsnd-btn" type="button" aria-pressed="false"' +
+        ' aria-label="sound"><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
+    document.body.appendChild(box);
+    requestAnimationFrame(() => box.classList.add("show"));   // EX-ARRIVE: arrives on the breath
+
+    const btn = box.querySelector(".exsnd-btn");
+    const vol = box.querySelector(".exsnd-vol");
+
+    let ctx = null, buffer = null, source = null, gain = null;
+    let target = DEFAULT_VOL, desired = false, playing = false, armed = false;
+    let ready = false, loading = false, fetched = false;
+    // EX-SOUND-PAUSE (INV-52): off is a PAUSE that holds the moment, on RESUMES from it — never a
+    // restart. `pausedOffset` is seconds into the track; `startedAt`/`startedFrom` clock the running
+    // source so a stop can compute where it reached (a looping buffer has no readable playhead).
+    let pausedOffset = 0, startedAt = 0, startedFrom = 0;
+
+    // the remembered choice (versioned like the walk)
+    let pref = null;
+    try { pref = JSON.parse(localStorage.getItem(SND_KEY) || "null"); } catch (e) {}
+    if (!pref || pref.v !== VER) pref = null;
+    if (pref && Number.isFinite(+pref.vol)) target = Math.min(1, Math.max(0, +pref.vol));
+    vol.value = String(target);
+
+    function persist() {
+      try {
+        localStorage.setItem(SND_KEY, JSON.stringify({ v: VER, on: desired, vol: target }));
+      } catch (e) {}
+    }
+
+    async function prepare() {
+      if (ready || loading) return ready;
+      loading = true;
+      try {
+        ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+        gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination);
+        fetched = true;
+        const bytes = await fetch(SND_URL).then((r) => {
+          if (!r.ok) throw new Error("no audio"); return r.arrayBuffer();
+        });
+        buffer = await ctx.decodeAudioData(bytes);
+        ready = true;
+      } catch (e) { ready = false; }
+      loading = false;
+      return ready;
+    }
+
+    function arm() {
+      if (armed || playing) return;
+      armed = true;
+      ["pointerdown", "touchstart", "scroll", "keydown"].forEach((e) =>
+        addEventListener(e, onGesture, { once: true, passive: true, capture: true }));
+    }
+    function disarm() {
+      if (!armed) return;
+      armed = false;
+      ["pointerdown", "touchstart", "scroll", "keydown"].forEach((e) =>
+        removeEventListener(e, onGesture, { capture: true }));
+    }
+    function onGesture() { disarm(); if (desired) start(); }
+
+    function setDesired(on) {
+      if (on === desired) return;
+      desired = on;
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      pulse(on ? "sound_on" : "sound_off");
+      persist();
+      if (on) start(); else stop();
+    }
+
+    async function start() {
+      if (playing) return;
+      const ok = await prepare();
+      if (!desired) return;
+      if (!ok) { box.classList.remove("playing"); return; }
+      if (ctx.state === "suspended") { try { await ctx.resume(); } catch (e) {} }
+      if (!desired) return;
+      if (ctx.state === "suspended") { arm(); return; }
+      if (source) return;
+      source = ctx.createBufferSource();
+      source.buffer = buffer; source.loop = true;
+      source.connect(gain);
+      startedFrom = pausedOffset % buffer.duration;    // RESUME where the pause held — not the top
+      source.start(0, startedFrom);
+      startedAt = ctx.currentTime;
+      const now = ctx.currentTime;
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+      gain.gain.linearRampToValueAtTime(target, now + FADE_IN * TEMPO);
+      playing = true; armed = false;
+      box.classList.add("playing");
+    }
+
+    function stop() {
+      disarm();
+      if (source && ctx) {
+        const now = ctx.currentTime, s = source;
+        if (buffer) pausedOffset = (startedFrom + (now - startedAt)) % buffer.duration;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.linearRampToValueAtTime(0, now + FADE_OUT * TEMPO);
+        setTimeout(() => { try { s.stop(); } catch (e) {} },
+          Math.round(FADE_OUT * TEMPO * 1000) + 80);
+        source = null;
+      }
+      playing = false;
+      box.classList.remove("playing");
+    }
+
+    btn.addEventListener("click", () => { setDesired(!desired); });
+    vol.addEventListener("input", () => {
+      target = Math.min(1, Math.max(0, parseFloat(vol.value) || 0));
+      if (playing && ctx) {
+        const now = ctx.currentTime;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.linearRampToValueAtTime(target, now + 0.15);
+      }
+      persist();
+    });
+    addEventListener("pagehide", () => { if (playing) stop(); });
+
+    // a return visit with the pref ON: ARM on the first gesture — never a cold-load fetch
+    if (pref && pref.on) { desired = true; btn.setAttribute("aria-pressed", "true"); arm(); }
+
+    // the player's own reachable surface, for the suite
+    try {
+      window.EXSound = { state: () => ({ desired, playing, armed, ready, fetched, loading,
+                                         pausedOffset }),
+                         url: SND_URL };
+    } catch (e) {}
+  })();
 })();

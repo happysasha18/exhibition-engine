@@ -595,6 +595,15 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "light_weight": 0.6,   # how hard the light leans the order: 0 = pure kinship, high = a strict march
             "params_version": 1,   # bump on any light_weight/prompt/marks change → the cache key moves
         },
+        # EX-SOUND (INV-48): the ambient loop. sound_url is the audio file (empty = player hidden,
+        # the default — the gallery engine ships OFF; an instance opts in by setting this path).
+        # sound_credit holds the artist credit shown in the tray (all optional; missing = no credit shown).
+        "sound_url": "",           # path to the .m4a / .ogg — empty means no player renders
+        "sound_credit": {          # the tray's attribution — instance fills its own
+            "artist": "",          # artist/band name (shown bold)
+            "title": "",           # track/album title (shown in «»)
+            "url": "",             # artist website (shown as a link)
+        },
     }
     config["site_url"] = site_url
     config["ga_measurement_id"] = ga_id   # analytics id lives in config, never in a template
