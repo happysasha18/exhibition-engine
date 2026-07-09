@@ -105,10 +105,15 @@ MISMATCH = ("const st=document.createElement('style');st.id='mm';"
 
 
 def burst(br, deltas, gap=0.016):
-    """a trackpad gesture as the wheel-event burst it really is — ramp-in, peak, decaying tail"""
-    for d in deltas:
-        br.wheel(delta_y=d)
-        br.sleep(gap)
+    """a trackpad gesture as the wheel-event burst it really is — ramp-in, peak, decaying tail.
+    Dispatched on the PAGE's own clock (setTimeout), never test-runner sleeps: a real trackpad
+    ticks at device cadence, and a loaded runner stretching a python sleep past the 150ms idle
+    window would split one gesture into two — a harness artifact, not a product fact."""
+    br.evaluate(
+        "(()=>{const ds=%s,gap=%d;ds.forEach((d,i)=>setTimeout(()=>{"
+        "dispatchEvent(new WheelEvent('wheel',{deltaY:d,cancelable:true,bubbles:true}));"
+        "},i*gap));})()" % (json.dumps(deltas), int(gap * 1000)))
+    br.sleep(len(deltas) * gap + 0.25)
 
 
 def room(br, base, tempo):
@@ -331,12 +336,16 @@ else:
                   f"landed frame {i1} off {o1} (want exactly frame 1, centered ≤2)")
 
         # 11 · the dropped-swipe protection SURVIVES the ramp fix: a REAL second swipe — a sharp
-        #      rise over the first's still-flowing decaying tail, human-paced — still steps.
+        #      rise over the first's STILL-FLOWING decaying tail (one continuous event stream,
+        #      human-paced ~700ms in), must still step. One stream, never split by dead gaps —
+        #      a gap longer than the idle window would end the gesture and test nothing.
         with Browser(width=1280, height=900) as br:
             room(br, base, "0.2")
-            burst(br, [3, 8, 20, 44, 60, 41])            # swipe 1: ramp + peak
-            burst(br, [30, 22, 16, 12, 9, 7, 5], gap=0.06)  # its momentum tail keeps flowing
-            burst(br, [26, 48, 70, 45], gap=0.02)        # swipe 2: a sharp rise over the tail
+            burst(br, [3, 8, 20, 44, 60, 41]                       # swipe 1: ramp + peak
+                      + [30, 26, 22, 18, 15, 12, 10, 8, 7, 6,      # its momentum tail flows on
+                         5, 5, 4, 4, 3, 3]
+                      + [26, 48, 70, 45],                          # swipe 2: a sharp rise, ~700ms in
+                  gap=0.03)
             br.sleep(0.9)
             i2, o2 = cur(br), off(br)
             check(BROWSER_ROWS[11], i2 == 2 and abs(o2) <= 2,
