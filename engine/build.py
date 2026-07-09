@@ -327,8 +327,8 @@ def render_exhibition(items, captions, slugs, site_url, display_max=None):
     # served fresh (max-age=0), so a returning visitor always gets the current ?v= and thus fresh
     # JS/CSS the instant a deploy changes them. Hash the SERVED bytes (engine assets + content tokens).
     av = hashlib.sha1(
-        (_ENGINE_ASSETS / "exhibition.js").read_bytes()
-        + (_ENGINE_ASSETS / "exhibition.css").read_bytes()
+        client_asset("exhibition.js").read_bytes()      # the SERVED client (instance override wins)
+        + client_asset("exhibition.css").read_bytes()
         + (ROOT / "gallery" / "shared" / "tokens.css").read_bytes()
     ).hexdigest()[:8]
     extra_head = ('<script>document.documentElement.classList.add("js");'
@@ -486,11 +486,19 @@ def copy_gallery(display_max=None, mark_text=None):
             shutil.copytree(src / "assets", dst / "assets", dirs_exist_ok=True)
 
 
+def client_asset(name):
+    """One client source file (exhibition.js/css, the worker template): the INSTANCE's own copy
+    wins when its assets dir carries one — an instance that grew its client first keeps shipping
+    it byte-exact while the generic client serves everyone else. Engine's own copy otherwise."""
+    cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
+    return cand if (cand and cand.exists()) else _ENGINE_ASSETS / name
+
+
 def copy_exhibition_assets():
-    """The exhibition client (JS+CSS) comes from the ENGINE's own assets; favicons from the
-    instance's assets dir (absent → the bundle simply has none). Source files, never inlined."""
+    """The exhibition client (JS+CSS) — instance override first, engine's own otherwise (see
+    client_asset); favicons from the instance's assets dir (absent → the bundle simply has none)."""
     for name in ("exhibition.js", "exhibition.css"):
-        shutil.copy2(_ENGINE_ASSETS / name, OUT / name)
+        shutil.copy2(client_asset(name), OUT / name)
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
         if cand and cand.exists():
@@ -850,7 +858,21 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "placement": ["plaque"],
         },
     }
-    config["site_name"] = SITE_NAME        # the instance's brand — read by exhibition.js for the door wordmark (INV-28)
+    # A knob at its built-in default (or empty) is SUPPRESSED from the emitted config: every
+    # client read is fallback-guarded (glide_ms→520, placement→plaque, sound off when no URL),
+    # so the served config carries only what the instance actually set — no dead keys.
+    ex_cfg = config["exhibition"]
+    if ex_cfg.get("glide_ms") == 520:
+        del ex_cfg["glide_ms"]
+    if not ex_cfg.get("sound_url"):
+        ex_cfg.pop("sound_url", None)
+        ex_cfg.pop("sound_credit", None)
+    if ex_cfg.get("quiz") == {"placement": ["plaque"]}:
+        del ex_cfg["quiz"]
+    # site_name exists for the ENGINE client's door wordmark (INV-28); an instance that ships
+    # its OWN client (see client_asset) doesn't read it — emit only with the engine's client.
+    if client_asset("exhibition.js") == _ENGINE_ASSETS / "exhibition.js":
+        config["site_name"] = SITE_NAME
     config["site_url"] = site_url
     config["ga_measurement_id"] = ga_id   # analytics id lives in config, never in a template
     config["experiments"] = {}      # variant → flag → metric (empty registry)
@@ -899,7 +921,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # 404s (INV-60). Keyed by string work id, sorted so the bake stays reviewable.
     quiz_answers = quiz_private if flags["quiz"] else {}
     if flags["ai_i18n"] or flags["visitor_memory"] or flags["ai_story"] or flags["quiz"]:
-        worker_src = (_ENGINE_ASSETS / "worker.js").read_text(encoding="utf-8")
+        worker_src = client_asset("worker.js").read_text(encoding="utf-8")
         worker_src = worker_src.replace(
             '/*__STORY_FRAGMENTS__*/{}/*__/STORY_FRAGMENTS__*/',
             json.dumps(story_fragments, ensure_ascii=False, sort_keys=True))

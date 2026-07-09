@@ -630,6 +630,12 @@ after the CSS transition fires. Dropdowns that also close by removing `.show` us
 **The feel is configuration, not hardcode** (`INV-31`): every feel knob lives in `config.json`
 under `exhibition`. An unrecognized value renders the default, never a crash or a blank.
 
+**A knob at its built-in default (or empty) is SUPPRESSED from the emitted config** (2026-07-09):
+the served `config.json` carries only what the instance actually set. Safe because every client
+read is fallback-guarded (`glide_ms`→520, `quiz.placement`→plaque, sound off without a URL);
+`site_name` is emitted only when the ENGINE's own client ships (an instance client that carries
+its own wordmark doesn't read it).
+
 | Knob | Default | Range / options |
 |------|---------|-----------------|
 | `spread_size` | 10 | 3–12 |
@@ -641,10 +647,10 @@ under `exhibition`. An unrecognized value renders the default, never a crash or 
 | `max_unfolds` | 2 | 0–5 |
 | `door_size` | 5 | 3–5 |
 | `greeting` | `"ask"` | `"ask"` \| `"top"` \| `"off"` |
-| `sound_url` | `""` | path to the .m4a file; empty = no player |
-| `sound_credit.artist` | `""` | artist name for the credit tray |
-| `sound_credit.title` | `""` | track title for the credit tray |
-| `sound_credit.url` | `""` | artist website for the credit tray |
+| `sound_url` | absent | path to the .m4a file; absent/empty = no player |
+| `sound_credit.artist` | absent | artist name for the credit tray (joins with `sound_url`) |
+| `sound_credit.title` | absent | track title for the credit tray |
+| `sound_credit.url` | absent | artist website for the credit tray |
 | `story.variant` | `"B"` | `"A"` \| `"B"` \| `"C"` |
 | `story.light_weight` | 0.6 | 0 = pure kinship; high = strict light march |
 | `story.params_version` | 1 | bump on prompt/weight/marks change |
@@ -721,6 +727,10 @@ The **site bundle** emitted contains:
 - `gallery/` — images and the shared design tokens
 - `/api/.gitkeep` — the reserved empty namespace for future serverless AI (`INV-7`)
 - favicons — from the instance's `instance-assets/` dir when present
+- the exhibition client (`exhibition.js`, `exhibition.css`) and the worker TEMPLATE (`worker.js`)
+  — the instance's own copies WIN when its assets dir carries them (2026-07-09: an instance that
+  grew its client first keeps shipping it byte-exact; the generic client serves everyone else);
+  the `?v=` asset hash is computed over the SERVED client, whichever side supplied it
 - When `ai_i18n`, `visitor_memory`, or `ai_story` is enabled:
   - `_worker.js` — the edge worker, with private story fragments baked in (`INV-1`)
   - `_routes.json` — routes only `/api/*` to the worker; all other paths stay pure CDN

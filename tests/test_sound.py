@@ -49,16 +49,18 @@ _cfg_path.write_text(json.dumps(_cfg, ensure_ascii=False, indent=2, sort_keys=Tr
 
 # ---------------------------------------------------------------- data rows
 
-# 1 · config ships sound_url + sound_credit keys (even when empty)
+# 1 · a knob at its default is SUPPRESSED from the emitted config (2026-07-09 contract: the
+#     served config carries only what the instance actually set — no dead keys; every client
+#     read is fallback-guarded, sound joins only with a URL)
 cfg = json.loads((TMP / "config.json").read_text())
 ex = cfg.get("exhibition") or {}
-check("EX-SOUND config ships sound_url and sound_credit keys",
-      "sound_url" in ex and "sound_credit" in ex,
+check("EX-SOUND config omits sound knobs when unset (suppressed-at-default contract)",
+      "sound_url" not in ex and "sound_credit" not in ex,
       f"exhibition keys: {sorted(ex.keys())}")
 
-# 2 · sound_url = "" by default
-check("EX-SOUND player is OFF by default (sound_url empty in config)",
-      ex.get("sound_url") == "",
+# 2 · absent knob reads as OFF (the client's fallback path — same behavior as the old "")
+check("EX-SOUND player is OFF by default (no sound_url in config)",
+      (ex.get("sound_url") or "") == "",
       f"sound_url={ex.get('sound_url')!r}")
 
 js_src = (ROOT / "engine" / "assets" / "exhibition.js").read_text(encoding="utf-8")

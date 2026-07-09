@@ -126,7 +126,10 @@ check("EX-QUIZ flag-off byte-identity + 4-option public schema (prompt+options o
 # 5 · GENERALIZATION: placement is a config knob; cooldown configurable; quiz_probability RETIRED;
 #      data is instance-supplied (INV-28/INV-66)
 qcfg = CONFIG_ON.get("exhibition", {}).get("quiz", {})
-placement_ok = isinstance(qcfg.get("placement"), list) and set(qcfg["placement"]) <= {"plaque", "door"}
+# suppressed-at-default contract (2026-07-09): at the default placement the quiz subdict is
+# ABSENT from the served config (the client falls back to plaque); a NON-default value emits.
+placement_ok = (qcfg == {} or (isinstance(qcfg.get("placement"), list)
+                               and set(qcfg["placement"]) <= {"plaque", "door"}))
 cooldown_ok = isinstance(CONFIG_ON.get("exhibition", {}).get("quiz_cooldown_hours"), (int, float))
 no_probability = "probability" not in qcfg   # quiz_probability is RETIRED (INV-66 one-per-show)
 # no hardcoded work id / host / brand in the builder's quiz path (data comes from <content>/quiz.json)
