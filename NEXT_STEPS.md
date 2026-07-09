@@ -34,6 +34,43 @@ tlvphoto literals in the engine (NOT from this session) — `window.__tlvSeen` (
 4. on his OK, deploy the engine-baked bundle to tlvphotos.com; then reverse the code flow (engine → instance).
 Two hard gates: empty byte-diff before prod is touched, and his eye on the compare before the flip.
 
+### CUTOVER — MEASURED STATE 2026-07-09 ~17:10 (gate 1 is RED; the engine is materially BEHIND tlvphoto)
+Baked the engine against live tlvphoto content with tlvphoto's real prod flags and diffed vs tlvphoto's
+own fresh bake (`~/tlvphoto/site`, rebaked minutes earlier by the swipe deploy — a valid baseline):
+```
+~/tlvphoto/.venv/bin/python engine/build.py --content ~/tlvphoto --site example/site.json --out /tmp/eb \
+  --site-url https://tlvphotos.com --ga-id G-00J4KGDHCG --enable ai_i18n --enable visitor_memory \
+  --enable ai_story --enable quiz --display-max 1000 --instance-assets ~/tlvphoto/assets_src
+diff -rq /tmp/eb ~/tlvphoto/site
+```
+**Result: 253 files differ — NOT byte-identical.** The "full parity" note above (cont.68 catch-up) was
+optimistic; build.py-side parity was NOT reached. The drift, by bucket (each = a reconciliation row):
+1. **Image pipeline — 122 JPGs differ (same 1000×1000 dims, SAME Pillow 12.2.0 → different bytes).** So it
+   is CODE drift in the engine's resize/mark/encode path, NOT a Pillow-version issue (ruled out by baking
+   the engine under tlvphoto's own `.venv`, Pillow 12.2.0 — still 122 differ). The engine's OWN `.venv` also
+   carries Pillow **11.3.0** on an older Python that can't even fetch 12.2.0 — a second, separate env gap to
+   pin once the code path matches. Find the exact divergence by diffing the resize/mark functions.
+2. **Work pages — 122 `w/*.html` differ**, all from build.py emission the engine lacks: served-dims OG
+   (engine emits 1440, tlvphoto 1000 — INV-56/57 `served_dims`), `"artform":"Photography"` + the ImageObject
+   JSON-LD (INV-58), and the `srcset`/`sizes` image-ladder attribute on `<img>` (INV-63). (The tier FILES
+   `-640/-960/-1280.jpg` ARE produced — 0 missing — only the HTML attribute is absent.)
+3. **robots.txt** — engine missing the 21 AI-scraper `Disallow` blocks (tlvphoto `51f4f74`, cont.64).
+4. **config.json** — engine emits EXTRA generalization keys tlvphoto's does not: `glide_ms`, `quiz.placement`,
+   `sound_credit`, `sound_url`, `site_name`. CONTRACT DECISION (his, or a defensible default): either tlvphoto
+   adopts these keys (invisible), or the engine SUPPRESSES empty/instance-default keys from the emitted config.
+5. **`gallery/audio/`** — absent from the engine bake: the ambient-sound files aren't in the content-contract.
+6. **Also differ:** `_worker.js`, `exhibition.js`, `exhibition.css`, `exhibition_data.json`, `i18n_source.json`,
+   `index.html`, `sitemap.xml` — from the same build.py + asset generalization drift (e.g. `window.EXQuiz` vs
+   tlvphoto's `window.TLVQuiz`, slug-vs-numeric `ID_RE`, quiz-model wording). The swipe fix (tlvphoto `b7f6042`,
+   live on prod 2026-07-09) is ALSO fresh asset drift the engine does not yet have — fold it in the asset re-sync.
+
+**PLAN (drive to empty diff, then his eye — prod flip is his OK only):** reconcile bucket-by-bucket, re-run the
+byte-proof after each. Buckets 2+3 are clean mechanical ports FROM tlvphoto's `build_site.py` INTO the engine's
+`build.py` (a Sonnet worker on a pinned brief; senior VERIFIES the byte-proof — never trust a worker's "empty
+diff", check every file per the restructure-safety rule). Bucket 1 (image bytes) + bucket 4 (config contract)
+are senior judgment. Bucket 5 = extend the content-contract to carry audio. Only when `diff -rq` is EMPTY do we
+show Alexander the compare; prod is untouched until then.
+
 ## LIVE STATE (2026-07-07 night — FOUNDED as a lane beside tlvphoto)
 
 - Repo renamed `~/gallery-engine` → `~/exhibition-engine` (his name). Born 2026-07-06 morning as a
