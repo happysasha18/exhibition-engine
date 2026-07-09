@@ -710,6 +710,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         "cold_spread": "diverse",  # the silent-entry hang: 'diverse' (farthest-point) | 'first'
         "arc_shape": "widening",   # how the arc samples near→far: 'widening' (holds contrast) | 'nearest'
         "tempo": 1.35,           # the ONE motion multiplier over the --d-* tokens (EX-MOTION, design 04)
+        "glide_ms": 520,         # EX-GLIDE (INV-39): the one-frame dock clock (120–2000, ×tempo at runtime)
         # transition_ms LEFT the schema with the tempo law (EX-MOTION tombstone, 2026-07-06) —
         # the crossing rides the cross token (1.2s × tempo)
         "kinship_axes": "all",   # which axes drive distance: 'all' | [indices] (core-vs-descriptive)

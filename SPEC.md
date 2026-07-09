@@ -315,20 +315,33 @@ the last work the visitor saw. The `--tone` variable (the accent at ×0.66) tint
 told-story line on the wall label. The accent is presentation, never a readout (`INV-1`: no
 number faces the visitor, the tone just IS).
 
-**The amortized scroll** (`EX-GLIDE`): while the hand moves, the room moves exactly with it —
-nothing yanks. A beat of **TRUE stillness** (~280ms of unchanged scroll position, sampled per
-animation frame, never inferred from event timing: momentum on iOS and Mac trackpads delivers
-scroll events in bursts with long gaps, which makes a timer fight the still-moving native scroll)
-triggers the glide to the nearest frame: **sine in-out** (the calmest classic curve — lowest
-peak speed, both ends soft, no bounce), over `950ms + 0.75ms/px` of distance, capped at 2400ms,
-scaled by `tempo/1.35` capped ×1.25 — the docking itself stays visibly slow. A **back-correction**
-(settling against the hand's last direction) takes a third longer — the room never tugs back
-briskly. On **touch**: a flick that entered the next frame by more than ~12% settles forward in
-the direction of travel; only a barely-begun drift settles back. Pointer devices use plain-nearest.
-Any new input (wheel, touch, a key) cancels the glide mid-flight — the museum never wrestles.
-A sub-2px correction is skipped. **Paging keys** (`Space`, `↓`, `↑`, `PageDown`, `PageUp`, and
-`Shift+Space`) glide by frame on keyboard — the same soft breath, one step per press, chaining
-from the running glide's heading.
+**The one-frame walk** (`EX-GLIDE`): the walk advances **one work at a time**. Every input — an
+arrow key, a wheel notch, a touch swipe, done HOWEVER — makes **exactly ONE** ideal transition to
+the adjacent frame in that direction. It **always starts smooth and always lands smooth, CENTERED**
+on the target work; it **never rests between frames** and **never drifts or floats afterwards**.
+The transition is a **sine in-out** (the calmest classic curve — lowest peak speed, both ends soft;
+monotonic 0→1, so it provably **cannot overshoot** and always lands centered, no bounce), over
+`glide_ms` (config, default 520ms) scaled by `tempo/1.35` capped ×1.5 — the docking rides the one
+clock (`INV-33`), reduced motion collapses it near-instant. **Force is IGNORED in phase 1**: one
+fixed curve for every input, always exactly one frame. (A **phase-2 hook** is left in the animator —
+force will later seed the same transition faster off the start, capped at one extra frame — but is
+NOT built here.) A **second input mid-transition chains** to the *next* frame — it steps from where
+the running transition is headed, never re-rounds backward. A sub-2px move is skipped.
+
+The input surfaces split. **Desktop** (wheel + keys) is owned by the **JS animator**, which
+`preventDefault`s to kill native free-scroll — so no lingering momentum can float after the stop.
+A mouse notch is one event; a trackpad swipe is a decaying burst — a **lock coalesces the burst to
+ONE step**, and an idle timer (~150ms) clears the lock when all motion stops. A **new swipe fired
+during the previous swipe's momentum tail is NOT dropped**: it shows up as a **rising `|deltaY|`**
+over the decaying envelope (`fresh = !lock || mag > peak·1.3 + 1`), which re-arms a second step; the
+plain tail stays coalesced. **Paging keys** (`Space`, `↓`, `↑`, `PageDown`, `PageUp`, and
+`Shift+Space`) make the same one transition — one step per press, chaining from the running
+transition's heading; a held key is one frame per press. **Touch** docks under native momentum via
+**CSS scroll-snap** (`scroll-snap-type:y mandatory` + `scroll-snap-align:start` +
+`scroll-snap-stop:always`, scoped to `@media (hover:none)`): **no JS ever writes the scroll position
+on touch**, so a swipe never flies through, never rests between works, and the iOS jerk-fix holds by
+construction. The cold **door ignores a wheel** — the animator owns the walk only, never the door,
+the ceremony, or the side room.
 
 **Back is honest** (`INV-18`): `(a)` crossing the door lays ONE history step — back from the
 gallery returns to the **door AS IT STOOD** (the step carries the spread it showed); `(b)` the
@@ -810,7 +823,7 @@ the worker.
 | `EX-LANG` | The corner language selector on the door |
 | `EX-HANG` | The gallery: one work per viewport, caption in the margin |
 | `EX-ACCENT` | The breathing ground and live accent |
-| `EX-GLIDE` | The amortized scroll settle — sine in-out, never a snap |
+| `EX-GLIDE` | One input → one centered frame — sine in-out, no drift; desktop animator, touch snap |
 | `EX-SHARE-BTN` | The per-frame share button: copies the room permalink, never navigates |
 | `EX-SHARE-IN` | The permalink arrival: `#w-<id>` as a handed-over pick |
 | `EX-SHARE` | The share feature as a whole |

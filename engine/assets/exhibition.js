@@ -695,7 +695,11 @@
     if (busy || !doorAvailable) return;
     tlog("exit");
     pulse("walk_exit");
-    walkY = scrollY;                                   // Back must return HERE (INV-32b)
+    // the paginated walk always rests ON a frame (EX-GLIDE, INV-39) — remember it as a frame top so
+    // Back restores a whole work centered, never a stray sub-frame offset (INV-32b). The old free
+    // settle re-centered a restore after the fact; the one-frame model aligns it at the source.
+    { const vh = innerHeight, max = document.documentElement.scrollHeight - vh;
+      walkY = Math.max(0, Math.min(max, Math.round(scrollY / vh) * vh)); }
     groundRest();
     const sp = doorSet();                              // the SAME curated set — a fresh quiz
     renderDoor(sp, false);                             // is a fresh PICK (EX-DOOR-2d)
@@ -1197,63 +1201,105 @@
     counter.querySelector(".tot").textContent = String(shown).padStart(2, "0");
   }
 
-  // ---- EX-GLIDE (INV-39): the amortized scroll — the walk settles like breath ----
-  // Card 02's law: while the hand moves, nothing yanks; a beat of stillness glides the room
-  // to the nearest frame; ANY new input cancels mid-flight — the museum never wrestles.
+  // ---- EX-GLIDE (INV-39): one input → one centered frame (the paginated walk) ----------
+  // The decided motion model (supersedes the old free-inertia settle): every input — an arrow
+  // key, a wheel notch, a touch swipe, done HOWEVER — makes exactly ONE ideal transition to the
+  // adjacent frame in that direction. It ALWAYS starts smooth and ALWAYS lands smooth, CENTERED
+  // on the target; it never rests between frames and never drifts afterwards. The old free-scroll
+  // + stillness detector — "stops somewhere, then slowly floats another ~1.5s" — is RETIRED; that
+  // lingering float was the felt defect. PHASE 1 (here): force is IGNORED — one fixed curve for
+  // every input, always exactly one frame. PHASE 2 (a later tuning, NOT built now): force will
+  // seed the SAME transition (see the `velocity` hook in glideToFrame) — a stronger input runs
+  // faster through the start, lands just as gently, a violent flick advancing at most one extra.
+  //
+  // Split by input: TOUCH docks with native momentum under CSS scroll-snap (mandatory +
+  // scroll-snap-stop:always — it never fights iOS momentum, so the jerk-fix holds by construction);
+  // DESKTOP (wheel + keys) is owned by the JS animator below, which replaces native free-scroll so
+  // no lingering drift can exist. Both resolve to the same one-frame-centered landing.
+  const TOUCHY = matchMedia("(hover: none)").matches;
   let glideRaf = null;
-  let gliding = false;                                 // the glide's own motion never re-arms
-  let glideGoal = null;                                // where the running glide is headed
-  let progAt = 0;                                      // …not even its tail event after a cancel
+  let gliding = false;
+  let glideGoal = null;                                // where the running transition is headed
   function glideCancel() {
     if (glideRaf) { cancelAnimationFrame(glideRaf); glideRaf = null; }
     gliding = false;
   }
-  function glideTo(to) {
+  // the one fixed transition: a sine in-out over one tempo-scaled clock. Monotonic 0→1 with both
+  // ends soft — it provably cannot overshoot, so it ALWAYS lands centered on the frame, no bounce.
+  const GLIDE_MS = clampInt(EX.glide_ms, 520, 120, 2000);  // the one-frame dock feel (config knob, INV-28)
+  function glideToFrame(to /*, velocity */) {
     glideCancel();
-    glideGoal = to;
     const from = scrollY;
     const d = to - from;
-    if (Math.abs(d) < 2) return;                       // a sub-2px correction is noise
-    // v3 (his 09:31 word: «красивую кривую, асимметричный гистерезис»): length grows with
-    // distance, capped; scaled by tempo/default, capped ×1.25 — and a settle that must move
-    // AGAINST the hand's last direction (a back-correction) takes a third longer: the room
-    // never tugs back briskly (the hysteresis half)
-    const dur = Math.min(2400, 950 + Math.abs(d) * 0.75)
-      * Math.min(1.25, TEMPO / 1.35)
-      * (travel && Math.sign(d) !== travel ? 1.3 : 1);
+    if (Math.abs(d) < 2) { glideGoal = null; return; } // already centered — nothing to move
+    glideGoal = to;
+    // duration rides the one clock (EX-MOTION / INV-33); reduced motion collapses it near-instant
+    // (EX-MOTION-R). Capped ×1.5 so a slow tempo never makes the dock crawl.
+    const dur = GLIDE_MS * Math.min(1.5, TEMPO / 1.35);
+    // PHASE-2 HOOK (a later tuning, NOT wired now): `velocity` (wheel/swipe force) will seed a
+    // faster launch here so a stronger input runs faster through the START yet still lands gently —
+    // capped at one extra frame, never a fly-through. Force is IGNORED in phase 1; the curve is
+    // identical for every input.
+    const ease = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
     const t0 = performance.now();
-    // v4 «въезжает вальяжно» (his 09:43 word — the spring's darty middle was the miss): a
-    // STATELY roll-in — sine in-out, the calmest of the classic curves (lowest peak speed,
-    // soft at both ends), over a long clock; the docking itself stays visibly slow.
-    // v5 «отчаливает чуть тяжелее, как корабль от причала» (his 2026-07-07 word): the launch
-    // clock is warped a touch slower right off the pier (u = t^LAUNCH) — the room casts off with
-    // weight instead of tearing off the spot; the sine roll keeps the calm middle and the same
-    // soft dock he liked (u→1 with slope→0 at the end). LAUNCH is the cast-off weight, his dial.
-    const LAUNCH = 1.4;
-    const ease = (t) => { const u = Math.pow(t, LAUNCH); return 0.5 - 0.5 * Math.cos(Math.PI * u); };
     gliding = true;
     const step = (now) => {
+      if (atDoor || busy || sideOpen) { glideCancel(); glideGoal = null; return; }
       const p = Math.min(1, (now - t0) / dur);
-      progAt = now;
-      scrollTo(0, from + d * ease(p));
+      scrollTo(0, from + d * ease(p));                 // the animator OWNS the position
       if (p < 1) glideRaf = requestAnimationFrame(step);
-      else glideCancel();
+      else { glideCancel(); glideGoal = null; }        // landed centered — no tail, no drift
     };
     glideRaf = requestAnimationFrame(step);
   }
-  // desktop keys PAGE by frame (his word 2026-07-07 morning: «пробел или кнопки вниз/вверх
-  // должны плавно допрокручивать на следующую картинку») — the paging keys answer with the
-  // same soft glide; every OTHER key stays the hand that wins and cancels
+  // one step = advance exactly ONE frame from where the walk is — or from where a running
+  // transition is headed, so a second input CHAINS to the next frame, never re-rounds backward.
+  function stepFrame(dir /*, velocity */) {
+    const vh = innerHeight;
+    const max = document.documentElement.scrollHeight - vh;
+    const base = gliding && glideGoal != null ? glideGoal : scrollY;
+    const k = Math.round(base / vh) + dir;
+    glideToFrame(Math.min(max, Math.max(0, k * vh)));
+  }
+  function walkOwnsInput() {                            // the door/ceremony/side room keep native
+    return document.documentElement.classList.contains("ex-walk")
+      && !atDoor && !busy && !sideOpen;
+  }
+  // DESKTOP wheel: one gesture → one frame. A mouse notch is a single event; a trackpad swipe is
+  // a burst of them — both coalesce to ONE step (force ignored, phase 1). preventDefault kills
+  // native free-scroll entirely, so there is no momentum left to "float" after the stop.
+  let wheelLock = false;
+  let wheelIdle = null;
+  let wheelPeak = 0;                                   // decaying envelope of the live gesture's |deltaY|
+  if (!TOUCHY) {
+    addEventListener("wheel", (e) => {
+      if (!walkOwnsInput()) return;
+      if (e.target && e.target.closest
+          && e.target.closest("#ex-side, #ex-quiz-card, #ex-gift-card")) return;  // overlay scrolls
+      e.preventDefault();                              // the walk is paginated, not free
+      const mag = Math.abs(e.deltaY);
+      // A trackpad swipe is a long burst whose |deltaY| only DECAYS; a mouse notch is one event.
+      // The lock coalesces a burst to ONE step — but the momentum tail can trail off for up to a
+      // second, and a NEW swipe fired during that tail must NOT be dropped. A fresh swipe shows up
+      // as a RISING magnitude over the decaying tail, so a clear rise re-arms the step; the plain
+      // tail stays coalesced.
+      // PHASE-2 HOOK: accumulate mag across the gesture here for a force→speed map.
+      const fresh = !wheelLock || mag > wheelPeak * 1.3 + 1;
+      clearTimeout(wheelIdle);
+      wheelIdle = setTimeout(() => { wheelLock = false; wheelPeak = 0; }, 150);  // all motion stopped
+      if (!fresh) { wheelPeak = Math.max(mag, wheelPeak * 0.95); return; }  // same gesture's tail
+      wheelLock = true;
+      wheelPeak = mag;
+      stepFrame(e.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
+  }
+  // DESKTOP keys ARE the walk's step: space/↓/PageDown forward, ↑/PageUp (and shift+space) back —
+  // the SAME one transition; a held key = one frame per press; a press mid-transition chains to
+  // the next frame; every other key is left to its own owner.
   const PAGE_KEYS = { "ArrowDown": 1, "PageDown": 1, " ": 1, "ArrowUp": -1, "PageUp": -1 };
-  ["wheel", "touchstart"].forEach((e) =>               // the hand always wins — and takes
-    addEventListener(e, () => { glideCancel(); glideGoal = null; },  // the goal with it
-      { passive: true }));
-  addEventListener("keydown", (e) => {                 // a non-paging key cancels like a hand
-    if (!PAGE_KEYS[e.key]) glideCancel();
-  }, { passive: true });
   addEventListener("keydown", (e) => {
     if (!PAGE_KEYS[e.key]) return;
-    if (atDoor || busy || sideOpen) return;            // the walk's faces keep their own keys
+    if (!walkOwnsInput()) return;                      // the walk's faces keep their own keys
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
@@ -1261,55 +1307,10 @@
     if (e.key === " " && e.shiftKey) dir = -1;         // shift+space pages back, as everywhere
     e.preventDefault();                                // the native jump never fights the glide
     if (e.repeat) return;                              // a held key = one frame per press
-    const vh = innerHeight;
-    const max = document.documentElement.scrollHeight - vh;
-    const base = gliding && glideGoal != null ? glideGoal : scrollY;
-    const k = Math.round(base / vh) + dir;             // chained presses ride the running goal
-    glideTo(Math.min(max, Math.max(0, k * vh)));
+    stepFrame(dir);
   }, { passive: false });
-  // on a touch device the settle CONTINUES the hand's direction — a flick that entered the
-  // next frame never gets pulled back (his phone report); a pointer keeps plain-nearest
-  const TOUCHY = matchMedia("(hover: none)").matches;
-  let lastY = 0;
-  let travel = 0;                                      // the hand's last direction: +down / -up
-  // the idleness detector samples POSITION PER FRAME, never trusts event timing: momentum
-  // (iOS, mac trackpads) delivers scroll events in bursts with long gaps — a timer fires in a
-  // gap and the glide FIGHTS the still-moving native scroll (his iPhone jerk, 2026-07-07).
-  // Only ~0.28s of true WALL-TIME stillness opens the glide — Still no tempo scaling (a detector).
-  let watchRaf = null;
-  function watchCancel() {
-    if (watchRaf) { cancelAnimationFrame(watchRaf); watchRaf = null; }
-  }
-  function watchSettle() {
-    if (watchRaf) return;                              // one watcher at a time
-    let last = scrollY;
-    let movedAt = performance.now();
-    const tick = (now) => {
-      watchRaf = null;
-      if (gliding || atDoor || busy) return;           // the glide/door/ceremony own motion now
-      const y = scrollY;
-      if (Math.abs(y - last) >= 0.6) movedAt = now;    // stillness is WALL TIME, frames only
-      last = y;                                        // sample it (60 vs 120Hz must not matter)
-      if (now - movedAt < 280) { watchRaf = requestAnimationFrame(tick); return; }
-      const vh = innerHeight;                          // TRUE stillness — settle (EX-GLIDE)
-      const max = document.documentElement.scrollHeight - vh;
-      const raw = y / vh;
-      let k = Math.round(raw);
-      if (TOUCHY && travel) {
-        const frac = raw - Math.floor(raw);
-        if (travel > 0) k = frac >= 0.12 ? Math.ceil(raw) : Math.floor(raw);
-        else k = frac <= 0.88 ? Math.floor(raw) : Math.ceil(raw);
-      }
-      glideTo(Math.min(max, Math.max(0, k * vh)));
-    };
-    watchRaf = requestAnimationFrame(tick);
-  }
-  addEventListener("scroll", () => {
-    if (gliding || performance.now() - progAt < 80) { lastY = scrollY; return; }
-    travel = scrollY > lastY ? 1 : (scrollY < lastY ? -1 : travel);
-    lastY = scrollY;
-    watchSettle();
-  }, { passive: true });
+  // TOUCH writes NOTHING to the scroll position — CSS scroll-snap (mandatory + stop:always, scoped
+  // to hover:none) docks one work at a time under native momentum, so the iOS jerk-fix holds.
 
   function renderHang() {
     tlog("hang");
