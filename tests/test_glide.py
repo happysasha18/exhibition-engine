@@ -4,10 +4,11 @@ fixture. The decided motion model (supersedes the old free-inertia settle): ever
 key, a wheel notch, a touch swipe — makes EXACTLY ONE ideal transition to the adjacent frame. It
 always starts and lands smoothly, CENTERED on the target; it never rests between frames and never
 floats/drifts afterwards (the felt defect: "stops somewhere, then slowly floats ~1.5s"). Phase 1
-ignores force — one fixed sine-in-out curve for every input. Desktop (wheel+keys) is owned by a JS
-animator (real CDP wheel events, preventDefault kills native free-scroll). Touch docks under native
-momentum via CSS scroll-snap (mandatory + stop:always) — no JS writes the position, so the iOS
-jerk-fix holds by construction.
+ignores force — one fixed sine-in-out curve for every input. Desktop (wheel+keys) AND touch are
+owned by the SAME JS animator: a swipe blocks native scroll and docks exactly ONE frame (CSS
+scroll-snap-stop:always did not hold on a real phone — his bug 2026-07-09, a momentum swipe flew
+through several works). JS writes the position only AFTER the finger lifts, so no live iOS momentum
+is ever fought — the old jerk is impossible on this path.
 Asserts the REAL baked bundle in a REAL headless Chrome. Chrome absent → pinned expected SKIPs.
 Run: python tests/test_glide.py
 """
@@ -51,7 +52,7 @@ BROWSER_ROWS = [
     "EX-GLIDE rides the clock (collapsed tempo lands near-instant; default is still in flight then)",
     "EX-GLIDE keys page by frame (space/↓ forward, ↑ back; chained presses ride the goal)",
     "EX-GLIDE instant roads stay instant (hash + place restore land exact, no drift; the door ignores a wheel)",
-    "EX-GLIDE touch docks one work at a time (CSS scroll-snap floor; no JS writes the position — jerk-fix holds)",
+    "EX-GLIDE touch docks one work per swipe (a momentum swipe no longer flies through — one JS-driven frame each)",
 ]
 
 
@@ -209,25 +210,25 @@ else:
               f"hash at={at1}/{at2} top={top} · place {r1}/{r2} want={2*vh} · "
               f"door={at_door} door_wheel_writes={0 if door_quiet else '>0'}")
 
-        # 7 · touch: the CSS scroll-snap floor is present AND no JS ever writes the position
+        # 7 · touch: ONE swipe → exactly ONE framed transition, both directions, and a tap-sized
+        #     nudge moves nothing (his phone bug — a momentum swipe used to fly through several works)
         with Browser(width=1280, height=900) as br:
             br.touch(True)                             # a phone's media (hover:none / coarse)
             room(br, base, "0.2")
-            snap = br.evaluate(
-                "getComputedStyle(document.documentElement).scrollSnapType")
-            frame_css = br.evaluate(
-                "(()=>{const f=document.querySelector('.exh-frame');const s=getComputedStyle(f);"
-                "return s.scrollSnapAlign+'|'+s.scrollSnapStop;})()")
-            # no JS writer on touch: patch scrollTo AFTER load, then a wheel must move nothing via JS
-            br.evaluate("window.__wrote=0;const o=window.scrollTo;"
-                        "window.scrollTo=function(){window.__wrote++;return o.apply(this,arguments);};")
-            br.wheel(delta_y=400)
-            br.sleep(0.6)
-            wrote = br.evaluate("window.__wrote")
-            align, stop = (frame_css.split("|") + [""])[:2]
-            check(BROWSER_ROWS[7],
-                  snap == "y mandatory" and align == "start" and stop == "always" and wrote == 0,
-                  f"snap-type={snap!r} align={align!r} stop={stop!r} js-scroll-writes={wrote}")
+            vh = br.evaluate("innerHeight")
+            br.swipe(-300)                             # a firm swipe up → forward exactly one frame
+            f1 = br.evaluate("scrollY")
+            br.swipe(-300)                             # a second swipe → exactly one more, never several
+            f2 = br.evaluate("scrollY")
+            br.swipe(300)                              # swipe down → back one frame
+            back = br.evaluate("scrollY")
+            br.swipe(-10)                              # a tap-sized nudge (below the swipe floor) does nothing
+            nudge = br.evaluate("scrollY")
+            one_each = (abs(f1 - vh) <= 2 and abs(f2 - 2 * vh) <= 2
+                        and abs(back - vh) <= 2 and nudge == back)
+            check(BROWSER_ROWS[7], one_each,
+                  f"swipe→{f1} (want {vh}) swipe→{f2} (want {2*vh}) "
+                  f"back→{back} (want {vh}) nudge→{nudge} (want {back}, no move)")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

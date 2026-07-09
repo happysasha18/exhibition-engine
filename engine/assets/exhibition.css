@@ -119,14 +119,12 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 
 /* ================= THE GALLERY (room.html's museum hang) ================= */
 .exh-frame{ height:100vh; display:grid; place-items:center; position:relative; }
-/* EX-GLIDE (INV-39): TOUCH docks one work at a time under native momentum — CSS scroll-snap,
-   mandatory + stop-always, so a swipe (however hard) never flies through and never rests between
-   works. No JS writes the position here, so the iOS jerk-fix holds. DESKTOP (wheel+keys) is driven
-   by the JS animator instead — no snap there, so nothing re-docks mid-transition. */
-@media (hover:none){
-  html.ex-walk{ scroll-snap-type:y mandatory; }
-  html.ex-walk .exh-frame, html.ex-walk .exh-fin{ scroll-snap-align:start; scroll-snap-stop:always; }
-}
+/* EX-GLIDE (INV-39): TOUCH now docks through the SAME JS animator as desktop — one swipe → one
+   centered frame. CSS scroll-snap-stop:always did NOT hold on a real phone (his bug 2026-07-09:
+   a single momentum swipe flew through several works), so the native snap is retired here. The
+   touch handler in exhibition.js blocks native scroll and drives exactly one framed transition
+   per swipe; JS writes the position only AFTER the finger lifts, so there is no live iOS momentum
+   to fight — the old jerk came from writing DURING momentum, which no longer exists on this path. */
 .exh-frame img.work{ max-height:82vh; max-width:88vw; width:auto; height:auto; border-radius:2px;
   /* a quiet lift, not a black rim — the heavy 90px/.55 shadow read as «ободки из абсолютно
      чёрного» on the tinted ground (his word 2026-07-06 22:08) */

@@ -1415,8 +1415,38 @@
     if (e.repeat) return;                              // a held key = one frame per press
     stepFrame(dir);
   }, { passive: false });
-  // TOUCH writes NOTHING to the scroll position — CSS scroll-snap (mandatory + stop:always, scoped
-  // to hover:none) docks one work at a time under native momentum, so the iOS jerk-fix holds.
+
+  // TOUCH: one swipe → one frame (his phone bug 2026-07-09 — CSS scroll-snap-stop:always did not
+  // hold, so a momentum swipe flew through several works). The walk takes the touch the same way
+  // the wheel takes a desktop gesture: native scroll is blocked while the walk owns the input, and
+  // ONE swipe docks exactly ONE frame through glideToFrame. The animator writes the position only
+  // AFTER the finger lifts, so there is no live iOS momentum to fight (the old jerk is impossible
+  // here). Overlays (side room, quiz/gift card) and the door keep native scroll — see the guards.
+  if (TOUCHY) {
+    let tY = null, tLast = 0, tMoved = false;
+    const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
+    addEventListener("touchstart", (e) => {
+      if (!walkOwnsInput() || e.touches.length !== 1
+          || (e.target && e.target.closest && e.target.closest("#ex-side, #ex-quiz-card, #ex-gift-card"))) {
+        tY = null; return;                             // door / overlays / multi-touch keep native touch
+      }
+      tY = tLast = e.touches[0].clientY;
+      tMoved = false;
+    }, { passive: true });
+    addEventListener("touchmove", (e) => {
+      if (tY == null) return;
+      tLast = e.touches[0].clientY;
+      if (Math.abs(tLast - tY) > 6) tMoved = true;
+      e.preventDefault();                              // the walk is paginated — no native scroll, no fly-through
+    }, { passive: false });
+    addEventListener("touchend", () => {
+      if (tY == null) return;
+      const net = tY - tLast;                          // finger travels UP (net>0) = advance forward
+      tY = null;
+      if (!tMoved || Math.abs(net) < SWIPE_MIN) return;
+      stepFrame(net > 0 ? 1 : -1);                     // exactly one framed transition, force ignored (phase 1)
+    }, { passive: true });
+  }
 
   function renderHang() {
     tlog("hang");

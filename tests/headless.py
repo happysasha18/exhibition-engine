@@ -391,6 +391,18 @@ class Browser:
         way a real phone reports them (setEmulatedMedia alone does not). Reload to re-evaluate."""
         self._cmd("Emulation.setTouchEmulationEnabled", enabled=enabled, maxTouchPoints=points)
 
+    def swipe(self, dy, x=None, y0=None, steps=6, settle=0.6):
+        """A real one-finger swipe of `dy` px as touchStart→touchMove*→touchEnd CDP events.
+        `dy` negative = the finger moves UP the screen (the walk reads that as advance forward)."""
+        x = self.width // 2 if x is None else x
+        y0 = self.height // 2 if y0 is None else y0
+        self._cmd("Input.dispatchTouchEvent", type="touchStart", touchPoints=[{"x": x, "y": y0}])
+        for i in range(1, steps + 1):
+            self._cmd("Input.dispatchTouchEvent", type="touchMove",
+                      touchPoints=[{"x": x, "y": y0 + dy * i / steps}])
+        self._cmd("Input.dispatchTouchEvent", type="touchEnd", touchPoints=[])
+        self.sleep(settle)
+
     # -- network shaping (EX-LOAD tests)
     def block(self, patterns):
         """Block matching URLs (CDP wildcard patterns) — requests fail with an ``error`` event,
