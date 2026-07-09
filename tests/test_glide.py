@@ -59,6 +59,17 @@ BROWSER_ROWS = [
     "EX-GLIDE frames taller than the live viewport still land CENTERED every step (the phone-chrome "
     "mismatch — measured geometry, no accumulating drift)",
     "EX-GLIDE a viewport-metric change re-centers the resting frame (phone chrome collapses → quiet re-dock)",
+    "EX-GLIDE a light trackpad swipe (one ramping burst) advances exactly ONE frame — never several",
+    "EX-GLIDE a deliberate second swipe over the first's decaying tail still steps (never eaten)",
+]
+
+# facts this suite CANNOT close — they live in real-device physics a headless desktop never has;
+# each is closed only by a named walk on a real phone (the honest boundary, not pretended coverage)
+REAL_DEVICE_FACTS = [
+    "iOS touch momentum + scroll-snap interplay (the swipe fly-through was invisible headless)",
+    "browser-chrome viewport dance on real scroll (rows 8-9 EMULATE the metric, not the dance)",
+    "background-tab timer throttling (the 2.5s failsafe black screen)",
+    "trackpad hardware event cadence (row 10 replays a recorded shape, not a finger)",
 ]
 
 # the walk's sections in order (frames + the closing screen) — the stops the animator owes
@@ -91,6 +102,13 @@ def stop(br, k):
 MISMATCH = ("const st=document.createElement('style');st.id='mm';"
             "st.textContent='#ex-stage .exh-frame,#ex-stage .exh-fin{height:calc(100vh + 72px)}';"
             "document.head.appendChild(st)")
+
+
+def burst(br, deltas, gap=0.016):
+    """a trackpad gesture as the wheel-event burst it really is — ramp-in, peak, decaying tail"""
+    for d in deltas:
+        br.wheel(delta_y=d)
+        br.sleep(gap)
 
 
 def room(br, base, tempo):
@@ -271,19 +289,21 @@ else:
         # 8 · THE PHONE GEOMETRY (his 2026-07-09 bug): the frames' CSS height is BIGGER than the
         #     live viewport (100vh vs a chrome-shrunk innerHeight) — every landing must still put
         #     the section's centre on the viewport's centre, with NO accumulating per-step drift.
-        with Browser(width=1280, height=900) as br:
-            br.touch(True)
-            room(br, base, "0.2")
-            br.evaluate(MISMATCH)                      # frames now innerHeight+72 — the iOS metric
-            br.sleep(0.2)
-            frames, offs = [], []
-            for _ in range(4):
-                br.swipe(-300)
-                frames.append(cur(br))
-                offs.append(off(br))
-            check(BROWSER_ROWS[8],
-                  frames == [1, 2, 3, 4] and all(abs(o) <= 3 for o in offs),
-                  f"frames {frames} (want 1,2,3,4) per-step centre offsets {offs} (want ≤3px each)")
+        ok8, det8 = True, []
+        for extra in (72, 36):                         # two chrome geometries (letter: ≥2 sizes)
+            with Browser(width=1280, height=900) as br:
+                br.touch(True)
+                room(br, base, "0.2")
+                br.evaluate(MISMATCH.replace("72px", f"{extra}px"))  # frames = innerHeight+extra
+                br.sleep(0.2)
+                frames, offs = [], []
+                for _ in range(5):                     # ≥5 advances — drift is cumulative
+                    br.swipe(-300)
+                    frames.append(cur(br))
+                    offs.append(off(br))
+                ok8 = ok8 and frames == [1, 2, 3, 4, 5] and all(abs(o) <= 3 for o in offs)
+                det8.append(f"+{extra}px: frames {frames} offsets {offs}")
+        check(BROWSER_ROWS[8], ok8, " · ".join(det8) + " (want 1..5, each ≤3px)")
 
         # 9 · the viewport metric CHANGES while the walk rests (phone chrome collapses / a window
         #     resize) — the walk quietly re-docks the resting frame to the new centre, no jump cut.
@@ -298,6 +318,33 @@ else:
             check(BROWSER_ROWS[9],
                   abs(before) <= 2 and cur(br) == 1 and abs(after) <= 3,
                   f"before={before} after metric change off={after} (want re-centered ≤3, frame 1)")
+
+        # 10 · a LIGHT trackpad swipe is one RAMPING burst of small deltas (the instance bug 2026-07-09:
+        #      one light trackpad swipe flew through half the gallery): the gesture's own ramp-in must
+        #      never re-arm the step — one burst, one frame, landed centered.
+        with Browser(width=1280, height=900) as br:
+            room(br, base, "0.2")
+            burst(br, [2, 4, 9, 18, 34, 52, 38, 22, 12, 6, 3, 2])
+            br.sleep(0.8)
+            i1, o1 = cur(br), off(br)
+            check(BROWSER_ROWS[10], i1 == 1 and abs(o1) <= 2,
+                  f"landed frame {i1} off {o1} (want exactly frame 1, centered ≤2)")
+
+        # 11 · the dropped-swipe protection SURVIVES the ramp fix: a REAL second swipe — a sharp
+        #      rise over the first's still-flowing decaying tail, human-paced — still steps.
+        with Browser(width=1280, height=900) as br:
+            room(br, base, "0.2")
+            burst(br, [3, 8, 20, 44, 60, 41])            # swipe 1: ramp + peak
+            burst(br, [30, 22, 16, 12, 9, 7, 5], gap=0.06)  # its momentum tail keeps flowing
+            burst(br, [26, 48, 70, 45], gap=0.02)        # swipe 2: a sharp rise over the tail
+            br.sleep(0.9)
+            i2, o2 = cur(br), off(br)
+            check(BROWSER_ROWS[11], i2 == 2 and abs(o2) <= 2,
+                  f"landed frame {i2} off {o2} (want frame 2 — swipe 2 must not be eaten)")
+
+        print("\n-- real-device boundary (closed only by a named walk on a real phone, never headless):")
+        for f in REAL_DEVICE_FACTS:
+            print("   [REAL-DEVICE] " + f)
 
 shutil.rmtree(TMP, ignore_errors=True)
 

@@ -1411,6 +1411,8 @@
   let wheelLock = false;
   let wheelIdle = null;
   let wheelPeak = 0;                                   // decaying envelope of the live gesture's |deltaY|
+  let wheelStepAt = 0;                                 // when the live gesture last fired a step
+  const RESWIPE_MS = 250;                              // a human's fastest deliberate re-swipe
   if (!TOUCHY) {
     addEventListener("wheel", (e) => {
       if (!walkOwnsInput()) return;
@@ -1418,18 +1420,23 @@
           && e.target.closest("#ex-side, #ex-quiz-card, #ex-gift-card")) return;  // overlay scrolls
       e.preventDefault();                              // the walk is paginated, not free
       const mag = Math.abs(e.deltaY);
-      // A trackpad swipe is a long burst whose |deltaY| only DECAYS; a mouse notch is one event.
-      // The lock coalesces a burst to ONE step — but the momentum tail can trail off for up to a
-      // second, and a NEW swipe fired during that tail must NOT be dropped. A fresh swipe shows up
-      // as a RISING magnitude over the decaying tail, so a clear rise re-arms the step; the plain
-      // tail stays coalesced.
-      // PHASE-2 HOOK: accumulate mag across the gesture here for a force→speed map.
-      const fresh = !wheelLock || mag > wheelPeak * 1.3 + 1;
+      const now = performance.now();
+      // A trackpad swipe is a long burst; a mouse notch is one event. The lock coalesces a burst
+      // to ONE step — but the momentum tail can trail off for up to a second, and a NEW swipe
+      // fired during that tail must NOT be dropped. A fresh swipe shows up as a RISING magnitude
+      // over the decaying tail — BUT a light gesture's own RAMP-IN also rises (2→5→12→30…), and
+      // re-arming on it flew through half the gallery from one gentle swipe (the instance bug
+      // 2026-07-09). The rise therefore re-arms only after a human-paced beat since this gesture's
+      // step: no finger re-swipes within RESWIPE_MS, while a ramp-in rises within milliseconds of
+      // it. PHASE-2 HOOK: accumulate mag across the gesture here for a force→speed map.
+      const fresh = !wheelLock
+        || (mag > wheelPeak * 1.3 + 1 && now - wheelStepAt > RESWIPE_MS);
       clearTimeout(wheelIdle);
       wheelIdle = setTimeout(() => { wheelLock = false; wheelPeak = 0; }, 150);  // all motion stopped
-      if (!fresh) { wheelPeak = Math.max(mag, wheelPeak * 0.95); return; }  // same gesture's tail
+      if (!fresh) { wheelPeak = Math.max(mag, wheelPeak * 0.95); return; }  // same gesture's ramp/tail
       wheelLock = true;
       wheelPeak = mag;
+      wheelStepAt = now;
       stepFrame(e.deltaY > 0 ? 1 : -1);
     }, { passive: false });
   }
