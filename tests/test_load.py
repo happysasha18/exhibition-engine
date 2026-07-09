@@ -43,6 +43,27 @@ for w in DATA["works"]:
 check("N10 budget: every baked work derivative ≤ 1.2 MB (the breath is for networks, not bloat)",
       not heavy, " | ".join(heavy[:5]))
 
+# ---- three walk fixes ported from tlvphoto (string level; the feel rides the browser rows) -------
+INDEX_SRC = (TMP / "index.html").read_text(encoding="utf-8")
+CSS_SRC = (TMP / "exhibition.css").read_text(encoding="utf-8")
+JS_SRC = (TMP / "exhibition.js").read_text(encoding="utf-8")
+# 1 · the cold-arrival line — a quiet instance line before the walk comes alive, on a grace beat only
+check("EX-LOAD cold line: build emits #ex-loading with the instance line; CSS gates it on a grace "
+      "beat + hides it on ex-live (no black void on a slow cold link)",
+      'id="ex-loading"' in INDEX_SRC and "#ex-loading" in CSS_SRC
+      and "@keyframes ex-loadin" in CSS_SRC and "body.ex-live #ex-loading{ display:none" in CSS_SRC,
+      "ex-loading emit/CSS")
+# 2 · the closing screen no longer strands the last work's caption
+check("finale caption clears: the observer fades the caption out on #exh-fin, and the finale is "
+      "observed (never a stranded/stale title over the closing screen)",
+      'x.target.id === "exh-fin"' in JS_SRC and "io.observe(fin)" in JS_SRC,
+      "finale guard + observe")
+# 3 · changing the viewport aspect rebuilds the door WITHOUT the entry fade
+check("door relayout no re-fade: a fresh open animates its windows in; an aspect-change relayout "
+      "rebuilds WITHOUT the entry fade (windows already on screen)",
+      "doorRender(true)" in JS_SRC and 'b.style.animation = "none"' in JS_SRC,
+      "doorRender animate branch")
+
 BROWSER_ROWS = [
     "EX-DOOR-2e the clock is one third (pick→reveal ≈1.8 beats ×tempo, caption right behind)",
     "EX-LOAD the cold return breathes, then reveals (held image → breath → work fades in)",

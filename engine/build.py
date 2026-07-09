@@ -29,6 +29,7 @@ SITE_NAME = ""
 ROOT_TITLE = ""
 ROOT_DESCRIPTION = ""
 COLLECTION_NAME = ""
+LOADING_LINE = ""        # EX-LOAD: the cold-arrival line, instance-supplied (generic default)
 COPYRIGHT = ""           # composed in build() — the year is the bake run's own
 _ENGINE_ASSETS = None
 _INSTANCE_ASSETS = None
@@ -331,6 +332,7 @@ def render_exhibition(items, captions, slugs, site_url):
 <span class="ex-hint" id="ex-hint">an exhibition that assembles itself around you</span>
 </div>
 <div class="ex-stage" id="ex-stage"></div>
+<div id="ex-loading" aria-hidden="true"><span>{esc(LOADING_LINE)}</span></div>
 <main class="wrap" id="ex-static">
 <p class="lede">{esc(desc)}</p>
 <nav class="grid" aria-label="All works">{grid}</nav>
@@ -562,7 +564,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     no instance. ``display_max``: cap the served images' long edge (px) — the deploy passes it,
     tests omit it so the bake stays fast (EX-PROTECT-RES / INV-56)."""
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
-    global COLLECTION_NAME, COPYRIGHT, _ENGINE_ASSETS, _INSTANCE_ASSETS
+    global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, _ENGINE_ASSETS, _INSTANCE_ASSETS
     GA_ID = ga_id
     OUT = out_dir
     ROOT = content_dir
@@ -573,6 +575,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     ROOT_TITLE = site_config["root_title"]
     ROOT_DESCRIPTION = site_config["root_description"]
     COLLECTION_NAME = site_config["collection_name"]
+    LOADING_LINE = site_config.get("loading_line") or "loading the exhibition"
     COPYRIGHT = f"© {datetime.date.today().year} {CREATOR} · {SITE_NAME}"
     if OUT.exists():
         shutil.rmtree(OUT)                             # a fresh bundle, deterministic

@@ -552,12 +552,14 @@
     g.textContent = line;
     g.hidden = !line;                    // ambient: Back to a cold step re-greets at the CURRENT hour
     door.classList.toggle("greet-top", GPLACE === "top");
-    doorRender();
+    doorRender(true);                                  // a fresh open breathes its windows in
     if (cold) hintArm(); else hintOff(); // the re-opened door never hints (EX-DOOR-2g)
   }
 
-  // layout-aware render — re-runs on resize; rebuilds only when count/orientation change
-  function doorRender() {
+  // layout-aware render — re-runs on resize; rebuilds only when count/orientation change.
+  // `animate` is true only on a fresh open; a resize relayout (aspect change) rebuilds WITHOUT the
+  // entry fade — the windows are already on screen, so re-running exd-rise reads as a wrong fade-in.
+  function doorRender(animate) {
     if (!atDoor || !doorFace) return;
     const c = doorLayout();
     const facade = door.querySelector("#exd-facade");
@@ -578,7 +580,11 @@
       // invisible on the dark ground (card 01's note, EX-DOOR-2c)
       const a = liveAccent(w.dom);
       b.style.setProperty("--glow", `rgb(${a.join(",")})`);
-      b.style.animationDelay = ((0.55 + i * 0.2) * TEMPO).toFixed(2) + "s";
+      if (animate) {
+        b.style.animationDelay = ((0.55 + i * 0.2) * TEMPO).toFixed(2) + "s";
+      } else {                                         // relayout: already on screen, no re-fade
+        b.style.animation = "none"; b.style.opacity = "1";
+      }
       b.innerHTML = `<img src="${w.img}" alt="${alt}">`;
       if (QUIZ_AT("door") && w.quiz) {                    // a work that asks a question wears «question?» at the door too
         const q = document.createElement("span");
@@ -746,6 +752,9 @@
 
   const io = new IntersectionObserver((es) => es.forEach((x) => {
     if (!x.isIntersecting) return;
+    // the closing screen is not a work: the plaque must not strand the last work's title + told
+    // story over the finale. Fade the caption out like a frame leaving — never a jump, never stale.
+    if (x.target.id === "exh-fin") { cap.classList.remove("show"); focusedId = null; return; }
     x.target.classList.add("seen");
     const w = byId[x.target.dataset.id];
     if (!w) return;
@@ -1189,6 +1198,7 @@
       // the archive signs its rooms (EX-COPY) — one baked line; missing field renders nothing
       (data.copyright ? `<div class="exh-sign">${data.copyright}</div>` : "");
     stage.appendChild(fin);
+    io.observe(fin);                                    // watch the finale too, so the caption clears on it
     requestAnimationFrame(() => { fin.classList.add("show"); }); // EX-ARRIVE: breath in from opacity:0
     fin.querySelector("#ex-unfold")?.addEventListener("click", () => {
       if (spentUnfolds() >= MAXU || shown >= order.length) return;   // the unfolding ENDS (INV-30)
