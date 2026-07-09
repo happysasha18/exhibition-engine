@@ -479,34 +479,37 @@ host from config, never a literal. `EX-PROTECT-RES` `INV-56`
 ### The work's question and its gift
 
 An instance may attach a **quiz** to any work through an optional `<content>/quiz.json`
-(`{"quizzes": {"<id>": {"prompt", "hints", "accept", "prize"}}}`). The **question is public** —
-localized like a title, baked onto the work — while the **answer is private**: the accept-set and
-the prize path are baked **only into `_worker.js`** (the one bundle Pages never serves) and only
-when the `quiz` flag ships on; flag off ⇒ no quiz key on any work and the walk is byte-identical.
-A quiz-bearing work advertises a subtle **«question?» chip** (`quiz_ask`, localized). Its
-**placement** (any of `plaque`, `door`) and its **probability** (0..1, one coin per walk) are
-**config knobs** (`exhibition.quiz`, `INV-28`) — an instance tunes where and how often the question
-appears with no code change; the default is both placements at probability 1. Tapping the chip
-opens a modal card: the prompt, an input, and a response zone. The card's accent is driven by the
-**focused work's own live tint** (the per-work accent the walk already computes) so it reads with
-the picture in view, never a fixed hue. The typed answer POSTs to `/api/quiz`; the edge
-**normalizes both sides hard** — NFKC-fold, lower-case, then letters only (spaces, hyphens, and
-punctuation dropped) — and compares against the private accept-set. **The answer is judged at the
-edge, never a served byte, never a model call.** The client sends the **raw** typed answer and never
-normalizes, so client↔edge normalization is **parity by construction**. The judge runs under the
-quiz's **own** hourly per-IP attempt fence (`q:<hour>:<ip>`, separate from the model rate-limit and
-day budget); the fence **degrades gracefully when no KV namespace is bound** (a preview or local
-deploy) — it treats the guess as unlimited rather than throwing, so `/api/quiz` still judges with
-zero infra, while production keeps its KV and keeps the fence. A **miss** (or an unreachable edge)
-shows **one** gentle localized line (`quiz_wrong`) and then **closes** (~1s×tempo) — no hint trail,
-no lingering; **the answer never reaches the DOM**. A **hit** replies `{ok:true, prize}`, is
-remembered per work in `tlv.quiz.<id>`, and opens the **gift ceremony** at the prize's better
-resolution. **Reopening the card resets it** to a clean dialog (input, feedback, and any close timer
-cleared). Every visitor-facing quiz + gift chrome string (`quiz_submit`, `quiz_wrong`, and the gift
-ceremony strings below) resolves through the **localized string set** (`EX-I18N`) for every locale,
-with **English source-tongue fallbacks** in the client — no non-English literal ever ships; the
-**question content** itself stays instance-supplied. Off / no accept-set / unknown id ⇒ the route
-404s and the walk loses nothing. `EX-QUIZ` `EX-QUIZ-EDGE` `EX-QUIZ-PRIZE` `INV-59` `INV-60`
+(`{"quizzes": {"<id>": {"prompt", "options"[4], "answer", "prize"}}}`). The question is a
+**four-option guess**: the **prompt and the four option labels are public** — baked onto the work,
+the chip label localized — while the **one correct answer is private**, together with the prize
+path, baked **only into `_worker.js`** (the one bundle Pages never serves) and only when the `quiz`
+flag ships on; flag off ⇒ no quiz key on any work and the walk is byte-identical. A quiz-bearing work
+advertises a subtle **«question?» chip** (`quiz_ask`, localized) on its plaque, over which a soft
+one-time glint runs as it appears (`EX-QUIZ-GLINT`). Tapping the chip opens a **compact card that
+sits over the still-visible photograph** — a light scrim for legibility, never a black curtain — with
+the prompt and the **four options in a 2×2 grid**. The card's accent is the **focused work's own live
+tint** (the per-work accent the walk already computes) so it reads with the picture in view, and its
+`dir` mirrors the active locale (Hebrew mirrors). **One tap locks** the answer — the un-chosen options
+dim, no re-pick. The tapped option POSTs to `/api/quiz`; the edge **normalizes both sides hard**
+(NFKC-fold, lower-case, letters only) and compares against the private single answer. **The answer is
+judged at the edge, never a served byte, never a model call**; the client sends the **raw** tapped
+value, so client↔edge normalization is **parity by construction**. The judge runs under the quiz's
+**own** hourly per-IP attempt fence (`q:<hour>:<ip>`, separate from the model rate-limit and day
+budget), which **degrades gracefully when no KV namespace is bound** (a preview/local deploy still
+judges). A **miss** (or an unreachable edge) shows **one** gentle localized line (`quiz_wrong`) and
+then the card **fades out, leaving the photograph** — no hint trail, the answer never reaches the DOM.
+A **hit** shows a localized praise line (`quiz_win`), is remembered per work in visitor memory, and
+opens the **gift ceremony** at the prize's better resolution. **Exactly one question appears per show**
+(`EX-QUIZ-ONCE`): the chip is placed on ONE work chosen per walk over the eligible set — works that
+are both **reachable on this walk AND not already answered** — and, after a show that asked, the chip
+stays silent while less than the **cooldown window** has passed (`quiz_cooldown_hours`, default **6h**,
+a config knob; `quiz_probability` is **retired** — one-per-show supersedes the old per-work coin). The
+quiz never appears on a button-only screen (door, closing). Every visitor-facing quiz + gift chrome
+string (`quiz_wrong`, `quiz_win`, and the gift ceremony strings below) resolves through the
+**localized string set** (`EX-I18N`) with **English source-tongue fallbacks** in the client — no
+non-English literal ever ships; the **question content** stays instance-supplied. Off / no answer /
+unknown id ⇒ the route 404s and the walk loses nothing.
+`EX-QUIZ` `EX-QUIZ-EDGE` `EX-QUIZ-PRIZE` `EX-QUIZ-ONCE` `EX-QUIZ-GLINT` `INV-59` `INV-60` `INV-64` `INV-65` `INV-66`
 
 ### The loading breath
 
@@ -832,10 +835,13 @@ the worker.
 | `EX-PROTECT` | The gracious deterrent (desktop right-click → gift ceremony; drag/touch → gift toast; pinch → silent refuse) |
 | `EX-PROTECT-GIFT` | The gift ceremony: the picture is offered on a solemn card, handed over only on a yes |
 | `EX-PROTECT-RES` | The clean shown image; the site-host mark rides only a taken copy (client canvas / prize / capped serve) |
-| `EX-QUIZ` | The work's public question + chip (placement + probability config knobs) |
-| `EX-QUIZ-EDGE` | The private answer judged at the edge; own attempt fence; never a served byte, never a model call |
+| `EX-QUIZ` | The work's public four-option question + plaque chip (placement config knob; one per show) |
+| `EX-QUIZ-EDGE` | The tapped option judged at the edge against the single private answer; own attempt fence; never a served byte, never a model call |
 | `EX-QUIZ-PRIZE` | The prize is a marked gallery derivative; the master never ships |
-| `EX-LOAD` | The loading breath: solemn hairline while pixels travel |
+| `EX-QUIZ-ONCE` | Exactly one question per show, over the reachable∧unanswered set, silenced by a cooldown window |
+| `EX-QUIZ-GLINT` | A soft one-time light sweeps the chip as the question appears; only the chip; off under reduced-motion |
+| `EX-LADDER` | The responsive 640/960/1280 image ladder: a phone pulls light, a wide/retina screen sharp; base is the fallback |
+| `EX-LOAD` | The loading breath: solemn hairline while pixels travel; a cold-arrival line before the walk is live (instance text) |
 | `EX-SERIES` | The series side room: pill, crossing, lane / polaroids, honest close |
 | `EX-STORY` | The told story: one line per work, leaned by light, degrades to silence |
 | `EX-STORY-ORDER` | The light-lean: kinship + hour-discontinuity over time-of-day marks |
@@ -904,7 +910,11 @@ the worker.
 | `INV-52` | Sound pause holds the offset; resume continues from it |
 | `INV-56` | The shown image is clean; the site-host mark rides only a taken copy (client canvas on grab, baked on the prize, baked when the serve is capped). Mark text is the config host, never a literal |
 | `INV-59` | The quiz answer is judged at the edge against a private accept-set — never a served byte, never a model call; normalization is hard (NFKC-fold, lower-case, letters only) and parity-by-construction (the client sends the raw answer); its own per-IP hourly attempt fence, separate from the model rate-limit and day budget, degrades gracefully to unlimited when no KV is bound so a preview/local deploy still judges |
-| `INV-60` | The quiz flag off is byte-identical to a quiz-less walk; on / no accept-set / unknown id degrades to silence, the walk loses nothing |
+| `INV-60` | The quiz flag off is byte-identical to a quiz-less walk; on / no answer / unknown id degrades to silence, the walk loses nothing |
+| `INV-63` | The responsive image ladder: the display-cap bake writes clean 640/960/1280 tiers next to each served image (downscale-only, no mark on a served tier); the walk img offers them via a per-work `srcset` + `sizes`, the base `src` the untouched fallback; joins only when the cap runs, else byte-identical |
+| `INV-64` | The quiz is a four-option guess: prompt + four option labels public, the ONE correct answer + prize private in `_worker.js`; the tapped option judged at the edge (never a served byte, never a model call); one tap locks |
+| `INV-65` | A miss shows one localized line then the card fades, leaving the photograph; a hit shows a localized praise line then the gift ceremony; the card sits over the visible photo (light scrim), tints to the work, mirrors the active locale's `dir` |
+| `INV-66` | Exactly one question per show — the chip placed on one work chosen per walk over the reachable∧unanswered set — and silenced while less than the cooldown window (`quiz_cooldown_hours`, ~6h) has passed since a show that asked; `quiz_probability` retired |
 
 ### Deltas from the tlvphoto reference implementation
 

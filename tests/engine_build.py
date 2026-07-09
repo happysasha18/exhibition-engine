@@ -44,6 +44,8 @@ work_slug = _engine.work_slug
 # Re-export the EX-LADDER helpers (INV-63) the ladder test uses directly
 srcset_of = _engine.srcset_of
 tier_url = _engine.tier_url
+# Re-export the display-cap + watermark helper (test_site.py INV-56 row accesses it directly)
+_copy_assets_capped = _engine._copy_assets_capped
 
 
 def load_json(relpath):

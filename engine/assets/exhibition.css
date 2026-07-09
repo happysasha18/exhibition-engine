@@ -360,36 +360,54 @@ body.ex-door #ex-sound{ right:70px; }
 @media (prefers-reduced-motion:reduce){ .ex-quiz-chip{ animation:none; opacity:1; }
   .ex-quiz-glint{ display:none; } }
 
-/* The quiz card modal: one at a time, modal, rides var(--d-soft) in/out — no hardcoded durations.
-   EX-ARRIVE: opacity:0 base; .show added via rAF on open; removed before hide on close. */
+/* The quiz card modal: compact, over the visible photograph, a light scrim for legibility (never
+   a black curtain). EX-ARRIVE: opacity:0 base; .show added via rAF on open. .gone for auto-fade. */
 #ex-quiz-card{ position:fixed; inset:0; z-index:150; display:flex; align-items:center;
   justify-content:center; padding:24px 16px;
-  background:rgba(5,5,4,.85); backdrop-filter:blur(8px);
-  opacity:0; transition:opacity var(--d-soft) var(--ease); }
+  background:rgba(5,5,4,.42); backdrop-filter:blur(2px);
+  opacity:0; transition:opacity var(--d-soft) var(--ease), transform var(--d-soft) var(--ease); }
 #ex-quiz-card.show{ opacity:1; }
+#ex-quiz-card.gone{ opacity:0; transform:translateY(6px); pointer-events:none; }
 #ex-quiz-card[hidden]{ display:none; }
 @media (prefers-reduced-motion:reduce){ #ex-quiz-card{ transition:none; } }
 
-.quiz-inner{ max-width:560px; width:100%; text-align:center;
-  background:rgba(14,13,11,.97); border:1px solid var(--hair); border-radius:14px;
-  padding:clamp(22px,4vw,38px); box-shadow:0 20px 60px rgba(0,0,0,.5); }
+.quiz-inner{ max-width:520px; width:100%; text-align:center;
+  background:rgba(13,12,10,.97); border:1px solid var(--hair); border-radius:14px;
+  padding:clamp(22px,4vw,36px); box-shadow:0 24px 70px rgba(0,0,0,.62); }
 .quiz-prompt{ font-family:var(--serif); font-weight:300; font-size:clamp(17px,2vw,22px);
   color:var(--ink); margin-bottom:18px; line-height:1.3; }
-.quiz-form{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:14px; }
-.quiz-input{ background:rgba(20,18,15,.9); color:var(--ink);
-  border:1px solid rgba(255,255,255,.14); border-radius:8px;
-  padding:10px 14px; font:16px inherit; width:220px; text-align:center; outline:none;
-  transition:border-color calc(.3s*var(--tempo)) var(--ease); }
-.quiz-input:focus{ border-color:var(--accent); }
-.quiz-submit{ background:var(--accent); color:#161310; border:none; border-radius:8px;
-  padding:10px 18px; font:600 13px inherit; cursor:pointer; letter-spacing:.06em;
-  transition:background calc(.3s*var(--tempo)) var(--ease); }
-.quiz-submit:hover,.quiz-submit:focus-visible{ background:var(--accent-2, var(--accent)); }
-/* the response zone — hint on miss, prize on win; both arrive on the house tempo */
-.quiz-out{ min-height:60px; margin-top:10px; font-size:13.5px; line-height:1.55; }
-.quiz-miss{ color:var(--accent); }
-.quiz-retry{ color:var(--muted-2); }
-.quiz-win{ color:var(--ink); }
+
+/* EX-QUIZ-PICK (INV-64): the 2×2 option button grid. One column on narrow phones. */
+.quiz-opts{ display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-bottom:0; }
+@media (max-width:380px){ .quiz-opts{ grid-template-columns:1fr; } }
+.quiz-opt{ min-height:52px; padding:13px 16px; cursor:pointer;
+  background:rgba(20,18,15,.72); color:var(--body);
+  border:1px solid var(--hair); border-radius:10px;
+  font:500 15px/1.2 var(--ui,inherit); letter-spacing:.01em;
+  transition:background calc(.28s*var(--tempo)) var(--ease),
+             color calc(.28s*var(--tempo)) var(--ease),
+             border-color calc(.28s*var(--tempo)) var(--ease),
+             transform calc(.28s*var(--tempo)) var(--ease); }
+.quiz-opt:hover,.quiz-opt:focus-visible{ color:var(--ink);
+  border-color:color-mix(in srgb, var(--accent) 55%, transparent);
+  background:rgba(30,27,22,.85); outline:none; transform:translateY(-1px); }
+.quiz-opt:focus-visible{ box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent); }
+.quiz-opt.correct{ background:var(--accent); color:#161310; border-color:var(--accent); }
+.quiz-opt.wrong{ border-color:color-mix(in srgb,#b56b57 60%,transparent); color:var(--muted); }
+.quiz-opt[disabled]{ cursor:default; }
+.quiz-opt.dim{ opacity:.34; }
+.quiz-opt bdi{ unicode-bidi:isolate; }
+@media (prefers-reduced-motion:reduce){ .quiz-opt{ transition:none; } }
+
+/* the response zone — win/miss lines arrive on the house tempo */
+.quiz-out{ min-height:26px; margin-top:20px; font-size:14.5px; line-height:1.55;
+  opacity:0; transition:opacity var(--d-soft) var(--ease); }
+.quiz-out.show{ opacity:1; }
+.quiz-out.quiz-win{ color:var(--ink); font-family:var(--serif); font-style:italic; font-size:17px; }
+.quiz-out.quiz-miss{ color:var(--body); font-family:var(--serif); font-style:italic; }
+@media (prefers-reduced-motion:reduce){ .quiz-out{ transition:none; } }
+
+/* legacy prize display (kept for the gift ceremony; the quiz card itself no longer uses them) */
 .quiz-prize-img{ width:100%; max-width:400px; border-radius:8px;
   box-shadow:0 10px 34px rgba(0,0,0,.22); display:block; margin:0 auto 14px; }
 .quiz-prize-line{ margin-bottom:10px; color:var(--ink); font-size:14px; }

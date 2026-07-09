@@ -269,19 +269,77 @@
   const STORY_VARIANT = STORY.variant || "B";
   const LIGHT_W = Number.isFinite(+STORY.light_weight) ? +STORY.light_weight : 0.6;
 
-  // ---- EX-QUIZ (INV-59/60): the per-work question chip + card ----------------------------------
+  // ---- EX-QUIZ (INV-60/64/65/66): the per-work question chip + 4-option card -----------------
   // On when the quiz flag ships true AND the work carries public quiz data (baked into `w.quiz`).
-  // PLACEMENT and PROBABILITY are config knobs (INV-28): an instance tunes where the «question?»
-  // chip advertises (plaque and/or door) and how often it appears, with no code change. The
-  // probability is one coin per WALK — a run either wears its quiz chips or it does not, so the
-  // question reads as a rare find rather than blinking per-scroll. Defaults: both placements, p=1.
+  // PLACEMENT is a config knob (INV-28): an instance tunes where the «question?» chip advertises.
+  // ONE question per show is chosen deterministically from the eligible set (INV-66); a cooldown
+  // suppresses the chip for QUIZ_COOLDOWN_H hours after one show (no nagging repeats).
   const QUIZ_ON = cfg.quiz === true;
   const QUIZ_CFG = (EX && EX.quiz) || {};
-  const QUIZ_PLACE = Array.isArray(QUIZ_CFG.placement) ? QUIZ_CFG.placement : ["plaque", "door"];
-  const QUIZ_P = Number.isFinite(+QUIZ_CFG.probability) ? Math.max(0, Math.min(1, +QUIZ_CFG.probability)) : 1;
-  const QUIZ_WALK = QUIZ_ON && Math.random() < QUIZ_P;   // the per-walk coin — decided once, here
-  const QUIZ_AT = (where) => QUIZ_WALK && QUIZ_PLACE.indexOf(where) >= 0;
-  const QUIZ_LS = (id) => "tlv.quiz." + id;             // per-work solved-memory key (not the coat-check)
+  const QUIZ_PLACE = Array.isArray(QUIZ_CFG.placement) ? QUIZ_CFG.placement : ["plaque"];
+  const QUIZ_COOLDOWN_H = Number.isFinite(+EX.quiz_cooldown_hours) ? +EX.quiz_cooldown_hours : 6;
+  const QUIZ_SHOWN_KEY = "tlv.quizshown";    // per-browser timestamp of the last quiz show
+  const QUIZ_TAB_KEY = "tlv.quiztab";        // a stable per-tab id when the coat-check is off
+  const QUIZ_LS = (id) => "tlv.quiz." + id; // per-work answered-memory key (not the coat-check)
+  function quizHash(str) {
+    let s = 0;
+    for (const c of String(str)) s = (s * 31 + c.charCodeAt(0)) >>> 0;
+    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b) >>> 0;
+    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b) >>> 0;
+    return (s ^ (s >>> 16)) >>> 0;
+  }
+  const QUIZ_TOKEN = (function () {
+    try {                                    // the coat-check token when the museum remembers (EX-MEMORY)
+      const v = localStorage.getItem(VISITOR_KEY);
+      if (v && /^[a-z0-9]{8,40}$/.test(v)) return v;
+    } catch (e) {}
+    try {                                    // else a stable per-tab id — survives a reload within the walk
+      let t = sessionStorage.getItem(QUIZ_TAB_KEY);
+      if (!t) { t = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem(QUIZ_TAB_KEY, t); }
+      return t;
+    } catch (e) {}
+    return "anon";
+  })();
+  // the A/B arm — decided ONCE per walk off the same token with a DIFFERENT salt; null when the
+  // flag is off so nothing stamps the GA beats (the payload stays byte-for-byte today's — INV-60)
+  const quizArm = QUIZ_ON ? ((quizHash(QUIZ_TOKEN + ":quizarm") / 4294967296) < 0.5 ? "on" : "control") : null;
+  // EX-QUIZ-ONCE (INV-66): ONE quiz chip per walk show, chosen deterministically from the eligible
+  // set. eligible = works in the current order that carry a quiz AND are not yet answered.
+  // The cooldown: a localStorage timestamp silences the chip for QUIZ_COOLDOWN_H hours after a show.
+  let quizChosenId = null;
+  function quizAnswered(id) {
+    // widened answered-memory: old {prize:...} reads as answered; {answered:true,...} is new.
+    try {
+      const v = JSON.parse(localStorage.getItem(QUIZ_LS(id)) || "null");
+      return !!(v && typeof v === "object" && (v.answered === true || v.prize));
+    } catch (e) { return false; }
+  }
+  function quizCooldownActive() {
+    try {
+      const ts = Number(localStorage.getItem(QUIZ_SHOWN_KEY));
+      return Number.isFinite(ts) && ts > 0 && (Date.now() - ts) < QUIZ_COOLDOWN_H * 3600000;
+    } catch (e) { return false; }
+  }
+  function recomputeQuizChoice() {
+    // eligible: works in the current ordered walk that carry a quiz AND are not already answered
+    const seen = Object.create(null);
+    const eligible = [];
+    for (let i = 0; i < order.length; i++) {
+      const id = order[i];
+      if (seen[id]) continue; seen[id] = true;
+      if (byId[id] && byId[id].quiz && !quizAnswered(id)) eligible.push(id);
+    }
+    if (!QUIZ_ON || quizCooldownActive() || eligible.length === 0) {
+      quizChosenId = null;
+      return;
+    }
+    quizChosenId = eligible[quizHash(QUIZ_TOKEN + ":once") % eligible.length];
+    // stamp happens when the card is OPENED (quizCardOpen), not on pick: the pick is a
+    // session-stable internal choice; the cooldown represents a card actually shown to the visitor.
+  }
+  // a work surfaces its chip only when the flag is on, the arm is on, and this is the chosen work
+  const quizShows = (w) => QUIZ_ON && quizArm === "on" && !!(w && w.quiz) && w.id === quizChosenId;
+  try { window.EXQuiz = { chosen: () => quizChosenId, arm: () => quizArm, token: QUIZ_TOKEN }; } catch (e) {}
   const STORYLINES = Object.create(null);
   let storyVariant = null;    // the mode the served story reported — rides the GA beats (EX-STORY-AB)
   let storyKey = "";          // the ordered-id set last told (a resize/return never refetches)
@@ -586,12 +644,8 @@
         b.style.animation = "none"; b.style.opacity = "1";
       }
       b.innerHTML = `<img src="${w.img}" alt="${alt}">`;
-      if (QUIZ_AT("door") && w.quiz) {                    // a work that asks a question wears «question?» at the door too
-        const q = document.createElement("span");
-        q.className = "exd-quiz"; q.textContent = quizLabel();
-        q.addEventListener("click", (ev) => { ev.stopPropagation(); quizCardOpen(w.id); }); // the chip opens the quiz, NOT the walk
-        b.appendChild(q);
-      }
+      // EX-QUIZ (INV-64/66): the quiz chip NEVER appears on the door (button-only screen) —
+      // only over a work in view on the plaque (quizShows checked in the IO observer below).
       b.addEventListener("click", () => doorPick(w));
       facade.appendChild(b);
     });
@@ -780,9 +834,9 @@
       (serIdx == null ? "" :
         `<button type="button" class="ex-series" data-ser="${serIdx}">` +
         `${serWord} · ${SERIES[serIdx].members.length}</button>`) +
-      // EX-QUIZ (INV-59/60): a subtle plaque chip — only when the work carries a quiz, the flag is
-      // on, this walk drew the quiz coin, and "plaque" is a configured placement
-      (QUIZ_AT("plaque") && w.quiz ? quizChipHTML(w.id) : "");
+      // EX-QUIZ (INV-64/66): a subtle plaque chip — only when this is the ONE chosen work for this
+      // show and the arm is "on" and "plaque" is a configured placement (quizShows covers all checks)
+      (QUIZ_PLACE.indexOf("plaque") >= 0 && quizShows(w) ? quizChipHTML(w.id) : "");
     cap.classList.add("show");
     focusedId = w.id;
     fillTold();                                        // the narrator's line for this work, if spoken
@@ -1011,15 +1065,15 @@
   stage.addEventListener("gesturestart", onPinch);
   stage.addEventListener("gesturechange", onPinch);
 
-  // ---- EX-QUIZ (INV-59/60): the chip + card + edge round-trip ----------------------------------
-  // A subtle chip advertises a work's question (placement/probability decided above). Tapping it
-  // opens a modal card: the public prompt, an input, and the response zone. The typed answer is
-  // POSTed to /api/quiz — the answer is judged at the EDGE against a private accept-set, NEVER a
-  // served byte (INV-59). A hit closes the card and OPENS THE GIFT CEREMONY at the prize's better
-  // resolution (the prize already wears its baked mark). A miss shows ONE gentle localized line
-  // (quiz_wrong) and then closes (~1s) — no hint trail. A won quiz is remembered per work so a
-  // return goes straight to the reward. Every chrome string localizes through EX-I18N with an
-  // ENGLISH source-tongue fallback; a reopen resets the card to a clean, fresh dialog.
+  // ---- EX-QUIZ (INV-60/64/65/66): the 4-option chip + card + edge round-trip ----------------
+  // A subtle chip advertises a work's question (placement is a config knob, INV-28). Tapping it
+  // opens a modal card: the public prompt, a 2×2 grid of option buttons, and the response zone.
+  // ONE tap LOCKS — the tapped option is POSTed to /api/quiz; the edge compares it to the ONE
+  // PRIVATE correct option (INV-64), never a served byte. A hit shows quiz_win → gift ceremony.
+  // A miss shows quiz_wrong → card fades out (~1.5s). The card TINTS to the work's live tone and
+  // RTL-mirrors with the active locale. ONE question per walk-show is chosen deterministically
+  // from the eligible set (INV-66); a cooldown suppresses the chip for QUIZ_COOLDOWN_H hours.
+  // Every chrome string localizes through EX-I18N with ENGLISH source-tongue fallbacks.
   function quizLabel() {
     const T = (greetLang() || { t: {} }).t;
     return T.quiz_ask || "question?";
@@ -1037,13 +1091,11 @@
   quizCard.setAttribute("role", "dialog");
   quizCard.setAttribute("aria-modal", "true");
   quizCard.hidden = true;
+  // EX-QUIZ-PICK (INV-64): 4 option buttons replace the free-text form.
   quizCard.innerHTML =
     '<div class="quiz-inner">' +
       '<div class="quiz-prompt"></div>' +
-      '<form class="quiz-form">' +
-        '<input class="quiz-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off">' +
-        '<button type="submit" class="quiz-submit"></button>' +
-      '</form>' +
+      '<div class="quiz-opts"></div>' +
       '<div class="quiz-out"></div>' +
     '</div>';
   document.body.appendChild(quizCard);
@@ -1057,39 +1109,50 @@
     if (!w || !w.quiz) return;
     quizWorkId = id;
 
-    // RESET ON REOPEN: every open starts clean — no memory of a prior attempt (empty input, cleared
-    // feedback, the wrong-line cleared, the close timer cancelled) so a reopen is fresh each time.
+    // RESET ON REOPEN: every open starts clean — cleared feedback, fresh buttons, no lingering state.
     clearTimeout(quizCloseT); quizCloseT = null;
-    const inp0 = quizCard.querySelector(".quiz-input");
-    inp0.value = "";
+    quizCard.classList.remove("gone");
+    // RTL mirror (INV-65): the card leans to the active locale's direction, like the door + finale do.
+    try { const L = (greetLang() || { t: {} }).t; quizCard.setAttribute("dir", L.dir === "rtl" ? "rtl" : "ltr"); } catch (e) {}
     const out = quizCard.querySelector(".quiz-out");
-    out.className = "quiz-out"; out.innerHTML = "";
+    out.className = "quiz-out"; out.textContent = "";
 
-    // IMAGE-TINT ACCENT: the card's accent is THIS work's own live tone, so the button + focus ring
-    // tint to the picture in view rather than resting on a fixed hue (the same per-work accent the
-    // walk computes). A door-opened card (no document-level ground) still tints correctly.
+    // VISUAL TINT: the card's accent is THIS work's own live tone — tints to the picture, never fixed.
     try {
       const a = liveAccent(w.dom);
       quizCard.style.setProperty("--accent", `rgb(${a.join(",")})`);
       quizCard.style.setProperty("--accent-2", `rgb(${a.map((v) => Math.round(v * 0.86)).join(",")})`);
     } catch (e) {}
 
-    let solved = null;
-    try { solved = localStorage.getItem(QUIZ_LS(id)); } catch (e) {}
-    quizCard.querySelector(".quiz-prompt").textContent = w.quiz.prompt || "";
-    const T = (greetLang() || { t: {} }).t;
-    quizCard.querySelector(".quiz-submit").textContent = T.quiz_submit || "answer";
-    if (solved) {
-      // already earned — straight to the gift ceremony, no need to re-ask the question
-      let prize = null;
-      try { prize = JSON.parse(solved).prize; } catch (e) {}
-      if (prize) { openGift("/" + prize, PRIZE_DL, true); return; }   // already marked
+    // answered-memory: widened shape — {answered,right,prize} is new; old {prize:...} also reads answered.
+    let stored = null;
+    try { stored = JSON.parse(localStorage.getItem(QUIZ_LS(id)) || "null"); } catch (e) {}
+    if (stored && typeof stored === "object" && (stored.answered === true || stored.prize)) {
+      // already answered — straight to the gift ceremony when there is a prize
+      if (stored.prize) { openGift("/" + stored.prize, PRIZE_DL, true); return; }
+      return;  // answered wrong previously — nothing more to show
     }
+
+    // build the four option buttons from the public options (the tapped value is sent to the edge)
+    quizCard.querySelector(".quiz-prompt").textContent = w.quiz.prompt || "";
+    const optsEl = quizCard.querySelector(".quiz-opts");
+    optsEl.innerHTML = "";
+    const options = Array.isArray(w.quiz.options) ? w.quiz.options : [];
+    options.forEach((city) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "quiz-opt";
+      b.dataset.val = city;
+      b.setAttribute("aria-label", city);
+      b.innerHTML = "<bdi>" + city.replace(/[<>&"]/g, (c) => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"})[c]) + "</bdi>";
+      b.addEventListener("click", () => { answer(city); });
+      optsEl.appendChild(b);
+    });
+
+    // stamp the cooldown: this is "a show that asked" — suppress the chip for QUIZ_COOLDOWN_H hours
+    try { localStorage.setItem(QUIZ_SHOWN_KEY, String(Date.now())); } catch (e) {}
     quizCard.hidden = false;
     quizOpen = true;
     requestAnimationFrame(() => { quizCard.classList.add("show"); });
-    const inp = quizCard.querySelector(".quiz-input");
-    setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
   }
 
   function quizCardClose() {
@@ -1101,49 +1164,69 @@
     quizWorkId = null;
   }
 
-  function quizSubmit() {
+  // EX-QUIZ-REPLY (INV-65): one tap decides — the city button fires answer(city).
+  // After a tap all buttons are disabled and the unchosen dim. Win: quiz_win line → gift ceremony.
+  // Miss: quiz_wrong line → card fades out on var(--d-*). No re-pick after a tap (LOCKED).
+  function answer(city) {
     const id = quizWorkId;
     if (!id) return;
     const w = byId[id];
     if (!w || !w.quiz) return;
-    const inp = quizCard.querySelector(".quiz-input");
-    const raw = (inp.value || "").trim();
-    if (!raw) return;
-    const out = quizCard.querySelector(".quiz-out");
-    out.className = "quiz-out"; out.innerHTML = "";
 
-    // a wrong answer (or an unreachable edge) → ONE gentle localized line, then CLOSE (no hint trail,
-    // no lingering). The answer never reaches the DOM. English source-tongue fallback, never a literal.
-    const missAndClose = () => {
+    // LOCK all buttons immediately — one tap, no re-pick
+    const opts = Array.from(quizCard.querySelectorAll(".quiz-opt"));
+    opts.forEach((b) => {
+      b.disabled = true;
+      if (b.dataset.val !== city) b.classList.add("dim");
+    });
+
+    const out = quizCard.querySelector(".quiz-out");
+    out.className = "quiz-out"; out.textContent = "";
+
+    function missAndFade() {
+      // mark the tapped button as wrong
+      opts.forEach((b) => { if (b.dataset.val === city) b.classList.add("wrong"); });
       const T = (greetLang() || { t: {} }).t;
       out.className = "quiz-out quiz-miss";
       out.textContent = T.quiz_wrong || "not this time";
-      inp.value = "";
+      requestAnimationFrame(() => out.classList.add("show"));
+      // remember the miss so the work is excluded from eligible in future walks (INV-65 / INV-66)
+      try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: false })); } catch (e) {}
+      // fade the card out after the visitor reads the line, then call quizCardClose
       clearTimeout(quizCloseT);
-      quizCloseT = setTimeout(() => quizCardClose(), Math.round(1000 * TEMPO));
-    };
+      quizCloseT = setTimeout(() => {
+        quizCard.classList.add("gone");   // CSS: opacity:0 + translateY(6px) on var(--d-*)
+        quizCloseT = setTimeout(() => { quizCard.classList.remove("gone"); quizCardClose(); },
+          Math.round(650 * TEMPO));
+      }, Math.round(1500 * TEMPO));
+    }
 
     fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: String(id), answer: raw }),
+      body: JSON.stringify({ id: String(id), answer: city }),
     }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
       if (data && data.ok) {
-        // a right answer — remember it, close the quiz, let the BETTER-res reward emerge solemnly
-        try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ prize: data.prize })); } catch (e) {}
-        quizCardClose();
-        openGift("/" + data.prize, PRIZE_DL, true);       // the prize already wears its mark
+        // WIN: mark correct, show quiz_win line, close quiz, open the gift ceremony
+        opts.forEach((b) => { if (b.dataset.val === city) b.classList.add("correct"); });
+        const T = (greetLang() || { t: {} }).t;
+        out.className = "quiz-out quiz-win";
+        out.textContent = T.quiz_win || "you have the eye.";
+        requestAnimationFrame(() => out.classList.add("show"));
+        // remember the win so this work never re-asks (INV-65 / INV-66 answered-memory)
+        try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: true, prize: data.prize })); } catch (e) {}
+        clearTimeout(quizCloseT);
+        quizCloseT = setTimeout(() => {
+          quizCardClose();
+          openGift("/" + data.prize, PRIZE_DL, true);
+        }, Math.round(700 * TEMPO));
       } else {
-        missAndClose();                    // a miss (or a non-OK edge) reads the same: gentle line, close
+        missAndFade();
       }
-    }).catch(() => { missAndClose(); });    // a fetch failure closes the same way — never a nonsense line
+    }).catch(() => { missAndFade(); });  // network failure closes the same way — never a nonsense line
   }
 
-  quizCard.querySelector(".quiz-form").addEventListener("submit", (ev) => {
-    ev.preventDefault();
-    quizSubmit();
-  });
-  // the chip tap opens the card (delegated on the caption zone)
+  // the chip tap opens the card (delegated on cap)
   cap.addEventListener("click", (ev) => {
     const b = ev.target.closest && ev.target.closest(".ex-quiz-chip");
     if (!b) return;
@@ -1331,6 +1414,7 @@
 
   function renderHang() {
     tlog("hang");
+    recomputeQuizChoice();                               // EX-QUIZ-ONCE (INV-66): pick ONE eligible work
     document.documentElement.classList.add("ex-walk");   // the walk's face (geometry in CSS)
     stage.innerHTML = "";
     appendFrames(order.slice(0, shown), 1);

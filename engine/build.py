@@ -531,15 +531,16 @@ def story_notes_load():
 
 
 def quiz_load():
-    """EX-QUIZ (INV-59/60): the per-work quiz data, an OPTIONAL, INSTANCE-OWNED file. The engine
-    hardcodes no work id and no answer — an instance supplies `<content>/quiz.json`:
+    """EX-QUIZ-PICK (INV-64/66): the per-work quiz data, an OPTIONAL, INSTANCE-OWNED file. The
+    engine hardcodes no work id and no answer — an instance supplies `<content>/quiz.json`:
 
-        {"quizzes": {"<workid>": {"prompt": "…", "hints": ["…"],
-                                  "accept": ["…"], "prize": "gallery/<file>"}}}
+        {"quizzes": {"<workid>": {"prompt": "…", "options": ["A","B","C","D"],
+                                  "answer": "A", "prize": "gallery/<file>"}}}
 
-    Returns {id: entry}. The PUBLIC half (prompt + hints) rides the walk's baked data; the PRIVATE
-    half (accept-set + prize path) is baked only INTO _worker.js and only when the quiz ships — so an
-    answer never becomes a public byte. Absent/malformed → {}: quiz on but no data ⇒ the walk is
+    Returns {id: entry}. The PUBLIC half (prompt + options[4]) rides the walk's baked data; the
+    PRIVATE half (single answer + prize path) is baked only INTO _worker.js and only when the quiz
+    ships — so the answer never becomes a public byte. The old free-text fields (hints, accept) are
+    RETIRED (INV-64 supersedes them). Absent/malformed → {}: quiz on but no data ⇒ the walk is
     byte-identical (no quiz key on any work, QUIZ_ANSWERS stays {} and the route 404s, INV-60)."""
     src = ROOT / "quiz.json"
     try:
@@ -654,13 +655,15 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # light-lean a no-op and the arc unchanged (the byte-identical guard, ST1). Data, never rendered.
     tod_marks = tod_marks_load()
     tod_of = lambda wid: (tod_marks.get(str(wid), {}) or {}).get("marks") or ["free"]
-    # EX-QUIZ (INV-59/60): the instance's per-work quiz data (optional). Split here: the PUBLIC
-    # prompt+hints ride the walk (below), the PRIVATE accept-set+prize go only into _worker.js.
+    # EX-QUIZ-PICK (INV-64/66): the instance's per-work quiz data (optional). Split here: the PUBLIC
+    # prompt+options[4] ride the walk (below), the PRIVATE single answer+prize go only into _worker.js.
+    # The old free-text fields (hints, accept) are RETIRED — INV-64 supersedes them.
     quiz_all = quiz_load()
-    quiz_public = {wid: {"prompt": q.get("prompt", ""), "hints": list(q.get("hints", []))}
-                   for wid, q in quiz_all.items() if q.get("prompt")}
-    quiz_private = {wid: {"accept": list(q.get("accept", [])), "prize": q.get("prize", "")}
-                    for wid, q in quiz_all.items() if q.get("accept") and q.get("prize")}
+    quiz_public = {wid: {"prompt": q.get("prompt", ""), "options": list(q.get("options", []))}
+                   for wid, q in quiz_all.items()
+                   if q.get("prompt") and isinstance(q.get("options"), list) and len(q["options"]) == 4}
+    quiz_private = {wid: {"answer": q.get("answer", ""), "prize": q.get("prize", "")}
+                    for wid, q in quiz_all.items() if q.get("answer") and q.get("prize")}
     ex_works = [{
         "id": it["id"],
         "img": f"/gallery/{it['img']}",
@@ -674,13 +677,14 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         "place": place_of(it),
         "tod": tod_of(it["id"]),             # the light marks (EX-STORY-ORDER) — data, never rendered
     } for it in items]
-    # EX-QUIZ (INV-60): the public quiz data joins only when the quiz flag is on; flag off → no quiz
-    # key on any work, the walk is byte-identical to a quiz-less walk. PUBLIC prompt + hints only.
+    # EX-QUIZ-PICK (INV-64/60): the public quiz data joins only when the quiz flag is on; flag off →
+    # no quiz key on any work, the walk is byte-identical to a quiz-less walk. PUBLIC prompt +
+    # options[4] only — no answer, no prize path, no hints (INV-64 supersedes the hint trail).
     if flags["quiz"]:
         for w in ex_works:
             q = quiz_public.get(str(w["id"]))
             if q:
-                w["quiz"] = q                # no accept-set, no prize path — those stay private
+                w["quiz"] = q                # PUBLIC prompt + options only — no answer, no prize
     # EX-LADDER (INV-63): the responsive srcset joins each work only when the display cap runs (the
     # deploy, which also writes the tier files) — no cap ⇒ no srcset key, the walk data is byte-identical.
     if display_max:
@@ -780,21 +784,31 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "title": "",           # track/album title (shown in «»)
             "url": "",             # artist website (shown as a link)
         },
-        # EX-QUIZ (INV-59/60): the quiz's PLACEMENT + PROBABILITY — an instance tunes where a
-        # quiz-bearing work advertises its question and how often, with NO code change (INV-28).
-        # placement: which surfaces carry the «question?» chip — any of "plaque" | "door".
-        # probability: the per-walk chance (0..1) a quiz chip appears at all; 1.0 = always (the
-        # default, matching a plain quiz), lower = the question is a rarer easter-egg. The client
-        # flips one coin per walk against this — off ⇒ no chip renders, the walk loses nothing.
+        # EX-QUIZ-PICK (INV-64/66): the quiz's PLACEMENT config knob — an instance tunes which
+        # surfaces carry the «question?» chip, with NO code change (INV-28). ONE question per
+        # show is chosen deterministically from the eligible set (INV-66 supersedes the old
+        # per-walk probability coin — quiz_probability is RETIRED). The cooldown key lives at
+        # the exhibition level (quiz_cooldown_hours), set when the quiz ships (see below).
         "quiz": {
-            "placement": ["plaque", "door"],
-            "probability": 1.0,
+            "placement": ["plaque"],
         },
     }
     config["site_name"] = SITE_NAME        # the instance's brand — read by exhibition.js for the door wordmark (INV-28)
     config["site_url"] = site_url
     config["ga_measurement_id"] = ga_id   # analytics id lives in config, never in a template
     config["experiments"] = {}      # variant → flag → metric (empty registry)
+    # EX-QUIZ-ONCE (INV-66) + EX-QUIZ-AB: config seams join ONLY when the quiz is on —
+    # flag off leaves config.json byte-for-byte today's (INV-60 fence).
+    # quiz_cooldown_hours: how long after one show the chip stays silent (~6h, tunable).
+    # quiz_probability is GONE (INV-66 supersedes the per-walk coin with one-per-show).
+    if flags["quiz"]:
+        config["exhibition"]["quiz_cooldown_hours"] = 6
+        # the quiz A/B arm rides the walk's EXISTING GA beats like story_variant
+        config["experiments"]["quiz_arm"] = {
+            "arms": ["on", "control"],   # on = the quiz may surface; control = the measured baseline
+            "flag": "quiz",
+            "metric": "walk_unfold",     # the beat the arm rides (also on walk_exit)
+        }
     write(OUT / "config.json", json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
     # reserved empty /api namespace for later serverless AI (CS-7)
@@ -852,7 +866,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
                          # every quiz + gift string speaks the guest's tongue for ALL locales
                          # (the client keeps ENGLISH source-tongue fallbacks); the QUESTION content
                          # stays instance-supplied, never in this chrome set
-                         "enjoy", "quiz_ask", "quiz_submit", "quiz_wrong",
+                         "enjoy", "quiz_ask", "quiz_submit", "quiz_win", "quiz_wrong",
                          "gift_ask", "gift_yes", "gift_no", "gift_buy")},
             "greet": en.get("greet") or {},
             # brand + the © signature are EXCLUDED by construction (never translatable)

@@ -333,10 +333,12 @@ function normAnswer(s) {
   return (s || "").normalize("NFKC").toLowerCase().replace(/[^\p{L}]/gu, "");
 }
 
-// EX-QUIZ-EDGE (INV-59): POST {id, answer} → bare win/miss verdict (no model, no budget touch).
-// Shape-check → rate-check → look up the PRIVATE accept-set → normalize both sides → compare.
+// EX-QUIZ-EDGE (INV-64): POST {id, answer} → bare win/miss verdict (no model, no budget touch).
+// Shape-check → rate-check → look up the PRIVATE single answer → normalize both sides → compare.
 // A hit replies {ok:true, prize:"gallery/…"}; a miss replies {ok:false}.
-// Off / no accept-set / unknown id ⇒ 404 and the walk loses nothing (INV-19 / CS-8).
+// Off / no answer baked / unknown id ⇒ 404 and the walk loses nothing (INV-19 / CS-8).
+// The 4-option model: the client POSTs the tapped option value; the edge normalizes both sides
+// (NFKC-fold, lower-case, letters only) and compares to the ONE private correct answer (INV-64).
 async function quiz(req, env) {
   if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
   // no answers baked in (quiz shipped off / nothing baked) ⇒ 404, silence
@@ -353,16 +355,15 @@ async function quiz(req, env) {
   if (!ID_RE.test(id) || answer.length > 100) {
     return new Response("bad request", { status: 400 });
   }
-  // look up the work's private accept-set; absent id ⇒ 404
+  // look up the work's private answer; absent id ⇒ 404 (INV-64: one correct option, no accept-set)
   const entry = QUIZ_ANSWERS[id];
   if (!entry) return new Response("no quiz", { status: 404 });
   // the quiz's OWN attempt fence (not the model bucket — a guess never spends a model allowance)
   if (await overQuizRate(env, req)) {
     return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
   }
-  // normalize the typed answer against each accepted form; the same normalizer the accept-set used
-  const normed = normAnswer(answer);
-  const hit = (entry.accept || []).some((a) => normAnswer(a) === normed);
+  // compare the tapped option (normalized) against the ONE private correct answer (INV-64)
+  const hit = normAnswer(entry.answer) === normAnswer(answer);
   if (hit) return json(JSON.stringify({ ok: true, prize: entry.prize }));
   return json(JSON.stringify({ ok: false }));
 }
@@ -417,10 +418,12 @@ function shape() {
         type: "object",
         properties: { ask: s, exit: s, more: s, q_more: s, q_spent: s, share_label: s,
                       share_copied: s, series: s, room_back: s, enjoy: s, quiz_ask: s,
-                      quiz_submit: s, quiz_wrong: s, gift_ask: s, gift_yes: s, gift_no: s, gift_buy: s },
+                      quiz_submit: s, quiz_win: s, quiz_wrong: s, gift_ask: s, gift_yes: s,
+                      gift_no: s, gift_buy: s },
         required: ["ask", "exit", "more", "q_more", "q_spent", "share_label", "share_copied",
                    "series", "room_back", "enjoy", "quiz_ask",
-                   "quiz_submit", "quiz_wrong", "gift_ask", "gift_yes", "gift_no", "gift_buy"],
+                   "quiz_submit", "quiz_win", "quiz_wrong", "gift_ask", "gift_yes", "gift_no",
+                   "gift_buy"],
         additionalProperties: false,
       },
       greet: {
@@ -452,7 +455,7 @@ function validate(out, src) {
     // so it is translatable (in the shape) but never required non-empty (a gallery may not sell)
     for (const k of ["ask", "exit", "q_more", "q_spent", "share_label", "share_copied", "series",
                      "room_back", "enjoy", "quiz_ask",
-                     "quiz_submit", "quiz_wrong", "gift_ask", "gift_yes", "gift_no"]) {
+                     "quiz_submit", "quiz_win", "quiz_wrong", "gift_ask", "gift_yes", "gift_no"]) {
       if (!filled(out[k])) return false;
     }
     if (!filled(out.more) || out.more.indexOf("{n}") < 0) return false;

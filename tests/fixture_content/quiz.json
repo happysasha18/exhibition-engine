@@ -2,20 +2,15 @@
   "quizzes": {
     "synth-01": {
       "prompt": "which synthetic family does this work belong to?",
-      "hints": [
-        "look again — the grid speaks of a place, not a landscape",
-        "it is the first family the fixture lists"
-      ],
-      "accept": ["urban", "the urban family", "city"],
-      "prize": "gallery/quiz-prize-001.jpg"
+      "options": ["urban", "coastal", "minimal", "abstract"],
+      "answer": "urban",
+      "prize": "gallery/quiz-prize-synth01.jpg"
     },
     "synth-03": {
       "prompt": "which synthetic family does this work belong to?",
-      "hints": [
-        "the same family as the very first work"
-      ],
-      "accept": ["urban", "the urban family", "city"],
-      "prize": "gallery/quiz-prize-003.jpg"
+      "options": ["urban", "coastal", "minimal", "abstract"],
+      "answer": "urban",
+      "prize": "gallery/quiz-prize-synth03.jpg"
     }
   }
 }
