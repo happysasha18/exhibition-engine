@@ -34,6 +34,21 @@ tlvphoto literals in the engine (NOT from this session) — `window.__tlvSeen` (
 4. on his OK, deploy the engine-baked bundle to tlvphotos.com; then reverse the code flow (engine → instance).
 Two hard gates: empty byte-diff before prod is touched, and his eye on the compare before the flip.
 
+### CUTOVER — PROGRESS 2026-07-09 ~17:39: byte-diff 253 → 9 (build.py parity landed, `ac6cda3`)
+Reconciled + verified (build.py, engine suite 20/21, door=parallel-flake): (1) 122 images — the
+mark-split (`copy_gallery(mark_text=None)`, served base is CLEAN); (2) 122 work pages — served-dims OG
++ artform/ImageObject JSON-LD + srcset attr in render_work; (3) robots AI-blocks; (5) audio copytree.
+**The 9 that REMAIN** (with the engine's OWN generalized assets restored — a verbatim clobber breaks the
+engine's own tests, so it's the WRONG move): `exhibition.js` + `exhibition.css` (client-asset TOKEN drift
+EXQuiz↔TLVQuiz, ID_RE, + the swipe fix not yet ported — a DESIGN call: bake-time token substitution, or
+tlvphoto adopts the engine's generalized tokens; do NOT clobber); `_worker.js` + `exhibition_data.json` +
+`i18n_source.json` + `quiz-prize-001.jpg` (the 4-OPTION QUIZ content-contract — the engine isn't reading
+tlvphoto's quiz source; his plan step 1, «map content incl a 4-option quiz.json»); `config.json` (extra
+keys — contract: tlvphoto adopts or engine suppresses); `index.html` (render_exhibition needs the
+served-dims + the `?v=<hash>` asset-version query + the `loading_line` from config); `sitemap.xml` (work
+ORDER differs). Next tick: index+sitemap (mechanical), then the quiz content-contract, then surface the
+asset-token + config decisions to Alexander (they touch tlvphoto's live code / the engine's identity).
+
 ### CUTOVER — MEASURED STATE 2026-07-09 ~17:10 (gate 1 is RED; the engine is materially BEHIND tlvphoto)
 Baked the engine against live tlvphoto content with tlvphoto's real prod flags and diffed vs tlvphoto's
 own fresh bake (`~/tlvphoto/site`, rebaked minutes earlier by the swipe deploy — a valid baseline):
