@@ -34,19 +34,34 @@ tlvphoto literals in the engine (NOT from this session) — `window.__tlvSeen` (
 4. on his OK, deploy the engine-baked bundle to tlvphotos.com; then reverse the code flow (engine → instance).
 Two hard gates: empty byte-diff before prod is touched, and his eye on the compare before the flip.
 
-### CUTOVER — PROGRESS 2026-07-09 ~17:39: byte-diff 253 → 9 (build.py parity landed, `ac6cda3`)
-Reconciled + verified (build.py, engine suite 20/21, door=parallel-flake): (1) 122 images — the
-mark-split (`copy_gallery(mark_text=None)`, served base is CLEAN); (2) 122 work pages — served-dims OG
-+ artform/ImageObject JSON-LD + srcset attr in render_work; (3) robots AI-blocks; (5) audio copytree.
-**The 9 that REMAIN** (with the engine's OWN generalized assets restored — a verbatim clobber breaks the
-engine's own tests, so it's the WRONG move): `exhibition.js` + `exhibition.css` (client-asset TOKEN drift
-EXQuiz↔TLVQuiz, ID_RE, + the swipe fix not yet ported — a DESIGN call: bake-time token substitution, or
-tlvphoto adopts the engine's generalized tokens; do NOT clobber); `_worker.js` + `exhibition_data.json` +
-`i18n_source.json` + `quiz-prize-001.jpg` (the 4-OPTION QUIZ content-contract — the engine isn't reading
-tlvphoto's quiz source; his plan step 1, «map content incl a 4-option quiz.json»); `config.json` (extra
-keys — contract: tlvphoto adopts or engine suppresses); `index.html` (render_exhibition needs the
-served-dims + the `?v=<hash>` asset-version query + the `loading_line` from config); `sitemap.xml` (work
-ORDER differs). Next tick: index+sitemap (mechanical), then the quiz content-contract, then surface the
+### CUTOVER — PROGRESS 2026-07-09 ~18:10: byte-diff 253 → 6 (all mechanical + content buckets DONE)
+Reconciled + VERIFIED against `~/tlvphoto/site`, each committed+pushed (engine suite 21/21):
+- 122 images — the mark-split (`copy_gallery(mark_text=None)`, served base is CLEAN). `ac6cda3`
+- 122 work pages — served-dims OG + artform/ImageObject JSON-LD + srcset attr in render_work. `ac6cda3`
+- robots AI-blocks; audio copytree. `ac6cda3`
+- index.html served-dims + `?v=<hash>` asset-version + `loading_line` (site.json); sitemap `<lastmod>`. `9d6bc2a`
+- 4-option quiz content-contract: mapped `~/tlvphoto/quiz.json` (tlvphoto `08527b0`) → exhibition_data.json
+  + the quiz-prize derivative now byte-identical; i18n quizzes array. `d4b11a8`
+
+**The 6 that REMAIN are ALL one class: the engine's GENERALIZATIONS vs tlvphoto's EXACT current bytes —
+this IS the «show the comparison» content, HIS gate, NOT more auto-hammering.** They are:
+- `exhibition.js` + `exhibition.css` + `_worker.js` — client assets. The engine's are generalized
+  (`window.EXQuiz`↔`TLVQuiz`, slug `ID_RE` `/^[a-z0-9…]/i` ↔ numeric `/^\d{5,25}$/`, and _worker.js is on
+  a DIFFERENT quiz-judging model than tlvphoto's shipped one) AND tlvphoto has the swipe fix the engine
+  doesn't. A verbatim clobber REVERTS the engine's generalizations and BREAKS its own tests (measured).
+- `config.json` — engine emits 5 knobs tlvphoto omits: `glide_ms`, `quiz.placement`, `sound_url`,
+  `sound_credit`, `site_name`.
+- `i18n_source.json` — one line: engine localizes `quiz_win`, tlvphoto doesn't.
+- `index.html` — ONLY the `?v=` hash, which is derived from exhibition.js/css → resolves the instant those match.
+
+**THE FORK (his call):** (a) hammer the engine DOWN to tlvphoto's exact bytes (de-generalizes the engine,
+drops its improvements, drops the swipe) — wrong for a product engine; (b) bring tlvphoto UP to the engine
+(adopt generalized tokens + quiz_win localization; port the swipe into the engine) — the cutover's actual
+direction, but the token rename touches tlvphoto's LIVE client; (c) bake-time token substitution (engine
+keeps generalized source, build.py stamps the instance's tokens at bake) — most work, cleanest long-term.
+**SAFE autonomous step regardless of the fork:** port the swipe fix INTO the engine's own assets (same edit
+as tlvphoto `b7f6042` + update the engine glide test) — needed under every option, keeps the engine green.
+_(superseded plan line below — index/sitemap/quiz are now DONE)_ Next tick: index+sitemap (mechanical), then the quiz content-contract, then surface the
 asset-token + config decisions to Alexander (they touch tlvphoto's live code / the engine's identity).
 
 ### CUTOVER — MEASURED STATE 2026-07-09 ~17:10 (gate 1 is RED; the engine is materially BEHIND tlvphoto)
