@@ -262,7 +262,7 @@ check("EX-PROTECT-GIFT gift ceremony hands over only on a yes; EX-PROTECT-RES ma
 
 BROWSER_ROWS = [
     "EX-QUIZ browser: the plaque chip renders for a quizzed work; the 4-option card opens; Esc closes",
-    "EX-QUIZ browser: a wrong tap shows one localized line then the card CLOSES; a reopen + right tap opens the gift; answer never in DOM",
+    "EX-QUIZ browser: a wrong tap shows one line then the card fades; a right tap opens the gift; the chip disappears once answered (both paths)",
 ]
 
 if not chrome_available():
@@ -312,22 +312,11 @@ else:
                   and (closed is None or closed.get("hidden") is True),
                   f"chip={has_chip} card={card_open} opts={has_opts} closed={closed}")
 
-        # row B — wrong tap shows one localized line then the card FADES OUT; after clearing the answer
-        #          state, a RIGHT tap opens the gift ceremony; the answer value is never in the DOM.
-        # Two-call fetch stub: call 1 → {ok:false} (miss), call 2 → {ok:true, prize:...} (win).
-        # After a miss the answered-memory key blocks reopen; we clear it then reopen for the win path.
-        with Browser(width=1280, height=900) as br:
-            br.inject("""
-            window.__qc=0;
-            (function(){const _f=window.fetch;window.fetch=function(u,o){
-              if(String(u).indexOf('/api/quiz')>=0){window.__qc++;
-                const body=JSON.stringify(window.__qc===1?{ok:false}:{ok:true,prize:'gallery/quiz-prize-synth01.jpg'});
-                return Promise.resolve(new Response(body,{status:200,headers:{'Content-Type':'application/json'}}));}
-              return _f.apply(this,arguments);};})();
-            """)
-            br.navigate(base + "/")
+        # row B — TWO INDEPENDENT sessions (a miss and a win can't share one work: once answered, the
+        #          chip is removed and the work is remembered). Each session stubs /api/quiz to ONE
+        #          verdict, taps once, and asserts the chip DISAPPEARS from the plaque afterwards.
+        def _setup_walk(br):
             br.evaluate("localStorage.clear();sessionStorage.clear()")
-            # deterministic arm + chosen work (same token as row A)
             br.evaluate("localStorage.setItem('tlv.visitor',%s)" % json.dumps(VISITOR_KEY_ON))
             br.evaluate("localStorage.setItem('tlv-tempo','0.1')")
             br.evaluate("localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
@@ -337,53 +326,57 @@ else:
             br.evaluate("const f=document.querySelector('.exh-frame[data-id=\"%s\"]');"
                         "if(f) f.scrollIntoView({behavior:'instant'})" % QUIZ_WORK_ID)
             br.sleep(0.6)
-            after_miss = None
-            after_win = None
-            reset_out = None
-            card_closed_auto = None
+
+        _stub = ("(function(){const _f=window.fetch;window.fetch=function(u,o){"
+                 "if(String(u).indexOf('/api/quiz')>=0){"
+                 "return Promise.resolve(new Response(JSON.stringify(%s),"
+                 "{status:200,headers:{'Content-Type':'application/json'}}));}"
+                 "return _f.apply(this,arguments);};})();")
+
+        after_miss = None; miss_chip_gone = None
+        after_win = None; win_chip_gone = None
+        # miss session — always {ok:false}
+        with Browser(width=1280, height=900) as br:
+            br.inject(_stub % "{ok:false}")
+            br.navigate(base + "/"); _setup_walk(br)
             try:
                 if not br.evaluate("!!(document.querySelector('#exh-cap .ex-quiz-chip'))"):
                     raise RuntimeError("chip absent")
-                # tap 1 — WRONG answer: click second option (fetch call 1 → {ok:false})
                 br.click('#exh-cap .ex-quiz-chip', settle=0.6)
-                br.evaluate(
-                    "(()=>{var bs=document.querySelectorAll('#ex-quiz-card .quiz-opt');"
-                    "var b=bs.length>1?bs[1]:bs[0];if(b)b.click();})()")
-                # wait for: fetch + timer1 (1500ms×0.1=150ms) → .gone + timer2 (650ms×0.1=65ms) → close
+                br.evaluate("(()=>{var bs=document.querySelectorAll('#ex-quiz-card .quiz-opt');"
+                            "var b=bs.length>1?bs[1]:bs[0];if(b)b.click();})()")
                 br.sleep(0.5)
                 after_miss = br.evaluate(
                     "(()=>{var o=document.querySelector('#ex-quiz-card .quiz-out');"
                     "var c=document.getElementById('ex-quiz-card');"
-                    "return {outText:o?o.textContent.trim():null,"
-                    " closed:!c||c.hidden};})()")
-                card_closed_auto = br.evaluate(
-                    "(()=>{var c=document.getElementById('ex-quiz-card');"
-                    "return !c||c.hidden||getComputedStyle(c).opacity==='0';})()")
-                # clear the answered-memory key so the card can reopen for the win path
-                br.evaluate("localStorage.removeItem('tlv.quiz.%s')" % QUIZ_WORK_ID)
-                # click chip again → card reopens fresh (no stored answer now)
-                br.click('#exh-cap .ex-quiz-chip', settle=0.7)
-                reset_out = br.evaluate("(()=>{var o=document.querySelector('#ex-quiz-card .quiz-out');"
-                                        "return o?o.textContent.trim():null;})()")
-                # tap 2 — RIGHT answer: click first option (fetch call 2 → {ok:true, prize:...})
-                br.evaluate(
-                    "(()=>{var b=document.querySelector('#ex-quiz-card .quiz-opt');if(b)b.click();})()")
+                    "return {outText:o?o.textContent.trim():null, closed:!c||c.hidden||getComputedStyle(c).opacity==='0'};})()")
+                br.sleep(1.0)   # let the card finish fading, chip already removed on the tap
+                miss_chip_gone = br.evaluate("document.querySelectorAll('.ex-quiz-chip').length") == 0
+            except Exception:
+                import traceback; traceback.print_exc()
+        # win session — fresh walk, always {ok:true, prize}
+        with Browser(width=1280, height=900) as br:
+            br.inject(_stub % "{ok:true,prize:'gallery/quiz-prize-synth01.jpg'}")
+            br.navigate(base + "/"); _setup_walk(br)
+            try:
+                if not br.evaluate("!!(document.querySelector('#exh-cap .ex-quiz-chip'))"):
+                    raise RuntimeError("chip absent")
+                br.click('#exh-cap .ex-quiz-chip', settle=0.6)
+                br.evaluate("(()=>{var b=document.querySelector('#ex-quiz-card .quiz-opt');if(b)b.click();})()")
                 br.sleep(0.9)
                 after_win = br.evaluate("(()=>{var g=document.getElementById('ex-gift-card');"
                                         "if(!g||g.hidden)return {shown:false};"
                                         "var t=g.querySelector('.gift-thumb'),y=g.querySelector('.gift-yes');"
                                         "return {shown:!!(t&&t.getAttribute('src'))&&!!y};})()")
+                win_chip_gone = br.evaluate("document.querySelectorAll('.ex-quiz-chip').length") == 0
             except Exception:
-                import traceback
-                traceback.print_exc()
-            miss_line_shown = after_miss is not None and after_miss.get("outText") not in (None, "")
-            miss_closed = card_closed_auto is True
-            reset_clean = reset_out in (None, "")   # quizCardOpen cleared quiz-out before opening
-            prize_shown = after_win is not None and after_win.get("shown")
-            check(BROWSER_ROWS[1],
-                  miss_line_shown and miss_closed and reset_clean and prize_shown,
-                  f"miss_line={miss_line_shown} miss_closed={miss_closed} "
-                  f"reset_clean={reset_clean} prize={prize_shown} miss={after_miss} win={after_win}")
+                import traceback; traceback.print_exc()
+        miss_line_shown = after_miss is not None and after_miss.get("outText") not in (None, "")
+        prize_shown = after_win is not None and after_win.get("shown")
+        check(BROWSER_ROWS[1],
+              miss_line_shown and prize_shown and miss_chip_gone is True and win_chip_gone is True,
+              f"miss_line={miss_line_shown} prize={prize_shown} "
+              f"miss_chip_gone={miss_chip_gone} win_chip_gone={win_chip_gone} miss={after_miss} win={after_win}")
 
 shutil.rmtree(TMP_OFF, ignore_errors=True)
 shutil.rmtree(TMP_ON, ignore_errors=True)

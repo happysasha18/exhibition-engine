@@ -1173,6 +1173,12 @@
     const w = byId[id];
     if (!w || !w.quiz) return;
 
+    // the question is being answered — the chip's job is done. Drop the «question?» chip from the
+    // plaque now and clear this show's choice so it never reappears; the answered-memory written
+    // below keeps it gone in future walks too (EX-QUIZ-ONCE: once answered, the chip goes).
+    quizChosenId = null;
+    document.querySelectorAll(".ex-quiz-chip").forEach((el) => el.remove());
+
     // LOCK all buttons immediately — one tap, no re-pick
     const opts = Array.from(quizCard.querySelectorAll(".quiz-opt"));
     opts.forEach((b) => {
