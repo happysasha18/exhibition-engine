@@ -326,14 +326,24 @@ body.ex-door #ex-sound{ right:70px; }
 /* ================= EX-QUIZ (INV-59/60) + the gift ceremony ================= */
 /* The quiz chip: a subtle plaque chip on works that carry a question (EX-QUIZ).
    EX-ARRIVE: born at opacity:0, breathes in via animation (exs-fade, the series pill's curve). */
-.ex-quiz-chip{ pointer-events:auto; margin-top:10px; font-family:var(--mono); font-size:10px;
+.ex-quiz-chip{ position:relative; overflow:hidden; pointer-events:auto; margin-top:10px;
+  font-family:var(--mono); font-size:10px;
   letter-spacing:.18em; text-transform:uppercase; color:var(--accent); background:rgba(8,8,7,.5);
   border:1px solid color-mix(in srgb, var(--accent) 42%, transparent); border-radius:999px;
   padding:7px 13px; cursor:pointer;
   opacity:0; animation:exs-fade var(--d-soft) var(--ease) forwards;
   transition:color calc(.3s*var(--tempo)), border-color calc(.3s*var(--tempo)); }
 .ex-quiz-chip:hover,.ex-quiz-chip:focus-visible{ background:var(--accent); color:#0c0b0a; }
-@media (prefers-reduced-motion:reduce){ .ex-quiz-chip{ animation:none; opacity:1; } }
+/* EX-QUIZ-GLINT: a soft, slow light sweeps ONCE across the chip as the question appears — only the
+   plaque chip, never the wall label. Peak .18, ~2.4s, a beat after the chip breathes in. Screen-blend
+   so it only ADDS light; clipped to the pill by the chip's overflow:hidden. */
+.ex-quiz-glint{ position:absolute; top:-30%; bottom:-30%; width:85%; left:-90%; z-index:1;
+  pointer-events:none; transform:skewX(-14deg); mix-blend-mode:screen; filter:blur(9px);
+  background:linear-gradient(100deg, transparent 0%, rgba(255,247,232,.18) 50%, transparent 100%);
+  animation:ex-quiz-glint calc(2.4s*var(--tempo)) var(--ease) calc(.5s*var(--tempo)) 1 both; }
+@keyframes ex-quiz-glint{ from{ left:-90%; } to{ left:130%; } }
+@media (prefers-reduced-motion:reduce){ .ex-quiz-chip{ animation:none; opacity:1; }
+  .ex-quiz-glint{ display:none; } }
 
 /* The quiz card modal: one at a time, modal, rides var(--d-soft) in/out — no hardcoded durations.
    EX-ARRIVE: opacity:0 base; .show added via rAF on open; removed before hide on close. */

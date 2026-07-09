@@ -150,6 +150,16 @@ check("EX-QUIZ chip + card + door chip obey house breath (EX-ARRIVE) and tongue 
       f"dtok={dtoken} quiz_ask_js={quiz_ask_js} chip_js={chip_js} card_js={card_js} "
       f"door_js={door_chip_js} esc={esc_js} ls={ls_solved} baked={quiz_ask_baked}")
 
+# 6b · EX-QUIZ-GLINT: a soft, slow one-time light sweeps the plaque chip as the question appears;
+# only the chip (never the wall label), and it drops out under prefers-reduced-motion
+glint_css = ".ex-quiz-glint" in css_src and "mix-blend-mode:screen" in css_src
+glint_keyframe = "@keyframes ex-quiz-glint" in css_src
+glint_js = "ex-quiz-glint" in js_src
+glint_reduced = ".ex-quiz-glint{ display:none" in css_src
+check("EX-QUIZ-GLINT: a soft one-time glint rides the plaque chip; reduced-motion drops it",
+      glint_css and glint_keyframe and glint_js and glint_reduced,
+      f"glint_css={glint_css} keyframe={glint_keyframe} js={glint_js} reduced={glint_reduced}")
+
 # 7 · EX-QUIZ-PRIZE / EX-PROTECT-RES (INV-56/INV-18): prize is a marked gallery derivative
 prize_in_worker = "gallery/quiz-prize" in worker_on
 prize_files = list((TMP_ON / "gallery").glob("quiz-prize-*.jpg")) if (TMP_ON / "gallery").exists() else []

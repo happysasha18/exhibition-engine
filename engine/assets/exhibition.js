@@ -1016,7 +1016,10 @@
     return T.quiz_ask || "question?";
   }
   function quizChipHTML(id) {
-    return `<button type="button" class="ex-quiz-chip" data-quiz="${id}">${quizLabel()}</button>`;
+    // a soft, slow one-time glint runs across the chip as it appears (EX-QUIZ-GLINT) — the
+    // .ex-quiz-glint span is a pure-CSS sweep, born with the chip, plays once
+    return `<button type="button" class="ex-quiz-chip" data-quiz="${id}">${quizLabel()}` +
+      `<span class="ex-quiz-glint" aria-hidden="true"></span></button>`;
   }
   const PRIZE_DL = DL_BASE + "-wallpaper.jpg";           // the prize download name (site-slug, INV-28)
 
