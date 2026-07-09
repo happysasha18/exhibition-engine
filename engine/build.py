@@ -929,6 +929,11 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             # brand + the © signature are EXCLUDED by construction (never translatable)
             "titles": {it["id"]: it["title"].strip()
                        for it in items if (it.get("title") or "").strip()},
+            # EX-QUIZ-PICK (EX-I18N): public quiz prompts localized like titles — id-keyed. The
+            # options stay English and ride each work's quiz.options (INV-64 English labels), never
+            # translated. Absent when the quiz is off (byte-identical to a quiz-less i18n source).
+            "quizzes": [{"id": wid, "prompt": q["prompt"]}
+                        for wid, q in sorted(quiz_public.items())] if flags["quiz"] else [],
         }
         write(OUT / "i18n_source.json",
               json.dumps(i18n_src, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
