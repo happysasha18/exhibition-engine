@@ -378,7 +378,10 @@ clipboard is refused, the toast carries the link itself and stays until dismisse
 share button replaces the retired ↗ corner link; the walk no longer links out per frame. Since
 2026-07-09 it is ONE control FLOATING over the walk as fixed chrome (never riding a frame, so
 nothing drifts with a scroll): its target follows the work IN VIEW; it shows with a work, leaves
-on the closing screen, and hides with the rest of the walk chrome at the door. `EX-SHARE-BTN`
+on the closing screen, and hides with the rest of the walk chrome at the door. The round floating chrome sits on
+ONE vertical rail: the link and the sound player centre on the same x from the right edge at every
+width and orientation (his 2026-07-10 landscape note), and the toast answers right-aligned just above
+the link button it belongs to, never far away over the work. `EX-SHARE-BTN`
 
 **The permalink arrival** (`EX-SHARE-IN`): opening the exhibition root with `#w-<id>` treats the
 hash as a handed-over pick. `(a)` If the work is among the frames already shown — an instant

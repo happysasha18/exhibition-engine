@@ -30,6 +30,16 @@ TMP = Path(tempfile.mkdtemp(prefix="synth_share_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)
 
+# A second bake with a synthetic sound_url so #ex-sound renders for the rail geometry test (11).
+# The file need not exist — the player fails silent; only geometry is measured.
+TMP_SND = Path(tempfile.mkdtemp(prefix="synth_share_snd_"))
+build_site.OUT = TMP_SND
+build_site.build(SITE_URL)
+_cfg_snd = TMP_SND / "config.json"
+_cfg_snd_data = json.loads(_cfg_snd.read_text())
+_cfg_snd_data["exhibition"]["sound_url"] = "/gallery/audio/ambient.m4a"
+_cfg_snd.write_text(json.dumps(_cfg_snd_data, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+
 DATA = json.loads((TMP / "exhibition_data.json").read_text(encoding="utf-8"))
 VER = str(DATA["version"])
 ALL_IDS = [w["id"] for w in DATA["works"]]
@@ -62,6 +72,8 @@ BROWSER_ROWS = [
     "EX-SHARE-IN the hash is consumed once (reload honors the place; no history step; the address keeps the line)",
     "EX-SHARE-IN unknown id is silence (bare arrival, no error face)",
     "EX-SHARE-IN composes with the wipe (?reset#w-<id> → wipe first, then the hash seeds the arrival)",
+    "EX-SHARE-BTN ∥ EX-SOUND one vertical rail — the link and the player centre on the SAME x, portrait AND landscape",
+    "EX-SHARE the toast answers BESIDE the link button (right-aligned just above it), never far over the work",
 ]
 
 CLIP_STUB = (
@@ -204,6 +216,20 @@ else:
                   link in toast1 and link in toast2 and gone,
                   f"toast1={toast1!r} still={toast2!r} gone_after_esc={gone}")
 
+            # 12 · the toast lands beside the button it answers (his 2026-07-10 note) — measured
+            #      while the refusal face still holds on screen
+            br.click(".ex-share", settle=0.5)
+            geom = json.loads(br.evaluate(
+                "(()=>{const t=document.getElementById('ex-toast').getBoundingClientRect();"
+                "const b=document.querySelector('.ex-share').getBoundingClientRect();"
+                "return JSON.stringify({t_right:t.right,b_right:b.right,"
+                "t_bottom:t.bottom,b_top:b.top});})()") or "{}")
+            br.key("Escape")
+            check(BROWSER_ROWS[12],
+                  bool(geom) and abs(geom["t_right"] - geom["b_right"]) <= 2
+                  and geom["t_bottom"] <= geom["b_top"],
+                  f"toast vs button: {geom}")
+
         # 5 · cold arrival with the hash = handed-over pick
         target = ALL_IDS[len(ALL_IDS) // 2]
         with Browser(width=1280, height=900) as br:
@@ -297,7 +323,26 @@ else:
                   f"inview={br.evaluate(IN_VIEW)} walk={walk_now} "
                   f"search={br.evaluate('location.search')!r} hash={br.evaluate('location.hash')!r}")
 
+        # 11 · one vertical rail for the round floating chrome (his 2026-07-10 landscape note:
+        #      past the 640px rules the link sat ~12px off the player's axis)
+        with serve(TMP_SND) as base_snd:
+            rails = {}
+            for label, (w, h) in {"portrait": (390, 844), "landscape": (844, 390)}.items():
+                with Browser(width=w, height=h) as br:
+                    br.inject(CLIP_STUB)
+                    br.touch(True)
+                    enter(br, base_snd)
+                    rails[label] = json.loads(br.evaluate(
+                        "(()=>{const s=document.querySelector('.exsnd-btn').getBoundingClientRect();"
+                        "const l=document.querySelector('.ex-share').getBoundingClientRect();"
+                        "return JSON.stringify({player:(s.left+s.right)/2,"
+                        "link:(l.left+l.right)/2});})()") or "{}")
+            check(BROWSER_ROWS[11],
+                  all(v and abs(v["player"] - v["link"]) <= 1 for v in rails.values()),
+                  f"center-x player vs link: {rails}")
+
 shutil.rmtree(TMP, ignore_errors=True)
+shutil.rmtree(TMP_SND, ignore_errors=True)
 
 fails = [r for r in results if r[1] == "FAIL"]
 skips = [r for r in results if r[1] == "SKIP"]

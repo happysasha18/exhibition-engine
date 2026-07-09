@@ -140,7 +140,11 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 /* the quiet share affordance — ONE link-glyph FLOATING over the walk (2026-07-09: the player
    and the link are chrome ABOVE the room, they never ride a frame or drift with a scroll).
    It copies the room permalink of the work IN VIEW, never navigates (EX-SHARE / EX-SHARE-BTN) */
-.ex-share{ position:fixed; right:26px; bottom:26px; z-index:35; width:36px; height:36px;
+/* ONE vertical rail for the round floating chrome: this link and the player (EX-SOUND, top-right)
+   centre on the SAME x from the right edge at every width and orientation (his 2026-07-10
+   landscape note). Each rule derives `right` as the rail minus half its own button width. */
+:root{ --ex-rail:36px; --ex-share-b:26px; }
+.ex-share{ position:fixed; right:calc(var(--ex-rail) - 18px); bottom:var(--ex-share-b); z-index:35; width:36px; height:36px;
   border-radius:999px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
   background:rgba(8,8,7,.55); border:1px solid var(--hair);
   opacity:0; pointer-events:none;
@@ -149,16 +153,19 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .ex-share.show:hover, .ex-share.show:focus-visible{ opacity:1; }
 .ex-share:hover{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
 /* touch: no hover exists — full presence at rest, target at the a11y floor (≥44px) */
-@media (hover:none){ .ex-share{ width:44px; height:44px; } .ex-share.show{ opacity:.9; } }
+@media (hover:none){ .ex-share{ width:44px; height:44px; right:calc(var(--ex-rail) - 22px); } .ex-share.show{ opacity:.9; } }
 
 /* the toast — one quiet line; the success face leaves by itself (×tempo), the clipboard-refusal
    face carries the LINK and holds until dismissed (tap/Esc) so a hand can copy it */
 /* EX-ARRIVE: opacity:0 base; .show rAF-added on each call to toast(); removed in toastOff() */
-#ex-toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:9vh; z-index:40;
+/* the toast answers BESIDE the link button it belongs to (his 2026-07-10 note: the centre of the
+   image is far from the hand) — right-aligned just above the share control, same rail maths */
+#ex-toast{ position:fixed; right:calc(var(--ex-rail) - 18px); bottom:calc(var(--ex-share-b) + 48px); z-index:40;
   font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--ink);
   background:rgba(8,8,7,.72); border:1px solid var(--hair); border-radius:999px;
-  padding:9px 16px; max-width:82vw; overflow-wrap:anywhere; text-align:center;
+  padding:9px 16px; max-width:82vw; overflow-wrap:anywhere; text-align:right;
   opacity:0; transition:opacity var(--d-soft) var(--ease); backdrop-filter:blur(6px); }
+@media (hover:none){ #ex-toast{ right:calc(var(--ex-rail) - 22px); bottom:calc(var(--ex-share-b) + 56px); } }
 #ex-toast.show{ opacity:1; }
 #ex-toast[hidden]{ display:none; }
 #ex-toast.hold{ cursor:pointer; }
@@ -287,7 +294,8 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
    The tray slides out LEFT on hover / while playing / focus-within.
    Absent when sound_url is empty — the JS IIFE exits early, no DOM insertion. */
 /* EX-ARRIVE: opacity:0 base; .show added via rAF on insertion so it breathes in, never pops */
-#ex-sound{ position:fixed; top:14px; right:16px; z-index:130; display:flex; align-items:center;
+/* right rides the SHARED --ex-rail (see .ex-share): rail minus half the 40px button = same axis */
+#ex-sound{ position:fixed; top:14px; right:calc(var(--ex-rail) - 20px); z-index:130; display:flex; align-items:center;
   height:40px; -webkit-tap-highlight-color:transparent;
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
 #ex-sound.show{ opacity:1; }
@@ -337,7 +345,8 @@ body.ex-door #ex-sound{ right:70px; }
   .exh-capzone{ left:16px; right:16px; bottom:14px; max-width:none; padding-left:13px; }
   .exh-capzone .title{ font-size:22px; }
   .exh-capzone .told{ max-width:100%; }
-  .ex-share{ right:16px; bottom:16px; }             /* clear of the caption band's corner */
+  :root{ --ex-share-b:16px; }           /* clear of the caption band's corner; x stays on the rail;
+                                            the toast above the button rides the same variable */
 }
 
 /* ================= EX-QUIZ (INV-59/60) + the gift ceremony ================= */
