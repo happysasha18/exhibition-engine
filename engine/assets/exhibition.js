@@ -755,11 +755,11 @@
     if (busy || !doorAvailable) return;
     tlog("exit");
     pulse("walk_exit");
-    // the paginated walk always rests ON a frame (EX-GLIDE, INV-39) — remember it as a frame top so
-    // Back restores a whole work centered, never a stray sub-frame offset (INV-32b). The old free
-    // settle re-centered a restore after the fact; the one-frame model aligns it at the source.
-    { const vh = innerHeight, max = document.documentElement.scrollHeight - vh;
-      walkY = Math.max(0, Math.min(max, Math.round(scrollY / vh) * vh)); }
+    // the paginated walk always rests ON a frame (EX-GLIDE, INV-39) — remember its MEASURED
+    // centered stop so Back restores a whole work centered, never a stray sub-frame offset
+    // (INV-32b); measured, because on a phone innerHeight ≠ the frames' 100vh.
+    { const stops = frameStops();
+      walkY = stops.length ? stops[nearestStop(stops, scrollY)] : 0; }
     groundRest();
     const sp = doorSet();                              // the SAME curated set — a fresh quiz
     renderDoor(sp, false);                             // is a fresh PICK (EX-DOOR-2d)
@@ -1358,15 +1358,49 @@
     };
     glideRaf = requestAnimationFrame(step);
   }
+  // The stops are MEASURED off the real sections, never k×innerHeight arithmetic: on a phone
+  // the browser chrome makes the live innerHeight smaller than the frames' 100vh, so a computed
+  // stop lands off centre and drifts FURTHER off with every step (his bug 2026-07-09). A
+  // section's stop puts ITS centre on the live viewport's centre, so a landing is exactly
+  // centered whatever the chrome did since the last one — each step self-corrects, never drifts.
+  function frameCenter(el) {
+    const r = el.getBoundingClientRect();
+    const max = document.documentElement.scrollHeight - innerHeight;
+    return Math.max(0, Math.min(max,
+      Math.round(scrollY + r.top + (r.height - innerHeight) / 2)));
+  }
+  function frameStops() {
+    const els = stage.querySelectorAll(".exh-frame, .exh-fin");
+    return Array.prototype.map.call(els, frameCenter);
+  }
+  function nearestStop(stops, at) {
+    let i = 0;
+    for (let j = 1; j < stops.length; j++)
+      if (Math.abs(stops[j] - at) < Math.abs(stops[i] - at)) i = j;
+    return i;
+  }
   // one step = advance exactly ONE frame from where the walk is — or from where a running
   // transition is headed, so a second input CHAINS to the next frame, never re-rounds backward.
   function stepFrame(dir /*, velocity */) {
-    const vh = innerHeight;
-    const max = document.documentElement.scrollHeight - vh;
+    const stops = frameStops();
+    if (!stops.length) return;
     const base = gliding && glideGoal != null ? glideGoal : scrollY;
-    const k = Math.round(base / vh) + dir;
-    glideToFrame(Math.min(max, Math.max(0, k * vh)));
+    const k = Math.min(stops.length - 1, Math.max(0, nearestStop(stops, base) + dir));
+    glideToFrame(stops[k]);
   }
+  // the viewport metric moves under a RESTING walk (phone chrome collapses, a window resize) —
+  // quietly re-dock the frame the eye is on to the new centre; mid-glide the landing already
+  // rides fresh measurements, and the door/overlays own their own resize.
+  let redockT = null;
+  addEventListener("resize", () => {
+    if (!walkOwnsInput()) return;
+    clearTimeout(redockT);
+    redockT = setTimeout(() => {
+      if (!walkOwnsInput() || gliding) return;
+      const stops = frameStops();
+      if (stops.length) glideToFrame(stops[nearestStop(stops, scrollY)]);
+    }, 180);
+  });
   function walkOwnsInput() {                            // the door/ceremony/side room keep native
     return document.documentElement.classList.contains("ex-walk")
       && !atDoor && !busy && !sideOpen;
@@ -1555,7 +1589,7 @@
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}   // one-shot
     if (!m || m.v !== VER) return;                     // stale/foreign marker → the top, never an error
     const f = stage.querySelector('.exh-frame[data-id="' + m.id + '"]');
-    if (f) f.scrollIntoView({ behavior: "instant" });
+    if (f) scrollTo(0, frameCenter(f));               // centered in the LIVE viewport (EX-GLIDE)
   }
 
   // ---- the permalink arrival (EX-SHARE-IN): the hash is a doorway, not a leash ----
@@ -1591,7 +1625,7 @@
     replaceFace({ face: "walk" });                     // no step of its own (INV-32e)
     try { sessionStorage.setItem(SPENT_KEY, "w-" + hid); } catch (e) {}
     const f = stage.querySelector('.exh-frame[data-id="' + hid + '"]');
-    if (f) f.scrollIntoView({ behavior: "instant" });  // no smooth-scroll tear
+    if (f) scrollTo(0, frameCenter(f));               // instant, centered in the LIVE viewport
     // the consuming jump writes the place marker so the room's memory agrees with the eye
     try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: hid })); } catch (e) {}
   }

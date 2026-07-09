@@ -3,12 +3,15 @@
 fixture. The decided motion model (supersedes the old free-inertia settle): every input — an arrow
 key, a wheel notch, a touch swipe — makes EXACTLY ONE ideal transition to the adjacent frame. It
 always starts and lands smoothly, CENTERED on the target; it never rests between frames and never
-floats/drifts afterwards (the felt defect: "stops somewhere, then slowly floats ~1.5s"). Phase 1
-ignores force — one fixed sine-in-out curve for every input. Desktop (wheel+keys) AND touch are
-owned by the SAME JS animator: a swipe blocks native scroll and docks exactly ONE frame (CSS
-scroll-snap-stop:always did not hold on a real phone — his bug 2026-07-09, a momentum swipe flew
-through several works). JS writes the position only AFTER the finger lifts, so no live iOS momentum
-is ever fought — the old jerk is impossible on this path.
+floats/drifts afterwards. Phase 1 ignores force — one fixed sine-in-out curve for every input.
+Desktop (wheel+keys) AND touch are owned by the SAME JS animator.
+
+CENTERED is asserted as MEASURED GEOMETRY, never k×innerHeight arithmetic: on a real phone the
+browser chrome makes the live innerHeight smaller than the frames' 100vh, so an arithmetic stop
+lands off centre and drifts FURTHER off with every step (his bug 2026-07-09 evening — «картинка
+следующая каждый раз съезжает»). The old suite asserted the same arithmetic the code used, so it
+was green over the broken phone walk. Every row below reads the landed section's own rect against
+the live viewport; rows 8–9 pin the mismatched-viewport case explicitly.
 Asserts the REAL baked bundle in a REAL headless Chrome. Chrome absent → pinned expected SKIPs.
 Run: python tests/test_glide.py
 """
@@ -46,14 +49,48 @@ WALK = json.dumps(json.dumps({"v": VER, "pick": PICK, "shown": 10}))
 
 BROWSER_ROWS = [
     "EX-GLIDE one input → one frame (a wheel notch advances exactly one, lands centered; force ignored)",
-    "EX-GLIDE always lands centered, no post-drift (settled on a frame top, unchanged 1s+ later)",
+    "EX-GLIDE always lands centered, no post-drift (settled centered, unchanged 1s+ later)",
     "EX-GLIDE the transition cannot overshoot (monotonic to the target, never past it — sine in-out)",
     "EX-GLIDE a mid-transition input chains one frame (re-targets to the next, lands centered)",
     "EX-GLIDE rides the clock (collapsed tempo lands near-instant; default is still in flight then)",
     "EX-GLIDE keys page by frame (space/↓ forward, ↑ back; chained presses ride the goal)",
-    "EX-GLIDE instant roads stay instant (hash + place restore land exact, no drift; the door ignores a wheel)",
+    "EX-GLIDE instant roads land centered (hash + place restore, no drift; the door ignores a wheel)",
     "EX-GLIDE touch docks one work per swipe (a momentum swipe no longer flies through — one JS-driven frame each)",
+    "EX-GLIDE frames taller than the live viewport still land CENTERED every step (the phone-chrome "
+    "mismatch — measured geometry, no accumulating drift)",
+    "EX-GLIDE a viewport-metric change re-centers the resting frame (phone chrome collapses → quiet re-dock)",
 ]
+
+# the walk's sections in order (frames + the closing screen) — the stops the animator owes
+SECTIONS = "[...document.querySelectorAll('#ex-stage .exh-frame, #ex-stage .exh-fin')]"
+
+
+def cur(br):
+    """index of the section holding the viewport's centre line — the frame the eye is on"""
+    return br.evaluate(
+        "(()=>{const s=%s;return s.findIndex(x=>{const r=x.getBoundingClientRect();"
+        "return r.top<innerHeight*0.5&&r.bottom>innerHeight*0.5;});})()" % SECTIONS)
+
+
+def off(br):
+    """the landed section's centre offset from the LIVE viewport centre, px — 0 = truly centered"""
+    return br.evaluate(
+        "(()=>{const s=%s;const f=s.find(x=>{const r=x.getBoundingClientRect();"
+        "return r.top<innerHeight*0.5&&r.bottom>innerHeight*0.5;});if(!f)return 99999;"
+        "const r=f.getBoundingClientRect();"
+        "return Math.round((r.top+r.height/2)-innerHeight/2);})()" % SECTIONS)
+
+
+def stop(br, k):
+    """section k's own centered stop, measured off its rect — the position a landing owes"""
+    return br.evaluate(
+        "(()=>{const s=%s;const r=s[%d].getBoundingClientRect();"
+        "return Math.round(scrollY+r.top+(r.height-innerHeight)/2);})()" % (SECTIONS, k))
+
+
+MISMATCH = ("const st=document.createElement('style');st.id='mm';"
+            "st.textContent='#ex-stage .exh-frame,#ex-stage .exh-fin{height:calc(100vh + 72px)}';"
+            "document.head.appendChild(st)")
 
 
 def room(br, base, tempo):
@@ -74,35 +111,33 @@ else:
         # 0 · one input → one frame, both directions, always centered (tempo 0.2 → a quick dock)
         with Browser(width=1280, height=900) as br:
             room(br, base, "0.2")
-            vh = br.evaluate("innerHeight")
             br.wheel(delta_y=400)                      # one notch down
             br.sleep(0.45)
-            d1 = br.evaluate("scrollY")
-            down_ok = abs(d1 - vh) <= 2
+            d_i, d_off = cur(br), off(br)
             br.wheel(delta_y=-400)                     # one notch up
             br.sleep(0.45)
-            u1 = br.evaluate("scrollY")
-            up_ok = u1 <= 2
-            check(BROWSER_ROWS[0], down_ok and up_ok,
-                  f"down→{d1} (want {vh}) up→{u1} (want 0)")
+            u_i, u_off = cur(br), off(br)
+            check(BROWSER_ROWS[0],
+                  d_i == 1 and abs(d_off) <= 2 and u_i == 0 and abs(u_off) <= 2,
+                  f"down→frame {d_i} off {d_off} (want 1, ≤2) up→frame {u_i} off {u_off} (want 0, ≤2)")
 
         # 1 · lands centered, then STAYS — no float, no creep, no rest between frames
         with Browser(width=1280, height=900) as br:
             room(br, base, "0.2")
-            vh = br.evaluate("innerHeight")
             br.wheel(delta_y=400)
             br.sleep(0.5)
+            o1 = off(br)
             at1 = br.evaluate("scrollY")               # landed
             br.sleep(1.3)
             at2 = br.evaluate("scrollY")               # far past any old "float" window
             check(BROWSER_ROWS[1],
-                  abs(at1 - vh) <= 2 and at1 == at2,
-                  f"landed={at1} then={at2} (want {vh}, stable)")
+                  cur(br) == 1 and abs(o1) <= 2 and at1 == at2,
+                  f"landed frame {cur(br)} off {o1} scrollY {at1}→{at2} (want centered, stable)")
 
         # 2 · the transition provably cannot overshoot (sample the peak through the flight)
         with Browser(width=1280, height=900) as br:
             room(br, base, "1.35")                     # default clock → a visible, samplable flight
-            vh = br.evaluate("innerHeight")
+            goal = stop(br, 1)
             br.evaluate("window.__mx=0;"
                         "window.__smp=setInterval(()=>{window.__mx=Math.max(window.__mx,scrollY);},8);")
             br.wheel(delta_y=400)
@@ -110,65 +145,64 @@ else:
             peak = br.evaluate("clearInterval(window.__smp); window.__mx")
             final = br.evaluate("scrollY")
             check(BROWSER_ROWS[2],
-                  peak <= vh + 2 and abs(final - vh) <= 2,
-                  f"peak={peak} final={final} target={vh} (peak must not pass target)")
+                  peak <= goal + 2 and abs(final - goal) <= 2,
+                  f"peak={peak} final={final} target={goal} (peak must not pass target)")
 
         # 3 · a second input mid-transition chains to the NEXT frame (never re-rounds back)
         with Browser(width=1280, height=900) as br:
             room(br, base, "1.35")                     # a long clock so the first is still in flight
-            vh = br.evaluate("innerHeight")
+            g1, g2 = stop(br, 1), stop(br, 2)
             br.wheel(delta_y=400)                      # heading to frame 1
             br.sleep(0.16)                             # in flight
             mid = br.evaluate("scrollY")
-            in_flight = 2 < mid < vh - 20
+            in_flight = 2 < mid < g1 - 20
             br.wheel(delta_y=400)                      # chain → frame 2
             br.sleep(0.9)
             landed = br.evaluate("scrollY")
             check(BROWSER_ROWS[3],
-                  in_flight and abs(landed - 2 * vh) <= 2,
-                  f"mid={mid} (in flight {in_flight}) landed={landed} (want {2*vh})")
+                  in_flight and abs(landed - g2) <= 2,
+                  f"mid={mid} (in flight {in_flight}) landed={landed} (want {g2})")
 
         # 4 · the transition rides the one clock (INV-33): collapsed lands, default still moving
         with Browser(width=1280, height=900) as br:
             room(br, base, "0.05")                     # the collapsed clock (reduced-motion feel)
-            vh = br.evaluate("innerHeight")
+            g1 = stop(br, 1)
             br.wheel(delta_y=400)
             br.sleep(0.1)
             collapsed = br.evaluate("scrollY")
         with Browser(width=1280, height=900) as br:
             room(br, base, "1.35")                     # the default clock (~520ms)
-            vh = br.evaluate("innerHeight")
+            h1 = stop(br, 1)
             br.wheel(delta_y=400)
             br.sleep(0.1)                              # same moment the collapsed clock had landed
             deflt = br.evaluate("scrollY")
         check(BROWSER_ROWS[4],
-              abs(collapsed - vh) <= 2 and 2 < deflt < vh - 20,
-              f"collapsed@0.1s={collapsed} (want {vh}) default@0.1s={deflt} (still in flight)")
+              abs(collapsed - g1) <= 2 and 2 < deflt < h1 - 20,
+              f"collapsed@0.1s={collapsed} (want {g1}) default@0.1s={deflt} (still in flight)")
 
-        # 5 · keys page by frame (space/arrows step to the next work)
+        # 5 · keys page by frame (his 2026-07-07 word: space/arrows step to the next work)
         with Browser(width=1280, height=900) as br:
             room(br, base, "0.2")
-            vh = br.evaluate("innerHeight")
             br.key("ArrowDown")
             br.sleep(0.55)
-            one = br.evaluate("scrollY")
+            one, o_one = cur(br), off(br)
             br.key("ArrowDown")                        # two presses chain — the second rides
             br.key("ArrowDown")                        # the first's goal, never re-rounds back
             br.sleep(0.8)
-            three = br.evaluate("scrollY")
+            three, o_three = cur(br), off(br)
             br.key("ArrowUp")
             br.sleep(0.55)
-            back = br.evaluate("scrollY")
+            back, o_back = cur(br), off(br)
             br.key(" ", "Space")
             br.sleep(0.55)
-            spaced = br.evaluate("scrollY")
-            keys_ok = (abs(one - vh) <= 2 and abs(three - 3 * vh) <= 2
-                       and abs(back - 2 * vh) <= 2 and abs(spaced - 3 * vh) <= 2)
+            spaced, o_sp = cur(br), off(br)
+            keys_ok = ((one, three, back, spaced) == (1, 3, 2, 3)
+                       and max(abs(o_one), abs(o_three), abs(o_back), abs(o_sp)) <= 2)
             check(BROWSER_ROWS[5], keys_ok,
-                  f"↓→{one} (want {vh}) ↓↓→{three} (want {3*vh}) "
-                  f"↑→{back} (want {2*vh}) space→{spaced} (want {3*vh})")
+                  f"↓→{one}/{o_one} ↓↓→{three}/{o_three} ↑→{back}/{o_back} space→{spaced}/{o_sp} "
+                  f"(want frames 1,3,2,3 all centered ≤2)")
 
-        # 6 · instant roads stay instant: hash arrival exact + no drift; place restore too;
+        # 6 · instant roads land centered: hash arrival + place restore, exact and stable;
         #     and the cold door ignores a wheel (the animator only owns the walk)
         with Browser(width=1280, height=900) as br:
             room(br, base, "0.2")
@@ -177,24 +211,27 @@ else:
             target = json.loads(shown)[4]
             br.navigate(base + "/#w-" + target)
             br.sleep(0.5)
-            top = br.evaluate(
-                f"document.querySelector('.exh-frame[data-id=\"{target}\"]').offsetTop")
+            on_target = br.evaluate(
+                "(()=>{const s=%s;const f=s.find(x=>{const r=x.getBoundingClientRect();"
+                "return r.top<innerHeight*0.5&&r.bottom>innerHeight*0.5;});"
+                "return f&&f.dataset.id==='%s';})()" % (SECTIONS, target))
+            h_off = off(br)
             at1 = br.evaluate("scrollY")
             br.sleep(1.2)                              # far past any transition window
             at2 = br.evaluate("scrollY")
-            hash_ok = abs(at1 - top) <= 2 and at1 == at2
-            # place restore: walk to frame 3, reload — exact and stable
-            vh = br.evaluate("innerHeight")
+            hash_ok = on_target and abs(h_off) <= 2 and at1 == at2
+            # place restore: walk to frame 3, reload — centered on it, and stable
             br.evaluate(
                 "document.querySelectorAll('.exh-frame')[2].scrollIntoView({behavior:'instant'})")
             br.sleep(0.8)
             br.reload()
             br.sleep(1.4)
+            p_i, p_off = cur(br), off(br)
             r1 = br.evaluate("scrollY")
             br.sleep(1.0)
             r2 = br.evaluate("scrollY")
-            place_ok = abs(r1 - 2 * vh) <= 2 and r1 == r2
-        # the cold door ignores a wheel (no step at the door / no ex-walk owner)
+            place_ok = p_i == 2 and abs(p_off) <= 2 and r1 == r2
+        # the cold door ignores a wheel (G3: no step at the door / no ex-walk owner)
         with Browser(width=1280, height=900) as br:
             br.navigate(base + "/")
             br.clear_storage()
@@ -207,7 +244,8 @@ else:
             br.sleep(0.4)
             door_quiet = br.evaluate("window.__wrote") == 0
         check(BROWSER_ROWS[6], hash_ok and place_ok and at_door and door_quiet,
-              f"hash at={at1}/{at2} top={top} · place {r1}/{r2} want={2*vh} · "
+              f"hash on_target={on_target} off={h_off} scrollY {at1}/{at2} · "
+              f"place frame {p_i} off {p_off} scrollY {r1}/{r2} · "
               f"door={at_door} door_wheel_writes={0 if door_quiet else '>0'}")
 
         # 7 · touch: ONE swipe → exactly ONE framed transition, both directions, and a tap-sized
@@ -215,20 +253,51 @@ else:
         with Browser(width=1280, height=900) as br:
             br.touch(True)                             # a phone's media (hover:none / coarse)
             room(br, base, "0.2")
-            vh = br.evaluate("innerHeight")
             br.swipe(-300)                             # a firm swipe up → forward exactly one frame
-            f1 = br.evaluate("scrollY")
+            f1, of1 = cur(br), off(br)
             br.swipe(-300)                             # a second swipe → exactly one more, never several
-            f2 = br.evaluate("scrollY")
+            f2, of2 = cur(br), off(br)
             br.swipe(300)                              # swipe down → back one frame
-            back = br.evaluate("scrollY")
+            back, ob = cur(br), off(br)
+            pos = br.evaluate("scrollY")
             br.swipe(-10)                              # a tap-sized nudge (below the swipe floor) does nothing
             nudge = br.evaluate("scrollY")
-            one_each = (abs(f1 - vh) <= 2 and abs(f2 - 2 * vh) <= 2
-                        and abs(back - vh) <= 2 and nudge == back)
+            one_each = ((f1, f2, back) == (1, 2, 1)
+                        and max(abs(of1), abs(of2), abs(ob)) <= 2 and nudge == pos)
             check(BROWSER_ROWS[7], one_each,
-                  f"swipe→{f1} (want {vh}) swipe→{f2} (want {2*vh}) "
-                  f"back→{back} (want {vh}) nudge→{nudge} (want {back}, no move)")
+                  f"swipe→{f1}/{of1} swipe→{f2}/{of2} back→{back}/{ob} "
+                  f"(want frames 1,2,1 centered ≤2) nudge {pos}→{nudge} (no move)")
+
+        # 8 · THE PHONE GEOMETRY (his 2026-07-09 bug): the frames' CSS height is BIGGER than the
+        #     live viewport (100vh vs a chrome-shrunk innerHeight) — every landing must still put
+        #     the section's centre on the viewport's centre, with NO accumulating per-step drift.
+        with Browser(width=1280, height=900) as br:
+            br.touch(True)
+            room(br, base, "0.2")
+            br.evaluate(MISMATCH)                      # frames now innerHeight+72 — the iOS metric
+            br.sleep(0.2)
+            frames, offs = [], []
+            for _ in range(4):
+                br.swipe(-300)
+                frames.append(cur(br))
+                offs.append(off(br))
+            check(BROWSER_ROWS[8],
+                  frames == [1, 2, 3, 4] and all(abs(o) <= 3 for o in offs),
+                  f"frames {frames} (want 1,2,3,4) per-step centre offsets {offs} (want ≤3px each)")
+
+        # 9 · the viewport metric CHANGES while the walk rests (phone chrome collapses / a window
+        #     resize) — the walk quietly re-docks the resting frame to the new centre, no jump cut.
+        with Browser(width=1280, height=900) as br:
+            br.touch(True)
+            room(br, base, "0.2")
+            br.swipe(-300)                             # rest centered on frame 1
+            before = off(br)
+            br.evaluate(MISMATCH + ";dispatchEvent(new Event('resize'))")
+            br.sleep(0.8)                              # the debounced re-dock + its short glide
+            after = off(br)
+            check(BROWSER_ROWS[9],
+                  abs(before) <= 2 and cur(br) == 1 and abs(after) <= 3,
+                  f"before={before} after metric change off={after} (want re-centered ≤3, frame 1)")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
