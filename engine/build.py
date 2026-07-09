@@ -948,6 +948,8 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
                          "enjoy", "quiz_ask", "quiz_submit", "quiz_win", "quiz_wrong",
                          "gift_ask", "gift_yes", "gift_no", "gift_buy")},
             "greet": en.get("greet") or {},
+            # EX-EDGE-DEAD (INV-68): the dead-account English day greets with this ONE plain line
+            "plain": en.get("plain") or "hello",
             # brand + the © signature are EXCLUDED by construction (never translatable)
             "titles": {it["id"]: it["title"].strip()
                        for it in items if (it.get("title") or "").strip()},

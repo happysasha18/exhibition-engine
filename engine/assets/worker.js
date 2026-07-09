@@ -62,11 +62,31 @@ async function chargeModelCall(env) {                 // count a call the moment
   const n = parseInt((await env.TLV_I18N.get(k)) || "0", 10) + 1;
   await env.TLV_I18N.put(k, String(n), { expirationTtl: 172800 });
 }
-function englishFrom(src) {                            // the baked English, served AS the "translation"
-  const titles = {};
+function englishFrom(src, plainGreet) {                // the baked English, served AS the "translation";
+  const titles = {};                                   // plainGreet = the dead-account English day —
   for (const id of Object.keys(src.titles || {})) titles[id] = src.titles[id];
-  return Object.assign({}, src.strings, { greet: src.greet, titles: titles, dir: "ltr" });
+  const quizzes = {};                                  // one plain hello, no daypart flourish (INV-68)
+  for (const q of (src.quizzes || [])) if (q && q.id) quizzes[q.id] = q;
+  const hello = src.plain || "hello";
+  const greet = plainGreet
+    ? { night: [hello], morning: [hello], day: [hello], evening: [hello] }
+    : src.greet;
+  return Object.assign({}, src.strings, { greet: greet, titles: titles, dir: "ltr",
+                                          quizzes: quizzes });
 }
+
+// EX-EDGE-DEAD (INV-68): a dead model ACCOUNT — a billing/credit/auth refusal, i.e. a 4xx other
+// than 429 — flags the HOUR in KV; behind the flag no model call is attempted or charged. A 429,
+// a 5xx, or a network throw stays transient and never raises the flag. The TTL is the ~1h knob.
+const DEAD_KEY = "dead:model";
+const DEAD_TTL = 3600;
+async function modelDead(env) { return !!(await env.TLV_I18N.get(DEAD_KEY)); }
+function deathStatus(e) {                              // the throw carries "model <status>"
+  const m = /^model (\d{3})/.exec((e && e.message) || "");
+  const s = m ? +m[1] : 0;
+  return (s >= 400 && s < 500 && s !== 429) ? s : 0;
+}
+async function markDead(env) { await env.TLV_I18N.put(DEAD_KEY, "1", { expirationTtl: DEAD_TTL }); }
 
 export default {
   async fetch(req, env) {
@@ -93,6 +113,9 @@ export default {
 
     // EX-EDGE-GUARD: a bot, or a day already at its cap, gets ENGLISH from the source — no model
     // call, and NOT cached under this lang (a real speaker of it later still earns a real pass)
+    // the death check rides the same pre-call fence line, so the served English is never cached
+    // under the asked locale by construction (EX-EDGE-DEAD — the same early return as the bot path)
+    if (await modelDead(env)) return json(JSON.stringify(englishFrom(src, true)));
     if (isBot(req) || await overBudget(env)) return json(JSON.stringify(englishFrom(src)));
     if (await overRate(env, req)) {
       return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
@@ -109,6 +132,10 @@ export default {
     try {
       out = await translate(env.ANTHROPIC_API_KEY, lang, src);
     } catch (e) {
+      if (deathStatus(e)) {                             // the ACCOUNT is dead — flag the hour and
+        await markDead(env);                            // answer the English day at once (INV-68);
+        return json(JSON.stringify(englishFrom(src, true)));   // the dying call stays charged
+      }
       // the reason (never a secret): "model 401", "refused", a parse failure — debuggable by curl
       return new Response("model unavailable: " + ((e && e.message) || "?"), { status: 502 });
     }
@@ -189,7 +216,9 @@ async function story(req, env) {
   // EX-EDGE-GUARD: a cached walk is still served above; an UNCACHED one that would call the model
   // is refused to a bot or a capped day (silence — the story is enhancement, INV-19), and a flooding
   // IP is throttled — the narrator never becomes a money tap.
-  if (isBot(req) || await overBudget(env)) return new Response("no story", { status: 404 });
+  if (isBot(req) || await overBudget(env) || await modelDead(env)) {
+    return new Response("no story", { status: 404 }); // the dead hour keeps the story's own silence
+  }
   if (await overRate(env, req)) {
     return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
   }

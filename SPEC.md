@@ -215,7 +215,9 @@ the diverse hang directly (`INV-14`). `EX-DOOR`
 first, count drops second**: row — up to `door_size` windows while each gets ≥118px, else 4,
 else 3, floor 76px; column — up to 3 windows capped within 52% of height, dropping to 2 below
 104px. Gaps breathe with the viewport (row 3vw clamped [16,44]px; column 2.5vh clamped
-[14,30]px). A resize recomputes live; a re-render happens only when count or orientation changes.
+[14,30]px). A resize recomputes live; a re-render happens only when count or orientation changes. A relayout
+re-render rebuilds the windows with no entry fade; the fade belongs to a fresh open alone
+(`EX-DOOR-2c`'s rise token — shipped 2026-07-09, the law written 2026-07-10). `EX-DOOR-2b`
 
 **The windows are fully visible at once** (`EX-DOOR-2c`): no dimming at rest. The pointer is
 answered by a **halo alone** — no brighten, no lift (hover-only on pointer devices,
@@ -334,8 +336,9 @@ A mouse notch is one event; a trackpad swipe is a decaying burst — a **lock co
 ONE step**, and an idle timer (~150ms) clears the lock when all motion stops. A **new swipe fired
 during the previous swipe's momentum tail is NOT dropped**: it shows up as a **rising `|deltaY|`**
 over the decaying envelope (`fresh = !lock || mag > peak·1.3 + 1`), which re-arms a second step; the
-plain tail stays coalesced. **Paging keys** (`Space`, `↓`, `↑`, `PageDown`, `PageUp`, and
-`Shift+Space`) make the same one transition — one step per press, chaining from the running
+plain tail stays coalesced. **Paging keys** (`Space`, `↓`, `→`, `↑`, `←`, `PageDown`, `PageUp`, and
+`Shift+Space`) make the same one transition — all four arrows page: ↓ and → walk forward, ↑ and ← walk back (his
+2026-07-09 note, landed 2026-07-10; physical directions in every locale `[default]`) — one step per press, chaining from the running
 transition's heading; a held key is one frame per press. **Touch** docks under native momentum via
 **CSS scroll-snap** (`scroll-snap-type:y mandatory` + `scroll-snap-align:start` +
 `scroll-snap-stop:always`, scoped to `@media (hover:none)`): **no JS ever writes the scroll position
@@ -514,6 +517,55 @@ non-English literal ever ships; the **question content** stays instance-supplied
 unknown id ⇒ the route 404s and the walk loses nothing.
 `EX-QUIZ` `EX-QUIZ-EDGE` `EX-QUIZ-PRIZE` `EX-QUIZ-ONCE` `EX-QUIZ-GLINT` `INV-59` `INV-60` `INV-64` `INV-65` `INV-66`
 
+**The faces meet — input, chrome, and viewport when surfaces stand together (the 2026-07-09 bug class
+closed as law: every stateful surface composes with each neighbour it can meet).** *Regression fences
+first (each citing the clause it guards): reaching the closing screen still clears the plaque (EX-HANG);
+an answered question still drops its chip (EX-QUIZ-REPLY); a viewport aspect change still rebuilds the
+door without the entry fade (EX-DOOR-2b); the share button still leaves on the closing screen and the
+door still hides it (EX-SHARE-BTN); every motion rides the one tempo (INV-33).* The laws of the meetings:
+- **One face stands over the walk at a time.** The faces are the side room (EX-SERIES), the question
+  card (EX-QUIZ-REPLY), and the gift card (EX-PROTECT-GIFT); each opens only from a surface the others
+  cover, so two can never be summoned together. The one legal hand-off is the win: the question card
+  passes INTO the gift ceremony as one continuous standing — ownership crosses in the same breath, and
+  Esc always answers the face that stands at that moment.
+- **A standing face owns the input.** While any face stands, the walk beneath holds its frame: keys,
+  wheel, and touch all rest until the last face leaves (the face's own scroll stays native). A question
+  always stands over the work it asks about; the room never slides away beneath a standing face. (The
+  keyboard path is the 2026-07-10 find — wheel and touch were already caught by the overlay guards; the
+  side room already held keys through its own lock.)
+- **The last face leaves into a fresh-measured room.** When the last standing face leaves — a card
+  closing, the side room closing, the gift ending a win hand-off — the resting frame re-centres to the
+  work that stood beneath the face, measured against the live viewport, so a rotation that happened
+  under a face is honoured the moment the walk is bare again. This re-centre is INSTANT and discharged
+  under the leaving face's own fade — it is a correction with no designed motion of its own, so it can
+  never race a glide for the scroll position (INV-33 is untouched and reduced motion changes nothing
+  here); the bare viewport re-dock with no face standing keeps EX-GLIDE's own quiet glide. An input
+  arriving in the same beat runs from the corrected centre.
+- **The card is viewport-honest.** The card lays itself out from the live viewport alone (full-viewport
+  flex centring), so a mid-question rotation reflows it centred with its options intact. A tap already
+  given survives any rotation locked (EX-QUIZ-REPLY's one-tap law), and a rotation under an open card
+  writes no second cooldown stamp — the stamp belongs to the open alone (EX-QUIZ-ONCE).
+- **The side room covers the walk's chrome; the player rides above the room alone.** Under the opaque
+  side room the share button, the caption, and the counter sleep, invisible and unclickable — so the
+  copied link can only ever name a work in view (EX-SHARE-BTN kept by construction). The sound player
+  stays visible and TAPPABLE above the side room (EX-SOUND — house chrome over the walk's faces). A
+  standing card covers the player too: the music keeps playing, and the player's buttons rest until
+  the card leaves. The side room grows no question chip and can open no card: the ask lives on the
+  plaque, and the plaque sleeps beneath (EX-QUIZ-PICK).
+- **The side room reflows with the viewport.** The table lays its prints in viewport fractions, so a
+  rotation re-lays them. A print lifted to the light re-centres to the new viewport; a centre measured
+  before the rotation never survives it.
+- **The closing screen is a stop of its own.** The quiet re-dock after a viewport change counts the
+  closing screen among its landings, so a rotation at the walk's end leaves the visitor at the end.
+
+*Facets:* phone rotation is the law's home case; the keyboard is the input law's very subject;
+performance — one instant re-centre per face-leave, no re-render. *Non-goals:* how rotation FEELS on a real device
+(his phone stays that gate — the pinned real-device list names it); the gift ceremony's internals
+(EX-PROTECT-GIFT unchanged); a landscape-specific layout for the card or the room. *Success measure:*
+a visitor mid-question rotates the phone — the card stays centred and locked, the room beneath holds
+still, and when the card leaves the frame re-centres; a key pressed during a question moves nothing;
+a lifted print re-centres on rotation `[default]`. `EX-COMPOSE` `INV-67`
+
 ### The loading breath
 
 Wherever a frame in view holds a work whose pixels have not arrived, the frame — after a short
@@ -559,6 +611,33 @@ model-triggering requests per hour (a self-expiring KV counter); `(3)` a hard **
 model calls across all routes — past it, i18n degrades to the English source and the story route
 to silence (`INV-8`; absence loses nothing). Never a CAPTCHA or a login wall; bots are welcome to
 the static walk and the work pages. `EX-EDGE-GUARD` `INV-51`
+
+**The site outlives its model account — a dead balance reads as a quiet English day (his 2026-07-10
+words: «если закончились деньги на ИИ — всё на английском остаётся» · «приветствия просто "привет"»).**
+*Regression fences first (each citing the clause it guards): the three money fences above stand
+untouched (EX-EDGE-GUARD); the baked seven still never touch the model (INV-42); a cached locale or
+walk still answers at $0 (INV-42/INV-47); the story's absence is still silence, never a broken frame
+(EX-STORY-EDGE); with the flags off nothing changes (INV-19).* When the model ACCOUNT itself is dead —
+Anthropic answers a committed call with a billing, credit, or auth refusal (a 4xx other than 429: the
+low-balance 400, a revoked key's 401/403) — the edge treats the rest of the hour like a capped day, and
+remembers: the death is flagged in KV for about an hour `[default — a config knob]`, and while the flag
+stands no model call is attempted or charged. Behind the flag the i18n route serves the baked ENGLISH
+straight (the bots' own path), never cached under the asked locale — a real speaker still earns a real
+translation once the account lives again; the story route is silence. In this English day the greeting
+is one PLAIN neutral hello line, with no daypart variants and no flourish (his word: «просто привет»)
+— the line lives as a new reviewed `plain` field in the one greetings source (English is the day's only
+tongue, so the English field is the load-bearing one; the shape check grows with it). The baked seven
+never meet this day at all, and the client changes nothing — the worker's payload is the whole story.
+Two calls dying together raise the same flag once (the write is idempotent), and the dying call itself
+stays charged — the cap's charge-on-commit law is untouched. Transient troubles stay transient: a 429,
+a 5xx, or a network failure keeps today's behaviour — one failed call, the existing `model unavailable`
+answer — and never raises the flag. *Facets:* nothing new
+faces the visitor beyond the quiet English; performance — one KV read the routes already pay.
+*Non-goals:* retry heroics; an operator alert (the traffic report shows the flag when he looks);
+reviving the account mid-hour (the flag expires by itself). *Success measure:* with the model answering
+a dead-balance refusal, a non-baked-locale visitor walks a fully English site greeted by a plain hello
+— no Russian literal, no broken line, and not one further model call charged that hour `[default]`.
+`EX-EDGE-DEAD` `INV-68`
 
 ### Visitor memory
 
@@ -928,6 +1007,8 @@ the worker.
 | `INV-64` | The quiz is a four-option guess: prompt + four option labels public, the ONE correct answer + prize private in `_worker.js`; the tapped option judged at the edge (never a served byte, never a model call); one tap locks |
 | `INV-65` | A miss shows one localized line then the card fades, leaving the photograph; a hit shows a localized praise line then the gift ceremony; the card sits over the visible photo (light scrim), tints to the work, mirrors the active locale's `dir` |
 | `INV-66` | Exactly one question per show — the chip placed on one work chosen per walk over the reachable∧unanswered set — and silenced while less than the cooldown window (`quiz_cooldown_hours`, ~6h) has passed since a show that asked; `quiz_probability` retired |
+| `INV-67` | Faces-meet composition law: a standing face (quiz card, gift card, side room) owns the walk's input; the last face leaving discharges an instant re-centre to the live viewport; the card is viewport-honest; the closing screen is a stop |
+| `INV-68` | Dead model account: a non-429 4xx flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
 
 ### Deltas from the tlvphoto reference implementation
 

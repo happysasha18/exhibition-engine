@@ -803,9 +803,19 @@
   document.body.appendChild(counter);
   document.body.appendChild(cap);
   let focusedId = null;                                 // the work the caption currently speaks for
+  let restingEl = null;                                 // the SECTION under the eye (frame or fin) —
+                                                        // every re-dock re-measures THIS, never a
+                                                        // nearest-by-stale-pixels guess (EX-COMPOSE)
+  let lastResizeAt = 0;                                 // the mark FREEZES while a face stands and
+  addEventListener("resize", () => { lastResizeAt = performance.now(); });   // through a reflow —
+                                                        // a rotation must not drift the eye's mark
 
   const io = new IntersectionObserver((es) => es.forEach((x) => {
     if (!x.isIntersecting) return;
+    if (!sideOpen && !quizOpen && !giftOpen
+        && performance.now() - lastResizeAt > 250) {
+      restingEl = x.target;                            // the eye's section, fin included — organic
+    }                                                  // moves only, never a reflow's stale pixels
     // the closing screen is not a work: the plaque must not strand the last work's title + told
     // story over the finale. Fade the caption out like a frame leaving — never a jump, never stale.
     if (x.target.id === "exh-fin") {                   // the closing screen clears the walk chrome
@@ -1055,6 +1065,7 @@
     giftCard.classList.remove("show");
     setTimeout(() => { giftCard.hidden = true; }, Math.round(350 * TEMPO));
     giftOpen = false;
+    recentreUnder();                                   // the last face leaves (EX-COMPOSE)
   }
   giftCard.querySelector(".gift-no").addEventListener("click", closeGift);
   giftCard.addEventListener("click", (ev) => { if (!ev.target.closest(".gift-inner")) closeGift(); });
@@ -1178,7 +1189,8 @@
     setTimeout(() => { quizCard.hidden = true; }, Math.round(350 * TEMPO));
     quizOpen = false;
     quizWorkId = null;
-  }
+    recentreUnder();                                   // the last face leaves (EX-COMPOSE);
+  }                                                    // a win hand-off re-checks at the gift's own close
 
   // EX-QUIZ-REPLY (INV-65): one tap decides — the city button fires answer(city).
   // After a tap all buttons are disabled and the unchosen dim. Win: quiz_win line → gift ceremony.
@@ -1410,13 +1422,27 @@
     clearTimeout(redockT);
     redockT = setTimeout(() => {
       if (!walkOwnsInput() || gliding) return;
+      // the target is the SECTION under the eye (fin included) re-measured fresh — nearest-by-
+      // old-pixels drifted a rotation at the finale back to work 7 (EX-COMPOSE, 2026-07-10)
       const stops = frameStops();
-      if (stops.length) glideToFrame(stops[nearestStop(stops, scrollY)]);
+      if (restingEl) glideToFrame(frameCenter(restingEl));
+      else if (stops.length) glideToFrame(stops[nearestStop(stops, scrollY)]);
     }, 180);
   });
-  function walkOwnsInput() {                            // the door/ceremony/side room keep native
-    return document.documentElement.classList.contains("ex-walk")
-      && !atDoor && !busy && !sideOpen;
+  function walkOwnsInput() {                            // the door/ceremony/faces keep native —
+    return document.documentElement.classList.contains("ex-walk")   // a standing face owns the
+      && !atDoor && !busy && !sideOpen && !quizOpen && !giftOpen;   // input (EX-COMPOSE)
+  }
+
+  // EX-COMPOSE: the last face leaves into a fresh-measured room — an INSTANT re-centre of the
+  // section that stood beneath, discharged under the leaving face's own fade. A correction with
+  // no designed motion, so it can never race a glide for scrollY.
+  function recentreUnder() {
+    if (sideOpen || quizOpen || giftOpen || atDoor || busy) return;  // a face still stands
+    if (!document.documentElement.classList.contains("ex-walk")) return;
+    const stops = frameStops();
+    if (!stops.length) return;
+    scrollTo(0, restingEl ? frameCenter(restingEl) : stops[nearestStop(stops, scrollY)]);
   }
   // DESKTOP wheel: one gesture → one frame. A mouse notch is a single event; a trackpad swipe is
   // a burst of them — both coalesce to ONE step (force ignored, phase 1). preventDefault kills
@@ -1456,7 +1482,8 @@
   // DESKTOP keys ARE the walk's step: space/↓/PageDown forward, ↑/PageUp (and shift+space) back —
   // the SAME one transition; a held key = one frame per press; a press mid-transition chains to
   // the next frame; every other key is left to its own owner.
-  const PAGE_KEYS = { "ArrowDown": 1, "PageDown": 1, " ": 1, "ArrowUp": -1, "PageUp": -1 };
+  const PAGE_KEYS = { "ArrowDown": 1, "ArrowRight": 1, "PageDown": 1, " ": 1,
+                      "ArrowUp": -1, "ArrowLeft": -1, "PageUp": -1 };  // all four arrows page (his note)
   addEventListener("keydown", (e) => {
     if (!PAGE_KEYS[e.key]) return;
     if (!walkOwnsInput()) return;                      // the walk's faces keep their own keys
@@ -1589,7 +1616,8 @@
     ceremonyCancel();                                  // a crossing still in flight dies with
     side.hidden = true;                                // the room — no stranded veil, no lock
     document.body.classList.remove("ex-side");
-  }
+    recentreUnder();                                   // a rotation under the room is honoured
+  }                                                    // the moment the walk is bare (EX-COMPOSE)
   cap.addEventListener("click", (ev) => {
     const b = ev.target.closest && ev.target.closest(".ex-series");
     if (!b) return;
@@ -1598,6 +1626,22 @@
   side.querySelector(".exs-back").addEventListener("click", () => history.back());
   addEventListener("keydown", (ev) => {                // Esc = the same honest road as Back
     if (ev.key === "Escape" && sideOpen) history.back();
+  });
+  // EX-COMPOSE: a print lifted to the light re-centres to the live viewport — a centre measured
+  // before a rotation never survives it (the delta rides ON TOP of the standing --cx/--cy).
+  let sdrsz = null;
+  addEventListener("resize", () => {
+    if (!sideOpen) return;
+    clearTimeout(sdrsz);
+    sdrsz = setTimeout(() => {
+      const p = side.querySelector(".exs-print.lift");
+      if (!p) return;
+      const r = p.getBoundingClientRect();
+      const cx = parseFloat(p.style.getPropertyValue("--cx")) || 0;
+      const cy = parseFloat(p.style.getPropertyValue("--cy")) || 0;
+      p.style.setProperty("--cx", (cx + (innerWidth / 2 - (r.left + r.width / 2))) + "px");
+      p.style.setProperty("--cy", (cy + (innerHeight / 2 - (r.top + r.height / 2))) + "px");
+    }, 150);
   });
 
   // ---- the walk TRACKS its place (INV-32c — the law outlived the ↗, its first carrier):

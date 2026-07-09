@@ -53,7 +53,7 @@ BROWSER_ROWS = [
     "EX-GLIDE the transition cannot overshoot (monotonic to the target, never past it — sine in-out)",
     "EX-GLIDE a mid-transition input chains one frame (re-targets to the next, lands centered)",
     "EX-GLIDE rides the clock (collapsed tempo lands near-instant; default is still in flight then)",
-    "EX-GLIDE keys page by frame (space/↓ forward, ↑ back; chained presses ride the goal)",
+    "EX-GLIDE keys page by frame (space/↓/→ forward, ↑/← back; chained presses ride the goal)",
     "EX-GLIDE instant roads land centered (hash + place restore, no drift; the door ignores a wheel)",
     "EX-GLIDE touch docks one work per swipe (a momentum swipe no longer flies through — one JS-driven frame each)",
     "EX-GLIDE frames taller than the live viewport still land CENTERED every step (the phone-chrome "
@@ -233,11 +233,18 @@ else:
             br.key(" ", "Space")
             br.sleep(0.55)
             spaced, o_sp = cur(br), off(br)
-            keys_ok = ((one, three, back, spaced) == (1, 3, 2, 3)
-                       and max(abs(o_one), abs(o_three), abs(o_back), abs(o_sp)) <= 2)
+            br.key("ArrowRight")                       # → walks forward like ↓ (his 2026-07-09 note)
+            br.sleep(0.55)
+            right, o_r = cur(br), off(br)
+            br.key("ArrowLeft")                        # ← walks back like ↑
+            br.sleep(0.55)
+            left, o_l = cur(br), off(br)
+            keys_ok = ((one, three, back, spaced, right, left) == (1, 3, 2, 3, 4, 3)
+                       and max(abs(o_one), abs(o_three), abs(o_back),
+                               abs(o_sp), abs(o_r), abs(o_l)) <= 2)
             check(BROWSER_ROWS[5], keys_ok,
                   f"↓→{one}/{o_one} ↓↓→{three}/{o_three} ↑→{back}/{o_back} space→{spaced}/{o_sp} "
-                  f"(want frames 1,3,2,3 all centered ≤2)")
+                  f"→→{right}/{o_r} ←→{left}/{o_l} (want frames 1,3,2,3,4,3 all centered ≤2)")
 
         # 6 · instant roads land centered: hash arrival + place restore, exact and stable;
         #     and the cold door ignores a wheel (the animator only owns the walk)

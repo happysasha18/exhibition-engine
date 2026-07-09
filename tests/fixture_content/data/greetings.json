@@ -7,6 +7,7 @@
     "en": {
       "dir": "ltr",
       "ask": "what feels closer now",
+      "plain": "hello",
       "greet": {
         "night": [
           "A synthetic quiet night",
