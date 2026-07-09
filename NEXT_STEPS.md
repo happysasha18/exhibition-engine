@@ -59,8 +59,12 @@ drops its improvements, drops the swipe) — wrong for a product engine; (b) bri
 (adopt generalized tokens + quiz_win localization; port the swipe into the engine) — the cutover's actual
 direction, but the token rename touches tlvphoto's LIVE client; (c) bake-time token substitution (engine
 keeps generalized source, build.py stamps the instance's tokens at bake) — most work, cleanest long-term.
-**SAFE autonomous step regardless of the fork:** port the swipe fix INTO the engine's own assets (same edit
-as tlvphoto `b7f6042` + update the engine glide test) — needed under every option, keeps the engine green.
+**SAFE autonomous step — DONE `a7259e7`:** the swipe fix is now in the engine's own assets (glide 8/8, suite
+21/21). It no longer contributes to the byte-diff. IMPORTANT finding: the exhibition.js/css gap is NOT only
+generalization tokens — tlvphoto also has later CONTENT the engine lacks (e.g. the header FOUC guard
+`html.js .ex-head{display:none}`, reworded comments). So the reconciliation is a per-file MERGE (engine is
+behind on content AND ahead on generalizations), and the fork picks HOW to merge. **Autonomous-safe work is
+now EXHAUSTED — the remaining 6 all wait on his fork call.**
 _(superseded plan line below — index/sitemap/quiz are now DONE)_ Next tick: index+sitemap (mechanical), then the quiz content-contract, then surface the
 asset-token + config decisions to Alexander (they touch tlvphoto's live code / the engine's identity).
 
