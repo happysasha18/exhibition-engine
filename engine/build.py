@@ -297,7 +297,7 @@ def exhibition_vectors(vector_items):
     return vectors, version
 
 
-def render_exhibition(items, captions, slugs, site_url):
+def render_exhibition(items, captions, slugs, site_url, display_max=None):
     """The exhibition root `/` (EX). ONE surface, two faces (INV-25): the served HTML is the crawlable
     JS-off face — a real heading, indexable intro about the COLLECTION (never a work's vector), and a
     static index linking every work to its /w/ page; `exhibition.js` then re-renders it into the live
@@ -323,11 +323,19 @@ def render_exhibition(items, captions, slugs, site_url):
     # BEFORE <body> parses, so CSS hides the static face pre-paint; if the walk hasn't come alive
     # within 2.5s (broken/missing JS or data), the mark is removed and the static face returns —
     # progressive enhancement keeps a bounded worst case, never a blank page (INV-25/CS-8).
+    # cache-bust the code URLs by content hash — the fix that reaches the BROWSER cache: the HTML is
+    # served fresh (max-age=0), so a returning visitor always gets the current ?v= and thus fresh
+    # JS/CSS the instant a deploy changes them. Hash the SERVED bytes (engine assets + content tokens).
+    av = hashlib.sha1(
+        (_ENGINE_ASSETS / "exhibition.js").read_bytes()
+        + (_ENGINE_ASSETS / "exhibition.css").read_bytes()
+        + (ROOT / "gallery" / "shared" / "tokens.css").read_bytes()
+    ).hexdigest()[:8]
     extra_head = ('<script>document.documentElement.classList.add("js");'
                   'setTimeout(function(){if(!document.body||!document.body.classList.contains("ex-live"))'
                   'document.documentElement.classList.remove("js")},2500);</script>\n'
-                  '<link rel="stylesheet" href="/gallery/shared/tokens.css">\n'
-                  '<link rel="stylesheet" href="/exhibition.css">\n')
+                  f'<link rel="stylesheet" href="/gallery/shared/tokens.css?v={av}">\n'
+                  f'<link rel="stylesheet" href="/exhibition.css?v={av}">\n')
     cards = []
     for it in items:
         cap = captions.get(it["id"], "")
@@ -349,11 +357,15 @@ def render_exhibition(items, captions, slugs, site_url):
 <nav class="grid" aria-label="All works">{grid}</nav>
 <p class="sign">{COPYRIGHT}</p>
 </main>
-<script src="/exhibition.js" defer></script>
+<script src="/exhibition.js?v={av}" defer></script>
 </body>
 </html>
 """
-    return head(title, desc, canonical, og_image, "website", jsonld, extra_head=extra_head) + body
+    hw, hh = served_dims(hero.get("w"), hero.get("h"), display_max)   # homepage OG image dims (SEO)
+    hero_og = (f'<meta property="og:image:width" content="{hw}">\n'
+               f'<meta property="og:image:height" content="{hh}">\n') if hw and hh else ""
+    return head(title, desc, canonical, og_image, "website", jsonld,
+                extra_og=hero_og, extra_head=extra_head) + body
 
 
 # ---------------------------------------------------------------- bundle
@@ -674,7 +686,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         write(OUT / "w" / f"{slug}.html", doc)
 
     # the exhibition root `/` (EX) — crawlable JS-off face + the client walk
-    write(OUT / "index.html", render_exhibition(items, captions, slugs, site_url))
+    write(OUT / "index.html", render_exhibition(items, captions, slugs, site_url, display_max=display_max))
     copy_exhibition_assets()
 
     # the client walk's baked data: per-work normalized kinship vectors (neutral coords, INV-1) +
@@ -758,16 +770,17 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     write(OUT / "exhibition_data.json",
           json.dumps(exdata, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 
-    # sitemap: exhibition root + every work page, each once; each work carries its photograph as an
-    # <image:image> so Google Images can discover all works (INV-53 — the SEO audit's #1 photo-site win)
+    # sitemap: exhibition root + every work page, each once; each carries a <lastmod> (the bake date, so
+    # a fresh deploy re-dates the map) + its photograph as an <image:image> for Google Images (INV-53)
+    lastmod = datetime.date.today().isoformat()
     sm = ['<?xml version="1.0" encoding="UTF-8"?>',
           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
           ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
-          f"  <url><loc>{esc(site_url)}/</loc></url>"]
+          f"  <url><loc>{esc(site_url)}/</loc><lastmod>{lastmod}</lastmod></url>"]
     for it in items:
         wu = f"{site_url}/w/{slugs[it['id']]}"
         img = f"{site_url}/gallery/{it['img']}"
-        sm.append(f"  <url><loc>{esc(wu)}</loc>"
+        sm.append(f"  <url><loc>{esc(wu)}</loc><lastmod>{lastmod}</lastmod>"
                   f"<image:image><image:loc>{esc(img)}</image:loc></image:image></url>")
     sm.append("</urlset>")
     write(OUT / "sitemap.xml", "\n".join(sm) + "\n")
