@@ -49,6 +49,13 @@ this IS the «show the comparison» content, HIS gate, NOT more auto-hammering.*
   (`window.EXQuiz`↔`TLVQuiz`, slug `ID_RE` `/^[a-z0-9…]/i` ↔ numeric `/^\d{5,25}$/`, and _worker.js is on
   a DIFFERENT quiz-judging model than tlvphoto's shipped one) AND tlvphoto has the swipe fix the engine
   doesn't. A verbatim clobber REVERTS the engine's generalizations and BREAKS its own tests (measured).
+  **_worker.js finding (2026-07-09 ~19:10):** the divergence includes the EDGE QUIZ-JUDGE itself — the
+  engine is a rewrite to a single exact `answer:"City"`, tlvphoto's shipped worker judges by an `accept:[…]`
+  spelling-set + normalize. Different code AND different private bake shape (the mapped quiz.json gives the
+  engine `answer`; tlvphoto bakes `accept`). The engine's own quiz tests encode the single-answer model, so
+  this file is a genuine which-model-is-canonical call, part of the fork — not a rename.
+  **LOOP PAUSED here (2026-07-09 ~19:10):** all safe autonomous work done (253→6); everything left needs his
+  fork pick. Resume: he answers a/b/c → do the per-file merge that way → re-prove byte-diff to empty → show him.
 - `config.json` — engine emits 5 knobs tlvphoto omits: `glide_ms`, `quiz.placement`, `sound_url`,
   `sound_credit`, `site_name`.
 - `i18n_source.json` — one line: engine localizes `quiz_win`, tlvphoto doesn't.
