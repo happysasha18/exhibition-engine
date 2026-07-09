@@ -192,7 +192,7 @@ def head(title, description, canonical, og_image, og_type, jsonld, extra_og="", 
 """
 
 
-def render_work(item, caption, palette, site_url):
+def render_work(item, caption, palette, site_url, display_max=None):
     wid = item["id"]
     slug = work_slug(item.get("title", ""), caption, wid)
     canonical = f"{site_url}/w/{slug}"   # clean address (WP-CLEAN); the file stays .html on disk
@@ -202,12 +202,19 @@ def render_work(item, caption, palette, site_url):
     vis_title = visible_title(item)
     alt = caption or idx_title
     loc = place_of(item)
+    ow, oh = served_dims(item.get("w"), item.get("h"), display_max)   # dims of the SERVED image (INV-56)
+    # the image as an ImageObject with its served dimensions — qualifies the work for Google Images
+    # rich treatment (INV-58); artform names the medium (a real VisualArtwork property)
+    img_obj = {"@type": "ImageObject", "url": og_image, "contentUrl": og_image}
+    if ow and oh:
+        img_obj["width"], img_obj["height"] = ow, oh
 
     jsonld = {
         "@context": "https://schema.org",
         "@type": "VisualArtwork",
         "name": idx_title,
-        "image": og_image,
+        "artform": "Photography",
+        "image": img_obj,
         "url": canonical,
         "creator": {"@type": "Person", "name": CREATOR},
         "copyrightHolder": {"@type": "Person", "name": CREATOR},
@@ -218,8 +225,8 @@ def render_work(item, caption, palette, site_url):
         jsonld["contentLocation"] = loc
 
     extra_og = (
-        f'<meta property="og:image:width" content="{item.get("w","")}">\n'
-        f'<meta property="og:image:height" content="{item.get("h","")}">\n'
+        f'<meta property="og:image:width" content="{ow}">\n'
+        f'<meta property="og:image:height" content="{oh}">\n'
     )
 
     # heading: his title visible; otherwise a non-empty visually-hidden h1 (crawler + a11y), page stays
@@ -237,10 +244,14 @@ def render_work(item, caption, palette, site_url):
         meta_bits.append(esc(loc))
     meta = f'<p class="meta">{" · ".join(meta_bits)}</p>' if meta_bits else ""
 
+    # EX-LADDER (INV-63): when the display cap runs (deploy), the work img offers the 640/960/1280
+    # ladder; the base `src` stays the untouched fallback. No cap (test bake) ⇒ the img is byte-identical.
+    ladder = (f' srcset="{esc(srcset_of(img_rel))}" sizes="{WORK_SIZES}"' if display_max else "")
+
     body = f"""<body>
 <main class="wrap">
 <article class="work">
-<img src="{esc(img_rel)}" alt="{esc(alt)}" width="{item.get('w','')}" height="{item.get('h','')}">
+<img src="{esc(img_rel)}"{ladder} alt="{esc(alt)}" width="{item.get('w','')}" height="{item.get('h','')}">
 {h1}
 <div class="palette" aria-hidden="true">{swatches}</div>
 {meta}
@@ -379,6 +390,23 @@ DISPLAY_TIERS = (640, 960, 1280)
 WALK_SIZES = "88vw"          # the one `sizes` the walk's img wears (its box is CSS max-width:88vw)
 
 
+WORK_SIZES = "(min-width: 800px) 760px, 100vw"
+
+
+def served_dims(w, h, cap):
+    """The dimensions the bundle actually serves — the display cap applied (INV-56), aspect kept — so
+    the OG image hints match the served bytes. No cap, or already within it ⇒ the original dims."""
+    try:
+        w, h = int(w), int(h)
+    except (TypeError, ValueError):
+        return w, h
+    if not cap or max(w, h) <= cap:
+        return w, h
+    if w >= h:
+        return cap, max(1, round(h * cap / w))
+    return max(1, round(w * cap / h)), cap
+
+
 def tier_url(img_rel, w):
     """'<dir>/<id>.jpg' → '<dir>/<id>-<w>.jpg' (EX-LADDER). The base file stays the untouched fallback."""
     stem, dot, ext = img_rel.rpartition(".")
@@ -435,8 +463,10 @@ def copy_gallery(display_max=None, mark_text=None):
     (dst).mkdir(parents=True, exist_ok=True)
     if (src / "gallery_data.json").exists():
         shutil.copy2(src / "gallery_data.json", dst / "gallery_data.json")
-    if (src / "shared").exists():
-        shutil.copytree(src / "shared", dst / "shared", dirs_exist_ok=True)
+    # shared = design tokens · audio = the ambient loop the sound player fetches on turn-on (EX-SOUND)
+    for sub in ("shared", "audio"):
+        if (src / sub).exists():
+            shutil.copytree(src / sub, dst / sub, dirs_exist_ok=True)
     if (src / "assets").exists():
         if display_max:
             _copy_assets_capped(src / "assets", dst / "assets", int(display_max), mark_text=mark_text)
@@ -639,7 +669,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     for it in items:
         cap = captions.get(it["id"], "")
         pal = palette_of(it["id"], palettes, it.get("dom"))
-        slug, doc = render_work(it, cap, pal, site_url)
+        slug, doc = render_work(it, cap, pal, site_url, display_max=display_max)
         slugs[it["id"]] = slug
         write(OUT / "w" / f"{slug}.html", doc)
 
@@ -742,12 +772,26 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     sm.append("</urlset>")
     write(OUT / "sitemap.xml", "\n".join(sm) + "\n")
 
-    # robots: disallow on a preview host, allow on production
+    # robots: preview host is closed entirely; production welcomes SEARCH crawlers (his traffic)
+    # but blocks AI-TRAINING scrapers from harvesting the photographs (his protection stance —
+    # pairs with the mark-split/gift ceremony). Search bots (Googlebot/Bingbot/…) stay under "*".
     is_preview = "pages.dev" in site_url
     if is_preview:
         robots = f"User-agent: *\nDisallow: /\nSitemap: {site_url}/sitemap.xml\n"
     else:
-        robots = f"User-agent: *\nAllow: /\nSitemap: {site_url}/sitemap.xml\n"
+        ai_bots = [
+            "GPTBot", "ChatGPT-User", "OAI-SearchBot",            # OpenAI
+            "ClaudeBot", "anthropic-ai", "Claude-Web",            # Anthropic
+            "Google-Extended",                                     # Google AI (NOT Googlebot — search stays)
+            "Applebot-Extended",                                   # Apple AI (NOT Applebot — search stays)
+            "CCBot",                                               # Common Crawl (feeds many AI datasets)
+            "Bytespider",                                          # ByteDance
+            "PerplexityBot", "Amazonbot", "cohere-ai",
+            "meta-externalagent", "FacebookBot",                   # Meta AI
+            "ImagesiftBot", "Diffbot", "Omgilibot", "YouBot", "Timpibot",
+        ]
+        blocks = "".join(f"User-agent: {b}\nDisallow: /\n\n" for b in ai_bots)
+        robots = f"User-agent: *\nAllow: /\n\n{blocks}Sitemap: {site_url}/sitemap.xml\n"
     write(OUT / "robots.txt", robots)
 
     # config.json — flags (AI OFF) + the exhibition feel-knobs (every one A/B-tunable, INV-28) +
@@ -876,10 +920,11 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         write(OUT / "i18n_source.json",
               json.dumps(i18n_src, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 
-    # shared images + design tokens (the exhibition renders in them)
-    # the served-image mark is the site's own host — only when capping (EX-PROTECT-RES / INV-56)
-    _mark = re.sub(r"^https?://", "", site_url).rstrip("/") if display_max else None
-    copy_gallery(display_max=display_max, mark_text=_mark)
+    # shared images + design tokens (the exhibition renders in them). The SERVED base image is CLEAN
+    # (the mark-split, EX-PROTECT-RES / INV-56): the shown walk image carries no mark — the site host
+    # is stamped only on a TAKEN copy (client-side canvas on download) and on the quiz prize below.
+    # So the base gallery is copied/capped WITHOUT a mark (mark_text=None), like the instance's bake.
+    copy_gallery(display_max=display_max, mark_text=None)
 
     # EX-QUIZ-PRIZE (EX-PROTECT-RES / INV-56): the signed wallpaper derivative for each quiz work —
     # baked AFTER the gallery so its source is the display-grade copy, never the print master (INV-18).
