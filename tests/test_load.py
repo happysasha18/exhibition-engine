@@ -64,6 +64,36 @@ check("door relayout no re-fade: a fresh open animates its windows in; an aspect
       "doorRender(true)" in JS_SRC and 'b.style.animation = "none"' in JS_SRC,
       "doorRender animate branch")
 
+# ---- EX-LADDER (INV-63): the responsive 640/960/1280 image ladder ported from tlvphoto -----------
+# pure helpers (no bake, no PIL): srcset_of builds the ladder over a served path; the base stays fallback
+_L = build_site.srcset_of("/gallery/assets/x/17.jpg")
+check("EX-LADDER srcset_of builds the 640/960/1280 ladder over a served path",
+      _L == "/gallery/assets/x/17-640.jpg 640w, /gallery/assets/x/17-960.jpg 960w, "
+            "/gallery/assets/x/17-1280.jpg 1280w",
+      _L)
+check("EX-LADDER js emits the per-work srcset + sizes on the walk img (base src stays the fallback)",
+      "w.srcset" in JS_SRC and "walk_sizes" in JS_SRC and "srcset=" in JS_SRC,
+      "js ladder emit")
+# the real capped bake writes the tier files + joins srcset/walk_sizes to the data — needs Pillow
+try:
+    import PIL  # noqa: F401
+    _HAVE_PIL = True
+except Exception:
+    _HAVE_PIL = False
+if _HAVE_PIL:
+    TMP_CAP = Path(tempfile.mkdtemp(prefix="synth_ladder_"))
+    build_site.OUT = TMP_CAP
+    build_site.build(SITE_URL, display_max=1000)
+    D2 = json.loads((TMP_CAP / "exhibition_data.json").read_text(encoding="utf-8"))
+    w0 = D2["works"][0]
+    tiers = all((TMP_CAP / build_site.tier_url(w0["img"], t).lstrip("/")).exists() for t in (640, 960, 1280))
+    check("EX-LADDER capped bake writes 640/960/1280 tiers + adds srcset/walk_sizes to the data",
+          "srcset" in w0 and D2.get("walk_sizes") == "88vw" and tiers,
+          f"srcset={'srcset' in w0} sizes={D2.get('walk_sizes')} tiers={tiers}")
+    build_site.OUT = TMP
+else:
+    skip("EX-LADDER capped bake writes 640/960/1280 tiers + srcset/walk_sizes", "Pillow absent")
+
 BROWSER_ROWS = [
     "EX-DOOR-2e the clock is one third (pick→reveal ≈1.8 beats ×tempo, caption right behind)",
     "EX-LOAD the cold return breathes, then reveals (held image → breath → work fades in)",

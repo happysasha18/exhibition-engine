@@ -370,11 +370,34 @@ def _stamp(im, text):
     draw.text((x, y), text, font=font, fill=(235, 231, 222, 105))       # bone, ~40%
 
 
+# EX-LADDER (INV-63): the responsive-image ladder — DOWNSCALE ONLY from the display source. Alongside
+# each served base image the bake writes `<id>-640/-960/-1280.<ext>`, all CLEAN (no mark — the mark
+# rides only a taken copy / the prize). The browser picks a tier by viewport×DPR: a phone pulls 640
+# (fast), a wide/retina screen pulls 1280 (sharp). Tiers + srcset join ONLY when the display cap runs
+# (deploy); a no-cap bake (tests) is byte-identical to a ladder-less walk.
+DISPLAY_TIERS = (640, 960, 1280)
+WALK_SIZES = "88vw"          # the one `sizes` the walk's img wears (its box is CSS max-width:88vw)
+
+
+def tier_url(img_rel, w):
+    """'<dir>/<id>.jpg' → '<dir>/<id>-<w>.jpg' (EX-LADDER). The base file stays the untouched fallback."""
+    stem, dot, ext = img_rel.rpartition(".")
+    return f"{stem}-{w}.{ext}" if dot else img_rel
+
+
+def srcset_of(img_rel):
+    """The srcset string over the 640/960/1280 ladder for a served image path (EX-LADDER). The tier
+    files are written by the display-cap copy path (deploy); no cap ⇒ this is never emitted."""
+    return ", ".join(f"{tier_url(img_rel, w)} {w}w" for w in DISPLAY_TIERS)
+
+
 def _copy_assets_capped(asrc, adst, cap, mark_text=None):
     """Copy the gallery images into the bundle, downscaling any whose LONG EDGE exceeds cap
     (PIL / Pillow, LANCZOS) and, when mark_text is given, stamping a small bottom-right site
-    mark (EX-PROTECT-RES / INV-56). A smaller image is not upscaled; non-images copy verbatim.
-    The repo originals are untouched — only the served copy is capped and marked."""
+    mark on the BASE file (EX-PROTECT-RES / INV-56). Alongside each base image it writes the
+    responsive ladder tiers `<id>-640/-960/-1280.<ext>` — DOWNSCALE ONLY (a smaller source is never
+    upscaled) and always CLEAN, no mark (EX-LADDER / INV-63). A smaller image is not upscaled;
+    non-images copy verbatim. The repo originals are untouched — only the served copy is capped/marked."""
     from PIL import Image
     for p in sorted(asrc.rglob("*")):
         if p.is_dir():
@@ -382,12 +405,21 @@ def _copy_assets_capped(asrc, adst, cap, mark_text=None):
         out = adst / p.relative_to(asrc)
         out.parent.mkdir(parents=True, exist_ok=True)
         if p.suffix.lower() in (".jpg", ".jpeg", ".png"):
-            im = Image.open(p).convert("RGB")
-            if max(im.size) > cap:
-                im.thumbnail((cap, cap), Image.LANCZOS)
+            src_im = Image.open(p).convert("RGB")
+            # the ladder tiers first — each downscaled from the SOURCE (best quality per width), CLEAN,
+            # progressive; thumbnail never upscales, so a tier's long edge is ≤ its nominal width.
+            for w in DISPLAY_TIERS:
+                tier = src_im.copy()
+                if max(tier.size) > w:
+                    tier.thumbnail((w, w), Image.LANCZOS)
+                tier.save(out.with_name(f"{out.stem}-{w}{out.suffix}"), quality=84, progressive=True)
+            # the base fallback file — capped to the display cap, marked only if asked (never a tier)
+            base = src_im
+            if max(base.size) > cap:
+                base.thumbnail((cap, cap), Image.LANCZOS)
             if mark_text:
-                _stamp(im, mark_text)
-            im.save(out, quality=88)
+                _stamp(base, mark_text)
+            base.save(out, quality=88)
         else:
             shutil.copy2(p, out)
 
@@ -649,6 +681,11 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             q = quiz_public.get(str(w["id"]))
             if q:
                 w["quiz"] = q                # no accept-set, no prize path — those stay private
+    # EX-LADDER (INV-63): the responsive srcset joins each work only when the display cap runs (the
+    # deploy, which also writes the tier files) — no cap ⇒ no srcset key, the walk data is byte-identical.
+    if display_max:
+        for w in ex_works:
+            w["srcset"] = srcset_of(w["img"])
     # (per-work series mark joins after the series block computes below)
     # EX-SERIES (INV-46): real series only (3+), the variant from the series' own size,
     # NEVER the machine's theme label (INV-1) — the guest reads only «серия · N»
@@ -680,6 +717,10 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     greet = greetings()
     if greet:
         exdata["greet"] = greet
+    # EX-LADDER (INV-63): the one `sizes` the walk's img wears — joins only alongside the per-work
+    # srcset (i.e. when the display cap runs), so a no-cap bake stays byte-identical.
+    if display_max:
+        exdata["walk_sizes"] = WALK_SIZES
     write(OUT / "exhibition_data.json",
           json.dumps(exdata, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 

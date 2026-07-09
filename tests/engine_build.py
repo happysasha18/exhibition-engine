@@ -41,6 +41,9 @@ OUT = None
 
 # Re-export the slug helper the test uses directly
 work_slug = _engine.work_slug
+# Re-export the EX-LADDER helpers (INV-63) the ladder test uses directly
+srcset_of = _engine.srcset_of
+tier_url = _engine.tier_url
 
 
 def load_json(relpath):
@@ -49,8 +52,9 @@ def load_json(relpath):
         return json.load(fh)
 
 
-def build(site_url, ga_id="", enable=None):
-    """Bake the synthetic fixture into OUT.  The caller must set OUT first."""
+def build(site_url, ga_id="", enable=None, display_max=None):
+    """Bake the synthetic fixture into OUT.  The caller must set OUT first.
+    display_max caps the served images + writes the EX-LADDER tiers (needs Pillow)."""
     engine_assets = _ENGINE_ROOT / "engine" / "assets"
     inst_assets = FIXTURE / "instance-assets"
     return _engine.build(
@@ -62,4 +66,5 @@ def build(site_url, ga_id="", enable=None):
         engine_assets_dir=engine_assets,
         instance_assets_dir=inst_assets if inst_assets.exists() else None,
         site_config=SITE_CONFIG,
+        display_max=display_max,
     )
