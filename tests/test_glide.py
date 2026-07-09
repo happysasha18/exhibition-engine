@@ -117,13 +117,20 @@ def burst(br, deltas, gap=0.016):
 
 
 def room(br, base, tempo):
-    """a stored walk straight into the room at the given tempo"""
+    """a stored walk straight into the room at the given tempo — READY by condition, not by a
+    fixed sleep (four suites share the machine; a hot run stretches Chrome's start)"""
     br.navigate(base + "/")
     br.evaluate(f"localStorage.setItem('tlv.exhibition', {WALK})")
     br.evaluate(f"localStorage.setItem('tlv-tempo','{tempo}')")
     br.evaluate("sessionStorage.clear()")
     br.reload()
-    br.sleep(1.2)
+    for _ in range(40):                                # up to ~6s under load; usually <1.2s
+        br.sleep(0.15)
+        if br.evaluate("document.documentElement.classList.contains('ex-walk')"
+                       "&&document.querySelectorAll('.exh-frame').length>0"
+                       "&&scrollY===0"):
+            break
+    br.sleep(0.3)                                      # one settled beat past readiness
 
 
 if not chrome_available():
@@ -197,11 +204,18 @@ else:
             room(br, base, "1.35")                     # the default clock (~520ms)
             h1 = stop(br, 1)
             br.wheel(delta_y=400)
-            br.sleep(0.1)                              # same moment the collapsed clock had landed
-            deflt = br.evaluate("scrollY")
+            # sample at the FIRST OBSERVED MOTION (a loaded machine may stall the very first
+            # animation frames) — the claim is "still in flight then", so the moment motion
+            # exists it must be strictly short of the landing
+            deflt = 0
+            for _ in range(10):
+                br.sleep(0.05)
+                deflt = br.evaluate("scrollY")
+                if deflt > 2:
+                    break
         check(BROWSER_ROWS[4],
               abs(collapsed - g1) <= 2 and 2 < deflt < h1 - 20,
-              f"collapsed@0.1s={collapsed} (want {g1}) default@0.1s={deflt} (still in flight)")
+              f"collapsed@0.1s={collapsed} (want {g1}) default first-motion={deflt} (must be in flight)")
 
         # 5 · keys page by frame (his 2026-07-07 word: space/arrows step to the next work)
         with Browser(width=1280, height=900) as br:

@@ -808,7 +808,9 @@
     if (!x.isIntersecting) return;
     // the closing screen is not a work: the plaque must not strand the last work's title + told
     // story over the finale. Fade the caption out like a frame leaving — never a jump, never stale.
-    if (x.target.id === "exh-fin") { cap.classList.remove("show"); focusedId = null; return; }
+    if (x.target.id === "exh-fin") {                   // the closing screen clears the walk chrome
+      cap.classList.remove("show"); shareBtn.classList.remove("show"); focusedId = null; return;
+    }
     x.target.classList.add("seen");
     const w = byId[x.target.dataset.id];
     if (!w) return;
@@ -820,6 +822,10 @@
     if (!atDoor) ground(w.dom);
     counter.querySelector(".now").textContent = String(+x.target.dataset.n).padStart(2, "0");
     counter.classList.add("show");
+    // the floating link follows the eye: it always shares the work IN VIEW (EX-SHARE-BTN)
+    shareBtn.dataset.share = w.id;
+    shareBtn.setAttribute("aria-label", shareStrings().label);
+    shareBtn.classList.add("show");
     // his words and the archive's facts only — never machine prose, never a readout (INV-1);
     // a REAL series (3+) grows its quiet pill — «серия · N», never the machine's theme (EX-SERIES)
     const serIdx = (typeof w.ser === "number" && SERIES[w.ser]) ? w.ser : null;
@@ -926,17 +932,27 @@
   toastEl.addEventListener("click", toastOff);
   addEventListener("keydown", (ev) => { if (ev.key === "Escape") toastOff(); });
 
-  stage.addEventListener("click", (ev) => {            // ONE delegated listener, O(1) per frame
-    const b = ev.target.closest && ev.target.closest(".ex-share");
-    if (!b) return;
+  // ONE share control FLOATS over the walk (2026-07-09: the player and the link are chrome
+  // ABOVE the room — they never ride a frame, so nothing drifts with a scroll). It acts on the
+  // work IN VIEW (dataset.share follows the frame observer) and lives by the caption's law:
+  // shows with a work, leaves on the closing screen, the door hides all walk chrome.
+  const shareBtn = document.createElement("button");
+  shareBtn.type = "button";
+  shareBtn.className = "ex-share";
+  shareBtn.id = "ex-share";
+  shareBtn.innerHTML = SHARE_GLYPH;
+  document.body.appendChild(shareBtn);
+  shareBtn.addEventListener("click", () => {
+    const id = shareBtn.dataset.share;
+    if (!id) return;
     // The copied line carries UTM attribution (EX-SHARE-BTN) so a shared arrival separates
     // from Direct/bot noise — the utm rides before the hash (GA reads the query, the room reads #w-<id>)
-    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral#w-" + b.dataset.share;
+    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral#w-" + id;
     const S = shareStrings();
     const write = (navigator.clipboard && navigator.clipboard.writeText)
       ? navigator.clipboard.writeText(link)
       : Promise.reject(new Error("no clipboard"));
-    pulse("share_copy", b.dataset.share);
+    pulse("share_copy", id);
     write.then(() => toast(S.copied))
          .catch(() => toast(link, true));              // never a silent failure (EX-SHARE-BTN)
   });
@@ -1248,7 +1264,6 @@
 
   function frameHTML(id, n) {
     const w = byId[id];
-    const S = shareStrings();
     // EX-LADDER (INV-63): the responsive ladder rides the baked per-work `srcset` (640/960/1280,
     // written by the display-cap bake); the base `src` stays the untouched fallback. No cap ⇒ no
     // srcset key ⇒ the img is byte-identical to a ladder-less walk.
@@ -1256,8 +1271,6 @@
     return (
       `<section class="exh-frame" data-id="${w.id}" data-n="${n}">` +
         `<img class="work" loading="lazy" src="${w.img}"${ladder} alt="">` +
-        `<button type="button" class="ex-share" data-share="${w.id}"` +
-        ` aria-label="${S.label}">${SHARE_GLYPH}</button>` +
       "</section>"
     );
   }

@@ -51,11 +51,11 @@ check("EX-SHARE toast strings ride the one cache (7 langs baked · validator kno
       f"builtin={'ссылка скопирована' in js_src}")
 
 BROWSER_ROWS = [
-    "EX-SHARE-BTN the button copies, never navigates (one real <button>/frame; toast; no ↗/`/w/` in the chrome)",
-    "EX-SHARE-BTN the copied line is canonical (root + #w-<id>, sharer's params never ride)",
-    "EX-SHARE-BTN touch vs hover (hover:none → visible ≥44px; hover:hover → rests hidden, lifts on hover+focus)",
+    "EX-SHARE-BTN one FLOATING button copies, never navigates (fixed chrome above the room; toast; no ↗/`/w/`)",
+    "EX-SHARE-BTN the copied line is canonical AND follows the eye (root + house utm + #w-<work IN VIEW>)",
+    "EX-SHARE-BTN touch vs hover (hover:none → present ≥44px; hover:hover → rests QUIET, lifts on hover+focus)",
     "EX-SHARE-BTN clipboard refusal → the toast CARRIES the link and stays until dismissed (Esc)",
-    "EX-SHARE-BTN no share off the frames (door windows + closing screen carry none)",
+    "EX-SHARE-BTN the chrome leaves off the works (closing screen + door → the floating button hides)",
     "EX-SHARE-IN cold `/#w-<id>` = handed-over pick (inside the room AT the work; no door/greeting/ceremony)",
     "EX-SHARE-IN shown-frame jump never tears (instant, the arc unchanged, walk continues)",
     "EX-SHARE-IN unshown work acts as a pick (arc re-seeds fresh-top; budget stays derived+capped)",
@@ -112,43 +112,51 @@ else:
             br.click(".exd-window:nth-child(1)", settle=0.1)
             br.sleep(1.2)
             frames = json.loads(br.evaluate(FRAME_IDS) or "[]")
-            per_frame = br.evaluate(
-                "(()=>{const fs=[...document.querySelectorAll('.exh-frame')];"
-                "return JSON.stringify({btns:fs.map(f=>f.querySelectorAll('.ex-share').length),"
-                "tags:fs.map(f=>(f.querySelector('.ex-share')||{}).tagName||''),"
-                "labels:fs.every(f=>((f.querySelector('.ex-share')||{}).getAttribute"
-                "&&f.querySelector('.ex-share').getAttribute('aria-label')||'').length>0),"
+            chrome = br.evaluate(
+                "(()=>{const bs=[...document.querySelectorAll('.ex-share')];const b=bs[0];"
+                "return JSON.stringify({count:bs.length,tag:b?b.tagName:'',"
+                "fixed:b?getComputedStyle(b).position:'',"
+                "in_frame:!!document.querySelector('.exh-frame .ex-share'),"
+                "label:((b&&b.getAttribute('aria-label'))||'').length>0,"
+                "shown:b?+getComputedStyle(b).opacity:0,"
                 "opens:document.querySelectorAll('#ex-stage a[href*=\"/w/\"], .ex-open').length});})()")
-            per_frame = json.loads(per_frame)
+            chrome = json.loads(chrome)
             path0 = br.evaluate("location.pathname")
             first_in_view = br.evaluate(IN_VIEW)
-            br.click(".exh-frame:nth-of-type(1) .ex-share", settle=0.4)
+            br.click(".ex-share", settle=0.4)
             copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
             toast = br.evaluate(TOAST)
             same_place = (br.evaluate("location.pathname") == path0
                           and br.evaluate(IN_VIEW) == first_in_view)
             check(BROWSER_ROWS[0],
-                  len(frames) == 10 and per_frame["btns"] == [1] * 10
-                  and set(per_frame["tags"]) == {"BUTTON"} and per_frame["labels"]
-                  and per_frame["opens"] == 0
+                  len(frames) == 10 and chrome["count"] == 1 and chrome["tag"] == "BUTTON"
+                  and chrome["fixed"] == "fixed" and not chrome["in_frame"]
+                  and chrome["label"] and chrome["shown"] > 0.3 and chrome["opens"] == 0
                   and len(copied) == 1 and toast is not None and same_place,
-                  f"frames={len(frames)} per_frame={per_frame} copied={copied} "
+                  f"frames={len(frames)} chrome={chrome} copied={copied} "
                   f"toast={toast!r} same_place={same_place}")
-            # EX-SHARE-BTN UTM: the copied link carries ?utm_source=share&utm_medium=referral
-            # before the hash so shared arrivals separate from Direct/bot noise in analytics
-            utm_link = f"{SITE_URL}/?utm_source=share&utm_medium=referral#w-{frames[0]}"
+            # …and the target FOLLOWS THE EYE: step to the next work, copy again → its id;
+            # the utm rides before the hash so shared arrivals separate from Direct/bot noise
+            br.key("ArrowDown")
+            br.sleep(0.6)
+            second_in_view = br.evaluate(IN_VIEW)
+            br.click(".ex-share", settle=0.4)
+            copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
             check(BROWSER_ROWS[1],
-                  copied == [utm_link],
-                  f"copied={copied} want={utm_link} (page had ?x=1)")
+                  copied == [f"{SITE_URL}/?utm_source=share&utm_medium=referral#w-{frames[0]}",
+                             f"{SITE_URL}/?utm_source=share&utm_medium=referral#w-{second_in_view}"]
+                  and second_in_view == frames[1],
+                  f"copied={copied} in_view={second_in_view} (page had ?x=1; the second copy "
+                  f"must carry the work in view)")
 
-            # 4 · no share off the frames
+            # 4 · the chrome leaves off the works: closing screen + door hide the floating button
             br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
-            br.sleep(0.4)
-            fin_share = br.evaluate("document.querySelectorAll('.exh-fin .ex-share').length")
+            br.sleep(0.6)
+            fin_op = br.evaluate("+getComputedStyle(document.querySelector('.ex-share')).opacity")
             br.click("#ex-return", settle=0.8)
-            door_share = br.evaluate("document.querySelectorAll('#ex-door .ex-share').length")
-            check(BROWSER_ROWS[4], fin_share == 0 and door_share == 0,
-                  f"fin={fin_share} door={door_share}")
+            door_op = br.evaluate("+getComputedStyle(document.querySelector('.ex-share')).opacity")
+            check(BROWSER_ROWS[4], fin_op < 0.05 and door_op < 0.05,
+                  f"fin_opacity={fin_op} door_opacity={door_op} (want both ≈0)")
 
         # 2 · touch vs hover faces
         with Browser(width=1280, height=900) as br:
@@ -156,7 +164,7 @@ else:
             br.touch(True)
             enter(br, base)
             touch = br.evaluate(
-                "(()=>{const b=document.querySelector('.exh-frame .ex-share');"
+                "(()=>{const b=document.querySelector('.ex-share');"
                 "const s=getComputedStyle(b);const r=b.getBoundingClientRect();"
                 "const w=document.querySelector('.exh-frame img.work').getBoundingClientRect();"
                 "const overlap=!(r.right<w.left||r.left>w.right||r.bottom<w.top||r.top>w.bottom);"
@@ -165,18 +173,18 @@ else:
             br.reload()
             br.sleep(1.2)
             rest_op = br.evaluate(
-                "+getComputedStyle(document.querySelector('.exh-frame .ex-share')).opacity")
-            br.hover(".exh-frame:nth-of-type(1) .ex-share")
+                "+getComputedStyle(document.querySelector('.ex-share')).opacity")
+            br.hover(".ex-share")
             br.sleep(0.4)
             hover_op = br.evaluate(
-                "+getComputedStyle(document.querySelector('.exh-frame .ex-share')).opacity")
-            br.evaluate("document.querySelector('.exh-frame .ex-share').focus()")
+                "+getComputedStyle(document.querySelector('.ex-share')).opacity")
+            br.evaluate("document.querySelector('.ex-share').focus()")
             focus_vis = br.evaluate(
-                "document.querySelector('.exh-frame .ex-share')===document.activeElement")
+                "document.querySelector('.ex-share')===document.activeElement")
             check(BROWSER_ROWS[2],
-                  touch["op"] > 0.9 and touch["w"] >= 44 and touch["h"] >= 44
+                  touch["op"] > 0.7 and touch["w"] >= 44 and touch["h"] >= 44
                   and not touch["overlap"]
-                  and rest_op < 0.05 and hover_op > 0.9 and focus_vis,
+                  and 0.3 < rest_op < 0.8 and hover_op > 0.9 and focus_vis,
                   f"touch={touch} rest={rest_op} hover={hover_op} focusable={focus_vis}")
 
         # 3 · clipboard refusal → the toast carries the link, stays until dismissed
@@ -184,7 +192,7 @@ else:
             br.inject(CLIP_REFUSE)
             enter(br, base)
             frames = json.loads(br.evaluate(FRAME_IDS) or "[]")
-            br.click(".exh-frame:nth-of-type(1) .ex-share", settle=0.5)
+            br.click(".ex-share", settle=0.5)
             toast1 = br.evaluate(TOAST) or ""
             br.sleep(2.5)
             toast2 = br.evaluate(TOAST) or ""

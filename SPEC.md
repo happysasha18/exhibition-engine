@@ -372,7 +372,10 @@ own address carries — onto the clipboard and answers with a quiet **toast** in
 language (the `share_copied` string from the greeting cache; built-in Russian fallback). The UTM
 attribution separates shared arrivals from direct/bot noise in the walk's own analytics. If the
 clipboard is refused, the toast carries the link itself and stays until dismissed (`INV-29`). The
-share button replaces the retired ↗ corner link; the walk no longer links out per frame. `EX-SHARE-BTN`
+share button replaces the retired ↗ corner link; the walk no longer links out per frame. Since
+2026-07-09 it is ONE control FLOATING over the walk as fixed chrome (never riding a frame, so
+nothing drifts with a scroll): its target follows the work IN VIEW; it shows with a work, leaves
+on the closing screen, and hides with the rest of the walk chrome at the door. `EX-SHARE-BTN`
 
 **The permalink arrival** (`EX-SHARE-IN`): opening the exhibition root with `#w-<id>` treats the
 hash as a handed-over pick. `(a)` If the work is among the frames already shown — an instant
@@ -837,7 +840,7 @@ the worker.
 | `EX-HANG` | The gallery: one work per viewport, caption in the margin |
 | `EX-ACCENT` | The breathing ground and live accent |
 | `EX-GLIDE` | One input → one centered frame — sine in-out, no drift; desktop animator, touch snap |
-| `EX-SHARE-BTN` | The per-frame share button: copies the room permalink, never navigates |
+| `EX-SHARE-BTN` | The floating share button (fixed chrome): copies the in-view work's room permalink, never navigates |
 | `EX-SHARE-IN` | The permalink arrival: `#w-<id>` as a handed-over pick |
 | `EX-SHARE` | The share feature as a whole |
 | `EX-SOUND` | The ambient loop: off by default, lazy fetch, credit from config |

@@ -72,7 +72,7 @@ def walk_all(br, base):
     br.sleep(1.0)
     br.click(".exd-window:nth-child(1)", settle=0.1)
     br.sleep(1.2)
-    br.click(".exh-frame:nth-of-type(1) .ex-share", settle=0.4)
+    br.click(".ex-share", settle=0.4)
     br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
     br.sleep(0.5)
     br.click("#ex-unfold", settle=0.6)

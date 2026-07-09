@@ -41,7 +41,12 @@ def main():
             if rc is None:
                 continue
             out = proc.stdout.read().decode(errors="replace")
-            tail = out.strip().splitlines()[-1] if out.strip() else "(no output)"
+            lines = out.strip().splitlines()
+            tail = lines[-1] if lines else "(no output)"
+            # a RED suite keeps its whole verdict: the failing rows print with the gate line,
+            # so the log itself says WHAT failed (never just the suite's name)
+            if rc != 0:
+                tail += "\n" + "\n".join("      " + l for l in lines if "FAIL" in l or "Traceback" in l or "Error" in l)
             results[name] = (rc, tail)
             del running[name]
 

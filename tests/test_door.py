@@ -113,7 +113,7 @@ BROWSER_ROWS = [
     "EX-DOOR cold face speaks the question (ask + full-bright windows, NO silent entry, no hang)",
     "EX-DOOR pick = seed (ceremony lands the gallery, picked first; in-flight tap ignored)",
     "EX-DOOR-2b one line always — the viewport sweep (count by the algorithm, nothing clipped)",
-    "EX-DOOR no share at the door; every hang frame carries ONE (EX-SHARE replaced the ↗, 5h3)",
+    "EX-DOOR the share is ONE floating button: hidden at the door, shown in the hang (fixed chrome, 2026-07-09)",
     "EX-DOOR missing/thin pool degrades to the diverse hang directly (no blank, no error)",
     "EX-DOOR-2d the pool is curated; the STANDING set holds (exit re-shows the same hand; hand ⊆ pool)",
     "EX-DOOR return visit sees no door",
@@ -190,19 +190,26 @@ else:
               (not br.evaluate(AT_DOOR)) and len(frames) == SPREAD and frames[0] == door_ids[0],
               f"n={len(frames)} first_is_pick={frames[0] == door_ids[0] if frames else None}")
 
-        # 3 · no share at the door; every frame carries ONE
+        # 3 · the share is ONE floating button: hidden at the door, shown in the hang
+        #     (fixed chrome above the room — 2026-07-09; nothing on a frame leads away)
         fresh(br, base)
-        at_door_shares = br.evaluate("document.querySelectorAll('#ex-door .ex-share').length")
+        door_op = br.evaluate(
+            "(()=>{const b=document.querySelector('.ex-share');"
+            "return b?+getComputedStyle(b).opacity:0;})()")
         enter(br)
-        in_hang_shares = br.evaluate("document.querySelectorAll('.exh-frame .ex-share').length")
-        is_button = br.evaluate(
-            "document.querySelector('.exh-frame .ex-share').tagName") == "BUTTON"
+        hang = br.evaluate(
+            "(()=>{const bs=[...document.querySelectorAll('.ex-share')];const b=bs[0];"
+            "return JSON.stringify({n:bs.length,tag:b?b.tagName:'',"
+            "fixed:b?getComputedStyle(b).position:'',op:b?+getComputedStyle(b).opacity:0,"
+            "in_frame:!!document.querySelector('.exh-frame .ex-share')});})()")
+        import json as _j; hang = _j.loads(hang)
         nothing_out = br.evaluate(
             "document.querySelectorAll('.ex-open, #ex-stage a[href*=\"/w/\"]').length") == 0
         check(BROWSER_ROWS[3],
-              at_door_shares == 0 and in_hang_shares == SPREAD and is_button and nothing_out,
-              f"door={at_door_shares} hang={in_hang_shares} button={is_button} "
-              f"nothing_out={nothing_out}")
+              door_op < 0.05 and hang["n"] == 1 and hang["tag"] == "BUTTON"
+              and hang["fixed"] == "fixed" and hang["op"] > 0.3
+              and not hang["in_frame"] and nothing_out,
+              f"door_opacity={door_op} hang={hang} nothing_out={nothing_out}")
 
         # 5 · the pool is curated; the STANDING set holds
         fresh(br, base)

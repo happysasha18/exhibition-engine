@@ -137,16 +137,19 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   transition:opacity var(--d-reveal) var(--ease); }
 .exh-frame.seen img.work{ opacity:1; }
 
-/* the quiet share affordance — a link-glyph in a circle; it copies the room permalink,
-   never navigates (EX-SHARE — the ↗ out to /w/ retired 2026-07-06 evening) */
-.ex-share{ position:absolute; right:26px; bottom:26px; z-index:3; width:36px; height:36px;
+/* the quiet share affordance — ONE link-glyph FLOATING over the walk (2026-07-09: the player
+   and the link are chrome ABOVE the room, they never ride a frame or drift with a scroll).
+   It copies the room permalink of the work IN VIEW, never navigates (EX-SHARE / EX-SHARE-BTN) */
+.ex-share{ position:fixed; right:26px; bottom:26px; z-index:35; width:36px; height:36px;
   border-radius:999px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
   background:rgba(8,8,7,.55); border:1px solid var(--hair);
-  opacity:0; transition:opacity calc(.3s*var(--tempo)) var(--ease), background calc(.3s*var(--tempo)); backdrop-filter:blur(6px); }
-.exh-frame:hover .ex-share, .ex-share:focus-visible{ opacity:1; }
+  opacity:0; pointer-events:none;
+  transition:opacity calc(.3s*var(--tempo)) var(--ease), background calc(.3s*var(--tempo)); backdrop-filter:blur(6px); }
+.ex-share.show{ opacity:.55; pointer-events:auto; }   /* quiet at rest, like the caption band */
+.ex-share.show:hover, .ex-share.show:focus-visible{ opacity:1; }
 .ex-share:hover{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
-/* touch: no hover exists — visible at rest, target grows to the a11y floor (≥44px) */
-@media (hover:none){ .ex-share{ opacity:1; width:44px; height:44px; } }
+/* touch: no hover exists — full presence at rest, target at the a11y floor (≥44px) */
+@media (hover:none){ .ex-share{ width:44px; height:44px; } .ex-share.show{ opacity:.9; } }
 
 /* the toast — one quiet line; the success face leaves by itself (×tempo), the clipboard-refusal
    face carries the LINK and holds until dismissed (tap/Esc) so a hand can copy it */
@@ -186,7 +189,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .ex-series:hover, .ex-series:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
 
 /* the side room (EX-SERIES) — a face over the walk; the walk waits beneath, locked */
-#ex-side{ position:fixed; inset:0; z-index:90; background:rgba(8,7,6,.97); }
+#ex-side{ position:fixed; inset:0; z-index:90; background:#080706; }  /* opaque — the walk never ghosts through (2026-07-09) */
 #ex-side[hidden]{ display:none; }
 .exs-back{ position:fixed; left:22px; top:50%; transform:translateY(-50%); z-index:95;
   font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase;
@@ -251,6 +254,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .exh-counter.show{ opacity:1; }
 .exh-counter .now{ color:var(--ink); }
 body.ex-door .exh-capzone, body.ex-door .exh-counter{ opacity:0; }
+body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
 
 /* the closing screen — onward while the budget lasts, the door always (INV-29/30/31) */
 /* EX-ARRIVE: the closing screen arrives in a LIGHT STAGGER (his call) — the
