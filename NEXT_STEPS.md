@@ -5,7 +5,43 @@ _The GENERIC engine behind tlvphotos.com, founded as its own PRODUCT on Alexande
 процесс объяснить пользователю и провести пользователя. Это огромное движение.» Named by his
 decision answer: **exhibition-engine**. Method: the live-spec pack, loaded per session._
 
-## ⚡ RESUME NOW (2026-07-09 ~16:10) — PARITY CATCH-UP landed; cutover (regenerate prod FROM the engine) is next
+## ⚡ RESUME NOW (2026-07-09 ~22:38) — CUTOVER GATE 1 GREEN: byte-diff EMPTY (625 files); his eye on the compare is the only gate left
+
+**The fork below is RESOLVED by his word tonight («я не понимаю что такое сведение клиентских
+ассетов… сделай синхрон, зачем ты меня спрашиваешь») — I picked, and the sync landed as three
+contract moves (`f6adc3f`, suite 21/21, pushed), none of which de-generalizes the engine:**
+1. **Instance client override** — `exhibition.js/.css` + the worker TEMPLATE come from the
+   instance's assets dir when present (`client_asset()` in build.py); the `?v=` hash rides the
+   SERVED client. tlvphoto ships its grown client byte-exact; the generic client serves new instances.
+2. **Suppressed-at-default config** — a knob at its built-in default/empty is omitted from the
+   served config.json (all client reads are fallback-guarded); `site_name` emits only with the
+   engine's own client. SPEC + the two pinned rows (test_sound 1-2, test_quiz 5) updated in lockstep.
+3. **Story notes content-contract** — `<content>/story_notes.json` (flat id→his-word note) rides
+   into the worker fragments; tlvphoto's file generated from `alexander_labels_2026-07-04.json`
+   (99 notes) beside the mapped quiz.json. tlvphoto also adopted ONE line: `quiz_win` joined its
+   i18n chrome list (a localization improvement, invisible to current locales).
+Plus the same-evening centering fix (`ba4025d`): measured frame stops (see tlvphoto NEXT_STEPS cont.70).
+
+**PROOF (2026-07-09 ~22:30):** `engine/build.py --content ~/tlvphoto --site example/site.json
+--site-url https://tlvphotos.com --ga-id G-00J4KGDHCG --enable ai_i18n --enable visitor_memory
+--enable ai_story --enable quiz --display-max 1000 --instance-assets ~/tlvphoto/assets_src`
+→ `diff -rq /tmp/eb ~/tlvphoto/site` **EMPTY, 625 files each side** (tlvphoto side baked by its
+own build_site.py with the same prod flags). Engine suite 21/21 on the synthetic fixture (no
+override → generic client, so the engine's own lane stays proven).
+
+**LEFT (his gates + owed rows):**
+- **His eye on the compare, then the prod flip on his OK** (TRANSITION E8's last step): deploy the
+  ENGINE-baked bundle to tlvphotos.com, then reverse the code flow (engine → instance).
+- **Engine-own client catch-up** (not blocking, its own lane): the generic exhibition.js/css are
+  BEHIND tlvphoto's on content (header FOUC guard, comment rewrites) and the generic worker.js
+  still judges by the OLD accept-set model — modernize to the canonical single-answer model
+  (INV-64) + port the FOUC guard; engine quiz tests ride along.
+- **OWED cleanup (unchanged):** `window.__tlvSeen` + residual `tlv.` localStorage prefixes in the
+  generic client — generalize in a focused pass.
+- **story_notes.json staleness:** the file is a mapped SNAPSHOT of his labels; if he edits notes,
+  regenerate (the byte-proof catches drift in _worker.js).
+
+## superseded below (2026-07-09 ~16:10) — PARITY CATCH-UP landed; cutover (regenerate prod FROM the engine) is next
 
 **Four features ported from tlvphoto to full parity, each through the engine's own suite — `run_all.py`
 21/21 green (wall ~126s, senior re-run via `.venv`). NOT yet pushed; commit batch pending.**
