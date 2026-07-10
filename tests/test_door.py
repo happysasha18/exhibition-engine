@@ -135,6 +135,11 @@ BROWSER_ROWS = [
     "EX-DOOR-2f the door locks the page (nothing scrolls behind the threshold, cold or re-opened)",
     "EX-DOOR-2g the door hints by behavior (idle cold door: the first halo breathes; interaction retires it; re-opened door never hints)",
     "EX-DOOR-RELOAD a reload of the returned door holds the door (≥60% kept, ≤40% new; repeated reloads still hold)",
+    "EX-DOOR-4 the full circle deals fresh (differs, ≤⌊n/3⌋ repeats, novelty reaches outside the circle)",
+    "EX-DOOR-4 one circle, one deal (door↔walk holds the hand; an unfold reopens the count; the regrown circle re-deals)",
+    "EX-DOOR-4 an unconsumed circle outranks the reload; the fresh hand's next reload keeps ≥60%",
+    "EX-DOOR-4 marks count the moment they are made (see the last work and exit in one breath → circle counts)",
+    "EX-DOOR-4 degrade + versions (vm-off reload holds; a circle-less old hand deals once; a stale-version hand drops whole)",
 ]
 
 DOOR_IDS = "Array.from(document.querySelectorAll('.exd-window')).map(b=>b.dataset.id)"
@@ -159,6 +164,16 @@ else:
     def to_fin(br):
         br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
         br.sleep(0.3)
+
+    def see_all(br):
+        """scroll every hung frame into view so the walk's seen-marks cover the whole hang —
+        EX-DOOR-4's circle = order.slice(0,shown) all stood in view (the walk's own seen marks)"""
+        n = br.evaluate(N_FRAMES)
+        for i in range(n):
+            br.evaluate(f"document.querySelectorAll('.exh-frame')[{i}]"
+                        ".scrollIntoView({behavior:'instant'})")
+            br.sleep(0.18)
+        br.sleep(0.2)
 
     with serve(TMP) as base, Browser(width=1280, height=900) as br:
         br.pretend("ru-RU", 15)
@@ -574,6 +589,162 @@ else:
               and enough_kept and still_at_door,
               f"returned={returned_marker} door={after_door} frames={after_frames} "
               f"kept={len(kept)}/{n_hand}≥60%={enough_kept} 2nd_reload={still_at_door}")
+
+        MAXREP = DOOR_SIZE // 3                              # HIS LAW: ≤ a third repeats (EX-DOOR-4/INV-44)
+
+        # 25 · EX-DOOR-4 (INV-71): a walked-out hang earns a fresh door. Walk EVERY shown work into
+        #      view, EXIT → the standing hand RETIRES; the fresh deal differs, shares ≤⌊n/3⌋ with the
+        #      retired hand, and its free places reach OUTSIDE the circled hang (novelty). The consumed
+        #      circle is remembered on ex.hand. (RED vs HEAD: the exit re-showed the SAME standing
+        #      hand — no circle logic, no circle memory.)
+        fresh(br, base)
+        retired = br.evaluate(DOOR_IDS)
+        enter(br)
+        walk_ids = br.evaluate(FRAME_IDS)
+        see_all(br)
+        to_fin(br); br.click("#ex-return", settle=0.8)
+        fresh_hand = br.evaluate(DOOR_IDS)
+        rec25 = br.evaluate("JSON.parse(localStorage.getItem('ex.hand')||'null')")
+        overlap = len(set(fresh_hand) & set(retired))
+        outside = len(set(fresh_hand) - set(walk_ids))       # free places reaching past the circle
+        check(BROWSER_ROWS[25],
+              br.evaluate(AT_DOOR)
+              and len(fresh_hand) == len(retired)
+              and set(fresh_hand) != set(retired)
+              and overlap <= MAXREP
+              and outside >= 1
+              and bool(rec25) and rec25.get("circle") is not None,
+              f"retired={retired} fresh={fresh_hand} overlap={overlap}/{MAXREP} "
+              f"outside_circle={outside} circle={rec25.get('circle') if rec25 else None}")
+
+        # 26 · EX-DOOR-4: ONE circle, ONE deal. After the circle's fresh deal, stepping door↔walk
+        #      re-renders the SAME hand (no re-roll); an UNFOLD after the circle reopens the count so
+        #      the hand HOLDS; once the GROWN hang is itself circled, the next exit deals again.
+        fresh(br, base)
+        cold_hand = br.evaluate(DOOR_IDS)
+        enter(br)
+        see_all(br)
+        to_fin(br); br.click("#ex-return", settle=0.8)       # circle → fresh deal (h1)
+        h1 = br.evaluate(DOOR_IDS)
+        rec26 = br.evaluate("JSON.parse(localStorage.getItem('ex.hand')||'null')")
+        br.evaluate("history.back()"); br.sleep(1.0)          # → the walk
+        to_fin(br); br.click("#ex-return", settle=0.8)        # exit again — SAME circle, no re-roll (h2)
+        h2 = br.evaluate(DOOR_IDS)
+        br.evaluate("history.back()"); br.sleep(1.0)          # → the walk
+        to_fin(br); br.click("#ex-unfold", settle=0.6)        # grow the hang (+UNFOLD, unseen)
+        to_fin(br); br.click("#ex-return", settle=0.8)        # exit — count reopened, hand HELD (h3)
+        h3 = br.evaluate(DOOR_IDS)
+        br.evaluate("history.back()"); br.sleep(1.0)          # → the walk
+        see_all(br)                                           # circle the GROWN hang
+        to_fin(br); br.click("#ex-return", settle=0.8)        # now a fresh deal again (h4)
+        h4 = br.evaluate(DOOR_IDS)
+        dealt_once = (bool(rec26) and rec26.get("circle") is not None
+                      and set(h1) != set(cold_hand))
+        check(BROWSER_ROWS[26],
+              dealt_once and h1 == h2 and h3 == h2 and set(h4) != set(h3),
+              f"dealt_once={dealt_once} h1==h2(no_reroll)={h1==h2} "
+              f"held_after_unfold(h3==h2)={h3==h2} regrown_redeal(h4!=h3)={set(h4)!=set(h3)}")
+
+        # 27 · EX-DOOR-4: an UNCONSUMED circle outranks the reload refresh (F1 folded 11:50). A reload
+        #      landing on the returned-to door over an unconsumed circle deals FRESH; the fresh hand's
+        #      OWN next reload obeys the reload law (≥60% kept). We simulate an older client's
+        #      circle-less hand (F4) so the standing door faces an unconsumed circle across the reload.
+        fresh(br, base)
+        enter(br)
+        walk27 = br.evaluate(FRAME_IDS)
+        see_all(br)
+        to_fin(br); br.click("#ex-return", settle=0.8)        # at the returned door, circle just dealt
+        base_hand = br.evaluate(DOOR_IDS)
+        # persist the full circle + strip the circle memory → the standing hand reads "not consumed"
+        br.evaluate("(()=>{"
+                    "localStorage.setItem('ex.seenc',JSON.stringify({v:%r,ids:%s}));"
+                    "const h=JSON.parse(localStorage.getItem('ex.hand'));"
+                    "delete h.circle;localStorage.setItem('ex.hand',JSON.stringify(h));})()"
+                    % (EXDATA["version"], json.dumps(walk27)))
+        br.reload(); br.sleep(1.2)                            # reload over the unconsumed circle
+        r1_door = br.evaluate(AT_DOOR) and br.evaluate(N_FRAMES) == 0
+        r1_hand = br.evaluate(DOOR_IDS)
+        r1_rec = br.evaluate("JSON.parse(localStorage.getItem('ex.hand')||'null')")
+        r1_overlap = len(set(r1_hand) & set(base_hand))
+        r1_dealt = (set(r1_hand) != set(base_hand) and r1_overlap <= MAXREP
+                    and bool(r1_rec) and r1_rec.get("circle") is not None)
+        br.reload(); br.sleep(1.2)                            # the fresh hand's OWN next reload
+        r2_hand = br.evaluate(DOOR_IDS)
+        r2_door = br.evaluate(AT_DOOR)
+        kept2 = len(set(r1_hand) & set(r2_hand))
+        floor2 = len(r1_hand) - (len(r1_hand) * 4 // 10)      # ≥60% held (EX-DOOR-RELOAD resumes)
+        r2_reload_law = r2_door and len(r2_hand) == len(r1_hand) and kept2 >= floor2
+        check(BROWSER_ROWS[27],
+              r1_door and r1_dealt and r2_reload_law,
+              f"r1_door={r1_door} r1_dealt={r1_dealt} (overlap={r1_overlap}/{MAXREP}) "
+              f"r2_reload_law={r2_reload_law} kept={kept2}/{len(r1_hand)} floor={floor2}")
+
+        # 28 · EX-DOOR-4: the circle counts marks the MOMENT they are made (F3 folded 11:50) — see the
+        #      LAST shown work and EXIT in one breath (no wait for the debounced seen-flush) and the
+        #      circle still fires a fresh deal.
+        fresh(br, base)
+        retired28 = br.evaluate(DOOR_IDS)
+        enter(br)
+        n28 = br.evaluate(N_FRAMES)
+        for i in range(n28 - 1):                              # every frame but the last
+            br.evaluate(f"document.querySelectorAll('.exh-frame')[{i}]"
+                        ".scrollIntoView({behavior:'instant'})")
+            br.sleep(0.18)
+        br.evaluate(f"document.querySelectorAll('.exh-frame')[{n28 - 1}]"
+                    ".scrollIntoView({behavior:'instant'})")   # the LAST work…
+        to_fin(br); br.click("#ex-return", settle=0.8)        # …and straight out (debounce has NOT run)
+        hand28 = br.evaluate(DOOR_IDS)
+        rec28 = br.evaluate("JSON.parse(localStorage.getItem('ex.hand')||'null')")
+        check(BROWSER_ROWS[28],
+              br.evaluate(AT_DOOR)
+              and set(hand28) != set(retired28)
+              and len(set(hand28) & set(retired28)) <= MAXREP
+              and bool(rec28) and rec28.get("circle") is not None,
+              f"retired={retired28} hand={hand28} "
+              f"circle={rec28.get('circle') if rec28 else None}")
+
+        # 29 · EX-DOOR-4: degrade + versions. (b) a stored hand with NO circle field reads as «no
+        #      circle consumed» → exactly one deal fires against a real (injected) circle (F4). (c) a
+        #      stale-VERSION hand drops whole (INV-26) — dealt fresh, never a circle guessed from the
+        #      old shape. (a) visitor_memory OFF with nothing left to count (a reload) ⇒ the door
+        #      holds, no error, no circle-deal.
+        # (b) old client's circle-less hand meets an injected full circle → one deal fires
+        fresh(br, base)
+        enter(br)
+        walk29 = br.evaluate(FRAME_IDS)
+        cold29 = br.evaluate("JSON.parse(localStorage.getItem('ex.hand')).ids")
+        br.evaluate("(()=>{"
+                    "localStorage.setItem('ex.seenc',JSON.stringify({v:%r,ids:%s}));"
+                    "localStorage.setItem('ex.hand',JSON.stringify({v:%r,ids:%s}));})()"
+                    % (EXDATA["version"], json.dumps(walk29),
+                       EXDATA["version"], json.dumps(cold29)))
+        to_fin(br); br.click("#ex-return", settle=0.8)
+        b_hand = br.evaluate(DOOR_IDS)
+        b_rec = br.evaluate("JSON.parse(localStorage.getItem('ex.hand')||'null')")
+        b_ok = (set(b_hand) != set(cold29)
+                and bool(b_rec) and b_rec.get("circle") is not None)
+        # (c) a stale-VERSION hand drops whole — reopen with an OLDVER hand, still deals, no crash
+        br.evaluate("localStorage.setItem('ex.hand',JSON.stringify({v:'OLDVER',ids:%s}))"
+                    % json.dumps(b_hand))
+        br.evaluate("history.back()"); br.sleep(0.9)
+        to_fin(br); br.click("#ex-return", settle=0.8)
+        c_hand = br.evaluate(DOOR_IDS)
+        c_ok = br.evaluate(AT_DOOR) and len(c_hand) == DOOR_SIZE
+        # (a) visitor_memory OFF, circle only in-session; a reload has nothing to count → door holds
+        cfg29 = json.loads(CONFIG0)
+        cfg29["visitor_memory"] = False
+        CONFIG_PATH.write_text(json.dumps(cfg29))
+        fresh(br, base)
+        enter(br)
+        see_all(br)
+        to_fin(br); br.click("#ex-return", settle=0.8)        # in-session circle deals (at hand)
+        br.reload(); br.sleep(1.2)                            # nothing persisted to count
+        a_ok = br.evaluate(AT_DOOR) and br.evaluate(N_FRAMES) == 0
+        CONFIG_PATH.write_text(CONFIG0)
+        check(BROWSER_ROWS[29],
+              b_ok and c_ok and a_ok,
+              f"b_no_circle_one_deal={b_ok} c_staleversion_drops={c_ok} "
+              f"a_vmoff_reload_holds={a_ok}")
 
     # 4 · missing pool degrades to the diverse hang
     BROKEN = Path(tempfile.mkdtemp(prefix="synth_door_broken_"))

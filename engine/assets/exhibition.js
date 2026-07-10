@@ -392,11 +392,18 @@
     } catch (e) { return base; }
   }
 
+  // EX-DOOR-4 (INV-71): the walk's own in-session seen marks — every hung frame that has stood
+  // in view THIS session, added the MOMENT the mark is made (pending flush included, since this
+  // set is written synchronously in the intersection callback). It feeds the circle check and the
+  // next deal's novelty voice even where the museum's memory (visitor_memory / ex.seenc) is off.
+  const walkSeen = new Set();
+
   // EX-DOOR-3 (INV-44): the hand LIVES — rotation + novelty + the hour, under HIS LAW
   // (a new hand repeats at most a THIRD of the previous one). The pool stays curated
   // (EX-DOOR-2d); his file order is the tie-break voice; a pool of exactly door_size
-  // stands the law down (the hand IS the pool).
-  function dealHand() {
+  // stands the law down (the hand IS the pool). `circleStamp` (EX-DOOR-4) records the circle
+  // (pick + shown) this deal answered, so one circle earns exactly one deal.
+  function dealHand(circleStamp) {
     const n = Math.min(DOOR_SIZE, doorPool.length);
     if (doorPool.length <= n) return doorPool.slice(0, n);
     let prev = [];
@@ -404,10 +411,10 @@
       const h = JSON.parse(localStorage.getItem(HAND_KEY) || "null");
       if (h && h.v === VER && Array.isArray(h.ids)) prev = h.ids;
     } catch (e) {}
-    let seen = new Set();
+    const seen = new Set(walkSeen);                    // the just-walked works count as met (EX-DOOR-4)
     try {
       const c = JSON.parse(localStorage.getItem(SEENC_KEY) || "null");
-      if (c && Array.isArray(c.ids)) seen = new Set(c.ids.map(String));
+      if (c && Array.isArray(c.ids)) c.ids.forEach((id) => seen.add(String(id)));
     } catch (e) {}
     const hour = new Date().getHours();
     const part = hour < 6 ? "night" : hour < 12 ? "morning" : hour < 18 ? "day" : "evening";
@@ -440,7 +447,9 @@
       if (hand.length === n) break;
       if (hand.indexOf(c.e) < 0) hand.push(c.e);
     }
-    try { localStorage.setItem(HAND_KEY, JSON.stringify({ v: VER, ids: hand.map((e) => e.id) })); } catch (e) {}
+    const rec = { v: VER, ids: hand.map((e) => e.id) };
+    if (circleStamp) rec.circle = circleStamp;         // remember the circle this deal answered
+    try { localStorage.setItem(HAND_KEY, JSON.stringify(rec)); } catch (e) {}
     return hand;
   }
   function standingHand() {                            // the session keeps its set (INV-31/2d)
@@ -476,8 +485,53 @@
     const held = new Set(standing.map((e) => e.id));    // never re-add a work already in the hand
     const fresh = shuffle(doorPool.filter((e) => !held.has(e.id)));
     const hand = shuffle(kept.concat(fresh.slice(0, swapN)));
-    try { localStorage.setItem(HAND_KEY, JSON.stringify({ v: VER, ids: hand.map((e) => e.id) })); } catch (e) {}
+    const rec = { v: VER, ids: hand.map((e) => e.id) };
+    const cc = consumedCircle();                        // a reload keeps the consumed-circle memory
+    if (cc) rec.circle = cc;                            // (EX-DOOR-4: one circle, one deal survives reloads)
+    try { localStorage.setItem(HAND_KEY, JSON.stringify(rec)); } catch (e) {}
     return hand;
+  }
+
+  // ---- EX-DOOR-4 (INV-71): the full circle retires the hand -------------------
+  // A walk is "circled" when every work of its current hang — order.slice(0, shown), the spread
+  // plus every unfold taken — has stood in view (walkSeen, the in-session marks, joined with the
+  // persisted seen copy so a reload still knows; F3: counted the moment marks are made). The NEXT
+  // door render over a circled, not-yet-answered walk deals a fresh EX-DOOR-3 hand — the exit
+  // control, the browser's own Back, and a returned-door reload behave alike (F1/F2 folded 11:50);
+  // on this one point the history's "as it stood" (INV-32a) yields, the fresh hand standing as THE
+  // standing hand from that moment on. One circle, one deal: the fresh hand remembers the circle
+  // (pick + shown) it answered, so walking door↔walk over the same circle never re-rolls. A hand
+  // with no circle field (an older client) reads as "no circle consumed" (F4).
+  function consumedCircle() {
+    try {
+      const h = JSON.parse(localStorage.getItem(HAND_KEY) || "null");
+      if (h && h.v === VER && h.circle && h.circle.pick != null) return h.circle;
+    } catch (e) {}
+    return null;
+  }
+  function walkCircled() {
+    if (pick == null) return false;
+    const need = order.slice(0, shown).map(String);
+    if (!need.length) return false;
+    const seen = new Set(walkSeen);
+    try {
+      const c = JSON.parse(localStorage.getItem(SEENC_KEY) || "null");
+      if (c && Array.isArray(c.ids)) c.ids.forEach((id) => seen.add(String(id)));
+    } catch (e) {}
+    return need.every((id) => seen.has(id));
+  }
+  function circlePending() {              // a circle not yet answered by the standing hand
+    if (!walkCircled()) return null;
+    const cur = { pick: pick, shown: shown };
+    const cc = consumedCircle();
+    if (cc && String(cc.pick) === String(cur.pick) && cc.shown === cur.shown) return null;
+    return cur;
+  }
+  // the hand for a door render, honouring the carve-out: a pending circle deals fresh ONCE, else
+  // `fallback` (the standing set — EX-DOOR-2d — or the reload refresh) holds.
+  function doorHand(fallback) {
+    const pend = circlePending();
+    return pend ? dealHand(pend) : fallback();
   }
 
   // one line, always (EX-DOOR-2b — card 01's algorithm IS the norm): a row when landscape
@@ -803,8 +857,8 @@
     { const stops = frameStops();
       walkY = stops.length ? stops[nearestStop(stops, scrollY)] : 0; }
     groundRest();
-    const sp = doorSet();                              // the SAME curated set — a fresh quiz
-    renderDoor(sp, false);                             // is a fresh PICK (EX-DOOR-2d)
+    const sp = doorHand(doorSet);                      // the SAME curated set (EX-DOOR-2d), unless a
+    renderDoor(sp, false);                             // full circle earns a fresh deal (EX-DOOR-4)
     // `returned:true` marks a door reached BY EXITING a walk (vs a cold arrival) — a reload of THIS
     // door holds it (INV-54), while a cold door + an injected/returning walk still opens the walk
     pushFace({ face: "door", spread: sp.map((e) => e.id), returned: true });
@@ -821,10 +875,23 @@
       return;
     }
     if (st && st.face === "door") {
+      groundRest();
+      // EX-DOOR-4 (F2 folded 11:50): a Back landing on the door over a circled, unanswered walk
+      // deals FRESH — the history step's "as it stood" (INV-32a) yields on this one point, and the
+      // fresh hand becomes THE standing hand (the step is replaced to carry it).
+      const pend = circlePending();
+      if (pend) {
+        const sp = dealHand(pend);
+        renderDoor(sp, st.cold === true);
+        replaceFace({ face: "door", spread: sp.map((e) => e.id),
+                      returned: st.returned === true, cold: st.cold === true });
+        scrollTo(0, 0);
+        guardHold = 0;
+        return;
+      }
       // the door AS IT STOOD: rebuild the carried spread from the pool (never a fresh roll)
       const byPool = Object.fromEntries(doorPool.map((e) => [e.id, e]));
       const sp = (st.spread || []).map((id) => byPool[id]).filter(Boolean);
-      groundRest();
       renderDoor(sp.length ? sp : undefined, st.cold === true);
       scrollTo(0, 0);
       guardHold = 0;                                    // the returned door rests at its top (EX-CHROME)
@@ -868,6 +935,8 @@
     x.target.classList.add("seen");
     const w = byId[x.target.dataset.id];
     if (!w) return;
+    walkSeen.add(String(w.id));                        // the circle counts a mark the MOMENT it is
+                                                        // made — no wait for the debounced flush (EX-DOOR-4)
     breathe(x.target.querySelector("img.work"));       // late pixels meet the breath (EX-LOAD)
     if (window.__exSeen) window.__exSeen(w.id);      // the coat-check report (EX-MEMORY)
     // the walk tracks its place per frame in view (INV-32c re-carried after the ↗ retired)
@@ -1828,7 +1897,10 @@
     // EX-DOOR-RELOAD (INV-54): the visitor walked, EXITED back to the door, then reloaded — HOLD the
     // door, never drop into the walk saved behind it. The held door refreshes gently: ≥60% kept, ≤40%
     // new. The `returned` mark rides on so repeated reloads keep holding the door.
-    const sp = refreshHand();
+    // EX-DOOR-4 (F1 folded 11:50): an unconsumed circle wins ONCE — deal fresh; every reload with no
+    // circle pending obeys the reload law, and the fresh hand's own later reloads keep ≥60% too.
+    const pend = circlePending();
+    const sp = pend ? dealHand(pend) : refreshHand();
     renderDoor(sp, false);                             // the exit already spent the greeting
     replaceFace({ face: "door", spread: sp.map((e) => e.id), returned: true });
   } else if (entered) {

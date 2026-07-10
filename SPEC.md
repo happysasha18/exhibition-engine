@@ -237,6 +237,30 @@ a configuration knob, never a new fetch); **curation** (the pool's own order bre
 door (after the exit) shows the **standing hand** (the session's set is fresh-quiz-only in the
 re-open sense: the pick is fresh, not the set mid-session; see `INV-16`). `EX-DOOR-3` `INV-20`
 
+**The full circle retires the hand** (`EX-DOOR-4`): the standing-set law above holds everywhere
+short of one carve-out. A walk comes **full circle** when every work of its current hang —
+`order.slice(0, shown)`, the spread plus every unfold taken — has actually stood in view (the
+walk's own in-session seen marks, counted the moment they are made so the record's debounced
+flush never delays a circle, joined with the persisted seen copy in `ex.seenc` so a reload still
+knows). The next time the door renders over a circled, not-yet-answered walk, the standing hand
+**retires** and `EX-DOOR-3` deals a fresh one on the spot — novelty then naturally reaches past
+the circled works, and at most ⌊`door_size`/3⌋ of the old hand may return. Every way the door
+face can render counts as that render — the exit control, the browser's own Back landing on the
+door, and a reload landing on the returned-to door behave alike; on this one point the history's
+"as it stood" (`INV-32a`) yields, the fresh hand standing as the standing hand from that moment
+on. An unconsumed circle also **outranks the reload refresh**: the reload law (`EX-DOOR-RELOAD`,
+≥60/≤40) governs every reload with no circle pending, and governs the fresh hand's own later
+reloads. **One circle, one deal:** the fresh hand is remembered together with the circle that
+earned it (the walk's pick and its shown count, on the versioned `ex.hand` record), so walking
+back and forth between the same circled walk and the door never re-rolls the door — the next deal
+waits for the next circle, and a new pick or an unfold after the circle reopens the count (the
+hang grew, so the circle is no longer closed). A hand stored by an older client carries no circle
+memory — it reads as "no circle consumed" (one deal may fire once and writes the remembered
+shape); a stale-versioned hand is dropped whole, as the walk's own state law already does
+(`INV-26`). Where the museum's memory is off (`visitor_memory`), the walk's own in-session marks
+still count the circle while they are at hand; with nothing left to count — a reload with no
+stored seen record — the door keeps the standing-set law, quietly. `EX-DOOR-4` `INV-71`
+
 **The crossing — ceremony B «через чёрное»** (`EX-DOOR-2e`): a tap answers by the whole room
 dimming — the veil takes the door (`.33s×tempo`) → the wordmark alone drifts to the center of
 the black and lets go (~`.9s`) → the room's tone rises first (`.53s` onto the picked work's
@@ -960,6 +984,7 @@ the worker.
 | `EX-DOOR-2f` | The door locks the page (no scroll-behind) |
 | `EX-DOOR-2g` | The idle hint — behavior, never a word |
 | `EX-DOOR-3` | The living hand: novelty + hour + curation + ≤⌊door_size/3⌋-repeat law |
+| `EX-DOOR-4` | The full circle retires the hand: seeing every hung work earns a fresh deal on the next door render (all three renders alike), one circle one deal (the consumed circle rides the versioned hand), the standing-set law holds short of a circle |
 | `EX-DOOR-RELOAD` | Face survives a reload; gentle hand refresh (≥60% kept, ≤40% new) |
 | `EX-GREET` | The door greeting in the visitor's language at their hour |
 | `EX-GREET-LIVE` | The greeting re-speaks when the daypart changes |
@@ -1064,6 +1089,7 @@ the worker.
 | `INV-68` | Dead model account: a non-429 4xx flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
 | `INV-69` | The quiz funnel stage (`quiz_stage`: shown → opened → won\|lost → gift) is session-scoped and runs monotonically upward — it never lowers; "gift" advances only from "won"; the stage rides `walk_unfold`/`walk_exit` as a dimension alongside the arm (no sixth beat, INV-41 stands); the stage wipes with the walk (?reset); control and flag-off visitors carry no stage |
 | `INV-70` | One page shape for the browser on every face: every standing face (the re-opened door, side room, question card, gift card) locks the walk by resting input plus a snap-back guard that corrects any scroll the house did not write (the ceremony glide, Back restore, and face-leave re-centre all pass), while the root scrollbar hides gutter-stable (no reflow) and the walk's own tall document stays in place beneath; the root overflow cut is retired as a locking device; a later face inherits the law by construction |
+| `INV-71` | The full circle retires the hand: once every work of the standing walk's current hang (`order.slice(0, shown)`, spread + unfolds) has stood in view — counted the moment the mark is made, in-session marks joined with the persisted seen copy — the next door render (the exit control, a browser-Back onto the door, or a returned-door reload, all alike) retires the standing hand and deals a fresh `EX-DOOR-3` hand; the consumed circle (pick + shown) rides the versioned `ex.hand` so one circle earns exactly one deal (door↔walk never re-rolls, a new pick or a post-circle unfold reopens the count); an unconsumed circle outranks the reload refresh once, then the reload law resumes; a circle-less older hand reads as no circle consumed and a stale-versioned hand drops whole (`INV-26`); on this one point `INV-32a`'s as-it-stood yields; short of a circle the standing-set law (`INV-16`/`EX-DOOR-2d`) holds |
 
 ### Deltas from the tlvphoto reference implementation
 
@@ -1082,3 +1108,4 @@ requiring reconciliation:
 | `⟨DELTA-8⟩` | **RESOLVED** — the tlvphoto quiz+door fix batch (2026-07-08) generic parts ported: (1) the `/api/quiz` attempt fence degrades gracefully when no KV is bound (`overQuizRate` returns unlimited instead of throwing — preview/local judges); (2) `normAnswer` NFKC-folds + lower-cases + keeps letters only, with the client sending the raw answer (parity by construction); (3) all quiz+gift chrome (`quiz_submit`, `quiz_wrong`, `gift_ask`/`gift_yes`/`gift_no`/`gift_buy`) joins the localized string set (worker `shape`/`validate` + `i18n_source`) with English client fallbacks; (4) a wrong answer shows one localized line then closes (~1s), no hint trail; (5) reopening resets the card; (6) the card's accent is the focused work's live tint. `test_quiz.py` asserts them. The door-variety + load-flash-banner deltas are tlvphoto-surface-specific and were NOT ported (no clean generic equivalent — see report). |
 | `⟨DELTA-9⟩` | **RESOLVED** — the quiz funnel (`EX-QUIZ-FLOW`/`INV-69`) and A/B arm dimension (`EX-QUIZ-AB`/`INV-62`) ported: `quiz_arm` and `quiz_stage` ride the existing `walk_unfold`/`walk_exit` beats; `quizStageUp` is session-scoped and monotone; the stage wipes with `?reset`; `openGift` accepts an optional `onYes` callback so the quiz-win path stamps "gift" without touching the shared ceremony. Engine storage key: `ex.quizstage` (dot convention). `test_quiz_flow.py` (4 browser rows FL1–FL4; FL5–FL6 omitted — engine carries no `ga_report.py`) asserts them. |
 | `⟨DELTA-10⟩` | **RESOLVED** — one page shape for the browser (`EX-CHROME`/`INV-70`, ported from tlvphoto `e39fef1`): the root overflow cut is retired as a lock; `faceSync` mirrors any standing face onto `html.ex-face` (scrollbar-gutter stable, scrollbar hidden), rests keys/wheel/touch behind the face (EX-COMPOSE's own-scroll carve-out via `FACE_SEL`), and a `scroll` guard snaps back any scroll the house did not write, while the house's own writes re-freeze `guardHold`. The client already carried the `ex.*` / `ex-face` naming, so the js/css port is meaning- and byte-parallel with the reference. `test_compose.py` gains CH1–CH6. CH6 (the side room's lane scrolls native) pins **SKIP** in the synthetic fixture — its lane series has 3 members that fit the 1280px viewport, so the lane is not horizontally scrollable and the carve-out is untestable here; it exercises on real content with a wider lane. |
+| `⟨DELTA-11⟩` | **RESOLVED** — the full circle retires the hand (`EX-DOOR-4`/`INV-71`, ported from tlvphoto `5cef158`): a walk whose whole hang has stood in view earns a fresh `EX-DOOR-3` deal on the next door render, with the four prover findings folded — an unconsumed circle wins once then the reload law resumes (F1), the exit control / browser-Back / returned-door reload behave alike and `INV-32a`'s as-it-stood yields (F2), the circle counts marks the moment they are made via an in-session `walkSeen` set written synchronously in the intersection callback so the debounced flush never delays it (F3), and a circle-less older hand reads as no circle consumed while a stale-versioned hand drops whole (F4). The consumed circle (pick + shown) rides the versioned `ex.hand` record so one circle earns one deal. The client already carried the `ex.*` / `__exSeen` naming, so the js port is meaning-parallel with the reference (`tlv.hand`→`ex.hand`, `tlv.seenc`→`ex.seenc`). `test_door.py` gains rows 25–29 (all red-first vs HEAD). |
