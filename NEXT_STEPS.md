@@ -5,7 +5,30 @@ _The GENERIC engine behind tlvphotos.com, founded as its own PRODUCT on Alexande
 процесс объяснить пользователю и провести пользователя. Это огромное движение.» Named by his
 decision answer: **exhibition-engine**. Method: the live-spec pack, loaded per session._
 
-## ⚡ RESUME NOW (2026-07-09 ~22:38) — CUTOVER GATE 1 GREEN: byte-diff EMPTY (625 files); his eye on the compare is the only gate left
+## ⚡ RESUME NOW (2026-07-10 ~09:45) — CUTOVER DONE: tlvphotos.com's deploy.sh now bakes via THIS engine; next lanes = publish pass (repo goes PUBLIC) + own-client catch-up
+
+**On Alexander's morning word (drive to full parity), the flip landed in the instance repo
+(`2fb243c` there): its `deploy.sh` calls `engine/build.py --content . --site site.json` — this
+engine is now the ONLY baker of tlvphotos.com. Proof the same morning, all fresh: instance suite
+30/30 · this suite 25/25 · byte-diff engine-bake vs the old build_site.py bake EMPTY (625/625) ·
+the flipped recipe re-proven byte-identical before commit. The instance repo is RENAMED
+`exhibition-engine-tlvphotos` (private); THIS repo goes PUBLIC after the publish pass below.**
+
+**LANES (in order):**
+1. **Publish pass (before the visibility flip — his final word flips it):** working docs
+   (NEXT_STEPS, TRANSITION.md, PORT_REPORT.md, CHECKPOINT.md, tests/E3_REPORT.md) carry his name
+   and machine paths — move their live state into the instance repo or scrub; `example/site.json`
+   becomes a SYNTHETIC example (the real identity now lives in the instance repo); README per the
+   publish gate (install, commands, when-to-use, a real run); license = his call; the two
+   Alexander-comments in build.py/exhibition.js get neutral wording.
+2. **Reverse the code flow:** point the instance's tests at the engine bake, retire its
+   `scripts/build_site.py`.
+3. **Own-client lane (unchanged, not blocking):** quiz_util `arm_of()` ↔ client `quizHash`
+   alignment + parity row · `window.__tlvSeen`/`tlv.` prefixes · generic client catch-up
+   (FOUC guard, single-answer worker model).
+4. story_notes.json staleness watch (unchanged).
+
+## superseded (2026-07-09 ~22:38) — CUTOVER GATE 1 GREEN: byte-diff EMPTY (625 files); his eye on the compare is the only gate left
 
 **The fork below is RESOLVED by his word tonight («я не понимаю что такое сведение клиентских
 ассетов… сделай синхрон, зачем ты меня спрашиваешь») — I picked, and the sync landed as three
