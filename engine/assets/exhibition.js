@@ -62,10 +62,12 @@
     try { sessionStorage.setItem(QUIZ_STAGE_KEY, name); } catch (e) {}
   }
 
-  function pulse(beat, workId) {
+  function pulse(beat, workId, extra) {
     try {
       if (typeof window.gtag !== "function") return;
       const params = workId ? { work: String(workId) } : {};
+      // a closed BAKED-ladder word rides a beat that owns one (gift_kind, lang) — never free text (INV-1)
+      if (extra) for (const k in extra) params[k] = extra[k];
       // EX-STORY-AB: when a told story walks beside the guest its variant rides the EXISTING
       // unfold/exit beats as a dimension — no sixth beat is added (INV-41 stands)
       if (storyVariant && (beat === "walk_unfold" || beat === "walk_exit")) {
@@ -867,6 +869,7 @@
   }
 
   addEventListener("popstate", (ev) => {               // Back/Forward walk the faces (INV-32)
+    const wasWalk = !atDoor;                            // the face we are LEAVING (before any render)
     ceremonyCancel();                                  // navigation wins mid-ceremony (EX-DOOR-2e)
     const st = ev.state && ev.state.ex;
     closeSide();                                       // a step away closes the side room (EX-SERIES)
@@ -875,6 +878,10 @@
       return;
     }
     if (st && st.face === "door") {
+      // EX-PULSE registry: a browser-Back (or Forward) leave from the WALK to the door counts ONCE,
+      // exactly like the exit control — the funnel undercounted history leaves. The exit control uses
+      // pushState (never popstate), so control and history never double-count.
+      if (wasWalk) pulse("walk_exit");
       groundRest();
       // EX-DOOR-4 (F2 folded 11:50): a Back landing on the door over a circled, unanswered walk
       // deals FRESH — the history step's "as it stood" (INV-32a) yields on this one point, and the
@@ -1132,7 +1139,10 @@
   // EX-PROTECT-RES (INV-56): the SHOWN image is CLEAN; the site-host mark is stamped ONLY on a TAKEN
   // copy, HERE, client-side via canvas. The quiz prize already wears its own baked mark (preMarked)
   // and goes out raw. A browser that refuses the canvas still gets the clean file (never blocked).
-  function giftDownload(src, name, preMarked) {
+  function giftDownload(src, name, preMarked, workId) {
+    // a gift file actually leaves for the visitor's device — the beat rides BESIDE the download, its
+    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here
+    pulse("gift_download", workId, { gift_kind: preMarked ? "quiz_prize" : "grab" });
     if (preMarked) { rawDownload(src, name); return; }
     const host = ROOT_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
     const im = new Image();
@@ -1162,7 +1172,7 @@
   }
   // onYes (optional): called when the visitor says yes, BEFORE closeGift — used by the quiz-win path
   // to stamp the "gift" stage (EX-QUIZ-FLOW / INV-69) WITHOUT touching the shared ceremony behaviour.
-  function openGift(src, name, preMarked, onYes) {
+  function openGift(src, name, preMarked, onYes, workId) {
     const T = (greetLang() || { t: {} }).t;
     giftCard.querySelector(".gift-thumb").src = src;
     giftCard.querySelector(".gift-ask").textContent = T.gift_ask || "like it?";
@@ -1171,7 +1181,7 @@
     giftCard.querySelector(".gift-no").textContent = T.gift_no || "not now";
     giftCard.querySelector(".gift-line").textContent = enjoyLine();   // «enjoy · example.com»
     giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "";
-    yes.onclick = () => { giftDownload(src, name, preMarked); if (onYes) onYes(); closeGift(); };
+    yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
     giftCard.hidden = false; giftOpen = true;
     faceSync();                                        // the gift card is a face — arm the rest + guard (EX-CHROME)
     requestAnimationFrame(() => giftCard.classList.add("show"));       // EX-ARRIVE breath
@@ -1193,7 +1203,9 @@
     ev.preventDefault();                                   // the raw save / drag ghost never fires
     // DESKTOP right-click → the gift ceremony; TOUCH (or a drag) → just the gracious line, no download
     if (ev.type === "contextmenu" && !matchMedia("(pointer: coarse)").matches) {
-      openGift(img.currentSrc || img.getAttribute("src") || img.src); // OFFER, never dump
+      const fr = img.closest(".exh-frame");            // the grabbed work — gift_kind=grab (EX-PULSE)
+      openGift(img.currentSrc || img.getAttribute("src") || img.src, undefined, undefined, undefined,
+               fr && fr.dataset.id);                   // OFFER, never dump
     } else {
       toast(enjoyLine());                                   // rides the breath, leaves by itself
     }
@@ -1273,7 +1285,7 @@
     try { stored = JSON.parse(localStorage.getItem(QUIZ_LS(id)) || "null"); } catch (e) {}
     if (stored && typeof stored === "object" && (stored.answered === true || stored.prize)) {
       // already answered — straight to the gift ceremony when there is a prize
-      if (stored.prize) { openGift("/" + stored.prize, PRIZE_DL, true); return; }
+      if (stored.prize) { openGift("/" + stored.prize, PRIZE_DL, true, undefined, id); return; }
       return;  // answered wrong previously — nothing more to show
     }
 
@@ -1379,7 +1391,7 @@
           quizCardClose();
           // EX-QUIZ-FLOW (INV-69): pass onYes so the gift stage stamps ONLY on the quiz prize's yes
           openGift("/" + data.prize, PRIZE_DL, true,
-                   () => { quizStageUp("gift"); });
+                   () => { quizStageUp("gift"); }, id);   // gift_kind=quiz_prize, the work (EX-PULSE)
         }, Math.round(700 * TEMPO));
       } else {
         missAndFade();
@@ -1779,6 +1791,7 @@
           p.style.setProperty("--cx", (innerWidth / 2 - (r.left + r.width / 2)) + "px");
           p.style.setProperty("--cy", (innerHeight / 2 - (r.top + r.height / 2)) + "px");
           p.classList.add("lift");
+          pulse("series_lift", w.id);                  // every LIFT counts; setting it down does not (EX-PULSE)
         }
       });
       st.appendChild(p);
@@ -1788,7 +1801,7 @@
     side.hidden = false;
     document.body.classList.add("ex-side");            // the lock law, reused (EX-DOOR-2f)
     if (laystep !== false) pushFace({ face: "series", ser: idx });
-    pulse("series_open");
+    pulse("series_open", focusedId);                   // the work whose series opened (EX-PULSE registry)
   }
   function closeSide() {
     if (!sideOpen) return;
@@ -2086,7 +2099,11 @@
         try { localStorage.setItem(LANG_KEY, c); } catch (e) {}
         listClose();
         const known = (GREET.aliases || {})[c] || c;
-        if (GREET.langs[known]) respeak();             // a baked tongue answers at once
+        const baked = !!GREET.langs[known];
+        // EX-PULSE registry: the chosen tongue is a CODE from the baked list; an outsider tongue
+        // reports `other`, never a raw locale string on the wire — the ladder stays closed (INV-1)
+        pulse("lang_pick", null, { lang: baked ? known : "other" });
+        if (baked) respeak();                          // a baked tongue answers at once
         else requestSet(c);                            // an outsider rides the one layer
         redraw();
       });

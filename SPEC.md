@@ -723,23 +723,38 @@ and hands it back on boot so the door's novelty voice can prefer unseen works. T
 seen-list (`ex.seenc`) mirrors the report for sessions without server memory. Forgetting is
 whole: `?reset` wipes the token and the local list (`INV-25`). `EX-MEMORY` `INV-43`
 
-### Analytics
+### Analytics — the event registry
 
-The walk reports **five beats** (plus one additional) to the ONE sanctioned analytics wire — the
-baked GA tag, if `ga_measurement_id` is configured. No tag baked → total silence; the walk never
-errors. Events carry at most the plain beat name and the work's public id — never a vector
-(`INV-1`). **Consent defaults declare first**: advertising storage/use DENIED; analytics
-measurement GRANTED; no cookie banner (a quiet museum). When a told story walks beside the guest,
-`story_variant` rides the existing beats as a dimension (no new beat added). `EX-PULSE` `INV-41`
+The walk counts its beats for the site owner — the **event registry**. Events ride the ONE
+sanctioned analytics wire, the baked GA tag, if `ga_measurement_id` is configured; no tag baked →
+total silence, the walk never errors. An event carries at most the plain beat name, the work's
+public id, and a word from a closed BAKED ladder (an arm, a stage, a kind, a tongue) — never free
+text, never a vector (`INV-1`). **Consent defaults declare first**: advertising storage/use DENIED;
+analytics measurement GRANTED; no cookie banner (a quiet exhibition). The wire carries exactly the
+REGISTRY's beats — the table below is the one home of what the exhibition measures, and a standing
+test holds it in BOTH directions: a beat in the code missing from the registry is red, a registry
+line with no live emitter is red (born of a real drift — `series_open` once shipped onto the wire
+with no spec sentence, which the old "five beats" prose could not see). `EX-PULSE` `INV-41`
 
-| Beat | When |
-|------|------|
-| `door_pick` | a door work is tapped and the ceremony begins |
-| `walk_unfold` | the visitor taps «ещё N» |
-| `walk_exit` | the visitor taps the exit and returns to the door |
-| `share_copy` | the share button is clicked |
-| `share_arrive` | a visitor arrived by a room permalink |
-| `series_open` | a series side room is opened (engine-native; absent from the tlvphoto spec reference `⟨DELTA-4⟩`) |
+| beat | when it lays | carries |
+|---|---|---|
+| `door_pick` | a window opens the room | the work |
+| `walk_unfold` | the «more» control grows the hang | — (dimensions ride) |
+| `walk_exit` | the walk leaves for the door — the exit control OR the browser's own Back, ONCE per leave (a Back-exit counts no less than a button-exit; the funnel undercounted history leaves until this port) | — (dimensions ride) |
+| `share_copy` | the link button copies | the work |
+| `share_arrive` | an arrival by a shared link | the work |
+| `sound_on` / `sound_off` | the ambient player toggles (EX-SOUND's own clause) | — |
+| `series_open` | the side room opens | the work whose series opened |
+| `series_lift` | a print lifted to the light in the side room — every lift counts, setting it back down does not `[default]` | the lifted work |
+| `gift_download` | a gift file actually leaves for the visitor's device (on the prize's yes this beat lands BESIDE the quiz funnel's `gift` stage — a beat and a dimension marking one moment, never a double event) | the work + `gift_kind` from the closed pair `quiz_prize` / `grab` |
+| `lang_pick` | the guest chooses the exhibition's tongue at the door | `lang` — a code from the baked list (the guest's own outsider tongue reports as `other`, so the ladder stays closed) `[default]` |
+
+When a told story, the quiz arm, or the quiz stage walks beside the guest, each rides
+`walk_unfold`/`walk_exit` as a **dimension** (EX-STORY-AB, EX-QUIZ-AB, EX-QUIZ-FLOW) — a new beat
+only when it IS its own moment, otherwise a dimension on an existing beat, never silently. **The
+named silences** (deliberate, so the honest picture stays honest by decision rather than omission):
+the walk's individual steps and wheel turns; the sound volume drag; a pinch on a work; the door's
+idle hint; the side room's close (its open already counts the visit) `[default]`. `⟨DELTA-12⟩`
 
 ### The reset address
 
@@ -1020,7 +1035,7 @@ the worker.
 | `EX-I18N` | The any-language layer: one deferred fetch per new locale, KV-cached |
 | `EX-EDGE-GUARD` | Three money fences before any model call |
 | `EX-MEMORY` | The coat-check token: seen-work ids at the edge, anonymous |
-| `EX-PULSE` | Six analytics beats on the GA wire (five + `series_open`) |
+| `EX-PULSE` | The event registry: eleven beats on the GA wire, held both ways by a standing test |
 | `EX-TIMING` | Performance marks for the builder; `?timings` narrates them |
 | `EX-RESET` | `?reset` wipes named keys; idempotent |
 | `EX-MOTION` | One tempo, five duration tokens, fade-only entries |
@@ -1101,7 +1116,7 @@ requiring reconciliation:
 | `⟨DELTA-1⟩` | **RESOLVED** — `build.py` writes `site_name` from `site_config` into `config.json`; `exhibition.js` reads `cfg.site_name` via `textContent` (no literal). `test_site.py` asserts both. |
 | `⟨DELTA-2⟩` | **RESOLVED** — `engine/build.py` gains `_stamp`, `_copy_assets_capped`, updated `copy_gallery(display_max, mark_text)`, `build(display_max)`, and `--display-max` CLI arg. Mark text is `site_url`-derived (no instance literal). `test_site.py` asserts INV-56 (pinned skip when Pillow absent). |
 | `⟨DELTA-3⟩` | No `dateCreated` in the work-page JSON-LD `VisualArtwork` record. The engine's generic Work entity has no date field in `gallery_data.json`; an instance may extend the content contract to add one. |
-| `⟨DELTA-4⟩` | The `series_open` analytics beat is implemented in `exhibition.js` but was not part of tlvphoto's spec. It is specified above as an engine-native sixth beat (`EX-PULSE`). |
+| `⟨DELTA-4⟩` | **RESOLVED** — `series_open` now carries the work whose series opened and stands as a full registry line (no longer an engine-native afterthought); the two-way registry guard (`⟨DELTA-12⟩`) makes any future beat/spec drift red. |
 | `⟨DELTA-5⟩` | The `sold` flag and its red dot in the caption zone are implemented in `exhibition.js` but the bake does not forward the `sold` field from `gallery_data.json` items into `exhibition_data.json`. The red dot is currently always hidden. Reconcile: add `"sold": bool(it.get("sold"))` to `ex_works` in `build.py`. |
 | `⟨DELTA-6⟩` | **RESOLVED** — the quiz (`EX-QUIZ`/`INV-59`/`INV-60`), the gift ceremony (`EX-PROTECT-GIFT`), and the client-side mark-split on take (`EX-PROTECT-RES`/`INV-56`) are ported and generalized: quiz data is an instance-supplied `<content>/quiz.json`, placement + probability are `exhibition.quiz` config knobs, the download filename is a slug of the config `site_name`, and the mark text is the config host — no work id, host, or brand literal in the engine. `test_quiz.py` (11 rows) + updated `test_protect.py` assert them. |
 | `⟨DELTA-7⟩` | **DEFERRED (minor)** — the quiz *prompt* localization (tlvphoto's `quizzes` block in `i18n_source.json` + the worker's `translate` merge) is not ported; the public prompt ships in the base language only. The chip label (`quiz_ask`) IS localized. Low value until an instance needs translated prompts; the mechanism is a small additive follow-on. |
@@ -1109,3 +1124,4 @@ requiring reconciliation:
 | `⟨DELTA-9⟩` | **RESOLVED** — the quiz funnel (`EX-QUIZ-FLOW`/`INV-69`) and A/B arm dimension (`EX-QUIZ-AB`/`INV-62`) ported: `quiz_arm` and `quiz_stage` ride the existing `walk_unfold`/`walk_exit` beats; `quizStageUp` is session-scoped and monotone; the stage wipes with `?reset`; `openGift` accepts an optional `onYes` callback so the quiz-win path stamps "gift" without touching the shared ceremony. Engine storage key: `ex.quizstage` (dot convention). `test_quiz_flow.py` (4 browser rows FL1–FL4; FL5–FL6 omitted — engine carries no `ga_report.py`) asserts them. |
 | `⟨DELTA-10⟩` | **RESOLVED** — one page shape for the browser (`EX-CHROME`/`INV-70`, ported from tlvphoto `e39fef1`): the root overflow cut is retired as a lock; `faceSync` mirrors any standing face onto `html.ex-face` (scrollbar-gutter stable, scrollbar hidden), rests keys/wheel/touch behind the face (EX-COMPOSE's own-scroll carve-out via `FACE_SEL`), and a `scroll` guard snaps back any scroll the house did not write, while the house's own writes re-freeze `guardHold`. The client already carried the `ex.*` / `ex-face` naming, so the js/css port is meaning- and byte-parallel with the reference. `test_compose.py` gains CH1–CH6. CH6 (the side room's lane scrolls native) pins **SKIP** in the synthetic fixture — its lane series has 3 members that fit the 1280px viewport, so the lane is not horizontally scrollable and the carve-out is untestable here; it exercises on real content with a wider lane. |
 | `⟨DELTA-11⟩` | **RESOLVED** — the full circle retires the hand (`EX-DOOR-4`/`INV-71`, ported from tlvphoto `5cef158`): a walk whose whole hang has stood in view earns a fresh `EX-DOOR-3` deal on the next door render, with the four prover findings folded — an unconsumed circle wins once then the reload law resumes (F1), the exit control / browser-Back / returned-door reload behave alike and `INV-32a`'s as-it-stood yields (F2), the circle counts marks the moment they are made via an in-session `walkSeen` set written synchronously in the intersection callback so the debounced flush never delays it (F3), and a circle-less older hand reads as no circle consumed while a stale-versioned hand drops whole (F4). The consumed circle (pick + shown) rides the versioned `ex.hand` record so one circle earns one deal. The client already carried the `ex.*` / `__exSeen` naming, so the js port is meaning-parallel with the reference (`tlv.hand`→`ex.hand`, `tlv.seenc`→`ex.seenc`). `test_door.py` gains rows 25–29 (all red-first vs HEAD). |
+| `⟨DELTA-12⟩` | **RESOLVED** — every registry beat now on the wire (`EX-PULSE`/`INV-41`, ported from tlvphoto `7670e1a`): `pulse()` gains a third `extra` arg for a closed-ladder word; `gift_download` fires from `giftDownload` on both kinds (`quiz_prize` when preMarked, `grab` on a right-click) carrying the work id (threaded through `openGift`'s new `workId` arg + the contextmenu `fr.dataset.id`, the two quiz gift calls); `series_lift` on each polaroid LIFT (not set-down); `series_open` now carries `focusedId`; `lang_pick` at the door tongue pick (the baked code, or `other` for an outsider tongue — never a raw locale); and `walk_exit` also fires on a browser-Back leave (the `popstate` door branch, guarded by `wasWalk = !atDoor` so control (pushState) and history (popstate) never double-count). `test_pulse.py` is re-authored to 9 rows including a TWO-WAY registry guard (every code emitter names a registry beat AND every registry beat has a live emitter, portable via a first-arg `pulse()` parser). The guard exposed a pre-existing engine gap: `sound_on`/`sound_off` were emitted (EX-SOUND) but absent from the EX-PULSE table — the table now lists all **eleven** beats. **DELTA vs the reference:** the engine carries no read side (`ga_report.py`, `ga_register_dimensions.py`), so the reference's "read side keeps pace" string row is omitted here — same convention as `⟨DELTA-9⟩`'s FL5/FL6. Six rows red-first vs HEAD. |
