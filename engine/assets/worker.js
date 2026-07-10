@@ -18,9 +18,10 @@ const ID_RE = /^[a-z0-9][a-z0-9_-]{2,60}$/i;
 const STORY_FRAGMENTS = /*__STORY_FRAGMENTS__*/{}/*__/STORY_FRAGMENTS__*/;
 const STORY_PARAMS_VERSION = /*__STORY_PV__*/"0"/*__/STORY_PV__*/;
 
-// EX-QUIZ-EDGE (INV-59): the PRIVATE per-work answer sets — accepted spellings + the prize path —
-// are BAKED IN here by the builder, never a public static byte. The placeholder below is filled at
-// bake time (empty ⇒ the quiz route 404s). Map: workId → { accept: [raw strings], prize: "gallery/…" }.
+// EX-QUIZ-EDGE (INV-59/INV-64): the PRIVATE per-work answer — the ONE correct option (no
+// accept-set) plus the prize path — is BAKED IN here by the builder, never a public static byte.
+// The placeholder below is filled at bake time (empty ⇒ the quiz route 404s). Map:
+// workId → { answer: "raw string", prize: "gallery/…" }; the judge normalizes both sides and compares.
 // Like the story fragments, this rides in `_worker.js`, the one bundle file Pages never serves.
 const QUIZ_ANSWERS = /*__QUIZ_ANSWERS__*/{}/*__/QUIZ_ANSWERS__*/;
 
