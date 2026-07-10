@@ -170,4 +170,4 @@ The engine was extracted from a private production instance. Its bake was proven
 
 ## License
 
-No license is declared yet.
+MIT. See the LICENSE file.
