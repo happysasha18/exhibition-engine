@@ -38,24 +38,26 @@ def find_token_arm_on(n=1000000, eligible_count=None):
 
 
 def jhash(s):
-    """Python replica of the JS seed-hash finalizer used by quizHash(token, suffix).
+    """Python mirror of the client's quizHash(str) — exhibition.js, exported as EXQuiz._hash.
 
-    Matches the MurmurHash3-inspired finalizer in exhibition.js quizHash():
-      let h = seed; for each char: h ^= charCode; h = Math.imul(h, 0x9e3779b9) >>> 0;
-      h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0;
-      h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0;
-      h ^= h >>> 16;
-    Returns the 32-bit unsigned integer result.
+    Byte-for-byte the same formula the client draws the A/B arm and the per-work pick from:
+
+        let s = 0;
+        for (const c of String(str)) s = (s * 31 + c.charCodeAt(0)) >>> 0;
+        s = Math.imul(s ^ (s >>> 16), 0x45d9f3b) >>> 0;
+        s = Math.imul(s ^ (s >>> 16), 0x45d9f3b) >>> 0;
+        return (s ^ (s >>> 16)) >>> 0;
+
+    `Math.imul(a, b)` is the low 32 bits of the product, so `(a * b) & 0xFFFFFFFF` matches it.
+    test_parity.py runs the exported JS hash in node against this over a token spread; any
+    divergence goes RED.
     """
     h = 0
     for ch in s:
-        h = h ^ ord(ch)
-        h = ((h * 0x9e3779b9) & 0xFFFFFFFF)
-    h ^= h >> 16
-    h = (h * 0x85ebca6b) & 0xFFFFFFFF
-    h ^= h >> 13
-    h = (h * 0xc2b2ae35) & 0xFFFFFFFF
-    h ^= h >> 16
+        h = ((h * 31 + ord(ch)) & 0xFFFFFFFF)
+    h = ((h ^ (h >> 16)) * 0x45d9f3b) & 0xFFFFFFFF
+    h = ((h ^ (h >> 16)) * 0x45d9f3b) & 0xFFFFFFFF
+    h = (h ^ (h >> 16)) & 0xFFFFFFFF
     return h
 
 

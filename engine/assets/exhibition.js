@@ -374,7 +374,9 @@
   }
   // a work surfaces its chip only when the flag is on, the arm is on, and this is the chosen work
   const quizShows = (w) => QUIZ_ON && quizArm === "on" && !!(w && w.quiz) && w.id === quizChosenId;
-  try { window.EXQuiz = { chosen: () => quizChosenId, arm: () => quizArm, token: QUIZ_TOKEN }; } catch (e) {}
+  // `_hash` is exported for the JS↔Python parity test (test_parity.py): the A/B arm and the
+  // per-work pick are drawn from this exact function, so the Python util must mirror it byte-for-byte.
+  try { window.EXQuiz = { chosen: () => quizChosenId, arm: () => quizArm, token: QUIZ_TOKEN, _hash: quizHash }; } catch (e) {}
   const STORYLINES = Object.create(null);
   let storyVariant = null;    // the mode the served story reported — rides the GA beats (EX-STORY-AB)
   let storyKey = "";          // the ordered-id set last told (a resize/return never refetches)
