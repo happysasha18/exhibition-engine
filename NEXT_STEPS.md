@@ -38,6 +38,12 @@ override → generic client, so the engine's own lane stays proven).
   (INV-64) + port the FOUC guard; engine quiz tests ride along.
 - **OWED cleanup (unchanged):** `window.__tlvSeen` + residual `tlv.` localStorage prefixes in the
   generic client — generalize in a focused pass.
+- **tests/quiz_util.py `arm_of()` disagrees with the generic client's own hash** (found during the
+  quiz-funnel port, 2026-07-10 ~04:00): the util keeps tlvphoto's avalanche formula while the
+  engine client draws the arm with its Knuth-finalizer `quizHash` — same token, different arm.
+  Pre-existing; the FL tests bypass the util with tokens verified against the client's formula.
+  Fix = one owner: align the util to the client's formula (or export the client's hash like
+  tlvphoto's `TLVQuiz._hash` parity row) + a JS↔Python parity test.
 - **story_notes.json staleness:** the file is a mapped SNAPSHOT of his labels; if he edits notes,
   regenerate (the byte-proof catches drift in _worker.js).
 
