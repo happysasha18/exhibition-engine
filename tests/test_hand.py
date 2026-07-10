@@ -57,11 +57,11 @@ def prime(br, base, wipe=True):
     br.navigate(base + "/")
     if wipe:
         br.evaluate("localStorage.clear()")
-    br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+    br.evaluate("localStorage.setItem('ex-tempo','0.2')")
 
 
 def cold(br, base):
-    br.evaluate("localStorage.removeItem('tlv.exhibition');sessionStorage.clear()")
+    br.evaluate("localStorage.removeItem('ex.exhibition');sessionStorage.clear()")
     br.navigate(base + "/")
     br.sleep(1.1)
     return br.evaluate(DOOR_IDS)
@@ -83,7 +83,7 @@ else:
                 for a, b in ((h1, h2), (h2, h3)))
             br.navigate(base + "/?reset")
             br.sleep(1.0)
-            hand_forgot = br.evaluate("localStorage.getItem('tlv.hand')")
+            hand_forgot = br.evaluate("localStorage.getItem('ex.hand')")
             check(BROWSER_ROWS[0],
                   len(h1) == N and ok_pairs,
                   f"h1∩h2={len(set(h1) & set(h2))} h2∩h3={len(set(h2) & set(h3))} "
@@ -94,7 +94,7 @@ else:
             seen = [e["id"] for e in POOL if e["id"] not in unseen]
             prime(br, base, wipe=True)
             br.evaluate(
-                "localStorage.setItem('tlv.seenc', JSON.stringify({v:'x', ids:%s}))"
+                "localStorage.setItem('ex.seenc', JSON.stringify({v:'x', ids:%s}))"
                 % json.dumps(seen))
             hand = cold(br, base)
             got_unseen = [i for i in hand if i in unseen]

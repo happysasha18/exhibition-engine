@@ -67,7 +67,7 @@ BROWSER_ROWS = [
 ]
 
 # Engine storage key (dot convention, see DELTA-9)
-STAGE_KEY = "tlv.quizstage"
+STAGE_KEY = "ex.quizstage"
 
 
 def setup_walk(br, visitor_key=None, answered_ids=None, cooldown_ts=None):
@@ -75,19 +75,19 @@ def setup_walk(br, visitor_key=None, answered_ids=None, cooldown_ts=None):
     if visitor_key is None:
         visitor_key = VISITOR_KEY_ON
     br.evaluate("localStorage.clear(); sessionStorage.clear()")
-    br.evaluate("localStorage.setItem('tlv-tempo','0.05')")
-    br.evaluate("localStorage.setItem('tlv.visitor', %s)" % json.dumps(visitor_key))
+    br.evaluate("localStorage.setItem('ex-tempo','0.05')")
+    br.evaluate("localStorage.setItem('ex.visitor', %s)" % json.dumps(visitor_key))
     br.evaluate(
-        "localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
+        "localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
         % (json.dumps(EX_VER), json.dumps(QUIZ_WORK_ID))
     )
     if answered_ids:
         for wid in answered_ids:
-            key = "tlv.quiz." + str(wid)
+            key = "ex.quiz." + str(wid)
             br.evaluate("localStorage.setItem(%s, JSON.stringify({answered:true,right:false}))"
                         % json.dumps(key))
     if cooldown_ts is not None:
-        br.evaluate("localStorage.setItem('tlv.quizshown', %s)" % json.dumps(str(cooldown_ts)))
+        br.evaluate("localStorage.setItem('ex.quizshown', %s)" % json.dumps(str(cooldown_ts)))
 
 
 def scroll_to_chip(br):
@@ -285,7 +285,7 @@ else:
                 br.block(["*googletagmanager*", "*google-analytics*"])
                 br.navigate(base_off + "/")
                 br.evaluate("localStorage.clear(); sessionStorage.clear()")
-                br.evaluate("localStorage.setItem('tlv-tempo','0.05')")
+                br.evaluate("localStorage.setItem('ex-tempo','0.05')")
                 br.reload(); br.sleep(1.0)
                 br.evaluate("(function(){var f=document.getElementById('exh-fin');"
                             "if(f) f.scrollIntoView({behavior:'instant'});})();")

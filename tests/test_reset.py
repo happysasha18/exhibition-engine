@@ -38,9 +38,9 @@ BROWSER_ROWS = [
 
 AT_DOOR = "document.body.classList.contains('ex-door')"
 GREETED = "(()=>{const g=document.getElementById('exd-greet');return !!g && !g.hidden})()"
-KEYS_GONE = ("localStorage.getItem('tlv.exhibition')===null"
-             "&&sessionStorage.getItem('tlv.place')===null"
-             "&&localStorage.getItem('tlv-tempo')===null")
+KEYS_GONE = ("localStorage.getItem('ex.exhibition')===null"
+             "&&sessionStorage.getItem('ex.place')===null"
+             "&&localStorage.getItem('ex-tempo')===null")
 
 if not chrome_available():
     for r in BROWSER_ROWS:
@@ -58,12 +58,12 @@ else:
         br.navigate(base + "/")
         br.clear_storage()
         br.evaluate("sessionStorage.clear()")
-        br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+        br.evaluate("localStorage.setItem('ex-tempo','0.2')")
         br.reload()
         br.sleep(1.0)
         pick(br)
         walked = not br.evaluate(AT_DOOR)
-        br.evaluate("sessionStorage.setItem('tlv.place','{\"v\":\"x\",\"id\":\"y\"}')")
+        br.evaluate("sessionStorage.setItem('ex.place','{\"v\":\"x\",\"id\":\"y\"}')")
         br.navigate(base + "/?reset")
         br.sleep(1.2)
         check(BROWSER_ROWS[0],
@@ -78,14 +78,14 @@ else:
         br.sleep(1.2)
         hl_after = br.evaluate("history.length")
         stripped = br.evaluate("location.search") == ""
-        br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+        br.evaluate("localStorage.setItem('ex-tempo','0.2')")
         br.reload()
         br.sleep(1.0)
         pick(br)
         br.reload()
         br.sleep(1.2)
         survives = (not br.evaluate(AT_DOOR)
-                    and br.evaluate("localStorage.getItem('tlv.exhibition')") is not None)
+                    and br.evaluate("localStorage.getItem('ex.exhibition')") is not None)
         check(BROWSER_ROWS[1],
               stripped and (hl_after - hl_before == 1) and survives,
               f"search='{br.evaluate('location.search')}' hlen {hl_before}→{hl_after} "

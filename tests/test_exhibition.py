@@ -190,7 +190,7 @@ else:
     with serve(TMP) as base, Browser(width=1280, height=900) as br:
         br.navigate(base + "/")
         br.clear_storage()
-        br.evaluate("localStorage.setItem('tlv-tempo','0.05')")
+        br.evaluate("localStorage.setItem('ex-tempo','0.05')")
         br.reload(); br.sleep(1.0)
         st = br.evaluate(
             "(()=>{return {live:document.body.classList.contains('ex-live'),"

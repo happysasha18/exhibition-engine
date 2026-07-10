@@ -81,7 +81,7 @@ FRAME_IDS = "Array.from(document.querySelectorAll('.exh-frame')).map(f=>f.datase
 def enter(br, base):
     br.navigate(base + "/")
     br.clear_storage()
-    br.evaluate("localStorage.setItem('tlv-tempo','0.5')")  # toast lives 1.5s — enough to check
+    br.evaluate("localStorage.setItem('ex-tempo','0.5')")  # toast lives 1.5s — enough to check
     br.reload()
     br.sleep(0.8)
     br.click(".exd-window:nth-child(1)", settle=0.1)

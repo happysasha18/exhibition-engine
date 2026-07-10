@@ -97,14 +97,14 @@ else:
 BROWSER_ROWS = [
     "EX-DOOR-2e the clock is one third (pick→reveal ≈1.8 beats ×tempo, caption right behind)",
     "EX-LOAD the cold return breathes, then reveals (held image → breath → work fades in)",
-    "EX-LOAD a healthy line never sees it (no tlv:breath mark on a normal crossing)",
+    "EX-LOAD a healthy line never sees it (no ex:breath mark on a normal crossing)",
     "EX-LOAD a dead image never traps (breath retires, caption+counter hold, walk alive)",
     "EX-TIMING marks are laid, export on ask; nothing in the DOM (INV-1)",
 ]
 
 BREATH_ON = "(()=>{const b=document.getElementById('ex-breath');return !!b && !b.hidden})()"
 MARKS = ("JSON.stringify(Object.fromEntries(performance.getEntriesByType('mark')"
-         ".filter(m=>m.name.startsWith('tlv:')).map(m=>[m.name.slice(4),m.startTime])))")
+         ".filter(m=>m.name.startsWith('ex:')).map(m=>[m.name.slice(3),m.startTime])))")
 FIRST_IMG = "document.querySelector('.exh-frame img.work')"
 
 if not chrome_available():
@@ -117,7 +117,7 @@ else:
         with Browser(width=1280, height=900) as br:
             br.navigate(base + "/")
             br.clear_storage()
-            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
             br.reload()
             br.sleep(1.0)
             br.click(".exd-window:nth-child(1)", settle=0.1)
@@ -138,8 +138,8 @@ else:
         with Browser(width=1280, height=900) as br:
             br.navigate("about:blank")
             br.navigate(base + "/")
-            br.evaluate(f"localStorage.setItem('tlv.exhibition', {json.dumps(WALK)})")
-            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.evaluate(f"localStorage.setItem('ex.exhibition', {json.dumps(WALK)})")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
             br.reload()
             br.sleep(0.8)
             mid = br.evaluate(
@@ -159,7 +159,7 @@ else:
         with Browser(width=1280, height=900) as br:
             br.navigate(base + "/")
             br.clear_storage()
-            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
             br.reload()
             br.sleep(1.0)
             br.click(".exd-window:nth-child(1)", settle=0.1)
@@ -174,8 +174,8 @@ else:
         with Browser(width=1280, height=900) as br:
             br.block([f"*{PICK}*"])
             br.navigate(base + "/")
-            br.evaluate(f"localStorage.setItem('tlv.exhibition', {json.dumps(WALK)})")
-            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.evaluate(f"localStorage.setItem('ex.exhibition', {json.dumps(WALK)})")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
             br.reload()
             br.sleep(1.5)
             state = br.evaluate(
@@ -194,7 +194,7 @@ else:
         with Browser(width=1280, height=900) as br:
             br.navigate(base + "/?timings")
             br.clear_storage()
-            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
             br.reload()
             br.sleep(1.0)
             br.click(".exd-window:nth-child(1)", settle=0.1)
@@ -202,8 +202,8 @@ else:
             marks = json.loads(br.evaluate(MARKS) or "{}")
             need = {"boot", "data", "door", "pick", "hang", "reveal", "caption"}
             exported = br.evaluate(
-                "typeof TLVTimings==='function' && TLVTimings().length >= 7")
-            dom_clean = not br.evaluate("document.body.innerText.includes('tlv:')")
+                "typeof EXTimings==='function' && EXTimings().length >= 7")
+            dom_clean = not br.evaluate("document.body.innerText.includes('ex:')")
             check(BROWSER_ROWS[4],
                   need.issubset(marks) and bool(exported) and dom_clean,
                   f"marks={sorted(marks)} exported={exported} dom_clean={dom_clean}")

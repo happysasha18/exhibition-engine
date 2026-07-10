@@ -53,8 +53,8 @@ FRAME_IN_VIEW = ("(()=>{const els=[...document.querySelectorAll('.exh-frame')];"
                  "return m?m.dataset.id:null})()")
 
 work_html = next((TMP / "w").glob("*.html")).read_text(encoding="utf-8")
-check("INV-32(f/DOM) backpointer stays a plain link; no tlv.place script leaks onto /w/",
-      'href="/"' in work_html and "tlv.place" not in work_html)
+check("INV-32(f/DOM) backpointer stays a plain link; no ex.place script leaks onto /w/",
+      'href="/"' in work_html and "ex.place" not in work_html)
 
 if not chrome_available():
     for r in BROWSER_ROWS:
@@ -64,7 +64,7 @@ else:
         br.navigate(base + "/")
         br.clear_storage()
         br.evaluate("sessionStorage.clear()")
-        br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+        br.evaluate("localStorage.setItem('ex-tempo','0.2')")
         br.reload()
         br.sleep(1.0)
 
@@ -104,7 +104,7 @@ else:
         fresh(br, base)
         pick(br)
         arc = br.evaluate(FRAME_IDS)
-        stored = br.evaluate("localStorage.getItem('tlv.exhibition')")
+        stored = br.evaluate("localStorage.getItem('ex.exhibition')")
         to_fin(br)
         br.click("#ex-return", settle=1.0)
         at_door_mid = br.evaluate(AT_DOOR)
@@ -114,7 +114,7 @@ else:
         check(BROWSER_ROWS[1],
               at_door_mid and (not br.evaluate(AT_DOOR))
               and br.evaluate(FRAME_IDS) == arc
-              and br.evaluate("localStorage.getItem('tlv.exhibition')") == stored
+              and br.evaluate("localStorage.getItem('ex.exhibition')") == stored
               and fin_vis,
               f"door_opened={at_door_mid} fin_in_view={fin_vis}")
 
@@ -125,7 +125,7 @@ else:
         br.evaluate("document.querySelectorAll('.exh-frame')[3].scrollIntoView({behavior:'instant'})")
         br.sleep(0.8)
         marker_home_ok = br.evaluate(
-            "!!sessionStorage.getItem('tlv.place') && !localStorage.getItem('tlv.place')")
+            "!!sessionStorage.getItem('ex.place') && !localStorage.getItem('ex.place')")
         br.reload()
         br.sleep(1.4)
         check(BROWSER_ROWS[2],

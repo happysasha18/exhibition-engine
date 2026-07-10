@@ -233,7 +233,7 @@ first); **the hour** (the hand leans toward the daypart's tone using the candida
 `luma`/`warmth` numbers — darker for night, warmer for evening, brighter for morning and day;
 a configuration knob, never a new fetch); **curation** (the pool's own order breaks every tie).
 **His law:** a new hand repeats at most ⌊`door_size`/3⌋ works from the previous hand (stored in
-`tlv.hand`) — a returning visitor never meets the same threshold twice (`INV-20`). The re-opened
+`ex.hand`) — a returning visitor never meets the same threshold twice (`INV-20`). The re-opened
 door (after the exit) shows the **standing hand** (the session's set is fresh-quiz-only in the
 re-open sense: the pick is fresh, not the set mid-session; see `INV-16`). `EX-DOOR-3` `INV-20`
 
@@ -290,7 +290,7 @@ yet cannot be reloaded into a tour of the whole pool. Repeated reloads hold the 
 The door face carries a quiet corner mark showing the current language's short code. A tap opens
 a list of baked languages plus the browser's own locale when it falls outside the baked set (when
 `ai_i18n` is on). A pick re-speaks the threshold at once — the ask and greeting update
-immediately — persists across visits (`tlv.lang`), and outranks the browser setting everywhere a
+immediately — persists across visits (`ex.lang`), and outranks the browser setting everywhere a
 language is read. RTL locales turn the door face right-to-left. `?reset` forgets the choice and
 the browser's own tongue returns. `EX-LANG`
 
@@ -438,7 +438,7 @@ deliberate turn-on. A tap starts it: decoded via Web Audio into a gapless loopin
 `AudioBufferSourceNode` under a **fade-in (~1.2s×tempo)** on a gain ramp; a second tap
 **fades out (~0.8s×tempo)**; leaving to a `/w/` page or unload fades to zero best-effort
 (`pagehide`). Volume defaults to 0.3 with a touch-friendly slider (≥44px). The choice persists
-in `tlv.sound`. A return visit with preference ON **arms** on the first gesture (the browser
+in `ex.sound`. A return visit with preference ON **arms** on the first gesture (the browser
 blocks autoplay without one) rather than fetching on cold load. On hover / while playing a thin
 credit tray shows the instance's configured `sound_credit.artist`, `sound_credit.title`, and
 `sound_credit.url` — no hardcoded artist name or link. A missing or failed file **fails SILENT**
@@ -644,13 +644,13 @@ a dead-balance refusal, a non-baked-locale visitor walks a fully English site gr
 
 ### Visitor memory
 
-When `visitor_memory` is on, a first visit **mints a random token** (`tlv.visitor` in
+When `visitor_memory` is on, a first visit **mints a random token** (`ex.visitor` in
 `localStorage` — a random string, never anything identifying) and, as the visitor walks, the
 frames they actually met collect and report quietly to `/api/visitor` (debounced at ~3s,
 fire-and-forget; a failed report is silently dropped). The edge keeps **ONE record per token** —
 seen-work ids, merged across visits, capped at ~500 newest, expiring after ~180 days of silence —
 and hands it back on boot so the door's novelty voice can prefer unseen works. The local
-seen-list (`tlv.seenc`) mirrors the report for sessions without server memory. Forgetting is
+seen-list (`ex.seenc`) mirrors the report for sessions without server memory. Forgetting is
 whole: `?reset` wipes the token and the local list (`INV-25`). `EX-MEMORY` `INV-43`
 
 ### Analytics
@@ -674,9 +674,9 @@ measurement GRANTED; no cookie banner (a quiet museum). When a told story walks 
 ### The reset address
 
 Opening the exhibition root with `?reset` in the address **wipes the browser's own trace** before
-anything restores — named keys only: `tlv.exhibition`, `tlv-tempo` (in `localStorage`) and
-`tlv.place`, the hash hand-over marker (in `sessionStorage`), then `tlv.visitor`, `tlv.hand`,
-`tlv.seenc`, `tlv.lang`, `tlv.sound` (in `localStorage`). The param strips itself via
+anything restores — named keys only: `ex.exhibition`, `ex-tempo` (in `localStorage`) and
+`ex.place`, the hash hand-over marker (in `sessionStorage`), then `ex.visitor`, `ex.hand`,
+`ex.seenc`, `ex.lang`, `ex.sound` (in `localStorage`). The param strips itself via
 `replaceState` — no history step laid, Back stays honest. A storage refusal never blocks the
 arrival. Idempotent: with nothing stored it does the same, silently. The worst a hostile
 `?reset` link costs its clicker is their own walk position — nothing of anyone else's, nothing
@@ -685,10 +685,10 @@ server-side. `EX-RESET` `INV-35`
 ### Performance timings
 
 Every live walk lays quiet performance marks at its beats — arrival, data landed, door shown,
-pick, hang rendered, the breath, an image landing, reveal, caption, unfold, exit — named `tlv:*`
+pick, hang rendered, the breath, an image landing, reveal, caption, unfold, exit — named `ex:*`
 in the browser's own `performance` timeline. Nothing faces the visitor (`INV-1`); nothing leaves
 the tab (`INV-7`). With **`?timings`** in the address the console narrates the beats as they land;
-`TLVTimings()` returns the marks as data. `EX-TIMING` `INV-38`
+`EXTimings()` returns the marks as data. `EX-TIMING` `INV-38`
 
 ### Motion, feel, and appearance
 
@@ -701,8 +701,8 @@ windows) · ground `1.7s` (the tone shift) · cross `1.2s` (the door ceremony). 
 
 **Reduced motion** (`EX-MOTION-R`): under `prefers-reduced-motion: reduce` the tempo collapses
 to `0.05` — every move lands near-instant, nothing breaks. Reduced-motion always wins over a
-visitor's `localStorage['tlv-tempo']` override. A visitor or a test may pin the tempo via
-`localStorage['tlv-tempo']`, clamped to [0.05, 3] (`INV-23`).
+visitor's `localStorage['ex-tempo']` override. A visitor or a test may pin the tempo via
+`localStorage['ex-tempo']`, clamped to [0.05, 3] (`INV-23`).
 
 **Every appearing element arrives by the house breath, never pops** (`EX-ARRIVE`): any UI element
 whose first visible entry could appear sudden carries an opacity-from-zero fade riding `--d-soft`.
@@ -1032,4 +1032,4 @@ requiring reconciliation:
 | `⟨DELTA-6⟩` | **RESOLVED** — the quiz (`EX-QUIZ`/`INV-59`/`INV-60`), the gift ceremony (`EX-PROTECT-GIFT`), and the client-side mark-split on take (`EX-PROTECT-RES`/`INV-56`) are ported and generalized: quiz data is an instance-supplied `<content>/quiz.json`, placement + probability are `exhibition.quiz` config knobs, the download filename is a slug of the config `site_name`, and the mark text is the config host — no work id, host, or brand literal in the engine. `test_quiz.py` (11 rows) + updated `test_protect.py` assert them. |
 | `⟨DELTA-7⟩` | **DEFERRED (minor)** — the quiz *prompt* localization (tlvphoto's `quizzes` block in `i18n_source.json` + the worker's `translate` merge) is not ported; the public prompt ships in the base language only. The chip label (`quiz_ask`) IS localized. Low value until an instance needs translated prompts; the mechanism is a small additive follow-on. |
 | `⟨DELTA-8⟩` | **RESOLVED** — the tlvphoto quiz+door fix batch (2026-07-08) generic parts ported: (1) the `/api/quiz` attempt fence degrades gracefully when no KV is bound (`overQuizRate` returns unlimited instead of throwing — preview/local judges); (2) `normAnswer` NFKC-folds + lower-cases + keeps letters only, with the client sending the raw answer (parity by construction); (3) all quiz+gift chrome (`quiz_submit`, `quiz_wrong`, `gift_ask`/`gift_yes`/`gift_no`/`gift_buy`) joins the localized string set (worker `shape`/`validate` + `i18n_source`) with English client fallbacks; (4) a wrong answer shows one localized line then closes (~1s), no hint trail; (5) reopening resets the card; (6) the card's accent is the focused work's live tint. `test_quiz.py` asserts them. The door-variety + load-flash-banner deltas are tlvphoto-surface-specific and were NOT ported (no clean generic equivalent — see report). |
-| `⟨DELTA-9⟩` | **RESOLVED** — the quiz funnel (`EX-QUIZ-FLOW`/`INV-69`) and A/B arm dimension (`EX-QUIZ-AB`/`INV-62`) ported: `quiz_arm` and `quiz_stage` ride the existing `walk_unfold`/`walk_exit` beats; `quizStageUp` is session-scoped and monotone; the stage wipes with `?reset`; `openGift` accepts an optional `onYes` callback so the quiz-win path stamps "gift" without touching the shared ceremony. Engine storage key: `tlv.quizstage` (dot convention). `test_quiz_flow.py` (4 browser rows FL1–FL4; FL5–FL6 omitted — engine carries no `ga_report.py`) asserts them. |
+| `⟨DELTA-9⟩` | **RESOLVED** — the quiz funnel (`EX-QUIZ-FLOW`/`INV-69`) and A/B arm dimension (`EX-QUIZ-AB`/`INV-62`) ported: `quiz_arm` and `quiz_stage` ride the existing `walk_unfold`/`walk_exit` beats; `quizStageUp` is session-scoped and monotone; the stage wipes with `?reset`; `openGift` accepts an optional `onYes` callback so the quiz-win path stamps "gift" without touching the shared ceremony. Engine storage key: `ex.quizstage` (dot convention). `test_quiz_flow.py` (4 browser rows FL1–FL4; FL5–FL6 omitted — engine carries no `ga_report.py`) asserts them. |

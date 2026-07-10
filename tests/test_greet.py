@@ -152,7 +152,7 @@ else:
     def fresh(br, base):
         br.navigate(base + "/")
         br.clear_storage()
-        br.evaluate("localStorage.setItem('tlv-tempo','0.05')")
+        br.evaluate("localStorage.setItem('ex-tempo','0.05')")
         br.reload()
         br.sleep(1.0)
 
@@ -312,7 +312,7 @@ else:
         br2.pretend("ru-RU", 21)
         br2.navigate(base2 + "/")
         br2.evaluate("localStorage.clear()")
-        br2.evaluate("localStorage.setItem('tlv-tempo','0.05')")
+        br2.evaluate("localStorage.setItem('ex-tempo','0.05')")
         br2.reload(); br2.sleep(1.2)
         st = br2.evaluate(GREET_STATE)
         br2.click(".exd-window:nth-child(1)", settle=1.0)

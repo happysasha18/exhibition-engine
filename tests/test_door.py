@@ -149,7 +149,7 @@ else:
     def fresh(br, base, tempo="0.05"):
         br.navigate(base + "/")
         br.clear_storage()
-        br.evaluate(f"localStorage.setItem('tlv-tempo','{tempo}')")
+        br.evaluate(f"localStorage.setItem('ex-tempo','{tempo}')")
         br.reload()
         br.sleep(1.0)
 
@@ -331,7 +331,7 @@ else:
         fresh(br, base)
         enter(br)
         ver = EXDATA["version"]
-        br.set_local_storage("tlv.exhibition",
+        br.set_local_storage("ex.exhibition",
                              json.dumps({"v": ver, "pick": WORKS[0]["id"], "shown": 4 * CAP}))
         br.reload(); br.sleep(1.0)
         shown = br.evaluate(N_FRAMES)
@@ -357,12 +357,12 @@ else:
 
         # 17 · bad stored state → the DOOR proves the discard
         fresh(br, base)
-        br.set_local_storage("tlv.exhibition", json.dumps({"v": "OLDVER", "pick": WORKS[0]["id"], "shown": 6}))
+        br.set_local_storage("ex.exhibition", json.dumps({"v": "OLDVER", "pick": WORKS[0]["id"], "shown": 6}))
         br.reload(); br.sleep(1.0)
         old_ver_door = br.evaluate(AT_DOOR)
         br.clear_storage()
-        br.evaluate("localStorage.setItem('tlv-tempo','0.05')")
-        br.set_local_storage("tlv.exhibition", json.dumps({"v": EXDATA["version"], "pick": "999999", "shown": 6}))
+        br.evaluate("localStorage.setItem('ex-tempo','0.05')")
+        br.set_local_storage("ex.exhibition", json.dumps({"v": EXDATA["version"], "pick": "999999", "shown": 6}))
         br.reload(); br.sleep(1.0)
         missing_id_door = br.evaluate(AT_DOOR)
         check(BROWSER_ROWS[17], old_ver_door and missing_id_door,
@@ -435,7 +435,7 @@ else:
         ph3 = br.evaluate(
             "(()=>{const v=document.getElementById('ex-veil');"
             "return {veilGone:!v||v.hidden,crossing:document.body.classList.contains('ex-crossing'),"
-            "face:history.state&&history.state.tlv?history.state.tlv.face:null,"
+            "face:history.state&&history.state.ex?history.state.ex.face:null,"
             "work:+getComputedStyle(document.querySelector('.exh-frame img.work')).opacity};})()")
         ceremony_ok = (ph1["veil"] and ph1["door"] and ph1["leaving"]
                        and (not ph2["door"]) and ph2["crossing"] and ph2["work"] < 0.05
@@ -549,18 +549,18 @@ else:
         br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
         br.sleep(0.4)
         first_hand = json.loads(br.evaluate(
-            "localStorage.getItem('tlv.hand')") or "null") or {}
+            "localStorage.getItem('ex.hand')") or "null") or {}
         first_ids = set(first_hand.get("ids", []))
         br.click("#ex-return", settle=0.8)               # exit → doorReturn() pushes returned:true
         state_before = br.evaluate(
-            "(()=>{const s=history.state; return s&&s.tlv?JSON.stringify(s.tlv):null;})()")
+            "(()=>{const s=history.state; return s&&s.ex?JSON.stringify(s.ex):null;})()")
         st_before = json.loads(state_before or "null") or {}
         returned_marker = st_before.get("returned") is True
         br.reload(); br.sleep(1.2)                       # reload the returned door
         after_door = br.evaluate(AT_DOOR)
         after_frames = br.evaluate(N_FRAMES)
         after_hand = json.loads(br.evaluate(
-            "localStorage.getItem('tlv.hand')") or "null") or {}
+            "localStorage.getItem('ex.hand')") or "null") or {}
         after_ids = set(after_hand.get("ids", []))
         # ≥60% must be kept from the first hand when there is room to swap
         kept = first_ids & after_ids

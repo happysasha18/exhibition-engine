@@ -151,7 +151,7 @@ quiz_ask_js = "quiz_ask" in js_src
 chip_js = "ex-quiz-chip" in js_src
 card_js = "ex-quiz-card" in js_src
 esc_js = "Escape" in js_src and "quiz" in js_src.lower()
-ls_solved = "tlv.quiz." in js_src
+ls_solved = "ex.quiz." in js_src
 en = (json.loads((TMP_ON / "exhibition_data.json").read_text()).get("greet") or {}).get("langs", {}).get("en", {})
 quiz_ask_baked = "quiz_ask" in en
 check("EX-QUIZ chip + card obey house breath (EX-ARRIVE) and tongue (EX-I18N)",
@@ -282,9 +282,9 @@ else:
             br.navigate(base + "/")
             br.evaluate("localStorage.clear();sessionStorage.clear()")
             # set a deterministic visitor key so quizArm==="on" and the chosen work is synth-01
-            br.evaluate("localStorage.setItem('tlv.visitor',%s)" % json.dumps(VISITOR_KEY_ON))
-            br.evaluate("localStorage.setItem('tlv-tempo','0.1')")
-            br.evaluate("localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
+            br.evaluate("localStorage.setItem('ex.visitor',%s)" % json.dumps(VISITOR_KEY_ON))
+            br.evaluate("localStorage.setItem('ex-tempo','0.1')")
+            br.evaluate("localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
                         % (json.dumps(ver), json.dumps(QUIZ_WORK_ID)))
             br.reload()
             br.sleep(1.2)
@@ -320,9 +320,9 @@ else:
         #          verdict, taps once, and asserts the chip DISAPPEARS from the plaque afterwards.
         def _setup_walk(br):
             br.evaluate("localStorage.clear();sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('tlv.visitor',%s)" % json.dumps(VISITOR_KEY_ON))
-            br.evaluate("localStorage.setItem('tlv-tempo','0.1')")
-            br.evaluate("localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
+            br.evaluate("localStorage.setItem('ex.visitor',%s)" % json.dumps(VISITOR_KEY_ON))
+            br.evaluate("localStorage.setItem('ex-tempo','0.1')")
+            br.evaluate("localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
                         % (json.dumps(ver), json.dumps(QUIZ_WORK_ID)))
             br.reload()
             br.sleep(1.2)

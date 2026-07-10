@@ -80,7 +80,7 @@ def fresh(br, base, tempo=None):
     br.navigate(base + "/")
     br.clear_storage()
     if tempo is not None:
-        br.evaluate(f"localStorage.setItem('tlv-tempo','{tempo}')")
+        br.evaluate(f"localStorage.setItem('ex-tempo','{tempo}')")
     br.reload()
     br.sleep(1.0)
 

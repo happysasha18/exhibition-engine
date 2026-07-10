@@ -120,8 +120,8 @@ def room(br, base, tempo):
     """a stored walk straight into the room at the given tempo — READY by condition, not by a
     fixed sleep (four suites share the machine; a hot run stretches Chrome's start)"""
     br.navigate(base + "/")
-    br.evaluate(f"localStorage.setItem('tlv.exhibition', {WALK})")
-    br.evaluate(f"localStorage.setItem('tlv-tempo','{tempo}')")
+    br.evaluate(f"localStorage.setItem('ex.exhibition', {WALK})")
+    br.evaluate(f"localStorage.setItem('ex-tempo','{tempo}')")
     br.evaluate("sessionStorage.clear()")
     br.reload()
     for _ in range(40):                                # up to ~6s under load; usually <1.2s

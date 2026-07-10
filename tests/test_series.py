@@ -80,8 +80,8 @@ SIDE_ON = "(()=>{const s=document.getElementById('ex-side');return !!s&&!s.hidde
 def walk_with(br, base, pick):
     br.navigate(base + "/")
     br.evaluate("localStorage.clear();sessionStorage.clear()")
-    br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
-    br.evaluate("localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
+    br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+    br.evaluate("localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
                 % (json.dumps(VER), json.dumps(pick)))
     br.reload()
     br.sleep(1.3)
@@ -162,7 +162,7 @@ else:
 
             # 3 · the crossing through the black
             walk_with(br, base, big_member)
-            br.evaluate("localStorage.setItem('tlv-tempo','1.35')")
+            br.evaluate("localStorage.setItem('ex-tempo','1.35')")
             br.reload()
             br.sleep(1.3)
             br.click("#exh-cap .ex-series", settle=0.15)

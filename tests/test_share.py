@@ -101,7 +101,7 @@ def enter(br, base, tempo="0.2"):
     br.navigate(base + "/")
     br.clear_storage()
     br.evaluate("sessionStorage.clear()")
-    br.evaluate(f"localStorage.setItem('tlv-tempo','{tempo}')")
+    br.evaluate(f"localStorage.setItem('ex-tempo','{tempo}')")
     br.reload()
     br.sleep(1.0)
     br.click(".exd-window:nth-child(1)", settle=0.1)
@@ -118,7 +118,7 @@ else:
             br.inject(CLIP_STUB)
             br.navigate(base + "/?x=1")
             br.evaluate("localStorage.clear();sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
             br.reload()
             br.sleep(1.0)
             br.click(".exd-window:nth-child(1)", settle=0.1)
@@ -250,8 +250,8 @@ else:
         with Browser(width=1280, height=900) as br:
             br.inject(CLIP_STUB)
             br.navigate(base + "/")
-            br.evaluate(f"localStorage.setItem('tlv.exhibition', {WALK})")
-            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.evaluate(f"localStorage.setItem('ex.exhibition', {WALK})")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
             br.reload()
             br.sleep(1.2)
             shown_ids = json.loads(br.evaluate(FRAME_IDS) or "[]")
@@ -260,7 +260,7 @@ else:
             br.sleep(1.0)
             after_ids = json.loads(br.evaluate(FRAME_IDS) or "[]")
             walk_kept = json.loads(br.evaluate(
-                "localStorage.getItem('tlv.exhibition')") or "{}")
+                "localStorage.getItem('ex.exhibition')") or "{}")
             check(BROWSER_ROWS[6],
                   after_ids == shown_ids and br.evaluate(IN_VIEW) == jump_to
                   and walk_kept.get("pick") == PICK,
@@ -272,7 +272,7 @@ else:
             br.sleep(1.2)
             re_ids = json.loads(br.evaluate(FRAME_IDS) or "[]")
             walk_new = json.loads(br.evaluate(
-                "localStorage.getItem('tlv.exhibition')") or "{}")
+                "localStorage.getItem('ex.exhibition')") or "{}")
             check(BROWSER_ROWS[7],
                   re_ids and re_ids[0] == unshown and len(re_ids) == 10
                   and walk_new.get("pick") == unshown and walk_new.get("shown") == 10,
@@ -309,11 +309,11 @@ else:
         with Browser(width=1280, height=900) as br:
             br.inject(CLIP_STUB)
             br.navigate(base + "/")
-            br.evaluate(f"localStorage.setItem('tlv.exhibition', {WALK})")
+            br.evaluate(f"localStorage.setItem('ex.exhibition', {WALK})")
             br.navigate(base + "/?reset#w-" + target)
             br.sleep(1.4)
             walk_now = json.loads(br.evaluate(
-                "localStorage.getItem('tlv.exhibition')") or "{}")
+                "localStorage.getItem('ex.exhibition')") or "{}")
             check(BROWSER_ROWS[10],
                   not br.evaluate(AT_DOOR)
                   and br.evaluate(IN_VIEW) == target

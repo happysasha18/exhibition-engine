@@ -66,7 +66,7 @@ else:
             br.pretend("pl-PL", 15)                    # an outsider tongue
             br.navigate(base + "/")
             br.evaluate("localStorage.clear();sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
             br.reload()
             br.sleep(1.6)
             geo = br.evaluate(
@@ -96,7 +96,7 @@ else:
             br.pretend("ru-RU", 15)
             br.navigate(base + "/")
             br.evaluate("localStorage.clear();sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
             br.reload()
             br.sleep(1.2)
             br.click("#exd-lang .exl-cur", settle=0.4)
@@ -107,14 +107,14 @@ else:
             br.sleep(1.2)
             he_kept = (br.evaluate(ASK) == "מה קרוב אליך עכשיו"
                        and br.evaluate(DIR) == "rtl"
-                       and br.evaluate("localStorage.getItem('tlv.lang')") == "he")
+                       and br.evaluate("localStorage.getItem('ex.lang')") == "he")
             check(BROWSER_ROWS[1], he_now and he_kept,
                   f"at_once={he_now} kept={he_kept} ask={br.evaluate(ASK)!r}")
 
             # 3 · reset returns the browser's tongue
             br.navigate(base + "/?reset")
             br.sleep(1.2)
-            lang_key = br.evaluate("localStorage.getItem('tlv.lang')")
+            lang_key = br.evaluate("localStorage.getItem('ex.lang')")
             check(BROWSER_ROWS[3],
                   lang_key is None and br.evaluate(ASK) == "что ближе сейчас",
                   f"lang_key={lang_key!r} ask={br.evaluate(ASK)!r}")

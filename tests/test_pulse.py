@@ -67,7 +67,7 @@ CLIP_STUB = ("window.__copied=[];if(navigator.clipboard)navigator.clipboard.writ
 def walk_all(br, base):
     br.navigate(base + "/")
     br.evaluate("localStorage.clear();sessionStorage.clear()")
-    br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+    br.evaluate("localStorage.setItem('ex-tempo','0.2')")
     br.reload()
     br.sleep(1.0)
     br.click(".exd-window:nth-child(1)", settle=0.1)
@@ -80,7 +80,7 @@ def walk_all(br, base):
     br.sleep(0.5)
     br.click("#ex-return", settle=0.8)
     target = br.evaluate(
-        "JSON.parse(localStorage.getItem('tlv.exhibition')||'{}').pick")
+        "JSON.parse(localStorage.getItem('ex.exhibition')||'{}').pick")
     br.navigate(base + "/#w-" + str(target))
     br.sleep(1.0)
     return target

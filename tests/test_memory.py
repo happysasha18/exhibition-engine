@@ -82,7 +82,7 @@ window.fetch=function(u,o){
   }
   return _f.apply(this,arguments);};})();
 """
-TOKEN = "localStorage.getItem('tlv.visitor')"
+TOKEN = "localStorage.getItem('ex.visitor')"
 
 if not chrome_available():
     for r in BROWSER_ROWS:
@@ -93,7 +93,7 @@ else:
             br.inject(STUB)
             br.navigate(base + "/")
             br.evaluate("localStorage.clear();sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('tlv-tempo','0.2')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
             br.reload()
             br.sleep(1.0)
             br.click(".exd-window:nth-child(1)", settle=0.1)

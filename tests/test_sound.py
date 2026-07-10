@@ -66,8 +66,8 @@ check("EX-SOUND player is OFF by default (no sound_url in config)",
 js_src = (ROOT / "engine" / "assets" / "exhibition.js").read_text(encoding="utf-8")
 
 # 3 · SND_KEY declared and wiped on ?reset
-check("EX-SOUND SND_KEY ('tlv.sound') declared and cleared on ?reset",
-      'const SND_KEY = "tlv.sound"' in js_src
+check("EX-SOUND SND_KEY ('ex.sound') declared and cleared on ?reset",
+      'const SND_KEY = "ex.sound"' in js_src
       and "localStorage.removeItem(SND_KEY)" in js_src,
       "SND_KEY declaration or reset removal missing from exhibition.js")
 
@@ -106,7 +106,7 @@ else:
     with serve(TMP) as base, Browser(width=1280, height=900) as br:
         br.navigate(base + "/")
         br.clear_storage()
-        br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+        br.evaluate("localStorage.setItem('ex-tempo','0.5')")
         br.reload()
         br.sleep(1.0)
         n_sound = br.evaluate("document.querySelectorAll('#ex-sound').length")
@@ -117,7 +117,7 @@ else:
         with Browser(width=1280, height=900) as br:
             br.navigate(base2 + "/")
             br.clear_storage()
-            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
             br.reload()
             br.sleep(1.0)
             state = br.evaluate(
@@ -133,7 +133,7 @@ else:
         with Browser(width=1280, height=900) as br:
             br.navigate(base2 + "/")
             br.clear_storage()
-            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
             br.reload()
             br.sleep(1.0)
             init = br.evaluate(
@@ -142,7 +142,7 @@ else:
             br.click(".exsnd-btn", settle=0.3)
             after = br.evaluate(
                 "(()=>{const btn=document.querySelector('.exsnd-btn');"
-                "const pref=JSON.parse(localStorage.getItem('tlv.sound')||'null');"
+                "const pref=JSON.parse(localStorage.getItem('ex.sound')||'null');"
                 "return {pressed: btn ? btn.getAttribute('aria-pressed') : null,"
                 "pref_on: !!(pref&&pref.on)};})()")
             check(BROWSER_ROWS[2],
@@ -155,12 +155,12 @@ else:
         with Browser(width=1280, height=900) as br:
             br.navigate(base2 + "/")
             br.clear_storage()
-            br.evaluate("localStorage.setItem('tlv-tempo','0.5')")
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
             # Pre-plant a sound pref in storage
-            br.evaluate("localStorage.setItem('tlv.sound',JSON.stringify({v:'1',on:true,vol:0.5}))")
+            br.evaluate("localStorage.setItem('ex.sound',JSON.stringify({v:'1',on:true,vol:0.5}))")
             br.navigate(base2 + "/?reset")
             br.sleep(0.8)
-            pref = br.evaluate("localStorage.getItem('tlv.sound')")
+            pref = br.evaluate("localStorage.getItem('ex.sound')")
             check(BROWSER_ROWS[3], pref is None,
                   f"sound pref still in storage after ?reset: {pref!r}")
 

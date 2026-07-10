@@ -94,11 +94,11 @@ def setup_walk(br, quiz_work_pick=None, tempo="0.3"):
                     else str(quiz_works[0]["id"]) if quiz_works else None)
     pick = quiz_work_pick if quiz_work_pick is not None else default_pick
     br.evaluate("localStorage.clear(); sessionStorage.clear()")
-    br.evaluate(f"localStorage.setItem('tlv-tempo', {json.dumps(tempo)})")
-    br.evaluate(f"localStorage.setItem('tlv.visitor', {json.dumps(TOKEN_ARM_ON)})")
+    br.evaluate(f"localStorage.setItem('ex-tempo', {json.dumps(tempo)})")
+    br.evaluate(f"localStorage.setItem('ex.visitor', {json.dumps(TOKEN_ARM_ON)})")
     if pick:
         br.evaluate(
-            "localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
+            "localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
             % (json.dumps(EX_VER), json.dumps(str(pick)))
         )
 
@@ -147,10 +147,10 @@ def open_side_room(br, series=None, member_pick=None):
     pick_id = member_pick if member_pick is not None else s["members"][0]
     # set the walk with the series member as the pick so the series pill appears
     br.evaluate("localStorage.clear(); sessionStorage.clear()")
-    br.evaluate("localStorage.setItem('tlv-tempo', '0.3')")
-    br.evaluate(f"localStorage.setItem('tlv.visitor', {json.dumps(TOKEN_ARM_ON)})")
+    br.evaluate("localStorage.setItem('ex-tempo', '0.3')")
+    br.evaluate(f"localStorage.setItem('ex.visitor', {json.dumps(TOKEN_ARM_ON)})")
     br.evaluate(
-        "localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
+        "localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
         % (json.dumps(EX_VER), json.dumps(str(pick_id)))
     )
     br.reload()
@@ -336,24 +336,24 @@ else:
             else:
                 check(BROWSER_ROWS[4], False, "side room did not open")
 
-        # ---- CMP6: card is viewport-honest (DEFAULT tempo — do not set tlv-tempo) ----
+        # ---- CMP6: card is viewport-honest (DEFAULT tempo — do not set ex-tempo) ----
         with Browser(width=1280, height=900) as br:
             br.navigate(base + "/")
             # No tempo set for this row (default); pick = second quiz work so the chip appears
             _cmp6_pick = (str(quiz_works[1]["id"]) if len(quiz_works) > 1
                           else str(quiz_works[0]["id"]) if quiz_works else None)
             br.evaluate("localStorage.clear(); sessionStorage.clear()")
-            br.evaluate(f"localStorage.setItem('tlv.visitor', {json.dumps(TOKEN_ARM_ON)})")
+            br.evaluate(f"localStorage.setItem('ex.visitor', {json.dumps(TOKEN_ARM_ON)})")
             if _cmp6_pick:
                 br.evaluate(
-                    "localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
+                    "localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
                     % (json.dumps(EX_VER), json.dumps(str(_cmp6_pick)))
                 )
             br.reload()
             br.sleep(1.5)
             card_open = open_quiz_card(br)
             # record stamp before any viewport change
-            stamp_before = br.evaluate("localStorage.getItem('tlv.quizshown')")
+            stamp_before = br.evaluate("localStorage.getItem('ex.quizshown')")
             # change viewport while card is open
             br.set_viewport(900, 1280)
             br.sleep(0.4)
@@ -367,7 +367,7 @@ else:
             vp_cx = br.evaluate("innerWidth/2")
             vp_cy = br.evaluate("innerHeight/2")
             opts_count = br.evaluate("document.querySelectorAll('.quiz-opt').length")
-            stamp_after_rotation = br.evaluate("localStorage.getItem('tlv.quizshown')")
+            stamp_after_rotation = br.evaluate("localStorage.getItem('ex.quizshown')")
             centred_x = abs((inner_rect or {}).get("cx", 9999) - (vp_cx or 0)) <= EPSILON if inner_rect else False
             centred_y = abs((inner_rect or {}).get("cy", 9999) - (vp_cy or 0)) <= EPSILON if inner_rect else False
             stamp_unchanged = stamp_before == stamp_after_rotation
@@ -472,10 +472,10 @@ else:
             s = ANY_SERIES
             pick_id = s["members"][0]
             br.evaluate("localStorage.clear(); sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('tlv-tempo', '0.3')")
-            br.evaluate(f"localStorage.setItem('tlv.visitor', {json.dumps(TOKEN_ARM_ON)})")
+            br.evaluate("localStorage.setItem('ex-tempo', '0.3')")
+            br.evaluate(f"localStorage.setItem('ex.visitor', {json.dumps(TOKEN_ARM_ON)})")
             br.evaluate(
-                "localStorage.setItem('tlv.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
+                "localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
                 % (json.dumps(EX_VER), json.dumps(str(pick_id)))
             )
             br.reload()
@@ -553,7 +553,7 @@ else:
         with Browser(width=1280, height=900) as br:
             br.navigate(base + "/")
             br.evaluate("localStorage.clear(); sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('tlv-tempo', '0.2')")
+            br.evaluate("localStorage.setItem('ex-tempo', '0.2')")
             br.reload()
             br.sleep(1.0)
             br.click(".exd-window:nth-child(1)", settle=0.1)
