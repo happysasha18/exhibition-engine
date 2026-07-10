@@ -14,20 +14,24 @@ prior bake was EMPTY. The instance lives in its own private repo; this repo is b
 go PUBLIC.
 
 **LANES (in order):**
-1. **Publish pass (before the visibility flip — the owner's word flips it):** scrub the working
-   docs of personal name and machine paths; make `example/site.json` a synthetic example (the real
-   identity lives in the instance repo); rewrite `README.md` per the publish gate; neutralize the
-   personal comments in `build.py` / `exhibition.js`. License is the owner's call.
-   _Status: in progress (this pass)._
-2. **Reverse the code flow:** point the instance's tests at the engine bake, retire the instance's
-   own legacy `build_site.py`.
-3. **Own-client lane (not blocking):** align `tests/quiz_util.py` `arm_of()` with the client's own
-   `quizHash` (they currently disagree — the util keeps an older avalanche formula while the client
-   draws the arm with a Knuth-finalizer hash; same token, different arm) and add a JS↔Python parity
-   test; generalize residual instance-prefixed localStorage keys in the client; catch the generic
-   client up to the instance client (header FOUC guard, single-answer worker model).
-4. **`story_notes.json` staleness watch:** the instance's story-notes file is a mapped snapshot of
-   authored labels; if the labels change, regenerate it (the byte-proof catches drift in `_worker.js`).
+1. **Publish pass — DONE 2026-07-10 (docs scrubbed, synthetic example, README per the publish gate,
+   MIT license added on the owner's default call).** The visibility flip itself waits on the owner's
+   word; the plan on his word is a fresh public history (one starting commit from the current tree;
+   the full history stays private).
+2. **Reverse the code flow — DONE 2026-07-10 (in the instance repo):** its tests bake via this
+   engine through one shared helper; its legacy `build_site.py` is retired.
+3. **Own-client lane — DONE 2026-07-10:** `EXQuiz._hash` exported, the test util mirrors the
+   client's exact hash, a JS↔Python parity suite guards the seam (suite is now 26); residual
+   instance prefixes generalized to `ex.*`; the FOUC guard and the single-answer judge were verified
+   already present (only a stale comment corrected).
+4. **`story_notes.json` staleness watch (unchanged):** the instance's story-notes file is a mapped
+   snapshot of authored labels; if the labels change, regenerate it (the byte-proof catches drift
+   in `_worker.js`).
+5. **NEW — `tests/make_synthetic.py` is STALE and destructive (found 2026-07-10):** running it
+   emits a smaller `greetings.json` (drops `quiz_ask`/`gift_*`/`enjoy`) and unexpectedly rewrites
+   `engine/harness/headless.py` and a `tokens.css`; it already clobbered an uncommitted harness fix
+   once. Owner row: bring the generator back in sync with the fixture it claims to generate, and
+   stop it writing outside the fixture tree.
 
 ## The product (the vision the spec grows from)
 

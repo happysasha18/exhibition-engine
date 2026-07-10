@@ -220,6 +220,15 @@ class Browser:
         self.ws = self._connect_page()
         self._cmd("Page.enable")
         self._cmd("Runtime.enable")
+        # The gift ceremony clicks a real <a download>; without this every suite run
+        # dropped real files into the user's ~/Downloads. Route downloads into the
+        # throwaway profile dir instead - close() rmtree's it.
+        try:
+            self._cmd("Browser.setDownloadBehavior",
+                      behavior="allow", downloadPath=self._profile)
+        except RuntimeError:
+            self._cmd("Page.setDownloadBehavior",
+                      behavior="allow", downloadPath=self._profile)
 
     # -- lifecycle
     def _free_port(self):
