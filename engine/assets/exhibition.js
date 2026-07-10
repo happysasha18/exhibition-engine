@@ -41,6 +41,27 @@
   // ---- EX-PULSE (INV-41): the walk counts its beats for the archive's owner ----
   // Rides the ONE sanctioned wire (the baked GA tag); no tag ⇒ total silence; an event
   // carries at most the plain name + the work's public id — never a vector (INV-1).
+
+  // EX-QUIZ-FLOW (INV-69): the session-scoped running-max stage for the quiz funnel.
+  // Restored from sessionStorage at boot so a reload never lowers what was reached.
+  const QUIZ_STAGE_KEY = "tlv.quizstage";
+  let quizStage = null;
+  try {
+    const _qs = sessionStorage.getItem(QUIZ_STAGE_KEY);
+    if (_qs) quizStage = _qs;
+  } catch (e) {}
+  const QUIZ_STAGE_RANK = { shown: 1, opened: 2, won: 3, lost: 3, gift: 4 };
+  function quizStageUp(name) {
+    // Raise only — never lower; "gift" accepted only when current stage is "won" (INV-69).
+    if (name === "gift" && quizStage !== "won") return;
+    const next = QUIZ_STAGE_RANK[name];
+    if (!next) return;
+    const cur = QUIZ_STAGE_RANK[quizStage] || 0;
+    if (next <= cur) return;
+    quizStage = name;
+    try { sessionStorage.setItem(QUIZ_STAGE_KEY, name); } catch (e) {}
+  }
+
   function pulse(beat, workId) {
     try {
       if (typeof window.gtag !== "function") return;
@@ -49,6 +70,16 @@
       // unfold/exit beats as a dimension — no sixth beat is added (INV-41 stands)
       if (storyVariant && (beat === "walk_unfold" || beat === "walk_exit")) {
         params.story_variant = storyVariant;
+      }
+      // EX-QUIZ-AB (INV-62): the arm rides the SAME two beats as a dimension — only when the flag
+      // is on; control/flag-off never carry the key (the payload stays byte-for-byte today's)
+      if (quizArm && (beat === "walk_unfold" || beat === "walk_exit")) {
+        params.quiz_arm = quizArm;
+      }
+      // EX-QUIZ-FLOW (INV-69): the quiz stage rides the SAME two beats as a dimension — only when
+      // the arm is on and a stage has been reached; never a sixth beat (INV-41 stands)
+      if (quizStage && (beat === "walk_unfold" || beat === "walk_exit")) {
+        params.quiz_stage = quizStage;
       }
       window.gtag("event", beat, params);
     } catch (e) {}
@@ -69,6 +100,7 @@
     try { localStorage.removeItem(SEENC_KEY); } catch (e) {}
     try { localStorage.removeItem(LANG_KEY); } catch (e) {}     // the browser's tongue returns
     try { localStorage.removeItem(SND_KEY); } catch (e) {}      // the museum forgets the sound choice (EX-SOUND)
+    try { sessionStorage.removeItem(QUIZ_STAGE_KEY); } catch (e) {}   // EX-QUIZ-FLOW (INV-69): the stage wipes with the walk
     const q = new URLSearchParams(location.search);
     q.delete("reset");
     const rest = q.toString();
@@ -336,6 +368,9 @@
     quizChosenId = eligible[quizHash(QUIZ_TOKEN + ":once") % eligible.length];
     // stamp happens when the card is OPENED (quizCardOpen), not on pick: the pick is a
     // session-stable internal choice; the cooldown represents a card actually shown to the visitor.
+    // EX-QUIZ-FLOW (INV-69): the chip rendering is the "shown" stage — only under flag+on-arm,
+    // which is exactly the quizShows condition; control/flag-off never reach this branch (quizArm guard)
+    if (quizArm === "on") quizStageUp("shown");
   }
   // a work surfaces its chip only when the flag is on, the arm is on, and this is the chosen work
   const quizShows = (w) => QUIZ_ON && quizArm === "on" && !!(w && w.quiz) && w.id === quizChosenId;
@@ -1047,7 +1082,9 @@
     im.onerror = () => rawDownload(src, name);
     im.src = src;
   }
-  function openGift(src, name, preMarked) {
+  // onYes (optional): called when the visitor says yes, BEFORE closeGift — used by the quiz-win path
+  // to stamp the "gift" stage (EX-QUIZ-FLOW / INV-69) WITHOUT touching the shared ceremony behaviour.
+  function openGift(src, name, preMarked, onYes) {
     const T = (greetLang() || { t: {} }).t;
     giftCard.querySelector(".gift-thumb").src = src;
     giftCard.querySelector(".gift-ask").textContent = T.gift_ask || "like it?";
@@ -1056,7 +1093,7 @@
     giftCard.querySelector(".gift-no").textContent = T.gift_no || "not now";
     giftCard.querySelector(".gift-line").textContent = enjoyLine();   // «enjoy · example.com»
     giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "";
-    yes.onclick = () => { giftDownload(src, name, preMarked); closeGift(); };
+    yes.onclick = () => { giftDownload(src, name, preMarked); if (onYes) onYes(); closeGift(); };
     giftCard.hidden = false; giftOpen = true;
     requestAnimationFrame(() => giftCard.classList.add("show"));       // EX-ARRIVE breath
   }
@@ -1177,6 +1214,8 @@
 
     // stamp the cooldown: this is "a show that asked" — suppress the chip for QUIZ_COOLDOWN_H hours
     try { localStorage.setItem(QUIZ_SHOWN_KEY, String(Date.now())); } catch (e) {}
+    // EX-QUIZ-FLOW (INV-69): the card opening advances the stage to "opened"
+    quizStageUp("opened");
     quizCard.hidden = false;
     quizOpen = true;
     requestAnimationFrame(() => { quizCard.classList.add("show"); });
@@ -1226,6 +1265,8 @@
       requestAnimationFrame(() => out.classList.add("show"));
       // remember the miss so the work is excluded from eligible in future walks (INV-65 / INV-66)
       try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: false })); } catch (e) {}
+      // EX-QUIZ-FLOW (INV-69): the tap was judged — advance the stage to "lost"
+      quizStageUp("lost");
       // fade the card out after the visitor reads the line, then call quizCardClose
       clearTimeout(quizCloseT);
       quizCloseT = setTimeout(() => {
@@ -1249,10 +1290,14 @@
         requestAnimationFrame(() => out.classList.add("show"));
         // remember the win so this work never re-asks (INV-65 / INV-66 answered-memory)
         try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: true, prize: data.prize })); } catch (e) {}
+        // EX-QUIZ-FLOW (INV-69): the tap was judged correct — advance the stage to "won"
+        quizStageUp("won");
         clearTimeout(quizCloseT);
         quizCloseT = setTimeout(() => {
           quizCardClose();
-          openGift("/" + data.prize, PRIZE_DL, true);
+          // EX-QUIZ-FLOW (INV-69): pass onYes so the gift stage stamps ONLY on the quiz prize's yes
+          openGift("/" + data.prize, PRIZE_DL, true,
+                   () => { quizStageUp("gift"); });
         }, Math.round(700 * TEMPO));
       } else {
         missAndFade();
