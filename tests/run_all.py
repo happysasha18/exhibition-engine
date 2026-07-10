@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The one gate command — run every suite in parallel (E3).
 
-Adapted from ~/tlvphoto/tests/run_all.py for exhibition-engine.
+Adapted from the reference instance's run_all.py for exhibition-engine.
 Each suite is isolated (its own baked TMP, its own http port, its own headless Chrome).
 
 Usage: python tests/run_all.py [--jobs 4]

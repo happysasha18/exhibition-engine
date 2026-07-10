@@ -27,7 +27,7 @@ import engine_build as build_site  # noqa: E402
 
 SITE_URL = "https://synth.example.com"
 NODE = "/opt/homebrew/bin/node"
-SCRATCHPAD = Path("/private/tmp/claude-501/-Users-sashaabramovich/ccd6a32f-f1a7-4579-8406-a8a5e0c70f79/scratchpad")
+SCRATCHPAD = Path(tempfile.mkdtemp(prefix="engine_dead_"))
 
 results = []
 

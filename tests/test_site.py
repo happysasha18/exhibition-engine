@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Static-bake + SEO surface tests — engine edition (E3).
 
-Adapted from ~/tlvphoto/tests/test_site.py for the exhibition-engine:
+Adapted from the reference instance's test_site.py for the exhibition-engine:
   · imports/paths changed to use tests/engine_build.py shim
   · SITE_URL is the synthetic URL
   · EX-COPY copyright check parameterised from engine_build.SITE_CONFIG
@@ -242,8 +242,8 @@ check("caption stays out of visible body (caption_visible:false)", cap_visible =
 
 # ---------------------------------------------------------------- CS-6 backpointer (R1 promise)
 
-# every work page links BACK to the exhibition root — the room↔page seam of CS-6 (its red test was
-# demanded by the 2026-07-05 inbox wish: a shipped promise burns in a test, not in Alexander's eyes)
+# every work page links BACK to the exhibition root — the room↔page seam of CS-6 (a shipped
+# promise should burn in a test, not be caught by eye)
 no_backptr = sum(1 for f in work_files
                  if 'href="/"' not in f.read_text(encoding="utf-8"))
 check("CS-6 every work page links back to the exhibition root `/`", no_backptr == 0,
@@ -299,8 +299,8 @@ check("INV-18 every referenced image exists in bundle", not missing_assets,
       f"missing={missing_assets[:3]}")
 check("CS-7 /api reserved namespace exists", (TMP / "api").is_dir())
 
-# the browser-tab face — the icon set ships and every page's head points at it (gate find,
-# Alexander 2026-07-05: the tab showed the browser's blank default)
+# the browser-tab face — the icon set ships and every page's head points at it (regression guard:
+# without it the tab showed the browser's blank default)
 fav_missing = [n for n in ("favicon.svg", "favicon.png", "apple-touch-icon.png")
                if not (TMP / n).exists()]
 icon_pages = list(parsed.values()) + [parse(TMP / "index.html")]

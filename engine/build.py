@@ -318,8 +318,8 @@ def render_exhibition(items, captions, slugs, site_url, display_max=None):
              "creator": {"@type": "Person", "name": CREATOR}},
         ],
     }
-    # The FOUC guard: with JS on, the crawler's static index must NEVER paint (Alexander saw all 121
-    # works flash for seconds — evening review 2026-07-05). The inline script marks <html> as js-alive
+    # The FOUC guard: with JS on, the crawler's static index must NEVER paint (without it every
+    # work flashes on screen for seconds before the walk takes over). The inline script marks <html> as js-alive
     # BEFORE <body> parses, so CSS hides the static face pre-paint; if the walk hasn't come alive
     # within 2.5s (broken/missing JS or data), the mark is removed and the static face returns —
     # progressive enhancement keeps a bounded worst case, never a blank page (INV-25/CS-8).

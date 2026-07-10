@@ -1,7 +1,7 @@
 /* exhibition.js — the adaptive exhibition (EX): the DOOR → the GALLERY (the Room's museum hang).
-   Norm for look & feel: gallery/door.html + gallery/room.html — Alexander's approved prototypes
-   (2026-07-06: "прототип — норма"). The laws: a cold arrival meets the door — his photographs and
-   the quiet ask «что ближе сейчас» (EX-DOOR); the pick seeds the hang — one work per viewport,
+   Norm for look & feel: gallery/door.html + gallery/room.html — the approved look-and-feel prototypes.
+   The laws: a cold arrival meets the door — a small pool of works and
+   the quiet ask "what feels closest now" (EX-DOOR); the pick seeds the hang — one work per viewport,
    caption in the margin, breathing ground (EX-HANG); the walk ENDS (INV-30) and always loops back
    to the threshold (INV-31). Every knob reads from config.json → exhibition (INV-28).
    Kinship math runs in the browser on baked vectors ($0, no server). No axis name, score or
