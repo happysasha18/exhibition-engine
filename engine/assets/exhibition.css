@@ -34,11 +34,16 @@ body.ex-live #ex-loading{ display:none; }
    one-frame transition. On TOUCH no JS writes the position; CSS scroll-snap docks the walk (below,
    scoped to hover:none), so a swipe never flies through, never rests between works, never drifts. */
 
-/* the threshold locks the page behind it (EX-DOOR-2f) — nothing scrolls under the veil,
-   the walk holds its place for Back; the ROOT is the scroller, so the root takes the lock
-   (clip where supported forbids even programmatic scroll; hidden is the fallback) */
-html:has(> body.ex-door), html:has(> body.ex-side){ overflow:hidden; overflow:clip; }
-body.ex-door, body.ex-side{ overflow:hidden; }
+/* EX-CHROME (INV-70): every standing face locks the walk by resting input + a snap-back guard
+   (exhibition.js), not by cutting the root overflow. EX-DOOR-2f's promise — nothing scrolls behind
+   the veil — now discharges through that rest + guard. The overflow cut is RETIRED as a locking
+   device: it was exactly what told the browser «this page stands still» and handed the browser its
+   own chrome (address bar / tabs) back on rotation, so a face read as a different page shape. What
+   stays is only the scrollbar's LOOK: the gutter is reserved permanently so hiding the bar while a
+   face stands never reflows the page, and the bar itself sleeps for a face's stay (gutter-stable). */
+html{ scrollbar-gutter:stable; }
+html.ex-face{ scrollbar-width:none; }
+html.ex-face::-webkit-scrollbar{ display:none; }
 
 /* ================= THE DOOR (door.html verbatim language) ================= */
 #ex-door{ position:fixed; inset:0; z-index:100; display:flex; flex-direction:column;

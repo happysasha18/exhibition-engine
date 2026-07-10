@@ -55,6 +55,8 @@ TOKEN_ARM_ON = find_token_arm_on() if quiz_works else None
 SERIES = EXDATA.get("series", [])
 # polaroid series: variant != "lane"
 POLAROID_SERIES = next((s for s in SERIES if s.get("variant") != "lane"), None)
+# lane series: the horizontal polaroid lane (its own native overflow-x scroll — EX-CHROME CH6)
+LANE_SERIES = next((s for s in SERIES if s.get("variant") == "lane"), None)
 ANY_SERIES = SERIES[0] if SERIES else None
 
 # ---------------------------------------------------------------- snippets shared with test_share.py / test_quiz_pick.py
@@ -78,6 +80,16 @@ BROWSER_ROWS = [
 
 # ε for centring asserts (px)
 EPSILON = 30
+
+# EX-CHROME / INV-70 — one page shape for the browser (six CH rows, matrix order)
+CH_ROWS = [
+    "CH1 EX-CHROME the page root stays scrollable under every face",
+    "CH2 EX-CHROME the standing door rests the walk's input",
+    "CH3 EX-CHROME the guard snaps back foreign scroll",
+    "CH4 EX-CHROME the house's own writes pass the guard",
+    "CH5 EX-CHROME the scrollbar hides gutter-stable",
+    "CH6 EX-CHROME the face's own scroll survives the rest",
+]
 
 
 def setup_walk(br, quiz_work_pick=None, tempo="0.3"):
@@ -176,12 +188,41 @@ def frame_centre_offset(br, work_id):
     )
 
 
+def reach_reopened_door(br):
+    """From a fresh walk, scroll to the finale and click the exit — the door RE-OPENS over the
+    still-built walk (EX-CHROME: a standing face like the others). True if body.ex-door stands."""
+    setup_walk(br)
+    br.reload()
+    br.sleep(1.2)
+    br.evaluate("document.getElementById('exh-fin')?.scrollIntoView({behavior:'instant'})")
+    br.sleep(0.5)
+    if not br.evaluate("!!document.getElementById('ex-return')"):
+        return False
+    br.click("#ex-return", settle=1.2)
+    return br.evaluate("document.body.classList.contains('ex-door')")
+
+
+def root_overflow_vertical(br):
+    """The LOCKING axis: computed overflow-y of html and body (the retired cut locked scroll here;
+    body's baseline overflow-x:hidden is a horizontal-scroll guard, not the lock, so it is skipped)."""
+    return br.evaluate(
+        "(()=>{const h=getComputedStyle(document.documentElement),"
+        "b=getComputedStyle(document.body);"
+        "return {html_y:h.overflowY, body_y:b.overflowY};})()"
+    )
+
+
+def overflow_free(ov):
+    return ov and ov.get("html_y") not in ("hidden", "clip") \
+        and ov.get("body_y") not in ("hidden", "clip")
+
+
 if not chrome_available() or QUIZ_WORK_ID is None or TOKEN_ARM_ON is None or ANY_SERIES is None:
     reason = ("chrome absent" if not chrome_available()
               else "no quiz works" if QUIZ_WORK_ID is None
               else "arm-on token not found" if TOKEN_ARM_ON is None
               else "no series in bake")
-    for r in BROWSER_ROWS:
+    for r in BROWSER_ROWS + CH_ROWS:
         skip(r, f"{reason} — browser rows pinned SKIP")
 else:
     with serve(TMP) as base:
@@ -577,6 +618,219 @@ else:
                 fin_covers_centre,
                 f"fin_covers_viewport_centre={fin_covers_centre}",
             )
+
+        # ================= EX-CHROME / INV-70 — one page shape for the browser =================
+
+        # ---- CH1: the page root stays scrollable under EVERY face (no overflow cut) ----
+        faces = {}
+        # cold door — the browser's own moment; still no root overflow cut
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear(); sessionStorage.clear()")
+            br.reload()
+            br.sleep(1.2)
+            faces["cold_door"] = {
+                "stands": br.evaluate("document.body.classList.contains('ex-door')"),
+                "ov": root_overflow_vertical(br)}
+        # re-opened door standing over the built walk — tall doc + held place
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            door_stands = reach_reopened_door(br)
+            ov_door = root_overflow_vertical(br)
+            tall = br.evaluate("document.documentElement.scrollHeight > innerHeight + 100")
+            sy0 = br.evaluate("window.scrollY")
+            br.sleep(0.4)
+            sy1 = br.evaluate("window.scrollY")
+            faces["reopened_door"] = {"stands": door_stands, "ov": ov_door, "tall": tall,
+                                      "held": abs((sy1 or 0) - (sy0 or 0)) <= 2}
+        # side room standing
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            faces["side"] = {"stands": open_side_room(br),
+                             "ov": root_overflow_vertical(br)}
+        # quiz card standing
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            setup_walk(br)
+            br.reload()
+            br.sleep(1.2)
+            faces["quiz"] = {"stands": open_quiz_card(br),
+                             "ov": root_overflow_vertical(br)}
+        # gift card standing
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            setup_walk(br)
+            br.reload()
+            br.sleep(1.2)
+            faces["gift"] = {"stands": open_gift_card(br),
+                             "ov": root_overflow_vertical(br)}
+
+        all_free = all(overflow_free(f["ov"]) for f in faces.values())
+        all_stand = all(f["stands"] for f in faces.values())
+        reopen = faces["reopened_door"]
+        check(
+            CH_ROWS[0],
+            all_stand and all_free and reopen["tall"] and reopen["held"],
+            f"all_stand={all_stand} all_overflow_free={all_free} "
+            f"reopened_tall={reopen['tall']} reopened_held={reopen['held']} :: {faces}",
+        )
+
+        # ---- CH2: the standing (re-opened) door rests the walk's input ----
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            door_stands = reach_reopened_door(br)
+            sy_before = br.evaluate("window.scrollY")
+            # a REAL wheel tick over the door
+            br.wheel(delta_y=600)
+            br.sleep(0.4)
+            sy_wheel = br.evaluate("window.scrollY")
+            # a REAL touch swipe (finger up = advance) — rested behind the veil / guard-corrected
+            br.swipe(-300)
+            br.sleep(0.4)
+            sy_swipe = br.evaluate("window.scrollY")
+            wheel_held = abs((sy_wheel or 0) - (sy_before or 0)) <= 2
+            swipe_held = abs((sy_swipe or 0) - (sy_before or 0)) <= 2
+            # the door's own controls stay live — a window answers a click → the walk opens
+            answered = False
+            if br.evaluate("!!document.querySelector('.exd-window')"):
+                br.click(".exd-window:nth-child(1)", settle=1.4)
+                answered = br.evaluate(
+                    "document.documentElement.classList.contains('ex-walk') && "
+                    "!document.body.classList.contains('ex-door')")
+            check(
+                CH_ROWS[1],
+                door_stands and wheel_held and swipe_held and answered,
+                f"door_stands={door_stands} scrollY base={sy_before} "
+                f"wheel={sy_wheel}(held={wheel_held}) swipe={sy_swipe}(held={swipe_held}) "
+                f"window_answered={answered}",
+            )
+
+        # ---- CH3: the guard snaps back foreign scroll (a dragged scrollbar stand-in) ----
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            setup_walk(br)
+            br.reload()
+            br.sleep(1.2)
+            card_open = open_quiz_card(br)          # a face stands over a scrolled walk
+            held = br.evaluate("window.scrollY") or 0
+            # a scroll the house did NOT write (synthetic scrollTo standing in for a scrollbar drag)
+            br.evaluate("window.scrollTo(0, %d)" % (held + 450))
+            corrected = False
+            snapped_y = None
+            for _ in range(20):                     # poll ≤ ~1s for the correction
+                br.sleep(0.05)
+                snapped_y = br.evaluate("window.scrollY") or 0
+                if abs(snapped_y - held) <= 2:
+                    corrected = True
+                    break
+            check(
+                CH_ROWS[2],
+                card_open and corrected,
+                f"card_open={card_open} held={held} after_foreign_scroll→{snapped_y} "
+                f"corrected={corrected}",
+            )
+
+        # ---- CH4: the house's OWN writes pass the guard (ceremony centre + Back/leave re-centre) ----
+        # Part A — the door ceremony lands the picked work centred (the guard must not fight the glide).
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear(); sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex-tempo', '0.2')")
+            br.reload()
+            br.sleep(1.0)
+            br.click(".exd-window:nth-child(1)", settle=1.4)
+            first_id = br.evaluate(
+                "(document.querySelectorAll('.exh-frame')[0]||{dataset:{}}).dataset.id")
+            ceremony_off = frame_centre_offset(br, first_id) if first_id else 9999
+        # Part B — a face over a DEEP frame leaves into a fresh-measured room after a rotation:
+        # closeGift → recentreUnder writes scrollY to the frame's NEW centre; the guard, which froze
+        # guardHold at the pre-rotation place, must NOT snap that house write back (mirrors CMP4).
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            setup_walk(br)
+            br.reload()
+            br.sleep(1.2)
+            br.evaluate(
+                "(()=>{const f=document.querySelectorAll('.exh-frame')[4];"
+                "if(f)f.scrollIntoView({behavior:'instant'});})()")
+            br.sleep(0.8)
+            deep_id = br.evaluate(
+                "(document.querySelectorAll('.exh-frame')[4]||{dataset:{}}).dataset.id")
+            br.evaluate(
+                "document.querySelectorAll('.exh-frame img.work')[4]"
+                ".dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))")
+            br.sleep(0.6)
+            gift_up = br.evaluate("document.querySelector('#ex-gift-card')?.classList.contains('show')")
+            br.set_viewport(900, 1280)
+            br.sleep(0.4)
+            br.key("Escape")
+            br.sleep(0.15)
+            leave_off_015 = frame_centre_offset(br, deep_id) if deep_id else 9999
+            br.sleep(0.6)
+            leave_off_075 = frame_centre_offset(br, deep_id) if deep_id else 9999
+            settled = abs(leave_off_075 - leave_off_015) <= 2  # the guard did not drag it afterward
+        check(
+            CH_ROWS[3],
+            first_id and ceremony_off <= EPSILON
+            and gift_up and leave_off_075 <= EPSILON and settled,
+            f"ceremony_first={first_id} centred_off={ceremony_off:.1f} gift_up={gift_up} "
+            f"deep={deep_id} leave_off @+.15s={leave_off_015:.1f} @+.75s={leave_off_075:.1f} "
+            f"settled={settled} (want≤{EPSILON})",
+        )
+
+        # ---- CH5: the scrollbar hides gutter-stable (client width identical open↔close) ----
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            setup_walk(br)
+            br.reload()
+            br.sleep(1.2)
+            cw_before = br.evaluate("document.documentElement.clientWidth")
+            q_open = open_quiz_card(br)
+            cw_open = br.evaluate("document.documentElement.clientWidth")
+            br.key("Escape")
+            br.sleep(0.6)
+            cw_after = br.evaluate("document.documentElement.clientWidth")
+            stable = cw_before == cw_open == cw_after
+            check(
+                CH_ROWS[4],
+                q_open and stable,
+                f"card_open={q_open} clientWidth before={cw_before} open={cw_open} "
+                f"after={cw_after} stable={stable}",
+            )
+
+        # ---- CH6: the face's OWN scroll survives the rest (the side room's lane scrolls native) ----
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            if LANE_SERIES is None:
+                skip(CH_ROWS[5], "no lane series in bake")
+            else:
+                side_open = open_side_room(br, series=LANE_SERIES)
+                lane = br.evaluate(
+                    "(()=>{const l=document.querySelector('.exs-stage.lane');"
+                    "if(!l)return null;const r=l.getBoundingClientRect();"
+                    "return {sl:l.scrollLeft, sw:l.scrollWidth, cw:l.clientWidth,"
+                    "cx:r.left+r.width/2, cy:r.top+r.height/2};})()"
+                )
+                if not lane or lane["sw"] <= lane["cw"] + 4:
+                    skip(CH_ROWS[5],
+                         f"lane not horizontally scrollable (sw={lane and lane['sw']} "
+                         f"cw={lane and lane['cw']}) — carve-out untestable here")
+                else:
+                    # a REAL horizontal wheel over the lane — the carve-out lets it scroll the lane
+                    # natively (the lane is overflow-x:auto; deltaX drives its own scrollLeft)
+                    br._cmd("Input.dispatchMouseEvent", type="mouseWheel",
+                            x=int(lane["cx"]), y=int(lane["cy"]),
+                            deltaX=600, deltaY=0, buttons=0, button="none", clickCount=0)
+                    br.sleep(0.4)
+                    sl_after = br.evaluate(
+                        "document.querySelector('.exs-stage.lane').scrollLeft")
+                    moved = (sl_after or 0) > (lane["sl"] or 0) + 2
+                    check(
+                        CH_ROWS[5],
+                        side_open and moved,
+                        f"side_open={side_open} lane_scrollLeft {lane['sl']}→{sl_after} "
+                        f"moved={moved} (sw={lane['sw']} cw={lane['cw']})",
+                    )
 
 shutil.rmtree(TMP, ignore_errors=True)
 

@@ -569,6 +569,52 @@ a visitor mid-question rotates the phone — the card stays centred and locked, 
 still, and when the card leaves the frame re-centres; a key pressed during a question moves nothing;
 a lifted print re-centres on rotation `[default]`. `EX-COMPOSE` `INV-67`
 
+**One page shape for the browser on every face (the 2026-07-10 rotation find, closed as law).**
+*Regression fences first (each citing the clause it guards): a standing face still owns the input
+(EX-COMPOSE); the last face still leaves into a fresh-measured room (EX-COMPOSE); the side room
+still covers the walk's chrome (EX-COMPOSE); every motion still rides the one tempo (INV-33).* The
+browser owns its own frame — the address bar and tab strip come and go on the browser's own
+judgment, and the house cannot command them. What the house CAN do is show the browser the same page
+on every face, so that judgment falls the same way everywhere:
+- **The walk's document is the page, whatever face stands.** While a face stands over the walk — the
+  re-opened door, the side room, a question card, the gift card — the page beneath stays the walk's
+  own tall document, holding its scroll place. For locking purposes the STANDING DOOR is a face like
+  the others (EX-COMPOSE's list gains it for this law alone): it rests the walk's input the same way,
+  while its own controls — the windows, Back, the language mark — stay live, and the leaving door
+  keeps the rest through its whole ceremony (EX-DOOR-2e). A face locks the visitor out by resting the
+  input (keys, wheel, touch — with EX-COMPOSE's carve-out intact: the face's OWN scroll stays native,
+  the side room's lane included) and by hiding the root scrollbar for its stay WITHOUT moving the
+  page (the gutter keeps its width, so nothing behind a translucent card shifts on open or close);
+  any scroll that lands regardless is snapped back in the same beat, a correction with no designed
+  motion of its own (INV-33 untouched). The guard answers only scroll the house did not write itself
+  — the door ceremony's glide to the picked work, the Back restore, and the face-leave re-centre all
+  pass. This one guard is also what finally discharges EX-COMPOSE's «the room never slides away
+  beneath a standing face» on a desktop, where a dragged scrollbar could slide the walk under a card
+  until now — one mechanism, every face. The overflow cut on the page root is retired as a locking
+  device: it is exactly what told the browser the page stood still and handed the frame back on
+  rotation.
+- **A rotation meets the same page on every face.** Because every face keeps the same tall, in-place
+  document, a rotation at the re-opened door, in the side room, under a card, or bare mid-walk hands
+  the browser the same material — whatever the browser then does with its frame, it does it uniformly
+  across faces, today's and future ones alike. A face built later inherits this law by construction:
+  it locks by resting input, and the page beneath it stays the walk's document.
+- **The cold door is the browser's own moment.** Before the first pick nothing has scrolled and the
+  walk's tall document is not yet built; the browser shows its frame as on any fresh page, and the
+  house does not fight it. The walk's first steps are what tuck the frame away, and from there the
+  law above keeps every face equal.
+
+*Facets:* phone is the law's home case; touch and keyboard — the input rest already covers both
+(EX-COMPOSE, unchanged); empty/error/loading — the cold door is the named empty case above;
+accessibility — the hidden scrollbar lives only while a face stands, and the bare walk keeps the
+browser's own bar `[default]`; performance — the lock swap adds no render work, and the snap-back
+guard listens only while a face stands `[default]`. *Fit:* no arrival, step, or exit changes on any
+journey — the law only steadies the browser's frame around them. *Non-goals:* forcing the browser's
+frame to hide (the browser owns it); a dynamic-viewport (dvh) relayout of the frames (the measured
+stops already absorb the height difference, EX-GLIDE); an installable app shell. *Success measure:*
+one rotation behaviour on every face — rotating at the re-opened door or in the side room leaves the
+browser's tabs exactly as a rotation inside a room does `[default]` (a real-device fact; the owner's
+phone is the gate). `EX-CHROME` `INV-70`
+
 ### The loading breath
 
 Wherever a frame in view holds a work whose pixels have not arrived, the frame — after a short
@@ -922,6 +968,7 @@ the worker.
 | `EX-HANG` | The gallery: one work per viewport, caption in the margin |
 | `EX-ACCENT` | The breathing ground and live accent |
 | `EX-GLIDE` | One input → one centered frame — sine in-out, no drift; desktop animator, touch snap |
+| `EX-CHROME` | One page shape for the browser on every face: the root overflow cut is retired as a lock; every standing face (the re-opened door included) rests input + hides the scrollbar gutter-stable, with a snap-back guard correcting any scroll the house did not write |
 | `EX-SHARE-BTN` | The floating share button (fixed chrome): copies the in-view work's room permalink, never navigates |
 | `EX-SHARE-IN` | The permalink arrival: `#w-<id>` as a handed-over pick |
 | `EX-SHARE` | The share feature as a whole |
@@ -1016,6 +1063,7 @@ the worker.
 | `INV-67` | Faces-meet composition law: a standing face (quiz card, gift card, side room) owns the walk's input; the last face leaving discharges an instant re-centre to the live viewport; the card is viewport-honest; the closing screen is a stop |
 | `INV-68` | Dead model account: a non-429 4xx flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
 | `INV-69` | The quiz funnel stage (`quiz_stage`: shown → opened → won\|lost → gift) is session-scoped and runs monotonically upward — it never lowers; "gift" advances only from "won"; the stage rides `walk_unfold`/`walk_exit` as a dimension alongside the arm (no sixth beat, INV-41 stands); the stage wipes with the walk (?reset); control and flag-off visitors carry no stage |
+| `INV-70` | One page shape for the browser on every face: every standing face (the re-opened door, side room, question card, gift card) locks the walk by resting input plus a snap-back guard that corrects any scroll the house did not write (the ceremony glide, Back restore, and face-leave re-centre all pass), while the root scrollbar hides gutter-stable (no reflow) and the walk's own tall document stays in place beneath; the root overflow cut is retired as a locking device; a later face inherits the law by construction |
 
 ### Deltas from the tlvphoto reference implementation
 
@@ -1033,3 +1081,4 @@ requiring reconciliation:
 | `⟨DELTA-7⟩` | **DEFERRED (minor)** — the quiz *prompt* localization (tlvphoto's `quizzes` block in `i18n_source.json` + the worker's `translate` merge) is not ported; the public prompt ships in the base language only. The chip label (`quiz_ask`) IS localized. Low value until an instance needs translated prompts; the mechanism is a small additive follow-on. |
 | `⟨DELTA-8⟩` | **RESOLVED** — the tlvphoto quiz+door fix batch (2026-07-08) generic parts ported: (1) the `/api/quiz` attempt fence degrades gracefully when no KV is bound (`overQuizRate` returns unlimited instead of throwing — preview/local judges); (2) `normAnswer` NFKC-folds + lower-cases + keeps letters only, with the client sending the raw answer (parity by construction); (3) all quiz+gift chrome (`quiz_submit`, `quiz_wrong`, `gift_ask`/`gift_yes`/`gift_no`/`gift_buy`) joins the localized string set (worker `shape`/`validate` + `i18n_source`) with English client fallbacks; (4) a wrong answer shows one localized line then closes (~1s), no hint trail; (5) reopening resets the card; (6) the card's accent is the focused work's live tint. `test_quiz.py` asserts them. The door-variety + load-flash-banner deltas are tlvphoto-surface-specific and were NOT ported (no clean generic equivalent — see report). |
 | `⟨DELTA-9⟩` | **RESOLVED** — the quiz funnel (`EX-QUIZ-FLOW`/`INV-69`) and A/B arm dimension (`EX-QUIZ-AB`/`INV-62`) ported: `quiz_arm` and `quiz_stage` ride the existing `walk_unfold`/`walk_exit` beats; `quizStageUp` is session-scoped and monotone; the stage wipes with `?reset`; `openGift` accepts an optional `onYes` callback so the quiz-win path stamps "gift" without touching the shared ceremony. Engine storage key: `ex.quizstage` (dot convention). `test_quiz_flow.py` (4 browser rows FL1–FL4; FL5–FL6 omitted — engine carries no `ga_report.py`) asserts them. |
+| `⟨DELTA-10⟩` | **RESOLVED** — one page shape for the browser (`EX-CHROME`/`INV-70`, ported from tlvphoto `e39fef1`): the root overflow cut is retired as a lock; `faceSync` mirrors any standing face onto `html.ex-face` (scrollbar-gutter stable, scrollbar hidden), rests keys/wheel/touch behind the face (EX-COMPOSE's own-scroll carve-out via `FACE_SEL`), and a `scroll` guard snaps back any scroll the house did not write, while the house's own writes re-freeze `guardHold`. The client already carried the `ex.*` / `ex-face` naming, so the js/css port is meaning- and byte-parallel with the reference. `test_compose.py` gains CH1–CH6. CH6 (the side room's lane scrolls native) pins **SKIP** in the synthetic fixture — its lane series has 3 members that fit the 1280px viewport, so the lane is not horizontally scrollable and the carve-out is untestable here; it exercises on real content with a wider lane. |

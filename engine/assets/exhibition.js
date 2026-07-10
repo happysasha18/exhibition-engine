@@ -631,6 +631,7 @@
     ceremonyCancel();                                  // a door render wins over any crossing
     breathOff();                                       // the door covers every frame (EX-LOAD)
     atDoor = true;
+    faceSync();                                        // the door is a face — arm the rest + guard (EX-CHROME)
     tlog("door");
     document.body.classList.add("ex-door");
     door.classList.remove("leaving");
@@ -732,6 +733,7 @@
     door.classList.remove("wm-out");
     document.body.classList.remove("ex-crossing", "ex-cross-cap");
     busy = false;
+    faceSync();                                        // the ceremony released (EX-CHROME)
   }
 
   // the beats below are ONE THIRD of the card's old clock (EX-DOOR-2e re-ruled, his word
@@ -739,6 +741,7 @@
   function doorPick(w) {
     if (busy) return;
     busy = true;
+    faceSync();                                        // the ceremony holds the lock (EX-CHROME)
     tlog("pick");
     pulse("door_pick", w.id);
     const g = ++cerGen;
@@ -776,6 +779,7 @@
       if (first) first.style.transitionDuration = "";
       veil.hidden = true;
       busy = false;
+      faceSync();                                      // the walk is bare — the lock lifts (EX-CHROME)
     });
   }
 
@@ -785,6 +789,7 @@
     entered = true;
     door.hidden = true;
     document.body.classList.remove("ex-door");
+    faceSync();                                        // the door left (EX-CHROME)
   }
 
   let walkY = 0;                                       // the walk's place while a door covers it
@@ -804,6 +809,7 @@
     // door holds it (INV-54), while a cold door + an injected/returning walk still opens the walk
     pushFace({ face: "door", spread: sp.map((e) => e.id), returned: true });
     scrollTo(0, 0);
+    guardHold = 0;                                      // the door rests at its top — the guard holds it here (EX-CHROME)
   }
 
   addEventListener("popstate", (ev) => {               // Back/Forward walk the faces (INV-32)
@@ -821,6 +827,7 @@
       groundRest();
       renderDoor(sp.length ? sp : undefined, st.cold === true);
       scrollTo(0, 0);
+      guardHold = 0;                                    // the returned door rests at its top (EX-CHROME)
       return;
     }
     // a walk step renders the walk AS IT NOW IS (INV-32d) — a dead arc never resurrects
@@ -1097,6 +1104,7 @@
     giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "";
     yes.onclick = () => { giftDownload(src, name, preMarked); if (onYes) onYes(); closeGift(); };
     giftCard.hidden = false; giftOpen = true;
+    faceSync();                                        // the gift card is a face — arm the rest + guard (EX-CHROME)
     requestAnimationFrame(() => giftCard.classList.add("show"));       // EX-ARRIVE breath
   }
   function closeGift() {
@@ -1104,6 +1112,7 @@
     giftCard.classList.remove("show");
     setTimeout(() => { giftCard.hidden = true; }, Math.round(350 * TEMPO));
     giftOpen = false;
+    faceSync();                                        // the gift card left (EX-CHROME)
     recentreUnder();                                   // the last face leaves (EX-COMPOSE)
   }
   giftCard.querySelector(".gift-no").addEventListener("click", closeGift);
@@ -1220,6 +1229,7 @@
     quizStageUp("opened");
     quizCard.hidden = false;
     quizOpen = true;
+    faceSync();                                        // the card is a face — arm the rest + guard (EX-CHROME)
     requestAnimationFrame(() => { quizCard.classList.add("show"); });
   }
 
@@ -1230,6 +1240,7 @@
     setTimeout(() => { quizCard.hidden = true; }, Math.round(350 * TEMPO));
     quizOpen = false;
     quizWorkId = null;
+    faceSync();                                        // the card left (EX-CHROME)
     recentreUnder();                                   // the last face leaves (EX-COMPOSE);
   }                                                    // a win hand-off re-checks at the gift's own close
 
@@ -1401,6 +1412,7 @@
   function glideCancel() {
     if (glideRaf) { cancelAnimationFrame(glideRaf); glideRaf = null; }
     gliding = false;
+    if (faceStands()) guardHold = scrollY;             // a glide ended under a face — hold where it landed (EX-CHROME)
   }
   // the one fixed transition: a sine in-out over one tempo-scaled clock. Monotonic 0→1 with both
   // ends soft — it provably cannot overshoot, so it ALWAYS lands centered on the frame, no bounce.
@@ -1481,6 +1493,32 @@
       && !atDoor && !busy && !sideOpen && !quizOpen && !giftOpen;   // input (EX-COMPOSE)
   }
 
+  // EX-CHROME (INV-70): one page shape for the browser. The root overflow cut is retired as a lock;
+  // instead EVERY standing face — the re-opened door, the side room, the question card, the gift
+  // card — locks the walk by resting input + a snap-back guard, while the walk's own tall document
+  // stays in place beneath. The STANDING DOOR is a face like the others for locking (its own
+  // controls stay live). `busy` is the whole door/side ceremony (its own lock, EX-DOOR-2e).
+  const FACE_SEL = "#ex-door, #ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound";  // face roots + chrome
+  let guardHold = 0;                                    // the place the walk holds while a face stands
+  function faceStands() { return atDoor || busy || sideOpen || quizOpen || giftOpen; }
+  // mirror the stand onto the root: `ex-face` sleeps the scrollbar (gutter-stable, no reflow) and
+  // arms the input rest + guard. On a RISE (no face → a face) freeze the walk's place to hold.
+  function faceSync() {
+    const stands = faceStands();
+    const had = document.documentElement.classList.contains("ex-face");
+    document.documentElement.classList.toggle("ex-face", stands);
+    if (stands && !had) guardHold = scrollY;           // a face rose — remember the place beneath
+  }
+  // the snap-back guard is the ONLY lock now. While a face stands and the house's own animator is
+  // not running, any scroll the house did NOT write (a dragged scrollbar, a slipped native gesture)
+  // is corrected to the held place in the same beat — a correction, no designed motion (INV-33).
+  // The house's own writes (the ceremony, Back restore, the leave re-centre) re-freeze guardHold, so
+  // the guard answers only scroll the house did not write itself.
+  addEventListener("scroll", () => {
+    if (!faceStands() || gliding) return;
+    if (Math.abs(scrollY - guardHold) > 1) scrollTo(0, guardHold);
+  }, { passive: true });
+
   // EX-COMPOSE: the last face leaves into a fresh-measured room — an INSTANT re-centre of the
   // section that stood beneath, discharged under the leaving face's own fade. A correction with
   // no designed motion, so it can never race a glide for scrollY.
@@ -1501,6 +1539,10 @@
   const RESWIPE_MS = 250;                              // a human's fastest deliberate re-swipe
   if (!TOUCHY) {
     addEventListener("wheel", (e) => {
+      if (faceStands()) {                              // EX-CHROME: rest the walk's input behind a face
+        if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // the face's own scroll / chrome stays native
+        e.preventDefault(); return;                    // the overflow cut is gone — the rest holds the walk
+      }
       if (!walkOwnsInput()) return;
       if (e.target && e.target.closest
           && e.target.closest("#ex-side, #ex-quiz-card, #ex-gift-card")) return;  // overlay scrolls
@@ -1544,6 +1586,20 @@
     stepFrame(dir);
   }, { passive: false });
 
+  // EX-CHROME: while a face stands, rest the browser's own scroll keys behind it (the walk's step
+  // handler above already sits a face out). Home/End join the arrows / space / page keys. A face's
+  // OWN keys (Esc, typing in a field) are untouched — only scroll keys, and never inside a field.
+  const REST_KEYS = { " ": 1, "ArrowDown": 1, "ArrowUp": 1, "ArrowLeft": 1, "ArrowRight": 1,
+                      "PageDown": 1, "PageUp": 1, "Home": 1, "End": 1 };
+  addEventListener("keydown", (e) => {
+    if (!faceStands() || !REST_KEYS[e.key]) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target;
+    if (t && t.closest && t.closest(FACE_SEL)) return;         // the face's own scroll / field keeps native
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    e.preventDefault();                                        // no native scroll behind the veil
+  }, { passive: false });
+
   // TOUCH: one swipe → one frame (his phone bug 2026-07-09 — CSS scroll-snap-stop:always did not
   // hold, so a momentum swipe flew through several works). The walk takes the touch the same way
   // the wheel takes a desktop gesture: native scroll is blocked while the walk owns the input, and
@@ -1562,6 +1618,10 @@
       tMoved = false;
     }, { passive: true });
     addEventListener("touchmove", (e) => {
+      if (faceStands()) {                              // EX-CHROME: rest touch behind a face
+        if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // the face's own scroll (the room's lane) stays native
+        e.preventDefault(); return;                    // the overflow cut is gone — the rest holds the walk
+      }
       if (tY == null) return;
       tLast = e.touches[0].clientY;
       if (Math.abs(tLast - tY) > 6) tMoved = true;
@@ -1583,6 +1643,7 @@
     stage.innerHTML = "";
     appendFrames(order.slice(0, shown), 1);
     scrollTo(0, 0);
+    if (faceStands()) guardHold = 0;                     // the walk builds under the ceremony's veil — hold its top (EX-CHROME)
     tellStory();                                         // the voice, if the story is on (set-guarded)
   }
 
@@ -1600,10 +1661,12 @@
     const S = SERIES[idx];
     if (!S || sideOpen || busy) return;
     sideOpen = true;
+    faceSync();                                        // the room is a face — arm the rest + guard (EX-CHROME)
     // the room opens THROUGH THE SAME BLACK the door crosses (his 09:53 word: «такой же
     // транзишен как с двери в комнату») — a shortened breath of the entry ceremony; the
     // ceremony's own cancel law carries it (any arriving face wins, no stranded veil)
     busy = true;
+    faceSync();                                        // the crossing holds the lock (EX-CHROME)
     const g = ++cerGen;
     const ok = () => g === cerGen;
     veil.hidden = false;
@@ -1617,6 +1680,7 @@
     cerAfter(0.95, () => { if (!ok()) return;
       veil.hidden = true;
       busy = false;
+      faceSync();                                      // the room stands revealed; sideOpen keeps the lock (EX-CHROME)
     });
   }
   function dressSide(S, idx, laystep) {
@@ -1660,6 +1724,7 @@
   function closeSide() {
     if (!sideOpen) return;
     sideOpen = false;
+    faceSync();                                        // the room left (EX-CHROME)
     ceremonyCancel();                                  // a crossing still in flight dies with
     side.hidden = true;                                // the room — no stranded veil, no lock
     document.body.classList.remove("ex-side");
