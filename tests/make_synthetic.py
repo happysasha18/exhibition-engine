@@ -115,7 +115,7 @@ CAPTIONS = [
 
 # ── 7 synthetic languages for greetings.json ─────────────────────────────────
 # All strings are visibly synthetic; 2+ variants per daypart for the date-seeded test.
-# RU exit == "выход"; HE dir == "rtl" and ask == "מה קרוב אליך עכשיו".
+# RU exit == "выход"; HE dir == "rtl" and ask == "מה קרוב אליך עכשיו?".
 # All 7 langs must have series + room_back.
 GREETINGS = {
     "fallback": "en",
@@ -123,7 +123,7 @@ GREETINGS = {
     "langs": {
         "en": {
             "dir": "ltr",
-            "ask": "what feels closer now",
+            "ask": "what feels closer now?",
             "greet": {
                 "night":   ["A synthetic quiet night", "Another synthetic night"],
                 "morning": ["A synthetic morning",     "Another synthetic morning"],
@@ -141,7 +141,7 @@ GREETINGS = {
         },
         "ru": {
             "dir": "ltr",
-            "ask": "что ближе сейчас",
+            "ask": "что ближе сейчас?",
             "greet": {
                 "night":   ["Синтетическая тихая ночь", "Ещё одна синтетическая ночь"],
                 "morning": ["Синтетическое утро",       "Ещё одно синтетическое утро"],
@@ -159,7 +159,7 @@ GREETINGS = {
         },
         "he": {
             "dir": "rtl",
-            "ask": "מה קרוב אליך עכשיו",
+            "ask": "מה קרוב אליך עכשיו?",
             "greet": {
                 "night":   ["לילה שקט סינתטי",  "עוד לילה סינתטי"],
                 "morning": ["בוקר סינתטי",       "עוד בוקר סינתטי"],
@@ -177,7 +177,7 @@ GREETINGS = {
         },
         "de": {
             "dir": "ltr",
-            "ask": "was fühlt sich näher an",
+            "ask": "was fühlt sich näher an?",
             "greet": {
                 "night":   ["Eine synthetische stille Nacht", "Noch eine synthetische Nacht"],
                 "morning": ["Ein synthetischer Morgen",       "Noch ein synthetischer Morgen"],
@@ -195,7 +195,7 @@ GREETINGS = {
         },
         "fr": {
             "dir": "ltr",
-            "ask": "qu'est-ce qui semble plus proche",
+            "ask": "qu'est-ce qui semble plus proche ?",
             "greet": {
                 "night":   ["Une nuit synthétique tranquille", "Une autre nuit synthétique"],
                 "morning": ["Un matin synthétique",            "Un autre matin synthétique"],
@@ -213,7 +213,7 @@ GREETINGS = {
         },
         "es": {
             "dir": "ltr",
-            "ask": "qué se siente más cercano",
+            "ask": "¿qué se siente más cercano?",
             "greet": {
                 "night":   ["Una noche sintética tranquila", "Otra noche sintética"],
                 "morning": ["Una mañana sintética",          "Otra mañana sintética"],
@@ -231,7 +231,7 @@ GREETINGS = {
         },
         "uk": {
             "dir": "ltr",
-            "ask": "що ближче зараз",
+            "ask": "що ближче зараз?",
             "greet": {
                 "night":   ["Синтетична тиха ніч",  "Ще одна синтетична ніч"],
                 "morning": ["Синтетичний ранок",     "Ще один синтетичний ранок"],

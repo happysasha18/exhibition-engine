@@ -127,7 +127,7 @@ else:
             br.reload()
             br.sleep(1.4)
             ru_clean = (br.evaluate("window.__i18nCalls") == 0
-                        and br.evaluate(ASK) == "что ближе сейчас")
+                        and br.evaluate(ASK) == "что ближе сейчас?")
             check("EX-I18N baked-seven visitors never touch the worker", ru_clean,
                   f"calls={br.evaluate('window.__i18nCalls')} ask={br.evaluate(ASK)!r}")
         with Browser(width=1280, height=900) as br:
@@ -138,7 +138,7 @@ else:
             br.reload()
             br.sleep(1.6)
             check(BROWSER_ROWS[1],
-                  br.evaluate(ASK) == "what feels closer now"
+                  br.evaluate(ASK) == "what feels closer now?"
                   and br.evaluate("document.querySelectorAll('.exd-window').length") > 0
                   and br.evaluate("1+1") == 2,
                   f"ask={br.evaluate(ASK)!r}")
@@ -152,7 +152,7 @@ else:
             br.sleep(1.6)
             check(BROWSER_ROWS[2],
                   br.evaluate("window.__i18nCalls") == 0
-                  and br.evaluate(ASK) == "what feels closer now",
+                  and br.evaluate(ASK) == "what feels closer now?",
                   f"calls={br.evaluate('window.__i18nCalls')} ask={br.evaluate(ASK)!r}")
 
 shutil.rmtree(TMP, ignore_errors=True)

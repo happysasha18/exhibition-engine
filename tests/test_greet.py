@@ -319,7 +319,7 @@ else:
         n = br2.evaluate("document.querySelectorAll('.exh-frame').length")
         check(BROWSER_ROWS[3],
               st["atDoor"] and not st["vis"]
-              and st["ask"] == "что ближе сейчас"
+              and st["ask"] == "что ближе сейчас?"
               and n == SPREAD,
               f"state={st} frames={n}")
 

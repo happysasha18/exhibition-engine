@@ -59,7 +59,7 @@ I18N_SRC_BYTES = I18N_SRC_PATH.read_bytes()
 # ---------------------------------------------------------------- build a valid translation body for the 200 scenario
 # Satisfy validate(out, src): dir ltr, all string keys filled, more has {n}, greet arrays filled, titles map filled.
 _VALID_STRINGS = {
-    "ask": "what feels closer now",
+    "ask": "what feels closer now?",
     "exit": "exit",
     "more": "{n} more",
     "q_more": "walk on?",

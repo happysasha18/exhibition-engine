@@ -84,7 +84,7 @@ else:
 
             # 2 · the outsider layer: instant baked switch, stub strings back on PL
             br.click('#exd-lang .exl-item[data-lang="ru"]', settle=0.5)
-            ru_now = br.evaluate(ASK) == "что ближе сейчас"
+            ru_now = br.evaluate(ASK) == "что ближе сейчас?"
             br.click("#exd-lang .exl-cur", settle=0.4)
             br.click('#exd-lang .exl-item[data-lang="pl"]', settle=0.9)
             pl_now = br.evaluate(ASK) == "STUB-ASK"
@@ -101,11 +101,11 @@ else:
             br.sleep(1.2)
             br.click("#exd-lang .exl-cur", settle=0.4)
             br.click('#exd-lang .exl-item[data-lang="he"]', settle=0.6)
-            he_now = (br.evaluate(ASK) == "מה קרוב אליך עכשיו"
+            he_now = (br.evaluate(ASK) == "מה קרוב אליך עכשיו?"
                       and br.evaluate(DIR) == "rtl")
             br.reload()
             br.sleep(1.2)
-            he_kept = (br.evaluate(ASK) == "מה קרוב אליך עכשיו"
+            he_kept = (br.evaluate(ASK) == "מה קרוב אליך עכשיו?"
                        and br.evaluate(DIR) == "rtl"
                        and br.evaluate("localStorage.getItem('ex.lang')") == "he")
             check(BROWSER_ROWS[1], he_now and he_kept,
@@ -116,7 +116,7 @@ else:
             br.sleep(1.2)
             lang_key = br.evaluate("localStorage.getItem('ex.lang')")
             check(BROWSER_ROWS[3],
-                  lang_key is None and br.evaluate(ASK) == "что ближе сейчас",
+                  lang_key is None and br.evaluate(ASK) == "что ближе сейчас?",
                   f"lang_key={lang_key!r} ask={br.evaluate(ASK)!r}")
 
 shutil.rmtree(TMP, ignore_errors=True)

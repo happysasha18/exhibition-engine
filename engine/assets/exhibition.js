@@ -611,7 +611,7 @@
   door.innerHTML =
     '<div class="exd-wm"></div>' +                    // brand from config.site_name (INV-28)
     '<div class="exd-greet" id="exd-greet" hidden></div>' +
-    '<div class="exd-ask">что ближе сейчас</div>' +
+    '<div class="exd-ask">что ближе сейчас?</div>' +
     '<div class="exd-facade" id="exd-facade"></div>';  // no silent entry — the pick IS the
   door.querySelector(".exd-wm").textContent = cfg.site_name || "";
   document.body.appendChild(door);                     // entry (EX-DOOR-2a, his design word)
@@ -641,7 +641,7 @@
     door.setAttribute("dir", L && L.t.dir === "rtl" ? "rtl" : "ltr");
     if (L) door.setAttribute("lang", L.code);
     else door.removeAttribute("lang");
-    door.querySelector(".exd-ask").textContent = L ? L.t.ask : "что ближе сейчас";
+    door.querySelector(".exd-ask").textContent = L ? L.t.ask : "что ближе сейчас?";
     const g = door.querySelector("#exd-greet");
     const line = (cold && GPLACE !== "off" && L) ? greetLine(L.t) : "";
     g.textContent = line;
@@ -1793,7 +1793,7 @@
     if (atDoor) {
       door.setAttribute("dir", T.dir === "rtl" ? "rtl" : "ltr");
       door.setAttribute("lang", L.code);
-      door.querySelector(".exd-ask").textContent = T.ask || "что ближе сейчас";
+      door.querySelector(".exd-ask").textContent = T.ask || "что ближе сейчас?";
       const g = door.querySelector("#exd-greet");
       if (g && !g.hidden) g.textContent = greetLine(T) || g.textContent;
       return;

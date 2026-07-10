@@ -168,7 +168,7 @@ else:
         exp_n, _, _ = door_layout(1280, 900)
         face = br.evaluate(
             "(()=>{const ask=[...document.querySelectorAll('#ex-door div')]"
-            ".find(d=>d.textContent.includes('что ближе сейчас'));"
+            ".find(d=>d.textContent.includes('что ближе сейчас?'));"
             "return {door:" + AT_DOOR + ",ask:!!ask,askVis:ask?getComputedStyle(ask).display!=='none':false,"
             "wins:document.querySelectorAll('.exd-window').length,"
             "skip:!!document.getElementById('ex-skip'),frames:" + N_FRAMES + ","

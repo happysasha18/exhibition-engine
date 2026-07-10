@@ -6,7 +6,7 @@
   "langs": {
     "en": {
       "dir": "ltr",
-      "ask": "what feels closer now",
+      "ask": "what feels closer now?",
       "plain": "hello",
       "greet": {
         "night": [
@@ -46,7 +46,7 @@
     },
     "ru": {
       "dir": "ltr",
-      "ask": "что ближе сейчас",
+      "ask": "что ближе сейчас?",
       "greet": {
         "night": [
           "Синтетическая тихая ночь",
@@ -85,7 +85,7 @@
     },
     "he": {
       "dir": "rtl",
-      "ask": "מה קרוב אליך עכשיו",
+      "ask": "מה קרוב אליך עכשיו?",
       "greet": {
         "night": [
           "לילה שקט סינתטי",
@@ -124,7 +124,7 @@
     },
     "de": {
       "dir": "ltr",
-      "ask": "was fühlt sich näher an",
+      "ask": "was fühlt sich näher an?",
       "greet": {
         "night": [
           "Eine synthetische stille Nacht",
@@ -163,7 +163,7 @@
     },
     "fr": {
       "dir": "ltr",
-      "ask": "qu'est-ce qui semble plus proche",
+      "ask": "qu'est-ce qui semble plus proche ?",
       "greet": {
         "night": [
           "Une nuit synthétique tranquille",
@@ -202,7 +202,7 @@
     },
     "es": {
       "dir": "ltr",
-      "ask": "qué se siente más cercano",
+      "ask": "¿qué se siente más cercano?",
       "greet": {
         "night": [
           "Una noche sintética tranquila",
@@ -241,7 +241,7 @@
     },
     "uk": {
       "dir": "ltr",
-      "ask": "що ближче зараз",
+      "ask": "що ближче зараз?",
       "greet": {
         "night": [
           "Синтетична тиха ніч",

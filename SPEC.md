@@ -27,7 +27,7 @@ the clause describes — each one is listed in the Formal index for easy reconci
 ## Purpose
 Give any photographer's archive an exhibition that assembles itself. An instance supplies its
 works, feature vectors, and identity; the engine bakes a fully static, edge-deployable site
-where every visitor meets a threshold — a handful of works asking which feels closer — and the
+where every visitor meets a threshold — a handful of works asking which feels closer? — and the
 gallery folds open from their pick, the works ordered by kinship into a considered arc. The
 engine is generic: it knows no instance's name, brand, creator, or private content. Every
 identity fact is a config value; every private note stays off the public bundle.
