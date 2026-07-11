@@ -85,13 +85,60 @@ BROWSER_ROWS = [
     "EX-LOAD-2 the arm reads the settled state (prover F1): a warm image reveals at once, no plate/clock",
     "EX-LOAD-2 a post-reveal tier swap never re-plates (prover F6): a revealed photo stays painted on resize",
     "EX-LOAD-2 rotation mid-flight keeps the plate (never back to black; the grace clock does not restart)",
-    "EX-LOAD-2 the door + crossing stay unladdered (no plate at the door; a warm crossing lays no plate)",
+    "EX-LOAD-2 the walk overlay + crossing stay off the door (no walk #ex-plate/marks at the door; a warm crossing lays no plate — the door's own windows ladder via .exd-plate, DL1/DL2)",
     "EX-LOAD-2 composes with the tier ladder (the revealed photo is the browser's srcset tier — INV-63)",
     "EX-LOAD-3 the next work actually preloads one-ahead (network log shows an unshown next-arc file)",
     "EX-LOAD-3 exactly one ahead, never the arc (at most preload_ahead unshown next-works requested)",
     "EX-LOAD-3 the preload re-aims on a turn (prover F5): a backward step abandons forward, aims back",
     "EX-LOAD-3 a failed preload is silent (prover F5): the next file blocked errors nothing, the walk lives",
+    "EX-LOAD-2 · DL1 a door window rides the ladder (slow ⇒ raw-dom plate + wordless bar; fast ⇒ no plate)",
+    "EX-LOAD-2 · DL2 the door ladder composes with the entrance + halo (rise intact, halo liveAccent, plate raw dom; a cached re-render re-flashes no plate)",
 ]
+
+# ---- DL1/DL2 helpers: the door's per-window plate (class .exd-plate, five may fly at once) --------
+BONE = [179, 162, 132]                                # #b3a284 — the resting accent (exhibition.js)
+
+
+def live_accent(dom):
+    """replica of exhibition.js liveAccent(dom) — the halo's tone, lightness-raised off the raw dom."""
+    r, g, b = dom
+    y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    if y < 24:
+        return list(BONE)
+    k = min(170.0 / y, 6)
+    return [round(min(255, v * k) * 0.8 + BONE[i] * 0.2) for i, v in enumerate((r, g, b))]
+
+
+# The door deals a LIVE hand (rotation + novelty), so WHICH work fills a window is not fixed — the
+# tests hold EVERY door image (match the shared asset dir) and read whichever window actually renders,
+# looking its raw dom up by the window's own data-id. That keeps DL1/DL2 honest against any dealt hand.
+DOOR_ASSETS = "/gallery/assets/"
+
+# the first door window whose OWN plate (.exd-plate) stands — its id, computed plate bg, bar/text,
+# entrance (animationName) and halo (--glow). '' when no window is plated.
+FIRST_DOOR_PLATE = (
+    "(()=>{const ws=[...document.querySelectorAll('.exd-window')];"
+    "for(const w of ws){const p=w.querySelector('.exd-plate');"
+    "if(p && !p.hidden && p.classList.contains('show')){const cs=getComputedStyle(w);"
+    "return JSON.stringify({id:w.dataset.id,bg:getComputedStyle(p).backgroundColor,"
+    "bar:p.classList.contains('bar'),text:(p.textContent||''),rise:cs.animationName,"
+    "glow:(cs.getPropertyValue('--glow')||'').trim()});}}return '';})()")
+ANY_DOOR_BAR = ("[...document.querySelectorAll('.exd-window .exd-plate.bar')].length>0")
+ANY_DOOR_PLATE = ("document.querySelectorAll('.exd-window .exd-plate.show').length")
+
+
+def near_rgb(rgb_str, want, tol):
+    m = re.findall(r"\d+", rgb_str or "")
+    return len(m) >= 3 and all(abs(int(m[i]) - want[i]) <= tol for i in range(3))
+
+
+def open_cold_door(br, base, tempo="1"):
+    """a cold arrival with no stored walk → the standing door deals + breathes its five windows in."""
+    br.navigate("about:blank")
+    br.navigate(base + "/")
+    br.clear_storage()
+    br.evaluate(f"localStorage.setItem('ex-tempo','{tempo}')")
+    br.reload()
 
 # JS reads shared across rows
 FIRST_IMG = "document.querySelector('.exh-frame img.work')"
@@ -337,6 +384,92 @@ else:
             check(BROWSER_ROWS[13],
                   bool(alive) and bool(in_view_ok),
                   f"blocked={pre} alive={alive} in_view_ok={in_view_ok}")
+
+        # 14 · DL1 — a door window rides the ladder. Cold door with EVERY window image held on the
+        # wire; we read whichever window renders (the hand is live). (a) moderate hold ⇒ the window
+        # wears its OWN raw dom as a plate past the grace, no bar yet; (b) long hold ⇒ the wordless
+        # bar joins past bar_wait, plate+bar carry no digit; (c) a healthy (fast) door shows NO plate —
+        # the windows reveal at once. The plate is the window's own `.exd-plate` (five may fly at
+        # once), never the walk's single `#ex-plate`.
+        HOLD.update(match=DOOR_ASSETS, delay=0.9)             # moderate: > grace, < bar_wait, all windows
+        with Browser(width=1280, height=900) as br:
+            open_cold_door(br, base)
+            first = ""
+            for _ in range(35):                               # poll for a window to plate
+                br.sleep(0.1)
+                first = br.evaluate(FIRST_DOOR_PLATE)
+                if first:
+                    break
+        mod = json.loads(first or "{}")
+        mod_dom = BYID[str(mod.get("id"))]["dom"] if mod.get("id") in BYID else None
+        raw_tone = bool(mod_dom) and near_rgb(mod.get("bg"), mod_dom, 6)
+        mod_bar = bool(mod.get("bar"))                        # a moderate hold shows NO bar yet
+
+        HOLD.update(match=DOOR_ASSETS, delay=4.0)             # long: past bar_wait — the bar joins
+        with Browser(width=1280, height=900) as br:
+            open_cold_door(br, base)
+            bar_on = False
+            for _ in range(45):
+                br.sleep(0.1)
+                if br.evaluate(ANY_DOOR_BAR):
+                    bar_on = True
+                    break
+            longp = json.loads(br.evaluate(FIRST_DOOR_PLATE) or "{}")
+        plate_text = longp.get("text", "")
+        wordless = (plate_text.strip() == "" and not re.search(r"\d", plate_text or ""))
+        HOLD.clear()
+
+        with Browser(width=1280, height=900) as br:           # healthy: the windows reveal at once
+            open_cold_door(br, base)
+            br.sleep(1.6)
+            fast_plate = int(br.evaluate(ANY_DOOR_PLATE) or 0)
+            fast_revealed = br.evaluate(
+                "(()=>{const i=document.querySelector('.exd-window img');"
+                "return !!i && i.complete && i.naturalWidth>0 && +getComputedStyle(i).opacity>0.5;})()")
+        check(BROWSER_ROWS[14],
+              bool(mod.get("id")) and raw_tone and not mod_bar and bar_on and wordless
+              and fast_plate == 0 and bool(fast_revealed),
+              f"plated_id={mod.get('id')} raw_tone={raw_tone}(bg={mod.get('bg')} vs dom={mod_dom}) "
+              f"mod_bar={mod_bar} long_bar={bar_on} wordless={wordless}(text={plate_text!r}) "
+              f"fast_plate={fast_plate} fast_revealed={fast_revealed}")
+
+        # 15 · DL2 — the door ladder composes with the entrance + halo, and a cached re-render
+        # re-flashes no plate (the settled read, prover seam 5). While a held window's plate stands:
+        # the window's breathe-in entrance (exd-rise) is intact, and its halo still speaks liveAccent
+        # while the plate speaks the RAW dom — two colour laws on two elements. Then a resize that
+        # rebuilds the door over already-cached windows flashes no plate on any window.
+        HOLD.update(match=DOOR_ASSETS, delay=0.9)             # hold every window so a plate stands during the read
+        with Browser(width=1280, height=900) as br:
+            open_cold_door(br, base)
+            first = ""
+            for _ in range(35):
+                br.sleep(0.1)
+                first = br.evaluate(FIRST_DOOR_PLATE)
+                if first:
+                    break
+        c = json.loads(first or "{}")
+        cdom = BYID[str(c.get("id"))]["dom"] if c.get("id") in BYID else None
+        stood = bool(c.get("id"))
+        rise_ok = "exd-rise" in (c.get("rise") or "")        # the entrance survives the plate (EX-DOOR-2b)
+        halo_ok = bool(cdom) and near_rgb(c.get("glow"), live_accent(cdom), 3)   # halo == liveAccent
+        plate_raw = bool(cdom) and near_rgb(c.get("bg"), cdom, 6)                # plate == raw dom
+        HOLD.clear()
+
+        with Browser(width=1280, height=900) as br:           # cached re-render: no plate flash
+            open_cold_door(br, base)
+            br.sleep(1.8)                                      # the windows land + cache
+            settled_plate = int(br.evaluate(ANY_DOOR_PLATE) or 0)
+            br.set_viewport(820, 1180)                         # portrait → doorRender rebuilds (count change)
+            flashed = 0
+            for _ in range(10):                                # watch the rebuild settle — cached ⇒ no plate
+                br.sleep(0.1)
+                flashed = max(flashed, int(br.evaluate(ANY_DOOR_PLATE) or 0))
+        check(BROWSER_ROWS[15],
+              stood and rise_ok and halo_ok and plate_raw and settled_plate == 0 and flashed == 0,
+              f"stood={stood} id={c.get('id')} rise={c.get('rise')!r} "
+              f"halo_ok={halo_ok}(glow={c.get('glow')} vs {live_accent(cdom) if cdom else None}) "
+              f"plate_raw={plate_raw}(plate={c.get('bg')} vs dom={cdom}) "
+              f"settled_plate={settled_plate} rerender_flashed={flashed}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

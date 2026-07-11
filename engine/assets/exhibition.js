@@ -646,13 +646,15 @@
   const plate = document.createElement("div");
   plate.id = "ex-plate"; plate.hidden = true;
   plate.innerHTML = '<i class="ex-bar" aria-hidden="true"></i>';
-  function plateHide() {
-    plate.hidden = true; plate.classList.remove("show", "bar");
-    if (plate.parentNode) plate.parentNode.removeChild(plate);
+  // hide ANY plate (the walk's single reused one, or a door window's own) — shared by both call sites
+  function plateHideEl(el) {
+    el.hidden = true; el.classList.remove("show", "bar");
+    if (el.parentNode) el.parentNode.removeChild(el);
   }
+  function plateHide() { plateHideEl(plate); }
   let armTimers = [];
   let armedImg = null;                                  // the one in-flight image the ladder waits on
-  function armClear() { armTimers.forEach(clearTimeout); armTimers = []; }
+  function armClear() { armTimers.forEach(clearTimeout); armTimers.length = 0; }
   // retire the whole ladder + preload — the door/ceremony cover every walk frame (EX-LOAD boundary)
   function ladderOff() { armClear(); armedImg = null; plateHide(); preloadCancel(); }
   // the reveal: the photo fades in over the plate at the chosen settle (fast when it beat the plate,
@@ -665,6 +667,50 @@
     img.style.opacity = "";                             // .seen → opacity 1, fades over durSec
     img.dataset.ladder = "done";
   }
+  // the in-flight CORE, shared by the walk's one reused plate AND the door's per-window plates —
+  // ONE implementation of the grace/bar/reveal timings + classes (never a second copy of the knobs).
+  // The caller has already read the settled state; this arms a GENUINELY in-flight image only. Black
+  // held → plate (grace) → plate+bar (long wait) → reveal on load. `alive()` says whether this wait is
+  // still the live one (the walk swaps the in-view frame; a door window is rebuilt on relayout/re-deal);
+  // `timers` is the caller's own list (mutated in place); `mark` gates the walk's single-frame ex: marks
+  // (the door stays off the walk's counter — no door marks). On load: fade over the plate at the settle
+  // (fast when it beat the plate, the reveal token when the plate stood), then retire the plate.
+  function ladderFlight(img, w, host, plateEl, timers, alive, mark) {
+    host.insertBefore(plateEl, host.firstChild);        // behind the photo, same cell
+    plateEl.style.aspectRatio = (w.w && w.h) ? (w.w + " / " + w.h) : "";
+    plateEl.style.background = "rgb(" + w.dom.join(",") + ")";   // the work's RAW baked tone (not liveAccent)
+    plateEl.hidden = false;
+    void plateEl.offsetWidth;                           // a fresh fade from opacity 0
+    img.style.transition = "none";
+    img.style.opacity = "0";                            // hold the photo behind the plate until it lands
+    let plateShown = false;
+    timers.push(setTimeout(() => {                      // the grace beat → the plate fades in (soft token)
+      if (!alive() || img.complete) return;
+      plateShown = true;
+      plateEl.classList.add("show");
+      if (mark) tlog("plate");
+    }, Math.round(PLATE_GRACE * 1000 * TEMPO)));
+    timers.push(setTimeout(() => {                      // the long wait → the wordless bar joins the plate
+      if (!alive() || img.complete) return;             // (past here a silent stall crawls indefinitely —
+      plateEl.classList.add("show", "bar");             //  the ladder owns no timeout, the browser's fetch does)
+      if (mark) tlog("bar");
+    }, Math.round(BAR_WAIT * 1000 * TEMPO)));
+    const done = () => {                                // load OR error, whichever speaks first
+      if (!alive()) return;
+      timers.forEach(clearTimeout); timers.length = 0;
+      if (img.naturalWidth > 0) {                       // pixels home: fade over the plate then retire it
+        const dur = plateShown ? REVEAL_SLOW : REVEAL_FAST;
+        reveal(img, dur);
+        timers.push(setTimeout(() => { if (alive()) plateHideEl(plateEl); },
+                               Math.round(dur * 1000 * TEMPO) + 60));
+      } else {                                          // a dead image never traps (INV-37): retire whole,
+        img.dataset.ladder = "done"; plateHideEl(plateEl);  //   caption + counter hold, no plate as the picture
+      }
+    };
+    img.addEventListener("load", done, { once: true });
+    img.addEventListener("error", done, { once: true });
+  }
+
   // arm the ladder on a frame taking view. The arm READS THE SETTLED STATE FIRST (prover F1):
   // a warm image (complete, real pixels) reveals at once down the fast path — no plate, no clock;
   // an already-errored one retires at once, caption + counter holding; only a genuinely in-flight
@@ -685,39 +731,7 @@
     armClear();
     armedImg = img;
     plateHide();
-    frame.insertBefore(plate, frame.firstChild);        // behind the photo, same centered grid cell
-    plate.style.aspectRatio = (w.w && w.h) ? (w.w + " / " + w.h) : "";
-    plate.style.background = "rgb(" + w.dom.join(",") + ")";   // the work's RAW baked tone (not liveAccent)
-    plate.hidden = false;
-    void plate.offsetWidth;                             // a fresh fade from opacity 0
-    img.style.transition = "none";
-    img.style.opacity = "0";                            // hold the photo behind the plate until it lands
-    let plateShown = false;
-    armTimers.push(setTimeout(() => {                   // the grace beat → the plate fades in (soft token)
-      if (img !== armedImg || img.complete) return;
-      plateShown = true;
-      plate.classList.add("show");
-      tlog("plate");
-    }, Math.round(PLATE_GRACE * 1000 * TEMPO)));
-    armTimers.push(setTimeout(() => {                   // the long wait → the wordless bar joins the plate
-      if (img !== armedImg || img.complete) return;     // (past here a silent stall crawls indefinitely —
-      plate.classList.add("show", "bar");               //  the ladder owns no timeout, the browser's fetch does)
-      tlog("bar");
-    }, Math.round(BAR_WAIT * 1000 * TEMPO)));
-    const done = () => {                                // load OR error, whichever speaks first
-      if (img !== armedImg) return;
-      armClear();
-      if (img.naturalWidth > 0) {                       // pixels home: fade over the plate then retire it
-        const dur = plateShown ? REVEAL_SLOW : REVEAL_FAST;
-        reveal(img, dur);
-        armTimers.push(setTimeout(() => { if (img === armedImg) plateHide(); },
-                                  Math.round(dur * 1000 * TEMPO) + 60));
-      } else {                                          // a dead image never traps (INV-37): retire whole,
-        img.dataset.ladder = "done"; plateHide();       //   caption + counter hold, no plate as the picture
-      }
-    };
-    img.addEventListener("load", done, { once: true });
-    img.addEventListener("error", done, { once: true });
+    ladderFlight(img, w, frame, plate, armTimers, () => img === armedImg, true);
   }
 
   // EX-LOAD-3: the next work quietly preloads — the walk arrives warm. While a work rests in view,
@@ -797,6 +811,21 @@
     if (cold) hintArm(); else hintOff(); // the re-opened door never hints (EX-DOOR-2g)
   }
 
+  // EX-DOOR-2c / DL1-DL2: the door's OWN ladder arm — one per window (five may fly at once), reusing
+  // the walk's knobs, reveal, classes and in-flight core (never a second copy). Each window owns its
+  // own `.exd-plate` behind its photo. Reads the SETTLED STATE FIRST the way the walk's arm does (the
+  // crux / prover seam 5): a window whose image is already cached reveals at once with NO plate, so a
+  // relayout re-render or a fresh full-circle deal re-flashes no plate — only a still-in-flight window
+  // plates. No ex: marks — the door stays off the walk's loading counter.
+  function doorArm(img, w, win) {
+    if (!img || !w || !win) return;
+    if (img.complete) { img.dataset.ladder = "done"; return; }   // cached ⇒ shows at once, no plate
+    const p = document.createElement("div");                     // a plate PER window (not the walk's single one)
+    p.className = "exd-plate";
+    p.innerHTML = '<i class="ex-bar" aria-hidden="true"></i>';
+    ladderFlight(img, w, win, p, [], () => win.isConnected, false);
+  }
+
   // layout-aware render — re-runs on resize; rebuilds only when count/orientation change.
   // `animate` is true only on a fresh open; a resize relayout (aspect change) rebuilds WITHOUT the
   // entry fade — the windows are already on screen, so re-running exd-rise reads as a wrong fade-in.
@@ -827,6 +856,7 @@
         b.style.animation = "none"; b.style.opacity = "1";
       }
       b.innerHTML = `<img src="${w.img}" alt="${alt}">`;
+      doorArm(b.querySelector("img"), w, b);             // DL1/DL2: this window rides the walk's ladder
       // EX-QUIZ (INV-64/66): the quiz chip NEVER appears on the door (button-only screen) —
       // only over a work in view on the plaque (quizShows checked in the IO observer below).
       b.addEventListener("click", () => doorPick(w));
