@@ -1700,8 +1700,30 @@
   // is corrected to the held place in the same beat — a correction, no designed motion (INV-33).
   // The house's own writes (the ceremony, Back restore, the leave re-centre) re-freeze guardHold, so
   // the guard answers only scroll the house did not write itself.
+  // A standing finger is NOT input rest (EX-CHROME): while a pointer/touch is DOWN the guard HOLDS.
+  // An active touch drags the page a few px (the phone's rubber-band); a correction written mid-touch
+  // only makes the finger drag again next frame — a per-frame fight the visitor sees as the whole
+  // screen trembling (his 2026-07-10 phone find). The guard corrects only at rest, one settle on lift.
+  let heldTouches = 0;
+  const heldPointers = new Set();
+  function pointerHeld() { return heldTouches > 0 || heldPointers.size > 0; }
+  function settleGuard() {                              // one correction when the last finger lifts
+    if (!faceStands() || gliding || pointerHeld()) return;
+    if (Math.abs(scrollY - guardHold) > 1) scrollTo(0, guardHold);
+  }
+  addEventListener("touchstart", (e) => { heldTouches = e.touches.length; },
+                   { passive: true, capture: true });
+  ["touchend", "touchcancel"].forEach((k) => addEventListener(k, (e) => {
+    heldTouches = e.touches.length; if (!pointerHeld()) settleGuard();
+  }, { passive: true, capture: true }));
+  addEventListener("pointerdown", (e) => { heldPointers.add(e.pointerId); },
+                   { passive: true, capture: true });
+  ["pointerup", "pointercancel"].forEach((k) => addEventListener(k, (e) => {
+    heldPointers.delete(e.pointerId); if (!pointerHeld()) settleGuard();
+  }, { passive: true, capture: true }));
   addEventListener("scroll", () => {
     if (!faceStands() || gliding) return;
+    if (pointerHeld()) return;                          // a finger rests on the glass — hold, settle on lift
     if (Math.abs(scrollY - guardHold) > 1) scrollTo(0, guardHold);
   }, { passive: true });
 

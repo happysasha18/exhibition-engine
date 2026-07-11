@@ -81,7 +81,7 @@ BROWSER_ROWS = [
 # ε for centring asserts (px)
 EPSILON = 30
 
-# EX-CHROME / INV-70 — one page shape for the browser (six CH rows, matrix order)
+# EX-CHROME / INV-70 — one page shape for the browser (seven CH rows, matrix order)
 CH_ROWS = [
     "CH1 EX-CHROME the page root stays scrollable under every face",
     "CH2 EX-CHROME the standing door rests the walk's input",
@@ -89,6 +89,7 @@ CH_ROWS = [
     "CH4 EX-CHROME the house's own writes pass the guard",
     "CH5 EX-CHROME the scrollbar hides gutter-stable",
     "CH6 EX-CHROME the face's own scroll survives the rest",
+    "CH7 EX-CHROME the guard holds under a resting finger",
 ]
 
 
@@ -831,6 +832,51 @@ else:
                         f"side_open={side_open} lane_scrollLeft {lane['sl']}→{sl_after} "
                         f"moved={moved} (sw={lane['sw']} cw={lane['cw']})",
                     )
+
+        # ---- CH7: the guard HOLDS under a resting finger (a standing finger is not input rest) ----
+        # His 2026-07-10 phone find: in the side room, a finger left resting on the glass made the
+        # WHOLE screen tremble. An active touch drags the page a few px (iOS rubber-band); the guard,
+        # correcting mid-touch, snapped it back every frame — a per-frame fight = the shimmer. The
+        # guard must HOLD while a touch is DOWN and settle ONCE on lift. (The rubber-band drag is
+        # stood in for by a foreign scrollTo during the held touch, as CH3 stands in for a scrollbar.)
+        with Browser(width=390, height=844) as br:
+            br.touch(True)
+            br.navigate(base + "/")
+            side_open = open_side_room(br)          # a face stands over the walk
+            held = br.evaluate("window.scrollY") or 0
+            maxs = br.evaluate("document.documentElement.scrollHeight - innerHeight") or 0
+            nudge = held + 30 if held + 30 <= maxs else max(0, held - 30)
+            # record only the HOUSE's own scrollTo (the guard), tagged by whether a finger is down
+            br.evaluate(
+                "(()=>{window.__gw=[];window.__holding=false;"
+                "window.__native=window.scrollTo.bind(window);const _st=window.__native;"
+                "window.scrollTo=function(x,y){window.__gw.push({y:y,hold:window.__holding});"
+                "return _st(x,y);};})()")
+            x, y0 = br.width // 2, br.height // 2
+            br._cmd("Input.dispatchTouchEvent", type="touchStart",
+                    touchPoints=[{"x": x, "y": y0}])
+            br.evaluate("window.__holding=true")
+            # ~1s of a finger at rest: tiny ±6px drift + the rubber-band drag it causes (foreign scroll)
+            for i in range(10):
+                yy = y0 + (6 if i % 2 else -6)
+                br._cmd("Input.dispatchTouchEvent", type="touchMove",
+                        touchPoints=[{"x": x, "y": yy}])
+                br.evaluate("window.__native(0, %d)" % nudge)   # iOS rubber-band stand-in
+                br.sleep(0.05)
+            writes_hold = br.evaluate(
+                "window.__gw.filter(w=>w.hold && Math.abs(w.y-%d)<=2).length" % held)
+            br.evaluate("window.__holding=false")
+            br._cmd("Input.dispatchTouchEvent", type="touchEnd", touchPoints=[])
+            br.sleep(0.3)
+            settle = br.evaluate(
+                "window.__gw.filter(w=>!w.hold && Math.abs(w.y-%d)<=2).length" % held)
+            final_off = abs((br.evaluate("window.scrollY") or 0) - held)
+            check(
+                CH_ROWS[6],
+                side_open and writes_hold == 0 and settle >= 1 and final_off <= 2,
+                f"side_open={side_open} guard_writes_during_hold={writes_hold} (want 0) "
+                f"settle_after_lift={settle} (want ≥1) final_off={final_off} held={held}",
+            )
 
 shutil.rmtree(TMP, ignore_errors=True)
 
