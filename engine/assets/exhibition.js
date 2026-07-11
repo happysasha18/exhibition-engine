@@ -617,46 +617,135 @@
     document.documentElement.style.removeProperty("--tone");       // the plaque rests plain, no tint
   };
 
-  // ---- EX-LOAD (INV-37): the loading breath — no frame in view stays empty ----
-  // One wordless hairline (INV-1), armed by the frame currently in view whenever its
-  // pixels have not arrived; a grace beat keeps a healthy network from ever seeing it;
-  // load OR error retires it — a dead image never traps the breath.
-  const breath = document.createElement("div");
+  // ---- EX-LOAD-2 / EX-LOAD-3 (INV-72 / INV-73): the in-flight ladder + the one-ahead preload ----
+  // Supersedes the lone-hairline FACE of the loading breath (EX-LOAD/INV-37): a frame in view whose
+  // pixels are late wears the work's OWN dominant tone (a plate), and on a genuinely long wait a
+  // thin wordless bar joins on the plate; the photograph fades in OVER the plate when it lands. The
+  // breath's promises are re-carried whole — no frame in view stays empty, wholly wordless (INV-1),
+  // retires on load-or-error, ONE reused overlay for the single in-view frame, the door/crossing
+  // cover their own frames. Every wait a beat ×tempo (INV-33). The `#ex-breath` node below stays
+  // for EX-ARRIVE's locked breath-entry row; the plate ladder is the shipped loader now.
+  const breath = document.createElement("div");         // vestigial — kept for the EX-ARRIVE lock
   breath.id = "ex-breath";
   breath.hidden = true;
   document.body.appendChild(breath);
-  let breathTimer = null;
-  let waited = null;                                   // the one image the breath waits for
-  function breathOff() {
-    clearTimeout(breathTimer); breathTimer = null;
-    breath.hidden = true;
+
+  // the knobs (config.exhibition, INV-28) — each a beat ×tempo (INV-33); the ordering
+  // load_plate_grace < load_bar_wait is LAW (prover F7): an inverted/equal pair is CLAMPED at boot
+  // (the bar wait raised past the grace) so no tuning can ask for a bar before its plate.
+  const secs = (x, d) => { const n = parseFloat(x); return Number.isFinite(n) && n >= 0 ? n : d; };
+  const PLATE_GRACE = secs(EX.load_plate_grace, 0.35);  // black → plate; the fast/slow reveal split
+  let   BAR_WAIT    = secs(EX.load_bar_wait, 1.5);       // plate → plate+bar (a genuinely long wait)
+  if (!(PLATE_GRACE < BAR_WAIT)) BAR_WAIT = PLATE_GRACE + 0.6;   // F7 clamp: a bar never before its plate
+  const REVEAL_SLOW = secs(EX.load_reveal, 2.0);         // the reveal token — the graceful settle (plate stood)
+  const REVEAL_FAST = secs(EX.load_reveal_fast, 0.6);    // the soft token — the crisp settle (beat the plate)
+  const PRELOAD_AHEAD = clampInt(EX.preload_ahead, 1, 0, 1);     // EX-LOAD-3: one ahead, the bounded reach
+
+  // ONE reused overlay: the plate (the work's raw tone) carrying its crawling bar, moved into the
+  // in-view frame while its pixels are late (only the in-view frame ever ladders, so one suffices).
+  const plate = document.createElement("div");
+  plate.id = "ex-plate"; plate.hidden = true;
+  plate.innerHTML = '<i class="ex-bar" aria-hidden="true"></i>';
+  function plateHide() {
+    plate.hidden = true; plate.classList.remove("show", "bar");
+    if (plate.parentNode) plate.parentNode.removeChild(plate);
   }
-  function breathe(img) {                              // the frame in view changed
-    breathOff();
-    waited = img;
-    if (!img || img.complete) return;                  // pixels home (or already failed)
-    let shownBreath = false;
-    breathTimer = setTimeout(() => {                   // the grace beat (~.35s ×tempo)
-      if (img !== waited || img.complete) return;
-      shownBreath = true;
-      breath.hidden = false;
-      tlog("breath");
-    }, Math.round(350 * TEMPO));
-    const done = () => {                               // load OR error, whichever speaks first
-      if (img !== waited) return;
-      breathOff();
-      if (!shownBreath) return;                        // landed inside the grace — nothing to undo
-      tlog("img");
-      if (img.naturalWidth) {                          // late pixels enter by the room's own fade,
-        img.style.transition = "none";                 // never a hard pop
-        img.style.opacity = "0";
-        void img.offsetWidth;
-        img.style.transition = "";
-        img.style.opacity = "";
+  let armTimers = [];
+  let armedImg = null;                                  // the one in-flight image the ladder waits on
+  function armClear() { armTimers.forEach(clearTimeout); armTimers = []; }
+  // retire the whole ladder + preload — the door/ceremony cover every walk frame (EX-LOAD boundary)
+  function ladderOff() { armClear(); armedImg = null; plateHide(); preloadCancel(); }
+  // the reveal: the photo fades in over the plate at the chosen settle (fast when it beat the plate,
+  // the reveal token when the plate stood). Rides the one clock (×TEMPO — reduced motion collapses it).
+  function reveal(img, durSec) {
+    img.style.transition = "none";
+    img.style.opacity = "0";
+    void img.offsetWidth;
+    img.style.transition = "opacity " + (durSec * TEMPO).toFixed(3) + "s var(--ease)";
+    img.style.opacity = "";                             // .seen → opacity 1, fades over durSec
+    img.dataset.ladder = "done";
+  }
+  // arm the ladder on a frame taking view. The arm READS THE SETTLED STATE FIRST (prover F1):
+  // a warm image (complete, real pixels) reveals at once down the fast path — no plate, no clock;
+  // an already-errored one retires at once, caption + counter holding; only a genuinely in-flight
+  // image arms the grace/bar clocks and the load/error listeners — never a wait on a spent event.
+  // Arms ONCE per frame-taking-view (prover F6): a post-reveal tier swap (INV-63) never re-plates.
+  function arm(img, w, frame) {
+    if (!img || !w || !frame) return;
+    if (img.dataset.ladder === "done") return;          // already resolved — never re-plate (F6)
+    if (img === armedImg && !plate.hidden) return;      // already laddering THIS frame — don't restart
+                                                        //   the clocks (resize/re-observe)
+    if (img.complete) {                                 // the settled read (F1), synchronous
+      plateHide();                                      // clear a plate lingering from a prior frame
+      if (img.naturalWidth > 0) reveal(img, REVEAL_FAST);   // warm ⇒ reveal at once, no plate/clock
+      else img.dataset.ladder = "done";                     // pre-errored ⇒ retire; the caption holds
+      return;
+    }
+    // genuinely in flight: black held → plate (grace) → plate+bar (long wait) → reveal on load
+    armClear();
+    armedImg = img;
+    plateHide();
+    frame.insertBefore(plate, frame.firstChild);        // behind the photo, same centered grid cell
+    plate.style.aspectRatio = (w.w && w.h) ? (w.w + " / " + w.h) : "";
+    plate.style.background = "rgb(" + w.dom.join(",") + ")";   // the work's RAW baked tone (not liveAccent)
+    plate.hidden = false;
+    void plate.offsetWidth;                             // a fresh fade from opacity 0
+    img.style.transition = "none";
+    img.style.opacity = "0";                            // hold the photo behind the plate until it lands
+    let plateShown = false;
+    armTimers.push(setTimeout(() => {                   // the grace beat → the plate fades in (soft token)
+      if (img !== armedImg || img.complete) return;
+      plateShown = true;
+      plate.classList.add("show");
+      tlog("plate");
+    }, Math.round(PLATE_GRACE * 1000 * TEMPO)));
+    armTimers.push(setTimeout(() => {                   // the long wait → the wordless bar joins the plate
+      if (img !== armedImg || img.complete) return;     // (past here a silent stall crawls indefinitely —
+      plate.classList.add("show", "bar");               //  the ladder owns no timeout, the browser's fetch does)
+      tlog("bar");
+    }, Math.round(BAR_WAIT * 1000 * TEMPO)));
+    const done = () => {                                // load OR error, whichever speaks first
+      if (img !== armedImg) return;
+      armClear();
+      if (img.naturalWidth > 0) {                       // pixels home: fade over the plate then retire it
+        const dur = plateShown ? REVEAL_SLOW : REVEAL_FAST;
+        reveal(img, dur);
+        armTimers.push(setTimeout(() => { if (img === armedImg) plateHide(); },
+                                  Math.round(dur * 1000 * TEMPO) + 60));
+      } else {                                          // a dead image never traps (INV-37): retire whole,
+        img.dataset.ladder = "done"; plateHide();       //   caption + counter hold, no plate as the picture
       }
     };
     img.addEventListener("load", done, { once: true });
     img.addEventListener("error", done, { once: true });
+  }
+
+  // EX-LOAD-3: the next work quietly preloads — the walk arrives warm. While a work rests in view,
+  // fetch the NEXT work in the current DIRECTION OF TRAVEL at the device tier (the same srcset/sizes
+  // the walk uses, INV-63) — exactly preload_ahead (1) ahead, never the arc (INV-25/30). Best-effort
+  // and silent (a dead preload costs nothing); cancelled on a turn or a #w- jump (prover F5), then
+  // re-aimed to the new direction of travel.
+  let travelDir = 1;                                    // +1 forward · -1 back — set by every step
+  let preImg = null, preId = null;
+  function preloadCancel() {
+    if (preImg) { preImg.src = ""; preImg = null; }     // abandon the in-flight fetch cleanly (F5)
+    preId = null;
+    try { window.__exPreload = null; } catch (e) {}     // the test read-side, like EXTimings/__exSeen
+  }
+  function preloadAhead(curN) {                         // curN = the 1-based frame in view
+    if (!PRELOAD_AHEAD) { preloadCancel(); return; }
+    const idx = (curN - 1) + travelDir;                 // one ahead along the feet
+    if (idx < 0 || idx >= order.length) { preloadCancel(); return; }
+    const id = String(order[idx]);
+    if (id === preId) return;                           // already warming this exact next work
+    preloadCancel();                                    // a turn/jump abandons the old one cleanly (F5)
+    const w = byId[id]; if (!w) return;
+    preId = id;
+    const im = new Image();
+    if (w.srcset) { im.sizes = data.walk_sizes || "88vw"; im.srcset = w.srcset; }
+    im.src = w.img;                                     // the browser picks the device tier
+    preImg = im;
+    try { window.__exPreload = { id: id, dir: travelDir }; } catch (e) {}
   }
 
   // ---- THE DOOR (door.html's face — the norm) --------------------------------
@@ -685,7 +774,7 @@
   // pass through the lobby (EX-GREET) — the re-opened door keeps the localized ask only
   function renderDoor(spread, cold) {    // the spread is CARRIED by the caller (INV-32a)
     ceremonyCancel();                                  // a door render wins over any crossing
-    breathOff();                                       // the door covers every frame (EX-LOAD)
+    ladderOff();                                       // the door covers every frame (EX-LOAD-2/-3)
     atDoor = true;
     faceSync();                                        // the door is a face — arm the rest + guard (EX-CHROME)
     tlog("door");
@@ -836,6 +925,15 @@
       veil.hidden = true;
       busy = false;
       faceSync();                                      // the walk is bare — the lock lifts (EX-CHROME)
+      // the crossing warms its own picked work, so the room opens without a plate; but a
+      // cache-evicted or slow-landing first image falls through to THIS ladder now the lock has
+      // lifted (EX-DOOR-2e → EX-LOAD-2). And the feet warm forward from the threshold (EX-LOAD-3).
+      travelDir = 1;
+      const f0 = stage.querySelector(".exh-frame");
+      const im0 = f0 && f0.querySelector("img.work");
+      if (im0 && !im0.complete) arm(im0, byId[f0.dataset.id], f0);
+      preloadCancel();
+      preloadAhead(1);
     });
   }
 
@@ -944,7 +1042,13 @@
     if (!w) return;
     walkSeen.add(String(w.id));                        // the circle counts a mark the MOMENT it is
                                                         // made — no wait for the debounced flush (EX-DOOR-4)
-    breathe(x.target.querySelector("img.work"));       // late pixels meet the breath (EX-LOAD)
+    // the in-flight ladder + the one-ahead preload (EX-LOAD-2/-3) — armed from THIS in-view watcher.
+    // The door and the crossing keep their own image handling (they warm the picked work); only the
+    // WALK's in-view frame ladders, and only once the ceremony's lock has lifted.
+    if (!busy && !atDoor) {
+      arm(x.target.querySelector("img.work"), w, x.target);
+      preloadAhead(+x.target.dataset.n);
+    }
     if (window.__exSeen) window.__exSeen(w.id);      // the coat-check report (EX-MEMORY)
     // the walk tracks its place per frame in view (INV-32c re-carried after the ↗ retired)
     try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: w.id })); } catch (e) {}
@@ -1547,6 +1651,7 @@
   // one step = advance exactly ONE frame from where the walk is — or from where a running
   // transition is headed, so a second input CHAINS to the next frame, never re-rounds backward.
   function stepFrame(dir /*, velocity */) {
+    travelDir = dir < 0 ? -1 : 1;                        // the feet declare a direction (EX-LOAD-3)
     const stops = frameStops();
     if (!stops.length) return;
     const base = gliding && glideGoal != null ? glideGoal : scrollY;
@@ -1882,6 +1987,9 @@
     }
     replaceFace({ face: "walk" });                     // no step of its own (INV-32e)
     try { sessionStorage.setItem(SPENT_KEY, "w-" + hid); } catch (e) {}
+    // a #w- landing abandons any in-flight preload and re-aims a fresh one-ahead from the landing
+    // frame, forward by default until a step declares a direction (EX-LOAD-3 / prover F5)
+    travelDir = 1; preloadCancel();
     const f = stage.querySelector('.exh-frame[data-id="' + hid + '"]');
     if (f) scrollTo(0, frameCenter(f));               // instant, centered in the LIVE viewport
     // the consuming jump writes the place marker so the room's memory agrees with the eye

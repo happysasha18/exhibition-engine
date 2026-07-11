@@ -207,6 +207,8 @@ class Browser:
             raise ChromeMissing(CHROME)
         self.width, self.height = width, height
         self._id = 0
+        self._net_on = False          # network-log capture (EX-LOAD-3 preload road)
+        self._net_urls = []           # every requestWillBeSent URL while capture is on
         self._profile = tempfile.mkdtemp(prefix="tlv_cdp_")
         self.port = self._free_port()
         self.proc = subprocess.Popen(
@@ -279,7 +281,13 @@ class Browser:
                 if "error" in msg:
                     raise RuntimeError(f"{method}: {msg['error']}")
                 return msg.get("result", {})
-            # else: an event — ignore (we poll for state instead of listening)
+            # else: an event. We poll for state, not listen — EXCEPT the network log, which we
+            # drain here (events interleave with responses; any _cmd after a request captures it).
+            if self._net_on and msg.get("method") == "Network.requestWillBeSent":
+                try:
+                    self._net_urls.append(msg["params"]["request"]["url"])
+                except (KeyError, TypeError):
+                    pass
 
     # -- page control
     def navigate(self, url):
@@ -418,6 +426,27 @@ class Browser:
         the way a dead image really fails. An empty list unblocks."""
         self._cmd("Network.enable")
         self._cmd("Network.setBlockedURLs", urls=list(patterns))
+
+    # -- network log (EX-LOAD-3: watching the one-ahead preload cross the wire)
+    def net_capture(self):
+        """Start collecting every request URL. Events are drained during any later ``_cmd``,
+        so call ``net_log()`` (which polls once) after the window you care about."""
+        self._cmd("Network.enable")
+        self._net_urls = []
+        self._net_on = True
+
+    def net_clear(self):
+        """Forget the URLs seen so far — draw a fresh line before a turn/jump."""
+        self._net_urls = []
+
+    def net_log(self):
+        """Return the request URLs seen since capture/clear. Polls the socket once (a benign
+        eval) so events already delivered are drained before the read."""
+        try:
+            self.evaluate("1")           # drives one _cmd → its recv loop drains pending events
+        except RuntimeError:
+            pass
+        return list(self._net_urls)
 
     # -- visitor identity (EX-GREET tests)
     def pretend(self, lang, hour):

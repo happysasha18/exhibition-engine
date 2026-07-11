@@ -831,6 +831,15 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         "max_unfolds": 2,        # unfold steps before «ещё 5» retires — the arc ENDS (INV-30)
         "door_size": 5,          # works at the threshold, 3–5 (EX-DOOR)
         "greeting": "ask",       # where the door's greeting hangs: ask (his pick) | top | off (EX-GREET)
+        # EX-LOAD-2/-3 (INV-72/INV-73): the in-flight ladder + the one-ahead preload. Each duration
+        # is a beat ×tempo (INV-33); ORDER IS LAW — load_plate_grace < load_bar_wait, clamped at boot
+        # in the client (a bar never before its plate). All client-fallback-guarded, so a bake that
+        # leaves them at these defaults behaves identically whether or not they ride config.
+        "load_plate_grace": 0.35,  # black → tone-plate; also the fast/slow split for the reveal
+        "load_bar_wait": 1.5,      # plate → plate+bar (a genuinely long wait, well past the plate)
+        "load_reveal": 2.0,        # the reveal token — the graceful settle when the plate stood
+        "load_reveal_fast": 0.6,   # the soft token — the crisp settle when the photo beat the plate
+        "preload_ahead": 1,        # works warmed ahead along the feet (0–1) — never the whole arc
         # row_size LEFT the schema with the grid wall (EX-WALL tombstone, 2026-07-06)
         # the told story's feel-knobs (EX-STORY-AB / EX-STORY-ORDER, INV-47) — on/off is the top-level
         # ai_story flag (INV-19); these are the A/B tunables (INV-28). params_version feeds the story

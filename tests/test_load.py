@@ -96,13 +96,15 @@ else:
 
 BROWSER_ROWS = [
     "EX-DOOR-2e the clock is one third (pick→reveal ≈1.8 beats ×tempo, caption right behind)",
-    "EX-LOAD the cold return breathes, then reveals (held image → breath → work fades in)",
-    "EX-LOAD a healthy line never sees it (no ex:breath mark on a normal crossing)",
-    "EX-LOAD a dead image never traps (breath retires, caption+counter hold, walk alive)",
+    "EX-LOAD the cold return plates, then reveals (held image → tone plate → work fades in) [superseded by EX-LOAD-2]",
+    "EX-LOAD a healthy line never sees it (no plate, no ex:plate mark on a normal crossing)",
+    "EX-LOAD a dead image never traps (plate retires, caption+counter hold, walk alive)",
     "EX-TIMING marks are laid, export on ask; nothing in the DOM (INV-1)",
 ]
 
-BREATH_ON = "(()=>{const b=document.getElementById('ex-breath');return !!b && !b.hidden})()"
+# the in-flight ladder's superseding face: the plate (EX-LOAD-2) replaced the lone breath hairline
+PLATE_ON = ("(()=>{const p=document.getElementById('ex-plate');"
+            "return !!p && !p.hidden && p.classList.contains('show')})()")
 MARKS = ("JSON.stringify(Object.fromEntries(performance.getEntriesByType('mark')"
          ".filter(m=>m.name.startsWith('ex:')).map(m=>[m.name.slice(3),m.startTime])))")
 FIRST_IMG = "document.querySelector('.exh-frame img.work')"
@@ -133,7 +135,9 @@ else:
                   f"marks={sorted(marks)} pick→reveal={delta:.2f}s "
                   f"caption+{cap_gap:.2f}s work_opacity={revealed}")
 
-        # 1 · the cold return breathes
+        # 1 · the cold return plates: a stored walk, the first image HELD 2s by the server — past
+        # the grace beat the tone plate stands and the image is incomplete; when the bytes land the
+        # plate retires and the work fades in over it (tempo 0.2 → grace 0.07s)
         HOLD.update(match=PICK, delay=2.0)
         with Browser(width=1280, height=900) as br:
             br.navigate("about:blank")
@@ -143,19 +147,19 @@ else:
             br.reload()
             br.sleep(0.8)
             mid = br.evaluate(
-                "(()=>{const i=" + FIRST_IMG + ";return {breath:" + BREATH_ON + ","
-                "complete:i&&i.complete,text:(document.getElementById('ex-breath')||{}).textContent||''};})()")
+                "(()=>{const i=" + FIRST_IMG + ";return {plate:" + PLATE_ON + ","
+                "complete:i&&i.complete,text:(document.getElementById('ex-plate')||{}).textContent||''};})()")
             br.sleep(2.6)
             after = br.evaluate(
-                "(()=>{const i=" + FIRST_IMG + ";return {breath:" + BREATH_ON + ","
+                "(()=>{const i=" + FIRST_IMG + ";return {plate:" + PLATE_ON + ","
                 "ok:i&&i.complete&&i.naturalWidth>0,op:+getComputedStyle(i).opacity};})()")
             check(BROWSER_ROWS[1],
-                  mid["breath"] and not mid["complete"] and mid["text"].strip() == ""
-                  and not after["breath"] and after["ok"] and after["op"] > 0.5,
+                  mid["plate"] and not mid["complete"] and mid["text"].strip() == ""
+                  and not after["plate"] and after["ok"] and after["op"] > 0.5,
                   f"mid={mid} after={after}")
         HOLD.clear()
 
-        # 2 · a healthy line never sees the breath
+        # 2 · a healthy line never sees the plate: a normal local crossing lays no ex:plate
         with Browser(width=1280, height=900) as br:
             br.navigate(base + "/")
             br.clear_storage()
@@ -167,10 +171,11 @@ else:
             marks = json.loads(br.evaluate(MARKS) or "{}")
             revealed = br.evaluate(f"+getComputedStyle({FIRST_IMG}).opacity") or 0
             check(BROWSER_ROWS[2],
-                  "breath" not in marks and not br.evaluate(BREATH_ON) and revealed > 0.5,
-                  f"marks={sorted(marks)} breath_on={br.evaluate(BREATH_ON)} op={revealed}")
+                  "plate" not in marks and not br.evaluate(PLATE_ON) and revealed > 0.5,
+                  f"marks={sorted(marks)} plate_on={br.evaluate(PLATE_ON)} op={revealed}")
 
-        # 3 · a dead image never traps
+        # 3 · a dead image never traps: the request BLOCKED (a real error event) — the plate
+        # retires (or never shows), the caption and counter still hold the frame, no crash
         with Browser(width=1280, height=900) as br:
             br.block([f"*{PICK}*"])
             br.navigate(base + "/")
@@ -179,13 +184,13 @@ else:
             br.reload()
             br.sleep(1.5)
             state = br.evaluate(
-                "(()=>{const i=" + FIRST_IMG + ";return {breath:" + BREATH_ON + ","
+                "(()=>{const i=" + FIRST_IMG + ";return {plate:" + PLATE_ON + ","
                 "dead:i&&i.complete&&i.naturalWidth===0,"
                 "cap:(document.getElementById('exh-cap')||{}).textContent||'',"
                 "counter:document.querySelector('.exh-counter.show')!==null,"
                 "alive:1+1===2};})()")
             check(BROWSER_ROWS[3],
-                  not state["breath"] and state["dead"] and state["cap"].strip() != ""
+                  not state["plate"] and state["dead"] and state["cap"].strip() != ""
                   and state["counter"] and state["alive"],
                   f"state={state}")
             br.block([])
