@@ -2,3 +2,6 @@
 __pycache__/
 *.pyc
 .publish-pass-checkpoint.md
+.adopt-checkpoint.md
+.live-spec/checkpoints/*
+!.live-spec/checkpoints/.gitkeep
