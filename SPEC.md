@@ -606,19 +606,29 @@ on every face, so that judgment falls the same way everywhere:
   the others (EX-COMPOSE's list gains it for this law alone): it rests the walk's input the same way,
   while its own controls — the windows, Back, the language mark — stay live, and the leaving door
   keeps the rest through its whole ceremony (EX-DOOR-2e). A face locks the visitor out by resting the
-  input (keys, wheel, touch — with EX-COMPOSE's carve-out intact: the face's OWN scroll stays native,
-  the side room's lane included) and by hiding the root scrollbar for its stay WITHOUT moving the
-  page (the gutter keeps its width, so nothing behind a translucent card shifts on open or close);
-  any scroll that lands regardless is snapped back in the same beat, a correction with no designed
-  motion of its own (INV-33 untouched). The guard corrects only at input REST: while a pointer or
-  touch is DOWN it HOLDS — a finger resting on the glass is not rest, and an active touch drags the
-  page a few pixels (the phone's rubber-band), so a correction written mid-touch only makes the finger
-  drag again the next frame, a per-frame fight the visitor sees as the whole screen trembling; the
-  guard therefore settles ONCE, when the last finger lifts. The guard answers only scroll the house
+  input (keys, wheel, touch) and by hiding the root scrollbar for its stay WITHOUT moving the
+  page (the gutter keeps its width, so nothing behind a translucent card shifts on open or close).
+  A moving finger the face EATS AT THE SOURCE: a drag over a standing face lets the browser scroll
+  only while the finger stands on a part of the face that can truly take the movement along the drag's
+  own axis — the side room's polaroid lane along its length, a text field — and everywhere else the
+  move is consumed before the browser turns it into page scroll, so the walk beneath never receives
+  the drag at all (EX-COMPOSE's carve-out, narrowed from «anywhere on the face» to the genuinely
+  scrollable parts; the 2026-07-11 field find walked through the broad reading — a drag on the
+  question card's translucent scrim slid the walk hundreds of pixels behind it and jerked it back on
+  lift). A lane that runs out does not hand the leftover to the page: the chain stops at the face's
+  edge. Any scroll that lands regardless is snapped back in the same beat, a correction with no
+  designed motion of its own (INV-33 untouched) — with drags eaten at the source, this guard is the
+  BACKSTOP for what source-eating cannot reach: a dragged desktop scrollbar, the phone's own
+  rubber-band. The guard corrects only at input REST: while a pointer or touch is DOWN it HOLDS — a
+  correction written mid-touch is a per-frame fight the visitor sees as the whole screen trembling
+  (the 2026-07-10 phone find); the guard settles ONCE, when the last finger lifts, and because the
+  face already ate the drag, the settle answers a few rubber-band pixels, never a long slide. The
+  guard answers only scroll the house
   did not write itself — the door ceremony's glide to the picked work, the Back restore, and the
-  face-leave re-centre all pass. This one guard is also what finally discharges EX-COMPOSE's «the room never slides away
-  beneath a standing face» on a desktop, where a dragged scrollbar could slide the walk under a card
-  until now — one mechanism, every face. The overflow cut on the page root is retired as a locking
+  face-leave re-centre all pass. EX-COMPOSE's «the room never slides away beneath a standing face» is
+  discharged at the source for touch (the face eats the drag) and by the guard for everything else
+  (the dragged desktop scrollbar, the rubber-band's leftover) — resting finger or moving, the walk
+  beneath a face stands still. The overflow cut on the page root is retired as a locking
   device: it is exactly what told the browser the page stood still and handed the frame back on
   rotation.
 - **A rotation meets the same page on every face.** Because every face keeps the same tall, in-place
@@ -631,8 +641,9 @@ on every face, so that judgment falls the same way everywhere:
   house does not fight it. The walk's first steps are what tuck the frame away, and from there the
   law above keeps every face equal.
 
-*Facets:* phone is the law's home case; touch and keyboard — the input rest already covers both
-(EX-COMPOSE, unchanged); empty/error/loading — the cold door is the named empty case above;
+*Facets:* phone is the law's home case; touch and keyboard — the input rest covers both, the touch
+half now eating drags at the source (EX-COMPOSE's carve-out narrowed above); empty/error/loading —
+the cold door is the named empty case above;
 accessibility — the hidden scrollbar lives only while a face stands, and the bare walk keeps the
 browser's own bar `[default]`; performance — the lock swap adds no render work, and the snap-back
 guard listens only while a face stands `[default]`. *Fit:* no arrival, step, or exit changes on any
@@ -641,7 +652,10 @@ frame to hide (the browser owns it); a dynamic-viewport (dvh) relayout of the fr
 stops already absorb the height difference, EX-GLIDE); an installable app shell. *Success measure:*
 one rotation behaviour on every face — rotating at the re-opened door or in the side room leaves the
 browser's tabs exactly as a rotation inside a room does `[default]` (a real-device fact; the owner's
-phone is the gate). `EX-CHROME` `INV-70`
+phone is the gate). And the still walk is machine-proven: a slow drag over any standing face moves
+the page beneath by zero pixels and leaves no jump on lift (the moving-finger row beside the
+resting-finger one); the trembling's absence on the owner's phone stays a real-device gate.
+`EX-CHROME` `INV-70`
 
 ### The loading breath
 
@@ -1173,3 +1187,4 @@ requiring reconciliation:
 | `⟨DELTA-11⟩` | **RESOLVED** — the full circle retires the hand (`EX-DOOR-4`/`INV-71`, ported from tlvphoto `5cef158`): a walk whose whole hang has stood in view earns a fresh `EX-DOOR-3` deal on the next door render, with the four prover findings folded — an unconsumed circle wins once then the reload law resumes (F1), the exit control / browser-Back / returned-door reload behave alike and `INV-32a`'s as-it-stood yields (F2), the circle counts marks the moment they are made via an in-session `walkSeen` set written synchronously in the intersection callback so the debounced flush never delays it (F3), and a circle-less older hand reads as no circle consumed while a stale-versioned hand drops whole (F4). The consumed circle (pick + shown) rides the versioned `ex.hand` record so one circle earns one deal. The client already carried the `ex.*` / `__exSeen` naming, so the js port is meaning-parallel with the reference (`tlv.hand`→`ex.hand`, `tlv.seenc`→`ex.seenc`). `test_door.py` gains rows 25–29 (all red-first vs HEAD). |
 | `⟨DELTA-13⟩` | **RESOLVED** — the in-flight ladder + the one-ahead preload (`EX-LOAD-2`/`INV-72`, `EX-LOAD-3`/`INV-73`, ported from tlvphoto `7874951`+`06f9cc3`): the lone loading-breath hairline grows to black → the work's raw `dom` tone-plate → plate+bar → accelerated reveal, armed from the same in-view IntersectionObserver that grounds the tone (`arm()` reads the settled state — F1 — and arms once — F6), and the next work preloads one-ahead along the direction of travel (`preloadAhead`/`travelDir`, cancelled + re-aimed on a turn/`#w-` — F5). Five knobs join `config.exhibition` (`load_plate_grace` .35 / `load_bar_wait` 1.5 / `load_reveal` 2.0 / `load_reveal_fast` .6 / `preload_ahead` 1), all client-fallback-guarded; the client clamps `load_plate_grace` < `load_bar_wait` at boot (F7). No bake output — works already carry `dom` and `srcset`. The client already carried the `ex.*` / `ex:*` / `__exSeen` naming, so the js/css port is meaning-parallel with the reference (`tlv:plate`→`ex:plate`, `__tlvPreload`→`__exPreload`). `test_ladder.py` is new (15 rows, 14 browser + 1 traceability — 8 red-first vs HEAD); `test_load.py`'s three EX-LOAD browser rows swing breath→plate (1 red-first); `tests/headless.py` gains a network-log road (`net_capture`/`net_log`/`net_clear`) for the preload. All 15 ladder rows pin **SKIP** when Pillow is absent (the tier bake the composition row needs). |
 | `⟨DELTA-12⟩` | **RESOLVED** — every registry beat now on the wire (`EX-PULSE`/`INV-41`, ported from tlvphoto `7670e1a`): `pulse()` gains a third `extra` arg for a closed-ladder word; `gift_download` fires from `giftDownload` on both kinds (`quiz_prize` when preMarked, `grab` on a right-click) carrying the work id (threaded through `openGift`'s new `workId` arg + the contextmenu `fr.dataset.id`, the two quiz gift calls); `series_lift` on each polaroid LIFT (not set-down); `series_open` now carries `focusedId`; `lang_pick` at the door tongue pick (the baked code, or `other` for an outsider tongue — never a raw locale); and `walk_exit` also fires on a browser-Back leave (the `popstate` door branch, guarded by `wasWalk = !atDoor` so control (pushState) and history (popstate) never double-count). `test_pulse.py` is re-authored to 9 rows including a TWO-WAY registry guard (every code emitter names a registry beat AND every registry beat has a live emitter, portable via a first-arg `pulse()` parser). The guard exposed a pre-existing engine gap: `sound_on`/`sound_off` were emitted (EX-SOUND) but absent from the EX-PULSE table — the table now lists all **eleven** beats. **DELTA vs the reference:** the engine carries no read side (`ga_report.py`, `ga_register_dimensions.py`), so the reference's "read side keeps pace" string row is omitted here — same convention as `⟨DELTA-9⟩`'s FL5/FL6. Six rows red-first vs HEAD. |
+| `⟨DELTA-14⟩` | **RESOLVED** — a drag over a standing face no longer slides the room beneath it (`EX-CHROME`/`INV-70`, the layer above `⟨DELTA-10⟩`'s resting-finger follow-on, ported from tlvphoto `4a262cd`): the face now EATS a moving finger AT THE SOURCE. The touchmove branch tracks the gesture (`fX`/`fY`/`fDecided`), picks a verdict ONCE on the first ~4px, and holds it to the lift — the walk gets no page scroll unless the finger stands on a part of the face that truly scrolls along the drag's own axis, tested by `faceConsumes` (a genuinely-scrollable ancestor — inputs/textareas/contenteditable, or `scrollWidth`/`scrollHeight` past client+1 with `overflow` auto|scroll in the gesture's axis — stopping at `FACE_SEL`). The old carve-out narrows from «anywhere on a face» to those parts; the side-room lane gains `overscroll-behavior:contain` so a run-out never chains to the page; the snap-back guard demotes to the BACKSTOP for what source-eating cannot reach (a dragged desktop scrollbar, the rubber-band's leftover), its yield-while-held/settle-once-on-lift shape unchanged. The client already carried the `FACE_SEL` / guard naming, so the js/css port is meaning-parallel with the reference. `test_compose.py` gains **CH8** (a slow real drag on the quiz scrim AND the side-room backdrop off the lane → zero page drift while held, no post-lift jerk — red-first vs HEAD showed 285px slide behind both) and **CH9** (drag ALONG the lane scrolls the lane, drag ACROSS it moves neither). **CH9 pins SKIP in the synthetic fixture** at every honest viewport (its 3-member lane series does not overflow even at 390px — `sw==cw`), so the along-precondition never arms and the across-half is untestable here — same standing condition as CH6; it exercises on real content with a wider lane. The engine carries no `TEST_MATRIX.md`/`docs/prover` — the reference's two matrix rows and its prover findings (F1 decide-once, F2 overscroll-contain, F3 facets, F4 sound-chrome-by-class, F5–F8 unchanged fences) fold into the SPEC clause + the CH8/CH9 tests here. |

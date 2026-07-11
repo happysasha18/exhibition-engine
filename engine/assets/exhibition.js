@@ -1711,10 +1711,20 @@
     if (!faceStands() || gliding || pointerHeld()) return;
     if (Math.abs(scrollY - guardHold) > 1) scrollTo(0, guardHold);
   }
-  addEventListener("touchstart", (e) => { heldTouches = e.touches.length; },
-                   { passive: true, capture: true });
+  // EX-CHROME: the moving-finger gesture, tracked so the face can EAT a drag at the source. The
+  // start point and a per-gesture verdict (fDecided: null undecided · true a truly scrollable part
+  // of the face keeps native · false the walk never gets the drag) are set on a 1-touch touchstart
+  // and cleared on lift. The verdict is picked once, on the first ~4px, and held to the lift.
+  let fX = null, fY = null, fDecided = null;
+  addEventListener("touchstart", (e) => {
+    heldTouches = e.touches.length;
+    fDecided = null;                                    // a new gesture — fresh verdict
+    if (e.touches.length === 1) { fX = e.touches[0].clientX; fY = e.touches[0].clientY; }
+    else { fX = fY = null; }
+  }, { passive: true, capture: true });
   ["touchend", "touchcancel"].forEach((k) => addEventListener(k, (e) => {
-    heldTouches = e.touches.length; if (!pointerHeld()) settleGuard();
+    heldTouches = e.touches.length; if (!e.touches.length) fX = fY = null;
+    if (!pointerHeld()) settleGuard();
   }, { passive: true, capture: true }));
   addEventListener("pointerdown", (e) => { heldPointers.add(e.pointerId); },
                    { passive: true, capture: true });
@@ -1825,9 +1835,33 @@
       tY = tLast = e.touches[0].clientY;
       tMoved = false;
     }, { passive: true });
+    // EX-CHROME: does some part of the face under the finger truly take this drag's axis?
+    function faceConsumes(target, horiz) {
+      for (let el = target; el && el !== document.documentElement; el = el.parentElement) {
+        if (el.matches && el.matches("input, textarea, select, [contenteditable]")) return true;
+        if (el instanceof Element) {
+          const cs = getComputedStyle(el);
+          if (horiz ? (el.scrollWidth  > el.clientWidth  + 1 && /(auto|scroll)/.test(cs.overflowX))
+                    : (el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(cs.overflowY))) return true;
+          if (el.matches && el.matches(FACE_SEL)) break;   // reached the face root — nothing consumed
+        }
+      }
+      return false;
+    }
     addEventListener("touchmove", (e) => {
-      if (faceStands()) {                              // EX-CHROME: rest touch behind a face
-        if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // the face's own scroll (the room's lane) stays native
+      if (faceStands()) {                              // EX-CHROME: the face EATS the drag at the source
+        if (e.touches.length === 1 && fX != null) {
+          if (fDecided == null) {
+            const dx = e.touches[0].clientX - fX, dy = e.touches[0].clientY - fY;
+            if (Math.abs(dx) + Math.abs(dy) >= 4)      // the first ~4px pick the axis — verdict held to lift
+              fDecided = !!(e.target && e.target.closest && e.target.closest(FACE_SEL))
+                         && faceConsumes(e.target, Math.abs(dx) > Math.abs(dy));
+            else { e.preventDefault(); return; }       // undecided yet — eat, the walk never gets a first pixel
+          }
+          if (fDecided) return;                        // a truly scrollable part — native, the lane lives
+          e.preventDefault(); return;
+        }
+        if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // multi-touch: today's treatment
         e.preventDefault(); return;                    // the overflow cut is gone — the rest holds the walk
       }
       if (tY == null) return;

@@ -90,7 +90,43 @@ CH_ROWS = [
     "CH5 EX-CHROME the scrollbar hides gutter-stable",
     "CH6 EX-CHROME the face's own scroll survives the rest",
     "CH7 EX-CHROME the guard holds under a resting finger",
+    "CH8 EX-CHROME a moving finger cannot drag the walk from under a face",
+    "CH9 EX-CHROME the narrowed carve-out keeps the lane alive, axis-true",
 ]
+
+
+# A slow REAL finger drag (touchStart → many small moves over ≥1s → lift), no rubber-band stand-in:
+# this proves the SOURCE-eating (CH7 owns the foreign-scroll guard). Steps are ~15px each, so the
+# first move already crosses the axis-pick threshold — a normal deliberate drag. Returns the max
+# page-scroll drift while held and whether the page jerked after lift.
+DRAG_INSTR = (
+    "(()=>{window.__held=window.scrollY;window.__drift=0;window.__after=[];window.__lift=false;"
+    "addEventListener('scroll',()=>{const d=Math.abs(window.scrollY-window.__held);"
+    "if(window.__lift){window.__after.push(Math.round(window.scrollY));}"
+    "else if(d>window.__drift){window.__drift=d;}},{passive:true});})()"
+)
+
+
+def slow_drag(br, x0, y0, dx_total, dy_total, steps=16, seconds=1.1):
+    """Drive a slow real drag from (x0,y0) by (dx_total,dy_total) over `seconds`. NO foreign scroll.
+    Returns (held, max_drift_while_held, jerked_after_lift)."""
+    br.evaluate(DRAG_INSTR)
+    held = br.evaluate("window.scrollY") or 0
+    br._cmd("Input.dispatchTouchEvent", type="touchStart",
+            touchPoints=[{"x": int(x0), "y": int(y0)}])
+    for i in range(1, steps + 1):
+        br._cmd("Input.dispatchTouchEvent", type="touchMove",
+                touchPoints=[{"x": int(x0 + dx_total * i / steps),
+                              "y": int(y0 + dy_total * i / steps)}])
+        br.sleep(seconds / steps)
+    drift = br.evaluate("window.__drift") or 0
+    br.evaluate("window.__lift=true")
+    br._cmd("Input.dispatchTouchEvent", type="touchEnd", touchPoints=[])
+    br.sleep(0.4)
+    after = json.loads(br.evaluate("JSON.stringify(window.__after)") or "[]")
+    final = br.evaluate("window.scrollY") or 0
+    jerked = len(set(after)) > 1 or abs(final - held) > 2
+    return held, drift, jerked
 
 
 def setup_walk(br, quiz_work_pick=None, tempo="0.3"):
@@ -877,6 +913,107 @@ else:
                 f"side_open={side_open} guard_writes_during_hold={writes_hold} (want 0) "
                 f"settle_after_lift={settle} (want ≥1) final_off={final_off} held={held}",
             )
+
+        # ---- CH8: a moving finger cannot drag the walk from under a face (source-eating) ----
+        # A slow REAL drag on a translucent part of a standing face — (a) the question card's scrim,
+        # (b) the side room's backdrop OFF the lane — must write ZERO page scroll while held and leave
+        # NO jerk on lift: the face eats the drag at the source, so the guard has nothing to settle.
+        # (The 2026-07-11 field find: a drag on the quiz scrim slid the walk hundreds of px behind it.)
+        DRIFT_EPS = 5
+        with Browser(width=390, height=844) as br:
+            br.touch(True)
+            br.navigate(base + "/")
+            # (a) the question card's translucent scrim (y=150 sits above the centred .quiz-inner).
+            # The chip is JS-clicked (native hit-testing flakes on the mobile caption layout); the
+            # chip lives on the browser's CHOSEN quiz work, discovered after reload.
+            setup_walk(br)
+            br.reload()
+            br.sleep(1.3)
+            chosen = get_quiz_work_id(br)
+            if chosen:
+                br.evaluate(
+                    "(()=>{const f=document.querySelector('.exh-frame[data-id=\"%s\"]');"
+                    "if(f)f.scrollIntoView({behavior:'instant'});})()" % str(chosen))
+                br.sleep(0.8)
+                br.evaluate("(()=>{const c=document.querySelector('.ex-quiz-chip');if(c)c.click();})()")
+                br.sleep(0.6)
+            q_open = br.evaluate(
+                "document.querySelector('#ex-quiz-card')?.classList.contains('show')")
+            scrim_tag = br.evaluate(
+                "(()=>{const e=document.elementFromPoint(195,150);"
+                "return e&&e.closest('#ex-quiz-card')?e.tagName+'.'+e.className:null;})()")
+            _, drift_a, jerk_a = slow_drag(br, 195, 150, 0, -300)
+            # (b) the side room's backdrop, off the lane — found by scan (a non-scrollable #ex-side pt)
+            side_open = open_side_room(br)
+            bpt = br.evaluate(
+                "(()=>{const x=Math.round(innerWidth/2);"
+                "for(let y=Math.round(innerHeight*0.85);y>innerHeight*0.12;y-=18){"
+                "const el=document.elementFromPoint(x,y);"
+                "if(el&&el.closest&&el.closest('#ex-side')&&!el.closest('.exs-stage.lane')"
+                "&&!el.closest('input,textarea,button,a,[role=button]')"
+                "&&el.scrollHeight<=el.clientHeight+1)"
+                "return {x:x,y:y,tag:el.tagName+'.'+el.className};}return null;})()")
+            if not bpt:
+                skip(CH_ROWS[7], "no off-lane backdrop point found in the side room")
+            else:
+                _, drift_b, jerk_b = slow_drag(br, bpt["x"], bpt["y"], 0, -300)
+                check(
+                    CH_ROWS[7],
+                    q_open and side_open
+                    and drift_a <= DRIFT_EPS and not jerk_a
+                    and drift_b <= DRIFT_EPS and not jerk_b,
+                    f"quiz_open={q_open} scrim={scrim_tag} scrim_drift={drift_a} jerk={jerk_a} | "
+                    f"side_open={side_open} backdrop={bpt['tag']}@{bpt['y']} "
+                    f"back_drift={drift_b} jerk={jerk_b} (eps={DRIFT_EPS})",
+                )
+
+        # ---- CH9: the narrowed carve-out keeps the lane alive, axis-true ----
+        # With the side room standing: a drag ALONG the polaroid lane still scrolls it natively
+        # (scrollLeft moves — the face's own scroll survives the narrowing); a drag ACROSS it
+        # (vertical, ON the lane) moves neither the lane nor the page (the leftover never chains).
+        with Browser(width=390, height=844) as br:
+            br.touch(True)
+            br.navigate(base + "/")
+            if LANE_SERIES is None:
+                skip(CH_ROWS[8], "no lane series in bake")
+            else:
+                side_open = open_side_room(br, series=LANE_SERIES)
+                lane = br.evaluate(
+                    "(()=>{const l=document.querySelector('.exs-stage.lane');"
+                    "if(!l)return null;const r=l.getBoundingClientRect();"
+                    "return {sl:l.scrollLeft, sw:l.scrollWidth, cw:l.clientWidth,"
+                    "cx:r.left+r.width/2, cy:r.top+r.height/2};})()")
+                if not lane or lane["sw"] <= lane["cw"] + 4:
+                    skip(CH_ROWS[8],
+                         f"lane not horizontally scrollable (sw={lane and lane['sw']} "
+                         f"cw={lane and lane['cw']}) — axis-true carve-out untestable here")
+                else:
+                    cx, cy = int(lane["cx"]), int(lane["cy"])
+                    # ALONG: a horizontal drag scrolls the lane natively (finger left → scrollLeft up)
+                    sl0 = br.evaluate(
+                        "document.querySelector('.exs-stage.lane').scrollLeft") or 0
+                    slow_drag(br, cx, cy, -240, 0)
+                    sl_along = br.evaluate(
+                        "document.querySelector('.exs-stage.lane').scrollLeft") or 0
+                    along_moved = sl_along > sl0 + 2
+                    br.evaluate(
+                        "document.querySelector('.exs-stage.lane').scrollLeft=%d" % sl0)
+                    br.sleep(0.2)
+                    # ACROSS: a vertical drag ON the lane moves neither the lane nor the page
+                    sl_before = br.evaluate(
+                        "document.querySelector('.exs-stage.lane').scrollLeft") or 0
+                    _, page_drift, _ = slow_drag(br, cx, cy, 0, -300)
+                    sl_after = br.evaluate(
+                        "document.querySelector('.exs-stage.lane').scrollLeft") or 0
+                    across_lane_moved = abs(sl_after - sl_before) > 2
+                    check(
+                        CH_ROWS[8],
+                        side_open and along_moved
+                        and not across_lane_moved and page_drift <= 5,
+                        f"side_open={side_open} along scrollLeft {sl0}→{sl_along} "
+                        f"moved={along_moved} | across lane {sl_before}→{sl_after} "
+                        f"lane_moved={across_lane_moved} page_drift={page_drift} (want≤5)",
+                    )
 
 shutil.rmtree(TMP, ignore_errors=True)
 

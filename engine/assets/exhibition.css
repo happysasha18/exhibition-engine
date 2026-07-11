@@ -239,7 +239,8 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .exs-back:hover, .exs-back:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
 .exs-stage{ position:absolute; inset:0; }
 .exs-stage.lane{ display:flex; align-items:center; gap:7vw; padding:0 16vw;
-  overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+  overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+  overscroll-behavior:contain; }  /* EX-CHROME: a lane that runs out never chains the leftover to the page */
 .exs-stage.lane::-webkit-scrollbar{ display:none; }
 .exs-stage.lane img{ max-height:56vh; max-width:64vw; flex:none; border-radius:2px;
   box-shadow:0 10px 34px rgba(0,0,0,.22); }
