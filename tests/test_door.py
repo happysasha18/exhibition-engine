@@ -403,16 +403,20 @@ else:
               f"persisted={persisted == arc_new}")
 
         # 19 · full-bright windows; the halo answers from ZERO, colored by liveAccent
+        # Sampled on the SECOND window: the idle-hint law (EX-DOOR-2g, hint row) breathes the FIRST
+        # window's halo on an untouched cold door — two spec'd behaviors, so this row samples a
+        # window the hint never touches (flake root-caused from the instance 2026-07-10 17:22: a
+        # rest halo > 0 on the first window was the hint breathing, not a defect).
         fresh(br, base)
         look = br.evaluate(
-            "(()=>{const w=document.querySelector('.exd-window');"
+            "(()=>{const w=document.querySelectorAll('.exd-window')[1];"
             "const s=getComputedStyle(w.querySelector('img'));"
             "const a=getComputedStyle(w,'::after');"
             "return {filter:s.filter,transform:s.transform,halo:+a.opacity,"
             "glow:w.style.getPropertyValue('--glow').trim(),"
             "canHover:matchMedia('(hover: hover)').matches};})()")
-        first_id = br.evaluate(DOOR_IDS)[0]
-        dom = BY_ID[first_id]["dom"]
+        second_id = br.evaluate(DOOR_IDS)[1]
+        dom = BY_ID[second_id]["dom"]
         y = 0.2126 * dom[0] + 0.7152 * dom[1] + 0.0722 * dom[2]
         if y < 24:
             exp_glow = BONE
@@ -420,10 +424,10 @@ else:
             kk = min(170 / y, 6)
             exp_glow = tuple(int(min(255, v * kk) * 0.8 + BONE[i] * 0.2 + 0.5)
                              for i, v in enumerate(dom))
-        br.hover(".exd-window")
+        br.hover(".exd-window:nth-child(2)")
         br.sleep(0.6)
         hov = br.evaluate(
-            "(()=>{const w=document.querySelector('.exd-window');"
+            "(()=>{const w=document.querySelectorAll('.exd-window')[1];"
             "const s=getComputedStyle(w.querySelector('img'));const a=getComputedStyle(w,'::after');"
             "return {filter:s.filter,halo:+a.opacity};})()")
         work_still = (look["filter"] == "none" and hov["filter"] == "none"
