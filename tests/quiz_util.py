@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Quiz utilities shared across test suites — ported from tlvphoto cbab752.
+"""Quiz utilities shared across test suites — ported from an instance.
 
 arm_of and find_token_arm_on live HERE (one home); test suites import from this module.
 The jhash replica is the authoritative Python mirror of the JS quizHash() finalizer.

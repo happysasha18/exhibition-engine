@@ -7,11 +7,11 @@ EXPECTED PASS today: DEAD-TRANSIENT, DEAD-LIVE
 
 Run: .venv/bin/python tests/test_dead.py
 
-Ported from tlvphoto cbab752 tests/test_dead.py — adapted for the engine:
+Ported from an instance's tests/test_dead.py — adapted for the engine:
 - import engine_build as build_site (the engine shim)
 - SITE_URL is the synthetic site URL
 - greetings.json lives at tests/fixture_content/data/greetings.json
-- gen_greetings.py lives at scripts/gen_greetings.py (same relative path as tlvphoto)
+- gen_greetings.py lives at scripts/gen_greetings.py (same relative path as an instance)
 """
 import json
 import os

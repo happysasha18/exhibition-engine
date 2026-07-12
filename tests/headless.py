@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Zero-dependency headless-Chrome harness for browser-level tests (tlvphoto).
+"""Zero-dependency headless-Chrome harness for browser-level tests.
 
 Drives a real headless Chrome over the DevTools Protocol (CDP) with nothing but the
 standard library — no selenium, no playwright, no pip. It exists so the exhibition's

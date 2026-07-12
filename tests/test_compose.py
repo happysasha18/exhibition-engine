@@ -2,7 +2,7 @@
 """EX-COMPOSE / INV-67 — The faces meet (the 2026-07-09 bug class closed as law).
 Ten browser rows, one per engine SPEC "The faces meet" clause.
 
-Ported from tlvphoto cbab752 tests/test_compose.py — adapted for the engine:
+Ported from an instance's tests/test_compose.py — adapted for the engine:
 - import engine_build as build_site (the engine shim)
 - SITE_URL is the synthetic site URL
 - quiz works and series come from the engine's synthetic fixture

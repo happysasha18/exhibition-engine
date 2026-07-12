@@ -11,7 +11,7 @@ where `series_open` shipped onto the wire with no spec sentence).
 The remote tag script is BLOCKED — the inline snippet's own queue is the assertion surface, so the
 suite never talks to Google. Chrome absent → pinned expected SKIPs.
 
-DELTA vs the tlvphoto reference: the engine carries no read side (`ga_report.py`,
+Deliberately narrower than an instance: the engine carries no read side (`ga_report.py`,
 `ga_register_dimensions.py`), so the reference's "read side keeps pace" string row is omitted here —
 the same convention as test_quiz_flow's FL5/FL6 omission (DELTA-9).
 Run: python tests/test_pulse.py

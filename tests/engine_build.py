@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Shim that gives test_site.py the same module-level interface as tlvphoto's build_site,
+"""Shim that gives test_site.py the same module-level interface as an instance's build_site,
 but calls engine/build.py with the synthetic fixture content.
 
-Interface contract (must stay compatible with build_site's interface in tlvphoto):
+Interface contract (must stay compatible with an instance's build_site interface):
   - OUT              : Path — set by the test before calling build()
   - SITE_CONFIG      : dict — the synthetic site identity (test parameterises from this)
   - build(site_url)  : calls engine.build.build() with fixture content + synthetic site identity

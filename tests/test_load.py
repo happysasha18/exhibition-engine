@@ -43,7 +43,7 @@ for w in DATA["works"]:
 check("N10 budget: every baked work derivative ≤ 1.2 MB (the breath is for networks, not bloat)",
       not heavy, " | ".join(heavy[:5]))
 
-# ---- three walk fixes ported from tlvphoto (string level; the feel rides the browser rows) -------
+# ---- three walk fixes ported from an instance (string level; the feel rides the browser rows) ----
 INDEX_SRC = (TMP / "index.html").read_text(encoding="utf-8")
 CSS_SRC = (TMP / "exhibition.css").read_text(encoding="utf-8")
 JS_SRC = (TMP / "exhibition.js").read_text(encoding="utf-8")
@@ -64,7 +64,7 @@ check("door relayout no re-fade: a fresh open animates its windows in; an aspect
       "doorRender(true)" in JS_SRC and 'b.style.animation = "none"' in JS_SRC,
       "doorRender animate branch")
 
-# ---- EX-LADDER (INV-63): the responsive 640/960/1280 image ladder ported from tlvphoto -----------
+# ---- EX-LADDER (INV-63): the responsive 640/960/1280 image ladder ported from an instance --------
 # pure helpers (no bake, no PIL): srcset_of builds the ladder over a served path; the base stays fallback
 _L = build_site.srcset_of("/gallery/assets/x/17.jpg")
 check("EX-LADDER srcset_of builds the 640/960/1280 ladder over a served path",

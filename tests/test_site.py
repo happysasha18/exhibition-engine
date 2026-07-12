@@ -7,7 +7,7 @@ Adapted from the reference instance's test_site.py for the exhibition-engine:
   · EX-COPY copyright check parameterised from engine_build.SITE_CONFIG
   · DEPLOY check points at engine/scripts/deploy.sh and "build.py" (not "build_site.py")
   · run_all gate checks the engine's own tests/ suite list
-  · all other assertions are UNCHANGED from the tlvphoto original
+  · all other assertions are UNCHANGED from the instance original
 
 Bakes the synthetic fixture (tests/fixture_content/) into a temp dir, then inspects it.
 Zero pip dependencies; stdlib html.parser + re only.
@@ -356,7 +356,7 @@ check("INV-21 bake is reproducible (byte-identical)", tree_bytes(TMP) == tree_by
 # ---------------------------------------------------------------- EX-COPY (INV-40): the quiet signature
 
 # every machine face carries the SAME baked line, and the year is the bake run's own
-# Parameterised from SITE_CONFIG so this passes for any instance, not just tlvphoto.
+# Parameterised from SITE_CONFIG so this passes for any instance, not one in particular.
 import datetime as _dt   # noqa: E402
 _year = _dt.date.today().year
 _creator  = build_site.SITE_CONFIG["creator"]
@@ -432,7 +432,7 @@ check("gate: run_all's suite list equals the test files on disk (a new suite can
       f"runner={sorted(run_all.SUITES)} disk={sorted(_on_disk)}")
 
 # ---------------------------------------------------------------- DEPLOY: one honest command
-# Adapted from tlvphoto: "build_site.py" → "build.py" (the engine's builder name).
+# Adapted from an instance: "build_site.py" → "build.py" (the engine's builder name).
 # All other beats (wrangler, purge, md5, Keychain) are generic deployment infrastructure.
 
 import os as _os   # noqa: E402

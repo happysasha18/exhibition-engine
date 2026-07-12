@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The in-flight ladder + the one-ahead preload (EX-LOAD-2 / INV-72 · EX-LOAD-3 / INV-73) —
 one test per matrix row, adapted for the exhibition-engine synthetic fixture (ported from
-tlvphoto 7874951). A frame whose pixels are late wears the work's OWN dominant tone (a plate);
+an instance). A frame whose pixels are late wears the work's OWN dominant tone (a plate);
 on a genuinely long wait a thin wordless bar joins on the plate; the photo fades in over it,
 crisp when it beat the plate, graceful when the plate stood. The next walk work quietly preloads
 one ahead along the feet. All wordless (INV-1); every wait a beat ×tempo (INV-33).

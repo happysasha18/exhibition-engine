@@ -2,7 +2,7 @@
 
 The engine has no compute_vector.py (vector computation is instance-side only — gap recorded
 below). This suite asserts that the FIXTURE vector.json satisfies the same structural invariants
-that the tlvphoto test_vector.py checks.
+that an instance's test_vector.py checks.
 
 EXPECTED_N is derived from gallery_data.json at import time so the assertion stays correct
 when make_synthetic.py adds works.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """EX-QUIZ / EX-PROTECT-GIFT / EX-PROTECT-RES — the 4-option question and its gift.
 
-Ports the tlvphoto 4-option quiz + gift-ceremony + mark-split features into the engine,
+Ports an instance's 4-option quiz + gift-ceremony + mark-split features into the engine,
 GENERALIZED: no work id, host, or filename is hardcoded — quiz data is an instance-supplied
 <content>/quiz.json with the 4-option schema {prompt, options[4], answer, prize}, the mark
 text is the site host from config, the download name is a slug of the site name, and the chip

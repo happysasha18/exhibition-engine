@@ -52,7 +52,7 @@ SPREAD = EXCFG["spread_size"]
 UNFOLD = EXCFG["unfold_step"]
 
 # a SECOND bake with the told story ON (ai_story) — the plot-per-portion drive (EX-STORY / DELTA-16,
-# mirrored from tlvphotos f423051). The default bake above ships ai_story false; this one flips the
+# mirrored from an instance). The default bake above ships ai_story false; this one flips the
 # story on so the client's STORY_ON path (tellStory) runs, and we STUB /api/story in the browser so
 # the drive needs no worker. The built client is byte-identical to the default bake's.
 STORY_ON = Path(tempfile.mkdtemp(prefix="synth_ex_story_"))
@@ -186,7 +186,7 @@ check("INV-1 on EX — no axis name/score/confidence in served exhibition HTML/a
 
 
 # ============================================================ EX-STORY plot-per-portion (DELTA-16)
-# Mirrored from tlvphotos f423051. Each opened portion of works is its own PLOT: the follow-on «ещё N»
+# Mirrored from an instance. Each opened portion of works is its own PLOT: the follow-on «ещё N»
 # asks /api/story for ONLY the newly opened portion's ordered ids (never the grown 0..shown set), so a
 # line already read is never re-requested and never shifts; a portion counts as told only once its plot
 # has come back, so a refused/failed portion stays OWED and is re-asked at the next natural beat (a
