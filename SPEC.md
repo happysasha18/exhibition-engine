@@ -264,6 +264,53 @@ shape); a stale-versioned hand is dropped whole, as the walk's own state law alr
 still count the circle while they are at hand; with nothing left to count — a reload with no
 stored seen record — the door keeps the standing-set law, quietly. `EX-DOOR-4` `INV-71`
 
+**The diverse door (the `door_diversity` flag, default off — the curated hand above stands
+byte-identical, `INV-19`).** An instance may turn the threshold from the curated pool to a diverse
+door drawn from the WHOLE living gallery. With it on, three standing laws yield FOR THE DOOR alone:
+every open deals a FRESH set — a cold arrival, a reload, and a return from a walk alike (this
+overrides the session-held hand of `EX-DOOR-2d`/`INV-16`, the gentle reload of
+`EX-DOOR-RELOAD`/`INV-19`, and the circle's deal-once of `EX-DOOR-4`/`INV-71`, all for the door
+alone; the walk saved behind a pick still persists untouched). The set is chosen for even SPREAD
+across the five measured axes (brightness, warmth, colourfulness, detail, symmetry): the picks seed
+near the gallery's centre — a random one of the closest few, the per-open variety seed — and each
+next pick is the work farthest from those already chosen. At least a configured fraction of the
+SHOWN windows come from a named PLACE group — an instance sets both the group's keywords and the
+fraction (default `0.6`) in its `door_diversity` site config — reached by swapping the
+least-distinctive non-place pick for the place candidate that best keeps the spread until the
+fraction holds. The ORDER varies too: a random axis and direction each open. The count follows the
+viewport's fit (`EX-DOOR-2b`) and the place fraction holds among exactly those shown. `EX-DOOR-3`
+
+**Novelty across visits — the door remembers what it has dealt (`fresh_min`, default `0.6`).** The
+farthest-point spread on its own gravitates to the same extreme works — the parameter poles are
+always the farthest points — so a returning visitor, most visibly on a phone where only three
+windows show, would meet the same faces open after open. To prevent that the door keeps a local
+memory of every work it has DEALT (independent of what the visitor actually walked — a
+browser-local list, versioned so a new gallery build voids it, capped, forgotten by `?reset` with
+everything else, `EX-RESET`; a second tab is the usual last-writer, `INV-26`). Each open then
+guarantees that **at least `fresh_min` of the windows dealt for the current fit are works NOT in
+that memory** — at the default `0.6`, two of three on a phone and three of five on a wide screen
+have not been dealt recently — while the place fraction still holds. Because the two fractions
+together can ask for more than the windows exist (`0.6n + 0.6n > n`), at least
+`⌈fresh_min·n⌉ + ⌈place_min·n⌉ − n` of the shown windows must be BOTH unseen AND place; the deal
+honours all three counts JOINTLY (it only adds a work while the remaining slots can still reach
+every count), preferring unseen works throughout — a set is typically wholly fresh while the pool
+is deep. This novelty floor is the diverse door's own repeat bound and SUPERSEDES the curated
+door's at-most-⌊door_size/3⌋-repeat law (`EX-DOOR-3`/`INV-20`) here, as `EX-DOOR-3` already
+supersedes that clause's dealing for the diverse door. When the unseen pool can no longer supply
+the fresh floor — or the unseen-place overlap the two fractions jointly demand — the memory is
+cleared and a **new round** begins over the whole pool: the just-dealt set REPLACES the emptied
+memory (a normal open instead UNIONS its set in) so the very next open still differs. Over a round
+the door thus walks the whole gallery before any work returns, then walks it again — bounded
+repetition, never the same few. On a gallery no larger than the door's own window count there is no
+round at all (the whole pool shows every time). *Facets:* the door looks the same, its works and
+their order differ each open and rarely repeat within a round; performance — the deal and its one
+memory read/write run once per open over the gallery, never on a resize. *Non-goals:* a single
+fixed "best" door (variety is the point); a fraction the data cannot support (it is capped by how
+many place works exist); a memory that outlives the browser or the `?reset` (it is local and
+forgettable). *Success measure:* five cold opens give five different sets, each with at least the
+place fraction from the place group and at least `fresh_min` works not dealt since the last round
+reset, in a varying order `[default]`. `EX-DOOR-3` `INV-20` `INV-74`
+
 **The crossing — ceremony B «через чёрное»** (`EX-DOOR-2e`): a tap answers by the whole room
 dimming — the veil takes the door (`.33s×tempo`) → the wordmark alone drifts to the center of
 the black and lets go (~`.9s`) → the room's tone rises first (`.53s` onto the picked work's
@@ -1200,6 +1247,7 @@ the worker.
 | `INV-72` | The in-flight ladder: a walk frame whose pixels are late wears the work's RAW baked `dom` tone (a plate) past `load_plate_grace`, a wordless bar (no digit, no percentage — INV-1) joins past `load_bar_wait`, and the photo fades in OVER the plate — `load_reveal_fast` when it beat the plate, `load_reveal` when the plate stood; the arm reads the already-settled state (`complete`/`naturalWidth`, the errored case) and resolves synchronously (warm ⇒ reveal at once, no plate/clock; pre-errored ⇒ retire, caption+counter hold), arming ONCE per frame-taking-view so a post-reveal tier swap never re-plates; ONE reused overlay for the single in-view frame; every duration a beat ×tempo (INV-33) and `load_plate_grace` < `load_bar_wait` clamped at boot; runs at a SECOND call-site — the door's five windows (`EX-DOOR-2c`), each its own `.exd-plate` (five may fly at once, never the walk's single overlay), reading the settled state so a cached window / relayout re-render / fresh full-circle deal re-flashes no plate, the window's entrance and `liveAccent` halo standing while the plate speaks the raw `dom`; the door emits no walk marks and does not preload; the crossing and the side room stay outside — the ladder governs the walk's in-view frame and the door windows only and continues behind any standing face; supersedes EX-LOAD/INV-37's lone hairline, its promises re-carried whole |
 | `INV-73` | The one-ahead preload: while a work rests in view the NEXT work in the current direction of travel is fetched at the device tier (the walk's own `srcset`/`sizes`, INV-63) — exactly `preload_ahead` (default 1) ahead, never the arc (INV-25/INV-30); best-effort and silent (a failed preload surfaces nothing and the in-view ladder still catches the step), abandoned cleanly on a turn or `#w-` jump and re-aimed to the new direction of travel; client-only, no bake output, no worker, no flag |
 | `INV-71` | The full circle retires the hand: once every work of the standing walk's current hang (`order.slice(0, shown)`, spread + unfolds) has stood in view — counted the moment the mark is made, in-session marks joined with the persisted seen copy — the next door render (the exit control, a browser-Back onto the door, or a returned-door reload, all alike) retires the standing hand and deals a fresh `EX-DOOR-3` hand; the consumed circle (pick + shown) rides the versioned `ex.hand` so one circle earns exactly one deal (door↔walk never re-rolls, a new pick or a post-circle unfold reopens the count); an unconsumed circle outranks the reload refresh once, then the reload law resumes; a circle-less older hand reads as no circle consumed and a stale-versioned hand drops whole (`INV-26`); on this one point `INV-32a`'s as-it-stood yields; short of a circle the standing-set law (`INV-16`/`EX-DOOR-2d`) holds |
+| `INV-74` | The diverse door keeps a browser-local, versioned, `?reset`-forgettable memory of the works it has DEALT, and every open guarantees at least `fresh_min` of the windows dealt for the current fit are works not dealt since the last round reset — jointly with the place fraction, so at least `⌈fresh_min·n⌉+⌈place_min·n⌉−n` shown windows are both unseen and place; when the unseen pool cannot supply the fresh floor or that overlap the memory clears and a new round begins, the just-dealt set replacing it (a normal open unions in). This novelty floor supersedes the curated door's ⌊door_size/3⌋-repeat law (`INV-20`) here |
 
 ### Reconciliation log — how each behavior above landed in code
 

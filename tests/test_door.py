@@ -768,6 +768,164 @@ else:
               f"live={live} door={at_door} frames={n}")
 
 
+# ---------------------------------------------------------------- EX-DOOR-3 door_diversity (flag ON)
+# The diverse door: the pool spans the WHOLE living gallery (five spread axes + a `place` flag), a
+# FRESH evenly-spread set is dealt EVERY open (variety over the session-held hand), and
+# ≥ place_min_fraction of the SHOWN windows are place works. Default (flag off) is unchanged — proven
+# by every row above, which bakes without the flag. The fixture's Israeli-city tags give a real place
+# group large enough to leave novelty slack (a group of only place_min×door_size works could never
+# offer an unseen place work on a second open, so the round would reset every open — see INV-75).
+build_site.SITE_CONFIG = dict(build_site.SITE_CONFIG,
+                               door_diversity={"place_keywords":
+                                               ["Tel Aviv", "Jerusalem", "Haifa", "Galilee",
+                                                "Negev", "Dead Sea"]})
+TMPD = Path(tempfile.mkdtemp(prefix="synth_door_div_"))
+build_site.OUT = TMPD
+build_site.build(SITE_URL, enable=["door_diversity"])
+DIV_DATA = json.loads((TMPD / "exhibition_data.json").read_text())
+DIV_POOL = DIV_DATA["door"]["pool"]
+DIV_CFG = json.loads((TMPD / "config.json").read_text())["exhibition"].get("door_diversity")
+PLACE_IDS = {e["id"] for e in DIV_POOL if e.get("place")}
+FRAC = (DIV_CFG or {}).get("place_min_fraction", 0.6)
+
+# data row: the pool spans the gallery, carries the five axes + place, and the fraction ships
+_axes = ("luma", "warmth", "colorful", "edge", "sym")
+_pool_shape = all(all(k in e for k in _axes) and "place" in e and "id" in e for e in DIV_POOL)
+check("EX-DOOR-3 the diverse pool spans the whole living gallery (five spread axes + a place flag; "
+      "the place fraction ships in config)",
+      len(DIV_POOL) == len(WORK_IDS) and _pool_shape and len(PLACE_IDS) >= 3
+      and DIV_CFG and abs(FRAC - 0.6) < 1e-9,
+      f"pool={len(DIV_POOL)} works={len(WORK_IDS)} place={len(PLACE_IDS)} cfg={DIV_CFG} shape={_pool_shape}")
+
+DIV_ROWS = [
+    "EX-DOOR-3 a FRESH set is dealt every open (three cold opens give different sets — variety)",
+    "EX-DOOR-3 ≥60% of the SHOWN windows are place works, every open (the guarantee holds)",
+    "EX-DOOR-3 the shown count fits the viewport (desktop up to door_size; portrait fewer)",
+]
+NOV_ROWS = [
+    "EX-DOOR-3/INV-74 novelty across visits: each reopen shows ≥fresh_min works not dealt in prior opens",
+    "EX-DOOR-3/INV-74 the door remembers dealt works in localStorage (ex.doordealt accumulates the round)",
+    "EX-DOOR-3/INV-74 ?reset forgets the round memory (EX-RESET) — old ids do not survive the reset",
+    "EX-DOOR-3/INV-74 an exhausted round resets and still deals a full, place-honouring set (no starve)",
+]
+FRESH_MIN_CFG = (DIV_CFG or {}).get("fresh_min", 0.6)
+
+
+def _cold_open_div(br, base):
+    br.navigate(base + "/")
+    br.evaluate("localStorage.clear();sessionStorage.clear()")
+    br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+    br.reload(); br.sleep(1.1)
+    return [i for i in (br.evaluate(DOOR_IDS) or []) if i]
+
+
+if not chrome_available():
+    for r in DIV_ROWS + NOV_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+else:
+    with serve(TMPD) as base:
+        exp_desk_n = door_layout(1280, 900, pool_n=len(DIV_POOL))[0]
+        exp_port_n = door_layout(390, 844, pool_n=len(DIV_POOL))[0]
+        with Browser(width=1280, height=900) as br:      # desktop → up to door_size windows
+            opens = [tuple(_cold_open_div(br, base)) for _ in range(3)]
+            desk_ns = [len(o) for o in opens]
+            place_frac = [sum(1 for i in o if i in PLACE_IDS) / len(o) for o in opens if o]
+            distinct = len(set(opens))
+        with Browser(width=390, height=844) as br:        # portrait → fewer windows
+            port = _cold_open_div(br, base)
+            port_place = sum(1 for i in port if i in PLACE_IDS)
+        check(DIV_ROWS[0], distinct >= 2,
+              f"distinct sets over 3 cold opens = {distinct} (sets={opens})")
+        # ≥60% place among the shown — desktop opens AND the portrait open (ceil rounding tolerated)
+        import math as _m
+        desk_ok = all(f + 1e-9 >= FRAC for f in place_frac)
+        port_ok = port and port_place >= _m.ceil(FRAC * len(port))
+        check(DIV_ROWS[1], bool(place_frac) and desk_ok and port_ok,
+              f"desktop_place_fracs={[round(f, 2) for f in place_frac]} "
+              f"portrait_place={port_place}/{len(port)}")
+        check(DIV_ROWS[2],
+              all(n == exp_desk_n for n in desk_ns) and len(port) == exp_port_n,
+              f"desktop_ns={desk_ns} exp_desk_n={exp_desk_n} portrait_n={len(port)} "
+              f"exp_port_n={exp_port_n} door_size={DOOR_SIZE}")
+
+        # ------------------------------------------------------ INV-74 novelty across visits
+        import math as _mn
+        ALL_DIV_IDS = [str(e["id"]) for e in DIV_POOL]
+
+        # (a) accumulation: reopen at the door (localStorage kept across reloads — a returning visitor
+        #     who never entered, so no stored walk), each open shows ≥ ceil(fresh_min·n) works not dealt
+        #     in the union of the prior opens of this run. The number of opens adapts to the pool: a round
+        #     lasts only while both the unseen pool AND the unseen-place group can still feed the deal, so
+        #     we probe that many opens (min two, cap six) — enough to prove accumulation without forcing
+        #     the exhaustion reset that test (c) covers.
+        _need_place = _mn.ceil(FRAC * DOOR_SIZE)
+        _need_fresh = _mn.ceil(FRESH_MIN_CFG * DOOR_SIZE)
+        n_opens = max(2, min(6, min(len(DIV_POOL) // DOOR_SIZE, len(PLACE_IDS) // _need_place)))
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear();sessionStorage.clear();localStorage.setItem('ex-tempo','0.2')")
+            runs = []
+            for _ in range(n_opens):
+                br.reload(); br.sleep(1.1)
+                runs.append([i for i in (br.evaluate(DOOR_IDS) or []) if i])
+            mem = br.evaluate("JSON.parse(localStorage.getItem('ex.doordealt') || 'null')")
+        prior, fresh_ok, min_fresh = set(), True, 99
+        for k, s in enumerate(runs):
+            if k > 0 and s:
+                nf = len([i for i in s if i not in prior])
+                min_fresh = min(min_fresh, nf)
+                if nf < _mn.ceil(FRESH_MIN_CFG * len(s)):
+                    fresh_ok = False
+            prior |= set(s)
+        check(NOV_ROWS[0], fresh_ok and len(runs) == n_opens and all(runs),
+              f"opens={n_opens} min per-open fresh vs prior union={min_fresh}; sizes={[len(r) for r in runs]}")
+        check(NOV_ROWS[1],
+              bool(mem) and isinstance(mem.get("ids"), list) and len(mem["ids"]) >= DOOR_SIZE + _need_fresh,
+              f"ex.doordealt size={(len(mem['ids']) if mem else None)} (expected the round to accumulate past one hand)")
+
+        # (b) ?reset forgets the round memory: seed it with real ids at the live version, then ?reset —
+        #     the seeded ids must not survive (a bare re-deal would only re-add ≤ door_size by chance).
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear();sessionStorage.clear();localStorage.setItem('ex-tempo','0.2')")
+            br.reload(); br.sleep(1.1)
+            rec = br.evaluate("JSON.parse(localStorage.getItem('ex.doordealt') || 'null')")
+            ver = (rec or {}).get("v")
+            seed_ids = ALL_DIV_IDS[:20]
+            br.evaluate("localStorage.setItem('ex.doordealt', JSON.stringify(%s))"
+                        % json.dumps({"v": ver, "ids": seed_ids}))
+            br.navigate(base + "/?reset"); br.sleep(1.1)
+            after = br.evaluate("JSON.parse(localStorage.getItem('ex.doordealt') || 'null')")
+        present = len(set(seed_ids) & set((after or {}).get("ids", [])))
+        check(NOV_ROWS[2], after is not None and present <= DOOR_SIZE,
+              f"seeded ids still present after ?reset={present} (a union would keep all 20)")
+
+        # (c) exhausted round resets and still deals a full, place-honouring set (no starvation):
+        #     seed the memory to all-but-one work → below the fresh floor → the open must reset.
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear();sessionStorage.clear();localStorage.setItem('ex-tempo','0.2')")
+            br.reload(); br.sleep(1.1)
+            rec = br.evaluate("JSON.parse(localStorage.getItem('ex.doordealt') || 'null')")
+            ver = (rec or {}).get("v")
+            seeded = ALL_DIV_IDS[1:]                       # leave exactly one work unseen
+            br.evaluate("localStorage.setItem('ex.doordealt', JSON.stringify(%s))"
+                        % json.dumps({"v": ver, "ids": seeded}))
+            before = len(seeded)
+            br.reload(); br.sleep(1.1)
+            ids2 = [i for i in (br.evaluate(DOOR_IDS) or []) if i]
+            mem2 = br.evaluate("JSON.parse(localStorage.getItem('ex.doordealt') || 'null')")
+        full = bool(ids2) and 3 <= len(ids2) <= DOOR_SIZE
+        place2 = sum(1 for i in ids2 if i in PLACE_IDS)
+        place_ok2 = full and place2 >= _mn.ceil(FRAC * len(ids2))
+        reset_ok = bool(mem2) and len(mem2["ids"]) < before
+        check(NOV_ROWS[3], full and place_ok2 and reset_ok,
+              f"n={len(ids2)} place={place2}/{len(ids2)} mem_before={before} "
+              f"mem_after={(len(mem2['ids']) if mem2 else None)}")
+
+shutil.rmtree(TMPD, ignore_errors=True)
+
+
 # ---------------------------------------------------------------- report
 shutil.rmtree(TMP, ignore_errors=True)
 shutil.rmtree(TMP_GA, ignore_errors=True)

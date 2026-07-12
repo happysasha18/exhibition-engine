@@ -19,6 +19,7 @@
   const VISITOR_KEY = "ex.visitor";                  // the coat-check token (EX-MEMORY)
   const HAND_KEY = "ex.hand";                        // the last dealt threshold hand (EX-DOOR-3)
   const SEENC_KEY = "ex.seenc";                      // the seen-list's local copy (EX-DOOR-3)
+  const DOORDEALT_KEY = "ex.doordealt";              // works the diverse door has dealt this round (EX-DOOR-3/INV-75)
   const LANG_KEY = "ex.lang";                        // the guest's chosen tongue (EX-LANG)
   const SND_KEY = "ex.sound";                         // the ambient player's on/off + volume (EX-SOUND)
 
@@ -100,6 +101,7 @@
     try { localStorage.removeItem(VISITOR_KEY); } catch (e) {}   // forgetting is whole (EX-MEMORY)
     try { localStorage.removeItem(HAND_KEY); } catch (e) {}
     try { localStorage.removeItem(SEENC_KEY); } catch (e) {}
+    try { localStorage.removeItem(DOORDEALT_KEY); } catch (e) {}  // the door forgets its shown-round memory (EX-RESET/INV-75)
     try { localStorage.removeItem(LANG_KEY); } catch (e) {}     // the browser's tongue returns
     try { localStorage.removeItem(SND_KEY); } catch (e) {}      // the museum forgets the sound choice (EX-SOUND)
     try { sessionStorage.removeItem(QUIZ_STAGE_KEY); } catch (e) {}   // EX-QUIZ-FLOW (INV-69): the stage wipes with the walk
@@ -138,7 +140,10 @@
   // place-guaranteed set every open (variety over the session-held hand — his word 2026-07-12). Absent
   // ⇒ the curated hand stands exactly as before (the byte-identical fallback, INV-19).
   const DIVERSE = !!(EX.door_diversity);
-  const PLACE_MIN = (EX.door_diversity && Number(EX.door_diversity.place_min_fraction)) || 0.6;
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+  const PLACE_MIN = clamp01((EX.door_diversity && Number(EX.door_diversity.place_min_fraction)) || 0.6);
+  // INV-75: each open shows at least this fraction of works NOT dealt since the last round reset
+  const FRESH_MIN = clamp01((EX.door_diversity && Number(EX.door_diversity.fresh_min)) || 0.6);
   // EX-MOTION: ONE clock for CSS and JS — config tempo, a visitor/test override in
   // localStorage['ex-tempo'] clamped to [0.05, 3]; stillness (reduced motion) wins over both
   const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -407,12 +412,13 @@
 
   // EX-DOOR-3 (door_diversity): a FRESH, evenly-spread, place-guaranteed set every open. The pool
   // spans the whole living gallery (baked with five axes + a `place` flag). We min-max normalize the
-  // five axes, SEED near the set's centre (a random pick among the closest few — the variety knob
-  // per open), greedily add the work FARTHEST from the picked set until `want`, then guarantee at
-  // least PLACE_MIN of them are place works (swapping the least-distinctive non-place pick for the
-  // place candidate that best preserves the spread). The ORDER varies too — a random axis and
-  // direction each open, since there is no single right order over these axes (his word 2026-07-12:
-  // «менять каждый раз … порядок тоже играем … нет абсолютного критерия»).
+  // five axes, SEED near the set's centre among the works UNSEEN this round (a random pick among the
+  // closest few — the variety knob per open), then greedily add the work FARTHEST from the picked set
+  // while keeping both quotas reachable: at least PLACE_MIN place works and at least FRESH_MIN works
+  // unseen this round (INV-75 — else the farthest-point spread keeps surfacing the same extreme poles).
+  // The unseen memory is per-round: when it can no longer honour either fraction the round resets and
+  // the whole gallery is walked again. The ORDER varies too — a random axis and direction each open,
+  // since there is no single right order over these axes.
   const DPARAMS = ["luma", "warmth", "colorful", "edge", "sym"];
   function dealDiverse(want) {
     const pool = doorPool;
@@ -431,44 +437,79 @@
     }));
     const d2 = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) { const t = a[i] - b[i]; s += t * t; } return s; };
     const minTo = (i, set) => { let m = Infinity; for (const j of set) { if (j === i) continue; const dd = d2(V[i], V[j]); if (dd < m) m = dd; } return m; };
-    // seed near the centre, a random pick among the closest few → a different, still-typical start each open
+    const isPlace = (i) => !!pool[i].place;
+    // INV-75 — novelty across visits: the round memory of works this door has already dealt. Each open
+    // must show ≥ FRESH_MIN works NOT in this memory (else the farthest-point spread, which always
+    // gravitates to the same extreme poles, would show a returning phone visitor the same faces). When
+    // the unseen pool can no longer honour the fresh OR the place fraction the round is SPENT — the
+    // memory clears and a fresh round walks the whole gallery again (the just-dealt set re-seeds it).
+    let shown = new Set();
+    try {
+      const s = JSON.parse(localStorage.getItem(DOORDEALT_KEY) || "null");
+      if (s && s.v === VER && Array.isArray(s.ids)) s.ids.forEach((id) => shown.add(String(id)));
+    } catch (e) {}
+    const needPlace = Math.min(n, Math.ceil(PLACE_MIN * n));
+    const needFresh = Math.min(n, Math.ceil(FRESH_MIN * n));
+    // both fractions together want more than n works (0.6n + 0.6n > n), so some shown windows must be
+    // BOTH unseen AND place — this many at least (the joint overlap the deal must honour):
+    const overlapNeed = Math.max(0, needFresh + needPlace - n);
+    let isFresh = (i) => !shown.has(String(pool[i].id));
+    const tally = (pred) => { let c = 0; for (let i = 0; i < pool.length; i++) if (pred(i)) c++; return c; };
+    // the round is spent when the unseen pool can't supply the fresh floor OR the fresh∧place overlap
+    // both quotas jointly demand → clear it and walk the whole gallery again
+    if (tally(isFresh) < needFresh || tally((i) => isFresh(i) && isPlace(i)) < overlapNeed) {
+      shown = new Set();                                  // the round is spent → a new round over the whole pool
+      isFresh = () => true;                               // every work is fresh again
+    }
+    // both quotas hold together because we only ADD a work when the remaining slots can still be filled
+    // to meet the fresh AND place counts (a small feasibility test), and among the still-feasible works
+    // we take the FARTHEST (spread), with stale works discounted so fresh is preferred while the pool is deep.
+    const feasibleAfter = (cand, picked, fc, pc) => {
+      const nfc = fc + (isFresh(cand) ? 1 : 0), npc = pc + (isPlace(cand) ? 1 : 0);
+      const nSlots = n - picked.length - 1;              // slots left AFTER adding cand
+      const rf = Math.max(0, needFresh - nfc), rp = Math.max(0, needPlace - npc);
+      if (rf > nSlots || rp > nSlots) return false;
+      let af = 0, ap = 0, afp = 0;                        // fresh / place / both, among unpicked ≠ cand
+      for (let k = 0; k < pool.length; k++) {
+        if (k === cand || picked.indexOf(k) >= 0) continue;
+        const f = isFresh(k), p = isPlace(k);
+        if (f) af++;
+        if (p) ap++;
+        if (f && p) afp++;
+      }
+      return af >= rf && ap >= rp && afp >= Math.max(0, rf + rp - nSlots);
+    };
+    // seed near the centre among FRESH works — a novel yet still-typical start each open
     const mean = DPARAMS.map((_, k) => V.reduce((s, v) => s + v[k], 0) / V.length);
-    const byMean = pool.map((_, i) => i).sort((a, b) => d2(V[a], mean) - d2(V[b], mean));
-    const seedK = Math.min(byMean.length, Math.max(3, Math.ceil(pool.length * 0.15)));
-    const picked = [byMean[Math.floor(Math.random() * seedK)]];
-    while (picked.length < n) {                          // greedy farthest-point
-      let best = -1, bd = -1;
+    const freshIdx = pool.map((_, i) => i).filter(isFresh);
+    const seedFrom = (freshIdx.length ? freshIdx : pool.map((_, i) => i))
+      .sort((a, b) => d2(V[a], mean) - d2(V[b], mean));
+    const seedK = Math.min(seedFrom.length, Math.max(3, Math.ceil(pool.length * 0.15)));
+    const picked = [seedFrom[Math.floor(Math.random() * seedK)]];
+    let fc = isFresh(picked[0]) ? 1 : 0, pc = isPlace(picked[0]) ? 1 : 0;
+    while (picked.length < n) {                           // greedy farthest-point, quota-feasible + fresh-first
+      let best = -1, bd = -Infinity, bestAny = -1, bdAny = -Infinity;
       for (let i = 0; i < pool.length; i++) {
         if (picked.indexOf(i) >= 0) continue;
-        const md = minTo(i, picked);
-        if (md > bd) { bd = md; best = i; }
+        let md = minTo(i, picked);
+        if (!isFresh(i)) md *= 0.15;                      // discount stale → fresh preferred while pool is deep
+        if (md > bdAny) { bdAny = md; bestAny = i; }
+        if (md > bd && feasibleAfter(i, picked, fc, pc)) { bd = md; best = i; }
       }
-      picked.push(best);
-    }
-    const need = Math.ceil(PLACE_MIN * n);               // guarantee ≥ PLACE_MIN place works among the shown
-    const isPlace = (i) => !!pool[i].place;
-    let guard = 0;
-    while (picked.filter(isPlace).length < need && guard++ < pool.length) {
-      const nonPlace = picked.filter((i) => !isPlace(i));
-      if (!nonPlace.length) break;
-      const remove = nonPlace.reduce((a, b) => (minTo(a, picked) <= minTo(b, picked) ? a : b));
-      const cands = [];
-      for (let i = 0; i < pool.length; i++) if (isPlace(i) && picked.indexOf(i) < 0) cands.push(i);
-      if (!cands.length) break;
-      const trialMinPair = (cand) => {                   // spread after the swap = the trial's min pairwise gap
-        const t = picked.filter((i) => i !== remove).concat(cand);
-        let m = Infinity;
-        for (let a = 0; a < t.length; a++) for (let b = a + 1; b < t.length; b++) { const dd = d2(V[t[a]], V[t[b]]); if (dd < m) m = dd; }
-        return m;
-      };
-      const add = cands.reduce((a, b) => (trialMinPair(a) >= trialMinPair(b) ? a : b));
-      picked.splice(picked.indexOf(remove), 1);
+      const add = best >= 0 ? best : bestAny;             // feasibility keeps a candidate; fallback is a safety net
       picked.push(add);
+      if (isFresh(add)) fc++;
+      if (isPlace(add)) pc++;
     }
     const axis = Math.floor(Math.random() * DPARAMS.length);   // varying order: a random axis + direction
     const dir = Math.random() < 0.5 ? 1 : -1;
     picked.sort((a, b) => dir * (V[a][axis] - V[b][axis]));
-    return picked.map((i) => pool[i]);
+    const hand = picked.map((i) => pool[i]);
+    try {                                                 // remember what this open dealt (this round's memory)
+      hand.forEach((e) => shown.add(String(e.id)));
+      localStorage.setItem(DOORDEALT_KEY, JSON.stringify({ v: VER, ids: Array.from(shown).slice(-500) }));
+    } catch (e) {}
+    return hand;
   }
 
   // EX-DOOR-3 (INV-44): the hand LIVES — rotation + novelty + the hour, under HIS LAW

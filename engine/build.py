@@ -932,6 +932,8 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         dd = site_config.get("door_diversity") or {}
         config["exhibition"]["door_diversity"] = {
             "place_min_fraction": float(dd.get("place_min_fraction", 0.6)),
+            # INV-75: the fraction of each open that must be works not dealt since the last round reset
+            "fresh_min": float(dd.get("fresh_min", 0.6)),
         }
     write(OUT / "config.json", json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
