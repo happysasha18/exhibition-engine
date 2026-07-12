@@ -1522,13 +1522,25 @@
                  + '<img class="exz-img" alt="">';
   document.body.appendChild(zoom);
   let zoomOpen = false, zScale = 1, zPinch = 0, zStartS = 1;
+  // once zoomed past 1×, a one-finger drag PANS the enlarged picture. zTx/zTy are the pan offset in
+  // screen px; zPan* hold the gesture's start. The offset is bounded to the picture's visible overflow
+  // so the image can never be dragged past its own edge.
+  let zTx = 0, zTy = 0, zPanning = false, zPanX = 0, zPanY = 0, zPanTx = 0, zPanTy = 0;
   const zImg = zoom.querySelector(".exz-img");
   const zDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  function zApply() { zImg.style.transform = "scale(" + zScale.toFixed(3) + ")"; }
+  function zClampPan() {                                 // keep the offset within the picture's overflow
+    const ox = Math.max(0, (zImg.offsetWidth * zScale - innerWidth) / 2);
+    const oy = Math.max(0, (zImg.offsetHeight * zScale - innerHeight) / 2);
+    zTx = Math.max(-ox, Math.min(ox, zTx));
+    zTy = Math.max(-oy, Math.min(oy, zTy));
+  }
+  function zApply() {
+    zImg.style.transform = "translate(" + zTx.toFixed(1) + "px," + zTy.toFixed(1) + "px) scale(" + zScale.toFixed(3) + ")";
+  }
   function openZoom(src, alt) {
     if (zoomOpen || !src) return;
     zImg.src = src; zImg.alt = alt || "";
-    zScale = 1; zApply();
+    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zApply();
     zoom.hidden = false; zoomOpen = true;
     faceSync();                                        // the zoom is a face — freeze the page beneath (EX-CHROME)
     requestAnimationFrame(() => zoom.classList.add("show"));
@@ -1541,18 +1553,33 @@
     faceSync();                                        // the page beneath returns untouched (EX-COMPOSE)
   }
   zoom.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 2) { zPinch = zDist(e.touches); zStartS = zScale; }
+    if (e.touches.length === 2) {                       // two fingers → pinch-scale (pan yields)
+      zPinch = zDist(e.touches); zStartS = zScale; zPanning = false;
+    } else if (e.touches.length === 1 && zScale > 1
+               && e.target.closest && e.target.closest(".exz-img")) {
+      zPanning = true;                                  // one finger on the enlarged picture → pan
+      zPanX = e.touches[0].clientX; zPanY = e.touches[0].clientY;
+      zPanTx = zTx; zPanTy = zTy;
+    }
   }, { passive: true });
   zoom.addEventListener("touchmove", (e) => {
     if (e.touches.length === 2 && zPinch) {
       e.preventDefault();                              // our scale, never the browser's
       zScale = Math.max(1, Math.min(4, zStartS * (zDist(e.touches) / zPinch)));
+      zClampPan();                                     // a smaller scale shrinks the pannable overflow
+      zApply();
+    } else if (e.touches.length === 1 && zPanning) {
+      e.preventDefault();                              // drag the enlarged picture, bounded to its edges
+      zTx = zPanTx + (e.touches[0].clientX - zPanX);
+      zTy = zPanTy + (e.touches[0].clientY - zPanY);
+      zClampPan();
       zApply();
     }
   }, { passive: false });
   zoom.addEventListener("touchend", (e) => {
     if (e.touches.length < 2) zPinch = 0;
-    if (zScale <= 1.03) { zScale = 1; zApply(); }      // a near-1 release settles flat
+    if (e.touches.length === 0) zPanning = false;
+    if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }   // a near-1 release settles flat + centred
   }, { passive: true });
   zoom.querySelector(".exz-close").addEventListener("click", closeZoom);
   zoom.addEventListener("click", (e) => { if (e.target === zoom) closeZoom(); });   // tap the backdrop

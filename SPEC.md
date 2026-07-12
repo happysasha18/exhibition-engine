@@ -561,6 +561,31 @@ rests on every `img.work`: `user-select:none`, `-webkit-user-drag:none` (no drag
 nudge, never hard DRM — devtools, view-source, and screenshots still work, said plainly.
 `EX-PROTECT` `INV-49`
 
+**Pinch to inspect — the exhibition's own zoom layer (EX-ZOOM).** A two-finger pinch on any
+exhibition picture — a hung work, a door window, a side-room print — opens that picture in its own
+zoom layer over everything. The image scales under the pinch, driven by the client's own JS (the
+two-touch distance sets the scale, clamped 1×–4×), so the browser never viewport-zooms and the walk
+beneath cannot drift (the distinction EX-PROTECT draws). A × control, a tap on the dark backdrop, or
+Esc returns, and the page beneath is exactly as it was left — the zoom is a face (EX-CHROME): it
+freezes the walk while it stands and restores it untouched on close, the same law the side room and
+the gift card obey. The trigger is one delegated document listener over the picture selectors; the
+zoom layer refuses the browser's own gestures on itself (`touch-action:none`) so only its own scale
+runs. **Once enlarged past 1×, a one-finger drag pans the picture** (`INV-76`): the drag moves the
+image by the finger's travel, bounded so it can never be dragged past its own edge — the offset is
+clamped to the visible overflow at the current scale, so a corner is reachable but the picture never
+leaves a gap. Pinching back toward 1× re-tightens that bound and a release at 1× recentres the image
+flat. *Facets:* touch only — a desktop trackpad pinch is a Ctrl-wheel, already refused (EX-PROTECT),
+and never opens the layer, so a mouse visitor is unaffected; a near-1× release settles the image flat
+and centred; the pan starts only on the picture itself, so a tap on the dark backdrop still closes;
+accessibility — the × is a real ≥44px button with an `aria-label`, Esc closes, and the layer is
+`role=dialog aria-modal`; reduced motion — the layer's fade collapses with the tempo. *Non-goals:* a
+zoom affordance for desktop mouse (pinch is the gesture asked for); persisting a zoom across works;
+panning while at 1× (there is nothing beyond the frame to reveal). *Success measure:* a two-finger
+pinch on a work, a door window, and a side-room print each opens the picture enlarged with a × that
+returns to the untouched page, the image scaling with the pinch and the browser never zooming the
+page; a one-finger drag on a zoomed picture moves it within its bounds and never past its edge
+`[default]`. `EX-ZOOM` `INV-75` `INV-76`
+
 ### The gift ceremony
 
 The picture is never dumped by a blunt auto-download. A desktop right-click on a work, and a won
@@ -1248,6 +1273,8 @@ the worker.
 | `INV-73` | The one-ahead preload: while a work rests in view the NEXT work in the current direction of travel is fetched at the device tier (the walk's own `srcset`/`sizes`, INV-63) — exactly `preload_ahead` (default 1) ahead, never the arc (INV-25/INV-30); best-effort and silent (a failed preload surfaces nothing and the in-view ladder still catches the step), abandoned cleanly on a turn or `#w-` jump and re-aimed to the new direction of travel; client-only, no bake output, no worker, no flag |
 | `INV-71` | The full circle retires the hand: once every work of the standing walk's current hang (`order.slice(0, shown)`, spread + unfolds) has stood in view — counted the moment the mark is made, in-session marks joined with the persisted seen copy — the next door render (the exit control, a browser-Back onto the door, or a returned-door reload, all alike) retires the standing hand and deals a fresh `EX-DOOR-3` hand; the consumed circle (pick + shown) rides the versioned `ex.hand` so one circle earns exactly one deal (door↔walk never re-rolls, a new pick or a post-circle unfold reopens the count); an unconsumed circle outranks the reload refresh once, then the reload law resumes; a circle-less older hand reads as no circle consumed and a stale-versioned hand drops whole (`INV-26`); on this one point `INV-32a`'s as-it-stood yields; short of a circle the standing-set law (`INV-16`/`EX-DOOR-2d`) holds |
 | `INV-74` | The diverse door keeps a browser-local, versioned, `?reset`-forgettable memory of the works it has DEALT, and every open guarantees at least `fresh_min` of the windows dealt for the current fit are works not dealt since the last round reset — jointly with the place fraction, so at least `⌈fresh_min·n⌉+⌈place_min·n⌉−n` shown windows are both unseen and place; when the unseen pool cannot supply the fresh floor or that overlap the memory clears and a new round begins, the just-dealt set replacing it (a normal open unions in). This novelty floor supersedes the curated door's ⌊door_size/3⌋-repeat law (`INV-20`) here |
+| `INV-75` | A two-finger pinch on any exhibition picture opens it enlarged in its own zoom layer that scales with the pinch, with a close control (×, backdrop tap, or Esc) that returns to the page exactly as it was; the browser's own page zoom never fires |
+| `INV-76` | Once a picture is zoomed past 1× in the zoom layer, a one-finger drag pans it by the finger's travel, the offset clamped to the picture's visible overflow at the current scale so a corner is reachable yet the image never leaves its frame; pinching toward 1× re-tightens the bound and a release at 1× recentres it |
 
 ### Reconciliation log — how each behavior above landed in code
 
