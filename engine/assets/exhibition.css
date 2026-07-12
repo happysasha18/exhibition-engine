@@ -8,10 +8,15 @@
 
 body{ min-height:100vh; overflow-x:hidden; background:rgb(var(--ground,12,11,10));
   transition:background var(--d-ground) var(--ease);
-  /* EX-CHROME: no double-tap-to-zoom on the immersive walk — iOS ignores the viewport's
-     user-scalable=no, so the margins around a work must refuse it at the touch-action layer
-     (pinch itself stays blocked in JS). `manipulation` keeps single-finger pan/tap. */
-  touch-action:manipulation; }
+  /* EX-PROTECT (INV-49) — the pinch/zoom refusal is a CLASS rule, placed once on body so it governs
+     EVERY exhibition face through the ancestor chain: the walk, the door (#ex-door), the series
+     side-room (#ex-side) and the polaroid table. `pan-x pan-y` refuses browser pinch-zoom AND
+     double-tap-zoom (iOS ignores the viewport's user-scalable=no) while keeping single-finger pan +
+     fast tap. This replaces `manipulation`, which permitted pinch and left the fixed overlays
+     pinch-zoomable (a fixed overlay kept the browser default). The JS gesture listeners stay as the
+     walk's own backstop; a tapped polaroid still opens larger via .exs-print.lift scale() — our
+     layout, not a browser gesture, so it is untouched. */
+  touch-action:pan-x pan-y; }
 
 /* JS-on: the crawlable static index never paints (FOUC guard, INV-25); the live face owns the page */
 html.js #ex-static{ display:none; }
@@ -88,7 +93,10 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 @keyframes exd-rise{ to{opacity:1} }
 .exd-window img{ display:block; width:var(--exd-wsize,160px); height:var(--exd-wsize,160px);
   object-fit:cover; border-radius:2px; position:relative; z-index:1;   /* the photo paints above its plate */
-  box-shadow:0 0 0 1px rgba(255,255,255,.06); }
+  box-shadow:0 0 0 1px rgba(255,255,255,.06);
+  /* a rotation re-lays the SAME windows (EX-DOOR-2b) — the direction flips and the sizes glide,
+     never a teardown; the size change eases so the turn reads as a smooth settle */
+  transition:width calc(.35s*var(--tempo)) var(--ease), height calc(.35s*var(--tempo)) var(--ease); }
 /* EX-DOOR-2c / DL1-DL2: a slow window wears the work's OWN raw dominant as a plate INSIDE the window,
    behind the photo (the halo — the ::after glow — untouched), the same grace/bar/reveal ladder as the
    walk. Five may fly at once, so a plate PER window (class, not the walk's single #ex-plate); it fills
@@ -107,7 +115,8 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 /* the idle hint (EX-DOOR-2g): the first window's halo breathes once — behavior, never a word */
 .exd-window.hint::after{ animation:exd-hintbreath calc(2.4s*var(--tempo)) var(--ease); }
 @keyframes exd-hintbreath{ 0%,100%{ opacity:0; } 45%{ opacity:.75; } }
-@media (prefers-reduced-motion:reduce){ .exd-window.hint::after{ animation:none; } }
+@media (prefers-reduced-motion:reduce){ .exd-window.hint::after{ animation:none; }
+  .exd-window img{ transition:none; } }
 /* the corner mark (EX-LANG) — the guest chooses the tongue; ≥44px, clears the wordmark */
 /* EX-ARRIVE: born at opacity:0, breathes in via .show on the next rAF after DOM insertion */
 .exd-lang{ position:fixed; top:14px; right:16px; z-index:125;
@@ -498,6 +507,22 @@ body.ex-door #ex-sound{ right:70px; }
   font:14px var(--sans,inherit); cursor:pointer; min-height:44px; }
 #ex-gift-card .gift-line{ margin-top:16px; font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--muted-2); }
 #ex-gift-card .gift-buy{ margin-top:9px; font-size:11.5px; color:var(--muted); letter-spacing:.01em; }
+
+/* EX-ZOOM (2026-07-12): pinch a picture to inspect it — its own layer above every face, the page
+   beneath frozen. Our JS scales .exz-img; the browser never viewport-zooms (touch-action:none). */
+#ex-zoom{ position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center;
+  background:rgba(6,6,7,0); opacity:0; pointer-events:none;
+  transition:opacity var(--d-cross) var(--ease), background var(--d-cross) var(--ease);
+  touch-action:none; -webkit-user-select:none; user-select:none; }
+#ex-zoom.show{ background:rgba(6,6,7,.97); opacity:1; pointer-events:auto; }
+#ex-zoom[hidden]{ display:none; }
+#ex-zoom .exz-img{ max-width:94vw; max-height:88vh; object-fit:contain; border-radius:3px;
+  transform-origin:center center; will-change:transform; touch-action:none;
+  -webkit-user-drag:none; user-select:none; box-shadow:0 30px 120px rgba(0,0,0,.7); }
+#ex-zoom .exz-close{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 14px); right:16px; z-index:1;
+  width:44px; height:44px; min-width:44px; min-height:44px; border:none; border-radius:50%;
+  background:rgba(255,255,255,.12); color:#eae7e0; font-size:26px; line-height:1; cursor:pointer; }
+@media (prefers-reduced-motion:reduce){ #ex-zoom{ transition:none; } }
 @media (prefers-reduced-motion:reduce){
   #ex-gift-card{ transition:none; }
   #ex-gift-card .gift-inner{ transition:none; }

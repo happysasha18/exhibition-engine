@@ -86,7 +86,7 @@ check("EX-PROTECT viewport: the meta pins scale to 1 (maximum-scale=1 + user-sca
 #   - the volume slider + share button keep native touch (not hijacked by the swipe)
 #   - a pinch that drops back to one finger re-takes the paginated walk (no native fly-through)
 css_src = (ROOT / "engine" / "assets" / "exhibition.css").read_text(encoding="utf-8")
-audit_ok = ("touch-action:manipulation" in css_src.replace(" ", "")
+audit_ok = ("touch-action:pan-xpan-y" in css_src.replace(" ", "")   # body-level class rule kills double-tap too
             and "if (e.ctrlKey) { e.preventDefault(); return; }" in js_src
             and "#ex-sound, .ex-share" in js_src
             and "touchcancel" in js_src

@@ -42,6 +42,10 @@ DEFAULT_FLAGS = {
     "visitor_memory": False,  # the coat-check token + seen-list edge (EX-MEMORY); flipped at deploy
     "caption_visible": False, # the machine caption stays in meta/alt/JSON-LD, never visible        (RESOLVED 2026-07-05)
     "quiz": False,            # per-work question + signed wallpaper gift (EX-QUIZ / INV-59); ships false (INV-19)
+    "door_diversity": False,  # EX-DOOR-3 diverse door: the pool spans the whole living gallery, a FRESH
+                              # spread set is dealt every open, ≥ a place-group fraction guaranteed among
+                              # the shown windows (an instance sets the group in site.json). OFF → the
+                              # curated door_candidates pool, byte-identical (INV-19)
 }
 
 
@@ -511,11 +515,32 @@ def write(path, text):
         fh.write(text)
 
 
-def door_pool(items_by_id, captions):
+def door_pool(items_by_id, captions, diverse=False, place_keywords=None):
     """The door pool (EX-DOOR): the door-candidates provenance ids intersected with the LIVING
     gallery works — an id that left the gallery silently drops out. Each entry carries the alt
     text a door work needs (his title → caption → quiet label; the door asks wordlessly, but a
-    keyboard/screen-reader visitor still meets real words). Returns [] when the source is absent."""
+    keyboard/screen-reader visitor still meets real words). Returns [] when the source is absent.
+
+    With ``diverse`` ON (EX-DOOR-3, the door_diversity flag) the pool spans the WHOLE living gallery
+    instead of the curated candidates: each entry carries the FIVE spread axes
+    (luma/warmth/colorful/edge/sym) and a ``place`` flag (the work's city matches the instance's
+    place group — ``place_keywords`` from site.json, matched case-insensitively as substrings), so
+    the client deals a fresh, evenly-spread, place-guaranteed set every open. Data, never rendered
+    (INV-1). OFF → the curated candidates below, byte-identical."""
+    if diverse:
+        kws = [k.lower() for k in (place_keywords or [])]
+        pool = []
+        for item in sorted(items_by_id.values(), key=lambda i: i["id"]):   # deterministic (INV-21)
+            cap = captions.get(item["id"], "")
+            city = (item.get("city") or "").lower()
+            pool.append({"id": item["id"], "alt": indexable_title(item, cap),
+                         "luma": round(float(item.get("luma", 0.5)), 3),
+                         "warmth": round(float(item.get("warmth", 0.5)), 3),
+                         "colorful": round(float(item.get("colorful", 0.5)), 3),
+                         "edge": round(float(item.get("edge", 0.5)), 3),
+                         "sym": round(float(item.get("sym", 0.5)), 3),
+                         "place": bool(city and any(k in city for k in kws))})
+        return pool
     src = ROOT / "gallery" / "door_candidates.json"
     if not src.exists():
         return []
@@ -766,7 +791,10 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
               "v": {it["id"]: vectors[it["id"]] for it in items if it["id"] in vectors},
               # the threshold's pool ships INSIDE this one artifact — one fetch, under the same
               # bounded arrival INV-25 grants the walk (EX-DOOR; prover F1)
-              "door": {"pool": door_pool({it["id"]: it for it in items}, captions)}}
+              "door": {"pool": door_pool(
+                  {it["id"]: it for it in items}, captions,
+                  diverse=flags["door_diversity"],
+                  place_keywords=(site_config.get("door_diversity") or {}).get("place_keywords"))}}
     # the greeting rides the SAME artifact — one fetch, INV-25's bounded arrival (EX-GREET)
     greet = greetings()
     if greet:
@@ -896,6 +924,14 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "arms": ["on", "control"],   # on = the quiz may surface; control = the measured baseline
             "flag": "quiz",
             "metric": "walk_unfold",     # the beat the arm rides (also on walk_exit)
+        }
+    # EX-DOOR-3 (door_diversity): tell the client to deal a fresh, evenly-spread, place-guaranteed set
+    # every open, and the place fraction to guarantee among the shown windows. Flag off → the key is
+    # absent and the client falls back to the curated hand (INV-19, byte-identical config).
+    if flags["door_diversity"]:
+        dd = site_config.get("door_diversity") or {}
+        config["exhibition"]["door_diversity"] = {
+            "place_min_fraction": float(dd.get("place_min_fraction", 0.6)),
         }
     write(OUT / "config.json", json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 

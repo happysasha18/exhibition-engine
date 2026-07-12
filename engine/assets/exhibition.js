@@ -134,6 +134,11 @@
   const UNFOLD = clampInt(EX.unfold_step, 5, 1, 12);
   const MAXU = clampInt(EX.max_unfolds, 2, 0, 5);       // «ещё 5» retires after this (INV-30)
   const DOOR_SIZE = clampInt(EX.door_size, 5, 3, 5);    // works at the threshold (EX-DOOR)
+  // EX-DOOR-3 (door_diversity): when the bake ships the block, the door deals a FRESH, evenly-spread,
+  // place-guaranteed set every open (variety over the session-held hand — his word 2026-07-12). Absent
+  // ⇒ the curated hand stands exactly as before (the byte-identical fallback, INV-19).
+  const DIVERSE = !!(EX.door_diversity);
+  const PLACE_MIN = (EX.door_diversity && Number(EX.door_diversity.place_min_fraction)) || 0.6;
   // EX-MOTION: ONE clock for CSS and JS — config tempo, a visitor/test override in
   // localStorage['ex-tempo'] clamped to [0.05, 3]; stillness (reduced motion) wins over both
   const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -400,12 +405,79 @@
   // next deal's novelty voice even where the museum's memory (visitor_memory / ex.seenc) is off.
   const walkSeen = new Set();
 
+  // EX-DOOR-3 (door_diversity): a FRESH, evenly-spread, place-guaranteed set every open. The pool
+  // spans the whole living gallery (baked with five axes + a `place` flag). We min-max normalize the
+  // five axes, SEED near the set's centre (a random pick among the closest few — the variety knob
+  // per open), greedily add the work FARTHEST from the picked set until `want`, then guarantee at
+  // least PLACE_MIN of them are place works (swapping the least-distinctive non-place pick for the
+  // place candidate that best preserves the spread). The ORDER varies too — a random axis and
+  // direction each open, since there is no single right order over these axes (his word 2026-07-12:
+  // «менять каждый раз … порядок тоже играем … нет абсолютного критерия»).
+  const DPARAMS = ["luma", "warmth", "colorful", "edge", "sym"];
+  function dealDiverse(want) {
+    const pool = doorPool;
+    const n = Math.max(1, Math.min(want || DOOR_SIZE, pool.length));
+    if (pool.length <= n) return pool.slice(0, n);
+    const mins = {}, maxs = {};
+    DPARAMS.forEach((p) => {
+      let lo = Infinity, hi = -Infinity;
+      pool.forEach((e) => { const v = Number(e[p]);
+        if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } });
+      mins[p] = lo; maxs[p] = hi;
+    });
+    const V = pool.map((e) => DPARAMS.map((p) => {
+      const span = maxs[p] - mins[p];
+      return span > 0 ? (Number(e[p]) - mins[p]) / span : 0;
+    }));
+    const d2 = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) { const t = a[i] - b[i]; s += t * t; } return s; };
+    const minTo = (i, set) => { let m = Infinity; for (const j of set) { if (j === i) continue; const dd = d2(V[i], V[j]); if (dd < m) m = dd; } return m; };
+    // seed near the centre, a random pick among the closest few → a different, still-typical start each open
+    const mean = DPARAMS.map((_, k) => V.reduce((s, v) => s + v[k], 0) / V.length);
+    const byMean = pool.map((_, i) => i).sort((a, b) => d2(V[a], mean) - d2(V[b], mean));
+    const seedK = Math.min(byMean.length, Math.max(3, Math.ceil(pool.length * 0.15)));
+    const picked = [byMean[Math.floor(Math.random() * seedK)]];
+    while (picked.length < n) {                          // greedy farthest-point
+      let best = -1, bd = -1;
+      for (let i = 0; i < pool.length; i++) {
+        if (picked.indexOf(i) >= 0) continue;
+        const md = minTo(i, picked);
+        if (md > bd) { bd = md; best = i; }
+      }
+      picked.push(best);
+    }
+    const need = Math.ceil(PLACE_MIN * n);               // guarantee ≥ PLACE_MIN place works among the shown
+    const isPlace = (i) => !!pool[i].place;
+    let guard = 0;
+    while (picked.filter(isPlace).length < need && guard++ < pool.length) {
+      const nonPlace = picked.filter((i) => !isPlace(i));
+      if (!nonPlace.length) break;
+      const remove = nonPlace.reduce((a, b) => (minTo(a, picked) <= minTo(b, picked) ? a : b));
+      const cands = [];
+      for (let i = 0; i < pool.length; i++) if (isPlace(i) && picked.indexOf(i) < 0) cands.push(i);
+      if (!cands.length) break;
+      const trialMinPair = (cand) => {                   // spread after the swap = the trial's min pairwise gap
+        const t = picked.filter((i) => i !== remove).concat(cand);
+        let m = Infinity;
+        for (let a = 0; a < t.length; a++) for (let b = a + 1; b < t.length; b++) { const dd = d2(V[t[a]], V[t[b]]); if (dd < m) m = dd; }
+        return m;
+      };
+      const add = cands.reduce((a, b) => (trialMinPair(a) >= trialMinPair(b) ? a : b));
+      picked.splice(picked.indexOf(remove), 1);
+      picked.push(add);
+    }
+    const axis = Math.floor(Math.random() * DPARAMS.length);   // varying order: a random axis + direction
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    picked.sort((a, b) => dir * (V[a][axis] - V[b][axis]));
+    return picked.map((i) => pool[i]);
+  }
+
   // EX-DOOR-3 (INV-44): the hand LIVES — rotation + novelty + the hour, under HIS LAW
   // (a new hand repeats at most a THIRD of the previous one). The pool stays curated
   // (EX-DOOR-2d); his file order is the tie-break voice; a pool of exactly door_size
   // stands the law down (the hand IS the pool). `circleStamp` (EX-DOOR-4) records the circle
   // (pick + shown) this deal answered, so one circle earns exactly one deal.
   function dealHand(circleStamp) {
+    if (DIVERSE) return dealDiverse(doorLayout().n);     // door_diversity: a fresh spread set every open
     const n = Math.min(DOOR_SIZE, doorPool.length);
     if (doorPool.length <= n) return doorPool.slice(0, n);
     let prev = [];
@@ -455,6 +527,8 @@
     return hand;
   }
   function standingHand() {                            // the session keeps its set (INV-31/2d)
+    if (DIVERSE) return null;                            // door_diversity overrides INV-31 for the door —
+    // every open re-deals a fresh spread set (his word 2026-07-12); the walk behind still persists
     try {
       const h = JSON.parse(localStorage.getItem(HAND_KEY) || "null");
       if (h && h.v === VER && Array.isArray(h.ids)) {
@@ -473,6 +547,7 @@
     return a;
   }
   function refreshHand() {
+    if (DIVERSE) return dealDiverse(doorLayout().n);     // door_diversity: a reload deals fresh too (his word 2026-07-12)
     // EX-DOOR-RELOAD (INV-54): the gentle cousin of the cold deal — a RELOAD keeps the door face and
     // swaps in ≤40% NEW works, so the threshold feels alive on reload yet cannot be reloaded into a
     // tour of the whole library (dealHand's ≥⅔-new is only a COLD arrival or the exit's fresh quiz).
@@ -539,24 +614,37 @@
   // one line, always (EX-DOOR-2b — card 01's algorithm IS the norm): a row when landscape
   // (W/H > 1.02), a column when portrait; windows shrink first, the count drops second
   // (row 5→4→3 while each keeps ≥118px; column 3→2 below 104px); never a second line
+  // how many windows FIT a viewport of the given W×H (the count only, no sizing)
+  function doorFit(W, H) {
+    const col = W / H <= 1.02;
+    if (!col) {
+      const gap = Math.max(16, Math.min(44, W * 0.03));
+      const cap = Math.min(190, H * 0.42);
+      let n = Math.min(DOOR_SIZE, doorPool.length);
+      for (; n > 3; n--) { if (Math.min(cap, (W * 0.88 - (n - 1) * gap) / n) >= 118) break; }
+      return n;
+    }
+    const gap = Math.max(14, Math.min(30, H * 0.025));
+    const cap = Math.min(190, W * 0.62);
+    let n = Math.min(3, doorPool.length);
+    if (Math.min(cap, (H * 0.52 - (n - 1) * gap) / n) < 104 && n > 2) n = 2;
+    return n;
+  }
+  // the door's window count HOLDS across a rotation: it is the running MINIMUM that has fit this
+  // load, so turning the phone never ADDS windows (his word 2026-07-12: «не добавлять при повороте,
+  // смотрим минимальное и придерживаемся»). A wide screen that never rotates keeps its full count.
+  let doorNMin = Infinity;
   function doorLayout() {
     const W = innerWidth, H = innerHeight, col = W / H <= 1.02;
-    let gap, n, size;
+    doorNMin = Math.min(doorNMin, doorFit(W, H));
+    const n = Math.max(2, doorNMin);
+    let gap, size;
     if (!col) {
       gap = Math.max(16, Math.min(44, W * 0.03));
-      const cap = Math.min(190, H * 0.42);
-      n = Math.min(DOOR_SIZE, doorPool.length);
-      for (; n > 3; n--) {
-        size = Math.min(cap, (W * 0.88 - (n - 1) * gap) / n);
-        if (size >= 118) break;
-      }
-      size = Math.min(cap, (W * 0.88 - (n - 1) * gap) / n);
+      size = Math.min(Math.min(190, H * 0.42), (W * 0.88 - (n - 1) * gap) / n);
     } else {
       gap = Math.max(14, Math.min(30, H * 0.025));
-      const cap = Math.min(190, W * 0.62);
-      n = Math.min(3, doorPool.length);
-      size = Math.min(cap, (H * 0.52 - (n - 1) * gap) / n);
-      if (size < 104 && n > 2) { n = 2; size = Math.min(cap, (H * 0.52 - gap) / 2); }
+      size = Math.min(Math.min(190, W * 0.62), (H * 0.52 - (n - 1) * gap) / n);
     }
     return { n, col, gap, size: Math.max(76, size) };
   }
@@ -836,7 +924,13 @@
     facade.classList.toggle("col", c.col);
     facade.style.setProperty("--exd-gap", c.gap.toFixed(1) + "px");
     facade.style.setProperty("--exd-wsize", c.size.toFixed(1) + "px");
-    if (c.n === curLay.n && c.col === curLay.col) return;
+    // A RELAYOUT (a resize / a phone rotation, `animate` false) with the SAME window count flows the
+    // new arrangement through CSS — the direction flips, the sizes transition — WITHOUT tearing the
+    // windows down. Rebuilding here emptied the facade for a frame, and a fast rotation made that
+    // empty (black) facade visible (a phone find 2026-07-12). The count holds across rotation
+    // (doorLayout's running minimum), so this is the common path; only a genuine count change or a
+    // fresh open (animate) rebuilds the DOM.
+    if (c.n === curLay.n && !animate) { curLay = c; return; }
     curLay = c;
     facade.innerHTML = "";
     doorFace.spread.slice(0, c.n).forEach((e, i) => {
@@ -999,10 +1093,19 @@
 
   addEventListener("popstate", (ev) => {               // Back/Forward walk the faces (INV-32)
     const wasWalk = !atDoor;                            // the face we are LEAVING (before any render)
+    const wasSide = sideOpen;                           // the side room may be the face we leave (EX-SERIES)
     ceremonyCancel();                                  // navigation wins mid-ceremony (EX-DOOR-2e)
     const st = ev.state && ev.state.ex;
-    closeSide();                                       // a step away closes the side room (EX-SERIES)
-    if (st && st.face === "series" && typeof st.ser === "number") {
+    const toSeries = st && st.face === "series" && typeof st.ser === "number";
+    // room → walk: the exit MIRRORS the soft entry (EX-SERIES) — the veil crossing reveals the walk
+    // on its exact frame. Only when the walk stands behind; a step to the door or a forward re-open
+    // of another series paints its own visuals, so those close the room instantly (below).
+    if (wasSide && !toSeries && !(st && st.face === "door")) {
+      closeSide(true);
+      return;
+    }
+    closeSide();                                       // instant teardown; the next face paints its own visuals
+    if (toSeries) {
       openSide(st.ser, false);                         // Forward re-opens without a new step
       return;
     }
@@ -1361,6 +1464,65 @@
   giftCard.querySelector(".gift-no").addEventListener("click", closeGift);
   giftCard.addEventListener("click", (ev) => { if (!ev.target.closest(".gift-inner")) closeGift(); });
   addEventListener("keydown", (ev) => { if (ev.key === "Escape" && giftOpen) closeGift(); });
+
+  // ---- EX-ZOOM: pinch to inspect a picture (his word 2026-07-12: «люди хотят зумить картинки») ----
+  // A two-finger pinch on ANY exhibition picture — a work on the walk, a door window, a polaroid —
+  // opens that picture in its own zoom layer: the image scales under the pinch, a × returns, and the
+  // page beneath stays EXACTLY as it was (a face, EX-CHROME — the walk is frozen, never scrolled).
+  // The browser's own pinch stays refused document-wide (EX-PROTECT / INV-49), so the walk never
+  // desyncs; the zoom is OUR controlled scale in its own overlay. Touch only — a desktop trackpad
+  // pinch is a Ctrl-wheel, already refused (EX-PROTECT), and never opens the layer.
+  const zoom = document.createElement("div");
+  zoom.id = "ex-zoom";
+  zoom.setAttribute("role", "dialog");
+  zoom.setAttribute("aria-modal", "true");
+  zoom.hidden = true;
+  zoom.innerHTML = '<button type="button" class="exz-close" aria-label="закрыть">&times;</button>'
+                 + '<img class="exz-img" alt="">';
+  document.body.appendChild(zoom);
+  let zoomOpen = false, zScale = 1, zPinch = 0, zStartS = 1;
+  const zImg = zoom.querySelector(".exz-img");
+  const zDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  function zApply() { zImg.style.transform = "scale(" + zScale.toFixed(3) + ")"; }
+  function openZoom(src, alt) {
+    if (zoomOpen || !src) return;
+    zImg.src = src; zImg.alt = alt || "";
+    zScale = 1; zApply();
+    zoom.hidden = false; zoomOpen = true;
+    faceSync();                                        // the zoom is a face — freeze the page beneath (EX-CHROME)
+    requestAnimationFrame(() => zoom.classList.add("show"));
+  }
+  function closeZoom() {
+    if (!zoomOpen) return;
+    zoom.classList.remove("show");
+    setTimeout(() => { zoom.hidden = true; zImg.removeAttribute("src"); }, Math.round(300 * TEMPO));
+    zoomOpen = false;
+    faceSync();                                        // the page beneath returns untouched (EX-COMPOSE)
+  }
+  zoom.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) { zPinch = zDist(e.touches); zStartS = zScale; }
+  }, { passive: true });
+  zoom.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2 && zPinch) {
+      e.preventDefault();                              // our scale, never the browser's
+      zScale = Math.max(1, Math.min(4, zStartS * (zDist(e.touches) / zPinch)));
+      zApply();
+    }
+  }, { passive: false });
+  zoom.addEventListener("touchend", (e) => {
+    if (e.touches.length < 2) zPinch = 0;
+    if (zScale <= 1.03) { zScale = 1; zApply(); }      // a near-1 release settles flat
+  }, { passive: true });
+  zoom.querySelector(".exz-close").addEventListener("click", closeZoom);
+  zoom.addEventListener("click", (e) => { if (e.target === zoom) closeZoom(); });   // tap the backdrop
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) closeZoom(); });
+  const ZOOM_SEL = ".exh-frame img.work, .exd-window img, #ex-side img";
+  addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 2 || zoomOpen) return;   // one zoom at a time; opens over ANY face
+    const t = e.target.closest && e.target.closest(ZOOM_SEL);
+    if (t) openZoom(t.currentSrc || t.getAttribute("src") || t.src, t.alt);
+  }, { passive: true });
+
   function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
     const img = ev.target.closest && ev.target.closest(".exh-frame img.work");
     if (!img) return;                                      // only the hung work; chrome is left alone
@@ -1751,7 +1913,7 @@
   // controls stay live). `busy` is the whole door/side ceremony (its own lock, EX-DOOR-2e).
   const FACE_SEL = "#ex-door, #ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound";  // face roots + chrome
   let guardHold = 0;                                    // the place the walk holds while a face stands
-  function faceStands() { return atDoor || busy || sideOpen || quizOpen || giftOpen; }
+  function faceStands() { return atDoor || busy || sideOpen || quizOpen || giftOpen || zoomOpen; }
   // mirror the stand onto the root: `ex-face` sleeps the scrollbar (gutter-stable, no reflow) and
   // arms the input rest + guard. On a RISE (no face → a face) freeze the walk's place to hold.
   function faceSync() {
@@ -2040,15 +2202,51 @@
     if (laystep !== false) pushFace({ face: "series", ser: idx });
     pulse("series_open", focusedId);                   // the work whose series opened (EX-PULSE registry)
   }
-  function closeSide() {
+  function closeSide(soft) {
     if (!sideOpen) return;
     sideOpen = false;
-    faceSync();                                        // the room left (EX-CHROME)
-    ceremonyCancel();                                  // a crossing still in flight dies with
-    side.hidden = true;                                // the room — no stranded veil, no lock
-    document.body.classList.remove("ex-side");
-    recentreUnder();                                   // a rotation under the room is honoured
-  }                                                    // the moment the walk is bare (EX-COMPOSE)
+    if (!soft) {                                       // instant teardown — the next face paints its
+      faceSync();                                      // own visuals (a door render, a forward re-open);
+      side.hidden = true;                              // the caller ran ceremonyCancel already
+      document.body.classList.remove("ex-side");
+      recentreUnder();                                 // a rotation under the room is honoured (EX-COMPOSE)
+      return;
+    }
+    // SOFT: the way OUT mirrors the way IN (EX-SERIES / INV-46) — the same veil crossing openSide
+    // plays, reversed. His phone find 2026-07-12: the entry was a soft black crossing while the exit
+    // snapped back in one instant. Now the veil covers, the walk returns beneath the black on its
+    // exact frame, one fade reveals it — the exit carries the entry's own breath.
+    busy = true;                                       // the lock spans the whole close crossing (EX-CHROME)
+    faceSync();
+    const g = ++cerGen;                                // a second navigation mid-close wins (ceremonyCancel)
+    const ok = () => g === cerGen;
+    veil.hidden = false;
+    veil.style.transitionDuration = (0.33 * TEMPO) + "s";
+    requestAnimationFrame(() => veil.classList.add("on"));   // the black covers first
+    cerAfter(0.4, () => { if (!ok()) return;                 // under the black: the room leaves, the walk returns
+      side.hidden = true;
+      document.body.classList.remove("ex-side");
+      // land on the EXACT frame left (INV-32b / EX-COMPOSE). recentreUnder() no-ops while a face
+      // stands (busy is held for the whole crossing, as on the way in), so under the black we drive
+      // the scroll directly and re-freeze the guard at the landing — the guard would otherwise hold
+      // the pre-close position and undo the re-centre.
+      if (document.documentElement.classList.contains("ex-walk")) {
+        const stops = frameStops();
+        if (stops.length) {
+          const y = restingEl ? frameCenter(restingEl) : stops[nearestStop(stops, scrollY)];
+          scrollTo(0, y);
+          guardHold = y;                                     // the guard holds the re-centred frame (EX-CHROME)
+        }
+      }
+      veil.style.transitionDuration = (0.53 * TEMPO) + "s";
+      veil.classList.remove("on");                           // …and the walk is revealed in one breath
+    });
+    cerAfter(0.95, () => { if (!ok()) return;
+      veil.hidden = true;
+      busy = false;
+      faceSync();
+    });
+  }
   cap.addEventListener("click", (ev) => {
     const b = ev.target.closest && ev.target.closest(".ex-series");
     if (!b) return;
