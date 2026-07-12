@@ -64,6 +64,22 @@ js_ok = ("function enjoyLine(" in js_src
 check("EX-PROTECT JS: enjoyLine, onGrab, contextmenu/dragstart/gesturestart/gesturechange wired",
       js_ok, "one or more EX-PROTECT symbols missing from exhibition.js")
 
+# 3b · JS: the pinch-zoom lock is WALK-WIDE (his phone field-find) — a browser zoom on any margin
+#      desyncs the JS scroll animator + fixed chrome, so gesture events are refused at the DOCUMENT
+#      level (not only the stage/image), gestureend included, and a two-finger touchmove is guarded
+#      (Blink's pinch). Red before the walk-wide fix (was stage-scoped, image-only, no multi-touch).
+zoom_ok = ('["gesturestart", "gesturechange", "gestureend"]' in js_src
+           and "document.addEventListener(g" in js_src
+           and "e.touches.length > 1" in js_src)
+check("EX-PROTECT JS: pinch-zoom locked walk-wide (document-level gestures + two-finger touchmove guard)",
+      zoom_ok, "walk-wide zoom lock missing — gestures still stage/image-scoped or no multi-touch guard")
+
+# 3c · the viewport meta pins the page to scale 1 (helps Blink; Safari is held by the gesture block)
+build_src = (ROOT / "engine" / "build.py").read_text(encoding="utf-8")
+vp_ok = "maximum-scale=1" in build_src and "user-scalable=no" in build_src
+check("EX-PROTECT viewport: the meta pins scale to 1 (maximum-scale=1 + user-scalable=no)",
+      vp_ok, "viewport meta does not pin scale — pinch-zoom can still scale the page")
+
 BROWSER_ROWS = [
     "EX-PROTECT-GIFT desktop right-click on a work opens the gift ceremony (not a browser save sheet)",
     "EX-PROTECT drag on a work is prevented (no drag ghost, enjoy toast fires)",

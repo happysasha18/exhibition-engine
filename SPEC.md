@@ -499,8 +499,14 @@ pinch-zoom / `gesturestart`) the engine intercepts. A **desktop right-click** (a
 opens the **gift ceremony** (below) — the picture is offered, never dumped. A **drag or a touch
 grab** shows a **quiet, localized gift line** on the existing share toast instead — the instance's
 `enjoy` string from the greeting cache plus the site host appended in code (e.g. «enjoy ·
-example.com»), arriving on the house breath and leaving by itself. For a pinch-zoom:
-`preventDefault` silently — a pinch is exploratory, not a save, so no toast. A **soft CSS layer**
+example.com»), arriving on the house breath and leaving by itself. For a pinch-zoom the walk refuses the browser
+zoom across the **whole surface**, not only over a work: a browser zoom scales the visual viewport
+out from under the JS scroll animator and the fixed chrome, so the measured centering drifts and the
+fixed controls float and the walk desyncs. `gesturestart` / `gesturechange` / `gestureend` are
+`preventDefault`ed document-wide (Safari's gesture events), a two-finger `touchmove` is refused
+(Blink's pinch), and the viewport meta pins the page to scale 1 — EX-CHROME's one-page-shape law
+extends to the zoom axis. It stays silent — a pinch is exploratory, not a save, so no toast. A
+**soft CSS layer**
 rests on every `img.work`: `user-select:none`, `-webkit-user-drag:none` (no drag ghost),
 `-webkit-touch-callout:none` (kills the iOS long-press save sheet). This is a gift and a gentle
 nudge, never hard DRM — devtools, view-source, and screenshots still work, said plainly.

@@ -1376,14 +1376,18 @@
   }
   stage.addEventListener("contextmenu", onGrab);
   stage.addEventListener("dragstart", onGrab);
-  // EX-PROTECT: also refuse the pinch-zoom that would let a phone magnify a work to inspect/lift
-  // its detail (Safari fires gesture events; the `touch-action` fence on img.work does the same on
-  // Blink). Silent — a pinch is exploratory, not a save, so no gift line, only no zoom.
-  function onPinch(ev) {
-    if (ev.target.closest && ev.target.closest(".exh-frame img.work")) ev.preventDefault();
-  }
-  stage.addEventListener("gesturestart", onPinch);
-  stage.addEventListener("gesturechange", onPinch);
+  // EX-PROTECT + EX-CHROME: the immersive walk refuses browser pinch-zoom across the WHOLE surface,
+  // not only over a work. A browser zoom scales the visual viewport out from under the JS scroll
+  // animator and the fixed chrome — the measured centering drifts and the fixed controls float, so
+  // the walk desyncs (his phone field-find). Safari fires gesture events; Blink zooms via a
+  // two-finger drag. Both are refused document-wide, and the viewport meta pins scale to 1. Silent —
+  // a pinch is exploratory, not a save, so no gift line, only no zoom.
+  function onPinch(ev) { ev.preventDefault(); }
+  ["gesturestart", "gesturechange", "gestureend"].forEach((g) =>
+    document.addEventListener(g, onPinch, { passive: false }));
+  document.addEventListener("touchmove", (e) => {
+    if (e.touches.length > 1) e.preventDefault();          // a two-finger drag = a Blink pinch
+  }, { passive: false });
 
   // ---- EX-QUIZ (INV-60/64/65/66): the 4-option chip + card + edge round-trip ----------------
   // A subtle chip advertises a work's question (placement is a config knob, INV-28). Tapping it
