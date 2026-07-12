@@ -380,9 +380,9 @@
   // per-work pick are drawn from this exact function, so the Python util must mirror it byte-for-byte.
   try { window.EXQuiz = { chosen: () => quizChosenId, arm: () => quizArm, token: QUIZ_TOKEN, _hash: quizHash }; } catch (e) {}
   const STORYLINES = Object.create(null);
-  let storyVariant = null;    // the mode the served story reported — rides the GA beats (EX-STORY-AB)
-  let storyKey = "";          // the ordered-id set last told (a resize/return never refetches)
-  let storyGen = 0;           // a later fetch always wins over an in-flight earlier one
+  let storyVariant = null;          // the mode the served story reported — rides the GA beats (EX-STORY-AB)
+  const toldPortions = new Set();   // portion keys whose plot has actually come back (told ONLY on a served plot)
+  const askingPortions = new Set(); // portion keys with a request in flight (never double-ask the same portion)
   // the hang's order: the kinship arc, leaned by light ONLY when the story is on (EX-STORY-ORDER,
   // ST1 — off is byte-for-byte today's arc). A greedy failure falls back to the plain arc.
   function assembleOrder(pickId) {
@@ -924,6 +924,7 @@
     pick = w.id;
     order = assembleOrder(pick);
     shown = SPREAD;                                    // a fresh arc = a fresh budget (INV-30/31)
+    storyReset();                                      // …and a fresh story — no portion leaks across picks (EX-STORY)
     veil.hidden = false;
     veil.style.transitionDuration = (0.33 * TEMPO) + "s";
     door.classList.add("leaving");                     // the wordmark drifts to the center
@@ -1037,6 +1038,7 @@
       closeDoor();
       if (pick && byId[pick]) ground(byId[pick].dom);
       scrollTo(0, walkY);                              // the closing screen the visitor left (INV-32b)
+      tellStory();                                     // a return is a natural beat — any owed portion re-asks (EX-STORY)
     }
   });
 
@@ -1125,32 +1127,60 @@
     toldEl.style.animation = "none"; void toldEl.offsetWidth; toldEl.style.animation = "";  // EX-ARRIVE
   }
 
-  // tellStory asks /api/story for the CURRENT ordered pick-set and settles the lines it returns.
-  // Gen-guarded (a later walk wins) and set-guarded (a resize/return never refetches). Every failure
-  // path is silence — the walk carries no lines and loses nothing (CS-8, INV-19). The «ещё 5» unfold
-  // grows the set and re-tells over the extended order (ST2, its own cache key at the edge).
-  function tellStory() {
-    if (!STORY_ON) return;
-    const ids = order.slice(0, shown).map(String);
+  // The story's unit is the PORTION just opened (EX-STORY — a plot per opened portion). The walk's
+  // works fall into portions by the very boundaries the unfolding lays: the cold first spread, then
+  // each «ещё 5». Every portion asks /api/story for ITS OWN ordered ids alone — never the grown
+  // 0..shown set — so each plot lands under its own edge cache key and a line already read is never
+  // re-requested and never shifts. A portion counts as told only once its plot has come back: its
+  // key is stamped on success alone, so a refused or failed portion stays owed and is re-asked at the
+  // next natural beat — the next unfold or a return to the walk. The edge's own wait carries any
+  // Retry-After: a re-ask that lands inside the window is refused server-side (429/dead-flag, before
+  // any model call) and the portion simply stays owed, so the client re-asks freely and holds no
+  // backoff clock of its own. Every failure path is silence (CS-8, INV-19).
+  function storyPortions(n) {                          // [[lo,hi], …] over order indices, the unfold's own beats
+    const parts = [];
+    const first = Math.min(SPREAD, n);
+    if (first > 0) parts.push([0, first]);
+    for (let s = first; s < n; ) { const e = Math.min(n, s + UNFOLD); parts.push([s, e]); s = e; }
+    return parts;
+  }
+  function askPortion(loI, hiI) {
+    const ids = order.slice(loI, hiI).map(String);
     if (!ids.length) return;
-    const key = ids.join(",");
-    if (key === storyKey) return;                      // this exact set already told
-    storyKey = key;
-    const gen = ++storyGen;
+    const key = ids.join(",");                         // this portion's own ordered slice — its cache key
+    if (toldPortions.has(key) || askingPortions.has(key)) return;   // already told, or in flight
+    askingPortions.add(key);
     const lang = (viewerLang() || "en").toLowerCase();
     fetch("/api/story", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: ids, variant: STORY_VARIANT, lang: lang }),
     }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
-      if (gen !== storyGen) return;                    // a newer walk superseded this one
-      if (!data || !Array.isArray(data.lines)) return; // no story → silence
+      askingPortions.delete(key);
+      if (!data || !Array.isArray(data.lines)) return; // refused/failed → key NOT stamped → stays owed
+      toldPortions.add(key);                           // told only once the plot has actually come back
       storyVariant = data.story_variant || STORY_VARIANT;   // the mode now rides the GA beats
       for (const l of data.lines) {
         if (l && l.id != null && typeof l.line === "string") STORYLINES[String(l.id)] = l.line;
       }
       fillTold();                                      // settle the line under the work in view
-    }).catch(() => {});                                // a dead worker changes nothing
+    }).catch(() => { askingPortions.delete(key); });   // a dead worker changes nothing — the portion stays owed
+  }
+  // tellStory re-asks every portion up to `shown` that is not yet told: the newly opened one on an
+  // «ещё 5», plus any earlier portion still owed from a refusal (re-asked at this natural beat). A
+  // told portion returns free from cache; an owed one waits for the next beat. Called at each beat —
+  // the hang builds, an unfold grows the set, a return re-shows the walk.
+  function tellStory() {
+    if (!STORY_ON) return;
+    for (const [lo, hi] of storyPortions(shown)) askPortion(lo, hi);
+  }
+  // A fresh door pick is a fresh arc, so it is a fresh story — the previous walk's told/owed portions
+  // and its lines never leak into the new one (EX-STORY / INV-30/31).
+  function storyReset() {
+    toldPortions.clear();
+    askingPortions.clear();
+    for (const k in STORYLINES) delete STORYLINES[k];
+    storyVariant = null;
   }
 
   // ---- EX-SHARE: the quiet per-frame affordance — it copies, never navigates ----
