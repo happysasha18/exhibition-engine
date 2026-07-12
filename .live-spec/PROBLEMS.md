@@ -18,3 +18,5 @@ the evidence lives; nothing here is asserted from memory.
   text carried from the private instance, left in place during the publish scrub (NOT in that sweep's
   target set) and flagged to the owner. Not a defect in behaviour; a publish-hygiene item for the public
   flip. Source: `.publish-pass-checkpoint.md` notes + `grep -c tlvphoto SPEC.md`.
+
+- 2026-07-12 · env drift: a build worker installed Pillow 11.3.0 into this repo's .venv mid-run (the ladder browser rows need it; without it they pin to SKIP). The dependency is real and now present; the drift to watch: the venv's package set is not recorded anywhere — a fresh machine re-hits the silent SKIP. Owner row candidate: record/require test deps explicitly.
