@@ -7,7 +7,11 @@
    --tempo directly (micro-feedback <.5s) — no literal may bypass the one clock (design card 04) */
 
 body{ min-height:100vh; overflow-x:hidden; background:rgb(var(--ground,12,11,10));
-  transition:background var(--d-ground) var(--ease); }
+  transition:background var(--d-ground) var(--ease);
+  /* EX-CHROME: no double-tap-to-zoom on the immersive walk — iOS ignores the viewport's
+     user-scalable=no, so the margins around a work must refuse it at the touch-action layer
+     (pinch itself stays blocked in JS). `manipulation` keeps single-finger pan/tap. */
+  touch-action:manipulation; }
 
 /* JS-on: the crawlable static index never paints (FOUC guard, INV-25); the live face owns the page */
 html.js #ex-static{ display:none; }

@@ -80,6 +80,20 @@ vp_ok = "maximum-scale=1" in build_src and "user-scalable=no" in build_src
 check("EX-PROTECT viewport: the meta pins scale to 1 (maximum-scale=1 + user-scalable=no)",
       vp_ok, "viewport meta does not pin scale — pinch-zoom can still scale the page")
 
+# 3d · the walk-wide zoom/swipe audit fixes (all red before this pass):
+#   - double-tap zoom blocked at the touch-action layer (iOS ignores the viewport meta)
+#   - a Ctrl/trackpad-pinch wheel is not consumed as a walk step
+#   - the volume slider + share button keep native touch (not hijacked by the swipe)
+#   - a pinch that drops back to one finger re-takes the paginated walk (no native fly-through)
+css_src = (ROOT / "engine" / "assets" / "exhibition.css").read_text(encoding="utf-8")
+audit_ok = ("touch-action:manipulation" in css_src.replace(" ", "")
+            and "if (e.ctrlKey) { e.preventDefault(); return; }" in js_src
+            and "#ex-sound, .ex-share" in js_src
+            and "touchcancel" in js_src
+            and "re-take the gesture" in js_src)
+check("EX-PROTECT touch audit: double-tap lock + ctrl-wheel guard + chrome native-touch + pinch-release re-arm",
+      audit_ok, "one of the zoom/swipe audit fixes is missing (double-tap / ctrl-wheel / slider / re-arm)")
+
 BROWSER_ROWS = [
     "EX-PROTECT-GIFT desktop right-click on a work opens the gift ceremony (not a browser save sheet)",
     "EX-PROTECT drag on a work is prevented (no drag ghost, enjoy toast fires)",

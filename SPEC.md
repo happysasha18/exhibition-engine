@@ -504,8 +504,10 @@ zoom across the **whole surface**, not only over a work: a browser zoom scales t
 out from under the JS scroll animator and the fixed chrome, so the measured centering drifts and the
 fixed controls float and the walk desyncs. `gesturestart` / `gesturechange` / `gestureend` are
 `preventDefault`ed document-wide (Safari's gesture events), a two-finger `touchmove` is refused
-(Blink's pinch), and the viewport meta pins the page to scale 1 — EX-CHROME's one-page-shape law
-extends to the zoom axis. It stays silent — a pinch is exploratory, not a save, so no toast. A
+(Blink's pinch), and the viewport meta pins the page to scale 1 on Blink. iOS ignores that meta,
+so double-tap-to-zoom is refused by `touch-action:manipulation` on the walk body, and a pinch that
+drops back to one finger re-takes the paginated walk so its tail cannot free-scroll. EX-CHROME's
+one-page-shape law extends to the zoom axis. It stays silent — a pinch is exploratory, not a save, so no toast. A
 **soft CSS layer**
 rests on every `img.work`: `user-select:none`, `-webkit-user-drag:none` (no drag ghost),
 `-webkit-touch-callout:none` (kills the iOS long-press save sheet). This is a gift and a gentle

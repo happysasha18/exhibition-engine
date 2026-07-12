@@ -1376,12 +1376,13 @@
   }
   stage.addEventListener("contextmenu", onGrab);
   stage.addEventListener("dragstart", onGrab);
-  // EX-PROTECT + EX-CHROME: the immersive walk refuses browser pinch-zoom across the WHOLE surface,
-  // not only over a work. A browser zoom scales the visual viewport out from under the JS scroll
-  // animator and the fixed chrome — the measured centering drifts and the fixed controls float, so
-  // the walk desyncs (his phone field-find). Safari fires gesture events; Blink zooms via a
-  // two-finger drag. Both are refused document-wide, and the viewport meta pins scale to 1. Silent —
-  // a pinch is exploratory, not a save, so no gift line, only no zoom.
+  // EX-PROTECT + EX-CHROME: the immersive walk refuses browser zoom across the WHOLE surface, not
+  // only over a work. A browser zoom scales the visual viewport out from under the JS scroll animator
+  // and the fixed chrome — the measured centering drifts and the fixed controls float, so the walk
+  // desyncs (his phone field-find). Pinch: Safari fires gesture events; Blink zooms via a two-finger
+  // drag — both refused document-wide here. Double-tap zoom: blocked by `touch-action:manipulation`
+  // (CSS) since iOS IGNORES the viewport's user-scalable=no. On Blink the viewport meta also pins
+  // scale to 1. Silent — a pinch is exploratory, not a save, so no gift line, only no zoom.
   function onPinch(ev) { ev.preventDefault(); }
   ["gesturestart", "gesturechange", "gestureend"].forEach((g) =>
     document.addEventListener(g, onPinch, { passive: false }));
@@ -1821,6 +1822,7 @@
   const RESWIPE_MS = 250;                              // a human's fastest deliberate re-swipe
   if (!TOUCHY) {
     addEventListener("wheel", (e) => {
+      if (e.ctrlKey) { e.preventDefault(); return; }   // a browser-zoom wheel (Ctrl / trackpad pinch) is not a walk step
       if (faceStands()) {                              // EX-CHROME: rest the walk's input behind a face
         if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // the face's own scroll / chrome stays native
         e.preventDefault(); return;                    // the overflow cut is gone — the rest holds the walk
@@ -1891,10 +1893,11 @@
   if (TOUCHY) {
     let tY = null, tLast = 0, tMoved = false;
     const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
+    const NATIVE_TOUCH = "#ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound, .ex-share";
     addEventListener("touchstart", (e) => {
       if (!walkOwnsInput() || e.touches.length !== 1
-          || (e.target && e.target.closest && e.target.closest("#ex-side, #ex-quiz-card, #ex-gift-card"))) {
-        tY = null; return;                             // door / overlays / multi-touch keep native touch
+          || (e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
+        tY = null; return;                             // door / overlays / chrome controls / multi-touch keep native touch
       }
       tY = tLast = e.touches[0].clientY;
       tMoved = false;
@@ -1928,11 +1931,20 @@
         if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // multi-touch: today's treatment
         e.preventDefault(); return;                    // the overflow cut is gone — the rest holds the walk
       }
-      if (tY == null) return;
+      if (tY == null) {
+        // a pinch or a 2-finger touch dropped back to ONE finger mid-walk: re-take the gesture so
+        // the tail cannot free-scroll the paginated walk (the fly-through the animator exists to
+        // kill). Only when the walk truly owns the input and the finger is not on chrome/an overlay.
+        if (e.touches.length === 1 && walkOwnsInput()
+            && !(e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
+          tY = tLast = e.touches[0].clientY; tMoved = false;
+        } else return;
+      }
       tLast = e.touches[0].clientY;
       if (Math.abs(tLast - tY) > 6) tMoved = true;
       e.preventDefault();                              // the walk is paginated — no native scroll, no fly-through
     }, { passive: false });
+    addEventListener("touchcancel", () => { tY = null; });   // a system-cancelled touch leaves no stale drag
     addEventListener("touchend", () => {
       if (tY == null) return;
       const net = tY - tLast;                          // finger travels UP (net>0) = advance forward
