@@ -355,6 +355,13 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
   height:40px; -webkit-tap-highlight-color:transparent;
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
 #ex-sound.show{ opacity:1; }
+/* No two INTERACTIVE controls may overlap (INV-77): while a COVERING overlay stands — the zoom layer,
+   the gift card, the quiz card, each with its own × top-right — the walk's floating chrome retracts so
+   the player never sits over the overlay or beside its close. The ambient sound keeps playing; only its
+   control hides. Passive decoration may still overlap; interactive controls may not. */
+html.ex-cover #ex-sound,
+html.ex-cover .ex-share,
+html.ex-cover #ex-toast{ opacity:0; pointer-events:none; }
 /* at the DOOR the language mark (EX-LANG) also lives top-right — nudge the player left of it */
 body.ex-door #ex-sound{ right:70px; }
 .exsnd-btn{ width:40px; height:40px; flex:none; display:grid; place-items:center; border-radius:999px;

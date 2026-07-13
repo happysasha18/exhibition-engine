@@ -1982,12 +1982,19 @@
   const FACE_SEL = "#ex-door, #ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound";  // face roots + chrome
   let guardHold = 0;                                    // the place the walk holds while a face stands
   function faceStands() { return atDoor || busy || sideOpen || quizOpen || giftOpen || zoomOpen; }
+  // A COVERING overlay draws a full backdrop and carries its OWN controls (the zoom's ×, the gift/quiz
+  // card). While one stands, the walk's own floating chrome (the player, the share link and its toast)
+  // would sit over the picture and, top-right, clash with the overlay's × — two interactive controls on
+  // one spot. So the chrome RETRACTS under a cover (INV-77): the ambient sound keeps playing, only its
+  // control hides; passive decoration may still overlap, interactive controls may not.
+  function coverStands() { return zoomOpen || quizOpen || giftOpen; }
   // mirror the stand onto the root: `ex-face` sleeps the scrollbar (gutter-stable, no reflow) and
   // arms the input rest + guard. On a RISE (no face → a face) freeze the walk's place to hold.
   function faceSync() {
     const stands = faceStands();
     const had = document.documentElement.classList.contains("ex-face");
     document.documentElement.classList.toggle("ex-face", stands);
+    document.documentElement.classList.toggle("ex-cover", coverStands());   // retract floating chrome under a covering overlay (INV-77)
     if (stands && !had) guardHold = scrollY;           // a face rose — remember the place beneath
   }
   // the snap-back guard is the ONLY lock now. While a face stands and the house's own animator is

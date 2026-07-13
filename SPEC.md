@@ -586,6 +586,21 @@ returns to the untouched page, the image scaling with the pinch and the browser 
 page; a one-finger drag on a zoomed picture moves it within its bounds and never past its edge
 `[default]`. `EX-ZOOM` `INV-75` `INV-76`
 
+**Two interactive controls never share a spot (EX-CHROME).** A covering overlay — the zoom layer, the
+gift card, the quiz card — draws a full backdrop and carries its own close in the top-right corner, the
+same corner the walk floats the sound player in. So while a covering overlay stands, the walk's floating
+chrome retracts: the player, the share link, and its toast hide, and the ambient sound keeps playing —
+only the control leaves the glass. The boundary is by kind, not by position: passive decoration (a caption
+plaque, the picture itself, the tone plate) may lie under or over another passive layer, but no two
+elements a hand can PRESS may occupy the same place at once. *Facets:* the retract rides the same face lock
+that freezes the walk, so it arms and releases with the overlay in one beat; the audio is untouched, only
+the button hides; a non-covering room (the side room, the door) keeps its chrome, its own controls sitting
+clear of the player's corner. *Non-goals:* moving a control aside instead of hiding it (a moved control
+still competes for the eye); a general collision solver (the rule is stated per covering overlay, checked
+by test). *Success measure:* with the zoom (or the gift or quiz card) open, the player, share link, and
+toast are not pressable and not visible, and they return the moment it closes `[default]`. `EX-CHROME`
+`INV-77`
+
 ### The gift ceremony
 
 The picture is never dumped by a blunt auto-download. A desktop right-click on a work, and a won
@@ -1275,6 +1290,7 @@ the worker.
 | `INV-74` | The diverse door keeps a browser-local, versioned, `?reset`-forgettable memory of the works it has DEALT, and every open guarantees at least `fresh_min` of the windows dealt for the current fit are works not dealt since the last round reset — jointly with the place fraction, so at least `⌈fresh_min·n⌉+⌈place_min·n⌉−n` shown windows are both unseen and place; when the unseen pool cannot supply the fresh floor or that overlap the memory clears and a new round begins, the just-dealt set replacing it (a normal open unions in). This novelty floor supersedes the curated door's ⌊door_size/3⌋-repeat law (`INV-20`) here |
 | `INV-75` | A two-finger pinch on any exhibition picture opens it enlarged in its own zoom layer that scales with the pinch, with a close control (×, backdrop tap, or Esc) that returns to the page exactly as it was; the browser's own page zoom never fires |
 | `INV-76` | Once a picture is zoomed past 1× in the zoom layer, a one-finger drag pans it by the finger's travel, the offset clamped to the picture's visible overflow at the current scale so a corner is reachable yet the image never leaves its frame; pinching toward 1× re-tightens the bound and a release at 1× recentres it |
+| `INV-77` | While a covering overlay stands (the zoom layer, the gift card, or the quiz card), the walk's floating chrome retracts — the sound player, the share link, and the toast become not visible and not pressable, the ambient audio still playing — so no two interactive controls occupy the same screen place; they return the moment the overlay closes. Passive decoration may still overlap; only pressable controls may not |
 
 ### Reconciliation log — how each behavior above landed in code
 
