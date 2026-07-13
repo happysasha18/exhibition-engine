@@ -21,7 +21,7 @@ SUITES = [
     "site", "exhibition", "door", "vector", "back", "greet",
     "series", "motion", "reset", "load", "ladder", "share", "glide",
     "pulse", "hand", "i18n", "lang", "memory", "protect", "sound", "guard", "quiz",
-    "shim", "compose", "dead", "quiz_flow", "parity", "zoom",
+    "shim", "compose", "dead", "quiz_flow", "parity", "zoom", "return",
 ]
 
 

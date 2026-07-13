@@ -42,7 +42,9 @@
       "gift_ask": "like it?",
       "gift_yes": "a gift :)",
       "gift_no": "not now",
-      "gift_buy": ""
+      "gift_buy": "",
+      "more_exit": "there is more still hanging — come again",
+      "more_return": "back again — a new way in"
     },
     "ru": {
       "dir": "ltr",
@@ -81,7 +83,9 @@
       "gift_ask": "нравится?",
       "gift_yes": "подарок :)",
       "gift_no": "не сейчас",
-      "gift_buy": ""
+      "gift_buy": "",
+      "more_exit": "внутри осталось ещё — заходи снова",
+      "more_return": "с возвращением — новый вход сегодня"
     },
     "he": {
       "dir": "rtl",
@@ -120,7 +124,9 @@
       "gift_ask": "אהבת?",
       "gift_yes": "מתנה :)",
       "gift_no": "לא עכשיו",
-      "gift_buy": ""
+      "gift_buy": "",
+      "more_exit": "בפנים נשאר עוד — בואו שוב",
+      "more_return": "שוב כאן — כניסה חדשה היום"
     },
     "de": {
       "dir": "ltr",
@@ -159,7 +165,9 @@
       "gift_ask": "gefällt es?",
       "gift_yes": "ein Geschenk :)",
       "gift_no": "nicht jetzt",
-      "gift_buy": ""
+      "gift_buy": "",
+      "more_exit": "drinnen hängt noch mehr — komm wieder",
+      "more_return": "wieder da — heute ein neuer Weg hinein"
     },
     "fr": {
       "dir": "ltr",
@@ -198,7 +206,9 @@
       "gift_ask": "ça vous plaît ?",
       "gift_yes": "un cadeau :)",
       "gift_no": "pas maintenant",
-      "gift_buy": ""
+      "gift_buy": "",
+      "more_exit": "il en reste à l'intérieur — reviens",
+      "more_return": "de retour — une nouvelle entrée aujourd’hui"
     },
     "es": {
       "dir": "ltr",
@@ -237,7 +247,9 @@
       "gift_ask": "¿te gusta?",
       "gift_yes": "un regalo :)",
       "gift_no": "ahora no",
-      "gift_buy": ""
+      "gift_buy": "",
+      "more_exit": "queda más dentro — vuelve",
+      "more_return": "de vuelta — una nueva entrada hoy"
     },
     "uk": {
       "dir": "ltr",
@@ -276,7 +288,9 @@
       "gift_ask": "подобається?",
       "gift_yes": "подарунок :)",
       "gift_no": "не зараз",
-      "gift_buy": ""
+      "gift_buy": "",
+      "more_exit": "всередині лишилося ще — заходь знову",
+      "more_return": "знову тут — сьогодні новий вхід"
     }
   }
 }

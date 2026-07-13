@@ -22,6 +22,9 @@
   const DOORDEALT_KEY = "ex.doordealt";              // works the diverse door has dealt this round (EX-DOOR-3/INV-75)
   const LANG_KEY = "ex.lang";                        // the guest's chosen tongue (EX-LANG)
   const SND_KEY = "ex.sound";                         // the ambient player's on/off + volume (EX-SOUND)
+  const BEEN_KEY = "ex.been";                         // EX-RETURN: this browser has walked the exhibition before
+  const MORE_EXIT_EN = "there is more still hanging — come again";   // the exit farewell (English fallback)
+  const MORE_RETURN_EN = "back again — a new way in";               // the returning-arrival line (English fallback)
 
   // ---- EX-TIMING (INV-38): the museum keeps time — for its builder only -------
   // Marks are free and invisible (INV-1: no DOM text; INV-18: no beacon, nothing
@@ -900,6 +903,7 @@
     '<div class="exd-wm"></div>' +                    // brand from config.site_name (INV-28)
     '<div class="exd-greet" id="exd-greet" hidden></div>' +
     '<div class="exd-ask">что ближе сейчас?</div>' +
+    '<div class="exd-more" id="exd-more" hidden></div>' +   // EX-RETURN: "there is more" — a farewell at the exit, a welcome-back on a return
     '<div class="exd-facade" id="exd-facade"></div>';  // no silent entry — the pick IS the
   door.querySelector(".exd-wm").textContent = cfg.site_name || "";
   document.body.appendChild(door);                     // entry (EX-DOOR-2a, his design word)
@@ -935,6 +939,23 @@
     const line = (cold && GPLACE !== "off" && L) ? greetLine(L.t) : "";
     g.textContent = line;
     g.hidden = !line;                    // ambient: Back to a cold step re-greets at the CURRENT hour
+    // EX-RETURN (INV-78): the door says there is more. A door reached by leaving a walk (cold=false) is
+    // proof this browser has walked, so we remember it and show the exit farewell; a later COLD arrival
+    // from a browser that has walked before is welcomed back. Both true today — the collection outlasts
+    // one visit and the door deals a fresh set each open. Localized, English falls back; the return line
+    // stands in for the daypart greeting so the door never crowds.
+    const more = door.querySelector("#exd-more");
+    let moreLine = "";
+    let been = null;
+    try { been = localStorage.getItem(BEEN_KEY); } catch (e) {}
+    if (!cold) {
+      try { localStorage.setItem(BEEN_KEY, "1"); } catch (e) {}
+      moreLine = (L && L.t.more_exit) || MORE_EXIT_EN;
+    } else if (been) {
+      moreLine = (L && L.t.more_return) || MORE_RETURN_EN;   // a quiet extra line below the ask; the daypart greeting stays (EX-GREET)
+    }
+    more.textContent = moreLine;
+    more.hidden = !moreLine;
     door.classList.toggle("greet-top", GPLACE === "top");
     doorRender(true);                                  // a fresh open breathes its windows in
     if (cold) hintArm(); else hintOff(); // the re-opened door never hints (EX-DOOR-2g)
@@ -1518,15 +1539,13 @@
   zoom.setAttribute("role", "dialog");
   zoom.setAttribute("aria-modal", "true");
   zoom.hidden = true;
-  // The zoom carries its OWN small chrome, top-LEFT, in the same round style as the walk's floating
-  // controls (INV-77): a close and a share of the work being inspected. They sit clear of the player's
-  // top-right corner, so no two interactive controls overlap AND the visitor can still share the picture
-  // (and reach the player for the music) while zoomed — the fix keeps every function, it hides none.
-  zoom.innerHTML = '<div class="exz-chrome">'
-                 + '<button type="button" class="exz-btn exz-close" aria-label="закрыть">&times;</button>'
+  // The zoom carries its OWN chrome, in the same round style as the walk's floating controls (INV-77),
+  // each control kept in the place the walk already uses so NOTHING moves when the zoom opens: the CLOSE
+  // is new, so it takes the free TOP-LEFT corner; the SHARE sits BOTTOM-RIGHT, exactly where the walk's
+  // share link lives. The player stays TOP-RIGHT for the music. No two controls overlap, no button jumps.
+  zoom.innerHTML = '<button type="button" class="exz-btn exz-close" aria-label="закрыть">&times;</button>'
                  + '<button type="button" class="exz-btn exz-share" aria-label="поделиться">' + SHARE_GLYPH + '</button>'
                  + '<span class="exz-copied" aria-live="polite"></span>'
-                 + '</div>'
                  + '<img class="exz-img" alt="">';
   document.body.appendChild(zoom);
   let zoomOpen = false, zScale = 1, zPinch = 0, zStartS = 1;

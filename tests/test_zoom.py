@@ -65,13 +65,14 @@ js_pan_bits = {
 check("EX-ZOOM/INV-76 the pan machinery is built into the client (zClampPan + zPanning + zTx/zTy)",
       all(js_pan_bits.values()), "missing: " + ", ".join(k for k, v in js_pan_bits.items() if not v))
 check("EX-ZOOM/INV-77 the zoom carries its own chrome — a close + a share of the inspected work",
-      "exz-chrome" in JS and "exz-close" in JS and "exz-share" in JS
+      "exz-close" in JS and "exz-share" in JS
       and "shareBtn.dataset.share" in JS and "html.ex-cover" not in CSS,
       "zoom chrome/share not built, or the old ex-cover hide is still present")
-check("EX-ZOOM/INV-77 the zoom chrome sits top-left in the round chrome style, clear of the player (css)",
-      bool(re.search(r"#ex-zoom \.exz-chrome\s*\{[^}]*left:", CSS.replace("\n", " ")))
+check("EX-ZOOM/INV-77 nothing moves: the close is top-left, the share on the walk's own bottom-right rail (css)",
+      bool(re.search(r"#ex-zoom \.exz-close\s*\{[^}]*left:", CSS.replace("\n", " ")))
+      and bool(re.search(r"#ex-zoom \.exz-share\s*\{[^}]*right:\s*calc\(var\(--ex-rail\)", CSS.replace("\n", " ")))
       and "#ex-zoom .exz-btn" in CSS,
-      "no top-left .exz-chrome / .exz-btn rule in css")
+      "close not top-left or share not on the --ex-rail bottom-right")
 
 # ---------------------------------------------------------------- browser rows
 BROWSER_ROWS = [
@@ -85,7 +86,7 @@ PAN_ROWS = [
 ]
 COVER_ROWS = [
     "EX-ZOOM/INV-77 with the zoom open the player (if present) stays reachable, not overlapped by the close",
-    "EX-ZOOM/INV-77 the zoom offers a share of the inspected work (top-left)",
+    "EX-ZOOM/INV-77 the zoom offers a share of the inspected work (bottom-right, the walk's own corner)",
 ]
 # with the zoom open: if a player exists, is it still displayed and clear of the zoom's close?
 OVERLAP = ("(()=>{const s=document.getElementById('ex-sound'),x=document.querySelector('#ex-zoom .exz-close');"

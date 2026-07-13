@@ -343,6 +343,20 @@ boundary re-greets itself on `visibilitychange`/`focus` and on a once-a-minute b
 genuine daypart crossing (night→morning→day→evening) triggers a fresh line; same daypart → the
 chosen line is left alone, no flicker.
 
+**The door says there is more** (`EX-RETURN`, `INV-78`): coming back is worth it, so the door tells the
+visitor there is more to see, at the two moments it matters. On the way out — the door reached by leaving a
+walk (the ⟲ exit, or Back to the door) — a quiet line bids farewell and says the rest is still hanging,
+come again; it is the last thing a leaving visitor reads. On a returning cold arrival — a cold door opened
+by a browser that has walked here before — a welcome-back line joins as a quiet line below the ask, the
+daypart greeting kept whole; a first-ever visitor who has never walked sees neither line, only the ordinary
+greeting. The browser remembers it has walked through one local flag, set the moment a door is reached by
+exiting a walk and forgotten with the rest of the local memory. Both lines are true wherever the exhibition
+holds more than one walk shows and the door deals a fresh set each open, so the door never promises works
+that are not there. The lines are localized site copy in the greetings cache (English the fallback),
+museum-quiet, and never name a work, an axis, or a count. *Non-goal:* a badge of newly-added works or an
+«N new since last visit» count — that needs works to be added over time and an added-date the content need
+not carry, so it stays out until a growing collection earns it.
+
 **The greeting strings are baked, not live** (`EX-GREET-BAKE`): the strings live in the
 committed `data/greetings.json` cache, authored at authoring time by the instance's own gen
 script (e.g. `scripts/gen_greetings.py`) calling a small model; the bake only READS the cache
@@ -590,7 +604,9 @@ page; a one-finger drag on a zoomed picture moves it within its bounds and never
 its own; no two of them occupy the same spot at once. The boundary is drawn by kind: passive
 decoration (a caption plaque, the picture itself, the tone plate) may lie under or over anything, and two
 pressable controls always keep separate places. The zoom layer keeps this by giving its own chrome a corner clear of the
-walk's: the sound player floats top-right, so the zoom's close and share sit TOP-LEFT, in the same round
+walk's: the sound player floats top-right and the walk's share link bottom-right, so the zoom keeps each
+control where the walk uses it — the close is new, so it takes the free TOP-LEFT corner, and the share sits
+BOTTOM-RIGHT on the walk's own share rail (nothing moves when the zoom opens), all in the same round
 style as the player and the walk's share link (one aesthetic, told apart by their icon). This lets the
 visitor keep every function while inspecting a picture — the player stays reachable top-right to lower the
 music, and the zoom's own share copies the room link of the work being looked at, confirming inline (the
@@ -600,7 +616,8 @@ localized «link copied» shown in the zoom itself; the close and share meet the
 and carry aria-labels. *Non-goals:* hiding the player while a cover stands (that would take away the music
 and the share the moment someone might want them); a general collision solver (each overlay places its own
 controls, checked by test). *Success measure:* with the zoom open on a work, the player is still visible and
-pressable top-right, the zoom's close and share stand top-left without overlapping it, and the share copies
+pressable top-right, the zoom's close stands top-left and its share bottom-right (the walk's own corner),
+neither overlapping it, and the share copies
 that work's link `[default]`. `EX-CHROME` `INV-77`
 
 ### The gift ceremony
@@ -1183,6 +1200,7 @@ the worker.
 | `EX-DOOR-RELOAD` | Face survives a reload; gentle hand refresh (≥60% kept, ≤40% new) |
 | `EX-GREET` | The door greeting in the visitor's language at their hour |
 | `EX-GREET-LIVE` | The greeting re-speaks when the daypart changes |
+| `EX-RETURN` | The door says there is more — a farewell on the way out, a welcome-back on a returning arrival |
 | `EX-GREET-BAKE` | The baked string cache; the gen command; the fallback |
 | `EX-LANG` | The corner language selector on the door |
 | `EX-HANG` | The gallery: one work per viewport, caption in the margin |
@@ -1292,7 +1310,8 @@ the worker.
 | `INV-74` | The diverse door keeps a browser-local, versioned, `?reset`-forgettable memory of the works it has DEALT, and every open guarantees at least `fresh_min` of the windows dealt for the current fit are works not dealt since the last round reset — jointly with the place fraction, so at least `⌈fresh_min·n⌉+⌈place_min·n⌉−n` shown windows are both unseen and place; when the unseen pool cannot supply the fresh floor or that overlap the memory clears and a new round begins, the just-dealt set replacing it (a normal open unions in). This novelty floor supersedes the curated door's ⌊door_size/3⌋-repeat law (`INV-20`) here |
 | `INV-75` | A two-finger pinch on any exhibition picture opens it enlarged in its own zoom layer that scales with the pinch, with a close control (×, backdrop tap, or Esc) that returns to the page exactly as it was; the browser's own page zoom never fires |
 | `INV-76` | Once a picture is zoomed past 1× in the zoom layer, a one-finger drag pans it by the finger's travel, the offset clamped to the picture's visible overflow at the current scale so a corner is reachable yet the image never leaves its frame; pinching toward 1× re-tightens the bound and a release at 1× recentres it |
-| `INV-77` | No two pressable controls occupy the same screen spot. The zoom layer keeps this by placing its own close and share of the inspected work TOP-LEFT, in the same round style as the walk's floating controls, clear of the sound player's top-right corner — so while zoomed the visitor still reaches the player for the music and shares the work (the zoom's share copies that work's link, confirming inline). Passive decoration may overlap anything; only pressable controls may not |
+| `INV-77` | No two pressable controls occupy the same screen spot, and nothing moves when the zoom opens: the zoom keeps each control where the walk uses it — the sound player stays top-right (the music), the zoom's share of the inspected work sits bottom-right on the walk's own share rail, and the close (new to the zoom) takes the free top-left corner, all in the same round chrome style. So while zoomed the visitor still reaches the player and shares the work (the share copies that work's link, confirming inline). Passive decoration may overlap anything; only pressable controls may not |
+| `INV-78` | The door tells the visitor there is more: leaving a walk to the door shows a farewell line («the rest is still hanging, come again»), and a cold arrival from a browser that has walked here before shows a welcome-back line below the ask, the daypart greeting kept whole. A first-ever visitor sees neither, only the ordinary greeting. One local flag remembers the browser has walked; the lines are localized museum-quiet copy naming no work/axis/count, honest wherever the collection outlasts one walk |
 
 ### Reconciliation log — how each behavior above landed in code
 
