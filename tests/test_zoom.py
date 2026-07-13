@@ -64,14 +64,14 @@ js_pan_bits = {
 }
 check("EX-ZOOM/INV-76 the pan machinery is built into the client (zClampPan + zPanning + zTx/zTy)",
       all(js_pan_bits.values()), "missing: " + ", ".join(k for k, v in js_pan_bits.items() if not v))
-check("EX-ZOOM/INV-77 the client retracts the floating chrome under a covering overlay "
-      "(faceSync toggles ex-cover on zoom/gift/quiz)",
-      "coverStands(" in JS and 'classList.toggle("ex-cover"' in JS,
-      "no coverStands()/ex-cover toggle in faceSync")
-check("EX-ZOOM/INV-77 the cover rule hides player + share + toast (css)",
-      "html.ex-cover #ex-sound" in CSS and "html.ex-cover .ex-share" in CSS
-      and "html.ex-cover #ex-toast" in CSS and "pointer-events:none" in CSS,
-      "no html.ex-cover hide rule in css")
+check("EX-ZOOM/INV-77 the zoom carries its own chrome — a close + a share of the inspected work",
+      "exz-chrome" in JS and "exz-close" in JS and "exz-share" in JS
+      and "shareBtn.dataset.share" in JS and "html.ex-cover" not in CSS,
+      "zoom chrome/share not built, or the old ex-cover hide is still present")
+check("EX-ZOOM/INV-77 the zoom chrome sits top-left in the round chrome style, clear of the player (css)",
+      bool(re.search(r"#ex-zoom \.exz-chrome\s*\{[^}]*left:", CSS.replace("\n", " ")))
+      and "#ex-zoom .exz-btn" in CSS,
+      "no top-left .exz-chrome / .exz-btn rule in css")
 
 # ---------------------------------------------------------------- browser rows
 BROWSER_ROWS = [
@@ -84,12 +84,18 @@ PAN_ROWS = [
     "EX-ZOOM/INV-76 the pan is bounded to the picture's edge (a huge drag clamps, image never flies off)",
 ]
 COVER_ROWS = [
-    "EX-ZOOM/INV-77 with the zoom open the player retracts (not pressable, not visible)",
-    "EX-ZOOM/INV-77 the player returns when the zoom closes",
+    "EX-ZOOM/INV-77 with the zoom open the player (if present) stays reachable, not overlapped by the close",
+    "EX-ZOOM/INV-77 the zoom offers a share of the inspected work (top-left)",
 ]
-SND = ("(()=>{const s=document.getElementById('ex-sound');if(!s)return JSON.stringify({no:1});"
-       "const c=getComputedStyle(s);return JSON.stringify({op:c.opacity,pe:c.pointerEvents});})()")
-COVER = "document.documentElement.classList.contains('ex-cover')"
+# with the zoom open: if a player exists, is it still displayed and clear of the zoom's close?
+OVERLAP = ("(()=>{const s=document.getElementById('ex-sound'),x=document.querySelector('#ex-zoom .exz-close');"
+           "if(!x)return JSON.stringify({no:1});if(!s)return JSON.stringify({noplayer:1});"
+           "const a=s.getBoundingClientRect(),b=x.getBoundingClientRect(),c=getComputedStyle(s);"
+           "const over=!(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top);"
+           "return JSON.stringify({over,disp:c.display,pe:c.pointerEvents});})()")
+# is the zoom's share present and offered when there is an in-view work?
+ZSHARE = ("(()=>{const x=document.querySelector('#ex-zoom .exz-share');"
+          "if(!x)return JSON.stringify({no:1});return JSON.stringify({present:true,hidden:x.hidden});})()")
 # scale the open zoom to ~3x via a two-finger pinch, then drag one finger by (dx,dy); return the
 # resulting inline translate + scale and the layout metrics needed to compute the bound.
 PAN = (
@@ -153,30 +159,28 @@ else:
             _boot(br, base)
             br.click(".exd-window:nth-child(1)", settle=0.6)
             br.sleep(0.6)
+            # make sure there is an in-view work to share (the observer sets this on the walk)
+            br.evaluate("var s=document.getElementById('ex-share'); if(s){s.dataset.share='999';}")
             fired2 = br.evaluate("(%s)('.exh-frame img.work')" % PINCH)
             br.sleep(0.2)
             opened2 = br.evaluate(ZOPEN)
             check(BROWSER_ROWS[2], fired2 == "ok" and opened2,
                   f"fired={fired2!r} opened={opened2}")
-            # INV-77: the player's corner clashes with the zoom's x — the floating chrome must retract
-            cover = br.evaluate(COVER)
-            snd = json.loads(br.evaluate(SND))
-            try:
-                op = float(snd.get("op", "1"))
-            except (TypeError, ValueError):
-                op = 1.0
-            # the synthetic fixture configures no audio, so #ex-sound may be absent; assert the cover
-            # class is armed always, and the player is hidden IF it is present (the instance suite,
-            # which serves a real player, proves the hide on a live #ex-sound).
+            # INV-77: no cover-hide anymore — the player (if the fixture has one) stays reachable and the
+            # zoom's close does NOT overlap it. The synthetic fixture configures no audio, so #ex-sound may
+            # be absent; then this row asserts only that the zoom's close exists (the instance suite, with a
+            # real player, proves the no-overlap on a live #ex-sound).
+            ov = json.loads(br.evaluate(OVERLAP))
             check(COVER_ROWS[0],
-                  opened2 and cover and (snd.get("no") == 1 or (snd.get("pe") == "none" and op < 0.05)),
-                  f"cover={cover} player={snd}")
-            br.evaluate("var b=document.querySelector('#ex-zoom .exz-close'); if(b) b.click();")
-            br.sleep(0.3)
-            cover2 = br.evaluate(COVER)
-            snd2 = json.loads(br.evaluate(SND))
-            check(COVER_ROWS[1], (not cover2) and snd2.get("pe") != "none",
-                  f"cover_after={cover2} player={snd2}")
+                  opened2 and not ov.get("no")
+                  and (ov.get("noplayer") == 1 or (ov.get("over") is False
+                                                   and ov.get("disp") != "none" and ov.get("pe") != "none")),
+                  f"overlap={ov}")
+            # the zoom offers its own share of the inspected work, top-left
+            zs = json.loads(br.evaluate(ZSHARE))
+            check(COVER_ROWS[1],
+                  opened2 and zs.get("present") and zs.get("hidden") is False,
+                  f"zshare={zs}")
         with Browser(width=390, height=844) as br:       # INV-76: drag-to-pan a zoomed picture
             _boot(br, base)
             # the synthetic fixture's placeholder images are tiny (64x64) — far smaller than a real

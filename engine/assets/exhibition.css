@@ -355,13 +355,6 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
   height:40px; -webkit-tap-highlight-color:transparent;
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
 #ex-sound.show{ opacity:1; }
-/* No two INTERACTIVE controls may overlap (INV-77): while a COVERING overlay stands — the zoom layer,
-   the gift card, the quiz card, each with its own × top-right — the walk's floating chrome retracts so
-   the player never sits over the overlay or beside its close. The ambient sound keeps playing; only its
-   control hides. Passive decoration may still overlap; interactive controls may not. */
-html.ex-cover #ex-sound,
-html.ex-cover .ex-share,
-html.ex-cover #ex-toast{ opacity:0; pointer-events:none; }
 /* at the DOOR the language mark (EX-LANG) also lives top-right — nudge the player left of it */
 body.ex-door #ex-sound{ right:70px; }
 .exsnd-btn{ width:40px; height:40px; flex:none; display:grid; place-items:center; border-radius:999px;
@@ -526,9 +519,21 @@ body.ex-door #ex-sound{ right:70px; }
 #ex-zoom .exz-img{ max-width:94vw; max-height:88vh; object-fit:contain; border-radius:3px;
   transform-origin:center center; will-change:transform; touch-action:none;
   -webkit-user-drag:none; user-select:none; box-shadow:0 30px 120px rgba(0,0,0,.7); }
-#ex-zoom .exz-close{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 14px); right:16px; z-index:1;
-  width:44px; height:44px; min-width:44px; min-height:44px; border:none; border-radius:50%;
-  background:rgba(255,255,255,.12); color:#eae7e0; font-size:26px; line-height:1; cursor:pointer; }
+/* the zoom's own chrome (INV-77): a close and a share of the inspected work, TOP-LEFT, in the same round
+   style as the walk's floating controls (dark fill, hairline, blur) — clear of the player's top-right
+   corner, so no two interactive controls overlap and the visitor keeps every function while zoomed. */
+#ex-zoom .exz-chrome{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 14px); left:16px; z-index:2;
+  display:flex; gap:10px; align-items:center; }
+#ex-zoom .exz-btn{ width:44px; height:44px; min-width:44px; min-height:44px; border-radius:50%;
+  display:grid; place-items:center; cursor:pointer; color:var(--ink);
+  background:rgba(8,8,7,.55); border:1px solid var(--hair); backdrop-filter:blur(6px);
+  transition:background calc(.2s*var(--tempo)) var(--ease), color calc(.2s*var(--tempo)) var(--ease), border-color calc(.2s*var(--tempo)) var(--ease); }
+#ex-zoom .exz-btn:hover, #ex-zoom .exz-btn:focus-visible{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
+#ex-zoom .exz-close{ font-size:24px; line-height:1; padding-bottom:2px; }
+#ex-zoom .exz-share[hidden]{ display:none; }
+#ex-zoom .exz-copied{ font-family:var(--mono); font-size:10px; letter-spacing:.12em; color:var(--muted);
+  opacity:0; transition:opacity calc(.2s*var(--tempo)) var(--ease); pointer-events:none; white-space:nowrap; }
+#ex-zoom .exz-copied.show{ opacity:1; }
 @media (prefers-reduced-motion:reduce){ #ex-zoom{ transition:none; } }
 @media (prefers-reduced-motion:reduce){
   #ex-gift-card{ transition:none; }

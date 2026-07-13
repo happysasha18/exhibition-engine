@@ -1518,7 +1518,15 @@
   zoom.setAttribute("role", "dialog");
   zoom.setAttribute("aria-modal", "true");
   zoom.hidden = true;
-  zoom.innerHTML = '<button type="button" class="exz-close" aria-label="закрыть">&times;</button>'
+  // The zoom carries its OWN small chrome, top-LEFT, in the same round style as the walk's floating
+  // controls (INV-77): a close and a share of the work being inspected. They sit clear of the player's
+  // top-right corner, so no two interactive controls overlap AND the visitor can still share the picture
+  // (and reach the player for the music) while zoomed — the fix keeps every function, it hides none.
+  zoom.innerHTML = '<div class="exz-chrome">'
+                 + '<button type="button" class="exz-btn exz-close" aria-label="закрыть">&times;</button>'
+                 + '<button type="button" class="exz-btn exz-share" aria-label="поделиться">' + SHARE_GLYPH + '</button>'
+                 + '<span class="exz-copied" aria-live="polite"></span>'
+                 + '</div>'
                  + '<img class="exz-img" alt="">';
   document.body.appendChild(zoom);
   let zoomOpen = false, zScale = 1, zPinch = 0, zStartS = 1;
@@ -1527,6 +1535,8 @@
   // so the image can never be dragged past its own edge.
   let zTx = 0, zTy = 0, zPanning = false, zPanX = 0, zPanY = 0, zPanTx = 0, zPanTy = 0;
   const zImg = zoom.querySelector(".exz-img");
+  const zShare = zoom.querySelector(".exz-share");
+  const zCopied = zoom.querySelector(".exz-copied");
   const zDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   function zClampPan() {                                 // keep the offset within the picture's overflow
     const ox = Math.max(0, (zImg.offsetWidth * zScale - innerWidth) / 2);
@@ -1542,6 +1552,8 @@
     zImg.src = src; zImg.alt = alt || "";
     zScale = 1; zTx = 0; zTy = 0; zPanning = false; zApply();
     zoom.hidden = false; zoomOpen = true;
+    zShare.hidden = !shareBtn.dataset.share;           // share only when there's an in-view work to share
+    zCopied.classList.remove("show");
     faceSync();                                        // the zoom is a face — freeze the page beneath (EX-CHROME)
     requestAnimationFrame(() => zoom.classList.add("show"));
   }
@@ -1582,6 +1594,17 @@
     if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }   // a near-1 release settles flat + centred
   }, { passive: true });
   zoom.querySelector(".exz-close").addEventListener("click", closeZoom);
+  // the zoom's share copies the room link of the work being inspected (the in-view work), confirming
+  // INLINE — the walk's toast rides bottom-right beneath the zoom backdrop, so it would not be seen here.
+  zShare.addEventListener("click", () => {
+    const id = shareBtn.dataset.share; if (!id) return;
+    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral#w-" + id;
+    const show = (txt) => { zCopied.textContent = txt; zCopied.classList.add("show");
+      clearTimeout(zCopied._t); zCopied._t = setTimeout(() => zCopied.classList.remove("show"), Math.round(1600 * TEMPO)); };
+    pulse("share_copy", id);
+    ((navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(link) : Promise.reject())
+      .then(() => show(shareStrings().copied)).catch(() => show(link));
+  });
   zoom.addEventListener("click", (e) => { if (e.target === zoom) closeZoom(); });   // tap the backdrop
   addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) closeZoom(); });
   const ZOOM_SEL = ".exh-frame img.work, .exd-window img, #ex-side img";
@@ -1982,19 +2005,12 @@
   const FACE_SEL = "#ex-door, #ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound";  // face roots + chrome
   let guardHold = 0;                                    // the place the walk holds while a face stands
   function faceStands() { return atDoor || busy || sideOpen || quizOpen || giftOpen || zoomOpen; }
-  // A COVERING overlay draws a full backdrop and carries its OWN controls (the zoom's ×, the gift/quiz
-  // card). While one stands, the walk's own floating chrome (the player, the share link and its toast)
-  // would sit over the picture and, top-right, clash with the overlay's × — two interactive controls on
-  // one spot. So the chrome RETRACTS under a cover (INV-77): the ambient sound keeps playing, only its
-  // control hides; passive decoration may still overlap, interactive controls may not.
-  function coverStands() { return zoomOpen || quizOpen || giftOpen; }
   // mirror the stand onto the root: `ex-face` sleeps the scrollbar (gutter-stable, no reflow) and
   // arms the input rest + guard. On a RISE (no face → a face) freeze the walk's place to hold.
   function faceSync() {
     const stands = faceStands();
     const had = document.documentElement.classList.contains("ex-face");
     document.documentElement.classList.toggle("ex-face", stands);
-    document.documentElement.classList.toggle("ex-cover", coverStands());   // retract floating chrome under a covering overlay (INV-77)
     if (stands && !had) guardHold = scrollY;           // a face rose — remember the place beneath
   }
   // the snap-back guard is the ONLY lock now. While a face stands and the house's own animator is
