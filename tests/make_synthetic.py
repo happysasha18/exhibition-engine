@@ -10,6 +10,10 @@ ALL content is visibly synthetic: IDs are "synth-NN", site title is
 stripe so they are distinguishable and visibly not real photographs.
 
 Zero pip dependencies — image generation via stdlib zlib+struct only.
+
+Side-effect-free outside the fixture tree: every write() call is checked at runtime to land
+under FIXTURE (tests/fixture_content/); a write anywhere else raises instead of silently
+touching a tracked file like engine/harness/headless.py.
 """
 import hashlib
 import json
@@ -124,6 +128,7 @@ GREETINGS = {
         "en": {
             "dir": "ltr",
             "ask": "what feels closer now?",
+            "plain": "hello",
             "greet": {
                 "night":   ["A synthetic quiet night", "Another synthetic night"],
                 "morning": ["A synthetic morning",     "Another synthetic morning"],
@@ -138,6 +143,17 @@ GREETINGS = {
             "share_copied": "link copied",
             "series":       "series",
             "room_back":    "← room",
+            "enjoy":        "enjoy",
+            "quiz_ask":     "question?",
+            "quiz_submit":  "one more moment",
+            "quiz_win":     "you have the eye.",
+            "quiz_wrong":   "not this time",
+            "gift_ask":     "like it?",
+            "gift_yes":     "a gift :)",
+            "gift_no":      "not now",
+            "gift_buy":     "",
+            "more_exit":    "there is more still hanging — come again",
+            "more_return":  "back again — a new way in",
         },
         "ru": {
             "dir": "ltr",
@@ -156,6 +172,17 @@ GREETINGS = {
             "share_copied": "ссылка скопирована",
             "series":       "серия",
             "room_back":    "← комната",
+            "enjoy":        "на здоровье",
+            "quiz_ask":     "вопрос?",
+            "quiz_submit":  "ещё мгновение",
+            "quiz_win":     "у тебя есть взгляд.",
+            "quiz_wrong":   "не в этот раз",
+            "gift_ask":     "нравится?",
+            "gift_yes":     "подарок :)",
+            "gift_no":      "не сейчас",
+            "gift_buy":     "",
+            "more_exit":    "внутри осталось ещё — заходи снова",
+            "more_return":  "с возвращением — новый вход сегодня",
         },
         "he": {
             "dir": "rtl",
@@ -174,6 +201,17 @@ GREETINGS = {
             "share_copied": "הקישור הועתק",
             "series":       "סדרה",
             "room_back":    "← חדר",
+            "enjoy":        "ליהנות",
+            "quiz_ask":     "שאלה?",
+            "quiz_submit":  "עוד רגע",
+            "quiz_win":     "יש לך עין.",
+            "quiz_wrong":   "לא הפעם",
+            "gift_ask":     "אהבת?",
+            "gift_yes":     "מתנה :)",
+            "gift_no":      "לא עכשיו",
+            "gift_buy":     "",
+            "more_exit":    "בפנים נשאר עוד — בואו שוב",
+            "more_return":  "שוב כאן — כניסה חדשה היום",
         },
         "de": {
             "dir": "ltr",
@@ -192,6 +230,17 @@ GREETINGS = {
             "share_copied": "Link kopiert",
             "series":       "Serie",
             "room_back":    "← Raum",
+            "enjoy":        "bitte sehr",
+            "quiz_ask":     "Frage?",
+            "quiz_submit":  "einen Moment noch",
+            "quiz_win":     "du hast ein Auge dafür.",
+            "quiz_wrong":   "diesmal nicht",
+            "gift_ask":     "gefällt es?",
+            "gift_yes":     "ein Geschenk :)",
+            "gift_no":      "nicht jetzt",
+            "gift_buy":     "",
+            "more_exit":    "drinnen hängt noch mehr — komm wieder",
+            "more_return":  "wieder da — heute ein neuer Weg hinein",
         },
         "fr": {
             "dir": "ltr",
@@ -210,6 +259,17 @@ GREETINGS = {
             "share_copied": "lien copié",
             "series":       "série",
             "room_back":    "← salle",
+            "enjoy":        "avec plaisir",
+            "quiz_ask":     "question ?",
+            "quiz_submit":  "encore un instant",
+            "quiz_win":     "vous avez l'œil.",
+            "quiz_wrong":   "pas cette fois",
+            "gift_ask":     "ça vous plaît ?",
+            "gift_yes":     "un cadeau :)",
+            "gift_no":      "pas maintenant",
+            "gift_buy":     "",
+            "more_exit":    "il en reste à l'intérieur — reviens",
+            "more_return":  "de retour — une nouvelle entrée aujourd’hui",
         },
         "es": {
             "dir": "ltr",
@@ -228,6 +288,17 @@ GREETINGS = {
             "share_copied": "enlace copiado",
             "series":       "serie",
             "room_back":    "← sala",
+            "enjoy":        "con gusto",
+            "quiz_ask":     "¿pregunta?",
+            "quiz_submit":  "un momento más",
+            "quiz_win":     "tienes buen ojo.",
+            "quiz_wrong":   "esta vez no",
+            "gift_ask":     "¿te gusta?",
+            "gift_yes":     "un regalo :)",
+            "gift_no":      "ahora no",
+            "gift_buy":     "",
+            "more_exit":    "queda más dentro — vuelve",
+            "more_return":  "de vuelta — una nueva entrada hoy",
         },
         "uk": {
             "dir": "ltr",
@@ -246,6 +317,17 @@ GREETINGS = {
             "share_copied": "посилання скопійовано",
             "series":       "серія",
             "room_back":    "← кімната",
+            "enjoy":        "будь ласка",
+            "quiz_ask":     "питання?",
+            "quiz_submit":  "ще мить",
+            "quiz_win":     "у тебе є погляд.",
+            "quiz_wrong":   "не цього разу",
+            "gift_ask":     "подобається?",
+            "gift_yes":     "подарунок :)",
+            "gift_no":      "не зараз",
+            "gift_buy":     "",
+            "more_exit":    "всередині лишилося ще — заходь знову",
+            "more_return":  "знову тут — сьогодні новий вхід",
         },
     },
 }
@@ -308,6 +390,12 @@ def _axis_val(work_id, axis_name):
 # ── file helpers ──────────────────────────────────────────────────────────────
 
 def write(path, data):
+    """Write a file — but only ever inside FIXTURE. Guards against a regenerator regression
+    ever touching a tracked file outside the fixture tree (see module docstring)."""
+    resolved = path.resolve()
+    if FIXTURE not in resolved.parents and resolved != FIXTURE:
+        raise RuntimeError(
+            f"refusing to write outside the fixture tree: {resolved} is not under {FIXTURE}")
     path.parent.mkdir(parents=True, exist_ok=True)
     if isinstance(data, bytes):
         path.write_bytes(data)
@@ -392,6 +480,9 @@ def make():
           "  --d-ground: calc(1.7 * var(--tempo) * 1s);\n"
           "  /* accent: #b3a284 bone at rest; exhibition.js overrides on live work */\n"
           "  --accent:   #b3a284;\n"
+          "  /* --told: the wall-label narrator line's resting bone (EX-STORY-LINE); tinted live by\n"
+          "     --tone, which exhibition.js sets per focused work at runtime (no static --tone needed) */\n"
+          "  --told:     #cbc3b6;\n"
           "  /* palette — synthetic near-black surface */\n"
           "  --ink:      #f4f1e8;\n"
           "  --muted:    rgba(244,241,232,0.55);\n"
@@ -400,6 +491,7 @@ def make():
           "  --faint:    rgba(244,241,232,0.20);\n"
           "  --hair:     rgba(244,241,232,0.12);\n"
           "  /* typography */\n"
+          "  --ui:       'Helvetica Neue',Helvetica,Arial,sans-serif;   /* the UI face — caption facts read here (EX-CAPTION) */\n"
           "  --serif:    Georgia,serif;\n"
           "  --mono:     'Courier New',Courier,monospace;\n"
           "}\n"
