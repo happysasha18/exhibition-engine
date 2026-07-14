@@ -70,15 +70,17 @@ js_pan_bits = {
 }
 check("EX-ZOOM/INV-76 the pan machinery is built into the client (zClampPan + zPanning + zTx/zTy)",
       all(js_pan_bits.values()), "missing: " + ", ".join(k for k, v in js_pan_bits.items() if not v))
-check("EX-ZOOM/INV-77 the zoom carries its own chrome — a close + a share of the inspected work",
-      "exz-close" in JS and "exz-share" in JS
-      and "shareBtn.dataset.share" in JS and "html.ex-cover" not in CSS,
-      "zoom chrome/share not built, or the old ex-cover hide is still present")
-check("EX-ZOOM/INV-77 nothing moves: the close is top-left, the share on the walk's own bottom-right rail (css)",
+check("EX-ZOOM/INV-77 the zoom carries only a close, no share of the inspected work, "
+      "and the ambient player retracts while it stands",
+      "exz-close" in JS and "exz-share" not in JS
+      and "body.ex-zoom #ex-sound" in CSS and "html.ex-cover" not in CSS,
+      "zoom chrome not built, a share lingers, the retract rule is missing, "
+      "or the old ex-cover hide is still present")
+check("EX-ZOOM/INV-77 nothing moves: the close is top-left, and no #ex-zoom .exz-share rule exists (css)",
       bool(re.search(r"#ex-zoom \.exz-close\s*\{[^}]*left:", CSS.replace("\n", " ")))
-      and bool(re.search(r"#ex-zoom \.exz-share\s*\{[^}]*right:\s*calc\(var\(--ex-rail\)", CSS.replace("\n", " ")))
+      and "#ex-zoom .exz-share" not in CSS
       and "#ex-zoom .exz-btn" in CSS,
-      "close not top-left or share not on the --ex-rail bottom-right")
+      "close not top-left, or a #ex-zoom .exz-share rule still exists")
 # INV-81: the trigger's reach + the direct scale (the polaroid small-target case)
 inv81_bits = {
     "ZOOM_SEL carries the whole polaroid print (.exs-print)":
@@ -106,8 +108,8 @@ PAN_ROWS = [
     "EX-ZOOM/INV-76 the pan is bounded to the picture's edge (a huge drag clamps, image never flies off)",
 ]
 COVER_ROWS = [
-    "EX-ZOOM/INV-77 with the zoom open the player (if present) stays reachable, not overlapped by the close",
-    "EX-ZOOM/INV-77 the zoom offers a share of the inspected work (bottom-right, the walk's own corner)",
+    "EX-ZOOM/INV-77 with the zoom open the player (if present) retracts, pointer-events none",
+    "EX-ZOOM/INV-77 the zoom carries no share of its own",
 ]
 POLAROID_ROWS = [
     "EX-ZOOM/INV-81 a pinch with ONE finger on a polaroid print opens the zoom with that photograph "
@@ -163,7 +165,7 @@ DIRECT = (
 )
 SIDE_ON = "(()=>{const s=document.getElementById('ex-side');return !!s&&!s.hidden})()"
 LIFTED = "(()=>{const p=document.querySelector('.exs-print');return !!p&&p.classList.contains('lift')})()"
-# with the zoom open: if a player exists, is it still displayed and clear of the zoom's close?
+# with the zoom open: if a player exists, has it retracted (pointer-events none)?
 OVERLAP = ("(()=>{const s=document.getElementById('ex-sound'),x=document.querySelector('#ex-zoom .exz-close');"
            "if(!x)return JSON.stringify({no:1});if(!s)return JSON.stringify({noplayer:1});"
            "const a=s.getBoundingClientRect(),b=x.getBoundingClientRect(),c=getComputedStyle(s);"
@@ -242,20 +244,19 @@ else:
             opened2 = br.evaluate(ZOPEN)
             check(BROWSER_ROWS[2], fired2 == "ok" and opened2,
                   f"fired={fired2!r} opened={opened2}")
-            # INV-77: no cover-hide anymore — the player (if the fixture has one) stays reachable and the
-            # zoom's close does NOT overlap it. The synthetic fixture configures no audio, so #ex-sound may
-            # be absent; then this row asserts only that the zoom's close exists (the instance suite, with a
-            # real player, proves the no-overlap on a live #ex-sound).
+            # INV-77: the player (if the fixture has one) retracts while the zoom stands (pe becomes
+            # "none"). The synthetic fixture configures no audio, so #ex-sound may be absent; then this
+            # row asserts only that the zoom's close exists (the instance suite, with a real player,
+            # proves the retract on a live #ex-sound).
             ov = json.loads(br.evaluate(OVERLAP))
             check(COVER_ROWS[0],
                   opened2 and not ov.get("no")
-                  and (ov.get("noplayer") == 1 or (ov.get("over") is False
-                                                   and ov.get("disp") != "none" and ov.get("pe") != "none")),
+                  and (ov.get("noplayer") == 1 or ov.get("pe") == "none"),
                   f"overlap={ov}")
-            # the zoom offers its own share of the inspected work, top-left
+            # the zoom carries no share element of its own
             zs = json.loads(br.evaluate(ZSHARE))
             check(COVER_ROWS[1],
-                  opened2 and zs.get("present") and zs.get("hidden") is False,
+                  opened2 and zs.get("no") == 1,
                   f"zshare={zs}")
         with Browser(width=390, height=844) as br:       # INV-76: drag-to-pan a zoomed picture
             _boot(br, base)

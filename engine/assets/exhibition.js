@@ -1539,13 +1539,10 @@
   zoom.setAttribute("role", "dialog");
   zoom.setAttribute("aria-modal", "true");
   zoom.hidden = true;
-  // The zoom carries its OWN chrome, in the same round style as the walk's floating controls (INV-77),
-  // each control kept in the place the walk already uses so NOTHING moves when the zoom opens: the CLOSE
-  // is new, so it takes the free TOP-LEFT corner; the SHARE sits BOTTOM-RIGHT, exactly where the walk's
-  // share link lives. The player stays TOP-RIGHT for the music. No two controls overlap, no button jumps.
+  // The zoom holds the minimum on screen (INV-77): only the picture and a single CLOSE in the free
+  // TOP-LEFT corner. The ambient player retracts while the zoom stands (body.ex-zoom, like every covering
+  // face), and the zoom carries no share of its own — a visitor shares a work from the walk itself.
   zoom.innerHTML = '<button type="button" class="exz-btn exz-close" aria-label="закрыть">&times;</button>'
-                 + '<button type="button" class="exz-btn exz-share" aria-label="поделиться">' + SHARE_GLYPH + '</button>'
-                 + '<span class="exz-copied" aria-live="polite"></span>'
                  + '<img class="exz-img" alt="">';
   document.body.appendChild(zoom);
   let zoomOpen = false, zScale = 1, zPinch = 0, zStartS = 1;
@@ -1554,8 +1551,6 @@
   // so the image can never be dragged past its own edge.
   let zTx = 0, zTy = 0, zPanning = false, zPanX = 0, zPanY = 0, zPanTx = 0, zPanTy = 0;
   const zImg = zoom.querySelector(".exz-img");
-  const zShare = zoom.querySelector(".exz-share");
-  const zCopied = zoom.querySelector(".exz-copied");
   const zDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   function zClampPan() {                                 // keep the offset within the picture's overflow
     const ox = Math.max(0, (zImg.offsetWidth * zScale - innerWidth) / 2);
@@ -1571,14 +1566,14 @@
     zImg.src = src; zImg.alt = alt || "";
     zScale = 1; zTx = 0; zTy = 0; zPanning = false; zApply();
     zoom.hidden = false; zoomOpen = true;
-    zShare.hidden = !shareBtn.dataset.share;           // share only when there's an in-view work to share
-    zCopied.classList.remove("show");
+    document.body.classList.add("ex-zoom");            // the player retracts too — the minimum on screen (INV-77)
     faceSync();                                        // the zoom is a face — freeze the page beneath (EX-CHROME)
     requestAnimationFrame(() => zoom.classList.add("show"));
   }
   function closeZoom() {
     if (!zoomOpen) return;
     zoom.classList.remove("show");
+    document.body.classList.remove("ex-zoom");         // the player returns to its top-right rail at once
     setTimeout(() => { zoom.hidden = true; zImg.removeAttribute("src"); }, Math.round(300 * TEMPO));
     zoomOpen = false;
     faceSync();                                        // the page beneath returns untouched (EX-COMPOSE)
@@ -1621,17 +1616,6 @@
     if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }   // a near-1 release settles flat + centred
   }, { passive: true });
   zoom.querySelector(".exz-close").addEventListener("click", closeZoom);
-  // the zoom's share copies the room link of the work being inspected (the in-view work), confirming
-  // INLINE — the walk's toast rides bottom-right beneath the zoom backdrop, so it would not be seen here.
-  zShare.addEventListener("click", () => {
-    const id = shareBtn.dataset.share; if (!id) return;
-    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral#w-" + id;
-    const show = (txt) => { zCopied.textContent = txt; zCopied.classList.add("show");
-      clearTimeout(zCopied._t); zCopied._t = setTimeout(() => zCopied.classList.remove("show"), Math.round(1600 * TEMPO)); };
-    pulse("share_copy", id);
-    ((navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(link) : Promise.reject())
-      .then(() => show(shareStrings().copied)).catch(() => show(link));
-  });
   zoom.addEventListener("click", (e) => { if (e.target === zoom) closeZoom(); });   // tap the backdrop
   addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) closeZoom(); });
   // INV-81 — the trigger reaches every picture, the small ones included: a polaroid never fits two

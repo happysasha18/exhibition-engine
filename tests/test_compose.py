@@ -146,14 +146,14 @@ CH_ROWS = [
     "CH9 EX-CHROME the narrowed carve-out keeps the lane alive, axis-true",
 ]
 
-# EX-CHROME — the ambient audio player retracts under a covering face, stays reachable in the zoom
+# EX-CHROME — the ambient audio player retracts under a covering face, and retracts in the zoom too
 # (proven on the sound-configured bake TMP_SND; the default fixture ships no audio)
 SND_ROWS = [
     "SND-RETRACT the ambient player retracts under the door (not pressable)",
     "SND-RETRACT the ambient player retracts under the side room (not pressable)",
     "SND-RETRACT the ambient player retracts under the gift card (not pressable)",
     "SND-RETRACT the ambient player retracts under the question card (not pressable)",
-    "SND-RETRACT INV-77 the ambient player stays reachable during the zoom (regression guard)",
+    "SND-RETRACT INV-77 the ambient player retracts during the zoom too",
 ]
 
 
@@ -1093,8 +1093,8 @@ else:
     # ============ EX-CHROME — the ambient audio player retracts under a covering face ============
     # The player is fixed at z-index 130 on document.body; nothing hid it, so it floated PRESSABLE over
     # the door, the side room, the gift card, and the question card. It now retracts (opacity:0;
-    # pointer-events:none) under those four, scoped to their body/element state — NEVER html.ex-face,
-    # because of the zoom exception (INV-77): while inspecting a picture the music stays reachable.
+    # pointer-events:none) under those four, and under the zoom too (INV-77, body.ex-zoom #ex-sound):
+    # while inspecting a picture the player retracts along with every other cover.
     # These rows run on TMP_SND (the sound-configured bake); the default fixture ships no audio.
     with serve(TMP_SND) as snd_base:
         # SND1 — under the (re-opened) door
@@ -1133,7 +1133,7 @@ else:
             check(SND_ROWS[3], card_open and retracted,
                   f"card_open={card_open} snd={snd}")
 
-        # SND5 — INV-77 regression guard: during the ZOOM (over the walk) the player STAYS reachable
+        # SND5 — INV-77: during the ZOOM (over the walk) the player RETRACTS too
         with Browser(width=390, height=844) as br:
             br.navigate(snd_base + "/")
             br.evaluate("localStorage.clear(); sessionStorage.clear()")
@@ -1148,8 +1148,8 @@ else:
             no_face = not br.evaluate(
                 "document.body.classList.contains('ex-door') || "
                 "document.body.classList.contains('ex-side')")
-            pressable, snd = snd_pressable(br)
-            check(SND_ROWS[4], fired == "ok" and zoom_open and no_face and pressable,
+            retracted, snd = snd_retracted(br)
+            check(SND_ROWS[4], fired == "ok" and zoom_open and no_face and retracted,
                   f"fired={fired!r} zoom_open={zoom_open} no_covering_face={no_face} snd={snd}")
 
 shutil.rmtree(TMP, ignore_errors=True)
