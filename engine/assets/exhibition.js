@@ -1583,7 +1583,13 @@
     zoomOpen = false;
     faceSync();                                        // the page beneath returns untouched (EX-COMPOSE)
   }
-  zoom.addEventListener("touchstart", (e) => {
+  // a pinch over the OPEN zoom scales the picture; our JS owns it, so the browser never viewport-zooms.
+  // The handlers listen at the DOCUMENT, gated on zoomOpen (INV-81): touch events keep targeting the
+  // element where the gesture STARTED — for the pinch that just opened the layer that is the picture
+  // beneath, never #ex-zoom itself — and they bubble to the document, so one set of handlers serves
+  // both the opening gesture (the direct scale, no arming tap) and any later gesture on the layer.
+  addEventListener("touchstart", (e) => {
+    if (!zoomOpen) return;
     if (e.touches.length === 2) {                       // two fingers → pinch-scale (pan yields)
       zPinch = zDist(e.touches); zStartS = zScale; zPanning = false;
     } else if (e.touches.length === 1 && zScale > 1
@@ -1593,7 +1599,8 @@
       zPanTx = zTx; zPanTy = zTy;
     }
   }, { passive: true });
-  zoom.addEventListener("touchmove", (e) => {
+  addEventListener("touchmove", (e) => {
+    if (!zoomOpen) return;
     if (e.touches.length === 2 && zPinch) {
       e.preventDefault();                              // our scale, never the browser's
       zScale = Math.max(1, Math.min(4, zStartS * (zDist(e.touches) / zPinch)));
@@ -1607,7 +1614,8 @@
       zApply();
     }
   }, { passive: false });
-  zoom.addEventListener("touchend", (e) => {
+  addEventListener("touchend", (e) => {
+    if (!zoomOpen) return;
     if (e.touches.length < 2) zPinch = 0;
     if (e.touches.length === 0) zPanning = false;
     if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }   // a near-1 release settles flat + centred
@@ -1626,11 +1634,28 @@
   });
   zoom.addEventListener("click", (e) => { if (e.target === zoom) closeZoom(); });   // tap the backdrop
   addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) closeZoom(); });
-  const ZOOM_SEL = ".exh-frame img.work, .exd-window img, #ex-side img";
+  // INV-81 — the trigger reaches every picture, the small ones included: a polaroid never fits two
+  // fingertips, so the match reads the element under EACH touch point (the event's own target first —
+  // one deterministic pick when two pictures sit under the two fingers), and the WHOLE print
+  // (.exs-print, paper frame included) is the polaroid's hit area, resolving to the photograph inside.
+  const ZOOM_SEL = ".exh-frame img.work, .exd-window img, #ex-side img, .exs-print";
+  function zoomPick(e) {
+    let hit = e.target && e.target.closest && e.target.closest(ZOOM_SEL);
+    for (let i = 0; !hit && i < e.touches.length; i++) {
+      const el = document.elementFromPoint(e.touches[i].clientX, e.touches[i].clientY);
+      hit = el && el.closest && el.closest(ZOOM_SEL);
+    }
+    if (!hit) return null;
+    return hit.tagName === "IMG" ? hit : hit.querySelector("img");
+  }
   addEventListener("touchstart", (e) => {
     if (e.touches.length !== 2 || zoomOpen) return;   // one zoom at a time; opens over ANY face
-    const t = e.target.closest && e.target.closest(ZOOM_SEL);
-    if (t) openZoom(t.currentSrc || t.getAttribute("src") || t.src, t.alt);
+    const t = zoomPick(e);
+    if (!t) return;
+    openZoom(t.currentSrc || t.getAttribute("src") || t.src, t.alt);
+    // seed the pinch so the SAME gesture keeps scaling the just-opened layer — its later touchmoves
+    // bubble to the document handlers above; no second pinch, no arming tap (INV-81)
+    if (zoomOpen) { zPinch = zDist(e.touches); zStartS = 1; zPanning = false; }
   }, { passive: true });
 
   function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
@@ -1700,6 +1725,13 @@
   let quizOpen = false;
   let quizWorkId = null;
   let quizCloseT = null;      // the wrong-answer auto-close timer (a miss lingers ~1s, then closes)
+  let quizWaitT = null;       // the in-flight grace timer → the quiet «one more moment» reassurance
+
+  // EX-QUIZ-REPLY (INV-65): the async reply slot names three states. PENDING is the dimmed-lock the
+  // moment a tap fires; if the round-trip is still owed past a house grace, the SAME quiet reassurance
+  // the edge failure shows lands in the reply slot (the reused quiz_submit key, English fallback). The
+  // grace rides the one clock like every other wait (×TEMPO) and follows the config-knob pattern.
+  const QUIZ_WAIT_GRACE = secs(EX.quiz_wait_grace, 0.6);
 
   function quizCardOpen(id) {
     const w = byId[id];
@@ -1708,7 +1740,8 @@
 
     // RESET ON REOPEN: every open starts clean — cleared feedback, fresh buttons, no lingering state.
     clearTimeout(quizCloseT); quizCloseT = null;
-    quizCard.classList.remove("gone");
+    clearTimeout(quizWaitT); quizWaitT = null;
+    quizCard.classList.remove("gone", "quiz-inflight");
     // RTL mirror (INV-65): the card leans to the active locale's direction, like the door + finale do.
     try { const L = (greetLang() || { t: {} }).t; quizCard.setAttribute("dir", L.dir === "rtl" ? "rtl" : "ltr"); } catch (e) {}
     const out = quizCard.querySelector(".quiz-out");
@@ -1758,7 +1791,8 @@
   function quizCardClose() {
     if (!quizOpen) return;
     clearTimeout(quizCloseT); quizCloseT = null;
-    quizCard.classList.remove("show");
+    clearTimeout(quizWaitT); quizWaitT = null;      // a mid-flight close cancels the pending reassurance
+    quizCard.classList.remove("show", "quiz-inflight");
     setTimeout(() => { quizCard.hidden = true; }, Math.round(350 * TEMPO));
     quizOpen = false;
     quizWorkId = null;
@@ -1791,7 +1825,22 @@
     const out = quizCard.querySelector(".quiz-out");
     out.className = "quiz-out"; out.textContent = "";
 
+    // PENDING (EX-QUIZ-REPLY): the dimmed-lock is the named in-flight state from this instant; past a
+    // house grace a still-owed round-trip shows the quiet «one more moment» reassurance the spec names
+    // for a slow or failing edge (the reused quiz_submit key, English fallback here — never a scold).
+    quizCard.classList.add("quiz-inflight");
+    clearTimeout(quizWaitT);
+    quizWaitT = setTimeout(() => {
+      quizWaitT = null;
+      const T = (greetLang() || { t: {} }).t;
+      out.className = "quiz-out quiz-wait";
+      out.textContent = T.quiz_submit || "one more moment";
+      requestAnimationFrame(() => out.classList.add("show"));
+    }, Math.round(QUIZ_WAIT_GRACE * 1000 * TEMPO));
+    function settled() { clearTimeout(quizWaitT); quizWaitT = null; quizCard.classList.remove("quiz-inflight"); }
+
     function missAndFade() {
+      settled();
       // mark the tapped button as wrong
       opts.forEach((b) => { if (b.dataset.val === city) b.classList.add("wrong"); });
       const T = (greetLang() || { t: {} }).t;
@@ -1817,6 +1866,7 @@
       body: JSON.stringify({ id: String(id), answer: city }),
     }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
       if (data && data.ok) {
+        settled();                                     // ARRIVED: the pending reassurance is replaced
         // WIN: mark correct, show quiz_win line, close quiz, open the gift ceremony
         opts.forEach((b) => { if (b.dataset.val === city) b.classList.add("correct"); });
         const T = (greetLang() || { t: {} }).t;

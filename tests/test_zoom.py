@@ -37,6 +37,12 @@ build_site.OUT = TMP
 build_site.build(SITE_URL)
 JS = (TMP / "exhibition.js").read_text(encoding="utf-8")
 CSS = (TMP / "exhibition.css").read_text(encoding="utf-8")
+DATA = json.loads((TMP / "exhibition_data.json").read_text(encoding="utf-8"))
+VER = str(DATA["version"])
+# a polaroid-table series (any non-lane series lays its members as small prints) — its first member
+# is the walk pick that brings the series pill into the caption (INV-81's small-target case)
+_POLA_SERIES = next((s for s in (DATA.get("series") or []) if s.get("variant") != "lane"), None)
+POLA_PICK = _POLA_SERIES["members"][0] if _POLA_SERIES else None
 
 # ---------------------------------------------------------------- string rows
 js_bits = {
@@ -73,6 +79,21 @@ check("EX-ZOOM/INV-77 nothing moves: the close is top-left, the share on the wal
       and bool(re.search(r"#ex-zoom \.exz-share\s*\{[^}]*right:\s*calc\(var\(--ex-rail\)", CSS.replace("\n", " ")))
       and "#ex-zoom .exz-btn" in CSS,
       "close not top-left or share not on the --ex-rail bottom-right")
+# INV-81: the trigger's reach + the direct scale (the polaroid small-target case)
+inv81_bits = {
+    "ZOOM_SEL carries the whole polaroid print (.exs-print)":
+        "ZOOM_SEL" in JS and ".exs-print" in JS.split("ZOOM_SEL", 1)[1][:260],
+    "either finger anchors the match (the element under each touch point is read)":
+        "elementFromPoint" in JS,
+    "the zoom's pinch/pan handlers listen at the DOCUMENT, gated on zoomOpen":
+        "if (!zoomOpen) return" in JS and 'zoom.addEventListener("touchmove"' not in JS,
+    "the opening gesture is seeded so the SAME pinch keeps scaling (no arming tap)":
+        "zPinch = zDist(e.touches); zStartS = 1" in JS,
+}
+check("EX-ZOOM/INV-81 the trigger's reach + the direct scale are built into the client "
+      "(print hit-area + either-finger read + document-level gated handlers + gesture seed)",
+      all(inv81_bits.values()),
+      "missing: " + ", ".join(k for k, v in inv81_bits.items() if not v))
 
 # ---------------------------------------------------------------- browser rows
 BROWSER_ROWS = [
@@ -88,6 +109,60 @@ COVER_ROWS = [
     "EX-ZOOM/INV-77 with the zoom open the player (if present) stays reachable, not overlapped by the close",
     "EX-ZOOM/INV-77 the zoom offers a share of the inspected work (bottom-right, the walk's own corner)",
 ]
+POLAROID_ROWS = [
+    "EX-ZOOM/INV-81 a pinch with ONE finger on a polaroid print opens the zoom with that photograph "
+    "(no arming tap) — and a bare-table pinch opens nothing",
+    "EX-ZOOM/INV-81 the opening pinch scales the picture DIRECTLY (the same gesture, no second pinch)",
+    "EX-ZOOM/INV-76/INV-81 a polaroid-opened zoom pans like a gallery one, and its close returns the "
+    "standing room with the lift intact",
+]
+# a two-finger touchstart whose EVENT lands on the bare table: first both fingers bare (must open
+# nothing), then one finger over the first print (must open THAT photograph) — the small-target law
+SPLIT = (
+    "(()=>{const p=document.querySelector('.exs-print'),st=document.getElementById('exs-stage'),"
+    "z=document.getElementById('ex-zoom');if(!p||!st)return JSON.stringify({err:'no-print'});"
+    "const img=p.querySelector('img'),r=img.getBoundingClientRect();"
+    "const x1=r.left+r.width/2,y1=r.top+r.height/2;"
+    "const bare=(x,y)=>{const el=document.elementFromPoint(x,y);"
+    "return el&&(!el.closest||!el.closest('.exs-print,.exs-back'));};"
+    "let x2=0,y2=0;"
+    "for(const cy of [innerHeight-30,innerHeight-80,Math.round(innerHeight*0.5)]){"
+    "for(const cx of [innerWidth-30,30,Math.round(innerWidth*0.5)]){"
+    "if(bare(cx,cy)&&bare(cx-26,cy)){x2=cx;y2=cy;break;}}if(x2)break;}"
+    "if(!x2)return JSON.stringify({err:'no-bare-point'});"
+    "const tgt=document.elementFromPoint(x2,y2)||st;"
+    "const mk=(id,x,y)=>new Touch({identifier:id,target:tgt,clientX:x,clientY:y});"
+    "const start=(ts)=>tgt.dispatchEvent(new TouchEvent('touchstart',{touches:ts,targetTouches:ts,"
+    "changedTouches:ts,bubbles:true,cancelable:true}));"
+    "const end=()=>document.dispatchEvent(new TouchEvent('touchend',{touches:[],targetTouches:[],"
+    "changedTouches:[],bubbles:true}));"
+    "start([mk(1,x2,y2),mk(2,x2-26,y2)]);const bareOpened=!!z&&!z.hidden;end();"
+    "start([mk(1,x1,y1),mk(2,x2,y2)]);const opened=!!z&&!z.hidden;"
+    "const zi=document.querySelector('#ex-zoom .exz-img');"
+    "const norm=(u)=>{try{return new URL(u,location.href).href}catch(e){return u}};"
+    "const zsrc=zi?(zi.getAttribute('src')||''):'';end();"
+    "return JSON.stringify({bare:bareOpened,opened:opened,"
+    "match:!!zsrc&&norm(zsrc)===norm(img.getAttribute('src')||'')});})()"
+)
+# the SAME gesture that opens the layer keeps scaling it: touchstart on the print's own photograph
+# (two fingers 40px apart) then a widening touchmove of that gesture — the zoomed image must grow
+DIRECT = (
+    "(()=>{const img=document.querySelector('.exs-print img');"
+    "if(!img)return JSON.stringify({err:'no-img'});"
+    "const z=document.getElementById('ex-zoom');"
+    "const r=img.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;"
+    "const mk=(id,x,y)=>new Touch({identifier:id,target:img,clientX:x,clientY:y});"
+    "const fire=(t,ts)=>img.dispatchEvent(new TouchEvent(t,{touches:ts,targetTouches:ts,"
+    "changedTouches:ts,bubbles:true,cancelable:true}));"
+    "fire('touchstart',[mk(1,cx-20,cy),mk(2,cx+20,cy)]);"
+    "fire('touchmove',[mk(1,cx-60,cy),mk(2,cx+60,cy)]);"
+    "const zi=document.querySelector('#ex-zoom .exz-img');"
+    "const m=/scale\\(([0-9.]+)\\)/.exec(zi?zi.style.transform:'')||[];"
+    "fire('touchend',[]);"
+    "return JSON.stringify({opened:!!z&&!z.hidden,scale:m[1]?parseFloat(m[1]):null});})()"
+)
+SIDE_ON = "(()=>{const s=document.getElementById('ex-side');return !!s&&!s.hidden})()"
+LIFTED = "(()=>{const p=document.querySelector('.exs-print');return !!p&&p.classList.contains('lift')})()"
 # with the zoom open: if a player exists, is it still displayed and clear of the zoom's close?
 OVERLAP = ("(()=>{const s=document.getElementById('ex-sound'),x=document.querySelector('#ex-zoom .exz-close');"
            "if(!x)return JSON.stringify({no:1});if(!s)return JSON.stringify({noplayer:1});"
@@ -139,7 +214,7 @@ def _boot(br, base):
 
 
 if not chrome_available():
-    for r in BROWSER_ROWS + PAN_ROWS + COVER_ROWS:
+    for r in BROWSER_ROWS + PAN_ROWS + COVER_ROWS + POLAROID_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
     with serve(TMP) as base:
@@ -223,6 +298,69 @@ else:
                       and btx < 99999 and abs(btx - ox_big) <= 3)
             check(PAN_ROWS[1], big_ok,
                   f"tx={btx} clamped_to~{round(ox_big,1)} (raw drag was 99999) scale={bsc}")
+
+        if POLA_PICK is None:
+            for r in POLAROID_ROWS:
+                skip(r, "no polaroid-table series in the synthetic fixture")
+        else:
+            with Browser(width=390, height=844) as br:       # INV-81: the polaroid table
+                # boot onto the walk with a polaroid-series member in view, open the side room
+                br.navigate(base + "/")
+                br.evaluate("localStorage.clear();sessionStorage.clear()")
+                br.evaluate("localStorage.setItem('ex-tempo','0.05')")
+                br.evaluate("localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
+                            % (json.dumps(VER), json.dumps(str(POLA_PICK))))
+                br.reload(); br.sleep(1.2)
+                br.evaluate(
+                    "(()=>{const f=document.querySelector('.exh-frame[data-id=\"%s\"]');"
+                    "if(f)f.scrollIntoView({behavior:'instant'});})()" % str(POLA_PICK))
+                br.sleep(0.5)
+                try:
+                    br.click("#exh-cap .ex-series", settle=0.8)
+                except RuntimeError:
+                    pass
+                br.sleep(0.5)
+                room = br.evaluate(SIDE_ON)
+                # 1 · a bare-table pinch opens nothing; ONE finger on the print opens THAT photograph
+                split = json.loads(br.evaluate(SPLIT)) if room else {"err": "room never opened"}
+                check(POLAROID_ROWS[0],
+                      room and split.get("bare") is False and split.get("opened") is True
+                      and split.get("match") is True,
+                      f"room={room} split={split}")
+                br.evaluate("var b=document.querySelector('#ex-zoom .exz-close'); if(b) b.click();")
+                br.sleep(0.3)
+                # 2 · the SAME gesture scales directly — no second pinch, no arming tap
+                direct = json.loads(br.evaluate(DIRECT)) if room else {"err": "room never opened"}
+                check(POLAROID_ROWS[1],
+                      direct.get("opened") is True
+                      and isinstance(direct.get("scale"), (int, float)) and direct["scale"] > 1.5,
+                      f"direct={direct}")
+                br.evaluate("var b=document.querySelector('#ex-zoom .exz-close'); if(b) b.click();")
+                br.sleep(0.3)
+                # 3 · lift a print, pinch it open, PAN it (the gallery's own machinery), close →
+                #     the room still stands, the lift intact (the face law — composition)
+                if room:
+                    br.evaluate("document.querySelector('.exs-print').click()")
+                    br.sleep(0.4)
+                lifted0 = br.evaluate(LIFTED) if room else False
+                if room:
+                    br.evaluate("(%s)('.exs-print img')" % PINCH)
+                    br.sleep(0.2)
+                pol = json.loads(br.evaluate("(%s)(%d,0)" % (PAN, 60))) if room else {}
+                br.evaluate("var b=document.querySelector('#ex-zoom .exz-close'); if(b) b.click();")
+                br.sleep(0.4)
+                room_after = br.evaluate(SIDE_ON)
+                lift_after = br.evaluate(LIFTED)
+                zoom_gone = not br.evaluate(ZOPEN)
+                ptx, psc, pow_, piw = (_num(pol, "tx"), _num(pol, "scale"),
+                                       _num(pol, "ow"), _num(pol, "iw"))
+                ox_pol = max(0.0, (pow_ * psc - piw) / 2) if None not in (pow_, psc, piw) else 0.0
+                pan_ok = (None not in (ptx, psc, pow_, piw) and psc > 2
+                          and abs(ptx - min(60.0, ox_pol)) <= 3)
+                check(POLAROID_ROWS[2],
+                      lifted0 and pan_ok and zoom_gone and room_after and lift_after,
+                      f"lifted0={lifted0} pan={pol} zoom_gone={zoom_gone} "
+                      f"room_after={room_after} lift_after={lift_after}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

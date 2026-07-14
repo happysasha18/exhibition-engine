@@ -98,6 +98,22 @@ BROWSER_ROWS = [
     "EX-SOUND ?reset clears the sound pref (SND_KEY wiped alongside other walk keys)",
 ]
 
+SND_OP = ("(()=>{const e=document.getElementById('ex-sound');"
+          "return e?getComputedStyle(e).opacity:null;})()")
+
+
+def enter_walk(br):
+    """Leave the cold door for the walk. The player retracts under the door (EX-CHROME / INV-77 scope),
+    so the pressable player lives on the walk — every interaction row enters first."""
+    if br.evaluate("!!document.querySelector('.exd-window')"):
+        br.click(".exd-window:nth-child(1)", settle=1.0)
+    for _ in range(30):
+        if (not br.evaluate("document.body.classList.contains('ex-door')")
+                and br.evaluate(SND_OP) == "1"):
+            break
+        br.sleep(0.1)
+
+
 if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
@@ -120,14 +136,18 @@ else:
             br.evaluate("localStorage.setItem('ex-tempo','0.5')")
             br.reload()
             br.sleep(1.0)
+            # the player retracts at the door (EX-CHROME) — its pressable, on-the-breath home is the walk
+            door_op = br.evaluate(SND_OP)
+            enter_walk(br)
             state = br.evaluate(
                 "(()=>{const b=document.getElementById('ex-sound');"
                 "if(!b)return {present:false};"
                 "const op=+getComputedStyle(b).opacity;"
                 "return {present:true,opacity:op,show:b.classList.contains('show')};})()")
             check(BROWSER_ROWS[1],
-                  state.get("present") and state.get("show") and state.get("opacity", 0) > 0.9,
-                  f"state={state}")
+                  door_op == "0" and state.get("present") and state.get("show")
+                  and state.get("opacity", 0) > 0.9,
+                  f"door_op={door_op} walk_state={state}")
 
         # 2 · btn off by default; pref persisted on toggle
         with Browser(width=1280, height=900) as br:
@@ -136,6 +156,7 @@ else:
             br.evaluate("localStorage.setItem('ex-tempo','0.5')")
             br.reload()
             br.sleep(1.0)
+            enter_walk(br)                               # the pressable player lives on the walk
             init = br.evaluate(
                 "(()=>{const btn=document.querySelector('.exsnd-btn');"
                 "return {pressed: btn ? btn.getAttribute('aria-pressed') : null};})()")

@@ -24,6 +24,7 @@
   --faint:    rgba(244,241,232,0.20);
   --hair:     rgba(244,241,232,0.12);
   /* typography */
+  --ui:       'Helvetica Neue',Helvetica,Arial,sans-serif;   /* the UI face — caption facts read here (EX-CAPTION) */
   --serif:    Georgia,serif;
   --mono:     'Courier New',Courier,monospace;
 }

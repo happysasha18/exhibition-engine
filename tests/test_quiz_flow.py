@@ -64,6 +64,7 @@ BROWSER_ROWS = [
     "FL2 EX-QUIZ-FLOW the ladder never moves backwards and survives a reload (INV-69)",
     "FL3 EX-QUIZ-FLOW control and flag-off stamp nothing (INV-69 / EX-QUIZ-AB)",
     "FL4 EX-QUIZ-FLOW only the quiz prize's yes stamps gift (INV-69 / EX-PROTECT-GIFT)",
+    "FL7 EX-QUIZ-REPLY a slow in-flight submit shows the visible pending reassurance (INV-65)",
 ]
 
 # Engine storage key (dot convention, see DELTA-9)
@@ -138,6 +139,22 @@ def stub_quiz_miss(br):
         "return Promise.resolve(new Response(JSON.stringify({ok:false}),"
         "{status:200,headers:{'Content-Type':'application/json'}}));}"
         "return _f.apply(this,arguments);};})()"
+    )
+
+
+def stub_quiz_slow(br, delay_ms=1600):
+    """Stub /api/quiz to RESOLVE (as a miss) only after delay_ms — a slow-but-non-failing edge.
+
+    The round-trip is genuinely owed for delay_ms, so the client sits in the in-flight (pending)
+    state the whole time; the reply lands only when the timer fires."""
+    br.inject(
+        "(function(){var _f=window.fetch;"
+        "window.fetch=function(u,o){"
+        "if(String(u).indexOf('/api/quiz')>=0){"
+        "return new Promise(function(res){setTimeout(function(){"
+        "res(new Response(JSON.stringify({ok:false}),"
+        "{status:200,headers:{'Content-Type':'application/json'}}));}, %d);});}"
+        "return _f.apply(this,arguments);};})()" % int(delay_ms)
     )
 
 
@@ -370,6 +387,54 @@ else:
         check(BROWSER_ROWS[3],
               fl4_plain_ok and fl4_quiz_ok,
               "plain_ok=%s quiz_ok=%s %s" % (fl4_plain_ok, fl4_quiz_ok, fl4_detail))
+
+        # ---- FL7: a slow in-flight submit shows the visible PENDING reassurance ----------
+        # EX-QUIZ-REPLY / INV-65 — the async reply slot must NAME its pending state. A tap dims + locks
+        # the buttons at once (the named pending); past a house grace a still-owed round-trip shows the
+        # quiet reassurance in the reply slot. Delay the /api/quiz reply well past the grace, assert the
+        # reassurance is VISIBLE while in flight, then let it land and confirm the pending state resolves
+        # (the reply replaces it; the miss path auto-closes). Tempo 0.05 → grace ≈ 0.6·0.05 = 30ms.
+        fl7_ok = False
+        fl7_detail = ""
+        with Browser(width=1280, height=900) as br:
+            stub_quiz_slow(br, delay_ms=1600)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            br.navigate(base_on + "/")
+            setup_walk(br)
+            br.reload(); br.sleep(1.0)
+            chip_vis = scroll_to_chip(br)
+            br.sleep(0.4)
+            fl7_detail = "chip=%s" % chip_vis
+            if chip_vis:
+                br.click('#exh-cap .ex-quiz-chip', settle=0.5)
+                br.sleep(0.3)
+                if br.evaluate("!!document.querySelector('#ex-quiz-card .quiz-opt')"):
+                    br.click('#ex-quiz-card .quiz-opt', settle=0.0)
+                    br.sleep(0.4)   # past the 30ms grace, well before the 1.6s reply lands
+                    inflight = br.evaluate(
+                        "(()=>{const c=document.getElementById('ex-quiz-card');"
+                        "const o=c&&c.querySelector('.quiz-out');return {"
+                        "pending:!!(c&&c.classList.contains('quiz-inflight')),"
+                        "disabled:!!document.querySelector('#ex-quiz-card .quiz-opt[disabled]'),"
+                        "wait:!!(o&&o.classList.contains('quiz-wait')),"
+                        "shown:!!(o&&o.classList.contains('show')),"
+                        "text:o?o.textContent.trim():''};})()"
+                    ) or {}
+                    pending_named = bool(inflight.get("pending") and inflight.get("disabled"))
+                    reassurance_visible = bool(
+                        inflight.get("wait") and inflight.get("shown")
+                        and len(inflight.get("text") or "") > 0
+                    )
+                    br.sleep(1.6)   # let the reply land + the fast miss auto-close run
+                    after = br.evaluate(
+                        "(()=>{const c=document.getElementById('ex-quiz-card');return {"
+                        "pending:!!(c&&c.classList.contains('quiz-inflight')),"
+                        "hidden:!!(c&&c.hidden)};})()"
+                    ) or {}
+                    resolved = bool((not after.get("pending")) and after.get("hidden"))
+                    fl7_ok = pending_named and reassurance_visible and resolved
+                    fl7_detail = "inflight=%s after=%s" % (inflight, after)
+        check(BROWSER_ROWS[4], fl7_ok, fl7_detail)
 
 
 # ---------------------------------------------------------------- report

@@ -59,11 +59,63 @@ POLAROID_SERIES = next((s for s in SERIES if s.get("variant") != "lane"), None)
 LANE_SERIES = next((s for s in SERIES if s.get("variant") == "lane"), None)
 ANY_SERIES = SERIES[0] if SERIES else None
 
+# ---------------------------------------------------------------- second bake WITH the ambient player
+# The default synthetic fixture ships no audio, so #ex-sound never renders on it. The EX-CHROME
+# player-retraction rows (SND1–4) need a rendered player, so a second bake injects a synthetic
+# sound_url into config.json (the JS reads config.json at runtime) — same pattern as test_sound.py.
+TMP_SND = Path(tempfile.mkdtemp(prefix="synth_compose_snd_"))
+build_site.OUT = TMP_SND
+build_site.build(SITE_URL, enable=["quiz"])
+_snd_cfg_path = TMP_SND / "config.json"
+_snd_cfg = json.loads(_snd_cfg_path.read_text())
+_snd_cfg["exhibition"]["sound_url"] = "/audio/ambient.m4a"
+_snd_cfg["exhibition"]["sound_credit"] = {
+    "artist": "Synth Artist", "title": "Test Track", "url": "https://synth.example.com",
+}
+_snd_cfg_path.write_text(json.dumps(_snd_cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+
 # ---------------------------------------------------------------- snippets shared with test_share.py / test_quiz_pick.py
 IN_VIEW = ("(()=>{const f=[...document.querySelectorAll('.exh-frame')].find(f=>{"
            "const r=f.getBoundingClientRect();"
            "return r.top<innerHeight*0.5 && r.bottom>innerHeight*0.5;});"
            "return f?f.dataset.id:null;})()")
+
+# EX-CHROME (audio-player retraction): probe whether the ambient player is PRESSABLE — its computed
+# pointer-events/opacity and whether elementFromPoint at its centre still lands inside #ex-sound.
+SND_PROBE = ("(()=>{const s=document.getElementById('ex-sound');"
+             "if(!s)return JSON.stringify({no:1});"
+             "const cs=getComputedStyle(s);const r=s.getBoundingClientRect();"
+             "const cx=r.left+r.width/2,cy=r.top+r.height/2;"
+             "const el=document.elementFromPoint(cx,cy);"
+             "return JSON.stringify({pe:cs.pointerEvents,op:parseFloat(cs.opacity),"
+             "hit:!!(el&&el.closest&&el.closest('#ex-sound'))});})()")
+
+# a two-finger pinch on `sel` opens the zoom over that picture (mirrors test_zoom's trigger)
+PINCH = ("(sel)=>{const el=document.querySelector(sel);if(!el)return 'no-el';"
+         "try{const t1=new Touch({identifier:1,target:el,clientX:120,clientY:200});"
+         "const t2=new Touch({identifier:2,target:el,clientX:210,clientY:270});"
+         "el.dispatchEvent(new TouchEvent('touchstart',{touches:[t1,t2],targetTouches:[t1,t2],"
+         "changedTouches:[t1,t2],bubbles:true,cancelable:true}));return 'ok';}"
+         "catch(e){return 'err:'+e.message;}}")
+ZOPEN = ("(()=>{const z=document.getElementById('ex-zoom');"
+         "return !!z&&!z.hidden&&z.classList.contains('show');})()")
+
+
+def snd_retracted(br):
+    """True when the player is present but NOT pressable (pointer-events none or opacity 0, and no hit)."""
+    d = json.loads(br.evaluate(SND_PROBE))
+    if d.get("no"):
+        return False, d
+    return (d["pe"] == "none" or d["op"] == 0) and d["hit"] is False, d
+
+
+def snd_pressable(br):
+    """True when the player IS pressable (pointer-events not none, opacity > 0, and it takes the hit)."""
+    d = json.loads(br.evaluate(SND_PROBE))
+    if d.get("no"):
+        return False, d
+    return d["pe"] != "none" and d["op"] > 0 and d["hit"] is True, d
+
 
 BROWSER_ROWS = [
     "CMP1 EX-COMPOSE a standing question card owns the keys",
@@ -92,6 +144,16 @@ CH_ROWS = [
     "CH7 EX-CHROME the guard holds under a resting finger",
     "CH8 EX-CHROME a moving finger cannot drag the walk from under a face",
     "CH9 EX-CHROME the narrowed carve-out keeps the lane alive, axis-true",
+]
+
+# EX-CHROME — the ambient audio player retracts under a covering face, stays reachable in the zoom
+# (proven on the sound-configured bake TMP_SND; the default fixture ships no audio)
+SND_ROWS = [
+    "SND-RETRACT the ambient player retracts under the door (not pressable)",
+    "SND-RETRACT the ambient player retracts under the side room (not pressable)",
+    "SND-RETRACT the ambient player retracts under the gift card (not pressable)",
+    "SND-RETRACT the ambient player retracts under the question card (not pressable)",
+    "SND-RETRACT INV-77 the ambient player stays reachable during the zoom (regression guard)",
 ]
 
 
@@ -259,7 +321,7 @@ if not chrome_available() or QUIZ_WORK_ID is None or TOKEN_ARM_ON is None or ANY
               else "no quiz works" if QUIZ_WORK_ID is None
               else "arm-on token not found" if TOKEN_ARM_ON is None
               else "no series in bake")
-    for r in BROWSER_ROWS + CH_ROWS:
+    for r in BROWSER_ROWS + CH_ROWS + SND_ROWS:
         skip(r, f"{reason} — browser rows pinned SKIP")
 else:
     with serve(TMP) as base:
@@ -1015,7 +1077,70 @@ else:
                         f"lane_moved={across_lane_moved} page_drift={page_drift} (want≤5)",
                     )
 
+    # ============ EX-CHROME — the ambient audio player retracts under a covering face ============
+    # The player is fixed at z-index 130 on document.body; nothing hid it, so it floated PRESSABLE over
+    # the door, the side room, the gift card, and the question card. It now retracts (opacity:0;
+    # pointer-events:none) under those four, scoped to their body/element state — NEVER html.ex-face,
+    # because of the zoom exception (INV-77): while inspecting a picture the music stays reachable.
+    # These rows run on TMP_SND (the sound-configured bake); the default fixture ships no audio.
+    with serve(TMP_SND) as snd_base:
+        # SND1 — under the (re-opened) door
+        with Browser(width=1280, height=900) as br:
+            br.navigate(snd_base + "/")
+            door_stands = reach_reopened_door(br)
+            retracted, snd = snd_retracted(br)
+            check(SND_ROWS[0], door_stands and retracted,
+                  f"door_stands={door_stands} snd={snd}")
+
+        # SND2 — under the side room
+        with Browser(width=1280, height=900) as br:
+            br.navigate(snd_base + "/")
+            side_open = open_side_room(br)
+            retracted, snd = snd_retracted(br)
+            check(SND_ROWS[1], side_open and retracted,
+                  f"side_open={side_open} snd={snd}")
+
+        # SND3 — under the gift / farewell card
+        with Browser(width=1280, height=900) as br:
+            br.navigate(snd_base + "/")
+            setup_walk(br)
+            br.reload(); br.sleep(1.2)
+            gift_open = open_gift_card(br)
+            retracted, snd = snd_retracted(br)
+            check(SND_ROWS[2], gift_open and retracted,
+                  f"gift_open={gift_open} snd={snd}")
+
+        # SND4 — under the question card (parity with the gift card — a compact cover)
+        with Browser(width=1280, height=900) as br:
+            br.navigate(snd_base + "/")
+            setup_walk(br)
+            br.reload(); br.sleep(1.2)
+            card_open = open_quiz_card(br)
+            retracted, snd = snd_retracted(br)
+            check(SND_ROWS[3], card_open and retracted,
+                  f"card_open={card_open} snd={snd}")
+
+        # SND5 — INV-77 regression guard: during the ZOOM (over the walk) the player STAYS reachable
+        with Browser(width=390, height=844) as br:
+            br.navigate(snd_base + "/")
+            br.evaluate("localStorage.clear(); sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex-tempo', '0.05')")
+            br.reload(); br.sleep(1.1)
+            br.click(".exd-window:nth-child(1)", settle=0.6)   # leave the door → the walk (no face)
+            br.sleep(0.6)
+            br.evaluate("var s=document.getElementById('ex-share'); if(s){s.dataset.share='999';}")
+            fired = br.evaluate("(%s)('.exh-frame img.work')" % PINCH)  # pinch a walk work → zoom
+            br.sleep(0.3)
+            zoom_open = br.evaluate(ZOPEN)
+            no_face = not br.evaluate(
+                "document.body.classList.contains('ex-door') || "
+                "document.body.classList.contains('ex-side')")
+            pressable, snd = snd_pressable(br)
+            check(SND_ROWS[4], fired == "ok" and zoom_open and no_face and pressable,
+                  f"fired={fired!r} zoom_open={zoom_open} no_covering_face={no_face} snd={snd}")
+
 shutil.rmtree(TMP, ignore_errors=True)
+shutil.rmtree(TMP_SND, ignore_errors=True)
 
 fails = [r for r in results if r[1] == "FAIL"]
 skips = [r for r in results if r[1] == "SKIP"]

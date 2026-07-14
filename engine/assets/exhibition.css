@@ -315,9 +315,20 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   opacity:0; animation:exs-fade var(--d-soft) var(--ease) forwards;   /* EX-ARRIVE: fades in on the tempo */
   transition:color var(--d-ground) var(--ease); }
 .exh-capzone .told:empty{ display:none; }        /* the voice silent (story off / not yet spoken) — no ghost gap */
+/* EX-CAPTION (RTL): the serif-italic narrator line sits too tight in a right-to-left tongue; a small
+   right-to-left track loosens its letterforms to match the left-to-right read. Scoped strictly to
+   [dir=rtl] so the Latin (left-to-right) line stays pixel-identical (EX-I18N — the mirror rides the
+   active locale's dir; a left-to-right visitor's line is untouched). */
+[dir=rtl] .exh-capzone .told{ letter-spacing:.02em; }
+/* EX-CAPTION: the fact line (place · year · medium) reads in the UI face at weight 500, not the mono
+   face — a Latin monospace hands a non-Latin script's glyphs to a thin system fallback, so a Hebrew or
+   Arabic caption never carries real weight; the UI family has true letterforms for those scripts and
+   holds a readable line at 12.5px with a narrow track. The content's --ui token names that family; a
+   sans fallback keeps a bundle that ships no --ui legible. The live --tone tint is dropped here for
+   contrast (the title + told line still carry it). uppercase is a no-op outside Latin, kept for Latin. */
 .exh-capzone .meta{ display:flex; align-items:center; gap:9px; margin-top:12px;
-  font-family:var(--mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
-  color:color-mix(in oklab, var(--muted-2), var(--tone,var(--muted-2)) 34%); }
+  font-family:var(--ui,'Helvetica Neue',Helvetica,Arial,sans-serif); font-size:12.5px;
+  letter-spacing:.06em; text-transform:uppercase; font-weight:500; color:var(--muted); }
 .exh-capzone .dot{ width:8px; height:8px; border-radius:50%; background:#c0392b; flex:none;
   box-shadow:0 0 0 3px rgba(192,57,43,.14); }         /* продано — the gallery convention, the dot alone */
 .exh-capzone .dot[hidden]{ display:none; }
@@ -364,8 +375,17 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
   height:40px; -webkit-tap-highlight-color:transparent;
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
 #ex-sound.show{ opacity:1; }
-/* at the DOOR the language mark (EX-LANG) also lives top-right — nudge the player left of it */
-body.ex-door #ex-sound{ right:70px; }
+/* EX-CHROME: while a COVERING face stands — the door, the series/side room, or a compact card (the
+   gift/farewell card or the question card) — the ambient player retracts (opacity:0; pointer-events:
+   none). It is fixed at z-index 130 on the body, so nothing else hid it and it floated pressable over
+   the cover. Scoped to those covering states by their body/element class — NEVER the shared
+   html.ex-face — because the ZOOM is the deliberate exception (INV-77): while inspecting a picture the
+   music stays reachable. The compact cards carry no body class, so they reach the player by the
+   general sibling combinator (the player is inserted after them on the body). */
+body.ex-door #ex-sound,
+body.ex-side #ex-sound,
+#ex-gift-card.show ~ #ex-sound,
+#ex-quiz-card.show ~ #ex-sound{ opacity:0; pointer-events:none; }
 .exsnd-btn{ width:40px; height:40px; flex:none; display:grid; place-items:center; border-radius:999px;
   background:rgba(8,8,7,.55); border:1px solid var(--hair); color:var(--muted-2); cursor:pointer;
   transition:color calc(.3s*var(--tempo)) var(--ease), border-color calc(.3s*var(--tempo)) var(--ease); }
@@ -481,6 +501,7 @@ body.ex-door #ex-sound{ right:70px; }
 .quiz-out.show{ opacity:1; }
 .quiz-out.quiz-win{ color:var(--ink); font-family:var(--serif); font-style:italic; font-size:17px; }
 .quiz-out.quiz-miss{ color:var(--body); font-family:var(--serif); font-style:italic; }
+.quiz-out.quiz-wait{ color:var(--muted); font-family:var(--serif); font-style:italic; }   /* the slow-submit reassurance (EX-QUIZ-REPLY) */
 @media (prefers-reduced-motion:reduce){ .quiz-out{ transition:none; } }
 
 /* legacy prize display (kept for the gift ceremony; the quiz card itself no longer uses them) */

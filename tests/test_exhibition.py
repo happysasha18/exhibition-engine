@@ -220,6 +220,7 @@ BROWSER_ROWS = [
     "INV-25 FOUC guard — pre-paint hide in head + css rule + static hidden while live",
     "INV-1 on EX live DOM — caption speaks his words only, no axis readout",
     "INV-25/CS-8 broken walk data → static face returns, never a blank page",
+    "EX-CAPTION the fact line reads in the UI face at weight >= 500 (legibility)",
 ]
 
 if not chrome_available():
@@ -263,6 +264,19 @@ else:
               cap_ok and not AXIS_ID_RE.search(low)
               and not any(w in low for w in READOUT_WORDS) and not READOUT_RE.search(low),
               f"cap={cap_ok} axis_id={bool(AXIS_ID_RE.search(low))}")
+
+        # EX-CAPTION legibility: the fact line (place · year · medium) resolves to the UI family (the
+        # content's --ui token — Helvetica in the fixture) at font-weight ≥ 500, browser-computed, not
+        # the mono face — a Latin monospace hands a non-Latin script's glyphs to a thin fallback.
+        meta = br.evaluate(
+            "(()=>{const e=document.querySelector('#exh-cap .meta');if(!e)return null;"
+            "const cs=getComputedStyle(e);return {family:cs.fontFamily,"
+            "weight:parseInt(cs.fontWeight,10),size:parseFloat(cs.fontSize)};})()")
+        check(BROWSER_ROWS[5],
+              bool(meta) and "helvetica" in (meta["family"] or "").lower()
+              and "mono" not in (meta["family"] or "").lower()
+              and int(meta["weight"]) >= 500 and float(meta["size"]) >= 12,
+              f"meta={meta}")
 
     BROKEN = Path(tempfile.mkdtemp(prefix="synth_ex_broken_"))
     import shutil as _sh

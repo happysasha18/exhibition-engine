@@ -584,21 +584,37 @@ Esc returns, and the page beneath is exactly as it was left — the zoom is a fa
 freezes the walk while it stands and restores it untouched on close, the same law the side room and
 the gift card obey. The trigger is one delegated document listener over the picture selectors; the
 zoom layer refuses the browser's own gestures on itself (`touch-action:none`) so only its own scale
-runs. **Once enlarged past 1×, a one-finger drag pans the picture** (`INV-76`): the drag moves the
+runs. **The trigger reaches every picture, the small ones included, and the opening pinch scales
+directly (`INV-81`).** A polaroid is a small print — two fingertips never both fit on it — so the pinch
+matches when EITHER finger stands on the picture: the trigger reads the element under each touch point,
+not only the event's own target, and on the polaroid table the WHOLE print, paper frame included, is the
+picture's hit area, opening the photograph inside (a pinch with both fingers on the bare table opens
+nothing; two different pictures under the two fingers — the event's own picture wins, else the first
+finger's, one deterministic pick). And the gesture that opens the layer keeps working: the zoom's pinch
+and pan handlers listen at the document, so the in-flight touch — still targeted at the picture beneath —
+drives the scale the moment the layer stands, with no second gesture and no arming tap first. A polaroid
+inspects the same way whether it lies on the table or stands lifted (EX-SERIES), and the same zoom layer
+serves it — one machinery, never a parallel copy. **Once enlarged past 1×, a one-finger drag pans the picture** (`INV-76`): the drag moves the
 image by the finger's travel, bounded so it can never be dragged past its own edge — the offset is
 clamped to the visible overflow at the current scale, so a corner is reachable but the picture never
 leaves a gap. Pinching back toward 1× re-tightens that bound and a release at 1× recentres the image
 flat. *Facets:* touch only — a desktop trackpad pinch is a Ctrl-wheel, already refused (EX-PROTECT),
 and never opens the layer, so a mouse visitor is unaffected; a near-1× release settles the image flat
 and centred; the pan starts only on the picture itself, so a tap on the dark backdrop still closes;
-accessibility — the × is a real ≥44px button with an `aria-label`, Esc closes, and the layer is
+the side room's two gestures divide cleanly — a single tap still lifts a print to the light and sets it
+down (EX-SERIES), the two-finger pinch inspects, and closing the zoom returns the room exactly as left,
+a lifted print still lifted (the face law above); accessibility — the × is a real ≥44px button with an
+`aria-label`, Esc closes, and the layer is
 `role=dialog aria-modal`; reduced motion — the layer's fade collapses with the tempo. *Non-goals:* a
 zoom affordance for desktop mouse (pinch is the gesture asked for); persisting a zoom across works;
-panning while at 1× (there is nothing beyond the frame to reveal). *Success measure:* a two-finger
-pinch on a work, a door window, and a side-room print each opens the picture enlarged with a × that
-returns to the untouched page, the image scaling with the pinch and the browser never zooming the
-page; a one-finger drag on a zoomed picture moves it within its bounds and never past its edge
-`[default]`. `EX-ZOOM` `INV-75` `INV-76`
+panning while at 1× (there is nothing beyond the frame to reveal). *Regression fences:* the walk's
+single-finger paginated pan, the class pinch refusal (EX-PROTECT), the tap-lift and exact return of the
+side room (EX-SERIES), and the pan bound (INV-76) all stand untouched. *Success measure:* a two-finger
+pinch on a work, a door window, and a side-room polaroid — on the polaroid even with one finger landing
+on the table beside the small print — each opens the picture enlarged with a × that returns to the
+untouched page, the SAME opening gesture already scaling the image (no second pinch, no arming tap) and
+the browser never zooming the page; a one-finger drag on a zoomed picture moves it within its bounds and
+never past its edge `[default]`. `EX-ZOOM` `INV-75` `INV-76` `INV-81`
 
 **Two interactive controls never share a spot (EX-CHROME).** Each control a hand can press has a place of
 its own; no two of them occupy the same spot at once. The boundary is drawn by kind: passive
@@ -610,11 +626,16 @@ BOTTOM-RIGHT on the walk's own share rail (nothing moves when the zoom opens), a
 style as the player and the walk's share link (one aesthetic, told apart by their icon). This lets the
 visitor keep every function while inspecting a picture — the player stays reachable top-right to lower the
 music, and the zoom's own share copies the room link of the work being looked at, confirming inline (the
-walk's toast rides bottom-right beneath the zoom's backdrop, so it would not be seen). *Facets:* the zoom's
+walk's toast rides bottom-right beneath the zoom's backdrop, so it would not be seen). The covering faces
+handle the player differently: while the door, the side room, the gift card, or the question card stands,
+the ambient player retracts (it fades away and stops taking a press, opacity to zero and pointer-events
+off); the music plays on, only its controls resting until the cover leaves. The zoom alone keeps the
+player reachable, which is the whole of this rule. The re-opened door keeps the same no-shared-spot law:
+its own controls — the door windows, the Back arrow, and the language mark — each hold a place of their
+own, so no two of them ever land on the same spot. *Facets:* the zoom's
 share appears only when there is an in-view work to share, and hides otherwise; the confirmation is the
 localized «link copied» shown in the zoom itself; the close and share meet the touch target floor (≥44px)
-and carry aria-labels. *Non-goals:* hiding the player while a cover stands (that would take away the music
-and the share the moment someone might want them); a general collision solver (each overlay places its own
+and carry aria-labels. *Non-goals:* a general collision solver (each overlay places its own
 controls, checked by test). *Success measure:* with the zoom open on a work, the player is still visible and
 pressable top-right, the zoom's close stands top-left and its share bottom-right (the walk's own corner),
 neither overlapping it, and the share copies
@@ -658,7 +679,14 @@ tint** (the per-work accent the walk already computes) so it reads with the pict
 dim, no re-pick. The tapped option POSTs to `/api/quiz`; the edge **normalizes both sides hard**
 (NFKC-fold, lower-case, letters only) and compares against the private single answer. **The answer is
 judged at the edge, never a served byte, never a model call**; the client sends the **raw** tapped
-value, so client↔edge normalization is **parity by construction**. The judge runs under the quiz's
+value, so client↔edge normalization is **parity by construction**. **The reply slot names three
+states.** The dimmed, locked options are the visible **pending** state from the instant of the tap; a
+round-trip still owed past a short house grace (`quiz_wait_grace`, default **0.6s ×TEMPO**, a config
+knob) draws a quiet reassurance in that slot (`quiz_submit`, localized — the old free-text label reused
+by the four-option model, with an English fallback in the client), the honest wait a slow edge shows;
+the **arrived** reply then replaces it — a right tap flows into the gift, a wrong tap draws the gentle
+line and closes. A network **failure** at the edge shows the same quiet reassurance, a calm face in
+place of a scold or a false win. The judge runs under the quiz's
 **own** hourly per-IP attempt fence (`q:<hour>:<ip>`, separate from the model rate-limit and day
 budget), which **degrades gracefully when no KV namespace is bound** (a preview/local deploy still
 judges). A **miss** (or an unreachable edge) shows **one** gentle localized line (`quiz_wrong`) and
@@ -704,13 +732,18 @@ door still hides it (EX-SHARE-BTN); every motion rides the one tempo (INV-33).* 
   flex centring), so a mid-question rotation reflows it centred with its options intact. A tap already
   given survives any rotation locked (EX-QUIZ-REPLY's one-tap law), and a rotation under an open card
   writes no second cooldown stamp — the stamp belongs to the open alone (EX-QUIZ-ONCE).
-- **The side room covers the walk's chrome; the player rides above the room alone.** Under the opaque
-  side room the share button, the caption, and the counter sleep, invisible and unclickable — so the
-  copied link can only ever name a work in view (EX-SHARE-BTN kept by construction). The sound player
-  stays visible and TAPPABLE above the side room (EX-SOUND — house chrome over the walk's faces). A
-  standing card covers the player too: the music keeps playing, and the player's buttons rest until
-  the card leaves. The side room grows no question chip and can open no card: the ask lives on the
-  plaque, and the plaque sleeps beneath (EX-QUIZ-PICK).
+- **The side room covers the walk's chrome, and the ambient player retracts under every covering
+  face.** Under the opaque side room the share button, the caption, and the counter sleep, invisible
+  and unclickable — so the copied link can only ever name a work in view (EX-SHARE-BTN kept by
+  construction). The ambient sound player retracts under a covering face as well: while the door, the
+  side room, the gift/farewell card, or the question card stands, the player fades away and stops
+  taking a press, its music playing on and only its controls resting until the cover leaves
+  (EX-CHROME). A standing compact card rests the walk's other chrome the same way: under an open
+  question card or gift card the share button sleeps and any share toast it raised rests beneath the
+  card, so nothing pressable shows through the cover. The zoom is the single exception, by INV-77:
+  while inspecting a picture the player stays reachable so the visitor can lower the music. The side
+  room grows no question chip and can open no card: the ask lives on the plaque, and the plaque sleeps
+  beneath (EX-QUIZ-PICK).
 - **The side room reflows with the viewport.** The table lays its prints in viewport fractions, so a
   rotation re-lays them. A print lifted to the light re-centres to the new viewport; a centre measured
   before the rotation never survives it.
@@ -1310,8 +1343,9 @@ the worker.
 | `INV-74` | The diverse door keeps a browser-local, versioned, `?reset`-forgettable memory of the works it has DEALT, and every open guarantees at least `fresh_min` of the windows dealt for the current fit are works not dealt since the last round reset — jointly with the place fraction, so at least `⌈fresh_min·n⌉+⌈place_min·n⌉−n` shown windows are both unseen and place; when the unseen pool cannot supply the fresh floor or that overlap the memory clears and a new round begins, the just-dealt set replacing it (a normal open unions in). This novelty floor supersedes the curated door's ⌊door_size/3⌋-repeat law (`INV-20`) here |
 | `INV-75` | A two-finger pinch on any exhibition picture opens it enlarged in its own zoom layer that scales with the pinch, with a close control (×, backdrop tap, or Esc) that returns to the page exactly as it was; the browser's own page zoom never fires |
 | `INV-76` | Once a picture is zoomed past 1× in the zoom layer, a one-finger drag pans it by the finger's travel, the offset clamped to the picture's visible overflow at the current scale so a corner is reachable yet the image never leaves its frame; pinching toward 1× re-tightens the bound and a release at 1× recentres it |
-| `INV-77` | No two pressable controls occupy the same screen spot, and nothing moves when the zoom opens: the zoom keeps each control where the walk uses it — the sound player stays top-right (the music), the zoom's share of the inspected work sits bottom-right on the walk's own share rail, and the close (new to the zoom) takes the free top-left corner, all in the same round chrome style. So while zoomed the visitor still reaches the player and shares the work (the share copies that work's link, confirming inline). Passive decoration may overlap anything; only pressable controls may not |
+| `INV-77` | No two pressable controls occupy the same screen spot, and nothing moves when the zoom opens: the zoom keeps each control where the walk uses it — the sound player stays top-right (the music), the zoom's share of the inspected work sits bottom-right on the walk's own share rail, and the close (new to the zoom) takes the free top-left corner, all in the same round chrome style. So while zoomed the visitor still reaches the player and shares the work (the share copies that work's link, confirming inline). Under every OTHER covering face — the door, the side room, the gift/farewell card, and the question card — the ambient player retracts (opacity to zero, pointer-events off, its music playing on), so nothing pressable floats over the cover; the zoom is the single reachable exception. Passive decoration may overlap anything; only pressable controls may not |
 | `INV-78` | The door tells the visitor there is more: leaving a walk to the door shows a farewell line («the rest is still hanging, come again»), and a cold arrival from a browser that has walked here before shows a welcome-back line below the ask, the daypart greeting kept whole. A first-ever visitor sees neither, only the ordinary greeting. One local flag remembers the browser has walked; the lines are localized museum-quiet copy naming no work/axis/count, honest wherever the collection outlasts one walk |
+| `INV-81` | The pinch-to-inspect trigger reaches every exhibition picture including the small ones: it matches when either finger of the pinch stands on the picture (reading the element under each touch point, not only the event's target), the whole polaroid print — paper frame included — is the picture's hit area, and the very gesture that opens the layer keeps scaling it, with no second pinch and no arming tap; a pinch with no finger on any picture opens nothing |
 
 ### Reconciliation log — how each behavior above landed in code
 
