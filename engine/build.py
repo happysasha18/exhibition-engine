@@ -171,6 +171,8 @@ def head(title, description, canonical, og_image, og_type, jsonld, extra_og="", 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="generator" content="exhibition-engine · https://github.com/happysasha18/exhibition-engine">
+<!-- Built with exhibition-engine, an open-source exhibition-site generator: https://github.com/happysasha18/exhibition-engine -->
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">

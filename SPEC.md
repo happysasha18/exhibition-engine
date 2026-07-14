@@ -685,11 +685,14 @@ round-trip still owed past a short house grace (`quiz_wait_grace`, default **0.6
 knob) draws a quiet reassurance in that slot (`quiz_submit`, localized — the old free-text label reused
 by the four-option model, with an English fallback in the client), the honest wait a slow edge shows;
 the **arrived** reply then replaces it — a right tap flows into the gift, a wrong tap draws the gentle
-line and closes. A network **failure** at the edge shows the same quiet reassurance, a calm face in
-place of a scold or a false win. The judge runs under the quiz's
+line and closes. An edge **failure** (a non-ok status — 429/503/down — or a network drop) shows the
+same quiet reassurance, a calm face in place of a scold or a false win. Because the tap never reached a
+verdict, the four options **re-open** for another tap and **no answered-memory is written**, so the work
+still asks on a later walk; only a verdict the server actually returned — a win or a genuine miss —
+locks the work and is remembered. The judge runs under the quiz's
 **own** hourly per-IP attempt fence (`q:<hour>:<ip>`, separate from the model rate-limit and day
 budget), which **degrades gracefully when no KV namespace is bound** (a preview/local deploy still
-judges). A **miss** (or an unreachable edge) shows **one** gentle localized line (`quiz_wrong`) and
+judges). A **miss** the server actually returned shows **one** gentle localized line (`quiz_wrong`) and
 then the card **fades out, leaving the photograph** — no hint trail, the answer never reaches the DOM.
 A **hit** shows a localized praise line (`quiz_win`), is remembered per work in visitor memory, and
 opens the **gift ceremony** at the prize's better resolution. **Exactly one question appears per show**

@@ -1802,7 +1802,8 @@
 
   // EX-QUIZ-REPLY (INV-65): one tap decides — the city button fires answer(city).
   // After a tap all buttons are disabled and the unchosen dim. Win: quiz_win line → gift ceremony.
-  // Miss: quiz_wrong line → card fades out on var(--d-*). No re-pick after a tap (LOCKED).
+  // Miss: quiz_wrong line → card fades out on var(--d-*). A server verdict (win/miss) LOCKS the work;
+  // a reach failure that never got a verdict re-opens the choice (reachFailed) and burns nothing.
   function answer(city) {
     const id = quizWorkId;
     if (!id) return;
@@ -1860,11 +1861,25 @@
       }, Math.round(1500 * TEMPO));
     }
 
+    // EX-QUIZ-REPLY (INV-65/INV-138): an edge that never returned a verdict — a non-ok status
+    // (429/503/down) or a network drop — holds the same calm pending face and RE-OPENS the choice.
+    // A connectivity blip never reads as a wrong answer and never burns the question: no answered-memory
+    // is written and no stage advances, so the work still asks on a later walk. Only a verdict the
+    // server actually returned (win or genuine miss) locks the work.
+    function reachFailed() {
+      settled();
+      const T = (greetLang() || { t: {} }).t;
+      out.className = "quiz-out quiz-wait";
+      out.textContent = T.quiz_submit || "one more moment";
+      requestAnimationFrame(() => out.classList.add("show"));
+      opts.forEach((b) => { b.disabled = false; b.classList.remove("dim", "wrong"); });
+    }
+
     fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: String(id), answer: city }),
-    }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
+    }).then((r) => { if (!r || !r.ok) throw new Error("unreachable"); return r.json(); }).then((data) => {
       if (data && data.ok) {
         settled();                                     // ARRIVED: the pending reassurance is replaced
         // WIN: mark correct, show quiz_win line, close quiz, open the gift ceremony
@@ -1887,7 +1902,7 @@
       } else {
         missAndFade();
       }
-    }).catch(() => { missAndFade(); });  // network failure closes the same way — never a nonsense line
+    }).catch(() => { reachFailed(); });  // a non-ok edge or a network drop never reached a verdict — a calm face, no scold, no burned question
   }
 
   // the chip tap opens the card (delegated on cap)

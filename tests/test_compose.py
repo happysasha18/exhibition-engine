@@ -489,6 +489,19 @@ else:
                     "localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:999}))"
                     % (json.dumps(EX_VER), json.dumps(str(_cmp6_pick)))
                 )
+            # A definitive server verdict (a miss) so the tapped choice LOCKS. Without a stubbed
+            # verdict, a tap now correctly re-opens the choice on the reach-failure path
+            # (EX-QUIZ-REPLY / INV-138: an edge that never returns a verdict burns nothing), so the
+            # lock this row asserts is the lock after a real answer, not after an unanswered blip.
+            # inject runs on documents created after the call, so it must precede the reload.
+            br.inject(
+                "(function(){const _f=window.fetch;"
+                "window.fetch=function(u,o){"
+                "if(String(u).includes('/api/quiz')){"
+                "return Promise.resolve(new Response(JSON.stringify({ok:false}),"
+                "{status:200,headers:{'Content-Type':'application/json'}}));}"
+                "return _f.apply(this,arguments);};})();"
+            )
             br.reload()
             br.sleep(1.5)
             card_open = open_quiz_card(br)

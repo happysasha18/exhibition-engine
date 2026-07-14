@@ -65,6 +65,7 @@ BROWSER_ROWS = [
     "FL3 EX-QUIZ-FLOW control and flag-off stamp nothing (INV-69 / EX-QUIZ-AB)",
     "FL4 EX-QUIZ-FLOW only the quiz prize's yes stamps gift (INV-69 / EX-PROTECT-GIFT)",
     "FL7 EX-QUIZ-REPLY a slow in-flight submit shows the visible pending reassurance (INV-65)",
+    "FL8 EX-QUIZ-REPLY a 503 edge holds the calm face and re-opens the choice, burning nothing (INV-65)",
 ]
 
 # Engine storage key (dot convention, see DELTA-9)
@@ -138,6 +139,24 @@ def stub_quiz_miss(br):
         "if(String(u).indexOf('/api/quiz')>=0){"
         "return Promise.resolve(new Response(JSON.stringify({ok:false}),"
         "{status:200,headers:{'Content-Type':'application/json'}}));}"
+        "return _f.apply(this,arguments);};})()"
+    )
+
+
+def stub_quiz_503(br):
+    """Stub /api/quiz to FAIL with HTTP 503 — an edge that never reaches a verdict.
+
+    A non-ok status (429/503/down) is the same class as a network drop: the client got
+    NO verdict back. The fixed answer() throws on !r.ok and routes to reachFailed() — the
+    quiet pending face, buttons re-opened, no answered-memory, no stage. The buggy prior
+    version treated 503 as a miss (missAndFade). This stub drives EX-QUIZ-REPLY's edge branch.
+    """
+    br.inject(
+        "(function(){var _f=window.fetch;"
+        "window.fetch=function(u,o){"
+        "if(String(u).indexOf('/api/quiz')>=0){"
+        "return Promise.resolve(new Response('Service Unavailable',"
+        "{status:503,headers:{'Content-Type':'text/plain'}}));}"
         "return _f.apply(this,arguments);};})()"
     )
 
@@ -435,6 +454,70 @@ else:
                     fl7_ok = pending_named and reassurance_visible and resolved
                     fl7_detail = "inflight=%s after=%s" % (inflight, after)
         check(BROWSER_ROWS[4], fl7_ok, fl7_detail)
+
+        # ---- FL8: a 503 edge holds the calm face and RE-OPENS the choice ----------
+        # EX-QUIZ-REPLY / INV-65 — an edge that never returned a verdict (a non-ok 429/503/down
+        # status or a network drop) must NOT read as a wrong answer. The fixed answer() routes it
+        # to reachFailed(): the quiet «ещё мгновение» pending line in the reply slot (quiz-wait),
+        # the four option buttons RE-ENABLED (no disabled/wrong/dim), NO answered-memory written
+        # for the work, and the card left OPEN so the work asks again. (The buggy prior version
+        # routed a 503 to missAndFade — button marked wrong, answered-memory written, card fades
+        # out — which this test goes RED on.)
+        fl8_ok = False
+        fl8_detail = ""
+        with Browser(width=1280, height=900) as br:
+            stub_quiz_503(br)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            br.navigate(base_on + "/")
+            setup_walk(br)
+            br.reload(); br.sleep(1.0)
+            chip_vis = scroll_to_chip(br)
+            br.sleep(0.4)
+            fl8_detail = "chip=%s" % chip_vis
+            if chip_vis:
+                br.click('#exh-cap .ex-quiz-chip', settle=0.5)
+                br.sleep(0.3)
+                if br.evaluate("!!document.querySelector('#ex-quiz-card .quiz-opt')"):
+                    br.click('#ex-quiz-card .quiz-opt', settle=0.0)
+                    # let the 503 land and reachFailed() run; wait past the miss-path fade
+                    # window so a RED (buggy) run has fully faded/hidden the card
+                    br.sleep(1.0)
+                    quiz_ls_key = "ex.quiz." + str(QUIZ_WORK_ID)
+                    st = br.evaluate(
+                        "(()=>{const c=document.getElementById('ex-quiz-card');"
+                        "const o=c&&c.querySelector('.quiz-out');"
+                        "const opts=Array.from(document.querySelectorAll('#ex-quiz-card .quiz-opt'));"
+                        "return {"
+                        "wait:!!(o&&o.classList.contains('quiz-wait')),"
+                        "shown:!!(o&&o.classList.contains('show')),"
+                        "text:o?o.textContent.trim():'',"
+                        "any_disabled:opts.some(b=>b.disabled),"
+                        "any_wrong:opts.some(b=>b.classList.contains('wrong')),"
+                        "any_dim:opts.some(b=>b.classList.contains('dim')),"
+                        "n_opts:opts.length,"
+                        "mem:localStorage.getItem(%s),"
+                        "card_hidden:!!(c&&c.hidden),"
+                        "card_gone:!!(c&&c.classList.contains('gone')),"
+                        "card_show:!!(c&&c.classList.contains('show'))"
+                        "};})()" % json.dumps(quiz_ls_key)
+                    ) or {}
+                    # reply slot shows the quiet pending/wait line
+                    wait_line = bool(st.get("wait") and st.get("shown")
+                                     and len(st.get("text") or "") > 0)
+                    # the four option buttons are RE-ENABLED — none disabled, none wrong, none stuck dim
+                    buttons_reopened = bool(
+                        st.get("n_opts", 0) > 0 and not st.get("any_disabled")
+                        and not st.get("any_wrong") and not st.get("any_dim")
+                    )
+                    # NO answered-memory was written for this work
+                    no_memory = st.get("mem") is None
+                    # the card is still OPEN (shown, not hidden/gone)
+                    card_open = bool((not st.get("card_hidden"))
+                                     and (not st.get("card_gone")) and st.get("card_show"))
+                    fl8_ok = wait_line and buttons_reopened and no_memory and card_open
+                    fl8_detail = ("wait_line=%s buttons_reopened=%s no_memory=%s card_open=%s st=%s"
+                                  % (wait_line, buttons_reopened, no_memory, card_open, st))
+        check(BROWSER_ROWS[5], fl8_ok, fl8_detail)
 
 
 # ---------------------------------------------------------------- report
