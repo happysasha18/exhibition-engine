@@ -117,7 +117,9 @@ is the engine's only remaining instance-facing brand value that the bake does no
   id present in it. `INV-4`
 - **Canonical and listed once.** Every page declares its own canonical URL; `sitemap.xml` lists
   the exhibition root plus every work page, nothing else; `robots.txt` permits crawling on
-  production and disallows on a preview host. `INV-5`
+  production and disallows on a preview host. **AI SEARCH and retrieval bots** (`ChatGPT-User`,
+  `OAI-SearchBot`, `PerplexityBot`) are now permitted to fetch, while AI TRAINING crawlers stay
+  blocked. `INV-5`
 - **Every work is discoverable as an image.** `sitemap.xml` carries each work page's photograph
   as an `<image:image>` entry so a search engine can index all works. `INV-6`
 - **The bundle is self-contained and static.** No file in the deployable bundle needs a running
@@ -412,27 +414,42 @@ on the target work; it **never rests between frames** and **never drifts or floa
 The transition is a **sine in-out** (the calmest classic curve — lowest peak speed, both ends soft;
 monotonic 0→1, so it provably **cannot overshoot** and always lands centered, no bounce), over
 `glide_ms` (config, default 520ms) scaled by `tempo/1.35` capped ×1.5 — the docking rides the one
-clock (`INV-33`), reduced motion collapses it near-instant. **Force is IGNORED in phase 1**: one
-fixed curve for every input, always exactly one frame. (A **phase-2 hook** is left in the animator —
-force will later seed the same transition faster off the start, capped at one extra frame — but is
-NOT built here.) A **second input mid-transition chains** to the *next* frame — it steps from where
+clock (`INV-33`), reduced motion collapses it near-instant. **Force scales SPEED, never count**
+(`INV-84`): one continuous input gesture — one wheel burst, one touch swipe, one arrow press — always
+makes **exactly one** transition, and the gesture's velocity sets that single glide's DURATION within a
+clamped range (a calm gesture rides the full `glide_ms`, ~520ms; a sharp one eases down toward a floor
+of about half that, ~260ms `[default]`), so a violent flick lands the SAME one frame, only faster.
+Velocity never buys a second frame — the earlier two-frame flick allowance is retired. A **second input
+mid-transition chains** to the *next* frame — it steps from where
 the running transition is headed, never re-rounds backward. A sub-2px move is skipped.
 
 The input surfaces split. **Desktop** (wheel + keys) is owned by the **JS animator**, which
 `preventDefault`s to kill native free-scroll — so no lingering momentum can float after the stop.
-A mouse notch is one event; a trackpad swipe is a decaying burst — a **lock coalesces the burst to
-ONE step**, and an idle timer (~150ms) clears the lock when all motion stops. A **new swipe fired
-during the previous swipe's momentum tail is NOT dropped**: it shows up as a **rising `|deltaY|`**
-over the decaying envelope (`fresh = !lock || mag > peak·1.3 + 1`), which re-arms a second step; the
-plain tail stays coalesced. **Paging keys** (`Space`, `↓`, `→`, `↑`, `←`, `PageDown`, `PageUp`, and
+A mouse notch is one event; a trackpad swipe is a decaying burst — a **lock coalesces the whole burst,
+rising tail and all, to ONE step**, and an idle timer (~150ms) clears the lock only once all motion
+stops, so the NEXT gesture is a genuinely fresh one. A **rising `|deltaY|` within a live burst no longer
+re-arms a second step** — it feeds that single glide's SPEED (`INV-84`): the sharper the burst, the
+shorter its one glide; the plain tail stays coalesced. **Paging keys** (`Space`, `↓`, `→`, `↑`, `←`, `PageDown`, `PageUp`, and
 `Shift+Space`) make the same one transition — all four arrows page: ↓ and → walk forward, ↑ and ← walk back (his
 2026-07-09 note, landed 2026-07-10; physical directions in every locale `[default]`) — one step per press, chaining from the running
 transition's heading; a held key is one frame per press. **Touch** docks under native momentum via
 **CSS scroll-snap** (`scroll-snap-type:y mandatory` + `scroll-snap-align:start` +
 `scroll-snap-stop:always`, scoped to `@media (hover:none)`): **no JS ever writes the scroll position
 on touch**, so a swipe never flies through, never rests between works, and the iOS jerk-fix holds by
-construction. The cold **door ignores a wheel** — the animator owns the walk only, never the door,
+construction. One swipe still lands **exactly one frame** (`scroll-snap-stop:always`), and the same
+force→speed feel rides the browser's own momentum — a sharp flick docks quickly, a gentle one settles
+calmly — so the one-gesture-one-frame law and the force-scales-speed law (`INV-84`) hold on the touch
+path and the desktop path alike. The cold **door ignores a wheel** — the animator owns the walk only, never the door,
 the ceremony, or the side room.
+
+**The walk survives a turn** (`INV-86`): a device rotation (portrait↔landscape) is caught as its own
+event — an orientation change, not merely a size change — and the frame stops recompute against the new
+viewport so the currently-docked frame stays centred under the eye, the one-gesture-one-frame law
+(`INV-84`) intact on the far side of the turn. An orientation change arriving while a glide is still in
+flight first cancels that glide to a dock at its target frame and only then recomputes the stops against
+the new viewport, so the turn never measures a mid-motion frame. A rotation with a face standing is
+honoured by the face laws (EX-COMPOSE/`INV-67`); a rotation with the zoom open re-measures the zoom's
+source so its exit still lands true (EX-ZOOM/`INV-82`, `INV-86`).
 
 **Back is honest** (`INV-18`): `(a)` crossing the door lays ONE history step — back from the
 gallery returns to the **door AS IT STOOD** (the step carries the spread it showed); `(b)` the
@@ -560,7 +577,7 @@ pinch-zoom / `gesturestart`) the engine intercepts. A **desktop right-click** (a
 opens the **gift ceremony** (below) — the picture is offered, never dumped. A **drag or a touch
 grab** shows a **quiet, localized gift line** on the existing share toast instead — the instance's
 `enjoy` string from the greeting cache plus the site host appended in code (e.g. «enjoy ·
-example.com»), arriving on the house breath and leaving by itself. For a pinch-zoom the walk refuses the browser
+example.com»), arriving on the house breath and leaving by itself. For a pinch the walk always refuses the BROWSER'S OWN
 zoom across the **whole surface**, not only over a work: a browser zoom scales the visual viewport
 out from under the JS scroll animator and the fixed chrome, so the measured centering drifts and the
 fixed controls float and the walk desyncs. `gesturestart` / `gesturechange` / `gestureend` are
@@ -568,7 +585,16 @@ fixed controls float and the walk desyncs. `gesturestart` / `gesturechange` / `g
 (Blink's pinch), and the viewport meta pins the page to scale 1 on Blink. iOS ignores that meta,
 so double-tap-to-zoom is refused by `touch-action:manipulation` on the walk body, and a pinch that
 drops back to one finger re-takes the paginated walk so its tail cannot free-scroll. EX-CHROME's
-one-page-shape law extends to the zoom axis. It stays silent — a pinch is exploratory, not a save, so no toast. A
+one-page-shape law extends to the zoom axis. **The refused gesture is no longer a dead one, on touch
+and on desktop alike:** a two-finger touch pinch and — new — a non-touch trackpad pinch (Safari's
+`gesturestart`/`gesturechange`, Blink's `ctrl`+wheel) both HAND OFF to the exhibition's own inspect
+layer (EX-ZOOM/`INV-85`) on the picture beneath the fingers or the pointer, so the visitor still looks
+closer; only the browser's viewport zoom is refused, never the gesture itself. **The desktop wheel now
+carries two meanings, split cleanly by modifier:** a plain wheel is navigation (EX-GLIDE) and a
+`ctrl`+wheel / trackpad pinch is inspect (EX-ZOOM) — this is why a `ctrl`+wheel is no longer simply
+refused. **The meaning is latched at the FIRST event of a fresh wheel burst** — once the idle
+coalescing lock has cleared (EX-GLIDE) — and held for the whole coalesced burst, so a `ctrl` gained or
+lost mid-burst never switches the meaning mid-flight. It stays silent — a pinch is exploratory, not a save, so no gift toast. A
 **soft CSS layer**
 rests on every `img.work`: `user-select:none`, `-webkit-user-drag:none` (no drag ghost),
 `-webkit-touch-callout:none` (kills the iOS long-press save sheet). This is a gift and a gentle
@@ -584,7 +610,27 @@ Esc returns, and the page beneath is exactly as it was left — the zoom is a fa
 freezes the walk while it stands and restores it untouched on close, the same law the side room and
 the gift card obey. The trigger is one delegated document listener over the picture selectors; the
 zoom layer refuses the browser's own gestures on itself (`touch-action:none`) so only its own scale
-runs. **The trigger reaches every picture, the small ones included, and the opening pinch scales
+runs. **On a non-touch device the same layer opens on a trackpad pinch (`INV-85`).** The desktop pinch
+— Safari's `gesturestart`/`gesturechange`, Blink's `ctrl`+wheel, the gesture EX-PROTECT hands over
+rather than dropping — opens the inspect layer over the same picture selectors and drives its scale
+under the same 1×–4× clamp; a plain wheel stays navigation
+(EX-GLIDE), so the plain-scroll-navigates / pinch-inspects split is clean. **The scale carries concrete
+units.** A `ctrl`+wheel `deltaY` (Blink) and a `gesturechange` scale delta (Safari) accumulate into the
+very 1×–4× scale the touch pinch drives, so the dismiss threshold is one value in that accumulated-scale
+unit — the same ~0.82× at-rest threshold the touch pinch uses (`INV-82`). **The target is resolved
+before anything opens, derived from EX-HANG.** A trackpad pinch does not move the cursor, so the picture
+under the pointer wins; if the pointer is over no picture, the single work currently in the viewport is
+the target (one work per viewport, EX-HANG); if neither resolves, nothing opens and the browser's own
+viewport zoom stays refused (EX-PROTECT) — the desktop mirror of INV-81's pinch-on-no-picture. Entry and
+exit mirror by the very FLIP the touch pinch uses (`INV-82`) and travel the one honest road out
+(`INV-83`): a pinch-IN — a continued squeeze past the dismiss threshold — closes through the single
+history step, and ×, Esc, a backdrop tap, and the browser's Back all still close. **A physical
+`Ctrl`+mouse-wheel counts too (Blink).** On Blink a physical `Ctrl`+wheel is indistinguishable from a
+trackpad pinch, so it too drives the zoom, discretely — wheel notches accumulate into the scale, and a
+`ctrl`+wheel in the squeeze/shrink direction past 1× dismisses; the zoom-open's `history.pushState` is
+guarded against a rapid open→immediate-dismiss race so `history.back` never pops the walk's own history
+step. A plain wheel-only mouse is untouched — it navigates and never opens
+the zoom. **The trigger reaches every picture, the small ones included, and the opening pinch scales
 directly (`INV-81`).** A polaroid is a small print — two fingertips never both fit on it — so the pinch
 matches when EITHER finger stands on the picture: the trigger reads the element under each touch point,
 not only the event's own target, and on the polaroid table the WHOLE print, paper frame included, is the
@@ -598,22 +644,34 @@ serves it — one machinery, never a parallel copy. **Once enlarged past 1×, a 
 image by the finger's travel, bounded so it can never be dragged past its own edge — the offset is
 clamped to the visible overflow at the current scale, so a corner is reachable but the picture never
 leaves a gap. Pinching back toward 1× re-tightens that bound and a release at 1× recentres the image
-flat. **The way OUT mirrors the way IN, and a full pinch-out dismisses (`INV-82`).** The layer enters
+flat. **On the desktop the same pan is a mouse drag** — once enlarged past 1×, a drag inside the open
+zoom layer pans the picture the desktop way, the direct equivalent of the one-finger touch pan under the
+same bound (`INV-76`). **The way OUT mirrors the way IN, and a full pinch-in dismisses (`INV-82`).** The layer enters
 and leaves by the same motion reversed: on open the picture scales UP from its own place on the wall (or
 the door window, or the side-room print) into the zoom, and on close it scales back DOWN to that same
 place — a reverse of the entry, so nothing jumps at either end. And the pinch that opens is answered by
 the pinch that closes: once the picture is settled back at 1×, continuing to pinch inward past a small
 threshold dismisses the layer on its own and returns to what stood beneath, so the visitor never has to
-reach for the × to leave; the × stays present and pressable the whole time. **One honest road out
-(`INV-83`).** The zoom lays a single browser-history step as it opens, and every way out travels that one
+reach for the × to leave; the × stays present and pressable the whole time. **A rotation under the open
+zoom re-measures the source (`INV-86`).** A portrait↔landscape turn while the layer stands re-reads the
+picture's place in the new viewport at once, so the exit — and a re-open — still flies to and from the
+right spot rather than a stale rect (the close-time re-measure of `INV-82`, made live on the turn). An
+orientation change arriving mid-tween — during the zoom's own entry or exit scale — lets that tween
+finish first and only then re-measures the source in the new viewport (`INV-86`), so the FLIP is never
+measured against a moving rect. **A zoom-open mid-glide settles the glide first (`INV-82`).** If the
+walk is still gliding when the zoom opens, the running glide is settled — snapped to its target frame —
+before the entry is measured, so the entry FLIP reads that settled frame's rect rather than a
+mid-motion one. **One honest road out (`INV-83`).** The zoom lays a single browser-history step as it opens, and every way out travels that one
 step — the ×, a tap on the dark backdrop, Esc, the dismissing pinch, and the browser's own Back button
 all close the zoom through it, the same honest road the side room's close already walks (EX-SERIES). The
 zoom's step sits above any face already standing, so a Back press is consumed by the zoom first and the
 room or door beneath only once the zoom has left (a zoom-close raises no walk-exit or series beat), and
 Back returns from the picture to the surface it was opened over — the walk, the standing side room, or
 the door — instead of navigating the page beneath.
-*Facets:* touch only — a desktop trackpad pinch is a Ctrl-wheel, already refused (EX-PROTECT),
-and never opens the layer, so a mouse visitor is unaffected; a near-1× release settles the image flat
+*Facets:* touch AND desktop trackpad — a two-finger touch pinch and a non-touch trackpad pinch both
+open the layer (`INV-85`; the trackpad pinch on the picture under the pointer, EX-PROTECT handing the
+gesture over), while a plain wheel-only mouse is unaffected and navigates only; a near-1× release
+settles the image flat
 and centred; the dismissing pinch fires below a scale threshold on release `[default]`; under reduced
 motion the entry and exit scale collapse to an instant swap, matching the layer's own fade; the pan
 starts only on the picture itself, so a tap on the dark backdrop still closes;
@@ -622,10 +680,13 @@ down (EX-SERIES), the two-finger pinch inspects, and closing the zoom returns th
 a lifted print still lifted (the face law above); accessibility — the × is a real ≥44px button with an
 `aria-label`, Esc closes, and the layer is
 `role=dialog aria-modal`; reduced motion — the layer's fade collapses with the tempo. *Non-goals:* a
-zoom affordance for desktop mouse (pinch is the gesture asked for); persisting a zoom across works;
-panning while at 1× (there is nothing beyond the frame to reveal); a dismiss gesture for the desktop
-mouse (the pinch-out is a touch gesture, and the × already serves every visitor). *Regression fences:*
-the walk's single-finger paginated pan, the class pinch refusal (EX-PROTECT), the tap-lift and exact
+zoom affordance for a plain wheel with NO modifier — a plain wheel always navigates and never zooms,
+while a `ctrl`+wheel, a trackpad pinch, and a touch pinch each open the zoom (the `ctrl`+wheel
+discretely, notch by notch), and the × serves every visitor; persisting a zoom across works;
+panning while at 1× (there is nothing beyond the frame to reveal). *Regression fences:*
+the walk's single-finger paginated pan, the class refusal of the browser's OWN viewport zoom (EX-PROTECT
+— now the gesture is handed to this layer, not dropped), the plain wheel still walking one frame
+(EX-GLIDE/`INV-84`), the tap-lift and exact
 return of the side room (EX-SERIES), the pan bound (INV-76), the exact-as-left restore on close (INV-75),
 the opening pinch that keeps scaling the layer directly the instant it stands (INV-81), the side room's
 own single history step and page-lock (EX-SERIES / INV-46), and the one-face-at-a-time law (INV-67 — the
@@ -635,7 +696,10 @@ enlarged with the picture scaling UP into place, the SAME opening gesture alread
 second pinch, no arming tap) and the browser never zooming the page; a one-finger drag on a zoomed
 picture moves it within its bounds and never past its edge; a full pinch-in at 1× closes the layer with
 the picture scaling back DOWN to its place, and the browser's Back button closes the zoom to the surface
-it was opened over rather than leaving the page `[default]`. `EX-ZOOM` `INV-75` `INV-76` `INV-81` `INV-82` `INV-83`
+it was opened over rather than leaving the page. On the DESKTOP: a trackpad pinch-OUT over a picture
+opens and scales it (`INV-85`), a trackpad pinch-IN past the threshold dismisses it, and a plain
+two-finger scroll still walks the frames and never opens the zoom; a device rotation with the zoom open
+keeps the picture correctly placed and its exit still landing on the source (`INV-86`) `[default]`. `EX-ZOOM` `INV-75` `INV-76` `INV-81` `INV-82` `INV-83` `INV-85` `INV-86`
 
 **Two interactive controls never share a spot (EX-CHROME).** Each control a hand can press has a place of
 its own; no two of them occupy the same spot at once. The boundary is drawn by kind: passive
@@ -1258,14 +1322,14 @@ the worker.
 | `EX-LANG` | The corner language selector on the door |
 | `EX-HANG` | The gallery: one work per viewport, caption in the margin |
 | `EX-ACCENT` | The breathing ground and live accent |
-| `EX-GLIDE` | One input → one centered frame — sine in-out, no drift; desktop animator, touch snap |
+| `EX-GLIDE` | One input gesture → EXACTLY one centered frame — sine in-out, no drift; force scales the single glide's SPEED, never the count (`INV-84`); desktop animator, touch snap; survives a device rotation (`INV-86`) |
 | `EX-CHROME` | One page shape for the browser on every face: the root overflow cut is retired as a lock; every standing face (the re-opened door included) rests input + hides the scrollbar gutter-stable, with a snap-back guard correcting any scroll the house did not write |
 | `EX-SHARE-BTN` | The floating share button (fixed chrome): copies the in-view work's room permalink, never navigates |
 | `EX-SHARE-IN` | The permalink arrival: `#w-<id>` as a handed-over pick |
 | `EX-SHARE` | The share feature as a whole |
 | `EX-SOUND` | The ambient loop: off by default, lazy fetch, credit from config |
 | `EX-SOUND-PAUSE` | Pause holds the moment; resume continues from it |
-| `EX-PROTECT` | The gracious deterrent (desktop right-click → gift ceremony; drag/touch → gift toast; pinch → silent refuse) |
+| `EX-PROTECT` | The gracious deterrent (desktop right-click → gift ceremony; drag/touch → gift toast; a pinch has the browser's viewport-zoom refused but the GESTURE handed to our own zoom — touch and desktop trackpad alike, EX-ZOOM/`INV-85`) |
 | `EX-PROTECT-GIFT` | The gift ceremony: the picture is offered on a solemn card, handed over only on a yes |
 | `EX-PROTECT-RES` | The clean shown image; the site-host mark rides only a taken copy (client canvas / prize / capped serve) |
 | `EX-QUIZ` | The work's public four-option question + plaque chip (placement config knob; one per show) |
@@ -1361,13 +1425,16 @@ the worker.
 | `INV-73` | The one-ahead preload: while a work rests in view the NEXT work in the current direction of travel is fetched at the device tier (the walk's own `srcset`/`sizes`, INV-63) — exactly `preload_ahead` (default 1) ahead, never the arc (INV-25/INV-30); best-effort and silent (a failed preload surfaces nothing and the in-view ladder still catches the step), abandoned cleanly on a turn or `#w-` jump and re-aimed to the new direction of travel; client-only, no bake output, no worker, no flag |
 | `INV-71` | The full circle retires the hand: once every work of the standing walk's current hang (`order.slice(0, shown)`, spread + unfolds) has stood in view — counted the moment the mark is made, in-session marks joined with the persisted seen copy — the next door render (the exit control, a browser-Back onto the door, or a returned-door reload, all alike) retires the standing hand and deals a fresh `EX-DOOR-3` hand; the consumed circle (pick + shown) rides the versioned `ex.hand` so one circle earns exactly one deal (door↔walk never re-rolls, a new pick or a post-circle unfold reopens the count); an unconsumed circle outranks the reload refresh once, then the reload law resumes; a circle-less older hand reads as no circle consumed and a stale-versioned hand drops whole (`INV-26`); on this one point `INV-32a`'s as-it-stood yields; short of a circle the standing-set law (`INV-16`/`EX-DOOR-2d`) holds |
 | `INV-74` | The diverse door keeps a browser-local, versioned, `?reset`-forgettable memory of the works it has DEALT, and every open guarantees at least `fresh_min` of the windows dealt for the current fit are works not dealt since the last round reset — jointly with the place fraction, so at least `⌈fresh_min·n⌉+⌈place_min·n⌉−n` shown windows are both unseen and place; when the unseen pool cannot supply the fresh floor or that overlap the memory clears and a new round begins, the just-dealt set replacing it (a normal open unions in). This novelty floor supersedes the curated door's ⌊door_size/3⌋-repeat law (`INV-20`) here |
-| `INV-75` | A two-finger pinch on any exhibition picture opens it enlarged in its own zoom layer that scales with the pinch, with a close control (×, backdrop tap, Esc, a full pinch-out, or the browser Back — INV-82, INV-83) that returns to the surface it was opened over exactly as it was; the browser's own page zoom never fires |
+| `INV-75` | A two-finger pinch on any exhibition picture opens it enlarged in its own zoom layer that scales with the pinch, with a close control (×, backdrop tap, Esc, a full pinch-in, or the browser Back — INV-82, INV-83) that returns to the surface it was opened over exactly as it was; the browser's own page zoom never fires. *Numbering note: this zoom-base invariant is `INV-75` in the engine and the door-novelty is `INV-74`; the tlvphotos mirror swaps the two numbers — not renumbered here, the de-fork reconciles the offset* |
 | `INV-76` | Once a picture is zoomed past 1× in the zoom layer, a one-finger drag pans it by the finger's travel, the offset clamped to the picture's visible overflow at the current scale so a corner is reachable yet the image never leaves its frame; pinching toward 1× re-tightens the bound and a release at 1× recentres it |
 | `INV-77` | No two pressable controls occupy the same screen spot, and no control or layout shifts when the zoom opens (the picture's own entry scale-up, INV-82, is the sole motion): the zoom holds only the picture and a single close, which takes the free top-left corner (new to the zoom), in the same round chrome style as the walk's own controls. The zoom carries no share of its own — a visitor shares a work from the walk itself. Under EVERY covering face — the door, the side room, the gift/farewell card, the question card, and the zoom — the ambient player retracts (opacity to zero, pointer-events off, its music playing on), so nothing pressable floats over the cover. Passive decoration may overlap anything; only pressable controls may not |
 | `INV-78` | The door tells the visitor there is more: leaving a walk to the door shows a farewell line («the rest is still hanging, come again»), and a cold arrival from a browser that has walked here before shows a welcome-back line below the ask, the daypart greeting kept whole. A first-ever visitor sees neither, only the ordinary greeting. One local flag remembers the browser has walked; the lines are localized museum-quiet copy naming no work/axis/count, honest wherever the collection outlasts one walk |
 | `INV-81` | The pinch-to-inspect trigger reaches every exhibition picture including the small ones: it matches when either finger of the pinch stands on the picture (reading the element under each touch point, not only the event's target), the whole polaroid print — paper frame included — is the picture's hit area, and the very gesture that opens the layer keeps scaling it, with no second pinch and no arming tap; a pinch with no finger on any picture opens nothing |
-| `INV-82` | The zoom layer's way out mirrors its way in: on open the picture travels and scales UP from its own place (the wall work, the door window, or the side-room print) into the layer, and on close it scales back DOWN to that same place — a reverse of the entry — so the size moves continuously at both ends. The entry is a position/origin animation only: the live two-touch distance stays the sole authority over scale throughout (INV-81 unbroken), and the from-place motion never tweens scale against the finger. The picture scales and never fades; only the dark backdrop fades in and out, so the size moves while the ground dims. Once the picture is back at 1×, continuing to pinch inward previews the scale-down toward its place, a release below the scale threshold commits the dismiss and returns to what stood beneath, and pinching back above the threshold before lift cancels it; the × stays present and pressable throughout. If the viewport changed under the zoom, close scales down to the source's freshly-measured place in the new viewport, taken as the beneath-face's re-centre (EX-COMPOSE) — one settle. Under reduced motion the entry and exit scale collapse to an instant swap |
-| `INV-83` | The zoom lays a single browser-history step as it opens, sitting ABOVE any face already standing, and every close travels that one step — the ×, a backdrop tap, Esc, the dismissing pinch-out, and the browser's own Back button all close the zoom through it (the same history-backed road the side room's close walks, EX-SERIES). A Back press is consumed by the topmost face alone (the zoom first, then the room or door beneath, each face's popstate branch firing only when it is the standing top), and a zoom-close popstate raises no walk_exit or series beat. Close returns from the picture to the surface it was opened over — the walk for a hung work, the standing side room for a print, the standing door for a window — restoring that surface exactly as it stood; a forward step reopens the zoom |
+| `INV-82` | The zoom layer's way out mirrors its way in: on open the picture travels and scales UP from its own place (the wall work, the door window, or the side-room print) into the layer, and on close it scales back DOWN to that same place — a reverse of the entry — so the size moves continuously at both ends. The entry is a position/origin animation only: the live two-touch distance stays the sole authority over scale throughout (INV-81 unbroken), and the from-place motion never tweens scale against the finger. The picture scales and never fades; only the dark backdrop fades in and out, so the size moves while the ground dims. Once the picture is back at 1×, continuing to pinch inward previews the scale-down toward its place, a release below the scale threshold commits the dismiss and returns to what stood beneath, and pinching back above the threshold before lift cancels it; the × stays present and pressable throughout. If the viewport changed under the zoom, close scales down to the source's freshly-measured place in the new viewport, taken as the beneath-face's re-centre (EX-COMPOSE) — one settle, and a rotation WHILE the zoom stands re-measures the source live so entry/exit stay true (`INV-86`). The same mirror serves a desktop trackpad-pinch open/close (`INV-85`). Under reduced motion the entry and exit scale collapse to an instant swap |
+| `INV-83` | The zoom lays a single browser-history step as it opens, sitting ABOVE any face already standing, and every close travels that one step — the ×, a backdrop tap, Esc, the dismissing pinch-in, and the browser's own Back button all close the zoom through it (the same history-backed road the side room's close walks, EX-SERIES). A Back press is consumed by the topmost face alone (the zoom first, then the room or door beneath, each face's popstate branch firing only when it is the standing top), and a zoom-close popstate raises no walk_exit or series beat. Close returns from the picture to the surface it was opened over — the walk for a hung work, the standing side room for a print, the standing door for a window — restoring that surface exactly as it stood; a forward step reopens the zoom. The same one road serves a desktop trackpad-pinch dismiss (`INV-85`) |
+| `INV-84` | One continuous input gesture — one wheel burst, one touch swipe, one arrow press — advances EXACTLY ONE frame, always; the gesture's velocity sets that single glide's DURATION within a clamped range (calm ~520ms → sharp ~260ms `[default]`), never a second frame — the earlier two-frame flick allowance is retired. The desktop animator coalesces a whole trackpad burst (rising tail and all) to one step and reads velocity for the speed; the touch path holds one-swipe-one-frame by `scroll-snap-stop:always` and carries the same force→speed feel through native momentum. Uniform on the desktop wheel path and the touch swipe path |
+| `INV-85` | On a non-touch (desktop) device a trackpad pinch opens and drives the SAME inspect/zoom layer a two-finger touch pinch opens (`INV-75`), on the picture under the POINTER over the same picture selectors (the ZOOM picture-selector set) — and where the pointer is over no picture, the single work then in the viewport (one work per viewport, EX-HANG), else nothing opens — scaling continuously under the same 1×–4× clamp; a `ctrl`+wheel `deltaY` (Blink) and a `gesturechange` scale delta (Safari) accumulate into that clamp, and a pinch-IN past the dismiss threshold (the same ~0.82× at-rest value touch uses) closes it through the one history step (`INV-83`) and ×/Esc/backdrop/browser-Back all still close; entry and exit mirror by the same FLIP as touch (`INV-82`). The input split is clean: a plain wheel is navigation (EX-GLIDE/`INV-84`), a `ctrl`+wheel / trackpad pinch is zoom (EX-PROTECT hands the gesture over rather than refusing it, latched at the burst's first event); a physical `Ctrl`+mouse-wheel is indistinguishable from a pinch on Blink and drives the zoom discretely; a plain wheel-only mouse never opens the zoom |
+| `INV-86` | The walk and the open zoom survive a device rotation: a portrait↔landscape orientation change is caught as its own event (not merely a resize), the frame stops recompute against the new viewport so the currently-docked frame stays centred under the eye with one-gesture-one-frame intact (`INV-84`), and if the inspect layer stands its source rect re-measures live so entry and exit still fly to the right place (`INV-82`); a rotation under another standing face keeps the face laws (`INV-67`). Mid-motion is honoured: a rotation arriving while a glide is in flight cancels the glide to a dock at its target frame before the stops recompute, and a rotation during a zoom entry/exit tween lets that tween finish, then re-measures the source |
 
 ### Reconciliation log — how each behavior above landed in code
 

@@ -824,25 +824,37 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     write(OUT / "sitemap.xml", "\n".join(sm) + "\n")
 
     # robots: preview host is closed entirely; production welcomes SEARCH crawlers (his traffic)
-    # but blocks AI-TRAINING scrapers from harvesting the photographs (his protection stance —
-    # pairs with the mark-split/gift ceremony). Search bots (Googlebot/Bingbot/…) stay under "*".
+    # AND the AI SEARCH/answer bots that retrieve to cite a live query (so the exhibition can be
+    # found and cited by ChatGPT/Perplexity), but blocks AI-TRAINING scrapers from harvesting the
+    # photographs into model datasets (his protection stance — pairs with the mark-split/gift
+    # ceremony). Regular search bots (Googlebot/Bingbot/…) stay allowed under "*"; so do the
+    # retrieval bots, which are simply left OFF the block list below.
     is_preview = "pages.dev" in site_url
     if is_preview:
         robots = f"User-agent: *\nDisallow: /\nSitemap: {site_url}/sitemap.xml\n"
     else:
-        ai_bots = [
-            "GPTBot", "ChatGPT-User", "OAI-SearchBot",            # OpenAI
-            "ClaudeBot", "anthropic-ai", "Claude-Web",            # Anthropic
-            "Google-Extended",                                     # Google AI (NOT Googlebot — search stays)
-            "Applebot-Extended",                                   # Apple AI (NOT Applebot — search stays)
-            "CCBot",                                               # Common Crawl (feeds many AI datasets)
-            "Bytespider",                                          # ByteDance
-            "PerplexityBot", "Amazonbot", "cohere-ai",
-            "meta-externalagent", "FacebookBot",                   # Meta AI
-            "ImagesiftBot", "Diffbot", "Omgilibot", "YouBot", "Timpibot",
+        # AI-TRAINING crawlers — feed a model's training set → blocked (protect the photographs).
+        # The retrieval/answer bots that only fetch to cite a live query (ChatGPT-User,
+        # OAI-SearchBot, PerplexityBot) are deliberately NOT here, so "*" allows them.
+        training_bots = [
+            "GPTBot",                                              # OpenAI training crawler
+            "ClaudeBot", "anthropic-ai", "Claude-Web",            # Anthropic training / legacy
+            "Google-Extended",                                     # Gemini training+grounding (Googlebot still indexes for search + AI Overviews)
+            "Applebot-Extended",                                   # Apple training opt-out (NOT Applebot — search stays)
+            "CCBot",                                               # Common Crawl (feeds many AI training sets)
+            "Bytespider",                                          # ByteDance training
+            "Amazonbot", "cohere-ai",                              # Amazon / Cohere training
+            "meta-externalagent", "FacebookBot",                   # Meta AI training
+            "ImagesiftBot", "Diffbot", "Omgilibot", "YouBot", "Timpibot",  # image/data scrapers
         ]
-        blocks = "".join(f"User-agent: {b}\nDisallow: /\n\n" for b in ai_bots)
-        robots = f"User-agent: *\nAllow: /\n\n{blocks}Sitemap: {site_url}/sitemap.xml\n"
+        header = (
+            "# tlvphotos crawl policy\n"
+            "# ALLOWED: normal search crawlers + AI SEARCH bots that retrieve to cite a live query\n"
+            "#   (ChatGPT-User, OAI-SearchBot, PerplexityBot) — so the exhibition is found & cited.\n"
+            "# BLOCKED: AI-TRAINING crawlers that would harvest the photographs into model datasets.\n\n"
+        )
+        blocks = "".join(f"User-agent: {b}\nDisallow: /\n\n" for b in training_bots)
+        robots = f"{header}User-agent: *\nAllow: /\n\n{blocks}Sitemap: {site_url}/sitemap.xml\n"
     write(OUT / "robots.txt", robots)
 
     # config.json — flags (AI OFF) + the exhibition feel-knobs (every one A/B-tunable, INV-28) +

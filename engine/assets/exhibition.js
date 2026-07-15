@@ -1565,6 +1565,11 @@
   // screen px; zPan* hold the gesture's start. The offset is bounded to the picture's visible overflow
   // so the image can never be dragged past its own edge.
   let zTx = 0, zTy = 0, zPanning = false, zPanX = 0, zPanY = 0, zPanTx = 0, zPanTy = 0;
+  // INV-85 desktop pinch (ctrl+wheel / Safari gesture*): accumulate into the SAME 1×–4× scale the touch
+  // pinch drives. zDesk holds the below-1× dismiss accumulator (starts at 1, a continued pinch-IN eases
+  // it down; at/below DISMISS_T it commits). zDismissing latches from the moment history.back() is asked
+  // until closeZoom runs, so a rapid open→dismiss race can never pop the walk's own history step twice.
+  let zDesk = 1, zDismissing = false;
   const zImg = zoom.querySelector(".exz-img");
   const zStage = zoom.querySelector(".exz-stage");
   const zReduce = matchMedia("(prefers-reduced-motion: reduce)");
@@ -1611,7 +1616,7 @@
     zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close
     const rect = el.getBoundingClientRect();
     zImg.src = src; zImg.alt = el.alt || "";
-    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zApply();
+    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zDesk = 1; zDismissing = false; zApply();
     zStage.style.transition = "none"; zStage.style.transform = "";
     zoom.hidden = false; zoomOpen = true;
     document.body.classList.add("ex-zoom");            // the player retracts too — the minimum on screen (INV-77)
@@ -1623,7 +1628,7 @@
   // dismissing pinch all go through history.back so Back and they share one road (INV-83).
   function closeZoom() {
     if (!zoomOpen) return;
-    zoomOpen = false;
+    zoomOpen = false; zDismissing = false; zDesk = 1;
     zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zApply();   // the exit scales from 1×
     const rect = (zSrcEl && document.body.contains(zSrcEl)) ? zSrcEl.getBoundingClientRect() : null;  // fresh place (rotation, INV-82)
     zoom.classList.remove("show");                     // backdrop fades; the player returns to its rail at once
@@ -1715,6 +1720,58 @@
     if (zoomOpen) { zPinch = zDist(e.touches); zStartS = 1; zPanning = false; }
   }, { passive: true });
 
+  // INV-85 target resolution (derived from EX-HANG): a trackpad pinch does not move the cursor, so the
+  // picture UNDER the pointer wins (the same ZOOM_SEL selector set); with the pointer over no picture the
+  // single work then in the viewport is the target (one work per viewport, EX-HANG); else nothing opens.
+  function zoomTargetAt(x, y) {
+    const el = document.elementFromPoint(x, y);
+    let hit = el && el.closest && el.closest(ZOOM_SEL);
+    if (hit) return hit.tagName === "IMG" ? hit : hit.querySelector("img");
+    if (restingEl && restingEl.querySelector) {          // no picture under the pointer → the viewport's one work
+      const img = restingEl.querySelector("img.work");
+      if (img) return img;
+    }
+    return null;
+  }
+  // INV-85: a ctrl+wheel `deltaY` accumulates into the very 1×–4× scale the touch pinch drives —
+  // deltaY<0 (pinch OUT) grows it, deltaY>0 (pinch IN) shrinks it; a rising scale OPENS #ex-zoom on the
+  // resolved picture, a pinch-IN past the ~0.82× dismiss threshold DISMISSES through the one history step.
+  const ZOOM_WHEEL_STEP = 0.0025;                        // scale change per |deltaY| unit of a ctrl+wheel / pinch
+  function pinchWheel(e) {
+    const dScale = -e.deltaY * ZOOM_WHEEL_STEP;          // OUT (deltaY<0) → +, IN (deltaY>0) → −
+    if (!zoomOpen) {
+      if (dScale <= 0) return;                           // a pinch-IN with nothing open opens nothing (INV-81 mirror)
+      const t = zoomTargetAt(e.clientX, e.clientY);
+      if (!t) return;                                    // no picture resolves → nothing opens (browser zoom stays refused)
+      openZoom(t);                                       // lays the one history step (INV-83) — the dismiss road
+      if (!zoomOpen) return;
+      zDesk = 1; zScale = Math.min(4, 1 + dScale); zApply();
+      return;
+    }
+    const ns = zScale + dScale;
+    if (ns < 1) {                                        // at/into 1× a continued pinch-IN previews the dismiss (INV-82)
+      zScale = 1; zTx = 0; zTy = 0; zApply();
+      zDesk = (zDesk < 1 ? zDesk : 1) + (ns - 1);
+      if (zDesk <= DISMISS_T && !zDismissing) { zDismissing = true; zDesk = 1; history.back(); }  // commit through the one road (INV-83)
+      return;
+    }
+    zDesk = 1;
+    zScale = Math.min(4, ns); zClampPan(); zApply();
+  }
+  // INV-76 desktop pan: once enlarged past 1×, a mouse drag inside the layer pans the picture — the
+  // direct equivalent of the one-finger touch pan, under the same edge-bounded clamp (zClampPan).
+  zStage.addEventListener("mousedown", (e) => {
+    if (!zoomOpen || zScale <= 1) return;
+    e.preventDefault();
+    zPanning = true; zPanX = e.clientX; zPanY = e.clientY; zPanTx = zTx; zPanTy = zTy;
+  });
+  addEventListener("mousemove", (e) => {
+    if (!zoomOpen || !zPanning) return;
+    zTx = zPanTx + (e.clientX - zPanX); zTy = zPanTy + (e.clientY - zPanY);
+    zClampPan(); zApply();
+  });
+  addEventListener("mouseup", () => { if (zPanning) zPanning = false; });
+
   function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
     const img = ev.target.closest && ev.target.closest(".exh-frame img.work");
     if (!img) return;                                      // only the hung work; chrome is left alone
@@ -1737,6 +1794,46 @@
   // drag — both refused document-wide here. Double-tap zoom: blocked by `touch-action:manipulation`
   // (CSS) since iOS IGNORES the viewport's user-scalable=no. On Blink the viewport meta also pins
   // scale to 1. Silent — a pinch is exploratory, not a save, so no gift line, only no zoom.
+  // INV-85: Safari fires gesturestart/gesturechange/gestureend for a trackpad pinch (Blink does not —
+  // its equivalent is the ctrl+wheel above). We preventDefault ALWAYS so the browser never viewport-
+  // zooms (EX-PROTECT), and on a NON-touch device drive the SAME inspect layer from `ev.scale`: the
+  // gesture's live scale (× the scale at gesturestart) accumulates into the 1×–4× clamp, and a pinch-IN
+  // past the dismiss threshold closes through the one history step. (Headless Blink dispatches no
+  // gesture* events, so this path is verified only on a real Mac — named in the test's real-device set.)
+  let gStart = 1;
+  function onGestureStart(ev) {
+    ev.preventDefault();
+    if (TOUCHY) return;                                  // touch Safari uses the touch pinch path above
+    gStart = zoomOpen ? zScale : 1;
+    if (!zoomOpen) {
+      const x = ev.clientX || innerWidth / 2, y = ev.clientY || innerHeight / 2;
+      const t = zoomTargetAt(x, y);
+      if (t) { openZoom(t); gStart = 1; zDesk = 1; }
+    }
+  }
+  function onGestureChange(ev) {
+    ev.preventDefault();
+    if (TOUCHY || !zoomOpen) return;
+    const target = gStart * (ev.scale || 1);
+    if (target < 1) {                                    // pinch-IN past 1× → preview / commit the dismiss (INV-82)
+      zScale = 1; zTx = 0; zTy = 0; zApply();
+      zDesk = target;
+      if (zDesk <= DISMISS_T && !zDismissing) { zDismissing = true; zDesk = 1; history.back(); }
+      return;
+    }
+    zDesk = 1; zScale = Math.min(4, target); zClampPan(); zApply();
+  }
+  function onGestureEnd(ev) {
+    ev.preventDefault();
+    if (!TOUCHY && zoomOpen && zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }  // near-1 release settles flat
+  }
+  document.addEventListener("gesturestart", onGestureStart, { passive: false });
+  document.addEventListener("gesturechange", onGestureChange, { passive: false });
+  document.addEventListener("gestureend", onGestureEnd, { passive: false });
+  // EX-PROTECT belt: the SAME three gesture events also carry a flat preventDefault-only guard, so on
+  // ANY device — touch Safari included, where the INV-85 handlers early-return on TOUCHY — the browser's
+  // own viewport pinch-zoom is refused document-wide. The INV-85 handlers layer the app-zoom on top; this
+  // pair keeps the raw browser gesture from ever scaling the viewport (the walk desyncs if it does).
   function onPinch(ev) { ev.preventDefault(); }
   ["gesturestart", "gesturechange", "gestureend"].forEach((g) =>
     document.addEventListener(g, onPinch, { passive: false }));
@@ -2053,6 +2150,7 @@
   let glideRaf = null;
   let gliding = false;
   let glideGoal = null;                                // where the running transition is headed
+  let glideTargetEl = null;                            // the destination SECTION of the running glide (INV-86)
   function glideCancel() {
     if (glideRaf) { cancelAnimationFrame(glideRaf); glideRaf = null; }
     gliding = false;
@@ -2060,20 +2158,33 @@
   }
   // the one fixed transition: a sine in-out over one tempo-scaled clock. Monotonic 0→1 with both
   // ends soft — it provably cannot overshoot, so it ALWAYS lands centered on the frame, no bounce.
-  const GLIDE_MS = clampInt(EX.glide_ms, 520, 120, 2000);  // the one-frame dock feel (config knob, INV-28)
-  function glideToFrame(to /*, velocity */) {
+  const GLIDE_MS = clampInt(EX.glide_ms, 520, 120, 2000);  // a CALM gesture's one-frame dock (config knob, INV-28)
+  // INV-84: force scales the single glide's SPEED, never the count. A sharp gesture eases the glide
+  // down toward this floor; a calm one rides the full GLIDE_MS. Both land the SAME one frame, only the
+  // duration differs. Named knobs Alexander can tune (a config override, else the [default]s here).
+  const GLIDE_MS_SHARP = clampInt(EX.glide_ms_sharp, 260, 100, 2000);  // a SHARP gesture's shorter glide
+  const VEL_CALM = clampInt(EX.glide_vel_calm, 40, 0, 4000);    // |deltaY| peak at/below → the full calm glide
+  const VEL_SHARP = clampInt(EX.glide_vel_sharp, 480, 1, 8000); // |deltaY| peak at/above → the sharp floor
+  // map a gesture's force (wheel peak |deltaY|, touch swipe magnitude) to the glide DURATION within the
+  // clamped [GLIDE_MS_SHARP, GLIDE_MS] range — sharper → shorter (faster), still exactly one frame (INV-84).
+  function glideDur(velocity) {
+    const v = +velocity || 0;
+    const f = Math.max(0, Math.min(1, (v - VEL_CALM) / (VEL_SHARP - VEL_CALM)));
+    const base = GLIDE_MS - f * (GLIDE_MS - GLIDE_MS_SHARP);
+    // the clock still scales the base (EX-MOTION / INV-33); reduced motion collapses it near-instant
+    // (EX-MOTION-R). Capped ×1.5 so a slow tempo never makes the dock crawl.
+    return base * Math.min(1.5, TEMPO / 1.35);
+  }
+  function glideToFrame(to, velocity) {
     glideCancel();
     const from = scrollY;
     const d = to - from;
     if (Math.abs(d) < 2) { glideGoal = null; return; } // already centered — nothing to move
     glideGoal = to;
-    // duration rides the one clock (EX-MOTION / INV-33); reduced motion collapses it near-instant
-    // (EX-MOTION-R). Capped ×1.5 so a slow tempo never makes the dock crawl.
-    const dur = GLIDE_MS * Math.min(1.5, TEMPO / 1.35);
-    // PHASE-2 HOOK (a later tuning, NOT wired now): `velocity` (wheel/swipe force) will seed a
-    // faster launch here so a stronger input runs faster through the START yet still lands gently —
-    // capped at one extra frame, never a fly-through. Force is IGNORED in phase 1; the curve is
-    // identical for every input.
+    // INV-84: the gesture's velocity sets this single glide's duration (calm ~520ms → sharp ~260ms);
+    // a re-time mid-flight (a rising wheel peak) restarts from the current position to the same goal,
+    // so the position stays continuous and monotonic while only the speed changes — never a second frame.
+    const dur = glideDur(velocity);
     const ease = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
     const t0 = performance.now();
     gliding = true;
@@ -2109,30 +2220,49 @@
   }
   // one step = advance exactly ONE frame from where the walk is — or from where a running
   // transition is headed, so a second input CHAINS to the next frame, never re-rounds backward.
-  function stepFrame(dir /*, velocity */) {
+  function stepFrame(dir, velocity) {
     travelDir = dir < 0 ? -1 : 1;                        // the feet declare a direction (EX-LOAD-3)
-    const stops = frameStops();
+    const els = stage.querySelectorAll(".exh-frame, .exh-fin");
+    const stops = Array.prototype.map.call(els, frameCenter);
     if (!stops.length) return;
     const base = gliding && glideGoal != null ? glideGoal : scrollY;
     const k = Math.min(stops.length - 1, Math.max(0, nearestStop(stops, base) + dir));
-    glideToFrame(stops[k]);
+    glideTargetEl = els[k];                              // the destination SECTION — a mid-glide rotation docks HERE (INV-86)
+    glideToFrame(stops[k], velocity);
   }
   // the viewport metric moves under a RESTING walk (phone chrome collapses, a window resize) —
   // quietly re-dock the frame the eye is on to the new centre; mid-glide the landing already
   // rides fresh measurements, and the door/overlays own their own resize.
-  let redockT = null;
-  addEventListener("resize", () => {
-    if (!walkOwnsInput()) return;
-    clearTimeout(redockT);
-    redockT = setTimeout(() => {
-      if (!walkOwnsInput() || gliding) return;
-      // the target is the SECTION under the eye (fin included) re-measured fresh — nearest-by-
-      // old-pixels drifted a rotation at the finale back to work 7 (EX-COMPOSE, 2026-07-10)
-      const stops = frameStops();
-      if (restingEl) glideToFrame(frameCenter(restingEl));
-      else if (stops.length) glideToFrame(stops[nearestStop(stops, scrollY)]);
-    }, 180);
-  });
+  // INV-86: the walk survives a device rotation. A portrait↔landscape turn (caught as its OWN
+  // orientationchange beat, and via resize for a bare window change) recomputes the frame stops
+  // against the NEW viewport so the docked frame stays centred under the eye. A turn arriving while a
+  // glide is IN FLIGHT first cancels that glide to a dock at its TARGET frame (never a stale old-
+  // viewport stop), then recomputes — so the far side of the turn holds one-gesture-one-frame. With the
+  // zoom standing the walk beneath is re-docked too (invisibly, under the layer) so its exit lands true.
+  let turnT = null, turnTargetEl = null;
+  function onViewportTurn() {
+    if (gliding && glideTargetEl && document.body.contains(glideTargetEl)) {
+      turnTargetEl = glideTargetEl;                    // remember the destination across coalesced turn events
+      glideCancel(); glideGoal = null;                 // stop writing OLD-viewport positions at once
+    }
+    clearTimeout(turnT);
+    turnT = setTimeout(() => {                          // after the reflow — measure the fresh viewport
+      if (document.documentElement.classList.contains("ex-walk")) {
+        const stops = frameStops();
+        if (stops.length) {
+          let y;
+          if (turnTargetEl && document.body.contains(turnTargetEl)) { y = frameCenter(turnTargetEl); restingEl = turnTargetEl; }
+          else if (restingEl && document.body.contains(restingEl)) y = frameCenter(restingEl);
+          else y = stops[nearestStop(stops, scrollY)];
+          scrollTo(0, y);
+          guardHold = y;                               // if the zoom (a face) stands, hold the recomputed place beneath (EX-CHROME)
+        }
+      }
+      turnTargetEl = null;
+    }, 120);
+  }
+  addEventListener("resize", () => { if (walkOwnsInput() || gliding || zoomOpen) onViewportTurn(); });
+  addEventListener("orientationchange", onViewportTurn);   // a rotation is its OWN beat (INV-86), not merely a resize
   function walkOwnsInput() {                            // the door/ceremony/faces keep native —
     return document.documentElement.classList.contains("ex-walk")   // a standing face owns the
       && !atDoor && !busy && !sideOpen && !quizOpen && !giftOpen;   // input (EX-COMPOSE)
@@ -2211,12 +2341,36 @@
   // native free-scroll entirely, so there is no momentum left to "float" after the stop.
   let wheelLock = false;
   let wheelIdle = null;
-  let wheelPeak = 0;                                   // decaying envelope of the live gesture's |deltaY|
-  let wheelStepAt = 0;                                 // when the live gesture last fired a step
-  const RESWIPE_MS = 250;                              // a human's fastest deliberate re-swipe
+  let wheelPeak = 0;                                   // the live gesture's PEAK |deltaY| — the force→speed input
+  let wheelMode = null;                                // "walk" (plain wheel) | "zoom" (ctrl+wheel) — latched per burst
+  let wheelQuiet = false;                              // the burst has decayed to its floor after a real peak — a re-swipe gap
+  // INV-84 re-arm (thread the two bugs): one CONTINUOUS swipe advances ONE frame — its own ramp-in and
+  // its monotonically-decaying tail never re-step. A DELIBERATE second swipe (a genuine re-acceleration)
+  // must still step. The tell is a real quiet gap: after a swipe has actually peaked (wheelPeak past
+  // RESWIPE_PEAK), the stream decays to a low floor (RESWIPE_FLOOR) — THEN a rise back above RESWIPE_RISE
+  // is a new gesture. A single swipe's ramp-in can't trip it (wheelPeak isn't past its own peak yet, and
+  // quiet is only armed on the FALLING side); its decaying tail can't (it never rises). Both thresholds
+  // sit in the dead band between one swipe's tail (falls to ~2–6, never climbs) and a real re-swipe's
+  // rise (climbs back past ~20) — see test_glide rows 10 (one frame) & 11 (two frames).
+  const RESWIPE_PEAK = 20;                             // a burst must have crested this to count as a real swipe worth re-arming after
+  const RESWIPE_FLOOR = 12;                            // |deltaY| at/below (after that crest) → the stream has gone quiet
+  const RESWIPE_RISE = 20;                             // a rise back to/above this out of the quiet → a deliberate NEW swipe
   if (!TOUCHY) {
     addEventListener("wheel", (e) => {
-      if (e.ctrlKey) { e.preventDefault(); return; }   // a browser-zoom wheel (Ctrl / trackpad pinch) is not a walk step
+      // The burst boundary and the MEANING are both fixed at the first event: a mouse notch is one
+      // event, a trackpad swipe a decaying burst — an idle timer clears the lock only once all motion
+      // stops, so the NEXT gesture is genuinely fresh. The meaning is latched here and held for the
+      // whole coalesced burst, so a ctrl gained or lost mid-burst never flips it (EX-PROTECT/INV-85).
+      const fresh = !wheelLock;
+      clearTimeout(wheelIdle);
+      wheelIdle = setTimeout(() => { wheelLock = false; wheelPeak = 0; wheelMode = null; }, 150);
+      if (fresh) { wheelLock = true; wheelMode = e.ctrlKey ? "zoom" : "walk"; wheelPeak = 0; wheelQuiet = false; }
+      // INV-85 / EX-PROTECT: the browser's own ctrl-wheel (viewport) zoom is refused on EVERY ctrl+wheel.
+      // The old blunt guard was `if (e.ctrlKey) { e.preventDefault(); return; }` — a flat refusal. INV-85
+      // KEEPS that preventDefault (in the "zoom" branch just below) but now HANDS the same ctrl+wheel to
+      // our own inspect layer instead of dropping it: the browser still never viewport-zooms, and the
+      // gesture drives the app zoom. A plain wheel stays the walk — the split is clean.
+      if (wheelMode === "zoom") { e.preventDefault(); pinchWheel(e); return; }
       if (faceStands()) {                              // EX-CHROME: rest the walk's input behind a face
         if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // the face's own scroll / chrome stays native
         e.preventDefault(); return;                    // the overflow cut is gone — the rest holds the walk
@@ -2226,24 +2380,27 @@
           && e.target.closest("#ex-side, #ex-quiz-card, #ex-gift-card")) return;  // overlay scrolls
       e.preventDefault();                              // the walk is paginated, not free
       const mag = Math.abs(e.deltaY);
-      const now = performance.now();
-      // A trackpad swipe is a long burst; a mouse notch is one event. The lock coalesces a burst
-      // to ONE step — but the momentum tail can trail off for up to a second, and a NEW swipe
-      // fired during that tail must NOT be dropped. A fresh swipe shows up as a RISING magnitude
-      // over the decaying tail — BUT a light gesture's own RAMP-IN also rises (2→5→12→30…), and
-      // re-arming on it flew through half the gallery from one gentle swipe (the instance bug
-      // 2026-07-09). The rise therefore re-arms only after a human-paced beat since this gesture's
-      // step: no finger re-swipes within RESWIPE_MS, while a ramp-in rises within milliseconds of
-      // it. PHASE-2 HOOK: accumulate mag across the gesture here for a force→speed map.
-      const fresh = !wheelLock
-        || (mag > wheelPeak * 1.3 + 1 && now - wheelStepAt > RESWIPE_MS);
-      clearTimeout(wheelIdle);
-      wheelIdle = setTimeout(() => { wheelLock = false; wheelPeak = 0; }, 150);  // all motion stopped
-      if (!fresh) { wheelPeak = Math.max(mag, wheelPeak * 0.95); return; }  // same gesture's ramp/tail
-      wheelLock = true;
-      wheelPeak = mag;
-      wheelStepAt = now;
-      stepFrame(e.deltaY > 0 ? 1 : -1);
+      // INV-84: one continuous burst = EXACTLY one frame. Its rising ramp-in and its decaying tail only
+      // feed the single glide's SPEED (the sharper the burst, the shorter its one glide) — they never
+      // re-step. A DELIBERATE second swipe DOES step: it shows up as a re-acceleration OUT of a genuine
+      // quiet gap (the first swipe's tail died to a low floor, then a fresh rise). The old code re-armed
+      // on any rise > peak×1.3 and flew through the gallery on one gentle swipe's ramp-in; this arms
+      // `wheelQuiet` only on the FALLING side of a real crest, so a ramp-in can never trip it.
+      if (!fresh) {
+        if (wheelPeak >= RESWIPE_PEAK && mag <= RESWIPE_FLOOR) wheelQuiet = true;  // the burst has gone quiet
+        if (wheelQuiet && mag >= RESWIPE_RISE) {          // ...then re-accelerates → a genuinely new swipe, re-armed
+          wheelQuiet = false; wheelPeak = mag;
+          stepFrame(e.deltaY > 0 ? 1 : -1, mag);
+          return;
+        }
+        if (mag > wheelPeak) {
+          wheelPeak = mag;
+          if (gliding && glideGoal != null) glideToFrame(glideGoal, wheelPeak);
+        } else wheelPeak = Math.max(mag, wheelPeak * 0.95);
+        return;
+      }
+      wheelPeak = mag; wheelQuiet = false;
+      stepFrame(e.deltaY > 0 ? 1 : -1, mag);
     }, { passive: false });
   }
   // DESKTOP keys ARE the walk's step: space/↓/PageDown forward, ↑/PageUp (and shift+space) back —
