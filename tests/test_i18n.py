@@ -50,7 +50,7 @@ routes = json.loads(_routes_path.read_text(encoding="utf-8")) if _routes_exists 
 src = json.loads(_src_path.read_text(encoding="utf-8")) if _src_exists else {}
 vals = json.dumps(src, ensure_ascii=False)
 
-kv_pos = worker_src.find("TLV_I18N.get")
+kv_pos = worker_src.find("EX_I18N.get")
 model_pos = worker_src.find("api.anthropic.com")
 
 check("EX-I18N worker contract: routes only /api, sane-tag guard, cache before model, strict shape",

@@ -127,11 +127,11 @@ const scenario = JSON.parse(process.argv[2]);
 const workerPath = process.argv[3];
 const i18nBytes = readFileSync(process.argv[4]);
 
-// ---- KV stub (TLV_I18N) ----
+// ---- KV stub (EX_I18N) ----
 const kvMap = new Map();
 const kvPuts = [];  // all puts recorded here
 
-const TLV_I18N = {
+const EX_I18N = {
   async get(k) { return kvMap.has(k) ? kvMap.get(k) : null; },
   async put(k, v, opts) {
     kvMap.set(k, v);
@@ -202,7 +202,7 @@ const ASSETS = {
 
 // ---- Env stub ----
 const env = {
-  TLV_I18N,
+  EX_I18N,
   ANTHROPIC_API_KEY: 'test-key',
   ASSETS,
 };
@@ -526,7 +526,7 @@ const i18nBytes = readFileSync(process.argv[4]);
 const kvMap = new Map();
 const kvPuts = [];
 
-const TLV_I18N = {
+const EX_I18N = {
   async get(k) { return kvMap.has(k) ? kvMap.get(k) : null; },
   async put(k, v, opts) {
     kvMap.set(k, v);
@@ -566,7 +566,7 @@ globalThis.fetch = async function(url, init) {
   return new Response(i18nBytes, { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
 
-const env = { TLV_I18N, ANTHROPIC_API_KEY: 'test-key', ASSETS };
+const env = { EX_I18N, ANTHROPIC_API_KEY: 'test-key', ASSETS };
 
 const worker = await import(workerPath);
 const handler = worker.default;

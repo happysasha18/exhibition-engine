@@ -55,11 +55,11 @@ chk = subprocess.run([sys.executable, str(ROOT / "scripts" / "gen_greetings.py")
 # engine/assets/ holds exhibition.js and worker.js (adapted from assets_src/)
 js_src = (ROOT / "engine" / "assets" / "exhibition.js").read_text(encoding="utf-8")
 wsrc = (ROOT / "engine" / "assets" / "worker.js").read_text(encoding="utf-8")
-check("EX-SERIES the pill word rides the one chain (cache ×7 · validator · worker source · RU built-ins)",
+check("EX-SERIES the pill word rides the one chain (cache ×7 · validator · worker source · EN built-ins)",
       all((L.get("series") or "").strip() and (L.get("room_back") or "").strip()
           for L in langs.values())
       and chk.returncode == 0
-      and "«серия»" in js_src.replace('"серия"', "«серия»")
+      and '"series"' in js_src
       and '"series"' in wsrc and '"room_back"' in wsrc,
       f"langs_ok={all((L.get('series') or '').strip() for L in langs.values())} "
       f"check_rc={chk.returncode}")

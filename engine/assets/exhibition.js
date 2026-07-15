@@ -131,6 +131,13 @@
 
   // ---- feel knobs, all from config (INV-28) ---------------------------------
   const EX = cfg.exhibition || {};
+  // EX-I18N built-ins (INV-42): every one of these fires ONLY when the baked greet cache itself is
+  // entirely absent (a malformed/flag-off build) — the source tongue is ENGLISH, never a locale
+  // literal (SPEC "No Russian ever ships to a non-Russian walk").
+  const ASK_EN = "what feels closer now?";
+  const SERIES_EN = "series";
+  const ROOM_BACK_EN = "← room";
+  const MORE_EN = "{n} more";
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
@@ -902,7 +909,7 @@
   door.innerHTML =
     '<div class="exd-wm"></div>' +                    // brand from config.site_name (INV-28)
     '<div class="exd-greet" id="exd-greet" hidden></div>' +
-    '<div class="exd-ask">что ближе сейчас?</div>' +
+    '<div class="exd-ask">' + ASK_EN + '</div>' +   // real markup overwritten by renderDoor() before paint
     '<div class="exd-more" id="exd-more" hidden></div>' +   // EX-RETURN: "there is more" — a farewell at the exit, a welcome-back on a return
     '<div class="exd-facade" id="exd-facade"></div>';  // no silent entry — the pick IS the
   door.querySelector(".exd-wm").textContent = cfg.site_name || "";
@@ -934,7 +941,7 @@
     door.setAttribute("dir", L && L.t.dir === "rtl" ? "rtl" : "ltr");
     if (L) door.setAttribute("lang", L.code);
     else door.removeAttribute("lang");
-    door.querySelector(".exd-ask").textContent = L ? L.t.ask : "что ближе сейчас?";
+    door.querySelector(".exd-ask").textContent = L ? L.t.ask : ASK_EN;
     const g = door.querySelector("#exd-greet");
     const line = (cold && GPLACE !== "off" && L) ? greetLine(L.t) : "";
     g.textContent = line;
@@ -1268,7 +1275,7 @@
     // his words and the archive's facts only — never machine prose, never a readout (INV-1);
     // a REAL series (3+) grows its quiet pill — «серия · N», never the machine's theme (EX-SERIES)
     const serIdx = (typeof w.ser === "number" && SERIES[w.ser]) ? w.ser : null;
-    const serWord = ((greetLang() || { t: {} }).t.series) || "серия";
+    const serWord = ((greetLang() || { t: {} }).t.series) || SERIES_EN;
     // the wall label's three voices: the NAME, the told LINE (empty until the narrator speaks —
     // EX-STORY-LINE fills it from STORYLINES), the FACTS with a red dot when the work is sold
     cap.innerHTML =
@@ -2099,7 +2106,7 @@
     const spent = spentUnfolds() >= MAXU || shown >= order.length;
     const FL = greetLang();
     const FT = FL ? FL.t : {};
-    const moreLabel = (FT.more || "ещё {n}").replace("{n}", String(UNFOLD));
+    const moreLabel = (FT.more || MORE_EN).replace("{n}", String(UNFOLD));
     const fin = document.createElement("section");
     fin.className = "exh-fin"; fin.id = "exh-fin";
     if (FL) {
@@ -2585,7 +2592,7 @@
       st.appendChild(p);
     });
     const T = (greetLang() || { t: {} }).t;
-    side.querySelector(".exs-back").textContent = T.room_back || "← комната";
+    side.querySelector(".exs-back").textContent = T.room_back || ROOM_BACK_EN;
     side.hidden = false;
     document.body.classList.add("ex-side");            // the lock law, reused (EX-DOOR-2f)
     if (laystep !== false) pushFace({ face: "series", ser: idx });
@@ -2770,7 +2777,7 @@
     if (atDoor) {
       door.setAttribute("dir", T.dir === "rtl" ? "rtl" : "ltr");
       door.setAttribute("lang", L.code);
-      door.querySelector(".exd-ask").textContent = T.ask || "что ближе сейчас?";
+      door.querySelector(".exd-ask").textContent = T.ask || ASK_EN;
       const g = door.querySelector("#exd-greet");
       if (g && !g.hidden) g.textContent = greetLine(T) || g.textContent;
       return;
@@ -2790,7 +2797,7 @@
       const b = fin.querySelector("#ex-return");
       const q = fin.querySelector(".q");
       if (q) q.textContent = u ? (T.q_more || q.textContent) : (T.q_spent || q.textContent);
-      if (u) u.textContent = (T.more || "ещё {n}").replace("{n}", String(UNFOLD)) + " ↓";
+      if (u) u.textContent = (T.more || MORE_EN).replace("{n}", String(UNFOLD)) + " ↓";
       if (b) b.textContent = T.exit || b.textContent;
     }
   }

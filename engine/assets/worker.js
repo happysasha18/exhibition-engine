@@ -2,7 +2,7 @@
    `_routes.json` to /api/* ONLY, so every static byte stays pure CDN. It generates a language's
    FULL string set ONCE (Haiku, museum tone, strict shape — a malformed answer is never served),
    keeps it forever in KV under lang+version, and answers everyone after from the cache at $0.
-   Bindings the Pages project must carry: TLV_I18N (KV) · ANTHROPIC_API_KEY (secret) · ASSETS. */
+   Bindings the Pages project must carry: @@NS_UPPER@@_I18N (KV) · ANTHROPIC_API_KEY (secret) · ASSETS. */
 const TAG_RE = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/;
 const RTL = ["ar", "he", "fa", "ur", "yi", "iw", "dv", "ps", "ckb"];
 
@@ -50,18 +50,18 @@ function clientIp(req) {
 async function overRate(env, req) {
   const win = Math.floor(Date.now() / 3600000);  // hourly bucket
   const k = "rl:" + win + ":" + clientIp(req);
-  const n = parseInt((await env.TLV_I18N.get(k)) || "0", 10) + 1;
-  await env.TLV_I18N.put(k, String(n), { expirationTtl: 3600 });
+  const n = parseInt((await env.@@NS_UPPER@@_I18N.get(k)) || "0", 10) + 1;
+  await env.@@NS_UPPER@@_I18N.put(k, String(n), { expirationTtl: 3600 });
   return n > RL_PER_HOUR;
 }
 async function overBudget(env) {
   const k = "budget:" + new Date().toISOString().slice(0, 10);
-  return parseInt((await env.TLV_I18N.get(k)) || "0", 10) >= DAY_MODEL_CAP;
+  return parseInt((await env.@@NS_UPPER@@_I18N.get(k)) || "0", 10) >= DAY_MODEL_CAP;
 }
 async function chargeModelCall(env) {                 // count a call the moment we commit to it
   const k = "budget:" + new Date().toISOString().slice(0, 10);
-  const n = parseInt((await env.TLV_I18N.get(k)) || "0", 10) + 1;
-  await env.TLV_I18N.put(k, String(n), { expirationTtl: 172800 });
+  const n = parseInt((await env.@@NS_UPPER@@_I18N.get(k)) || "0", 10) + 1;
+  await env.@@NS_UPPER@@_I18N.put(k, String(n), { expirationTtl: 172800 });
 }
 function englishFrom(src, plainGreet) {                // the baked English, served AS the "translation";
   const titles = {};                                   // plainGreet = the dead-account English day —
@@ -81,13 +81,13 @@ function englishFrom(src, plainGreet) {                // the baked English, ser
 // a 5xx, or a network throw stays transient and never raises the flag. The TTL is the ~1h knob.
 const DEAD_KEY = "dead:model";
 const DEAD_TTL = 3600;
-async function modelDead(env) { return !!(await env.TLV_I18N.get(DEAD_KEY)); }
+async function modelDead(env) { return !!(await env.@@NS_UPPER@@_I18N.get(DEAD_KEY)); }
 function deathStatus(e) {                              // the throw carries "model <status>"
   const m = /^model (\d{3})/.exec((e && e.message) || "");
   const s = m ? +m[1] : 0;
   return (s >= 400 && s < 500 && s !== 429) ? s : 0;
 }
-async function markDead(env) { await env.TLV_I18N.put(DEAD_KEY, "1", { expirationTtl: DEAD_TTL }); }
+async function markDead(env) { await env.@@NS_UPPER@@_I18N.put(DEAD_KEY, "1", { expirationTtl: DEAD_TTL }); }
 
 export default {
   async fetch(req, env) {
@@ -104,7 +104,7 @@ export default {
     }
 
     const key = v + ":" + lang;
-    const hit = await env.TLV_I18N.get(key);            // cache first — one model call per
+    const hit = await env.@@NS_UPPER@@_I18N.get(key);            // cache first — one model call per
     if (hit) return json(hit);                          // language-version, ever (prover I6)
 
     const srcRes = await env.ASSETS.fetch(new URL("/i18n_source.json", url.origin));
@@ -123,10 +123,10 @@ export default {
     }
 
     const lock = "lock:" + key;                         // best-effort single flight (a burst
-    if (await env.TLV_I18N.get(lock)) {                 // warms, it never fans out)
+    if (await env.@@NS_UPPER@@_I18N.get(lock)) {                 // warms, it never fans out)
       return new Response("warming", { status: 503, headers: { "Retry-After": "3" } });
     }
-    await env.TLV_I18N.put(lock, "1", { expirationTtl: 60 });
+    await env.@@NS_UPPER@@_I18N.put(lock, "1", { expirationTtl: 60 });
 
     await chargeModelCall(env);                         // count it the moment we commit to the model
     let out;
@@ -141,7 +141,7 @@ export default {
       return new Response("model unavailable: " + ((e && e.message) || "?"), { status: 502 });
     }
     if (!validate(out, src)) return new Response("malformed", { status: 502 });
-    await env.TLV_I18N.put(key, JSON.stringify(out));
+    await env.@@NS_UPPER@@_I18N.put(key, JSON.stringify(out));
     return json(JSON.stringify(out));
   },
 };
@@ -153,7 +153,7 @@ async function visitor(req, env, url) {
   if (req.method === "GET") {
     const t = url.searchParams.get("t") || "";
     if (!TOKEN_RE.test(t)) return new Response("bad request", { status: 400 });
-    const rec = await env.TLV_I18N.get("v:" + t);
+    const rec = await env.@@NS_UPPER@@_I18N.get("v:" + t);
     return json(rec || '{"seen":[]}');
   }
   if (req.method === "PUT" || req.method === "POST") {
@@ -167,12 +167,12 @@ async function visitor(req, env, url) {
     }
     const adds = p.add.map(String).filter((x) => ID_RE.test(x)).slice(0, 100);
     let cur;
-    try { cur = JSON.parse((await env.TLV_I18N.get("v:" + t)) || '{"seen":[]}'); }
+    try { cur = JSON.parse((await env.@@NS_UPPER@@_I18N.get("v:" + t)) || '{"seen":[]}'); }
     catch (e) { cur = { seen: [] }; }
     const set = new Set(Array.isArray(cur.seen) ? cur.seen : []);
     for (const a of adds) set.add(a);
     const seen = Array.from(set).slice(-500);          // the cap keeps the NEWEST
-    await env.TLV_I18N.put("v:" + t, JSON.stringify({ seen }),
+    await env.@@NS_UPPER@@_I18N.put("v:" + t, JSON.stringify({ seen }),
                            { expirationTtl: 15552000 });
     return json(JSON.stringify({ ok: true, n: seen.length }));
   }
@@ -211,7 +211,7 @@ async function story(req, env) {
   // the ordered sequence hashes into a bounded KV key (a raw join can exceed KV's key limit)
   const seq = await sha256hex(known.join(","));
   const key = "s:" + STORY_PARAMS_VERSION + ":" + variant + ":" + lang + ":" + seq;
-  const hit = await env.TLV_I18N.get(key);            // cache first — one model call per walk, ever
+  const hit = await env.@@NS_UPPER@@_I18N.get(key);            // cache first — one model call per walk, ever
   if (hit) return json(hit);
 
   // EX-EDGE-GUARD: a cached walk is still served above; an UNCACHED one that would call the model
@@ -225,10 +225,10 @@ async function story(req, env) {
   }
 
   const lock = "lock:" + key;                         // best-effort single flight (a burst warms once)
-  if (await env.TLV_I18N.get(lock)) {
+  if (await env.@@NS_UPPER@@_I18N.get(lock)) {
     return new Response("warming", { status: 503, headers: { "Retry-After": "3" } });
   }
-  await env.TLV_I18N.put(lock, "1", { expirationTtl: 60 });
+  await env.@@NS_UPPER@@_I18N.put(lock, "1", { expirationTtl: 60 });
 
   await chargeModelCall(env);                          // count it the moment we commit to the model
   let out;
@@ -239,7 +239,7 @@ async function story(req, env) {
   }
   if (!validateStory(out, known)) return new Response("malformed", { status: 502 });
   const body = JSON.stringify({ story_variant: variant, lines: out.lines });
-  await env.TLV_I18N.put(key, body);
+  await env.@@NS_UPPER@@_I18N.put(key, body);
   return json(body);
 }
 
@@ -344,12 +344,12 @@ function json(body) {
 async function overQuizRate(env, req) {
   // No KV bound (e.g. a preview environment with no namespace) ⇒ skip the flood fence rather than
   // throw. A guess is a deterministic compare with no cost, so an unlimited fence loses nothing; this
-  // lets /api/quiz JUDGE with zero infra setup. Production keeps TLV_I18N and keeps the fence.
-  if (!env || !env.TLV_I18N) return false;
+  // lets /api/quiz JUDGE with zero infra setup. Production keeps @@NS_UPPER@@_I18N and keeps the fence.
+  if (!env || !env.@@NS_UPPER@@_I18N) return false;
   const win = Math.floor(Date.now() / 3600000);        // hourly bucket
   const k = "q:" + win + ":" + clientIp(req);
-  const n = parseInt((await env.TLV_I18N.get(k)) || "0", 10) + 1;
-  await env.TLV_I18N.put(k, String(n), { expirationTtl: 3600 });
+  const n = parseInt((await env.@@NS_UPPER@@_I18N.get(k)) || "0", 10) + 1;
+  await env.@@NS_UPPER@@_I18N.put(k, String(n), { expirationTtl: 3600 });
   return n > QUIZ_TRIES_PER_HOUR;
 }
 

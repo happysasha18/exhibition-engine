@@ -200,7 +200,7 @@ check("EX-QUIZ 4-option: one tap LOCKS; miss shows one line then fades; reopen r
 #       still JUDGES; production keeps the KV binding and keeps the fence.
 _oqr = (re.split(r"\n(?:async )?function ", worker_on.split("async function overQuizRate(", 1)[1])[0]
         if "async function overQuizRate(" in worker_on else "")
-kv_guard = "!env.TLV_I18N) return false;" in _oqr   # the graceful-degrade guard lives in the fence itself
+kv_guard = "!env.EX_I18N) return false;" in _oqr   # the graceful-degrade guard lives in the fence itself
 check("EX-QUIZ-EDGE (DELTA-8/1) attempt fence degrades gracefully when no KV is bound (preview/local still judges)",
       kv_guard, f"kv_guard={kv_guard}")
 

@@ -1014,6 +1014,10 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     quiz_answers = quiz_private if flags["quiz"] else {}
     if flags["ai_i18n"] or flags["visitor_memory"] or flags["ai_story"] or flags["quiz"]:
         worker_src = client_asset("worker.js").read_text(encoding="utf-8")
+        # EX-NS: the worker's KV binding rides the namespace (@@NS_UPPER@@_I18N → EX_I18N / TLV_I18N);
+        # a token-free instance worker is byte-copied unchanged (same rule as the client at write_js).
+        if "@@NS@@" in worker_src or "@@NS_UPPER@@" in worker_src:
+            worker_src = apply_namespace(worker_src, _NAMESPACE)
         worker_src = worker_src.replace(
             '/*__STORY_FRAGMENTS__*/{}/*__/STORY_FRAGMENTS__*/',
             json.dumps(story_fragments, ensure_ascii=False, sort_keys=True))
