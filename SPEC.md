@@ -598,23 +598,44 @@ serves it — one machinery, never a parallel copy. **Once enlarged past 1×, a 
 image by the finger's travel, bounded so it can never be dragged past its own edge — the offset is
 clamped to the visible overflow at the current scale, so a corner is reachable but the picture never
 leaves a gap. Pinching back toward 1× re-tightens that bound and a release at 1× recentres the image
-flat. *Facets:* touch only — a desktop trackpad pinch is a Ctrl-wheel, already refused (EX-PROTECT),
+flat. **The way OUT mirrors the way IN, and a full pinch-out dismisses (`INV-82`).** The layer enters
+and leaves by the same motion reversed: on open the picture scales UP from its own place on the wall (or
+the door window, or the side-room print) into the zoom, and on close it scales back DOWN to that same
+place — a reverse of the entry, so nothing jumps at either end. And the pinch that opens is answered by
+the pinch that closes: once the picture is settled back at 1×, continuing to pinch inward past a small
+threshold dismisses the layer on its own and returns to what stood beneath, so the visitor never has to
+reach for the × to leave; the × stays present and pressable the whole time. **One honest road out
+(`INV-83`).** The zoom lays a single browser-history step as it opens, and every way out travels that one
+step — the ×, a tap on the dark backdrop, Esc, the dismissing pinch, and the browser's own Back button
+all close the zoom through it, the same honest road the side room's close already walks (EX-SERIES). The
+zoom's step sits above any face already standing, so a Back press is consumed by the zoom first and the
+room or door beneath only once the zoom has left (a zoom-close raises no walk-exit or series beat), and
+Back returns from the picture to the surface it was opened over — the walk, the standing side room, or
+the door — instead of navigating the page beneath.
+*Facets:* touch only — a desktop trackpad pinch is a Ctrl-wheel, already refused (EX-PROTECT),
 and never opens the layer, so a mouse visitor is unaffected; a near-1× release settles the image flat
-and centred; the pan starts only on the picture itself, so a tap on the dark backdrop still closes;
+and centred; the dismissing pinch fires below a scale threshold on release `[default]`; under reduced
+motion the entry and exit scale collapse to an instant swap, matching the layer's own fade; the pan
+starts only on the picture itself, so a tap on the dark backdrop still closes;
 the side room's two gestures divide cleanly — a single tap still lifts a print to the light and sets it
 down (EX-SERIES), the two-finger pinch inspects, and closing the zoom returns the room exactly as left,
 a lifted print still lifted (the face law above); accessibility — the × is a real ≥44px button with an
 `aria-label`, Esc closes, and the layer is
 `role=dialog aria-modal`; reduced motion — the layer's fade collapses with the tempo. *Non-goals:* a
 zoom affordance for desktop mouse (pinch is the gesture asked for); persisting a zoom across works;
-panning while at 1× (there is nothing beyond the frame to reveal). *Regression fences:* the walk's
-single-finger paginated pan, the class pinch refusal (EX-PROTECT), the tap-lift and exact return of the
-side room (EX-SERIES), and the pan bound (INV-76) all stand untouched. *Success measure:* a two-finger
-pinch on a work, a door window, and a side-room polaroid — on the polaroid even with one finger landing
-on the table beside the small print — each opens the picture enlarged with a × that returns to the
-untouched page, the SAME opening gesture already scaling the image (no second pinch, no arming tap) and
-the browser never zooming the page; a one-finger drag on a zoomed picture moves it within its bounds and
-never past its edge `[default]`. `EX-ZOOM` `INV-75` `INV-76` `INV-81`
+panning while at 1× (there is nothing beyond the frame to reveal); a dismiss gesture for the desktop
+mouse (the pinch-out is a touch gesture, and the × already serves every visitor). *Regression fences:*
+the walk's single-finger paginated pan, the class pinch refusal (EX-PROTECT), the tap-lift and exact
+return of the side room (EX-SERIES), the pan bound (INV-76), the exact-as-left restore on close (INV-75),
+the opening pinch that keeps scaling the layer directly the instant it stands (INV-81), the side room's
+own single history step and page-lock (EX-SERIES / INV-46), and the one-face-at-a-time law (INV-67 — the
+zoom nests above a face without disturbing its step) all stand untouched. *Success measure:* a two-finger pinch on a work, a door window, and a side-room polaroid — on
+the polaroid even with one finger landing on the table beside the small print — each opens the picture
+enlarged with the picture scaling UP into place, the SAME opening gesture already scaling the image (no
+second pinch, no arming tap) and the browser never zooming the page; a one-finger drag on a zoomed
+picture moves it within its bounds and never past its edge; a full pinch-in at 1× closes the layer with
+the picture scaling back DOWN to its place, and the browser's Back button closes the zoom to the surface
+it was opened over rather than leaving the page `[default]`. `EX-ZOOM` `INV-75` `INV-76` `INV-81` `INV-82` `INV-83`
 
 **Two interactive controls never share a spot (EX-CHROME).** Each control a hand can press has a place of
 its own; no two of them occupy the same spot at once. The boundary is drawn by kind: passive
@@ -708,7 +729,9 @@ door without the entry fade (EX-DOOR-2b); the share button still leaves on the c
 door still hides it (EX-SHARE-BTN); every motion rides the one tempo (INV-33).* The laws of the meetings:
 - **One face stands over the walk at a time.** The faces are the side room (EX-SERIES), the question
   card (EX-QUIZ-REPLY), and the gift card (EX-PROTECT-GIFT); each opens only from a surface the others
-  cover, so two can never be summoned together. The one legal hand-off is the win: the question card
+  cover, so two can never be summoned together. The zoom (EX-ZOOM) is the one named exception: it opens
+  OVER a standing side room or door window and returns to that face on close, covering one face at a time
+  and never summoning a second beside it (INV-83). The one legal hand-off is the win: the question card
   passes INTO the gift ceremony as one continuous standing — ownership crosses in the same breath, and
   Esc always answers the face that stands at that moment.
 - **A standing face owns the input.** While any face stands, the walk beneath holds its frame: keys,
@@ -1330,7 +1353,7 @@ the worker.
 | `INV-65` | A miss shows one localized line then the card fades, leaving the photograph; a hit shows a localized praise line then the gift ceremony; the card sits over the visible photo (light scrim), tints to the work, mirrors the active locale's `dir` |
 | `INV-66` | Exactly one question per show — the chip placed on one work chosen per walk over the reachable∧unanswered set — and silenced while less than the cooldown window (`quiz_cooldown_hours`, ~6h) has passed since a show that asked; `quiz_probability` retired |
 | `INV-62` | The quiz A/B arm (`quiz_arm`: on/control, 50/50, session-stable off the visitor token) rides the existing `walk_unfold`/`walk_exit` beats as a dimension; null when the flag is off so the payload stays byte-for-byte today's |
-| `INV-67` | Faces-meet composition law: a standing face (quiz card, gift card, side room) owns the walk's input; the last face leaving discharges an instant re-centre to the live viewport; the card is viewport-honest; the closing screen is a stop |
+| `INV-67` | Faces-meet composition law: a standing face (quiz card, gift card, side room) owns the walk's input; the last face leaving discharges an instant re-centre to the live viewport; the card is viewport-honest; the closing screen is a stop. The zoom is the one face that opens OVER another — a pinch on a side-room print or a door window raises it above the standing room or door — covering exactly one face at a time, owning the input while it stands, and returning ownership to the face beneath on close (EX-ZOOM/INV-83) |
 | `INV-68` | Dead model account: a non-429 4xx flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
 | `INV-69` | The quiz funnel stage (`quiz_stage`: shown → opened → won\|lost → gift) is session-scoped and runs monotonically upward — it never lowers; "gift" advances only from "won"; the stage rides `walk_unfold`/`walk_exit` as a dimension alongside the arm (no sixth beat, INV-41 stands); the stage wipes with the walk (?reset); control and flag-off visitors carry no stage |
 | `INV-70` | One page shape for the browser on every face: every standing face (the re-opened door, side room, question card, gift card) locks the walk by resting input plus a snap-back guard that corrects any scroll the house did not write (the ceremony glide, Back restore, and face-leave re-centre all pass), while the root scrollbar hides gutter-stable (no reflow) and the walk's own tall document stays in place beneath; the root overflow cut is retired as a locking device; a later face inherits the law by construction |
@@ -1338,11 +1361,13 @@ the worker.
 | `INV-73` | The one-ahead preload: while a work rests in view the NEXT work in the current direction of travel is fetched at the device tier (the walk's own `srcset`/`sizes`, INV-63) — exactly `preload_ahead` (default 1) ahead, never the arc (INV-25/INV-30); best-effort and silent (a failed preload surfaces nothing and the in-view ladder still catches the step), abandoned cleanly on a turn or `#w-` jump and re-aimed to the new direction of travel; client-only, no bake output, no worker, no flag |
 | `INV-71` | The full circle retires the hand: once every work of the standing walk's current hang (`order.slice(0, shown)`, spread + unfolds) has stood in view — counted the moment the mark is made, in-session marks joined with the persisted seen copy — the next door render (the exit control, a browser-Back onto the door, or a returned-door reload, all alike) retires the standing hand and deals a fresh `EX-DOOR-3` hand; the consumed circle (pick + shown) rides the versioned `ex.hand` so one circle earns exactly one deal (door↔walk never re-rolls, a new pick or a post-circle unfold reopens the count); an unconsumed circle outranks the reload refresh once, then the reload law resumes; a circle-less older hand reads as no circle consumed and a stale-versioned hand drops whole (`INV-26`); on this one point `INV-32a`'s as-it-stood yields; short of a circle the standing-set law (`INV-16`/`EX-DOOR-2d`) holds |
 | `INV-74` | The diverse door keeps a browser-local, versioned, `?reset`-forgettable memory of the works it has DEALT, and every open guarantees at least `fresh_min` of the windows dealt for the current fit are works not dealt since the last round reset — jointly with the place fraction, so at least `⌈fresh_min·n⌉+⌈place_min·n⌉−n` shown windows are both unseen and place; when the unseen pool cannot supply the fresh floor or that overlap the memory clears and a new round begins, the just-dealt set replacing it (a normal open unions in). This novelty floor supersedes the curated door's ⌊door_size/3⌋-repeat law (`INV-20`) here |
-| `INV-75` | A two-finger pinch on any exhibition picture opens it enlarged in its own zoom layer that scales with the pinch, with a close control (×, backdrop tap, or Esc) that returns to the page exactly as it was; the browser's own page zoom never fires |
+| `INV-75` | A two-finger pinch on any exhibition picture opens it enlarged in its own zoom layer that scales with the pinch, with a close control (×, backdrop tap, Esc, a full pinch-out, or the browser Back — INV-82, INV-83) that returns to the surface it was opened over exactly as it was; the browser's own page zoom never fires |
 | `INV-76` | Once a picture is zoomed past 1× in the zoom layer, a one-finger drag pans it by the finger's travel, the offset clamped to the picture's visible overflow at the current scale so a corner is reachable yet the image never leaves its frame; pinching toward 1× re-tightens the bound and a release at 1× recentres it |
-| `INV-77` | No two pressable controls occupy the same screen spot, and nothing moves when the zoom opens: the zoom holds only the picture and a single close, which takes the free top-left corner (new to the zoom), in the same round chrome style as the walk's own controls. The zoom carries no share of its own — a visitor shares a work from the walk itself. Under EVERY covering face — the door, the side room, the gift/farewell card, the question card, and the zoom — the ambient player retracts (opacity to zero, pointer-events off, its music playing on), so nothing pressable floats over the cover. Passive decoration may overlap anything; only pressable controls may not |
+| `INV-77` | No two pressable controls occupy the same screen spot, and no control or layout shifts when the zoom opens (the picture's own entry scale-up, INV-82, is the sole motion): the zoom holds only the picture and a single close, which takes the free top-left corner (new to the zoom), in the same round chrome style as the walk's own controls. The zoom carries no share of its own — a visitor shares a work from the walk itself. Under EVERY covering face — the door, the side room, the gift/farewell card, the question card, and the zoom — the ambient player retracts (opacity to zero, pointer-events off, its music playing on), so nothing pressable floats over the cover. Passive decoration may overlap anything; only pressable controls may not |
 | `INV-78` | The door tells the visitor there is more: leaving a walk to the door shows a farewell line («the rest is still hanging, come again»), and a cold arrival from a browser that has walked here before shows a welcome-back line below the ask, the daypart greeting kept whole. A first-ever visitor sees neither, only the ordinary greeting. One local flag remembers the browser has walked; the lines are localized museum-quiet copy naming no work/axis/count, honest wherever the collection outlasts one walk |
 | `INV-81` | The pinch-to-inspect trigger reaches every exhibition picture including the small ones: it matches when either finger of the pinch stands on the picture (reading the element under each touch point, not only the event's target), the whole polaroid print — paper frame included — is the picture's hit area, and the very gesture that opens the layer keeps scaling it, with no second pinch and no arming tap; a pinch with no finger on any picture opens nothing |
+| `INV-82` | The zoom layer's way out mirrors its way in: on open the picture travels and scales UP from its own place (the wall work, the door window, or the side-room print) into the layer, and on close it scales back DOWN to that same place — a reverse of the entry — so the size moves continuously at both ends. The entry is a position/origin animation only: the live two-touch distance stays the sole authority over scale throughout (INV-81 unbroken), and the from-place motion never tweens scale against the finger. The picture scales and never fades; only the dark backdrop fades in and out, so the size moves while the ground dims. Once the picture is back at 1×, continuing to pinch inward previews the scale-down toward its place, a release below the scale threshold commits the dismiss and returns to what stood beneath, and pinching back above the threshold before lift cancels it; the × stays present and pressable throughout. If the viewport changed under the zoom, close scales down to the source's freshly-measured place in the new viewport, taken as the beneath-face's re-centre (EX-COMPOSE) — one settle. Under reduced motion the entry and exit scale collapse to an instant swap |
+| `INV-83` | The zoom lays a single browser-history step as it opens, sitting ABOVE any face already standing, and every close travels that one step — the ×, a backdrop tap, Esc, the dismissing pinch-out, and the browser's own Back button all close the zoom through it (the same history-backed road the side room's close walks, EX-SERIES). A Back press is consumed by the topmost face alone (the zoom first, then the room or door beneath, each face's popstate branch firing only when it is the standing top), and a zoom-close popstate raises no walk_exit or series beat. Close returns from the picture to the surface it was opened over — the walk for a hung work, the standing side room for a print, the standing door for a window — restoring that surface exactly as it stood; a forward step reopens the zoom |
 
 ### Reconciliation log — how each behavior above landed in code
 

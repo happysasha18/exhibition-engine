@@ -363,6 +363,133 @@ else:
                       f"lifted0={lifted0} pan={pol} zoom_gone={zoom_gone} "
                       f"room_after={room_after} lift_after={lift_after}")
 
+# ---------------------------------------------------------------- EX-ZOOM/INV-82,83 road rows
+# the zoom's one honest road: one history step laid on open, every close (×/backdrop/Esc/dismiss-
+# pinch/Back) travels that SAME step through popstate, and a zoom-close popstate never raises
+# walk_exit (INV-83); the entry/exit is a FLIP on .exz-stage while the live pinch keeps .exz-img's
+# own transform, and reduced motion collapses the stage transition to none (INV-82).
+ROAD_ROWS = [
+    "EX-ZOOM/INV-83 opening the zoom lays exactly one browser-history step (history.length +1) "
+    "and the layer shows (#ex-zoom not hidden, .show)",
+    "EX-ZOOM/INV-83 history.back() closes the zoom through the shared road the ×/Esc/backdrop "
+    "travel (#ex-zoom hidden after, body sheds .ex-zoom)",
+    "EX-ZOOM/INV-83 a zoom-close popstate raises no walk_exit beat",
+    "EX-ZOOM/INV-82 the .exz-stage FLIP carrier transitions transform; reduced motion collapses "
+    "the stage transition to none",
+    "EX-ZOOM/INV-82 a full pinch-in at 1x past the release threshold dismisses the zoom, through "
+    "the same history road",
+]
+
+HLEN = "history.length"
+BODY_ZOOM_CLASS = "document.body.classList.contains('ex-zoom')"
+ZHIDDEN = "(()=>{const z=document.getElementById('ex-zoom');return !z||z.hidden;})()"
+# a face-lock signal for "did it open" that does NOT ride the entry FLIP's own paint (the .exz-stage
+# animation is gated behind a requestAnimationFrame that a fully-occluded/headless compositor may
+# defer past any test's patience) — hidden clears and body.ex-zoom lands synchronously in openZoom,
+# before that rAF is even scheduled, so this is the robust precondition for facts that are about the
+# ROAD (history/pulse), not about the FLIP's own paint (which ZOPEN/.show is reserved for, below).
+OPENED_SYNC = ("(()=>{const z=document.getElementById('ex-zoom');"
+               "return !!z && !z.hidden && document.body.classList.contains('ex-zoom');})()")
+STAGE_TP = ("(()=>{const s=document.querySelector('#ex-zoom .exz-stage');"
+            "return s?getComputedStyle(s).transitionProperty:''})()")
+# "closed" must mean closed IN PLACE through the SPA's own history state, not the tab having blown
+# clean off the page — pre-feature code with no pushed step over-navigates on history.back() (a real
+# top-level navigation), which would vacuously satisfy a bare "not ZOPEN" check. Require the door's
+# own DOM to still be standing.
+ON_PAGE = "!!document.querySelector('.exd-window')"
+# a two-finger pinch-IN on the already-open zoom: 200px apart -> 60px apart (raw ratio 0.3, well
+# under DISMISS_T=0.82), released at 0 touches — the same road as the x/Esc/backdrop (history.back)
+DISMISS = (
+    "()=>{const img=document.querySelector('#ex-zoom .exz-img');"
+    "if(!img)return JSON.stringify({err:'no-img'});"
+    "const mk=(id,x,y)=>new Touch({identifier:id,target:img,clientX:x,clientY:y});"
+    "const fire=(t,ts)=>img.dispatchEvent(new TouchEvent(t,{touches:ts,targetTouches:ts,"
+    "changedTouches:ts,bubbles:true,cancelable:true}));"
+    "fire('touchstart',[mk(1,150,300),mk(2,150,500)]);"     # 200px apart, zStartS==zScale==1
+    "fire('touchmove',[mk(1,150,370),mk(2,150,430)]);"      # 60px apart -> raw=0.3 (<DISMISS_T)
+    "fire('touchend',[]);"                                    # release at 1x below threshold -> back()
+    "return 'ok';}"
+)
+
+def _back(br):
+    """history.back() past a step that was never pushed can over-navigate clean off the tab
+    (Inspected target navigated or closed) — swallow it like test_back.py's go_back does; a red
+    row still reads the resulting (unclosed) state honestly."""
+    try:
+        br.evaluate("history.back()")
+    except RuntimeError:
+        pass
+
+
+if not chrome_available():
+    for r in ROAD_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+else:
+    with serve(TMP) as base:
+        with Browser(width=390, height=844) as br:       # INV-83: one history step in, Back out
+            _boot(br, base)
+            hl0 = br.evaluate(HLEN)
+            br.evaluate("(%s)('.exd-window img')" % PINCH)
+            br.sleep(0.2)
+            hl1 = br.evaluate(HLEN)
+            opened = br.evaluate(ZOPEN)
+            check(ROAD_ROWS[0], opened and hl1 == hl0 + 1,
+                  f"hl0={hl0} hl1={hl1} opened={opened}")
+            _back(br)
+            br.sleep(0.4)
+            closed = ((not br.evaluate(ZOPEN)) and br.evaluate(ZHIDDEN) and not br.evaluate(BODY_ZOOM_CLASS)
+                      and br.evaluate(ON_PAGE))
+            check(ROAD_ROWS[1], closed, f"closed={closed}")
+
+        with Browser(width=390, height=844) as br:       # INV-82: the FLIP carrier at rest
+            _boot(br, base)
+            br.evaluate("(%s)('.exd-window img')" % PINCH)
+            br.sleep(0.2)
+            tp_normal = br.evaluate(STAGE_TP)
+        with Browser(width=390, height=844) as br:       # INV-82: reduced motion collapses it
+            br.emulate_media(prefers_reduced_motion="reduce")
+            _boot(br, base)
+            br.evaluate("(%s)('.exd-window img')" % PINCH)
+            br.sleep(0.2)
+            tp_reduced = br.evaluate(STAGE_TP)
+        check(ROAD_ROWS[3],
+              "transform" in tp_normal and tp_reduced == "none",
+              f"normal={tp_normal!r} reduced={tp_reduced!r}")
+
+        with Browser(width=390, height=844) as br:       # INV-82: a full pinch-in dismisses
+            _boot(br, base)
+            br.evaluate("(%s)('.exd-window img')" % PINCH)
+            br.sleep(0.2)
+            opened = br.evaluate(OPENED_SYNC)             # the dismiss gesture is gated on zoomOpen, not the FLIP paint
+            br.evaluate("(%s)()" % DISMISS)
+            br.sleep(0.5)
+            dismissed = not br.evaluate(ZOPEN) and br.evaluate(ZHIDDEN)   # closeZoom's teardown (setTimeout) is not rAF-gated
+            check(ROAD_ROWS[4], opened and dismissed, f"opened={opened} dismissed={dismissed}")
+
+    # ---- ROW: a zoom-close popstate raises no walk_exit (needs the GA tag baked to speak at all —
+    # see test_pulse's "no tag = total silence" row; a tagless bake would pass this vacuously) ----
+    TMP_GA = Path(tempfile.mkdtemp(prefix="synth_zoom_ga_"))
+    build_site.OUT = TMP_GA
+    build_site.build(SITE_URL, ga_id="G-TESTTEST")
+    with serve(TMP_GA) as base:
+        with Browser(width=390, height=844) as br:
+            br.block(["*googletagmanager*", "*google-analytics*"])   # never talk to Google
+            _boot(br, base)
+            br.evaluate("(%s)('.exd-window img')" % PINCH)
+            br.sleep(0.2)
+            opened = br.evaluate(OPENED_SYNC)             # walk_exit suppression is unrelated to the FLIP paint
+            evlist = ("JSON.stringify((window.dataLayer||[]).filter(e=>e[0]==='event').map(e=>e[1]))")
+            before = json.loads(br.evaluate(evlist) or "[]")
+            _back(br)
+            br.sleep(0.4)
+            closed = not br.evaluate(ZOPEN) and br.evaluate(ZHIDDEN) and br.evaluate(ON_PAGE)
+            after = json.loads(br.evaluate(evlist) or "[]")
+            new_beats = after[len(before):]
+            check(ROAD_ROWS[2],
+                  opened and closed and "walk_exit" not in new_beats,
+                  f"opened={opened} closed={closed} new_beats={new_beats}")
+    shutil.rmtree(TMP_GA, ignore_errors=True)
+
 shutil.rmtree(TMP, ignore_errors=True)
 
 fails = [r for r in results if r[1] == "FAIL"]

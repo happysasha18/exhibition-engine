@@ -1158,6 +1158,14 @@
     const wasSide = sideOpen;                           // the side room may be the face we leave (EX-SERIES)
     ceremonyCancel();                                  // navigation wins mid-ceremony (EX-DOOR-2e)
     const st = ev.state && ev.state.ex;
+    // The zoom is the topmost face (INV-83): a Back that leaves it closes ONLY the zoom and stops here,
+    // so the room or door beneath keeps its step and no walk_exit or series beat fires. A Forward back
+    // INTO a zoom step re-opens it over whatever now stands, laying no new step.
+    if (zoomOpen && !(st && st.face === "zoom")) { closeZoom(); return; }
+    if (!zoomOpen && st && st.face === "zoom") {
+      if (zLastEl && document.body.contains(zLastEl)) openZoom(zLastEl, { lay: false });
+      return;
+    }
     const toSeries = st && st.face === "series" && typeof st.ser === "number";
     // room → walk: the exit MIRRORS the soft entry (EX-SERIES) — the veil crossing reveals the walk
     // on its exact frame. Only when the walk stands behind; a step to the door or a forward re-open
@@ -1543,15 +1551,50 @@
   // TOP-LEFT corner. The ambient player retracts while the zoom stands (body.ex-zoom, like every covering
   // face), and the zoom carries no share of its own — a visitor shares a work from the walk itself.
   zoom.innerHTML = '<button type="button" class="exz-btn exz-close" aria-label="закрыть">&times;</button>'
-                 + '<img class="exz-img" alt="">';
+                 + '<div class="exz-stage"><img class="exz-img" alt=""></div>';
   document.body.appendChild(zoom);
   let zoomOpen = false, zScale = 1, zPinch = 0, zStartS = 1;
+  // The way OUT mirrors the way IN (INV-82): the picture flies UP from its place into the layer on open
+  // and back DOWN to that place on close. The FLIP rides a WRAPPER (.exz-stage) so the pinch keeps the
+  // .exz-img's own transform (INV-81 — the live two-touch distance stays the sole scale authority); the
+  // stage carries the entry/exit position+scale, the img carries the pinch. zSrcEl is the tapped picture,
+  // re-measured on close so a rotation under the zoom lands the shrink on its fresh place (INV-82).
+  let zSrcEl = null, zLastEl = null, zDismiss = 0;      // zLastEl survives close so a Forward step reopens (INV-83)
+  const DISMISS_T = 0.82;      // release below this raw pinch-in ratio at 1× dismisses the layer (INV-82)
   // once zoomed past 1×, a one-finger drag PANS the enlarged picture. zTx/zTy are the pan offset in
   // screen px; zPan* hold the gesture's start. The offset is bounded to the picture's visible overflow
   // so the image can never be dragged past its own edge.
   let zTx = 0, zTy = 0, zPanning = false, zPanX = 0, zPanY = 0, zPanTx = 0, zPanTy = 0;
   const zImg = zoom.querySelector(".exz-img");
+  const zStage = zoom.querySelector(".exz-stage");
+  const zReduce = matchMedia("(prefers-reduced-motion: reduce)");
   const zDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  // Fly the stage between the source picture's place and its resting place. `back=false` opens
+  // (source → rest), `back=true` closes (rest → source). The wall image is already cached, so the
+  // layer's img lays out within one frame and its box is real to measure against. Reduced motion
+  // swaps instantly. The pinch's own transform on .exz-img is never touched here (INV-81).
+  function zFlip(rect, back, done) {
+    if (!rect || zReduce.matches) {
+      zStage.style.transition = "none"; zStage.style.transform = "";
+      if (done) (back ? setTimeout(done, 0) : requestAnimationFrame(done));
+      return;
+    }
+    const box = zImg.getBoundingClientRect();
+    if (!box.width || !box.height) { zStage.style.transition = "none"; zStage.style.transform = ""; if (done) done(); return; }
+    const s = rect.width / box.width;
+    const dx = (rect.left + rect.width / 2) - (box.left + box.width / 2);
+    const dy = (rect.top + rect.height / 2) - (box.top + box.height / 2);
+    const atSource = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(" + s.toFixed(3) + ")";
+    if (back) {                                     // resting → source: animate out, teardown after
+      zStage.style.transition = "";
+      requestAnimationFrame(() => { zStage.style.transform = atSource; });
+      setTimeout(() => { if (done) done(); }, Math.round(300 * TEMPO));
+    } else {                                        // source → resting: pin at source, then release to fly in
+      zStage.style.transition = "none";
+      zStage.style.transform = atSource;
+      requestAnimationFrame(() => { zStage.style.transition = ""; zStage.style.transform = ""; if (done) done(); });
+    }
+  }
   function zClampPan() {                                 // keep the offset within the picture's overflow
     const ox = Math.max(0, (zImg.offsetWidth * zScale - innerWidth) / 2);
     const oy = Math.max(0, (zImg.offsetHeight * zScale - innerHeight) / 2);
@@ -1561,21 +1604,35 @@
   function zApply() {
     zImg.style.transform = "translate(" + zTx.toFixed(1) + "px," + zTy.toFixed(1) + "px) scale(" + zScale.toFixed(3) + ")";
   }
-  function openZoom(src, alt) {
-    if (zoomOpen || !src) return;
-    zImg.src = src; zImg.alt = alt || "";
-    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zApply();
+  function openZoom(el, opts) {
+    if (zoomOpen || !el) return;
+    const src = el.currentSrc || el.getAttribute("src") || el.src;
+    if (!src) return;
+    zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close
+    const rect = el.getBoundingClientRect();
+    zImg.src = src; zImg.alt = el.alt || "";
+    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zApply();
+    zStage.style.transition = "none"; zStage.style.transform = "";
     zoom.hidden = false; zoomOpen = true;
     document.body.classList.add("ex-zoom");            // the player retracts too — the minimum on screen (INV-77)
     faceSync();                                        // the zoom is a face — freeze the page beneath (EX-CHROME)
-    requestAnimationFrame(() => zoom.classList.add("show"));
+    if (!(opts && opts.lay === false)) pushFace({ face: "zoom" });   // one honest road out (INV-83), above any standing face
+    requestAnimationFrame(() => { zoom.classList.add("show"); zFlip(rect, false); });   // backdrop fades, picture flies in (INV-82)
   }
+  // The single teardown, reached only through popstate (history.back): the ×, backdrop, Esc, and the
+  // dismissing pinch all go through history.back so Back and they share one road (INV-83).
   function closeZoom() {
     if (!zoomOpen) return;
-    zoom.classList.remove("show");
-    document.body.classList.remove("ex-zoom");         // the player returns to its top-right rail at once
-    setTimeout(() => { zoom.hidden = true; zImg.removeAttribute("src"); }, Math.round(300 * TEMPO));
     zoomOpen = false;
+    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zApply();   // the exit scales from 1×
+    const rect = (zSrcEl && document.body.contains(zSrcEl)) ? zSrcEl.getBoundingClientRect() : null;  // fresh place (rotation, INV-82)
+    zoom.classList.remove("show");                     // backdrop fades; the player returns to its rail at once
+    document.body.classList.remove("ex-zoom");
+    zFlip(rect, true, () => {                           // picture flies back DOWN to its place, then teardown
+      zoom.hidden = true; zImg.removeAttribute("src");
+      zStage.style.transition = "none"; zStage.style.transform = "";
+      zSrcEl = null;
+    });
     faceSync();                                        // the page beneath returns untouched (EX-COMPOSE)
   }
   // a pinch over the OPEN zoom scales the picture; our JS owns it, so the browser never viewport-zooms.
@@ -1598,9 +1655,18 @@
     if (!zoomOpen) return;
     if (e.touches.length === 2 && zPinch) {
       e.preventDefault();                              // our scale, never the browser's
-      zScale = Math.max(1, Math.min(4, zStartS * (zDist(e.touches) / zPinch)));
-      zClampPan();                                     // a smaller scale shrinks the pannable overflow
-      zApply();
+      const raw = zStartS * (zDist(e.touches) / zPinch);
+      if (raw < 1 && zScale <= 1.001 && zStartS <= 1.03) {   // at 1×, pinching further IN previews the dismiss (INV-82)
+        zDismiss = raw;
+        const shrink = 1 - (1 - Math.max(0.5, raw)) * 0.45;  // resistance — the picture eases toward its place
+        zStage.style.transition = "none";
+        zStage.style.transform = "scale(" + shrink.toFixed(3) + ")";
+      } else {
+        if (zDismiss) { zDismiss = 0; zStage.style.transition = "none"; zStage.style.transform = ""; }
+        zScale = Math.max(1, Math.min(4, raw));
+        zClampPan();                                   // a smaller scale shrinks the pannable overflow
+        zApply();
+      }
     } else if (e.touches.length === 1 && zPanning) {
       e.preventDefault();                              // drag the enlarged picture, bounded to its edges
       zTx = zPanTx + (e.touches[0].clientX - zPanX);
@@ -1613,11 +1679,18 @@
     if (!zoomOpen) return;
     if (e.touches.length < 2) zPinch = 0;
     if (e.touches.length === 0) zPanning = false;
+    if (zDismiss) {                                    // released mid dismiss-pinch (INV-82)
+      if (zDismiss < DISMISS_T && e.touches.length === 0) { history.back(); return; }   // commit → close through history (INV-83)
+      zDismiss = 0; zStage.style.transition = ""; zStage.style.transform = "";           // cancel → ease back to 1×
+    }
     if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }   // a near-1 release settles flat + centred
   }, { passive: true });
-  zoom.querySelector(".exz-close").addEventListener("click", closeZoom);
-  zoom.addEventListener("click", (e) => { if (e.target === zoom) closeZoom(); });   // tap the backdrop
-  addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) closeZoom(); });
+  // Every way out is the same road (INV-83): the ×, a backdrop tap, and Esc all step history BACK, and
+  // the popstate handler runs the one closeZoom — so the browser's own Back button closes the zoom too.
+  const zoomBack = () => { if (zoomOpen) history.back(); };
+  zoom.querySelector(".exz-close").addEventListener("click", zoomBack);
+  zoom.addEventListener("click", (e) => { if (e.target === zoom) zoomBack(); });   // tap the backdrop
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) zoomBack(); });
   // INV-81 — the trigger reaches every picture, the small ones included: a polaroid never fits two
   // fingertips, so the match reads the element under EACH touch point (the event's own target first —
   // one deterministic pick when two pictures sit under the two fingers), and the WHOLE print
@@ -1636,7 +1709,7 @@
     if (e.touches.length !== 2 || zoomOpen) return;   // one zoom at a time; opens over ANY face
     const t = zoomPick(e);
     if (!t) return;
-    openZoom(t.currentSrc || t.getAttribute("src") || t.src, t.alt);
+    openZoom(t);                                       // pass the picture itself — its rect is the FLIP's place (INV-82)
     // seed the pinch so the SAME gesture keeps scaling the just-opened layer — its later touchmoves
     // bubble to the document handlers above; no second pinch, no arming tap (INV-81)
     if (zoomOpen) { zPinch = zDist(e.touches); zStartS = 1; zPanning = false; }
