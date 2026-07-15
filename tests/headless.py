@@ -26,9 +26,11 @@ Usage (see tests/test_exhibition.py):
 """
 import base64
 import contextlib
+import glob
 import json
 import os
 import shutil
+import signal
 import socket
 import struct
 import subprocess
@@ -39,7 +41,24 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.request import urlopen
 
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+def _find_chrome():
+    """Prefer Chrome for Testing — an automation-only build that never touches the user's own Chrome
+    profile, does not coordinate with a running user browser, and is safe to hard-kill by its own
+    path. Fall back to the user's installed Chrome when Testing is absent."""
+    candidates = sorted(glob.glob(os.path.expanduser(
+        "~/.cache/puppeteer/chrome/*/chrome-mac*/Google Chrome for Testing.app"
+        "/Contents/MacOS/Google Chrome for Testing")), reverse=True)
+    candidates += [
+        "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    ]
+    for c in candidates:
+        if Path(c).exists():
+            return c
+    return candidates[-1]   # the standard path even if absent — ChromeMissing handles it
+
+
+CHROME = _find_chrome()
 
 
 class ChromeMissing(Exception):
@@ -134,6 +153,13 @@ class _WS:
         head, self._buf = self._buf.split(b"\r\n\r\n", 1)
         if b"101" not in head.split(b"\r\n")[0]:
             raise RuntimeError("websocket upgrade failed: " + head.decode(errors="replace"))
+        # After the handshake, reads BLOCK by default (create_connection left a fixed 10s timeout
+        # on the socket — under parallel-suite CPU load a CDP response slower than 10s used to throw
+        # socket.timeout and read as a suite FAILURE; that false red is what forced --jobs 1). A real
+        # per-command deadline (set by _cmd via self._deadline) governs each wait instead, so a slow
+        # answer is patient while a genuine hang still fails with a clear, bounded error.
+        self._deadline = None
+        self.sock.settimeout(None)
 
     def send(self, text):
         data = text.encode()
@@ -154,6 +180,11 @@ class _WS:
 
     def _read(self, n):
         while len(self._buf) < n:
+            if self._deadline is not None:
+                remaining = self._deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("CDP read exceeded its deadline (chrome unresponsive)")
+                self.sock.settimeout(remaining)
             chunk = self.sock.recv(65536)
             if not chunk:
                 raise ConnectionError("websocket closed")
@@ -210,15 +241,25 @@ class Browser:
         self._net_on = False          # network-log capture (EX-LOAD-3 preload road)
         self._net_urls = []           # every requestWillBeSent URL while capture is on
         self._profile = tempfile.mkdtemp(prefix="tlv_cdp_")
-        self.port = self._free_port()
+        # Chrome's own stderr goes to a file in the throwaway profile (not /dev/null): when the CDP
+        # pipe dies, _chrome_stderr_tail() reads the crash reason out of it, so a renderer/browser
+        # crash names itself instead of surfacing as a bare "websocket closed".
+        self._stderr_path = os.path.join(self._profile, "chrome-stderr.log")
+        self._stderr_f = open(self._stderr_path, "wb")
+        # --remote-debugging-port=0: Chrome picks its OWN free port atomically and writes it to
+        # <profile>/DevToolsActivePort — no TOCTOU race with the sibling suites launching at the same
+        # instant (a pre-picked port two launches could both grab was the "no CDP page target" flake).
+        # start_new_session puts Chrome in its own process group so close() reaps every helper child
+        # (the orphan Chromes that used to accumulate and compound saturation).
         self.proc = subprocess.Popen(
             [CHROME, "--headless=new", "--disable-gpu", "--no-first-run",
              "--no-default-browser-check", "--disable-extensions",
-             f"--remote-debugging-port={self.port}",
+             "--remote-debugging-port=0",
              f"--user-data-dir={self._profile}",
              f"--window-size={width},{height}", "about:blank"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=self._stderr_f, start_new_session=True,
         )
+        self.port = self._read_devtools_port()
         self.ws = self._connect_page()
         self._cmd("Page.enable")
         self._cmd("Runtime.enable")
@@ -240,6 +281,28 @@ class Browser:
         s.close()
         return port
 
+    def _read_devtools_port(self, timeout=20):
+        # Chrome launched with --remote-debugging-port=0 writes the port it actually bound to the
+        # first line of <profile>/DevToolsActivePort once its debug server is up. Reading it there
+        # (instead of pre-picking a port) removes the launch race entirely. A Chrome that dies before
+        # writing the file is caught by proc.poll() and names its own reason from stderr.
+        pf = os.path.join(self._profile, "DevToolsActivePort")
+        end = time.time() + timeout
+        while time.time() < end:
+            if self.proc.poll() is not None:
+                raise RuntimeError("chrome exited before opening a debug port · stderr:\n"
+                                   + self._chrome_stderr_tail())
+            try:
+                with open(pf) as f:
+                    first = f.readline().strip()
+                if first:
+                    return int(first)
+            except (FileNotFoundError, ValueError):
+                pass
+            time.sleep(0.05)
+        raise RuntimeError("chrome never wrote DevToolsActivePort · stderr:\n"
+                           + self._chrome_stderr_tail())
+
     def _connect_page(self):
         base = f"http://127.0.0.1:{self.port}"
         target = None
@@ -256,12 +319,31 @@ class Browser:
             raise RuntimeError("no CDP page target appeared")
         return _WS(target["webSocketDebuggerUrl"])
 
+    def _chrome_stderr_tail(self, n=2500):
+        try:
+            with contextlib.suppress(Exception):
+                self._stderr_f.flush()
+            with open(self._stderr_path, "rb") as f:
+                data = f.read()
+            tail = data[-n:].decode(errors="replace").strip()
+            return tail or "(chrome stderr empty — a clean process exit, not a logged crash)"
+        except Exception:
+            return "(chrome stderr unavailable)"
+
     def close(self):
         with contextlib.suppress(Exception):
             self.ws.close()
         with contextlib.suppress(Exception):
             self.proc.terminate()
             self.proc.wait(timeout=5)
+        # Reap the whole process group (Chrome spawns helper/renderer/gpu children): a SIGKILL to the
+        # group leaves no orphan Chrome behind when a suite ends or is killed — the accumulation that
+        # used to compound saturation across a run.
+        with contextlib.suppress(Exception):
+            if self.proc.poll() is None:
+                os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
+        with contextlib.suppress(Exception):
+            self._stderr_f.close()
         shutil.rmtree(self._profile, ignore_errors=True)
 
     def __enter__(self):
@@ -271,23 +353,34 @@ class Browser:
         self.close()
 
     # -- CDP plumbing
+    CMD_TIMEOUT = 60      # generous per-command deadline: a slow answer is patient, a hang fails clearly
+
     def _cmd(self, method, **params):
         self._id += 1
         mid = self._id
         self.ws.send(json.dumps({"id": mid, "method": method, "params": params}))
-        while True:
-            msg = json.loads(self.ws.recv())
-            if msg.get("id") == mid:
-                if "error" in msg:
-                    raise RuntimeError(f"{method}: {msg['error']}")
-                return msg.get("result", {})
-            # else: an event. We poll for state, not listen — EXCEPT the network log, which we
-            # drain here (events interleave with responses; any _cmd after a request captures it).
-            if self._net_on and msg.get("method") == "Network.requestWillBeSent":
-                try:
-                    self._net_urls.append(msg["params"]["request"]["url"])
-                except (KeyError, TypeError):
-                    pass
+        self.ws._deadline = time.monotonic() + self.CMD_TIMEOUT
+        try:
+            while True:
+                msg = json.loads(self.ws.recv())
+                if msg.get("id") == mid:
+                    if "error" in msg:
+                        raise RuntimeError(f"{method}: {msg['error']}")
+                    return msg.get("result", {})
+                # else: an event. We poll for state, not listen — EXCEPT the network log, which we
+                # drain here (events interleave with responses; any _cmd after a request captures it).
+                if self._net_on and msg.get("method") == "Network.requestWillBeSent":
+                    try:
+                        self._net_urls.append(msg["params"]["request"]["url"])
+                    except (KeyError, TypeError):
+                        pass
+        except ConnectionError as e:
+            # A TCP FIN means Chrome itself closed the pipe — a renderer/browser crash. Name its
+            # cause: surface the tail of Chrome's own stderr (captured to the profile dir) so the
+            # crash reason travels with the error instead of a mystery "websocket closed".
+            raise ConnectionError(f"{method}: {e} · chrome stderr tail:\n{self._chrome_stderr_tail()}") from e
+        finally:
+            self.ws._deadline = None
 
     # -- page control
     def navigate(self, url):
