@@ -23,8 +23,14 @@
   const LANG_KEY = "@@NS@@.lang";                        // the guest's chosen tongue (EX-LANG)
   const SND_KEY = "@@NS@@.sound";                         // the ambient player's on/off + volume (EX-SOUND)
   const BEEN_KEY = "@@NS@@.been";                         // EX-RETURN: this browser has walked the exhibition before
+  const LAST_KEY = "@@NS@@.last";                        // EX-PULSE/INV-79: this browser's last-visit timestamp (return_gap); EX-RETURN reuses it for the welcome-back window
+  const EXITS_KEY = "@@NS@@.exits";                      // EX-RETURN/INV-78: count of real walk→door exits (the farewell waits for the 2nd)
   const MORE_EXIT_EN = "there is more still hanging — come again";   // the exit farewell (English fallback)
   const MORE_RETURN_EN = "back again — a new way in";               // the returning-arrival line (English fallback)
+  // EX-RETURN/INV-78 window bounds — tunable, both ends bound in TIME so the door never over-speaks:
+  const FAREWELL_MIN_EXITS = 2;                       // the farewell is silent on the 1st exit, speaks from the 2nd onward
+  const RETURN_MIN_MS = 6 * 60 * 60 * 1000;          // welcome-back lower bound: a return sooner than 6h is a reload, stays silent
+  const RETURN_MAX_MS = 14 * 24 * 60 * 60 * 1000;    // welcome-back upper bound: a return later than 14d is met as new, no welcome-back
 
   // ---- EX-TIMING (INV-38): the museum keeps time — for its builder only -------
   // Marks are free and invisible (INV-1: no DOM text; INV-18: no beacon, nothing
@@ -91,6 +97,16 @@
     } catch (e) {}
   }
 
+  // EX-PULSE measurement extension (INV-79): coarse CLOSED-LADDER buckets — a raw number never rides
+  // the wire (INV-1), only a fixed word, so the honest picture stays closed-vocabulary.
+  function lagBucket(ms) {
+    return ms < 300 ? "instant" : ms < 1000 ? "quick" : ms < 3000 ? "slow" : "late";
+  }
+  function gapBucket(ms) {
+    const H = 36e5, D = 24 * H;
+    return ms < H ? "hour" : ms < D ? "day" : ms < 7 * D ? "week" : ms < 30 * D ? "month" : "far";
+  }
+
   // ---- EX-RESET (INV-35): the ?reset address — the museum forgets THIS browser --
   // One wipe, named keys only, BEFORE anything restores; the param strips itself via
   // replaceState — no history step laid (INV-32 fenced) and the pre-strip URL leaves
@@ -106,6 +122,8 @@
     try { localStorage.removeItem(SEENC_KEY); } catch (e) {}
     try { localStorage.removeItem(DOORDEALT_KEY); } catch (e) {}  // the door forgets its shown-round memory (EX-RESET/INV-75)
     try { localStorage.removeItem(LANG_KEY); } catch (e) {}     // the browser's tongue returns
+    try { localStorage.removeItem(LAST_KEY); } catch (e) {}     // the return-gap clock resets (EX-PULSE/INV-79 — forgetting is whole)
+    try { localStorage.removeItem(EXITS_KEY); } catch (e) {}    // the exit counter resets (EX-RETURN/INV-78 — the farewell starts over)
     try { localStorage.removeItem(SND_KEY); } catch (e) {}      // the museum forgets the sound choice (EX-SOUND)
     try { sessionStorage.removeItem(QUIZ_STAGE_KEY); } catch (e) {}   // EX-QUIZ-FLOW (INV-69): the stage wipes with the walk
     const q = new URLSearchParams(location.search);
@@ -135,9 +153,14 @@
   // entirely absent (a malformed/flag-off build) — the source tongue is ENGLISH, never a locale
   // literal (SPEC "No Russian ever ships to a non-Russian walk").
   const ASK_EN = "what feels closer now?";
+  const ENJOY_EN = "enjoy — it's yours to keep";
   const SERIES_EN = "series";
   const ROOM_BACK_EN = "← room";
   const MORE_EN = "{n} more";
+  const UNTITLED_EN = "untitled";
+  const A11Y_CLOSE_EN = "close";
+  const A11Y_VOLUME_EN = "volume";
+  const A11Y_SOUND_EN = "sound";
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
@@ -207,6 +230,22 @@
     for (const c of day) s = (s * 31 + c.charCodeAt(0)) >>> 0;
     return pool[s % pool.length];
   }
+
+  // ---- EX-RTL (INV-80): the WHOLE layout mirrors for a right-to-left tongue ----
+  // The viewer's direction is the active locale's own `dir` — the baked greet set carries it (`he`
+  // is `rtl`); an outsider RTL locale learns its dir when the any-locale layer answers, and respeak()
+  // re-applies it then. Set on the DOCUMENT ROOT so the entire tree inherits it: the pinned chrome is
+  // written in logical properties (inset-inline-*, text-align:start/end) that flip on this one flag,
+  // so an RTL guest meets a mirrored interface and an LTR guest is byte-for-byte unchanged
+  // (dir="ltr" is the document default — setting it explicitly changes no layout). Re-run on a manual
+  // language pick and on an any-locale arrival (both reach respeak).
+  function applyDocDir() {
+    const L = greetLang();
+    const de = document.documentElement;
+    de.setAttribute("dir", L && L.t && L.t.dir === "rtl" ? "rtl" : "ltr");
+    if (L && L.code) de.setAttribute("lang", L.code);
+  }
+  applyDocDir();
 
   // ---- honest Back (INV-32): the walk and the browser speak the same history --
   // Steps are laid per FACE (door | walk), never per frame; a door step CARRIES the
@@ -403,6 +442,38 @@
   let storyVariant = null;          // the mode the served story reported — rides the GA beats (EX-STORY-AB)
   const toldPortions = new Set();   // portion keys whose plot has actually come back (told ONLY on a served plot)
   const askingPortions = new Set(); // portion keys with a request in flight (never double-ask the same portion)
+
+  // ---- EX-PULSE/INV-79: the arrival's own facts — measured ONCE per load ------
+  // Placed AFTER quizArm/storyVariant are initialized: pulse() reads those dimension vars, so an
+  // earlier call would hit their temporal dead zone and silently self-catch (the wire stays honest).
+  // VIEWER LANGUAGE is the tongue the guest actually views in (a chosen override, else the browser),
+  // whether or not they ever touch the door's tongue list — it tells RTL scope and which baked locales
+  // earn their place; a raw locale never rides the wire, only a baked code (outsider ⇒ other), the same
+  // closed ladder lang_pick uses (INV-1). RETURN GAP is how long since this browser last walked, a
+  // COARSE bucket (never a raw timestamp) that sets a welcome-back window's bounds — laid only when a
+  // prior visit is remembered. The last-visit clock lives in @@NS@@.last (forgotten whole on ?reset).
+  // EX-RETURN/INV-78: the real gap since the last visit, captured HERE (at load, before @@NS@@.last is
+  // overwritten below) and stashed for renderDoor — the welcome-back window reads THIS, never a fresh
+  // now-minus-now of ~0. null when no prior visit is remembered (a first-ever arrival, or after ?reset).
+  let returnGapMs = null;
+  (function () {
+    const vc = viewerLang();
+    const vknown = (GREET && GREET.aliases && GREET.aliases[vc]) || vc;
+    const vbaked = !!(GREET && GREET.langs && GREET.langs[vknown]);
+    pulse("viewer_lang", null, { lang: vbaked ? vknown : "other" });
+    let last = null;
+    try { last = localStorage.getItem(LAST_KEY); } catch (e) {}
+    const now = Date.now();
+    if (last) {
+      const gap = now - parseInt(last, 10);
+      if (Number.isFinite(gap) && gap >= 0) {
+        returnGapMs = gap;                             // reused by EX-RETURN's welcome-back window (one clock, INV-79)
+        pulse("return_gap", null, { gap: gapBucket(gap) });
+      }
+    }
+    try { localStorage.setItem(LAST_KEY, String(now)); } catch (e) {}
+  })();
+
   // the hang's order: the kinship arc, leaned by light ONLY when the story is on (EX-STORY-ORDER,
   // ST1 — off is byte-for-byte today's arc). A greedy failure falls back to the plain arc.
   function assembleOrder(pickId) {
@@ -715,6 +786,7 @@
     if (st.pick != null) {
       if (!byId[st.pick]) return false;               // pick gone from the gallery → clean start
       pick = st.pick; order = assembleOrder(pick);
+      recomputeQuizChoice();   // INV-66: re-establish after the restored order is known
     }
     // the unfold budget DERIVES from shown, never trusted (INV-30 holds on restore)
     shown = clampInt(st.shown, SPREAD, SPREAD, Math.min(order.length, CAP));
@@ -920,9 +992,38 @@
   document.body.appendChild(veil);
 
   let atDoor = false;
+  // EX-GREET-LIVE (INV-55): the door greeting tracks the LIVE daypart — an open door left from the
+  // evening into the morning re-greets itself, no reload needed (his word). A reload already re-greets
+  // (renderDoor recomputes at the current hour); this catches the tab that just STAYS open or is
+  // returned to. Registered once below; harmless when the door isn't showing.
+  let shownPart = null;
+  function dayPart() {
+    const h = new Date().getHours();
+    return h < 6 ? "night" : h < 12 ? "morning" : h < 18 ? "day" : "evening";
+  }
+  function regreet() {
+    if (!atDoor) return;
+    const p = dayPart();
+    if (p === shownPart) return;                        // same part → leave the chosen line be
+    shownPart = p;
+    const L = greetLang(), g = door.querySelector("#exd-greet");
+    if (L && g && !g.hidden) g.textContent = greetLine(L.t);   // a fresh line for the new hour
+  }
+  document.addEventListener("visibilitychange", regreet);   // returned to the tab (fired on document)
+  addEventListener("focus", regreet);                   // some browsers wake a tab with focus, not visibility
+  setInterval(regreet, 60000);                          // and a minute's backstop for a tab left open
   let entered = false;                                 // a walk exists behind the door
   let doorFace = null;                                 // the spread the standing door renders
   let curLay = { n: 0, col: null };
+
+  // EX-RETURN/INV-78: count a real walk→door leave (the exit control AND a history Back from the walk,
+  // the same two moments that pulse walk_exit) so the farewell can wait for the second exit. A door
+  // reload or a Back that only restores a door never passes here, so it never inflates the count.
+  function noteExit() {
+    let n = 0;
+    try { n = parseInt(localStorage.getItem(EXITS_KEY), 10) || 0; } catch (e) {}
+    try { localStorage.setItem(EXITS_KEY, String(n + 1)); } catch (e) {}
+  }
 
   // cold=true only on the COLD-arrival face: a museum greets on arrival, not on every
   // pass through the lobby (EX-GREET) — the re-opened door keeps the localized ask only
@@ -946,19 +1047,25 @@
     const line = (cold && GPLACE !== "off" && L) ? greetLine(L.t) : "";
     g.textContent = line;
     g.hidden = !line;                    // ambient: Back to a cold step re-greets at the CURRENT hour
-    // EX-RETURN (INV-78): the door says there is more. A door reached by leaving a walk (cold=false) is
-    // proof this browser has walked, so we remember it and show the exit farewell; a later COLD arrival
-    // from a browser that has walked before is welcomed back. Both true today — the collection outlasts
-    // one visit and the door deals a fresh set each open. Localized, English falls back; the return line
-    // stands in for the daypart greeting so the door never crowds.
+    shownPart = line ? dayPart() : null; // the daypart on show — the live re-greet compares against it
+    // EX-RETURN (INV-78): the door says there is more, but BOUNDED IN TIME so it never over-speaks.
+    // A door REACHED BY LEAVING a walk (cold=false) is proof this browser has walked, so we remember it;
+    // the FAREWELL then stays silent on the first exit and speaks only from the second exit onward
+    // (noteExit counts the real walk→door leaves). A later COLD arrival from a browser that has walked
+    // before is WELCOMED BACK, but only after a real gap and within a window: a return sooner than
+    // RETURN_MIN_MS is a quick reload (silent), a return later than RETURN_MAX_MS is met as new (silent),
+    // and the gap read is returnGapMs — the last-visit clock captured at load (one clock, INV-79 reused).
+    // Localized, English falls back; the line rides below the ask, the daypart greeting kept (EX-GREET).
     const more = door.querySelector("#exd-more");
     let moreLine = "";
     let been = null;
     try { been = localStorage.getItem(BEEN_KEY); } catch (e) {}
     if (!cold) {
       try { localStorage.setItem(BEEN_KEY, "1"); } catch (e) {}
-      moreLine = (L && L.t.more_exit) || MORE_EXIT_EN;
-    } else if (been) {
+      let exits = 0;
+      try { exits = parseInt(localStorage.getItem(EXITS_KEY), 10) || 0; } catch (e) {}
+      if (exits >= FAREWELL_MIN_EXITS) moreLine = (L && L.t.more_exit) || MORE_EXIT_EN;   // silent on the 1st exit
+    } else if (been && returnGapMs != null && returnGapMs >= RETURN_MIN_MS && returnGapMs <= RETURN_MAX_MS) {
       moreLine = (L && L.t.more_return) || MORE_RETURN_EN;   // a quiet extra line below the ask; the daypart greeting stays (EX-GREET)
     }
     more.textContent = moreLine;
@@ -1086,6 +1193,7 @@
     const ok = () => g === cerGen;
     pick = w.id;
     order = assembleOrder(pick);
+    recomputeQuizChoice();   // INV-66: the new arc = the new eligible set for the one quiz chip
     shown = SPREAD;                                    // a fresh arc = a fresh budget (INV-30/31)
     storyReset();                                      // …and a fresh story — no portion leaks across picks (EX-STORY)
     veil.hidden = false;
@@ -1145,6 +1253,7 @@
     if (busy || !doorAvailable) return;
     tlog("exit");
     pulse("walk_exit");
+    noteExit();                                        // EX-RETURN/INV-78: this real leave counts toward the 2nd-exit farewell
     // the paginated walk always rests ON a frame (EX-GLIDE, INV-39) — remember its MEASURED
     // centered stop so Back restores a whole work centered, never a stray sub-frame offset
     // (INV-32b); measured, because on a phone innerHeight ≠ the frames' 100vh.
@@ -1190,7 +1299,7 @@
       // EX-PULSE registry: a browser-Back (or Forward) leave from the WALK to the door counts ONCE,
       // exactly like the exit control — the funnel undercounted history leaves. The exit control uses
       // pushState (never popstate), so control and history never double-count.
-      if (wasWalk) pulse("walk_exit");
+      if (wasWalk) { pulse("walk_exit"); noteExit(); }   // EX-RETURN/INV-78: a Back-leave counts like the exit control
       groundRest();
       // EX-DOOR-4 (F2 folded 11:50): a Back landing on the door over a circled, unanswered walk
       // deals FRESH — the history step's "as it stood" (INV-32a) yields on this one point, and the
@@ -1273,13 +1382,16 @@
     shareBtn.setAttribute("aria-label", shareStrings().label);
     shareBtn.classList.add("show");
     // his words and the archive's facts only — never machine prose, never a readout (INV-1);
-    // a REAL series (3+) grows its quiet pill — «серия · N», never the machine's theme (EX-SERIES)
+    // a REAL series (3+) grows its quiet pill — «series · N», localized, never the machine's theme (EX-SERIES)
     const serIdx = (typeof w.ser === "number" && SERIES[w.ser]) ? w.ser : null;
-    const serWord = ((greetLang() || { t: {} }).t.series) || SERIES_EN;
+    const CT = (greetLang() || { t: {} }).t;
+    const serWord = CT.series || SERIES_EN;
+    const untitledWord = CT.untitled || UNTITLED_EN;    // every line localizes through EX-I18N; the
+                                                        // fallback is ENGLISH (source tongue), never Russian
     // the wall label's three voices: the NAME, the told LINE (empty until the narrator speaks —
     // EX-STORY-LINE fills it from STORYLINES), the FACTS with a red dot when the work is sold
     cap.innerHTML =
-      `<div class="title ${w.title ? "" : "untitled"}">${w.title || "untitled"}</div>` +
+      `<div class="title ${w.title ? "" : "untitled"}">${w.title || untitledWord}</div>` +
       `<div class="told"></div>` +
       `<div class="meta"><span class="dot"${w.sold ? "" : " hidden"}></span>` +
       `<span class="t">${w.sec || ""}${w.place ? " · " + w.place : ""}</span></div>` +
@@ -1294,17 +1406,50 @@
     fillTold();                                        // the narrator's line for this work, if spoken
   }), { threshold: 0.55 });
 
-  // ---- the told line settles onto the plaque (EX-STORY-LINE) ------------------
-  // fillTold paints the focused work's line into the wall label's told-slot (as textContent — the
-  // model's words never become markup); it breathes in on the tempo even when it lands late.
+  // ---- the told line settles onto the plaque (EX-STORY-LINE / EX-STORY-WAIT) ----
+  // A focused work's told-slot wears one of three states while the plot travels (EX-STORY-WAIT):
+  //   pending — its portion is in flight and the line has not landed: a quiet wait mark holds the
+  //             seat (never a finished line), so the guest who arrives ahead of the voice sees the
+  //             narrator is about to speak rather than an empty, silent slot (pictures already
+  //             carry their own loading plate — EX-LOAD-2 — the line matches that grace);
+  //   arrived — the line is here: it settles as textContent (the model's words never become markup)
+  //             and breathes in on the tempo, a single house fade even when it lands late (EX-ARRIVE);
+  //   failed/owed/off — no request in flight and no line: silent exactly as before, :empty hides the
+  //             slot with no ghost gap, and the picture stays whole (a refused portion loses nothing).
+  // portionPending answers whether the focused work sits in a portion whose request is still in flight.
+  function portionPending(id) {
+    if (id == null) return false;
+    const s = "," + String(id) + ",";
+    for (const key of askingPortions) {                // each key is this portion's comma-joined ids
+      if (("," + key + ",").indexOf(s) !== -1) return true;
+    }
+    return false;
+  }
   function fillTold() {
     const toldEl = cap.querySelector(".told");
     if (!toldEl) return;
-    const line = focusedId != null ? STORYLINES[String(focusedId)] : "";
-    if (!line) { toldEl.textContent = ""; return; }    // silent → :empty hides it, no ghost gap
-    if (toldEl.textContent === line) return;
-    toldEl.textContent = line;
-    toldEl.style.animation = "none"; void toldEl.offsetWidth; toldEl.style.animation = "";  // EX-ARRIVE
+    const id = focusedId != null ? String(focusedId) : null;
+    const line = id != null ? STORYLINES[id] : "";
+    if (line) {                                        // arrived — the narrator's line, faded in
+      if (toldEl.textContent === line && !toldEl.querySelector(".told-wait")) return;
+      toldEl.textContent = line;                       // replaces any wait mark held in the seat
+      toldEl.style.animation = "none"; void toldEl.offsetWidth; toldEl.style.animation = "";  // EX-ARRIVE
+      return;
+    }
+    if (id != null && portionPending(id)) {            // pending — the quiet wait mark holds the seat
+      if (toldEl.querySelector(".told-wait")) return;  // already marked — never restart its breath
+      toldEl.innerHTML = '<span class="told-wait" aria-hidden="true"></span>';
+      return;
+    }
+    toldEl.textContent = "";                           // silent → :empty hides it, no ghost gap
+  }
+  // revealPortion draws a whole resolved portion's lines in ONE coordinated reveal (a single
+  // eye-draw, never a per-line trickle): every one of the portion's told lines is already written
+  // into STORYLINES together by the caller, so as the eye lands on any of its works the line is
+  // there — the work in view fades from its wait mark to its line on the one house breath.
+  function revealPortion() {
+    try { window.__@@NS@@Reveals = (window.__@@NS@@Reveals || 0) + 1; } catch (e) {}  // test read-side
+    fillTold();                                        // settle the line under the work in view
   }
 
   // The story's unit is the PORTION just opened (EX-STORY — a plot per opened portion). The walk's
@@ -1331,6 +1476,7 @@
     if (toldPortions.has(key) || askingPortions.has(key)) return;   // already told, or in flight
     askingPortions.add(key);
     const lang = (viewerLang() || "en").toLowerCase();
+    const t0 = performance.now();                      // EX-PULSE/INV-79: the round-trip clock (bucketed, never raw)
     fetch("/api/story", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1339,11 +1485,17 @@
       askingPortions.delete(key);
       if (!data || !Array.isArray(data.lines)) return; // refused/failed → key NOT stamped → stays owed
       toldPortions.add(key);                           // told only once the plot has actually come back
+      // EX-PULSE/INV-79: the portion's round-trip lands — its lag rides a coarse bucket, and the RACE
+      // word marks whether the guest already stood at a work in THIS portion whose line had not yet
+      // arrived (they saw the empty slot) — measured BEFORE the lines fill in, so `late` is honest.
+      const fid = focusedId != null ? String(focusedId) : null;
+      const raced = !!(fid && ids.indexOf(fid) !== -1 && !STORYLINES[fid]);
+      pulse("story_told", null, { lag: lagBucket(performance.now() - t0), race: raced ? "late" : "ahead" });
       storyVariant = data.story_variant || STORY_VARIANT;   // the mode now rides the GA beats
-      for (const l of data.lines) {
+      for (const l of data.lines) {                    // the whole portion's lines land TOGETHER…
         if (l && l.id != null && typeof l.line === "string") STORYLINES[String(l.id)] = l.line;
       }
-      fillTold();                                      // settle the line under the work in view
+      revealPortion();                                 // …then ONE coordinated reveal (EX-STORY-WAIT)
     }).catch(() => { askingPortions.delete(key); });   // a dead worker changes nothing — the portion stays owed
   }
   // tellStory re-asks every portion up to `shown` that is not yet told: the newly opened one on an
@@ -1440,13 +1592,16 @@
   function enjoyLine() {
     const T = (greetLang() || { t: {} }).t;
     const host = ROOT_URL.replace(/^https?:\/\//, "");   // «example.com», appended in code
-    const enjoy = T.enjoy || "enjoy";                     // locale string; English built-in fallback
+    const enjoy = T.enjoy || ENJOY_EN;                    // every line localizes through EX-I18N; the
+                                                          // fallback is ENGLISH (source tongue), never Russian
     return enjoy + " · " + host;                          // never blank (EX-PROTECT empty/error facet)
   }
-  // EX-PROTECT-RES (INV-56): the download filename base — a slug of the site's own name from config
-  // (INV-28), never a hardcoded brand. A grabbed file is «<site>-<original>.jpg».
-  const DL_BASE = ((cfg.site_name || "gallery").toLowerCase().replace(/[^a-z0-9]+/g, "-")
-                   .replace(/^-+|-+$/g, "")) || "gallery";
+  // EX-PROTECT-RES (INV-56): the download filename base — the site's OWN HOST from config (INV-28),
+  // never a hardcoded brand. A grabbed file is «<host>-<original>.jpg», so the picture carries the
+  // gallery's domain wherever it lands (the same host the watermark stamps). The host's leading label
+  // is taken (tlvphotos.com → tlvphotos), a plain slug, with a never-blank fallback.
+  const DL_BASE = ((ROOT_URL.replace(/^https?:\/\//, "").split("/")[0].split(":")[0].split(".")[0])
+                   .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) || "gallery";
   // ---- EX-PROTECT-GIFT: the picture is OFFERED, never dumped ----
   // The gift CEREMONY (his word 2026-07-08): a right-click on a work is answered by a gentle card
   // «like it? · a gift :)» and the picture is handed over only on a yes — never a blunt auto-download.
@@ -1519,12 +1674,13 @@
   function openGift(src, name, preMarked, onYes, workId) {
     const T = (greetLang() || { t: {} }).t;
     giftCard.querySelector(".gift-thumb").src = src;
-    giftCard.querySelector(".gift-ask").textContent = T.gift_ask || "like it?";
+    // every line localizes through EX-I18N; the fallback is ENGLISH (source tongue), never Russian
+    giftCard.querySelector(".gift-ask").textContent = T.gift_ask || "did you like it?";
     const yes = giftCard.querySelector(".gift-yes");
-    yes.textContent = T.gift_yes || "a gift :)";
+    yes.textContent = T.gift_yes || "it's yours :)";
     giftCard.querySelector(".gift-no").textContent = T.gift_no || "not now";
-    giftCard.querySelector(".gift-line").textContent = enjoyLine();   // «enjoy · example.com»
-    giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "";
+    giftCard.querySelector(".gift-line").textContent = enjoyLine();   // localized «enjoy · <host>»
+    giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "for a larger print — buy";
     yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
     giftCard.hidden = false; giftOpen = true;
     faceSync();                                        // the gift card is a face — arm the rest + guard (EX-CHROME)
@@ -1557,7 +1713,11 @@
   // The zoom holds the minimum on screen (INV-77): only the picture and a single CLOSE in the free
   // TOP-LEFT corner. The ambient player retracts while the zoom stands (body.ex-zoom, like every covering
   // face), and the zoom carries no share of its own — a visitor shares a work from the walk itself.
-  zoom.innerHTML = '<button type="button" class="exz-btn exz-close" aria-label="закрыть">&times;</button>'
+  // The close aria-label localizes through EX-I18N like every other chrome string; the fallback is
+  // ENGLISH (source tongue), never a hardcoded locale literal.
+  const ZT = (greetLang() || { t: {} }).t;
+  zoom.innerHTML = '<button type="button" class="exz-btn exz-close" aria-label="'
+                 + (ZT.a11y_close || A11Y_CLOSE_EN) + '">&times;</button>'
                  + '<div class="exz-stage"><img class="exz-img" alt=""></div>';
   document.body.appendChild(zoom);
   let zoomOpen = false, zScale = 1, zPinch = 0, zStartS = 1;
@@ -1779,21 +1939,38 @@
   });
   addEventListener("mouseup", () => { if (zPanning) zPanning = false; });
 
+  // EX-PROTECT (INV-49; 2026-07-13 uniformity fix): the grab guard now matches on the door window's
+  // picture too (.exd-window img), not only a hung work — the door face was the one surface a guest
+  // could still freely save, on FIRST entry, before the gift ceremony's identity even exists (his find:
+  // the room refuses a grab, the door facade did not). A door window carries no HUNG WORK identity
+  // (no .exh-frame, no frame id) to offer the desktop gift ceremony against, so its refusal never
+  // invents one — it always answers with the SAME gracious toast the room gives a drag/touch grab,
+  // never a new behaviour or new copy.
   function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
-    const img = ev.target.closest && ev.target.closest(".exh-frame img.work");
-    if (!img) return;                                      // only the hung work; chrome is left alone
-    ev.preventDefault();                                   // the raw save / drag ghost never fires
-    // DESKTOP right-click → the gift ceremony; TOUCH (or a drag) → just the gracious line, no download
-    if (ev.type === "contextmenu" && !matchMedia("(pointer: coarse)").matches) {
-      const fr = img.closest(".exh-frame");            // the grabbed work — gift_kind=grab (EX-PULSE)
+    const img = ev.target.closest && ev.target.closest(".exh-frame img.work, .exd-window img");
+    if (!img) return;                                      // only a work or a door window; chrome is left alone
+    ev.preventDefault();                                   // the raw browser save menu / drag ghost never fires
+    const fr = img.closest(".exh-frame");                  // null for a door window (INV-49 uniformity)
+    // EX-PULSE/INV-79: the guest REACHES to take a hung work — the earlier moment gift_download cannot
+    // see (that lays only when a file leaves), a demand signal. The grab KIND is a closed ladder:
+    // `drag` · `menu` (desktop right-click → the gift ceremony) · `touch` (a coarse-pointer press).
+    const grab = ev.type === "dragstart" ? "drag"
+      : matchMedia("(pointer: coarse)").matches ? "touch" : "menu";
+    pulse("copy_attempt", fr && fr.dataset.id, { grab: grab });
+    // DESKTOP right-click on a HUNG WORK → the gift ceremony; a door window (no `fr`), TOUCH, or a drag
+    // → just the gracious line, no download (his word 2026-07-08: on the phone the picture is earned
+    // through the quiz, not grabbed; a door window has no hung-work identity to ceremony over either)
+    if (fr && ev.type === "contextmenu" && !matchMedia("(pointer: coarse)").matches) {
       openGift(img.currentSrc || img.getAttribute("src") || img.src, undefined, undefined, undefined,
-               fr && fr.dataset.id);                   // OFFER, never dump
+               fr && fr.dataset.id);                   // OFFER, never dump — gift_kind=grab (EX-PULSE)
     } else {
-      toast(enjoyLine());                                   // rides the breath, leaves by itself
+      toast(enjoyLine());
     }
   }
   stage.addEventListener("contextmenu", onGrab);
   stage.addEventListener("dragstart", onGrab);
+  door.addEventListener("contextmenu", onGrab);           // the door's own facade (INV-49 uniformity) —
+  door.addEventListener("dragstart", onGrab);             //   #ex-door lives OUTSIDE #ex-stage (EX-DOOR-2a)
   // EX-PROTECT + EX-CHROME: the immersive walk refuses browser zoom across the WHOLE surface, not
   // only over a work. A browser zoom scales the visual viewport out from under the JS scroll animator
   // and the fixed chrome — the measured centering drifts and the fixed controls float, so the walk
@@ -2007,7 +2184,7 @@
       opts.forEach((b) => { if (b.dataset.val === city) b.classList.add("wrong"); });
       const T = (greetLang() || { t: {} }).t;
       out.className = "quiz-out quiz-miss";
-      out.textContent = T.quiz_wrong || "not this time";
+      out.textContent = T.quiz_wrong || "thanks for guessing. another question waits for you further on.";
       requestAnimationFrame(() => out.classList.add("show"));
       // remember the miss so the work is excluded from eligible in future walks (INV-65 / INV-66)
       try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: false })); } catch (e) {}
@@ -2771,9 +2948,19 @@
   // its own worker for that locale's set (once per language-version, ever), keeps a browser
   // copy, and the standing surfaces re-speak without a jump. A dead worker changes nothing.
   function respeak() {
+    applyDocDir();                                    // EX-RTL: a manual pick / any-locale arrival re-mirrors the whole tree
     const L = greetLang();
     if (!L) return;
     const T = L.t;
+    // the zoom close + the sound chrome carry aria-labels, not visible text, but they still ride the
+    // ONE string layer (EX-I18N) — the controls live on every face (walk, door, side room), so they
+    // relabel regardless of atDoor
+    const zClose = zoom.querySelector(".exz-close");
+    if (zClose) zClose.setAttribute("aria-label", T.a11y_close || A11Y_CLOSE_EN);
+    const sndVol = document.querySelector("#ex-sound .exsnd-vol");
+    const sndBtn = document.querySelector("#ex-sound .exsnd-btn");
+    if (sndVol) sndVol.setAttribute("aria-label", T.a11y_volume || A11Y_VOLUME_EN);
+    if (sndBtn) sndBtn.setAttribute("aria-label", T.a11y_sound || A11Y_SOUND_EN);
     if (atDoor) {
       door.setAttribute("dir", T.dir === "rtl" ? "rtl" : "ltr");
       door.setAttribute("lang", L.code);
@@ -2789,6 +2976,7 @@
     const w = f && byId[f.dataset.id];
     const tEl = cap.querySelector(".title");
     if (w && tEl && w.title) { tEl.textContent = w.title; tEl.classList.remove("untitled"); }
+    else if (tEl && tEl.classList.contains("untitled")) { tEl.textContent = T.untitled || UNTITLED_EN; }
     const fin = document.getElementById("exh-fin");
     if (fin) {
       fin.setAttribute("lang", L.code);
@@ -2970,6 +3158,9 @@
 
     const box = document.createElement("div");
     box.id = "ex-sound";
+    // aria-labels localize through EX-I18N like every other chrome string; the fallback is ENGLISH
+    // (source tongue), never a hardcoded locale literal
+    const SNDT = (greetLang() || { t: {} }).t;
     // the tray sits to the LEFT of the button (slides out on hover / while playing / focus-within);
     // the credit uses config-driven artist/title/url — never hardcoded content (INV-1)
     const artistHtml = CREDIT.artist ? `<span class="t"><b>${CREDIT.artist}</b></span>` : "";
@@ -2981,10 +3172,11 @@
       '<div class="exsnd-tray">' +
         '<span class="exsnd-cred">' + artistHtml + titleHtml + linkHtml + '</span>' +
         '<input class="exsnd-vol" type="range" min="0" max="1" step="0.01" value="0.3"' +
-          ' aria-label="volume">' +
+          ' aria-label="' + (SNDT.a11y_volume || A11Y_VOLUME_EN) + '">' +
       '</div>' +
       '<button class="exsnd-btn" type="button" aria-pressed="false"' +
-        ' aria-label="sound"><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
+        ' aria-label="' + (SNDT.a11y_sound || A11Y_SOUND_EN) +
+        '"><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));   // EX-ARRIVE: arrives on the breath
 
