@@ -871,7 +871,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "ImagesiftBot", "Diffbot", "Omgilibot", "YouBot", "Timpibot",  # image/data scrapers
         ]
         header = (
-            "# tlvphotos crawl policy\n"
+            f"# {SITE_NAME} crawl policy\n"
             "# ALLOWED: normal search crawlers + AI SEARCH bots that retrieve to cite a live query\n"
             "#   (ChatGPT-User, OAI-SearchBot, PerplexityBot) — so the exhibition is found & cited.\n"
             "# BLOCKED: AI-TRAINING crawlers that would harvest the photographs into model datasets.\n\n"
@@ -958,6 +958,12 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # quiz_probability is GONE (INV-66 supersedes the per-walk coin with one-per-show).
     if flags["quiz"]:
         config["exhibition"]["quiz_cooldown_hours"] = 6
+        # EX-QUIZ-PRIZE (INV-56/INV-28): the prize wallpaper's DOWNLOAD filename. The engine derives it
+        # client-side from the site-name slug (DL_BASE + "-wallpaper.jpg"); an instance that ships a
+        # specific wallpaper file (e.g. a versioned name) sets quiz_prize_name in site.json — emitted
+        # ONLY when set, so the engine's own bake keeps the derived default (byte-identical).
+        if site_config.get("quiz_prize_name"):
+            config["exhibition"]["quiz_prize_name"] = site_config["quiz_prize_name"]
         # the quiz A/B arm rides the walk's EXISTING GA beats like story_variant
         config["experiments"]["quiz_arm"] = {
             "arms": ["on", "control"],   # on = the quiz may surface; control = the measured baseline

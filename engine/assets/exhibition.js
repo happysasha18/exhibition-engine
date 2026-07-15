@@ -1860,7 +1860,7 @@
     return `<button type="button" class="ex-quiz-chip" data-quiz="${id}">${quizLabel()}` +
       `<span class="ex-quiz-glint" aria-hidden="true"></span></button>`;
   }
-  const PRIZE_DL = DL_BASE + "-wallpaper.jpg";           // the prize download name (site-slug, INV-28)
+  const PRIZE_DL = EX.quiz_prize_name || (DL_BASE + "-wallpaper.jpg");  // prize download name: config override → site-slug default (INV-28)
 
   const quizCard = document.createElement("div");
   quizCard.id = "ex-quiz-card";
