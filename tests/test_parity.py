@@ -54,7 +54,7 @@ for t in TOKENS:
     SALTED.append(t + ":once")
 
 # ---------------------------------------------------------------- PAR1: the export contract
-export_present = bool(re.search(r"window\.EXQuiz\s*=\s*\{[^}]*_hash\s*:\s*quizHash", JS_SRC))
+export_present = bool(re.search(r"window\.@@NS_UPPER@@Quiz\s*=\s*\{[^}]*_hash\s*:\s*quizHash", JS_SRC))
 check("PAR1 EX-QUIZ-AB the client exports its hash as window.EXQuiz._hash",
       export_present,
       "no `_hash: quizHash` on the window.EXQuiz export in exhibition.js"

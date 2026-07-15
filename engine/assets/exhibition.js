@@ -12,34 +12,34 @@
   if (!stage) return;                                 // no live root → JS-off face stays
 
   // ---- the visitor's own trace, its three homes (one place for the names) -----
-  const KEY = "ex.exhibition";                       // the walk (INV-26)
-  const PLACE_KEY = "ex.place";                      // the per-tab place marker (INV-32c)
-  const TEMPO_KEY = "ex-tempo";                      // the motion override (EX-MOTION-R)
-  const SPENT_KEY = "ex.spent";                      // the hash hand-over, consumed once (EX-SHARE-IN)
-  const VISITOR_KEY = "ex.visitor";                  // the coat-check token (EX-MEMORY)
-  const HAND_KEY = "ex.hand";                        // the last dealt threshold hand (EX-DOOR-3)
-  const SEENC_KEY = "ex.seenc";                      // the seen-list's local copy (EX-DOOR-3)
-  const DOORDEALT_KEY = "ex.doordealt";              // works the diverse door has dealt this round (EX-DOOR-3/INV-75)
-  const LANG_KEY = "ex.lang";                        // the guest's chosen tongue (EX-LANG)
-  const SND_KEY = "ex.sound";                         // the ambient player's on/off + volume (EX-SOUND)
-  const BEEN_KEY = "ex.been";                         // EX-RETURN: this browser has walked the exhibition before
+  const KEY = "@@NS@@.exhibition";                       // the walk (INV-26)
+  const PLACE_KEY = "@@NS@@.place";                      // the per-tab place marker (INV-32c)
+  const TEMPO_KEY = "@@NS@@-tempo";                      // the motion override (EX-MOTION-R)
+  const SPENT_KEY = "@@NS@@.spent";                      // the hash hand-over, consumed once (EX-SHARE-IN)
+  const VISITOR_KEY = "@@NS@@.visitor";                  // the coat-check token (EX-MEMORY)
+  const HAND_KEY = "@@NS@@.hand";                        // the last dealt threshold hand (EX-DOOR-3)
+  const SEENC_KEY = "@@NS@@.seenc";                      // the seen-list's local copy (EX-DOOR-3)
+  const DOORDEALT_KEY = "@@NS@@.doordealt";              // works the diverse door has dealt this round (EX-DOOR-3/INV-75)
+  const LANG_KEY = "@@NS@@.lang";                        // the guest's chosen tongue (EX-LANG)
+  const SND_KEY = "@@NS@@.sound";                         // the ambient player's on/off + volume (EX-SOUND)
+  const BEEN_KEY = "@@NS@@.been";                         // EX-RETURN: this browser has walked the exhibition before
   const MORE_EXIT_EN = "there is more still hanging — come again";   // the exit farewell (English fallback)
   const MORE_RETURN_EN = "back again — a new way in";               // the returning-arrival line (English fallback)
 
   // ---- EX-TIMING (INV-38): the museum keeps time — for its builder only -------
   // Marks are free and invisible (INV-1: no DOM text; INV-18: no beacon, nothing
   // leaves the tab). ?timings narrates the beats to the console as they land;
-  // EXTimings() hands the walk's clock over as data for export.
+  // @@NS_UPPER@@Timings() hands the walk's clock over as data for export.
   const WANT_T = new URLSearchParams(location.search).has("timings");
   function tlog(beat) {
-    try { performance.mark("ex:" + beat); } catch (e) {}
+    try { performance.mark("@@NS@@:" + beat); } catch (e) {}
     if (WANT_T) {
-      try { console.log("ex:" + beat, (performance.now() / 1000).toFixed(3) + "s"); } catch (e) {}
+      try { console.log("@@NS@@:" + beat, (performance.now() / 1000).toFixed(3) + "s"); } catch (e) {}
     }
   }
-  window.EXTimings = () => performance.getEntriesByType("mark")
-    .filter((m) => m.name.indexOf("ex:") === 0)
-    .map((m) => ({ beat: m.name.slice(3), at: +(m.startTime / 1000).toFixed(3) }));
+  window.@@NS_UPPER@@Timings = () => performance.getEntriesByType("mark")
+    .filter((m) => m.name.indexOf("@@NS@@:") === 0)
+    .map((m) => ({ beat: m.name.slice(@@NS_MARK_LEN@@), at: +(m.startTime / 1000).toFixed(3) }));
   tlog("boot");
 
   // ---- EX-PULSE (INV-41): the walk counts its beats for the archive's owner ----
@@ -48,7 +48,7 @@
 
   // EX-QUIZ-FLOW (INV-69): the session-scoped running-max stage for the quiz funnel.
   // Restored from sessionStorage at boot so a reload never lowers what was reached.
-  const QUIZ_STAGE_KEY = "ex.quizstage";
+  const QUIZ_STAGE_KEY = "@@NS@@.quizstage";
   let quizStage = null;
   try {
     const _qs = sessionStorage.getItem(QUIZ_STAGE_KEY);
@@ -205,8 +205,8 @@
   // Steps are laid per FACE (door | walk), never per frame; a door step CARRIES the
   // spread it showed; the ↗ place marker is per-tab (sessionStorage), one-shot.
   try { history.scrollRestoration = "manual"; } catch (e) {}
-  const pushFace = (st) => { try { history.pushState({ ex: st }, ""); } catch (e) {} };
-  const replaceFace = (st) => { try { history.replaceState({ ex: st }, ""); } catch (e) {} };
+  const pushFace = (st) => { try { history.pushState({ @@NS@@: st }, ""); } catch (e) {} };
+  const replaceFace = (st) => { try { history.replaceState({ @@NS@@: st }, ""); } catch (e) {} };
 
   // ---- baked data -----------------------------------------------------------
   const SERIES = data.series || [];                    // real series only (3+), variant each
@@ -306,7 +306,7 @@
   }
   // the story layer's own reachable surface (the walk calls storyOrder when ai_story is on; the
   // suite calls it directly). No axis name or vector ever crosses it — only ids and hour marks.
-  try { window.EXStory = { order: storyOrder, hourGap: hourGap }; window.CONFIG = cfg; } catch (e) {}
+  try { window.@@NS_UPPER@@Story = { order: storyOrder, hourGap: hourGap }; window.CONFIG = cfg; } catch (e) {}
 
   // ---- the told story's VOICE (EX-STORY-LINE / EX-STORY-EDGE, INV-47) --------------------------
   // On when ai_story ships true. The hang leans by light (assembleOrder), and the ordered pick-set
@@ -325,9 +325,9 @@
   const QUIZ_CFG = (EX && EX.quiz) || {};
   const QUIZ_PLACE = Array.isArray(QUIZ_CFG.placement) ? QUIZ_CFG.placement : ["plaque"];
   const QUIZ_COOLDOWN_H = Number.isFinite(+EX.quiz_cooldown_hours) ? +EX.quiz_cooldown_hours : 6;
-  const QUIZ_SHOWN_KEY = "ex.quizshown";    // per-browser timestamp of the last quiz show
-  const QUIZ_TAB_KEY = "ex.quiztab";        // a stable per-tab id when the coat-check is off
-  const QUIZ_LS = (id) => "ex.quiz." + id; // per-work answered-memory key (not the coat-check)
+  const QUIZ_SHOWN_KEY = "@@NS@@.quizshown";    // per-browser timestamp of the last quiz show
+  const QUIZ_TAB_KEY = "@@NS@@.quiztab";        // a stable per-tab id when the coat-check is off
+  const QUIZ_LS = (id) => "@@NS@@.quiz." + id; // per-work answered-memory key (not the coat-check)
   function quizHash(str) {
     let s = 0;
     for (const c of String(str)) s = (s * 31 + c.charCodeAt(0)) >>> 0;
@@ -391,7 +391,7 @@
   const quizShows = (w) => QUIZ_ON && quizArm === "on" && !!(w && w.quiz) && w.id === quizChosenId;
   // `_hash` is exported for the JS↔Python parity test (test_parity.py): the A/B arm and the
   // per-work pick are drawn from this exact function, so the Python util must mirror it byte-for-byte.
-  try { window.EXQuiz = { chosen: () => quizChosenId, arm: () => quizArm, token: QUIZ_TOKEN, _hash: quizHash }; } catch (e) {}
+  try { window.@@NS_UPPER@@Quiz = { chosen: () => quizChosenId, arm: () => quizArm, token: QUIZ_TOKEN, _hash: quizHash }; } catch (e) {}
   const STORYLINES = Object.create(null);
   let storyVariant = null;          // the mode the served story reported — rides the GA beats (EX-STORY-AB)
   const toldPortions = new Set();   // portion keys whose plot has actually come back (told ONLY on a served plot)
@@ -876,7 +876,7 @@
   function preloadCancel() {
     if (preImg) { preImg.src = ""; preImg = null; }     // abandon the in-flight fetch cleanly (F5)
     preId = null;
-    try { window.__exPreload = null; } catch (e) {}     // the test read-side, like EXTimings/__exSeen
+    try { window.__@@NS@@Preload = null; } catch (e) {}     // the test read-side, like @@NS_UPPER@@Timings/__@@NS@@Seen
   }
   function preloadAhead(curN) {                         // curN = the 1-based frame in view
     if (!PRELOAD_AHEAD) { preloadCancel(); return; }
@@ -891,7 +891,7 @@
     if (w.srcset) { im.sizes = data.walk_sizes || "88vw"; im.srcset = w.srcset; }
     im.src = w.img;                                     // the browser picks the device tier
     preImg = im;
-    try { window.__exPreload = { id: id, dir: travelDir }; } catch (e) {}
+    try { window.__@@NS@@Preload = { id: id, dir: travelDir }; } catch (e) {}
   }
 
   // ---- THE DOOR (door.html's face — the norm) --------------------------------
@@ -1157,7 +1157,7 @@
     const wasWalk = !atDoor;                            // the face we are LEAVING (before any render)
     const wasSide = sideOpen;                           // the side room may be the face we leave (EX-SERIES)
     ceremonyCancel();                                  // navigation wins mid-ceremony (EX-DOOR-2e)
-    const st = ev.state && ev.state.ex;
+    const st = ev.state && ev.state.@@NS@@;
     // The zoom is the topmost face (INV-83): a Back that leaves it closes ONLY the zoom and stops here,
     // so the room or door beneath keeps its step and no walk_exit or series beat fires. A Forward back
     // INTO a zoom step re-opens it over whatever now stands, laying no new step.
@@ -1254,7 +1254,7 @@
       arm(x.target.querySelector("img.work"), w, x.target);
       preloadAhead(+x.target.dataset.n);
     }
-    if (window.__exSeen) window.__exSeen(w.id);      // the coat-check report (EX-MEMORY)
+    if (window.__@@NS@@Seen) window.__@@NS@@Seen(w.id);      // the coat-check report (EX-MEMORY)
     // the walk tracks its place per frame in view (INV-32c re-carried after the ↗ retired)
     try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: w.id })); } catch (e) {}
     // a late callback must never re-live the tone ON the door (EX-ACCENT rests at the seams)
@@ -2726,7 +2726,7 @@
   // the door stays the door, the walk stays the walk; only a PICK ever commits a walk behind the door.
   // A door is "held" on reload ONLY when it was reached by EXITING a walk (`returned`) — a cold door,
   // and a cold door with a returning/injected walk, keep the normal paths (greeting / the walk).
-  const prior = (history.state && history.state.ex) || null;
+  const prior = (history.state && history.state.@@NS@@) || null;
   const returnedDoor = !!(prior && prior.face === "door" && prior.returned);
   entered = restore();
   document.body.classList.add("ex-live");              // hide the static index, wake the live face
@@ -2830,7 +2830,7 @@
         }).catch(() => {});
       } catch (e) {}
     };
-    window.__exSeen = (id) => {
+    window.__@@NS@@Seen = (id) => {
       pending.add(String(id));
       clearTimeout(seenT);
       seenT = setTimeout(flush, 3000);                 // one debounced report per walk stretch
@@ -2851,7 +2851,7 @@
   }
   function requestSet(code) {                          // cached-or-fetch, the ONE road (EX-LANG)
     if (!I18N_ON) return;
-    const CK = "ex.i18n." + VER + "." + code;
+    const CK = "@@NS@@.i18n." + VER + "." + code;
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(CK) || "null"); } catch (e) {}
     if (cached) { applySet(code, cached); return; }
@@ -3102,7 +3102,7 @@
 
     // the player's own reachable surface, for the suite
     try {
-      window.EXSound = { state: () => ({ desired, playing, armed, ready, fetched, loading,
+      window.@@NS_UPPER@@Sound = { state: () => ({ desired, playing, armed, ready, fetched, loading,
                                          pausedOffset }),
                          url: SND_URL };
     } catch (e) {}

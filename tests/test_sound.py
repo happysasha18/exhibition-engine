@@ -67,7 +67,7 @@ js_src = (ROOT / "engine" / "assets" / "exhibition.js").read_text(encoding="utf-
 
 # 3 · SND_KEY declared and wiped on ?reset
 check("EX-SOUND SND_KEY ('ex.sound') declared and cleared on ?reset",
-      'const SND_KEY = "ex.sound"' in js_src
+      'const SND_KEY = "@@NS@@.sound"' in js_src
       and "localStorage.removeItem(SND_KEY)" in js_src,
       "SND_KEY declaration or reset removal missing from exhibition.js")
 

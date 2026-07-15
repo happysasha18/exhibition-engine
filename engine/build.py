@@ -33,6 +33,7 @@ LOADING_LINE = ""        # EX-LOAD: the cold-arrival line, instance-supplied (ge
 COPYRIGHT = ""           # composed in build() — the year is the bake run's own
 _ENGINE_ASSETS = None
 _INSTANCE_ASSETS = None
+_NAMESPACE = "ex"        # EX-NS: storage-key/global/perf-mark namespace; instance overrides via site.json
 
 DEFAULT_FLAGS = {
     "ai_greeting": False,     # canned greeting only; serverless Haiku swaps in later behind /api  (INV-19)
@@ -500,11 +501,30 @@ def client_asset(name):
     return cand if (cand and cand.exists()) else _ENGINE_ASSETS / name
 
 
+def apply_namespace(text, ns):
+    """Resolve the client's namespace tokens to the instance's namespace (EX-NS). The engine client
+    carries its namespace-bearing literals as tokens — storage-key prefix ``@@NS@@.``, hyphen key
+    ``@@NS@@-``, perf-mark prefix ``@@NS@@:`` with its strip length ``@@NS_MARK_LEN@@`` (len(ns)+1,
+    for the trailing colon — derived, never hardcoded), window globals ``@@NS_UPPER@@*`` / ``__@@NS@@*``,
+    and the history-state key ``@@NS@@``. DOM ids/CSS classes are NOT tokenized (both instances share
+    them). An instance client that ships its own copy has no tokens, so this is a byte no-op on it."""
+    return (text.replace("@@NS_MARK_LEN@@", str(len(ns) + 1))
+                .replace("@@NS_UPPER@@", ns.upper())
+                .replace("@@NS@@", ns))
+
+
 def copy_exhibition_assets():
     """The exhibition client (JS+CSS) — instance override first, engine's own otherwise (see
-    client_asset); favicons from the instance's assets dir (absent → the bundle simply has none)."""
-    for name in ("exhibition.js", "exhibition.css"):
-        shutil.copy2(client_asset(name), OUT / name)
+    client_asset); favicons from the instance's assets dir (absent → the bundle simply has none).
+    The served JS is passed through the namespace substitution (EX-NS): the engine client's tokens
+    resolve to the instance's namespace; a token-free instance client is byte-copied unchanged."""
+    js_path = client_asset("exhibition.js")
+    js_src = js_path.read_text(encoding="utf-8")
+    if "@@NS@@" in js_src or "@@NS_UPPER@@" in js_src:
+        write(OUT / "exhibition.js", apply_namespace(js_src, _NAMESPACE))
+    else:
+        shutil.copy2(js_path, OUT / "exhibition.js")   # token-free instance client — byte-exact
+    shutil.copy2(client_asset("exhibition.css"), OUT / "exhibition.css")
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
         if cand and cand.exists():
@@ -674,12 +694,15 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     no instance. ``display_max``: cap the served images' long edge (px) — the deploy passes it,
     tests omit it so the bake stays fast (EX-PROTECT-RES / INV-56)."""
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
-    global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, _ENGINE_ASSETS, _INSTANCE_ASSETS
+    global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, _ENGINE_ASSETS, _INSTANCE_ASSETS, _NAMESPACE
     GA_ID = ga_id
     OUT = out_dir
     ROOT = content_dir
     _ENGINE_ASSETS = engine_assets_dir
     _INSTANCE_ASSETS = instance_assets_dir
+    # EX-NS: the instance's namespace for storage keys / globals / perf marks / history-state. The
+    # engine's own example bakes under "ex" (default); an instance declares its own in site.json.
+    _NAMESPACE = (site_config.get("namespace") or "ex").strip()
     SITE_NAME = site_config["site_name"]
     CREATOR = site_config["creator"]
     ROOT_TITLE = site_config["root_title"]

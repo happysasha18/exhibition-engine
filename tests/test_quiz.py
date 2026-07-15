@@ -151,7 +151,7 @@ quiz_ask_js = "quiz_ask" in js_src
 chip_js = "ex-quiz-chip" in js_src
 card_js = "ex-quiz-card" in js_src
 esc_js = "Escape" in js_src and "quiz" in js_src.lower()
-ls_solved = "ex.quiz." in js_src
+ls_solved = "@@NS@@.quiz." in js_src
 en = (json.loads((TMP_ON / "exhibition_data.json").read_text()).get("greet") or {}).get("langs", {}).get("en", {})
 quiz_ask_baked = "quiz_ask" in en
 check("EX-QUIZ chip + card obey house breath (EX-ARRIVE) and tongue (EX-I18N)",
