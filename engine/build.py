@@ -917,12 +917,14 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         # EX-SOUND (INV-48): the ambient loop. sound_url is the audio file (empty = player hidden,
         # the default — the gallery engine ships OFF; an instance opts in by setting this path).
         # sound_credit holds the artist credit shown in the tray (all optional; missing = no credit shown).
-        "sound_url": "",           # path to the .m4a / .ogg — empty means no player renders
-        "sound_credit": {          # the tray's attribution — instance fills its own
+        # sound_url / sound_credit ride site.json (EX-NS-style instance identity): the engine's own
+        # example ships neither (player OFF), an instance opts in by declaring them in site.json.
+        "sound_url": (site_config.get("sound_url") or ""),   # path to the .m4a / .ogg — empty means no player renders
+        "sound_credit": (site_config.get("sound_credit") or {  # the tray's attribution — instance fills its own in site.json
             "artist": "",          # artist/band name (shown bold)
             "title": "",           # track/album title (shown in «»)
             "url": "",             # artist website (shown as a link)
-        },
+        }),
         # EX-QUIZ-PICK (INV-64/66): the quiz's PLACEMENT config knob — an instance tunes which
         # surfaces carry the «question?» chip, with NO code change (INV-28). ONE question per
         # show is chosen deterministically from the eligible set (INV-66 supersedes the old
