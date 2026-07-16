@@ -191,7 +191,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 /* ONE vertical rail for the round floating chrome: this link and the player (EX-SOUND, top-right)
    centre on the SAME x from the right edge at every width and orientation (his 2026-07-10
    landscape note). Each rule derives `right` as the rail minus half its own button width. */
-:root{ --ex-rail:36px; --ex-share-b:26px; }
+:root{ --ex-rail:36px; --ex-share-b:26px; --cap-narrow-step:1; }   /* --cap-narrow-step: INV-98 boot default, JS overrides from config */
 .ex-share{ position:fixed; right:calc(var(--ex-rail) - 18px); bottom:var(--ex-share-b); z-index:35; width:36px; height:36px;
   border-radius:999px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
   background:rgba(8,8,7,.55); border:1px solid var(--hair);
@@ -316,13 +316,27 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    the dark margin it's imperceptible, and where the column grows tall / the phone band reaches
    onto a bright work it keeps the letters legible. Backs INV-27 rather than replacing it: the
    label still lives in the margin; the scrim only insures the growth + mobile-band cases. */
+/* INV-97: the scrim is the LAST RESORT — painted only where the placement leaves no honest gutter
+   and the text rect still meets the picture. The JS toggles .cap-scrim after it measures; at rest the
+   gradient is absent (background:none) so it never backs a block that already sits clear. It fades on
+   the house tempo. */
 .exh-capzone::before{ content:""; position:absolute; z-index:-1; inset:-10px -46px -16px -24px;
-  background:radial-gradient(125% 105% at 7% 93%, rgba(8,7,6,.70) 0%, rgba(8,7,6,.40) 44%, transparent 78%);
-  pointer-events:none; }
+  background:none; opacity:0; pointer-events:none;
+  transition:opacity var(--d-soft) var(--ease); }
+.exh-capzone.cap-scrim::before{ opacity:1;
+  background:radial-gradient(125% 105% at 7% 93%, rgba(8,7,6,.70) 0%, rgba(8,7,6,.40) 44%, transparent 78%); }
+/* EX-RTL: the feathered backing follows the mirrored plaque to the bottom-END corner */
+[dir=rtl] .exh-capzone::before{ inset:-10px -24px -16px -46px; }
+[dir=rtl] .exh-capzone.cap-scrim::before{
+  background:radial-gradient(125% 105% at 93% 93%, rgba(8,7,6,.70) 0%, rgba(8,7,6,.40) 44%, transparent 78%); }
 .exh-capzone .title{ font-family:var(--serif); font-weight:300; font-size:clamp(20px,2.2vw,30px);
   line-height:1.1; color:color-mix(in oklab, var(--ink), var(--tone,var(--ink)) 15%);
   transition:color var(--d-ground) var(--ease); }
 .exh-capzone .title.untitled{ color:var(--muted); font-style:italic; font-size:clamp(16px,1.8vw,22px); }
+/* INV-98: the walk's reader-facing wrapping prose breaks into near-equal balanced lines — one home
+   for the whole class (the title, the narrator line, and the quiz card's prompt cite it, never restate).
+   The browser's own balancer owns the break points, dictionary scripts included — no table, no model. */
+.exh-capzone .title, .exh-capzone .told, .quiz-prompt{ text-wrap:balance; }
 .exh-capzone .told{ font-family:var(--serif); font-style:italic; font-weight:300; margin-top:9px;
   font-size:clamp(15px,1.55vw,20px); line-height:1.36; max-width:34ch;
   color:color-mix(in oklab, var(--told), var(--tone,var(--told)) 22%);
@@ -447,6 +461,18 @@ body.ex-zoom #ex-sound,
   .exh-capzone .told{ max-width:100%; }
   :root{ --ex-share-b:16px; }           /* clear of the caption band's corner; x stays on the rail;
                                             the toast above the button rides the same variable */
+}
+/* INV-98: below 400px — the band of the smallest phones — the caption steps one step down the type
+   scale so the balanced block clears the picture. The step count is an owner knob (config
+   exhibition.caption_narrow_step, engine default 1, 0 disables); the client sets --cap-narrow-step at
+   boot, and each step takes the block ~8% down the scale together (never one part shrunk by hand).
+   Ordered AFTER the 640px band so it wins where both match. */
+@media (max-width:400px){
+  .exh-capzone{ --cap-narrow-scale:calc(1 - var(--cap-narrow-step,1) * 0.08); }
+  .exh-capzone .title{ font-size:calc(22px * var(--cap-narrow-scale)); }
+  .exh-capzone .title.untitled{ font-size:calc(16px * var(--cap-narrow-scale)); }
+  .exh-capzone .told{ font-size:calc(15px * var(--cap-narrow-scale)); }
+  .exh-capzone .meta{ font-size:calc(12.5px * var(--cap-narrow-scale)); }
 }
 
 /* ================= EX-QUIZ (INV-59/60) + the gift ceremony ================= */

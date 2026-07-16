@@ -183,6 +183,10 @@
     return Math.min(3, Math.max(0.05, t));
   })();
   if (!REDUCED) document.documentElement.style.setProperty("--tempo", String(TEMPO));
+  // EX-CAPTION (INV-98): the narrow-screen type-step is an owner knob — engine default one step, 0
+  // disables. The CSS below 400px reads --cap-narrow-step; set it here so the instance needs nothing.
+  document.documentElement.style.setProperty(
+    "--cap-narrow-step", String(clampInt(EX.caption_narrow_step, 1, 0, 2)));
   const COLD = EX.cold_spread || "diverse";
   const ARC = EX.arc_shape || "widening";
   const AXES = EX.kinship_axes || "all";
@@ -1539,7 +1543,90 @@
     focusedId = w.id;
     fillTold();                                        // the narrator's line for this work, if spoken
     storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
+    capSettle(x.target.querySelector("img.work"));     // EX-CAPTION (INV-97): seat the caption in the free zone at the frame's settle
   }), { threshold: 0.55 });
+
+  // ---- EX-CAPTION (INV-97/98): the caption keeps to its own space -------------------------------
+  // The centred picture is never moved or scaled here (INV-27); the caption block alone measures the
+  // real free space it leaves and seats there — the bottom band when the space below the picture holds
+  // the block, else a side band on the logical-start edge (below the counter, its reserved neighbour),
+  // never over the picture and never under the share rail's reserved column on the end edge. A soft
+  // scrim backs the text ONLY where no honest gutter remains. The measure runs at the frame's settle
+  // and on a rotation (INV-86) — read from a ResizeObserver on the in-view picture, whose box changes
+  // exactly at those beats (load, rotation rescale) and never on a within-frame scroll — so the seat is
+  // one layout read per settle, not a continuous reflow. Logical properties carry the RTL mirror.
+  const capRO = ("ResizeObserver" in window) ? new ResizeObserver(schedulePlaceCaption) : null;
+  let capRaf = 0;
+  function schedulePlaceCaption() {
+    if (capRaf) return;
+    capRaf = requestAnimationFrame(() => { capRaf = 0; placeCaption(); });
+  }
+  function capSettle(img) {
+    if (capRO && img) capRO.observe(img);              // observing an element already watched is a no-op
+    schedulePlaceCaption();
+  }
+  function capInViewImg() {                            // the frame nearest the viewport centre (as the probe reads)
+    const vh = innerHeight, cy = vh / 2; let best = null, bd = 1e9;
+    stage.querySelectorAll("section.exh-frame").forEach((f) => {
+      const r = f.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > vh) return;
+      const d = Math.abs((r.top + r.bottom) / 2 - cy);
+      if (d < bd) { bd = d; best = f; }
+    });
+    return best ? best.querySelector("img.work") : null;
+  }
+  function placeCaption() {
+    if (!cap.classList.contains("show") || faceStands()) return;   // the walk's own frame only (EX-CHROME)
+    const img = capInViewImg();
+    if (!img) return;
+    const W = innerWidth, H = innerHeight;
+    const rtl = document.documentElement.getAttribute("dir") === "rtl";
+    const pic = img.getBoundingClientRect();
+    const cr = counter.getBoundingClientRect();
+    const sr = shareBtn.getBoundingClientRect();
+    const GAP = 10;                                    // the honest breath between the block and its neighbours
+    const CAP_SIDE_FLOOR = 140;                        // INV-97 legibility floor: a free column is an honest
+                                                       // gutter only at a readable width — below it (the audit
+                                                       // key: a 42px ribbon wrapped a title one letter per line
+                                                       // and ran ~2100px past the screen) it is no gutter at all
+    const startInset = rtl ? (W - cr.right) : cr.left;                 // the counter holds the start edge
+    const endReserve = (rtl ? sr.right : (W - sr.left)) + GAP;         // the share rail's reserved column, end edge
+    const startGap   = rtl ? (W - pic.right) : pic.left;              // free width from the start edge to the picture
+    // measure the block's natural height in the CSS bottom-band default, then choose the seat
+    cap.style.insetInlineStart = ""; cap.style.insetInlineEnd = "";
+    cap.style.inlineSize = ""; cap.style.maxInlineSize = ""; cap.style.overflowWrap = "";
+    cap.style.top = ""; cap.style.bottom = "";
+    cap.style.maxBlockSize = ""; cap.style.overflow = "";        // clear any prior containment clamp
+    const bottomInset = W <= 640 ? 14 : 30;
+    const topBB = H - bottomInset - cap.offsetHeight;
+    if (topBB >= pic.bottom - 1) {                     // the bottom band sits clear below the picture
+      cap.style.insetInlineEnd = endReserve + "px";    // still hold the share rail's column clear
+      if (W > 640) cap.style.maxInlineSize = "none";
+      cap.classList.remove("cap-scrim");
+      return;
+    }
+    const sideCol = startGap - startInset;             // the free column from the counter's inset to the picture
+    const sideW = sideCol - GAP;                        // the band's own width, a breath shy of the picture
+    if (sideCol >= CAP_SIDE_FLOOR) {                    // the free column reaches the legibility floor
+      const topPx = cr.bottom + GAP;                    // below the counter's line (block axis, unmirrored)
+      cap.style.top = topPx + "px";
+      cap.style.bottom = "auto";
+      cap.style.insetInlineStart = startInset + "px";
+      cap.style.inlineSize = sideW + "px";
+      cap.style.maxInlineSize = "none";
+      cap.style.overflowWrap = "anywhere";             // a narrow worst-case band breaks long words rather than spilling onto the work
+      cap.classList.remove("cap-scrim");
+      // INV-97 containment: the seated block always ends within the viewport. A tall band on a short
+      // (landscape) frame is clamped to the room below the counter — it stays an honest side band and
+      // never runs off-screen; the scrim below is only for a sub-floor column, not for an honest one.
+      if (cap.getBoundingClientRect().bottom > H - bottomInset + 1) {
+        cap.style.maxBlockSize = Math.max(0, H - bottomInset - topPx) + "px";
+        cap.style.overflow = "hidden";
+      }
+      return;
+    }
+    cap.classList.add("cap-scrim");                    // no honest gutter — the last resort backs the text (INV-97)
+  }
 
   // ---- the told line settles onto the plaque (EX-STORY-LINE / EX-STORY-WAIT) ----
   // A focused work's told-slot wears one of three states while the plot travels (EX-STORY-WAIT):
@@ -2777,6 +2864,7 @@
           scrollTo(0, y);
           guardHold = y;                               // if the zoom (a face) stands, hold the recomputed place beneath (EX-CHROME)
         }
+        schedulePlaceCaption();                        // EX-CAPTION (INV-97): re-seat the caption for the new viewport, on the same turn beat (INV-86)
       }
       turnTargetEl = null;
     }, 120);
