@@ -78,18 +78,13 @@
       const params = workId ? { work: String(workId) } : {};
       // a closed BAKED-ladder word rides a beat that owns one (gift_kind, lang) — never free text (INV-1)
       if (extra) for (const k in extra) params[k] = extra[k];
-      // EX-STORY-AB: when a told story walks beside the guest its variant rides the EXISTING
-      // unfold/exit beats as a dimension — no sixth beat is added (INV-41 stands)
-      if (storyVariant && (beat === "walk_unfold" || beat === "walk_exit")) {
-        params.story_variant = storyVariant;
-      }
-      // EX-QUIZ-AB (INV-62): the arm rides the SAME two beats as a dimension — only when the flag
-      // is on; control/flag-off never carry the key (the payload stays byte-for-byte today's)
-      if (quizArm && (beat === "walk_unfold" || beat === "walk_exit")) {
-        params.quiz_arm = quizArm;
-      }
-      // EX-QUIZ-FLOW (INV-69): the quiz stage rides the SAME two beats as a dimension — only when
-      // the arm is on and a stage has been reached; never a sixth beat (INV-41 stands)
+      // EX-AB (INV-91): every dealt arm rides EVERY registry beat as a dimension, keyed by the
+      // experiment's name; flag off / no arm dealt ⇒ no key (INV-60 stands) — no beat lays variant-blind
+      for (const abK in abArms) params[abK] = abArms[abK];
+      // EX-STORY-AB: the declared story variant rides every beat too — the frame's stamp (INV-41 stands)
+      if (storyVariant) params.story_variant = storyVariant;
+      // EX-QUIZ-FLOW (INV-69): the quiz stage is a funnel step rather than an arm — it keeps the
+      // SAME two walk beats as a dimension; never a sixth beat (INV-41 stands)
       if (quizStage && (beat === "walk_unfold" || beat === "walk_exit")) {
         params.quiz_stage = quizStage;
       }
@@ -385,6 +380,17 @@
     try {                                    // the coat-check token when the museum remembers (EX-MEMORY)
       const v = localStorage.getItem(VISITOR_KEY);
       if (v && /^[a-z0-9]{8,40}$/.test(v)) return v;
+      if (cfg.visitor_memory === true) {     // EX-AB (INV-90): the seed read MINTS the token when none
+        let r = "";                          // exists yet, so visit 1 already deals off the token visit 2
+        try {                                // holds (the mint mirrors EX-MEMORY's own, which then reuses it)
+          const b = new Uint8Array(12);
+          crypto.getRandomValues(b);
+          r = Array.from(b, (x) => (x % 36).toString(36)).join("");
+        } catch (e2) { r = Math.random().toString(36).slice(2, 14); }
+        const t = r + Date.now().toString(36);
+        localStorage.setItem(VISITOR_KEY, t);
+        return t;
+      }
     } catch (e) {}
     try {                                    // else a stable per-tab id — survives a reload within the walk
       let t = sessionStorage.getItem(QUIZ_TAB_KEY);
@@ -393,9 +399,23 @@
     } catch (e) {}
     return "anon";
   })();
-  // the A/B arm — decided ONCE per walk off the same token with a DIFFERENT salt; null when the
-  // flag is off so nothing stamps the GA beats (the payload stays byte-for-byte today's — INV-60)
-  const quizArm = QUIZ_ON ? ((quizHash(QUIZ_TOKEN + ":quizarm") / 4294967296) < 0.5 ? "on" : "control") : null;
+  // EX-AB (INV-90): the variant frame — at boot, ahead of any beat, deal each registered experiment
+  // one arm off the visitor's seed by the pinned quizHash formula; equal split over the arms in order.
+  // A degenerate entry (under two arms) stays undealt — the bake refuses those before they serve.
+  const abArms = {};
+  try {
+    const ABREG = cfg.experiments || {};
+    for (const abName in ABREG) {
+      const abEntry = ABREG[abName] || {};
+      const abList = Array.isArray(abEntry.arms) ? abEntry.arms : null;
+      if (!abList || abList.length < 2) continue;
+      const abU = quizHash(QUIZ_TOKEN + ":" + (abEntry.salt || abName)) / 4294967296;
+      abArms[abName] = abList[Math.floor(abU * abList.length)];
+    }
+  } catch (e) {}
+  // the quiz arm is the frame's first rider (salt "quizarm", arms on/control — INV-62's split,
+  // unchanged); null when the flag is off so nothing stamps the GA beats (INV-60)
+  const quizArm = QUIZ_ON ? (abArms.quiz_arm || null) : null;
   // EX-QUIZ-ONCE (INV-66): ONE quiz chip per walk show, chosen deterministically from the eligible
   // set. eligible = works in the current order that carry a quiz AND are not yet answered.
   // The cooldown: a localStorage timestamp silences the chip for QUIZ_COOLDOWN_H hours after a show.

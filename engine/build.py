@@ -52,6 +52,28 @@ DEFAULT_FLAGS = {
 
 # ---------------------------------------------------------------- data helpers
 
+def validate_experiments(experiments, reserved=()):
+    """EX-AB (INV-90): the bake refuses a degenerate experiment registry — an arms list under two
+    words never splits, and a salt shared inside the registry (or colliding with another draw key
+    hashed off the same visitor seed: a work id, the literal "once") deals correlated draws."""
+    seen = {}
+    for name, entry in (experiments or {}).items():
+        arms = (entry or {}).get("arms")
+        if not isinstance(arms, list) or len(arms) < 2:
+            raise SystemExit(
+                f"experiments[{name!r}]: arms must list at least two closed words (EX-AB/INV-90)")
+        salt = (entry or {}).get("salt") or name
+        if salt in seen:
+            raise SystemExit(
+                f"experiments[{name!r}]: salt {salt!r} already used by experiment {seen[salt]!r} — "
+                f"one shared key deals correlated draws (EX-AB/INV-90)")
+        if salt == "once" or salt in reserved:
+            raise SystemExit(
+                f"experiments[{name!r}]: salt {salt!r} collides with another draw key off the same "
+                f"seed (EX-AB/INV-90)")
+        seen[salt] = name
+
+
 def load_json(path):
     with open(ROOT / path, encoding="utf-8") as fh:
         return json.load(fh)
@@ -964,11 +986,12 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         # ONLY when set, so the engine's own bake keeps the derived default (byte-identical).
         if site_config.get("quiz_prize_name"):
             config["exhibition"]["quiz_prize_name"] = site_config["quiz_prize_name"]
-        # the quiz A/B arm rides the walk's EXISTING GA beats like story_variant
+        # the quiz A/B arm is the variant frame's first rider (EX-AB/INV-91: every registry beat)
         config["experiments"]["quiz_arm"] = {
             "arms": ["on", "control"],   # on = the quiz may surface; control = the measured baseline
             "flag": "quiz",
-            "metric": "walk_unfold",     # the beat the arm rides (also on walk_exit)
+            "metric": "walk_unfold",     # the beat the owner watches for this experiment
+            "salt": "quizarm",           # the quiz's historic salt — pinned so no returning arm reshuffles (INV-90)
         }
     # EX-DOOR-3 (door_diversity): tell the client to deal a fresh, evenly-spread, place-guaranteed set
     # every open, and the place fraction to guarantee among the shown windows. Flag off → the key is
@@ -980,6 +1003,9 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             # INV-75: the fraction of each open that must be works not dealt since the last round reset
             "fresh_min": float(dd.get("fresh_min", 0.6)),
         }
+    # EX-AB (INV-90): the bake refuses a degenerate experiment registry before it can serve
+    validate_experiments(config["experiments"],
+                         reserved={str(it["id"]) for it in items})
     write(OUT / "config.json", json.dumps(config, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
     # reserved empty /api namespace for later serverless AI (CS-7)

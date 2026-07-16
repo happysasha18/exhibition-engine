@@ -5,6 +5,17 @@ private production instance and founded as its own product: a static gallery-sit
 adaptive-exhibition renderer, with the guided-journey product vision below. Method: the live-spec
 pack, loaded per session._
 
+## 2026-07-16 (evening, second landing) — the variant frame (EX-AB / INV-90 / INV-91)
+
+The experiment frame is engine-generic now: the served `experiments` registry (arms · flag · metric ·
+salt) deals each visitor one arm at boot, synchronously ahead of any beat, off the visitor seed (the
+seed read mints the coat-check token when none exists — this closed a real visit-1→2 arm-flip); every
+dealt arm and the declared story variant ride EVERY registry beat as dimensions; `validate_experiments`
+in build.py refuses a degenerate registry (under two arms, a salt collision). quiz_arm rides the frame
+with its salt/split pinned. Tests: test_pulse 13/13 (4 new browser rows), test_compose VF5a/b; suite
+32/32. The read side stays instance-owned (tlvphotos ga_report/morning meter, INV-92 there). SPEC:
+"Experiments — the variant frame" + prover/design-review records dated 2026-07-16.
+
 ## 2026-07-16 (evening) — the pack's push gates adopted
 
 The live-spec 2.1.0 ratchet kit is vendored here (`scripts/spec-style-lint.py` and kin, source-pin

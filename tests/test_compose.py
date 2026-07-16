@@ -59,6 +59,44 @@ POLAROID_SERIES = next((s for s in SERIES if s.get("variant") != "lane"), None)
 LANE_SERIES = next((s for s in SERIES if s.get("variant") == "lane"), None)
 ANY_SERIES = SERIES[0] if SERIES else None
 
+# ---------------------------------------------------------------- VF5 EX-AB/INV-90 bake refusal
+# The served config's `experiments` registry (SPEC "Experiments — the variant frame", EX-AB/INV-90)
+# must refuse an entry with fewer than two arms, and refuse two entries sharing one salt. The
+# registry itself is only ever written by engine/build.py's own quiz_arm seam (under
+# enable=["quiz"]) — there is no clean config seam in the public build() call to inject a
+# MALFORMED entry — so this row calls the seam the build must expose for that refusal:
+# engine.build.validate_experiments(dict) -> raises SystemExit on either violation. That seam does
+# not exist yet, so both checks below are RED now (a "missing" result, never a SystemExit).
+def _call_validate_experiments(experiments):
+    """Call build.validate_experiments(dict); return a tagged result — never lets an
+    AttributeError (seam absent) or any other exception escape and crash the suite."""
+    fn = getattr(build_site._engine, "validate_experiments", None)
+    if fn is None:
+        return ("missing", "engine/build.py exposes no validate_experiments(dict) seam yet")
+    try:
+        fn(experiments)
+    except SystemExit as e:
+        return ("exit", e.code)
+    except Exception as e:  # noqa: BLE001 — anything else is not the refusal law either
+        return ("other", repr(e))
+    return ("ok", None)
+
+
+_vf5_one_arm = {"x": {"arms": ["only"], "flag": "quiz", "metric": "walk_unfold"}}
+_vf5_one_arm_result = _call_validate_experiments(_vf5_one_arm)
+check("VF5a EX-AB/INV-90 the bake refuses an experiments entry with fewer than two arms",
+      _vf5_one_arm_result[0] == "exit",
+      f"input={_vf5_one_arm} result={_vf5_one_arm_result}")
+
+_vf5_dup_salt = {
+    "a": {"arms": ["on", "control"], "flag": "quiz", "metric": "walk_unfold", "salt": "s"},
+    "b": {"arms": ["hi", "lo"], "flag": "quiz", "metric": "walk_unfold", "salt": "s"},
+}
+_vf5_dup_salt_result = _call_validate_experiments(_vf5_dup_salt)
+check("VF5b EX-AB/INV-90 the bake refuses two experiments entries sharing one salt",
+      _vf5_dup_salt_result[0] == "exit",
+      f"input={_vf5_dup_salt} result={_vf5_dup_salt_result}")
+
 # ---------------------------------------------------------------- second bake WITH the ambient player
 # The default synthetic fixture ships no audio, so #ex-sound never renders on it. The EX-CHROME
 # player-retraction rows (SND1–4) need a rendered player, so a second bake injects a synthetic

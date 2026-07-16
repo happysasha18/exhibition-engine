@@ -549,9 +549,9 @@ key and serves free from cache on a re-ask (`⟨DELTA-16⟩`). One model call pe
 walk carries no lines and loses nothing (CS-8, `INV-8`).
 
 **No story ships variant-blind** (`EX-STORY-AB`): every story carries its `story_variant` in the
-generated JSON and as a dimension on the walk's existing GA beats (`walk_unfold` / `walk_exit`)
-— no sixth beat added. The mode is chosen by `story.variant` in config; variant B (the cheap
-light/hour plot) ships first.
+generated JSON and as a dimension on every registry beat — the variant frame's declared-dimension
+stamp (`EX-AB`/`INV-91`), no sixth beat added. The mode is chosen by `story.variant` in config;
+variant B (the cheap light/hour plot) ships first.
 
 ### The ambient player
 
@@ -1072,12 +1072,61 @@ with no spec sentence, which the old "five beats" prose could not see). `EX-PULS
 | `gift_download` | a gift file actually leaves for the visitor's device (on the prize's yes this beat lands BESIDE the quiz funnel's `gift` stage — a beat and a dimension marking one moment, never a double event) | the work + `gift_kind` from the closed pair `quiz_prize` / `grab` |
 | `lang_pick` | the guest chooses the exhibition's tongue at the door | `lang` — a code from the baked list (the guest's own outsider tongue reports as `other`, so the ladder stays closed) `[default]` |
 
-When a told story, the quiz arm, or the quiz stage walks beside the guest, each rides
-`walk_unfold`/`walk_exit` as a **dimension** (EX-STORY-AB, EX-QUIZ-AB, EX-QUIZ-FLOW) — a new beat
-only when it IS its own moment, otherwise a dimension on an existing beat, never silently. **The
-named silences** (deliberate, so the honest picture stays honest by decision rather than omission):
-the walk's individual steps and wheel turns; the sound volume drag; a pinch on a work; the door's
-idle hint; the side room's close (its open already counts the visit) `[default]`. `⟨DELTA-12⟩`
+Every live experiment's dealt arm rides **every registry beat as a dimension** — the frame stamps it
+on each beat by the experiment's name (`EX-AB`). The quiz stage rides the two walk beats,
+`walk_unfold`/`walk_exit`, the same way (`EX-QUIZ-FLOW`); a new beat joins only when it IS its own
+moment, otherwise a dimension on an existing beat, entered through the registry and never silently.
+**The named silences** (deliberate, so the honest picture stays honest by decision rather than
+omission): the walk's individual steps and wheel turns; the sound volume drag; a pinch on a work; the
+door's idle hint; the side room's close (its open already counts the visit) `[default]`. `⟨DELTA-12⟩`
+
+### Experiments — the variant frame
+
+The served config carries an **experiment registry**: `experiments` maps an experiment name to its
+arms (an ordered list of at least two closed words), the flag that admits it, the metric its owner
+watches, and a salt (the name serves when the salt is absent; a salt is unique within the registry and stands
+apart from the other draw keys hashed off the same seed — a work id, the literal `once` — since one
+shared key deals correlated draws). The bake refuses an entry with fewer than two arms or a salt
+collision it can see. An entry rides the bake only while its flag is on, so a bake with
+no live experiment serves today's bytes `[default]`. At boot the client **deals each registered
+experiment one arm, once**, off the visitor's own seed — the coat-check token when `visitor_memory`
+is on (the seed read mints the token when none exists yet, so the first visit already deals from the
+token a later visit holds), else the stable per-tab id, the same seed the quiz has always drawn
+from; with both storages refused the seed is the literal `anon`, so that sliver of visitors shares
+one arm `[default]`. The deal is a pinned formula: the client's shipped 32-bit hash (`quizHash`, the
+function the quiz has always drawn with) of `token + ":" + salt`, over 2^32, mapped uniformly onto
+the arms in order (`floor(u × arms.length)`) — an equal split `[default]`, weights a later
+parameter. The formula is law: a change reshuffles a returning visitor's arm mid-experiment, so it
+moves only as a spec change. The deal runs synchronously at boot, ahead of any beat, so no beat ever
+lays variant-blind. With memory on the arm holds across visits; `?reset` forgets the token
+(`EX-RESET` — forgetting is whole), so an arrival after a reset deals fresh arms, and the
+across-visits hold binds an unforgotten token. With memory off the arm holds per tab (a reload keeps
+it), and two windows may deal different arms — accepted while an instance runs memory on `[default]`.
+The deal costs one 32-bit hash per experiment at boot, reaches no network, and writes nothing beyond
+that first mint — the coat-check record never widens, the frame only reads the token. `EX-AB` `INV-90`
+
+Every dealt arm rides **every registry beat as a dimension**: the key is the experiment's name, the
+value the arm — a word from the closed arms list, so the closed-ladder law stands (`INV-1`). The
+registry's first law holds: no beat is variant-blind, and a beat missing a live variant's dimension
+poisons the readout silently. The frame adds no beat (`INV-41` stands); a flag off, or no arm dealt,
+leaves the key absent and the payload byte-for-byte today's. The quiz arm (`EX-QUIZ-AB`/`INV-62`) is
+the frame's first rider — salt `quizarm`, arms `on`/`control`, the split unchanged, so a returning
+visitor keeps its arm. The story variant (`story_variant`, `EX-STORY-AB`) is a **declared
+dimension** rather than a dealt arm: config sets its value at deploy (`story.variant`), the stamp
+carries it on every beat exactly like a dealt arm, and it enters the registry as a dealt experiment
+only when a second story variant deploys `[target]`. The quiz funnel stage (`quiz_stage`,
+`EX-QUIZ-FLOW`/`INV-69`) is a stage rather than an arm and keeps its own law, riding the two walk
+beats. `INV-91`
+
+The fences the frame owes: a flag off is byte-for-byte today's payload (`INV-60`); the two-way
+registry test still stands (`INV-41`); the coat-check record never widens (`INV-43`, `EX-MEMORY`);
+the quiz arm's salt and split are unchanged (`INV-62`); the consent posture is unchanged (`EX-PULSE`).
+Facets are `N/A` — the frame wears no visible surface. On performance it costs one 32-bit hash per
+experiment at boot, with no network and no write. Non-goals: no new beat; an equal split only, weights
+a later parameter; no readout inside the engine (the read side is instance-owned, and the engine
+carries no report script); the story's per-visitor assignment waits for a second deployed variant
+`[target]`. A new experiment then launches on one config entry plus one registered analytics dimension
+and zero client edits, and its arm splits every number the registry counts `[default]`. `EX-AB`
 
 ### The reset address
 
@@ -1346,7 +1395,7 @@ the worker.
 | `EX-QUIZ-PRIZE` | The prize is a marked gallery derivative; the master never ships |
 | `EX-QUIZ-ONCE` | Exactly one question per show, over the reachable∧unanswered set, silenced by a cooldown window |
 | `EX-QUIZ-GLINT` | A soft one-time light sweeps the chip as the question appears; only the chip; off under reduced-motion |
-| `EX-QUIZ-AB` | `quiz_arm` (on/control, 50/50, session-stable) rides the existing walk beats as a dimension; null when the flag is off |
+| `EX-QUIZ-AB` | The quiz arm, dealt by the variant frame (`EX-AB`, salt `quizarm`, on/control, 50/50, seed-stable), rides every registry beat as a dimension; absent when the flag is off |
 | `EX-QUIZ-FLOW` | `quiz_stage` (shown → opened → won\|lost → gift) rides the same two beats as a running-max dimension; never a sixth beat; the stage wipes with the walk |
 | `EX-LADDER` | The responsive 640/960/1280 image ladder: a phone pulls light, a wide/retina screen sharp; base is the fallback |
 | `EX-LOAD` | The loading breath: solemn hairline while pixels travel; a cold-arrival line before the walk is live (instance text) |
@@ -1362,6 +1411,7 @@ the worker.
 | `EX-EDGE-GUARD` | Three money fences before any model call |
 | `EX-MEMORY` | The coat-check token: seen-work ids at the edge, anonymous |
 | `EX-PULSE` | The event registry: sixteen beats on the GA wire, held both ways by a standing test |
+| `EX-AB` | The variant frame: a config `experiments` registry (arms · flag · metric · salt) the client reads at boot, dealing each live experiment one arm off the visitor's seed and stamping it on every registry beat as a dimension; carries no beat, no readout, and no visible surface of its own |
 | `EX-TIMING` | Performance marks for the builder; `?timings` narrates them |
 | `EX-RESET` | `?reset` wipes named keys; idempotent |
 | `EX-MOTION` | One tempo, five duration tokens, fade-only entries |
@@ -1425,7 +1475,7 @@ the worker.
 | `INV-64` | The quiz is a four-option guess: prompt + four option labels public, the ONE correct answer + prize private in `_worker.js`; the tapped option judged at the edge (never a served byte, never a model call); one tap locks |
 | `INV-65` | A miss shows one localized line then the card fades, leaving the photograph; a hit shows a localized praise line then the gift ceremony; the card sits over the visible photo (light scrim), tints to the work, mirrors the active locale's `dir` |
 | `INV-66` | Exactly one question per show — the chip placed on one work chosen per walk over the reachable∧unanswered set — and silenced while less than the cooldown window (`quiz_cooldown_hours`, ~6h) has passed since a show that asked; `quiz_probability` retired |
-| `INV-62` | The quiz A/B arm (`quiz_arm`: on/control, 50/50, session-stable off the visitor token) rides the existing `walk_unfold`/`walk_exit` beats as a dimension; null when the flag is off so the payload stays byte-for-byte today's |
+| `INV-62` | The quiz A/B arm (`quiz_arm`: on/control, 50/50, seed-stable) is dealt once by the variant frame (`EX-AB`/`INV-90`, salt `quizarm`) and rides every registry beat as a dimension; absent when the flag is off so the payload stays byte-for-byte today's |
 | `INV-67` | Faces-meet composition law: a standing face (quiz card, gift card, side room) owns the walk's input; the last face leaving discharges an instant re-centre to the live viewport; the card is viewport-honest; the closing screen is a stop. The zoom is the one face that opens OVER another — a pinch on a side-room print or a door window raises it above the standing room or door — covering exactly one face at a time, owning the input while it stands, and returning ownership to the face beneath on close (EX-ZOOM/INV-83) |
 | `INV-68` | Dead model account: a non-429 4xx flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
 | `INV-69` | The quiz funnel stage (`quiz_stage`: shown → opened → won\|lost → gift) is session-scoped and runs monotonically upward — it never lowers; "gift" advances only from "won"; the stage rides `walk_unfold`/`walk_exit` as a dimension alongside the arm (no sixth beat, INV-41 stands); the stage wipes with the walk (?reset); control and flag-off visitors carry no stage |
@@ -1445,6 +1495,8 @@ the worker.
 | `INV-84` | One continuous input gesture — one wheel burst, one touch swipe, one arrow press — advances EXACTLY ONE frame, always; the gesture's velocity sets that single glide's DURATION within a clamped range (calm ~520ms → sharp ~260ms `[default]`), never a second frame — the earlier two-frame flick allowance is retired. The desktop animator coalesces a whole trackpad burst (rising tail and all) to one step and reads velocity for the speed; the touch path holds one-swipe-one-frame by `scroll-snap-stop:always` and carries the same force→speed feel through native momentum. Uniform on the desktop wheel path and the touch swipe path |
 | `INV-85` | On a non-touch (desktop) device a trackpad pinch opens and drives the SAME inspect/zoom layer a two-finger touch pinch opens (`INV-75`), on the picture under the POINTER over the same picture selectors (the ZOOM picture-selector set) — and where the pointer is over no picture, the single work then in the viewport (one work per viewport, EX-HANG), else nothing opens — scaling continuously under the same 1×–4× clamp; a `ctrl`+wheel `deltaY` (Blink) and a `gesturechange` scale delta (Safari) accumulate into that clamp, and a pinch-IN past the dismiss threshold (the same ~0.82× at-rest value touch uses) closes it through the one history step (`INV-83`) and ×/Esc/backdrop/browser-Back all still close; entry and exit mirror by the same FLIP as touch (`INV-82`). The input split is clean: a plain wheel is navigation (EX-GLIDE/`INV-84`), a `ctrl`+wheel / trackpad pinch is zoom (EX-PROTECT hands the gesture over rather than refusing it, latched at the burst's first event); a physical `Ctrl`+mouse-wheel is indistinguishable from a pinch on Blink and drives the zoom discretely; a plain wheel-only mouse never opens the zoom |
 | `INV-86` | The walk and the open zoom survive a device rotation: a portrait↔landscape orientation change is caught as its own event (not merely a resize), the frame stops recompute against the new viewport so the currently-docked frame stays centred under the eye with one-gesture-one-frame intact (`INV-84`), and if the inspect layer stands its source rect re-measures live so entry and exit still fly to the right place (`INV-82`); a rotation under another standing face keeps the face laws (`INV-67`). Mid-motion is honoured: a rotation arriving while a glide is in flight cancels the glide to a dock at its target frame before the stops recompute, and a rotation during a zoom entry/exit tween lets that tween finish, then re-measures the source |
+| `INV-90` | The deal: at boot, synchronously ahead of any beat, the client deals each registered experiment one arm off the visitor's seed (the coat-check token — minted by the seed read itself when none exists — else the per-tab id, else `anon`) by the pinned formula `floor(quizHash(token+":"+salt)/2^32 × arms.length)`, an equal split; moving the formula counts as a spec change because it reshuffles a returning visitor's arm; the arm holds across visits with memory on (`?reset` forgets the token and deals fresh), per tab with memory off; a registry entry names at least two arms and a registry-unique salt or the bake refuses it; one hash per experiment at boot, no network, no write beyond the first mint, the coat-check record never widens |
+| `INV-91` | The stamp: every dealt arm — and the declared story-variant dimension — rides every registry beat as a dimension keyed by the experiment's name, its value a word from the closed arms list (`INV-1`); the frame adds no beat (`INV-41` stands); a flag off or no arm dealt leaves the key absent and the payload byte-for-byte today's |
 
 ### Reconciliation log — how each behavior above landed in code
 

@@ -142,6 +142,19 @@ BROWSER_ROWS = [
     "EX-PULSE walk_exit counts every leave — the exit control ONE, a browser-Back leave ONE, a cold door render NONE",
 ]
 
+# ---- EX-AB / INV-90 / INV-91 — the variant frame (SPEC "Experiments — the variant frame") ------
+# NOT YET BUILT: today `quiz_arm` is a hardcoded dimension that rides ONLY walk_unfold/walk_exit
+# (exhibition.js pulse()); the spec's registry-driven frame stamps EVERY dealt arm on EVERY
+# registry beat (INV-91), and mints the coat-check token (ex.visitor) ahead of the very first
+# seed read so the first visit already deals off the token a later visit holds (INV-90). These
+# rows are expected RED against current code.
+VF_ROWS = [
+    "VF-STAMP EX-AB/INV-91 the dealt quiz_arm rides EVERY registry beat, not only walk_unfold/walk_exit",
+    "VF-SEED-STABLE EX-AB/INV-90 a fixed seed token deals the same arm across two loads, matching EXQuiz's own hash",
+    "VF-MINT-DEAL EX-AB/INV-90 a fresh profile mints ex.visitor at boot and deals off THAT token, not a later-read one",
+    "VF-RESET EX-AB/INV-90/EX-RESET ?reset deals a fresh token yet the next walk still stamps quiz_arm on its first beat",
+]
+
 EVLIST = ("JSON.stringify((window.dataLayer||[]).filter(e=>e[0]==='event')"
           ".map(e=>[e[1], e[2]||{}]))")
 CLIP_STUB = ("window.__copied=[];if(navigator.clipboard)navigator.clipboard.writeText="
@@ -198,12 +211,18 @@ def walk_all(br, base):
 
 
 if not chrome_available():
-    for r in BROWSER_ROWS:
+    for r in BROWSER_ROWS + VF_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
     TMP_I18N = Path(tempfile.mkdtemp(prefix="synth_pulse_i18n_"))
     build_site.OUT = TMP_I18N
     build_site.build(SITE_URL, ga_id="G-TESTTEST", enable=["ai_i18n"])
+
+    # bake for the variant-frame rows: quiz on (so an arm is always dealt) + visitor_memory on
+    # (so the coat-check token mint path is live — VF-MINT-DEAL/VF-RESET need it)
+    TMP_VF = Path(tempfile.mkdtemp(prefix="synth_pulse_vf_"))
+    build_site.OUT = TMP_VF
+    build_site.build(SITE_URL, ga_id="G-TESTTEST", enable=["quiz", "visitor_memory"])
 
     # ---- ROW: the five beats fire (re-scoped under the registry) --------------
     with serve(TMP) as base:
@@ -339,6 +358,113 @@ else:
           cold_zero and exit_ctrl_n == 1 and before_back == 0 and at_door and back_n == 1,
           f"cold0={cold_zero} exit_ctrl={exit_ctrl_n} before_back={before_back} at_door={at_door} back={back_n}")
 
+    # ================= VF rows: the variant frame (EX-AB / INV-90 / INV-91) =================
+    FIXED_SEED_TOKEN = "abcdefgh12345678"    # 16 chars a-z0-9 — passes BOTH the quiz-token regex
+                                              # (8-40) and the visitor-memory regex (16-40), so a
+                                              # pre-seeded token is never overwritten by a fresh mint
+
+    def _hash_arm_of(br, token):
+        """The expected arm for `token`, computed IN-PAGE via the client's own exported hash
+        (window.EXQuiz._hash — the quizHash the quiz arm has always drawn from), salt 'quizarm'."""
+        return br.evaluate(
+            "(()=>{const h=window.EXQuiz._hash(%s+':quizarm');"
+            "return (h/4294967296)<0.5?'on':'control';})()" % json.dumps(token))
+
+    with serve(TMP_VF) as base:
+        # ---- VF-STAMP: every event on the queue carries the dealt quiz_arm, not only unfold/exit
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            walk_all(br, base)                      # door_pick, share_copy, walk_unfold, walk_exit, share_arrive
+            evs = evs_of(br)
+            arm = br.evaluate("window.EXQuiz && window.EXQuiz.arm()")
+            beats = [n for n, p in evs]
+            every_has_arm = bool(evs) and all(p.get("quiz_arm") == arm for n, p in evs)
+            first_has_arm = bool(evs) and evs[0][1].get("quiz_arm") == arm
+            check(VF_ROWS[0],
+                  arm in ("on", "control") and every_has_arm and first_has_arm,
+                  f"arm={arm} beats={beats} events={evs}")
+
+        # ---- VF-SEED-STABLE: a fixed seed deals the same arm on both loads, matching the hash --
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear(); sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex.visitor', %s)" % json.dumps(FIXED_SEED_TOKEN))
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+            br.reload(); br.sleep(1.0)
+            expected_arm = _hash_arm_of(br, FIXED_SEED_TOKEN)
+            enter_walk(br)
+            br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
+            br.sleep(0.5)
+            br.click("#ex-return", settle=0.6)
+            exit1 = first_of(evs_of(br), "walk_exit")
+            arm1 = exit1.get("quiz_arm") if exit1 else None
+
+            br.navigate(base + "/")
+            br.reload(); br.sleep(1.0)
+            stored_still = br.evaluate("localStorage.getItem('ex.visitor')")
+            enter_walk(br)
+            br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
+            br.sleep(0.5)
+            br.click("#ex-return", settle=0.6)
+            exit2 = first_of(evs_of(br), "walk_exit")
+            arm2 = exit2.get("quiz_arm") if exit2 else None
+            check(VF_ROWS[1],
+                  stored_still == FIXED_SEED_TOKEN
+                  and arm1 == expected_arm and arm2 == expected_arm and arm1 == arm2,
+                  f"expected={expected_arm} arm1={arm1} arm2={arm2} stored_still={stored_still}")
+
+        # ---- VF-MINT-DEAL: a FRESH profile mints ex.visitor at boot and deals off THAT token ----
+        # (today QUIZ_TOKEN/quizArm are computed before the visitor-memory mint runs, so the very
+        # first load deals off a throwaway per-tab id while a DIFFERENT token lands in storage)
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear(); sessionStorage.clear()")
+            br.reload(); br.sleep(1.0)
+            client_token_first = br.evaluate("window.EXQuiz && window.EXQuiz.token")
+            stored_token_first = br.evaluate("localStorage.getItem('ex.visitor')")
+            valid_stored = bool(stored_token_first) and bool(
+                re.match(r"^[a-z0-9]{16,40}$", stored_token_first or ""))
+            deals_off_stored = client_token_first == stored_token_first
+            arm_first = br.evaluate("window.EXQuiz && window.EXQuiz.arm()")
+
+            br.reload(); br.sleep(1.0)               # a second load, same profile: the token now
+            client_token_second = br.evaluate("window.EXQuiz && window.EXQuiz.token")  # persists
+            arm_second = br.evaluate("window.EXQuiz && window.EXQuiz.arm()")
+            stable_token = client_token_second == stored_token_first
+            stable_arm = arm_second == arm_first
+            check(VF_ROWS[2],
+                  valid_stored and deals_off_stored and stable_token and stable_arm,
+                  f"stored_first={stored_token_first} valid={valid_stored} "
+                  f"client_first={client_token_first} deals_off_stored={deals_off_stored} "
+                  f"arm_first={arm_first} client_second={client_token_second} "
+                  f"arm_second={arm_second} stable_token={stable_token} stable_arm={stable_arm}")
+
+        # ---- VF-RESET: ?reset deals a fresh token; the next walk still stamps quiz_arm ----------
+        # asserted on the FIRST beat the fresh walk lays (door_pick) — not only unfold/exit — the
+        # same "every beat" law VF-STAMP proves, exercised through the reset road (EX-RESET).
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            cold(br, base)                            # a fresh arrival mints a token (memory on)
+            token1 = br.evaluate("localStorage.getItem('ex.visitor')")
+            br.navigate(base + "/?reset")
+            br.sleep(1.0)
+            token_after_reset = br.evaluate("localStorage.getItem('ex.visitor')")
+            reminted = bool(token_after_reset) and token_after_reset != token1
+            enter_walk(br)
+            evs = evs_of(br)
+            first_beat_arm = evs[0][1].get("quiz_arm") if evs else None
+            check(VF_ROWS[3],
+                  reminted and first_beat_arm in ("on", "control"),
+                  f"token1={token1} token_after_reset={token_after_reset} reminted={reminted} "
+                  f"events={evs} first_beat_arm={first_beat_arm}")
+
+    shutil.rmtree(TMP_VF, ignore_errors=True)
     shutil.rmtree(TMP_I18N, ignore_errors=True)
 
 shutil.rmtree(TMP, ignore_errors=True)
