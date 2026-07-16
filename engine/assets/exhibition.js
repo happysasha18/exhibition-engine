@@ -2872,6 +2872,10 @@
     const T = (greetLang() || { t: {} }).t;
     side.querySelector(".exs-back").textContent = T.room_back || ROOM_BACK_EN;
     side.hidden = false;
+    // the room opens on the series' FIRST member — a fresh look from the top, never resuming where a
+    // prior visit left the lane. #exs-stage is a reused element and the browser's scroll-anchoring
+    // keeps its leftover scrollLeft across a content rebuild, so clear it explicitly on open (INV-88).
+    st.scrollLeft = 0;
     document.body.classList.add("ex-side");            // the lock law, reused (EX-DOOR-2f)
     if (laystep !== false) pushFace({ face: "series", ser: idx });
     pulse("series_open", focusedId);                   // the work whose series opened (EX-PULSE registry)
