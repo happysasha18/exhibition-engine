@@ -79,7 +79,7 @@ check("EX-ZOOM/INV-77 the zoom carries only a close, no share of the inspected w
       "zoom chrome not built, a share lingers, the retract rule is missing, "
       "or the old ex-cover hide is still present")
 check("EX-ZOOM/INV-77 nothing moves: the close is top-left, and no #ex-zoom .exz-share rule exists (css)",
-      bool(re.search(r"#ex-zoom \.exz-close\s*\{[^}]*left:", CSS.replace("\n", " ")))
+      bool(re.search(r"#ex-zoom \.exz-close\s*\{[^}]*(?:left|inset-inline-start):", CSS.replace("\n", " ")))
       and "#ex-zoom .exz-share" not in CSS
       and "#ex-zoom .exz-btn" in CSS,
       "close not top-left, or a #ex-zoom .exz-share rule still exists")

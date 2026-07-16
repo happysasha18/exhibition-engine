@@ -20,6 +20,10 @@ body{ min-height:100vh; overflow-x:hidden; background:rgb(var(--ground,12,11,10)
 
 /* JS-on: the crawlable static index never paints (FOUC guard, INV-25); the live face owns the page */
 html.js #ex-static{ display:none; }
+/* JS-on the static HEADER (site name + tagline) also never paints — it flashed half-read before the
+   deferred walk woke and added ex-live (the FOUC his word 2026-07-08 named); the 2.5s FOUC fallback
+   removes `js` and restores it if the walk never comes alive. */
+html.js .ex-head{ display:none; }
 body.ex-live #ex-static{ display:none; }
 body.ex-live .ex-head{ display:none; }           /* the door/hang carry their own marks */
 body:not(.ex-live) .ex-stage{ display:none; }
@@ -47,10 +51,8 @@ body.ex-live #ex-loading{ display:none; }
 @media (prefers-reduced-motion:reduce){
   html.js #ex-loading{ animation:none; opacity:.8; }   /* a still visible line, no loop */
 }
-/* EX-GLIDE (INV-39): one input → one centered frame. On DESKTOP the JS animator owns the walk
-   (wheel + keys), replacing native free-scroll — no CSS smooth either, so nothing fights the
-   one-frame transition. On TOUCH no JS writes the position; CSS scroll-snap docks the walk (below,
-   scoped to hover:none), so a swipe never flies through, never rests between works, never drifts. */
+/* EX-GLIDE: the hard latch is retired — the JS amortizer settles the walk (card 02's norm);
+   no CSS smooth either: the glide owns the only designed scroll motion */
 
 /* EX-CHROME (INV-70): every standing face locks the walk by resting input + a snap-back guard
    (exhibition.js), not by cutting the root overflow. EX-DOOR-2f's promise — nothing scrolls behind
@@ -82,7 +84,7 @@ html.ex-face::-webkit-scrollbar{ display:none; }
 body.ex-crossing .exh-frame img.work{ opacity:0 !important; transition:none !important; }
 body.ex-crossing .exh-capzone, body.ex-crossing .exh-counter,
 body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
-.exd-ask{ font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+.exd-ask{ font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase;
   color:var(--faint); margin-bottom:5vh; opacity:0; animation:exd-fade var(--d-reveal) var(--ease) calc(.6s*var(--tempo)) forwards; }
 @keyframes exd-fade{ to{opacity:1} }
 /* the greeting (EX-GREET) — one quiet spoken line in the visitor's own words; placement B (his
@@ -114,7 +116,12 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   box-shadow:0 0 0 1px rgba(255,255,255,.06);
   /* a rotation re-lays the SAME windows (EX-DOOR-2b) — the direction flips and the sizes glide,
      never a teardown; the size change eases so the turn reads as a smooth settle */
-  transition:width calc(.35s*var(--tempo)) var(--ease), height calc(.35s*var(--tempo)) var(--ease); }
+  transition:width calc(.35s*var(--tempo)) var(--ease), height calc(.35s*var(--tempo)) var(--ease);
+  /* EX-PROTECT (INV-49; 2026-07-13 uniformity fix) — the same soft deter the hung work wears
+     (SR-33 / .exh-frame img.work): a door window is the FIRST picture a guest ever sees, so it
+     can't be the one surface left freely saveable. No text-select drag, no ghost drag-image,
+     no iOS long-press save sheet — identical to the room, the class not one surface. */
+  user-select:none; -webkit-user-select:none; -webkit-user-drag:none; -webkit-touch-callout:none; }
 /* EX-DOOR-2c / DL1-DL2: a slow window wears the work's OWN raw dominant as a plate INSIDE the window,
    behind the photo (the halo — the ::after glow — untouched), the same grace/bar/reveal ladder as the
    walk. Five may fly at once, so a plate PER window (class, not the walk's single #ex-plate); it fills
@@ -137,7 +144,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   .exd-window img{ transition:none; } }
 /* the corner mark (EX-LANG) — the guest chooses the tongue; ≥44px, clears the wordmark */
 /* EX-ARRIVE: born at opacity:0, breathes in via .show on the next rAF after DOM insertion */
-.exd-lang{ position:fixed; top:14px; right:16px; z-index:125;
+.exd-lang{ position:fixed; top:14px; inset-inline-end:16px; z-index:125;
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
 .exd-lang.show{ opacity:1; }
 .exl-cur{ min-width:44px; min-height:44px; font-family:var(--mono); font-size:10px;
@@ -146,7 +153,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   transition:color calc(.3s*var(--tempo)), border-color calc(.3s*var(--tempo)); }
 .exl-cur:hover, .exl-cur:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
 /* EX-ARRIVE: opacity:0 base; .show added via rAF on open; removed before timeout-hide on close */
-.exl-list{ position:absolute; right:0; top:50px; display:flex; flex-direction:column; gap:2px;
+.exl-list{ position:absolute; inset-inline-end:0; top:50px; display:flex; flex-direction:column; gap:2px;
   background:rgba(14,13,11,.96); border:1px solid var(--hair); border-radius:12px; padding:7px;
   backdrop-filter:blur(8px); opacity:0; transition:opacity var(--d-soft) var(--ease); }
 .exl-list.show{ opacity:1; }
@@ -192,7 +199,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    centre on the SAME x from the right edge at every width and orientation (his 2026-07-10
    landscape note). Each rule derives `right` as the rail minus half its own button width. */
 :root{ --ex-rail:36px; --ex-share-b:26px; --cap-narrow-step:1; }   /* --cap-narrow-step: INV-98 boot default, JS overrides from config */
-.ex-share{ position:fixed; right:calc(var(--ex-rail) - 18px); bottom:var(--ex-share-b); z-index:35; width:36px; height:36px;
+.ex-share{ position:fixed; inset-inline-end:calc(var(--ex-rail) - 18px); bottom:var(--ex-share-b); z-index:35; width:36px; height:36px;
   border-radius:999px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
   background:rgba(8,8,7,.55); border:1px solid var(--hair);
   opacity:0; pointer-events:none;
@@ -201,19 +208,19 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .ex-share.show:hover, .ex-share.show:focus-visible{ opacity:1; }
 .ex-share:hover{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
 /* touch: no hover exists — full presence at rest, target at the a11y floor (≥44px) */
-@media (hover:none){ .ex-share{ width:44px; height:44px; right:calc(var(--ex-rail) - 22px); } .ex-share.show{ opacity:.9; } }
+@media (hover:none){ .ex-share{ width:44px; height:44px; inset-inline-end:calc(var(--ex-rail) - 22px); } .ex-share.show{ opacity:.9; } }
 
 /* the toast — one quiet line; the success face leaves by itself (×tempo), the clipboard-refusal
    face carries the LINK and holds until dismissed (tap/Esc) so a hand can copy it */
 /* EX-ARRIVE: opacity:0 base; .show rAF-added on each call to toast(); removed in toastOff() */
 /* the toast answers BESIDE the link button it belongs to (his 2026-07-10 note: the centre of the
    image is far from the hand) — right-aligned just above the share control, same rail maths */
-#ex-toast{ position:fixed; right:calc(var(--ex-rail) - 18px); bottom:calc(var(--ex-share-b) + 48px); z-index:40;
+#ex-toast{ position:fixed; inset-inline-end:calc(var(--ex-rail) - 18px); bottom:calc(var(--ex-share-b) + 48px); z-index:40;
   font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--ink);
   background:rgba(8,8,7,.72); border:1px solid var(--hair); border-radius:999px;
-  padding:9px 16px; max-width:82vw; overflow-wrap:anywhere; text-align:right;
+  padding:9px 16px; max-width:82vw; overflow-wrap:anywhere; text-align:end;
   opacity:0; transition:opacity var(--d-soft) var(--ease); backdrop-filter:blur(6px); }
-@media (hover:none){ #ex-toast{ right:calc(var(--ex-rail) - 22px); bottom:calc(var(--ex-share-b) + 56px); } }
+@media (hover:none){ #ex-toast{ inset-inline-end:calc(var(--ex-rail) - 22px); bottom:calc(var(--ex-share-b) + 56px); } }
 #ex-toast.show{ opacity:1; }
 #ex-toast[hidden]{ display:none; }
 #ex-toast.hold{ cursor:pointer; }
@@ -271,7 +278,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 /* the side room (EX-SERIES) — a face over the walk; the walk waits beneath, locked */
 #ex-side{ position:fixed; inset:0; z-index:90; background:#080706; }  /* opaque — the walk never ghosts through (2026-07-09) */
 #ex-side[hidden]{ display:none; }
-.exs-back{ position:fixed; left:22px; top:50%; transform:translateY(-50%); z-index:95;
+.exs-back{ position:fixed; inset-inline-start:22px; top:50%; transform:translateY(-50%); z-index:95;
   font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase;
   color:var(--muted-2); background:rgba(8,8,7,.6); border:1px solid var(--hair);
   border-radius:999px; padding:9px 15px; cursor:pointer; min-height:44px; }
@@ -300,7 +307,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   box-shadow:0 44px 100px rgba(0,0,0,.7); }
 @media (max-width:640px){
   .exs-print img{ width:clamp(72px,17vw,110px); height:clamp(72px,17vw,110px); }
-  .exs-back{ left:12px; }
+  .exs-back{ inset-inline-start:12px; }
 }
 
 /* the wall label — fixed, bottom-left, ALWAYS in the dark margin, never on the photo (INV-1/INV-27).
@@ -308,8 +315,8 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    italic — the narrator lives ON the label, EX-STORY-LINE; :empty when the voice is silent), the
    FACTS (mono; a red dot = sold). The letters are lightly tinted by --tone (the focused work's
    DIMMED live accent, set in ground()); the hairline stays plain bone — his call. */
-.exh-capzone{ position:fixed; left:34px; bottom:30px; z-index:30; max-width:42vw; pointer-events:none;
-  padding:12px 0 12px 15px; border-left:1px solid rgba(179,162,132,.20);
+.exh-capzone{ position:fixed; inset-inline-start:34px; bottom:30px; z-index:30; max-width:42vw; pointer-events:none;
+  padding-block:12px; padding-inline:15px 0; border-inline-start:1px solid rgba(179,162,132,.20);
   opacity:0; transform:translateY(8px); transition:opacity var(--d-soft) var(--ease), transform var(--d-soft) var(--ease); }
 .exh-capzone.show{ opacity:1; transform:none; }
 /* the readability scrim (his word 2026-07-07): a feathered dark backing BEHIND the label — over
@@ -348,6 +355,18 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    [dir=rtl] so the Latin (left-to-right) line stays pixel-identical (EX-I18N — the mirror rides the
    active locale's dir; a left-to-right visitor's line is untouched). */
 [dir=rtl] .exh-capzone .told{ letter-spacing:.02em; }
+/* EX-STORY-WAIT: the pending wait mark — a quiet, low-contrast ellipsis holding the told line's
+   resting seat while that work's portion is in flight (the picture already wears its own loading
+   plate, EX-LOAD-2; the line matches that grace). It breathes on the ONE house tempo and never
+   reads as a finished line: faint bone (--faint clears the raised legibility floor), dimmer than
+   the told line's --told. A real child, so :empty no longer hides the slot. Reduced motion rests
+   it still (EX-MOTION-R). */
+.exh-capzone .told-wait{ display:inline-block; font-style:normal; }
+.exh-capzone .told-wait::after{ content:"\00B7\00B7\00B7"; color:var(--faint); letter-spacing:.22em;
+  animation:exs-wait calc(2.6s*var(--tempo)) var(--ease) infinite; }
+@keyframes exs-wait{ 0%,100%{ opacity:.34; } 50%{ opacity:.7; } }
+@media (prefers-reduced-motion:reduce){
+  .exh-capzone .told-wait::after{ animation:none; opacity:.5; } }
 /* EX-CAPTION: the fact line (place · year · medium) reads in the UI face at weight 500, not the mono
    face — a Latin monospace hands a non-Latin script's glyphs to a thin system fallback, so a Hebrew or
    Arabic caption never carries real weight; the UI family has true letterforms for those scripts and
@@ -360,7 +379,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .exh-capzone .dot{ width:8px; height:8px; border-radius:50%; background:#c0392b; flex:none;
   box-shadow:0 0 0 3px rgba(192,57,43,.14); }         /* продано — the gallery convention, the dot alone */
 .exh-capzone .dot[hidden]{ display:none; }
-.exh-counter{ position:fixed; top:26px; left:34px; z-index:30; font-family:var(--mono); font-size:11px;
+.exh-counter{ position:fixed; top:26px; inset-inline-start:34px; z-index:30; font-family:var(--mono); font-size:11px;
   letter-spacing:.2em; color:var(--muted-2); opacity:0; transition:opacity calc(.5s*var(--tempo)); }
 .exh-counter.show{ opacity:1; }
 .exh-counter .now{ color:var(--ink); }
@@ -380,7 +399,7 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
 .exh-fin.show .exh-sign{ opacity:1; transition-delay:calc(.56s*var(--tempo)); }
 @media (prefers-reduced-motion:reduce){
   .exh-fin .q,.exh-fin .row,.exh-fin .exh-sign{ transition:none; } }
-.exh-fin .q{ font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+.exh-fin .q{ font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase;
   color:var(--faint); }
 .exh-fin .row{ display:flex; gap:18px; justify-content:center; }
 .exh-fin button{ font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
@@ -390,7 +409,7 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
 .exh-fin .back{ color:var(--muted-2); border:1px solid var(--hair); }
 .exh-fin .back:hover{ color:var(--ink); border-color:var(--muted-2); }
 /* the quiet signature (EX-COPY) — a faint line under the buttons, inert */
-.exh-fin .exh-sign{ font-family:var(--mono); font-size:10px; letter-spacing:.14em;
+.exh-fin .exh-sign{ font-family:var(--mono); font-size:11px; letter-spacing:.14em;
   color:var(--faint); margin-top:22px; }
 
 /* ================= EX-SOUND: the ambient player (INV-48) ================= */
@@ -399,22 +418,20 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
    Absent when sound_url is empty — the JS IIFE exits early, no DOM insertion. */
 /* EX-ARRIVE: opacity:0 base; .show added via rAF on insertion so it breathes in, never pops */
 /* right rides the SHARED --ex-rail (see .ex-share): rail minus half the 40px button = same axis */
-#ex-sound{ position:fixed; top:14px; right:calc(var(--ex-rail) - 20px); z-index:130; display:flex; align-items:center;
+#ex-sound{ position:fixed; top:14px; inset-inline-end:calc(var(--ex-rail) - 20px); z-index:130; display:flex; align-items:center;
   height:40px; -webkit-tap-highlight-color:transparent;
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
 #ex-sound.show{ opacity:1; }
-/* EX-CHROME: while a COVERING face stands — the door, the series/side room, a compact card (the
-   gift/farewell card or the question card), or the zoom inspect view — the ambient player retracts
-   (opacity:0; pointer-events:none). It is fixed at z-index 130 on the body, so nothing else hid it and
-   it floated pressable over the cover; each covering state names it so it rests. The zoom holds the
-   minimum on screen (INV-77): the picture and its close alone, so the player retracts there like every
-   other face. The compact cards carry no body class, so they reach the player by the general sibling
-   combinator (the player is inserted after them on the body). */
+/* EX-CHROME: while a COVERING face stands — the door, the series/side room, the gift/farewell card, or
+   the zoom inspect view — the ambient player retracts (opacity:0; pointer-events:none). It is fixed at
+   z-index 130 on the body, so nothing else hid it and it floated pressable over the cover; each covering
+   state names it so it rests. The zoom holds the minimum on screen (INV-77): the picture and its close
+   alone, so the player retracts there like every other face. */
 body.ex-door #ex-sound,
 body.ex-side #ex-sound,
 body.ex-zoom #ex-sound,
-#ex-gift-card.show ~ #ex-sound,
-#ex-quiz-card.show ~ #ex-sound{ opacity:0; pointer-events:none; }
+body:has(#ex-quiz-card.show) #ex-sound,
+#ex-gift-card.show ~ #ex-sound{ opacity:0; pointer-events:none; }
 .exsnd-btn{ width:40px; height:40px; flex:none; display:grid; place-items:center; border-radius:999px;
   background:rgba(8,8,7,.55); border:1px solid var(--hair); color:var(--muted-2); cursor:pointer;
   transition:color calc(.3s*var(--tempo)) var(--ease), border-color calc(.3s*var(--tempo)) var(--ease); }
@@ -431,15 +448,15 @@ body.ex-zoom #ex-sound,
 @keyframes exsnd-bar{ 0%,100%{ height:4px; } 50%{ height:13px; } }
 @media (prefers-reduced-motion:reduce){ #ex-sound.playing .exsnd-eq i{ animation:none; } }
 /* the credit + volume tray — slides out LEFT on hover / playing / focus */
-.exsnd-tray{ order:-1; margin-right:12px; display:flex; align-items:center; gap:12px;
+.exsnd-tray{ order:-1; margin-inline-end:12px; display:flex; align-items:center; gap:12px;
   max-width:0; overflow:hidden; opacity:0;
   transition:max-width calc(.5s*var(--tempo)) var(--ease), opacity var(--d-soft) var(--ease); }
 #ex-sound.playing .exsnd-tray, #ex-sound:hover .exsnd-tray,
 #ex-sound:focus-within .exsnd-tray{ max-width:min(360px, 78vw); opacity:1; }
-.exsnd-cred{ white-space:nowrap; text-align:right; font-family:var(--mono); }
-.exsnd-cred .t{ font-size:10px; letter-spacing:.08em; color:var(--muted); display:block; line-height:1.5; }
+.exsnd-cred{ white-space:nowrap; text-align:end; font-family:var(--mono); }
+.exsnd-cred .t{ font-size:11px; letter-spacing:.08em; color:var(--muted); display:block; line-height:1.5; }
 .exsnd-cred .t b{ color:var(--told); font-weight:600; }
-.exsnd-cred a{ font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
+.exsnd-cred a{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
   text-decoration:none; border-bottom:1px solid transparent; }
 .exsnd-cred a:hover, .exsnd-cred a:focus-visible{ color:var(--muted-2); border-bottom-color:var(--muted-2); }
 /* the volume slider — ≥44px touch target, thin visible track */
@@ -456,7 +473,7 @@ body.ex-zoom #ex-sound,
 @media (max-width:640px){
   .exh-frame img.work{ max-height:70vh; max-width:92vw; }
   .exh-frame{ padding-bottom:14vh; }
-  .exh-capzone{ left:16px; right:16px; bottom:14px; max-width:none; padding-left:13px; }
+  .exh-capzone{ inset-inline-start:16px; inset-inline-end:16px; bottom:14px; max-width:none; padding-inline-start:13px; }
   .exh-capzone .title{ font-size:22px; }
   .exh-capzone .told{ max-width:100%; }
   :root{ --ex-share-b:16px; }           /* clear of the caption band's corner; x stays on the rail;
@@ -501,7 +518,8 @@ body.ex-zoom #ex-sound,
    a black curtain). EX-ARRIVE: opacity:0 base; .show added via rAF on open. .gone for auto-fade. */
 #ex-quiz-card{ position:fixed; inset:0; z-index:150; display:flex; align-items:center;
   justify-content:center; padding:24px 16px;
-  background:rgba(5,5,4,.42); backdrop-filter:blur(2px);
+  background:radial-gradient(130% 100% at 50% 50%, rgba(6,6,5,.50) 0%, rgba(6,6,5,.26) 72%);
+  backdrop-filter:blur(2px);
   opacity:0; transition:opacity var(--d-soft) var(--ease), transform var(--d-soft) var(--ease); }
 #ex-quiz-card.show{ opacity:1; }
 #ex-quiz-card.gone{ opacity:0; transform:translateY(6px); pointer-events:none; }
@@ -617,7 +635,7 @@ body.ex-zoom #ex-sound,
   background:rgba(8,8,7,.55); border:1px solid var(--hair); backdrop-filter:blur(6px);
   transition:background calc(.2s*var(--tempo)) var(--ease), color calc(.2s*var(--tempo)) var(--ease), border-color calc(.2s*var(--tempo)) var(--ease); }
 #ex-zoom .exz-btn:hover, #ex-zoom .exz-btn:focus-visible{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
-#ex-zoom .exz-close{ top:calc(env(safe-area-inset-top,0px) + 14px); left:16px; font-size:24px; line-height:1; padding-bottom:2px; }
+#ex-zoom .exz-close{ top:calc(env(safe-area-inset-top,0px) + 14px); inset-inline-start:16px; font-size:24px; line-height:1; padding-bottom:2px; }
 /* reduced motion: no transform flight and no clip morph — the layer arrives/leaves by a short opacity
    crossfade in place (~120ms at the collapsed tempo 0.05), the gesture semantics unchanged (rule 10). */
 @media (prefers-reduced-motion:reduce){
@@ -629,11 +647,8 @@ body.ex-zoom #ex-sound,
   #ex-gift-card .gift-inner{ transition:none; }
 }
 
-/* the «question?» chip on a door tile whose work carries a quiz (opens the quiz, never enters the walk) */
-.exd-quiz{ position:absolute; bottom:8px; right:8px; z-index:3; font-family:var(--mono);
-  font-size:9.5px; letter-spacing:.12em; color:var(--ink); background:rgba(8,8,7,.62);
-  border:1px solid var(--hair); border-radius:999px; padding:4px 10px; cursor:pointer; backdrop-filter:blur(3px); }
-.exd-quiz:hover,.exd-quiz:focus-visible{ border-color:var(--accent); color:var(--accent); }
+/* EX-QUIZ-PLACE (INV-61, 2026-07-08): the door-tile "question?" chip is retired — the quiz chip lives
+   on a drawn work's plaque inside the walk now (.ex-quiz-chip); the door tile carries no quiz chip. */
 
 /* ---- EX-STORY-BEAT (INV-89): the picked picture pulses at the black's centre while the story
    writes. The clone rides above the veil (110) and below the wordmark (120); the flight is a
