@@ -1129,7 +1129,7 @@
       doorArm(b.querySelector("img"), w, b);             // DL1/DL2: this window rides the walk's ladder
       // EX-QUIZ (INV-64/66): the quiz chip NEVER appears on the door (button-only screen) —
       // only over a work in view on the plaque (quizShows checked in the IO observer below).
-      b.addEventListener("click", () => doorPick(w));
+      b.addEventListener("click", () => doorPick(w, b));   // the window itself rides along (EX-STORY-BEAT: its picture is the beat's star)
       facade.appendChild(b);
     });
   }
@@ -1175,15 +1175,63 @@
     cerGen += 1;
     while (cerTimers.length) clearTimeout(cerTimers.pop());
     veil.hidden = true; veil.classList.remove("on");
+    beatKill();                                        // …and no stranded centred picture (EX-STORY-BEAT)
     door.classList.remove("wm-out");
     document.body.classList.remove("ex-crossing", "ex-cross-cap");
     busy = false;
     faceSync();                                        // the ceremony released (EX-CHROME)
   }
 
+  // ---- EX-STORY-BEAT (INV-89): the crossing is the voice's head start ----
+  // The picked picture flies from its window to the black's centre and BREATHES there while the
+  // story's first portion travels — the photograph is the star of the loading beat, never a blank
+  // veil. The clone rides above the veil, flies and pulses on the house tempo, and at the landing
+  // hands off into the first work's own reveal — one continuous motion, no second reveal. Torn
+  // down by ceremonyCancel like every ceremony prop; reduced motion never builds it.
+  const BEAT_HOLD = 2.5;      // s×tempo the crossing may stretch past its plain reveal while the
+                              // first portion is still in flight ([default], his tune)
+  let beatEl = null, beatRect = null, beatSrc = "";
+  function beatKill() {
+    if (beatEl) { try { beatEl.remove(); } catch (e) {} beatEl = null; }
+  }
+  function beatFly() {
+    if (REDUCED || beatEl || !beatRect || !beatRect.width || !beatSrc) return;
+    const r = beatRect;
+    const el = document.createElement("div");
+    el.className = "exd-beat";
+    el.style.left = r.left + "px"; el.style.top = r.top + "px";
+    el.style.width = r.width + "px"; el.style.height = r.height + "px";
+    const im = document.createElement("img");
+    im.src = beatSrc; im.alt = "";
+    el.appendChild(im);
+    document.body.appendChild(el);
+    const k = Math.min(innerWidth * 0.52 / r.width, innerHeight * 0.52 / r.height);
+    const dx = innerWidth / 2 - (r.left + r.width / 2);
+    const dy = innerHeight / 2 - (r.top + r.height / 2);
+    requestAnimationFrame(() => {
+      el.style.transform = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(" + k.toFixed(4) + ")";
+      el.classList.add("breathe");                     // the slow pulse rides the inner img (CSS)
+    });
+    beatEl = el;
+  }
+  function beatLand() {                                // hand off into the first work's own reveal
+    if (!beatEl) return;
+    const el = beatEl; beatEl = null;
+    el.classList.remove("breathe");
+    const img = stage.querySelector(".exh-frame img.work");
+    const r = img && img.getBoundingClientRect();
+    if (r && r.width && beatRect && beatRect.width) {
+      const dx = (r.left + r.width / 2) - (beatRect.left + beatRect.width / 2);
+      const dy = (r.top + r.height / 2) - (beatRect.top + beatRect.height / 2);
+      el.style.transform = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(" + (r.width / beatRect.width).toFixed(4) + ")";
+    }
+    el.style.opacity = "0";                            // …and yields as the work breathes in
+    setTimeout(() => { try { el.remove(); } catch (e) {} }, Math.round(900 * TEMPO) + 60);
+  }
+
   // the beats below are ONE THIRD of the card's old clock (EX-DOOR-2e re-ruled, his word
   // 2026-07-06 evening) — only the WAITS shortened; the reveal fade keeps its full span
-  function doorPick(w) {
+  function doorPick(w, win) {
     if (busy) return;
     busy = true;
     faceSync();                                        // the ceremony holds the lock (EX-CHROME)
@@ -1196,12 +1244,28 @@
     recomputeQuizChoice();   // INV-66: the new arc = the new eligible set for the one quiz chip
     shown = SPREAD;                                    // a fresh arc = a fresh budget (INV-30/31)
     storyReset();                                      // …and a fresh story — no portion leaks across picks (EX-STORY)
+    // EX-STORY-BEAT (INV-89): the pick itself asks the picked arc's first portion — the model's
+    // head start is the whole crossing, and ONLY the picked arc is ever asked (an unpicked window
+    // costs nothing). The reveal below waits on this settle or the hold cap, never longer.
+    let beatDone = true, beatWake = null;
+    if (STORY_ON) {
+      const parts = storyPortions(Math.min(shown, order.length));
+      if (parts.length) {
+        beatDone = false;
+        askPortion(parts[0][0], parts[0][1], () => { beatDone = true; if (beatWake) beatWake(); });
+      }
+    }
+    beatKill();
+    const bimg = win && win.querySelector ? win.querySelector("img") : null;
+    beatRect = bimg ? bimg.getBoundingClientRect() : null;
+    beatSrc = bimg ? (bimg.currentSrc || bimg.src || "") : "";
     veil.hidden = false;
     veil.style.transitionDuration = (0.33 * TEMPO) + "s";
     door.classList.add("leaving");                     // the wordmark drifts to the center
     requestAnimationFrame(() => veil.classList.add("on"));
     cerAfter(0.92, () => { if (!ok()) return;          // the name lets go
       door.classList.add("wm-out");
+      if (!beatDone) beatFly();                        // the picked picture takes the black's centre
     });
     cerAfter(1.18, () => { if (!ok()) return;          // faces swap under the black
       document.body.classList.add("ex-crossing");      // works + details held back
@@ -1212,14 +1276,26 @@
       veil.style.transitionDuration = (0.53 * TEMPO) + "s";
       veil.classList.remove("on");                     // …the tone rises first
     });
-    cerAfter(1.78, () => { if (!ok()) return;          // …then the first work, separately
+    let landed = false;
+    const land = () => { if (!ok() || landed) return;  // …then the first work, separately
+      landed = true;
+      beatLand();                                      // the centred picture hands off into the reveal
       tlog("reveal");
       const first = stage.querySelector(".exh-frame img.work");
       if (first) first.style.transitionDuration = (1.5 * TEMPO) + "s";
       document.body.classList.remove("ex-crossing");
       document.body.classList.add("ex-cross-cap");     // the caption still waits its beat
+      cerAfter(0.15, capBeat);                         // the caption keeps its own +.15 offset
+    };
+    cerAfter(1.78, () => { if (!ok()) return;
+      // EX-STORY-BEAT: reveal at once when the portion has settled (served OR failed — a dead
+      // voice never holds the guest) or under reduced motion; else the pulse holds until the
+      // settle or the hold cap, whichever lands first (fails open, INV-89)
+      if (beatDone || REDUCED) { land(); return; }
+      beatWake = land;
+      cerAfter(BEAT_HOLD, land);
     });
-    cerAfter(1.93, () => { if (!ok()) return;          // the caption, last (+.15)
+    const capBeat = () => { if (!ok()) return;         // the caption, last (+.15)
       tlog("caption");
       document.body.classList.remove("ex-cross-cap");
       const first = stage.querySelector(".exh-frame img.work");
@@ -1236,7 +1312,7 @@
       if (im0 && !im0.complete) arm(im0, byId[f0.dataset.id], f0);
       preloadCancel();
       preloadAhead(1);
-    });
+    };
   }
 
   function closeDoor() {
@@ -1404,6 +1480,7 @@
     cap.classList.add("show");
     focusedId = w.id;
     fillTold();                                        // the narrator's line for this work, if spoken
+    storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
   }), { threshold: 0.55 });
 
   // ---- the told line settles onto the plaque (EX-STORY-LINE / EX-STORY-WAIT) ----
@@ -1469,11 +1546,12 @@
     for (let s = first; s < n; ) { const e = Math.min(n, s + UNFOLD); parts.push([s, e]); s = e; }
     return parts;
   }
-  function askPortion(loI, hiI) {
+  function askPortion(loI, hiI, settle) {
+    const done = () => { if (settle) { const f = settle; settle = null; f(); } };   // once, any outcome
     const ids = order.slice(loI, hiI).map(String);
-    if (!ids.length) return;
+    if (!ids.length) { done(); return; }
     const key = ids.join(",");                         // this portion's own ordered slice — its cache key
-    if (toldPortions.has(key) || askingPortions.has(key)) return;   // already told, or in flight
+    if (toldPortions.has(key) || askingPortions.has(key)) { done(); return; }   // already told, or in flight
     askingPortions.add(key);
     const lang = (viewerLang() || "en").toLowerCase();
     const t0 = performance.now();                      // EX-PULSE/INV-79: the round-trip clock (bucketed, never raw)
@@ -1483,7 +1561,7 @@
       body: JSON.stringify({ ids: ids, variant: STORY_VARIANT, lang: lang }),
     }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
       askingPortions.delete(key);
-      if (!data || !Array.isArray(data.lines)) return; // refused/failed → key NOT stamped → stays owed
+      if (!data || !Array.isArray(data.lines)) { done(); return; } // refused/failed → key NOT stamped → stays owed
       toldPortions.add(key);                           // told only once the plot has actually come back
       // EX-PULSE/INV-79: the portion's round-trip lands — its lag rides a coarse bucket, and the RACE
       // word marks whether the guest already stood at a work in THIS portion whose line had not yet
@@ -1496,7 +1574,8 @@
         if (l && l.id != null && typeof l.line === "string") STORYLINES[String(l.id)] = l.line;
       }
       revealPortion();                                 // …then ONE coordinated reveal (EX-STORY-WAIT)
-    }).catch(() => { askingPortions.delete(key); });   // a dead worker changes nothing — the portion stays owed
+      done();
+    }).catch(() => { askingPortions.delete(key); done(); });   // a dead worker changes nothing — the portion stays owed
   }
   // tellStory re-asks every portion up to `shown` that is not yet told: the newly opened one on an
   // «ещё 5», plus any earlier portion still owed from a refusal (re-asked at this natural beat). A
@@ -1505,6 +1584,18 @@
   function tellStory() {
     if (!STORY_ON) return;
     for (const [lo, hi] of storyPortions(shown)) askPortion(lo, hi);
+  }
+  // EX-STORY-BEAT (INV-89): the voice stays ahead at the fork — as the focus comes within two
+  // works of the spread's end, the NEXT portion (the very slice an «ещё 5» would open) is asked
+  // ahead, gated on that proximity so intent pays for it. The portion keys dedupe, so the unfold's
+  // own tellStory finds the plot in flight or served, never double-charged; when no next portion
+  // exists (the arc spent, the unfolding retired) nothing is asked.
+  function storyPreAsk() {
+    if (!STORY_ON || focusedId == null) return;
+    if (spentUnfolds() >= MAXU || shown >= order.length || shown >= CAP) return;   // no next portion
+    const idx = order.indexOf(focusedId);
+    if (idx < 0 || idx < shown - 2) return;            // not yet near the fork
+    askPortion(shown, Math.min(order.length, shown + UNFOLD, CAP));
   }
   // A fresh door pick is a fresh arc, so it is a fresh story — the previous walk's told/owed portions
   // and its lines never leak into the new one (EX-STORY / INV-30/31).
