@@ -1736,9 +1736,29 @@
   // pinch drives. zDesk holds the below-1× dismiss accumulator (starts at 1, a continued pinch-IN eases
   // it down; at/below DISMISS_T it commits). zDismissing latches from the moment history.back() is asked
   // until closeZoom runs, so a rapid open→dismiss race can never pop the walk's own history step twice.
-  let zDesk = 1, zDismissing = false;
+  let zDesk = 1, zDismissing = false, zWheelIdle = 0;
   const zImg = zoom.querySelector(".exz-img");
   const zStage = zoom.querySelector(".exz-stage");
+  // The dismiss preview composes on the LIVE stage transform, latched on the preview's first frame —
+  // so a preview arriving over a flight still in motion shrinks from what the eye sees, and the close
+  // can read the same live matrix (INV-87 rule 4 extended: no one-frame return to full). One preview
+  // for every pointer kind (INV-82/85: touch resistance = desktop resistance).
+  let zPrevBase = null;
+  function zPreview(ratio) {
+    if (zPrevBase === null) {
+      const live = getComputedStyle(zStage).transform;
+      zPrevBase = (live && live !== "none") ? live + " " : "";
+    }
+    const shrink = 1 - (1 - Math.max(0.5, ratio)) * 0.45;   // resistance — eases toward its place
+    zStage.style.transition = "none";
+    zStage.style.transform = zPrevBase + "scale(" + shrink.toFixed(3) + ")";
+  }
+  function zPreviewEnd(ease) {                   // leave the preview: the stage returns to its rest
+    if (zPrevBase === null) return;
+    zPrevBase = null;
+    zStage.style.transition = ease ? "" : "none";
+    zStage.style.transform = "";
+  }
   const zReduce = matchMedia("(prefers-reduced-motion: reduce)");
   const zDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   // ---- EX-ZOOM the inspect flight (INV-82 rework, design 2026-07-15) — one motion class over the
@@ -1793,7 +1813,7 @@
   // layer starts CLIPPED to that crop and the clip morphs open; a contain source (a hung work, a lane
   // image) crops nothing (visW=visH=1). One uniform scale + a centred translate carries the position,
   // so no aspect ever jumps between the source and the layer.
-  function zCropFrame(rect, box) {
+  function zCropFrame(rect, box, rot) {
     const dx = (rect.left + rect.width / 2) - box.cx;
     const dy = (rect.top + rect.height / 2) - box.cy;
     let visW = 1, visH = 1;
@@ -1804,8 +1824,28 @@
     }
     const s = (rect.width / visW) / box.w;                            // the full image at the source's per-pixel scale
     const ix = ((1 - visW) / 2 * 100).toFixed(2), iy = ((1 - visH) / 2 * 100).toFixed(2);
-    return { transform: "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(" + s.toFixed(4) + ")",
-             clip: "inset(" + iy + "% " + ix + "% " + iy + "% " + ix + "%)" };
+    const r = rot ? " rotate(" + (rot * 180 / Math.PI).toFixed(2) + "deg)" : "";
+    return { transform: "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px)" + r + " scale(" + s.toFixed(4) + ")",
+             clip: "inset(" + iy + "% " + ix + "% " + iy + "% " + ix + "%)",
+             rot: rot || 0 };
+  }
+  // A resting polaroid TILTS (.exs-print rotate(--rot)), and getBoundingClientRect alone returns the
+  // rotated print's inflated axis-aligned box — a translate+scale pin would un-tilt it in a snap at
+  // frame-0 and land ~10% large. The pin carries the source's own rotation and its TRUE visual rect
+  // (offset size × the print's own scale, centred on the box centre), so the tilt rides the flight
+  // (INV-87): upright as it arrives, back into the tilt on the way home.
+  function zSrcFrame(rect) {
+    const pr = zSrcEl && zSrcEl.closest && zSrcEl.closest(".exs-print");
+    const tr = pr ? getComputedStyle(pr).transform : "";
+    const m = tr && tr !== "none" ? /matrix\(([^)]+)\)/.exec(tr) : null;
+    if (!m) return { rect: rect, rot: 0 };
+    const v = m[1].split(",").map(parseFloat);
+    const rot = Math.atan2(v[1], v[0]);
+    if (!rot) return { rect: rect, rot: 0 };
+    const sc = Math.hypot(v[0], v[1]);                     // the print's own scale rides the same matrix
+    const w = zSrcEl.offsetWidth * sc, h = zSrcEl.offsetHeight * sc;
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    return { rect: { left: cx - w / 2, top: cy - h / 2, width: w, height: h }, rot: rot };
   }
   // The single flight carrier. `back=false` opens (frame-0 crop → full contain), `back=true` closes
   // (full → the source's crop) — the SAME stage transform + img clip both directions on the SAME clock
@@ -1819,7 +1859,8 @@
       if (done) { if (back) zArmFade(done); else requestAnimationFrame(done); }
       return;
     }
-    const c = zCropFrame(rect, box);
+    const sf = zSrcFrame(rect);                     // the source's true visual rect + its own tilt (INV-87)
+    const c = zCropFrame(sf.rect, box, sf.rot);
     if (back) {                                     // full → source crop: animate out, tear down on transitionend
       zStage.style.transition = ""; zImg.style.transition = "";
       requestAnimationFrame(() => { zStage.style.transform = c.transform; zImg.style.clipPath = c.clip; });
@@ -1827,9 +1868,14 @@
     } else {                                        // pin at the source crop, then release to fly in + morph open
       zStage.style.transition = "none"; zImg.style.transition = "none";
       zStage.style.transform = c.transform; zImg.style.clipPath = c.clip;
+      void zStage.offsetWidth;                      // commit the pin before the release — a bare rAF pair
+                                                    // can coalesce on WebKit and skip the entry flight
       requestAnimationFrame(() => {
         zStage.style.transition = ""; zImg.style.transition = "";
-        zStage.style.transform = ""; zImg.style.clipPath = "inset(0)";
+        // a rotated pin releases to the SAME function list (translate rotate scale) so the tilt
+        // interpolates cleanly to upright; an unrotated pin keeps the plain rest form
+        zStage.style.transform = c.rot ? "translate(0px,0px) rotate(0deg) scale(1)" : "";
+        zImg.style.clipPath = "inset(0)";
         if (done) done();
       });
     }
@@ -1852,6 +1898,8 @@
     const rect = el.getBoundingClientRect();           // its VISUAL rect (its own transform, e.g. a lifted print — rule 9)
     zImg.src = src; zImg.alt = el.alt || "";
     zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zDesk = 1; zDismissing = false; zApply();
+    zPrevBase = null;                                  // no preview rides into a fresh open
+    if (zWheelIdle) { clearTimeout(zWheelIdle); zWheelIdle = 0; }
     zoom.classList.remove("desk");                     // a fresh open is finger-driven until a wheel/gesture says otherwise
     zStage.style.transition = "none"; zStage.style.transform = ""; zImg.style.clipPath = "inset(0)";
     zImg.style.willChange = "transform"; zStage.style.willChange = "transform";   // transient — cleared at teardown (never left on: compositor stall)
@@ -1873,12 +1921,18 @@
     if (!zoomOpen) return;
     zoomOpen = false; zDismissing = false; zDesk = 1;
     const rect = (zSrcEl && document.body.contains(zSrcEl)) ? zSrcEl.getBoundingClientRect() : null;  // fresh VISUAL place (rotation/lift, INV-82 + rule 9)
-    // Fold the current visual scale+pan into the flight's START, then reset the img — the exit is ONE
-    // composed motion home, never a snap to 1× before the fly (rule 4). The stage carries the whole
-    // motion; the img rides identity from here.
+    // Fold the current visual scale+pan into the flight's START, composed ONTO the live stage
+    // transform — whatever the eye already sees (a dismiss preview's shrink, a flight still in
+    // motion) — then reset the img: the exit is ONE composed motion home, never a snap to 1× and
+    // never a one-frame return to full before the fly (rule 4). Both transforms originate at the
+    // viewport centre (the img is flex-centred), so the composition is exact.
+    const live = getComputedStyle(zStage).transform;
     const fold = "translate(" + zTx.toFixed(1) + "px," + zTy.toFixed(1) + "px) scale(" + zScale.toFixed(4) + ")";
     zoom.classList.remove("desk");                     // the img resets instantly (no eased double-motion)
-    zStage.style.transition = "none"; zStage.style.transform = fold;
+    zPrevBase = null;                                  // the preview is riding the fold now
+    if (zWheelIdle) { clearTimeout(zWheelIdle); zWheelIdle = 0; }
+    zStage.style.transition = "none";
+    zStage.style.transform = (live && live !== "none" ? live + " " : "") + fold;
     zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zApply();   // the img → identity, in place
     void zStage.offsetWidth;                           // commit the fold before the flight starts (no jump)
     zoom.classList.remove("show");                     // backdrop fades; the player returns to its rail at once
@@ -1911,14 +1965,17 @@
     if (!zoomOpen) return;
     if (e.touches.length === 2 && zPinch) {
       e.preventDefault();                              // our scale, never the browser's
-      const raw = zStartS * (zDist(e.touches) / zPinch);
+      let raw = zStartS * (zDist(e.touches) / zPinch);
       if (raw < 1 && zScale <= 1.001) {   // at/into 1×, a continued pinch-IN previews the dismiss — one continuous gesture crosses from zoom-out into dismiss (rule 5)
+        if (zStartS !== 1) {              // a pinch that began zoomed RE-BASES at the 1× crossing (INV-82):
+          zPinch = zDist(e.touches);      // the dismiss ratio reads from HERE, so the squeeze is the same
+          zStartS = 1;                    // whatever the prior zoom and a fast crossing frame never commits
+          raw = 1;
+        }
         zDismiss = raw;
-        const shrink = 1 - (1 - Math.max(0.5, raw)) * 0.45;  // resistance — the picture eases toward its place
-        zStage.style.transition = "none";
-        zStage.style.transform = "scale(" + shrink.toFixed(3) + ")";
+        zPreview(raw);
       } else {
-        if (zDismiss) { zDismiss = 0; zStage.style.transition = "none"; zStage.style.transform = ""; }
+        if (zDismiss) { zDismiss = 0; zPreviewEnd(false); }
         zScale = Math.max(1, Math.min(4, raw));
         zClampPan();                                   // a smaller scale shrinks the pannable overflow
         zApply();
@@ -1941,7 +1998,7 @@
       // where the old code cancelled on the first touchend before the last finger lifted (rules 1 + 5).
       if (pinchBroke) {
         if (zDismiss < DISMISS_T && !zDismissing) { zDismissing = true; history.back(); return; }   // commit → close through history (INV-83)
-        zDismiss = 0; zStage.style.transition = ""; zStage.style.transform = "";           // above threshold → ease back to 1×
+        zDismiss = 0; zPreviewEnd(true);                                                   // above threshold → ease back to 1×
       }
       return;
     }
@@ -2010,10 +2067,18 @@
     if (ns < 1) {                                        // at/into 1× a continued pinch-IN previews the dismiss (INV-82)
       zScale = 1; zTx = 0; zTy = 0; zApply();
       zDesk = (zDesk < 1 ? zDesk : 1) + (ns - 1);
-      if (zDesk <= DISMISS_T && !zDismissing) { zDismissing = true; zDesk = 1; history.back(); }  // commit through the one road (INV-83)
+      if (zWheelIdle) { clearTimeout(zWheelIdle); zWheelIdle = 0; }
+      if (zDesk <= DISMISS_T && !zDismissing) { zDismissing = true; zDesk = 1; history.back(); return; }  // commit through the one road (INV-83)
+      zPreview(zDesk);                                   // the desktop pinch-shut previews with the touch resistance (INV-82/85)
+      // Blink's ctrl-wheel stream carries no end event — a short idle eases an uncommitted preview back
+      zWheelIdle = setTimeout(() => {
+        zWheelIdle = 0;
+        if (zoomOpen && !zDismissing) { zDesk = 1; zPreviewEnd(true); }
+      }, 140);
       return;
     }
     zDesk = 1;
+    zPreviewEnd(true);                                   // recovered above 1× — the preview eases off
     zScale = Math.min(4, ns); zClampPan(); zApply();
   }
   // INV-76 desktop pan: once enlarged past 1×, a mouse drag inside the layer pans the picture — the
@@ -2094,14 +2159,17 @@
     if (target < 1) {                                    // pinch-IN past 1× → preview / commit the dismiss (INV-82)
       zScale = 1; zTx = 0; zTy = 0; zApply();
       zDesk = target;
-      if (zDesk <= DISMISS_T && !zDismissing) { zDismissing = true; zDesk = 1; history.back(); }
+      if (zDesk <= DISMISS_T && !zDismissing) { zDismissing = true; zDesk = 1; history.back(); return; }
+      zPreview(zDesk);                                   // Safari's trackpad pinch-shut previews too (INV-82/85)
       return;
     }
-    zDesk = 1; zScale = Math.min(4, target); zClampPan(); zApply();
+    zDesk = 1; zPreviewEnd(true); zScale = Math.min(4, target); zClampPan(); zApply();
   }
   function onGestureEnd(ev) {
     ev.preventDefault();
-    if (!TOUCHY && zoomOpen && zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }  // near-1 release settles flat
+    if (TOUCHY || !zoomOpen) return;
+    if (zDesk < 1 && !zDismissing) { zDesk = 1; zPreviewEnd(true); }   // an uncommitted release eases back (gestureend)
+    if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }    // near-1 release settles flat
   }
   document.addEventListener("gesturestart", onGestureStart, { passive: false });
   document.addEventListener("gesturechange", onGestureChange, { passive: false });
