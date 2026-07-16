@@ -61,6 +61,10 @@ BROWSER_ROWS = [
     "EX-GLIDE a viewport-metric change re-centers the resting frame (phone chrome collapses → quiet re-dock)",
     "EX-GLIDE a light trackpad swipe (one ramping burst) advances exactly ONE frame — never several",
     "EX-GLIDE a deliberate second swipe over the first's decaying tail still steps (never eaten)",
+    "EX-GLIDE a realistic BUMPY momentum tail (micro-humps, the shape a real trackpad emits) "
+    "advances exactly ONE frame — a hump never fakes a second swipe",
+    "EX-GLIDE a second swipe over a HIGH still-flowing tail steps (no absolute dip required — "
+    "the re-arm is relative, so any macOS speed setting agrees)",
 ]
 
 # facts this suite CANNOT close — they live in real-device physics a headless desktop never has;
@@ -371,6 +375,35 @@ else:
             i2, o2 = cur(br), off(br)
             check(BROWSER_ROWS[11], i2 == 2 and abs(o2) <= 2,
                   f"landed frame {i2} off {o2} (want frame 2 — swipe 2 must not be eaten)")
+
+        # 12 · a REALISTIC bumpy tail (his 2026-07-16 word): a real macOS momentum tail is never
+        #      monotonic — it carries micro-humps, and at a scaled-up trackpad-speed setting a modest
+        #      wobble (here 12→21) crosses any absolute floor/rise rails. One swipe, ONE frame — the
+        #      hump must never fake a second swipe. (Same waveform replayed pure in test_wheel.py.)
+        with Browser(width=1280, height=900) as br:
+            room(br, base, "0.2")
+            burst(br, [5, 16, 42, 98, 145, 126, 99, 108, 82, 66, 71, 53, 44, 37, 40, 31,
+                       26, 22, 24, 18, 15, 12, 21, 14, 10, 8, 6, 5, 4, 3], gap=0.008)
+            br.sleep(0.8)
+            i3, o3 = cur(br), off(br)
+            check(BROWSER_ROWS[12], i3 == 1 and abs(o3) <= 2,
+                  f"landed frame {i3} off {o3} (want exactly frame 1 — the hump must not step)")
+
+        # 13 · the swallowed-swipe half of the same bug: a genuine second swipe thrown while the
+        #      first's tail still flows HIGH (it never dips near zero) — an absolute-floor re-arm
+        #      never sees a dip and eats it. The re-arm must judge the surge RELATIVE to the tail's
+        #      decayed envelope, so the second swipe steps at any speed setting. ~700ms in, human-paced.
+        with Browser(width=1280, height=900) as br:
+            room(br, base, "0.2")
+            burst(br, [4, 14, 40, 78, 96, 70]                        # swipe 1: ramp + peak
+                      + [52, 44, 38, 33, 29, 26, 23, 21, 19, 17,     # a HIGH tail — never dips low
+                         16, 15, 14, 13]
+                      + [45, 88, 60],                                # swipe 2: a sharp relative surge
+                  gap=0.03)
+            br.sleep(0.9)
+            i4, o4 = cur(br), off(br)
+            check(BROWSER_ROWS[13], i4 == 2 and abs(o4) <= 2,
+                  f"landed frame {i4} off {o4} (want frame 2 — the high-tail re-swipe must not be eaten)")
 
         print("\n-- real-device boundary (closed only by a named walk on a real phone, never headless):")
         for f in REAL_DEVICE_FACTS:

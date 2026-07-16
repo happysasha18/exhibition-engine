@@ -2615,32 +2615,68 @@
   // DESKTOP wheel: one gesture → one frame. A mouse notch is a single event; a trackpad swipe is
   // a burst of them — both coalesce to ONE step (force ignored, phase 1). preventDefault kills
   // native free-scroll entirely, so there is no momentum left to "float" after the stop.
-  let wheelLock = false;
   let wheelIdle = null;
   let wheelPeak = 0;                                   // the live gesture's PEAK |deltaY| — the force→speed input
   let wheelMode = null;                                // "walk" (plain wheel) | "zoom" (ctrl+wheel) — latched per burst
-  let wheelQuiet = false;                              // the burst has decayed to its floor after a real peak — a re-swipe gap
-  // INV-84 re-arm (thread the two bugs): one CONTINUOUS swipe advances ONE frame — its own ramp-in and
-  // its monotonically-decaying tail never re-step. A DELIBERATE second swipe (a genuine re-acceleration)
-  // must still step. The tell is a real quiet gap: after a swipe has actually peaked (wheelPeak past
-  // RESWIPE_PEAK), the stream decays to a low floor (RESWIPE_FLOOR) — THEN a rise back above RESWIPE_RISE
-  // is a new gesture. A single swipe's ramp-in can't trip it (wheelPeak isn't past its own peak yet, and
-  // quiet is only armed on the FALLING side); its decaying tail can't (it never rises). Both thresholds
-  // sit in the dead band between one swipe's tail (falls to ~2–6, never climbs) and a real re-swipe's
-  // rise (climbs back past ~20) — see test_glide rows 10 (one frame) & 11 (two frames).
-  const RESWIPE_PEAK = 20;                             // a burst must have crested this to count as a real swipe worth re-arming after
-  const RESWIPE_FLOOR = 12;                            // |deltaY| at/below (after that crest) → the stream has gone quiet
-  const RESWIPE_RISE = 20;                             // a rise back to/above this out of the quiet → a deliberate NEW swipe
+  // INV-84 re-arm, SETTINGS-INDEPENDENT (his 2026-07-16 word): macOS scales every wheel |deltaY| by
+  // the user's own trackpad-speed setting, so ANY absolute |deltaY| threshold is wrong per-user by
+  // construction. The old absolute rails (RESWIPE_PEAK/FLOOR/RISE = 20/12/20) carried both halves of
+  // the bug: a real momentum tail is BUMPY, so a micro-hump could dip under the floor and rise past
+  // the rise rail (a false second step), while a genuine second swipe over a HIGH still-flowing tail
+  // never saw the dip (swallowed). The verdict below reads only TIME and RATIOS — both invariant
+  // under any speed setting. No browser exposes the macOS momentum phase to JS, so a time gap plus a
+  // relative re-acceleration is the only mechanism available. Inside a non-fresh burst a NEW step
+  // fires only when BOTH (a) STEP_MIN_MS passed since the last step, AND (b) either a real hole in
+  // the event stream (the old momentum ended) or the stream CRESTED, fell into its decaying tail,
+  // and now surges to RESWIPE_RATIO × the decayed envelope. The crest gate means the initial ramp-in
+  // can never trip the ratio. Every constant here is a provisional STRUCTURE — Alexander tunes the
+  // values by FEEL on the live site; none is, or may ever become, an absolute |deltaY| magnitude.
+  const WHEEL_IDLE_MS = 150;   // gesture end: this much event silence → the next event opens a FRESH burst (the kept idle window)
+  const STEP_MIN_MS = 250;     // the human double-swipe floor — two deliberate swipes never land closer (a human-rhythm constant, not a device one)
+  const RESWIPE_GAP_MS = 90;   // a hole this long inside a live burst → the prior momentum ended (momentum ticks far faster)
+  const RESWIPE_RATIO = 1.9;   // |deltaY| at/above this × the decayed envelope → a deliberate re-acceleration (a ratio — speed-setting-proof)
+  const CREST_RATIO = 0.6;     // the stream fell to/below this × the envelope → past the crest, in the tail, re-arm eligible
+  const ENV_HALF_MS = 250;     // the envelope's half-life: how fast the remembered peak fades toward the live tail
+  // The per-event verdict, PURE and DOM-free — test_wheel.py extracts this block (the six constants
+  // above + this function) and replays recorded envelopes in node: no browser, no timers, no sleeps.
+  // Keep it self-contained. `st` carries: env (decaying running peak of |deltaY|), crested (the
+  // stream fell into its tail), stepT (when the last step fired), lastT (the previous event),
+  // fresh (set for the caller: this event opened a new burst). Returns the step: -1 | 0 | +1.
+  function wheelWalkStep(s, st) {
+    const mag = Math.abs(s.dy);
+    const gap = st.lastT == null ? Infinity : s.t - st.lastT;
+    st.fresh = gap >= WHEEL_IDLE_MS;                   // the idle boundary read off timestamps — the setTimeout twin in the listener resets state on true idle
+    let step = 0;
+    if (st.fresh) {
+      step = s.dy > 0 ? 1 : -1;                        // a fresh burst always steps once
+      st.env = mag; st.crested = false; st.stepT = s.t;
+    } else {
+      const env = st.env * Math.pow(0.5, gap / ENV_HALF_MS);       // the envelope, decayed to NOW
+      if (!st.crested && env > 0 && mag <= env * CREST_RATIO) st.crested = true;
+      const paused = gap >= RESWIPE_GAP_MS;                        // a real hole — the old momentum is over
+      const reaccel = st.crested && mag >= env * RESWIPE_RATIO;    // a relative surge OUT of the tail
+      if (mag > 0 && s.t - st.stepT >= STEP_MIN_MS && (paused || reaccel)) {
+        step = s.dy > 0 ? 1 : -1;                      // a deliberate SECOND swipe — re-armed
+        st.env = mag; st.crested = false; st.stepT = s.t;
+      } else {
+        st.env = Math.max(mag, env);                   // ride the stream: the envelope never sits under the live value
+      }
+    }
+    st.lastT = s.t;
+    return step;
+  }
+  const wheelS = { env: 0, crested: false, stepT: 0, lastT: null, fresh: true };
   if (!TOUCHY) {
     addEventListener("wheel", (e) => {
       // The burst boundary and the MEANING are both fixed at the first event: a mouse notch is one
-      // event, a trackpad swipe a decaying burst — an idle timer clears the lock only once all motion
-      // stops, so the NEXT gesture is genuinely fresh. The meaning is latched here and held for the
-      // whole coalesced burst, so a ctrl gained or lost mid-burst never flips it (EX-PROTECT/INV-85).
-      const fresh = !wheelLock;
+      // event, a trackpad swipe a decaying burst — the idle timer resets the state only once all
+      // motion stops, so the NEXT gesture is genuinely fresh (the pure verdict reads the same 150ms
+      // off e.timeStamp, so the two agree). The meaning is latched here and held for the whole
+      // coalesced burst, so a ctrl gained or lost mid-burst never flips it (EX-PROTECT/INV-85).
       clearTimeout(wheelIdle);
-      wheelIdle = setTimeout(() => { wheelLock = false; wheelPeak = 0; wheelMode = null; }, 150);
-      if (fresh) { wheelLock = true; wheelMode = e.ctrlKey ? "zoom" : "walk"; wheelPeak = 0; wheelQuiet = false; }
+      wheelIdle = setTimeout(() => { wheelPeak = 0; wheelMode = null; wheelS.lastT = null; }, WHEEL_IDLE_MS);
+      const step = wheelWalkStep({ t: e.timeStamp, dy: e.deltaY }, wheelS);
+      if (wheelS.fresh) { wheelMode = e.ctrlKey ? "zoom" : "walk"; wheelPeak = 0; }
       // INV-85 / EX-PROTECT: the browser's own ctrl-wheel (viewport) zoom is refused on EVERY ctrl+wheel.
       // The old blunt guard was `if (e.ctrlKey) { e.preventDefault(); return; }` — a flat refusal. INV-85
       // KEEPS that preventDefault (in the "zoom" branch just below) but now HANDS the same ctrl+wheel to
@@ -2656,27 +2692,16 @@
           && e.target.closest("#ex-side, #ex-quiz-card, #ex-gift-card")) return;  // overlay scrolls
       e.preventDefault();                              // the walk is paginated, not free
       const mag = Math.abs(e.deltaY);
-      // INV-84: one continuous burst = EXACTLY one frame. Its rising ramp-in and its decaying tail only
-      // feed the single glide's SPEED (the sharper the burst, the shorter its one glide) — they never
-      // re-step. A DELIBERATE second swipe DOES step: it shows up as a re-acceleration OUT of a genuine
-      // quiet gap (the first swipe's tail died to a low floor, then a fresh rise). The old code re-armed
-      // on any rise > peak×1.3 and flew through the gallery on one gentle swipe's ramp-in; this arms
-      // `wheelQuiet` only on the FALLING side of a real crest, so a ramp-in can never trip it.
-      if (!fresh) {
-        if (wheelPeak >= RESWIPE_PEAK && mag <= RESWIPE_FLOOR) wheelQuiet = true;  // the burst has gone quiet
-        if (wheelQuiet && mag >= RESWIPE_RISE) {          // ...then re-accelerates → a genuinely new swipe, re-armed
-          wheelQuiet = false; wheelPeak = mag;
-          stepFrame(e.deltaY > 0 ? 1 : -1, mag);
-          return;
-        }
-        if (mag > wheelPeak) {
-          wheelPeak = mag;
-          if (gliding && glideGoal != null) glideToFrame(glideGoal, wheelPeak);
-        } else wheelPeak = Math.max(mag, wheelPeak * 0.95);
-        return;
-      }
-      wheelPeak = mag; wheelQuiet = false;
-      stepFrame(e.deltaY > 0 ? 1 : -1, mag);
+      // INV-84: one continuous burst = EXACTLY one frame. The verdict is the pure wheelWalkStep
+      // above — a fresh burst steps once; inside a burst only a real stream hole or a relative
+      // re-acceleration out of the crested tail (never sooner than the human double-swipe floor)
+      // re-arms. A non-stepping event still feeds the ONE glide's SPEED: a rising peak re-times
+      // the running glide to the same goal (force→speed, unchanged).
+      if (step) { wheelPeak = mag; stepFrame(step, mag); return; }
+      if (mag > wheelPeak) {
+        wheelPeak = mag;
+        if (gliding && glideGoal != null) glideToFrame(glideGoal, wheelPeak);
+      } else wheelPeak = Math.max(mag, wheelPeak * 0.95);
     }, { passive: false });
   }
   // DESKTOP keys ARE the walk's step: space/↓/PageDown forward, ↑/PageUp (and shift+space) back —
