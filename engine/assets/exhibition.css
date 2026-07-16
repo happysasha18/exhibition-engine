@@ -23,21 +23,30 @@ html.js #ex-static{ display:none; }
 body.ex-live #ex-static{ display:none; }
 body.ex-live .ex-head{ display:none; }           /* the door/hang carry their own marks */
 body:not(.ex-live) .ex-stage{ display:none; }
-/* EX-LOAD: the cold-arrival loading breath — a quiet line while the deferred walk is still on its
-   way. Shown like the door: only AFTER a grace beat (the animation-delay), so a healthy load that
-   reaches `ex-live` first NEVER sees it. Pure CSS — it does not lean on the JS failsafe, which a
-   backgrounded phone throttles. No-JS keeps it hidden and shows the static grid instead. The line's
-   text is instance-supplied (LOADING_LINE). */
+/* EX-LOAD/EX-BOOT (INV-95): the cold-arrival loading breath — the exhibition's first paint, alive
+   from near-instantly (a fast grace beat, not the old ~0.74s faint line) and holding a visible,
+   continuously breathing line for however long the script's ride takes — a first paint standing as
+   a black void is the defect this retires. Shown like the door: only AFTER the (now fast) grace
+   beat, so a healthy load that reaches `ex-live` first NEVER sees it. Pure CSS — it does not lean
+   on the JS failsafe, which a backgrounded phone throttles. No-JS keeps it hidden and shows the
+   static grid instead. The line's text is instance-supplied (LOADING_LINE). */
 #ex-loading{ display:none; }
 html.js #ex-loading{ display:flex; position:fixed; inset:0; z-index:1; align-items:center;
   justify-content:center; pointer-events:none; opacity:0;
-  animation:ex-loadin var(--d-soft) var(--ease) calc(.55s*var(--tempo)) forwards; }
+  animation:ex-loadin var(--d-soft) var(--ease) calc(.15s*var(--tempo)) forwards,
+            ex-loadbreathe calc(2.4s*var(--tempo)) ease-in-out
+              calc(.15s*var(--tempo) + var(--d-soft)) infinite; }
 body.ex-live #ex-loading{ display:none; }
 #ex-loading span{ color:var(--muted); font-family:var(--mono,inherit);
   font-size:clamp(11px,3.1vw,14px); letter-spacing:.14em; text-transform:uppercase;
   text-align:center; line-height:1.7; max-width:82vw; padding:0 22px;
   margin-inline-end:-.14em; }   /* wraps + stays optically centered on any viewport */
-@keyframes ex-loadin{ to{ opacity:.8 } }
+@keyframes ex-loadin{ to{ opacity:.85 } }
+@keyframes ex-loadbreathe{ 0%,100%{ opacity:.85; } 50%{ opacity:.55; } }   /* starts where the
+  fade ended (.85) — the old 0%=.55 snapped in one frame at the fade→breathe handoff */
+@media (prefers-reduced-motion:reduce){
+  html.js #ex-loading{ animation:none; opacity:.8; }   /* a still visible line, no loop */
+}
 /* EX-GLIDE (INV-39): one input → one centered frame. On DESKTOP the JS animator owns the walk
    (wheel + keys), replacing native free-scroll — no CSS smooth either, so nothing fights the
    one-frame transition. On TOUCH no JS writes the position; CSS scroll-snap docks the walk (below,
@@ -272,7 +281,9 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
   -webkit-overflow-scrolling:touch;                 /* iOS momentum — a rightward flick carries (2026-07-15) */
   scroll-snap-type:x proximity;                      /* the lane rests near a picture, never mid-gap */
-  overscroll-behavior:contain; }  /* EX-CHROME: a lane that runs out never chains the leftover to the page */
+  overscroll-behavior:contain;    /* EX-CHROME: a lane that runs out never chains the leftover to the page */
+  overflow-anchor:none; }  /* INV-88: refuse the browser's own scroll compensation — a late-decoding
+                               picture never nudges the lane off its first-member rest */
 .exs-stage.lane::-webkit-scrollbar{ display:none; }
 .exs-stage.lane img{ max-height:56vh; max-width:64vw; flex:none; border-radius:2px;
   scroll-snap-align:center;

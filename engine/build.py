@@ -349,9 +349,11 @@ def render_exhibition(items, captions, slugs, site_url, display_max=None):
     }
     # The FOUC guard: with JS on, the crawler's static index must NEVER paint (without it every
     # work flashes on screen for seconds before the walk takes over). The inline script marks <html> as js-alive
-    # BEFORE <body> parses, so CSS hides the static face pre-paint; if the walk hasn't come alive
-    # within 2.5s (broken/missing JS or data), the mark is removed and the static face returns —
-    # progressive enhancement keeps a bounded worst case, never a blank page (INV-25/CS-8).
+    # BEFORE <body> parses, so CSS hides the static face pre-paint; the mark stays through however
+    # long the script's ride takes (EX-BOOT/INV-95: the loading breath holds, no stopwatch dumps a
+    # slow-network visitor into the static grid mid-ride) — only the script's own onerror (below) or
+    # a generous 12s last-net cap on a genuinely HUNG ride removes it, so progressive enhancement
+    # keeps a bounded worst case, never a blank page (INV-25/CS-8).
     # cache-bust the code URLs by content hash — the fix that reaches the BROWSER cache: the HTML is
     # served fresh (max-age=0), so a returning visitor always gets the current ?v= and thus fresh
     # JS/CSS the instant a deploy changes them. Hash the SERVED bytes (engine assets + content tokens).
@@ -362,7 +364,7 @@ def render_exhibition(items, captions, slugs, site_url, display_max=None):
     ).hexdigest()[:8]
     extra_head = ('<script>document.documentElement.classList.add("js");'
                   'setTimeout(function(){if(!document.body||!document.body.classList.contains("ex-live"))'
-                  'document.documentElement.classList.remove("js")},2500);</script>\n'
+                  'document.documentElement.classList.remove("js")},12000);</script>\n'
                   f'<link rel="stylesheet" href="/gallery/shared/tokens.css?v={av}">\n'
                   f'<link rel="stylesheet" href="/exhibition.css?v={av}">\n')
     cards = []
@@ -386,7 +388,7 @@ def render_exhibition(items, captions, slugs, site_url, display_max=None):
 <nav class="grid" aria-label="All works">{grid}</nav>
 <p class="sign">{COPYRIGHT}</p>
 </main>
-<script src="/exhibition.js?v={av}" defer></script>
+<script src="/exhibition.js?v={av}" defer onerror="document.documentElement.classList.remove('js')"></script>
 </body>
 </html>
 """

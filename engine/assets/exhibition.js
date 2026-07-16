@@ -3024,7 +3024,13 @@
             // never moved (his phone find 2026-07-15). Every other face keeps the first-4px verdict.
             const laneUnder = inFace && faceConsumes(e.target, true);
             if (laneUnder) {
-              if (adx < 12 && ady < 12) { e.preventDefault(); return; }   // still ambiguous — hold, don't latch
+              // INV-96: while still ambiguous over the lane, WATCH ONLY — no preventDefault. On
+              // phone WebKit eating even the ambiguous-window events poisoned the native scroll
+              // hand-off for the WHOLE gesture (a slow-starting swipe went dead — the every-other-
+              // swipe report 2026-07-16), because that hand-off is decided from the gesture's very
+              // first events. The walk itself is already inert here (walkOwnsInput() is false while
+              // sideOpen), so there is nothing of the walk's own to protect by consuming early.
+              if (adx < 12 && ady < 12) { return; }   // still ambiguous — hold, don't latch, don't eat
               fDecided = adx >= ady;                                       // horizontal → native, the lane runs
             } else if (adx + ady >= 4) {                                   // the first ~4px pick the axis
               fDecided = inFace && faceConsumes(e.target, adx > ady);
@@ -3080,6 +3086,9 @@
                    '<div class="exs-stage" id="exs-stage"></div>';
   document.body.appendChild(side);
   let sideOpen = false;
+  let laneTouchOff = null;          // the CURRENT dress's own lane touchstart handler (INV-88) —
+                                     // removed at the top of every dressSide so it never piles up
+                                     // across reopens of the reused #exs-stage
   function openSide(idx, laystep) {
     const S = SERIES[idx];
     if (!S || sideOpen || busy) return;
@@ -3110,6 +3119,14 @@
     const st = side.querySelector("#exs-stage");
     st.className = "exs-stage " + S.variant;           // the series' own character picks the face
     st.innerHTML = "";
+    if (laneTouchOff) {               // the PRIOR dress's own listener, if any, dies here — #exs-stage
+      st.removeEventListener("touchstart", laneTouchOff);   // is reused, innerHTML="" does not remove
+      laneTouchOff = null;                                  // a listener bound to the container itself
+    }
+    const dressGen = cerGen;          // THIS dress's own generation (INV-88) — a rebuilt/closed
+    const decodes = [];               // room before the pictures decode is never touched again
+    let laneTaken = false;            // the visitor already took the lane in hand — the decode
+                                       // re-affirm below must never yank it back out from under them
     S.members.forEach((id, i) => {
       const w = byId[id];
       if (!w) return;
@@ -3117,6 +3134,7 @@
         const im = new Image();
         im.src = w.img;
         st.appendChild(im);
+        decodes.push(im.decode().catch(() => {}));
         return;
       }
       const p = document.createElement("div");         // the polaroid table
@@ -3138,6 +3156,10 @@
       });
       st.appendChild(p);
     });
+    if (S.variant === "lane") {       // a real touch on the lane spends the re-affirm below (INV-88):
+      laneTouchOff = () => { laneTaken = true; };            // the visitor already has it in hand,
+      st.addEventListener("touchstart", laneTouchOff, { passive: true, once: true });   // never yank it
+    }
     const T = (greetLang() || { t: {} }).t;
     side.querySelector(".exs-back").textContent = T.room_back || ROOM_BACK_EN;
     side.hidden = false;
@@ -3145,6 +3167,16 @@
     // prior visit left the lane. #exs-stage is a reused element and the browser's scroll-anchoring
     // keeps its leftover scrollLeft across a content rebuild, so clear it explicitly on open (INV-88).
     st.scrollLeft = 0;
+    // the rest survives the pictures' own late arrival (INV-88): CSS refuses the browser's scroll
+    // compensation (overflow-anchor:none), and once every lane picture has actually decoded (taken
+    // its real size) the rest is re-affirmed — guarded by this dress's own generation AND by whether
+    // the visitor has already taken the lane in hand (a touch mid-decode spends laneTaken), so a
+    // rebuilt/closed room, or one the visitor is already mid-swipe on, is never touched.
+    if (decodes.length) {
+      Promise.all(decodes).then(() => {
+        if (dressGen === cerGen && sideOpen && !laneTaken) st.scrollLeft = 0;
+      });
+    }
     document.body.classList.add("ex-side");            // the lock law, reused (EX-DOOR-2f)
     if (laystep !== false) pushFace({ face: "series", ser: idx });
     pulse("series_open", focusedId);                   // the work whose series opened (EX-PULSE registry)

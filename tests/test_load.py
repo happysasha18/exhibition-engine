@@ -100,6 +100,8 @@ BROWSER_ROWS = [
     "EX-LOAD a healthy line never sees it (no plate, no ex:plate mark on a normal crossing)",
     "EX-LOAD a dead image never traps (plate retires, caption+counter hold, walk alive)",
     "EX-TIMING marks are laid, export on ask; nothing in the DOM (INV-1)",
+    "EX-BOOT/INV-95 the first paint breathes",
+    "EX-BOOT/INV-95 scripts-off honestly falls back",
 ]
 
 # the in-flight ladder's superseding face: the plate (EX-LOAD-2) replaced the lone breath hairline
@@ -212,6 +214,63 @@ else:
             check(BROWSER_ROWS[4],
                   need.issubset(marks) and bool(exported) and dom_clean,
                   f"marks={sorted(marks)} exported={exported} dom_clean={dom_clean}")
+
+        # 5 · EX-BOOT/INV-95: the first paint breathes — with the client script WITHHELD, the
+        # baked static markup + CSS alone must show #ex-loading visibly breathing near-immediately
+        # and hold there PAST the old 2.5s stopwatch mark, never dumping the visitor into the
+        # static grid while the script is merely slow (his 2026-07-16 note: the black void). The
+        # script is held past our own read window, so this drives Page.navigate directly (bypasses
+        # Browser.navigate's readyState==complete wait, which a withheld <script defer> would trip).
+        BOOT_READ = (
+            "(()=>{const l=document.getElementById('ex-loading');const cs=getComputedStyle(l);"
+            "const g=document.querySelector('nav.grid');const st=document.getElementById('ex-static');"
+            "return {op:+cs.opacity, anim:cs.animationName, "
+            "js:document.documentElement.classList.contains('js'), "
+            "gridShown:!!(g&&getComputedStyle(g).display!=='none'"
+            "&&st&&getComputedStyle(st).display!=='none')};})()"
+        )
+        HOLD.update(match="exhibition.js", delay=6.0)
+        with Browser(width=390, height=844) as br:
+            br.set_viewport(390, 844)
+            br._cmd("Page.navigate", url=base + "/")
+            br.sleep(0.4)                              # well inside the first second
+            early = br.evaluate(BOOT_READ)
+            br.sleep(3.1)                               # ~3.5s total — past the OLD 2.5s stopwatch
+            late = br.evaluate(BOOT_READ)
+        HOLD.clear()
+        with Browser(width=390, height=844) as br:
+            br.emulate_media(prefers_reduced_motion="reduce")
+            br.navigate(base + "/")
+            br.sleep(0.4)
+            reduced = br.evaluate(
+                "(()=>{const l=document.getElementById('ex-loading');const cs=getComputedStyle(l);"
+                "return {op:+cs.opacity, anim:cs.animationName};})()")
+        check(BROWSER_ROWS[5],
+              early["op"] > 0 and "ex-loadbreathe" in early["anim"]
+              and late["op"] > 0 and "ex-loadbreathe" in late["anim"]
+              and late["js"] and not late["gridShown"]
+              and 0.65 <= reduced["op"] <= 0.95 and reduced["anim"] == "none",
+              f"early={early} late={late} reduced={reduced}")
+
+        # 6 · EX-BOOT/INV-95: scripts-off honestly falls back — a script that FAILS (network error)
+        # trips its own onerror road at once, never waiting on the old 2.5s stopwatch; the baked
+        # page also carries the ~12s last-net cap and the script's own error hook (string level).
+        with Browser(width=390, height=844) as br:
+            br.block(["*exhibition.js*"])
+            br.navigate(base + "/")
+            br.sleep(1.5)
+            state = br.evaluate(
+                "(()=>{const g=document.querySelector('nav.grid');"
+                "const st=document.getElementById('ex-static');"
+                "return {js:document.documentElement.classList.contains('js'), "
+                "gridShown:!!(g&&getComputedStyle(g).display!=='none'"
+                "&&st&&getComputedStyle(st).display!=='none')};})()")
+            br.block([])
+        watchdog_12s = "},12000)" in INDEX_SRC
+        onerror_hook = "onerror=\"document.documentElement.classList.remove('js')\"" in INDEX_SRC
+        check(BROWSER_ROWS[6],
+              (not state["js"]) and state["gridShown"] and watchdog_12s and onerror_hook,
+              f"state={state} watchdog_12000={watchdog_12s} onerror_hook={onerror_hook}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
