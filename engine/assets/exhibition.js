@@ -1773,6 +1773,7 @@
     giftCard.querySelector(".gift-line").textContent = enjoyLine();   // localized «enjoy · <host>»
     giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "for a larger print — buy";
     yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
+    giftCard.dataset.work = workId != null ? String(workId) : "";   // the buy line's beat reads it
     giftCard.hidden = false; giftOpen = true;
     faceSync();                                        // the gift card is a face — arm the rest + guard (EX-CHROME)
     requestAnimationFrame(() => giftCard.classList.add("show"));       // EX-ARRIVE breath
@@ -1786,6 +1787,12 @@
     recentreUnder();                                   // the last face leaves (EX-COMPOSE)
   }
   giftCard.querySelector(".gift-no").addEventListener("click", closeGift);
+  // EX-PULSE buy_click: the pre-conversion reach — the buy line pressed means a print is wanted.
+  // Today the line only measures (a shop destination is its own later movement), so the demand is
+  // counted from day one; the beat carries the work like every commerce-adjacent beat.
+  giftCard.querySelector(".gift-buy").addEventListener("click", () => {
+    if (giftOpen) pulse("buy_click", giftCard.dataset.work || null);
+  });
   giftCard.addEventListener("click", (ev) => { if (!ev.target.closest(".gift-inner")) closeGift(); });
   addEventListener("keydown", (ev) => { if (ev.key === "Escape" && giftOpen) closeGift(); });
 

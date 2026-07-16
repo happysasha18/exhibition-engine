@@ -1066,6 +1066,7 @@ with no spec sentence, which the old "five beats" prose could not see). `EX-PULS
 | `return_gap` | an arrival where a prior visit is remembered | a coarse gap bucket (never a raw timestamp) |
 | `copy_attempt` | a hand reaches to take a picture (EX-PROTECT) | the work + the grab kind (drag · menu · touch) |
 | `story_told` | a story line lands for the focused work | a lag bucket + the race verdict (late/ahead) |
+| `buy_click` | the gift card's buy line is pressed — the pre-conversion reach | the work |
 | `series_open` | the side room opens | the work whose series opened |
 | `series_lift` | a print lifted to the light in the side room — every lift counts, setting it back down does not `[default]` | the lifted work |
 | `gift_download` | a gift file actually leaves for the visitor's device (on the prize's yes this beat lands BESIDE the quiz funnel's `gift` stage — a beat and a dimension marking one moment, never a double event) | the work + `gift_kind` from the closed pair `quiz_prize` / `grab` |
@@ -1360,7 +1361,7 @@ the worker.
 | `EX-I18N` | The any-language layer: one deferred fetch per new locale, KV-cached |
 | `EX-EDGE-GUARD` | Three money fences before any model call |
 | `EX-MEMORY` | The coat-check token: seen-work ids at the edge, anonymous |
-| `EX-PULSE` | The event registry: fifteen beats on the GA wire, held both ways by a standing test |
+| `EX-PULSE` | The event registry: sixteen beats on the GA wire, held both ways by a standing test |
 | `EX-TIMING` | Performance marks for the builder; `?timings` narrates them |
 | `EX-RESET` | `?reset` wipes named keys; idempotent |
 | `EX-MOTION` | One tempo, five duration tokens, fade-only entries |

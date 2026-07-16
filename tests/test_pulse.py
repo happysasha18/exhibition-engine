@@ -46,6 +46,7 @@ REGISTRY = {
     "sound_on", "sound_off", "series_open", "series_lift", "gift_download", "lang_pick",
     # the measurement extension (INV-79), ported with the instance generic layer (de-fork stage 4)
     "viewer_lang", "return_gap", "copy_attempt", "story_told",
+    "buy_click",   # the pre-conversion reach (the gift card's buy line)
 }
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_pulse_"))
