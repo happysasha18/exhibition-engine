@@ -253,6 +253,7 @@ class Browser:
         # (the orphan Chromes that used to accumulate and compound saturation).
         self.proc = subprocess.Popen(
             [CHROME, "--headless=new", "--disable-gpu", "--no-first-run",
+             "--mute-audio",   # a test run stays silent on the host machine
              "--no-default-browser-check", "--disable-extensions",
              "--remote-debugging-port=0",
              f"--user-data-dir={self._profile}",

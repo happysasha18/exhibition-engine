@@ -211,6 +211,7 @@ class Browser:
         self.port = self._free_port()
         self.proc = subprocess.Popen(
             [CHROME, "--headless=new", "--disable-gpu", "--no-first-run",
+             "--mute-audio",   # a test run stays silent on the host machine
              "--no-default-browser-check", "--disable-extensions",
              f"--remote-debugging-port={self.port}",
              f"--user-data-dir={self._profile}",
