@@ -1741,30 +1741,97 @@
   const zStage = zoom.querySelector(".exz-stage");
   const zReduce = matchMedia("(prefers-reduced-motion: reduce)");
   const zDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  // Fly the stage between the source picture's place and its resting place. `back=false` opens
-  // (source → rest), `back=true` closes (rest → source). The wall image is already cached, so the
-  // layer's img lays out within one frame and its box is real to measure against. Reduced motion
-  // swaps instantly. The pinch's own transform on .exz-img is never touched here (INV-81).
+  // ---- EX-ZOOM the inspect flight (INV-82 rework, design 2026-07-15) — one motion class over the
+  // five trigger types: entry IS the exit's mirror by construction. The stage owns the flight (always
+  // animated, both ways on the SAME clock); the img owns only the pinch surplus; the crop is a clip
+  // morph; the pin is measured transform-free. Every duration is read from CSS — no literal lives in
+  // this JS (EX-MOTION owns the clock).
+  function zDur(el) {                                    // ms of a computed transition-duration (first value)
+    const d = (getComputedStyle(el).transitionDuration || "0s").split(",")[0].trim();
+    return d.slice(-2) === "ms" ? parseFloat(d) : parseFloat(d) * 1000;
+  }
+  const zFlightDur = () => zDur(zStage);                 // the stage flight's own clock (--d-cross)
+  const zFadeDur = () => zDur(zoom);                     // the backdrop crossfade clock (reduced / source-gone)
+  let zTeardown = null;                                  // a pending exit teardown — a reopen cancels it (rule 7)
+  function zCancelTeardown() {
+    if (!zTeardown) return;
+    clearTimeout(zTeardown.timer);
+    if (zTeardown.onEnd) zStage.removeEventListener("transitionend", zTeardown.onEnd);
+    zTeardown = null;
+  }
+  // the exit teardown fires on the flight's OWN transitionend (the true end of the motion) with a
+  // computed-duration fallback, so an occluded/headless compositor that never paints the transition
+  // still tears down — whichever lands first runs once (rule 7).
+  function zArmTeardown(done) {
+    zCancelTeardown();
+    if (!done) return;
+    const fire = () => { if (!zTeardown) return; zCancelTeardown(); done(); };
+    const onEnd = (ev) => { if (ev.target === zStage && ev.propertyName === "transform") fire(); };
+    zStage.addEventListener("transitionend", onEnd);
+    zTeardown = { onEnd: onEnd, timer: setTimeout(fire, Math.round(zFlightDur() * 1.5) + 1) };
+  }
+  function zArmFade(done) {                              // reduced-motion / source-gone teardown, on the fade clock
+    zCancelTeardown();
+    if (!done) return;
+    zTeardown = { onEnd: null, timer: setTimeout(() => { zCancelTeardown(); done(); }, Math.round(zFadeDur()) + 1) };
+  }
+  // the layer img's REST box, TRANSFORM-FREE (offset* ignore transforms) so a live pinch already on
+  // .exz-img can never poison the pin (rule 3). The stage centres the img in the viewport. Not yet laid
+  // out (a cold slot): derive from the natural fit into the CSS max-box (94vw/88vh) — the flight NEVER
+  // degrades to an instant swap (rule 6).
+  function zRestBox() {
+    let w = zImg.offsetWidth, h = zImg.offsetHeight;
+    if (!w || !h) {
+      const nw = zImg.naturalWidth || 1, nh = zImg.naturalHeight || 1;
+      const s = Math.min(innerWidth * 0.94 / nw, innerHeight * 0.88 / nh);
+      w = nw * s; h = nh * s;
+    }
+    return { w: w, h: h, cx: innerWidth / 2, cy: innerHeight / 2 };
+  }
+  // frame-0 of the flight for a source picture: its cover-crop mapped onto the layer (rule 2). A square
+  // window / polaroid shows a CENTRE cover-crop while the layer shows the whole contain image, so the
+  // layer starts CLIPPED to that crop and the clip morphs open; a contain source (a hung work, a lane
+  // image) crops nothing (visW=visH=1). One uniform scale + a centred translate carries the position,
+  // so no aspect ever jumps between the source and the layer.
+  function zCropFrame(rect, box) {
+    const dx = (rect.left + rect.width / 2) - box.cx;
+    const dy = (rect.top + rect.height / 2) - box.cy;
+    let visW = 1, visH = 1;
+    const fit = zSrcEl ? getComputedStyle(zSrcEl).objectFit : "";
+    if (fit === "cover" && rect.height > 0 && box.h > 0) {
+      const boxA = rect.width / rect.height, imgA = box.w / box.h;
+      if (boxA > imgA) visH = imgA / boxA; else visW = boxA / imgA;   // cover crops the longer relative side
+    }
+    const s = (rect.width / visW) / box.w;                            // the full image at the source's per-pixel scale
+    const ix = ((1 - visW) / 2 * 100).toFixed(2), iy = ((1 - visH) / 2 * 100).toFixed(2);
+    return { transform: "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(" + s.toFixed(4) + ")",
+             clip: "inset(" + iy + "% " + ix + "% " + iy + "% " + ix + "%)" };
+  }
+  // The single flight carrier. `back=false` opens (frame-0 crop → full contain), `back=true` closes
+  // (full → the source's crop) — the SAME stage transform + img clip both directions on the SAME clock
+  // (rule 8). Reduced motion / a vanished source: a short opacity crossfade in place, no flight
+  // (rules 9 + 10). The pinch's own transform on .exz-img is never written here (INV-81).
   function zFlip(rect, back, done) {
-    if (!rect || zReduce.matches) {
-      zStage.style.transition = "none"; zStage.style.transform = "";
-      if (done) (back ? setTimeout(done, 0) : requestAnimationFrame(done));
+    const box = zRestBox();
+    if (!rect || zReduce.matches || !box.w || !box.h) {
+      zStage.style.transition = "none";
+      if (!back) { zStage.style.transform = ""; zImg.style.transition = "none"; zImg.style.clipPath = "inset(0)"; }
+      if (done) { if (back) zArmFade(done); else requestAnimationFrame(done); }
       return;
     }
-    const box = zImg.getBoundingClientRect();
-    if (!box.width || !box.height) { zStage.style.transition = "none"; zStage.style.transform = ""; if (done) done(); return; }
-    const s = rect.width / box.width;
-    const dx = (rect.left + rect.width / 2) - (box.left + box.width / 2);
-    const dy = (rect.top + rect.height / 2) - (box.top + box.height / 2);
-    const atSource = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(" + s.toFixed(3) + ")";
-    if (back) {                                     // resting → source: animate out, teardown after
-      zStage.style.transition = "";
-      requestAnimationFrame(() => { zStage.style.transform = atSource; });
-      setTimeout(() => { if (done) done(); }, Math.round(300 * TEMPO));
-    } else {                                        // source → resting: pin at source, then release to fly in
-      zStage.style.transition = "none";
-      zStage.style.transform = atSource;
-      requestAnimationFrame(() => { zStage.style.transition = ""; zStage.style.transform = ""; if (done) done(); });
+    const c = zCropFrame(rect, box);
+    if (back) {                                     // full → source crop: animate out, tear down on transitionend
+      zStage.style.transition = ""; zImg.style.transition = "";
+      requestAnimationFrame(() => { zStage.style.transform = c.transform; zImg.style.clipPath = c.clip; });
+      zArmTeardown(done);
+    } else {                                        // pin at the source crop, then release to fly in + morph open
+      zStage.style.transition = "none"; zImg.style.transition = "none";
+      zStage.style.transform = c.transform; zImg.style.clipPath = c.clip;
+      requestAnimationFrame(() => {
+        zStage.style.transition = ""; zImg.style.transition = "";
+        zStage.style.transform = ""; zImg.style.clipPath = "inset(0)";
+        if (done) done();
+      });
     }
   }
   function zClampPan() {                                 // keep the offset within the picture's overflow
@@ -1780,29 +1847,46 @@
     if (zoomOpen || !el) return;
     const src = el.currentSrc || el.getAttribute("src") || el.src;
     if (!src) return;
+    zCancelTeardown();                                 // a reopen mid-teardown lands clean (rule 7)
     zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close
-    const rect = el.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();           // its VISUAL rect (its own transform, e.g. a lifted print — rule 9)
     zImg.src = src; zImg.alt = el.alt || "";
     zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zDesk = 1; zDismissing = false; zApply();
-    zStage.style.transition = "none"; zStage.style.transform = "";
+    zoom.classList.remove("desk");                     // a fresh open is finger-driven until a wheel/gesture says otherwise
+    zStage.style.transition = "none"; zStage.style.transform = ""; zImg.style.clipPath = "inset(0)";
+    zImg.style.willChange = "transform"; zStage.style.willChange = "transform";   // transient — cleared at teardown (never left on: compositor stall)
     zoom.hidden = false; zoomOpen = true;
     document.body.classList.add("ex-zoom");            // the player retracts too — the minimum on screen (INV-77)
     faceSync();                                        // the zoom is a face — freeze the page beneath (EX-CHROME)
     if (!(opts && opts.lay === false)) pushFace({ face: "zoom" });   // one honest road out (INV-83), above any standing face
-    requestAnimationFrame(() => { zoom.classList.add("show"); zFlip(rect, false); });   // backdrop fades, picture flies in (INV-82)
+    requestAnimationFrame(() => {
+      zoom.classList.add("show");                      // backdrop fades in
+      const fly = () => { if (zoomOpen) zFlip(rect, false); };        // picture flies in + the crop morphs open (INV-82)
+      if (zImg.complete && zImg.naturalWidth) fly();                  // cached (the usual path) — fly at once
+      else if (zImg.decode) zImg.decode().then(fly, fly);            // a cold slot: decode first, never an instant swap (rule 6)
+      else fly();
+    });
   }
   // The single teardown, reached only through popstate (history.back): the ×, backdrop, Esc, and the
   // dismissing pinch all go through history.back so Back and they share one road (INV-83).
   function closeZoom() {
     if (!zoomOpen) return;
     zoomOpen = false; zDismissing = false; zDesk = 1;
-    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zApply();   // the exit scales from 1×
-    const rect = (zSrcEl && document.body.contains(zSrcEl)) ? zSrcEl.getBoundingClientRect() : null;  // fresh place (rotation, INV-82)
+    const rect = (zSrcEl && document.body.contains(zSrcEl)) ? zSrcEl.getBoundingClientRect() : null;  // fresh VISUAL place (rotation/lift, INV-82 + rule 9)
+    // Fold the current visual scale+pan into the flight's START, then reset the img — the exit is ONE
+    // composed motion home, never a snap to 1× before the fly (rule 4). The stage carries the whole
+    // motion; the img rides identity from here.
+    const fold = "translate(" + zTx.toFixed(1) + "px," + zTy.toFixed(1) + "px) scale(" + zScale.toFixed(4) + ")";
+    zoom.classList.remove("desk");                     // the img resets instantly (no eased double-motion)
+    zStage.style.transition = "none"; zStage.style.transform = fold;
+    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zApply();   // the img → identity, in place
+    void zStage.offsetWidth;                           // commit the fold before the flight starts (no jump)
     zoom.classList.remove("show");                     // backdrop fades; the player returns to its rail at once
     document.body.classList.remove("ex-zoom");
     zFlip(rect, true, () => {                           // picture flies back DOWN to its place, then teardown
       zoom.hidden = true; zImg.removeAttribute("src");
-      zStage.style.transition = "none"; zStage.style.transform = "";
+      zStage.style.transition = "none"; zStage.style.transform = ""; zImg.style.clipPath = "";
+      zImg.style.willChange = ""; zStage.style.willChange = "";     // release the transient compositor hint
       zSrcEl = null;
     });
     faceSync();                                        // the page beneath returns untouched (EX-COMPOSE)
@@ -1828,7 +1912,7 @@
     if (e.touches.length === 2 && zPinch) {
       e.preventDefault();                              // our scale, never the browser's
       const raw = zStartS * (zDist(e.touches) / zPinch);
-      if (raw < 1 && zScale <= 1.001 && zStartS <= 1.03) {   // at 1×, pinching further IN previews the dismiss (INV-82)
+      if (raw < 1 && zScale <= 1.001) {   // at/into 1×, a continued pinch-IN previews the dismiss — one continuous gesture crosses from zoom-out into dismiss (rule 5)
         zDismiss = raw;
         const shrink = 1 - (1 - Math.max(0.5, raw)) * 0.45;  // resistance — the picture eases toward its place
         zStage.style.transition = "none";
@@ -1849,13 +1933,19 @@
   }, { passive: false });
   addEventListener("touchend", (e) => {
     if (!zoomOpen) return;
+    const pinchBroke = zPinch && e.touches.length < 2;   // the two-finger pinch just broke (first finger up)
     if (e.touches.length < 2) zPinch = 0;
     if (e.touches.length === 0) zPanning = false;
-    if (zDismiss) {                                    // released mid dismiss-pinch (INV-82)
-      if (zDismiss < DISMISS_T && e.touches.length === 0) { history.back(); return; }   // commit → close through history (INV-83)
-      zDismiss = 0; zStage.style.transition = ""; zStage.style.transform = "";           // cancel → ease back to 1×
+    if (zDismiss) {                                    // in the dismiss preview (INV-82)
+      // The verdict LATCHES the moment the pinch breaks — a STAGGERED two-finger release still commits,
+      // where the old code cancelled on the first touchend before the last finger lifted (rules 1 + 5).
+      if (pinchBroke) {
+        if (zDismiss < DISMISS_T && !zDismissing) { zDismissing = true; history.back(); return; }   // commit → close through history (INV-83)
+        zDismiss = 0; zStage.style.transition = ""; zStage.style.transform = "";           // above threshold → ease back to 1×
+      }
+      return;
     }
-    if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }   // a near-1 release settles flat + centred
+    if (zScale <= 1.03 && e.touches.length === 0) { zScale = 1; zTx = 0; zTy = 0; zApply(); }   // a near-1 release settles flat + centred
   }, { passive: true });
   // Every way out is the same road (INV-83): the ×, a backdrop tap, and Esc all step history BACK, and
   // the popstate handler runs the one closeZoom — so the browser's own Back button closes the zoom too.
@@ -1906,6 +1996,7 @@
   const ZOOM_WHEEL_STEP = 0.0025;                        // scale change per |deltaY| unit of a ctrl+wheel / pinch
   function pinchWheel(e) {
     const dScale = -e.deltaY * ZOOM_WHEEL_STEP;          // OUT (deltaY<0) → +, IN (deltaY>0) → −
+    zoom.classList.add("desk");                          // the wheel surplus eases on the img (rule 8) — finger pinch stays instant
     if (!zoomOpen) {
       if (dScale <= 0) return;                           // a pinch-IN with nothing open opens nothing (INV-81 mirror)
       const t = zoomTargetAt(e.clientX, e.clientY);
@@ -1998,6 +2089,7 @@
   function onGestureChange(ev) {
     ev.preventDefault();
     if (TOUCHY || !zoomOpen) return;
+    zoom.classList.add("desk");                          // Safari trackpad surplus eases on the img (rule 8)
     const target = gStart * (ev.scale || 1);
     if (target < 1) {                                    // pinch-IN past 1× → preview / commit the dismiss (INV-82)
       zScale = 1; zTx = 0; zTy = 0; zApply();
@@ -2655,10 +2747,19 @@
         if (e.touches.length === 1 && fX != null) {
           if (fDecided == null) {
             const dx = e.touches[0].clientX - fX, dy = e.touches[0].clientY - fY;
-            if (Math.abs(dx) + Math.abs(dy) >= 4)      // the first ~4px pick the axis — verdict held to lift
-              fDecided = !!(e.target && e.target.closest && e.target.closest(FACE_SEL))
-                         && faceConsumes(e.target, Math.abs(dx) > Math.abs(dy));
-            else { e.preventDefault(); return; }       // undecided yet — eat, the walk never gets a first pixel
+            const adx = Math.abs(dx), ady = Math.abs(dy);
+            const inFace = !!(e.target && e.target.closest && e.target.closest(FACE_SEL));
+            // An overflow-x lane under the finger (EX-SERIES): DEFER the axis verdict past the noisy
+            // first pixels and decide by the DOMINANT travel — a rightward drag from a slightly-vertical
+            // start still scrolls the lane, where the 4px latch used to hand it to the walk and the lane
+            // never moved (his phone find 2026-07-15). Every other face keeps the first-4px verdict.
+            const laneUnder = inFace && faceConsumes(e.target, true);
+            if (laneUnder) {
+              if (adx < 12 && ady < 12) { e.preventDefault(); return; }   // still ambiguous — hold, don't latch
+              fDecided = adx >= ady;                                       // horizontal → native, the lane runs
+            } else if (adx + ady >= 4) {                                   // the first ~4px pick the axis
+              fDecided = inFace && faceConsumes(e.target, adx > ady);
+            } else { e.preventDefault(); return; }                        // undecided yet — eat, the walk never gets a first pixel
           }
           if (fDecided) return;                        // a truly scrollable part — native, the lane lives
           e.preventDefault(); return;

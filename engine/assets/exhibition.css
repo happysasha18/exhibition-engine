@@ -270,9 +270,12 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .exs-stage{ position:absolute; inset:0; }
 .exs-stage.lane{ display:flex; align-items:center; gap:7vw; padding:0 16vw;
   overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;                 /* iOS momentum — a rightward flick carries (2026-07-15) */
+  scroll-snap-type:x proximity;                      /* the lane rests near a picture, never mid-gap */
   overscroll-behavior:contain; }  /* EX-CHROME: a lane that runs out never chains the leftover to the page */
 .exs-stage.lane::-webkit-scrollbar{ display:none; }
 .exs-stage.lane img{ max-height:56vh; max-width:64vw; flex:none; border-radius:2px;
+  scroll-snap-align:center;
   box-shadow:0 10px 34px rgba(0,0,0,.22); }
 .exs-stage.polaroids{ background:radial-gradient(130% 110% at 50% 12%, #1c1913 0%, #12100c 62%, #0d0c09 100%); }
 .exs-print{ position:absolute; background:var(--paper,#f4f1e8); padding:7px 7px 28px;
@@ -542,6 +545,7 @@ body.ex-zoom #ex-sound,
 /* EX-ZOOM (2026-07-12): pinch a picture to inspect it — its own layer above every face, the page
    beneath frozen. Our JS scales .exz-img; the browser never viewport-zooms (touch-action:none). */
 #ex-zoom{ position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center;
+  --d-pinch: calc(.16 * var(--tempo) * 1s);   /* the eased desktop wheel/gesture surplus on the img (rule 8) */
   background:rgba(6,6,7,0); opacity:0; pointer-events:none;
   transition:opacity var(--d-cross) var(--ease), background var(--d-cross) var(--ease);
   touch-action:none; -webkit-user-select:none; user-select:none; }
@@ -557,9 +561,17 @@ body.ex-zoom #ex-sound,
 #ex-zoom .exz-stage{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
   transform-origin:center center; touch-action:none;
   transition:transform var(--d-cross) var(--ease); }
+/* the img owns the pinch surplus (transform, instant under the finger — INV-81) and the crop morph
+   (clip-path, on the flight clock — rule 2). No persistent will-change: the JS promotes it transiently
+   only while the layer stands, then releases it (a layer held on every page stalls the headless
+   compositor under load). The flight transform never lives here — the stage carries it (rule 8). */
 #ex-zoom .exz-img{ max-width:94vw; max-height:88vh; object-fit:contain; border-radius:3px;
-  transform-origin:center center; will-change:transform; touch-action:none;
+  transform-origin:center center; touch-action:none;
+  transition:clip-path var(--d-cross) var(--ease);
   -webkit-user-drag:none; user-select:none; box-shadow:0 30px 120px rgba(0,0,0,.7); }
+/* a desktop wheel / Safari-gesture pinch: the scale surplus EASES on the img (a discrete wheel notch
+   is stepwise; the ease smooths it), while a touch pinch stays the instant finger authority (INV-81). */
+#ex-zoom.desk .exz-img{ transition:transform var(--d-pinch) var(--ease), clip-path var(--d-cross) var(--ease); }
 /* the zoom's own chrome (INV-77): a single close in the round chrome style of the walk's floating
    controls, in the free TOP-LEFT corner. The zoom holds the minimum on screen — the picture and this
    close — and carries no share of its own. */
@@ -569,7 +581,12 @@ body.ex-zoom #ex-sound,
   transition:background calc(.2s*var(--tempo)) var(--ease), color calc(.2s*var(--tempo)) var(--ease), border-color calc(.2s*var(--tempo)) var(--ease); }
 #ex-zoom .exz-btn:hover, #ex-zoom .exz-btn:focus-visible{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
 #ex-zoom .exz-close{ top:calc(env(safe-area-inset-top,0px) + 14px); left:16px; font-size:24px; line-height:1; padding-bottom:2px; }
-@media (prefers-reduced-motion:reduce){ #ex-zoom{ transition:none; } #ex-zoom .exz-stage{ transition:none; } }
+/* reduced motion: no transform flight and no clip morph — the layer arrives/leaves by a short opacity
+   crossfade in place (~120ms at the collapsed tempo 0.05), the gesture semantics unchanged (rule 10). */
+@media (prefers-reduced-motion:reduce){
+  #ex-zoom{ transition:opacity calc(2.4 * var(--tempo) * 1s) var(--ease); }
+  #ex-zoom .exz-stage{ transition:none; }
+  #ex-zoom .exz-img, #ex-zoom.desk .exz-img{ transition:none; } }
 @media (prefers-reduced-motion:reduce){
   #ex-gift-card{ transition:none; }
   #ex-gift-card .gift-inner{ transition:none; }
