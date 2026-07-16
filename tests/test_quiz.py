@@ -239,8 +239,8 @@ in_source = all(k in src_strings for k in CHROME)
 en_filled = all(str(src_strings.get(k, "")).strip() for k in CHROME if k != "gift_buy")
 in_shape = all(k in worker_on for k in CHROME)
 in_validate = all(k in worker_on for k in ["quiz_win", "quiz_wrong", "gift_ask", "gift_yes", "gift_no"])
-client_fallbacks = all(f in js_src for f in ['|| "not this time"', '|| "you have the eye."',
-                                             '|| "like it?"', '|| "a gift :)"', '|| "not now"'])
+client_fallbacks = all(f in js_src for f in ['|| "thanks for guessing. another question waits for you further on."', '|| "you have the eye."',
+                                             '|| "did you like it?"', "|| \"it's yours :)\"", '|| "not now"'])
 question_not_chrome = "prompt" not in CHROME  # the QUESTION stays instance-supplied, never chrome
 shutil.rmtree(TMP_I18N, ignore_errors=True)
 check("EX-QUIZ (DELTA-8/3) quiz_win+quiz_wrong+gift chrome localizes through the string set "

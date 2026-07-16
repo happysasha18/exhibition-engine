@@ -44,6 +44,8 @@ def skip(name, detail):
 REGISTRY = {
     "door_pick", "walk_unfold", "walk_exit", "share_copy", "share_arrive",
     "sound_on", "sound_off", "series_open", "series_lift", "gift_download", "lang_pick",
+    # the measurement extension (INV-79), ported with the instance generic layer (de-fork stage 4)
+    "viewer_lang", "return_gap", "copy_attempt", "story_told",
 }
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_pulse_"))
@@ -210,7 +212,9 @@ else:
             target = walk_all(br, base)
             evs = dict(evs_of(br))
             need = {"door_pick", "walk_unfold", "walk_exit", "share_copy", "share_arrive"}
-            params_ok = all(set(p.keys()) <= {"work"} for p in evs.values())
+            # params ⊆ {work} is asserted for the FIVE core beats only — the boot beats
+            # (viewer_lang) carry their own closed params under INV-79
+            params_ok = all(set(evs[b].keys()) <= {"work"} for b in need if b in evs)
             works_ok = (evs.get("door_pick", {}).get("work")
                         and evs.get("share_arrive", {}).get("work") == str(target))
             check(BROWSER_ROWS[0],

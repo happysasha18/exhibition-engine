@@ -75,19 +75,29 @@ else:
     with serve(TMP) as base:
         with Browser(width=390, height=844) as br:
             _boot(br, base)
-            br.click(".exd-window:nth-child(1)", settle=0.6)
-            br.sleep(0.9)
-            br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
-            br.sleep(0.3)
-            br.click("#ex-return", settle=0.6)
-            br.sleep(0.6)
+            # the farewell waits for the SECOND real exit (INV-78): the first leave is silent
+            first = None
+            for leave in (1, 2):
+                br.click(".exd-window:nth-child(1)", settle=0.6)
+                br.sleep(0.9)
+                br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
+                br.sleep(0.3)
+                br.click("#ex-return", settle=0.6)
+                br.sleep(0.6)
+                if leave == 1:
+                    first = json.loads(br.evaluate(MORE))
             m = json.loads(br.evaluate(MORE))
             check(BROWSER_ROWS[0],
-                  m["atDoor"] and not m["hidden"] and m["text"].strip() == EN_EXIT.strip(),
-                  f"more={m} expected={EN_EXIT!r}")
+                  first is not None and first["hidden"]
+                  and m["atDoor"] and not m["hidden"] and m["text"].strip() == EN_EXIT.strip(),
+                  f"first_exit={first} second_exit={m} expected={EN_EXIT!r} "
+                  f"(silent on the 1st leave, the line from the 2nd)")
         with Browser(width=390, height=844) as br:
             _boot(br, base)
-            br.evaluate("localStorage.setItem('ex.been','1')")
+            # a walked-before browser returning INSIDE the 6h–14d window (INV-78): the flag plus a
+            # last-visit clock ~7h old — sooner is a reload (silent), later is met as new (silent)
+            br.evaluate("localStorage.setItem('ex.been','1');"
+                        "localStorage.setItem('ex.last', String(Date.now() - 7*60*60*1000))")
             br.reload(); br.sleep(1.1)
             m = json.loads(br.evaluate(MORE))
             # the welcome-back is an ADDED quiet line; the daypart greeting is kept (EX-GREET stands)
