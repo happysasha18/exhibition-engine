@@ -45,7 +45,13 @@ def _find_chrome():
     """Prefer Chrome for Testing — an automation-only build that never touches the user's own Chrome
     profile, does not coordinate with a running user browser, and is safe to hard-kill by its own
     path. Fall back to the user's installed Chrome when Testing is absent."""
+    # chrome-headless-shell FIRST: the dedicated headless build keeps producing frames where a
+    # full Chrome's --headless=new can go frame-dead machine-wide (the 2026-07-16 find: Chrome 150
+    # rendered no rAF at all, Chrome 151 stalled loading from 127.0.0.1; the shell does neither).
     candidates = sorted(glob.glob(os.path.expanduser(
+        "~/.cache/puppeteer/chrome-headless-shell/*/chrome-headless-shell-mac*"
+        "/chrome-headless-shell")), reverse=True)
+    candidates += sorted(glob.glob(os.path.expanduser(
         "~/.cache/puppeteer/chrome/*/chrome-mac*/Google Chrome for Testing.app"
         "/Contents/MacOS/Google Chrome for Testing")), reverse=True)
     candidates += [
@@ -59,6 +65,8 @@ def _find_chrome():
 
 
 CHROME = _find_chrome()
+# the shell binary is headless by construction; full Chrome needs the mode flag
+HEADLESS_FLAGS = [] if "chrome-headless-shell" in CHROME else ["--headless=new"]
 
 
 class ChromeMissing(Exception):
@@ -252,7 +260,7 @@ class Browser:
         # start_new_session puts Chrome in its own process group so close() reaps every helper child
         # (the orphan Chromes that used to accumulate and compound saturation).
         self.proc = subprocess.Popen(
-            [CHROME, "--headless=new", "--disable-gpu", "--no-first-run",
+            [CHROME, *HEADLESS_FLAGS, "--disable-gpu", "--no-first-run",
              "--mute-audio",   # a test run stays silent on the host machine
              "--no-default-browser-check", "--disable-extensions",
              "--remote-debugging-port=0",

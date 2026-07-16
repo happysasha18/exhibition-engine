@@ -39,7 +39,35 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.request import urlopen
 
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+import glob
+
+
+def _find_chrome():
+    """Prefer chrome-headless-shell, then Chrome for Testing — automation-only builds that never
+    touch the user's own Chrome profile and are safe to hard-kill by their own path. The shell comes
+    first: the dedicated headless build keeps producing frames where a full Chrome's --headless=new
+    can go frame-dead machine-wide (the 2026-07-16 find: Chrome 150 rendered no rAF at all, Chrome
+    151 stalled loading from 127.0.0.1; the shell does neither). The user's installed Chrome is the
+    last resort when neither testing build is present."""
+    candidates = sorted(glob.glob(os.path.expanduser(
+        "~/.cache/puppeteer/chrome-headless-shell/*/chrome-headless-shell-mac*"
+        "/chrome-headless-shell")), reverse=True)
+    candidates += sorted(glob.glob(os.path.expanduser(
+        "~/.cache/puppeteer/chrome/*/chrome-mac*/Google Chrome for Testing.app"
+        "/Contents/MacOS/Google Chrome for Testing")), reverse=True)
+    candidates += [
+        "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    ]
+    for c in candidates:
+        if Path(c).exists():
+            return c
+    return candidates[-1]   # the standard path even if absent — ChromeMissing handles it
+
+
+CHROME = _find_chrome()
+# the shell binary is headless by construction; full Chrome needs the mode flag
+HEADLESS_FLAGS = [] if "chrome-headless-shell" in CHROME else ["--headless=new"]
 
 
 class ChromeMissing(Exception):
@@ -210,7 +238,7 @@ class Browser:
         self._profile = tempfile.mkdtemp(prefix="tlv_cdp_")
         self.port = self._free_port()
         self.proc = subprocess.Popen(
-            [CHROME, "--headless=new", "--disable-gpu", "--no-first-run",
+            [CHROME, *HEADLESS_FLAGS, "--disable-gpu", "--no-first-run",
              "--mute-audio",   # a test run stays silent on the host machine
              "--no-default-browser-check", "--disable-extensions",
              f"--remote-debugging-port={self.port}",
