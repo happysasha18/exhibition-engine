@@ -1737,6 +1737,7 @@
   // it down; at/below DISMISS_T it commits). zDismissing latches from the moment history.back() is asked
   // until closeZoom runs, so a rapid open→dismiss race can never pop the walk's own history step twice.
   let zDesk = 1, zDismissing = false, zWheelIdle = 0;
+  let zBelow = false;          // the desktop gesture stands below 1× (the crossing re-based already)
   const zImg = zoom.querySelector(".exz-img");
   const zStage = zoom.querySelector(".exz-stage");
   // The dismiss preview composes on the LIVE stage transform, latched on the preview's first frame —
@@ -1897,7 +1898,7 @@
     zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close
     const rect = el.getBoundingClientRect();           // its VISUAL rect (its own transform, e.g. a lifted print — rule 9)
     zImg.src = src; zImg.alt = el.alt || "";
-    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zDesk = 1; zDismissing = false; zApply();
+    zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zDesk = 1; zBelow = false; zDismissing = false; zApply();
     zPrevBase = null;                                  // no preview rides into a fresh open
     if (zWheelIdle) { clearTimeout(zWheelIdle); zWheelIdle = 0; }
     zoom.classList.remove("desk");                     // a fresh open is finger-driven until a wheel/gesture says otherwise
@@ -1919,7 +1920,7 @@
   // dismissing pinch all go through history.back so Back and they share one road (INV-83).
   function closeZoom() {
     if (!zoomOpen) return;
-    zoomOpen = false; zDismissing = false; zDesk = 1;
+    zoomOpen = false; zDismissing = false; zDesk = 1; zBelow = false;
     const rect = (zSrcEl && document.body.contains(zSrcEl)) ? zSrcEl.getBoundingClientRect() : null;  // fresh VISUAL place (rotation/lift, INV-82 + rule 9)
     // Fold the current visual scale+pan into the flight's START, composed ONTO the live stage
     // transform — whatever the eye already sees (a dismiss preview's shrink, a flight still in
@@ -1927,7 +1928,13 @@
     // never a one-frame return to full before the fly (rule 4). Both transforms originate at the
     // viewport centre (the img is flex-centred), so the composition is exact.
     const live = getComputedStyle(zStage).transform;
-    const fold = "translate(" + zTx.toFixed(1) + "px," + zTy.toFixed(1) + "px) scale(" + zScale.toFixed(4) + ")";
+    // the img may still be EASING toward its model under the desk ease (.desk, --d-pinch) when a
+    // fast pinch-shut commits — fold what the eye SEES (the computed matrix), never the model's
+    // target, or the img snaps to 1× the instant .desk drops (read BEFORE the class is removed)
+    const imLive = getComputedStyle(zImg).transform;
+    const fold = (imLive && imLive !== "none")
+      ? imLive
+      : "translate(" + zTx.toFixed(1) + "px," + zTy.toFixed(1) + "px) scale(" + zScale.toFixed(4) + ")";
     zoom.classList.remove("desk");                     // the img resets instantly (no eased double-motion)
     zPrevBase = null;                                  // the preview is riding the fold now
     if (zWheelIdle) { clearTimeout(zWheelIdle); zWheelIdle = 0; }
@@ -1975,7 +1982,9 @@
         zDismiss = raw;
         zPreview(raw);
       } else {
-        if (zDismiss) { zDismiss = 0; zPreviewEnd(false); }
+        // the recovery EASES back (never a snap): the latched base may be a mid-flight matrix —
+        // an instant reset here was the one-frame jump the composed close exists to kill (INV-87)
+        if (zDismiss) { zDismiss = 0; zPreviewEnd(true); }
         zScale = Math.max(1, Math.min(4, raw));
         zClampPan();                                   // a smaller scale shrinks the pannable overflow
         zApply();
@@ -2066,18 +2075,21 @@
     const ns = zScale + dScale;
     if (ns < 1) {                                        // at/into 1× a continued pinch-IN previews the dismiss (INV-82)
       zScale = 1; zTx = 0; zTy = 0; zApply();
-      zDesk = (zDesk < 1 ? zDesk : 1) + (ns - 1);
+      // the crossing EVENT re-bases at 1× — its below-1 residue never commits by itself, the same
+      // law the touch path holds (INV-82); travel below 1× counts only from the crossing on
+      zDesk = zBelow ? zDesk + (ns - 1) : 1;
+      zBelow = true;
       if (zWheelIdle) { clearTimeout(zWheelIdle); zWheelIdle = 0; }
       if (zDesk <= DISMISS_T && !zDismissing) { zDismissing = true; zDesk = 1; history.back(); return; }  // commit through the one road (INV-83)
       zPreview(zDesk);                                   // the desktop pinch-shut previews with the touch resistance (INV-82/85)
       // Blink's ctrl-wheel stream carries no end event — a short idle eases an uncommitted preview back
       zWheelIdle = setTimeout(() => {
         zWheelIdle = 0;
-        if (zoomOpen && !zDismissing) { zDesk = 1; zPreviewEnd(true); }
+        if (zoomOpen && !zDismissing) { zDesk = 1; zBelow = false; zPreviewEnd(true); }
       }, 140);
       return;
     }
-    zDesk = 1;
+    zDesk = 1; zBelow = false;
     zPreviewEnd(true);                                   // recovered above 1× — the preview eases off
     zScale = Math.min(4, ns); zClampPan(); zApply();
   }
@@ -2155,20 +2167,25 @@
     ev.preventDefault();
     if (TOUCHY || !zoomOpen) return;
     zoom.classList.add("desk");                          // Safari trackpad surplus eases on the img (rule 8)
-    const target = gStart * (ev.scale || 1);
+    let target = gStart * (ev.scale || 1);
     if (target < 1) {                                    // pinch-IN past 1× → preview / commit the dismiss (INV-82)
       zScale = 1; zTx = 0; zTy = 0; zApply();
+      if (!zBelow) {                                     // first frame below 1× re-bases at the crossing
+        gStart = 1 / (ev.scale || 1);                    // — a fast crossing frame reads 1, never commits
+        target = 1;                                      // by itself (INV-82, the touch path's own law)
+        zBelow = true;
+      }
       zDesk = target;
       if (zDesk <= DISMISS_T && !zDismissing) { zDismissing = true; zDesk = 1; history.back(); return; }
       zPreview(zDesk);                                   // Safari's trackpad pinch-shut previews too (INV-82/85)
       return;
     }
-    zDesk = 1; zPreviewEnd(true); zScale = Math.min(4, target); zClampPan(); zApply();
+    zDesk = 1; zBelow = false; zPreviewEnd(true); zScale = Math.min(4, target); zClampPan(); zApply();
   }
   function onGestureEnd(ev) {
     ev.preventDefault();
     if (TOUCHY || !zoomOpen) return;
-    if (zDesk < 1 && !zDismissing) { zDesk = 1; zPreviewEnd(true); }   // an uncommitted release eases back (gestureend)
+    if (zDesk < 1 && !zDismissing) { zDesk = 1; zBelow = false; zPreviewEnd(true); }   // an uncommitted release eases back (gestureend)
     if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }    // near-1 release settles flat
   }
   document.addEventListener("gesturestart", onGestureStart, { passive: false });
