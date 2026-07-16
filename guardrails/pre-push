@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# guardrails/pre-push — the push gate (wired 2026-07-16, the live-spec 2.1.0 adoption).
+# Runs on every `git push` via .git/hooks/pre-push. Fast checks only; the full browser suite
+# stays the standing commit/deploy discipline (gate on the run_all LOG's N/N green).
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)"
+fail=0
+
+echo "-- gate m — muted browser launch (INV-157) --"
+bash guardrails/check-muted-launch.sh || fail=1
+
+echo ""
+echo "-- gate r — ratchet caps --"
+.venv/bin/python -m pytest -q tests/test_ratchet_lock.py || fail=1
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "PUSH BLOCKED: a gate above is red."
+  exit 1
+fi
+echo ""
+echo "push gates green."

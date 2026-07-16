@@ -5,6 +5,17 @@ private production instance and founded as its own product: a static gallery-sit
 adaptive-exhibition renderer, with the guided-journey product vision below. Method: the live-spec
 pack, loaded per session._
 
+## 2026-07-16 (evening) — the pack's push gates adopted
+
+The live-spec 2.1.0 ratchet kit is vendored here (`scripts/spec-style-lint.py` and kin, source-pin
+manifest at `scripts/ratchet-manifest.json`): SPEC.md is the gated doc, caps seeded at adoption
+(26 style errors / 10 redundancy-open) — growth past that size reds, the backlog never blocks.
+`tests/test_ratchet_lock.py` joined SUITES (it self-runs pytest; a `--force` ratchet re-install
+rewrites the file — re-append its `__main__` block). The repo's first pre-push hook is wired:
+`guardrails/pre-push` runs gate m (the vendored `check-muted-launch.sh`, INV-157 — the harness
+already launches muted) and gate r (the ratchet caps); the full browser suite stays the standing
+manual commit gate. The instance repo (tlvphotos) adopted the same gates the same evening.
+
 ## RESUME NOW — cutover done; the engine is the sole baker of the production instance
 
 The production instance now bakes only through this engine: its `deploy.sh` calls
