@@ -1029,9 +1029,47 @@
     const L = greetLang(), g = door.querySelector("#exd-greet");
     if (L && g && !g.hidden) g.textContent = greetLine(L.t);   // a fresh line for the new hour
   }
-  document.addEventListener("visibilitychange", regreet);   // returned to the tab (fired on document)
+  // EX-RETURN/INV-94: a tab idle past the return window's lower bound wakes AT THE DOOR, not wherever
+  // it stood — the ordinary arrival then reads the same last-visit clock through INV-78's own machinery.
+  // lastAwake stamps every moment this tab stood visible; a wake's gap against it decides reload vs.
+  // an ordinary re-greet. Runs BEFORE the daypart re-greet below; a fresh load re-initializes the
+  // stamp, so a reload never loops back into itself.
+  let lastAwake = Date.now();
+  function wakeGate() {
+    const gap = Date.now() - lastAwake;
+    if (gap < RETURN_MIN_MS) { lastAwake = Date.now(); regreet(); return; }
+    if (navigator.onLine === false) return;   // offline: the gap stays STANDING, untouched — the
+    // spec's own word ("tries again at the next wake"): erasing it here would silently forgive the
+    // idle time, so the very next online wake must still see the full, real gap and fire at once.
+    try {
+      // the reset's own non-goal: the walk's POSITION never rides across it (a plain reload alone
+      // would resume it — INV-54 holds the face across an ordinary refresh on purpose). Two holes a
+      // fresh audit found in that plain reload: (1) a first-session walker who never exited carries
+      // no BEEN_KEY, so a cold door after the reset could show no welcome-back line for them — stamp
+      // it here, the same flag an ordinary exit already sets; (2) history.state.returned rides an
+      // ordinary reload too (INV-54's own law), so a tab asleep on a HELD door woke right back into
+      // the silent held-door branch — history.replaceState(null,"") clears it, forcing a true cold
+      // arrival. The visitor's own separate memory (EX-MEMORY: seen list, language, sound) is
+      // untouched by any of this.
+      if (localStorage.getItem(KEY)) localStorage.setItem(BEEN_KEY, "1");
+      localStorage.removeItem(KEY);
+      sessionStorage.removeItem(PLACE_KEY);
+      history.replaceState(null, "");
+    } catch (e) {}
+    location.reload();
+  }
+  function onVisibility() {
+    if (document.hidden) { lastAwake = Date.now(); return; }   // stamp the moment the tab hides
+    wakeGate();
+  }
+  document.addEventListener("visibilitychange", onVisibility);   // returned to the tab (fired on document)
+  addEventListener("pageshow", (e) => { if (e.persisted) wakeGate(); });   // the bfcache return
   addEventListener("focus", regreet);                   // some browsers wake a tab with focus, not visibility
-  setInterval(regreet, 60000);                          // and a minute's backstop for a tab left open
+  // the minute backstop is itself a WAKE DETECTOR, not just a stamp: after a real system sleep (or a
+  // lid-close that fires no visibilitychange at all) an overdue tick runs the full gate, so the reset
+  // still fires on its own; wakeGate's own below-bound path already stamps + regreets, so an ordinary
+  // visible tab ticking along sees no change at all.
+  setInterval(() => { if (!document.hidden) wakeGate(); }, 60000);
   let entered = false;                                 // a walk exists behind the door
   let doorFace = null;                                 // the spread the standing door renders
   let curLay = { n: 0, col: null };
@@ -1845,7 +1883,10 @@
   // stage carries the entry/exit position+scale, the img carries the pinch. zSrcEl is the tapped picture,
   // re-measured on close so a rotation under the zoom lands the shrink on its fresh place (INV-82).
   let zSrcEl = null, zLastEl = null, zDismiss = 0;      // zLastEl survives close so a Forward step reopens (INV-83)
-  const DISMISS_T = 0.82;      // release below this raw pinch-in ratio at 1× dismisses the layer (INV-82)
+  // INV-93 (2026-07-16, one margin for every pinch): the in-pinch mirrors the out-pinch — DISMISS_T
+  // sits just under the picture's own resting size, so a release just below resting closes the layer
+  // whatever gesture it belongs to, and a release at/above resting leaves the picture open at its size.
+  const DISMISS_T = 0.97;
   // once zoomed past 1×, a one-finger drag PANS the enlarged picture. zTx/zTy are the pan offset in
   // screen px; zPan* hold the gesture's start. The offset is bounded to the picture's visible overflow
   // so the image can never be dragged past its own edge.
@@ -2176,7 +2217,7 @@
   }
   // INV-85: a ctrl+wheel `deltaY` accumulates into the very 1×–4× scale the touch pinch drives —
   // deltaY<0 (pinch OUT) grows it, deltaY>0 (pinch IN) shrinks it; a rising scale OPENS #ex-zoom on the
-  // resolved picture, a pinch-IN past the ~0.82× dismiss threshold DISMISSES through the one history step.
+  // resolved picture, a pinch-IN past the mirror margin (DISMISS_T) DISMISSES through the one history step.
   const ZOOM_WHEEL_STEP = 0.0025;                        // scale change per |deltaY| unit of a ctrl+wheel / pinch
   function pinchWheel(e) {
     const dScale = -e.deltaY * ZOOM_WHEEL_STEP;          // OUT (deltaY<0) → +, IN (deltaY>0) → −

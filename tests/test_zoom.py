@@ -55,6 +55,8 @@ js_bits = {
         bool(re.search(r"faceStands\(\)\s*\{\s*return[^}]*zoomOpen", JS)),
     "close by x, backdrop, Esc":
         "exz-close" in JS and 'e.key === "Escape" && zoomOpen' in JS,
+    "the mirror margin: DISMISS_T reads the one shared threshold (INV-93)":
+        "DISMISS_T = 0.97" in JS,
 }
 check("EX-ZOOM the pinch-to-inspect layer is built into the client "
       "(overlay + trigger + our own scale + face lock + close)",
@@ -398,7 +400,7 @@ STAGE_TP = ("(()=>{const s=document.querySelector('#ex-zoom .exz-stage');"
 # own DOM to still be standing.
 ON_PAGE = "!!document.querySelector('.exd-window')"
 # a two-finger pinch-IN on the already-open zoom: 200px apart -> 60px apart (raw ratio 0.3, well
-# under DISMISS_T=0.82), released at 0 touches — the same road as the x/Esc/backdrop (history.back)
+# under the mirror margin, DISMISS_T), released at 0 touches — the same road as the x/Esc/backdrop (history.back)
 DISMISS = (
     "()=>{const img=document.querySelector('#ex-zoom .exz-img');"
     "if(!img)return JSON.stringify({err:'no-img'});"
@@ -489,6 +491,107 @@ else:
                   opened and closed and "walk_exit" not in new_beats,
                   f"opened={opened} closed={closed} new_beats={new_beats}")
     shutil.rmtree(TMP_GA, ignore_errors=True)
+
+# ---------------------------------------------------------------- EX-ZOOM/INV-82 the mirror margin
+# the in-pinch mirrors the out-pinch: ONE margin governs every pinch-in, whatever gesture it belongs
+# to — DISMISS_T sits just under the picture's own resting size, so a release just below resting
+# closes it, and a release at/above resting leaves it open at its size.
+MIRROR_ROWS = [
+    "EX-ZOOM/INV-93 a fresh pinch-in on the open zoom to ~0.90 of resting size closes it (the mirror margin)",
+    "EX-ZOOM/INV-82 a round-trip squeeze back to resting size (raw≈1.0) leaves the picture open "
+    "(the mirror margin's own edge)",
+    "EX-ZOOM/INV-93/85 a desktop ctrl+wheel squeeze to ~0.90 of resting closes the open zoom "
+    "(the mirror margin, desktop parity)",
+]
+# a FRESH pinch on the already-open, resting layer: open+settle at 1x (an ordinary release, no
+# movement), THEN a SEPARATE touchstart+touchmove(narrow to raw 0.90 of resting)+touchend — under the
+# mirror margin (~0.97) this is BELOW resting and must close; under the old deep DISMISS_T (~0.82) it
+# used to stay open (RED on unmodified code)
+TOUCH_CLOSE_090 = (
+    "()=>{const img=document.querySelector('.exd-window img');"
+    "if(!img)return JSON.stringify({err:'no-img'});"
+    "const mk=(id,x,y)=>new Touch({identifier:id,target:img,clientX:x,clientY:y});"
+    "const fire=(t,ts)=>img.dispatchEvent(new TouchEvent(t,{touches:ts,targetTouches:ts,"
+    "changedTouches:ts,bubbles:true,cancelable:true}));"
+    "fire('touchstart',[mk(1,150,300),mk(2,150,500)]);"     # open, 200px apart
+    "fire('touchend',[]);"                                    # release at 1x — settles, no movement
+    "fire('touchstart',[mk(1,150,300),mk(2,150,500)]);"     # a FRESH pinch on the standing layer
+    "fire('touchmove',[mk(1,150,310),mk(2,150,490)]);"      # 180px apart -> raw 0.90 of resting
+    "fire('touchend',[]);"                                    # release -> must CLOSE (0.90 < mirror)
+    "return 'ok';}"
+)
+# ONE continuous gesture: opens (200px apart), widens to 400 (scales up), narrows back to EXACTLY
+# 200px apart (raw 1.0 — its own resting/starting span), release — a release AT/ABOVE resting never
+# closes (the mirror margin's own edge); a fence, expected to hold both before and after the change
+TOUCH_GUARD_RESTING = (
+    "()=>{const img=document.querySelector('.exd-window img');"
+    "if(!img)return JSON.stringify({err:'no-img'});"
+    "const mk=(id,x,y)=>new Touch({identifier:id,target:img,clientX:x,clientY:y});"
+    "const fire=(t,ts)=>img.dispatchEvent(new TouchEvent(t,{touches:ts,targetTouches:ts,"
+    "changedTouches:ts,bubbles:true,cancelable:true}));"
+    "fire('touchstart',[mk(1,150,300),mk(2,150,500)]);"     # 200px apart — opens
+    "fire('touchmove',[mk(1,150,200),mk(2,150,600)]);"      # 400px apart -> raw 2 (scales up)
+    "fire('touchmove',[mk(1,150,300),mk(2,150,500)]);"      # back to 200px -> raw 1.0 exactly
+    "fire('touchend',[]);"                                    # release AT resting -> must stay OPEN
+    "return 'ok';}"
+)
+
+
+def _elcenter(br, sel):
+    box = br.evaluate(
+        "(()=>{const e=document.querySelector(%s);if(!e)return null;"
+        "const r=e.getBoundingClientRect();"
+        "return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)};})()"
+        % json.dumps(sel))
+    return (box["x"], box["y"]) if box else None
+
+
+def _wheel_notch(br, delta_y, cx, cy):
+    """a single ctrl+wheel WheelEvent — Blink's trackpad-pinch equivalent (INV-85), dispatched on the
+    element under the point so both e.ctrlKey and the pointer target/coords are present."""
+    br.evaluate(
+        "(()=>{const el=document.elementFromPoint(%d,%d)||document.documentElement;"
+        "el.dispatchEvent(new WheelEvent('wheel',{deltaY:%d,ctrlKey:true,clientX:%d,clientY:%d,"
+        "cancelable:true,bubbles:true}));})()" % (cx, cy, delta_y, cx, cy))
+
+
+if not chrome_available():
+    for r in MIRROR_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+else:
+    with serve(TMP) as base:
+        with Browser(width=390, height=844) as br:       # a fresh pinch-in to ~0.90 of resting closes
+            _boot(br, base)
+            hl0 = br.evaluate(HLEN)
+            fired = br.evaluate("(%s)()" % TOUCH_CLOSE_090)
+            br.sleep(0.5)
+            hl1 = br.evaluate(HLEN)
+            closed_via_road = ((not br.evaluate(ZOPEN)) and br.evaluate(ZHIDDEN)
+                                and br.evaluate(ON_PAGE) and hl1 == hl0 + 1)
+            check(MIRROR_ROWS[0], fired == "ok" and closed_via_road,
+                  f"fired={fired!r} closed_via_road={closed_via_road}")
+
+        with Browser(width=390, height=844) as br:       # a round-trip back to resting stays open
+            _boot(br, base)
+            fired2 = br.evaluate("(%s)()" % TOUCH_GUARD_RESTING)
+            br.sleep(0.4)
+            stays_open = br.evaluate(ZOPEN)
+            check(MIRROR_ROWS[1], fired2 == "ok" and stays_open,
+                  f"fired={fired2!r} stays_open={stays_open}")
+
+        with Browser(width=1280, height=900) as br:       # the desktop mirror: squeeze to ~0.90 closes
+            _boot(br, base)
+            c = _elcenter(br, ".exd-window img")
+            if not c:
+                check(MIRROR_ROWS[2], False, "no door window image to pinch")
+            else:
+                cx, cy = c
+                _wheel_notch(br, -400, cx, cy)              # opens at zScale=2.0
+                _wheel_notch(br, 2000, cx, cy)               # crosses deep in one jump -> zDesk re-bases to 1
+                _wheel_notch(br, 40, cx, cy)                  # zDesk -> 0.9, below the mirror margin -> commits
+                br.sleep(0.5)
+                closed_d = ((not br.evaluate(ZOPEN)) and br.evaluate(ZHIDDEN) and br.evaluate(ON_PAGE))
+                check(MIRROR_ROWS[2], closed_d, f"closed_via_road={closed_d}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
