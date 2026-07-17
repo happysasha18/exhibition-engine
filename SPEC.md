@@ -433,7 +433,7 @@ the band sits clear (still holding the share rail's end column reserved); a **si
 own start edge, below the counter and opposite the share rail, when the free column there reaches a
 legibility floor (about 140px, so a too-thin ribbon that would break a title one letter per line is
 refused as no honest gutter); and a **last-resort soft scrim** under the text where no honest
-gutter remains. The side band serves touch and landscape shapes; a desktop pointer keeps the bottom
+gutter remains. The side band serves a short landscape viewport; a tall desktop window keeps the bottom
 band for every work and leans on the scrim where a tall picture reaches the text, so the plaque
 holds one seat as the walk moves. The seated block is contained within the viewport, clamped to the room below the
 counter on a short frame. Right-to-left tongues mirror the whole seat through logical properties.
@@ -1610,7 +1610,7 @@ the worker.
 | `INV-94` | A tab idle past the return window's lower bound wakes at the door: a gap past the bound clears the walk state and place, forces a cold arrival, and reloads; a shorter gap re-greets; an offline return holds the gap standing for the next online wake; a minute backstop detects a system sleep or lid close; the scroll place never rides across it and the visitor's own memory is left whole |
 | `INV-95` | The boot face: a breathing loading line fades in from ~0.15s and holds through the boot, pure CSS after a fast grace beat so a healthy load never sees it; the `js` mark falls only on the client script's load error or a ~12s last-net cap on a hung ride, returning the static face (`INV-30`); reduced motion a still line |
 | `INV-96` | While a standing side room's sideways lane is under the finger and the drag axis is still ambiguous, the client watches only and consumes no event, so the browser's native scroll hand-off is left unpoisoned; past the ambiguous window the dominant axis decides (sideways runs the lane); every other face keeps the first-few-pixels verdict |
-| `INV-97` | The caption block seats in the free zone the picture leaves and clear of the share control's reserved column: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim where no honest gutter remains; the side band serves touch and landscape shapes while a desktop pointer keeps the bottom band for every work with the scrim where a tall picture meets the text; contained within the viewport; measured once per frame settle and re-seated on a turn (`INV-86`); RTL mirrors through logical properties |
+| `INV-97` | The caption block seats in the free zone the picture leaves and clear of the share control's reserved column: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim where no honest gutter remains; the side band serves a short landscape viewport while a tall desktop window keeps the bottom band for every work with the scrim where a tall picture meets the text; contained within the viewport; measured once per frame settle and re-seated on a turn (`INV-86`); RTL mirrors through logical properties |
 | `INV-98` | The title and any wrapping caption prose break into near-equal balanced lines by the browser's own balancer, dictionary scripts included and no model call; below a narrow breakpoint the block runs narrower under a configurable type-step (engine default one step, 0 off) so the balanced text clears the picture |
 
 ### Reconciliation log — how each behavior above landed in code

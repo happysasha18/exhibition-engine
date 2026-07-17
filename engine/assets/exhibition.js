@@ -1773,10 +1773,10 @@
     }
     const sideCol = startGap - startInset;             // the free column from the counter's inset to the picture
     const sideW = sideCol - GAP;                        // the band's own width, a breath shy of the picture
-    // The side band is a touch/landscape seat only: on a desktop (a fine pointer) the caption keeps the
-    // bottom band for every work — a tall picture that reaches the text gets the last-resort scrim below
-    // rather than a dodge to the top, so the plaque never jumps between works (INV-97, the owner's call).
-    if (matchMedia("(pointer: coarse)").matches && sideCol >= CAP_SIDE_FLOOR) {  // the free column reaches the legibility floor
+    // The side band is a short-viewport (landscape) seat: on a tall viewport — a desktop window — the
+    // caption keeps the bottom band for every work, and a tall picture that reaches the text gets the
+    // last-resort scrim below rather than a dodge to the top, so the plaque holds one seat (INV-97).
+    if (H <= 640 && sideCol >= CAP_SIDE_FLOOR) {       // a short (landscape) viewport with an honest column
       const topPx = cr.bottom + GAP;                    // below the counter's line (block axis, unmirrored)
       cap.style.top = topPx + "px";
       cap.style.bottom = "auto";
