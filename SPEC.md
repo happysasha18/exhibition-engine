@@ -608,22 +608,27 @@ variant B (the cheap light/hour plot) ships first.
 
 When `sound_url` in config is non-empty, a quiet control appears in the top-right corner —
 separate from the share button at the frame's bottom. It offers ONE ambient loop. **OFF by
-default** (`INV-27`): a cold arrival is silent and the audio fetches ONLY on the visitor's first
-deliberate turn-on. A tap starts it: decoded via Web Audio into a gapless looping
-`AudioBufferSourceNode` under a **fade-in (~1.2s×tempo)** on a gain ramp; a second tap
-**fades out (~0.8s×tempo)**; leaving to a `/w/` page or unload fades to zero best-effort
-(`pagehide`). Volume defaults to 0.3 with a touch-friendly slider (≥44px). The choice persists
-in `ex.sound`. A return visit with preference ON **arms** on the first gesture (the browser
-blocks autoplay without one) rather than fetching on cold load. On hover / while playing a thin
-credit tray shows the instance's configured `sound_credit.artist`, `sound_credit.title`, and
-`sound_credit.url` — no hardcoded artist name or link. A missing or failed file **fails SILENT**
-(`INV-1`). Two beats ride the existing GA wire: `sound_on`, `sound_off`. The player plays
-continuously across the whole single-page walk — door, crossing, side room, scroll — never torn
-down on a face change. `EX-SOUND` `INV-48`
+default** (`INV-27`): a cold arrival is silent and the audio loads ONLY on the visitor's first
+deliberate turn-on. A tap starts it at once: a streaming `<audio>` element (`preload="none"`,
+native `loop`) plays as soon as the first fragments arrive and fetches the rest on the fly, so the
+press is answered right away rather than after the whole file downloads and decodes. The loop wraps
+on the element's own `loop`, which carries a faint seam at the wrap — the accepted cost of the
+instant start. The fade rides a gain node fed by the element through a `MediaElementAudioSourceNode`,
+so the **fade-in (~0.7s×tempo)** and the **fade-out (~0.8s×tempo)** ramp smoothly on every device,
+including iOS where the element's own volume cannot be scripted; leaving to a `/w/` page or unload
+fades to zero best-effort (`pagehide`). Volume defaults to 0.3 with a touch-friendly slider (≥44px).
+The choice persists in `ex.sound`. A return visit with preference ON **arms** on the first gesture
+(the browser blocks autoplay without one) rather than loading on cold arrival. On hover / while
+playing a thin credit tray shows the instance's configured `sound_credit.artist`,
+`sound_credit.title`, and `sound_credit.url` — no hardcoded artist name or link. A missing or failed
+file **fails SILENT** (`INV-1`). Two beats ride the existing GA wire: `sound_on`, `sound_off`. The
+player plays continuously across the whole single-page walk — door, crossing, side room, scroll —
+never torn down on a face change. `EX-SOUND` `INV-48`
 
-**Pause holds the moment** (`EX-SOUND-PAUSE`): off is a **pause** that records the loop's offset
-(clocked from the source's start time); on **resumes from it**, never from the beginning. In-memory
-within a session — a fresh page load starts the loop from the top. `INV-52`
+**Pause holds the moment** (`EX-SOUND-PAUSE`): off is a **pause** that holds the element where it
+stands; on **resumes from it**, never from the beginning. The element owns the playhead (its own
+`currentTime`), so the offset is held natively across a pause within a session — a fresh page load
+starts the loop from the top. `INV-52`
 
 ### The gracious deterrent
 
@@ -1489,7 +1494,7 @@ the worker.
 | `EX-SHARE-BTN` | The floating share button (fixed chrome): copies the in-view work's room permalink, never navigates |
 | `EX-SHARE-IN` | The permalink arrival: `#w-<id>` as a handed-over pick |
 | `EX-SHARE` | The share feature as a whole |
-| `EX-SOUND` | The ambient loop: off by default, lazy fetch, credit from config |
+| `EX-SOUND` | The ambient loop: off by default, streams from a `<audio>` element on turn-on (instant start), credit from config |
 | `EX-SOUND-PAUSE` | Pause holds the moment; resume continues from it |
 | `EX-PROTECT` | The gracious deterrent (desktop right-click → gift ceremony; drag/touch → gift toast; a pinch has the browser's viewport-zoom refused but the GESTURE handed to our own zoom — touch and desktop trackpad alike, EX-ZOOM/`INV-85`) |
 | `EX-PROTECT-GIFT` | The gift ceremony: the picture is offered on a solemn card, handed over only on a yes |
@@ -1570,10 +1575,10 @@ the worker.
 | `INV-43` | Coat-check: fire-and-forget reports; drop on failure |
 | `INV-46` | Series side room degrades cleanly when series are absent |
 | `INV-47` | The told story degrades to silence; the walk loses nothing |
-| `INV-48` | Ambient player: OFF by default; lazy fetch only on turn-on |
+| `INV-48` | Ambient player: OFF by default; streams from a `<audio>` element on turn-on (instant start, native loop), never a cold-load fetch |
 | `INV-49` | The gracious deterrent is a gift, never a scold; no hard DRM |
 | `INV-51` | Edge guard: three fences before any model call |
-| `INV-52` | Sound pause holds the offset; resume continues from it |
+| `INV-52` | Sound pause holds the moment on the element's own playhead (`currentTime`); resume continues from it |
 | `INV-56` | The shown image is clean; the site-host mark rides only a taken copy (client canvas on grab, baked on the prize, baked when the serve is capped). Mark text is the config host, never a literal |
 | `INV-59` | The quiz answer is judged at the edge against a private accept-set — never a served byte, never a model call; normalization is hard (NFKC-fold, lower-case, letters only) and parity-by-construction (the client sends the raw answer); its own per-IP hourly attempt fence, separate from the model rate-limit and day budget, degrades gracefully to unlimited when no KV is bound so a preview/local deploy still judges |
 | `INV-60` | The quiz flag off is byte-identical to a quiz-less walk; on / no answer / unknown id degrades to silence, the walk loses nothing |

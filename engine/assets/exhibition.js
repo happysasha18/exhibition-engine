@@ -3848,14 +3848,19 @@
   }
 
   // ---- EX-SOUND (INV-48): the ambient loop walks beside the guest ----------------------------
-  // OFF by default — a fresh visit is silent and the audio is fetched ONLY on the first turn-on
-  // (the perf fence), never on cold load. Gapless via Web Audio: decode into a looping
-  // AudioBufferSourceNode. Fade in ~1.2s ×tempo, out ~0.8s and on leaving / unload (pagehide,
-  // best-effort). Volume default 0.3 with a ≥44px touch-friendly slider. The on/off + volume
-  // persist in ex.sound (versioned); a return ON ARMS on the first gesture (autoplay is blocked
-  // without one) rather than fetching on cold load. A missing/failed file fails SILENT (INV-1).
-  // Two beats ride the EXISTING EX-PULSE wire: sound_on / sound_off (no new analytics plumbing).
-  // EX-SOUND-PAUSE (INV-52): off is a PAUSE that holds the moment, on RESUMES from it.
+  // OFF by default — a fresh visit is silent and the audio loads ONLY on the first turn-on
+  // (the perf fence), never on cold load. STREAMS from a <audio> element (preload none, native
+  // loop): it plays as the first fragments arrive, so the press is answered at once rather than
+  // after the whole file downloads and decodes. The native loop carries a faint seam at the wrap —
+  // the accepted cost of the instant start. The fade rides a MediaElementSource → gain node so the
+  // ramp works on every device (iOS included, where the element's own volume cannot be scripted):
+  // in ~0.7s ×tempo, out ~0.8s and on leaving / unload (pagehide, best-effort). Volume default 0.3
+  // with a ≥44px touch-friendly slider. The on/off + volume persist in ex.sound (versioned); a
+  // return ON ARMS on the first gesture (autoplay is blocked without one) rather than loading on
+  // cold arrival. A missing/failed file fails SILENT (INV-1). Two beats ride the EXISTING EX-PULSE
+  // wire: sound_on / sound_off (no new analytics plumbing).
+  // EX-SOUND-PAUSE (INV-52): off is a PAUSE that holds the moment on the element's own currentTime,
+  // on RESUMES from it — a fresh page load builds a new element and starts from the top.
   // Config keys (config.json → exhibition): sound_url (audio file, empty = player hidden),
   // sound_credit.artist / sound_credit.title / sound_credit.url (the credit tray text + link).
   (function sound() {
@@ -3891,13 +3896,17 @@
     const btn = box.querySelector(".exsnd-btn");
     const vol = box.querySelector(".exsnd-vol");
 
-    let ctx = null, buffer = null, source = null, gain = null;
+    // The player STREAMS: a single <audio> element (preload none, native loop) plays as soon as the
+    // first fragments arrive and fetches the rest on the fly, so the press is answered at once — no
+    // download-then-decode wait. The element routes through a MediaElementAudioSourceNode → gain so
+    // the fade ramps on every device, iOS included, where the element's own volume cannot be scripted.
+    let ctx = null, srcNode = null, gain = null;
+    let aud = null, wired = false, pauseTimer = 0;
     let target = DEFAULT_VOL, desired = false, playing = false, armed = false;
-    let ready = false, loading = false, fetched = false;
-    // EX-SOUND-PAUSE (INV-52): off is a PAUSE that holds the moment, on RESUMES from it — never a
-    // restart. `pausedOffset` is seconds into the track; `startedAt`/`startedFrom` clock the running
-    // source so a stop can compute where it reached (a looping buffer has no readable playhead).
-    let pausedOffset = 0, startedAt = 0, startedFrom = 0;
+    let ready = false, loading = false;
+    // EX-SOUND-PAUSE (INV-52): off is a PAUSE, on RESUMES — never a within-session restart. The
+    // element OWNS the playhead (aud.currentTime), so a pause holds the moment natively and a resume
+    // continues from it; no manual offset bookkeeping. A fresh page load builds a new element at 0.
 
     // the remembered choice (versioned like the walk)
     let pref = null;
@@ -3912,17 +3921,28 @@
       } catch (e) {}
     }
 
-    async function prepare() {
+    function prepare() {
       if (ready || loading) return ready;
       loading = true;
       try {
+        aud = document.createElement("audio");
+        aud.src = SND_URL;
+        aud.loop = true;                                 // native loop — a faint seam at the wrap
+        aud.preload = "none";                            // stream on play, never a cold-load fetch
+        // NO crossOrigin: the audio is same-origin, and a MediaElementSource over a CORS request the
+        // static host does not answer (Cloudflare Pages sends no ACAO on static assets) would taint
+        // the node and output SILENCE — same-origin needs no CORS and must not opt into it
+        // a failed file fails SILENT (INV-1): stop the graph so no equalizer shows, and leave the
+        // button's own aria-pressed as the visitor's CHOICE (the equalizer bars, not the button,
+        // signal actual playback) — desired and aria-pressed stay coherent, no false sound_off beat
+        aud.addEventListener("error", () => { stop(); });
         ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
         gain = ctx.createGain(); gain.gain.value = 0; gain.connect(ctx.destination);
-        fetched = true;
-        const bytes = await fetch(SND_URL).then((r) => {
-          if (!r.ok) throw new Error("no audio"); return r.arrayBuffer();
-        });
-        buffer = await ctx.decodeAudioData(bytes);
+        // one MediaElementSource per element, created once; the element's output now routes ONLY
+        // through the graph, so the gain MUST reach the destination (wired just above)
+        srcNode = ctx.createMediaElementSource(aud);
+        srcNode.connect(gain);
+        wired = true;
         ready = true;
       } catch (e) { ready = false; }
       loading = false;
@@ -3954,19 +3974,17 @@
 
     async function start() {
       if (playing) return;
-      const ok = await prepare();
+      const ok = prepare();
       if (!desired) return;
       if (!ok) { box.classList.remove("playing"); return; }
       if (ctx.state === "suspended") { try { await ctx.resume(); } catch (e) {} }
       if (!desired) return;
       if (ctx.state === "suspended") { arm(); return; }
-      if (source) return;
-      source = ctx.createBufferSource();
-      source.buffer = buffer; source.loop = true;
-      source.connect(gain);
-      startedFrom = pausedOffset % buffer.duration;    // RESUME where the pause held — not the top
-      source.start(0, startedFrom);
-      startedAt = ctx.currentTime;
+      if (pauseTimer) { clearTimeout(pauseTimer); pauseTimer = 0; }   // cancel a pending pause
+      // the element resumes from its own playhead — the top on a fresh load, where the pause held
+      // within a session; the promise rejects only when a gesture is still owed, so arm and wait
+      try { await aud.play(); } catch (e) { arm(); return; }
+      if (!desired) { try { aud.pause(); } catch (e) {} return; }
       const now = ctx.currentTime;
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
@@ -3977,15 +3995,18 @@
 
     function stop() {
       disarm();
-      if (source && ctx) {
-        const now = ctx.currentTime, s = source;
-        if (buffer) pausedOffset = (startedFrom + (now - startedAt)) % buffer.duration;
+      if (wired && ctx && gain) {
+        const now = ctx.currentTime;
         gain.gain.cancelScheduledValues(now);
         gain.gain.setValueAtTime(gain.gain.value, now);
         gain.gain.linearRampToValueAtTime(0, now + FADE_OUT * TEMPO);
-        setTimeout(() => { try { s.stop(); } catch (e) {} },
-          Math.round(FADE_OUT * TEMPO * 1000) + 80);
-        source = null;
+        // pause AFTER the fade so the ramp is heard; the element holds currentTime for a resume.
+        // re-read `desired` at fire time — a fast off→on toggle must not pause the re-enabled player.
+        if (pauseTimer) clearTimeout(pauseTimer);
+        pauseTimer = setTimeout(() => {
+          pauseTimer = 0;
+          if (!desired && aud) { try { aud.pause(); } catch (e) {} }
+        }, Math.round(FADE_OUT * TEMPO * 1000) + 80);
       }
       playing = false;
       box.classList.remove("playing");
@@ -4002,15 +4023,18 @@
       }
       persist();
     });
-    addEventListener("pagehide", () => { if (playing) stop(); });
+    addEventListener("pagehide", () => {
+      if (playing) stop();
+      if (aud) { try { aud.pause(); } catch (e) {} }   // best-effort immediate silence on leave
+    });
 
     // a return visit with the pref ON: ARM on the first gesture — never a cold-load fetch
     if (pref && pref.on) { desired = true; btn.setAttribute("aria-pressed", "true"); arm(); }
 
     // the player's own reachable surface, for the suite
     try {
-      window.@@NS_UPPER@@Sound = { state: () => ({ desired, playing, armed, ready, fetched, loading,
-                                         pausedOffset }),
+      window.@@NS_UPPER@@Sound = { state: () => ({ desired, playing, armed, ready, loading,
+                                         currentTime: aud ? aud.currentTime : 0 }),
                          url: SND_URL };
     } catch (e) {}
   })();

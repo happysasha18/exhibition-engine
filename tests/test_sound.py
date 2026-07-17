@@ -76,13 +76,41 @@ check("EX-SOUND IIFE exits early on empty sound_url",
       "if (!SND_URL) return;" in js_src,
       "early-exit guard missing from sound() IIFE")
 
-# 5 · pause/resume symbols all present
-check("EX-SOUND-PAUSE: pausedOffset/startedAt/startedFrom + source.start(0, …) wired",
-      "pausedOffset" in js_src
-      and "startedAt" in js_src
-      and "startedFrom" in js_src
-      and "source.start(0, startedFrom)" in js_src,
-      "one or more pause/resume symbols missing from exhibition.js")
+# 5 · streaming <audio> element — instant start, native loop, no full-decode wait
+check("EX-SOUND streams from an <audio> element (createElement('audio'), preload=none, native loop)",
+      'createElement("audio")' in js_src
+      and "preload" in js_src
+      and ".loop = true" in js_src
+      and ".play()" in js_src,
+      "streaming <audio> element wiring missing from exhibition.js")
+
+# 5b · the old full-decode path is retired — the download-then-decode wait is exactly what the swap removes
+check("EX-SOUND retires the full-decode path (no decodeAudioData / createBufferSource)",
+      "decodeAudioData" not in js_src
+      and "createBufferSource" not in js_src,
+      "a full-decode Web Audio path still present — the swap removes the download-then-decode wait")
+
+# 5c · the fade rides a MediaElementSource → gain node so the ramp works on every device (incl. iOS,
+#      where the element's own volume cannot be scripted)
+check("EX-SOUND fade rides a MediaElementSource → gain node (universal ramp, incl. iOS)",
+      "createMediaElementSource" in js_src
+      and "createGain" in js_src
+      and "linearRampToValueAtTime" in js_src,
+      "MediaElementSource/gain fade wiring missing from exhibition.js")
+
+# 5d · pause holds the element's own playhead (currentTime); no manual offset bookkeeping remains
+check("EX-SOUND-PAUSE holds the element playhead (currentTime), never manual offset math",
+      "currentTime" in js_src
+      and "pausedOffset" not in js_src
+      and "startedFrom" not in js_src,
+      "pause/resume should ride the element's currentTime, not pausedOffset/startedFrom")
+
+# 5e · a failed file fails SILENT via the element error handler (INV-1); the toggle's own aria-pressed
+#      stays the visitor's choice (the equalizer bars, not the button, signal actual playback)
+_err = js_src[js_src.find('aud.addEventListener("error"'):][:120]
+check("EX-SOUND a failed file fails silent through the <audio> error handler (INV-1)",
+      "stop();" in _err and 'aud.addEventListener("error"' in js_src,
+      "the <audio> element needs an error handler that stops the graph and fails silent")
 
 # 6 · credit HTML is config-driven
 check("EX-SOUND credit tray is config-driven (CREDIT.artist/title/url, not hardcoded)",
