@@ -146,6 +146,7 @@ BROWSER_ROWS = [
     "EX-PULSE walk_exit counts every leave — the exit control ONE, a browser-Back leave ONE, a cold door render NONE",
     "EX-ERROR a fault lays one error beat (closed kind + load phase, no raw string), capped at three per page",
     "EX-FRICTION rage-tap lays one friction beat (closed friction_kind=tap + where, no raw coord); an interactive press never counts",
+    "EX-SHARE join a copy mints a token on share_copy; an arrival with ?s=<token> joins it on share_arrive; a bare arrival carries no token",
 ]
 
 # ---- EX-AB / INV-90 / INV-91 — the variant frame (SPEC "Experiments — the variant frame") ------
@@ -243,7 +244,12 @@ else:
             # scope at EX-PICSTAT code time (INV-41): every work-carrying beat now stamps the work's
             # public id as the registered `pic` dimension beside its event-target `work` (INV-6) —
             # a declaration-of-intent widening, the door_ready precedent, never an assertion's meaning.
-            params_ok = all(set(evs[b].keys()) <= {"work", "pic"} for b in need if b in evs)
+            # share_copy / share_arrive also carry the per-share join token `s` (EX-SHARE join /
+            # INV-1) — a declaration-of-intent widening, the `pic` precedent, closed to these two beats.
+            params_ok = all(
+                set(evs[b].keys()) <= ({"work", "pic", "s"} if b in ("share_copy", "share_arrive")
+                                       else {"work", "pic"})
+                for b in need if b in evs)
             works_ok = (evs.get("door_pick", {}).get("work")
                         and evs.get("share_arrive", {}).get("work") == str(target))
             check(BROWSER_ROWS[0],
@@ -423,6 +429,38 @@ else:
             check(BROWSER_ROWS[7],
                   one_beat and kind_ok and where_ok and no_raw,
                   f"friction={fr} one={one_beat} kind_ok={kind_ok} where_ok={where_ok} no_raw={no_raw} tapped={tapped}")
+
+    # ---- ROW: EX-SHARE join — a per-share token joins a copy to the open it produces -----------
+    with serve(TMP) as base:
+        _ids = [w["id"] for w in exdata["works"]]
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            cold(br, base)
+            enter_walk(br)
+            br.click(".ex-share", settle=0.4)                       # a copy mints a fresh token
+            copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
+            m = re.search(r"[?&]s=([a-z0-9]{1,16})#w-([\w-]+)$", copied[0] if copied else "")
+            tok = m.group(1) if m else None
+            wid = m.group(2) if m else None
+            copy_ev = first_of(evs_of(br), "share_copy")            # share_copy stamped that same token
+            copy_ok = tok and copy_ev and copy_ev.get("s") == tok
+            # the arrival that carries THIS token joins back to it on share_arrive (the virality loop)
+            if tok and wid:
+                br.navigate(base + "/?utm_source=share&utm_medium=referral&s=" + tok + "#w-" + wid)
+                br.sleep(1.2)
+            arr = first_of(evs_of(br), "share_arrive")
+            join_ok = arr and arr.get("s") == tok
+            # a bare arrival (a direct paste, an old link) carries NO token — payload byte-for-byte before
+            bare = next((i for i in _ids if i != wid), None)
+            if bare:
+                br.navigate(base + "/#w-" + bare)
+                br.sleep(1.2)
+            arr2 = first_of(evs_of(br), "share_arrive")
+            bare_ok = arr2 is not None and "s" not in arr2
+            check(BROWSER_ROWS[8],
+                  bool(copy_ok) and bool(join_ok) and bool(bare_ok),
+                  f"tok={tok} copy={copy_ev} join={arr} bare={arr2}")
 
     # ================= VF rows: the variant frame (EX-AB / INV-90 / INV-91) =================
     FIXED_SEED_TOKEN = "abcdefgh12345678"    # 16 chars a-z0-9 — passes BOTH the quiz-token regex

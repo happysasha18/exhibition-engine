@@ -514,7 +514,8 @@ built-in Russian stands under a missing cache. `INV-15` `INV-29`
 On every frame of the hang a quiet **share button** waits (a link glyph, ~36px, hover-revealed
 on pointer devices, always visible on touch, ≥44px touch target). A click **copies, never
 navigates**: the frame's **room permalink** — the canonical root plus
-`?utm_source=share&utm_medium=referral` plus `#w-<id>`, clean of whatever params the sharer's
+`?utm_source=share&utm_medium=referral` plus a fresh per-share join token `&s=<token>` (EX-SHARE join)
+plus `#w-<id>`, clean of whatever params the sharer's
 own address carries — onto the clipboard and answers with a quiet **toast** in the visitor's
 language (the `share_copied` string from the greeting cache; built-in Russian fallback). The UTM
 attribution separates shared arrivals from direct/bot noise in the walk's own analytics. If the
@@ -534,6 +535,15 @@ fresh-top arc, the door passed, no greeting; the door stays one exit away. `(c)`
 malformed id changes nothing. The hash is **consumed once per hand-over** (per-tab, stored in
 `sessionStorage`); the room's own place memory wins once the hash is spent; a reload before
 walking repeats the same honest arrival. No history step of its own. `EX-SHARE-IN` `EX-SHARE`
+
+**The share-loop join** (`EX-SHARE` join): the copied link carries a **fresh random per-share token**
+`s`, minted at the moment the button copies. It rides on `share_copy` (the copy) and is read back off
+the arrival's query to ride on `share_arrive` (the open), so GA can join a specific share to the
+specific open it produced — the virality loop, the k-factor. The token is a **bounded closed-alphabet
+word** drawn at random per copy; it holds **no visitor identity** (never the coat-check token, never a
+visit-derived value), so the loop closes without linking people (`INV-1`: no free text and no identity
+ever ride the wire). An arrival with no `s` — a direct paste, an old link — simply lays `share_arrive`
+with the payload byte-for-byte as before. `EX-SHARE`
 
 ### The told story
 
@@ -1174,8 +1184,8 @@ with no spec sentence, which the old "five beats" prose could not see). `EX-PULS
 | `door_pick` | a window opens the room | the work |
 | `walk_unfold` | the «more» control grows the hang | — (dimensions ride) |
 | `walk_exit` | the walk leaves for the door — the exit control OR the browser's own Back, ONCE per leave (a Back-exit counts no less than a button-exit; the funnel undercounted history leaves until this port) | — (dimensions ride) |
-| `share_copy` | the link button copies | the work |
-| `share_arrive` | an arrival by a shared link | the work |
+| `share_copy` | the link button copies | the work + a fresh per-share token `s` minted for this copy (`EX-SHARE` join) |
+| `share_arrive` | an arrival by a shared link | the work + the `s` token read off the arrival's query, when present, so GA joins this open to the copy that minted it (`EX-SHARE` join) |
 | `sound_on` / `sound_off` | the ambient player toggles (EX-SOUND's own clause) | — |
 | `viewer_lang` | once per arrival — the tongue the guest views in | the baked code (outsider ⇒ `other`) |
 | `return_gap` | an arrival where a prior visit is remembered | a coarse gap bucket (never a raw timestamp) |
@@ -1441,7 +1451,8 @@ the worker.
 - **Living hand** — the fresh set of `door_size` works dealt from the pool on each cold arrival:
   novelty + hour + curation, under the ≤⌊door_size/3⌋-repeat law (`EX-DOOR-3` / `INV-20`).
 - **Room permalink** — the shareable deep link into the walk:
-  `{root_url}/?utm_source=share&utm_medium=referral#w-<id>` (`EX-SHARE`).
+  `{root_url}/?utm_source=share&utm_medium=referral&s=<token>#w-<id>` (`EX-SHARE`). The `s` token is a
+  fresh random per-share word minted at copy time (`EX-SHARE` join); it carries no visitor identity.
 - **Gracious deterrent** — the quiet answer to a grab: the `enjoy` toast plus the site host,
   never a scold (`EX-PROTECT`).
 - **Told story** — one short associative line per work, written on demand at the edge, cached in

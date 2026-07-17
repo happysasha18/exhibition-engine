@@ -3,6 +3,7 @@
 exhibition-engine synthetic fixture. Run: python tests/test_share.py
 """
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -62,7 +63,7 @@ check("EX-SHARE toast strings ride the one cache (7 langs baked · validator kno
 
 BROWSER_ROWS = [
     "EX-SHARE-BTN one FLOATING button copies, never navigates (fixed chrome above the room; toast; no ↗/`/w/`)",
-    "EX-SHARE-BTN the copied line is canonical AND follows the eye (root + house utm + #w-<work IN VIEW>)",
+    "EX-SHARE-BTN the copied line is canonical AND follows the eye (root + house utm + a FRESH per-share s + #w-<work IN VIEW>)",
     "EX-SHARE-BTN touch vs hover (hover:none → present ≥44px; hover:hover → rests QUIET, lifts on hover+focus)",
     "EX-SHARE-BTN clipboard refusal → the toast CARRIES the link and stays until dismissed (Esc)",
     "EX-SHARE-BTN the chrome leaves off the works (closing screen + door → the floating button hides)",
@@ -154,12 +155,19 @@ else:
             second_in_view = br.evaluate(IN_VIEW)
             br.click(".ex-share", settle=0.4)
             copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
+            # each copy carries root + house utm + a FRESH random per-share token `s` (bounded closed
+            # alphabet, EX-SHARE join / INV-1) + the work IN VIEW; the two tokens must DIFFER (minted
+            # per click), the two ids must follow the eye (frames[0] then frames[1]).
+            pat = (lambda wid: re.compile(
+                r"^" + re.escape(f"{SITE_URL}/?utm_source=share&utm_medium=referral&s=")
+                + r"([a-z0-9]{1,16})" + re.escape(f"#w-{wid}") + r"$"))
+            m0 = pat(frames[0]).match(copied[0]) if len(copied) > 0 else None
+            m1 = pat(second_in_view).match(copied[1]) if len(copied) > 1 else None
             check(BROWSER_ROWS[1],
-                  copied == [f"{SITE_URL}/?utm_source=share&utm_medium=referral#w-{frames[0]}",
-                             f"{SITE_URL}/?utm_source=share&utm_medium=referral#w-{second_in_view}"]
-                  and second_in_view == frames[1],
-                  f"copied={copied} in_view={second_in_view} (page had ?x=1; the second copy "
-                  f"must carry the work in view)")
+                  len(copied) == 2 and m0 and m1 and second_in_view == frames[1]
+                  and m0.group(1) != m1.group(1),
+                  f"copied={copied} in_view={second_in_view} fresh={bool(m0 and m1) and (m0.group(1) != m1.group(1) if m0 and m1 else None)} "
+                  f"(page had ?x=1; the second copy must carry the work in view and a fresh token)")
 
             # 4 · the chrome leaves off the works: closing screen + door hide the floating button
             br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
@@ -211,9 +219,12 @@ else:
             br.key("Escape")
             br.sleep(0.4)
             gone = br.evaluate(TOAST) is None
-            link = f"{SITE_URL}/?utm_source=share&utm_medium=referral#w-{frames[0]}"
+            # the fallback toast carries the full copyable line, now token-bearing (EX-SHARE join)
+            link_re = re.compile(
+                re.escape(f"{SITE_URL}/?utm_source=share&utm_medium=referral&s=")
+                + r"[a-z0-9]{1,16}" + re.escape(f"#w-{frames[0]}"))
             check(BROWSER_ROWS[3],
-                  link in toast1 and link in toast2 and gone,
+                  bool(link_re.search(toast1)) and bool(link_re.search(toast2)) and gone,
                   f"toast1={toast1!r} still={toast2!r} gone_after_esc={gone}")
 
             # 12 · the toast lands beside the button it answers (his 2026-07-10 note) — measured

@@ -2028,6 +2028,26 @@
   toastEl.addEventListener("click", toastOff);
   addEventListener("keydown", (ev) => { if (ev.key === "Escape") toastOff(); });
 
+  // ---- EX-SHARE join (INV-1): a copied link carries a FRESH random per-share token `s` so GA
+  // can join THIS specific share to the specific open it produces (the virality loop / k-factor).
+  // The token is minted per click, is a bounded closed-alphabet word, and carries NO visitor
+  // identity — a random draw, never the coat-check token — so the loop closes without linking
+  // people (INV-1: no free text, no identity on the wire).
+  function mintShareToken() {
+    try {
+      const b = new Uint8Array(6);
+      crypto.getRandomValues(b);
+      return Array.from(b, (x) => (x % 36).toString(36)).join("");
+    } catch (e) { return Math.random().toString(36).slice(2, 8); }
+  }
+  function shareTokenExtra() {                          // read `s` off THIS arrival's query, closed-shape
+    try {
+      const m = (location.search || "").match(/[?&]s=([a-z0-9]{1,16})(?:&|$)/);
+      if (m) return { s: m[1] };                        // validated shape ⇒ safe to ride (INV-1)
+    } catch (e) {}
+    return undefined;                                   // no token ⇒ the payload is byte-for-byte today's
+  }
+
   // ONE share control FLOATS over the walk (2026-07-09: the player and the link are chrome
   // ABOVE the room — they never ride a frame, so nothing drifts with a scroll). It acts on the
   // work IN VIEW (dataset.share follows the frame observer) and lives by the caption's law:
@@ -2042,13 +2062,16 @@
     const id = shareBtn.dataset.share;
     if (!id) return;
     // The copied line carries UTM attribution (EX-SHARE-BTN) so a shared arrival separates
-    // from Direct/bot noise — the utm rides before the hash (GA reads the query, the room reads #w-<id>)
-    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral#w-" + id;
+    // from Direct/bot noise — the utm rides before the hash (GA reads the query, the room reads #w-<id>).
+    // A fresh per-share token `s` rides too (EX-SHARE join / INV-1), stamped on this copy so the
+    // matching arrival joins back to it.
+    const s = mintShareToken();
+    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral&s=" + s + "#w-" + id;
     const S = shareStrings();
     const write = (navigator.clipboard && navigator.clipboard.writeText)
       ? navigator.clipboard.writeText(link)
       : Promise.reject(new Error("no clipboard"));
-    pulse("share_copy", id);
+    pulse("share_copy", id, { s: s });
     write.then(() => toast(S.copied))
          .catch(() => toast(link, true));              // never a silent failure (EX-SHARE-BTN)
   });
@@ -3647,7 +3670,7 @@
   }
   function arriveByHash(hid) {
     tlog("handover");
-    pulse("share_arrive", hid);
+    pulse("share_arrive", hid, shareTokenExtra());       // join back to the share that minted `s` (EX-SHARE / INV-1)
     const shownIds = entered ? order.slice(0, shown) : [];
     if (!(entered && shownIds.indexOf(hid) >= 0)) {    // (b) acts as a pick — fresh-top,
       pick = hid;                                      // the same law a door pick lives by
