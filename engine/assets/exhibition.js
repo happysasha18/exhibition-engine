@@ -1468,6 +1468,21 @@
         askPortion(parts[0][0], parts[0][1], () => { beatDone = true; if (beatWake) beatWake(); });
       }
     }
+    // EX-DOOR-2e loader (INV-89 companion): with the story voice off — the default — the crossing still
+    // shows the picked picture pulsing while the room's own frame decodes. The pulse is keyed on the
+    // room-tier image's decode, so a warm room (decode resolves before the 0.92 beat) opens instant and
+    // plateless (INV-25) while a cold room breathes until its frame lands or the BEAT_HOLD cap. Reduced
+    // motion and Save-Data stand the pulse down (the same class laws warmRoomPicture honours).
+    if (beatDone && !REDUCED && !dataSaver()) {
+      const rim = new Image();
+      if (w.srcset) { rim.sizes = data.walk_sizes || "88vw"; rim.srcset = w.srcset; }
+      rim.src = w.img;
+      beatDone = false;
+      const wake = () => { if (!ok()) return; beatDone = true; if (beatWake) beatWake(); };
+      if (rim.decode) rim.decode().then(wake, wake);
+      else if (rim.complete) wake();
+      else { rim.onload = wake; rim.onerror = wake; }
+    }
     beatKill();
     const bimg = win && win.querySelector ? win.querySelector("img") : null;
     beatRect = bimg ? bimg.getBoundingClientRect() : null;
@@ -1758,7 +1773,10 @@
     }
     const sideCol = startGap - startInset;             // the free column from the counter's inset to the picture
     const sideW = sideCol - GAP;                        // the band's own width, a breath shy of the picture
-    if (sideCol >= CAP_SIDE_FLOOR) {                    // the free column reaches the legibility floor
+    // The side band is a touch/landscape seat only: on a desktop (a fine pointer) the caption keeps the
+    // bottom band for every work — a tall picture that reaches the text gets the last-resort scrim below
+    // rather than a dodge to the top, so the plaque never jumps between works (INV-97, the owner's call).
+    if (matchMedia("(pointer: coarse)").matches && sideCol >= CAP_SIDE_FLOOR) {  // the free column reaches the legibility floor
       const topPx = cr.bottom + GAP;                    // below the counter's line (block axis, unmirrored)
       cap.style.top = topPx + "px";
       cap.style.bottom = "auto";
@@ -3866,7 +3884,7 @@
       '</div>' +
       '<button class="exsnd-btn" type="button" aria-pressed="false"' +
         ' aria-label="' + (SNDT.a11y_sound || A11Y_SOUND_EN) +
-        '"><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
+        '"><span class="exsnd-play"></span><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));   // EX-ARRIVE: arrives on the breath
 
