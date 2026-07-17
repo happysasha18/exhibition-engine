@@ -663,6 +663,7 @@ body:has(#ex-quiz-card.show) #ex-sound,
   transition:transform calc(.9s * var(--tempo)) cubic-bezier(.22,.61,.36,1),
              opacity calc(.5s * var(--tempo)) ease; }
 .exd-beat img{ width:100%; height:100%; object-fit:cover; display:block; }
-.exd-beat.breathe img{ animation:exd-breath calc(2.2s * var(--tempo)) ease-in-out infinite; }
-@keyframes exd-breath{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.045); } }
+.exd-beat.breathe img{ animation:exd-breath calc(1.7s * var(--tempo)) ease-in-out infinite; }
+@keyframes exd-breath{ 0%,100%{ transform:scale(.96); filter:brightness(.9); }
+                       50%{ transform:scale(1.08); filter:brightness(1.12); } }
 @media (prefers-reduced-motion: reduce){ .exd-beat{ display:none; } }

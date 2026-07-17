@@ -1411,7 +1411,7 @@
     im.src = beatSrc; im.alt = "";
     el.appendChild(im);
     document.body.appendChild(el);
-    const k = Math.min(innerWidth * 0.52 / r.width, innerHeight * 0.52 / r.height);
+    const k = Math.min(innerWidth * 0.38 / r.width, innerHeight * 0.38 / r.height);
     const dx = innerWidth / 2 - (r.left + r.width / 2);
     const dy = innerHeight / 2 - (r.top + r.height / 2);
     requestAnimationFrame(() => {
@@ -3862,7 +3862,7 @@
     const SND_URL = (EX.sound_url || "").trim();
     if (!SND_URL) return;                                // no audio configured — player stays hidden
     const CREDIT = EX.sound_credit || {};
-    const FADE_IN = 1.2, FADE_OUT = 0.8, DEFAULT_VOL = 0.3;
+    const FADE_IN = 0.7, FADE_OUT = 0.8, DEFAULT_VOL = 0.3;
 
     const box = document.createElement("div");
     box.id = "ex-sound";
