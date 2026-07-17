@@ -50,6 +50,7 @@ REGISTRY = {
     "door_ready",  # EX-TIME-READ (INV-41): the arrival's coarse load read — once per arrival
     "inspect",     # EX-PICSTAT (INV-41): a settled zoom lays one look — owed at CODE time (the door_ready precedent)
     "error",       # EX-ERROR (INV-41): a fault reports itself — closed kind + load phase, capped, never a raw string
+    "friction",    # EX-FRICTION (INV-41/INV-99): frustration reports itself — rage-tap/rage-swipe, closed friction_kind + where, capped
 }
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_pulse_"))
@@ -144,6 +145,7 @@ BROWSER_ROWS = [
     "EX-PULSE the tongue counts — a baked pick reports its code; an outsider tongue reports `other`",
     "EX-PULSE walk_exit counts every leave — the exit control ONE, a browser-Back leave ONE, a cold door render NONE",
     "EX-ERROR a fault lays one error beat (closed kind + load phase, no raw string), capped at three per page",
+    "EX-FRICTION rage-tap lays one friction beat (closed friction_kind=tap + where, no raw coord); an interactive press never counts",
 ]
 
 # ---- EX-AB / INV-90 / INV-91 — the variant frame (SPEC "Experiments — the variant frame") ------
@@ -392,6 +394,35 @@ else:
                   capped and kinds_closed and phases_closed and no_raw,
                   f"errors={errs} capped={capped} kinds={sorted(k for k in kinds if k)} "
                   f"phases_closed={phases_closed} no_raw={no_raw}")
+
+    # ---- ROW: EX-FRICTION — rage-tap lays one coarse beat; an interactive press never counts -----
+    with serve(TMP) as base:
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            cold(br, base)
+            enter_walk(br)                                 # on the walk → where=walk
+            # four rapid taps on the PICTURE (a non-interactive surface) in one spot → one friction beat
+            tapped = br.evaluate(
+                "(function(){var im=document.querySelector('.exh-frame img.work');if(!im)return 'no-img';"
+                "var r=im.getBoundingClientRect();var x=Math.round(r.left+r.width/2),y=Math.round(r.top+r.height/2);"
+                "for(var i=0;i<4;i++)im.dispatchEvent(new PointerEvent('pointerdown',"
+                "{clientX:x,clientY:y,bubbles:true}));return 'ok';})()")
+            br.sleep(0.2)
+            # four rapid taps on the EXIT BUTTON (interactive) → must add NO friction beat
+            br.evaluate(
+                "(function(){var b=document.getElementById('ex-return');if(!b)return;"
+                "for(var i=0;i<4;i++)b.dispatchEvent(new PointerEvent('pointerdown',"
+                "{clientX:8,clientY:8,bubbles:true}));})()")
+            br.sleep(0.2)
+            fr = [p for n, p in evs_of(br) if n == "friction"]
+            one_beat = len(fr) == 1                                    # the tap burst fired ONCE; the button never counted
+            kind_ok = fr and fr[0].get("friction_kind") == "tap"
+            where_ok = fr and fr[0].get("where") == "walk"
+            no_raw = all(set(p.keys()) <= {"friction_kind", "where"} for p in fr)   # no coord/delta/count rides (INV-1)
+            check(BROWSER_ROWS[7],
+                  one_beat and kind_ok and where_ok and no_raw,
+                  f"friction={fr} one={one_beat} kind_ok={kind_ok} where_ok={where_ok} no_raw={no_raw} tapped={tapped}")
 
     # ================= VF rows: the variant frame (EX-AB / INV-90 / INV-91) =================
     FIXED_SEED_TOKEN = "abcdefgh12345678"    # 16 chars a-z0-9 — passes BOTH the quiz-token regex

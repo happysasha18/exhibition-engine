@@ -157,6 +157,60 @@
     window.addEventListener("unhandledrejection", () => reportError("promise"));
   } catch (e) {}
 
+  // ---- EX-FRICTION (INV-41 / INV-99): frustration reports itself as its own coarse beat -------
+  // A visitor who taps a dead spot again and again, or swipes while the walk is already at its end
+  // (going nowhere), is stuck — a signal invisible in the analytics until now. ONE `friction` beat
+  // carries only a closed `friction_kind` (tap · swipe) and a coarse `where` (door · walk · zoom) —
+  // never a coordinate, a delta, or a count (INV-1). Capped per page like the error beat so a
+  // genuinely-stuck guest lays a bounded count, never a flood. All thresholds are [default], his tune.
+  const FRICTION_CAP = 3;
+  const FRICTION_TAPS = 4;        // taps in one spot that read as frustration
+  const FRICTION_TAP_MS = 1200;   // the burst window
+  const FRICTION_TAP_PX = 44;     // a fingertip — the burst stays in one place
+  const FRICTION_SWIPES = 4;      // stuck (no-move) steps in a row that read as frustration
+  const FRICTION_SWIPE_MS = 2000; // the stuck-swipe window
+  let frictionSent = 0;
+  function frictionWhere() {
+    if (zoomOpen) return "zoom";
+    if (atDoor) return "door";
+    return "walk";
+  }
+  function reportFriction(kind) {
+    if (frictionSent >= FRICTION_CAP) return;
+    frictionSent++;
+    try { pulse("friction", null, { friction_kind: kind, where: frictionWhere() }); } catch (e) {}
+  }
+  // rage-tap: repeated taps on a NON-interactive surface, landing in one spot in quick succession —
+  // the guest taps and nothing answers. A press on a button / link / window is intent, never counted
+  // (and it breaks any running burst), so the closing screen's «ещё 5» and the door windows never
+  // read as friction.
+  let tapBurst = [];               // {t, x, y} within the live window, anchored on the first
+  try {
+    addEventListener("pointerdown", (e) => {
+      if (e.target && e.target.closest
+          && e.target.closest("button, a, [role=button], input, select, textarea, label")) {
+        tapBurst = []; return;
+      }
+      const now = performance.now(), x = e.clientX, y = e.clientY;
+      tapBurst = tapBurst.filter((p) => now - p.t <= FRICTION_TAP_MS);
+      if (tapBurst.length) {
+        const a = tapBurst[0];
+        if (Math.abs(x - a.x) > FRICTION_TAP_PX || Math.abs(y - a.y) > FRICTION_TAP_PX) tapBurst = [];
+      }
+      tapBurst.push({ t: now, x: x, y: y });
+      if (tapBurst.length >= FRICTION_TAPS) { reportFriction("tap"); tapBurst = []; }
+    }, { passive: true });
+  } catch (e) {}
+  // rage-swipe: fed from stepFrame — a step that clamps at an end and moves NOWHERE. A real browse
+  // that advances a frame clears the burst, so only going-nowhere thrashing ever lays the beat.
+  let stuckBurst = [];
+  function noteStuckStep() {
+    const now = performance.now();
+    stuckBurst = stuckBurst.filter((t) => now - t <= FRICTION_SWIPE_MS);
+    stuckBurst.push(now);
+    if (stuckBurst.length >= FRICTION_SWIPES) { reportFriction("swipe"); stuckBurst = []; }
+  }
+
   // EX-LOAD-3 (INV-73): the Save-Data class law's ONE home — a single predicate every client-side
   // picture prefetch consults (the walk's one-ahead, the door's candidate warm, the crossing's
   // pick-time warm). A browser asking to save data warms NOTHING; the pictures then load on the
@@ -3056,7 +3110,9 @@
     const stops = Array.prototype.map.call(els, frameCenter);
     if (!stops.length) return;
     const base = gliding && glideGoal != null ? glideGoal : scrollY;
-    const k = Math.min(stops.length - 1, Math.max(0, nearestStop(stops, base) + dir));
+    const cur = nearestStop(stops, base);
+    const k = Math.min(stops.length - 1, Math.max(0, cur + dir));
+    if (k === cur) noteStuckStep(); else stuckBurst = [];   // EX-FRICTION: a clamped no-move step vs a real advance
     glideTargetEl = els[k];                              // the destination SECTION — a mid-glide rotation docks HERE (INV-86)
     glideToFrame(stops[k], velocity);
   }
