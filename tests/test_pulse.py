@@ -47,6 +47,7 @@ REGISTRY = {
     # the measurement extension (INV-79), ported with the instance generic layer (de-fork stage 4)
     "viewer_lang", "return_gap", "copy_attempt", "story_told",
     "buy_click",   # the pre-conversion reach (the gift card's buy line)
+    "door_ready",  # EX-TIME-READ (INV-41): the arrival's coarse load read — once per arrival
 }
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_pulse_"))

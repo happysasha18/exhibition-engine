@@ -102,6 +102,63 @@
     return ms < H ? "hour" : ms < D ? "day" : ms < 7 * D ? "week" : ms < 30 * D ? "month" : "far";
   }
 
+  // ---- EX-TIME-READ (INV-41): the arrival's load, read as ONE coarse beat -------
+  // `door_ready` lays ONCE per arrival, at the EARLIEST of the door's five windows decoding, a pick
+  // crossing into a room, or the guest leaving before either (the leaving arm best-effort at
+  // page-hide). It carries a `load_stage` — the FURTHEST reached rung of the closed ladder
+  // paint · script · door · static · dynamic — plus a per-stage `lag_<stage>` reusing story_told's
+  // round-trip ladder (lagBucket). No raw number ever rides the wire (INV-1) — the marks are the
+  // tab's own clock (performance.now, ms since navigation start), read only as a bucket word.
+  const LOAD_LADDER = ["paint", "script", "door", "static", "dynamic"];
+  const stageAt = {};                                  // stage -> ms since navigation start
+  function markStage(stage) {
+    if (stageAt[stage] == null) stageAt[stage] = performance.now();
+  }
+  markStage("script");                                 // the client is running — the script has arrived
+  requestAnimationFrame(() => {                        // the first rAF lands just past first paint
+    if (stageAt.paint != null) return;
+    let t = null;
+    try {
+      const ps = performance.getEntriesByType("paint");
+      const fp = ps.find((e) => e.name === "first-contentful-paint") ||
+                 ps.find((e) => e.name === "first-paint");
+      if (fp) t = fp.startTime;
+    } catch (e) {}
+    stageAt.paint = (t != null ? t : performance.now());
+  });
+
+  // EX-LOAD-3 (INV-73): the Save-Data class law's ONE home — a single predicate every client-side
+  // picture prefetch consults (the walk's one-ahead, the door's candidate warm, the crossing's
+  // pick-time warm). A browser asking to save data warms NOTHING; the pictures then load on the
+  // step itself through the in-view ladder (EX-LOAD-2).
+  function dataSaver() {
+    try { return !!(navigator.connection && navigator.connection.saveData); }
+    catch (e) { return false; }
+  }
+
+  let doorReadyLaid = false;                            // door_ready lays ONCE per arrival (INV-41)
+  function furthestStage() {
+    let f = "paint";
+    for (const s of LOAD_LADDER) if (stageAt[s] != null) f = s;
+    return f;
+  }
+  function layDoorReady() {
+    if (doorReadyLaid) return;
+    doorReadyLaid = true;
+    if (stageAt.paint == null) stageAt.paint = performance.now();
+    const reached = furthestStage();
+    const extra = { load_stage: reached };
+    for (const s of LOAD_LADDER) {                      // a lag word for each stage the arrival reached
+      if (stageAt[s] != null) extra["lag_" + s] = lagBucket(stageAt[s]);
+      if (s === reached) break;
+    }
+    pulse("door_ready", null, extra);                  // pulse stamps the experiment arm like every beat
+  }
+  // the leaving arm: the guest departs before the door decodes or a pick — best-effort at page-hide
+  // (a beacon may be lost for the fastest bounces; the read's own caption owns that honesty).
+  addEventListener("visibilitychange", () => { if (document.hidden) layDoorReady(); });
+  addEventListener("pagehide", layDoorReady);
+
   // ---- EX-RESET (INV-35): the ?reset address — the museum forgets THIS browser --
   // One wipe, named keys only, BEFORE anything restores; the param strips itself via
   // replaceState — no history step laid (INV-32 fenced) and the pre-strip URL leaves
@@ -983,6 +1040,7 @@
   }
   function preloadAhead(curN) {                         // curN = the 1-based frame in view
     if (!PRELOAD_AHEAD) { preloadCancel(); return; }
+    if (dataSaver()) { preloadCancel(); return; }       // the Save-Data class law binds the one-ahead (EX-LOAD-3)
     const idx = (curN - 1) + travelDir;                 // one ahead along the feet
     if (idx < 0 || idx >= order.length) { preloadCancel(); return; }
     const id = String(order[idx]);
@@ -995,6 +1053,60 @@
     im.src = w.img;                                     // the browser picks the device tier
     preImg = im;
     try { window.__@@NS@@Preload = { id: id, dir: travelDir }; } catch (e) {}
+  }
+
+  // ---- EX-DOOR-WARM (INV-25): the door warms its candidates — a pick opens warm ----
+  // After the threshold's five windows decode AND the door rests, quietly warm ONE room-tier picture
+  // per candidate (≤5) at LOW priority — the EXACT URL the room's first hang will request (the walk's
+  // own full-frame `srcset`/`sizes`, INV-63), so the room's <img> finds the file already in cache.
+  // Never before the door's own windows (fired only after they decode), never under Save-Data (the
+  // class law's one home, dataSaver). Also the crossing's own pick-time warm (EX-DOOR-2e): the same
+  // one picture for the picked work, so a fast picker who beats the rest still opens warm.
+  const DOOR_WARM_SETTLE = 1000;                        // ms the threshold rests before warming (a network settle, unscaled)
+  let warmGen = 0;                                      // a re-deal / relayout rebuild / pick cancels a pending warm
+  let warmSettleT = null;
+  const warmed = new Set();
+  function warmRoomPicture(w) {
+    if (!w || dataSaver()) return;                      // the Save-Data class law, consulted here too (EX-LOAD-3)
+    if (warmed.has(w.id)) return;                       // one picture per candidate, once
+    warmed.add(w.id);
+    const im = new Image();
+    try { im.fetchPriority = "low"; } catch (e) {}      // never contends with the door's five windows
+    if (w.srcset) { im.sizes = data.walk_sizes || "88vw"; im.srcset = w.srcset; }  // the room's own tier
+    im.src = w.img;                                     // the browser resolves the exact room-hang URL (INV-63)
+  }
+  function warmCandidates(gen) {
+    if (gen !== warmGen || !atDoor || entered || busy || dataSaver()) return;
+    const spread = (doorFace && doorFace.spread) ? doorFace.spread.slice(0, curLay.n) : [];
+    spread.forEach((e) => warmRoomPicture(byId[e.id]));
+  }
+  // Track the threshold's decode: which layer each window belongs to is read ONCE at build — the
+  // STATIC layer is the windows whose pixels are already present (a cache hit, no fetch, the seam the
+  // door's own ladder reads via img.complete, EX-DOOR-2c); the DYNAMIC layer is the windows that must
+  // fetch. Their decode promises close the load ladder's last two rungs, lay door_ready (arm 1), and
+  // — after the rest — fire the candidate warm.
+  function doorWatch(facade) {
+    const imgs = [...facade.querySelectorAll(".exd-window img")];
+    if (!imgs.length) return;
+    const gen = ++warmGen;                              // this watch supersedes any pending warm
+    clearTimeout(warmSettleT); warmSettleT = null;
+    const decodeP = (img) => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      if (img.decode) return img.decode().catch(() => {});
+      return new Promise((res) => {
+        img.addEventListener("load", res, { once: true });
+        img.addEventListener("error", res, { once: true });
+      });
+    };
+    const staticImgs = imgs.filter((i) => i.complete && i.naturalWidth > 0);
+    Promise.all(staticImgs.map(decodeP)).then(() => { if (gen === warmGen) markStage("static"); });
+    Promise.all(imgs.map(decodeP)).then(() => {
+      if (gen !== warmGen) return;                      // a rebuild superseded this watch
+      markStage("static");                              // dynamic implies the static rung was passed (monotonic)
+      markStage("dynamic");
+      layDoorReady();                                   // arm 1: the door's five windows decoded
+      warmSettleT = setTimeout(() => warmCandidates(gen), DOOR_WARM_SETTLE);
+    });
   }
 
   // ---- THE DOOR (door.html's face — the norm) --------------------------------
@@ -1095,6 +1207,7 @@
     atDoor = true;
     faceSync();                                        // the door is a face — arm the rest + guard (EX-CHROME)
     tlog("door");
+    markStage("door");                                 // EX-TIME-READ: the door drawn — the ladder's 3rd rung
     document.body.classList.add("ex-door");
     door.classList.remove("leaving");
     door.hidden = false;
@@ -1194,6 +1307,7 @@
       b.addEventListener("click", () => doorPick(w, b));   // the window itself rides along (EX-STORY-BEAT: its picture is the beat's star)
       facade.appendChild(b);
     });
+    doorWatch(facade);   // EX-TIME-READ + EX-DOOR-WARM: watch the windows decode → door_ready + the candidate warm
   }
   let rsz;
   addEventListener("resize", () => { clearTimeout(rsz); rsz = setTimeout(doorRender, 150); });
@@ -1299,6 +1413,13 @@
     faceSync();                                        // the ceremony holds the lock (EX-CHROME)
     tlog("pick");
     pulse("door_pick", w.id);
+    // EX-TIME-READ: the pick-crossing is a door_ready lay arm (this arrival's load reached the pick,
+    // however far the door got) — laid ONCE, distinct from door_pick (they mark different things).
+    warmGen += 1; clearTimeout(warmSettleT);           // a pick cancels any pending candidate warm
+    layDoorReady();
+    // EX-DOOR-2e: the crossing's own pick-time warm — the picked work's room-tier picture, so a fast
+    // picker who beat the candidate warm still opens onto a warm first frame (Save-Data-gated).
+    warmRoomPicture(w);
     const g = ++cerGen;
     const ok = () => g === cerGen;
     pick = w.id;
