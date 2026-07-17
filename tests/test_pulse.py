@@ -48,6 +48,7 @@ REGISTRY = {
     "viewer_lang", "return_gap", "copy_attempt", "story_told",
     "buy_click",   # the pre-conversion reach (the gift card's buy line)
     "door_ready",  # EX-TIME-READ (INV-41): the arrival's coarse load read — once per arrival
+    "inspect",     # EX-PICSTAT (INV-41): a settled zoom lays one look — owed at CODE time (the door_ready precedent)
 }
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_pulse_"))
@@ -233,9 +234,12 @@ else:
             target = walk_all(br, base)
             evs = dict(evs_of(br))
             need = {"door_pick", "walk_unfold", "walk_exit", "share_copy", "share_arrive"}
-            # params ⊆ {work} is asserted for the FIVE core beats only — the boot beats
-            # (viewer_lang) carry their own closed params under INV-79
-            params_ok = all(set(evs[b].keys()) <= {"work"} for b in need if b in evs)
+            # params ⊆ {work, pic} is asserted for the FIVE core beats only — the boot beats
+            # (viewer_lang) carry their own closed params under INV-79. `pic` joins the declared
+            # scope at EX-PICSTAT code time (INV-41): every work-carrying beat now stamps the work's
+            # public id as the registered `pic` dimension beside its event-target `work` (INV-6) —
+            # a declaration-of-intent widening, the door_ready precedent, never an assertion's meaning.
+            params_ok = all(set(evs[b].keys()) <= {"work", "pic"} for b in need if b in evs)
             works_ok = (evs.get("door_pick", {}).get("work")
                         and evs.get("share_arrive", {}).get("work") == str(target))
             check(BROWSER_ROWS[0],
@@ -269,7 +273,8 @@ else:
             evs = evs_of(br)
             gp = first_of(evs, "gift_download")
             ok = (gp is not None and gp.get("gift_kind") == "grab"
-                  and gp.get("work") == str(grabbed) and set(gp.keys()) <= {"work", "gift_kind"})
+                  and gp.get("work") == str(grabbed)
+                  and set(gp.keys()) <= {"work", "pic", "gift_kind"})   # `pic` joins the declared scope (EX-PICSTAT/INV-41)
             check(BROWSER_ROWS[2], ok, f"grabbed={grabbed} gift_download={gp}")
 
     # ---- ROW: the side room counts — series_open + series_lift (lift only, never set-down) ----

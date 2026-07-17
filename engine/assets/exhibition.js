@@ -76,6 +76,10 @@
     try {
       if (typeof window.gtag !== "function") return;
       const params = workId ? { work: String(workId) } : {};
+      // EX-PICSTAT (INV-41): the work's public id also rides as the registered `pic` dimension on
+      // EVERY work-carrying beat, kept apart from the event-target `work` (INV-6) so GA can cross-tab
+      // any beat per work. One stamp here covers all nine work-carrying beats — no per-site copy.
+      if (workId) params.pic = String(workId);
       // a closed BAKED-ladder word rides a beat that owns one (gift_kind, lang) — never free text (INV-1)
       if (extra) for (const k in extra) params[k] = extra[k];
       // EX-AB (INV-91): every dealt arm rides EVERY registry beat as a dimension, keyed by the
@@ -2129,6 +2133,41 @@
   }
   const zReduce = matchMedia("(prefers-reduced-motion: reduce)");
   const zDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  // ---- EX-PICSTAT (INV-41): a SETTLED zoom lays one `inspect` per episode ------------------------
+  // The closer look enters the registry as its own beat by the door-leak precedent [EX-TIME-READ]: a
+  // release that leaves the picture open at/above its resting size (INV-93) lays one `inspect`,
+  // debounced to the pinch coming to REST; a flick that dismisses below rest, or never opens, lays
+  // nothing (the old frame-spam silence narrows to the un-settled flick, INV-1). ONE per zoom episode
+  // — re-entering the zoom later is a new episode (the flag resets in openZoom), repeated releases
+  // within one open zoom lay once. It carries the work (`pic`) and its `context` from the closed
+  // ladder door·walk·room, read off the source surface the zoom opened from (the seam the zoom knows).
+  let inspectTimer = 0, inspectLaid = false;
+  function inspectContext(el) {
+    if (!el || !el.closest) return null;
+    const win = el.closest(".exd-window");
+    if (win) return { context: "door", pic: win.dataset.id };     // a window on the front door
+    const print = el.closest(".exs-print");
+    if (print) return { context: "room", pic: print.dataset.id }; // a polaroid in the side room
+    const side = el.closest("#ex-side");
+    if (side) return { context: "room", pic: el.dataset.id };     // a lane image in the side room
+    const frame = el.closest(".exh-frame");
+    if (frame) return { context: "walk", pic: frame.dataset.id };  // a hung work on the walk
+    return null;
+  }
+  function clearInspect() { if (inspectTimer) { clearTimeout(inspectTimer); inspectTimer = 0; } }
+  function armInspect() {                                          // (re-)arm the settle debounce
+    clearInspect();
+    if (!zoomOpen || zDismissing || inspectLaid) return;
+    inspectTimer = setTimeout(() => {
+      inspectTimer = 0;
+      if (!zoomOpen || zDismissing || inspectLaid) return;
+      if (zScale < DISMISS_T) return;                             // must rest at/above resting size (INV-93)
+      const meta = inspectContext(zSrcEl);
+      if (!meta || !meta.context || !meta.pic) return;
+      inspectLaid = true;                                         // once per episode
+      pulse("inspect", meta.pic, { context: meta.context });      // pic + context; the arm rides via pulse (INV-91)
+    }, 320);
+  }
   // ---- EX-ZOOM the inspect flight (INV-82 rework, design 2026-07-15) — one motion class over the
   // five trigger types: entry IS the exit's mirror by construction. The stage owns the flight (always
   // animated, both ways on the SAME clock); the img owns only the pinch surplus; the crop is a clip
@@ -2261,6 +2300,7 @@
     if (zoomOpen || !el) return;
     const src = el.currentSrc || el.getAttribute("src") || el.src;
     if (!src) return;
+    inspectLaid = false; clearInspect();               // EX-PICSTAT: a fresh open is a new inspect episode
     zCancelTeardown();                                 // a reopen mid-teardown lands clean (rule 7)
     zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close
     const rect = el.getBoundingClientRect();           // its VISUAL rect (its own transform, e.g. a lifted print — rule 9)
@@ -2287,6 +2327,7 @@
   // dismissing pinch all go through history.back so Back and they share one road (INV-83).
   function closeZoom() {
     if (!zoomOpen) return;
+    clearInspect();                                    // EX-PICSTAT: a closing zoom lays no inspect
     zoomOpen = false; zDismissing = false; zDesk = 1; zBelow = false;
     const rect = (zSrcEl && document.body.contains(zSrcEl)) ? zSrcEl.getBoundingClientRect() : null;  // fresh VISUAL place (rotation/lift, INV-82 + rule 9)
     // Fold the current visual scale+pan into the flight's START, composed ONTO the live stage
@@ -2328,6 +2369,7 @@
     if (!zoomOpen) return;
     if (e.touches.length === 2) {                       // two fingers → pinch-scale (pan yields)
       zPinch = zDist(e.touches); zStartS = zScale; zPanning = false;
+      clearInspect();                                   // a resumed pinch is not at rest (EX-PICSTAT)
     } else if (e.touches.length === 1 && zScale > 1
                && e.target.closest && e.target.closest(".exz-img")) {
       zPanning = true;                                  // one finger on the enlarged picture → pan
@@ -2379,6 +2421,8 @@
       return;
     }
     if (zScale <= 1.03 && e.touches.length === 0) { zScale = 1; zTx = 0; zTy = 0; zApply(); }   // a near-1 release settles flat + centred
+    // EX-PICSTAT: a release that leaves the picture open at/above resting arms the settle debounce
+    if (zoomOpen && !zDismissing && e.touches.length === 0) armInspect();
   }, { passive: true });
   // Every way out is the same road (INV-83): the ×, a backdrop tap, and Esc all step history BACK, and
   // the popstate handler runs the one closeZoom — so the browser's own Back button closes the zoom too.
@@ -2437,6 +2481,7 @@
       openZoom(t);                                       // lays the one history step (INV-83) — the dismiss road
       if (!zoomOpen) return;
       zDesk = 1; zScale = Math.min(4, 1 + dScale); zApply();
+      armInspect();                                      // EX-PICSTAT: the wheel-pinch settles too
       return;
     }
     const ns = zScale + dScale;
@@ -2459,6 +2504,7 @@
     zDesk = 1; zBelow = false;
     zPreviewEnd(true);                                   // recovered above 1× — the preview eases off
     zScale = Math.min(4, ns); zClampPan(); zApply();
+    armInspect();                                        // EX-PICSTAT: the wheel-pinch coming to rest
   }
   // INV-76 desktop pan: once enlarged past 1×, a mouse drag inside the layer pans the picture — the
   // direct equivalent of the one-finger touch pan, under the same edge-bounded clamp (zClampPan).
@@ -2554,6 +2600,7 @@
     if (TOUCHY || !zoomOpen) return;
     if (zDesk < 1 && !zDismissing) { zDesk = 1; zBelow = false; zPreviewEnd(true); }   // an uncommitted release eases back (gestureend)
     if (zScale <= 1.03) { zScale = 1; zTx = 0; zTy = 0; zApply(); }    // near-1 release settles flat
+    if (zoomOpen && !zDismissing) armInspect();          // EX-PICSTAT: the trackpad pinch coming to rest
   }
   document.addEventListener("gesturestart", onGestureStart, { passive: false });
   document.addEventListener("gesturechange", onGestureChange, { passive: false });
@@ -3342,12 +3389,14 @@
       if (S.variant === "lane") {
         const im = new Image();
         im.src = w.img;
+        im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
         st.appendChild(im);
         decodes.push(im.decode().catch(() => {}));
         return;
       }
       const p = document.createElement("div");         // the polaroid table
       p.className = "exs-print";
+      p.dataset.id = w.id;                             // EX-PICSTAT: the room look reads its pic
       p.style.left = (8 + (i % 5) * 17 + (i * 7) % 5) + "%";
       p.style.top = (12 + Math.floor(i / 5) * 26 + (i * 11) % 7) + "%";
       p.style.setProperty("--rot", ((((i * 37) % 13) - 6)) + "deg");
