@@ -585,11 +585,19 @@ walk carries no lines and loses nothing (CS-8, `INV-8`).
 
 **The crossing carries the picked picture while the voice loads** (`EX-STORY-BEAT`, `INV-89`): on a
 door pick the chosen picture flies from its window to the centre of the black and **breathes** there
-while the story's first portion travels, so the photograph itself is the star of the loading beat
-rather than a blank veil. With the story voice off, the engine default, the same beat is keyed on
-the picked picture's own decode: a cold room breathes until its frame lands or the hold cap, and a
-warm room whose frame has already decoded opens at once with no beat (`INV-25`); Save-Data and
-reduced motion stand it down. The pick asks the picked arc's first portion at once (only the picked arc
+while the loading beat is genuinely a wait, so the photograph itself is the star of that wait rather
+than a blank veil. The beat's **cold-test is unified and holds while EITHER side is still travelling**:
+the picked picture's own room-tier decode, and — with the story voice on — the arc's first story
+portion. The beat is done only when BOTH have settled; with the voice off (the engine default) the
+story side is already done, so the test rests on the picture's decode alone. A warm open whose picture
+has already decoded (and whose portion, voice on, has already landed) opens at once with no beat
+(`INV-25`). **A near-instant open shows no centre pulse at all:** when both sides settle within a short
+grace of the crossing's own span (`beat_grace`, about 0.45s ×tempo), the crossing goes straight from
+the door to the first work's reveal, so the picked picture appears in the door and again in the room
+and never a third redundant time. The pulse builds only when a side is still travelling past that
+grace — a genuinely cold open — and then it takes the centre early, within the grace of the door's own
+dissolve, so a real wait never stands before a long blank veil. Save-Data and reduced motion stand the
+whole beat down. The pick asks the picked arc's first portion at once (only the picked arc
 is ever asked, so an unpicked window costs nothing), and the reveal waits on that portion's settle
 or a hold cap (`beat_hold`, about 2.5s ×tempo), whichever lands first — it **fails open**, so a
 refused or failed portion still reveals at the cap. The flying clone rides above the veil on the
@@ -1608,7 +1616,7 @@ the worker.
 | `INV-86` | The walk and the open zoom survive a device rotation: a portrait↔landscape orientation change is caught as its own event (not merely a resize), the frame stops recompute against the new viewport so the currently-docked frame stays centred under the eye with one-gesture-one-frame intact (`INV-84`), and if the inspect layer stands its source rect re-measures live so entry and exit still fly to the right place (`INV-82`); a rotation under another standing face keeps the face laws (`INV-67`). Mid-motion is honoured: a rotation arriving while a glide is in flight cancels the glide to a dock at its target frame before the stops recompute, and a rotation during a zoom entry/exit tween lets that tween finish, then re-measures the source |
 | `INV-87` | One inspect flight over all the triggers: entry is the exit's mirror; a wrapping stage owns position/origin/clip while the picture carries only the pinch; cover-crop windows and polaroids morph open, contained works crop nothing, a tilted polaroid rides its own rotation off its true visual rect; reduced motion collapses to an opacity crossfade; the teardown fires on the flight's transition end with a duration fallback so a headless compositor still tears down |
 | `INV-88` | The side room rests on its first member: the reused stage's leftover sideways position is cleared on open, the browser's scroll compensation refused (`overflow-anchor:none`), and the rest re-affirmed once every lane picture decodes — guarded by the dress generation and a live swipe |
-| `INV-89` | The crossing shows the picked picture breathing at the black's centre while the arc's first story portion loads, or with the voice off while the picked picture's own frame decodes (a warm frame opens at once, INV-25); the reveal waits on that settle or a hold cap and fails open; the flying clone hands off into the first work's reveal; Save-Data and reduced motion never build it |
+| `INV-89` | The crossing's loading beat has a unified cold-test that holds while EITHER side still travels — the picked picture's own room-tier decode AND (voice on) the arc's first story portion — done only when BOTH settle (voice off ⇒ the story side is already done); a near-instant open where both settle within a short grace (`beat_grace`, ~0.45s ×tempo) shows NO centre pulse and goes door→reveal (the picture never a third redundant time), the pulse building only when a side still travels past that grace and then taking the centre early within the door's dissolve (a real wait never stands before a long blank); the reveal waits on the settle or a hold cap (`beat_hold`) and fails open; the flying clone hands off into the first work's reveal; a warm open opens at once (INV-25); Save-Data and reduced motion never build it |
 | `INV-90` | The deal: at boot, synchronously ahead of any beat, the client deals each registered experiment one arm off the visitor's seed (the coat-check token — minted by the seed read itself when none exists — else the per-tab id, else `anon`) by the pinned formula `floor(quizHash(token+":"+salt)/2^32 × arms.length)`, an equal split; moving the formula counts as a spec change because it reshuffles a returning visitor's arm; the arm holds across visits with memory on (`?reset` forgets the token and deals fresh), per tab with memory off; a registry entry names at least two arms and a registry-unique salt or the bake refuses it; one hash per experiment at boot, no network, no write beyond the first mint, the coat-check record never widens |
 | `INV-91` | The stamp: every dealt arm — and the declared story-variant dimension — rides every registry beat as a dimension keyed by the experiment's name, its value a word from the closed arms list (`INV-1`); the frame adds no beat (`INV-41` stands); a flag off or no arm dealt leaves the key absent and the payload byte-for-byte today's |
 | `INV-93` | One dismiss margin (~0.97× of the resting size, `INV-82`) serves both the zoom-out and the dismiss across the touch pinch, the trackpad pinch, and the physical modifier wheel, so the in-pinch mirrors the out-pinch under a single value; a release below resting closes, at or above resting holds open |

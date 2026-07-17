@@ -1396,6 +1396,9 @@
   // down by ceremonyCancel like every ceremony prop; reduced motion never builds it.
   const BEAT_HOLD = 2.5;      // s×tempo the crossing may stretch past its plain reveal while the
                               // first portion is still in flight ([default], his tune)
+  const BEAT_GRACE = 0.45;    // s×tempo after the wordmark beat that a near-instant open is given to
+                              // settle BOTH sides before any pulse builds — a fast open skips it
+                              // outright (no third copy of the picture); [default], his tune (INV-89)
   let beatEl = null, beatRect = null, beatSrc = "";
   function beatKill() {
     if (beatEl) { try { beatEl.remove(); } catch (e) {} beatEl = null; }
@@ -1460,25 +1463,30 @@
     // EX-STORY-BEAT (INV-89): the pick itself asks the picked arc's first portion — the model's
     // head start is the whole crossing, and ONLY the picked arc is ever asked (an unpicked window
     // costs nothing). The reveal below waits on this settle or the hold cap, never longer.
-    let beatDone = true, beatWake = null;
+    // EX-STORY-BEAT (INV-89): a UNIFIED cold-test — the beat holds while EITHER side still travels,
+    // and is done only when BOTH settle. The story side (voice on) and the picture side (the picked
+    // work's own room-tier decode) each carry their own flag; voice off ⇒ the story side is already
+    // done, so the picture's decode alone carries the test.
+    let storyDone = true, picDone = true, beatWake = null;
+    const beatDone = () => storyDone && picDone;
+    const beatWakeMaybe = () => { if (beatWake && beatDone()) beatWake(); };
     if (STORY_ON) {
       const parts = storyPortions(Math.min(shown, order.length));
       if (parts.length) {
-        beatDone = false;
-        askPortion(parts[0][0], parts[0][1], () => { beatDone = true; if (beatWake) beatWake(); });
+        storyDone = false;
+        askPortion(parts[0][0], parts[0][1], () => { storyDone = true; beatWakeMaybe(); });
       }
     }
-    // EX-DOOR-2e loader (INV-89 companion): with the story voice off — the default — the crossing still
-    // shows the picked picture pulsing while the room's own frame decodes. The pulse is keyed on the
-    // room-tier image's decode, so a warm room (decode resolves before the 0.92 beat) opens instant and
-    // plateless (INV-25) while a cold room breathes until its frame lands or the BEAT_HOLD cap. Reduced
-    // motion and Save-Data stand the pulse down (the same class laws warmRoomPicture honours).
-    if (beatDone && !REDUCED && !dataSaver()) {
+    // The picture side (INV-89 + INV-25): the picked work's room-tier decode. A warm room whose frame
+    // has already decoded settles this side at once (opens plateless). Awaited only OFF Save-Data /
+    // reduced motion — the class law forbids an early room-tier fetch under Save-Data (EX-LOAD-3), so
+    // there the picture side never blocks and never fetches early.
+    if (!REDUCED && !dataSaver()) {
       const rim = new Image();
       if (w.srcset) { rim.sizes = data.walk_sizes || "88vw"; rim.srcset = w.srcset; }
       rim.src = w.img;
-      beatDone = false;
-      const wake = () => { if (!ok()) return; beatDone = true; if (beatWake) beatWake(); };
+      picDone = false;
+      const wake = () => { if (!ok()) return; picDone = true; beatWakeMaybe(); };
       if (rim.decode) rim.decode().then(wake, wake);
       else if (rim.complete) wake();
       else { rim.onload = wake; rim.onerror = wake; }
@@ -1493,7 +1501,10 @@
     requestAnimationFrame(() => veil.classList.add("on"));
     cerAfter(0.92, () => { if (!ok()) return;          // the name lets go
       door.classList.add("wm-out");
-      if (!beatDone) beatFly();                        // the picked picture takes the black's centre
+      // INV-89: a near-instant open is given a grace to settle BOTH sides before any pulse builds —
+      // if still travelling AFTER the grace, the picked picture takes the black's centre; if both
+      // settle within it, no pulse ever (the fast open goes straight to the reveal, no third copy).
+      if (!beatDone()) cerAfter(BEAT_GRACE, () => { if (!ok()) return; if (!beatDone()) beatFly(); });
     });
     cerAfter(1.18, () => { if (!ok()) return;          // faces swap under the black
       document.body.classList.add("ex-crossing");      // works + details held back
@@ -1519,7 +1530,7 @@
       // EX-STORY-BEAT: reveal at once when the portion has settled (served OR failed — a dead
       // voice never holds the guest) or under reduced motion; else the pulse holds until the
       // settle or the hold cap, whichever lands first (fails open, INV-89)
-      if (beatDone || REDUCED) { land(); return; }
+      if (beatDone() || REDUCED) { land(); return; }
       beatWake = land;
       cerAfter(BEAT_HOLD, land);
     });

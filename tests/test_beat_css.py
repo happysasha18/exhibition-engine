@@ -43,6 +43,7 @@ build_site.OUT = TMP
 build_site.build(SITE_URL)
 
 CSS = (TMP / "exhibition.css").read_text(encoding="utf-8")
+JS = (TMP / "exhibition.js").read_text(encoding="utf-8")   # the served client — the beat's cold-test
 
 # --selftest strips every rule these rows assert, so a load-bearing row MUST flip to FAIL. The
 # mutation removes each targeted block/declaration; the checks below then run against the wreck.
@@ -52,6 +53,8 @@ if SELFTEST:
     CSS = CSS.replace("text-wrap:balance", "text-wrap:normal")    # the balanced wrap
     CSS = CSS.replace("--cap-narrow-scale", "--cap-dead-scale")   # the narrow type-step
     CSS = re.sub(r"@media\s*\(prefers-reduced-motion[^{]*\{\s*\.exd-beat\s*\{[^}]*\}", "", CSS)
+    JS = JS.replace("storyDone && picDone", "storyDone")          # break the unified cold-test
+    JS = JS.replace("BEAT_GRACE", "BEAT_DEAD")                    # strip the grace before the pulse
 
 
 # ===== EX-STORY-BEAT (INV-89): the crossing clone's CSS family =====
@@ -106,6 +109,26 @@ check("EX-CAPTION text-wrap:balance rides the caption prose (INV-98)",
 # down so the balanced text clears the picture (INV-98; the owner knob --cap-narrow-step drives it)
 check("EX-CAPTION narrow-screen type-step present (--cap-narrow-scale from --cap-narrow-step)",
       bool(re.search(r"--cap-narrow-scale\s*:\s*calc\([^)]*--cap-narrow-step", CSS)))
+
+
+# ===== EX-STORY-BEAT (INV-89): the served client's UNIFIED cold-test + the grace before the pulse =====
+# The beat's rendered behaviour (pulse on a genuine wait, fails open) is proven in the browser suites;
+# these string rows guard the SHAPE of the decision the pulse can never silently regress to: the beat is
+# done only when BOTH sides settle, and a near-instant open is given a grace before any pulse builds.
+
+# 8 — the cold-test is UNIFIED: `beatDone` is the conjunction of the two independent side-flags
+# (story + picture), so the beat holds while EITHER still travels (INV-89; was a single scalar keyed on
+# one side, the latent voice-on-ignores-the-picture defect).
+check("EX-STORY-BEAT the client's cold-test is unified — beatDone = storyDone && picDone (INV-89)",
+      bool(re.search(r"beatDone\s*=\s*\(\)\s*=>\s*storyDone\s*&&\s*picDone", JS)),
+      "the unified two-flag cold-test is missing from the served client")
+
+# 9 — the grace: a near-instant open is given BEAT_GRACE after the wordmark beat to settle both sides
+# before any pulse builds; the pulse arms only if still travelling past it (INV-89 — the fast-open no-flash)
+check("EX-STORY-BEAT a grace gates the pulse — BEAT_GRACE armed only while still travelling (INV-89)",
+      "BEAT_GRACE" in JS
+      and bool(re.search(r"if\s*\(\s*!beatDone\(\)\s*\)\s*cerAfter\(\s*BEAT_GRACE", JS)),
+      "the BEAT_GRACE grace-arm before the pulse is missing from the served client")
 
 
 fails = [r for r in results if r[1] == "FAIL"]
