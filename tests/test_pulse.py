@@ -49,6 +49,7 @@ REGISTRY = {
     "buy_click",   # the pre-conversion reach (the gift card's buy line)
     "door_ready",  # EX-TIME-READ (INV-41): the arrival's coarse load read — once per arrival
     "inspect",     # EX-PICSTAT (INV-41): a settled zoom lays one look — owed at CODE time (the door_ready precedent)
+    "error",       # EX-ERROR (INV-41): a fault reports itself — closed kind + load phase, capped, never a raw string
 }
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_pulse_"))
@@ -142,6 +143,7 @@ BROWSER_ROWS = [
     "EX-PULSE the side room counts — series_open (the series root's work) + one series_lift per LIFT, none on set-down",
     "EX-PULSE the tongue counts — a baked pick reports its code; an outsider tongue reports `other`",
     "EX-PULSE walk_exit counts every leave — the exit control ONE, a browser-Back leave ONE, a cold door render NONE",
+    "EX-ERROR a fault lays one error beat (closed kind + load phase, no raw string), capped at three per page",
 ]
 
 # ---- EX-AB / INV-90 / INV-91 — the variant frame (SPEC "Experiments — the variant frame") ------
@@ -363,6 +365,33 @@ else:
     check(BROWSER_ROWS[5],
           cold_zero and exit_ctrl_n == 1 and before_back == 0 and at_door and back_n == 1,
           f"cold0={cold_zero} exit_ctrl={exit_ctrl_n} before_back={before_back} at_door={at_door} back={back_n}")
+
+    # ---- ROW: EX-ERROR — a fault lays one coarse beat, closed params, capped at three ----------
+    LADDER_PHASES = {"paint", "script", "door", "static", "dynamic", "boot"}
+    with serve(TMP) as base:
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            cold(br, base)
+            enter_walk(br)                                 # reach a real load phase (door/static/dynamic)
+            # a script fault, detached from evaluate's own try/catch so it reaches window.onerror
+            br.evaluate("setTimeout(function(){throw new Error('secret-path-should-never-ride')},0)")
+            br.sleep(0.3)
+            br.evaluate("Promise.reject(new Error('y'))")  # an unhandled rejection → promise kind
+            br.sleep(0.3)
+            # five more faults — the cap holds the wire at three total
+            br.evaluate("for(var i=0;i<5;i++)setTimeout(function(){throw new Error('z')},0)")
+            br.sleep(0.4)
+            errs = [p for n, p in evs_of(br) if n == "error"]
+            kinds = {p.get("kind") for p in errs}
+            capped = len(errs) == 3                                     # ERROR_CAP holds
+            kinds_closed = kinds <= {"script", "promise"} and {"script", "promise"} <= kinds
+            phases_closed = all(p.get("phase") in LADDER_PHASES for p in errs)
+            no_raw = all(set(p.keys()) <= {"kind", "phase"} for p in errs)   # no message/stack/url rides
+            check(BROWSER_ROWS[6],
+                  capped and kinds_closed and phases_closed and no_raw,
+                  f"errors={errs} capped={capped} kinds={sorted(k for k in kinds if k)} "
+                  f"phases_closed={phases_closed} no_raw={no_raw}")
 
     # ================= VF rows: the variant frame (EX-AB / INV-90 / INV-91) =================
     FIXED_SEED_TOKEN = "abcdefgh12345678"    # 16 chars a-z0-9 — passes BOTH the quiz-token regex

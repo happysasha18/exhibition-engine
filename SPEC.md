@@ -1168,6 +1168,7 @@ with no spec sentence, which the old "five beats" prose could not see). `EX-PULS
 | `series_lift` | a print lifted to the light in the side room — every lift counts, setting it back down does not `[default]` | the lifted work |
 | `gift_download` | a gift file actually leaves for the visitor's device (on the prize's yes this beat lands BESIDE the quiz funnel's `gift` stage — a beat and a dimension marking one moment, never a double event) | the work + `gift_kind` from the closed pair `quiz_prize` / `grab` |
 | `lang_pick` | the guest chooses the exhibition's tongue at the door | `lang` — a code from the baked list (the guest's own outsider tongue reports as `other`, so the ladder stays closed) `[default]` |
+| `error` | a script fault or an unhandled promise rejection reaches the window, capped at three per page so a looping fault stays off the wire `[default]` | a closed `kind` (`script` · `promise`) and the furthest load `phase` reached (the `door_ready` ladder `paint`·`script`·`door`·`static`·`dynamic`, else `boot`); the message, the stack, and the url stay in the tab (`INV-1`) |
 
 Every live experiment's dealt arm rides **every registry beat as a dimension** — the frame stamps it
 on each beat by the experiment's name (`EX-AB`). The quiz stage rides the two walk beats,
@@ -1510,7 +1511,7 @@ the worker.
 | `EX-I18N` | The any-language layer: one deferred fetch per new locale, KV-cached |
 | `EX-EDGE-GUARD` | Three money fences before any model call |
 | `EX-MEMORY` | The coat-check token: seen-work ids at the edge, anonymous |
-| `EX-PULSE` | The event registry: sixteen beats on the GA wire, held both ways by a standing test |
+| `EX-PULSE` | The event registry: seventeen beats on the GA wire, held both ways by a standing test |
 | `EX-AB` | The variant frame: a config `experiments` registry (arms · flag · metric · salt) the client reads at boot, dealing each live experiment one arm off the visitor's seed and stamping it on every registry beat as a dimension; carries no beat, no readout, and no visible surface of its own |
 | `EX-TIMING` | Performance marks for the builder; `?timings` narrates them |
 | `EX-RESET` | `?reset` wipes named keys; idempotent |

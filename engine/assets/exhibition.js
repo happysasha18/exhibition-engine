@@ -131,6 +131,32 @@
     stageAt.paint = (t != null ? t : performance.now());
   });
 
+  // ---- EX-ERROR (INV-41): a fault reports itself as its own coarse beat --------
+  // A script error or an unhandled promise rejection lays ONE `error` beat carrying only a closed
+  // `kind` (script · promise) and the furthest load `phase` reached — never the message, the stack,
+  // or the url (INV-1), so a fault is a visible canary while no raw string ever rides the wire. Its
+  // own moment, entered through the registry beside door_ready and inspect (the same INV-41 pattern).
+  // Capped at ERROR_CAP per page so a looping fault cannot flood the tag (a closed number, off wire).
+  const ERROR_CAP = 3;
+  let errorsSent = 0;
+  function loadPhase() {
+    for (let i = LOAD_LADDER.length - 1; i >= 0; i--) {
+      if (stageAt[LOAD_LADDER[i]] != null) return LOAD_LADDER[i];
+    }
+    return "boot";
+  }
+  function reportError(kind) {
+    if (errorsSent >= ERROR_CAP) return;
+    errorsSent++;
+    try { pulse("error", null, { kind: kind, phase: loadPhase() }); } catch (e) {}
+  }
+  try {
+    // default (bubbling) listener — an uncaught script exception only; a resource load error does
+    // not bubble to window, so image fallbacks (im.onerror) stay the picture layer's own affair.
+    window.addEventListener("error", () => reportError("script"));
+    window.addEventListener("unhandledrejection", () => reportError("promise"));
+  } catch (e) {}
+
   // EX-LOAD-3 (INV-73): the Save-Data class law's ONE home — a single predicate every client-side
   // picture prefetch consults (the walk's one-ahead, the door's candidate warm, the crossing's
   // pick-time warm). A browser asking to save data warms NOTHING; the pictures then load on the
