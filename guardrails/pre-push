@@ -13,6 +13,10 @@ echo ""
 echo "-- gate r — ratchet caps --"
 .venv/bin/python -m pytest -q tests/test_ratchet_lock.py || fail=1
 
+echo ""
+echo "-- gate a — client assembly byte-parity (the layer-split's safety net) --"
+.venv/bin/python engine/assemble_client.py --check || fail=1
+
 if [ "$fail" -ne 0 ]; then
   echo ""
   echo "PUSH BLOCKED: a gate above is red."

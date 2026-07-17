@@ -22,7 +22,7 @@ SUITES = [
     "series", "motion", "reset", "load", "ladder", "share", "glide",
     "pulse", "hand", "i18n", "lang", "memory", "protect", "sound", "guard", "quiz",
     "shim", "compose", "dead", "quiz_flow", "parity", "zoom", "return", "gesture",
-    "wheel", "ratchet_lock", "beat_css",
+    "wheel", "ratchet_lock", "beat_css", "assembly",
 ]
 
 
