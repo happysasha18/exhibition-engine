@@ -181,9 +181,10 @@ is the engine's only remaining instance-facing brand value that the bake does no
 - **The share toast is never a silent failure.** When the browser refuses the clipboard, the
   toast carries the link itself, stays until dismissed, and must be hand-copyable. `INV-29`
 - **The JS-off static face is fully formed before JS wakes.** An inline script marks
-  `<html class="js">` before `<body>` parses, hiding the crawler's static index pre-paint; if
-  the walk hasn't come alive within 2.5 seconds, the mark is removed and the full static face
-  returns — a bounded worst case, never a blank page. `INV-30`
+  `<html class="js">` before `<body>` parses, hiding the crawler's static index pre-paint; the mark
+  holds through the whole boot behind the breathing boot face (`EX-BOOT`), and is removed only by the
+  client script's own load error or by a generous last-net cap (about 12s) on a hung ride, returning
+  the full static face as a bounded worst case. `INV-30`
 
 ---
 
@@ -198,9 +199,10 @@ click. The exhibition is this surface, assembled from the visitor's own signals.
 (`root_description`), a static grid of work thumbnails each linking to its `/w/` page, a
 copyright line, and the full JSON-LD (`WebSite` / `CollectionPage`) and OpenGraph metadata —
 complete and meaningful with no JS (`INV-2`). With **JavaScript on** the same URL comes alive:
-the static index is hidden before first paint by the inline script (`INV-30`); if the walk
-does not arrive within 2.5 seconds (broken or missing JS, failed data fetch), the static face
-returns. The crawlable static index links every work so a crawler discovers them all —
+the static index is hidden before first paint by the inline script (`INV-30`), the breathing boot
+face holding the cold arrival meanwhile (`EX-BOOT`); on a broken client (a script load error) or a
+genuinely hung boot (past the last-net cap), the static face returns. The crawlable static index
+links every work so a crawler discovers them all —
 regardless of whether the walk ever wakes. `INV-30`
 
 ### The door
@@ -363,6 +365,17 @@ museum-quiet, and never name a work, an axis, or a count. *Non-goal:* a badge of
 «N new since last visit» count — that needs works to be added over time and an added-date the content need
 not carry, so it stays out until a growing collection earns it.
 
+**A long sleep wakes at the door** (`INV-94`): a tab left idle past the return window's lower bound
+(the same lower bound the welcome-back reads, `INV-78`/`INV-79`) wakes at the door on its return
+rather than wherever it stood, so the ordinary returning arrival reads the last-visit clock through
+the same machinery. Each visible moment stamps a wake clock; on return, a gap past the bound clears
+the walk state and its place, forces a true cold arrival, and reloads to the door, while a shorter
+gap only re-greets for the live hour. An offline return leaves the gap standing untouched, so the
+very next online wake still sees the full gap and fires at once. A once-a-minute backstop is itself
+a wake detector, so a system sleep or a lid close that fires no visibility change is still caught.
+The walk's own scroll place never rides across this reset, and the visitor's separate memory (seen
+list, language, sound) is left whole. `INV-94`
+
 **The greeting strings are baked, not live** (`EX-GREET-BAKE`): the strings live in the
 committed `data/greetings.json` cache, authored at authoring time by the instance's own gen
 script (e.g. `scripts/gen_greetings.py`) calling a small model; the bake only READS the cache
@@ -410,6 +423,26 @@ In the hang the accent is **alive**, changing work to work; the closing screen w
 the last work the visitor saw. The `--tone` variable (the accent at ×0.66) tints the
 told-story line on the wall label. The accent is presentation, never a readout (`INV-1`: no
 number faces the visitor, the tone just IS).
+
+**The caption keeps to its own space** (`EX-CAPTION`, `INV-97`): the caption block seats in the
+free zone the centred picture leaves rather than over the picture, and holds clear of the reserved
+column under the share control. The centred picture is never moved or scaled for it; the block
+alone measures its seat at each frame's settle, one layout read per settle, and re-seats on a
+viewport turn (`INV-86`). It chooses among three seats: a **bottom band** below the picture when
+the band sits clear (still holding the share rail's end column reserved); a **side band** on its
+own start edge, below the counter and opposite the share rail, when the free column there reaches a
+legibility floor (about 140px, so a too-thin ribbon that would break a title one letter per line is
+refused as no honest gutter); and a **last-resort soft scrim** under the text where no honest
+gutter remains. The seated block is contained within the viewport, clamped to the room below the
+counter on a short frame. Right-to-left tongues mirror the whole seat through logical properties.
+`EX-CAPTION` `INV-97`
+
+**The caption wraps balanced** (`INV-98`): the title line, the narrator line, and any wrapping
+caption prose break into near-equal lines rather than a long line trailed by a short orphan, the
+browser's own balancer owning the break points, dictionary-broken scripts included and no model
+call. Below a narrow breakpoint the block runs narrower and a configurable type-step (an owner
+knob, engine default one step, 0 turns it off, clamped to a small range) scales the block down so
+the balanced text clears the picture. `INV-98`
 
 **The one-frame walk** (`EX-GLIDE`): the walk advances **one work at a time**. Every input — an
 arrow key, a wheel notch, a touch swipe, done HOWEVER — makes **exactly ONE** ideal transition to
@@ -548,6 +581,19 @@ order). Each opened portion is its own ordered sequence, so each portion's plot 
 key and serves free from cache on a re-ask (`⟨DELTA-16⟩`). One model call per distinct portion, $0 after. A failed or absent voice is SILENCE — the
 walk carries no lines and loses nothing (CS-8, `INV-8`).
 
+**The crossing carries the picked picture while the voice loads** (`EX-STORY-BEAT`, `INV-89`): on a
+door pick the chosen picture flies from its window to the centre of the black and **breathes** there
+while the story's first portion travels, so the photograph itself is the star of the loading beat
+rather than a blank veil. The pick asks the picked arc's first portion at once (only the picked arc
+is ever asked, so an unpicked window costs nothing), and the reveal waits on that portion's settle
+or a hold cap (`beat_hold`, about 2.5s ×tempo), whichever lands first — it **fails open**, so a
+refused or failed portion still reveals at the cap. The flying clone rides above the veil on the
+house tempo and, at the landing, hands off into the first work's own reveal as one continuous
+motion. It is torn down by the same cancel every ceremony prop obeys, and reduced motion never
+builds it. The clone wears its own CSS family: a fixed-position wrapper, the inner picture filling
+it, a slow breathing pulse on the inner picture while the story writes, and a reduced-motion rule
+that hides it outright. `EX-STORY-BEAT` `INV-89`
+
 **No story ships variant-blind** (`EX-STORY-AB`): every story carries its `story_variant` in the
 generated JSON and as a dimension on every registry beat — the variant frame's declared-dimension
 stamp (`EX-AB`/`INV-91`), no sixth beat added. The mode is chosen by `story.variant` in config;
@@ -672,6 +718,27 @@ zoom's step sits above any face already standing, so a Back press is consumed by
 room or door beneath only once the zoom has left (a zoom-close raises no walk-exit or series beat), and
 Back returns from the picture to the surface it was opened over — the walk, the standing side room, or
 the door — instead of navigating the page beneath.
+
+**One inspect flight carries every picture kind** (`INV-87`): entry and exit are the same motion
+reversed, drawn by one flight over all the triggers, so entry is the exit's mirror by construction.
+A wrapping stage owns the flight — the position, origin, and the clip morph — while the picture
+itself carries only the pinch surplus, so the live two-touch distance stays the sole scale authority
+throughout (`INV-81`). A cover-cropped source (a square door window, a polaroid print) starts
+clipped to that centre crop and the clip morphs open onto the whole contained picture; a contained
+source (a hung work, a lane picture) crops nothing. A tilted polaroid rides its own rotation:
+upright as it arrives in the layer and back into the tilt on the way home, measured from the print's
+true visual rect rather than its inflated axis-aligned box. The flight always animates on the shared
+cross clock both ways and holds even into a cold slot by deriving the rest box from the picture's
+natural fit. Under reduced motion or a vanished source it collapses to a short opacity crossfade in
+place. Its teardown fires on the flight's own transition end with a computed-duration fallback, so an
+occluded or headless compositor that paints nothing still tears down once. `INV-87`
+
+**One margin governs every pinch** (`INV-93`): the layer's zoom-out and its dismiss read the one
+dismiss margin (about 0.97× of the picture's resting size, `INV-82`), so the in-pinch mirrors the
+out-pinch under a single value across the touch pinch, the trackpad pinch, and the physical modifier
+wheel. A release just below the resting size closes the layer; a release at or above resting holds
+it open. `INV-93`
+
 *Facets:* touch AND desktop trackpad — a two-finger touch pinch and a non-touch trackpad pinch both
 open the layer (`INV-85`; the trackpad pinch on the picture under the pointer, EX-PROTECT handing the
 gesture over), while a plain wheel-only mouse is unaffected and navigates only; a near-1× release
@@ -918,6 +985,18 @@ in the current accent tone, centered where the work will hang, breathing at temp
 minimal, wordless. The work reveals the moment pixels land — the room's own quiet fade. A failed
 image retires the breath; the caption and counter still hold the frame; no error face. `EX-LOAD`
 
+**The boot face — a breathing line holds the cold arrival** (`EX-BOOT`, `INV-95`): while the client
+boots on a cold arrival, the root shows a quiet loading line that fades in from about 0.15s ×tempo
+and breathes continuously for as long as the script's ride takes, so a first paint is a living line
+rather than a black void. It is pure CSS and shows only after its own fast grace beat, so a healthy
+load that reaches the live face first never sees it. Its text is instance-supplied. Under reduced
+motion it stands as a still visible line with no loop. The static grid stays hidden behind it while
+the `js` mark holds; that mark is removed only by the client script's own load error (`onerror`) or
+by a generous last-net cap (about 12s) on a genuinely hung ride, so the bounded fallback of `INV-30`
+still lands. This supersedes the earlier 2.5s watchdog: the breathing line now holds through the
+whole boot rather than dumping a slow-network visitor into the static grid mid-ride. `EX-BOOT`
+`INV-95`
+
 ### The in-flight ladder — a frame in flight wears the work's own tone
 
 The lone-hairline breath (`EX-LOAD` above) **grows into a tone ladder**. Stepping onto a work whose
@@ -977,6 +1056,24 @@ shows a lane (scrolled sideways). Three honest ways to close: the back chip, Esc
 browser's Back — all landing the guest on the **exact frame they left** (the walk holds its
 place beneath, locked). The side room lays ONE history step; the page locks beneath it (`INV-21`).
 The `series_open` analytics beat rides the GA wire on open. `EX-SERIES` `INV-46`
+
+**The side room rests on its first member** (`INV-88`): the room opens on the series' first print, a
+fresh look from the top of the lane every time. Because the stage element is reused across opens, the
+browser's scroll anchoring would keep a prior lane's leftover sideways position, so the open clears
+it. The rest survives the prints' own late arrival: the layout refuses the browser's scroll
+compensation (`overflow-anchor: none`), and once every lane picture has decoded to its true size the
+rest is re-affirmed — guarded by the current dress's own generation and by whether the visitor has
+already taken the lane in hand, so a rebuilt or closed room, or one already under a live swipe, is
+left untouched. `INV-88`
+
+**An ambiguous window over the lane consumes nothing** (`INV-96`): while a standing side room's
+sideways lane is under the finger and the drag's axis is still ambiguous (its travel small in both
+directions), the client watches only and consumes no event — it neither latches a verdict nor
+prevents the default. The walk beneath is already inert while the room stands, so nothing of the
+walk's own needs guarding by an early consume, and eating the ambiguous window's events would poison
+the browser's native scroll hand-off for the whole gesture, leaving a slow-starting swipe dead. Once
+the travel clears the window the verdict is taken by the dominant axis: a mostly-sideways drag runs
+the lane natively. Every other face keeps the first-few-pixels verdict (`EX-CHROME`). `INV-96`
 
 ### The any-language layer
 
@@ -1379,6 +1476,7 @@ the worker.
 | `EX-GREET-BAKE` | The baked string cache; the gen command; the fallback |
 | `EX-LANG` | The corner language selector on the door |
 | `EX-HANG` | The gallery: one work per viewport, caption in the margin |
+| `EX-CAPTION` | The caption block keeps to its own space: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim; balanced wrap (`INV-98`); a narrow-screen type-step |
 | `EX-ACCENT` | The breathing ground and live accent |
 | `EX-GLIDE` | One input gesture → EXACTLY one centered frame — sine in-out, no drift; force scales the single glide's SPEED, never the count (`INV-84`); desktop animator, touch snap; survives a device rotation (`INV-86`) |
 | `EX-CHROME` | One page shape for the browser on every face: the root overflow cut is retired as a lock; every standing face (the re-opened door included) rests input + hides the scrollbar gutter-stable, with a snap-back guard correcting any scroll the house did not write |
@@ -1399,10 +1497,12 @@ the worker.
 | `EX-QUIZ-FLOW` | `quiz_stage` (shown → opened → won\|lost → gift) rides the same two beats as a running-max dimension; never a sixth beat; the stage wipes with the walk |
 | `EX-LADDER` | The responsive 640/960/1280 image ladder: a phone pulls light, a wide/retina screen sharp; base is the fallback |
 | `EX-LOAD` | The loading breath: solemn hairline while pixels travel; a cold-arrival line before the walk is live (instance text) |
+| `EX-BOOT` | The boot face: a breathing loading line holds the cold arrival from ~0.15s until the walk is live; pure CSS after a fast grace beat, instance text, reduced-motion a still line; the `js` mark falls only on the script's load error or a ~12s last-net cap (`INV-30`) |
 | `EX-LOAD-2` | The in-flight ladder: black → the work's own tone-plate (past the grace) → plate+bar (past the long wait) → the photo fades in over it, crisp when it beat the plate, graceful when it stood; the arm reads the settled state and arms once; supersedes the lone breath hairline. Runs at two call-sites — the walk's in-view frame (one reused overlay) and the door's five windows (a plate per window, no walk marks, no preload); the crossing and side room stay outside |
 | `EX-LOAD-3` | The one-ahead preload: the next work in the direction of travel is warmed at the device tier while a work rests — exactly `preload_ahead` (1), never the arc; best-effort, silent, cancelled and re-aimed on a turn or `#w-` jump |
 | `EX-SERIES` | The series side room: pill, crossing, lane / polaroids, honest close |
 | `EX-STORY` | The told story: one line per work, leaned by light, degrades to silence |
+| `EX-STORY-BEAT` | The crossing carries the picked picture pulsing at the black's centre while the arc's first story portion loads; a hold cap, fails open, one continuous hand-off into the reveal; its own `.exd-beat` CSS family |
 | `EX-STORY-ORDER` | The light-lean: kinship + hour-discontinuity over time-of-day marks |
 | `EX-STORY-LINE` | Each line's laws: ≤12 words, associative, note-grounded, no technique |
 | `EX-STORY-EDGE` | The voice at the edge: `/api/story`, private fragments, KV cache |
@@ -1455,7 +1555,7 @@ the worker.
 | `INV-27` | Sound is off on a fresh visit; no audio fetches on cold load |
 | `INV-28` | Archive signs its rooms (one quiet copyright per public face) |
 | `INV-29` | Share toast never a silent failure (carries the link when clipboard refused) |
-| `INV-30` | JS-off static face formed before JS wakes; 2.5s watchdog returns it |
+| `INV-30` | JS-off static face formed before JS wakes; the `js` mark holds behind the boot face (`EX-BOOT`) and falls only on the script's load error or a ~12s last-net cap, returning the static face |
 | `INV-31` | The feel is configuration, never hardcode |
 | `INV-32` | Work page carries `og:image` (absolute URL, width, height) |
 | `INV-35` | `?reset` wipes named keys, idempotent, never blocks the arrival |
@@ -1495,8 +1595,17 @@ the worker.
 | `INV-84` | One continuous input gesture — one wheel burst, one touch swipe, one arrow press — advances EXACTLY ONE frame, always; the gesture's velocity sets that single glide's DURATION within a clamped range (calm ~520ms → sharp ~260ms `[default]`), never a second frame — the earlier two-frame flick allowance is retired. The desktop animator coalesces a whole trackpad burst (rising tail and all) to one step and reads velocity for the speed; the touch path holds one-swipe-one-frame by `scroll-snap-stop:always` and carries the same force→speed feel through native momentum. Uniform on the desktop wheel path and the touch swipe path |
 | `INV-85` | On a non-touch (desktop) device a trackpad pinch opens and drives the SAME inspect/zoom layer a two-finger touch pinch opens (`INV-75`), on the picture under the POINTER over the same picture selectors (the ZOOM picture-selector set) — and where the pointer is over no picture, the single work then in the viewport (one work per viewport, EX-HANG), else nothing opens — scaling continuously under the same 1×–4× clamp; a `ctrl`+wheel `deltaY` (Blink) and a `gesturechange` scale delta (Safari) accumulate into that clamp, and a pinch-IN past the dismiss threshold (the same mirror margin touch uses, ~0.97× at rest) closes it through the one history step (`INV-83`) and ×/Esc/backdrop/browser-Back all still close; entry and exit mirror by the same FLIP as touch (`INV-82`). The input split is clean: a plain wheel is navigation (EX-GLIDE/`INV-84`), a `ctrl`+wheel / trackpad pinch is zoom (EX-PROTECT hands the gesture over rather than refusing it, latched at the burst's first event); a physical `Ctrl`+mouse-wheel is indistinguishable from a pinch on Blink and drives the zoom discretely; a plain wheel-only mouse never opens the zoom |
 | `INV-86` | The walk and the open zoom survive a device rotation: a portrait↔landscape orientation change is caught as its own event (not merely a resize), the frame stops recompute against the new viewport so the currently-docked frame stays centred under the eye with one-gesture-one-frame intact (`INV-84`), and if the inspect layer stands its source rect re-measures live so entry and exit still fly to the right place (`INV-82`); a rotation under another standing face keeps the face laws (`INV-67`). Mid-motion is honoured: a rotation arriving while a glide is in flight cancels the glide to a dock at its target frame before the stops recompute, and a rotation during a zoom entry/exit tween lets that tween finish, then re-measures the source |
+| `INV-87` | One inspect flight over all the triggers: entry is the exit's mirror; a wrapping stage owns position/origin/clip while the picture carries only the pinch; cover-crop windows and polaroids morph open, contained works crop nothing, a tilted polaroid rides its own rotation off its true visual rect; reduced motion collapses to an opacity crossfade; the teardown fires on the flight's transition end with a duration fallback so a headless compositor still tears down |
+| `INV-88` | The side room rests on its first member: the reused stage's leftover sideways position is cleared on open, the browser's scroll compensation refused (`overflow-anchor:none`), and the rest re-affirmed once every lane picture decodes — guarded by the dress generation and a live swipe |
+| `INV-89` | The crossing shows the picked picture breathing at the black's centre while the arc's first story portion loads; the reveal waits on that portion's settle or a hold cap and fails open; the flying clone hands off into the first work's reveal; reduced motion never builds it |
 | `INV-90` | The deal: at boot, synchronously ahead of any beat, the client deals each registered experiment one arm off the visitor's seed (the coat-check token — minted by the seed read itself when none exists — else the per-tab id, else `anon`) by the pinned formula `floor(quizHash(token+":"+salt)/2^32 × arms.length)`, an equal split; moving the formula counts as a spec change because it reshuffles a returning visitor's arm; the arm holds across visits with memory on (`?reset` forgets the token and deals fresh), per tab with memory off; a registry entry names at least two arms and a registry-unique salt or the bake refuses it; one hash per experiment at boot, no network, no write beyond the first mint, the coat-check record never widens |
 | `INV-91` | The stamp: every dealt arm — and the declared story-variant dimension — rides every registry beat as a dimension keyed by the experiment's name, its value a word from the closed arms list (`INV-1`); the frame adds no beat (`INV-41` stands); a flag off or no arm dealt leaves the key absent and the payload byte-for-byte today's |
+| `INV-93` | One dismiss margin (~0.97× of the resting size, `INV-82`) serves both the zoom-out and the dismiss across the touch pinch, the trackpad pinch, and the physical modifier wheel, so the in-pinch mirrors the out-pinch under a single value; a release below resting closes, at or above resting holds open |
+| `INV-94` | A tab idle past the return window's lower bound wakes at the door: a gap past the bound clears the walk state and place, forces a cold arrival, and reloads; a shorter gap re-greets; an offline return holds the gap standing for the next online wake; a minute backstop detects a system sleep or lid close; the scroll place never rides across it and the visitor's own memory is left whole |
+| `INV-95` | The boot face: a breathing loading line fades in from ~0.15s and holds through the boot, pure CSS after a fast grace beat so a healthy load never sees it; the `js` mark falls only on the client script's load error or a ~12s last-net cap on a hung ride, returning the static face (`INV-30`); reduced motion a still line |
+| `INV-96` | While a standing side room's sideways lane is under the finger and the drag axis is still ambiguous, the client watches only and consumes no event, so the browser's native scroll hand-off is left unpoisoned; past the ambiguous window the dominant axis decides (sideways runs the lane); every other face keeps the first-few-pixels verdict |
+| `INV-97` | The caption block seats in the free zone the picture leaves and clear of the share control's reserved column: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim where no honest gutter remains; contained within the viewport; measured once per frame settle and re-seated on a turn (`INV-86`); RTL mirrors through logical properties |
+| `INV-98` | The title and any wrapping caption prose break into near-equal balanced lines by the browser's own balancer, dictionary scripts included and no model call; below a narrow breakpoint the block runs narrower under a configurable type-step (engine default one step, 0 off) so the balanced text clears the picture |
 
 ### Reconciliation log — how each behavior above landed in code
 
