@@ -95,6 +95,7 @@ export default {
     if (url.pathname === "/api/visitor") return visitor(req, env, url);
     if (url.pathname === "/api/story") return story(req, env);
     if (url.pathname === "/api/quiz") return quiz(req, env);
+    if (url.pathname === "/api/geo") return geo(req);
     if (url.pathname !== "/api/i18n") return new Response("not found", { status: 404 });
     const lang = (url.searchParams.get("lang") || "").toLowerCase();
     const v = url.searchParams.get("v") || "";
@@ -145,6 +146,19 @@ export default {
     return json(JSON.stringify(out));
   },
 };
+
+// EX-LANG-GEO (INV-1): the ARRIVING COUNTRY, and nothing else — Cloudflare already knows it at the
+// edge (`request.cf.country`, the `cf-ipcountry` header as the fallback). The client uses it ONLY to
+// narrow the language corner to the tongues that country actually speaks; the code never leaves the
+// browser after that (never sent to GA, never on a beat — the closed ladder holds, INV-1). No IP, no
+// identity, nothing stored. `no-store` because the answer is per-visitor: a shared/CDN cache would
+// hand one guest's country to the next, so this route is the ONE /api answer that is never cached.
+function geo(req) {
+  const cc = (req.cf && req.cf.country) || req.headers.get("cf-ipcountry") || "";
+  return new Response(JSON.stringify({ c: cc }), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
 
 // EX-MEMORY (INV-43): the coat-check record — seen-work ids under a random token, nothing else.
 // MERGE-never-replace (two tabs may write, M3), ~500 newest kept (M2), every write re-arms the

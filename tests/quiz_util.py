@@ -37,6 +37,34 @@ def find_token_arm_on(n=1000000, eligible_count=None):
     return None
 
 
+def chip_copy_arm_of(tok):
+    """The quiz_chip_copy arm ('place' | 'place_prize') a visitor token deals (salt 'quizcopy').
+
+    Mirrors the client's abArms draw for the quiz_chip_copy experiment (arms ["place","place_prize"],
+    equal split in order): arm = arms[floor(u*2)] where u = quizHash(tok+":quizcopy")/2^32.
+    """
+    return ["place", "place_prize"][0 if jhash(tok + ":quizcopy") / 4294967296 < 0.5 else 1]
+
+
+def find_token_copy_arm(want_arm, eligible_count=None, n=2000000):
+    """Find a token that deals quiz_arm=on AND quiz_chip_copy=want_arm.
+
+    When eligible_count is given, also require the chosen quiz work to be eligible[0] (the pick work
+    at arc position 0), so scrolling to the pick frame reliably places the chip — the same
+    guarantee find_token_arm_on gives. want_arm is 'place' or 'place_prize'.
+    """
+    for i in range(n):
+        tok = "qc%08d" % i
+        if arm_of(tok) != "on":
+            continue
+        if chip_copy_arm_of(tok) != want_arm:
+            continue
+        if eligible_count is not None and jhash(tok + ":once") % eligible_count != 0:
+            continue
+        return tok
+    return None
+
+
 def jhash(s):
     """Python mirror of the client's quizHash(str) — exhibition.js, exported as EXQuiz._hash.
 

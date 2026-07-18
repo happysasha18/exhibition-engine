@@ -2759,7 +2759,13 @@
   // Every chrome string localizes through EX-I18N with ENGLISH source-tongue fallbacks.
   function quizLabel() {
     const T = (greetLang() || { t: {} }).t;
-    return T.quiz_ask || "question?";
+    // EX-QUIZ-COPY (INV-100): the chip's words ride the quiz_chip_copy arm — the reward-named arm
+    // speaks the gift, the plain arm names only the act; either drops the bare «question?». The
+    // arm is dealt in 03 (abArms); an absent registry falls to the plain copy. English source-
+    // tongue fallbacks stand when a locale lacks the key (EX-I18N).
+    const arm = (abArms && abArms.quiz_chip_copy) || null;
+    if (arm === "place_prize") return T.quiz_ask_prize || "guess the place · win a wallpaper";
+    return T.quiz_ask_place || "guess the place";
   }
   function quizChipHTML(id) {
     // a soft, slow one-time glint runs across the chip as it appears (EX-QUIZ-GLINT) — the
@@ -3892,13 +3898,37 @@
       listCloseTimer = setTimeout(() => { list.hidden = true; }, Math.round(600 * TEMPO));
     }
 
+    // EX-LANG-GEO (INV-45/INV-1): the corner offers FEW, geo-relevant tongues — English always and
+    // first, then the languages of the visitor's ARRIVING COUNTRY (Cloudflare geo), then the guest's
+    // own browser locale — deduped, capped. Not all baked langs. An offered tongue need NOT be baked:
+    // ai_i18n's edge-translate layer speaks an outsider on pick (respeak vs requestSet, unchanged).
     const browserCode = (navigator.language || "").toLowerCase().slice(0, 2);
-    const codes = Object.keys(GREET.langs).slice();
-    if (I18N_ON && /^[a-z]{2,3}$/.test(browserCode)
-        && !GREET.langs[(GREET.aliases || {})[browserCode] || browserCode]
-        && codes.indexOf(browserCode) < 0) {
-      codes.push(browserCode);                         // the guest's own outsider tongue
+    const LG = cfg.lang_geo || {};                      // the owner's map (may be absent → [en, browser])
+    const CMAP = LG.country_langs || {};                // uppercase ISO country → ordered lang codes
+    const LANG_CAP = (LG.cap | 0) > 0 ? (LG.cap | 0) : 4;   // total chips; default 4 when absent/invalid
+
+    // The pure narrowing law (testable in isolation): given a country, the country→langs map, the
+    // browser locale, and the cap → ordered, deduped codes with English FIRST, then geo langs, then
+    // the browser locale; overflow drops from the END (English is never dropped). The map is never
+    // trusted to carry "en" — the client always adds it first. The country is only ever an input here.
+    /* __EX_LANG_GEO_NARROW__ */
+    function narrowLangCodes(country, countryLangs, browserCode, cap) {
+      const out = [];
+      const seen = {};
+      const add = (c) => {
+        c = (c || "").toLowerCase();
+        if (!/^[a-z]{2,3}$/.test(c) || seen[c]) return;
+        seen[c] = true; out.push(c);
+      };
+      add("en");                                       // English always present, and always first
+      const geo = (countryLangs && country && countryLangs[country]) || [];
+      for (const c of geo) add(c);                      // the arriving country's tongues, in its order
+      add(browserCode);                                // the guest's own tongue, last
+      const n = (cap | 0) > 0 ? (cap | 0) : 4;          // default 4 when absent/invalid
+      return out.slice(0, n);                           // the cap drops overflow from the END
     }
+    /* __/EX_LANG_GEO_NARROW__ */
+
     const markOf = () => {
       const c = viewerLang();
       return ((GREET.aliases || {})[c] || c).toUpperCase().slice(0, 2) || "EN";
@@ -3908,27 +3938,52 @@
       list.querySelectorAll(".exl-item").forEach((b) =>
         b.classList.toggle("cur", b.dataset.lang === viewerLang()));
     };
-    codes.forEach((c) => {
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "exl-item";
-      b.dataset.lang = c;
-      b.textContent = c.toUpperCase();
-      b.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        langOverride = c;
-        try { localStorage.setItem(LANG_KEY, c); } catch (e) {}
-        listClose();
-        const known = (GREET.aliases || {})[c] || c;
-        const baked = !!GREET.langs[known];
-        // EX-PULSE registry: the chosen tongue is a CODE from the baked list; an outsider tongue
-        // reports `other`, never a raw locale string on the wire — the ladder stays closed (INV-1)
-        pulse("lang_pick", null, { lang: baked ? known : "other" });
-        if (baked) respeak();                          // a baked tongue answers at once
-        else requestSet(c);                            // an outsider rides the one layer
-        redraw();
+    // ONE chip-append road — the initial build and the post-geo refresh both run it, so per-chip
+    // behavior can never drift between them. The list is cleared first: no stale chip, no double listener.
+    const renderCodes = (codes) => {
+      list.textContent = "";
+      codes.forEach((c) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "exl-item";
+        b.dataset.lang = c;
+        b.textContent = c.toUpperCase();
+        b.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          langOverride = c;
+          try { localStorage.setItem(LANG_KEY, c); } catch (e) {}
+          listClose();
+          const known = (GREET.aliases || {})[c] || c;
+          const baked = !!GREET.langs[known];
+          // EX-PULSE registry: the chosen tongue is a CODE from the baked list; an outsider tongue
+          // reports `other`, never a raw locale string on the wire — the ladder stays closed (INV-1).
+          // The ARRIVING COUNTRY never enters a pulse: it only picked which chips exist.
+          pulse("lang_pick", null, { lang: baked ? known : "other" });
+          if (baked) respeak();                        // a baked tongue answers at once
+          else requestSet(c);                          // an outsider rides the one layer
+          redraw();
+        });
+        list.appendChild(b);
       });
-      list.appendChild(b);
-    });
+      redraw();
+    };
+
+    // First paint: English + the browser locale only (geo has not answered yet).
+    renderCodes(narrowLangCodes("", CMAP, browserCode, LANG_CAP));
+
+    // Then, once and quietly, ask the edge for the arriving country and re-narrow. Best-effort:
+    // a failed, blocked, or unknown-country geo NEVER touches the box — it stays [en, browser].
+    // The country is used ONLY to pick chips here; it is never stored, never sent to GA, never on a beat.
+    try {
+      fetch("/api/geo")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((g) => {
+          const cc = g && typeof g.c === "string" ? g.c.toUpperCase() : "";
+          if (!cc || !CMAP[cc]) return;                // no country, or one we hold no langs for ⇒ stand pat
+          renderCodes(narrowLangCodes(cc, CMAP, browserCode, LANG_CAP));
+        })
+        .catch(() => {});                              // a dead / blocked geo changes nothing
+    } catch (e) {}
+
     cur.addEventListener("click", (ev) => {
       ev.stopPropagation();
       list.hidden ? listOpen() : listClose();

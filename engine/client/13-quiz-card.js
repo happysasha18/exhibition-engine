@@ -9,7 +9,13 @@
   // Every chrome string localizes through EX-I18N with ENGLISH source-tongue fallbacks.
   function quizLabel() {
     const T = (greetLang() || { t: {} }).t;
-    return T.quiz_ask || "question?";
+    // EX-QUIZ-COPY (INV-100): the chip's words ride the quiz_chip_copy arm — the reward-named arm
+    // speaks the gift, the plain arm names only the act; either drops the bare «question?». The
+    // arm is dealt in 03 (abArms); an absent registry falls to the plain copy. English source-
+    // tongue fallbacks stand when a locale lacks the key (EX-I18N).
+    const arm = (abArms && abArms.quiz_chip_copy) || null;
+    if (arm === "place_prize") return T.quiz_ask_prize || "guess the place · win a wallpaper";
+    return T.quiz_ask_place || "guess the place";
   }
   function quizChipHTML(id) {
     // a soft, slow one-time glint runs across the chip as it appears (EX-QUIZ-GLINT) — the

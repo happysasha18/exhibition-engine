@@ -226,10 +226,14 @@ else:
                 stage_in_ladder = stage_val in ladder if stage_val else False
                 unfold_stage = unfold_params.get("quiz_stage")
                 unfold_ok = (unfold_stage is None) or (unfold_stage in ladder)
-                # no answer text leaking (all values in ladder are short words; nothing else long)
+                # no answer text leaking (INV-1): every beat value is a closed-ladder word — the stage
+                # ladder plus the dealt experiment arms (quiz_arm, quiz_chip_copy). A leaked answer
+                # would be a free-form string outside these closed sets; `place_prize` (a registered
+                # quiz_chip_copy arm) is legitimate, so the closed arm words are allowed here too.
+                closed = ladder | {"on", "control", "place", "place_prize"}
                 no_answer_text = not any(
                     len(str(v)) > 10 for v in exit_params.values()
-                    if isinstance(v, str) and v not in ladder
+                    if isinstance(v, str) and v not in closed
                 )
                 fl1_ok = (stage_val is not None and stage_in_ladder
                           and unfold_ok and no_answer_text)

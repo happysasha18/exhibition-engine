@@ -34,6 +34,17 @@ SITE_CONFIG = {
     "root_title":       "SYNTH EXHIBITION — Synth Author",
     "root_description": "A synthetic exhibition for engine testing. Tap any work to walk.",
     "collection_name":  "SYNTH EXHIBITION — the exhibition",
+    # EX-LANG-GEO (INV-45/INV-1): the arriving-country → tongues map that narrows the language corner.
+    # cap 5 so a busy country (IL: he/ru/ar) still leaves room for the guest's own browser locale.
+    "lang_geo": {
+        "cap": 5,
+        "country_langs": {
+            "IL": ["he", "ru", "ar"],
+            "RU": ["ru"],
+            "DE": ["de"],
+            "FR": ["fr"],
+        },
+    },
 }
 
 # Set by the test before calling build()

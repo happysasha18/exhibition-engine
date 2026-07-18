@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """The corner mark — the guest chooses the tongue (EX-LANG / INV-45) — adapted for
-exhibition-engine synthetic fixture. The door carries a quiet corner mark; a tap opens
-the seven (+ the guest's own outsider tongue when the any-locale layer is on); a pick
-re-speaks the threshold at once (RTL turns the face), persists, and rides the ONE string
-layer; `?reset` returns the browser's tongue.
+exhibition-engine synthetic fixture. The door carries a quiet corner mark; a tap opens a FEW,
+geo-relevant tongues (EX-LANG-GEO / INV-45): English always and first, then the arriving country's
+languages (Cloudflare /api/geo, cfg.lang_geo), then the guest's own browser locale — deduped,
+capped, NOT all seven baked tongues. An offered tongue need not be baked; a pick re-speaks the
+threshold at once (RTL turns the face), persists, and rides the ONE string layer; `?reset` returns
+the browser's tongue. Here the arriving country is stubbed to IL (he/ru/ar) with a Polish browser.
 Chrome absent → pinned expected SKIPs. Run: python tests/test_lang.py
 """
 import shutil
@@ -33,16 +35,22 @@ build_site.OUT = TMP
 build_site.build(SITE_URL, enable=["ai_i18n"])
 
 BROWSER_ROWS = [
-    "EX-LANG the mark stands on the threshold (cold + re-opened; the list = seven + the outsider; ≥44px)",
+    "EX-LANG-GEO the mark stands on the threshold, narrowed to the arriving country (IL ⇒ en first + "
+    "he/ru/ar + the PL browser; an unbaked geo tongue offered; the baked seven NOT all present; ≥44px)",
     "EX-LANG a pick re-speaks and persists (Hebrew: ask+dir flip at once; survives reload)",
     "EX-LANG the outsider pick rides the one layer (PL in the list; instant baked switch; stub strings back)",
     "EX-LANG reset returns the browser's tongue",
 ]
 
+# ONE injected stub for BOTH edge routes the corner touches: /api/geo → the arriving country (IL),
+# so the corner narrows to he/ru/ar; /api/i18n → the outsider-tongue strings, so a PL pick re-speaks.
 STUB = """
 window.__i18nCalls=0;
 (function(){const _f=window.fetch;
 window.fetch=function(u,o){
+  if(String(u).indexOf('/api/geo')>=0){
+    return Promise.resolve(new Response(JSON.stringify({c:'IL'}),{status:200}));
+  }
   if(String(u).indexOf('/api/i18n')>=0){
     window.__i18nCalls++;
     return Promise.resolve(new Response(JSON.stringify({
@@ -77,9 +85,14 @@ else:
             br.click("#exd-lang .exl-cur", settle=0.4)
             langs = br.evaluate(LIST) or []
             seven = {"ru", "en", "he", "de", "fr", "es", "uk"}
+            geo_langs = {"he", "ru", "ar"}
             check(BROWSER_ROWS[0],
                   bool(geo) and geo["vis"] and geo["w"] >= 44 and geo["h"] >= 44
-                  and seven <= set(langs) and "pl" in langs,
+                  and bool(langs) and langs[0] == "en"          # English first
+                  and geo_langs <= set(langs)                   # the arriving country's tongues
+                  and "ar" in langs                             # an UNBAKED geo tongue is offered
+                  and "pl" in langs                             # the guest's own browser tongue
+                  and not seven <= set(langs),                  # NOT all seven — the corner narrowed
                   f"geo={geo} list={langs}")
 
             # 2 · the outsider layer: instant baked switch, stub strings back on PL

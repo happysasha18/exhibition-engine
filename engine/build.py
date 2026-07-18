@@ -975,6 +975,13 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         config["site_name"] = SITE_NAME
     config["site_url"] = site_url
     config["ga_measurement_id"] = ga_id   # analytics id lives in config, never in a template
+    # EX-LANG-GEO (INV-45/INV-1): the arriving-country → languages map that narrows the language
+    # corner. An instance declares it in site.json; the engine's own example ships none, so the
+    # corner stands at [English, browser locale] on the client's graceful default. Emitted ONLY when
+    # set, so a mapless bake keeps config.json byte-identical (INV-19). The country is used only to
+    # pick chips — it never enters a beat, so no analytics seam rides here (INV-1).
+    if site_config.get("lang_geo"):
+        config["lang_geo"] = site_config["lang_geo"]
     config["experiments"] = {}      # variant → flag → metric (empty registry)
     # EX-QUIZ-ONCE (INV-66) + EX-QUIZ-AB: config seams join ONLY when the quiz is on —
     # flag off leaves config.json byte-for-byte today's (INV-60 fence).
@@ -994,6 +1001,16 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
             "flag": "quiz",
             "metric": "walk_unfold",     # the beat the owner watches for this experiment
             "salt": "quizarm",           # the quiz's historic salt — pinned so no returning arm reshuffles (INV-90)
+        }
+        # EX-QUIZ-COPY (INV-93/EX-AB): the chip's words ride a second arm off the same frame — the
+        # plain arm names the act («guess the place»), the reward arm names the gift as well («guess
+        # the place · win a wallpaper»). Its own salt keeps the draw independent of the quiz_arm split
+        # (INV-90). Dealt only when the quiz ships; the client falls to the plain copy with no registry.
+        config["experiments"]["quiz_chip_copy"] = {
+            "arms": ["place", "place_prize"],
+            "flag": "quiz",
+            "metric": "walk_unfold",     # the beat whose per-arm open-rate the owner reads
+            "salt": "quizcopy",          # independent of quizarm so the two arms never correlate
         }
     # EX-DOOR-3 (door_diversity): tell the client to deal a fresh, evenly-spread, place-guaranteed set
     # every open, and the place fraction to guarantee among the shown windows. Flag off → the key is
@@ -1069,7 +1086,8 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
                          # every quiz + gift string speaks the guest's tongue for ALL locales
                          # (the client keeps ENGLISH source-tongue fallbacks); the QUESTION content
                          # stays instance-supplied, never in this chrome set
-                         "enjoy", "quiz_ask", "quiz_submit", "quiz_win", "quiz_wrong",
+                         "enjoy", "quiz_ask", "quiz_ask_place", "quiz_ask_prize",
+                         "quiz_submit", "quiz_win", "quiz_wrong",
                          "gift_ask", "gift_yes", "gift_no", "gift_buy")},
             "greet": en.get("greet") or {},
             # EX-EDGE-DEAD (INV-68): the dead-account English day greets with this ONE plain line

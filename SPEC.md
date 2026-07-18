@@ -401,6 +401,17 @@ immediately — persists across visits (`ex.lang`), and outranks the browser set
 language is read. RTL locales turn the door face right-to-left. `?reset` forgets the choice and
 the browser's own tongue returns. `EX-LANG`
 
+**EX-LANG-GEO** (`INV-45` · `INV-1`). The language corner offers English (always, and first), then
+the languages of the visitor's arriving country as Cloudflare's edge reports it (`/api/geo` → `{c}`
+from `request.cf.country`, the `cf-ipcountry` header as fallback, never CDN-cached), then the
+guest's own browser locale — deduped, English-first, and bounded by `cfg.lang_geo.cap` (default 4),
+overflow dropped from the end so English is never lost. An offered tongue need not be baked: the
+ai_i18n edge speaks it on pick. The corner paints instantly as English plus the browser locale and
+refreshes once when geo resolves; a missing map, an unknown country, or any geo failure leaves it
+there. The arriving country chooses which chips exist and nothing more — it is never stored, never
+sent to analytics, never rides a beat; `lang_pick` keeps its closed `baked ? known : "other"` ladder
+(`INV-1`).
+
 ### The gallery
 
 **Behind the door the visitor is INSIDE the gallery** — the Room's museum hang. The hang's law:
@@ -847,8 +858,8 @@ An instance may attach a **quiz** to any work through an optional `<content>/qui
 the chip label localized — while the **one correct answer is private**, together with the prize
 path, baked **only into `_worker.js`** (the one bundle Pages never serves) and only when the `quiz`
 flag ships on; flag off ⇒ no quiz key on any work and the walk is byte-identical. A quiz-bearing work
-advertises a subtle **«question?» chip** (`quiz_ask`, localized) on its plaque, over which a soft
-one-time glint runs as it appears (`EX-QUIZ-GLINT`). Tapping the chip opens a **compact card that
+advertises a subtle **guess-the-place chip** on its plaque whose words ride the `quiz_chip_copy` arm
+(`EX-QUIZ-COPY`, localized), over which a soft one-time glint runs as it appears (`EX-QUIZ-GLINT`). Tapping the chip opens a **compact card that
 sits over the still-visible photograph** — a light scrim for legibility, never a black curtain — with
 the prompt and the **four options in a 2×2 grid**. The card's accent is the **focused work's own live
 tint** (the per-work accent the walk already computes) so it reads with the picture in view, and its
@@ -883,6 +894,16 @@ string (`quiz_wrong`, `quiz_win`, and the gift ceremony strings below) resolves 
 non-English literal ever ships; the **question content** stays instance-supplied. Off / no answer /
 unknown id ⇒ the route 404s and the walk loses nothing.
 `EX-QUIZ` `EX-QUIZ-EDGE` `EX-QUIZ-PRIZE` `EX-QUIZ-ONCE` `EX-QUIZ-GLINT` `INV-59` `INV-60` `INV-64` `INV-65` `INV-66`
+
+**EX-QUIZ-COPY** (`INV-100` · `EX-AB`). The quiz chip speaks its offer plainly. Its words ride the
+`quiz_chip_copy` experiment (arms `place` and `place_prize`, salt `quizcopy`): the plain arm names
+the act — «guess the place» — and the reward arm names the gift as well — «guess the place · win a
+wallpaper». An absent registry falls to the plain «guess the place». The words localize through
+EX-I18N (`quiz_ask_place` / `quiz_ask_prize`) with English source-tongue fallbacks, and the ai_i18n
+edge speaks any offered tongue. The dealt arm rides every beat as the `quiz_chip_copy` dimension
+(`INV-91`), so a per-arm read of the chip's open-rate follows once that dimension is registered in
+GA.
+`EX-QUIZ-COPY` `INV-100`
 
 **The faces meet — input, chrome, and viewport when surfaces stand together (the 2026-07-09 bug class
 closed as law: every stateful surface composes with each neighbour it can meet).** *Regression fences
@@ -1506,6 +1527,7 @@ the worker.
 | `EX-RETURN` | The door says there is more — a farewell on the way out, a welcome-back on a returning arrival |
 | `EX-GREET-BAKE` | The baked string cache; the gen command; the fallback |
 | `EX-LANG` | The corner language selector on the door |
+| `EX-LANG-GEO` | The corner narrows to English (first) + the arriving country's tongues (`/api/geo`, `cfg.lang_geo`) + the browser locale — deduped, capped; an offered tongue need not be baked; the country picks chips only, never stored, never on a beat |
 | `EX-HANG` | The gallery: one work per viewport, caption in the margin |
 | `EX-CAPTION` | The caption block keeps to its own space: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim; balanced wrap (`INV-98`); a narrow-screen type-step |
 | `EX-ACCENT` | The breathing ground and live accent |
@@ -1525,6 +1547,7 @@ the worker.
 | `EX-QUIZ-ONCE` | Exactly one question per show, over the reachable∧unanswered set, silenced by a cooldown window |
 | `EX-QUIZ-GLINT` | A soft one-time light sweeps the chip as the question appears; only the chip; off under reduced-motion |
 | `EX-QUIZ-AB` | The quiz arm, dealt by the variant frame (`EX-AB`, salt `quizarm`, on/control, 50/50, seed-stable), rides every registry beat as a dimension; absent when the flag is off |
+| `EX-QUIZ-COPY` | The chip's words ride the `quiz_chip_copy` arm (`EX-AB`, salt `quizcopy`, `place`/`place_prize`): the plain arm names the act «guess the place», the reward arm names the gift «guess the place · win a wallpaper»; localized (`quiz_ask_place`/`quiz_ask_prize`) with English fallbacks; an absent registry falls to the plain copy |
 | `EX-QUIZ-FLOW` | `quiz_stage` (shown → opened → won\|lost → gift) rides the same two beats as a running-max dimension; never a sixth beat; the stage wipes with the walk |
 | `EX-LADDER` | The responsive 640/960/1280 image ladder: a phone pulls light, a wide/retina screen sharp; base is the fallback |
 | `EX-LOAD` | The loading breath: solemn hairline while pixels travel; a cold-arrival line before the walk is live (instance text) |
@@ -1637,6 +1660,7 @@ the worker.
 | `INV-96` | While a standing side room's sideways lane is under the finger and the drag axis is still ambiguous, the client watches only and consumes no event, so the browser's native scroll hand-off is left unpoisoned; past the ambiguous window the dominant axis decides (sideways runs the lane); every other face keeps the first-few-pixels verdict |
 | `INV-97` | The caption block seats in the free zone the picture leaves and clear of the share control's reserved column: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim where no honest gutter remains; the side band serves a short landscape viewport while a tall desktop window keeps the bottom band for every work with the scrim where a tall picture meets the text; contained within the viewport; measured once per frame settle and re-seated on a turn (`INV-86`); RTL mirrors through logical properties |
 | `INV-98` | The title and any wrapping caption prose break into near-equal balanced lines by the browser's own balancer, dictionary scripts included and no model call; below a narrow breakpoint the block runs narrower under a configurable type-step (engine default one step, 0 off) so the balanced text clears the picture |
+| `INV-100` | The quiz chip's words ride the `quiz_chip_copy` experiment (arms `place` / `place_prize`, salt `quizcopy`): the plain arm names the act («guess the place»), the reward arm names the gift as well («guess the place · win a wallpaper»); an absent registry falls to the plain «guess the place»; the words localize through EX-I18N (`quiz_ask_place` / `quiz_ask_prize`) with English source-tongue fallbacks and the ai_i18n edge speaks any offered tongue; the dealt arm rides every beat as the `quiz_chip_copy` dimension (`INV-91`), so a per-arm read of the chip's open-rate follows once the dimension is registered in GA |
 
 ### Reconciliation log — how each behavior above landed in code
 

@@ -166,6 +166,13 @@ EVLIST = ("JSON.stringify((window.dataLayer||[]).filter(e=>e[0]==='event')"
           ".map(e=>[e[1], e[2]||{}]))")
 CLIP_STUB = ("window.__copied=[];if(navigator.clipboard)navigator.clipboard.writeText="
              "(t)=>{window.__copied.push(t);return Promise.resolve();};")
+# EX-LANG-GEO: stub the arriving country to IL so the corner offers he (he ∈ IL's tongues). Under
+# geo-narrowing (EX-LANG-GEO) an English browser at a cold door would otherwise see only [en]; this
+# makes the he chip exist so the baked lang_pick beat below can still be exercised.
+GEO_STUB_IL = ("(function(){const _f=window.fetch;window.fetch=function(u,o){"
+               "if(String(u).indexOf('/api/geo')>=0){return Promise.resolve("
+               "new Response(JSON.stringify({c:'IL'}),{status:200}));}"
+               "return _f.apply(this,arguments);};})();")
 GRAB = ("(function(){var im=document.querySelector('.exh-frame img.work');if(!im)return null;"
         "var fr=im.closest('.exh-frame');im.dispatchEvent(new MouseEvent('contextmenu',"
         "{bubbles:true,cancelable:true}));return fr?fr.dataset.id:null;})()")
@@ -324,8 +331,10 @@ else:
     with serve(TMP) as base:
         with Browser(width=1280, height=900) as br:
             br.inject(CLIP_STUB)
+            br.inject(GEO_STUB_IL)                       # arriving country IL ⇒ the he chip exists (EX-LANG-GEO)
             br.block(["*googletagmanager*", "*google-analytics*"])
             cold(br, base)                               # at the cold door, browser locale = en (baked)
+            br.sleep(0.4)                                # let /api/geo resolve so the corner re-narrows to +he
             br.click("#exd-lang .exl-cur", settle=0.3)   # open the tongue list
             br.click('#exd-lang .exl-item[data-lang="he"]', settle=0.3)
             baked = first_of(evs_of(br), "lang_pick")
