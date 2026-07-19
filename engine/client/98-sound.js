@@ -41,8 +41,9 @@
       '<button class="exsnd-btn" type="button" aria-pressed="false"' +
         ' aria-label="' + (SNDT.a11y_sound || A11Y_SOUND_EN) +
         '"><span class="exsnd-note"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">' +
-          '<path d="M6 3.4 13 1.9v8.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>' +
-          '<circle cx="4" cy="11" r="2.2" fill="currentColor"/><circle cx="11" cy="10.1" r="2.2" fill="currentColor"/>' +
+          '<path d="M6.3 4.1 L12.9 3" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>' +
+          '<path d="M6.3 4.1 V12 M12.9 3 V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
+          '<circle cx="4.2" cy="12" r="2.35" fill="currentColor"/><circle cx="10.8" cy="11" r="2.35" fill="currentColor"/>' +
         '</svg></span><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));   // EX-ARRIVE: arrives on the breath

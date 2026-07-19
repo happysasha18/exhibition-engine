@@ -52,7 +52,7 @@
   const A11Y_CLOSE_EN = "close";
   const A11Y_VOLUME_EN = "volume";
   const A11Y_SOUND_EN = "sound";
-  const SOUND_GREET_EN = "sound?";          // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue
+  const SOUND_GREET_EN = "music";           // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue (a plain invitation, no question mark)
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;

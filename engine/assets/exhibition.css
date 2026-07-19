@@ -605,6 +605,8 @@ body:has(#ex-quiz-card.show) #ex-sound,
   transition:opacity var(--d-reveal), transform var(--d-reveal);
   transition-timing-function:cubic-bezier(.2,.7,.15,1); }
 #ex-gift-card.show .gift-inner{ opacity:1; transform:none; }
+/* the prize reveal (quiz win only, EX-PROTECT-RES): a marked wallpaper the visitor won. The grab card
+   injects no thumb at all, so this rule paints only on the preMarked path. */
 #ex-gift-card .gift-thumb{ width:100%; max-height:58vh; object-fit:contain; border-radius:8px;
   box-shadow:0 30px 100px rgba(0,0,0,.6); }
 #ex-gift-card .gift-ask{ margin:24px 0 2px; font-size:20px; font-weight:300; letter-spacing:.02em; color:var(--ink); }

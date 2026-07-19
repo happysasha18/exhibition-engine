@@ -662,7 +662,7 @@ starts the loop from the top. `INV-52`
 **A word greets on the first visit** (`EX-SOUND-GREET`): the resting control wears a small
 music-note mark in place of the bare play triangle — the mark that says *sound lives here*. On a
 visitor's very first arrival, and only then, a single localized word breathes in beside the note
-(«sound?» in the source tongue, the viewer's own tongue wherever the greet set carries the string,
+(«music» in the source tongue, the viewer's own tongue wherever the greet set carries the string,
 `EX-I18N`), holds a moment, then settles away — leaving the bare note. The word is a greeting, never
 a control: the button stays pressable the whole while, and the note is what remains once the word has
 gone. The once-ness persists in `ex.sound` (a `greeted` mark written the moment the word first
@@ -844,10 +844,14 @@ walk's chrome, and closing the zoom returns the visitor to the walk to share fro
 ### The gift ceremony
 
 The picture is never dumped by a blunt auto-download. A desktop right-click on a work, and a won
-quiz, both **open a solemn card** — a thumbnail rising into place on the reveal clock (`EX-ARRIVE`),
-the localized ask («like it?» / `gift_ask`), a **yes** button («a gift :)» / `gift_yes`) and a
-quiet **no** («not now» / `gift_no`), the gracious `enjoy · host` line, and an optional buy line
-(`gift_buy`, empty by default). The file is handed over **only on the yes** — never automatically.
+quiz, both **open a solemn card**. A **right-click grab** card carries **no picture of its own** — the
+work is already in view behind the card, and a thumbnail would only add a second, unguarded clean copy
+a right-click could save past the mark (`EX-PROTECT-RES`). A **won quiz** is the one case that shows an
+image: the **prize** — a wallpaper the visitor won that is not otherwise on screen and already wears a
+**baked** mark, so revealing it leaks nothing. Either card holds the localized ask («like it?» /
+`gift_ask`), a **yes** button («a gift :)» / `gift_yes`) and a quiet **no** («not now» / `gift_no`), the
+gracious `enjoy · host` line, and an optional buy line (`gift_buy`, empty by default). The clean grab
+source stays local, handed over **only on the yes** — never automatically, and signed on its way out.
 Esc or a click outside closes it. `EX-PROTECT-GIFT`
 
 ### The clean image, the marked take
@@ -1552,7 +1556,7 @@ the worker.
 | `EX-SOUND-PAUSE` | Pause holds the moment; resume continues from it |
 | `EX-SOUND-GREET` | A note-marked control; a localized word greets once on the first visit, then settles to the bare note |
 | `EX-PROTECT` | The gracious deterrent (desktop right-click → gift ceremony; drag/touch → gift toast; a pinch has the browser's viewport-zoom refused but the GESTURE handed to our own zoom — touch and desktop trackpad alike, EX-ZOOM/`INV-85`) |
-| `EX-PROTECT-GIFT` | The gift ceremony: the picture is offered on a solemn card, handed over only on a yes |
+| `EX-PROTECT-GIFT` | The gift ceremony: a grab card carries no picture of its own (the work is already in view behind it; a thumbnail would be a second unguarded clean copy), a won quiz reveals the marked prize; the file handed over only on a yes |
 | `EX-PROTECT-RES` | The clean shown image; the site-host mark rides only a taken copy (client canvas / prize / capped serve) |
 | `EX-QUIZ` | The work's public four-option question + plaque chip (placement config knob; one per show) |
 | `EX-QUIZ-EDGE` | The tapped option judged at the edge against the single private answer; own attempt fence; never a served byte, never a model call |
@@ -1674,7 +1678,7 @@ the worker.
 | `INV-97` | The caption block seats in the free zone the picture leaves and clear of the share control's reserved column: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim where no honest gutter remains; the side band serves a short landscape viewport while a tall desktop window keeps the bottom band for every work with the scrim where a tall picture meets the text; contained within the viewport; measured once per frame settle and re-seated on a turn (`INV-86`); RTL mirrors through logical properties |
 | `INV-98` | The title and any wrapping caption prose break into near-equal balanced lines by the browser's own balancer, dictionary scripts included and no model call; below a narrow breakpoint the block runs narrower under a configurable type-step (engine default one step, 0 off) so the balanced text clears the picture |
 | `INV-100` | The quiz chip's words ride the `quiz_chip_copy` experiment (arms `place` / `place_prize`, salt `quizcopy`): the plain arm names the act («guess the place»), the reward arm names the gift as well («guess the place · win a wallpaper»); an absent registry falls to the plain «guess the place»; the words localize through EX-I18N (`quiz_ask_place` / `quiz_ask_prize`) with English source-tongue fallbacks and the ai_i18n edge speaks any offered tongue; the dealt arm rides every beat as the `quiz_chip_copy` dimension (`INV-91`), so a per-arm read of the chip's open-rate follows once the dimension is registered in GA |
-| `INV-101` | The sound control wears a music-note mark; on the visitor's first arrival only, a localized word («sound?», EX-I18N, English fallback) breathes in beside it, holds, then settles away leaving the bare note; the once-ness persists in `ex.sound` (`greeted`) so a return meets only the note; reduced motion / Save-Data stand the choreography down; a silent instance (`sound_url` empty) shows neither control nor greeting |
+| `INV-101` | The sound control wears a music-note mark; on the visitor's first arrival only, a localized word («music», EX-I18N, English fallback) breathes in beside it, holds, then settles away leaving the bare note; the once-ness persists in `ex.sound` (`greeted`) so a return meets only the note; reduced motion / Save-Data stand the choreography down; a silent instance (`sound_url` empty) shows neither control nor greeting |
 
 ### Reconciliation log — how each behavior above landed in code
 

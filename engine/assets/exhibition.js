@@ -297,7 +297,7 @@
   const A11Y_CLOSE_EN = "close";
   const A11Y_VOLUME_EN = "volume";
   const A11Y_SOUND_EN = "sound";
-  const SOUND_GREET_EN = "sound?";          // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue
+  const SOUND_GREET_EN = "music";           // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue (a plain invitation, no question mark)
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
@@ -2108,7 +2108,6 @@
   giftCard.hidden = true;
   giftCard.innerHTML =
     '<div class="gift-inner">' +
-      '<img class="gift-thumb" alt="">' +
       '<div class="gift-ask"></div>' +
       '<div class="gift-act">' +
         '<button type="button" class="gift-yes"></button>' +
@@ -2167,7 +2166,25 @@
   // to stamp the "gift" stage (EX-QUIZ-FLOW / INV-69) WITHOUT touching the shared ceremony behaviour.
   function openGift(src, name, preMarked, onYes, workId) {
     const T = (greetLang() || { t: {} }).t;
-    giftCard.querySelector(".gift-thumb").src = src;
+    // EX-PROTECT-RES (INV-56): the GRAB ceremony carries NO picture of its own. On a right-click the
+    // work is already in view behind the card, so a thumb of the CLEAN source would only add a SECOND,
+    // unguarded copy a right-click could save past the watermark — the leak this surface exists to
+    // close. The QUIZ PRIZE is the one exception: it is a wallpaper the visitor won that is NOT
+    // otherwise on screen, and it already wears a BAKED mark (`preMarked`), so revealing it in the card
+    // leaks nothing. So the thumb is injected ONLY on the preMarked prize path; the grab card stays
+    // imageless, its clean `src` a local handed to giftDownload only, stamped on its way out.
+    const inner = giftCard.querySelector(".gift-inner");
+    let thumb = giftCard.querySelector(".gift-thumb");
+    if (preMarked) {
+      if (!thumb) {
+        thumb = document.createElement("img");
+        thumb.className = "gift-thumb"; thumb.alt = "";
+        inner.insertBefore(thumb, inner.firstChild);
+      }
+      thumb.src = src;                                   // the marked prize — the reveal, never a clean grab
+    } else if (thumb) {
+      thumb.remove();                                    // a reused card returning to the grab path drops any prize image
+    }
     // every line localizes through EX-I18N; the fallback is ENGLISH (source tongue), never Russian
     giftCard.querySelector(".gift-ask").textContent = T.gift_ask || "did you like it?";
     const yes = giftCard.querySelector(".gift-yes");
@@ -4036,8 +4053,9 @@
       '<button class="exsnd-btn" type="button" aria-pressed="false"' +
         ' aria-label="' + (SNDT.a11y_sound || A11Y_SOUND_EN) +
         '"><span class="exsnd-note"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">' +
-          '<path d="M6 3.4 13 1.9v8.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>' +
-          '<circle cx="4" cy="11" r="2.2" fill="currentColor"/><circle cx="11" cy="10.1" r="2.2" fill="currentColor"/>' +
+          '<path d="M6.3 4.1 L12.9 3" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>' +
+          '<path d="M6.3 4.1 V12 M12.9 3 V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
+          '<circle cx="4.2" cy="12" r="2.35" fill="currentColor"/><circle cx="10.8" cy="11" r="2.35" fill="currentColor"/>' +
         '</svg></span><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));   // EX-ARRIVE: arrives on the breath
