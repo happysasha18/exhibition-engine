@@ -297,6 +297,7 @@
   const A11Y_CLOSE_EN = "close";
   const A11Y_VOLUME_EN = "volume";
   const A11Y_SOUND_EN = "sound";
+  const SOUND_GREET_EN = "sound?";          // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
@@ -4034,7 +4035,10 @@
       '</div>' +
       '<button class="exsnd-btn" type="button" aria-pressed="false"' +
         ' aria-label="' + (SNDT.a11y_sound || A11Y_SOUND_EN) +
-        '"><span class="exsnd-play"></span><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
+        '"><span class="exsnd-note"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">' +
+          '<path d="M6 3.4 13 1.9v8.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>' +
+          '<circle cx="4" cy="11" r="2.2" fill="currentColor"/><circle cx="11" cy="10.1" r="2.2" fill="currentColor"/>' +
+        '</svg></span><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));   // EX-ARRIVE: arrives on the breath
 
@@ -4062,8 +4066,41 @@
 
     function persist() {
       try {
-        localStorage.setItem(SND_KEY, JSON.stringify({ v: VER, on: desired, vol: target }));
+        localStorage.setItem(SND_KEY, JSON.stringify({ v: VER, on: desired, vol: target, greeted: greeted }));
       } catch (e) {}
+    }
+
+    // EX-SOUND-GREET (INV-101): on the FIRST visit only, a localized word greets beside the note,
+    // holds, then settles away — leaving the bare note. It fires the first frame the player is truly
+    // VISIBLE (the control retracts under the door, so a greeting on cold load would breathe out of
+    // sight; this waits for the walk), robust to every entry — the door, a shared work, a resumed walk.
+    // The once-ness is consumed only when the word actually shows and persists in ex.sound (`greeted`),
+    // so a return meets only the quiet note. Reduced motion / Save-Data stand the choreography down (the
+    // note rests, unmarked, so a later ordinary visit may still greet once). The word is a greeting,
+    // never a control — aria-hidden, pointer-off; the button keeps its label and stays pressable.
+    let greeted = !!(pref && pref.greeted);
+    function greetOnce() {
+      if (greeted || REDUCED || dataSaver()) return;
+      greeted = true;
+      persist();                                          // consume the first arrival on show
+      const g = document.createElement("span");
+      g.className = "exsnd-greet";
+      g.setAttribute("aria-hidden", "true");              // a greeting, never a control
+      g.textContent = SNDT.sound_greet || SOUND_GREET_EN;
+      box.appendChild(g);
+      requestAnimationFrame(() => g.classList.add("greet"));
+      g.addEventListener("animationend", () => { try { g.remove(); } catch (e) {} });
+    }
+    if (!greeted && !REDUCED && !dataSaver()) {
+      let tries = 0;
+      (function waitVisible() {
+        if (greeted) return;
+        const shown = parseFloat(getComputedStyle(box).opacity || "0") > 0.5
+                      && !document.body.classList.contains("ex-door");
+        if (shown) { greetOnce(); return; }
+        if (++tries > 600) return;                        // ~10s cap — the visitor never left the door
+        requestAnimationFrame(waitVisible);
+      })();
     }
 
     function prepare() {

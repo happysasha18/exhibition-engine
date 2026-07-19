@@ -117,6 +117,31 @@ check("EX-SOUND credit tray is config-driven (CREDIT.artist/title/url, not hardc
       "CREDIT.artist" in js_src and "CREDIT.title" in js_src and "CREDIT.url" in js_src,
       "hardcoded credit — should use CREDIT.* from EX.sound_credit")
 
+# 7 · EX-SOUND-GREET (INV-101) — music-note glyph replaced the play triangle
+check("EX-SOUND-GREET music-note glyph replaces the play triangle",
+      "exsnd-note" in js_src and "exsnd-play" not in js_src,
+      "expected .exsnd-note glyph and no leftover .exsnd-play triangle")
+
+# 8 · EX-SOUND-GREET localized word with English fallback
+check("EX-SOUND-GREET word localizes via SNDT.sound_greet with SOUND_GREET_EN fallback",
+      "sound_greet" in js_src and "SOUND_GREET_EN" in js_src,
+      "localized greeting word / English fallback wiring missing")
+
+# 9 · EX-SOUND-GREET once-ness persists in the pref
+check("EX-SOUND-GREET once-ness persists in ex.sound (greeted)",
+      "greeted: greeted" in js_src and "pref.greeted" in js_src,
+      "greeted flag missing from persist()/pref read")
+
+# 10 · EX-SOUND-GREET stands down under reduced motion / Save-Data
+check("EX-SOUND-GREET stands down under reduced motion / Save-Data",
+      "REDUCED || dataSaver()" in js_src,
+      "reduced-motion/Save-Data stand-down guard missing")
+
+# 11 · EX-SOUND-GREET fires only past the door (visible-gate)
+check("EX-SOUND-GREET fires only once the player is visible past the door",
+      "ex-door" in js_src and "getComputedStyle(box).opacity" in js_src,
+      "visible-gate (door check + opacity read) missing from greetOnce/waitVisible")
+
 # ---------------------------------------------------------------- browser rows
 
 BROWSER_ROWS = [
@@ -124,6 +149,8 @@ BROWSER_ROWS = [
     "EX-SOUND player present + EX-ARRIVE (.show + opacity>0) when sound_url is configured",
     "EX-SOUND btn starts aria-pressed=false; after toggle pref persisted in localStorage",
     "EX-SOUND ?reset clears the sound pref (SND_KEY wiped alongside other walk keys)",
+    "EX-SOUND-GREET first visit persists greeted:true and renders the note glyph",
+    "EX-SOUND-GREET return visit shows no .exsnd-greet element (once-ness held)",
 ]
 
 SND_OP = ("(()=>{const e=document.getElementById('ex-sound');"
@@ -212,6 +239,38 @@ else:
             pref = br.evaluate("localStorage.getItem('ex.sound')")
             check(BROWSER_ROWS[3], pref is None,
                   f"sound pref still in storage after ?reset: {pref!r}")
+
+        # 4/5 · EX-SOUND-GREET (INV-101) — first visit greets + persists once-ness; a return visit
+        #        in the SAME browser (reusing the greeted:true the first load wrote) stays quiet
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base2 + "/")
+            br.clear_storage()
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
+            br.reload()
+            br.sleep(1.0)
+            enter_walk(br)
+            br.sleep(0.5)                                # let the greetOnce()/waitVisible rAF settle
+            first = br.evaluate(
+                "(()=>{const pref=JSON.parse(localStorage.getItem('ex.sound')||'null');"
+                "const note=!!document.querySelector('.exsnd-note');"
+                "return {greeted: !!(pref&&pref.greeted===true), note};})()")
+            check(BROWSER_ROWS[4],
+                  first.get("greeted") is True and first.get("note"),
+                  f"first-visit state={first}")
+
+            # return visit: same browser, same storage (greeted:true already persisted above) —
+            # reload + re-enter the walk and confirm no .exsnd-greet element ever appears
+            br.reload()
+            br.sleep(1.0)
+            enter_walk(br)
+            seen_greet = False
+            for _ in range(10):
+                if br.evaluate("!!document.querySelector('.exsnd-greet')"):
+                    seen_greet = True
+                    break
+                br.sleep(0.1)
+            check(BROWSER_ROWS[5], not seen_greet,
+                  "`.exsnd-greet` appeared on a return visit despite greeted:true persisted")
 
 shutil.rmtree(TMP, ignore_errors=True)
 shutil.rmtree(TMP_SND, ignore_errors=True)

@@ -659,6 +659,18 @@ stands; on **resumes from it**, never from the beginning. The element owns the p
 `currentTime`), so the offset is held natively across a pause within a session — a fresh page load
 starts the loop from the top. `INV-52`
 
+**A word greets on the first visit** (`EX-SOUND-GREET`): the resting control wears a small
+music-note mark in place of the bare play triangle — the mark that says *sound lives here*. On a
+visitor's very first arrival, and only then, a single localized word breathes in beside the note
+(«sound?» in the source tongue, the viewer's own tongue wherever the greet set carries the string,
+`EX-I18N`), holds a moment, then settles away — leaving the bare note. The word is a greeting, never
+a control: the button stays pressable the whole while, and the note is what remains once the word has
+gone. The once-ness persists in `ex.sound` (a `greeted` mark written the moment the word first
+shows), so a return visit meets only the quiet note, never the word again. Under reduced motion or
+Save-Data the choreography stands down — the note rests from the first frame with no breathing word
+(`INV-33`). A configured-silent instance (`sound_url` empty) shows no control and no greeting.
+`EX-SOUND-GREET` `INV-101`
+
 ### The gracious deterrent
 
 When a visitor tries to **grab a hung work** (right-click / `contextmenu`, drag / `dragstart`, or
@@ -1538,6 +1550,7 @@ the worker.
 | `EX-SHARE` | The share feature as a whole |
 | `EX-SOUND` | The ambient loop: off by default, streams from a `<audio>` element on turn-on (instant start), credit from config |
 | `EX-SOUND-PAUSE` | Pause holds the moment; resume continues from it |
+| `EX-SOUND-GREET` | A note-marked control; a localized word greets once on the first visit, then settles to the bare note |
 | `EX-PROTECT` | The gracious deterrent (desktop right-click → gift ceremony; drag/touch → gift toast; a pinch has the browser's viewport-zoom refused but the GESTURE handed to our own zoom — touch and desktop trackpad alike, EX-ZOOM/`INV-85`) |
 | `EX-PROTECT-GIFT` | The gift ceremony: the picture is offered on a solemn card, handed over only on a yes |
 | `EX-PROTECT-RES` | The clean shown image; the site-host mark rides only a taken copy (client canvas / prize / capped serve) |
@@ -1661,6 +1674,7 @@ the worker.
 | `INV-97` | The caption block seats in the free zone the picture leaves and clear of the share control's reserved column: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim where no honest gutter remains; the side band serves a short landscape viewport while a tall desktop window keeps the bottom band for every work with the scrim where a tall picture meets the text; contained within the viewport; measured once per frame settle and re-seated on a turn (`INV-86`); RTL mirrors through logical properties |
 | `INV-98` | The title and any wrapping caption prose break into near-equal balanced lines by the browser's own balancer, dictionary scripts included and no model call; below a narrow breakpoint the block runs narrower under a configurable type-step (engine default one step, 0 off) so the balanced text clears the picture |
 | `INV-100` | The quiz chip's words ride the `quiz_chip_copy` experiment (arms `place` / `place_prize`, salt `quizcopy`): the plain arm names the act («guess the place»), the reward arm names the gift as well («guess the place · win a wallpaper»); an absent registry falls to the plain «guess the place»; the words localize through EX-I18N (`quiz_ask_place` / `quiz_ask_prize`) with English source-tongue fallbacks and the ai_i18n edge speaks any offered tongue; the dealt arm rides every beat as the `quiz_chip_copy` dimension (`INV-91`), so a per-arm read of the chip's open-rate follows once the dimension is registered in GA |
+| `INV-101` | The sound control wears a music-note mark; on the visitor's first arrival only, a localized word («sound?», EX-I18N, English fallback) breathes in beside it, holds, then settles away leaving the bare note; the once-ness persists in `ex.sound` (`greeted`) so a return meets only the note; reduced motion / Save-Data stand the choreography down; a silent instance (`sound_url` empty) shows neither control nor greeting |
 
 ### Reconciliation log — how each behavior above landed in code
 

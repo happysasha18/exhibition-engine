@@ -439,9 +439,23 @@ body:has(#ex-quiz-card.show) #ex-sound,
 #ex-sound.playing .exsnd-btn{ color:var(--accent);
   border-color:color-mix(in srgb, var(--accent) 40%, transparent); }
 /* the resting affordance is a play triangle; the eq bars take over while playing */
-.exsnd-play{ width:0; height:0; border-style:solid; border-width:6px 0 6px 10px;
-  border-color:transparent transparent transparent currentColor; margin-inline-start:3px; }
-#ex-sound.playing .exsnd-play{ display:none; }
+/* EX-SOUND-GREET (INV-101): the resting mark is a music note — sound lives here — hidden while
+   playing, where the eq bars take over */
+.exsnd-note{ width:15px; height:15px; display:block; color:currentColor; }
+#ex-sound.playing .exsnd-note{ display:none; }
+/* the first-visit greeting word: breathes in beside the note, holds, then settles away. Absolutely
+   placed just inline-start of the fixed control (RTL mirrors on the logical inset), so the button
+   never shifts. A greeting, never a control — pointer-events off, aria-hidden in the markup. */
+.exsnd-greet{ position:absolute; inset-inline-end:calc(100% + 10px); top:50%;
+  transform:translateY(-50%); white-space:nowrap; font-size:13px; letter-spacing:.02em;
+  color:var(--faint); opacity:0; pointer-events:none; }
+.exsnd-greet.greet{ animation:exsnd-greet-io calc(4.4s*var(--tempo)) var(--ease) forwards; }
+@keyframes exsnd-greet-io{
+  0%{ opacity:0; transform:translateY(-50%) translateX(6px); }
+  12%{ opacity:1; transform:translateY(-50%) translateX(0); }
+  70%{ opacity:1; transform:translateY(-50%) translateX(0); }
+  100%{ opacity:0; transform:translateY(-50%) translateX(-3px); } }
+@media (prefers-reduced-motion:reduce){ .exsnd-greet, .exsnd-greet.greet{ animation:none; opacity:0; } }
 /* the tiny eq glyph — three bars, shown only while playing, breathing */
 .exsnd-eq{ display:none; align-items:flex-end; gap:2.5px; height:13px; }
 #ex-sound.playing .exsnd-eq{ display:flex; }
