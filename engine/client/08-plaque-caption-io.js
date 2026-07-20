@@ -90,6 +90,16 @@
     if (capRaf) return;
     capRaf = requestAnimationFrame(() => { capRaf = 0; placeCaption(); });
   }
+  // Re-seat whenever the block's OWN content changes height, not only when the picture's box does: a
+  // told-story fills after the first seat (an async story portion resolving, EX-STORY), growing the block
+  // AFTER placeCaption already measured a shorter one — on a wide window the grown block would then lie over
+  // the picture (the ultra-wide INV-97 hole). This watches the caption's text, not its box, so placeCaption
+  // (which sets styles, never text) never re-triggers it — no loop. The rAF coalesces bursts to one seat.
+  // CONSTRAINT: nothing with per-tick LIVE text (a countdown, a live "sold" ticker) belongs inside #exh-cap,
+  // or this watch would fire every tick and re-seat continuously; keep any live chrome in its own body element.
+  const capMO = ("MutationObserver" in window)
+    ? new MutationObserver(schedulePlaceCaption) : null;
+  if (capMO) capMO.observe(cap, { childList: true, subtree: true, characterData: true });
   function capSettle(img) {
     if (capRO && img) capRO.observe(img);              // observing an element already watched is a no-op
     schedulePlaceCaption();
@@ -132,7 +142,13 @@
       cap.style.insetInlineEnd = endReserve + "px";    // still hold the share rail's column clear
       if (W > 640) cap.style.maxInlineSize = "none";
       cap.classList.remove("cap-scrim");
-      return;
+      // Verify the PLACED block actually clears the picture, never trusting the pre-measure alone: the
+      // block's final layout can grow past the bottom margin (a told-story that fills after the seat, an
+      // ultra-wide rewrap where the wide bottom band reads shorter at measure than it renders). If the
+      // seated top still crosses the picture, undo the bottom-band inset and fall through to the side band
+      // — a wide window leaves a wide honest side column the block belongs in (INV-97, the felt ultra-wide bug).
+      if (cap.getBoundingClientRect().top >= pic.bottom - 1) return;   // truly clear below the picture
+      cap.style.insetInlineEnd = ""; cap.style.maxInlineSize = "";     // let the side band / scrim take it
     }
     const sideCol = startGap - startInset;             // the free column from the counter's inset to the picture
     const sideW = sideCol - GAP;                        // the band's own width, a breath shy of the picture

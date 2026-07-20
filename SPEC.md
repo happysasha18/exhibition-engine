@@ -438,8 +438,10 @@ number faces the visitor, the tone just IS).
 **The caption keeps to its own space** (`EX-CAPTION`, `INV-97`): the caption block seats in the
 free zone the centred picture leaves rather than over the picture, and holds clear of the reserved
 column under the share control. The centred picture is never moved or scaled for it; the block
-alone measures its seat at each frame's settle, one layout read per settle, and re-seats on a
-viewport turn (`INV-86`). It chooses among three seats: a **bottom band** below the picture when
+alone measures its seat at each frame's settle, one layout read per settle, re-seats on a
+viewport turn (`INV-86`), and re-seats again when its OWN content changes height — a told-story
+that fills after the first seat (an async story portion) grows the block, so it re-measures rather
+than leaving a grown block over the picture. It chooses among three seats: a **bottom band** below the picture when
 the band sits clear (still holding the share rail's end column reserved); a **side band** on its
 own start edge, below the counter and opposite the share rail, when the free column there reaches a
 legibility floor (about 140px, so a too-thin ribbon that would break a title one letter per line is
