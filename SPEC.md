@@ -444,10 +444,15 @@ the band sits clear (still holding the share rail's end column reserved); a **si
 own start edge, below the counter and opposite the share rail, when the free column there reaches a
 legibility floor (about 140px, so a too-thin ribbon that would break a title one letter per line is
 refused as no honest gutter); and a **last-resort soft scrim** under the text where no honest
-gutter remains. The side band serves a short landscape viewport; a tall desktop window keeps the bottom
-band for every work and leans on the scrim where a tall picture reaches the text, so the plaque
-holds one seat as the walk moves. The seated block is contained within the viewport, clamped to the room below the
-counter on a short frame. Right-to-left tongues mirror the whole seat through logical properties.
+gutter remains. The seat follows the picture's own shape at any window: a tall or square picture
+stands centred with a wide free column beside it and takes the side band on any viewport — a desktop
+window included, where a tall picture leaves a clear column at a readable width (about 140px and up)
+that the caption seats
+into rather than laying a scrim across the work; a wide picture that fills the width leaves only its
+thin bottom band and takes that, or the last-resort scrim where even the bottom band is sub-floor.
+The scrim is reached only where no honest margin remains — neither a clear bottom band nor a readable
+side column. The seated block is contained within the viewport, clamped to the room below the
+counter where the column runs taller than the frame. Right-to-left tongues mirror the whole seat through logical properties.
 `EX-CAPTION` `INV-97`
 
 **The caption wraps balanced** (`INV-98`): the title line, the narrator line, and any wrapping

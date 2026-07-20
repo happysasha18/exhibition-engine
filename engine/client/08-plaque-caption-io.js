@@ -136,10 +136,14 @@
     }
     const sideCol = startGap - startInset;             // the free column from the counter's inset to the picture
     const sideW = sideCol - GAP;                        // the band's own width, a breath shy of the picture
-    // The side band is a short-viewport (landscape) seat: on a tall viewport — a desktop window — the
-    // caption keeps the bottom band for every work, and a tall picture that reaches the text gets the
-    // last-resort scrim below rather than a dodge to the top, so the plaque holds one seat (INV-97).
-    if (H <= 640 && sideCol >= CAP_SIDE_FLOOR) {       // a short (landscape) viewport with an honest column
+    // The side band is the seat wherever the picture leaves an honest side column — on ANY viewport, not the
+    // short (landscape) one alone. INV-97's law follows the picture's ASPECT, not the viewport's orientation:
+    // a tall (portrait/square) picture on a desktop window stands centred with a wide free column beside it,
+    // so the caption seats into that column on its logical-start edge rather than laying a scrim across the
+    // work (the felt defect: a portrait work on a desktop window scrimmed over the picture while a 300px+
+    // clear column stood unused beside it). A wide picture that fills the width leaves a sub-floor column
+    // (< CAP_SIDE_FLOOR) and falls through to the last-resort scrim below.
+    if (sideCol >= CAP_SIDE_FLOOR) {                   // an honest side column beside the picture, any viewport
       const topPx = cr.bottom + GAP;                    // below the counter's line (block axis, unmirrored)
       cap.style.top = topPx + "px";
       cap.style.bottom = "auto";
@@ -148,9 +152,9 @@
       cap.style.maxInlineSize = "none";
       cap.style.overflowWrap = "anywhere";             // a narrow worst-case band breaks long words rather than spilling onto the work
       cap.classList.remove("cap-scrim");
-      // INV-97 containment: the seated block always ends within the viewport. A tall band on a short
-      // (landscape) frame is clamped to the room below the counter — it stays an honest side band and
-      // never runs off-screen; the scrim below is only for a sub-floor column, not for an honest one.
+      // INV-97 containment: the seated block always ends within the viewport. A band taller than the room
+      // below the counter is clamped to that room — it stays an honest side band and never runs off-screen;
+      // the scrim below is only for a sub-floor column, not for an honest one.
       if (cap.getBoundingClientRect().bottom > H - bottomInset + 1) {
         cap.style.maxBlockSize = Math.max(0, H - bottomInset - topPx) + "px";
         cap.style.overflow = "hidden";
