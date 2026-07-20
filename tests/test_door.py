@@ -798,7 +798,7 @@ check("EX-DOOR-3 the diverse pool spans the whole living gallery (five spread ax
       f"pool={len(DIV_POOL)} works={len(WORK_IDS)} place={len(PLACE_IDS)} cfg={DIV_CFG} shape={_pool_shape}")
 
 DIV_ROWS = [
-    "EX-DOOR-3 a FRESH set is dealt every open (three cold opens give different sets — variety)",
+    "EX-DOOR-3 a FRESH set is dealt every open (many cold opens vary — order always; distinct content + a dealt union beyond one door once the pool is deep)",
     "EX-DOOR-3 ≥60% of the SHOWN windows are place works, every open (the guarantee holds)",
     "EX-DOOR-3 the shown count fits the viewport (desktop up to door_size; portrait fewer)",
 ]
@@ -826,16 +826,31 @@ else:
     with serve(TMPD) as base:
         exp_desk_n = door_layout(1280, 900, pool_n=len(DIV_POOL))[0]
         exp_port_n = door_layout(390, 844, pool_n=len(DIV_POOL))[0]
+        N_VAR = 8    # cold opens for the variety read: enough that a genuine spread never all-collides
         with Browser(width=1280, height=900) as br:      # desktop → up to door_size windows
-            opens = [tuple(_cold_open_div(br, base)) for _ in range(3)]
+            opens = [_cold_open_div(br, base) for _ in range(N_VAR)]
             desk_ns = [len(o) for o in opens]
             place_frac = [sum(1 for i in o if i in PLACE_IDS) / len(o) for o in opens if o]
-            distinct = len(set(opens))
+            var_sets = {frozenset(o) for o in opens}                 # CONTENT variety (order-shuffle can't fake it)
+            var_union = set().union(*(set(o) for o in opens)) if opens else set()
         with Browser(width=390, height=844) as br:        # portrait → fewer windows
             port = _cold_open_div(br, base)
             port_place = sum(1 for i in port if i in PLACE_IDS)
-        check(DIV_ROWS[0], distinct >= 2,
-              f"distinct sets over 3 cold opens = {distinct} (sets={opens})")
+        # Variety = the deal re-runs FRESH every open (his «давай разное»). ORDER always varies (random
+        # axis + direction); CONTENT varies too, but ONLY once the gallery is many doors deep — the
+        # farthest-point spread returns the same extremes until the pool is large enough that different
+        # near-centre seeds reach divergent sets. Measured: this 24-work synthetic pool / door 5 still
+        # collapses to one content set (union 5); the real 121-work gallery (tlvphotos EX-DOOR-3) varies
+        # richly — 15 distinct sets / 24 opens, union 22. So the engine fixture proves ORDER variety here;
+        # the deep real gallery proves CONTENT variety. N_VAR opens make an all-identical ORDER collision
+        # statistically impossible. The old proxy asked ≥2 ORDERED tuples over 3 opens — a rare all-same
+        # collision flaked it.
+        POOL_DEEP = len(DIV_POOL) >= 10 * max(desk_ns)     # a gallery many doors deep → CONTENT variety
+        distinct_ordered = len({tuple(o) for o in opens})
+        content_ok = (not POOL_DEEP) or (len(var_sets) >= 2 and len(var_union) > max(desk_ns))
+        check(DIV_ROWS[0], distinct_ordered >= 2 and content_ok,
+              f"over {N_VAR} cold opens: distinct ordered={distinct_ordered}, content sets={len(var_sets)}, "
+              f"union={len(var_union)} vs door={max(desk_ns)}, pool_deep={POOL_DEEP} (pool={len(DIV_POOL)})")
         # ≥60% place among the shown — desktop opens AND the portrait open (ceil rounding tolerated)
         import math as _m
         desk_ok = all(f + 1e-9 >= FRAC for f in place_frac)

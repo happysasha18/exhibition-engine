@@ -5,6 +5,18 @@ private production instance and founded as its own product: a static gallery-sit
 adaptive-exhibition renderer, with the guided-journey product vision below. Method: the live-spec
 pack, loaded per session._
 
+## 2026-07-20 — the door-variety test made robust (EX-DOOR-3), test-only
+
+The `test_door.py` variety row was a flaky proxy: it opened the door 3× and asked for ≥2 distinct
+ORDERED tuples, so three identical orderings in a row (rare but real) flaked it red. It now opens 8×
+and asserts ORDER variety always (statistically impossible to all-collide) plus CONTENT variety
+(distinct sets + a dealt union beyond one door) only when the pool is a gallery many doors deep
+(`len(pool) ≥ 10 × door`). The reason for the gate: content variety is a DEEP-pool property — the
+farthest-point spread returns the same extremes until the pool is large relative to a door. The
+engine's own 24-work synthetic fixture collapses to one content set (it proves the mechanics + order);
+the deep real gallery downstream (tlvphotos, 121 works) proves the content promise, measured at 15
+distinct sets / 24 cold opens. No product change; door dealing unchanged. Suite 36/36.
+
 ## 2026-07-16 (evening, second landing) — the variant frame (EX-AB / INV-90 / INV-91)
 
 The experiment frame is engine-generic now: the served `experiments` registry (arms · flag · metric ·
