@@ -3298,28 +3298,37 @@
   let wheelMode = null;                                // "walk" (plain wheel) | "zoom" (ctrl+wheel) — latched per burst
   // INV-84 re-arm, SETTINGS-INDEPENDENT (his 2026-07-16 word): macOS scales every wheel |deltaY| by
   // the user's own trackpad-speed setting, so ANY absolute |deltaY| threshold is wrong per-user by
-  // construction. The old absolute rails (RESWIPE_PEAK/FLOOR/RISE = 20/12/20) carried both halves of
-  // the bug: a real momentum tail is BUMPY, so a micro-hump could dip under the floor and rise past
-  // the rise rail (a false second step), while a genuine second swipe over a HIGH still-flowing tail
-  // never saw the dip (swallowed). The verdict below reads only TIME and RATIOS — both invariant
-  // under any speed setting. No browser exposes the macOS momentum phase to JS, so a time gap plus a
-  // relative re-acceleration is the only mechanism available. Inside a non-fresh burst a NEW step
-  // fires only when BOTH (a) STEP_MIN_MS passed since the last step, AND (b) either a real hole in
-  // the event stream (the old momentum ended) or the stream CRESTED, fell into its decaying tail,
-  // and now surges to RESWIPE_RATIO × the decayed envelope. The crest gate means the initial ramp-in
-  // can never trip the ratio. Every constant here is a provisional STRUCTURE — Alexander tunes the
-  // values by FEEL on the live site; none is, or may ever become, an absolute |deltaY| magnitude.
+  // construction. The verdict below reads only TIME and RATIOS — both invariant under any speed
+  // setting. No browser exposes the macOS momentum phase to JS, so the SHAPE of the stream is the
+  // only signal. The physical key: a momentum tail carries the finger's decaying kinetic energy, so
+  // it only ever FALLS — it cannot sustain a climb on its own. A NEW gesture is the one thing that
+  // makes the stream CLIMB again after the peak. But a single CONTINUOUS drag that eases then pushes
+  // again also climbs, without a finger lift — so a climb alone is not enough. The separating fact:
+  // a new gesture follows a momentum END; a within-drag re-accel does not. So inside a non-fresh burst
+  // a new step fires only when ALL hold: the momentum DIED (fell to ≤ CREST_RATIO × peak — a real
+  // death, so an ease to a quarter of the peak never qualifies), it has climbed for RISE_RUN
+  // consecutive events on the finger's OWN dense cadence (gap ≤ RISE_GAP_MS — a sparse far-tail ripple
+  // rides wide gaps and is excluded), that climb clears the decayed envelope by REARM_RATIO, and
+  // STEP_MIN_MS passed since the last step. This replaced the earlier bare time-gap re-arm, which read
+  // a momentum tail's own GROWING gaps as fresh gestures (one swipe → four steps, WHL9) and swallowed
+  // a fast second swipe under a 250ms floor (WHL10). Known narrow residual (a "too few", his feel-tune,
+  // fundamentally in tension with never double-stepping a drag): a GENTLE-and-slow second swipe whose
+  // onset rides wide gaps AND whose hole is under the 150ms idle window can be missed — a dense reswipe,
+  // or any reswipe past the idle window, always lands. Every constant is a provisional STRUCTURE —
+  // Alexander tunes the values by FEEL on the live site; none is an absolute |deltaY| magnitude.
   const WHEEL_IDLE_MS = 150;   // gesture end: this much event silence → the next event opens a FRESH burst (the kept idle window)
-  const STEP_MIN_MS = 250;     // the human double-swipe floor — two deliberate swipes never land closer (a human-rhythm constant, not a device one)
-  const RESWIPE_GAP_MS = 90;   // a hole this long inside a live burst → the prior momentum ended (momentum ticks far faster)
-  const RESWIPE_RATIO = 1.9;   // |deltaY| at/above this × the decayed envelope → a deliberate re-acceleration (a ratio — speed-setting-proof)
-  const CREST_RATIO = 0.6;     // the stream fell to/below this × the envelope → past the crest, in the tail, re-arm eligible
-  const ENV_HALF_MS = 250;     // the envelope's half-life: how fast the remembered peak fades toward the live tail
-  // The per-event verdict, PURE and DOM-free — test_wheel.py extracts this block (the six constants
+  const STEP_MIN_MS = 120;     // a small refractory floor between steps — a fast double-swipe still lands two (a human-rhythm constant, not a device one)
+  const REARM_RATIO = 1.6;     // a new-gesture onset clears the decayed envelope by at least this ratio (a ratio — speed-setting-proof)
+  const CREST_RATIO = 0.18;    // re-arm eligible only once the stream fell to ≤ this × the peak — the momentum has DIED, not merely eased: a drag that slows to a quarter of its peak and pushes again is ONE contact, not a new gesture, so it never re-arms (the audit's within-drag re-accel)
+  const ENV_HALF_MS = 80;      // the envelope's half-life: how fast the remembered level follows the tail down
+  const RISE_RUN = 2;          // a re-arm needs this many CONSECUTIVE climbing events — momentum falls, only input climbs
+  const RISE_GAP_MS = 35;      // the re-arm's climb rides the finger's own DENSE cadence (~12ms); a far tail spaces its events 50-130ms apart, so a sparse tail ripple can never be a re-swipe onset
+  // The per-event verdict, PURE and DOM-free — test_wheel.py extracts this block (the constants
   // above + this function) and replays recorded envelopes in node: no browser, no timers, no sleeps.
-  // Keep it self-contained. `st` carries: env (decaying running peak of |deltaY|), crested (the
-  // stream fell into its tail), stepT (when the last step fired), lastT (the previous event),
-  // fresh (set for the caller: this event opened a new burst). Returns the step: -1 | 0 | +1.
+  // Keep it self-contained. `st` carries: env (the decaying envelope following the tail), peak (the
+  // burst's high-water mark, for the crest test), crested (fell into the tail), rises (consecutive
+  // climbing events), prev (the previous |deltaY|), stepT (when the last step fired), lastT (the
+  // previous event), fresh (this event opened a new burst). Returns the step: -1 | 0 | +1.
   function wheelWalkStep(s, st) {
     const mag = Math.abs(s.dy);
     const gap = st.lastT == null ? Infinity : s.t - st.lastT;
@@ -3327,23 +3336,28 @@
     let step = 0;
     if (st.fresh) {
       step = s.dy > 0 ? 1 : -1;                        // a fresh burst always steps once
-      st.env = mag; st.crested = false; st.stepT = s.t;
+      st.env = mag; st.peak = mag; st.crested = false; st.stepT = s.t; st.prev = mag; st.rises = 0;
     } else {
-      const env = st.env * Math.pow(0.5, gap / ENV_HALF_MS);       // the envelope, decayed to NOW
-      if (!st.crested && env > 0 && mag <= env * CREST_RATIO) st.crested = true;
-      const paused = gap >= RESWIPE_GAP_MS;                        // a real hole — the old momentum is over
-      const reaccel = st.crested && mag >= env * RESWIPE_RATIO;    // a relative surge OUT of the tail
-      if (mag > 0 && s.t - st.stepT >= STEP_MIN_MS && (paused || reaccel)) {
+      const env = st.env * Math.pow(0.5, gap / ENV_HALF_MS);       // the envelope, decayed toward the tail at NOW
+      if (mag > st.peak) st.peak = mag;
+      if (!st.crested && st.peak > 0 && mag <= st.peak * CREST_RATIO) st.crested = true;
+      st.rises = (mag > st.prev) ? st.rises + 1 : 0;               // consecutive climbing events — momentum never climbs
+      // a re-swipe onset is a DENSE climb (the finger's own cadence) that clears the decayed tail; a sparse
+      // far-tail ripple climbs across wide gaps where the envelope has itself decayed to the live value, so
+      // the ratio alone degenerates there — the tight-gap gate is what tells the two apart (INV-84).
+      const onset = st.crested && st.rises >= RISE_RUN && gap <= RISE_GAP_MS && mag >= env * REARM_RATIO;
+      if (mag > 0 && s.t - st.stepT >= STEP_MIN_MS && onset) {
         step = s.dy > 0 ? 1 : -1;                      // a deliberate SECOND swipe — re-armed
-        st.env = mag; st.crested = false; st.stepT = s.t;
+        st.env = mag; st.peak = mag; st.crested = false; st.stepT = s.t; st.rises = 0;
       } else {
-        st.env = Math.max(mag, env);                   // ride the stream: the envelope never sits under the live value
+        st.env = Math.max(env, mag);                   // ride the stream: attack to the live value, else follow the tail down
       }
+      st.prev = mag;
     }
     st.lastT = s.t;
     return step;
   }
-  const wheelS = { env: 0, crested: false, stepT: 0, lastT: null, fresh: true };
+  const wheelS = { env: 0, peak: 0, crested: false, stepT: 0, lastT: null, fresh: true, prev: 0, rises: 0 };
   if (!TOUCHY) {
     addEventListener("wheel", (e) => {
       // The burst boundary and the MEANING are both fixed at the first event: a mouse notch is one
