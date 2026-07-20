@@ -1494,7 +1494,7 @@ the worker.
   never a scold (`EX-PROTECT`).
 - **Told story** — one short associative line per work, written on demand at the edge, cached in
   KV, degrading to silence (`EX-STORY` / `INV-47`).
-- **Ambient player** — one optional gapless loop, off by default, lazy-fetched on turn-on,
+- **Ambient player** — one optional streamed loop, off by default, lazy-fetched on turn-on,
   credit from config (`EX-SOUND`).
 - **Loading breath** — the solemn hairline shown while a frame's pixels travel; wordless,
   retired the moment pixels land (`EX-LOAD`).
