@@ -1,3 +1,20 @@
+  // ---- EX-LADDER (INV-63): one home for the tier ladder -----------------------
+  // The law is owed by EVERY work a visitor is shown, on every surface, so the ladder is
+  // written once here and each surface hands only its own box description (`sizes`). The
+  // tiers themselves are the work's baked `srcset` (640/960/1280, written by the display-cap
+  // bake); no cap ⇒ no srcset key ⇒ the surface stays byte-identical to a ladder-less one.
+  const LADDER_FALLBACK = { walk: "88vw", lane: "64vw", print: "(max-width:640px) 110px, 150px" };
+  function ladderSizes(surface) {                      // the baked string, else the CSS box it mirrors
+    return (data[surface + "_sizes"] || LADDER_FALLBACK[surface] || "100vw");
+  }
+  function ladderAttr(w, sizes) {                      // for a surface that writes its img as HTML
+    return (w && w.srcset) ? ` srcset="${w.srcset}" sizes="${sizes}"` : "";
+  }
+  function ladderOn(img, w, sizes) {                   // for a surface that builds an Image object
+    if (img && w && w.srcset) { img.sizes = sizes; img.srcset = w.srcset; }
+    return img;
+  }
+
   // ---- the breathing ground (room.html's tone math) --------------------------
   // EX-ACCENT rides the same pair: the focused work's tone raised to readable light
   // (Y≈170, 20% bone; near-black → bone whole) lives while the ground does, rests with it
@@ -172,7 +189,7 @@
     const w = byId[id]; if (!w) return;
     preId = id;
     const im = new Image();
-    if (w.srcset) { im.sizes = data.walk_sizes || "88vw"; im.srcset = w.srcset; }
+    ladderOn(im, w, ladderSizes("walk"));
     im.src = w.img;                                     // the browser picks the device tier
     preImg = im;
     try { window.__@@NS@@Preload = { id: id, dir: travelDir }; } catch (e) {}
@@ -195,7 +212,7 @@
     warmed.add(w.id);
     const im = new Image();
     try { im.fetchPriority = "low"; } catch (e) {}      // never contends with the door's five windows
-    if (w.srcset) { im.sizes = data.walk_sizes || "88vw"; im.srcset = w.srcset; }  // the room's own tier
+    ladderOn(im, w, ladderSizes("walk"));               // the room's own tier
     im.src = w.img;                                     // the browser resolves the exact room-hang URL (INV-63)
   }
   function warmCandidates(gen) {

@@ -1036,6 +1036,23 @@
   }
   const spentUnfolds = () => Math.max(0, Math.floor((shown - SPREAD) / UNFOLD));
 
+  // ---- EX-LADDER (INV-63): one home for the tier ladder -----------------------
+  // The law is owed by EVERY work a visitor is shown, on every surface, so the ladder is
+  // written once here and each surface hands only its own box description (`sizes`). The
+  // tiers themselves are the work's baked `srcset` (640/960/1280, written by the display-cap
+  // bake); no cap ⇒ no srcset key ⇒ the surface stays byte-identical to a ladder-less one.
+  const LADDER_FALLBACK = { walk: "88vw", lane: "64vw", print: "(max-width:640px) 110px, 150px" };
+  function ladderSizes(surface) {                      // the baked string, else the CSS box it mirrors
+    return (data[surface + "_sizes"] || LADDER_FALLBACK[surface] || "100vw");
+  }
+  function ladderAttr(w, sizes) {                      // for a surface that writes its img as HTML
+    return (w && w.srcset) ? ` srcset="${w.srcset}" sizes="${sizes}"` : "";
+  }
+  function ladderOn(img, w, sizes) {                   // for a surface that builds an Image object
+    if (img && w && w.srcset) { img.sizes = sizes; img.srcset = w.srcset; }
+    return img;
+  }
+
   // ---- the breathing ground (room.html's tone math) --------------------------
   // EX-ACCENT rides the same pair: the focused work's tone raised to readable light
   // (Y≈170, 20% bone; near-black → bone whole) lives while the ground does, rests with it
@@ -1210,7 +1227,7 @@
     const w = byId[id]; if (!w) return;
     preId = id;
     const im = new Image();
-    if (w.srcset) { im.sizes = data.walk_sizes || "88vw"; im.srcset = w.srcset; }
+    ladderOn(im, w, ladderSizes("walk"));
     im.src = w.img;                                     // the browser picks the device tier
     preImg = im;
     try { window.__@@NS@@Preload = { id: id, dir: travelDir }; } catch (e) {}
@@ -1233,7 +1250,7 @@
     warmed.add(w.id);
     const im = new Image();
     try { im.fetchPriority = "low"; } catch (e) {}      // never contends with the door's five windows
-    if (w.srcset) { im.sizes = data.walk_sizes || "88vw"; im.srcset = w.srcset; }  // the room's own tier
+    ladderOn(im, w, ladderSizes("walk"));               // the room's own tier
     im.src = w.img;                                     // the browser resolves the exact room-hang URL (INV-63)
   }
   function warmCandidates(gen) {
@@ -1461,8 +1478,10 @@
       } else {                                         // relayout: already on screen, no re-fade
         b.style.animation = "none"; b.style.opacity = "1";
       }
-      b.innerHTML = `<img src="${w.img}" alt="${alt}">`;
-      doorArm(b.querySelector("img"), w, b);             // DL1/DL2: this window rides the walk's ladder
+      // EX-LADDER (INV-63): a window's box is the layout's own size (--exd-wsize), so it hands
+      // that exact width and a phone pulls the small tier instead of the full display file.
+      b.innerHTML = `<img src="${w.img}"${ladderAttr(w, c.size.toFixed(0) + "px")} alt="${alt}">`;
+      doorArm(b.querySelector("img"), w, b);             // DL1/DL2: the window's own plate + halo
       // EX-QUIZ (INV-64/66): the quiz chip NEVER appears on the door (button-only screen) —
       // only over a work in view on the plaque (quizShows checked in the IO observer below).
       b.addEventListener("click", () => doorPick(w, b));   // the window itself rides along (EX-STORY-BEAT: its picture is the beat's star)
@@ -3255,10 +3274,9 @@
 
   function frameHTML(id, n) {
     const w = byId[id];
-    // EX-LADDER (INV-63): the responsive ladder rides the baked per-work `srcset` (640/960/1280,
-    // written by the display-cap bake); the base `src` stays the untouched fallback. No cap ⇒ no
-    // srcset key ⇒ the img is byte-identical to a ladder-less walk.
-    const ladder = w.srcset ? ` srcset="${w.srcset}" sizes="${data.walk_sizes || "88vw"}"` : "";
+    // EX-LADDER (INV-63): the ladder itself lives in one place (ladderAttr); the walk hands its
+    // own box — CSS max-width:88vw. The base `src` stays the untouched fallback.
+    const ladder = ladderAttr(w, ladderSizes("walk"));
     // N7-A11Y (INV-102, C1/C3): the frame img speaks the work's own description (never alt=""), and the
     // frame names itself a photograph within the walk (role + roledescription + the same accessible name).
     const desc = escAttr(workDesc(w.id));
@@ -3819,6 +3837,7 @@
       if (!w) return;
       if (S.variant === "lane") {
         const im = new Image();
+        ladderOn(im, w, ladderSizes("lane"));            // EX-LADDER (INV-63): the lane's box is CSS max-width:64vw
         im.src = w.img;
         im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
@@ -3833,7 +3852,9 @@
       p.style.left = (8 + (i % 5) * 17 + (i * 7) % 5) + "%";
       p.style.top = (12 + Math.floor(i / 5) * 26 + (i * 11) % 7) + "%";
       p.style.setProperty("--rot", ((((i * 37) % 13) - 6)) + "deg");
-      p.innerHTML = '<img src="' + w.img + '" alt="">';
+      // EX-LADDER (INV-63): a polaroid's box is a small clamp (84–150px, 72–110px on a phone),
+      // so it hands that box and the browser pulls the smallest tier instead of the display file.
+      p.innerHTML = '<img src="' + w.img + '"' + ladderAttr(w, ladderSizes("print")) + ' alt="">';
       const pim = p.querySelector("img");                // N7-A11Y (INV-102, C6): the polaroid speaks
       if (pim) pim.alt = workDesc(w.id);
       // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space

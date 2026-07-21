@@ -430,7 +430,11 @@ def _stamp(im, text):
 # (fast), a wide/retina screen pulls 1280 (sharp). Tiers + srcset join ONLY when the display cap runs
 # (deploy); a no-cap bake (tests) is byte-identical to a ladder-less walk.
 DISPLAY_TIERS = (640, 960, 1280)
-WALK_SIZES = "88vw"          # the one `sizes` the walk's img wears (its box is CSS max-width:88vw)
+# Each surface that hangs a work wears the `sizes` its own CSS box asks for. A door window's box is
+# the layout's live size, so that one is written at render time rather than baked here.
+WALK_SIZES = "88vw"          # the walk's img — CSS max-width:88vw
+LANE_SIZES = "64vw"          # a series lane picture — CSS max-width:64vw
+PRINT_SIZES = "(max-width:640px) 110px, 150px"   # a polaroid on the table — the clamp's own ceiling
 
 
 WORK_SIZES = "(min-width: 800px) 760px, 100vw"
@@ -852,10 +856,12 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     greet = greetings()
     if greet:
         exdata["greet"] = greet
-    # EX-LADDER (INV-63): the one `sizes` the walk's img wears — joins only alongside the per-work
+    # EX-LADDER (INV-63): the `sizes` each hanging surface wears — joins only alongside the per-work
     # srcset (i.e. when the display cap runs), so a no-cap bake stays byte-identical.
     if display_max:
         exdata["walk_sizes"] = WALK_SIZES
+        exdata["lane_sizes"] = LANE_SIZES
+        exdata["print_sizes"] = PRINT_SIZES
     write(OUT / "exhibition_data.json",
           json.dumps(exdata, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 

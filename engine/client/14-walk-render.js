@@ -1,9 +1,8 @@
   function frameHTML(id, n) {
     const w = byId[id];
-    // EX-LADDER (INV-63): the responsive ladder rides the baked per-work `srcset` (640/960/1280,
-    // written by the display-cap bake); the base `src` stays the untouched fallback. No cap ⇒ no
-    // srcset key ⇒ the img is byte-identical to a ladder-less walk.
-    const ladder = w.srcset ? ` srcset="${w.srcset}" sizes="${data.walk_sizes || "88vw"}"` : "";
+    // EX-LADDER (INV-63): the ladder itself lives in one place (ladderAttr); the walk hands its
+    // own box — CSS max-width:88vw. The base `src` stays the untouched fallback.
+    const ladder = ladderAttr(w, ladderSizes("walk"));
     // N7-A11Y (INV-102, C1/C3): the frame img speaks the work's own description (never alt=""), and the
     // frame names itself a photograph within the walk (role + roledescription + the same accessible name).
     const desc = escAttr(workDesc(w.id));

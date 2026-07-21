@@ -189,8 +189,10 @@
       } else {                                         // relayout: already on screen, no re-fade
         b.style.animation = "none"; b.style.opacity = "1";
       }
-      b.innerHTML = `<img src="${w.img}" alt="${alt}">`;
-      doorArm(b.querySelector("img"), w, b);             // DL1/DL2: this window rides the walk's ladder
+      // EX-LADDER (INV-63): a window's box is the layout's own size (--exd-wsize), so it hands
+      // that exact width and a phone pulls the small tier instead of the full display file.
+      b.innerHTML = `<img src="${w.img}"${ladderAttr(w, c.size.toFixed(0) + "px")} alt="${alt}">`;
+      doorArm(b.querySelector("img"), w, b);             // DL1/DL2: the window's own plate + halo
       // EX-QUIZ (INV-64/66): the quiz chip NEVER appears on the door (button-only screen) —
       // only over a work in view on the plaque (quizShows checked in the IO observer below).
       b.addEventListener("click", () => doorPick(w, b));   // the window itself rides along (EX-STORY-BEAT: its picture is the beat's star)

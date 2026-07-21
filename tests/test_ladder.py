@@ -93,6 +93,9 @@ BROWSER_ROWS = [
     "EX-LOAD-3 a failed preload is silent (prover F5): the next file blocked errors nothing, the walk lives",
     "EX-LOAD-2 · DL1 a door window rides the ladder (slow ⇒ raw-dom plate + wordless bar; fast ⇒ no plate)",
     "EX-LOAD-2 · DL2 the door ladder composes with the entrance + halo (rise intact, halo liveAccent, plate raw dom; a cached re-render re-flashes no plate)",
+    "EX-LADDER a door window rides the ladder — it hands its own small box, so the tier is small, never the display file (INV-63)",
+    "EX-LADDER a series lane picture rides the ladder (INV-63)",
+    "EX-LADDER a polaroid on the table rides the ladder — the smallest tier for a thumb-sized box (INV-63)",
 ]
 
 # ---- DL1/DL2 helpers: the door's per-window plate (class .exd-plate, five may fly at once) --------
@@ -470,6 +473,69 @@ else:
               f"halo_ok={halo_ok}(glow={c.get('glow')} vs {live_accent(cdom) if cdom else None}) "
               f"plate_raw={plate_raw}(plate={c.get('bg')} vs dom={cdom}) "
               f"settled_plate={settled_plate} rerender_flashed={flashed}")
+
+        # 16–18 · EX-LADDER holds on EVERY surface that hangs a work, not only the walk. A door
+        # window and both series faces used to fetch the full display file into a 160px / 64vw /
+        # 150px box; each hands its own box now and the browser picks the tier that fits.
+        TIER = r"-(?:640|960|1280)\.png"
+
+        def ladder_of(br, sel):
+            return json.loads(br.evaluate(
+                "(()=>{const i=document.querySelector('%s');if(!i)return JSON.stringify({no:1});"
+                "return JSON.stringify({srcset:i.getAttribute('srcset')||'',"
+                "sizes:i.getAttribute('sizes')||'',cur:i.currentSrc||''});})()" % sel) or "{}")
+
+        with Browser(width=1280, height=900) as br:
+            open_cold_door(br, base)
+            br.sleep(1.8)
+            win = ladder_of(br, ".exd-window img")
+            check(BROWSER_ROWS[16],
+                  bool(win.get("srcset")) and win.get("sizes", "").endswith("px")
+                  and bool(re.search(TIER, win.get("cur") or "")),
+                  f"window={win}")
+
+        SERIES = DATA.get("series") or []
+        LANE = next((s for s in SERIES if s["variant"] == "lane"), None)
+        PRINTS = next((s for s in SERIES if s["variant"] == "polaroids"), None)
+
+        def open_series(br, member):
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear();sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+            br.evaluate("localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
+                        % (json.dumps(VER), json.dumps(member)))
+            br.reload()
+            br.sleep(1.3)
+            br.click("#exh-cap .ex-series", settle=0.8)
+
+        if LANE:
+            with Browser(width=1280, height=900) as br:
+                open_series(br, LANE["members"][0])
+                lane = ladder_of(br, ".exs-stage.lane img")
+                check(BROWSER_ROWS[17],
+                      bool(lane.get("srcset")) and bool(lane.get("sizes"))
+                      and bool(re.search(TIER, lane.get("cur") or "")),
+                      f"lane={lane}")
+        else:
+            skip(BROWSER_ROWS[17], "the fixture bakes no lane series")
+
+        if PRINTS:
+            with Browser(width=1280, height=900) as br:
+                open_series(br, PRINTS["members"][0])
+                prints = json.loads(br.evaluate(
+                    "JSON.stringify([...document.querySelectorAll('.exs-print img')].map(i=>({"
+                    "srcset:i.getAttribute('srcset')||'',sizes:i.getAttribute('sizes')||'',"
+                    "cur:i.currentSrc||''})))") or "[]")
+                # Every polaroid wears the ladder and its own thumb-sized box. A work already hanging
+                # on the walk keeps the big tier it fetched there — the browser is free to reuse a
+                # cached candidate — so the saving is read on the COLD ones: a thumb pulls 640.
+                all_rigged = bool(prints) and all(p["srcset"] and p["sizes"] for p in prints)
+                cold_small = any(re.search(r"-640\.png", p.get("cur") or "") for p in prints)
+                tiers = [(re.search(TIER, p.get("cur") or "") or [""])[0] for p in prints]
+                check(BROWSER_ROWS[18], all_rigged and cold_small,
+                      f"n={len(prints)} rigged={all_rigged} cold_small={cold_small} tiers={tiers}")
+        else:
+            skip(BROWSER_ROWS[18], "the fixture bakes no polaroid series")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

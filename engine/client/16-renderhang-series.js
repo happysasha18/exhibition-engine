@@ -70,6 +70,7 @@
       if (!w) return;
       if (S.variant === "lane") {
         const im = new Image();
+        ladderOn(im, w, ladderSizes("lane"));            // EX-LADDER (INV-63): the lane's box is CSS max-width:64vw
         im.src = w.img;
         im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
@@ -84,7 +85,9 @@
       p.style.left = (8 + (i % 5) * 17 + (i * 7) % 5) + "%";
       p.style.top = (12 + Math.floor(i / 5) * 26 + (i * 11) % 7) + "%";
       p.style.setProperty("--rot", ((((i * 37) % 13) - 6)) + "deg");
-      p.innerHTML = '<img src="' + w.img + '" alt="">';
+      // EX-LADDER (INV-63): a polaroid's box is a small clamp (84–150px, 72–110px on a phone),
+      // so it hands that box and the browser pulls the smallest tier instead of the display file.
+      p.innerHTML = '<img src="' + w.img + '"' + ladderAttr(w, ladderSizes("print")) + ' alt="">';
       const pim = p.querySelector("img");                // N7-A11Y (INV-102, C6): the polaroid speaks
       if (pim) pim.alt = workDesc(w.id);
       // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space
