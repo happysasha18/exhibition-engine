@@ -6,7 +6,7 @@
 /* EX-MOTION: every duration/delay below rides the design tokens (--d-*) or multiplies by
    --tempo directly (micro-feedback <.5s) — no literal may bypass the one clock (design card 04) */
 
-body{ min-height:100vh; overflow-x:hidden; background:rgb(var(--ground,12,11,10));
+body{ min-height:100vh; min-height:100dvh; overflow-x:hidden; background:rgb(var(--ground,12,11,10));
   transition:background var(--d-ground) var(--ease);
   /* EX-PROTECT (INV-49) — the pinch/zoom refusal is a CLASS rule, placed once on body so it governs
      EVERY exhibition face through the ancestor chain: the walk, the door (#ex-door), the series
@@ -45,11 +45,15 @@ body.ex-live #ex-loading{ display:none; }
   font-size:clamp(11px,3.1vw,14px); letter-spacing:.14em; text-transform:uppercase;
   text-align:center; line-height:1.7; max-width:82vw; padding:0 22px;
   margin-inline-end:-.14em; }   /* wraps + stays optically centered on any viewport */
-@keyframes ex-loadin{ to{ opacity:.85 } }
-@keyframes ex-loadbreathe{ 0%,100%{ opacity:.85; } 50%{ opacity:.55; } }   /* starts where the
-  fade ended (.85) — the old 0%=.55 snapped in one frame at the fade→breathe handoff */
+@keyframes ex-loadin{ to{ opacity:.85; transform:scale(.5) } }   /* fades in AND settles to .5, the
+  breathe's own 0% end, so the fade→breathe handoff matches on scale the way it already does on opacity */
+@keyframes ex-loadbreathe{ 0%,100%{ opacity:.85; transform:scale(.5); } 50%{ opacity:.55; transform:scale(.25); } }
+  /* opacity starts where the fade ended (.85) — the old 0%=.55 snapped in one frame at the handoff; the
+     size pulse rides alongside: the bright/large end sits at half natural (.5), the dim end at half of
+     that (.25), so the line breathes in size and brightness on the one 2.4s tempo */
 @media (prefers-reduced-motion:reduce){
-  html.js #ex-loading{ animation:none; opacity:.8; }   /* a still visible line, no loop */
+  html.js #ex-loading{ animation:none; opacity:.8; transform:scale(.5); }   /* a still visible line at the
+    mid/large size, no loop */
 }
 /* EX-GLIDE: the hard latch is retired — the JS amortizer settles the walk (card 02's norm);
    no CSS smooth either: the glide owns the only designed scroll motion */
@@ -144,7 +148,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   .exd-window img{ transition:none; } }
 /* the corner mark (EX-LANG) — the guest chooses the tongue; ≥44px, clears the wordmark */
 /* EX-ARRIVE: born at opacity:0, breathes in via .show on the next rAF after DOM insertion */
-.exd-lang{ position:fixed; top:14px; inset-inline-end:16px; z-index:125;
+.exd-lang{ position:fixed; top:calc(env(safe-area-inset-top,0px) + 14px); inset-inline-end:16px; z-index:125;
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
 .exd-lang.show{ opacity:1; }
 .exl-cur{ min-width:44px; min-height:44px; font-family:var(--mono); font-size:10px;
@@ -169,7 +173,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 
 
 /* ================= THE GALLERY (room.html's museum hang) ================= */
-.exh-frame{ height:100vh; display:grid; place-items:center; position:relative; }
+.exh-frame{ height:100vh; height:100dvh; display:grid; place-items:center; position:relative; }
 /* the plate (EX-LOAD-2) and the photo share the ONE centered grid cell so the photo fades in
    exactly over the tone — no z-index juggling via position (grid items honor z-index directly) */
 .exh-frame > *{ grid-area:1/1; }
@@ -191,6 +195,11 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   touch-action:pan-x pan-y;
   transition:opacity var(--d-reveal) var(--ease); }
 .exh-frame.seen img.work{ opacity:1; }
+/* N7-A11Y (INV-102, B3): the walk work is keyboard-focusable — a focus-visible halo rings the picture
+   itself (never the full-viewport section), shown only for the keyboard (:focus-visible). */
+.exh-frame:focus{ outline:none; }
+.exh-frame:focus-visible{ outline:none; }
+.exh-frame:focus-visible img.work{ outline:2px solid var(--accent,#c9a86a); outline-offset:4px; }
 
 /* the quiet share affordance — ONE link-glyph FLOATING over the walk (2026-07-09: the player
    and the link are chrome ABOVE the room, they never ride a frame or drift with a scroll).
@@ -199,7 +208,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    centre on the SAME x from the right edge at every width and orientation (his 2026-07-10
    landscape note). Each rule derives `right` as the rail minus half its own button width. */
 :root{ --ex-rail:36px; --ex-share-b:26px; --cap-narrow-step:1; }   /* --cap-narrow-step: INV-98 boot default, JS overrides from config */
-.ex-share{ position:fixed; inset-inline-end:calc(var(--ex-rail) - 18px); bottom:var(--ex-share-b); z-index:35; width:36px; height:36px;
+.ex-share{ position:fixed; inset-inline-end:calc(var(--ex-rail) - 18px); bottom:calc(env(safe-area-inset-bottom,0px) + var(--ex-share-b)); z-index:35; width:36px; height:36px;
   border-radius:999px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
   background:rgba(8,8,7,.55); border:1px solid var(--hair);
   opacity:0; pointer-events:none;
@@ -215,7 +224,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 /* EX-ARRIVE: opacity:0 base; .show rAF-added on each call to toast(); removed in toastOff() */
 /* the toast answers BESIDE the link button it belongs to (his 2026-07-10 note: the centre of the
    image is far from the hand) — right-aligned just above the share control, same rail maths */
-#ex-toast{ position:fixed; inset-inline-end:calc(var(--ex-rail) - 18px); bottom:calc(var(--ex-share-b) + 48px); z-index:40;
+#ex-toast{ position:fixed; inset-inline-end:calc(var(--ex-rail) - 18px); bottom:calc(env(safe-area-inset-bottom,0px) + var(--ex-share-b) + 48px); z-index:40;
   font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--ink);
   background:rgba(8,8,7,.72); border:1px solid var(--hair); border-radius:999px;
   padding:9px 16px; max-width:82vw; overflow-wrap:anywhere; text-align:end;
@@ -303,6 +312,10 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .exs-print img{ width:clamp(84px,10.5vw,150px); height:clamp(84px,10.5vw,150px);
   object-fit:cover; display:block; }
 .exs-print:hover{ transform:rotate(var(--rot)) translate(0,-8px); }
+/* N7-A11Y (INV-102, B4): the room's polaroids + lane photographs are keyboard-reachable — a focus-visible halo */
+.exs-print:focus{ outline:none; }
+.exs-print:focus-visible{ outline:2px solid var(--accent,#c9a86a); outline-offset:3px; }
+.exs-stage.lane img:focus-visible{ outline:2px solid var(--accent,#c9a86a); outline-offset:4px; }
 .exs-print.lift{ transform:translate(var(--cx),var(--cy)) rotate(0deg) scale(1.9); z-index:30;
   box-shadow:0 44px 100px rgba(0,0,0,.7); }
 @media (max-width:640px){
@@ -379,7 +392,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .exh-capzone .dot{ width:8px; height:8px; border-radius:50%; background:#c0392b; flex:none;
   box-shadow:0 0 0 3px rgba(192,57,43,.14); }         /* продано — the gallery convention, the dot alone */
 .exh-capzone .dot[hidden]{ display:none; }
-.exh-counter{ position:fixed; top:26px; inset-inline-start:34px; z-index:30; font-family:var(--mono); font-size:11px;
+.exh-counter{ position:fixed; top:calc(env(safe-area-inset-top,0px) + 26px); inset-inline-start:34px; z-index:30; font-family:var(--mono); font-size:11px;
   letter-spacing:.2em; color:var(--muted-2); opacity:0; transition:opacity calc(.5s*var(--tempo)); }
 .exh-counter.show{ opacity:1; }
 .exh-counter .now{ color:var(--ink); }
@@ -390,7 +403,7 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
 /* EX-ARRIVE: the closing screen arrives in a LIGHT STAGGER (his call) — the
    question first, the choices a beat later, the signature last; each fades from
    opacity:0 on the house tempo. JS adds .show via rAF on the frame after appendChild. */
-.exh-fin{ height:100vh; display:grid; place-content:center;
+.exh-fin{ height:100vh; height:100dvh; display:grid; place-content:center;
   text-align:center; gap:26px; }
 .exh-fin .q,.exh-fin .row,.exh-fin .exh-sign{
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
@@ -418,7 +431,7 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
    Absent when sound_url is empty — the JS IIFE exits early, no DOM insertion. */
 /* EX-ARRIVE: opacity:0 base; .show added via rAF on insertion so it breathes in, never pops */
 /* right rides the SHARED --ex-rail (see .ex-share): rail minus half the 40px button = same axis */
-#ex-sound{ position:fixed; top:14px; inset-inline-end:calc(var(--ex-rail) - 20px); z-index:130; display:flex; align-items:center;
+#ex-sound{ position:fixed; top:calc(env(safe-area-inset-top,0px) + 14px); inset-inline-end:calc(var(--ex-rail) - 20px); z-index:130; display:flex; align-items:center;
   height:40px; -webkit-tap-highlight-color:transparent;
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
 #ex-sound.show{ opacity:1; }

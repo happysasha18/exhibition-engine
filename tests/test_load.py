@@ -53,6 +53,16 @@ check("EX-LOAD cold line: build emits #ex-loading with the instance line; CSS ga
       'id="ex-loading"' in INDEX_SRC and "#ex-loading" in CSS_SRC
       and "@keyframes ex-loadin" in CSS_SRC and "body.ex-live #ex-loading{ display:none" in CSS_SRC,
       "ex-loading emit/CSS")
+# 1b · the loader breath carries a SIZE pulse alongside the opacity swing (his feel-tweak, 2026-07-21):
+# ex-loadbreathe scales .5 (bright/large end) ↔ .25 (dim/small end) synced with the opacity, and
+# ex-loadin settles to scale(.5) so the fade→breathe handoff never snaps scale(1)→scale(.5).
+_BRE = next((ln for ln in CSS_SRC.splitlines() if "@keyframes ex-loadbreathe" in ln), "")
+_LDIN = next((ln for ln in CSS_SRC.splitlines() if "@keyframes ex-loadin" in ln), "")
+check("EX-LOAD size breath: ex-loadbreathe scales .5↔.25 with the opacity, and ex-loadin settles to "
+      "scale(.5) (no scale(1)→scale(.5) snap at the fade→breathe handoff)",
+      "transform:scale(.5)" in _BRE and "transform:scale(.25)" in _BRE
+      and "transform:scale(.5)" in _LDIN,
+      f"breathe={_BRE.strip()[:70]!r} loadin_settles_.5={'transform:scale(.5)' in _LDIN}")
 # 2 · the closing screen no longer strands the last work's caption
 check("finale caption clears: the observer fades the caption out on #exh-fin, and the finale is "
       "observed (never a stranded/stale title over the closing screen)",

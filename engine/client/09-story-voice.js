@@ -88,6 +88,11 @@
       for (const l of data.lines) {                    // the whole portion's lines land TOGETHER…
         if (l && l.id != null && typeof l.line === "string") STORYLINES[String(l.id)] = l.line;
       }
+      // N7-A11Y (INV-102 / F5): the arriving portion APPENDS to the caption-and-story region — earlier
+      // portions stand, the caption above them stands, until the next walk step replaces the region.
+      const portionText = data.lines
+        .map((l) => (l && typeof l.line === "string") ? l.line : "").filter(Boolean).join(" ");
+      if (portionText) announceStory(portionText);
       revealPortion();                                 // …then ONE coordinated reveal (EX-STORY-WAIT)
       done();
     }).catch(() => { askingPortions.delete(key); done(); });   // a dead worker changes nothing — the portion stays owed

@@ -14,17 +14,22 @@
   // threshold's own law); chip, Esc and Back all land the guest on the exact frame left.
   const side = document.createElement("div");
   side.id = "ex-side";
+  side.setAttribute("role", "dialog");                                                          // N7-A11Y (B-role): the room is a modal layer, one kind with the other three
+  side.setAttribute("aria-modal", "true");
+  side.setAttribute("aria-label", ((greetLang() || { t: {} }).t.a11y_room) || A11Y_ROOM_EN);   // N7-A11Y (C4/C5)
   side.hidden = true;
   side.innerHTML = '<button type="button" class="exs-back"></button>' +
                    '<div class="exs-stage" id="exs-stage"></div>';
   document.body.appendChild(side);
   let sideOpen = false;
+  let sideOpener = null;            // N7-A11Y (INV-102, B1): the element that opened the room — focus returns here on close
   let laneTouchOff = null;          // the CURRENT dress's own lane touchstart handler (INV-88) —
                                      // removed at the top of every dressSide so it never piles up
                                      // across reopens of the reused #exs-stage
   function openSide(idx, laystep) {
     const S = SERIES[idx];
     if (!S || sideOpen || busy) return;
+    sideOpener = document.activeElement;               // N7-A11Y (B1): remember the opener (the series chip) before the crossing
     sideOpen = true;
     faceSync();                                        // the room is a face — arm the rest + guard (EX-CHROME)
     // the room opens THROUGH THE SAME BLACK the door crosses (his 09:53 word: «такой же
@@ -66,9 +71,11 @@
       if (S.variant === "lane") {
         const im = new Image();
         im.src = w.img;
+        im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
+        im.tabIndex = 0;                                 // N7-A11Y (INV-102, B4): the lane photograph is keyboard-reachable (the lane scrolls by arrow key — the side-level handler below)
         st.appendChild(im);
-        decodes.push(im.decode().catch(() => {}));
+        if (im.decode) decodes.push(im.decode().catch(() => {}));   // N7-A11Y (INV-102, D3): feature-guard like the three siblings (06/07/12) — no bare decode where it is unsupported
         return;
       }
       const p = document.createElement("div");         // the polaroid table
@@ -78,6 +85,15 @@
       p.style.top = (12 + Math.floor(i / 5) * 26 + (i * 11) % 7) + "%";
       p.style.setProperty("--rot", ((((i * 37) % 13) - 6)) + "deg");
       p.innerHTML = '<img src="' + w.img + '" alt="">';
+      const pim = p.querySelector("img");                // N7-A11Y (INV-102, C6): the polaroid speaks
+      if (pim) pim.alt = workDesc(w.id);
+      // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space
+      p.tabIndex = 0;
+      p.setAttribute("role", "button");
+      p.setAttribute("aria-label", workDesc(w.id) || ((greetLang() || { t: {} }).t.a11y_photo) || A11Y_PHOTO_EN);
+      p.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); p.click(); }   // open (lift) on the keyboard's own keys
+      });
       p.addEventListener("click", () => {
         const was = p.classList.contains("lift");
         st.querySelectorAll(".exs-print").forEach((x) => x.classList.remove("lift"));
@@ -98,6 +114,7 @@
     const T = (greetLang() || { t: {} }).t;
     side.querySelector(".exs-back").textContent = T.room_back || ROOM_BACK_EN;
     side.hidden = false;
+    openTrap(side, sideOpener);                         // N7-A11Y (B1): the room takes focus, holds Tab inside, returns focus to the opener on close
     // the room opens on the series' FIRST member — a fresh look from the top, never resuming where a
     // prior visit left the lane. #exs-stage is a reused element and the browser's scroll-anchoring
     // keeps its leftover scrollLeft across a content rebuild, so clear it explicitly on open (INV-88).
@@ -118,6 +135,7 @@
   }
   function closeSide(soft) {
     if (!sideOpen) return;
+    closeTrap(side);                                   // N7-A11Y (B1): release the trap, restore focus to the opener
     sideOpen = false;
     if (!soft) {                                       // instant teardown — the next face paints its
       faceSync();                                      // own visuals (a door render, a forward re-open);
@@ -169,6 +187,15 @@
   side.querySelector(".exs-back").addEventListener("click", () => history.back());
   addEventListener("keydown", (ev) => {                // Esc = the same honest road as Back
     if (ev.key === "Escape" && sideOpen) history.back();
+  });
+  // N7-A11Y (INV-102, B4): the lane scrolls by keyboard as well as by tap and by click. One listener on
+  // the room (never piling up across reused dresses); it acts only while a LANE stage stands.
+  side.addEventListener("keydown", (ev) => {
+    if (!sideOpen || (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft")) return;
+    const st = side.querySelector("#exs-stage");
+    if (!st || !st.classList.contains("lane")) return;
+    ev.preventDefault();
+    st.scrollLeft += (ev.key === "ArrowRight" ? 1 : -1) * Math.max(120, Math.round(st.clientWidth * 0.6));
   });
   // EX-COMPOSE: a print lifted to the light re-centres to the live viewport — a centre measured
   // before a rotation never survives it (the delta rides ON TOP of the standing --cx/--cy).

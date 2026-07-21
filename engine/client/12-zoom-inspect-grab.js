@@ -9,6 +9,7 @@
   zoom.id = "ex-zoom";
   zoom.setAttribute("role", "dialog");
   zoom.setAttribute("aria-modal", "true");
+  zoom.setAttribute("aria-label", ((greetLang() || { t: {} }).t.a11y_zoom) || A11Y_ZOOM_EN);   // N7-A11Y (C4/C5)
   zoom.hidden = true;
   // The zoom holds the minimum on screen (INV-77): only the picture and a single CLOSE in the free
   // TOP-LEFT corner. The ambient player retracts while the zoom stands (body.ex-zoom, like every covering
@@ -236,7 +237,10 @@
     zCancelTeardown();                                 // a reopen mid-teardown lands clean (rule 7)
     zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close
     const rect = el.getBoundingClientRect();           // its VISUAL rect (its own transform, e.g. a lifted print — rule 9)
+    // N7-A11Y (INV-102, C7): the inspected image speaks the source picture's own description (the walk
+    // frame / door window / polaroid all carry alt = the work's desc); the layer names itself by it too.
     zImg.src = src; zImg.alt = el.alt || "";
+    zoom.setAttribute("aria-label", zImg.alt || (((greetLang() || { t: {} }).t.a11y_zoom) || A11Y_ZOOM_EN));
     zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zDesk = 1; zBelow = false; zDismissing = false; zApply();
     zPrevBase = null;                                  // no preview rides into a fresh open
     if (zWheelIdle) { clearTimeout(zWheelIdle); zWheelIdle = 0; }
@@ -246,6 +250,10 @@
     zoom.hidden = false; zoomOpen = true;
     document.body.classList.add("ex-zoom");            // the player retracts too — the minimum on screen (INV-77)
     faceSync();                                        // the zoom is a face — freeze the page beneath (EX-CHROME)
+    // N7-A11Y (INV-102, B1): the closer look takes keyboard focus; the origin rule is ORIGIN-CONDITIONED
+    // — only a KEYBOARD open passes an opener (opts.opener, the focused work), so a pinch / ctrl-wheel /
+    // trackpad open forces NO focus and the exact-restore invariant (INV-74/INV-83) is left untouched.
+    openTrap(zoom, opts && opts.opener);
     if (!(opts && opts.lay === false)) pushFace({ face: "zoom" });   // one honest road out (INV-83), above any standing face
     requestAnimationFrame(() => {
       zoom.classList.add("show");                      // backdrop fades in
@@ -290,6 +298,7 @@
       zImg.style.willChange = ""; zStage.style.willChange = "";     // release the transient compositor hint
       zSrcEl = null;
     });
+    closeTrap(zoom);                                   // N7-A11Y (B1): release the trap; restore focus only if a keyboard open recorded an opener (after the composed-exit fold, so the flight's structure stands as INV-87 pins it)
     faceSync();                                        // the page beneath returns untouched (EX-COMPOSE)
   }
   // a pinch over the OPEN zoom scales the picture; our JS owns it, so the browser never viewport-zooms.
@@ -362,6 +371,29 @@
   zoom.querySelector(".exz-close").addEventListener("click", zoomBack);
   zoom.addEventListener("click", (e) => { if (e.target === zoom) zoomBack(); });   // tap the backdrop
   addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) zoomBack(); });
+
+  // ---- N7-A11Y (INV-102, B2/B3): the keyboard opens the closer look and the grab from a FOCUSED work ----
+  // The walk work is a focusable element (14-walk-render adds tabindex); with it holding focus, Enter
+  // looks closer (openZoom, recording the work as the opener so close restores focus to it — B1), and
+  // the grab key `g` hands over the gift through the SAME imageless clean-source openGift path onGrab
+  // routes a right-click through, so no new grab road is built (INV-49). Both live here, beside openZoom
+  // and onGrab, the one home the architecture names. A modal already standing keeps its own keys.
+  addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (faceStands()) return;                          // a layer / the door stands — its own keys own the input
+    const fr = e.target && e.target.closest && e.target.closest(".exh-frame");
+    if (!fr) return;                                   // a key only opens from a focused walk work
+    const img = fr.querySelector("img.work");
+    if (!img) return;
+    if (e.key === "Enter") {                           // look closer
+      e.preventDefault();
+      openZoom(img, { opener: fr });
+    } else if (e.key === "g" || e.key === "G") {       // take the gift — the keyboard grab
+      e.preventDefault();
+      openGift(img.currentSrc || img.getAttribute("src") || img.src, undefined, undefined, undefined,
+               fr.dataset.id, fr);                      // OFFER, never dump — reuse the clean-source path; keyboard origin → restore to the work (INV-49, D4)
+    }
+  }, { passive: false });
   // INV-81 — the trigger reaches every picture, the small ones included: a polaroid never fits two
   // fingertips, so the match reads the element under EACH touch point (the event's own target first —
   // one deterministic pick when two pictures sit under the two fingers), and the WHOLE print
@@ -459,10 +491,12 @@
   // (no .exh-frame, no frame id) to offer the desktop gift ceremony against, so its refusal never
   // invents one — it always answers with the SAME gracious toast the room gives a drag/touch grab,
   // never a new behaviour or new copy.
+  let lpTouchFired = false;                               // A1: a just-fired touch long-press swallows a follow-up contextmenu (Android)
   function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
     const img = ev.target.closest && ev.target.closest(".exh-frame img.work, .exd-window img");
     if (!img) return;                                      // only a work or a door window; chrome is left alone
     ev.preventDefault();                                   // the raw browser save menu / drag ghost never fires
+    if (lpTouchFired) { lpTouchFired = false; return; }    // the touch long-press already answered this grab (A1) — a contextmenu that trails it is swallowed
     const fr = img.closest(".exh-frame");                  // null for a door window (INV-49 uniformity)
     // EX-PULSE/INV-79: the guest REACHES to take a hung work — the earlier moment gift_download cannot
     // see (that lays only when a file leaves), a demand signal. The grab KIND is a closed ladder:
@@ -484,6 +518,54 @@
   stage.addEventListener("dragstart", onGrab);
   door.addEventListener("contextmenu", onGrab);           // the door's own facade (INV-49 uniformity) —
   door.addEventListener("dragstart", onGrab);             //   #ex-door lives OUTSIDE #ex-stage (EX-DOOR-2a)
+  // ---- EX-PROTECT (A1, INV-49): a touch LONG-PRESS on a hung work opens the SAME gift ceremony --------
+  // iOS fires no reliable `contextmenu`, so the finger's grab rides a real press-and-hold detector here,
+  // beside onGrab and the pinch it must coexist with. It ARMS on `pointerdown`, FIRES after a hold of
+  // ~500ms `[default]` with no drift past a small px threshold `[default]`, and reuses the imageless
+  // clean-source openGift path onGrab routes a right-click through — never a new grab road, never a clean
+  // copy in the card (INV-49). It CANCELS on a lift, on a drift past the threshold (so the walk swipe in
+  // 15-motion wins), and on a second finger (so the inspect pinch wins). A door window (no hung-work
+  // identity) keeps the gracious toast, never the ceremony (F1). The ~500ms / px values are Alexander's
+  // device-feel tune, like the 1.7.5 swipe constants — a touch input threshold, never tempo-scaled.
+  const LP_MS = 500;                                      // [default] the hold that arms the grab
+  const LP_PX = 10;                                       // [default] the drift that cancels it (a swipe)
+  let lpTimer = 0, lpX = 0, lpY = 0, lpImg = null, lpPtrs = 0;
+  function lpCancel() { if (lpTimer) { clearTimeout(lpTimer); lpTimer = 0; } lpImg = null; }
+  addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;                // the pointer's own grab road is the right-click (onGrab)
+    lpPtrs++;
+    if (lpPtrs > 1) { lpCancel(); return; }               // a second finger → the inspect pinch owns the touch
+    if (zoomOpen || giftOpen || quizOpen || sideOpen) return;   // a covering layer stands — its own gestures own the input
+    const img = e.target && e.target.closest && e.target.closest(".exh-frame img.work, .exd-window img");
+    if (!img) return;                                     // only a hung work or a door window
+    lpImg = img; lpX = e.clientX; lpY = e.clientY;
+    lpTimer = setTimeout(() => {
+      lpTimer = 0;
+      if (!lpImg || lpPtrs !== 1 || zoomOpen || giftOpen || quizOpen || sideOpen) return;
+      const fr = lpImg.closest(".exh-frame");             // null for a door window (INV-49 uniformity)
+      pulse("copy_attempt", fr && fr.dataset.id, { grab: "touch" });   // the demand beat, the touch kind (EX-PULSE)
+      lpTouchFired = true;                                // swallow any follow-up contextmenu (Android) in onGrab
+      setTimeout(() => { lpTouchFired = false; }, 700);   // the trailing contextmenu, if any, lands right after; then clear the swallow window
+      if (fr) {
+        openGift(lpImg.currentSrc || lpImg.getAttribute("src") || lpImg.src, undefined, undefined,
+                 undefined, fr.dataset.id);               // OFFER — the imageless clean-source path; touch origin → no forced focus (INV-49, D4)
+      } else {
+        toast(enjoyLine());                               // a door window keeps the gracious line (F1)
+      }
+      lpImg = null;
+    }, LP_MS);
+  }, { passive: true });
+  addEventListener("pointermove", (e) => {
+    if (!lpTimer) return;
+    if (Math.hypot(e.clientX - lpX, e.clientY - lpY) > LP_PX) lpCancel();   // a drift → a swipe, cancel the arm
+  }, { passive: true });
+  function lpUp(e) {
+    if (e.pointerType === "mouse") return;
+    if (lpPtrs > 0) lpPtrs--;
+    lpCancel();                                           // a lift cancels a still-pending arm (a tap, never a grab)
+  }
+  addEventListener("pointerup", lpUp, { passive: true });
+  addEventListener("pointercancel", lpUp, { passive: true });
   // EX-PROTECT + EX-CHROME: the immersive walk refuses browser zoom across the WHOLE surface, not
   // only over a work. A browser zoom scales the visual viewport out from under the JS scroll animator
   // and the fixed chrome — the measured centering drifts and the fixed controls float, so the walk

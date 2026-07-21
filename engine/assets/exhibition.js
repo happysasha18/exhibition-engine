@@ -11,6 +11,75 @@
   const stage = document.getElementById("ex-stage");
   if (!stage) return;                                 // no live root → JS-off face stays
 
+  // ---- N7-A11Y (INV-102 / CS-5 / OS-A2): ONE accessible-description reader, ONE baked source ----
+  // build.py bakes each walk record's `desc` — the SAME string its /w page + the static-index alt
+  // carry. Every img site (walk frame, closer look, series polaroid + lane, gift prize) applies THIS
+  // reader, so no surface invents its own alt. `byId` initializes in 02-kinship-orderings.js; this
+  // reader runs only at runtime img sites (all after boot), so the forward reference resolves.
+  function workDesc(id) {
+    try { const w = byId[id] || byId[String(id)]; return w && w.desc ? String(w.desc) : ""; }
+    catch (e) { return ""; }
+  }
+  function escAttr(s) {                                // for a description carried in an HTML attribute
+    return String(s == null ? "" : s).replace(/[<>&"]/g,
+      (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+  }
+
+  // ---- N7-A11Y (INV-102 / B1): ONE focus trap, four modal callers ----------------------------
+  // The gift ceremony (11), the closer look (12), the quiz card (13), and the series room (16) each
+  // open through openTrap and close through closeTrap and never re-implement it (architecture N7-A11Y,
+  // "one trap, four callers"). openTrap moves focus INTO the layer and holds Tab inside it — a focus
+  // loop, so the covered walk is never reached; closeTrap releases and, when the open recorded an
+  // opener, returns focus to it. The origin rule the spec sets lives in WHAT each caller passes as the
+  // opener: the keyboard route passes the focused work (restore to it on close); a pointer / touch open
+  // passes nothing, so the zoom leaves NO forced focus and its exact-restore invariant (INV-74/INV-83)
+  // is untouched. A stack carries a rare nesting (a closer look opened from a lane image over the series
+  // room) so the inner close restores to the lane image, the outer to the series' opener.
+  const FOCUSABLE_SEL =
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
+    'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  const _trapStack = [];
+  function _focusablesIn(layer) {
+    return Array.prototype.filter.call(
+      layer.querySelectorAll(FOCUSABLE_SEL),
+      (el) => !el.hidden && el.tabIndex !== -1 && (el.offsetWidth > 0 || el.offsetHeight > 0));
+  }
+  function openTrap(layer, opener) {                   // opener: the element to restore to, or falsy for none
+    if (!layer) return;
+    const rec = {
+      layer: layer,
+      opener: (opener && opener.focus && document.body.contains(opener)) ? opener : null,
+      keydown: null,
+    };
+    const first = _focusablesIn(layer)[0] || layer;
+    if (first === layer && layer.tabIndex < 0) layer.setAttribute("tabindex", "-1");
+    requestAnimationFrame(() => { try { first.focus({ preventScroll: true }); } catch (e) {} });
+    rec.keydown = (e) => {                             // hold Tab inside — a loop at both ends
+      if (e.key !== "Tab") return;
+      const items = _focusablesIn(layer);
+      if (!items.length) { e.preventDefault(); return; }
+      const idx = items.indexOf(document.activeElement);
+      if (e.shiftKey) {
+        if (idx <= 0) { e.preventDefault(); items[items.length - 1].focus({ preventScroll: true }); }
+      } else if (idx === -1 || idx === items.length - 1) {
+        e.preventDefault(); items[0].focus({ preventScroll: true });
+      }
+    };
+    layer.addEventListener("keydown", rec.keydown);
+    _trapStack.push(rec);
+  }
+  function closeTrap(layer) {
+    let i = -1;
+    for (let k = _trapStack.length - 1; k >= 0; k--) { if (_trapStack[k].layer === layer) { i = k; break; } }
+    if (i === -1) return;
+    const rec = _trapStack[i];
+    if (rec.keydown) layer.removeEventListener("keydown", rec.keydown);
+    _trapStack.splice(i, 1);
+    if (rec.opener && document.body.contains(rec.opener)) {
+      requestAnimationFrame(() => { try { rec.opener.focus({ preventScroll: true }); } catch (e) {} });
+    }
+  }
+
   // ---- the visitor's own trace, its three homes (one place for the names) -----
   const KEY = "@@NS@@.exhibition";                       // the walk (INV-26)
   const PLACE_KEY = "@@NS@@.place";                      // the per-tab place marker (INV-32c)
@@ -297,6 +366,13 @@
   const A11Y_CLOSE_EN = "close";
   const A11Y_VOLUME_EN = "volume";
   const A11Y_SOUND_EN = "sound";
+  // N7-A11Y (INV-102): accessible names for the four modal layers + the walk frame's roledescription;
+  // each localizes through EX-I18N (T.a11y_*), the fallback ENGLISH (source tongue), never a locale literal
+  const A11Y_ZOOM_EN = "closer look";
+  const A11Y_ROOM_EN = "series";
+  const A11Y_GIFT_EN = "a gift";
+  const A11Y_QUIZ_EN = "a question";
+  const A11Y_PHOTO_EN = "photograph";
   const SOUND_GREET_EN = "music";           // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue (a plain invitation, no question mark)
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
@@ -1773,6 +1849,10 @@
       (QUIZ_PLACE.indexOf("plaque") >= 0 && quizShows(w) ? quizChipHTML(w.id) : "");
     cap.classList.add("show");
     focusedId = w.id;
+    // N7-A11Y (INV-102): announce this work's caption to the polite region — a walk step REPLACES it,
+    // so a screen reader hears the current work rather than a pile-up (the story portions append below).
+    announceCaption([(w.title || untitledWord), (w.sec || ""), (w.place || "")]
+      .filter((s) => s && String(s).trim()).join(" · "));
     fillTold();                                        // the narrator's line for this work, if spoken
     storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
     capSettle(x.target.querySelector("img.work"));     // EX-CAPTION (INV-97): seat the caption in the free zone at the frame's settle
@@ -1973,6 +2053,11 @@
       for (const l of data.lines) {                    // the whole portion's lines land TOGETHER…
         if (l && l.id != null && typeof l.line === "string") STORYLINES[String(l.id)] = l.line;
       }
+      // N7-A11Y (INV-102 / F5): the arriving portion APPENDS to the caption-and-story region — earlier
+      // portions stand, the caption above them stands, until the next walk step replaces the region.
+      const portionText = data.lines
+        .map((l) => (l && typeof l.line === "string") ? l.line : "").filter(Boolean).join(" ");
+      if (portionText) announceStory(portionText);
       revealPortion();                                 // …then ONE coordinated reveal (EX-STORY-WAIT)
       done();
     }).catch(() => { askingPortions.delete(key); done(); });   // a dead worker changes nothing — the portion stays owed
@@ -2048,6 +2133,44 @@
   }
   toastEl.addEventListener("click", toastOff);
   addEventListener("keydown", (ev) => { if (ev.key === "Escape") toastOff(); });
+
+  // ---- N7-A11Y (INV-102 / F5): two polite live regions beside the toast — one creator, disciplined
+  // writers. The caption-and-story region takes the walk caption (REPLACE on each walk step, from the
+  // caption plaque 08) and the streamed story portions (APPEND as the story fills, from the voice 09).
+  // The result region takes the quiz verdict (13) and the gift result (11) on a REPLACE discipline. A
+  // story portion and a result therefore land in DIFFERENT nodes and never overwrite each other. Both
+  // are visually hidden (screen-reader present) via inline style, so no CSS dependency is added.
+  function srLive(id) {
+    const el = document.createElement("div");
+    el.id = id;
+    el.className = "ex-sr-live";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    el.style.cssText = "position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;" +
+      "overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;";
+    document.body.appendChild(el);
+    return el;
+  }
+  const liveCap = srLive("ex-live-cap");               // caption (replace) + story portions (append)
+  const liveResult = srLive("ex-live-result");         // quiz verdict + gift result (replace), a SEPARATE node
+  function announceCaption(text) {                     // a walk step REPLACES — clears the prior caption AND its portions
+    if (text == null) return;
+    const d = document.createElement("div");
+    d.className = "ex-sr-cap"; d.textContent = String(text);
+    liveCap.replaceChildren(d);
+  }
+  function announceStory(text) {                        // a story portion APPENDS — earlier portions stand
+    if (!text) return;
+    const d = document.createElement("div");
+    d.className = "ex-sr-portion"; d.textContent = String(text);
+    liveCap.appendChild(d);
+  }
+  function announceResult(text) {                       // the SEPARATE result region, REPLACE discipline
+    if (text == null) return;
+    const d = document.createElement("div");
+    d.className = "ex-sr-result"; d.textContent = String(text);
+    liveResult.replaceChildren(d);
+  }
 
   // ---- EX-SHARE join (INV-1): a copied link carries a FRESH random per-share token `s` so GA
   // can join THIS specific share to the specific open it produces (the virality loop / k-factor).
@@ -2125,6 +2248,8 @@
   giftCard.id = "ex-gift-card";
   giftCard.setAttribute("role", "dialog");
   giftCard.setAttribute("aria-modal", "true");
+  // N7-A11Y (INV-102, C4/C5): the ceremony names itself to a screen reader (localized, EN fallback)
+  giftCard.setAttribute("aria-label", ((greetLang() || { t: {} }).t.a11y_gift) || A11Y_GIFT_EN);
   giftCard.hidden = true;
   giftCard.innerHTML =
     '<div class="gift-inner">' +
@@ -2184,7 +2309,11 @@
   }
   // onYes (optional): called when the visitor says yes, BEFORE closeGift — used by the quiz-win path
   // to stamp the "gift" stage (EX-QUIZ-FLOW / INV-69) WITHOUT touching the shared ceremony behaviour.
-  function openGift(src, name, preMarked, onYes, workId) {
+  // N7-A11Y (INV-102, B1) — the restore is ORIGIN-CONDITIONED, uniform with the closer look (12): the
+  // CALLER passes the opener only when the open is focus-origin (a keyboard grab passes the focused work,
+  // a quiz-win passes the chip); a pointer / touch open passes nothing, so the ceremony forces NO focus and
+  // the walk beneath is left as it was. openTrap treats a falsy opener as "restore none" (D4, 2026-07-21).
+  function openGift(src, name, preMarked, onYes, workId, opener) {
     const T = (greetLang() || { t: {} }).t;
     // EX-PROTECT-RES (INV-56): the GRAB ceremony carries NO picture of its own. On a right-click the
     // work is already in view behind the card, so a thumb of the CLEAN source would only add a SECOND,
@@ -2202,6 +2331,7 @@
         inner.insertBefore(thumb, inner.firstChild);
       }
       thumb.src = src;                                   // the marked prize — the reveal, never a clean grab
+      thumb.alt = workDesc(workId) || (((greetLang() || { t: {} }).t.a11y_gift) || A11Y_GIFT_EN);   // N7-A11Y (C8): the won wallpaper speaks
     } else if (thumb) {
       thumb.remove();                                    // a reused card returning to the grab path drops any prize image
     }
@@ -2211,15 +2341,18 @@
     yes.textContent = T.gift_yes || "it's yours :)";
     giftCard.querySelector(".gift-no").textContent = T.gift_no || "not now";
     giftCard.querySelector(".gift-line").textContent = enjoyLine();   // localized «enjoy · <host>»
+    announceResult(enjoyLine());                        // N7-A11Y (INV-102 / F5): the gift result rides the SEPARATE result region
     giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "for a larger print — buy";
     yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
     giftCard.dataset.work = workId != null ? String(workId) : "";   // the buy line's beat reads it
     giftCard.hidden = false; giftOpen = true;
     faceSync();                                        // the gift card is a face — arm the rest + guard (EX-CHROME)
+    openTrap(giftCard, opener);                        // N7-A11Y (B1): focus into the ceremony, hold Tab inside, restore to the opener on close
     requestAnimationFrame(() => giftCard.classList.add("show"));       // EX-ARRIVE breath
   }
   function closeGift() {
     if (!giftOpen) return;
+    closeTrap(giftCard);                               // N7-A11Y (B1): release the trap, restore focus to the opener
     giftCard.classList.remove("show");
     setTimeout(() => { giftCard.hidden = true; }, Math.round(350 * TEMPO));
     giftOpen = false;
@@ -2247,6 +2380,7 @@
   zoom.id = "ex-zoom";
   zoom.setAttribute("role", "dialog");
   zoom.setAttribute("aria-modal", "true");
+  zoom.setAttribute("aria-label", ((greetLang() || { t: {} }).t.a11y_zoom) || A11Y_ZOOM_EN);   // N7-A11Y (C4/C5)
   zoom.hidden = true;
   // The zoom holds the minimum on screen (INV-77): only the picture and a single CLOSE in the free
   // TOP-LEFT corner. The ambient player retracts while the zoom stands (body.ex-zoom, like every covering
@@ -2474,7 +2608,10 @@
     zCancelTeardown();                                 // a reopen mid-teardown lands clean (rule 7)
     zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close
     const rect = el.getBoundingClientRect();           // its VISUAL rect (its own transform, e.g. a lifted print — rule 9)
+    // N7-A11Y (INV-102, C7): the inspected image speaks the source picture's own description (the walk
+    // frame / door window / polaroid all carry alt = the work's desc); the layer names itself by it too.
     zImg.src = src; zImg.alt = el.alt || "";
+    zoom.setAttribute("aria-label", zImg.alt || (((greetLang() || { t: {} }).t.a11y_zoom) || A11Y_ZOOM_EN));
     zScale = 1; zTx = 0; zTy = 0; zPanning = false; zDismiss = 0; zDesk = 1; zBelow = false; zDismissing = false; zApply();
     zPrevBase = null;                                  // no preview rides into a fresh open
     if (zWheelIdle) { clearTimeout(zWheelIdle); zWheelIdle = 0; }
@@ -2484,6 +2621,10 @@
     zoom.hidden = false; zoomOpen = true;
     document.body.classList.add("ex-zoom");            // the player retracts too — the minimum on screen (INV-77)
     faceSync();                                        // the zoom is a face — freeze the page beneath (EX-CHROME)
+    // N7-A11Y (INV-102, B1): the closer look takes keyboard focus; the origin rule is ORIGIN-CONDITIONED
+    // — only a KEYBOARD open passes an opener (opts.opener, the focused work), so a pinch / ctrl-wheel /
+    // trackpad open forces NO focus and the exact-restore invariant (INV-74/INV-83) is left untouched.
+    openTrap(zoom, opts && opts.opener);
     if (!(opts && opts.lay === false)) pushFace({ face: "zoom" });   // one honest road out (INV-83), above any standing face
     requestAnimationFrame(() => {
       zoom.classList.add("show");                      // backdrop fades in
@@ -2528,6 +2669,7 @@
       zImg.style.willChange = ""; zStage.style.willChange = "";     // release the transient compositor hint
       zSrcEl = null;
     });
+    closeTrap(zoom);                                   // N7-A11Y (B1): release the trap; restore focus only if a keyboard open recorded an opener (after the composed-exit fold, so the flight's structure stands as INV-87 pins it)
     faceSync();                                        // the page beneath returns untouched (EX-COMPOSE)
   }
   // a pinch over the OPEN zoom scales the picture; our JS owns it, so the browser never viewport-zooms.
@@ -2600,6 +2742,29 @@
   zoom.querySelector(".exz-close").addEventListener("click", zoomBack);
   zoom.addEventListener("click", (e) => { if (e.target === zoom) zoomBack(); });   // tap the backdrop
   addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) zoomBack(); });
+
+  // ---- N7-A11Y (INV-102, B2/B3): the keyboard opens the closer look and the grab from a FOCUSED work ----
+  // The walk work is a focusable element (14-walk-render adds tabindex); with it holding focus, Enter
+  // looks closer (openZoom, recording the work as the opener so close restores focus to it — B1), and
+  // the grab key `g` hands over the gift through the SAME imageless clean-source openGift path onGrab
+  // routes a right-click through, so no new grab road is built (INV-49). Both live here, beside openZoom
+  // and onGrab, the one home the architecture names. A modal already standing keeps its own keys.
+  addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (faceStands()) return;                          // a layer / the door stands — its own keys own the input
+    const fr = e.target && e.target.closest && e.target.closest(".exh-frame");
+    if (!fr) return;                                   // a key only opens from a focused walk work
+    const img = fr.querySelector("img.work");
+    if (!img) return;
+    if (e.key === "Enter") {                           // look closer
+      e.preventDefault();
+      openZoom(img, { opener: fr });
+    } else if (e.key === "g" || e.key === "G") {       // take the gift — the keyboard grab
+      e.preventDefault();
+      openGift(img.currentSrc || img.getAttribute("src") || img.src, undefined, undefined, undefined,
+               fr.dataset.id, fr);                      // OFFER, never dump — reuse the clean-source path; keyboard origin → restore to the work (INV-49, D4)
+    }
+  }, { passive: false });
   // INV-81 — the trigger reaches every picture, the small ones included: a polaroid never fits two
   // fingertips, so the match reads the element under EACH touch point (the event's own target first —
   // one deterministic pick when two pictures sit under the two fingers), and the WHOLE print
@@ -2697,10 +2862,12 @@
   // (no .exh-frame, no frame id) to offer the desktop gift ceremony against, so its refusal never
   // invents one — it always answers with the SAME gracious toast the room gives a drag/touch grab,
   // never a new behaviour or new copy.
+  let lpTouchFired = false;                               // A1: a just-fired touch long-press swallows a follow-up contextmenu (Android)
   function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
     const img = ev.target.closest && ev.target.closest(".exh-frame img.work, .exd-window img");
     if (!img) return;                                      // only a work or a door window; chrome is left alone
     ev.preventDefault();                                   // the raw browser save menu / drag ghost never fires
+    if (lpTouchFired) { lpTouchFired = false; return; }    // the touch long-press already answered this grab (A1) — a contextmenu that trails it is swallowed
     const fr = img.closest(".exh-frame");                  // null for a door window (INV-49 uniformity)
     // EX-PULSE/INV-79: the guest REACHES to take a hung work — the earlier moment gift_download cannot
     // see (that lays only when a file leaves), a demand signal. The grab KIND is a closed ladder:
@@ -2722,6 +2889,54 @@
   stage.addEventListener("dragstart", onGrab);
   door.addEventListener("contextmenu", onGrab);           // the door's own facade (INV-49 uniformity) —
   door.addEventListener("dragstart", onGrab);             //   #ex-door lives OUTSIDE #ex-stage (EX-DOOR-2a)
+  // ---- EX-PROTECT (A1, INV-49): a touch LONG-PRESS on a hung work opens the SAME gift ceremony --------
+  // iOS fires no reliable `contextmenu`, so the finger's grab rides a real press-and-hold detector here,
+  // beside onGrab and the pinch it must coexist with. It ARMS on `pointerdown`, FIRES after a hold of
+  // ~500ms `[default]` with no drift past a small px threshold `[default]`, and reuses the imageless
+  // clean-source openGift path onGrab routes a right-click through — never a new grab road, never a clean
+  // copy in the card (INV-49). It CANCELS on a lift, on a drift past the threshold (so the walk swipe in
+  // 15-motion wins), and on a second finger (so the inspect pinch wins). A door window (no hung-work
+  // identity) keeps the gracious toast, never the ceremony (F1). The ~500ms / px values are Alexander's
+  // device-feel tune, like the 1.7.5 swipe constants — a touch input threshold, never tempo-scaled.
+  const LP_MS = 500;                                      // [default] the hold that arms the grab
+  const LP_PX = 10;                                       // [default] the drift that cancels it (a swipe)
+  let lpTimer = 0, lpX = 0, lpY = 0, lpImg = null, lpPtrs = 0;
+  function lpCancel() { if (lpTimer) { clearTimeout(lpTimer); lpTimer = 0; } lpImg = null; }
+  addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;                // the pointer's own grab road is the right-click (onGrab)
+    lpPtrs++;
+    if (lpPtrs > 1) { lpCancel(); return; }               // a second finger → the inspect pinch owns the touch
+    if (zoomOpen || giftOpen || quizOpen || sideOpen) return;   // a covering layer stands — its own gestures own the input
+    const img = e.target && e.target.closest && e.target.closest(".exh-frame img.work, .exd-window img");
+    if (!img) return;                                     // only a hung work or a door window
+    lpImg = img; lpX = e.clientX; lpY = e.clientY;
+    lpTimer = setTimeout(() => {
+      lpTimer = 0;
+      if (!lpImg || lpPtrs !== 1 || zoomOpen || giftOpen || quizOpen || sideOpen) return;
+      const fr = lpImg.closest(".exh-frame");             // null for a door window (INV-49 uniformity)
+      pulse("copy_attempt", fr && fr.dataset.id, { grab: "touch" });   // the demand beat, the touch kind (EX-PULSE)
+      lpTouchFired = true;                                // swallow any follow-up contextmenu (Android) in onGrab
+      setTimeout(() => { lpTouchFired = false; }, 700);   // the trailing contextmenu, if any, lands right after; then clear the swallow window
+      if (fr) {
+        openGift(lpImg.currentSrc || lpImg.getAttribute("src") || lpImg.src, undefined, undefined,
+                 undefined, fr.dataset.id);               // OFFER — the imageless clean-source path; touch origin → no forced focus (INV-49, D4)
+      } else {
+        toast(enjoyLine());                               // a door window keeps the gracious line (F1)
+      }
+      lpImg = null;
+    }, LP_MS);
+  }, { passive: true });
+  addEventListener("pointermove", (e) => {
+    if (!lpTimer) return;
+    if (Math.hypot(e.clientX - lpX, e.clientY - lpY) > LP_PX) lpCancel();   // a drift → a swipe, cancel the arm
+  }, { passive: true });
+  function lpUp(e) {
+    if (e.pointerType === "mouse") return;
+    if (lpPtrs > 0) lpPtrs--;
+    lpCancel();                                           // a lift cancels a still-pending arm (a tap, never a grab)
+  }
+  addEventListener("pointerup", lpUp, { passive: true });
+  addEventListener("pointercancel", lpUp, { passive: true });
   // EX-PROTECT + EX-CHROME: the immersive walk refuses browser zoom across the WHOLE surface, not
   // only over a work. A browser zoom scales the visual viewport out from under the JS scroll animator
   // and the fixed chrome — the measured centering drifts and the fixed controls float, so the walk
@@ -2817,6 +3032,7 @@
   quizCard.id = "ex-quiz-card";
   quizCard.setAttribute("role", "dialog");
   quizCard.setAttribute("aria-modal", "true");
+  quizCard.setAttribute("aria-label", ((greetLang() || { t: {} }).t.a11y_quiz) || A11Y_QUIZ_EN);   // N7-A11Y (C4/C5)
   quizCard.hidden = true;
   // EX-QUIZ-PICK (INV-64): 4 option buttons replace the free-text form.
   quizCard.innerHTML =
@@ -2829,6 +3045,8 @@
 
   let quizOpen = false;
   let quizWorkId = null;
+  let quizOpener = null;       // the chip the card opened from — passed to the prize gift so its restore
+                              // reaches the chip (the gift's origin-conditioned restore, D4)
   let quizCloseT = null;      // the wrong-answer auto-close timer (a miss lingers ~1s, then closes)
   let quizWaitT = null;       // the in-flight grace timer → the quiet «one more moment» reassurance
 
@@ -2841,6 +3059,8 @@
   function quizCardOpen(id) {
     const w = byId[id];
     if (!w || !w.quiz) return;
+    const opener = document.activeElement;             // N7-A11Y (INV-102, B1): the card returns focus to its opener (the chip)
+    quizOpener = opener;                               // remembered so the prize gift restores to the chip too (D4)
     quizWorkId = id;
 
     // RESET ON REOPEN: every open starts clean — cleared feedback, fresh buttons, no lingering state.
@@ -2864,7 +3084,7 @@
     try { stored = JSON.parse(localStorage.getItem(QUIZ_LS(id)) || "null"); } catch (e) {}
     if (stored && typeof stored === "object" && (stored.answered === true || stored.prize)) {
       // already answered — straight to the gift ceremony when there is a prize
-      if (stored.prize) { openGift("/" + stored.prize, PRIZE_DL, true, undefined, id); return; }
+      if (stored.prize) { openGift("/" + stored.prize, PRIZE_DL, true, undefined, id, opener); return; }
       return;  // answered wrong previously — nothing more to show
     }
 
@@ -2890,11 +3110,13 @@
     quizCard.hidden = false;
     quizOpen = true;
     faceSync();                                        // the card is a face — arm the rest + guard (EX-CHROME)
+    openTrap(quizCard, opener);                        // N7-A11Y (B1): focus into the card, hold Tab inside, restore to the opener
     requestAnimationFrame(() => { quizCard.classList.add("show"); });
   }
 
   function quizCardClose() {
     if (!quizOpen) return;
+    closeTrap(quizCard);                               // N7-A11Y (B1): release the trap, restore focus to the opener
     clearTimeout(quizCloseT); quizCloseT = null;
     clearTimeout(quizWaitT); quizWaitT = null;      // a mid-flight close cancels the pending reassurance
     quizCard.classList.remove("show", "quiz-inflight");
@@ -2952,6 +3174,7 @@
       const T = (greetLang() || { t: {} }).t;
       out.className = "quiz-out quiz-miss";
       out.textContent = T.quiz_wrong || "thanks for guessing. another question waits for you further on.";
+      announceResult(out.textContent);                 // N7-A11Y (INV-102 / F5): the verdict rides the SEPARATE result region
       requestAnimationFrame(() => out.classList.add("show"));
       // remember the miss so the work is excluded from eligible in future walks (INV-65 / INV-66)
       try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: false })); } catch (e) {}
@@ -2992,6 +3215,7 @@
         const T = (greetLang() || { t: {} }).t;
         out.className = "quiz-out quiz-win";
         out.textContent = T.quiz_win || "you have the eye.";
+        announceResult(out.textContent);               // N7-A11Y (INV-102 / F5): the verdict rides the SEPARATE result region
         requestAnimationFrame(() => out.classList.add("show"));
         // remember the win so this work never re-asks (INV-65 / INV-66 answered-memory)
         try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: true, prize: data.prize })); } catch (e) {}
@@ -3002,7 +3226,7 @@
           quizCardClose();
           // EX-QUIZ-FLOW (INV-69): pass onYes so the gift stage stamps ONLY on the quiz prize's yes
           openGift("/" + data.prize, PRIZE_DL, true,
-                   () => { quizStageUp("gift"); }, id);   // gift_kind=quiz_prize, the work (EX-PULSE)
+                   () => { quizStageUp("gift"); }, id, quizOpener);   // gift_kind=quiz_prize, the work (EX-PULSE); restore to the chip (D4)
         }, Math.round(700 * TEMPO));
       } else {
         missAndFade();
@@ -3030,9 +3254,14 @@
     // written by the display-cap bake); the base `src` stays the untouched fallback. No cap ⇒ no
     // srcset key ⇒ the img is byte-identical to a ladder-less walk.
     const ladder = w.srcset ? ` srcset="${w.srcset}" sizes="${data.walk_sizes || "88vw"}"` : "";
+    // N7-A11Y (INV-102, C1/C3): the frame img speaks the work's own description (never alt=""), and the
+    // frame names itself a photograph within the walk (role + roledescription + the same accessible name).
+    const desc = escAttr(workDesc(w.id));
+    const photoWord = escAttr(((greetLang() || { t: {} }).t.a11y_photo) || A11Y_PHOTO_EN);
     return (
-      `<section class="exh-frame" data-id="${w.id}" data-n="${n}">` +
-        `<img class="work" loading="lazy" src="${w.img}"${ladder} alt="">` +
+      `<section class="exh-frame" data-id="${w.id}" data-n="${n}" tabindex="0"` +
+        ` role="group" aria-roledescription="${photoWord}" aria-label="${desc}">` +
+        `<img class="work" loading="lazy" src="${w.img}"${ladder} alt="${desc}">` +
       "</section>"
     );
   }
@@ -3529,17 +3758,22 @@
   // threshold's own law); chip, Esc and Back all land the guest on the exact frame left.
   const side = document.createElement("div");
   side.id = "ex-side";
+  side.setAttribute("role", "dialog");                                                          // N7-A11Y (B-role): the room is a modal layer, one kind with the other three
+  side.setAttribute("aria-modal", "true");
+  side.setAttribute("aria-label", ((greetLang() || { t: {} }).t.a11y_room) || A11Y_ROOM_EN);   // N7-A11Y (C4/C5)
   side.hidden = true;
   side.innerHTML = '<button type="button" class="exs-back"></button>' +
                    '<div class="exs-stage" id="exs-stage"></div>';
   document.body.appendChild(side);
   let sideOpen = false;
+  let sideOpener = null;            // N7-A11Y (INV-102, B1): the element that opened the room — focus returns here on close
   let laneTouchOff = null;          // the CURRENT dress's own lane touchstart handler (INV-88) —
                                      // removed at the top of every dressSide so it never piles up
                                      // across reopens of the reused #exs-stage
   function openSide(idx, laystep) {
     const S = SERIES[idx];
     if (!S || sideOpen || busy) return;
+    sideOpener = document.activeElement;               // N7-A11Y (B1): remember the opener (the series chip) before the crossing
     sideOpen = true;
     faceSync();                                        // the room is a face — arm the rest + guard (EX-CHROME)
     // the room opens THROUGH THE SAME BLACK the door crosses (his 09:53 word: «такой же
@@ -3581,9 +3815,11 @@
       if (S.variant === "lane") {
         const im = new Image();
         im.src = w.img;
+        im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
+        im.tabIndex = 0;                                 // N7-A11Y (INV-102, B4): the lane photograph is keyboard-reachable (the lane scrolls by arrow key — the side-level handler below)
         st.appendChild(im);
-        decodes.push(im.decode().catch(() => {}));
+        if (im.decode) decodes.push(im.decode().catch(() => {}));   // N7-A11Y (INV-102, D3): feature-guard like the three siblings (06/07/12) — no bare decode where it is unsupported
         return;
       }
       const p = document.createElement("div");         // the polaroid table
@@ -3593,6 +3829,15 @@
       p.style.top = (12 + Math.floor(i / 5) * 26 + (i * 11) % 7) + "%";
       p.style.setProperty("--rot", ((((i * 37) % 13) - 6)) + "deg");
       p.innerHTML = '<img src="' + w.img + '" alt="">';
+      const pim = p.querySelector("img");                // N7-A11Y (INV-102, C6): the polaroid speaks
+      if (pim) pim.alt = workDesc(w.id);
+      // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space
+      p.tabIndex = 0;
+      p.setAttribute("role", "button");
+      p.setAttribute("aria-label", workDesc(w.id) || ((greetLang() || { t: {} }).t.a11y_photo) || A11Y_PHOTO_EN);
+      p.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); p.click(); }   // open (lift) on the keyboard's own keys
+      });
       p.addEventListener("click", () => {
         const was = p.classList.contains("lift");
         st.querySelectorAll(".exs-print").forEach((x) => x.classList.remove("lift"));
@@ -3613,6 +3858,7 @@
     const T = (greetLang() || { t: {} }).t;
     side.querySelector(".exs-back").textContent = T.room_back || ROOM_BACK_EN;
     side.hidden = false;
+    openTrap(side, sideOpener);                         // N7-A11Y (B1): the room takes focus, holds Tab inside, returns focus to the opener on close
     // the room opens on the series' FIRST member — a fresh look from the top, never resuming where a
     // prior visit left the lane. #exs-stage is a reused element and the browser's scroll-anchoring
     // keeps its leftover scrollLeft across a content rebuild, so clear it explicitly on open (INV-88).
@@ -3633,6 +3879,7 @@
   }
   function closeSide(soft) {
     if (!sideOpen) return;
+    closeTrap(side);                                   // N7-A11Y (B1): release the trap, restore focus to the opener
     sideOpen = false;
     if (!soft) {                                       // instant teardown — the next face paints its
       faceSync();                                      // own visuals (a door render, a forward re-open);
@@ -3684,6 +3931,15 @@
   side.querySelector(".exs-back").addEventListener("click", () => history.back());
   addEventListener("keydown", (ev) => {                // Esc = the same honest road as Back
     if (ev.key === "Escape" && sideOpen) history.back();
+  });
+  // N7-A11Y (INV-102, B4): the lane scrolls by keyboard as well as by tap and by click. One listener on
+  // the room (never piling up across reused dresses); it acts only while a LANE stage stands.
+  side.addEventListener("keydown", (ev) => {
+    if (!sideOpen || (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft")) return;
+    const st = side.querySelector("#exs-stage");
+    if (!st || !st.classList.contains("lane")) return;
+    ev.preventDefault();
+    st.scrollLeft += (ev.key === "ArrowRight" ? 1 : -1) * Math.max(120, Math.round(st.clientWidth * 0.6));
   });
   // EX-COMPOSE: a print lifted to the light re-centres to the live viewport — a centre measured
   // before a rotation never survives it (the delta rides ON TOP of the standing --cx/--cy).
@@ -4041,6 +4297,16 @@
       list.hidden ? listOpen() : listClose();
     });
     door.addEventListener("click", () => { listClose(); });
+    // N7-A11Y (INV-102, B5): the list closes under every modality — on the keyboard's own Escape (from
+    // anywhere while the list stands), and when focus leaves the corner entirely (a Tab / a click away),
+    // beside the existing document-click. Escape is document-level so it closes regardless of where focus
+    // sits; the focus-out close reads a real focus leaving the box.
+    addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && !list.hidden) { listClose(); try { cur.focus(); } catch (e) {} }
+    });
+    box.addEventListener("focusout", (ev) => {
+      if (!list.hidden && !box.contains(ev.relatedTarget)) listClose();   // focus left the corner → close
+    });
     redraw();
   }
 

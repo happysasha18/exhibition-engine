@@ -240,6 +240,16 @@
       list.hidden ? listOpen() : listClose();
     });
     door.addEventListener("click", () => { listClose(); });
+    // N7-A11Y (INV-102, B5): the list closes under every modality — on the keyboard's own Escape (from
+    // anywhere while the list stands), and when focus leaves the corner entirely (a Tab / a click away),
+    // beside the existing document-click. Escape is document-level so it closes regardless of where focus
+    // sits; the focus-out close reads a real focus leaving the box.
+    addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && !list.hidden) { listClose(); try { cur.focus(); } catch (e) {} }
+    });
+    box.addEventListener("focusout", (ev) => {
+      if (!list.hidden && !box.contains(ev.relatedTarget)) listClose();   // focus left the corner → close
+    });
     redraw();
   }
 

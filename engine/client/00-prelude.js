@@ -11,6 +11,75 @@
   const stage = document.getElementById("ex-stage");
   if (!stage) return;                                 // no live root → JS-off face stays
 
+  // ---- N7-A11Y (INV-102 / CS-5 / OS-A2): ONE accessible-description reader, ONE baked source ----
+  // build.py bakes each walk record's `desc` — the SAME string its /w page + the static-index alt
+  // carry. Every img site (walk frame, closer look, series polaroid + lane, gift prize) applies THIS
+  // reader, so no surface invents its own alt. `byId` initializes in 02-kinship-orderings.js; this
+  // reader runs only at runtime img sites (all after boot), so the forward reference resolves.
+  function workDesc(id) {
+    try { const w = byId[id] || byId[String(id)]; return w && w.desc ? String(w.desc) : ""; }
+    catch (e) { return ""; }
+  }
+  function escAttr(s) {                                // for a description carried in an HTML attribute
+    return String(s == null ? "" : s).replace(/[<>&"]/g,
+      (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+  }
+
+  // ---- N7-A11Y (INV-102 / B1): ONE focus trap, four modal callers ----------------------------
+  // The gift ceremony (11), the closer look (12), the quiz card (13), and the series room (16) each
+  // open through openTrap and close through closeTrap and never re-implement it (architecture N7-A11Y,
+  // "one trap, four callers"). openTrap moves focus INTO the layer and holds Tab inside it — a focus
+  // loop, so the covered walk is never reached; closeTrap releases and, when the open recorded an
+  // opener, returns focus to it. The origin rule the spec sets lives in WHAT each caller passes as the
+  // opener: the keyboard route passes the focused work (restore to it on close); a pointer / touch open
+  // passes nothing, so the zoom leaves NO forced focus and its exact-restore invariant (INV-74/INV-83)
+  // is untouched. A stack carries a rare nesting (a closer look opened from a lane image over the series
+  // room) so the inner close restores to the lane image, the outer to the series' opener.
+  const FOCUSABLE_SEL =
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
+    'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  const _trapStack = [];
+  function _focusablesIn(layer) {
+    return Array.prototype.filter.call(
+      layer.querySelectorAll(FOCUSABLE_SEL),
+      (el) => !el.hidden && el.tabIndex !== -1 && (el.offsetWidth > 0 || el.offsetHeight > 0));
+  }
+  function openTrap(layer, opener) {                   // opener: the element to restore to, or falsy for none
+    if (!layer) return;
+    const rec = {
+      layer: layer,
+      opener: (opener && opener.focus && document.body.contains(opener)) ? opener : null,
+      keydown: null,
+    };
+    const first = _focusablesIn(layer)[0] || layer;
+    if (first === layer && layer.tabIndex < 0) layer.setAttribute("tabindex", "-1");
+    requestAnimationFrame(() => { try { first.focus({ preventScroll: true }); } catch (e) {} });
+    rec.keydown = (e) => {                             // hold Tab inside — a loop at both ends
+      if (e.key !== "Tab") return;
+      const items = _focusablesIn(layer);
+      if (!items.length) { e.preventDefault(); return; }
+      const idx = items.indexOf(document.activeElement);
+      if (e.shiftKey) {
+        if (idx <= 0) { e.preventDefault(); items[items.length - 1].focus({ preventScroll: true }); }
+      } else if (idx === -1 || idx === items.length - 1) {
+        e.preventDefault(); items[0].focus({ preventScroll: true });
+      }
+    };
+    layer.addEventListener("keydown", rec.keydown);
+    _trapStack.push(rec);
+  }
+  function closeTrap(layer) {
+    let i = -1;
+    for (let k = _trapStack.length - 1; k >= 0; k--) { if (_trapStack[k].layer === layer) { i = k; break; } }
+    if (i === -1) return;
+    const rec = _trapStack[i];
+    if (rec.keydown) layer.removeEventListener("keydown", rec.keydown);
+    _trapStack.splice(i, 1);
+    if (rec.opener && document.body.contains(rec.opener)) {
+      requestAnimationFrame(() => { try { rec.opener.focus({ preventScroll: true }); } catch (e) {} });
+    }
+  }
+
   // ---- the visitor's own trace, its three homes (one place for the names) -----
   const KEY = "@@NS@@.exhibition";                       // the walk (INV-26)
   const PLACE_KEY = "@@NS@@.place";                      // the per-tab place marker (INV-32c)

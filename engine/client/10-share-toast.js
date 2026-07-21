@@ -41,6 +41,44 @@
   toastEl.addEventListener("click", toastOff);
   addEventListener("keydown", (ev) => { if (ev.key === "Escape") toastOff(); });
 
+  // ---- N7-A11Y (INV-102 / F5): two polite live regions beside the toast — one creator, disciplined
+  // writers. The caption-and-story region takes the walk caption (REPLACE on each walk step, from the
+  // caption plaque 08) and the streamed story portions (APPEND as the story fills, from the voice 09).
+  // The result region takes the quiz verdict (13) and the gift result (11) on a REPLACE discipline. A
+  // story portion and a result therefore land in DIFFERENT nodes and never overwrite each other. Both
+  // are visually hidden (screen-reader present) via inline style, so no CSS dependency is added.
+  function srLive(id) {
+    const el = document.createElement("div");
+    el.id = id;
+    el.className = "ex-sr-live";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    el.style.cssText = "position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;" +
+      "overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;";
+    document.body.appendChild(el);
+    return el;
+  }
+  const liveCap = srLive("ex-live-cap");               // caption (replace) + story portions (append)
+  const liveResult = srLive("ex-live-result");         // quiz verdict + gift result (replace), a SEPARATE node
+  function announceCaption(text) {                     // a walk step REPLACES — clears the prior caption AND its portions
+    if (text == null) return;
+    const d = document.createElement("div");
+    d.className = "ex-sr-cap"; d.textContent = String(text);
+    liveCap.replaceChildren(d);
+  }
+  function announceStory(text) {                        // a story portion APPENDS — earlier portions stand
+    if (!text) return;
+    const d = document.createElement("div");
+    d.className = "ex-sr-portion"; d.textContent = String(text);
+    liveCap.appendChild(d);
+  }
+  function announceResult(text) {                       // the SEPARATE result region, REPLACE discipline
+    if (text == null) return;
+    const d = document.createElement("div");
+    d.className = "ex-sr-result"; d.textContent = String(text);
+    liveResult.replaceChildren(d);
+  }
+
   // ---- EX-SHARE join (INV-1): a copied link carries a FRESH random per-share token `s` so GA
   // can join THIS specific share to the specific open it produces (the virality loop / k-factor).
   // The token is minted per click, is a bounded closed-alphabet word, and carries NO visitor

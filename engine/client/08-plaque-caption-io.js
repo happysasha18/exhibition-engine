@@ -70,6 +70,10 @@
       (QUIZ_PLACE.indexOf("plaque") >= 0 && quizShows(w) ? quizChipHTML(w.id) : "");
     cap.classList.add("show");
     focusedId = w.id;
+    // N7-A11Y (INV-102): announce this work's caption to the polite region — a walk step REPLACES it,
+    // so a screen reader hears the current work rather than a pile-up (the story portions append below).
+    announceCaption([(w.title || untitledWord), (w.sec || ""), (w.place || "")]
+      .filter((s) => s && String(s).trim()).join(" · "));
     fillTold();                                        // the narrator's line for this work, if spoken
     storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
     capSettle(x.target.querySelector("img.work"));     // EX-CAPTION (INV-97): seat the caption in the free zone at the frame's settle

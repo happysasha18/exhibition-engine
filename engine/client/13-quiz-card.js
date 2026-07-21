@@ -29,6 +29,7 @@
   quizCard.id = "ex-quiz-card";
   quizCard.setAttribute("role", "dialog");
   quizCard.setAttribute("aria-modal", "true");
+  quizCard.setAttribute("aria-label", ((greetLang() || { t: {} }).t.a11y_quiz) || A11Y_QUIZ_EN);   // N7-A11Y (C4/C5)
   quizCard.hidden = true;
   // EX-QUIZ-PICK (INV-64): 4 option buttons replace the free-text form.
   quizCard.innerHTML =
@@ -41,6 +42,8 @@
 
   let quizOpen = false;
   let quizWorkId = null;
+  let quizOpener = null;       // the chip the card opened from — passed to the prize gift so its restore
+                              // reaches the chip (the gift's origin-conditioned restore, D4)
   let quizCloseT = null;      // the wrong-answer auto-close timer (a miss lingers ~1s, then closes)
   let quizWaitT = null;       // the in-flight grace timer → the quiet «one more moment» reassurance
 
@@ -53,6 +56,8 @@
   function quizCardOpen(id) {
     const w = byId[id];
     if (!w || !w.quiz) return;
+    const opener = document.activeElement;             // N7-A11Y (INV-102, B1): the card returns focus to its opener (the chip)
+    quizOpener = opener;                               // remembered so the prize gift restores to the chip too (D4)
     quizWorkId = id;
 
     // RESET ON REOPEN: every open starts clean — cleared feedback, fresh buttons, no lingering state.
@@ -76,7 +81,7 @@
     try { stored = JSON.parse(localStorage.getItem(QUIZ_LS(id)) || "null"); } catch (e) {}
     if (stored && typeof stored === "object" && (stored.answered === true || stored.prize)) {
       // already answered — straight to the gift ceremony when there is a prize
-      if (stored.prize) { openGift("/" + stored.prize, PRIZE_DL, true, undefined, id); return; }
+      if (stored.prize) { openGift("/" + stored.prize, PRIZE_DL, true, undefined, id, opener); return; }
       return;  // answered wrong previously — nothing more to show
     }
 
@@ -102,11 +107,13 @@
     quizCard.hidden = false;
     quizOpen = true;
     faceSync();                                        // the card is a face — arm the rest + guard (EX-CHROME)
+    openTrap(quizCard, opener);                        // N7-A11Y (B1): focus into the card, hold Tab inside, restore to the opener
     requestAnimationFrame(() => { quizCard.classList.add("show"); });
   }
 
   function quizCardClose() {
     if (!quizOpen) return;
+    closeTrap(quizCard);                               // N7-A11Y (B1): release the trap, restore focus to the opener
     clearTimeout(quizCloseT); quizCloseT = null;
     clearTimeout(quizWaitT); quizWaitT = null;      // a mid-flight close cancels the pending reassurance
     quizCard.classList.remove("show", "quiz-inflight");
@@ -164,6 +171,7 @@
       const T = (greetLang() || { t: {} }).t;
       out.className = "quiz-out quiz-miss";
       out.textContent = T.quiz_wrong || "thanks for guessing. another question waits for you further on.";
+      announceResult(out.textContent);                 // N7-A11Y (INV-102 / F5): the verdict rides the SEPARATE result region
       requestAnimationFrame(() => out.classList.add("show"));
       // remember the miss so the work is excluded from eligible in future walks (INV-65 / INV-66)
       try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: false })); } catch (e) {}
@@ -204,6 +212,7 @@
         const T = (greetLang() || { t: {} }).t;
         out.className = "quiz-out quiz-win";
         out.textContent = T.quiz_win || "you have the eye.";
+        announceResult(out.textContent);               // N7-A11Y (INV-102 / F5): the verdict rides the SEPARATE result region
         requestAnimationFrame(() => out.classList.add("show"));
         // remember the win so this work never re-asks (INV-65 / INV-66 answered-memory)
         try { localStorage.setItem(QUIZ_LS(id), JSON.stringify({ answered: true, right: true, prize: data.prize })); } catch (e) {}
@@ -214,7 +223,7 @@
           quizCardClose();
           // EX-QUIZ-FLOW (INV-69): pass onYes so the gift stage stamps ONLY on the quiz prize's yes
           openGift("/" + data.prize, PRIZE_DL, true,
-                   () => { quizStageUp("gift"); }, id);   // gift_kind=quiz_prize, the work (EX-PULSE)
+                   () => { quizStageUp("gift"); }, id, quizOpener);   // gift_kind=quiz_prize, the work (EX-PULSE); restore to the chip (D4)
         }, Math.round(700 * TEMPO));
       } else {
         missAndFade();

@@ -799,6 +799,10 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         "title": (it.get("title") or "").strip(),
         "sec": it.get("section", ""),
         "place": place_of(it),
+        # N7-A11Y (OS-A2 / CS-5 / INV-102): each walk record carries the work's accessible description —
+        # the SAME string its /w page + the static-index alt render (`captions[id]`, else the indexable
+        # title). The client's one alt helper reads this at every img site; never rendered as visible copy.
+        "desc": captions.get(it["id"], "") or indexable_title(it, captions.get(it["id"], "")),
         "tod": tod_of(it["id"]),             # the light marks (EX-STORY-ORDER) — data, never rendered
     } for it in items]
     # EX-QUIZ-PICK (INV-64/60): the public quiz data joins only when the quiz flag is on; flag off →

@@ -26,6 +26,8 @@
   giftCard.id = "ex-gift-card";
   giftCard.setAttribute("role", "dialog");
   giftCard.setAttribute("aria-modal", "true");
+  // N7-A11Y (INV-102, C4/C5): the ceremony names itself to a screen reader (localized, EN fallback)
+  giftCard.setAttribute("aria-label", ((greetLang() || { t: {} }).t.a11y_gift) || A11Y_GIFT_EN);
   giftCard.hidden = true;
   giftCard.innerHTML =
     '<div class="gift-inner">' +
@@ -85,7 +87,11 @@
   }
   // onYes (optional): called when the visitor says yes, BEFORE closeGift — used by the quiz-win path
   // to stamp the "gift" stage (EX-QUIZ-FLOW / INV-69) WITHOUT touching the shared ceremony behaviour.
-  function openGift(src, name, preMarked, onYes, workId) {
+  // N7-A11Y (INV-102, B1) — the restore is ORIGIN-CONDITIONED, uniform with the closer look (12): the
+  // CALLER passes the opener only when the open is focus-origin (a keyboard grab passes the focused work,
+  // a quiz-win passes the chip); a pointer / touch open passes nothing, so the ceremony forces NO focus and
+  // the walk beneath is left as it was. openTrap treats a falsy opener as "restore none" (D4, 2026-07-21).
+  function openGift(src, name, preMarked, onYes, workId, opener) {
     const T = (greetLang() || { t: {} }).t;
     // EX-PROTECT-RES (INV-56): the GRAB ceremony carries NO picture of its own. On a right-click the
     // work is already in view behind the card, so a thumb of the CLEAN source would only add a SECOND,
@@ -103,6 +109,7 @@
         inner.insertBefore(thumb, inner.firstChild);
       }
       thumb.src = src;                                   // the marked prize — the reveal, never a clean grab
+      thumb.alt = workDesc(workId) || (((greetLang() || { t: {} }).t.a11y_gift) || A11Y_GIFT_EN);   // N7-A11Y (C8): the won wallpaper speaks
     } else if (thumb) {
       thumb.remove();                                    // a reused card returning to the grab path drops any prize image
     }
@@ -112,15 +119,18 @@
     yes.textContent = T.gift_yes || "it's yours :)";
     giftCard.querySelector(".gift-no").textContent = T.gift_no || "not now";
     giftCard.querySelector(".gift-line").textContent = enjoyLine();   // localized «enjoy · <host>»
+    announceResult(enjoyLine());                        // N7-A11Y (INV-102 / F5): the gift result rides the SEPARATE result region
     giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "for a larger print — buy";
     yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
     giftCard.dataset.work = workId != null ? String(workId) : "";   // the buy line's beat reads it
     giftCard.hidden = false; giftOpen = true;
     faceSync();                                        // the gift card is a face — arm the rest + guard (EX-CHROME)
+    openTrap(giftCard, opener);                        // N7-A11Y (B1): focus into the ceremony, hold Tab inside, restore to the opener on close
     requestAnimationFrame(() => giftCard.classList.add("show"));       // EX-ARRIVE breath
   }
   function closeGift() {
     if (!giftOpen) return;
+    closeTrap(giftCard);                               // N7-A11Y (B1): release the trap, restore focus to the opener
     giftCard.classList.remove("show");
     setTimeout(() => { giftCard.hidden = true; }, Math.round(350 * TEMPO));
     giftOpen = false;

@@ -4,9 +4,14 @@
     // written by the display-cap bake); the base `src` stays the untouched fallback. No cap ⇒ no
     // srcset key ⇒ the img is byte-identical to a ladder-less walk.
     const ladder = w.srcset ? ` srcset="${w.srcset}" sizes="${data.walk_sizes || "88vw"}"` : "";
+    // N7-A11Y (INV-102, C1/C3): the frame img speaks the work's own description (never alt=""), and the
+    // frame names itself a photograph within the walk (role + roledescription + the same accessible name).
+    const desc = escAttr(workDesc(w.id));
+    const photoWord = escAttr(((greetLang() || { t: {} }).t.a11y_photo) || A11Y_PHOTO_EN);
     return (
-      `<section class="exh-frame" data-id="${w.id}" data-n="${n}">` +
-        `<img class="work" loading="lazy" src="${w.img}"${ladder} alt="">` +
+      `<section class="exh-frame" data-id="${w.id}" data-n="${n}" tabindex="0"` +
+        ` role="group" aria-roledescription="${photoWord}" aria-label="${desc}">` +
+        `<img class="work" loading="lazy" src="${w.img}"${ladder} alt="${desc}">` +
       "</section>"
     );
   }

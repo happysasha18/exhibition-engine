@@ -52,6 +52,13 @@
   const A11Y_CLOSE_EN = "close";
   const A11Y_VOLUME_EN = "volume";
   const A11Y_SOUND_EN = "sound";
+  // N7-A11Y (INV-102): accessible names for the four modal layers + the walk frame's roledescription;
+  // each localizes through EX-I18N (T.a11y_*), the fallback ENGLISH (source tongue), never a locale literal
+  const A11Y_ZOOM_EN = "closer look";
+  const A11Y_ROOM_EN = "series";
+  const A11Y_GIFT_EN = "a gift";
+  const A11Y_QUIZ_EN = "a question";
+  const A11Y_PHOTO_EN = "photograph";
   const SOUND_GREET_EN = "music";           // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue (a plain invitation, no question mark)
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
