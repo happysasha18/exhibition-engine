@@ -187,7 +187,11 @@ else:
             room(br, base, "1.35")                     # a long clock so the first is still in flight
             g1, g2 = stop(br, 1), stop(br, 2)
             br.wheel(delta_y=400)                      # heading to frame 1
-            br.sleep(0.16)                             # in flight
+            # The chaining notch is a SECOND gesture, so it waits out the 150ms idle window the walk
+            # uses to tell one trackpad swipe from the next; a notch inside that window merges into
+            # the first gesture on purpose and steps once. The old 0.16s left ten milliseconds of
+            # margin, which a lighter page can eat. The long clock keeps the first still in flight.
+            br.sleep(0.25)
             mid = br.evaluate("scrollY")
             in_flight = 2 < mid < g1 - 20
             br.wheel(delta_y=400)                      # chain → frame 2
