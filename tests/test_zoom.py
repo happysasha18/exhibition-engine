@@ -593,6 +593,52 @@ else:
                 closed_d = ((not br.evaluate(ZOPEN)) and br.evaluate(ZHIDDEN) and br.evaluate(ON_PAGE))
                 check(MIRROR_ROWS[2], closed_d, f"closed_via_road={closed_d}")
 
+# ---------------------------------------------------------------- EX-ZOOM/INV-82 touchcancel
+# a gesture the SYSTEM takes away (an incoming call, a notification pulled over the page, a palm
+# the browser rejects) fires touchcancel and never touchend — a static-code audit of the handler's
+# presence (test_protect.py) proves nothing about its BEHAVIOR; this row drives the real gesture.
+CANCEL_ROWS = [
+    "EX-ZOOM/INV-82 a system-cancelled gesture ends the pinch and commits nothing — the next move starts fresh",
+]
+CANCEL = (
+    "(()=>{const img=document.querySelector('#ex-zoom .exz-img');"
+    "if(!img)return JSON.stringify({err:'no-img'});"
+    "const mk=(id,x,y)=>new Touch({identifier:id,target:img,clientX:x,clientY:y});"
+    "const fire=(t,ts)=>img.dispatchEvent(new TouchEvent(t,{touches:ts,targetTouches:ts,"
+    "changedTouches:ts,bubbles:true,cancelable:true}));"
+    "const sc=()=>{const m=/scale\\(([0-9.]+)\\)/.exec(img.style.transform||'');"
+    "return m?parseFloat(m[1]):1;};"
+    "fire('touchstart',[mk(1,120,200),mk(2,210,270)]);"          # pinch begins, dist ~114
+    "fire('touchmove',[mk(1,80,200),mk(2,290,270)]);"            # widen -> the picture scales up
+    "const during=sc();"
+    "fire('touchcancel',[]);"                                    # the system takes the gesture away
+    "const after=sc();"
+    "fire('touchmove',[mk(1,20,200),mk(2,400,270)]);"            # a move with NO fresh touchstart
+    "const later=sc();"
+    "return JSON.stringify({during:during,after:after,later:later,"
+    "open:!document.getElementById('ex-zoom').hidden});})()"
+)
+
+if not chrome_available():
+    for r in CANCEL_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+else:
+    with serve(TMP) as base:
+        with Browser(width=390, height=844) as br:       # INV-82: touchcancel ends the gesture clean
+            _boot(br, base)
+            br.evaluate("(%s)('.exd-window img')" % PINCH)   # open the zoom, seed the pinch
+            br.sleep(0.2)
+            out = json.loads(br.evaluate(CANCEL))
+            reach_ok = isinstance(out.get("during"), (int, float)) and out["during"] > 1.05
+            commit_ok = (reach_ok and isinstance(out.get("after"), (int, float))
+                         and abs(out["after"] - out["during"]) < 0.01)
+            fresh_ok = (commit_ok and isinstance(out.get("later"), (int, float))
+                        and abs(out["later"] - out["after"]) < 0.01)
+            check(CANCEL_ROWS[0],
+                  reach_ok and commit_ok and fresh_ok and out.get("open") is True,
+                  ("the pinch gesture never scaled the picture (during={during!r}) — the row never "
+                   "reached the defect".format(**out) if not reach_ok else f"out={out}"))
+
 shutil.rmtree(TMP, ignore_errors=True)
 
 fails = [r for r in results if r[1] == "FAIL"]

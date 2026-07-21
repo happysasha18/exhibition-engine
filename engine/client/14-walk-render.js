@@ -9,7 +9,9 @@
     const photoWord = escAttr(((greetLang() || { t: {} }).t.a11y_photo) || A11Y_PHOTO_EN);
     return (
       `<section class="exh-frame" data-id="${w.id}" data-n="${n}" tabindex="0"` +
-        ` role="group" aria-roledescription="${photoWord}" aria-label="${desc}">` +
+        ` role="group" aria-roledescription="${photoWord}" aria-label="${desc}"` +
+        // N7-A11Y (INV-102, B2/B3): the frame ANNOUNCES the two keys it answers — `z` looks closer, `y` opens the gift
+        ` aria-keyshortcuts="z y">` +
         `<img class="work" loading="lazy" src="${w.img}"${ladder} alt="${desc}">` +
       "</section>"
     );

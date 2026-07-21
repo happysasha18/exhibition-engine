@@ -607,7 +607,7 @@ else:
         with Browser(width=1280, height=900) as br:
             enter(br, base)
             br.evaluate("document.querySelector('.exh-frame').focus()")
-            br.key("g"); br.sleep(0.5)
+            br.key("y"); br.sleep(0.5)
             gopen = br.evaluate("(%s)('ex-gift-card')" % OPEN_STATE)
             # the grab ceremony carries NO clean picture (INV-49) — no visible .gift-thumb
             imageless = br.evaluate("(()=>{const t=document.querySelector('#ex-gift-card .gift-thumb');"
@@ -878,7 +878,7 @@ else:
             enter(br, base, tempo="0.05")
             br.evaluate("document.querySelector('.exh-frame').focus()")
             fid = br.evaluate("(()=>{const f=document.querySelector('.exh-frame');return f?f.dataset.id:'';})()")
-            br.key("g"); br.sleep(0.5)
+            br.key("y"); br.sleep(0.5)
             kopen = br.evaluate(GIFT_OPEN)
             br.key("Escape"); br.sleep(0.6)
             krestored = br.evaluate("(()=>{const a=document.activeElement;"
@@ -898,6 +898,352 @@ else:
             touch_ok = topen and no_forced
         check(A_ROWS[6], bool(key_ok) and bool(touch_ok),
               f"keyboard_open={kopen} keyboard_restored={krestored} touch_open={topen} touch_no_forced={no_forced}")
+
+# ======================= Batch-K — the KEY ROADS AT ALL FOUR HANGING PLACES =======================
+# CS-9 / INV-102 (B2/B3) extended to the four places a work HANGS: a walk photograph (.exh-frame), a
+# door window (.exd-window), a polaroid on the table (.exs-print) and a lane picture in the series room
+# (a direct <img> child of #exs-stage). The defect these rows exist over: the single keyboard opener was
+# gated twice to the walk (faceStands() + .exh-frame), so three of the four places answered no key at
+# all; and the gift ceremony was unreachable from a polaroid and from a lane picture on EVERY input.
+#   · K1-K3  `z` opens the closer look at the door window / the polaroid / the lane picture
+#   · K4     close restores focus to the opener at ALL FOUR places, four independently-reported legs
+#   · K5     a standing closer look owns its own keys (z/y pass nothing through; Escape still leaves)
+#   · K6-K8  the three grab roads (right-click · long press · `y`) at the polaroid / the lane / the door
+#   · K9     every place ANNOUNCES its keys (aria-keyshortcuts) in the live DOM
+#   · K10    close falls back to the standing surface when the opener has left the page
+# Every browser row asserts its OWN REACH first: an element not found, not focusable, or a precondition
+# layer that never opened FAILS the row with a detail saying so — never a quiet pass.
+K_ROWS = [
+    "K1 a real `z` on a focused DOOR WINDOW opens the closer look on that window's picture (door standing)",
+    "K2 a real `z` on a focused POLAROID opens the closer look on that print's photograph, and Enter still "
+    "lifts the print (room standing)",
+    "K3 a real `z` on a focused LANE picture opens the closer look on it (a lane-variant room standing)",
+    "K4 close restores focus to the OPENER at all four hanging places (walk frame · door window · polaroid · "
+    "lane picture) — four independently-reported legs",
+    "K5 a standing closer look owns its keys — `z` opens nothing further, `y` opens no ceremony over it, "
+    "and a real Escape still leaves",
+    "K6 a POLAROID reaches the gift ceremony by all three roads (right-click · real long press · real `y`)",
+    "K7 a LANE picture reaches the gift ceremony by all three roads (right-click · real long press · real `y`)",
+    "K8 a DOOR WINDOW answers all three roads with the gracious toast and NO ceremony (right-click · real "
+    "long press · real `y`)",
+    "K9 all four hanging places announce their keys in the live DOM (aria-keyshortcuts: walk/polaroid/lane "
+    "`z y`, the door window `z` only — the door offers no ceremony to announce)",
+    "K10 close falls back to the standing surface when the opener has left the page (never the document body)",
+    "K11 Escape over a closer look opened FROM the series room leaves the closer look only — the room "
+    "still stands beneath it and keeps its focused polaroid (a standing layer owns its keys)",
+]
+
+LANE_IDX = next((i for i, s in enumerate(SERIES) if s.get("variant") == "lane"), None)
+POLA_IDX = next((i for i, s in enumerate(SERIES) if s.get("variant") != "lane"), None)
+
+# focus a hanging place, stash it as the expected opener, and report the reach + its picture's basename
+FOCUS_PLACE = ("(sel)=>{const e=document.querySelector(sel);"
+               "if(!e)return JSON.stringify({found:false,focused:false,pic:''});"
+               "window.__opener=e;e.focus();"
+               "const im=(e.tagName==='IMG')?e:e.querySelector('img');"
+               "const s=im?(im.currentSrc||im.getAttribute('src')||''):'';"
+               "return JSON.stringify({found:true,focused:document.activeElement===e,"
+               "pic:((s.split('?')[0].split('/').pop())||'')});}")
+ZOOM_PIC = ("(()=>{const i=document.querySelector('#ex-zoom .exz-img');if(!i)return '';"
+            "const s=i.currentSrc||i.getAttribute('src')||'';"
+            "return (s.split('?')[0].split('/').pop())||'';})()")
+ZOOM_OPEN = "(()=>{const e=document.getElementById('ex-zoom');return !!(e&&!e.hidden);})()"
+ZOOM_CLOSE_X = ("(()=>{const b=document.querySelector('#ex-zoom .exz-close');"
+                "if(!b)return false;b.click();return true;})()")
+IS_OPENER = "(()=>document.activeElement===window.__opener)()"
+TOAST_ON = ("(()=>{const t=document.getElementById('ex-toast');"
+            "return !!(t&&!t.hidden&&(t.textContent||'').trim());})()")
+CTX_ON = ("(sel)=>{const e=document.querySelector(sel);if(!e)return false;"
+          "e.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}));return true;}")
+KEYSHORTCUTS = ("(sel)=>{const e=document.querySelector(sel);"
+                "return e?(e.getAttribute('aria-keyshortcuts')===null?'@none':"
+                "e.getAttribute('aria-keyshortcuts')):'@missing';}")
+
+
+def at_door(br, base, tempo="0.4"):
+    """Land on the FRONT DOOR, standing — no pick, so the door face holds."""
+    br.navigate(base + "/")
+    br.clear_storage()
+    br.evaluate("sessionStorage.clear()")
+    br.evaluate(f"localStorage.setItem('ex-tempo','{tempo}')")
+    br.reload()
+    br.sleep(1.2)
+
+
+def in_room(br, base, idx):
+    """Land in the walk, then open the series room at `idx` and let its veil crossing settle."""
+    enter(br, base)
+    br.evaluate("(%s)(%d)" % (OPEN_SERIES, idx))
+    br.sleep(1.6)
+
+
+if not chrome_available():
+    for r in K_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+else:
+    with serve(TMP) as base:
+        # K1 — `z` on a focused door window opens the closer look on that window's picture
+        with Browser(width=1280, height=900) as br:
+            at_door(br, base)
+            reach = json.loads(br.evaluate("(%s)('.exd-window')" % FOCUS_PLACE))
+            if not (reach.get("found") and reach.get("focused") and reach.get("pic")):
+                check(K_ROWS[0], False, f"REACH FAILED — the door window was not found/focusable/pictured: {reach}")
+            else:
+                br.key("z")
+                br.sleep(0.8)
+                opened = br.evaluate(ZOOM_OPEN)
+                pic = br.evaluate(ZOOM_PIC)
+                check(K_ROWS[0], bool(opened) and pic == reach["pic"],
+                      f"zoom_open={opened} zoom_pic={pic!r} window_pic={reach['pic']!r}")
+
+        # K2 — `z` on a focused polaroid opens the closer look; Enter on the same print still LIFTS it
+        with Browser(width=1280, height=900) as br:
+            if POLA_IDX is None:
+                skip(K_ROWS[1], "the fixture bakes no polaroid-variant series")
+            else:
+                in_room(br, base, POLA_IDX)
+                reach = json.loads(br.evaluate("(%s)('#exs-stage .exs-print')" % FOCUS_PLACE))
+                if not (reach.get("found") and reach.get("focused") and reach.get("pic")):
+                    check(K_ROWS[1], False,
+                          f"REACH FAILED — the polaroid was not found/focusable/pictured: {reach}")
+                else:
+                    br.key("z")
+                    br.sleep(0.8)
+                    zopen = br.evaluate(ZOOM_OPEN)
+                    zpic = br.evaluate(ZOOM_PIC)
+                    br.evaluate(ZOOM_CLOSE_X)
+                    br.sleep(1.0)
+                    # Enter on the print keeps its own meaning — the lift, never the closer look
+                    br.evaluate("(()=>{const p=document.querySelector('#exs-stage .exs-print');"
+                                "if(p)p.focus();})()")
+                    br.key("Enter")
+                    br.sleep(0.5)
+                    lifted = br.evaluate("!!document.querySelector('#exs-stage .exs-print.lift')")
+                    check(K_ROWS[1], bool(zopen) and zpic == reach["pic"] and bool(lifted),
+                          f"zoom_open={zopen} zoom_pic={zpic!r} print_pic={reach['pic']!r} enter_lifts={lifted}")
+
+        # K3 — `z` on a focused lane picture opens the closer look on it
+        with Browser(width=1280, height=900) as br:
+            if LANE_IDX is None:
+                skip(K_ROWS[2], "the fixture bakes no lane-variant series")
+            else:
+                in_room(br, base, LANE_IDX)
+                reach = json.loads(br.evaluate("(%s)('#exs-stage > img')" % FOCUS_PLACE))
+                if not (reach.get("found") and reach.get("focused") and reach.get("pic")):
+                    check(K_ROWS[2], False,
+                          f"REACH FAILED — the lane picture was not found/focusable/pictured: {reach}")
+                else:
+                    br.key("z")
+                    br.sleep(0.8)
+                    opened = br.evaluate(ZOOM_OPEN)
+                    pic = br.evaluate(ZOOM_PIC)
+                    check(K_ROWS[2], bool(opened) and pic == reach["pic"],
+                          f"zoom_open={opened} zoom_pic={pic!r} lane_pic={reach['pic']!r}")
+
+        # K4 — close restores focus to the OPENER at all four places, each leg reported on its own
+        legs = {}
+
+        def restore_leg(br, sel):
+            """Focus `sel`, open the closer look with `z`, close by the ×, report whether focus came home."""
+            reach = json.loads(br.evaluate("(%s)(%s)" % (FOCUS_PLACE, json.dumps(sel))))
+            if not (reach.get("found") and reach.get("focused")):
+                return {"reach": False, "detail": f"not found/focusable: {reach}"}
+            br.key("z")
+            br.sleep(0.8)
+            if not br.evaluate(ZOOM_OPEN):
+                return {"reach": False, "detail": "the closer look never opened on `z`"}
+            br.evaluate(ZOOM_CLOSE_X)
+            br.sleep(1.1)
+            return {"reach": True, "restored": bool(br.evaluate(IS_OPENER))}
+
+        with Browser(width=1280, height=900) as br:
+            enter(br, base, tempo="0.05")
+            legs["walk frame"] = restore_leg(br, ".exh-frame")
+        with Browser(width=1280, height=900) as br:
+            at_door(br, base, tempo="0.05")
+            legs["door window"] = restore_leg(br, ".exd-window")
+        if POLA_IDX is not None:
+            with Browser(width=1280, height=900) as br:
+                in_room(br, base, POLA_IDX)
+                legs["polaroid"] = restore_leg(br, "#exs-stage .exs-print")
+        if LANE_IDX is not None:
+            with Browser(width=1280, height=900) as br:
+                in_room(br, base, LANE_IDX)
+                legs["lane picture"] = restore_leg(br, "#exs-stage > img")
+        k4_ok = len(legs) == 4 and all(v.get("reach") and v.get("restored") for v in legs.values())
+        check(K_ROWS[3], k4_ok, "legs=" + json.dumps(legs))
+
+        # K5 — a standing closer look owns its keys: z opens nothing further, y no ceremony, Esc leaves
+        with Browser(width=1280, height=900) as br:
+            enter(br, base, tempo="0.05")
+            reach = json.loads(br.evaluate("(%s)('.exh-frame')" % FOCUS_PLACE))
+            br.key("z")
+            br.sleep(0.7)
+            if not (reach.get("focused") and br.evaluate(ZOOM_OPEN)):
+                check(K_ROWS[4], False,
+                      f"REACH FAILED — the closer look never stood to be guarded: reach={reach} "
+                      f"zoom_open={br.evaluate(ZOOM_OPEN)}")
+            else:
+                pic0 = br.evaluate(ZOOM_PIC)
+                br.key("z")
+                br.sleep(0.5)
+                still = br.evaluate(ZOOM_OPEN)
+                pic1 = br.evaluate(ZOOM_PIC)
+                nzooms = br.evaluate("document.querySelectorAll('#ex-zoom').length")
+                br.key("y")
+                br.sleep(0.5)
+                gift = br.evaluate(GIFT_OPEN)
+                br.key("Escape")
+                br.sleep(0.9)
+                left = not br.evaluate(ZOOM_OPEN)
+                check(K_ROWS[4],
+                      bool(still) and pic0 == pic1 and nzooms == 1 and (not gift) and left,
+                      f"still_open={still} pic_before={pic0!r} pic_after={pic1!r} zoom_layers={nzooms} "
+                      f"gift_over_it={gift} escape_left={left}")
+
+        # K6/K7 — a polaroid and a lane picture each reach the gift ceremony by all THREE roads
+        def three_roads(idx, place_sel, pic_sel, focus_sel):
+            """right-click (desktop) · real long press (touch) · real `y` — each on its own browser."""
+            out = {}
+            with Browser(width=1280, height=900) as br:            # right-click, fine pointer
+                in_room(br, base, idx)
+                if not br.evaluate("!!document.querySelector(%s)" % json.dumps(pic_sel)):
+                    out["right-click"] = "REACH FAILED — no picture at " + pic_sel
+                else:
+                    br.evaluate("(%s)(%s)" % (CTX_ON, json.dumps(pic_sel)))
+                    br.sleep(0.6)
+                    out["right-click"] = bool(br.evaluate(GIFT_OPEN))
+            with Browser(width=1280, height=900) as br:            # a real long press, coarse pointer
+                br.touch(True, 2)
+                in_room(br, base, idx)
+                began = br.evaluate("(%s)(%s)" % (LP_START, json.dumps(pic_sel)))
+                if not began:
+                    out["long press"] = "REACH FAILED — no picture at " + pic_sel
+                else:
+                    br.sleep(0.8)                                  # past the ~500ms arm
+                    out["long press"] = bool(br.evaluate(GIFT_OPEN))
+                    br.evaluate("(%s)()" % LP_END)
+            with Browser(width=1280, height=900) as br:            # the real `y` key from the focused place
+                in_room(br, base, idx)
+                reach = json.loads(br.evaluate("(%s)(%s)" % (FOCUS_PLACE, json.dumps(focus_sel))))
+                if not (reach.get("found") and reach.get("focused")):
+                    out["y key"] = f"REACH FAILED — not found/focusable: {reach}"
+                else:
+                    br.key("y")
+                    br.sleep(0.6)
+                    out["y key"] = bool(br.evaluate(GIFT_OPEN))
+            return out
+
+        if POLA_IDX is None:
+            skip(K_ROWS[5], "the fixture bakes no polaroid-variant series")
+        else:
+            r6 = three_roads(POLA_IDX, ".exs-print", "#exs-stage .exs-print img", "#exs-stage .exs-print")
+            check(K_ROWS[5], all(v is True for v in r6.values()), "roads=" + json.dumps(r6))
+        if LANE_IDX is None:
+            skip(K_ROWS[6], "the fixture bakes no lane-variant series")
+        else:
+            r7 = three_roads(LANE_IDX, "#exs-stage > img", "#exs-stage > img", "#exs-stage > img")
+            check(K_ROWS[6], all(v is True for v in r7.values()), "roads=" + json.dumps(r7))
+
+        # K8 — a door window answers all three roads with the gracious toast and NO ceremony
+        r8 = {}
+        with Browser(width=1280, height=900) as br:                # right-click, fine pointer
+            at_door(br, base)
+            if not br.evaluate("!!document.querySelector('.exd-window img')"):
+                r8["right-click"] = "REACH FAILED — no door window picture"
+            else:
+                br.evaluate("(%s)('.exd-window img')" % CTX_ON)
+                br.sleep(0.5)
+                r8["right-click"] = {"toast": bool(br.evaluate(TOAST_ON)), "gift": bool(br.evaluate(GIFT_OPEN))}
+        with Browser(width=1280, height=900) as br:                # a real long press, coarse pointer
+            br.touch(True, 2)
+            at_door(br, base, tempo="1.0")
+            began = br.evaluate("(%s)('.exd-window img')" % LP_START)
+            if not began:
+                r8["long press"] = "REACH FAILED — no door window picture"
+            else:
+                br.sleep(0.8)
+                r8["long press"] = {"toast": bool(br.evaluate(TOAST_ON)), "gift": bool(br.evaluate(GIFT_OPEN))}
+                br.evaluate("(%s)()" % LP_END)
+        with Browser(width=1280, height=900) as br:                # the real `y` key from the focused window
+            at_door(br, base)
+            reach = json.loads(br.evaluate("(%s)('.exd-window')" % FOCUS_PLACE))
+            if not (reach.get("found") and reach.get("focused")):
+                r8["y key"] = f"REACH FAILED — not found/focusable: {reach}"
+            else:
+                br.key("y")
+                br.sleep(0.6)
+                r8["y key"] = {"toast": bool(br.evaluate(TOAST_ON)), "gift": bool(br.evaluate(GIFT_OPEN))}
+        k8_ok = (len(r8) == 3 and all(isinstance(v, dict) and v.get("toast") and not v.get("gift")
+                                      for v in r8.values()))
+        check(K_ROWS[7], k8_ok, "roads=" + json.dumps(r8))
+
+        # K9 — every hanging place ANNOUNCES its keys in the live DOM
+        ks = {}
+        with Browser(width=1280, height=900) as br:
+            at_door(br, base)
+            ks["door window (z)"] = br.evaluate("(%s)('.exd-window')" % KEYSHORTCUTS)
+            enter(br, base)
+            ks["walk frame (z y)"] = br.evaluate("(%s)('.exh-frame')" % KEYSHORTCUTS)
+        if POLA_IDX is not None:
+            with Browser(width=1280, height=900) as br:
+                in_room(br, base, POLA_IDX)
+                ks["polaroid (z y)"] = br.evaluate("(%s)('#exs-stage .exs-print')" % KEYSHORTCUTS)
+        if LANE_IDX is not None:
+            with Browser(width=1280, height=900) as br:
+                in_room(br, base, LANE_IDX)
+                ks["lane picture (z y)"] = br.evaluate("(%s)('#exs-stage > img')" % KEYSHORTCUTS)
+        k9_ok = (len(ks) == 4
+                 and ks.get("walk frame (z y)") == "z y"
+                 and ks.get("polaroid (z y)") == "z y"
+                 and ks.get("lane picture (z y)") == "z y"
+                 and ks.get("door window (z)") == "z")
+        check(K_ROWS[8], k9_ok, "announced=" + json.dumps(ks))
+
+        # K10 — the opener has LEFT the page by the time the layer closes: focus lands on the surface
+        # still standing beneath it (the walk stage here), never on the document body
+        with Browser(width=1280, height=900) as br:
+            enter(br, base, tempo="0.05")
+            reach = json.loads(br.evaluate("(%s)('.exh-frame')" % FOCUS_PLACE))
+            br.key("z")
+            br.sleep(0.8)
+            if not (reach.get("focused") and br.evaluate(ZOOM_OPEN)):
+                check(K_ROWS[9], False, f"REACH FAILED — the closer look never opened: reach={reach}")
+            else:
+                br.evaluate("(()=>{window.__opener.remove();})()")   # the opener leaves the page
+                br.evaluate(ZOOM_CLOSE_X)
+                br.sleep(1.1)
+                landed = json.loads(br.evaluate(
+                    "(()=>{const a=document.activeElement;return JSON.stringify({"
+                    "body:a===document.body,id:a?(a.id||''):'',tag:a?a.tagName:''});})()"))
+                check(K_ROWS[9], (not landed.get("body")) and landed.get("id") == "ex-stage",
+                      f"landed={landed}")
+
+        # K11 — the new nesting road (a closer look opened by `z` from a polaroid, over the standing
+        # room) must exit ONE layer at a time. The room's own Escape and the closer look's own Escape
+        # are two independent document listeners, so an unguarded room takes a step back of its own and
+        # the single key tears down both layers, landing the visitor out on the walk.
+        with Browser(width=1280, height=900) as br:
+            if POLA_IDX is None:
+                skip(K_ROWS[10], "the fixture bakes no polaroid-variant series")
+            else:
+                in_room(br, base, POLA_IDX)
+                reach = json.loads(br.evaluate("(%s)('#exs-stage .exs-print')" % FOCUS_PLACE))
+                br.key("z")
+                br.sleep(0.8)
+                if not (reach.get("focused") and br.evaluate(ZOOM_OPEN)):
+                    check(K_ROWS[10], False,
+                          f"REACH FAILED — the closer look never stood over the room: reach={reach}")
+                else:
+                    br.key("Escape")
+                    br.sleep(1.4)
+                    after = json.loads(br.evaluate(
+                        "(()=>{const z=document.getElementById('ex-zoom'),s=document.getElementById('ex-side');"
+                        "return JSON.stringify({zoom:!!(z&&!z.hidden),room:!!(s&&!s.hidden),"
+                        "on_print:document.activeElement===window.__opener});})()"))
+                    check(K_ROWS[10],
+                          (not after.get("zoom")) and after.get("room") and after.get("on_print"),
+                          f"after_escape={after}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

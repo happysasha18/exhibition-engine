@@ -21,6 +21,12 @@
   side.innerHTML = '<button type="button" class="exs-back"></button>' +
                    '<div class="exs-stage" id="exs-stage"></div>';
   document.body.appendChild(side);
+  // EX-PROTECT (INV-49): the room's own works refuse a grab through the SAME delegated onGrab the walk
+  // and the door use. #ex-side is appended to document.body — outside both #ex-stage and #ex-door — so
+  // until this binding a polaroid and a lane picture were reachable by no grab road at all. The binding
+  // lives here, at the element's construction site, because 12 runs before this file exists.
+  side.addEventListener("contextmenu", onGrab);
+  side.addEventListener("dragstart", onGrab);
   let sideOpen = false;
   let sideOpener = null;            // N7-A11Y (INV-102, B1): the element that opened the room — focus returns here on close
   let laneTouchOff = null;          // the CURRENT dress's own lane touchstart handler (INV-88) —
@@ -75,6 +81,7 @@
         im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
         im.tabIndex = 0;                                 // N7-A11Y (INV-102, B4): the lane photograph is keyboard-reachable (the lane scrolls by arrow key — the side-level handler below)
+        im.setAttribute("aria-keyshortcuts", "z y");     // N7-A11Y (INV-102, B2/B3): it ANNOUNCES the two keys it answers — the closer look and the gift
         st.appendChild(im);
         if (im.decode) decodes.push(im.decode().catch(() => {}));   // N7-A11Y (INV-102, D3): feature-guard like the three siblings (06/07/12) — no bare decode where it is unsupported
         return;
@@ -93,6 +100,7 @@
       // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space
       p.tabIndex = 0;
       p.setAttribute("role", "button");
+      p.setAttribute("aria-keyshortcuts", "z y");        // N7-A11Y (INV-102, B2/B3): the closer look and the gift, announced
       p.setAttribute("aria-label", workDesc(w.id) || ((greetLang() || { t: {} }).t.a11y_photo) || A11Y_PHOTO_EN);
       p.addEventListener("keydown", (ev) => {
         if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); p.click(); }   // open (lift) on the keyboard's own keys
@@ -189,7 +197,12 @@
   });
   side.querySelector(".exs-back").addEventListener("click", () => history.back());
   addEventListener("keydown", (ev) => {                // Esc = the same honest road as Back
-    if (ev.key === "Escape" && sideOpen) history.back();
+    if (ev.key !== "Escape" || !sideOpen) return;
+    // a layer standing ABOVE the room owns the key — its own Escape is already taking the step back.
+    // The room hangs works a visitor can open a closer look or a gift ceremony from (INV-67), so
+    // without this the one key would step history twice and tear down both layers at once.
+    if (zoomOpen || giftOpen || quizOpen) return;
+    history.back();
   });
   // N7-A11Y (INV-102, B4): the lane scrolls by keyboard as well as by tap and by click. One listener on
   // the room (never piling up across reused dresses); it acts only while a LANE stage stands.

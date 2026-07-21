@@ -6,6 +6,8 @@ exhibition-engine turns a directory of precomputed image data into one self-cont
 
 The bundle serves two faces on the same URL. The first face is a crawlable static site: real HTML with a heading, an indexable meta description, and a grid that links every work to its own page. This face is readable with JavaScript turned off and can be indexed by search engines. The second face is a client-side exhibition walk. A script called `exhibition.js` re-renders the page into an interactive walk after the page loads. A visitor taps any image and the page reassembles into an arc of related works. Works are related by min-max-normalized feature vectors read from the content's `vector.json`.
 
+Every capability the walk offers is reachable three ways. A visitor steps the walk, looks closely at a picture, and takes one home with a finger, with a pointer, or with the keyboard alone, on every surface that hangs a work — the walk itself, the door's windows, the polaroid table, and a series lane. The keyboard roads are `z` to look closer and `y` to open the gift, announced to a screen reader on the picture that answers them; both letters are picked from the ones NVDA and JAWS leave free, since a reader spends most single letters on jumps of its own.
+
 This tool is for you if you have a curated set of images with precomputed per-work feature vectors, and you want a self-contained, deployable, search-indexable exhibition site with an adaptive walk.
 
 To start, see the requirements and the real example run below.

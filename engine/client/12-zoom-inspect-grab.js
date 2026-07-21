@@ -365,6 +365,18 @@
     // EX-PICSTAT: a release that leaves the picture open at/above resting arms the settle debounce
     if (zoomOpen && !zDismissing && e.touches.length === 0) armInspect();
   }, { passive: true });
+  // A gesture the system TAKES AWAY (an incoming call, a notification pulled over the page, a palm the
+  // browser rejects) fires touchcancel and never touchend, so pinch, pan and dismiss state would stand
+  // mid-gesture under the open layer and the next touch would resume a gesture the visitor never made.
+  // It ends the gesture like a lift that commits nothing: the dismiss preview eases back, pinch and pan
+  // clear, the picture keeps the size the visitor reached, and the settle re-arms (INV-82).
+  addEventListener("touchcancel", () => {
+    if (!zoomOpen) return;
+    zPinch = 0;
+    zPanning = false;
+    if (zDismiss) { zDismiss = 0; zPreviewEnd(true); }
+    if (!zDismissing) armInspect();
+  }, { passive: true });
   // Every way out is the same road (INV-83): the ×, a backdrop tap, and Esc all step history BACK, and
   // the popstate handler runs the one closeZoom — so the browser's own Back button closes the zoom too.
   const zoomBack = () => { if (zoomOpen) history.back(); };
@@ -373,25 +385,59 @@
   addEventListener("keydown", (e) => { if (e.key === "Escape" && zoomOpen) zoomBack(); });
 
   // ---- N7-A11Y (INV-102, B2/B3): the keyboard opens the closer look and the grab from a FOCUSED work ----
-  // The walk work is a focusable element (14-walk-render adds tabindex); with it holding focus, Enter
-  // looks closer (openZoom, recording the work as the opener so close restores focus to it — B1), and
-  // the grab key `g` hands over the gift through the SAME imageless clean-source openGift path onGrab
-  // routes a right-click through, so no new grab road is built (INV-49). Both live here, beside openZoom
-  // and onGrab, the one home the architecture names. A modal already standing keeps its own keys.
+  // A work HANGS in four places — a walk photograph (.exh-frame), a door window (.exd-window), a
+  // polaroid on the table (.exs-print) and a lane picture in the series room (a direct <img> child of
+  // #exs-stage; a polaroid's own inner <img> is NOT one, it belongs to its print). One selector set
+  // names all four, and every road below — the keyboard, the right-click, the long press — resolves
+  // through it, so no surface carries a private list of what counts as a picture.
+  const HANG_SEL = ".exh-frame, .exd-window, .exs-print, #exs-stage > img";
+  function hangPlace(el) {                              // the hanging place under an element, or null
+    return (el && el.closest) ? el.closest(HANG_SEL) : null;
+  }
+  function hangPic(place) {                             // the picture a hanging place shows
+    if (!place) return null;
+    return place.tagName === "IMG" ? place : place.querySelector("img");
+  }
+  // The gift ceremony is offered against a work the visitor has CHOSEN and walked to. A door window
+  // shows the facade's spread before that choice exists, so it carries no hung-work identity to
+  // ceremony over and always answers with the gracious line instead (INV-49, F1) — the one exception,
+  // stated here once rather than re-derived at each road.
+  function hangGiftId(place) {
+    if (!place || (place.classList && place.classList.contains("exd-window"))) return "";
+    return (place.dataset && place.dataset.id) || "";
+  }
+  // With a hanging place holding focus, `z` looks closer (openZoom, recording the PLACE as the opener so
+  // close restores focus to it — B1), and `y` hands over the gift through the SAME imageless clean-source
+  // openGift path onGrab routes a right-click through, so no new grab road is built (INV-49) — not `g`,
+  // which both NVDA and JAWS already consume as browse-mode next-graphic before the page ever sees it.
+  // Enter keeps its walk-only meaning: on a polaroid it lifts (16's own handler) and on a door window it
+  // enters.
   addEventListener("keydown", (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (faceStands()) return;                          // a layer / the door stands — its own keys own the input
-    const fr = e.target && e.target.closest && e.target.closest(".exh-frame");
-    if (!fr) return;                                   // a key only opens from a focused walk work
-    const img = fr.querySelector("img.work");
+    // A standing LAYER's own keys own the input. atDoor and sideOpen are deliberately NOT here: the
+    // door and the series room are not layers over a work, they HANG works, and a face passes `z` and
+    // `g` to the work its visitor has focused (INV-67, input ownership).
+    if (zoomOpen || quizOpen || giftOpen || busy) return;
+    const place = hangPlace(e.target);
+    if (!place) return;                                // a key only opens from a focused hanging place
+    const img = hangPic(place);
     if (!img) return;
-    if (e.key === "Enter") {                           // look closer
+    if (e.key === "z" || e.key === "Z") {              // look closer, wherever the work hangs
       e.preventDefault();
-      openZoom(img, { opener: fr });
-    } else if (e.key === "g" || e.key === "G") {       // take the gift — the keyboard grab
+      openZoom(img, { opener: place });
+    } else if (e.key === "y" || e.key === "Y") {       // take the gift — the keyboard grab (not `g`: the
+                                                        // screen readers' own next-graphic key, never reaches the page)
       e.preventDefault();
-      openGift(img.currentSrc || img.getAttribute("src") || img.src, undefined, undefined, undefined,
-               fr.dataset.id, fr);                      // OFFER, never dump — reuse the clean-source path; keyboard origin → restore to the work (INV-49, D4)
+      const gid = hangGiftId(place);
+      if (gid) {
+        openGift(img.currentSrc || img.getAttribute("src") || img.src, undefined, undefined, undefined,
+                 gid, place);                           // OFFER, never dump — reuse the clean-source path; keyboard origin → restore to the place (INV-49, D4)
+      } else {
+        toast(enjoyLine());                             // a door window keeps the gracious line (F1)
+      }
+    } else if (e.key === "Enter" && place.classList.contains("exh-frame")) {
+      e.preventDefault();                              // the walk's own Enter, unchanged
+      openZoom(img, { opener: place });
     }
   }, { passive: false });
   // INV-81 — the trigger reaches every picture, the small ones included: a polaroid never fits two
@@ -492,24 +538,29 @@
   // invents one — it always answers with the SAME gracious toast the room gives a drag/touch grab,
   // never a new behaviour or new copy.
   let lpTouchFired = false;                               // A1: a just-fired touch long-press swallows a follow-up contextmenu (Android)
+  // the PICTURE at each of the four hanging places — the grab's own hit set. It stays a picture-level
+  // list (never the whole place) so a grab on a frame's breathing margin or on room chrome is still
+  // left alone; the place it hangs in is resolved from the picture through hangPlace.
+  const GRAB_SEL = ".exh-frame img.work, .exd-window img, .exs-print img, #exs-stage > img";
   function onGrab(ev) {                                    // ONE delegated listener per kind, O(1)
-    const img = ev.target.closest && ev.target.closest(".exh-frame img.work, .exd-window img");
-    if (!img) return;                                      // only a work or a door window; chrome is left alone
+    const img = ev.target.closest && ev.target.closest(GRAB_SEL);
+    if (!img) return;                                      // only a picture that hangs somewhere; chrome is left alone
     ev.preventDefault();                                   // the raw browser save menu / drag ghost never fires
     if (lpTouchFired) { lpTouchFired = false; return; }    // the touch long-press already answered this grab (A1) — a contextmenu that trails it is swallowed
-    const fr = img.closest(".exh-frame");                  // null for a door window (INV-49 uniformity)
+    const gid = hangGiftId(hangPlace(img));                // "" for a door window (INV-49 uniformity)
     // EX-PULSE/INV-79: the guest REACHES to take a hung work — the earlier moment gift_download cannot
     // see (that lays only when a file leaves), a demand signal. The grab KIND is a closed ladder:
     // `drag` · `menu` (desktop right-click → the gift ceremony) · `touch` (a coarse-pointer press).
     const grab = ev.type === "dragstart" ? "drag"
       : matchMedia("(pointer: coarse)").matches ? "touch" : "menu";
-    pulse("copy_attempt", fr && fr.dataset.id, { grab: grab });
-    // DESKTOP right-click on a HUNG WORK → the gift ceremony; a door window (no `fr`), TOUCH, or a drag
-    // → just the gracious line, no download (his word 2026-07-08: on the phone the picture is earned
-    // through the quiz, not grabbed; a door window has no hung-work identity to ceremony over either)
-    if (fr && ev.type === "contextmenu" && !matchMedia("(pointer: coarse)").matches) {
+    pulse("copy_attempt", gid || null, { grab: grab });
+    // DESKTOP right-click on a work that carries an identity → the gift ceremony; a door window (no
+    // `gid`), TOUCH, or a drag → just the gracious line, no download (his word 2026-07-08: on the phone
+    // the picture is earned through the quiz, not grabbed; a door window has no hung-work identity to
+    // ceremony over either)
+    if (gid && ev.type === "contextmenu" && !matchMedia("(pointer: coarse)").matches) {
       openGift(img.currentSrc || img.getAttribute("src") || img.src, undefined, undefined, undefined,
-               fr && fr.dataset.id);                   // OFFER, never dump — gift_kind=grab (EX-PULSE)
+               gid);                                    // OFFER, never dump — gift_kind=grab (EX-PULSE)
     } else {
       toast(enjoyLine());
     }
@@ -518,6 +569,9 @@
   stage.addEventListener("dragstart", onGrab);
   door.addEventListener("contextmenu", onGrab);           // the door's own facade (INV-49 uniformity) —
   door.addEventListener("dragstart", onGrab);             //   #ex-door lives OUTSIDE #ex-stage (EX-DOOR-2a)
+  // the series room binds the SAME onGrab where it is built (16-renderhang-series.js) — #ex-side is
+  // appended to document.body, outside both #ex-stage and #ex-door, so its works were reachable by no
+  // grab road at all until it did.
   // ---- EX-PROTECT (A1, INV-49): a touch LONG-PRESS on a hung work opens the SAME gift ceremony --------
   // iOS fires no reliable `contextmenu`, so the finger's grab rides a real press-and-hold detector here,
   // beside onGrab and the pinch it must coexist with. It ARMS on `pointerdown`, FIRES after a hold of
@@ -535,20 +589,24 @@
     if (e.pointerType === "mouse") return;                // the pointer's own grab road is the right-click (onGrab)
     lpPtrs++;
     if (lpPtrs > 1) { lpCancel(); return; }               // a second finger → the inspect pinch owns the touch
-    if (zoomOpen || giftOpen || quizOpen || sideOpen) return;   // a covering layer stands — its own gestures own the input
-    const img = e.target && e.target.closest && e.target.closest(".exh-frame img.work, .exd-window img");
-    if (!img) return;                                     // only a hung work or a door window
+    // a covering LAYER stands — its own gestures own the input. sideOpen is deliberately absent: the
+    // series room HANGS works (a polaroid, a lane picture) and a press must reach them (INV-67). The
+    // GRAB_SEL match below is the gate instead — a press on the bare table or on the room's own chrome
+    // resolves to no picture and still does nothing.
+    if (zoomOpen || giftOpen || quizOpen) return;
+    const img = e.target && e.target.closest && e.target.closest(GRAB_SEL);
+    if (!img) return;                                     // only a picture that hangs somewhere
     lpImg = img; lpX = e.clientX; lpY = e.clientY;
     lpTimer = setTimeout(() => {
       lpTimer = 0;
-      if (!lpImg || lpPtrs !== 1 || zoomOpen || giftOpen || quizOpen || sideOpen) return;
-      const fr = lpImg.closest(".exh-frame");             // null for a door window (INV-49 uniformity)
-      pulse("copy_attempt", fr && fr.dataset.id, { grab: "touch" });   // the demand beat, the touch kind (EX-PULSE)
+      if (!lpImg || lpPtrs !== 1 || zoomOpen || giftOpen || quizOpen) return;
+      const gid = hangGiftId(hangPlace(lpImg));           // "" for a door window (INV-49 uniformity)
+      pulse("copy_attempt", gid || null, { grab: "touch" });   // the demand beat, the touch kind (EX-PULSE)
       lpTouchFired = true;                                // swallow any follow-up contextmenu (Android) in onGrab
       setTimeout(() => { lpTouchFired = false; }, 700);   // the trailing contextmenu, if any, lands right after; then clear the swallow window
-      if (fr) {
+      if (gid) {
         openGift(lpImg.currentSrc || lpImg.getAttribute("src") || lpImg.src, undefined, undefined,
-                 undefined, fr.dataset.id);               // OFFER — the imageless clean-source path; touch origin → no forced focus (INV-49, D4)
+                 undefined, gid);                         // OFFER — the imageless clean-source path; touch origin → no forced focus (INV-49, D4)
       } else {
         toast(enjoyLine());                               // a door window keeps the gracious line (F1)
       }

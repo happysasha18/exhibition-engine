@@ -77,7 +77,33 @@
     _trapStack.splice(i, 1);
     if (rec.opener && document.body.contains(rec.opener)) {
       requestAnimationFrame(() => { try { rec.opener.focus({ preventScroll: true }); } catch (e) {} });
+    } else if (rec.opener) {
+      // the opener has LEFT the page while the layer stood (the room re-dressed, the walk rebuilt
+      // beneath). Doing nothing drops a keyboard visitor to the document body, with no way back into
+      // the page but a full Tab walk — so focus the surface still standing UNDER the layer: the
+      // standing face's own container, else the walk stage.
+      const back = _standingSurface();
+      if (back) {
+        if (back.tabIndex < 0) back.setAttribute("tabindex", "-1");   // the conventional programmatic-only stop
+        requestAnimationFrame(() => { try { back.focus({ preventScroll: true }); } catch (e) {} });
+      }
     }
+  }
+  // which surface stands beneath a closing layer. The face flags (atDoor / sideOpen) and their
+  // containers are declared later in the bundle; this only ever runs at close time, long after boot,
+  // so the references resolve — the try guards the one impossible case.
+  function _standingSurface() {
+    try {
+      if (sideOpen) {
+        const s = document.getElementById("ex-side");
+        if (s && !s.hidden) return s;
+      }
+      if (atDoor) {
+        const d = document.getElementById("ex-door");
+        if (d && !d.hidden) return d;
+      }
+    } catch (e) {}
+    return stage;
   }
 
   // ---- the visitor's own trace, its three homes (one place for the names) -----

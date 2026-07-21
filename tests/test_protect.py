@@ -33,6 +33,16 @@ build_site.build(SITE_URL)
 
 # ---------------------------------------------------------------- data rows
 
+def zoom_layer_slice(js):
+    """The assembled client is one concatenation with no fragment markers, so the zoom layer's own
+    region is located by two anchors it alone carries. A missing anchor is a FAILURE of the check
+    itself, never a quiet pass — a gate's verdict is worthless without its reach."""
+    a = js.find("a pinch over the OPEN zoom scales the picture")
+    b = js.find("Every way out is the same road")
+    if a < 0 or b < 0 or b <= a:
+        return None
+    return js[a:b]
+
 # 1 · the `enjoy` string is present in the greetings cache and the worker schema
 greet = json.loads((TMP / "exhibition_data.json").read_text()).get("greet") or {}
 langs = greet.get("langs") or {}
@@ -89,10 +99,18 @@ css_src = (ROOT / "engine" / "assets" / "exhibition.css").read_text(encoding="ut
 audit_ok = ("touch-action:pan-xpan-y" in css_src.replace(" ", "")   # body-level class rule kills double-tap too
             and "if (e.ctrlKey) { e.preventDefault(); return; }" in js_src
             and "#ex-sound, .ex-share" in js_src
-            and "touchcancel" in js_src
+            and (lambda s: s is not None and "touchcancel" in s)(zoom_layer_slice(js_src))
             and "re-take the gesture" in js_src)
 check("EX-PROTECT touch audit: double-tap lock + ctrl-wheel guard + chrome native-touch + pinch-release re-arm",
       audit_ok, "one of the zoom/swipe audit fixes is missing (double-tap / ctrl-wheel / slider / re-arm)")
+
+_zslice = zoom_layer_slice(js_src)
+check("EX-PROTECT the cancel fence reaches the zoom layer's own region (both anchors found)",
+      _zslice is not None,
+      "the zoom fragment's anchors were not found in the assembled client — the fence read nothing")
+check("EX-ZOOM/INV-82 the zoom layer carries its own touchcancel road",
+      bool(_zslice) and "touchcancel" in _zslice,
+      "no touchcancel handler inside the zoom layer's region")
 
 BROWSER_ROWS = [
     "EX-PROTECT-GIFT desktop right-click on a work opens the gift ceremony (not a browser save sheet)",

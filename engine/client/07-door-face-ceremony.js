@@ -180,6 +180,10 @@
       b.type = "button"; b.className = "exd-window";
       b.dataset.id = w.id;
       b.setAttribute("aria-label", e.alt || w.title || "");
+      // N7-A11Y (INV-102, B2/B3): a window announces `z` ONLY. It answers `g` with the gracious line
+      // rather than the ceremony (it carries no hung-work identity, INV-49/F1), so announcing `g`
+      // here would promise a gift the door never gives.
+      b.setAttribute("aria-keyshortcuts", "z");
       // the halo speaks liveAccent, never the raw dominant — a near-black dominant is
       // invisible on the dark ground (card 01's note, EX-DOOR-2c)
       const a = liveAccent(w.dom);
