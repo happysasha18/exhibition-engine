@@ -2264,7 +2264,12 @@
   document.body.appendChild(giftCard);
   let giftOpen = false;
   function giftName(src, name) {
-    return name || (DL_BASE + "-" + ((src.split("/").pop() || "photo").split("?")[0]));
+    // The handed file is always a JPEG — a raw source is `.jpg`, and a stamped grab is re-encoded
+    // image/jpeg through the canvas. So the download name carries `.jpg` regardless of the source's
+    // own extension, and the label always matches the bytes (a config `name` override owns its own).
+    if (name) return name;
+    const base = ((src.split("/").pop() || "photo").split("?")[0]).replace(/\.[a-z0-9]+$/i, "");
+    return DL_BASE + "-" + base + ".jpg";
   }
   function rawDownload(src, name) {
     try {
