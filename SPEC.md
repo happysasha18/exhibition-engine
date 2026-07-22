@@ -476,6 +476,14 @@ clock (`INV-33`), reduced motion collapses it near-instant. **Force scales SPEED
 makes **exactly one** transition, and the gesture's velocity sets that single glide's DURATION within a
 clamped range (a calm gesture rides the full `glide_ms`, ~520ms; a sharp one eases down toward a floor
 of about half that, ~260ms `[default]`), so a violent flick lands the SAME one frame, only faster.
+
+**Pager parity across device kinds** (`EX-GLIDE`): the two pagers install by what the device can do,
+each decided on its own. A screen that can be touched — a real touch count or a coarse pointer —
+installs the finger pager; a device with a fine pointer or a hover installs the wheel-and-key pager; a
+hybrid that has both installs both. So the walk turns the same way on a phone, a desktop, and a touch
+laptop alike. The earlier gate keyed the whole split on a single `hover:none` flag, which read a
+touch-with-hover device as desktop-only and left its finger swipe free-scrolling the walk — the exact
+fly-through this glide exists to hold. `INV-39`
 Velocity never buys a second frame — the earlier two-frame flick allowance is retired. A **second input
 mid-transition chains** to the *next* frame — it steps from where
 the running transition is headed, never re-rounds backward. A sub-2px move is skipped.
@@ -660,6 +668,14 @@ playing a thin credit tray shows the instance's configured `sound_credit.artist`
 file **fails SILENT** (`INV-1`). Two beats ride the existing GA wire: `sound_on`, `sound_off`. The
 player plays continuously across the whole single-page walk — door, crossing, side room, scroll —
 never torn down on a face change. `EX-SOUND` `INV-48`
+
+**Waiting shows on a shared mark** (`EX-BUSY` / `EX-SKEL`): every surface that waits says so, each in
+the mark its own kind wears. A small control that is working wears a ring that fills slowly along its
+contour at a stately loader cadence — the sound button between the press and the first sound, a language
+chip fetching an outsider tongue, the gift's yes preparing a slow file — cleared the moment the work
+lands, the file fails, or the press falls back to arming. A picture still arriving where the single
+loading plate does not fit wears a skeleton shimmer over its box until it paints — the many photographs
+of a series room and a cold closer-look slot. Reduced motion holds each mark steady. `INV-48`
 
 **Pause holds the moment** (`EX-SOUND-PAUSE`): off is a **pause** that holds the element where it
 stands; on **resumes from it**, never from the beginning. The element owns the playhead (its own

@@ -122,18 +122,21 @@
       stampToBlob(src, (blob) => { if (giftBlobFor === src) giftBlob = blob; });
     }
   }
-  function giftDownload(src, name, preMarked, workId) {
+  function giftDownload(src, name, preMarked, workId, onDone) {
     // a gift file actually leaves for the visitor's device — the beat rides BESIDE the download, its
-    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here
+    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here.
+    // onDone (optional) fires once the file has left by ANY terminal road (the ready blob, the fetched
+    // blob, the raw fallback, or a failed stamp): the slow path shows the EX-BUSY ring until then.
     pulse("gift_download", workId, { gift_kind: preMarked ? "quiz_prize" : "grab" });
     const fname = giftName(src, name);
-    if (giftBlob && giftBlobFor === src) { saveBlob(giftBlob, fname); return; }   // the pre-rendered file → synchronous share keeps the iOS activation
+    const done = () => { if (onDone) { try { onDone(); } catch (e) {} } };
+    if (giftBlob && giftBlobFor === src) { saveBlob(giftBlob, fname); done(); return; }   // the pre-rendered file → synchronous share keeps the iOS activation
     if (preMarked) {
       fetch(src).then((r) => (r && r.ok ? r.blob() : null)).then((blob) => {
-        if (blob) saveBlob(blob, fname); else rawDownload(src, name);
-      }).catch(() => rawDownload(src, name));
+        if (blob) saveBlob(blob, fname); else rawDownload(src, name); done();
+      }).catch(() => { rawDownload(src, name); done(); });
     } else {
-      stampToBlob(src, (blob) => { if (blob) saveBlob(blob, fname); else rawDownload(src, name); });
+      stampToBlob(src, (blob) => { if (blob) saveBlob(blob, fname); else rawDownload(src, name); done(); });
     }
   }
   // onYes (optional): called when the visitor says yes, BEFORE closeGift — used by the quiz-win path
@@ -180,7 +183,19 @@
     const buyText = (T.gift_buy || "").trim();
     buyEl.textContent = buyText;
     buyEl.hidden = !buyText;
-    yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
+    yes.onclick = () => {
+      if (onYes) onYes();
+      // the file is normally pre-rendered while the visitor read «did you like it?», so the yes shares
+      // it synchronously and the ceremony closes at once (the iOS activation is kept). A very fast yes
+      // or a failed pre-render leaves the file still to prepare: the yes then wears the EX-BUSY ring
+      // (INV-48) and the ceremony holds until the file has left, so a slow grab is never a silent close.
+      if (giftBlob && giftBlobFor === src) { giftDownload(src, name, preMarked, workId); closeGift(); return; }
+      exBusyRing(yes, true); yes.setAttribute("aria-busy", "true"); yes.disabled = true;
+      giftDownload(src, name, preMarked, workId, () => {
+        exBusyRing(yes, false); yes.removeAttribute("aria-busy"); yes.disabled = false;
+        closeGift();
+      });
+    };
     giftCard.dataset.work = workId != null ? String(workId) : "";   // the buy line's beat reads it
     giftCard.hidden = false; giftOpen = true;
     faceSync();                                        // the gift card is a face — arm the rest + guard (EX-CHROME)

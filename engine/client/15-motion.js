@@ -9,11 +9,26 @@
   // seed the SAME transition (see the `velocity` hook in glideToFrame) — a stronger input runs
   // faster through the start, lands just as gently, a violent flick advancing at most one extra.
   //
-  // Split by input: TOUCH docks with native momentum under CSS scroll-snap (mandatory +
-  // scroll-snap-stop:always — it never fights iOS momentum, so the jerk-fix holds by construction);
-  // DESKTOP (wheel + keys) is owned by the JS animator below, which replaces native free-scroll so
-  // no lingering drift can exist. Both resolve to the same one-frame-centered landing.
+  // Split by CAPABILITY, not by a single either/or flag. The finger pager and the wheel/key pager
+  // are installed by what the device CAN do, independently — a hybrid that both has a touchscreen
+  // AND hovers (a Surface, a touch Windows laptop) gets BOTH, so the walk paginates the same way on
+  // every platform. The old `hover:none` flag conflated "touch" with "no hover", so a touch-with-
+  // hover device fell into the wheel/key branch alone and its finger swipe free-scrolled the walk
+  // with no snap (the fly-through EX-GLIDE exists to kill, reintroduced for that device class).
+  // HAS_TOUCH: any coarse pointer or a real touch count → install the finger pager (it blocks native
+  // scroll and docks one frame per swipe). HAS_WHEEL: a fine pointer or hover → install the wheel/key
+  // pager; a pure-touch device (neither) skips it (no wheel fires there anyway). Keys are always on.
+  const HAS_TOUCH = (navigator.maxTouchPoints || 0) > 0 || matchMedia("(any-pointer: coarse)").matches;
+  const HAS_WHEEL = matchMedia("(any-pointer: fine)").matches || matchMedia("(hover: hover)").matches || !HAS_TOUCH;
+  // TOUCHY is still read by the closer-look module (12) to sit out the desktop-Safari pinch handlers on a
+  // touch device — kept here as its long-standing home so that shared reference resolves. It carries the
+  // ORIGINAL hover:none meaning unchanged; the pager split above is what moved to the capability model.
   const TOUCHY = matchMedia("(hover: none)").matches;
+  // the walk's own reachable surface, for the suite: which pagers this device installed. A hybrid
+  // (touch AND hover) MUST read both true — the parity the suite pins (INV-39).
+  try {
+    window.@@NS_UPPER@@Motion = { hasTouch: HAS_TOUCH, hasWheel: HAS_WHEEL, touchPager: false, wheelPager: false };
+  } catch (e) {}
   let glideRaf = null;
   let gliding = false;
   let glideGoal = null;                                // where the running transition is headed
@@ -278,7 +293,8 @@
     return step;
   }
   const wheelS = { env: 0, peak: 0, crested: false, stepT: 0, lastT: null, fresh: true, prev: 0, rises: 0 };
-  if (!TOUCHY) {
+  if (HAS_WHEEL) {
+    try { window.@@NS_UPPER@@Motion.wheelPager = true; } catch (e) {}
     addEventListener("wheel", (e) => {
       // The burst boundary and the MEANING are both fixed at the first event: a mouse notch is one
       // event, a trackpad swipe a decaying burst — the idle timer resets the state only once all
@@ -354,7 +370,8 @@
   // ONE swipe docks exactly ONE frame through glideToFrame. The animator writes the position only
   // AFTER the finger lifts, so there is no live iOS momentum to fight (the old jerk is impossible
   // here). Overlays (side room, quiz/gift card) and the door keep native scroll — see the guards.
-  if (TOUCHY) {
+  if (HAS_TOUCH) {
+    try { window.@@NS_UPPER@@Motion.touchPager = true; } catch (e) {}
     let tY = null, tLast = 0, tMoved = false;
     const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
     const NATIVE_TOUCH = "#ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound, .ex-share";

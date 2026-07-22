@@ -257,10 +257,13 @@
     if (!(opts && opts.lay === false)) pushFace({ face: "zoom" });   // one honest road out (INV-83), above any standing face
     requestAnimationFrame(() => {
       zoom.classList.add("show");                      // backdrop fades in
-      const fly = () => { if (zoomOpen) zFlip(rect, false); };        // picture flies in + the crop morphs open (INV-82)
+      const fly = () => { if (zoomOpen) { zImg.classList.remove("ex-skel"); zFlip(rect, false); } };  // picture flies in + the crop morphs open (INV-82)
       if (zImg.complete && zImg.naturalWidth) fly();                  // cached (the usual path) — fly at once
-      else if (zImg.decode) zImg.decode().then(fly, fly);            // a cold slot: decode first, never an instant swap (rule 6)
-      else fly();
+      else {                                                          // a cold slot: the shimmer holds the stage while it decodes (EX-SKEL/INV-48), never an instant swap (rule 6)
+        zImg.classList.add("ex-skel");
+        if (zImg.decode) zImg.decode().then(fly, fly);
+        else fly();
+      }
     });
   }
   // The single teardown, reached only through popstate (history.back): the ×, backdrop, Esc, and the

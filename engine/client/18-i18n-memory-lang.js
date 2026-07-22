@@ -99,20 +99,30 @@
     }
     respeak();
   }
+  // EX-BUSY (INV-48): a pick of an outsider (non-baked) tongue rides a worker fetch, so the chip wears
+  // the waiting ring until the translated strings land (or the fetch fails) — the language pick is no
+  // longer a silent hang in the prior tongue. A baked tongue answers from memory and never shows it.
+  function langBusy(on) {
+    const c = document.querySelector(".exl-cur");
+    if (!c) return;
+    exBusyRing(c, on);
+    if (on) c.setAttribute("aria-busy", "true"); else c.removeAttribute("aria-busy");
+  }
   function requestSet(code) {                          // cached-or-fetch, the ONE road (EX-LANG)
     if (!I18N_ON) return;
     const CK = "@@NS@@.i18n." + VER + "." + code;
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(CK) || "null"); } catch (e) {}
-    if (cached) { applySet(code, cached); return; }
+    if (cached) { applySet(code, cached); langBusy(false); return; }
     fetch("/api/i18n?lang=" + code + "&v=" + encodeURIComponent(VER))
       .then((r) => (r.ok ? r.json() : null))
       .then((set) => {
-        if (!set) return;
+        if (!set) { langBusy(false); return; }
         try { localStorage.setItem(CK, JSON.stringify(set)); } catch (e) {}
         applySet(code, set);
+        langBusy(false);                                // the tongue landed — the ring clears
       })
-      .catch(() => {});                                // a dead worker changes nothing
+      .catch(() => { langBusy(false); });               // a dead worker changes nothing but the ring clears
   }
   if (I18N_ON) {
     const code = viewerLang();
@@ -210,7 +220,7 @@
           // The ARRIVING COUNTRY never enters a pulse: it only picked which chips exist.
           pulse("lang_pick", null, { lang: baked ? known : "other" });
           if (baked) respeak();                        // a baked tongue answers at once
-          else requestSet(c);                          // an outsider rides the one layer
+          else { langBusy(true); requestSet(c); }      // an outsider rides the one layer — the chip waits (EX-BUSY)
           redraw();
         });
         list.appendChild(b);

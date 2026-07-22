@@ -25,6 +25,32 @@
       (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
   }
 
+  // ---- EX-BUSY: ONE waiting mark for every CONTROL that waits (INV-48) -------------------------
+  // A single reusable ring that fills along a control's contour while an action of that control is
+  // in flight — the sound button buffering its stream, a language chip fetching an outsider tongue,
+  // the gift's yes preparing a slow file. It reads as the SAME "working" gesture wherever a control
+  // waits, so no surface invents its own spinner. The picture surfaces (walk frame, series room,
+  // closer look) wait behind their OWN kind of mark — the plate ladder / the skeleton shimmer — this
+  // is only for the small chrome controls. The host is made positioning-context by CSS (.ex-busy-ring
+  // is absolutely placed just outside the control's edge); the ring is aria-hidden — the control keeps
+  // its own label, and a11y busy state rides aria-busy where a caller sets it.
+  function exBusyRing(host, on) {
+    if (!host) return;
+    let r = host.querySelector(":scope > .ex-busy-ring");
+    if (on) {
+      if (!r) {
+        r = document.createElement("span");
+        r.className = "ex-busy-ring";
+        r.setAttribute("aria-hidden", "true");
+        r.innerHTML = '<svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="17"></circle></svg>';
+        host.appendChild(r);
+      }
+      requestAnimationFrame(() => r.classList.add("on"));
+    } else if (r) {
+      r.classList.remove("on");
+    }
+  }
+
   // ---- N7-A11Y (INV-102 / B1): ONE focus trap, four modal callers ----------------------------
   // The gift ceremony (11), the closer look (12), the quiz card (13), and the series room (16) each
   // open through openTrap and close through closeTrap and never re-implement it (architecture N7-A11Y,
@@ -2431,18 +2457,21 @@
       stampToBlob(src, (blob) => { if (giftBlobFor === src) giftBlob = blob; });
     }
   }
-  function giftDownload(src, name, preMarked, workId) {
+  function giftDownload(src, name, preMarked, workId, onDone) {
     // a gift file actually leaves for the visitor's device — the beat rides BESIDE the download, its
-    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here
+    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here.
+    // onDone (optional) fires once the file has left by ANY terminal road (the ready blob, the fetched
+    // blob, the raw fallback, or a failed stamp): the slow path shows the EX-BUSY ring until then.
     pulse("gift_download", workId, { gift_kind: preMarked ? "quiz_prize" : "grab" });
     const fname = giftName(src, name);
-    if (giftBlob && giftBlobFor === src) { saveBlob(giftBlob, fname); return; }   // the pre-rendered file → synchronous share keeps the iOS activation
+    const done = () => { if (onDone) { try { onDone(); } catch (e) {} } };
+    if (giftBlob && giftBlobFor === src) { saveBlob(giftBlob, fname); done(); return; }   // the pre-rendered file → synchronous share keeps the iOS activation
     if (preMarked) {
       fetch(src).then((r) => (r && r.ok ? r.blob() : null)).then((blob) => {
-        if (blob) saveBlob(blob, fname); else rawDownload(src, name);
-      }).catch(() => rawDownload(src, name));
+        if (blob) saveBlob(blob, fname); else rawDownload(src, name); done();
+      }).catch(() => { rawDownload(src, name); done(); });
     } else {
-      stampToBlob(src, (blob) => { if (blob) saveBlob(blob, fname); else rawDownload(src, name); });
+      stampToBlob(src, (blob) => { if (blob) saveBlob(blob, fname); else rawDownload(src, name); done(); });
     }
   }
   // onYes (optional): called when the visitor says yes, BEFORE closeGift — used by the quiz-win path
@@ -2489,7 +2518,19 @@
     const buyText = (T.gift_buy || "").trim();
     buyEl.textContent = buyText;
     buyEl.hidden = !buyText;
-    yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
+    yes.onclick = () => {
+      if (onYes) onYes();
+      // the file is normally pre-rendered while the visitor read «did you like it?», so the yes shares
+      // it synchronously and the ceremony closes at once (the iOS activation is kept). A very fast yes
+      // or a failed pre-render leaves the file still to prepare: the yes then wears the EX-BUSY ring
+      // (INV-48) and the ceremony holds until the file has left, so a slow grab is never a silent close.
+      if (giftBlob && giftBlobFor === src) { giftDownload(src, name, preMarked, workId); closeGift(); return; }
+      exBusyRing(yes, true); yes.setAttribute("aria-busy", "true"); yes.disabled = true;
+      giftDownload(src, name, preMarked, workId, () => {
+        exBusyRing(yes, false); yes.removeAttribute("aria-busy"); yes.disabled = false;
+        closeGift();
+      });
+    };
     giftCard.dataset.work = workId != null ? String(workId) : "";   // the buy line's beat reads it
     giftCard.hidden = false; giftOpen = true;
     faceSync();                                        // the gift card is a face — arm the rest + guard (EX-CHROME)
@@ -2774,10 +2815,13 @@
     if (!(opts && opts.lay === false)) pushFace({ face: "zoom" });   // one honest road out (INV-83), above any standing face
     requestAnimationFrame(() => {
       zoom.classList.add("show");                      // backdrop fades in
-      const fly = () => { if (zoomOpen) zFlip(rect, false); };        // picture flies in + the crop morphs open (INV-82)
+      const fly = () => { if (zoomOpen) { zImg.classList.remove("ex-skel"); zFlip(rect, false); } };  // picture flies in + the crop morphs open (INV-82)
       if (zImg.complete && zImg.naturalWidth) fly();                  // cached (the usual path) — fly at once
-      else if (zImg.decode) zImg.decode().then(fly, fly);            // a cold slot: decode first, never an instant swap (rule 6)
-      else fly();
+      else {                                                          // a cold slot: the shimmer holds the stage while it decodes (EX-SKEL/INV-48), never an instant swap (rule 6)
+        zImg.classList.add("ex-skel");
+        if (zImg.decode) zImg.decode().then(fly, fly);
+        else fly();
+      }
     });
   }
   // The single teardown, reached only through popstate (history.back): the ×, backdrop, Esc, and the
@@ -3535,11 +3579,26 @@
   // seed the SAME transition (see the `velocity` hook in glideToFrame) — a stronger input runs
   // faster through the start, lands just as gently, a violent flick advancing at most one extra.
   //
-  // Split by input: TOUCH docks with native momentum under CSS scroll-snap (mandatory +
-  // scroll-snap-stop:always — it never fights iOS momentum, so the jerk-fix holds by construction);
-  // DESKTOP (wheel + keys) is owned by the JS animator below, which replaces native free-scroll so
-  // no lingering drift can exist. Both resolve to the same one-frame-centered landing.
+  // Split by CAPABILITY, not by a single either/or flag. The finger pager and the wheel/key pager
+  // are installed by what the device CAN do, independently — a hybrid that both has a touchscreen
+  // AND hovers (a Surface, a touch Windows laptop) gets BOTH, so the walk paginates the same way on
+  // every platform. The old `hover:none` flag conflated "touch" with "no hover", so a touch-with-
+  // hover device fell into the wheel/key branch alone and its finger swipe free-scrolled the walk
+  // with no snap (the fly-through EX-GLIDE exists to kill, reintroduced for that device class).
+  // HAS_TOUCH: any coarse pointer or a real touch count → install the finger pager (it blocks native
+  // scroll and docks one frame per swipe). HAS_WHEEL: a fine pointer or hover → install the wheel/key
+  // pager; a pure-touch device (neither) skips it (no wheel fires there anyway). Keys are always on.
+  const HAS_TOUCH = (navigator.maxTouchPoints || 0) > 0 || matchMedia("(any-pointer: coarse)").matches;
+  const HAS_WHEEL = matchMedia("(any-pointer: fine)").matches || matchMedia("(hover: hover)").matches || !HAS_TOUCH;
+  // TOUCHY is still read by the closer-look module (12) to sit out the desktop-Safari pinch handlers on a
+  // touch device — kept here as its long-standing home so that shared reference resolves. It carries the
+  // ORIGINAL hover:none meaning unchanged; the pager split above is what moved to the capability model.
   const TOUCHY = matchMedia("(hover: none)").matches;
+  // the walk's own reachable surface, for the suite: which pagers this device installed. A hybrid
+  // (touch AND hover) MUST read both true — the parity the suite pins (INV-39).
+  try {
+    window.@@NS_UPPER@@Motion = { hasTouch: HAS_TOUCH, hasWheel: HAS_WHEEL, touchPager: false, wheelPager: false };
+  } catch (e) {}
   let glideRaf = null;
   let gliding = false;
   let glideGoal = null;                                // where the running transition is headed
@@ -3804,7 +3863,8 @@
     return step;
   }
   const wheelS = { env: 0, peak: 0, crested: false, stepT: 0, lastT: null, fresh: true, prev: 0, rises: 0 };
-  if (!TOUCHY) {
+  if (HAS_WHEEL) {
+    try { window.@@NS_UPPER@@Motion.wheelPager = true; } catch (e) {}
     addEventListener("wheel", (e) => {
       // The burst boundary and the MEANING are both fixed at the first event: a mouse notch is one
       // event, a trackpad swipe a decaying burst — the idle timer resets the state only once all
@@ -3880,7 +3940,8 @@
   // ONE swipe docks exactly ONE frame through glideToFrame. The animator writes the position only
   // AFTER the finger lifts, so there is no live iOS momentum to fight (the old jerk is impossible
   // here). Overlays (side room, quiz/gift card) and the door keep native scroll — see the guards.
-  if (TOUCHY) {
+  if (HAS_TOUCH) {
+    try { window.@@NS_UPPER@@Motion.touchPager = true; } catch (e) {}
     let tY = null, tLast = 0, tMoved = false;
     const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
     const NATIVE_TOUCH = "#ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound, .ex-share";
@@ -4038,6 +4099,8 @@
       if (S.variant === "lane") {
         const im = new Image();
         ladderOn(im, w, ladderSizes("lane"));            // EX-LADDER (INV-63): the lane's box is CSS max-width:64vw
+        im.classList.add("ex-skel");                     // EX-SKEL (INV-48): the lane photograph shows it is still arriving
+        im.addEventListener("load", () => im.classList.remove("ex-skel"), { once: true });
         im.src = w.img;
         im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
@@ -4057,7 +4120,12 @@
       // so it hands that box and the browser pulls the smallest tier instead of the display file.
       p.innerHTML = '<img src="' + w.img + '"' + ladderAttr(w, ladderSizes("print")) + ' alt="">';
       const pim = p.querySelector("img");                // N7-A11Y (INV-102, C6): the polaroid speaks
-      if (pim) pim.alt = workDesc(w.id);
+      if (pim) {
+        pim.alt = workDesc(w.id);
+        pim.classList.add("ex-skel");                    // EX-SKEL (INV-48): the polaroid shows it is still arriving
+        if (pim.complete && pim.naturalWidth) pim.classList.remove("ex-skel");   // a cached print never flashes the shimmer
+        else pim.addEventListener("load", () => pim.classList.remove("ex-skel"), { once: true });
+      }
       // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space
       p.tabIndex = 0;
       p.setAttribute("role", "button");
@@ -4394,20 +4462,30 @@
     }
     respeak();
   }
+  // EX-BUSY (INV-48): a pick of an outsider (non-baked) tongue rides a worker fetch, so the chip wears
+  // the waiting ring until the translated strings land (or the fetch fails) — the language pick is no
+  // longer a silent hang in the prior tongue. A baked tongue answers from memory and never shows it.
+  function langBusy(on) {
+    const c = document.querySelector(".exl-cur");
+    if (!c) return;
+    exBusyRing(c, on);
+    if (on) c.setAttribute("aria-busy", "true"); else c.removeAttribute("aria-busy");
+  }
   function requestSet(code) {                          // cached-or-fetch, the ONE road (EX-LANG)
     if (!I18N_ON) return;
     const CK = "@@NS@@.i18n." + VER + "." + code;
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(CK) || "null"); } catch (e) {}
-    if (cached) { applySet(code, cached); return; }
+    if (cached) { applySet(code, cached); langBusy(false); return; }
     fetch("/api/i18n?lang=" + code + "&v=" + encodeURIComponent(VER))
       .then((r) => (r.ok ? r.json() : null))
       .then((set) => {
-        if (!set) return;
+        if (!set) { langBusy(false); return; }
         try { localStorage.setItem(CK, JSON.stringify(set)); } catch (e) {}
         applySet(code, set);
+        langBusy(false);                                // the tongue landed — the ring clears
       })
-      .catch(() => {});                                // a dead worker changes nothing
+      .catch(() => { langBusy(false); });               // a dead worker changes nothing but the ring clears
   }
   if (I18N_ON) {
     const code = viewerLang();
@@ -4505,7 +4583,7 @@
           // The ARRIVING COUNTRY never enters a pulse: it only picked which chips exist.
           pulse("lang_pick", null, { lang: baked ? known : "other" });
           if (baked) respeak();                        // a baked tongue answers at once
-          else requestSet(c);                          // an outsider rides the one layer
+          else { langBusy(true); requestSet(c); }      // an outsider rides the one layer — the chip waits (EX-BUSY)
           redraw();
         });
         list.appendChild(b);
@@ -4590,7 +4668,9 @@
       '</div>' +
       '<button class="exsnd-btn" type="button" aria-pressed="false"' +
         ' aria-label="' + (SNDT.a11y_sound || A11Y_SOUND_EN) +
-        '"><span class="exsnd-note"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">' +
+        '"><span class="ex-busy-ring" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">' +
+          '<circle cx="20" cy="20" r="17"></circle></svg></span>' +
+        '<span class="exsnd-note"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">' +
           '<path d="M6.3 4.1 L12.9 3" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>' +
           '<path d="M6.3 4.1 V12 M12.9 3 V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
           '<circle cx="4.2" cy="12" r="2.35" fill="currentColor"/><circle cx="10.8" cy="11" r="2.35" fill="currentColor"/>' +

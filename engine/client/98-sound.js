@@ -40,7 +40,9 @@
       '</div>' +
       '<button class="exsnd-btn" type="button" aria-pressed="false"' +
         ' aria-label="' + (SNDT.a11y_sound || A11Y_SOUND_EN) +
-        '"><span class="exsnd-note"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">' +
+        '"><span class="ex-busy-ring" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">' +
+          '<circle cx="20" cy="20" r="17"></circle></svg></span>' +
+        '<span class="exsnd-note"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">' +
           '<path d="M6.3 4.1 L12.9 3" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>' +
           '<path d="M6.3 4.1 V12 M12.9 3 V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
           '<circle cx="4.2" cy="12" r="2.35" fill="currentColor"/><circle cx="10.8" cy="11" r="2.35" fill="currentColor"/>' +

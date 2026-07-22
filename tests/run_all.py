@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parent
 # Add a suite name here AS SOON as tests/test_<name>.py is created.
 SUITES = [
     "site", "exhibition", "door", "vector", "back", "greet",
-    "series", "motion", "reset", "load", "ladder", "share", "glide",
+    "series", "motion", "consistency", "reset", "load", "ladder", "share", "glide",
     "pulse", "hand", "i18n", "lang", "lang_geo", "memory", "protect", "sound", "guard", "quiz",
     "quiz_copy", "shim", "compose", "dead", "quiz_flow", "parity", "zoom", "return", "gesture",
     "wheel", "ratchet_lock", "beat_css", "assembly", "a11y", "budget",

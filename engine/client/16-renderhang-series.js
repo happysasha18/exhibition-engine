@@ -77,6 +77,8 @@
       if (S.variant === "lane") {
         const im = new Image();
         ladderOn(im, w, ladderSizes("lane"));            // EX-LADDER (INV-63): the lane's box is CSS max-width:64vw
+        im.classList.add("ex-skel");                     // EX-SKEL (INV-48): the lane photograph shows it is still arriving
+        im.addEventListener("load", () => im.classList.remove("ex-skel"), { once: true });
         im.src = w.img;
         im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
@@ -96,7 +98,12 @@
       // so it hands that box and the browser pulls the smallest tier instead of the display file.
       p.innerHTML = '<img src="' + w.img + '"' + ladderAttr(w, ladderSizes("print")) + ' alt="">';
       const pim = p.querySelector("img");                // N7-A11Y (INV-102, C6): the polaroid speaks
-      if (pim) pim.alt = workDesc(w.id);
+      if (pim) {
+        pim.alt = workDesc(w.id);
+        pim.classList.add("ex-skel");                    // EX-SKEL (INV-48): the polaroid shows it is still arriving
+        if (pim.complete && pim.naturalWidth) pim.classList.remove("ex-skel");   // a cached print never flashes the shimmer
+        else pim.addEventListener("load", () => pim.classList.remove("ex-skel"), { once: true });
+      }
       // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space
       p.tabIndex = 0;
       p.setAttribute("role", "button");

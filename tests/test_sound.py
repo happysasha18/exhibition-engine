@@ -133,13 +133,21 @@ loading_ui = ('box.classList.add("loading")' in js_src
 check("EX-SOUND-LOADING: the note carries a buffering state between press and first sound",
       loading_ui, "start()/stop() must toggle a .loading class on the player box")
 
-# 5a2d · the loading state is a soft, reduced-motion-guarded note pulse in the served CSS
+# 5a2d · the loading state shows the reusable EX-BUSY ring, filling the button's contour, and the
+#        ring stands down (holds a static arc, no animation) under reduced motion — the served CSS.
+#        (The earlier note-pulse keyframe `exsnd-load` is retired: the ring is the loading mark now.)
 css_src = (ROOT / "engine" / "assets" / "exhibition.css").read_text(encoding="utf-8")
-loading_css = ("#ex-sound.loading .exsnd-note" in css_src
-               and "@keyframes exsnd-load" in css_src
-               and "prefers-reduced-motion:reduce){ #ex-sound.loading .exsnd-note{ animation:none" in css_src)
-check("EX-SOUND-LOADING: the buffering note pulse is defined and stands down for reduced motion",
-      loading_css, "exsnd-load keyframe or its reduced-motion guard missing from exhibition.css")
+loading_css = ("#ex-sound.loading .ex-busy-ring" in css_src
+               and "@keyframes ex-busy-fill" in css_src
+               and "@keyframes ex-busy-spin" in css_src
+               and ".ex-busy-ring svg, .ex-busy-ring circle{ animation:none" in css_src)
+check("EX-SOUND-LOADING: the buffering ring is defined and stands down for reduced motion",
+      loading_css, "ex-busy-fill/ex-busy-spin keyframes or the reduced-motion guard missing from exhibition.css")
+
+# 5a2e · the ring element is present inside the sound button so the CSS loading state has a target
+loading_dom = '<span class="ex-busy-ring"' in js_src
+check("EX-SOUND-LOADING: the sound button carries the EX-BUSY ring element",
+      loading_dom, "the .ex-busy-ring span must be baked into the .exsnd-btn markup")
 
 # 5b · the old full-decode path is retired — the download-then-decode wait is exactly what the swap removes
 check("EX-SOUND retires the full-decode path (no decodeAudioData / createBufferSource)",

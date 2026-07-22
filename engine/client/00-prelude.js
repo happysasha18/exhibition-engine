@@ -25,6 +25,32 @@
       (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
   }
 
+  // ---- EX-BUSY: ONE waiting mark for every CONTROL that waits (INV-48) -------------------------
+  // A single reusable ring that fills along a control's contour while an action of that control is
+  // in flight — the sound button buffering its stream, a language chip fetching an outsider tongue,
+  // the gift's yes preparing a slow file. It reads as the SAME "working" gesture wherever a control
+  // waits, so no surface invents its own spinner. The picture surfaces (walk frame, series room,
+  // closer look) wait behind their OWN kind of mark — the plate ladder / the skeleton shimmer — this
+  // is only for the small chrome controls. The host is made positioning-context by CSS (.ex-busy-ring
+  // is absolutely placed just outside the control's edge); the ring is aria-hidden — the control keeps
+  // its own label, and a11y busy state rides aria-busy where a caller sets it.
+  function exBusyRing(host, on) {
+    if (!host) return;
+    let r = host.querySelector(":scope > .ex-busy-ring");
+    if (on) {
+      if (!r) {
+        r = document.createElement("span");
+        r.className = "ex-busy-ring";
+        r.setAttribute("aria-hidden", "true");
+        r.innerHTML = '<svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="17"></circle></svg>';
+        host.appendChild(r);
+      }
+      requestAnimationFrame(() => r.classList.add("on"));
+    } else if (r) {
+      r.classList.remove("on");
+    }
+  }
+
   // ---- N7-A11Y (INV-102 / B1): ONE focus trap, four modal callers ----------------------------
   // The gift ceremony (11), the closer look (12), the quiz card (13), and the series room (16) each
   // open through openTrap and close through closeTrap and never re-implement it (architecture N7-A11Y,
