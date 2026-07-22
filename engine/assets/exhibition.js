@@ -1984,14 +1984,15 @@
     }
     const sideCol = startGap - startInset;             // the free column from the counter's inset to the picture
     const sideW = sideCol - GAP;                        // the band's own width, a breath shy of the picture
-    // The side band is the seat wherever the picture leaves an honest side column — on ANY viewport, not the
-    // short (landscape) one alone. INV-97's law follows the picture's ASPECT, not the viewport's orientation:
-    // a tall (portrait/square) picture on a desktop window stands centred with a wide free column beside it,
-    // so the caption seats into that column on its logical-start edge rather than laying a scrim across the
-    // work (the felt defect: a portrait work on a desktop window scrimmed over the picture while a 300px+
-    // clear column stood unused beside it). A wide picture that fills the width leaves a sub-floor column
-    // (< CAP_SIDE_FLOOR) and falls through to the last-resort scrim below.
-    if (sideCol >= CAP_SIDE_FLOOR) {                   // an honest side column beside the picture, any viewport
+    const SHORT = H <= 640;                             // a short (landscape-phone) window — no vertical room for a bottom band
+    // The side band is the seat on a SHORT (landscape) window, where the picture fills the height and leaves
+    // no honest bottom margin, so the free zone is the column beside it. On a TALL window (a desktop, a
+    // portrait phone) the caption keeps the bottom-left band for EVERY work — the museum label's own home,
+    // one stable seat — and the scrim below backs the text only where a tall or square picture's bottom
+    // reaches it. (His 2026-07-22 find: on a square-dominant portfolio the aspect-driven side seat put the
+    // label top-left for most works and made it jump top↔bottom between works and with the window height;
+    // the bottom band is the stable seat, chosen on his word. INV-97 desktop rule.)
+    if (SHORT && sideCol >= CAP_SIDE_FLOOR) {          // an honest side column beside the picture, short window
       const topPx = cr.bottom + GAP;                    // below the counter's line (block axis, unmirrored)
       cap.style.top = topPx + "px";
       cap.style.bottom = "auto";
@@ -2009,7 +2010,18 @@
       }
       return;
     }
-    cap.classList.add("cap-scrim");                    // no honest gutter — the last resort backs the text (INV-97)
+    if (!SHORT) {
+      // A TALL window keeps the bottom-left band (the CSS default seat cleared above). A short caption
+      // sits clear in the bottom-left column beside a tall/square picture and needs no backing; a long
+      // one reaches the work, and only THEN does the scrim back it. The measure is the placed block's own
+      // rect against the picture's — the scrim paints only on an actual crossing (INV-97 keeps it rare).
+      cap.classList.remove("cap-scrim");
+      const cb = cap.getBoundingClientRect();
+      if (cb.left < pic.right && cb.right > pic.left && cb.top < pic.bottom && cb.bottom > pic.top)
+        cap.classList.add("cap-scrim");
+      return;
+    }
+    cap.classList.add("cap-scrim");                    // a short window with no honest side column — the last resort backs the text (INV-97)
   }
 
   // ---- the told line settles onto the plaque (EX-STORY-LINE / EX-STORY-WAIT) ----
