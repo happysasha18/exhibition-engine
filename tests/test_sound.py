@@ -84,14 +84,40 @@ check("EX-SOUND streams from an <audio> element (createElement('audio'), preload
       and ".play()" in js_src,
       "streaming <audio> element wiring missing from exhibition.js")
 
-# 5a2 · one press starts the sound (his find 2026-07-22: it took TWO taps). The context resume and the
-#        element play must BOTH be kicked inside the single user-activation — created before any await —
-#        or the first await spends the activation and play() is refused, arming a wait for a second tap.
-#        Red before this fix, when `await ctx.resume()` ran BEFORE `aud.play()`.
-one_press_ok = ("const resuming = (ctx.state === \"suspended\") ? ctx.resume() : null;" in js_src
-                and "const playPromise = aud.play();" in js_src)
-check("EX-SOUND one press plays: ctx.resume() and aud.play() both kicked before any await (no double-tap)",
-      one_press_ok, "start() still awaits ctx.resume() before aud.play() — the first press only arms")
+# 5a2 · one press starts the sound (his find 2026-07-22: it took TWO taps). The context resume is
+#        kicked WITHOUT being awaited first (that older order spent the single activation and play()
+#        was refused), and aud.play() is awaited directly. Red before the first fix, when
+#        `await ctx.resume()` ran BEFORE `aud.play()` — that order left `await aud.play()` absent.
+resume_kicked = "const resuming = (ctx.state === \"suspended\") ? ctx.resume() : null;" in js_src
+play_awaited = "await aud.play(); played = true;" in js_src
+one_press_ok = resume_kicked and play_awaited
+check("EX-SOUND one press plays: ctx.resume() kicked un-awaited, aud.play() awaited (no double-tap)",
+      one_press_ok, "start() must kick resume() without awaiting it first, then await aud.play()")
+
+# 5a2b · his 2026-07-22 RESIDUAL: on WebKit the first press STILL only armed — the context was still
+#        suspended AT THE aud.play() call (the same-gesture resume had not settled), so play() rejected
+#        and the code armed for a second tap. The fix: on a rejected first play, await the resume, then
+#        RETRY aud.play() ONCE within the same activation chain. Red before this fix (only one play call).
+retry_on_suspended = (js_src.count("await aud.play()") >= 2
+                      and "if (resuming) { try { await resuming; } catch (e2) {} }" in js_src)
+check("EX-SOUND retries play() once after resume settles (WebKit suspended-at-call → still one press)",
+      retry_on_suspended,
+      "start() must retry aud.play() after awaiting the resume — else WebKit needs a second tap")
+
+# 5a2c · EX-SOUND-LOADING: between the press and the first sound the note shows a buffering state
+#        (a slow stream reads as "loading", never "nothing happened"); it clears on play / fail / arm.
+loading_ui = ('box.classList.add("loading")' in js_src
+              and 'box.classList.remove("loading")' in js_src)
+check("EX-SOUND-LOADING: the note carries a buffering state between press and first sound",
+      loading_ui, "start()/stop() must toggle a .loading class on the player box")
+
+# 5a2d · the loading state is a soft, reduced-motion-guarded note pulse in the served CSS
+css_src = (ROOT / "engine" / "assets" / "exhibition.css").read_text(encoding="utf-8")
+loading_css = ("#ex-sound.loading .exsnd-note" in css_src
+               and "@keyframes exsnd-load" in css_src
+               and "prefers-reduced-motion:reduce){ #ex-sound.loading .exsnd-note{ animation:none" in css_src)
+check("EX-SOUND-LOADING: the buffering note pulse is defined and stands down for reduced motion",
+      loading_css, "exsnd-load keyframe or its reduced-motion guard missing from exhibition.css")
 
 # 5b · the old full-decode path is retired — the download-then-decode wait is exactly what the swap removes
 check("EX-SOUND retires the full-decode path (no decodeAudioData / createBufferSource)",

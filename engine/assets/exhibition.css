@@ -461,6 +461,12 @@ body:has(#ex-quiz-card.show) #ex-sound,
    playing, where the eq bars take over */
 .exsnd-note{ width:15px; height:15px; display:block; color:currentColor; }
 #ex-sound.playing .exsnd-note{ display:none; }
+/* EX-SOUND-LOADING (INV-48): the press is taken and the stream is buffering — the note breathes
+   softly until sound truly begins (or the file fails), so a slow first fetch reads as "loading",
+   never as "nothing happened". Reduced motion holds it steady but dimmed. */
+#ex-sound.loading .exsnd-note{ animation:exsnd-load calc(1s*var(--tempo)) var(--ease) infinite; }
+@keyframes exsnd-load{ 0%,100%{ opacity:.35; } 50%{ opacity:1; } }
+@media (prefers-reduced-motion:reduce){ #ex-sound.loading .exsnd-note{ animation:none; opacity:.6; } }
 /* the first-visit greeting word: breathes in beside the note, holds, then settles away. Absolutely
    placed just inline-start of the fixed control (RTL mirrors on the logical inset), so the button
    never shifts. A greeting, never a control — pointer-events off, aria-hidden in the markup. */

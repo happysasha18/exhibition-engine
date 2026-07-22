@@ -4690,18 +4690,33 @@
       if (!desired) return;
       if (!ok) { box.classList.remove("playing"); return; }
       if (pauseTimer) { clearTimeout(pauseTimer); pauseTimer = 0; }   // cancel a pending pause
+      // EX-SOUND-LOADING (INV-48): the press is taken the instant it lands — the note breathes
+      // softly (CSS .loading) while the stream buffers, so a slow first fetch reads as "loading",
+      // never as "nothing happened". It clears the moment sound begins, the file fails, or a still-
+      // blocked press falls back to arming.
+      box.classList.add("loading");
       // ONE press is ONE user-activation, and BOTH the context resume and the element play need it.
       // The old order awaited ctx.resume() FIRST, which spent the activation, so aud.play() was then
       // refused and the code armed and waited — the first press only armed, a SECOND actually played
       // (his find 2026-07-22). Kick both synchronously — create both promises before any await — so a
       // single press starts the sound. The element resumes from its own playhead (EX-SOUND-PAUSE/INV-52).
       const resuming = (ctx.state === "suspended") ? ctx.resume() : null;
-      const playPromise = aud.play();
-      let played = true;
-      try { await playPromise; } catch (e) { played = false; }
+      let played = false;
+      try { await aud.play(); played = true; }
+      catch (e) {
+        // WebKit still refused the FIRST play() because the context was suspended AT THE CALL —
+        // the resume kicked in the same gesture had not settled yet, so the two promises raced and
+        // the element lost (his 2026-07-22 same-browser "only the second tap" find survived the
+        // first fix). Wait for the resume to settle, then RETRY play() ONCE: the retry rides the
+        // same activation chain (a transient activation outlives the short resume await), so the
+        // FIRST press now sounds. A genuine block (no activation at all) still fails and arms below.
+        if (resuming) { try { await resuming; } catch (e2) {} }
+        try { await aud.play(); played = true; } catch (e2) { played = false; }
+      }
       if (resuming) { try { await resuming; } catch (e) {} }
-      if (!desired) { try { aud.pause(); } catch (e) {} return; }
-      if (!played || ctx.state === "suspended") { arm(); return; }   // still blocked → wait for the next gesture
+      if (!desired) { box.classList.remove("loading"); try { aud.pause(); } catch (e) {} return; }
+      if (!played || ctx.state === "suspended") { box.classList.remove("loading"); arm(); return; }   // still blocked → wait for the next gesture
+      box.classList.remove("loading");
       const now = ctx.currentTime;
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
@@ -4727,6 +4742,7 @@
       }
       playing = false;
       box.classList.remove("playing");
+      box.classList.remove("loading");   // a file error / off during buffer clears the loading note
     }
 
     btn.addEventListener("click", () => { setDesired(!desired); });
