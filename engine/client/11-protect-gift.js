@@ -49,46 +49,92 @@
     const base = ((src.split("/").pop() || "photo").split("?")[0]).replace(/\.[a-z0-9]+$/i, "");
     return DL_BASE + "-" + base + ".jpg";
   }
-  function rawDownload(src, name) {
+  // EX-PROTECT-RES (INV-56): the file reaches the visitor's device by the road that device expects.
+  // A phone `<a download>` does NOT reach the Photos library — iOS Safari drops the bytes into Files
+  // or nowhere, which is why a saved grab «went somewhere unclear» (his find 2026-07-22). The one web
+  // road into Photos is the native share sheet's «Save Image», so a coarse-pointer device is handed
+  // the file through navigator.share; the desktop keeps the direct anchor save. A dismissed sheet
+  // saves nothing and drops no second copy to Files — the visitor closed it (INV-1 silence).
+  function anchorSave(blobOrUrl, name) {
+    const isBlob = (typeof Blob !== "undefined") && (blobOrUrl instanceof Blob);
+    const url = isBlob ? URL.createObjectURL(blobOrUrl) : blobOrUrl;
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    if (isBlob) setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+  function saveBlob(blob, name) {
     try {
-      const a = document.createElement("a");
-      a.href = src; a.download = giftName(src, name);
-      document.body.appendChild(a); a.click(); a.remove();
-    } catch (e) { /* the walk loses nothing if a browser refuses the save */ }
+      const file = new File([blob], name, { type: (blob && blob.type) || "image/jpeg" });
+      if (matchMedia("(pointer: coarse)").matches
+          && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file] }).catch((err) => {   // the sheet's «Save Image» → Photos
+          // a closed sheet is the visitor's choice — save nothing (INV-1 silence). Any OTHER refusal
+          // (e.g. an activation lost on a very fast yes) falls to the anchor so a file still leaves.
+          if (err && err.name === "AbortError") return;
+          anchorSave(blob, name);
+        });
+        return;
+      }
+    } catch (e) { /* an engine without file-share falls through to the anchor */ }
+    anchorSave(blob, name);
+  }
+  function rawDownload(src, name) {
+    try { anchorSave(src, giftName(src, name)); } catch (e) { /* the walk loses nothing if a browser refuses the save */ }
   }
   // EX-PROTECT-RES (INV-56): the SHOWN image is CLEAN; the site-host mark is stamped ONLY on a TAKEN
   // copy, HERE, client-side via canvas. The quiz prize already wears its own baked mark (preMarked)
   // and goes out raw. A browser that refuses the canvas still gets the clean file (never blocked).
-  function giftDownload(src, name, preMarked, workId) {
-    // a gift file actually leaves for the visitor's device — the beat rides BESIDE the download, its
-    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here
-    pulse("gift_download", workId, { gift_kind: preMarked ? "quiz_prize" : "grab" });
-    if (preMarked) { rawDownload(src, name); return; }
+  function stampToBlob(src, cb) {                             // cb(blob) or cb(null) on any failure
     const host = ROOT_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
     const im = new Image();
     im.onload = () => {
       try {
         const cv = document.createElement("canvas");
         cv.width = im.naturalWidth || im.width; cv.height = im.naturalHeight || im.height;
-        const ctx = cv.getContext("2d");
-        ctx.drawImage(im, 0, 0);
+        const cx = cv.getContext("2d");
+        cx.drawImage(im, 0, 0);
         const fs = Math.max(13, Math.round(cv.width * 0.022)), pad = Math.round(fs * 0.9);
-        ctx.font = "600 " + fs + "px -apple-system,'Segoe UI',sans-serif";
-        ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = "rgba(0,0,0,.34)"; ctx.fillText(host, cv.width - pad + 1, cv.height - pad + 1);
-        ctx.fillStyle = "rgba(235,231,222,.66)"; ctx.fillText(host, cv.width - pad, cv.height - pad);
-        cv.toBlob((blob) => {
-          if (!blob) { rawDownload(src, name); return; }
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url; a.download = giftName(src, name);
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 5000);
-        }, "image/jpeg", 0.92);
-      } catch (e) { rawDownload(src, name); }
+        cx.font = "600 " + fs + "px -apple-system,'Segoe UI',sans-serif";
+        cx.textAlign = "right"; cx.textBaseline = "alphabetic";
+        cx.fillStyle = "rgba(0,0,0,.34)"; cx.fillText(host, cv.width - pad + 1, cv.height - pad + 1);
+        cx.fillStyle = "rgba(235,231,222,.66)"; cx.fillText(host, cv.width - pad, cv.height - pad);
+        cv.toBlob((blob) => cb(blob || null), "image/jpeg", 0.92);
+      } catch (e) { cb(null); }
     };
-    im.onerror = () => rawDownload(src, name);
+    im.onerror = () => cb(null);
     im.src = src;
+  }
+  // The share sheet MUST be opened inside the user gesture, but the stamp (image load + canvas +
+  // toBlob) is async and would spend the yes-tap's activation before navigator.share runs. So the
+  // file is rendered AHEAD — the moment the ceremony opens (renderGiftBlob), while the visitor reads
+  // «did you like it?» — and the yes-tap shares the READY blob synchronously. An unrendered blob (a
+  // very fast yes, or a failed stamp) falls to an on-the-spot render; the phone share may then be
+  // refused after the async step, so saveBlob drops to the anchor and the file still leaves.
+  let giftBlob = null, giftBlobFor = null;
+  function renderGiftBlob(src, preMarked) {
+    giftBlob = null; giftBlobFor = src;
+    if (preMarked) {
+      fetch(src).then((r) => (r && r.ok ? r.blob() : null)).then((blob) => {
+        if (giftBlobFor === src) giftBlob = blob;
+      }).catch(() => {});
+    } else {
+      stampToBlob(src, (blob) => { if (giftBlobFor === src) giftBlob = blob; });
+    }
+  }
+  function giftDownload(src, name, preMarked, workId) {
+    // a gift file actually leaves for the visitor's device — the beat rides BESIDE the download, its
+    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here
+    pulse("gift_download", workId, { gift_kind: preMarked ? "quiz_prize" : "grab" });
+    const fname = giftName(src, name);
+    if (giftBlob && giftBlobFor === src) { saveBlob(giftBlob, fname); return; }   // the pre-rendered file → synchronous share keeps the iOS activation
+    if (preMarked) {
+      fetch(src).then((r) => (r && r.ok ? r.blob() : null)).then((blob) => {
+        if (blob) saveBlob(blob, fname); else rawDownload(src, name);
+      }).catch(() => rawDownload(src, name));
+    } else {
+      stampToBlob(src, (blob) => { if (blob) saveBlob(blob, fname); else rawDownload(src, name); });
+    }
   }
   // onYes (optional): called when the visitor says yes, BEFORE closeGift — used by the quiz-win path
   // to stamp the "gift" stage (EX-QUIZ-FLOW / INV-69) WITHOUT touching the shared ceremony behaviour.
@@ -118,6 +164,8 @@
     } else if (thumb) {
       thumb.remove();                                    // a reused card returning to the grab path drops any prize image
     }
+    giftCard.classList.toggle("prize", !!preMarked);     // the won wallpaper wants a dark stage; the grab wash lets the work show through (option C)
+    renderGiftBlob(src, preMarked);                      // stamp the file AHEAD so a yes-tap can share it synchronously (iOS) — EX-PROTECT-RES
     // every line localizes through EX-I18N; the fallback is ENGLISH (source tongue), never Russian
     giftCard.querySelector(".gift-ask").textContent = T.gift_ask || "did you like it?";
     const yes = giftCard.querySelector(".gift-yes");
@@ -125,7 +173,13 @@
     giftCard.querySelector(".gift-no").textContent = T.gift_no || "not now";
     giftCard.querySelector(".gift-line").textContent = enjoyLine();   // localized «enjoy · <host>»
     announceResult(enjoyLine());                        // N7-A11Y (INV-102 / F5): the gift result rides the SEPARATE result region
-    giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "for a larger print — buy";
+    // EX-PROTECT's own non-goal: the shop is a later movement. Until a print can actually be bought
+    // the line stays HIDDEN — an empty content key hides it, and the agreed copy for the day it opens
+    // is «buy a larger print» (his word 2026-07-22). No fallback literal, so an empty key shows nothing.
+    const buyEl = giftCard.querySelector(".gift-buy");
+    const buyText = (T.gift_buy || "").trim();
+    buyEl.textContent = buyText;
+    buyEl.hidden = !buyText;
     yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
     giftCard.dataset.work = workId != null ? String(workId) : "";   // the buy line's beat reads it
     giftCard.hidden = false; giftOpen = true;

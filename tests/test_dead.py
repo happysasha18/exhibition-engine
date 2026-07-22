@@ -688,6 +688,24 @@ def row6_live():
     check("DEAD-LIVE a live account is untouched", cond, detail if not cond else "")
 
 
+def row7_story_retry():
+    # His find 2026-07-22: «иногда открываю и не вижу рассказика». A transient dead worker / 429 /
+    # model hiccup on the FIRST portion left the opening plaques silent, because an owed portion only
+    # re-asked on the NEXT natural beat (an unfold, a return). The fix: an owed portion re-asks ITSELF a
+    # bounded number of times first. Every path stays silence (nothing is shown either way) — the retry
+    # only gives the plot more chances. A fresh arc (storyReset bumps storyGen) stands down a pending
+    # retry so a previous walk's slice never lands in the new one. Red before this pass (no self-retry).
+    js_src = (ROOT / "engine" / "assets" / "exhibition.js").read_text(encoding="utf-8")
+    retry_ok = ("STORY_RETRY_MS" in js_src
+                and "const owed = () =>" in js_src
+                and "attempt + 1" in js_src
+                and "storyGen++" in js_src
+                and "gen !== storyGen" in js_src)
+    check("DEAD-STORY an owed story portion re-asks itself (bounded), arc-guarded by storyGen",
+          retry_ok,
+          "the owed-portion self-retry is missing (STORY_RETRY_MS / owed() / attempt+1 / storyGen guard)")
+
+
 # ---------------------------------------------------------------- run all rows
 row1_dead400()
 row2_transient()
@@ -696,6 +714,7 @@ row4a_plain_data()
 row4b_plain_payload()
 row5_double()
 row6_live()
+row7_story_retry()
 
 shutil.rmtree(TMP, ignore_errors=True)
 

@@ -569,6 +569,14 @@
   stage.addEventListener("dragstart", onGrab);
   door.addEventListener("contextmenu", onGrab);           // the door's own facade (INV-49 uniformity) —
   door.addEventListener("dragstart", onGrab);             //   #ex-door lives OUTSIDE #ex-stage (EX-DOOR-2a)
+  // EX-PROTECT (INV-49): the enlarged view is a face that shows a picture — the largest one — so it
+  // refuses a raw save like every other. #ex-zoom lives on document.body (outside #ex-stage), so it
+  // binds its own guard: a desktop right-click / drag on the magnified copy meets the SAME gracious
+  // line the hung work gives, never the browser's save menu. The iOS long-press sheet is handled by
+  // the CSS `-webkit-touch-callout:none` on .exz-img (the touch road), and the long-press ceremony
+  // detector already stands down while a zoom is open (pointerdown returns on zoomOpen).
+  zoom.addEventListener("contextmenu", (ev) => { ev.preventDefault(); toast(enjoyLine()); });
+  zoom.addEventListener("dragstart", (ev) => { ev.preventDefault(); });
   // the series room binds the SAME onGrab where it is built (16-renderhang-series.js) — #ex-side is
   // appended to document.body, outside both #ex-stage and #ex-door, so its works were reachable by no
   // grab road at all until it did.

@@ -165,14 +165,19 @@
       const ok = prepare();
       if (!desired) return;
       if (!ok) { box.classList.remove("playing"); return; }
-      if (ctx.state === "suspended") { try { await ctx.resume(); } catch (e) {} }
-      if (!desired) return;
-      if (ctx.state === "suspended") { arm(); return; }
       if (pauseTimer) { clearTimeout(pauseTimer); pauseTimer = 0; }   // cancel a pending pause
-      // the element resumes from its own playhead — the top on a fresh load, where the pause held
-      // within a session; the promise rejects only when a gesture is still owed, so arm and wait
-      try { await aud.play(); } catch (e) { arm(); return; }
+      // ONE press is ONE user-activation, and BOTH the context resume and the element play need it.
+      // The old order awaited ctx.resume() FIRST, which spent the activation, so aud.play() was then
+      // refused and the code armed and waited — the first press only armed, a SECOND actually played
+      // (his find 2026-07-22). Kick both synchronously — create both promises before any await — so a
+      // single press starts the sound. The element resumes from its own playhead (EX-SOUND-PAUSE/INV-52).
+      const resuming = (ctx.state === "suspended") ? ctx.resume() : null;
+      const playPromise = aud.play();
+      let played = true;
+      try { await playPromise; } catch (e) { played = false; }
+      if (resuming) { try { await resuming; } catch (e) {} }
       if (!desired) { try { aud.pause(); } catch (e) {} return; }
+      if (!played || ctx.state === "suspended") { arm(); return; }   // still blocked → wait for the next gesture
       const now = ctx.currentTime;
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);

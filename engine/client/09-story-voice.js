@@ -9,6 +9,7 @@
   //   failed/owed/off — no request in flight and no line: silent exactly as before, :empty hides the
   //             slot with no ghost gap, and the picture stays whole (a refused portion loses nothing).
   // portionPending answers whether the focused work sits in a portion whose request is still in flight.
+  let storyGen = 0;                                    // bumped on every fresh arc so a pending retry from a previous walk stands down
   function portionPending(id) {
     if (id == null) return false;
     const s = "," + String(id) + ",";
@@ -61,12 +62,31 @@
     for (let s = first; s < n; ) { const e = Math.min(n, s + UNFOLD); parts.push([s, e]); s = e; }
     return parts;
   }
-  function askPortion(loI, hiI, settle) {
+  // An owed portion (a refused, failed, or dead-worker outcome) re-asks ITSELF a bounded number of
+  // times before it falls back to waiting for the next natural beat (an unfold, a return). Without it
+  // a transient hiccup on the FIRST portion left the opening plaques silent until the visitor unfolded
+  // — «иногда открываю и нет рассказика» (his find 2026-07-22). Every path stays silence (CS-8,
+  // INV-19): a retry shows nothing either, it only gives the plot a few more chances to land. The
+  // re-ask waits SECONDS, so a server Retry-After window has passed by then; a fresh arc bumps storyGen
+  // (storyReset) so a pending retry from a previous walk never lands its slice in the new one.
+  const STORY_RETRY_MS = [2500, 6000];
+  function askPortion(loI, hiI, settle, attempt) {
+    attempt = attempt || 0;
+    const gen = storyGen;
     const done = () => { if (settle) { const f = settle; settle = null; f(); } };   // once, any outcome
     const ids = order.slice(loI, hiI).map(String);
     if (!ids.length) { done(); return; }
     const key = ids.join(",");                         // this portion's own ordered slice — its cache key
     if (toldPortions.has(key) || askingPortions.has(key)) { done(); return; }   // already told, or in flight
+    const owed = () => {                               // the plot did not land — re-ask shortly, then wait for a beat
+      done();
+      if (attempt >= STORY_RETRY_MS.length || !STORY_ON) return;
+      setTimeout(() => {
+        if (gen !== storyGen) return;                  // a fresh arc opened — this slice belongs to the old walk
+        if (toldPortions.has(key) || askingPortions.has(key)) return;   // already served / re-asked elsewhere
+        askPortion(loI, hiI, null, attempt + 1);
+      }, STORY_RETRY_MS[attempt]);
+    };
     askingPortions.add(key);
     const lang = (viewerLang() || "en").toLowerCase();
     const t0 = performance.now();                      // EX-PULSE/INV-79: the round-trip clock (bucketed, never raw)
@@ -76,7 +96,7 @@
       body: JSON.stringify({ ids: ids, variant: STORY_VARIANT, lang: lang }),
     }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
       askingPortions.delete(key);
-      if (!data || !Array.isArray(data.lines)) { done(); return; } // refused/failed → key NOT stamped → stays owed
+      if (!data || !Array.isArray(data.lines)) { owed(); return; } // refused/failed → key NOT stamped → re-asks, then stays owed
       toldPortions.add(key);                           // told only once the plot has actually come back
       // EX-PULSE/INV-79: the portion's round-trip lands — its lag rides a coarse bucket, and the RACE
       // word marks whether the guest already stood at a work in THIS portion whose line had not yet
@@ -95,7 +115,7 @@
       if (portionText) announceStory(portionText);
       revealPortion();                                 // …then ONE coordinated reveal (EX-STORY-WAIT)
       done();
-    }).catch(() => { askingPortions.delete(key); done(); });   // a dead worker changes nothing — the portion stays owed
+    }).catch(() => { askingPortions.delete(key); owed(); });   // a dead worker → re-ask shortly, then the portion stays owed
   }
   // tellStory re-asks every portion up to `shown` that is not yet told: the newly opened one on an
   // «ещё 5», plus any earlier portion still owed from a refusal (re-asked at this natural beat). A
@@ -120,6 +140,7 @@
   // A fresh door pick is a fresh arc, so it is a fresh story — the previous walk's told/owed portions
   // and its lines never leak into the new one (EX-STORY / INV-30/31).
   function storyReset() {
+    storyGen++;                                        // a fresh arc — any owed-portion retry from the old walk stands down
     toldPortions.clear();
     askingPortions.clear();
     for (const k in STORYLINES) delete STORYLINES[k];

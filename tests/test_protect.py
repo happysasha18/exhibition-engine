@@ -112,12 +112,114 @@ check("EX-ZOOM/INV-82 the zoom layer carries its own touchcancel road",
       bool(_zslice) and "touchcancel" in _zslice,
       "no touchcancel handler inside the zoom layer's region")
 
+# ---- 2026-07-22: the deter is a CLASS over every face that shows a picture, not most of them ----
+# His find: a pinch-enlarged work and a polaroid could both raise the phone's native «Save to Photos»
+# in front of the gift ceremony, because their pictures lacked the callout suppressor the hung work
+# and door window carry. Each row asserts the property INSIDE that selector's own rule block, so a
+# callout on some OTHER selector cannot green a face that is still unguarded (reach before verdict).
+def css_block(css, sel):
+    i = css.find(sel + "{")
+    if i < 0:
+        i = css.find(sel + " {")
+    if i < 0:
+        return None
+    j = css.find("}", i)
+    return css[i:j] if j > i else None
+
+# 4 · the polaroid picture wears the same soft deter as the hung work
+_print_block = css_block(css_src, ".exs-print img")
+check("EX-PROTECT the polaroid rule block is located (reach — the check reads its own subject)",
+      _print_block is not None, "'.exs-print img' rule not found in exhibition.css")
+check("EX-PROTECT CSS: the polaroid picture (.exs-print img) carries -webkit-touch-callout:none + user-drag/select",
+      bool(_print_block) and "-webkit-touch-callout:none" in _print_block
+      and "-webkit-user-drag:none" in _print_block and "user-select:none" in _print_block,
+      f"polaroid deter missing in its own block: {(_print_block or '')[:140]!r}")
+
+# 5 · the enlarged view — the largest, most saveable face — wears it too (the gap the prover named
+#     at the 1.9.0 gate: the enlarged view sat between the deterrent and the four-place set)
+_zimg_block = css_block(css_src, "#ex-zoom .exz-img")
+check("EX-PROTECT the enlarged-view rule block is located (reach)",
+      _zimg_block is not None, "'#ex-zoom .exz-img' rule not found in exhibition.css")
+check("EX-PROTECT CSS: the enlarged view (.exz-img) carries -webkit-touch-callout:none + user-drag/select",
+      bool(_zimg_block) and "-webkit-touch-callout:none" in _zimg_block
+      and "-webkit-user-drag:none" in _zimg_block and "user-select:none" in _zimg_block,
+      f"enlarged-view deter missing in its own block: {(_zimg_block or '')[:140]!r}")
+
+# 6 · JS: #ex-zoom lives on document.body, so it binds its OWN raw-save guard — a desktop right-click
+#     / drag on the magnified copy is prevented and answered by the gracious toast like every face
+zoom_guard_ok = ('zoom.addEventListener("contextmenu"' in js_src
+                 and 'zoom.addEventListener("dragstart"' in js_src)
+check("EX-PROTECT JS: the enlarged view binds its own contextmenu + dragstart guard",
+      zoom_guard_ok, "no contextmenu/dragstart guard bound on #ex-zoom")
+
+# 7 · JS: the handed file reaches the phone's Photos library through the native share sheet — a
+#     coarse-pointer device gets navigator.share({files:[File]}) (the one web road into Photos), the
+#     desktop keeps the anchor save. Red before 2026-07-22: the save was <a download> only, which iOS
+#     drops into Files, not Photos («даунлоадится непонятно куда»).
+share_ok = ("navigator.share" in js_src and "navigator.canShare" in js_src
+            and "new File(" in js_src and 'matchMedia("(pointer: coarse)")' in js_src
+            and "function saveBlob(" in js_src)
+check("EX-PROTECT-RES JS: the gift saves to Photos via the share sheet on touch, anchor on desktop",
+      share_ok, "the save-to-photos share path is missing (navigator.share / canShare / File / coarse gate)")
+
+# 8 · JS: the watermarked file is rendered AHEAD (renderGiftBlob on openGift) so a yes-tap shares it
+#     WITHIN the gesture — iOS refuses a share after an async stamp, so the pre-render keeps activation
+prerender_ok = ("function renderGiftBlob(" in js_src
+                and "renderGiftBlob(src, preMarked)" in js_src
+                and "giftBlobFor === src" in js_src)
+check("EX-PROTECT-RES JS: the gift blob is pre-rendered on open so the yes-tap shares within the gesture",
+      prerender_ok, "renderGiftBlob is not wired into openGift / not consumed by giftDownload")
+
+# 9 · JS: the buy line stays HIDDEN until a shop exists — an empty content key hides it with NO
+#     literal fallback (his word 2026-07-22: rephrase to «buy a larger print», hide until it exists)
+buy_ok = ("buyEl.hidden" in js_src and "for a larger print — buy" not in js_src)
+check("EX-PROTECT buy line: hidden on an empty key, the old print CTA fallback gone",
+      buy_ok, "the buy line still carries a hardcoded fallback / is not hidden on empty")
+
+# 10 · the gift ceremony's wash is a gradient that lets the work show through (his pick 2026-07-22,
+#      option C) and STILL preserves the deterrent: the pseudo-layer is pointer-transparent so the full
+#      card catches every touch even where the wash is clear, and the quiz prize keeps a near-solid dark
+#      stage. Red before this, when the show state was a flat rgba(8,8,7,.88).
+_before = css_block(css_src, "#ex-gift-card::before")
+_prize = css_block(css_src, "#ex-gift-card.prize.show::before")
+check("EX-PROTECT the ceremony wash block is located (reach)", _before is not None,
+      "'#ex-gift-card::before' rule not found in exhibition.css")
+wash_ok = (bool(_before) and "linear-gradient" in _before and "pointer-events:none" in _before
+           and "#ex-gift-card.show::before" in css_src
+           and bool(_prize) and "rgba(8,8,7,.92)" in _prize
+           and "#ex-gift-card.show{ background:rgba(8,8,7,.88)" not in css_src)
+check("EX-PROTECT the ceremony wash is a gradient (option C), pointer-transparent so the card still "
+      "catches every touch; the quiz prize keeps a solid dark stage; the old flat scrim is gone",
+      wash_ok, f"wash={(_before or '')[:120]!r} prize={(_prize or '')[:80]!r}")
+
 BROWSER_ROWS = [
     "EX-PROTECT-GIFT desktop right-click on a work opens the gift ceremony (not a browser save sheet)",
     "EX-PROTECT drag on a work is prevented (no drag ghost, enjoy toast fires)",
     "EX-PROTECT-GIFT the gift ceremony line carries the site host from ROOT_URL",
     "EX-PROTECT right-click on chrome (share button) is NOT intercepted (browser menu still works)",
+    "EX-PROTECT the enlarged view refuses a raw save on Blink (Android's engine): a contextmenu on "
+    ".exz-img is prevented and answered by the gracious line, the road Android relies on (iOS uses the "
+    "callout instead, which Blink ignores)",
 ]
+
+# open the enlarged view by a two-finger pinch on the walk work, then long-press it (contextmenu). On
+# Blink — Android Chrome's engine — a picture's native long-press "Save image" menu rides `contextmenu`,
+# so proving the zoom's guard prevents it here is the Android proof the iOS callout cannot give.
+ZOOM_CTX = (
+    "(()=>{const work=document.querySelector('.exh-frame img.work');"
+    "if(!work)return JSON.stringify({err:'no-work'});"
+    "const r=work.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;"
+    "const mk=(id,x,y)=>new Touch({identifier:id,target:work,clientX:x,clientY:y});"
+    "const fire=(t,ts)=>work.dispatchEvent(new TouchEvent(t,{touches:ts,targetTouches:ts,"
+    "changedTouches:ts,bubbles:true,cancelable:true}));"
+    "fire('touchstart',[mk(1,cx-20,cy),mk(2,cx+20,cy)]);"
+    "const z=document.getElementById('ex-zoom');const opened=!!z&&!z.hidden;"
+    "const zi=document.querySelector('#ex-zoom .exz-img');let prevented=null;"
+    "if(zi){const ev=new MouseEvent('contextmenu',{bubbles:true,cancelable:true});"
+    "zi.dispatchEvent(ev);prevented=ev.defaultPrevented;}"
+    "fire('touchend',[]);"
+    "return JSON.stringify({opened:opened,prevented:prevented});})()"
+)
 
 TOAST = "(()=>{const t=document.getElementById('ex-toast');return t&&!t.hidden?t.textContent:null;})()"
 GIFT = ("(()=>{const g=document.getElementById('ex-gift-card');"
@@ -188,6 +290,18 @@ else:
             check(BROWSER_ROWS[3],
                   toast is None,
                   f"toast={toast!r} (should be None — chrome is not protected)")
+
+        # 4 · the enlarged view refuses a raw save on Blink (Android's engine) — the contextmenu road
+        import json as _json
+        with Browser(width=1280, height=900) as br:
+            enter(br, base)
+            zc = _json.loads(br.evaluate(ZOOM_CTX) or "{}")
+            br.sleep(0.3)
+            toast = br.evaluate(TOAST)
+            check(BROWSER_ROWS[4],
+                  zc.get("opened") is True and zc.get("prevented") is True
+                  and toast is not None and len(str(toast).strip()) > 0,
+                  f"zoom_open={zc.get('opened')} contextmenu_prevented={zc.get('prevented')} toast={toast!r}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

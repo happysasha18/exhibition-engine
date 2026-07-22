@@ -84,6 +84,15 @@ check("EX-SOUND streams from an <audio> element (createElement('audio'), preload
       and ".play()" in js_src,
       "streaming <audio> element wiring missing from exhibition.js")
 
+# 5a2 · one press starts the sound (his find 2026-07-22: it took TWO taps). The context resume and the
+#        element play must BOTH be kicked inside the single user-activation — created before any await —
+#        or the first await spends the activation and play() is refused, arming a wait for a second tap.
+#        Red before this fix, when `await ctx.resume()` ran BEFORE `aud.play()`.
+one_press_ok = ("const resuming = (ctx.state === \"suspended\") ? ctx.resume() : null;" in js_src
+                and "const playPromise = aud.play();" in js_src)
+check("EX-SOUND one press plays: ctx.resume() and aud.play() both kicked before any await (no double-tap)",
+      one_press_ok, "start() still awaits ctx.resume() before aud.play() — the first press only arms")
+
 # 5b · the old full-decode path is retired — the download-then-decode wait is exactly what the swap removes
 check("EX-SOUND retires the full-decode path (no decodeAudioData / createBufferSource)",
       "decodeAudioData" not in js_src

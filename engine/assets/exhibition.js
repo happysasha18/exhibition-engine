@@ -2023,6 +2023,7 @@
   //   failed/owed/off — no request in flight and no line: silent exactly as before, :empty hides the
   //             slot with no ghost gap, and the picture stays whole (a refused portion loses nothing).
   // portionPending answers whether the focused work sits in a portion whose request is still in flight.
+  let storyGen = 0;                                    // bumped on every fresh arc so a pending retry from a previous walk stands down
   function portionPending(id) {
     if (id == null) return false;
     const s = "," + String(id) + ",";
@@ -2075,12 +2076,31 @@
     for (let s = first; s < n; ) { const e = Math.min(n, s + UNFOLD); parts.push([s, e]); s = e; }
     return parts;
   }
-  function askPortion(loI, hiI, settle) {
+  // An owed portion (a refused, failed, or dead-worker outcome) re-asks ITSELF a bounded number of
+  // times before it falls back to waiting for the next natural beat (an unfold, a return). Without it
+  // a transient hiccup on the FIRST portion left the opening plaques silent until the visitor unfolded
+  // — «иногда открываю и нет рассказика» (his find 2026-07-22). Every path stays silence (CS-8,
+  // INV-19): a retry shows nothing either, it only gives the plot a few more chances to land. The
+  // re-ask waits SECONDS, so a server Retry-After window has passed by then; a fresh arc bumps storyGen
+  // (storyReset) so a pending retry from a previous walk never lands its slice in the new one.
+  const STORY_RETRY_MS = [2500, 6000];
+  function askPortion(loI, hiI, settle, attempt) {
+    attempt = attempt || 0;
+    const gen = storyGen;
     const done = () => { if (settle) { const f = settle; settle = null; f(); } };   // once, any outcome
     const ids = order.slice(loI, hiI).map(String);
     if (!ids.length) { done(); return; }
     const key = ids.join(",");                         // this portion's own ordered slice — its cache key
     if (toldPortions.has(key) || askingPortions.has(key)) { done(); return; }   // already told, or in flight
+    const owed = () => {                               // the plot did not land — re-ask shortly, then wait for a beat
+      done();
+      if (attempt >= STORY_RETRY_MS.length || !STORY_ON) return;
+      setTimeout(() => {
+        if (gen !== storyGen) return;                  // a fresh arc opened — this slice belongs to the old walk
+        if (toldPortions.has(key) || askingPortions.has(key)) return;   // already served / re-asked elsewhere
+        askPortion(loI, hiI, null, attempt + 1);
+      }, STORY_RETRY_MS[attempt]);
+    };
     askingPortions.add(key);
     const lang = (viewerLang() || "en").toLowerCase();
     const t0 = performance.now();                      // EX-PULSE/INV-79: the round-trip clock (bucketed, never raw)
@@ -2090,7 +2110,7 @@
       body: JSON.stringify({ ids: ids, variant: STORY_VARIANT, lang: lang }),
     }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
       askingPortions.delete(key);
-      if (!data || !Array.isArray(data.lines)) { done(); return; } // refused/failed → key NOT stamped → stays owed
+      if (!data || !Array.isArray(data.lines)) { owed(); return; } // refused/failed → key NOT stamped → re-asks, then stays owed
       toldPortions.add(key);                           // told only once the plot has actually come back
       // EX-PULSE/INV-79: the portion's round-trip lands — its lag rides a coarse bucket, and the RACE
       // word marks whether the guest already stood at a work in THIS portion whose line had not yet
@@ -2109,7 +2129,7 @@
       if (portionText) announceStory(portionText);
       revealPortion();                                 // …then ONE coordinated reveal (EX-STORY-WAIT)
       done();
-    }).catch(() => { askingPortions.delete(key); done(); });   // a dead worker changes nothing — the portion stays owed
+    }).catch(() => { askingPortions.delete(key); owed(); });   // a dead worker → re-ask shortly, then the portion stays owed
   }
   // tellStory re-asks every portion up to `shown` that is not yet told: the newly opened one on an
   // «ещё 5», plus any earlier portion still owed from a refusal (re-asked at this natural beat). A
@@ -2134,6 +2154,7 @@
   // A fresh door pick is a fresh arc, so it is a fresh story — the previous walk's told/owed portions
   // and its lines never leak into the new one (EX-STORY / INV-30/31).
   function storyReset() {
+    storyGen++;                                        // a fresh arc — any owed-portion retry from the old walk stands down
     toldPortions.clear();
     askingPortions.clear();
     for (const k in STORYLINES) delete STORYLINES[k];
@@ -2320,46 +2341,92 @@
     const base = ((src.split("/").pop() || "photo").split("?")[0]).replace(/\.[a-z0-9]+$/i, "");
     return DL_BASE + "-" + base + ".jpg";
   }
-  function rawDownload(src, name) {
+  // EX-PROTECT-RES (INV-56): the file reaches the visitor's device by the road that device expects.
+  // A phone `<a download>` does NOT reach the Photos library — iOS Safari drops the bytes into Files
+  // or nowhere, which is why a saved grab «went somewhere unclear» (his find 2026-07-22). The one web
+  // road into Photos is the native share sheet's «Save Image», so a coarse-pointer device is handed
+  // the file through navigator.share; the desktop keeps the direct anchor save. A dismissed sheet
+  // saves nothing and drops no second copy to Files — the visitor closed it (INV-1 silence).
+  function anchorSave(blobOrUrl, name) {
+    const isBlob = (typeof Blob !== "undefined") && (blobOrUrl instanceof Blob);
+    const url = isBlob ? URL.createObjectURL(blobOrUrl) : blobOrUrl;
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    if (isBlob) setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+  function saveBlob(blob, name) {
     try {
-      const a = document.createElement("a");
-      a.href = src; a.download = giftName(src, name);
-      document.body.appendChild(a); a.click(); a.remove();
-    } catch (e) { /* the walk loses nothing if a browser refuses the save */ }
+      const file = new File([blob], name, { type: (blob && blob.type) || "image/jpeg" });
+      if (matchMedia("(pointer: coarse)").matches
+          && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file] }).catch((err) => {   // the sheet's «Save Image» → Photos
+          // a closed sheet is the visitor's choice — save nothing (INV-1 silence). Any OTHER refusal
+          // (e.g. an activation lost on a very fast yes) falls to the anchor so a file still leaves.
+          if (err && err.name === "AbortError") return;
+          anchorSave(blob, name);
+        });
+        return;
+      }
+    } catch (e) { /* an engine without file-share falls through to the anchor */ }
+    anchorSave(blob, name);
+  }
+  function rawDownload(src, name) {
+    try { anchorSave(src, giftName(src, name)); } catch (e) { /* the walk loses nothing if a browser refuses the save */ }
   }
   // EX-PROTECT-RES (INV-56): the SHOWN image is CLEAN; the site-host mark is stamped ONLY on a TAKEN
   // copy, HERE, client-side via canvas. The quiz prize already wears its own baked mark (preMarked)
   // and goes out raw. A browser that refuses the canvas still gets the clean file (never blocked).
-  function giftDownload(src, name, preMarked, workId) {
-    // a gift file actually leaves for the visitor's device — the beat rides BESIDE the download, its
-    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here
-    pulse("gift_download", workId, { gift_kind: preMarked ? "quiz_prize" : "grab" });
-    if (preMarked) { rawDownload(src, name); return; }
+  function stampToBlob(src, cb) {                             // cb(blob) or cb(null) on any failure
     const host = ROOT_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
     const im = new Image();
     im.onload = () => {
       try {
         const cv = document.createElement("canvas");
         cv.width = im.naturalWidth || im.width; cv.height = im.naturalHeight || im.height;
-        const ctx = cv.getContext("2d");
-        ctx.drawImage(im, 0, 0);
+        const cx = cv.getContext("2d");
+        cx.drawImage(im, 0, 0);
         const fs = Math.max(13, Math.round(cv.width * 0.022)), pad = Math.round(fs * 0.9);
-        ctx.font = "600 " + fs + "px -apple-system,'Segoe UI',sans-serif";
-        ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = "rgba(0,0,0,.34)"; ctx.fillText(host, cv.width - pad + 1, cv.height - pad + 1);
-        ctx.fillStyle = "rgba(235,231,222,.66)"; ctx.fillText(host, cv.width - pad, cv.height - pad);
-        cv.toBlob((blob) => {
-          if (!blob) { rawDownload(src, name); return; }
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url; a.download = giftName(src, name);
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 5000);
-        }, "image/jpeg", 0.92);
-      } catch (e) { rawDownload(src, name); }
+        cx.font = "600 " + fs + "px -apple-system,'Segoe UI',sans-serif";
+        cx.textAlign = "right"; cx.textBaseline = "alphabetic";
+        cx.fillStyle = "rgba(0,0,0,.34)"; cx.fillText(host, cv.width - pad + 1, cv.height - pad + 1);
+        cx.fillStyle = "rgba(235,231,222,.66)"; cx.fillText(host, cv.width - pad, cv.height - pad);
+        cv.toBlob((blob) => cb(blob || null), "image/jpeg", 0.92);
+      } catch (e) { cb(null); }
     };
-    im.onerror = () => rawDownload(src, name);
+    im.onerror = () => cb(null);
     im.src = src;
+  }
+  // The share sheet MUST be opened inside the user gesture, but the stamp (image load + canvas +
+  // toBlob) is async and would spend the yes-tap's activation before navigator.share runs. So the
+  // file is rendered AHEAD — the moment the ceremony opens (renderGiftBlob), while the visitor reads
+  // «did you like it?» — and the yes-tap shares the READY blob synchronously. An unrendered blob (a
+  // very fast yes, or a failed stamp) falls to an on-the-spot render; the phone share may then be
+  // refused after the async step, so saveBlob drops to the anchor and the file still leaves.
+  let giftBlob = null, giftBlobFor = null;
+  function renderGiftBlob(src, preMarked) {
+    giftBlob = null; giftBlobFor = src;
+    if (preMarked) {
+      fetch(src).then((r) => (r && r.ok ? r.blob() : null)).then((blob) => {
+        if (giftBlobFor === src) giftBlob = blob;
+      }).catch(() => {});
+    } else {
+      stampToBlob(src, (blob) => { if (giftBlobFor === src) giftBlob = blob; });
+    }
+  }
+  function giftDownload(src, name, preMarked, workId) {
+    // a gift file actually leaves for the visitor's device — the beat rides BESIDE the download, its
+    // kind from the closed pair: the quiz prize goes out preMarked, a right-click grab is signed here
+    pulse("gift_download", workId, { gift_kind: preMarked ? "quiz_prize" : "grab" });
+    const fname = giftName(src, name);
+    if (giftBlob && giftBlobFor === src) { saveBlob(giftBlob, fname); return; }   // the pre-rendered file → synchronous share keeps the iOS activation
+    if (preMarked) {
+      fetch(src).then((r) => (r && r.ok ? r.blob() : null)).then((blob) => {
+        if (blob) saveBlob(blob, fname); else rawDownload(src, name);
+      }).catch(() => rawDownload(src, name));
+    } else {
+      stampToBlob(src, (blob) => { if (blob) saveBlob(blob, fname); else rawDownload(src, name); });
+    }
   }
   // onYes (optional): called when the visitor says yes, BEFORE closeGift — used by the quiz-win path
   // to stamp the "gift" stage (EX-QUIZ-FLOW / INV-69) WITHOUT touching the shared ceremony behaviour.
@@ -2389,6 +2456,8 @@
     } else if (thumb) {
       thumb.remove();                                    // a reused card returning to the grab path drops any prize image
     }
+    giftCard.classList.toggle("prize", !!preMarked);     // the won wallpaper wants a dark stage; the grab wash lets the work show through (option C)
+    renderGiftBlob(src, preMarked);                      // stamp the file AHEAD so a yes-tap can share it synchronously (iOS) — EX-PROTECT-RES
     // every line localizes through EX-I18N; the fallback is ENGLISH (source tongue), never Russian
     giftCard.querySelector(".gift-ask").textContent = T.gift_ask || "did you like it?";
     const yes = giftCard.querySelector(".gift-yes");
@@ -2396,7 +2465,13 @@
     giftCard.querySelector(".gift-no").textContent = T.gift_no || "not now";
     giftCard.querySelector(".gift-line").textContent = enjoyLine();   // localized «enjoy · <host>»
     announceResult(enjoyLine());                        // N7-A11Y (INV-102 / F5): the gift result rides the SEPARATE result region
-    giftCard.querySelector(".gift-buy").textContent = T.gift_buy || "for a larger print — buy";
+    // EX-PROTECT's own non-goal: the shop is a later movement. Until a print can actually be bought
+    // the line stays HIDDEN — an empty content key hides it, and the agreed copy for the day it opens
+    // is «buy a larger print» (his word 2026-07-22). No fallback literal, so an empty key shows nothing.
+    const buyEl = giftCard.querySelector(".gift-buy");
+    const buyText = (T.gift_buy || "").trim();
+    buyEl.textContent = buyText;
+    buyEl.hidden = !buyText;
     yes.onclick = () => { giftDownload(src, name, preMarked, workId); if (onYes) onYes(); closeGift(); };
     giftCard.dataset.work = workId != null ? String(workId) : "";   // the buy line's beat reads it
     giftCard.hidden = false; giftOpen = true;
@@ -2994,6 +3069,14 @@
   stage.addEventListener("dragstart", onGrab);
   door.addEventListener("contextmenu", onGrab);           // the door's own facade (INV-49 uniformity) —
   door.addEventListener("dragstart", onGrab);             //   #ex-door lives OUTSIDE #ex-stage (EX-DOOR-2a)
+  // EX-PROTECT (INV-49): the enlarged view is a face that shows a picture — the largest one — so it
+  // refuses a raw save like every other. #ex-zoom lives on document.body (outside #ex-stage), so it
+  // binds its own guard: a desktop right-click / drag on the magnified copy meets the SAME gracious
+  // line the hung work gives, never the browser's save menu. The iOS long-press sheet is handled by
+  // the CSS `-webkit-touch-callout:none` on .exz-img (the touch road), and the long-press ceremony
+  // detector already stands down while a zoom is open (pointerdown returns on zoomOpen).
+  zoom.addEventListener("contextmenu", (ev) => { ev.preventDefault(); toast(enjoyLine()); });
+  zoom.addEventListener("dragstart", (ev) => { ev.preventDefault(); });
   // the series room binds the SAME onGrab where it is built (16-renderhang-series.js) — #ex-side is
   // appended to document.body, outside both #ex-stage and #ex-door, so its works were reachable by no
   // grab road at all until it did.
@@ -4606,14 +4689,19 @@
       const ok = prepare();
       if (!desired) return;
       if (!ok) { box.classList.remove("playing"); return; }
-      if (ctx.state === "suspended") { try { await ctx.resume(); } catch (e) {} }
-      if (!desired) return;
-      if (ctx.state === "suspended") { arm(); return; }
       if (pauseTimer) { clearTimeout(pauseTimer); pauseTimer = 0; }   // cancel a pending pause
-      // the element resumes from its own playhead — the top on a fresh load, where the pause held
-      // within a session; the promise rejects only when a gesture is still owed, so arm and wait
-      try { await aud.play(); } catch (e) { arm(); return; }
+      // ONE press is ONE user-activation, and BOTH the context resume and the element play need it.
+      // The old order awaited ctx.resume() FIRST, which spent the activation, so aud.play() was then
+      // refused and the code armed and waited — the first press only armed, a SECOND actually played
+      // (his find 2026-07-22). Kick both synchronously — create both promises before any await — so a
+      // single press starts the sound. The element resumes from its own playhead (EX-SOUND-PAUSE/INV-52).
+      const resuming = (ctx.state === "suspended") ? ctx.resume() : null;
+      const playPromise = aud.play();
+      let played = true;
+      try { await playPromise; } catch (e) { played = false; }
+      if (resuming) { try { await resuming; } catch (e) {} }
       if (!desired) { try { aud.pause(); } catch (e) {} return; }
+      if (!played || ctx.state === "suspended") { arm(); return; }   // still blocked → wait for the next gesture
       const now = ctx.currentTime;
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
