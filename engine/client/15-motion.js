@@ -133,6 +133,10 @@
   }
   addEventListener("resize", () => { if (walkOwnsInput() || gliding || zoomOpen) onViewportTurn(); });
   addEventListener("orientationchange", onViewportTurn);   // a rotation is its OWN beat (INV-86), not merely a resize
+  // iOS reports stale innerWidth/innerHeight for ~200-400ms after a rotation, past the 120ms settle
+  // above; the visualViewport "resize" fires as the viewport ACTUALLY settles, so re-measuring on it
+  // catches the true post-turn dimensions (the between-pictures gutter would otherwise stay skewed).
+  if (window.visualViewport) visualViewport.addEventListener("resize", () => { if (walkOwnsInput() || gliding || zoomOpen) onViewportTurn(); });
   function walkOwnsInput() {                            // the door/ceremony/faces keep native —
     return document.documentElement.classList.contains("ex-walk")   // a standing face owns the
       && !atDoor && !busy && !sideOpen && !quizOpen && !giftOpen;   // input (EX-COMPOSE)

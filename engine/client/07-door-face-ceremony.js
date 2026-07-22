@@ -205,7 +205,12 @@
     doorWatch(facade);   // EX-TIME-READ + EX-DOOR-WARM: watch the windows decode → door_ready + the candidate warm
   }
   let rsz;
-  addEventListener("resize", () => { clearTimeout(rsz); rsz = setTimeout(doorRender, 150); });
+  function doorReflow() { clearTimeout(rsz); rsz = setTimeout(doorRender, 150); }
+  addEventListener("resize", doorReflow);
+  // a rotation is its OWN beat on iOS (INV-86); its settled dimensions arrive on the visualViewport
+  // "resize", so the door facade re-lays-out true after a phone turn rather than on stale metrics.
+  addEventListener("orientationchange", doorReflow);
+  if (window.visualViewport) visualViewport.addEventListener("resize", doorReflow);
 
   // ---- the idle hint (EX-DOOR-2g): a cold untouched door breathes its first halo ----
   // Behavior, never a word; ANY interaction retires it; the re-opened door never hints.

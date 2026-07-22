@@ -209,6 +209,35 @@ else:
                   f"window={win_tf} frame={frame_tf}")
 
 
+# ------------------------------------------------- EX-ROTATE: a phone turn keeps the picture gutter
+# The gutter around each work is (frame height − work height) / 2. The frame is 100dvh, so every height
+# cap that SETS that gutter must track the same dynamic unit: a static vh cap inside a dvh frame makes
+# the two disagree for the ~200-400ms iOS takes to settle a rotation, and the picture drifts in its
+# gutter (his find 2026-07-22 — the between-pictures spacing skews on a phone turn). Each cap carries a
+# dvh companion, matching the frame's own `height:100vh; height:100dvh;` fallback idiom.
+_rot_css = re.sub(r"/\*.*?\*/", "", (TMP / "exhibition.css").read_text(encoding="utf-8"), flags=re.S)
+gutter_units_consistent = all(pair in _rot_css for pair in [
+    "max-height:82vh; max-height:82dvh;",           # .exh-frame img.work + #ex-plate (desktop)
+    "max-height:70vh; max-height:70dvh;",           # phone img.work + phone #ex-plate
+    "max-height:56vh; max-height:56dvh;",           # series lane image
+    "padding-bottom:14vh; padding-bottom:14dvh;",   # phone caption band the frame reserves
+])
+check("EX-ROTATE: every height cap inside a dvh frame carries a dvh companion (gutter holds on turn)",
+      gutter_units_consistent,
+      "a static vh cap inside the 100dvh frame skews the between-pictures gutter during an iOS rotation")
+
+# The walk, the series room, and the door each re-measure on a rotation's OWN beats: orientationchange
+# AND the visualViewport 'resize' that fires only when iOS finishes settling the turned viewport (a
+# plain window 'resize' alone misses the turn or reads stale innerWidth/innerHeight). Without these the
+# layout stays skewed until a scroll forces a reflow.
+_rot_js = (TMP / "exhibition.js").read_text(encoding="utf-8")
+turn_beats_wired = (_rot_js.count('addEventListener("orientationchange"') >= 3
+                    and _rot_js.count('visualViewport.addEventListener("resize"') >= 3)
+check("EX-ROTATE: walk + series + door each re-measure on orientationchange and the visualViewport settle",
+      turn_beats_wired,
+      "each viewport-turning surface must wire orientationchange AND a visualViewport resize, not resize alone")
+
+
 # ---------------------------------------------------------------- report
 import shutil
 shutil.rmtree(TMP, ignore_errors=True)

@@ -84,25 +84,47 @@ check("EX-SOUND streams from an <audio> element (createElement('audio'), preload
       and ".play()" in js_src,
       "streaming <audio> element wiring missing from exhibition.js")
 
-# 5a2 · one press starts the sound (his find 2026-07-22: it took TWO taps). The context resume is
-#        kicked WITHOUT being awaited first (that older order spent the single activation and play()
-#        was refused), and aud.play() is awaited directly. Red before the first fix, when
-#        `await ctx.resume()` ran BEFORE `aud.play()` — that order left `await aud.play()` absent.
-resume_kicked = "const resuming = (ctx.state === \"suspended\") ? ctx.resume() : null;" in js_src
+# 5a2 · one press starts the sound (his find 2026-07-22: it took TWO taps, and survived five fixes).
+#        The context resume is kicked WITHOUT being awaited first (that older order spent the single
+#        activation and play() was refused), on ANY non-running state — iOS parks a fresh context in
+#        "suspended" OR the non-standard "interrupted", and both must be caught — while aud.play() is
+#        awaited directly inside the one activation.
+resume_kicked = 'const resuming = (ctx.state !== "running") ? ctx.resume() : null;' in js_src
 play_awaited = "await aud.play(); played = true;" in js_src
 one_press_ok = resume_kicked and play_awaited
-check("EX-SOUND one press plays: ctx.resume() kicked un-awaited, aud.play() awaited (no double-tap)",
-      one_press_ok, "start() must kick resume() without awaiting it first, then await aud.play()")
+check("EX-SOUND one press plays: resume kicked un-awaited on any non-running ctx, play() awaited",
+      one_press_ok,
+      "start() must kick resume() on ctx.state!=='running' without awaiting it first, then await aud.play()")
 
-# 5a2b · his 2026-07-22 RESIDUAL: on WebKit the first press STILL only armed — the context was still
-#        suspended AT THE aud.play() call (the same-gesture resume had not settled), so play() rejected
-#        and the code armed for a second tap. The fix: on a rejected first play, await the resume, then
-#        RETRY aud.play() ONCE within the same activation chain. Red before this fix (only one play call).
-retry_on_suspended = (js_src.count("await aud.play()") >= 2
-                      and "if (resuming) { try { await resuming; } catch (e2) {} }" in js_src)
-check("EX-SOUND retries play() once after resume settles (WebKit suspended-at-call → still one press)",
-      retry_on_suspended,
-      "start() must retry aud.play() after awaiting the resume — else WebKit needs a second tap")
+# 5a2b · THE ROOT that survived five fixes (Fable review 2026-07-22): a SUCCESSFUL aud.play() must
+#        never be discarded because the context still reads suspended — that discard, and the re-arm
+#        after it, are exactly what forced the infamous second tap. The only bail is a genuine
+#        activation failure (!played); the audible fade DEFERS to the context reaching "running"
+#        (fadeInWhenRunning + a statechange listener), and the resume is BOUNDED (raced against a
+#        timeout) so a never-settling WebKit resume can neither hang the press nor the fade.
+play_never_discarded = ('if (!played) { box.classList.remove("loading"); arm(); return; }' in js_src
+                        and '|| ctx.state === "suspended"' not in js_src)
+fade_defers = ("fadeInWhenRunning()" in js_src
+               and 'ctx.addEventListener("statechange"' in js_src)
+resume_bounded = ("Promise.race([resuming" in js_src
+                  and "if (resuming) { try { await resuming; } catch (e) {} }" not in js_src)
+check("EX-SOUND keeps a successful first play: no suspended-discard, fade defers to running (no 2nd tap)",
+      play_never_discarded and fade_defers and resume_bounded,
+      "a successful aud.play() must not be discarded on suspended; the fade must defer to statechange; the resume must be bounded")
+
+# 5a2b-i · a scroll grants no user-activation, so it must NOT be in the arm set — arming on scroll
+#          burns the one-shot on a play() WebKit is guaranteed to refuse (Fable review 2026-07-22).
+arm_no_scroll = ('["pointerdown", "touchstart", "keydown"]' in js_src
+                 and '["pointerdown", "touchstart", "scroll", "keydown"]' not in js_src)
+check("EX-SOUND arm set excludes scroll (a scroll grants no activation to spend)",
+      arm_no_scroll, "the arm/disarm gesture set must drop 'scroll' — it cannot start audio")
+
+# 5a2b-ii · an armed gesture ON the player is the button's own click to own (the toggle); onGesture
+#           must not also start() there, or it races the same tap's setDesired() toggle-off — the
+#           "second press does nothing / turns off" shape (Fable review 2026-07-22).
+on_player_deferred = "if (e && e.target && box.contains(e.target)) return;" in js_src
+check("EX-SOUND onGesture defers an on-player tap to the click (no armed-vs-toggle race)",
+      on_player_deferred, "onGesture must ignore a gesture inside the player box and let the click own the toggle")
 
 # 5a2c · EX-SOUND-LOADING: between the press and the first sound the note shows a buffering state
 #        (a slow stream reads as "loading", never "nothing happened"); it clears on play / fail / arm.

@@ -216,7 +216,7 @@
   // EX-COMPOSE: a print lifted to the light re-centres to the live viewport — a centre measured
   // before a rotation never survives it (the delta rides ON TOP of the standing --cx/--cy).
   let sdrsz = null;
-  addEventListener("resize", () => {
+  function sideReCentre() {
     if (!sideOpen) return;
     clearTimeout(sdrsz);
     sdrsz = setTimeout(() => {
@@ -228,5 +228,10 @@
       p.style.setProperty("--cx", (cx + (innerWidth / 2 - (r.left + r.width / 2))) + "px");
       p.style.setProperty("--cy", (cy + (innerHeight / 2 - (r.top + r.height / 2))) + "px");
     }, 150);
-  });
+  }
+  addEventListener("resize", sideReCentre);
+  // a rotation is its OWN beat on iOS (INV-86), and its settled dimensions arrive on the visualViewport
+  // "resize" — without these the lifted print stays off-centre after a phone turn.
+  addEventListener("orientationchange", sideReCentre);
+  if (window.visualViewport) visualViewport.addEventListener("resize", sideReCentre);
 

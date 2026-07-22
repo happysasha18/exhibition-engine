@@ -137,19 +137,29 @@
       return ready;
     }
 
+    // "scroll" is deliberately NOT in the arm set: a scroll grants no user-activation, so it would
+    // burn the one-shot arm on a play() that WebKit is guaranteed to refuse. Only true activation
+    // gestures (a press or a key) can start audio.
     function arm() {
       if (armed || playing) return;
       armed = true;
-      ["pointerdown", "touchstart", "scroll", "keydown"].forEach((e) =>
+      ["pointerdown", "touchstart", "keydown"].forEach((e) =>
         addEventListener(e, onGesture, { once: true, passive: true, capture: true }));
     }
     function disarm() {
       if (!armed) return;
       armed = false;
-      ["pointerdown", "touchstart", "scroll", "keydown"].forEach((e) =>
+      ["pointerdown", "touchstart", "keydown"].forEach((e) =>
         removeEventListener(e, onGesture, { capture: true }));
     }
-    function onGesture() { disarm(); if (desired) start(); }
+    function onGesture(e) {
+      disarm();
+      // a gesture ON the player itself is the button's own click to own (the toggle). Starting here
+      // too would race start() against the same tap's click → setDesired() toggle-off — the "second
+      // press does nothing / turns off" shape. Let the click be the single owner of an on-player tap.
+      if (e && e.target && box.contains(e.target)) return;
+      if (desired) start();
+    }
 
     function setDesired(on) {
       if (on === desired) return;
@@ -171,34 +181,64 @@
       // never as "nothing happened". It clears the moment sound begins, the file fails, or a still-
       // blocked press falls back to arming.
       box.classList.add("loading");
-      // ONE press is ONE user-activation, and BOTH the context resume and the element play need it.
-      // The old order awaited ctx.resume() FIRST, which spent the activation, so aud.play() was then
-      // refused and the code armed and waited — the first press only armed, a SECOND actually played
-      // (his find 2026-07-22). Kick both synchronously — create both promises before any await — so a
-      // single press starts the sound. The element resumes from its own playhead (EX-SOUND-PAUSE/INV-52).
-      const resuming = (ctx.state === "suspended") ? ctx.resume() : null;
+      // ONE press is ONE user-activation, and the element's play() needs it. play() is called
+      // synchronously inside the gesture and its success is NEVER discarded. The context resume is
+      // kicked alongside, but the code never blocks forever on it: on WebKit ctx.resume() can hang
+      // unsettled, and iOS parks a fresh context in a non-running state ("suspended"/"interrupted"),
+      // so the AUDIBLE ramp is DEFERRED to the moment the context actually reaches "running"
+      // (fadeInWhenRunning), with every later gesture nudging resume until it does. The element
+      // resumes from its own playhead (EX-SOUND-PAUSE/INV-52).
+      const resuming = (ctx.state !== "running") ? ctx.resume() : null;
       let played = false;
       try { await aud.play(); played = true; }
       catch (e) {
-        // WebKit still refused the FIRST play() because the context was suspended AT THE CALL —
-        // the resume kicked in the same gesture had not settled yet, so the two promises raced and
-        // the element lost (his 2026-07-22 same-browser "only the second tap" find survived the
-        // first fix). Wait for the resume to settle, then RETRY play() ONCE: the retry rides the
-        // same activation chain (a transient activation outlives the short resume await), so the
-        // FIRST press now sounds. A genuine block (no activation at all) still fails and arms below.
-        if (resuming) { try { await resuming; } catch (e2) {} }
+        // WebKit refused the FIRST play() because the context was not yet running at the call. Give
+        // the resume a BOUNDED moment — race it against a short timeout so a never-settling resume
+        // (a known WebKit state) cannot hang the press — then RETRY play() ONCE on the same activation
+        // chain. A genuine block (no activation at all) still fails and arms below.
+        if (resuming) { try { await Promise.race([resuming, new Promise((r) => setTimeout(r, 250))]); } catch (e2) {} }
         try { await aud.play(); played = true; } catch (e2) { played = false; }
       }
-      if (resuming) { try { await resuming; } catch (e) {} }
       if (!desired) { box.classList.remove("loading"); try { aud.pause(); } catch (e) {} return; }
-      if (!played || ctx.state === "suspended") { box.classList.remove("loading"); arm(); return; }   // still blocked → wait for the next gesture
+      if (!played) { box.classList.remove("loading"); arm(); return; }   // no activation at all → wait for the next gesture
+      // a successful play() is KEPT even while the context is still suspended: audible output rides
+      // the graph, so the fade waits for the context to run (fadeInWhenRunning). The first press is
+      // therefore never thrown away — no second tap is ever required to make sound.
       box.classList.remove("loading");
+      playing = true; armed = false;
+      box.classList.add("playing");
+      fadeInWhenRunning();
+    }
+
+    // The audible fade rides the gain node, which sounds only once the context is "running". On WebKit
+    // a fresh context stays suspended past the first gesture, so the ramp is scheduled the instant the
+    // context reaches "running" — the same gesture when resume lands in time, a moment later otherwise,
+    // a later gesture at worst — and every real gesture nudges resume until it does. This is why a
+    // successful first press never needs a second tap: the play is kept, the fade merely waits.
+    function rampIn() {
+      if (!ctx || !gain) return;
       const now = ctx.currentTime;
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
       gain.gain.linearRampToValueAtTime(target, now + FADE_IN * TEMPO);
-      playing = true; armed = false;
-      box.classList.add("playing");
+    }
+    let fadeArmed = false;
+    function fadeInWhenRunning() {
+      if (!ctx) return;
+      if (ctx.state === "running") { rampIn(); return; }
+      if (fadeArmed) return;
+      fadeArmed = true;
+      const nudge = () => { if (ctx.state !== "running") { try { ctx.resume(); } catch (e) {} } };
+      const onchange = () => {
+        if (ctx.state !== "running") return;
+        fadeArmed = false;
+        ctx.removeEventListener("statechange", onchange);
+        ["pointerdown", "keydown"].forEach((e) => removeEventListener(e, nudge, { capture: true }));
+        if (playing && desired) rampIn();
+      };
+      ctx.addEventListener("statechange", onchange);
+      // persistent (NOT once): every later real gesture re-tries resume until the context runs
+      ["pointerdown", "keydown"].forEach((e) => addEventListener(e, nudge, { passive: true, capture: true }));
     }
 
     function stop() {

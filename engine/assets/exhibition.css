@@ -183,7 +183,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    touch handler in exhibition.js blocks native scroll and drives exactly one framed transition
    per swipe; JS writes the position only AFTER the finger lifts, so there is no live iOS momentum
    to fight — the old jerk came from writing DURING momentum, which no longer exists on this path. */
-.exh-frame img.work{ max-height:82vh; max-width:88vw; width:auto; height:auto; border-radius:2px;
+.exh-frame img.work{ max-height:82vh; max-height:82dvh; max-width:88vw; width:auto; height:auto; border-radius:2px;
   z-index:1;                                     /* the photo rides ABOVE the tone plate (EX-LOAD-2) */
   /* a quiet lift, not a black rim — the heavy 90px/.55 shadow read as «ободки из абсолютно
      чёрного» on the tinted ground (his word 2026-07-06 22:08) */
@@ -239,7 +239,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    in-view frame ever ladders). It sits in the same centered grid cell as the photo, sized to the
    work's aspect within the SAME caps, so nothing jumps when the picture lands. Wordless (INV-1);
    the tone fades in on the soft token; under reduce it stands still (no fade, no crawl). */
-#ex-plate{ position:relative; z-index:0; max-height:82vh; max-width:88vw; width:auto; height:auto;
+#ex-plate{ position:relative; z-index:0; max-height:82vh; max-height:82dvh; max-width:88vw; width:auto; height:auto;
   border-radius:2px; overflow:hidden; pointer-events:none;
   box-shadow:0 10px 34px rgba(0,0,0,.22);
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
@@ -253,7 +253,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   background:var(--glow,var(--accent,#b3a284)); box-shadow:0 0 7px rgba(179,162,132,.55); }
 #ex-plate.bar .ex-bar, .exd-plate.bar .ex-bar{ opacity:1; animation:ex-bar-crawl calc(6s*var(--tempo)) var(--ease) forwards; }
 @keyframes ex-bar-crawl{ 0%{ transform:scaleX(.04); } 55%{ transform:scaleX(.66); } 100%{ transform:scaleX(.92); } }
-@media (max-width:640px){ #ex-plate{ max-height:70vh; max-width:92vw; } }
+@media (max-width:640px){ #ex-plate{ max-height:70vh; max-height:70dvh; max-width:92vw; } }
 @media (prefers-reduced-motion:reduce){
   #ex-plate, .exd-plate{ transition:none; }
   #ex-plate.bar .ex-bar, .exd-plate.bar .ex-bar{ animation:none; transform:scaleX(.5); }
@@ -301,7 +301,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   overflow-anchor:none; }  /* INV-88: refuse the browser's own scroll compensation — a late-decoding
                                picture never nudges the lane off its first-member rest */
 .exs-stage.lane::-webkit-scrollbar{ display:none; }
-.exs-stage.lane img{ max-height:56vh; max-width:64vw; flex:none; border-radius:2px;
+.exs-stage.lane img{ max-height:56vh; max-height:56dvh; max-width:64vw; flex:none; border-radius:2px;
   scroll-snap-align:center;
   box-shadow:0 10px 34px rgba(0,0,0,.22); }
 .exs-stage.polaroids{ background:radial-gradient(130% 110% at 50% 12%, #1c1913 0%, #12100c 62%, #0d0c09 100%); }
@@ -514,8 +514,8 @@ body:has(#ex-quiz-card.show) #ex-sound,
 /* phone — same law (one work per viewport); the caption lives in the bottom BAND, never on the
    image: the frame reserves the band by capping the work's height (prover H1) */
 @media (max-width:640px){
-  .exh-frame img.work{ max-height:70vh; max-width:92vw; }
-  .exh-frame{ padding-bottom:14vh; }
+  .exh-frame img.work{ max-height:70vh; max-height:70dvh; max-width:92vw; }
+  .exh-frame{ padding-bottom:14vh; padding-bottom:14dvh; }
   .exh-capzone{ inset-inline-start:16px; inset-inline-end:16px; bottom:14px; max-width:none; padding-inline-start:13px; }
   .exh-capzone .title{ font-size:22px; }
   .exh-capzone .told{ max-width:100%; }
