@@ -88,7 +88,7 @@
   // finger). A press that drifts into a swipe clears on the browser's pointercancel.
   const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.quiz-opt,.exl-cur,.exl-item," +
     ".exd-window,#ex-gift-card .gift-yes,#ex-gift-card .gift-no," +
-    ".ex-series,.exs-back,.ex-quiz-chip,.quiz-dl,.exh-fin .more,.exh-fin .back";
+    ".ex-series,.exs-back,.ex-quiz-chip,.exh-fin .more,.exh-fin .back";
   let _pressEl = null;
   function _pressClear() { if (_pressEl) { _pressEl.classList.remove("ex-press"); _pressEl = null; } }
   addEventListener("pointerdown", (e) => {

@@ -370,7 +370,7 @@ else:
             # belongs here and owes a .ex-press rule; a new hover-button added without one fails here.
             controls = [".ex-share", ".exz-btn", ".exsnd-btn", ".quiz-opt",
                         ".exl-cur", ".exl-item", ".exd-window", ".gift-yes",
-                        ".ex-series", ".exs-back", ".ex-quiz-chip", ".quiz-dl"]
+                        ".ex-series", ".exs-back", ".ex-quiz-chip"]
             missing = [s for s in controls
                        if not br.evaluate("(%s)('%s')" % (PRESS_UNDER_HOVERNONE, s))]
             check(BROWSER_ROWS[18], not missing, f"controls with no hover:none .ex-press rule: {missing}")

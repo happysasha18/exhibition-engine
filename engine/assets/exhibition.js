@@ -88,7 +88,7 @@
   // finger). A press that drifts into a swipe clears on the browser's pointercancel.
   const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.quiz-opt,.exl-cur,.exl-item," +
     ".exd-window,#ex-gift-card .gift-yes,#ex-gift-card .gift-no," +
-    ".ex-series,.exs-back,.ex-quiz-chip,.quiz-dl,.exh-fin .more,.exh-fin .back";
+    ".ex-series,.exs-back,.ex-quiz-chip,.exh-fin .more,.exh-fin .back";
   let _pressEl = null;
   function _pressClear() { if (_pressEl) { _pressEl.classList.remove("ex-press"); _pressEl = null; } }
   addEventListener("pointerdown", (e) => {
@@ -1209,10 +1209,20 @@
   const plate = document.createElement("div");
   plate.id = "ex-plate"; plate.hidden = true;
   plate.innerHTML = '<i class="ex-bar" aria-hidden="true"></i>';
+  // the walk's loading frame: while the walk's ONE reused plate stands, the chrome (share, ambient
+  // player, plaque) retracts and the counter alone stands with a quiet "loading" mark — the CSS
+  // ex-loading-frame sibling of the door's ex-crossing/ex-cross-cap (his 2026-07-22 note). The door's
+  // own per-window plates carry their crossing separately, so this rides ONLY the walk plate (`plate`).
+  function loadFrame(on) {
+    document.body.classList.toggle("ex-loading-frame", on);
+    var c = document.getElementById("exh-counter");
+    if (c) c.classList.toggle("loading", on);
+  }
   // hide ANY plate (the walk's single reused one, or a door window's own) — shared by both call sites
   function plateHideEl(el) {
     el.hidden = true; el.classList.remove("show", "bar");
     if (el.parentNode) el.parentNode.removeChild(el);
+    if (el === plate) loadFrame(false);                 // the walk plate is gone → chrome returns
   }
   function plateHide() { plateHideEl(plate); }
   let armTimers = [];
@@ -1251,7 +1261,7 @@
       if (!alive() || img.complete) return;
       plateShown = true;
       plateEl.classList.add("show");
-      if (mark) tlog("plate");
+      if (mark) { loadFrame(true); tlog("plate"); }     // the walk plate stands → chrome retracts (EX-LOAD-FRAME)
     }, Math.round(PLATE_GRACE * 1000 * TEMPO)));
     timers.push(setTimeout(() => {                      // the long wait → the wordless bar joins the plate
       if (!alive() || img.complete) return;             // (past here a silent stall crawls indefinitely —

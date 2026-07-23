@@ -541,18 +541,51 @@ def apply_namespace(text, ns):
                 .replace("@@NS@@", ns))
 
 
+def strip_css_comments(css):
+    """Drop /* ... */ comments from the SERVED stylesheet — they are inert to the browser, so the
+    visitor downloads only the rules. The source keeps every comment; only this build copy is
+    stripped (the byte-budget fence measures this same stripped output, so it guards real rules, not
+    prose). A string literal ('...' / "...") is honoured, so a `content` value that bears /* is
+    never mistaken for a comment. Blank lines the strip leaves behind are collapsed."""
+    out = []
+    i, n, quote = 0, len(css), None
+    while i < n:
+        c = css[i]
+        if quote:
+            out.append(c)
+            if c == "\\" and i + 1 < n:                 # an escaped char rides whole
+                out.append(css[i + 1]); i += 2; continue
+            if c == quote:
+                quote = None
+            i += 1; continue
+        if c in "\"'":
+            quote = c; out.append(c); i += 1; continue
+        if c == "/" and i + 1 < n and css[i + 1] == "*":
+            j = css.find("*/", i + 2)
+            i = (j + 2) if j != -1 else n               # an unterminated comment drops the tail
+            continue
+        out.append(c); i += 1
+    stripped = "".join(out)
+    stripped = re.sub(r"[ \t]+(\n)", r"\1", stripped)   # trailing whitespace off each line
+    stripped = re.sub(r"\n{3,}", "\n\n", stripped)      # a run of blank lines → one
+    return stripped
+
+
 def copy_exhibition_assets():
     """The exhibition client (JS+CSS) — instance override first, engine's own otherwise (see
     client_asset); favicons from the instance's assets dir (absent → the bundle simply has none).
     The served JS is passed through the namespace substitution (EX-NS): the engine client's tokens
-    resolve to the instance's namespace; a token-free instance client is byte-copied unchanged."""
+    resolve to the instance's namespace; a token-free instance client is byte-copied unchanged.
+    The CSS is comment-stripped on the way out (strip_css_comments): the visitor gets rules only,
+    the source stays fully commented."""
     js_path = client_asset("exhibition.js")
     js_src = js_path.read_text(encoding="utf-8")
     if "@@NS@@" in js_src or "@@NS_UPPER@@" in js_src:
         write(OUT / "exhibition.js", apply_namespace(js_src, _NAMESPACE))
     else:
         shutil.copy2(js_path, OUT / "exhibition.js")   # token-free instance client — byte-exact
-    shutil.copy2(client_asset("exhibition.css"), OUT / "exhibition.css")
+    css_src = client_asset("exhibition.css").read_text(encoding="utf-8")
+    write(OUT / "exhibition.css", strip_css_comments(css_src))
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
         if cand and cand.exists():

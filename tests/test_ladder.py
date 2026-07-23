@@ -96,6 +96,7 @@ BROWSER_ROWS = [
     "EX-LADDER a door window rides the ladder — it hands its own small box, so the tier is small, never the display file (INV-63)",
     "EX-LADDER a series lane picture rides the ladder (INV-63)",
     "EX-LADDER a polaroid on the table rides the ladder — the smallest tier for a thumb-sized box (INV-63)",
+    "EX-LOAD-FRAME the walk plate raises the loading frame (body.ex-loading-frame) + the counter's loading mark renders while it stands; both clear when the picture lands (his 2026-07-22 note)",
 ]
 
 # ---- DL1/DL2 helpers: the door's per-window plate (class .exd-plate, five may fly at once) --------
@@ -536,6 +537,38 @@ else:
                       f"n={len(prints)} rigged={all_rigged} cold_small={cold_small} tiers={tiers}")
         else:
             skip(BROWSER_ROWS[18], "the fixture bakes no polaroid series")
+
+        # 19 · EX-LOAD-FRAME: the walk's plate IS the loading frame (the ex-crossing/ex-cross-cap
+        # sibling for the in-walk wait, his 2026-07-22 note). While the walk plate stands, body carries
+        # ex-loading-frame — the class that retracts the chrome (share/player/plaque, static CSS) and
+        # stands the counter alone with a "loading" mark; the instant the picture lands, the plate
+        # retires and the frame clears. Read browser-COMPUTED: the counter's ::after actually RENDERS
+        # the "loading" word while the frame stands (the class is live and drives CSS), and clears on
+        # land. Held 3.0s so the plate stands well past the .35s grace, then let it land.
+        FRAME_PROBE = (
+            "(()=>{const b=document.body.classList.contains('ex-loading-frame');"
+            "const c=document.getElementById('exh-counter');"
+            "const after=c?getComputedStyle(c,'::after').content:'';"
+            "return JSON.stringify({frame:b,mark:!!(c&&c.classList.contains('loading')),"
+            "markShown:/loading/.test(after||'')});})()")
+        HOLD.update(match=str(PICK), delay=3.0)
+        with Browser(width=1280, height=900) as br:
+            held_walk(br, base, 3.0)
+            stood = {}
+            for _ in range(30):                          # poll the plate up (held 3.0s, ample room)
+                br.sleep(0.1)
+                if br.evaluate(PLATE_SHOW):
+                    stood = json.loads(br.evaluate(FRAME_PROBE)); break
+            landed = {}
+            for _ in range(50):                          # then the picture lands → plate + frame retire
+                br.sleep(0.1)
+                if not br.evaluate(PLATE_SHOW):
+                    landed = json.loads(br.evaluate(FRAME_PROBE)); break
+        check(BROWSER_ROWS[19],
+              bool(stood.get("frame") and stood.get("mark") and stood.get("markShown"))
+              and landed.get("frame") is False and landed.get("mark") is False
+              and landed.get("markShown") is False,
+              f"while the plate stood={stood}  after it landed={landed}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

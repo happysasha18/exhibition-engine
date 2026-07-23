@@ -231,7 +231,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 
 /* EX-CHROME touch-press (his 2026-07-23): a finger press wears the fill hover gives a mouse (prelude adds .ex-press, hover:none-gated) */
 @media (hover:none){
-  .ex-share.ex-press,#ex-zoom .exz-btn.ex-press,.ex-quiz-chip.ex-press,.quiz-dl.ex-press,.exh-fin .more.ex-press{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
+  .ex-share.ex-press,#ex-zoom .exz-btn.ex-press,.ex-quiz-chip.ex-press,.exh-fin .more.ex-press{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
   .ex-share.ex-press{ opacity:1; }
   .exsnd-btn.ex-press,.exl-cur.ex-press,.ex-series.ex-press,.exs-back.ex-press,.exh-fin .back.ex-press{ color:var(--ink); border-color:var(--muted-2); }
   .exl-item.ex-press{ color:var(--ink); background:rgba(255,255,255,.05); }
@@ -311,7 +311,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 #ex-side[hidden]{ display:none; }
 .exs-back{ position:fixed; inset-inline-start:22px; top:50%; transform:translateY(-50%); z-index:95;
   font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase;
-  color:var(--muted-2); background:rgba(8,8,7,.6); border:1px solid var(--hair);
+  color:var(--muted); background:rgba(8,8,7,.72); border:1px solid var(--hair-strong);
   border-radius:999px; padding:9px 15px; cursor:pointer; min-height:44px; }
 .exs-back:hover, .exs-back:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
 .exs-stage{ position:absolute; inset:0; }
@@ -676,17 +676,6 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
 .quiz-out.quiz-miss{ color:var(--body); font-family:var(--serif); font-style:italic; }
 .quiz-out.quiz-wait{ color:var(--muted); font-family:var(--serif); font-style:italic; }   /* the slow-submit reassurance (EX-QUIZ-REPLY) */
 @media (prefers-reduced-motion:reduce){ .quiz-out{ transition:none; } }
-
-/* legacy prize display (kept for the gift ceremony; the quiz card itself no longer uses them) */
-.quiz-prize-img{ width:100%; max-width:400px; border-radius:8px;
-  box-shadow:0 10px 34px rgba(0,0,0,.22); display:block; margin:0 auto 14px; }
-.quiz-prize-line{ margin-bottom:10px; color:var(--ink); font-size:14px; }
-.quiz-dl{ display:inline-block; margin-top:8px; color:var(--accent);
-  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);
-  border-radius:999px; padding:9px 18px; text-decoration:none; font-family:var(--mono);
-  font-size:11px; letter-spacing:.12em;
-  transition:background calc(.3s*var(--tempo)), color calc(.3s*var(--tempo)); }
-.quiz-dl:hover,.quiz-dl:focus-visible{ background:var(--accent); color:#0c0b0a; }
 
 /* The gift ceremony — «like it? · a gift :)» EMERGES SOLEMNLY: a slow dim, the image rising and
    settling on the reveal clock, the print never leaving. Two episodes share it — the plain gift
