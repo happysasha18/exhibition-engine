@@ -220,8 +220,12 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   opacity:0; pointer-events:none;
   transition:opacity calc(.3s*var(--tempo)) var(--ease), background calc(.3s*var(--tempo)); backdrop-filter:blur(6px); }
 .ex-share.show{ opacity:.55; pointer-events:auto; }   /* quiet at rest, like the caption band */
-.ex-share.show:hover, .ex-share.show:focus-visible{ opacity:1; }
-.ex-share:hover{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
+.ex-share.show:focus-visible{ opacity:1; }
+/* accent fill = pointer-hover affordance, hover-gated so a finger tap leaves no sticky tan (EX-CHROME) */
+@media (hover:hover){
+  .ex-share.show:hover{ opacity:1; }
+  .ex-share:hover{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
+}
 /* touch: no hover exists — full presence at rest, target at the a11y floor (≥44px) */
 @media (hover:none){ .ex-share{ width:44px; height:44px; inset-inline-end:calc(var(--ex-rail) - 22px); } .ex-share.show{ opacity:.9; } }
 
@@ -464,6 +468,10 @@ body:has(#ex-quiz-card.show) #ex-sound,
 body.ex-crossing .ex-share, body.ex-cross-cap .ex-share, body.ex-loading-frame .ex-share,
 body.ex-crossing #ex-sound, body.ex-cross-cap #ex-sound, body.ex-loading-frame #ex-sound,
 body.ex-loading-frame #exh-cap{ opacity:0; pointer-events:none; }
+/* a PLAYING loop rides a walk crossing — a swipe never blinks it out; the full covers above still
+   retract it (.playing beats the crossing retract by specificity; his 2026-07-23) */
+body.ex-crossing #ex-sound.playing, body.ex-cross-cap #ex-sound.playing,
+body.ex-loading-frame #ex-sound.playing{ opacity:1; pointer-events:auto; }
 /* the counter's loading mark — a quiet accent word after the count; the counter STANDS through the
    crossing's black (where it is otherwise held back) so the mark is seen at the moment it means. */
 .exh-counter.loading::after{ content:" · loading"; color:var(--accent); opacity:.7; }
@@ -471,7 +479,8 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
 .exsnd-btn{ position:relative; width:40px; height:40px; flex:none; display:grid; place-items:center; border-radius:999px;
   background:rgba(8,8,7,.55); border:1px solid var(--hair); color:var(--muted-2); cursor:pointer;
   transition:color calc(.3s*var(--tempo)) var(--ease), border-color calc(.3s*var(--tempo)) var(--ease); }
-.exsnd-btn:hover, .exsnd-btn:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
+.exsnd-btn:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
+@media (hover:hover){ .exsnd-btn:hover{ color:var(--ink); border-color:var(--muted-2); } }
 #ex-sound.playing .exsnd-btn{ color:var(--accent);
   border-color:color-mix(in srgb, var(--accent) 40%, transparent); }
 /* the resting affordance is a play triangle; the eq bars take over while playing */
@@ -541,8 +550,11 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
 .exsnd-tray{ order:-1; margin-inline-end:12px; display:flex; align-items:center; gap:12px;
   max-width:0; overflow:hidden; opacity:0;
   transition:max-width calc(.5s*var(--tempo)) var(--ease), opacity var(--d-soft) var(--ease); }
-#ex-sound.playing .exsnd-tray, #ex-sound:hover .exsnd-tray,
+/* tray reveals on .playing + focus-within always; the HOVER reveal is hover-gated so a finger's
+   first tap is not swallowed into an iOS hover — it starts the loop → .playing opens the tray (EX-SOUND) */
+#ex-sound.playing .exsnd-tray,
 #ex-sound:focus-within .exsnd-tray{ max-width:min(360px, 78vw); opacity:1; }
+@media (hover:hover){ #ex-sound:hover .exsnd-tray{ max-width:min(360px, 78vw); opacity:1; } }
 .exsnd-cred{ white-space:nowrap; text-align:end; font-family:var(--mono); }
 .exsnd-cred .t{ font-size:11px; letter-spacing:.08em; color:var(--muted); display:block; line-height:1.5; }
 .exsnd-cred .t b{ color:var(--told); font-weight:600; }
@@ -750,7 +762,9 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
   border-radius:50%; display:grid; place-items:center; cursor:pointer; color:var(--ink);
   background:rgba(8,8,7,.55); border:1px solid var(--hair); backdrop-filter:blur(6px);
   transition:background calc(.2s*var(--tempo)) var(--ease), color calc(.2s*var(--tempo)) var(--ease), border-color calc(.2s*var(--tempo)) var(--ease); }
-#ex-zoom .exz-btn:hover, #ex-zoom .exz-btn:focus-visible{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
+/* accent fill = hover + keyboard-focus mark, hover-gated so a finger open leaves no tan × (EX-CHROME) */
+#ex-zoom .exz-btn:focus-visible{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
+@media (hover:hover){ #ex-zoom .exz-btn:hover{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); } }
 #ex-zoom .exz-close{ top:calc(env(safe-area-inset-top,0px) + 14px); inset-inline-start:16px; font-size:24px; line-height:1; padding-bottom:2px; }
 /* reduced motion: no transform flight and no clip morph — the layer arrives/leaves by a short opacity
    crossfade in place (~120ms at the collapsed tempo 0.05), the gesture semantics unchanged (rule 10). */

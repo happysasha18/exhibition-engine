@@ -572,12 +572,18 @@ else:
             br.touch(True, 2); enter(br, base, tempo="0.05")
             br.evaluate(PINCH_WORK_ZOOM); br.sleep(0.5)
             popen = br.evaluate("(%s)('ex-zoom')" % OPEN_STATE)
+            # at OPEN time a touch/pointer open must NOT force focus onto the close control — that is
+            # what lit the × on a tan fill + the browser's blue ring on a finger open (his 2026-07-23).
+            # The trap anchors the LAYER instead, so the control stays unlit until a real Tab lands it.
+            open_no_ctrl = not br.evaluate(
+                "(()=>document.activeElement===document.querySelector('#ex-zoom .exz-close'))()")
             br.key("Escape"); br.sleep(0.7)
             # a pointer/touch open forces no focus: the active element is NOT a walk work
             no_forced = not br.evaluate("(%s)()" % IN_WALK)
-            ptr_ok = popen and no_forced
+            ptr_ok = popen and no_forced and open_no_ctrl
         check(B_ROWS[4], bool(key_ok) and bool(ptr_ok),
-              f"keyboard_open={kopen} keyboard_restored={restored} pointer_open={popen} pointer_no_forced={no_forced}")
+              f"keyboard_open={kopen} keyboard_restored={restored} pointer_open={popen} "
+              f"pointer_no_forced={no_forced} pointer_open_no_control_focus={open_no_ctrl}")
 
         # B-walk — a real ArrowDown steps the walk one frame and lands it centered (2 steps)
         with Browser(width=1280, height=900) as br:

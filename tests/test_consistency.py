@@ -86,6 +86,15 @@ BROWSER_ROWS = [
     "EX-FOCUS the language chip's iOS tap-highlight is transparent",
     "EX-SKEL the picture skeleton animates by default",
     "EX-SKEL the picture skeleton stands still under reduced motion",
+    # E. touch-behaviour parity (his 2026-07-23): a finger never hover-reveals, never sticks a tan
+    #    fill, and a playing loop rides a walk swipe.
+    "EX-SOUND the tray HOVER reveal is gated to @media(hover:hover) — a finger cannot hover-open it",
+    "EX-SOUND the tray reveal on .playing / :focus-within is unconditional (touch opens it by playing)",
+    "EX-SOUND adding .playing reveals the credit tray (first tap starts → tray opens)",
+    "EX-SOUND a PLAYING player rides a walk crossing (opacity 1 under body.ex-crossing)",
+    "EX-SOUND a SILENT player still retracts on a walk crossing (opacity 0, loading frame stands alone)",
+    "EX-FOCUS the exit accent fill is HOVER-gated, its focus-visible fill unconditional (keyboard keeps the mark)",
+    "EX-FOCUS the share accent fill is HOVER-gated (a finger tap leaves no sticky tan circle)",
 ]
 
 SND_OP = ("(()=>{const e=document.getElementById('ex-sound');"
@@ -245,6 +254,81 @@ else:
             br.navigate(base3 + "/")
             anim = br.evaluate(SKEL_PROBE_JS)
             check(BROWSER_ROWS[9], anim == "none", f"animationName={anim!r}")
+
+    # ---------------------------------------------------------- Group E: TOUCH-behaviour parity
+    # (his 2026-07-23) — a finger never hover-reveals a tray, never sticks a tan fill on a control,
+    # and a playing loop rides a walk swipe. The hover-gating is proven STRUCTURALLY over the CSSOM
+    # (this build cannot emulate hover:none — see Group A's note), the playing/crossing behaviour by
+    # class toggle on the real booted walk.
+    RULE_MEDIA = r"""(sel, prop) => {
+      // 'hover' if the matching style rule sits under @media(...hover:hover...), 'bare' if
+      // unconditional, null if not found. Walks top-level rules and one level of media nesting.
+      for (const sheet of document.styleSheets) {
+        let top; try { top = sheet.cssRules; } catch (e) { continue; }
+        const scan = (list, underHover) => {
+          for (const r of list) {
+            if (r.type === 1 && r.selectorText && r.selectorText.indexOf(sel) !== -1
+                && (!prop || r.cssText.indexOf(prop) !== -1)) return underHover ? 'hover' : 'bare';
+            if (r.type === 4) {
+              const isHover = /hover\s*:\s*hover/.test(r.media.mediaText);
+              const got = scan(r.cssRules, isHover); if (got) return got;
+            }
+          }
+          return null;
+        };
+        const got = scan(top, false); if (got) return got;
+      }
+      return null;
+    }"""
+    with serve(TMP_SND) as base5:
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base5 + "/")
+            br.clear_storage()
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
+            br.reload()
+            br.sleep(1.0)
+            enter_walk(br)
+
+            # 11 · the tray HOVER reveal is gated to @media(hover:hover) — the swallow fix
+            m = br.evaluate("(%s)('#ex-sound:hover .exsnd-tray', null)" % RULE_MEDIA)
+            check(BROWSER_ROWS[10], m == "hover", f"media={m!r}")
+
+            # 12 · the .playing / :focus-within reveal stays unconditional (touch opens by playing)
+            m = br.evaluate("(%s)('#ex-sound.playing .exsnd-tray', 'max-width')" % RULE_MEDIA)
+            check(BROWSER_ROWS[11], m == "bare", f"media={m!r}")
+
+            # 13 · adding .playing reveals the credit tray (first tap starts → .playing → tray open).
+            # The tray max-width transitions (calc(.5s*tempo)) — settle it before the read.
+            br.evaluate("document.getElementById('ex-sound').classList.add('playing')")
+            br.sleep(0.8)
+            tw = br.evaluate(
+                "(()=>{const t=document.querySelector('#ex-sound .exsnd-tray');"
+                "return getComputedStyle(t).maxWidth;})()")
+            ok13 = tw not in (None, "0px", "0", "none")
+            check(BROWSER_ROWS[12], ok13, f"tray max-width with .playing = {tw!r}")
+
+            # 14 · a PLAYING player rides a walk crossing (opacity stays 1 under body.ex-crossing)
+            br.evaluate("document.body.classList.add('ex-crossing')")
+            br.sleep(0.6)
+            op_play = br.evaluate("(()=>getComputedStyle(document.getElementById('ex-sound')).opacity)()")
+            check(BROWSER_ROWS[13], op_play == "1", f"opacity(.playing+crossing)={op_play!r}")
+
+            # 15 · a SILENT player still retracts on a crossing (loading frame stands alone). Drop
+            # .playing and let the opacity transition (var(--d-soft)) settle before the read.
+            br.evaluate("document.getElementById('ex-sound').classList.remove('playing')")
+            br.sleep(0.8)
+            op_silent = br.evaluate("(()=>getComputedStyle(document.getElementById('ex-sound')).opacity)()")
+            check(BROWSER_ROWS[14], op_silent == "0", f"opacity(silent+crossing)={op_silent!r}")
+            br.evaluate("document.body.classList.remove('ex-crossing')")
+
+            # 16 · the exit accent fill is HOVER-gated; its focus-visible fill is unconditional
+            mh = br.evaluate("(%s)('#ex-zoom .exz-btn:hover', 'accent')" % RULE_MEDIA)
+            mf = br.evaluate("(%s)('#ex-zoom .exz-btn:focus-visible', 'accent')" % RULE_MEDIA)
+            check(BROWSER_ROWS[15], mh == "hover" and mf == "bare", f"hover={mh!r} focus-visible={mf!r}")
+
+            # 17 · the share accent fill is HOVER-gated (a finger tap leaves no sticky tan circle)
+            ms = br.evaluate("(%s)('.ex-share:hover', 'accent')" % RULE_MEDIA)
+            check(BROWSER_ROWS[16], ms == "hover", f"media={ms!r}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 shutil.rmtree(TMP_SND, ignore_errors=True)

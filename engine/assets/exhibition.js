@@ -65,6 +65,17 @@
     'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
     'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   const _trapStack = [];
+  // Last-input modality (EX-CHROME focus policy). A KEYBOARD open of a modal lights its first
+  // control (a visible focus mark the keyboard visitor needs); a POINTER / TOUCH open anchors the
+  // trap on the layer itself and lights nothing — so a finger never leaves a modal's close / first
+  // button wearing a focus ring (his 2026-07-23: the zoom × and the gift «yes» rose on a tan focus
+  // fill + the browser's blue ring after a tap). This ENFORCES for every caller the intent the trap
+  // comment already stated (a pointer open forces no focus): the opener alone did not carry it,
+  // since the quiz and the series room capture activeElement as opener under any modality.
+  let _kbModality = false;
+  addEventListener("keydown", () => { _kbModality = true; }, { capture: true, passive: true });
+  ["pointerdown", "mousedown", "touchstart"].forEach((e) =>
+    addEventListener(e, () => { _kbModality = false; }, { capture: true, passive: true }));
   function _focusablesIn(layer) {
     return Array.prototype.filter.call(
       layer.querySelectorAll(FOCUSABLE_SEL),
@@ -78,8 +89,16 @@
       keydown: null,
     };
     const first = _focusablesIn(layer)[0] || layer;
-    if (first === layer && layer.tabIndex < 0) layer.setAttribute("tabindex", "-1");
-    requestAnimationFrame(() => { try { first.focus({ preventScroll: true }); } catch (e) {} });
+    // keyboard origin → focus the first control (its focus-visible mark is wanted). Pointer / touch
+    // origin → anchor the trap on the LAYER (a programmatic, non-focus-visible target): Tab still
+    // enters the layer and lands the first control keyboard-lit, but the open itself lights nothing.
+    if (_kbModality) {
+      if (first === layer && layer.tabIndex < 0) layer.setAttribute("tabindex", "-1");
+      requestAnimationFrame(() => { try { first.focus({ preventScroll: true }); } catch (e) {} });
+    } else {
+      if (layer.tabIndex < 0) layer.setAttribute("tabindex", "-1");
+      requestAnimationFrame(() => { try { layer.focus({ preventScroll: true }); } catch (e) {} });
+    }
     rec.keydown = (e) => {                             // hold Tab inside — a loop at both ends
       if (e.key !== "Tab") return;
       const items = _focusablesIn(layer);

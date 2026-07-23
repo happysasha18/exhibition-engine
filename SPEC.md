@@ -664,10 +664,14 @@ fades to zero best-effort (`pagehide`). Volume defaults to 0.3 with a touch-frie
 The choice persists in `ex.sound`. A return visit with preference ON **arms** on the first gesture
 (the browser blocks autoplay without one) rather than loading on cold arrival. On hover / while
 playing a thin credit tray shows the instance's configured `sound_credit.artist`,
-`sound_credit.title`, and `sound_credit.url` — no hardcoded artist name or link. A missing or failed
-file **fails SILENT** (`INV-1`). Two beats ride the existing GA wire: `sound_on`, `sound_off`. The
-player plays continuously across the whole single-page walk — door, crossing, side room, scroll —
-never torn down on a face change. `EX-SOUND` `INV-48`
+`sound_credit.title`, and `sound_credit.url` — no hardcoded artist name or link. The tray's HOVER
+reveal is a pointer affordance only (gated to `hover:hover`): on a finger the ONE tap that starts the
+loop is never swallowed into a hover, and the tray opens because the loop is now playing. A missing or
+failed file **fails SILENT** (`INV-1`). Two beats ride the existing GA wire: `sound_on`, `sound_off`.
+The player plays continuously across the whole single-page walk — door, crossing, side room, scroll —
+never torn down on a face change; and while it is PLAYING it stays visible THROUGH a walk crossing (a
+swipe between works never blinks it out), retracting only under a full cover — the door, the zoom, the
+gift, the side room. `EX-SOUND` `INV-48`
 
 **Waiting shows on a shared mark** (`EX-BUSY` / `EX-SKEL`): every surface that waits says so, each in
 the mark its own kind wears. A small control that is working wears a ring that fills slowly along its
