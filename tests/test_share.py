@@ -136,7 +136,9 @@ else:
             chrome = json.loads(chrome)
             path0 = br.evaluate("location.pathname")
             first_in_view = br.evaluate(IN_VIEW)
-            br.click(".ex-share", settle=0.4)
+            # read the toast PROMPTLY — the success toast auto-dismisses at 1600ms×tempo (his 2026-07-23:
+            # gone right after reading), which at this tempo (0.2) is ~320ms, so a slow read misses it
+            br.click(".ex-share", settle=0.1)
             copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
             toast = br.evaluate(TOAST)
             same_place = (br.evaluate("location.pathname") == path0

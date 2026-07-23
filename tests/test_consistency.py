@@ -95,6 +95,10 @@ BROWSER_ROWS = [
     "EX-SOUND a SILENT player still retracts on a walk crossing (opacity 0, loading frame stands alone)",
     "EX-FOCUS the exit accent fill is HOVER-gated, its focus-visible fill unconditional (keyboard keeps the mark)",
     "EX-FOCUS the share accent fill is HOVER-gated (a finger tap leaves no sticky tan circle)",
+    # touch-press feedback (his 2026-07-23): a finger gets the response a mouse gets from hover — a
+    #    press lights the control's engaged affordance for the touch's duration, cleared on lift.
+    "EX-CHROME a coarse-pointer press adds .ex-press to a chrome control and a lift clears it (the touch response the hover-gating withholds from a finger)",
+    "EX-CHROME every chrome control carries a .ex-press engaged-fill rule under @media(hover:none) (a mouse keeps its own hover fill)",
 ]
 
 SND_OP = ("(()=>{const e=document.getElementById('ex-sound');"
@@ -329,6 +333,42 @@ else:
             # 17 · the share accent fill is HOVER-gated (a finger tap leaves no sticky tan circle)
             ms = br.evaluate("(%s)('.ex-share:hover', 'accent')" % RULE_MEDIA)
             check(BROWSER_ROWS[16], ms == "hover", f"media={ms!r}")
+
+            # 18 · a coarse-pointer press adds .ex-press to a control (the prelude's delegated driver),
+            #      and a lift clears it — the touch response that hover-gating withholds from a finger
+            press = br.evaluate(
+                "(()=>{const b=document.querySelector('.ex-share');"
+                "if(!b)return JSON.stringify({err:'no-share'});"
+                "b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));"
+                "const on=b.classList.contains('ex-press');"
+                "b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}));"
+                "const off=b.classList.contains('ex-press');"
+                "return JSON.stringify({on:on,off:off});})()")
+            pj = json.loads(press)
+            check(BROWSER_ROWS[17], pj.get("on") is True and pj.get("off") is False, f"press={press!r}")
+
+            # 19 · each chrome control has a .ex-press engaged rule under @media(hover:none), so a mouse
+            #      (hover:hover) keeps its own hover fill and only a finger sees the press flash
+            PRESS_UNDER_HOVERNONE = r"""(sel) => {
+              for (const sheet of document.styleSheets) {
+                let top; try { top = sheet.cssRules; } catch (e) { continue; }
+                for (const r of top) {
+                  if (r.type === 4 && /hover\s*:\s*none/.test(r.media.mediaText)) {
+                    for (const inner of r.cssRules) {
+                      if (inner.type === 1 && inner.selectorText
+                          && inner.selectorText.indexOf(sel) !== -1
+                          && inner.selectorText.indexOf('ex-press') !== -1) return true;
+                    }
+                  }
+                }
+              }
+              return false;
+            }"""
+            controls = [".ex-share", ".exz-btn", ".exsnd-btn", ".quiz-opt",
+                        ".exl-cur", ".exl-item", ".exd-window", ".gift-yes"]
+            missing = [s for s in controls
+                       if not br.evaluate("(%s)('%s')" % (PRESS_UNDER_HOVERNONE, s))]
+            check(BROWSER_ROWS[18], not missing, f"controls with no hover:none .ex-press rule: {missing}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 shutil.rmtree(TMP_SND, ignore_errors=True)

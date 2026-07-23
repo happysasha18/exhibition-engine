@@ -36,7 +36,7 @@
     toastEl.classList.toggle("hold", !!hold);
     toastEl.hidden = false;
     requestAnimationFrame(() => { toastEl.classList.add("show"); }); // EX-ARRIVE: breath in
-    if (!hold) toastTimer = setTimeout(toastOff, Math.round(3000 * TEMPO));
+    if (!hold) toastTimer = setTimeout(toastOff, Math.round(1600 * TEMPO)); // long enough to READ the two-word line, then gone — never a lingering banner (his 2026-07-23)
   }
   toastEl.addEventListener("click", toastOff);
   addEventListener("keydown", (ev) => { if (ev.key === "Escape") toastOff(); });

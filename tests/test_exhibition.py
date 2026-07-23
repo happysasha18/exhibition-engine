@@ -200,6 +200,7 @@ PORTION_ROWS = [
     "EX-STORY-EDGE a refused follow-on stays owed — key not burned, the next return re-asks and serves",
     "EX-STORY no «part N» / «часть N» naming rides any surface (plaque, finale, controls)",
     "EX-STORY a return to the walk re-shows byte-identical told lines (a cache hit under the reproduced key)",
+    "EX-STORY-WAIT a portion that fails every attempt clears its wait mark to SILENCE once the retries are spent (never a frozen dot)",
 ]
 
 # PORTION_ROWS[3] (no-«part N»): a standing string lint over the built client — no portion is ever
@@ -327,6 +328,19 @@ else:
         return Promise.resolve(new Response(JSON.stringify({
           story_variant:'B', lines: ids.map(id=>({id:String(id),line:'told '+id,source:'facts'}))
         }),{status:200,headers:{'Content-Type':'application/json'}}));
+      }
+      return _f.apply(this,arguments);};})();
+    """
+    # the edge fails EVERY /api/story ask (404) — a portion that never lands. The cold portion's
+    # focused work shows the wait dots while retries are queued, then must clear to :empty silence
+    # once the retry ladder (STORY_RETRY_MS) is spent — never a frozen dot (his 2026-07-23 find).
+    STUB_STORY_FAIL_ALL = """
+    window.__storyCalls=0;
+    (function(){const _f=window.fetch;
+    window.fetch=function(u,o){
+      if(String(u).indexOf('/api/story')>=0){
+        window.__storyCalls++;
+        return Promise.resolve(new Response('no story',{status:404}));
       }
       return _f.apply(this,arguments);};})();
     """
@@ -463,6 +477,26 @@ else:
             check(PORTION_ROWS[4],
                   before == ("told " + first_frame_id) and after == before,
                   f"before={before!r} after={after!r} id={first_frame_id}")
+
+        # 6 — a portion that fails EVERY attempt clears its wait mark to silence once the retry ladder
+        #     is spent. Focus a cold-portion work: while retries are queued the wait dots hold; after
+        #     the ladder (2.5s + 6s + slack) the slot goes :empty. Red-first: on HEAD the dropped
+        #     in-flight key made portionPending false but nothing repainted, so the dots froze forever.
+        with Browser(width=1280, height=900) as br:
+            br.inject(STUB_STORY_FAIL_ALL)
+            story_walk(br, base)
+            br.evaluate("document.querySelectorAll('.exh-frame')[0].scrollIntoView({behavior:'instant'})")
+            br.sleep(0.8)
+            dots_while_trying = br.evaluate(
+                "(()=>{const t=document.querySelector('#exh-cap .told');"
+                "return !!(t&&t.querySelector('.told-wait'));})()")
+            br.sleep(10.5)                                # past the whole retry ladder — the portion gives up
+            after_fail = br.evaluate(
+                "(()=>{const t=document.querySelector('#exh-cap .told');"
+                "return {wait:!!(t&&t.querySelector('.told-wait')),txt:t?t.textContent.trim():null};})()")
+            check(PORTION_ROWS[5],
+                  dots_while_trying and (not after_fail["wait"]) and (after_fail["txt"] in ("", None)),
+                  f"while_trying_dots={dots_while_trying} after={after_fail}")
 
 
 # ---------------------------------------------------------------- report

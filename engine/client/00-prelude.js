@@ -76,6 +76,25 @@
   addEventListener("keydown", () => { _kbModality = true; }, { capture: true, passive: true });
   ["pointerdown", "mousedown", "touchstart"].forEach((e) =>
     addEventListener(e, () => { _kbModality = false; }, { capture: true, passive: true }));
+  // EX-CHROME touch-press (his 2026-07-23). 1.11.1 gated every control's engaged FILL to hover:hover
+  // so a finger tap leaves no sticky tint — correct, but it left a tap with NO feedback at all. This
+  // gives a coarse pointer the response a mouse gets from hover: a press lights the control's OWN
+  // engaged affordance for the DURATION of the touch. One delegated pair toggles `.ex-press` on the
+  // pressed CONTROL (pointerdown → on, lift / cancel → off); the styling is hover:none-gated in CSS,
+  // so a mouse (hover:hover, its own hover fill) is untouched. The player already answered a tap by
+  // turning `.playing`; this brings every other button up to the same felt response. PRESS_SEL names
+  // the chrome controls; a press that drifts into a swipe clears on the browser's pointercancel.
+  const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.quiz-opt,.exl-cur,.exl-item," +
+    ".exd-window,#ex-gift-card .gift-yes,#ex-gift-card .gift-no";
+  let _pressEl = null;
+  function _pressClear() { if (_pressEl) { _pressEl.classList.remove("ex-press"); _pressEl = null; } }
+  addEventListener("pointerdown", (e) => {
+    _pressClear();
+    const c = (e.target && e.target.closest) ? e.target.closest(PRESS_SEL) : null;
+    if (c) { c.classList.add("ex-press"); _pressEl = c; }
+  }, { capture: true, passive: true });
+  ["pointerup", "pointercancel"].forEach((e) =>
+    addEventListener(e, _pressClear, { capture: true, passive: true }));
   function _focusablesIn(layer) {
     return Array.prototype.filter.call(
       layer.querySelectorAll(FOCUSABLE_SEL),

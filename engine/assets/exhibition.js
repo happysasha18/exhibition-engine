@@ -76,6 +76,25 @@
   addEventListener("keydown", () => { _kbModality = true; }, { capture: true, passive: true });
   ["pointerdown", "mousedown", "touchstart"].forEach((e) =>
     addEventListener(e, () => { _kbModality = false; }, { capture: true, passive: true }));
+  // EX-CHROME touch-press (his 2026-07-23). 1.11.1 gated every control's engaged FILL to hover:hover
+  // so a finger tap leaves no sticky tint — correct, but it left a tap with NO feedback at all. This
+  // gives a coarse pointer the response a mouse gets from hover: a press lights the control's OWN
+  // engaged affordance for the DURATION of the touch. One delegated pair toggles `.ex-press` on the
+  // pressed CONTROL (pointerdown → on, lift / cancel → off); the styling is hover:none-gated in CSS,
+  // so a mouse (hover:hover, its own hover fill) is untouched. The player already answered a tap by
+  // turning `.playing`; this brings every other button up to the same felt response. PRESS_SEL names
+  // the chrome controls; a press that drifts into a swipe clears on the browser's pointercancel.
+  const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.quiz-opt,.exl-cur,.exl-item," +
+    ".exd-window,#ex-gift-card .gift-yes,#ex-gift-card .gift-no";
+  let _pressEl = null;
+  function _pressClear() { if (_pressEl) { _pressEl.classList.remove("ex-press"); _pressEl = null; } }
+  addEventListener("pointerdown", (e) => {
+    _pressClear();
+    const c = (e.target && e.target.closest) ? e.target.closest(PRESS_SEL) : null;
+    if (c) { c.classList.add("ex-press"); _pressEl = c; }
+  }, { capture: true, passive: true });
+  ["pointerup", "pointercancel"].forEach((e) =>
+    addEventListener(e, _pressClear, { capture: true, passive: true }));
   function _focusablesIn(layer) {
     return Array.prototype.filter.call(
       layer.querySelectorAll(FOCUSABLE_SEL),
@@ -2086,10 +2105,20 @@
   //             slot with no ghost gap, and the picture stays whole (a refused portion loses nothing).
   // portionPending answers whether the focused work sits in a portion whose request is still in flight.
   let storyGen = 0;                                    // bumped on every fresh arc so a pending retry from a previous walk stands down
+  // A portion whose request FAILED but still has a retry queued: it is no longer in flight (its
+  // askingPortions key was dropped) yet the narrator is still about to speak, so the wait mark must
+  // HOLD across the retry gap and clear to silence only when the LAST retry is spent. Without this the
+  // dots froze forever on a focused work after a portion gave up (his 2026-07-23: «перезагрузил и всё
+  // равно нет сторителлинга» — a failed portion left the wait mark painted, never repainting to
+  // silence, because owed() dropped the in-flight key but nothing re-ran fillTold).
+  const retryingPortions = new Set();
   function portionPending(id) {
     if (id == null) return false;
     const s = "," + String(id) + ",";
-    for (const key of askingPortions) {                // each key is this portion's comma-joined ids
+    for (const key of askingPortions) {                // in flight now
+      if (("," + key + ",").indexOf(s) !== -1) return true;
+    }
+    for (const key of retryingPortions) {              // failed, but a retry is still queued to land it
       if (("," + key + ",").indexOf(s) !== -1) return true;
     }
     return false;
@@ -2156,8 +2185,14 @@
     if (toldPortions.has(key) || askingPortions.has(key)) { done(); return; }   // already told, or in flight
     const owed = () => {                               // the plot did not land — re-ask shortly, then wait for a beat
       done();
-      if (attempt >= STORY_RETRY_MS.length || !STORY_ON) return;
+      if (attempt >= STORY_RETRY_MS.length || !STORY_ON) {
+        retryingPortions.delete(key);                  // no retry left — the portion truly gives up…
+        fillTold();                                    // …so the focused work's wait mark clears to silence (CS-8, INV-19), never a frozen dot
+        return;
+      }
+      retryingPortions.add(key);                       // a retry is queued — the wait mark HOLDS across the gap (portionPending stays true)
       setTimeout(() => {
+        retryingPortions.delete(key);
         if (gen !== storyGen) return;                  // a fresh arc opened — this slice belongs to the old walk
         if (toldPortions.has(key) || askingPortions.has(key)) return;   // already served / re-asked elsewhere
         askPortion(loI, hiI, null, attempt + 1);
@@ -2219,6 +2254,7 @@
     storyGen++;                                        // a fresh arc — any owed-portion retry from the old walk stands down
     toldPortions.clear();
     askingPortions.clear();
+    retryingPortions.clear();                          // …including a portion still queued for retry (its wait mark clears with the arc)
     for (const k in STORYLINES) delete STORYLINES[k];
     storyVariant = null;
   }
@@ -2261,7 +2297,7 @@
     toastEl.classList.toggle("hold", !!hold);
     toastEl.hidden = false;
     requestAnimationFrame(() => { toastEl.classList.add("show"); }); // EX-ARRIVE: breath in
-    if (!hold) toastTimer = setTimeout(toastOff, Math.round(3000 * TEMPO));
+    if (!hold) toastTimer = setTimeout(toastOff, Math.round(1600 * TEMPO)); // long enough to READ the two-word line, then gone — never a lingering banner (his 2026-07-23)
   }
   toastEl.addEventListener("click", toastOff);
   addEventListener("keydown", (ev) => { if (ev.key === "Escape") toastOff(); });
@@ -2608,7 +2644,7 @@
   // INV-93 (2026-07-16, one margin for every pinch): the in-pinch mirrors the out-pinch — DISMISS_T
   // sits just under the picture's own resting size, so a release just below resting closes the layer
   // whatever gesture it belongs to, and a release at/above resting leaves the picture open at its size.
-  const DISMISS_T = 0.97;
+  const DISMISS_T = 0.98;
   // once zoomed past 1×, a one-finger drag PANS the enlarged picture. zTx/zTy are the pan offset in
   // screen px; zPan* hold the gesture's start. The offset is bounded to the picture's visible overflow
   // so the image can never be dragged past its own edge.
@@ -3169,7 +3205,7 @@
   // 15-motion wins), and on a second finger (so the inspect pinch wins). A door window (no hung-work
   // identity) keeps the gracious toast, never the ceremony (F1). The ~500ms / px values are Alexander's
   // device-feel tune, like the 1.7.5 swipe constants — a touch input threshold, never tempo-scaled.
-  const LP_MS = 500;                                      // [default] the hold that arms the grab
+  const LP_MS = 400;                                      // [default] the hold that arms the grab (his 2026-07-23: a touch felt slow at 500 — the gift meets the finger a beat sooner)
   const LP_PX = 10;                                       // [default] the drift that cancels it (a swipe)
   let lpTimer = 0, lpX = 0, lpY = 0, lpImg = null, lpPtrs = 0;
   function lpCancel() { if (lpTimer) { clearTimeout(lpTimer); lpTimer = 0; } lpImg = null; }

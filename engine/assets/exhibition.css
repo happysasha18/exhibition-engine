@@ -229,6 +229,18 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 /* touch: no hover exists — full presence at rest, target at the a11y floor (≥44px) */
 @media (hover:none){ .ex-share{ width:44px; height:44px; inset-inline-end:calc(var(--ex-rail) - 22px); } .ex-share.show{ opacity:.9; } }
 
+/* EX-CHROME touch-press (his 2026-07-23): a finger press wears the fill hover gives a mouse (prelude adds .ex-press, hover:none-gated) */
+@media (hover:none){
+  .ex-share.ex-press,#ex-zoom .exz-btn.ex-press{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
+  .ex-share.ex-press{ opacity:1; }
+  .exsnd-btn.ex-press,.exl-cur.ex-press{ color:var(--ink); border-color:var(--muted-2); }
+  .exl-item.ex-press{ color:var(--ink); background:rgba(255,255,255,.05); }
+  .quiz-opt.ex-press{ color:var(--ink); border-color:color-mix(in srgb,var(--accent) 55%,transparent); background:rgba(30,27,22,.85); transform:translateY(-1px); }
+  .exd-window.ex-press::after{ opacity:.75; }
+  #ex-gift-card .gift-yes.ex-press{ filter:brightness(1.12); }
+  #ex-gift-card .gift-no.ex-press{ color:var(--ink); }
+}
+
 /* the toast — one quiet line; the success face leaves by itself (×tempo), the clipboard-refusal
    face carries the LINK and holds until dismissed (tap/Esc) so a hand can copy it */
 /* EX-ARRIVE: opacity:0 base; .show rAF-added on each call to toast(); removed in toastOff() */

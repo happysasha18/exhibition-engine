@@ -10,10 +10,20 @@
   //             slot with no ghost gap, and the picture stays whole (a refused portion loses nothing).
   // portionPending answers whether the focused work sits in a portion whose request is still in flight.
   let storyGen = 0;                                    // bumped on every fresh arc so a pending retry from a previous walk stands down
+  // A portion whose request FAILED but still has a retry queued: it is no longer in flight (its
+  // askingPortions key was dropped) yet the narrator is still about to speak, so the wait mark must
+  // HOLD across the retry gap and clear to silence only when the LAST retry is spent. Without this the
+  // dots froze forever on a focused work after a portion gave up (his 2026-07-23: «перезагрузил и всё
+  // равно нет сторителлинга» — a failed portion left the wait mark painted, never repainting to
+  // silence, because owed() dropped the in-flight key but nothing re-ran fillTold).
+  const retryingPortions = new Set();
   function portionPending(id) {
     if (id == null) return false;
     const s = "," + String(id) + ",";
-    for (const key of askingPortions) {                // each key is this portion's comma-joined ids
+    for (const key of askingPortions) {                // in flight now
+      if (("," + key + ",").indexOf(s) !== -1) return true;
+    }
+    for (const key of retryingPortions) {              // failed, but a retry is still queued to land it
       if (("," + key + ",").indexOf(s) !== -1) return true;
     }
     return false;
@@ -80,8 +90,14 @@
     if (toldPortions.has(key) || askingPortions.has(key)) { done(); return; }   // already told, or in flight
     const owed = () => {                               // the plot did not land — re-ask shortly, then wait for a beat
       done();
-      if (attempt >= STORY_RETRY_MS.length || !STORY_ON) return;
+      if (attempt >= STORY_RETRY_MS.length || !STORY_ON) {
+        retryingPortions.delete(key);                  // no retry left — the portion truly gives up…
+        fillTold();                                    // …so the focused work's wait mark clears to silence (CS-8, INV-19), never a frozen dot
+        return;
+      }
+      retryingPortions.add(key);                       // a retry is queued — the wait mark HOLDS across the gap (portionPending stays true)
       setTimeout(() => {
+        retryingPortions.delete(key);
         if (gen !== storyGen) return;                  // a fresh arc opened — this slice belongs to the old walk
         if (toldPortions.has(key) || askingPortions.has(key)) return;   // already served / re-asked elsewhere
         askPortion(loI, hiI, null, attempt + 1);
@@ -143,6 +159,7 @@
     storyGen++;                                        // a fresh arc — any owed-portion retry from the old walk stands down
     toldPortions.clear();
     askingPortions.clear();
+    retryingPortions.clear();                          // …including a portion still queued for retry (its wait mark clears with the arc)
     for (const k in STORYLINES) delete STORYLINES[k];
     storyVariant = null;
   }

@@ -56,7 +56,7 @@ js_bits = {
     "close by x, backdrop, Esc":
         "exz-close" in JS and 'e.key === "Escape" && zoomOpen' in JS,
     "the mirror margin: DISMISS_T reads the one shared threshold (INV-93)":
-        "DISMISS_T = 0.97" in JS,
+        "DISMISS_T = 0.98" in JS,
 }
 check("EX-ZOOM the pinch-to-inspect layer is built into the client "
       "(overlay + trigger + our own scale + face lock + close)",
@@ -505,7 +505,7 @@ MIRROR_ROWS = [
 ]
 # a FRESH pinch on the already-open, resting layer: open+settle at 1x (an ordinary release, no
 # movement), THEN a SEPARATE touchstart+touchmove(narrow to raw 0.90 of resting)+touchend — under the
-# mirror margin (~0.97) this is BELOW resting and must close; under the old deep DISMISS_T (~0.82) it
+# mirror margin (~0.98) this is BELOW resting and must close; under the old deep DISMISS_T (~0.82) it
 # used to stay open (RED on unmodified code)
 TOUCH_CLOSE_090 = (
     "()=>{const img=document.querySelector('.exd-window img');"

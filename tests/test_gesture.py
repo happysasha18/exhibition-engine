@@ -63,7 +63,7 @@ GLIDE_ROWS = [
 ZOOM_ROWS = [
     "EX-ZOOM/INV-85 a ctrl+wheel (trackpad pinch-OUT) over a picture OPENS #ex-zoom and scales it "
     "up (1×→>1×, under the 4× clamp)",
-    "EX-ZOOM/INV-85 a ctrl+wheel pinch-IN past the mirror-margin (~0.97×) dismiss threshold "
+    "EX-ZOOM/INV-85 a ctrl+wheel pinch-IN past the mirror-margin (~0.98×) dismiss threshold "
     "DISMISSES the open zoom",
     "EX-ZOOM/INV-85 a PLAIN wheel (no ctrl) NEVER opens the zoom — it navigates one frame (the split)",
     "EX-ZOOM/INV-85 target resolution — a ctrl+wheel with the pointer OVER a picture opens THAT "
