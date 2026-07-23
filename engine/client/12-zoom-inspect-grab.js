@@ -31,7 +31,7 @@
   // INV-93 (2026-07-16, one margin for every pinch): the in-pinch mirrors the out-pinch — DISMISS_T
   // sits just under the picture's own resting size, so a release just below resting closes the layer
   // whatever gesture it belongs to, and a release at/above resting leaves the picture open at its size.
-  const DISMISS_T = 0.98;
+  const DISMISS_T = 0.92;                                 // (his 2026-07-23) 0.98 closed on a 2% squeeze — a pinch-OUT that began with a hair of inward drift tripped the dismiss; his word: firmer, an 8% squeeze, so the zoom holds and only a deliberate pinch-in closes it
   // once zoomed past 1×, a one-finger drag PANS the enlarged picture. zTx/zTy are the pan offset in
   // screen px; zPan* hold the gesture's start. The offset is bounded to the picture's visible overflow
   // so the image can never be dragged past its own edge.
@@ -592,7 +592,7 @@
   // 15-motion wins), and on a second finger (so the inspect pinch wins). A door window (no hung-work
   // identity) keeps the gracious toast, never the ceremony (F1). The ~500ms / px values are Alexander's
   // device-feel tune, like the 1.7.5 swipe constants — a touch input threshold, never tempo-scaled.
-  const LP_MS = 400;                                      // [default] the hold that arms the grab (his 2026-07-23: a touch felt slow at 500 — the gift meets the finger a beat sooner)
+  const LP_MS = 320;                                      // [default] the hold that arms the grab (his 2026-07-23: 500→400→320, a touch wanted the gift a further ~20% sooner)
   const LP_PX = 10;                                       // [default] the drift that cancels it (a swipe)
   let lpTimer = 0, lpX = 0, lpY = 0, lpImg = null, lpPtrs = 0;
   function lpCancel() { if (lpTimer) { clearTimeout(lpTimer); lpTimer = 0; } lpImg = null; }

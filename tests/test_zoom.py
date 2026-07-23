@@ -56,7 +56,7 @@ js_bits = {
     "close by x, backdrop, Esc":
         "exz-close" in JS and 'e.key === "Escape" && zoomOpen' in JS,
     "the mirror margin: DISMISS_T reads the one shared threshold (INV-93)":
-        "DISMISS_T = 0.98" in JS,
+        "DISMISS_T = 0.92" in JS,
 }
 check("EX-ZOOM the pinch-to-inspect layer is built into the client "
       "(overlay + trigger + our own scale + face lock + close)",

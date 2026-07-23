@@ -364,8 +364,13 @@ else:
               }
               return false;
             }"""
+            # This list IS the chrome-control class registry (his 2026-07-23 find: .ex-series and
+            # .exs-back wore a hover fill but no press twin, so a finger got nothing — the old list
+            # shared the code's blind spot). Every button that carries a :hover / :focus-visible fill
+            # belongs here and owes a .ex-press rule; a new hover-button added without one fails here.
             controls = [".ex-share", ".exz-btn", ".exsnd-btn", ".quiz-opt",
-                        ".exl-cur", ".exl-item", ".exd-window", ".gift-yes"]
+                        ".exl-cur", ".exl-item", ".exd-window", ".gift-yes",
+                        ".ex-series", ".exs-back", ".ex-quiz-chip", ".quiz-dl"]
             missing = [s for s in controls
                        if not br.evaluate("(%s)('%s')" % (PRESS_UNDER_HOVERNONE, s))]
             check(BROWSER_ROWS[18], not missing, f"controls with no hover:none .ex-press rule: {missing}")
