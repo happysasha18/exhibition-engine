@@ -91,7 +91,8 @@ What the engine reads from the content directory (passed as `--content <dir>`):
   is enabled. Off means every story line is grounded in the public fields only. `EX-STORY-EDGE`
 
 **Site identity** comes from `site.json` (passed as `--site <path>`): `site_name`, `creator`,
-`root_title`, `root_description`, `collection_name`. These drive every baked HTML string. The
+`root_title`, `root_description`, `collection_name`, and the optional `instagram` (a full URL or a
+bare `@handle`) that trails the signature. These drive every baked HTML string. The
 `site_url` comes from `--site-url`. `⟨DELTA-1⟩` **The door wordmark** is currently hardcoded
 as a literal string in `exhibition.js` rather than injected from `site_name` at bake time — it
 is the engine's only remaining instance-facing brand value that the bake does not parameterize.
@@ -177,7 +178,10 @@ is the engine's only remaining instance-facing brand value that the bake does no
   the visitor's first deliberate turn-on. `INV-27`
 - **The archive signs its rooms.** Every public face carries exactly one quiet copyright line —
   composed at bake time from `creator` and `site_name`; the year is the bake run's own; a
-  January rebake re-years it automatically. `INV-28`
+  January rebake re-years it automatically. When the instance names an `instagram`, a single
+  Instagram link trails the line on every face (the static index, each `/w/` page, and the walk's
+  closing sign), opening in a new tab with `rel="noopener noreferrer"`; an instance that names none
+  carries the bare line. `INV-28`
 - **The share toast is never a silent failure.** When the browser refuses the clipboard, the
   toast carries the link itself, stays until dismissed, and must be hand-copyable. `INV-29`
 - **The JS-off static face is fully formed before JS wakes.** An inline script marks

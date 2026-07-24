@@ -505,12 +505,22 @@ else:
         br.sleep(0.5)
         sign = br.evaluate(
             "(()=>{const s=document.querySelectorAll('.exh-fin .exh-sign');"
-            "return {n:s.length,text:s.length?s[0].textContent.trim():''};})()")
+            "const a=s.length?s[0].querySelector('a'):null;"
+            "return {n:s.length,text:s.length?s[0].textContent.trim():'',"
+            "ig:a?a.getAttribute('href'):'',igtext:a?a.textContent.trim():'',"
+            "tgt:a?a.getAttribute('target'):'',rel:a?(a.getAttribute('rel')||''):''};})()")
         creator = build_site.SITE_CONFIG["creator"]
         site_name = build_site.SITE_CONFIG["site_name"]
-        sign_ok = bool(_re.fullmatch(
-            r"© \d{4} " + _re.escape(creator) + r" · " + _re.escape(site_name),
-            sign["text"]))
+        ig = build_site.SITE_CONFIG.get("instagram")
+        _base = r"© \d{4} " + _re.escape(creator) + r" · " + _re.escape(site_name)
+        # EX-COPY (INV-28): when the instance names an `instagram`, the sign trails one Instagram
+        # link (new tab, noopener); with none it is the bare line. Both sides asserted here.
+        if ig:
+            sign_ok = (bool(_re.fullmatch(_base + r" · Instagram", sign["text"]))
+                       and sign["ig"] == ig and sign["igtext"] == "Instagram"
+                       and sign["tgt"] == "_blank" and "noopener" in sign["rel"])
+        else:
+            sign_ok = bool(_re.fullmatch(_base, sign["text"])) and sign["ig"] == ""
         check(BROWSER_ROWS[21],
               door_signs == 0 and frame_signs == 0 and sign["n"] == 1 and sign_ok,
               f"door={door_signs} frames={frame_signs} fin={sign}")

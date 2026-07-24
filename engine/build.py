@@ -146,6 +146,20 @@ def esc(s):
     return html.escape(s or "", quote=True)
 
 
+def compose_sign(year, creator, site_name, instagram=None):
+    """EX-COPY (INV-28): the one quiet signature. The copyright line — composed from the bake
+    run's own year, the creator, and the site name — with an OPTIONAL creator social link
+    trailing it when the instance supplies `instagram` (a full URL or a bare @handle). An
+    instance that names no `instagram` gets the plain line, untouched."""
+    line = f"© {year} {creator} · {site_name}"
+    handle = (instagram or "").strip()
+    if handle:
+        url = handle if handle.startswith("http") else "https://instagram.com/" + handle.lstrip("@")
+        line += (f' · <a class="sign-ig" href="{esc(url)}" target="_blank"'
+                 f' rel="noopener noreferrer">Instagram</a>')
+    return line
+
+
 # ---------------------------------------------------------------- rendering
 
 STYLE = """
@@ -168,6 +182,7 @@ a{color:inherit}
 .grid img{width:100%;height:100%;object-fit:cover;display:block}
 .site-h1{font-weight:600;font-size:clamp(26px,5vw,44px);margin:0 0 .3em}
 .sign{color:#7c7c88;font-size:12.5px;margin-top:2.4em}
+.sign a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 """
 
 
@@ -770,7 +785,8 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     ROOT_DESCRIPTION = site_config["root_description"]
     COLLECTION_NAME = site_config["collection_name"]
     LOADING_LINE = site_config.get("loading_line") or "loading the exhibition"
-    COPYRIGHT = f"© {datetime.date.today().year} {CREATOR} · {SITE_NAME}"
+    COPYRIGHT = compose_sign(datetime.date.today().year, CREATOR, SITE_NAME,
+                             site_config.get("instagram"))
     if OUT.exists():
         shutil.rmtree(OUT)                             # a fresh bundle, deterministic
     OUT.mkdir(parents=True)

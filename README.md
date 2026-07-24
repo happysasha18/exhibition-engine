@@ -128,11 +128,12 @@ Field reference for each file:
   "root_title":       "MERIDIAN GALLERY — Jordan Rivera",
   "root_description": "A personal, ever-changing exhibition ...",
   "collection_name":  "MERIDIAN GALLERY — the exhibition",
-  "loading_line":     "a personalized photography exhibition"
+  "loading_line":     "a personalized photography exhibition",
+  "instagram":        "https://instagram.com/meridiangallery"
 }
 ```
 
-These values flow into the page title, the meta description, `og:site_name`, `og:title`, the JSON-LD `WebSite.name` and `CollectionPage.name`, and the H1 heading.
+These values flow into the page title, the meta description, `og:site_name`, `og:title`, the JSON-LD `WebSite.name` and `CollectionPage.name`, and the H1 heading. The optional `instagram` (a full URL or a bare `@handle`) adds a single Instagram link to the copyright signature on every face; omit it and the signature stays a bare line.
 
 ## The instance-override model
 

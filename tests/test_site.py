@@ -361,16 +361,45 @@ import datetime as _dt   # noqa: E402
 _year = _dt.date.today().year
 _creator  = build_site.SITE_CONFIG["creator"]
 _sitename = build_site.SITE_CONFIG["site_name"]
-_sign = f"© {_year} {_creator} · {_sitename}"
+_ig       = build_site.SITE_CONFIG.get("instagram")
+_sign = f"© {_year} {_creator} · {_sitename}"           # the base line, always present
+_compose = getattr(build_site._engine, "compose_sign", None)
+_full = _compose(_year, _creator, _sitename, instagram=_ig) if callable(_compose) else _sign
 _index_html = (TMP / "index.html").read_text(encoding="utf-8")
 _work_html  = next((TMP / "w").glob("*.html")).read_text(encoding="utf-8")
+_copyright = json.loads((TMP / "exhibition_data.json").read_text(encoding="utf-8")).get("copyright")
 check("EX-COPY machine faces sign: /w/ pages + the static index carry the one composed line",
       _sign in _index_html and _sign in _work_html,
       f"want {_sign!r} index={_sign in _index_html} work={_sign in _work_html}")
-check("EX-COPY the year is the bake's own (composed at bake, never hand-written)",
-      json.loads((TMP / "exhibition_data.json").read_text(encoding="utf-8"))
-      .get("copyright") == _sign,
-      "exhibition_data.copyright missing or drifted from the composed line")
+check("EX-COPY the year is the bake's own, sign matches the composed line (link and all)",
+      _copyright == _full,
+      f"exhibition_data.copyright {_copyright!r} drifted from composed {_full!r}")
+
+# EX-COPY (INV-28): the OPTIONAL creator social link trails the signature when `instagram` is set.
+check("EX-COPY compose_sign exists (pure: year, creator, site_name, instagram=None → sign HTML)",
+      callable(_compose),
+      "build.compose_sign missing")
+if callable(_compose):
+    _cs_on  = _compose(2026, "A", "S", instagram="https://instagram.com/synthexhibition")
+    _cs_off = _compose(2026, "A", "S")
+    _cs_h   = _compose(2026, "A", "S", instagram="@bob")
+    check("EX-COPY the sign carries the IG link when set: new tab, noopener, text 'Instagram'",
+          ('href="https://instagram.com/synthexhibition"' in _cs_on
+           and 'target="_blank"' in _cs_on and 'rel="noopener' in _cs_on
+           and ">Instagram<" in _cs_on),
+          f"want a safe IG anchor, got {_cs_on!r}")
+    check("EX-COPY the sign is the plain line when `instagram` is absent (no link)",
+          _cs_off == "© 2026 A · S" and "<a" not in _cs_off,
+          f"want the bare copyright, got {_cs_off!r}")
+    check("EX-COPY a bare @handle normalises to the full instagram.com URL",
+          'href="https://instagram.com/bob"' in _cs_h,
+          f"want normalised handle URL, got {_cs_h!r}")
+if _ig:
+    _href = f'href="{_ig}"'
+    check("EX-COPY the IG link reaches every baked face: index + /w/ + the walk sign",
+          _href in _index_html and _href in _work_html and bool(_copyright) and _href in _copyright,
+          f"index={_href in _index_html} work={_href in _work_html} "
+          f"walk={bool(_copyright) and _href in (_copyright or '')}")
 
 
 # ---------------------------------------------------------------- INV-56 display cap + site-URL watermark (EX-PROTECT-RES)
