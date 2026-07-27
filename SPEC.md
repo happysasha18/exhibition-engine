@@ -618,17 +618,20 @@ editing, filter, or cut). Arrives by the house breath on `--tone`-tinted text.
 just opened — the cold first spread is itself the first portion, then each «ещё N». Every portion
 asks `/api/story` for ITS OWN ordered ids alone (never the grown `0..shown` set), under its own
 cache key, so a line already read is never re-requested and never shifts under the eye, and no
-portion is ever named a «part N» of another. A portion counts as told only once its plot has come
-back: the told-key is stamped on a SERVED plot alone, so a refused or failed portion stays OWED and
-is re-asked at the next natural beat — a further unfold, or a return to the walk. A focused work whose
-portion is in flight OR still queued for a bounded re-ask (`STORY_RETRY_MS`) wears the wait mark; when
-those re-asks are spent the mark **clears to silence** (an `:empty` slot, never a frozen dot) — the same
-silence a served-but-lineless work shows, so a failed voice leaves no stuck mark on the plaque. The edge's own
-wait carries any `Retry-After`: a re-ask inside the window is refused server-side before any model
-call, so the client holds no backoff clock and re-asks freely. A fresh door pick resets the story
-(no portion or line leaks across picks). A mid-visit language switch keeps every already-told line
-in its first tongue (`respeak()` re-labels chrome only, never the told lines); only a portion opened
-after the switch reads the new language. This settles the earlier `story-unfold-recovery` open call
+portion is ever named a «part N» of another. A plot carrying at least one line counts as told, and the works it left wordless join the owed set
+and travel by their own asks (`EX-STORY-FILL`); a plot carrying none leaves its portion OWED, to be
+re-asked at the next natural beat — a further unfold, a return to the walk, or the focus beat —
+beside the owed set itself. A portion's key carries no refusal record, so an owed portion's re-asks
+reach the model (`EX-STORY-EDGE`). A focused work whose portion is in flight OR still queued for a
+bounded re-ask (`STORY_RETRY_MS`) wears the wait mark, and so does a work whose own ask is in flight
+or queued; when those re-asks are spent the mark **clears to silence** (an `:empty` slot, never a
+frozen dot), so a failed voice leaves no stuck mark on the plaque. The edge's own wait carries any
+`Retry-After`: a re-ask inside the window is refused server-side before any model call, so the
+client holds no backoff clock and re-asks freely, and past the window the re-ask reaches the model
+or the cache. A fresh door pick resets the story: no portion, ask, or line leaks across picks, and
+an answer that lands after the pick is dropped whole. A mid-visit language switch keeps every already-told line in its first tongue (`respeak()` re-labels
+chrome only, never the told lines); a portion opened after the switch reads the new language, and so
+does a one-work ask fired after it, each request reading the live tongue as it goes out. This settles the earlier `story-unfold-recovery` open call
 (the same-sitting follow-on and the return visit meet one law — a portion is its own plot, so there
 is no thread to keep and no arc to re-voice).
 
@@ -639,8 +642,107 @@ quoted) and calls a small model (Haiku); the answer is kept in KV forever under 
 **ordered id sequence + variant + language + params_version** (bumped whenever
 `story.light_weight`, the prompt, or the marks change — so a knob flip never serves a stale
 order). Each opened portion is its own ordered sequence, so each portion's plot lands under its own
-key and serves free from cache on a re-ask (`⟨DELTA-16⟩`). One model call per distinct portion, $0 after. A failed or absent voice is SILENCE — the
-walk carries no lines and loses nothing (CS-8, `INV-8`).
+key and serves free from cache on a re-ask (`⟨DELTA-16⟩`). A one-work ask marks itself as one, and
+the worker keys it under its own shape, so a portion that happens to hold one work and a one-work
+ask for that same work keep separate entries (`EX-STORY-FILL`).
+
+**The answer is taken line by line.** The worker keeps every entry the model returned that is
+well-formed — a `line` that is a string with characters in it, a `source` of `note` or `facts`, and
+an `id` among the ids this request asked for — and serves those. The first entry for an id wins. The
+route answers with the surviving lines whenever at least one survives, so a spoiled entry costs its
+own work and its neighbours keep their lines. A short plot is written to the cache the way a whole
+one is, so a later visitor opening that portion reads it free. An answer that leaves no line at all
+is answered `502` and written nowhere. Which portion a short plot leaves told, and where its
+wordless works go, the told-story rule decides (`EX-STORY`, `EX-STORY-FILL`).
+
+**The single-flight lock lives as long as the model call.** Ahead of the call the route lays a lock
+on the key, so a second request arriving mid-call answers `503 warming` with a `Retry-After` and the
+model is called once for that key while the call is in flight. The route deletes the lock it laid,
+at each of its own exits — the served answer, the answer that left no line, and the throw alike. A
+request that met a standing lock owns no lock and deletes nothing, so single flight survives. The
+lock's expiry stands as the backstop for a worker that dies with the call in flight.
+
+**The two ways a call ends without lines.** The worker's answer-reader names the class it is in as
+it throws, carrying that name as its own field on the error so the message keeps the plain
+`model <status>` shape the dead-account read matches. A refusal stop reason and a body that does not
+parse are the **empty class**: a second ask meets the same fragments and the same prompt. A non-ok
+model status and a network throw are the **transient class**: a second ask may pass. The third
+member of the empty class comes from the route rather than the reader — an answer that parsed and
+left no well-formed entry, which the route meets at its own filter. A non-ok status that names a
+dead account — a 4xx other than 429 — raises the hour-long dead flag from this route the way the
+i18n route already raises it (`EX-EDGE-DEAD`, `INV-68`).
+
+**An empty one-work answer is remembered for an hour.** A one-work ask whose answer lands in the
+empty class leaves a refusal record beside its key with a one-hour life — the life the dead-account
+flag already takes for a fault expected to pass. A request meeting that record answers `502` ahead
+of every fence and every model call, so a work the model keeps leaving wordless costs one call an
+hour and is tried again in the next. A portion's own key carries no record: a portion whose plot
+came back empty stays OWED and its re-asks reach the model, which is the recovery the walk already
+promises (`EX-STORY`).
+
+**What a rung meets.** Four answers stand: the cached plot when one landed, the refusal record when
+this one-work key's answer was empty, a fence answer — `404` for a work the edge holds no fragment
+for, `404` for a bot or a capped day or a dead account, `429` past the hourly ceiling, `503` while
+another request holds the lock — and the model. A fence answer spends a rung and no money. The `503`
+grows rare once the lock's life is the call's own.
+
+Cost: one model call per distinct portion, one more per work a portion left wordless, one an hour
+per one-work key whose answer is empty, and $0 after — every served plot caches forever, whole,
+short, and one-work alike. An ask the cache and the refusal record leave unanswered passes the three
+money fences (`EX-EDGE-GUARD`); an ask either of them answers passes none and spends no rate slot.
+Two fences bound a model that fails across many visitors at once, each catching its own class: the
+dead flag this route now raises catches an account refused with a 4xx, and the daily call cap
+catches a 5xx outage and everything else that keeps throwing. A failed or absent voice is SILENCE —
+the walk carries no lines and loses nothing (CS-8, `INV-8`).
+
+**A work left wordless is asked for on its own** (`EX-STORY-FILL`, `INV-105`): when a plot comes
+back, the walk reads the answer against the ids it asked for. Each id that came back wordless earns
+**a one-work ask** — a request naming that work by its id and marked as a one-work ask, so it
+carries its own cache key, its own single-flight lock, and its own place in the edge's memory
+(`EX-STORY-EDGE`). The ask names the id it was born from, so an arc re-assembled between the answer
+and the ask never re-aims it at a different work. Each ask rides the portion ladder's own bounds
+(`STORY_RETRY_MS`) — three rungs, the ask and two re-asks — and every rung meets one of the four
+answers the edge gives (`EX-STORY-EDGE`). A fresh door pick stands every outstanding ask down with
+the arc it belonged to, under the story's own reset (`EX-STORY`).
+
+**The owed set is the works waiting for a line.** A work joins it the moment the plot for its
+portion returns carrying no line for that work. It leaves the set when a line is seated for it, or
+when the walk is replaced. A work in the set with an ask in flight or a re-ask queued wears the wait
+mark; a work in the set with neither shows silence.
+
+**A browser spends at most five one-work asks an hour.** The count rolls with the clock hour, the
+unit the edge's own ceiling counts in, and it stands through a door pick so a second walk inherits
+what the first spent. The arithmetic stands on the knobs: a walk asks 1 + `max_unfolds` portions,
+each on its own three-rung ladder, which is 9 rungs at the defaults; two walks in one hour are 18,
+and five one-work asks at three rungs are 15, reaching 33 against the per-address ceiling of 40
+(`EX-EDGE-GUARD`). A knob raised past that makes this sentence read false, which is where the number
+is meant to be checked. The wordless works take the budget in the walk's own order, so the works the
+guest meets first are asked first. A work the budget cannot reach stays in the owed set and shows
+silence, and the next hour's count can reach it while the guest is still walking. A portion that
+stays owed re-asks at each beat and spends further rungs, which the ceiling itself bounds.
+
+**A work stays owed until it speaks or the walk ends.** The owed set is swept at the walk's own
+beats — the hang building, an unfold, a return to the walk, and the focus beat that already asks the
+next portion ahead. The sweep stands ahead of that beat's own conditions, so it runs when the
+unfolds are spent and the guest walks on, which is where a work standing late in the last portion is
+reached.
+
+The ask is registered before the portion's coordinated reveal, so a wordless seat moves from one
+wait mark to the next with no blank between them. A one-work ask that comes to rest without a line
+leaves the seat silent, the way the walk already treats a portion whose plot never came, and the
+picture stays whole (CS-8, `INV-8`). A work the edge holds no fragment for answers `404` at every
+rung, refused ahead of every fence and every model call, and lands on the same silence — an instance
+whose deployed worker lags its deployed data is where this arises. A landed line settles into the
+slot on the house breath (`EX-ARRIVE`) and lays no announcement in the polite live region; what a
+late single line says to a screen reader is decided with the walk step's own announcement, which is
+its own movement. The line is written for one work alone, so its sentence may sit outside the arc
+its portion was composing; the guest meets a grounded line under the work. The ask reads the
+visitor's language at the moment it fires (`EX-STORY-LINE`).
+
+**Six cases still leave a work wordless**, and the walk carries each as silence: a model that cannot
+be reached at all, a day past its call cap, a browser past the hourly request ceiling, a work past
+the hour's own-ask budget, a work whose own ask came back empty within the hour its refusal record
+stands, and a work the edge holds no fragment for (`EX-STORY-EDGE`).
 
 **The crossing carries the picked picture while the voice loads** (`EX-STORY-BEAT`, `INV-89`): on a
 door pick the chosen picture flies from its window to the centre of the black and **breathes** there
@@ -1287,6 +1389,8 @@ with no spec sentence, which the old "five beats" prose could not see). `EX-PULS
 | `series_lift` | a print lifted to the light in the side room — every lift counts, setting it back down does not `[default]` | the lifted work |
 | `gift_download` | a gift file actually leaves for the visitor's device (on the prize's yes this beat lands BESIDE the quiz funnel's `gift` stage — a beat and a dimension marking one moment, never a double event) | the work + `gift_kind` from the closed pair `quiz_prize` / `grab` |
 | `lang_pick` | the guest chooses the exhibition's tongue at the door | `lang` — a code from the baked list (the guest's own outsider tongue reports as `other`, so the ladder stays closed) `[default]` |
+| `door_ready` | once per arrival, at the earliest of the door's pictures decoding, a pick crossing into a room, or the guest leaving ahead of either | the furthest `load_stage` reached (`paint` · `script` · `door` · `static` · `dynamic`) + a per-stage `lag_<stage>` |
+| `inspect` | a work settles under the zoom — one per settled inspect, the gesture come to rest | the work + `context` (`door` · `walk` · `room`) |
 | `error` | a script fault or an unhandled promise rejection reaches the window, capped at three per page so a looping fault stays off the wire `[default]` | a closed `kind` (`script` · `promise`) and the furthest load `phase` reached (the `door_ready` ladder `paint`·`script`·`door`·`static`·`dynamic`, else `boot`); the message, the stack, and the url stay in the tab (`INV-1`) |
 | `friction` | a visitor is stuck — either ≥ `FRICTION_TAPS` taps land in one spot on a NON-interactive surface within `FRICTION_TAP_MS` (a press on a button/link/window is intent, never counted, and breaks the burst), or ≥ `FRICTION_SWIPES` walk steps clamp at an end and move NOWHERE within `FRICTION_SWIPE_MS` (a step that advances a frame clears the burst); capped at three per page (`EX-FRICTION`, all thresholds `[default]`) | a closed `friction_kind` (`tap` · `swipe`) and a coarse `where` (`door` · `walk` · `zoom`); no coordinate, delta, or count ever rides (`INV-1`) |
 
@@ -1705,11 +1809,12 @@ the worker.
 | `EX-STORY-ORDER` | The light-lean: kinship + hour-discontinuity over time-of-day marks |
 | `EX-STORY-LINE` | Each line's laws: ≤12 words, associative, note-grounded, no technique |
 | `EX-STORY-EDGE` | The voice at the edge: `/api/story`, private fragments, KV cache |
+| `EX-STORY-FILL` | The one-work ask: a work its plot left wordless is asked for by id under its own key shape, five to an hour, owed to the walk's beats, silent when its ladder is spent |
 | `EX-STORY-AB` | `story_variant` rides the GA beats as a dimension |
 | `EX-I18N` | The any-language layer: one deferred fetch per new locale, KV-cached |
 | `EX-EDGE-GUARD` | Three money fences before any model call |
 | `EX-MEMORY` | The coat-check token: seen-work ids at the edge, anonymous |
-| `EX-PULSE` | The event registry: seventeen beats on the GA wire, held both ways by a standing test |
+| `EX-PULSE` | The event registry: the exhibition's beats on the GA wire, held both ways by a standing test |
 | `EX-AB` | The variant frame: a config `experiments` registry (arms · flag · metric · salt) the client reads at boot, dealing each live experiment one arm off the visitor's seed and stamping it on every registry beat as a dimension; carries no beat, no readout, and no visible surface of its own |
 | `EX-TIMING` | Performance marks for the builder; `?timings` narrates them |
 | `EX-RESET` | `?reset` wipes named keys; idempotent |
@@ -1810,6 +1915,7 @@ the worker.
 | `INV-102` | The about page (`EX-ABOUT`) is flat script-free static HTML baked once per language — fallback at `/about`, the rest at `/about/<language>`, each naming every sibling with `hreflang` and the fallback carrying `x-default`, each carrying its own `lang`/`dir` — holding a heading, four paragraphs, a link back to `/` and the composed signature, every sentence read from the instance copy dictionary, showing no photograph and naming no `og:image`; a dictionary whose FALLBACK tongue carries no `about_title` bakes no page in any language, adds no entry anywhere, and leaves the bundle byte-identical. |
 | `INV-103` | The about page is entered from exactly two places — the composed signature's optional about link (bare `/about`) and the walk's closing screen (the page in the visitor's own tongue) — never both on one screen, so the signature composed INTO the client artifact omits the about link while the baked static faces carry it; the closing screen's link belongs to the touch-press class (`EX-CHROME`) rather than to any hand-kept list, and the signature's link opens in place; the threshold carries no mark, and every language's page is listed once in the sitemap. |
 | `INV-104` | The greet block shipped inside `exhibition_data.json` carries `about` alone; `about_title`, `about_1`..`about_4` and `about_back` are stripped from the client artifact at bake. |
+| `INV-105` | One work's missing line leaves its neighbours speaking: the edge serves every well-formed line an answer carries, caches a short plot the way it caches a whole one, and answers one carrying none with a `502` — plus, on a one-work key, an hour-long refusal record answered `502` ahead of every fence — while deleting the single-flight lock it laid at each of its own exits, so a re-ask meets the cache, the record, a fence, or the model; the walk asks for each wordless work by id under its own key shape, in the walk's own order, five asks to a clock hour across door picks and the rest owed to the walk's beats, each ask a three-rung ladder, wearing the wait mark until a line lands and falling to that work's own silence when the ladder is spent (CS-8); an ask the cache and the record leave unanswered passes the three money fences, and a dead account is flagged from this route. |
 
 ### Reconciliation log — how each behavior above landed in code
 
