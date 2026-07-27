@@ -30,6 +30,8 @@ ROOT_TITLE = ""
 ROOT_DESCRIPTION = ""
 COLLECTION_NAME = ""
 LOADING_LINE = ""        # EX-LOAD: the cold-arrival line, instance-supplied (generic default)
+HINT_LINE = ""           # the JS-off subtitle under the site name, instance-supplied (default in build)
+OG_IMAGE_ID = ""         # INV-25: the work a shared homepage link unfurls with; blank = first (INV-21)
 COPYRIGHT = ""           # composed in build() — the year is the bake run's own
 _ENGINE_ASSETS = None
 _INSTANCE_ASSETS = None
@@ -160,6 +162,21 @@ def compose_sign(year, creator, site_name, instagram=None):
     return line
 
 
+def pick_hero(items, og_image_id=None):
+    """INV-25: the root's own og:image — the one work a shared homepage link unfurls with. The
+    instance names it in site.json as `og_image_id`; an instance that names none, or that names an
+    id no longer in the gallery, gets the first work in the deterministic order (INV-21). Either way
+    the choice is fixed for a given bake, so the bake stays reproducible."""
+    if not items:
+        return None
+    wanted = (str(og_image_id).strip() if og_image_id is not None else "")
+    if wanted:
+        for it in items:
+            if str(it.get("id")) == wanted:
+                return it
+    return items[0]
+
+
 # ---------------------------------------------------------------- rendering
 
 STYLE = """
@@ -217,7 +234,7 @@ def head(title, description, canonical, og_image, og_type, jsonld, extra_og="", 
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(description)}">
 <link rel="canonical" href="{esc(canonical)}">
-<meta property="og:site_name" content="{SITE_NAME}">
+<meta property="og:site_name" content="{esc(SITE_NAME)}">
 <meta property="og:type" content="{og_type}">
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(description)}">
@@ -348,7 +365,7 @@ def render_exhibition(items, captions, slugs, site_url, display_max=None):
     adaptive walk. Carries its own root og:image (a fixed representative work so a shared homepage link
     unfurls) + canonical + WebSite/CollectionPage JSON-LD."""
     canonical = f"{site_url}/"
-    hero = items[0]                                   # deterministic representative work (INV-21)
+    hero = pick_hero(items, OG_IMAGE_ID)              # the instance's pick, else first (INV-21/25)
     og_image = f"{site_url}/gallery/{hero['img']}"
     title = ROOT_TITLE
     desc = ROOT_DESCRIPTION
@@ -394,7 +411,7 @@ def render_exhibition(items, captions, slugs, site_url, display_max=None):
     body = f"""<body>
 <div class="ex-head">
 <h1 class="site-h1">{esc(SITE_NAME)}</h1>
-<span class="ex-hint" id="ex-hint">an exhibition that assembles itself around you</span>
+<span class="ex-hint" id="ex-hint">{esc(HINT_LINE)}</span>
 </div>
 <div class="ex-stage" id="ex-stage"></div>
 <div id="ex-loading" aria-hidden="true"><span>{esc(LOADING_LINE)}</span></div>
@@ -586,19 +603,130 @@ def strip_css_comments(css):
     return stripped
 
 
+def _pattern_end(js, start):
+    """The index just past a regular-expression literal opening at ``start``, or None when the run
+    is not one after all (no closing `/` before the line ends — patterns never span lines, so that
+    `/` was a division). A `[...]` class holds its own `/`; an escape rides whole; flags ride too."""
+    i, n, in_class = start + 1, len(js), False
+    while i < n:
+        c = js[i]
+        if c == "\\":
+            i += 2; continue
+        if c == "\n":
+            return None
+        if c == "[":
+            in_class = True
+        elif c == "]":
+            in_class = False
+        elif c == "/" and not in_class:
+            i += 1
+            while i < n and js[i].isalpha():
+                i += 1
+            return i
+        i += 1
+    return None
+
+
+def strip_js_comments(js):
+    """Drop the client's own prose from the SERVED script — it is inert to the browser, so the
+    visitor downloads only the code. The source keeps every comment; only this build copy is
+    stripped, and the byte-budget fence measures this same stripped output, so the fence guards real
+    code rather than explanation. The same lever the stylesheet already rides (strip_css_comments,
+    2026-07-23), applied to the bigger of the two files.
+
+    Deliberately conservative: only a comment that OPENS its line — the first non-whitespace on it —
+    is dropped, whole. A trailing `// ...` after code is copied VERBATIM, so an apostrophe inside it
+    can never be read as the start of a string. Quotes, template literals and regular-expression
+    literals are all tracked: a line inside a template that happens to begin with `//` (a URL, say)
+    is never mistaken for a comment, and a quote character inside a pattern like `/[<>&"]/` never
+    opens a string. A `/` is read as a pattern only where an expression may begin — after an
+    operator, an opening bracket, a separator, or one of the keywords that take one."""
+    # where a `/` opens a pattern rather than dividing
+    RE_OK_CHARS = set("(,=:[!&|?{};+-*%~^<>\n")
+    RE_OK_WORDS = ("return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
+                   "case", "do", "else", "yield", "await")
+    out = []
+    i, n, quote, line_start = 0, len(js), None, True
+    prev = ""                                           # last significant character emitted as code
+
+    def pattern_may_open():
+        if not prev or prev in RE_OK_CHARS:
+            return True
+        if prev.isalnum() or prev in "_$":              # an identifier or a number — division,
+            tail = "".join(out)[-16:]                   # unless the identifier is a keyword
+            word = re.search(r"([A-Za-z_$]+)\s*$", tail)
+            return bool(word and word.group(1) in RE_OK_WORDS)
+        return False
+
+    while i < n:
+        c = js[i]
+        if quote:
+            out.append(c)
+            if c == "\\" and i + 1 < n:                 # an escaped char rides whole
+                out.append(js[i + 1]); i += 2; continue
+            if c == quote:
+                quote = None
+            i += 1; continue
+        if c in "\"'`":
+            quote = c; out.append(c); i += 1; line_start = False; continue
+        if c == "\n":
+            out.append(c); i += 1; line_start = True; continue
+        if line_start and c in " \t":
+            out.append(c); i += 1; continue
+        if c == "/" and i + 1 < n and js[i + 1] == "/":
+            j = js.find("\n", i)
+            end = n if j == -1 else j
+            if line_start:                              # the whole line is prose — drop it
+                while out and out[-1] in " \t":
+                    out.pop()                           # its indent goes with it
+                i = n if j == -1 else j + 1
+            else:                                       # trailing prose stays, copied VERBATIM so a
+                out.append(js[i:end])                   # `don't` inside it never opens a string
+                i = end
+            continue
+        if c == "/" and i + 1 < n and js[i + 1] == "*":
+            j = js.find("*/", i + 2)
+            end = n if j == -1 else j + 2               # an unterminated comment drops the tail
+            if line_start:
+                while out and out[-1] in " \t":
+                    out.pop()
+                i = end
+                while i < n and js[i] in " \t":
+                    i += 1
+                if i < n and js[i] == "\n":
+                    i += 1
+                continue
+            out.append(js[i:end])                       # trailing block comment, verbatim
+            i = end
+            line_start = False
+            continue
+        if c == "/" and pattern_may_open():
+            end = _pattern_end(js, i)                   # a regular-expression literal, copied whole
+            if end is not None:
+                out.append(js[i:end])
+                i = end; line_start = False; prev = "/"
+                continue
+        out.append(c); i += 1; line_start = False
+        if not c.isspace():
+            prev = c
+    stripped = "".join(out)
+    stripped = re.sub(r"[ \t]+(\n)", r"\1", stripped)   # trailing whitespace off each line
+    stripped = re.sub(r"\n{3,}", "\n\n", stripped)      # a run of blank lines → one
+    return stripped
+
+
 def copy_exhibition_assets():
     """The exhibition client (JS+CSS) — instance override first, engine's own otherwise (see
     client_asset); favicons from the instance's assets dir (absent → the bundle simply has none).
     The served JS is passed through the namespace substitution (EX-NS): the engine client's tokens
     resolve to the instance's namespace; a token-free instance client is byte-copied unchanged.
-    The CSS is comment-stripped on the way out (strip_css_comments): the visitor gets rules only,
-    the source stays fully commented."""
+    Both files are comment-stripped on the way out (strip_js_comments / strip_css_comments): the
+    visitor gets code and rules only, the source stays fully commented."""
     js_path = client_asset("exhibition.js")
     js_src = js_path.read_text(encoding="utf-8")
     if "@@NS@@" in js_src or "@@NS_UPPER@@" in js_src:
-        write(OUT / "exhibition.js", apply_namespace(js_src, _NAMESPACE))
-    else:
-        shutil.copy2(js_path, OUT / "exhibition.js")   # token-free instance client — byte-exact
+        js_src = apply_namespace(js_src, _NAMESPACE)
+    write(OUT / "exhibition.js", strip_js_comments(js_src))
     css_src = client_asset("exhibition.css").read_text(encoding="utf-8")
     write(OUT / "exhibition.css", strip_css_comments(css_src))
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
@@ -771,6 +899,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     tests omit it so the bake stays fast (EX-PROTECT-RES / INV-56)."""
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
     global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, _ENGINE_ASSETS, _INSTANCE_ASSETS, _NAMESPACE
+    global HINT_LINE, OG_IMAGE_ID
     GA_ID = ga_id
     OUT = out_dir
     ROOT = content_dir
@@ -785,6 +914,10 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     ROOT_DESCRIPTION = site_config["root_description"]
     COLLECTION_NAME = site_config["collection_name"]
     LOADING_LINE = site_config.get("loading_line") or "loading the exhibition"
+    # The one-line subtitle under the site name on the crawlable JS-off face. Instance copy since
+    # 1.14.0; the engine's own words stand for an instance that names none.
+    HINT_LINE = site_config.get("hint_line") or "an exhibition that assembles itself around you"
+    OG_IMAGE_ID = site_config.get("og_image_id") or ""
     COPYRIGHT = compose_sign(datetime.date.today().year, CREATOR, SITE_NAME,
                              site_config.get("instagram"))
     if OUT.exists():

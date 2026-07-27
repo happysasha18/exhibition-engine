@@ -9,10 +9,10 @@ choice: it reds once the bundle grows past its fence, and only then does a platf
 delivery earn its build. This suite IS that watcher — it measures the SHIPPED bundle and reds on bloat.
 
 What it measures: the gzip size (level 6 — plain `gzip -c`, deterministic mtime) of the engine's
-assembled `exhibition.js` and `exhibition.css` AS SHIPPED. The site bakes the JS verbatim, so the JS
-is measured raw; it comment-strips the CSS at bake (build.py: strip_css_comments — the visitor gets
-rules, not prose), so the CSS is measured through that same stripper. Measuring the engine's own
-assets, treated exactly as the bake treats them, guards both repos' delivery.
+assembled `exhibition.js` and `exhibition.css` AS SHIPPED. The bake comment-strips BOTH on the way
+out (build.py: strip_js_comments / strip_css_comments — the visitor gets code and rules, not prose),
+so each is measured through its own stripper. Measuring the engine's own assets, treated exactly as
+the bake treats them, guards both repos' delivery.
 
 The fence is infrastructure rather than red-first behaviour: it is GREEN while the bundle stays under
 the fence and reds only when a future change balloons it past the headroom. The fence is set at the
@@ -22,6 +22,9 @@ sends the delivery question back to the SPEC's non-goal.
 
 Measured 2026-07-21: JS gzip ≈ 92_967 B (raw). CSS as-shipped 2026-07-23: gzip ≈ 7_415 B
 (comment-stripped; the commented source is ≈ 18_801 B — comments were ~60% of the served weight).
+JS as-shipped 2026-07-27: gzip ≈ 57_311 B (comment-stripped; the commented source is ≈ 104_495 B —
+line-opening comments were ~45% of the served weight). The raw fence had 50 B of headroom left when
+the strip landed, which is what sent the same lever the stylesheet already rides over to the script.
 
 Run: python tests/test_budget.py   (exit 0 = under fence)
 """
@@ -37,23 +40,22 @@ ROOT = Path(__file__).resolve().parent.parent
 _CANDIDATES = [ROOT / "engine" / "assets", Path.home() / "exhibition-engine" / "engine" / "assets"]
 ASSETS = next((c for c in _CANDIDATES if (c / "exhibition.js").exists()), _CANDIDATES[0])
 
-# The served CSS is comment-stripped at bake (build.py: strip_css_comments) — the visitor downloads
-# rules, not prose. The fence must measure THAT shipped artifact, so it borrows the very same stripper
-# the build uses (one home for the transform, no drift). The site bakes the JS verbatim, so the JS is
-# measured raw. build.py sits one level up from the engine's assets dir.
+# Both served assets are comment-stripped at bake — the visitor downloads code and rules, not prose.
+# The fence must measure THOSE shipped artifacts, so it borrows the very strippers the build uses (one
+# home for each transform, no drift). build.py sits one level up from the engine's assets dir.
 def _load_strip():
     spec = importlib.util.spec_from_file_location("_engine_build", ASSETS.parent / "build.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod.strip_css_comments
+    return mod.strip_css_comments, mod.strip_js_comments
 
 
-strip_css_comments = _load_strip()
+strip_css_comments, strip_js_comments = _load_strip()
 
 # fence value + one-line reason, per asset. current × ~1.1–1.15, rounded to a round number above it.
 # The transform is the exact bake-time treatment of the served asset (None = shipped verbatim).
 FENCES = {
-    "exhibition.js": (105_000, "monolithic all-pole bundle; ~13% over the 2026-07-21 gzip of ~92_967 B", None),
+    "exhibition.js": (65_000, "monolithic all-pole bundle, comment-stripped as shipped; ~13% over the 2026-07-27 gzip of ~57_311 B", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
 }
 

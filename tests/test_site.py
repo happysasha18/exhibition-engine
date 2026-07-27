@@ -402,6 +402,112 @@ if _ig:
           f"walk={bool(_copyright) and _href in (_copyright or '')}")
 
 
+# ------------------------------------------------ INV-25 the root's og:image is the instance's pick
+# The homepage's share image is named by the instance in site.json (`og_image_id`). An instance that
+# names none, or names an id the gallery no longer holds, falls back to the first work in the
+# deterministic order — so the bake stays reproducible either way.
+_pick = getattr(build_site._engine, "pick_hero", None)
+check("INV-25 pick_hero exists (pure: items, og_image_id → the one work the root unfurls with)",
+      callable(_pick), "build.pick_hero missing")
+if callable(_pick):
+    _fx = [{"id": "aaa", "img": "a.jpg"}, {"id": "bbb", "img": "b.jpg"}, {"id": "ccc", "img": "c.jpg"}]
+    check("INV-25 the named work wins",
+          _pick(_fx, "bbb")["id"] == "bbb", f"got {_pick(_fx, 'bbb')}")
+    check("INV-25 no name falls back to the first work (INV-21 order)",
+          _pick(_fx, None)["id"] == "aaa" and _pick(_fx, "")["id"] == "aaa", f"got {_pick(_fx, None)}")
+    check("INV-25 a name the gallery no longer holds falls back, never crashes",
+          _pick(_fx, "gone")["id"] == "aaa", f"got {_pick(_fx, 'gone')}")
+    check("INV-25 an empty gallery yields nothing rather than raising",
+          _pick([], "bbb") is None, "want None")
+
+# ------------------------------------------------ the JS-off subtitle is instance copy, and escaped
+# Every identity string the instance supplies reaches the page through esc(); site_name was the one
+# head value that did not, so a name carrying an apostrophe or a quote broke the og:site_name tag.
+# Proven with a name that actually NEEDS escaping — a fixture name of plain letters would pass this
+# check with or without the fix, and a check that cannot go red proves nothing.
+_eng = build_site._engine
+_saved_name = _eng.SITE_NAME
+try:
+    _eng.SITE_NAME = 'Ann\'s "Room" & Co'
+    _hostile_head = _eng.head("t", "d", "https://x/", "https://x/i.jpg", "website", {})
+finally:
+    _eng.SITE_NAME = _saved_name
+_og_line = next((ln for ln in _hostile_head.splitlines() if "og:site_name" in ln), "")
+check("the served og:site_name is escaped like every sibling head value",
+      _og_line == '<meta property="og:site_name" content="Ann&#x27;s &quot;Room&quot; &amp; Co">',
+      f"og:site_name unescaped: {_og_line!r}")
+_hint_cfg = build_site.SITE_CONFIG.get("hint_line")
+if _hint_cfg:
+    check("the JS-off subtitle under the site name is the instance's own line",
+          f'id="ex-hint">{build_site._engine.esc(_hint_cfg)}<' in _index_html,
+          f"want the instance hint {_hint_cfg!r} on the static face")
+else:
+    check("the JS-off subtitle stands even when the instance names none",
+          'id="ex-hint">' in _index_html and 'id="ex-hint"></span>' not in _index_html,
+          "the hint slot went empty")
+
+
+# ------------------------------------------------ the served code carries no prose, and still runs
+# Both client files are comment-stripped on the way out (the stylesheet since 2026-07-23, the script
+# since 2026-07-27): the visitor downloads code and rules, the source keeps every comment. Nothing
+# asserted the stylesheet half until now — the byte fence was its only witness, and a fence cannot
+# tell a stripped file from a file that simply never had comments.
+_served_js = (TMP / "exhibition.js").read_text(encoding="utf-8")
+_served_css = (TMP / "exhibition.css").read_text(encoding="utf-8")
+_source_js = build_site._engine.client_asset("exhibition.js").read_text(encoding="utf-8")
+
+
+def _opens_a_comment(text, marks):
+    return [ln for ln in text.splitlines() if ln.lstrip().startswith(marks)]
+
+
+check("the served stylesheet carries no comments (the source keeps them all)",
+      not _opens_a_comment(_served_css, ("/*",)) and "/*" not in _served_css
+      and "/*" in build_site._engine.client_asset("exhibition.css").read_text(encoding="utf-8"),
+      f"{len(_opens_a_comment(_served_css, ('/*',)))} comment lines survived into the bundle")
+check("the served script carries no line-opening comments (the source keeps them all)",
+      not _opens_a_comment(_served_js, ("//", "/*"))
+      and len(_opens_a_comment(_source_js, ("//", "/*"))) > 100,
+      f"{len(_opens_a_comment(_served_js, ('//', '/*')))} comment lines survived into the bundle")
+# The strip is deliberately conservative — it leaves a comment TRAILING code alone, because telling
+# one from a division or a regular expression needs a full parse. Assert that boundary, so a future
+# "smarter" strip that starts touching code has to face this row first.
+check("the strip leaves a comment trailing code alone (it never has to parse an expression)",
+      any(" //" in ln and not ln.lstrip().startswith("//") for ln in _served_js.splitlines()),
+      "every trailing comment vanished — the strip is reaching into code it cannot safely read")
+# The proof that matters: the stripped script is still the SAME program. Every browser row in this
+# suite already runs against this served copy, so a strip that broke the client would red the walk,
+# the door and the zoom long before these rows. These two name the property directly.
+_lost = [name for name in ("function glidePlan", "function wheelWalkStep", "function glideCurve")
+         if name not in _served_js]
+check("the strip removes prose only — every client function survives into the bundle",
+      not _lost, f"missing from the served script: {', '.join(_lost)}")
+
+
+def _lines_are_a_subsequence(served, source):
+    """Every line of the served script must be a line of the source, in the SAME ORDER. A strip that
+    only DELETES whole lines satisfies this; one that rewrote, joined or reordered a line cannot. It
+    is the property that makes stripping safe to ship, so it is asserted rather than assumed."""
+    src = [ln.rstrip() for ln in source.splitlines()]
+    i, missing = 0, []
+    for ln in (l.rstrip() for l in served.splitlines()):
+        while i < len(src) and src[i] != ln:
+            i += 1
+        if i >= len(src):
+            missing.append(ln)
+        else:
+            i += 1
+    return missing
+
+
+_src_ns = build_site._engine.apply_namespace(_source_js, build_site.SITE_CONFIG.get("namespace") or "ex") \
+    if ("@@NS@@" in _source_js or "@@NS_UPPER@@" in _source_js) else _source_js
+_rewritten = _lines_are_a_subsequence(_served_js, _src_ns)
+check("the strip only DELETES lines — every served line is a source line, in order",
+      not _rewritten,
+      f"{len(_rewritten)} served line(s) are not source lines: {_rewritten[:2]}")
+
+
 # ---------------------------------------------------------------- INV-56 display cap + site-URL watermark (EX-PROTECT-RES)
 # The deploy bakes with --display-max; tests omit it so they stay fast (verbatim copy).
 # When Pillow is available: exercise _copy_assets_capped directly — an over-cap image

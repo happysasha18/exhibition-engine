@@ -5,6 +5,40 @@ private production instance and founded as its own product: a static gallery-sit
 adaptive-exhibition renderer, with the guided-journey product vision below. Method: the live-spec
 pack, loaded per session._
 
+## 2026-07-27 — the glide keeps its speed across a re-time · the served script is comment-stripped
+
+Three landings, all engine-side, driven by an instance report and by the byte fence they tripped.
+
+**The glide no longer stops dead mid-frame (EX-GLIDE / INV-84).** A rising wheel sample re-times the
+running glide; the old sine curve left at ZERO speed, so every re-time restarted the walk from rest,
+and a slow trackpad drag re-times four or five times inside one step. The curve now takes an ENTRY
+SPEED — a cubic `s(0)=0, s(1)=1, s'(0)=m, s'(1)=0`, with `m=0` exactly smoothstep so a glide from a
+resting walk is unchanged, and `m` clamped to the band where the curve stays monotonic and cannot
+overshoot. A re-time also asks the new force's duration for a WHOLE frame, takes the share still left
+to travel, and may only bring the landing nearer. The decision lives in two DOM-free pure functions
+(`glideCurve`, `glidePlan`) on the `wheelWalkStep` precedent, replayed in node by the new
+`test_glide_speed` suite (10 rows, mirrored into the instance). Measured on the recorded slow-drag
+envelope: one frame took 1283ms with a slowest frame of 0.034 px/ms; it now takes 478ms with a
+slowest frame of 0.475 px/ms. Red-first proven by replaying the same envelope through the retired
+curve.
+
+**The served script is comment-stripped at bake (`strip_js_comments`).** The same lever the
+stylesheet has ridden since 2026-07-23, applied to the bigger file: gzip 104_495 → 57_311 B. Only a
+comment OPENING its line is dropped; a trailing one is copied verbatim, since telling it from a
+division or a pattern needs a full parse. Quotes, template literals and regular-expression literals
+are tracked — the first cut mis-read the `"` inside `/[<>&"]/` as a string opener. The safety
+property is asserted, not assumed: every line of the served script is a line of the source, in order,
+so the strip can only DELETE. Both byte fences now measure the shipped, stripped copies (JS fence
+65_000 at 57_311). The stylesheet's strip had lived since 2026-07-23 with no test at all — a byte
+fence cannot tell a stripped file from one that never had comments — and now has one.
+
+**Three smaller engine-side items.** The root's `og:image` is nameable by the instance
+(`og_image_id` in site.json), which closes a real drift: INV-25 has always said the root's share
+image is set by config while the code hardcoded the first work. The JS-off subtitle under the site
+name became instance copy (`hint_line`), the engine's own words standing for an instance that names
+none. And `og:site_name` was the one head value not passed through `esc()` — proven with a name that
+actually needs escaping, since a fixture of plain letters would pass either way.
+
 ## 2026-07-20 — the door-variety test made robust (EX-DOOR-3), test-only
 
 The `test_door.py` variety row was a flaky proxy: it opened the door 3× and asked for ≥2 distinct

@@ -3695,23 +3695,68 @@
     // (EX-MOTION-R). Capped ×1.5 so a slow tempo never makes the dock crawl.
     return base * Math.min(1.5, TEMPO / 1.35);
   }
-  function glideToFrame(to, velocity) {
+  // The transition curve: a cubic with s(0)=0, s(1)=1, s'(0)=m, s'(1)=0, entered at speed m (the
+  // entering speed over this glide's own distance/duration). m=0 is exactly smoothstep, so a glide
+  // from a resting walk is unchanged; a glide REPLACING one in flight enters at the speed that one
+  // had, so the walk never stops dead mid-frame. m is clamped to the band where the cubic stays
+  // monotonic and cannot overshoot the frame (INV-39). Why, in full: SPEC EX-GLIDE + INV-84.
+  const GLIDE_M_MAX = 2;
+  const GLIDE_MIN_MS = 16;                             // shorter than one frame — just land
+  function glideCurve(m) {
+    const s = Math.max(0, Math.min(GLIDE_M_MAX, +m || 0));
+    return {
+      m: s,
+      at: (t) => (((s - 2) * t + (3 - 2 * s)) * t + s) * t,   // s(t)
+      dat: (t) => (3 * (s - 2) * t + 2 * (3 - 2 * s)) * t + s, // s'(t)
+    };
+  }
+  // The pure half of a glide — DOM-free and clock-free, so the suite replays recorded trackpad
+  // envelopes through it in node (test_glide_speed), as it does the step verdict. `dist` px still
+  // to travel · `want` the duration this force asks for a WHOLE frame · `span` the frame travel the
+  // running glide set out on (0 starts one) · `carry` its speed px/ms (0 = rest) · `leftMs` what is
+  // left of its deadline (Infinity = none). A re-time may only bring the landing nearer.
+  function glidePlan(a) {
+    const span = a.span || Math.abs(a.dist) || 1;
+    let dur = a.want * Math.min(1, Math.abs(a.dist) / span);
+    if (dur > a.leftMs) dur = a.leftMs;
+    if (!(dur > GLIDE_MIN_MS)) return { dur: 0, m: 0, span: span };
+    const m = (a.carry * a.dist > 0)
+      ? Math.max(0, Math.min(GLIDE_M_MAX, a.carry * dur / a.dist)) : 0;
+    return { dur: dur, m: m, span: span };
+  }
+  let glideDist = 0, glideDurMs = 0, glideT0 = 0, glideCurveNow = null, glideEndAt = 0, glideSpan = 0;
+  function glideSpeedNow(now) {                        // px per ms, signed, of the glide in flight
+    if (!gliding || !glideCurveNow || !(glideDurMs > 0)) return 0;
+    const p = Math.max(0, Math.min(1, (now - glideT0) / glideDurMs));
+    return glideDist * glideCurveNow.dat(p) / glideDurMs;
+  }
+  // mode: "" fresh from a resting walk · "chain" a second gesture re-targeting to the next frame ·
+  // "retime" the same goal at a new speed. Chain and re-time both carry the running speed.
+  function glideToFrame(to, velocity, mode) {
+    const now = performance.now();
+    const carry = (mode === "chain" || mode === "retime") && gliding ? glideSpeedNow(now) : 0;
+    const deadline = (mode === "retime" && gliding) ? glideEndAt : Infinity;
+    const spanRef = (mode === "retime" && gliding) ? glideSpan : 0;
     glideCancel();
     const from = scrollY;
     const d = to - from;
     if (Math.abs(d) < 2) { glideGoal = null; return; } // already centered — nothing to move
     glideGoal = to;
-    // INV-84: the gesture's velocity sets this single glide's duration (calm ~520ms → sharp ~260ms);
-    // a re-time mid-flight (a rising wheel peak) restarts from the current position to the same goal,
-    // so the position stays continuous and monotonic while only the speed changes — never a second frame.
-    const dur = glideDur(velocity);
-    const ease = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
-    const t0 = performance.now();
+    // INV-84: the gesture's velocity sets this single glide's duration (calm ~520ms → sharp ~260ms).
+    // A re-time asks that duration for the whole frame, then takes the share still left to travel.
+    const plan = glidePlan({ dist: d, want: glideDur(velocity), span: spanRef,
+                             carry: carry, leftMs: deadline - now });
+    const dur = plan.dur;
+    if (!dur) { scrollTo(0, to); glideGoal = null; return; }          // inside one frame — just land
+    const cv = glideCurve(plan.m);
+    const t0 = now;
+    glideDist = d; glideDurMs = dur; glideT0 = t0; glideCurveNow = cv; glideEndAt = t0 + dur;
+    glideSpan = plan.span;
     gliding = true;
-    const step = (now) => {
+    const step = (nw) => {
       if (atDoor || busy || sideOpen) { glideCancel(); glideGoal = null; return; }
-      const p = Math.min(1, (now - t0) / dur);
-      scrollTo(0, from + d * ease(p));                 // the animator OWNS the position
+      const p = Math.min(1, (nw - t0) / dur);
+      scrollTo(0, from + d * cv.at(p));                // the animator OWNS the position
       if (p < 1) glideRaf = requestAnimationFrame(step);
       else { glideCancel(); glideGoal = null; }        // landed centered — no tail, no drift
     };
@@ -3750,7 +3795,7 @@
     const k = Math.min(stops.length - 1, Math.max(0, cur + dir));
     if (k === cur) noteStuckStep(); else stuckBurst = [];   // EX-FRICTION: a clamped no-move step vs a real advance
     glideTargetEl = els[k];                              // the destination SECTION — a mid-glide rotation docks HERE (INV-86)
-    glideToFrame(stops[k], velocity);
+    glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
   }
   // the viewport metric moves under a RESTING walk (phone chrome collapses, a window resize) —
   // quietly re-dock the frame the eye is on to the new centre; mid-glide the landing already
@@ -3966,7 +4011,7 @@
       if (step) { wheelPeak = mag; stepFrame(step, mag); return; }
       if (mag > wheelPeak) {
         wheelPeak = mag;
-        if (gliding && glideGoal != null) glideToFrame(glideGoal, wheelPeak);
+        if (gliding && glideGoal != null) glideToFrame(glideGoal, wheelPeak, "retime");
       } else wheelPeak = Math.max(mag, wheelPeak * 0.95);
     }, { passive: false });
   }

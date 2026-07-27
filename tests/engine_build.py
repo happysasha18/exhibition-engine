@@ -36,6 +36,8 @@ SITE_CONFIG = {
     "collection_name":  "SYNTH EXHIBITION — the exhibition",
     # EX-COPY (INV-28): the optional creator social link that trails the signature (absent instances omit it).
     "instagram":        "https://instagram.com/synthexhibition",
+    # The one-line subtitle under the site name on the crawlable JS-off face — instance copy.
+    "hint_line":        "a synthetic room that answers one choice",
     # EX-LANG-GEO (INV-45/INV-1): the arriving-country → tongues map that narrows the language corner.
     # cap 5 so a busy country (IL: he/ru/ar) still leaves room for the guest's own browser locale.
     "lang_geo": {
