@@ -39,7 +39,7 @@ def skip(name, detail):
     results.append((name, "SKIP", detail))
 
 
-def wait_for(br, expr, timeout=5.0, step=0.2):
+def wait_for(br, expr, timeout=6.0, step=0.05):
     """Poll a JS expression until it returns truthy (or the deadline) — no fixed-sleep races."""
     import time
     end = time.time() + timeout
@@ -50,6 +50,100 @@ def wait_for(br, expr, timeout=5.0, step=0.2):
             return val
         br.sleep(step)
     return val
+
+
+def wait_settled(br, expr, start, timeout=6.0, step=0.05, stable=2):
+    """Poll a moving number until it has LEFT `start` and then reads the SAME twice — a real
+    motion coming to rest (a walk glide, a lane scroll), in place of a fixed sleep. Returns the
+    resting value, or the last one read at the deadline."""
+    import time
+    end = time.time() + timeout
+    last, same = start, 0
+    while time.time() < end:
+        v = br.evaluate(expr)
+        if v != start:
+            same = same + 1 if v == last else 1
+            if same >= stable:
+                return v
+        last = v
+        br.sleep(step)
+    return last
+
+
+# ---------------------------------------------------------------- the conditions the rows wait on
+# Every wait below names the state the next line reads, taken from the client's own markers.
+
+
+class shared:
+    """Hand a row an already-open Browser and leave it open — ONE Chrome serves a whole group of
+    rows instead of one cold launch per row. Per-row isolation is enter()/at_door(): navigate,
+    clear localStorage AND sessionStorage, reload. Only BROWSER-level state survives that — an
+    injected on-new-document script (Page.addScriptToEvaluateOnNewDocument is never removed) and
+    touch emulation — so each of those gets a browser of its own."""
+    __slots__ = ("br",)
+
+    def __init__(self, br):
+        self.br = br
+
+    def __enter__(self):
+        return self.br
+
+    def __exit__(self, *a):
+        return False
+
+
+# the door stands ready to be clicked: its windows are rendered AND their pictures have landed
+# (a window whose img has not settled reports a currentSrc the K rows would compare against a
+# later, different one)
+DOOR_READY = ("(()=>{const ws=[...document.querySelectorAll('.exd-window')];"
+              "return ws.length>=1&&ws.every(w=>{const i=w.querySelector('img');"
+              "return !!(i&&i.complete&&i.naturalWidth>0);});})()")
+# the door→walk crossing has LANDED: none of the three body classes 07-door-face-ceremony.js sets
+# is left (ex-door while the door stands, ex-crossing during the crossing, ex-cross-cap while the
+# caption waits its beat — dropped in capBeat, the same tick that frees the ceremony lock) and the
+# first work's picture stands
+WALK_LANDED = ("(()=>{const b=document.body.classList;"
+               "return !b.contains('ex-door')&&!b.contains('ex-crossing')&&!b.contains('ex-cross-cap')"
+               "&&!!document.querySelector('.exh-frame img.work');})()")
+# the series room stands REVEALED: the shared veil crossing is over (veil hidden = the ceremony
+# lock released) and the stage carries its pictures, landed
+ROOM_READY = ("(()=>{const s=document.getElementById('ex-side'),v=document.getElementById('ex-veil'),"
+              "st=document.getElementById('exs-stage');if(!(s&&!s.hidden&&(!v||v.hidden)&&st))return false;"
+              "const im=[...st.querySelectorAll('img')];"
+              "return im.length>=1&&im.every(i=>i.complete&&i.naturalWidth>0);})()")
+# the room has LEFT and its exit crossing is over (the veil is back down), so the next open is free
+ROOM_GONE = ("(()=>{const s=document.getElementById('ex-side'),v=document.getElementById('ex-veil');"
+             "return !!(s&&s.hidden&&(!v||v.hidden));})()")
+TOAST_UP = ("(()=>{const t=document.getElementById('ex-toast');"
+            "return !!(t&&!t.hidden&&(t.textContent||'').trim());})()")
+
+
+def layer_up(el_id):
+    """The layer stands (its element is present and not hidden)."""
+    return "(()=>{const e=document.getElementById(%s);return !!(e&&!e.hidden);})()" % json.dumps(el_id)
+
+
+def layer_gone(el_id):
+    """The layer is gone (hidden) — the state a close leaves behind, after any focus restore."""
+    return "(()=>{const e=document.getElementById(%s);return !!(e&&e.hidden);})()" % json.dumps(el_id)
+
+
+def focus_inside(el_id):
+    """Focus has landed INSIDE the layer (openTrap seats it on the frame after the open)."""
+    return ("(()=>{const l=document.getElementById(%s),a=document.activeElement;"
+            "return !!(l&&!l.hidden&&a&&a!==document.body&&l.contains(a));})()" % json.dumps(el_id))
+
+
+def counter_at(n):
+    """The walk's own work counter reads `n` — the in-view observer has run for that frame."""
+    return ("(()=>{const e=document.querySelector('#exh-counter .now');"
+            "return !!e&&e.textContent.trim()===%s;})()" % json.dumps("%02d" % n))
+
+
+def portions_at_least(n):
+    """At least `n` story portions stand in the caption live region."""
+    return ("(()=>{const e=document.getElementById('ex-live-cap');"
+            "return !!e&&e.querySelectorAll('.ex-sr-portion').length>=%d;})()" % n)
 
 
 # ---------------------------------------------------------------- bake once (story + quiz on)
@@ -175,9 +269,9 @@ def enter(br, base, tempo="0.4"):
     br.evaluate("sessionStorage.clear()")
     br.evaluate(f"localStorage.setItem('ex-tempo','{tempo}')")
     br.reload()
-    br.sleep(0.9)
-    br.click(".exd-window:nth-child(1)", settle=0.1)
-    br.sleep(1.2)
+    wait_for(br, DOOR_READY, timeout=8.0)          # the door's windows are up and pictured
+    br.click(".exd-window:nth-child(1)", settle=0.05)
+    wait_for(br, WALK_LANDED, timeout=8.0)         # the crossing has landed on the first work
 
 
 # --- JS probes ------------------------------------------------------------
@@ -257,9 +351,19 @@ if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
-    with serve(TMP) as base:
+    # Four groups, one Chrome each, held open across every row of the group (the plain rows, the
+    # touch-emulated row, and one per injected on-new-document stub — neither resets with enter()).
+    with serve(TMP) as base, \
+            Browser(width=1280, height=900) as plain_br, \
+            Browser(width=1280, height=900) as touch_br, \
+            Browser(width=1280, height=900) as story_br, \
+            Browser(width=1280, height=900) as quizwin_br:
+        touch_br.touch(True, 2)
+        story_br.inject(STUB_STORY)
+        quizwin_br.inject(STUB_QUIZ_WIN)
+
         # C1 + C3 — the walk frames speak an alt and name themselves a photograph
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             frames = json.loads(br.evaluate(FRAMES_ALT) or "[]")
             c1_ok = len(frames) >= 2 and all(
@@ -270,7 +374,7 @@ else:
             check(BROWSER_ROWS[1], c3_ok, f"frames={frames[:3]}")
 
         # C2 — three distinct polite live nodes
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             nodes = json.loads(br.evaluate(LIVE_NODES) or "[]")
             ok = (len(nodes) == 3 and all(n and n.get("live") == "polite" for n in nodes)
@@ -278,13 +382,15 @@ else:
             check(BROWSER_ROWS[2], ok, f"nodes={nodes}")
 
         # C2 — a walk step REPLACES the caption region
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             st0 = json.loads(br.evaluate(CAP_STATE) or "null")
             # step to the second frame
             br.evaluate("(()=>{const fs=document.querySelectorAll('.exh-frame');"
                         "if(fs[1])fs[1].scrollIntoView({block:'center',behavior:'instant'});})()")
-            br.sleep(0.6)
+            # the second frame's in-view callback has run — it moves the counter, and announces
+            # the caption in the same pass (08-plaque-caption-io.js)
+            wait_for(br, counter_at(2))
             st1 = json.loads(br.evaluate(CAP_STATE) or "null")
             prior = (st0 or {}).get("cap", [""])[0] if st0 else ""
             now = (st1 or {}).get("cap", [""])
@@ -295,15 +401,14 @@ else:
         # C2/F5 — a story portion APPENDS (the caption stands above; a second portion accumulates). Each
         # «ещё N» opens a new story portion with NO caption replace after (focus stays), so the appended
         # portions stand together — the append discipline, shown across two portions.
-        with Browser(width=1280, height=900) as br:
-            br.inject(STUB_STORY)
+        with shared(story_br) as br:
             enter(br, base)
-            br.sleep(0.6)
+            wait_for(br, "!!document.getElementById('ex-unfold')")   # the finale's control stands
             br.evaluate("(()=>{const u=document.getElementById('ex-unfold');if(u)u.click();})()")
-            br.sleep(0.9)
+            wait_for(br, portions_at_least(1))
             a = json.loads(br.evaluate(CAP_STATE) or "null")
             br.evaluate("(()=>{const u=document.getElementById('ex-unfold');if(u)u.click();})()")
-            br.sleep(0.9)
+            wait_for(br, portions_at_least(2))
             b = json.loads(br.evaluate(CAP_STATE) or "null")
             append_ok = (isinstance(a, dict) and isinstance(b, dict)
                          and len(a.get("portions", [])) >= 1
@@ -313,17 +418,18 @@ else:
             check(BROWSER_ROWS[4], append_ok, f"after_unfold1={a} after_unfold2={b}")
 
         # C2/F5 — a gift result rides the SEPARATE result region while a story portion holds the caption
-        with Browser(width=1280, height=900) as br:
-            br.inject(STUB_STORY)
+        with shared(story_br) as br:
             enter(br, base)
-            br.sleep(0.6)
+            wait_for(br, "!!document.getElementById('ex-unfold')")   # the finale's control stands
             # a story portion stands in the caption region (an «ещё N» opens one, no caption replace after)
             br.evaluate("(()=>{const u=document.getElementById('ex-unfold');if(u)u.click();})()")
-            br.sleep(0.9)
+            wait_for(br, portions_at_least(1))
             # open the gift ceremony on the in-view work (a grab) — its result speaks in the result region
             br.evaluate("document.querySelector('.exh-frame img.work')"
                         ".dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))")
-            br.sleep(0.4)
+            # openGift announces the result BEFORE it unhides the card (11-protect-gift.js), so a
+            # standing card is proof the result region has been written
+            wait_for(br, layer_up("ex-gift-card"))
             cap = json.loads(br.evaluate(CAP_STATE) or "null")
             res = br.evaluate(RESULT_STATE)
             portion = (cap or {}).get("portions", [""])
@@ -335,21 +441,21 @@ else:
             check(BROWSER_ROWS[5], sep_ok, f"cap={cap} result={res!r}")
 
         # C4/C5 — the four modal layers each carry an accessible name
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             labels = json.loads(br.evaluate(MODAL_LABELS) or "[]")
             ok = len(labels) == 4 and all(m.get("label") and str(m["label"]).strip() for m in labels)
             check(BROWSER_ROWS[6], ok, f"labels={labels}")
 
         # C6 — the series room's images speak (open a real series by its own chip)
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             if not SERIES:
                 skip(BROWSER_ROWS[7], "the fixture bakes no series (3+)")
             else:
                 try:
                     br.evaluate("(%s)(0)" % OPEN_SERIES)
-                    br.sleep(1.4)                       # the veil crossing settles
+                    wait_for(br, ROOM_READY)            # the veil crossing is over, the room dressed
                     imgs = json.loads(br.evaluate(ROOM_IMGS) or "null")
                     ok = (isinstance(imgs, list) and len(imgs) >= 1
                           and all(im["alt"].strip() and im["alt"] == DESC_BY_ID.get(str(im["id"]), "\0")
@@ -359,8 +465,7 @@ else:
                     check(BROWSER_ROWS[7], False, f"exception={e!r}")
 
         # C7 — the inspected image speaks (pinch a walk work open, read the zoom img alt)
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2)
+        with shared(touch_br) as br:
             enter(br, base)
             out = json.loads(br.evaluate(PINCH_WORK_ZOOM) or "null")
             ok = (isinstance(out, dict) and out.get("opened")
@@ -372,8 +477,7 @@ else:
         # work's chip is injected into the caption and clicked (the real delegated opener quizCardOpen —
         # it needs only the baked quiz field, not the work rendered/focused, so the random door pick can't
         # make this flaky), an option is answered under the stubbed win, and the prize gift opens.
-        with Browser(width=1280, height=900) as br:
-            br.inject(STUB_QUIZ_WIN)
+        with shared(quizwin_br) as br:
             enter(br, base)
             if not QUIZ_IDS:
                 skip(BROWSER_ROWS[9], "the fixture bakes no quiz works")
@@ -462,46 +566,53 @@ if not chrome_available():
     for r in B_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
-    with serve(TMP) as base:
+    # Two groups, one Chrome each: the plain rows, and the touch-emulated ones (touch emulation is
+    # set on the BROWSER and does not reset with enter()).
+    with serve(TMP) as base, \
+            Browser(width=1280, height=900) as plain_br, \
+            Browser(width=1280, height=900) as touch_br:
+        touch_br.touch(True, 2)
+
         # B-role — role=dialog + aria-modal on all four modal layers (read at construction)
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             roles = json.loads(br.evaluate(MODAL_ROLE) or "[]")
             ok = (len(roles) == 4 and all(m.get("role") == "dialog" and m.get("modal") == "true" for m in roles))
             check(B_ROWS[0], ok, f"roles={roles}")
 
         # B-esc — a real Escape closes each of the four layers
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             esc = {}
             # gift (desktop right-click → the ceremony)
-            br.evaluate(CTX_GIFT); br.sleep(0.4)
-            br.key("Escape"); br.sleep(0.5)
+            br.evaluate(CTX_GIFT); wait_for(br, layer_up("ex-gift-card"))
+            br.key("Escape"); wait_for(br, layer_gone("ex-gift-card"))
             esc["gift"] = not br.evaluate("(%s)('ex-gift-card')" % OPEN_STATE)
             # quiz (inject the chip + click)
             if QUIZ_IDS:
                 br.evaluate("(()=>{const c=document.getElementById('exh-cap');if(!c)return;"
                             "const b=document.createElement('button');b.className='ex-quiz-chip';"
                             "b.dataset.quiz=%s;b.textContent='q';c.appendChild(b);b.click();})()" % json.dumps(QUIZ_IDS[0]))
-                br.sleep(0.5); br.key("Escape"); br.sleep(0.5)
+                wait_for(br, layer_up("ex-quiz-card"))
+                br.key("Escape"); wait_for(br, layer_gone("ex-quiz-card"))
                 esc["quiz"] = not br.evaluate("(%s)('ex-quiz-card')" % OPEN_STATE)
             else:
                 esc["quiz"] = True
             # series (open by its own chip)
             if SERIES:
-                br.evaluate("(%s)(0)" % OPEN_SERIES); br.sleep(1.4)
-                br.key("Escape"); br.sleep(1.2)
+                br.evaluate("(%s)(0)" % OPEN_SERIES); wait_for(br, ROOM_READY)
+                br.key("Escape"); wait_for(br, ROOM_GONE)
                 esc["series"] = not br.evaluate("(%s)('ex-side')" % OPEN_STATE)
             else:
                 esc["series"] = True
             check(B_ROWS[1], all(esc.values()), f"closed={esc}")
 
         # B-esc for the zoom (a touch pinch opens it, Escape closes)
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base)
-            br.evaluate(PINCH_WORK_ZOOM); br.sleep(0.5)
+        with shared(touch_br) as br:
+            enter(br, base)
+            br.evaluate(PINCH_WORK_ZOOM); wait_for(br, layer_up("ex-zoom"))
             opened = br.evaluate("(%s)('ex-zoom')" % OPEN_STATE)
-            br.key("Escape"); br.sleep(0.6)
+            br.key("Escape"); wait_for(br, layer_gone("ex-zoom"))
             zesc = opened and not br.evaluate("(%s)('ex-zoom')" % OPEN_STATE)
             # fold the zoom result into B-esc: re-report only if it failed (the row already checked 3/4)
             if not zesc:
@@ -511,35 +622,35 @@ else:
                         break
 
         # B1 focus-in — opening each of the four moves focus INTO the layer
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             fin = {}
             # gift
-            enter(br, base); br.evaluate(CTX_GIFT); br.sleep(0.6)
+            enter(br, base); br.evaluate(CTX_GIFT); wait_for(br, focus_inside("ex-gift-card"))
             fin["gift"] = br.evaluate("(%s)('ex-gift-card')" % INSIDE)
-            br.key("Escape"); br.sleep(0.5)
+            br.key("Escape"); wait_for(br, layer_gone("ex-gift-card"))
             # quiz
             if QUIZ_IDS:
                 br.evaluate("(()=>{const c=document.getElementById('exh-cap');if(!c)return;"
                             "const b=document.createElement('button');b.className='ex-quiz-chip';"
                             "b.dataset.quiz=%s;b.textContent='q';c.appendChild(b);b.click();})()" % json.dumps(QUIZ_IDS[0]))
-                br.sleep(0.7)
+                wait_for(br, focus_inside("ex-quiz-card"))
                 fin["quiz"] = br.evaluate("(%s)('ex-quiz-card')" % INSIDE)
-                br.key("Escape"); br.sleep(0.5)
+                br.key("Escape"); wait_for(br, layer_gone("ex-quiz-card"))
             else:
                 fin["quiz"] = True
             # series
             if SERIES:
-                br.evaluate("(%s)(0)" % OPEN_SERIES); br.sleep(1.6)
+                br.evaluate("(%s)(0)" % OPEN_SERIES); wait_for(br, focus_inside("ex-side"))
                 fin["series"] = br.evaluate("(%s)('ex-side')" % INSIDE)
-                br.key("Escape"); br.sleep(1.2)
+                br.key("Escape"); wait_for(br, ROOM_GONE)
             else:
                 fin["series"] = True
             check(B_ROWS[2], all(fin.values()), f"focus_inside={fin}")
 
         # B1 focus-in for the zoom (pointer/touch open still moves focus in)
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base)
-            br.evaluate(PINCH_WORK_ZOOM); br.sleep(0.7)
+        with shared(touch_br) as br:
+            enter(br, base)
+            br.evaluate(PINCH_WORK_ZOOM); wait_for(br, focus_inside("ex-zoom"))
             zin = br.evaluate("(%s)('ex-zoom')" % INSIDE)
             if not zin:
                 for i, (n, s, d) in enumerate(results):
@@ -548,8 +659,8 @@ else:
                         break
 
         # B1 Tab-trap — repeated REAL Tab keeps the active element inside the open gift ceremony
-        with Browser(width=1280, height=900) as br:
-            enter(br, base); br.evaluate(CTX_GIFT); br.sleep(0.6)
+        with shared(plain_br) as br:
+            enter(br, base); br.evaluate(CTX_GIFT); wait_for(br, focus_inside("ex-gift-card"))
             for _ in range(6):
                 br.key("Tab"); br.sleep(0.08)
             inside = br.evaluate("(%s)('ex-gift-card')" % INSIDE)
@@ -557,27 +668,30 @@ else:
             check(B_ROWS[3], bool(inside) and not in_walk, f"inside={inside} in_walk={in_walk}")
 
         # B1 origin-restore — a KEYBOARD-opened zoom returns focus to its opener; a POINTER open forces none
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base, tempo="0.05")
             # keyboard route: focus a work, press the inspect key, close, focus must return to that work
             br.evaluate("document.querySelector('.exh-frame').focus()")
             fid = br.evaluate("(()=>{const f=document.querySelector('.exh-frame');return f?f.dataset.id:'';})()")
-            br.key("Enter"); br.sleep(0.6)
+            br.key("Enter"); wait_for(br, layer_up("ex-zoom"))
             kopen = br.evaluate("(%s)('ex-zoom')" % OPEN_STATE)
-            br.key("Escape"); br.sleep(0.7)
+            # the close hands focus back BEFORE the layer's own flight hides it (closeTrap runs at the
+            # top of closeZoom, the hidden flag lands with the teardown), so a hidden layer is proof
+            # the restore has already happened
+            br.key("Escape"); wait_for(br, layer_gone("ex-zoom"))
             restored = br.evaluate("(()=>{const a=document.activeElement;"
                                    "return !!(a&&a.classList&&a.classList.contains('exh-frame')&&a.dataset.id==='%s');})()" % fid)
             key_ok = kopen and restored
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base, tempo="0.05")
-            br.evaluate(PINCH_WORK_ZOOM); br.sleep(0.5)
+        with shared(touch_br) as br:
+            enter(br, base, tempo="0.05")
+            br.evaluate(PINCH_WORK_ZOOM); wait_for(br, layer_up("ex-zoom"))
             popen = br.evaluate("(%s)('ex-zoom')" % OPEN_STATE)
             # at OPEN time a touch/pointer open must NOT force focus onto the close control — that is
             # what lit the × on a tan fill + the browser's blue ring on a finger open (his 2026-07-23).
             # The trap anchors the LAYER instead, so the control stays unlit until a real Tab lands it.
             open_no_ctrl = not br.evaluate(
                 "(()=>document.activeElement===document.querySelector('#ex-zoom .exz-close'))()")
-            br.key("Escape"); br.sleep(0.7)
+            br.key("Escape"); wait_for(br, layer_gone("ex-zoom"))
             # a pointer/touch open forces no focus: the active element is NOT a walk work
             no_forced = not br.evaluate("(%s)()" % IN_WALK)
             ptr_ok = popen and no_forced and open_no_ctrl
@@ -586,34 +700,37 @@ else:
               f"pointer_no_forced={no_forced} pointer_open_no_control_focus={open_no_ctrl}")
 
         # B-walk — a real ArrowDown steps the walk one frame and lands it centered (2 steps)
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base, tempo="0.05")
             br.evaluate("document.querySelector('.exh-frame').focus()")
             s0 = json.loads(br.evaluate(STEP_STATE))
-            br.key("ArrowDown"); br.sleep(0.5)
-            br.key("ArrowDown"); br.sleep(0.5)
+            # each step is a real glide — wait for the scroll to LEAVE where it stood and come to
+            # rest, which is exactly the state the centred-frame measure below reads
+            y0 = br.evaluate("Math.round(scrollY)")
+            br.key("ArrowDown"); y1 = wait_settled(br, "Math.round(scrollY)", y0)
+            br.key("ArrowDown"); wait_settled(br, "Math.round(scrollY)", y1)
             s2 = json.loads(br.evaluate(STEP_STATE))
             stepped = s2["idx"] == s0["idx"] + 2 and s2["off"] <= 8
             check(B_ROWS[5], stepped, f"from={s0} to={s2}")
 
         # B3 — the current walk work is keyboard-focusable
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             ff = json.loads(br.evaluate(FOCUS_FRAME))
             check(B_ROWS[6], not ff.get("no") and ff.get("ti", -1) >= 0 and ff.get("is"), f"frame={ff}")
 
         # B2 — a real key opens the closer look from a focused walk work
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base, tempo="0.05")
             br.evaluate("document.querySelector('.exh-frame').focus()")
-            br.key("Enter"); br.sleep(0.6)
+            br.key("Enter"); wait_for(br, layer_up("ex-zoom"))
             check(B_ROWS[7], bool(br.evaluate("(%s)('ex-zoom')" % OPEN_STATE)), "inspect key → #ex-zoom")
 
         # B3 — a real key opens the gift ceremony from a focused walk work (imageless clean-source path)
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             br.evaluate("document.querySelector('.exh-frame').focus()")
-            br.key("y"); br.sleep(0.5)
+            br.key("y"); wait_for(br, layer_up("ex-gift-card"))
             gopen = br.evaluate("(%s)('ex-gift-card')" % OPEN_STATE)
             # the grab ceremony carries NO clean picture (INV-49) — no visible .gift-thumb
             imageless = br.evaluate("(()=>{const t=document.querySelector('#ex-gift-card .gift-thumb');"
@@ -621,7 +738,7 @@ else:
             check(B_ROWS[8], bool(gopen) and bool(imageless), f"open={gopen} imageless={imageless}")
 
         # quiz — the chip + four choices keyboard-reachable, the card takes focus on open, Esc dismisses
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             if not QUIZ_IDS:
                 skip(B_ROWS[9], "the fixture bakes no quiz works")
@@ -629,16 +746,16 @@ else:
                 br.evaluate("(()=>{const c=document.getElementById('exh-cap');if(!c)return;"
                             "const b=document.createElement('button');b.className='ex-quiz-chip';"
                             "b.dataset.quiz=%s;b.textContent='q';c.appendChild(b);b.click();})()" % json.dumps(QUIZ_IDS[0]))
-                br.sleep(0.7)
+                wait_for(br, focus_inside("ex-quiz-card"))
                 took = br.evaluate("(%s)('ex-quiz-card')" % INSIDE)
                 qf = json.loads(br.evaluate(QUIZ_FOCUSABLE))
-                br.key("Escape"); br.sleep(0.6)
+                br.key("Escape"); wait_for(br, layer_gone("ex-quiz-card"))
                 dismissed = not br.evaluate("(%s)('ex-quiz-card')" % OPEN_STATE)
                 check(B_ROWS[9], bool(took) and qf.get("n", 0) >= 2 and qf.get("foc") and dismissed,
                       f"focus_on_open={took} opts={qf} esc_dismissed={dismissed}")
 
         # B4 — the series polaroids + lane images focusable + key-open, and the lane scrolls by key
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             if not SERIES:
                 skip(B_ROWS[10], "the fixture bakes no series (3+)")
@@ -647,7 +764,7 @@ else:
                 lane_scroll = None      # None = no lane series met; else True/False
                 lift_ok = None          # None = no polaroid series met; else True/False
                 for si in range(len(SERIES)):
-                    br.evaluate("(%s)(%d)" % (OPEN_SERIES, si)); br.sleep(1.5)
+                    br.evaluate("(%s)(%d)" % (OPEN_SERIES, si)); wait_for(br, ROOM_READY)
                     # a LANE room's focusables are its direct <img> photos; a POLAROID room's are the
                     # .exs-print buttons (the polaroid's inner <img> is decoration, not a tab stop)
                     room = json.loads(br.evaluate(
@@ -669,55 +786,59 @@ else:
                         br.evaluate("(()=>{const st=document.getElementById('exs-stage');"
                                     "[...st.children].forEach(e=>{if(e.tagName==='IMG'){"
                                     "e.style.minWidth='900px';e.style.flex='none';}});})()")
-                        br.sleep(0.2)
+                        # the widened lane really overflows — the precondition a scroll needs
+                        wait_for(br, "(()=>{const st=document.getElementById('exs-stage');"
+                                     "return !!st&&st.scrollWidth>st.clientWidth;})()")
                         br.evaluate("(()=>{const im=document.querySelector('#exs-stage > img');if(im)im.focus();})()")
                         x0 = br.evaluate("document.getElementById('exs-stage').scrollLeft")
                         for _ in range(3):
                             br.key("ArrowRight"); br.sleep(0.15)
-                        x1 = br.evaluate("document.getElementById('exs-stage').scrollLeft")
+                        x1 = wait_settled(br, "document.getElementById('exs-stage').scrollLeft", x0)
                         lane_scroll = (x1 or 0) > (x0 or 0)
                     if room.get("nprints"):
                         # focus a polaroid, press Enter → it lifts
                         br.evaluate("(()=>{const p=document.querySelector('#exs-stage .exs-print');if(p)p.focus();})()")
-                        br.key("Enter"); br.sleep(0.4)
+                        br.key("Enter"); wait_for(br, "!!document.querySelector('#exs-stage .exs-print.lift')")
                         lift_ok = br.evaluate("!!document.querySelector('#exs-stage .exs-print.lift')")
-                    br.key("Escape"); br.sleep(1.2)
+                    br.key("Escape"); wait_for(br, ROOM_GONE)
                 ok = allfoc and (lane_scroll in (None, True)) and (lift_ok in (None, True)) \
                     and (lane_scroll is not None or lift_ok is not None)
                 check(B_ROWS[10], bool(ok),
                       f"all_focusable={allfoc} lane_scroll={lane_scroll} polaroid_lift={lift_ok}")
 
         # B5 — the tongue list closes on a real Escape AND when focus leaves it (tested at the door)
-        with Browser(width=1280, height=900) as br:
-            br.navigate(base + "/"); br.clear_storage(); br.reload(); br.sleep(1.0)
+        with shared(plain_br) as br:
+            br.navigate(base + "/"); br.clear_storage(); br.reload(); wait_for(br, DOOR_READY, timeout=8.0)
             has_box = br.evaluate("!!document.querySelector('#exd-lang .exl-cur')")
             if not has_box:
                 skip(B_ROWS[11], "the fixture bakes no tongue corner (needs GREET.langs)")
             else:
                 LIST_OPEN = "(()=>{const l=document.querySelector('#exd-lang .exl-list');return !!(l&&!l.hidden);})()"
+                LIST_SHUT = "(()=>{const l=document.querySelector('#exd-lang .exl-list');return !!(l&&l.hidden);})()"
                 # Escape closes an open list
-                br.evaluate("document.querySelector('#exd-lang .exl-cur').click()"); br.sleep(0.3)
+                br.evaluate("document.querySelector('#exd-lang .exl-cur').click()"); wait_for(br, LIST_OPEN)
                 open1 = br.evaluate(LIST_OPEN)
-                br.key("Escape"); br.sleep(0.9)
+                br.key("Escape"); wait_for(br, LIST_SHUT)
                 esc_closed = not br.evaluate(LIST_OPEN)
                 # focus leaving the box closes it — a FRESH door so no prior toggle-close timer contaminates
-                br.navigate(base + "/"); br.clear_storage(); br.reload(); br.sleep(1.0)
+                br.navigate(base + "/"); br.clear_storage(); br.reload(); wait_for(br, DOOR_READY, timeout=8.0)
                 # focus the corner button as a keyboard user would, THEN open — so focus sits inside the box
                 br.evaluate("(()=>{const c=document.querySelector('#exd-lang .exl-cur');c.focus();c.click();})()")
-                br.sleep(0.3)
+                wait_for(br, LIST_OPEN)
                 open2 = br.evaluate(LIST_OPEN)
                 br.evaluate("(()=>{const w=document.querySelector('.exd-window');if(w)w.focus();})()")
-                br.sleep(0.9)
+                wait_for(br, LIST_SHUT)
                 out_closed = not br.evaluate(LIST_OPEN)
                 check(B_ROWS[11], open1 and esc_closed and open2 and out_closed,
                       f"opened={open1}/{open2} esc_closed={esc_closed} focusout_closed={out_closed}")
 
         # finale — the continuation + exit controls are keyboard-reachable and named (fence)
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             br.evaluate("(()=>{const f=document.getElementById('exh-fin');"
                         "if(f)f.scrollIntoView({behavior:'instant'});})()")
-            br.sleep(0.4)
+            # the finale's own controls stand — the elements the read below names
+            wait_for(br, "!!(document.getElementById('ex-unfold')||document.getElementById('ex-return'))")
             fin_ctrl = json.loads(br.evaluate(
                 "(()=>{const g=id=>{const e=document.getElementById(id);if(!e)return null;"
                 "return {tab:e.tabIndex>=0||e.tagName==='BUTTON',"
@@ -728,7 +849,7 @@ else:
             check(B_ROWS[12], ok, f"controls={fin_ctrl}")
 
         # share — the round share control is keyboard-reachable and named (fence)
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base)
             sh = json.loads(br.evaluate(
                 "(()=>{const e=document.getElementById('ex-share');if(!e)return 'null';"
@@ -738,8 +859,8 @@ else:
                   f"share={sh}")
 
         # door — the windows are keyboard buttons named by title (fence, mirrors test_door #7)
-        with Browser(width=1280, height=900) as br:
-            br.navigate(base + "/"); br.clear_storage(); br.reload(); br.sleep(1.0)
+        with shared(plain_br) as br:
+            br.navigate(base + "/"); br.clear_storage(); br.reload(); wait_for(br, DOOR_READY, timeout=8.0)
             dk = json.loads(br.evaluate(
                 "(()=>{const ws=[...document.querySelectorAll('.exd-window')];"
                 "return JSON.stringify({n:ws.length,kb:ws.every(b=>b.tabIndex>=0),"
@@ -784,12 +905,17 @@ if not chrome_available():
     for r in A_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
-    with serve(TMP) as base:
+    # Two groups, one Chrome each: the touch-emulated rows and the one keyboard leg.
+    with serve(TMP) as base, \
+            Browser(width=1280, height=900) as plain_br, \
+            Browser(width=1280, height=900) as touch_br:
+        touch_br.touch(True, 2)
+
         # A1 · a touch long-press on a walk work opens the gift ceremony (imageless clean-source path)
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base)
+        with shared(touch_br) as br:
+            enter(br, base)
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
-            br.sleep(0.75)                                # past the ~500ms arm
+            wait_for(br, GIFT_OPEN)                       # the ~500ms arm fires the ceremony
             opened = br.evaluate(GIFT_OPEN)
             ask = br.evaluate("(()=>{const a=document.querySelector('#ex-gift-card .gift-ask');"
                               "return a?(a.textContent||'').trim():'';})()")
@@ -797,10 +923,10 @@ else:
             check(A_ROWS[0], bool(opened) and len(ask) > 0, f"opened={opened} ask={ask!r}")
 
         # A1 · the touch grab leaks no clean source — the open ceremony holds zero <img>, no clean-src ref
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base)
+        with shared(touch_br) as br:
+            enter(br, base)
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
-            br.sleep(0.75)
+            wait_for(br, GIFT_OPEN)                       # the ~500ms arm fires the ceremony
             leak = json.loads(br.evaluate(
                 "(()=>{const g=document.getElementById('ex-gift-card');"
                 "const w=document.querySelector('.exh-frame img.work');"
@@ -814,12 +940,12 @@ else:
                   f"leak={leak}")
 
         # A1 · a door-window long-press keeps the gracious toast, never the ceremony (F1 exception)
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2)
+        with shared(touch_br) as br:
             br.navigate(base + "/"); br.clear_storage(); br.evaluate("sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('%s-tempo','1.0')" % NS_UPPER.lower()); br.reload(); br.sleep(1.1)
+            br.evaluate("localStorage.setItem('%s-tempo','1.0')" % NS_UPPER.lower()); br.reload()
+            wait_for(br, DOOR_READY, timeout=8.0)
             began = br.evaluate("(%s)('.exd-window img')" % LP_START)
-            br.sleep(0.75)
+            wait_for(br, TOAST_UP)                        # the door's gracious line is the answer here
             gift = br.evaluate(GIFT_OPEN)
             toast = br.evaluate("(()=>{const t=document.getElementById('ex-toast');"
                                 "return !!(t&&!t.hidden&&(t.textContent||'').trim());})()")
@@ -828,78 +954,82 @@ else:
                   f"began={began} gift_open={gift} toast={toast}")
 
         # A1 · the ~500ms arm gate — a short tap does NOT open, a full hold DOES
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base)
+        with shared(touch_br) as br:
+            enter(br, base)
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
             br.sleep(0.15); br.evaluate("(%s)()" % LP_END)   # released well before the arm — a tap
-            br.sleep(0.6)
+            br.sleep(0.6)   # a NOTHING-happens wait: no condition can name a ceremony that must not open
             short = br.evaluate(GIFT_OPEN)                    # must be False
-            br.key("Escape"); br.sleep(0.3)
+            br.key("Escape"); wait_for(br, layer_gone("ex-gift-card"))
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
-            br.sleep(0.75)                                    # a full hold past the arm
+            wait_for(br, GIFT_OPEN)                           # a full hold past the arm
             full = br.evaluate(GIFT_OPEN)                     # must be True
             br.evaluate("(%s)()" % LP_END)
             check(A_ROWS[3], (not short) and bool(full), f"short_tap_open={short} full_hold_open={full}")
 
         # A1 · the px-drift cancel — a small drift still fires; a large drift / a second finger cancel
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base)
+        with shared(touch_br) as br:
+            enter(br, base)
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
             br.sleep(0.1); br.evaluate("(%s)(4)" % LP_MOVE)   # 4px — within threshold, still a hold
-            br.sleep(0.7)
+            wait_for(br, GIFT_OPEN)
             steady = br.evaluate(GIFT_OPEN)                   # must be True
-            br.evaluate("(%s)()" % LP_END); br.key("Escape"); br.sleep(0.3)
+            br.evaluate("(%s)()" % LP_END); br.key("Escape"); wait_for(br, layer_gone("ex-gift-card"))
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
             br.sleep(0.1); br.evaluate("(%s)(40)" % LP_MOVE)  # 40px — a swipe, cancels
-            br.sleep(0.7)
+            br.sleep(0.7)   # a NOTHING-happens wait: the cancelled hold has no state to poll for
             drift = br.evaluate(GIFT_OPEN)                    # must be False
-            br.evaluate("(%s)()" % LP_END); br.key("Escape"); br.sleep(0.3)
+            br.evaluate("(%s)()" % LP_END); br.key("Escape"); wait_for(br, layer_gone("ex-gift-card"))
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
             br.sleep(0.1); br.evaluate("(%s)()" % LP_SECOND)  # a second finger — the pinch wins
-            br.sleep(0.7)
+            br.sleep(0.7)   # a NOTHING-happens wait: the cancelled hold has no state to poll for
             pinch = br.evaluate(GIFT_OPEN)                    # must be False
             br.evaluate("(%s)()" % LP_END)
             check(A_ROWS[4], bool(steady) and (not drift) and (not pinch),
                   f"steady_fires={steady} large_drift_open={drift} second_finger_open={pinch}")
 
         # A1 · coexistence — a swipe still steps, a pinch still zooms, a hold still grabs (all live together)
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base)
+        with shared(touch_br) as br:
+            enter(br, base)
             s0 = json.loads(br.evaluate(STEP_STATE))
-            br.swipe(-320); br.sleep(0.9)
+            y0 = br.evaluate("Math.round(scrollY)")
+            br.swipe(-320, settle=0.05)
+            wait_settled(br, "Math.round(scrollY)", y0)       # the glide comes to rest
             s1 = json.loads(br.evaluate(STEP_STATE))
             swipe_ok = s1["idx"] > s0["idx"]                  # the walk glide is not clobbered
             z = json.loads(br.evaluate(PINCH_WORK_ZOOM) or "null")
             pinch_ok = bool(z and z.get("opened"))            # the inspect pinch is not clobbered
-            br.key("Escape"); br.sleep(0.6)
+            br.key("Escape"); wait_for(br, layer_gone("ex-zoom"))
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
-            br.sleep(0.75)
+            wait_for(br, GIFT_OPEN)
             grab_ok = br.evaluate(GIFT_OPEN)                  # the detector itself is live
             br.evaluate("(%s)()" % LP_END)
             check(A_ROWS[5], swipe_ok and pinch_ok and bool(grab_ok),
                   f"swipe_steps={swipe_ok} pinch_zooms={pinch_ok} longpress_grabs={grab_ok}")
 
         # D4 · the gift restores focus by origin — keyboard-open → the opener; touch-open → none
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base, tempo="0.05")
             br.evaluate("document.querySelector('.exh-frame').focus()")
             fid = br.evaluate("(()=>{const f=document.querySelector('.exh-frame');return f?f.dataset.id:'';})()")
-            br.key("y"); br.sleep(0.5)
+            br.key("y"); wait_for(br, GIFT_OPEN)
             kopen = br.evaluate(GIFT_OPEN)
-            br.key("Escape"); br.sleep(0.6)
+            # closeGift hands focus back before it hides the card, so a hidden card is proof the
+            # restore has already run
+            br.key("Escape"); wait_for(br, layer_gone("ex-gift-card"))
             krestored = br.evaluate("(()=>{const a=document.activeElement;"
                                     "return !!(a&&a.classList&&a.classList.contains('exh-frame')&&a.dataset.id==='%s');})()" % fid)
             key_ok = kopen and krestored
-        with Browser(width=1280, height=900) as br:
-            br.touch(True, 2); enter(br, base, tempo="0.05")
+        with shared(touch_br) as br:
+            enter(br, base, tempo="0.05")
             # a work is focused (as a keyboard user leaves it) BEFORE the TOUCH grab — a touch open must
             # still force NO restore (origin-conditioned like the zoom), so focus is off the work after close
             br.evaluate("document.querySelector('.exh-frame').focus()")
             br.evaluate("(%s)('.exh-frame img.work')" % LP_START)
-            br.sleep(0.75)
+            wait_for(br, GIFT_OPEN)
             topen = br.evaluate(GIFT_OPEN)
             br.evaluate("(%s)()" % LP_END)
-            br.key("Escape"); br.sleep(0.6)
+            br.key("Escape"); wait_for(br, layer_gone("ex-gift-card"))
             no_forced = not br.evaluate(IN_FRAME)             # a touch open leaves focus off the walk work
             touch_ok = topen and no_forced
         check(A_ROWS[6], bool(key_ok) and bool(touch_ok),
@@ -973,37 +1103,42 @@ def at_door(br, base, tempo="0.4"):
     br.evaluate("sessionStorage.clear()")
     br.evaluate(f"localStorage.setItem('ex-tempo','{tempo}')")
     br.reload()
-    br.sleep(1.2)
+    wait_for(br, DOOR_READY, timeout=8.0)          # the door's windows are up and pictured
 
 
 def in_room(br, base, idx):
     """Land in the walk, then open the series room at `idx` and let its veil crossing settle."""
     enter(br, base)
     br.evaluate("(%s)(%d)" % (OPEN_SERIES, idx))
-    br.sleep(1.6)
+    wait_for(br, ROOM_READY)
 
 
 if not chrome_available():
     for r in K_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
-    with serve(TMP) as base:
+    # Two groups, one Chrome each: the plain rows and the touch-emulated long-press roads.
+    with serve(TMP) as base, \
+            Browser(width=1280, height=900) as plain_br, \
+            Browser(width=1280, height=900) as touch_br:
+        touch_br.touch(True, 2)
+
         # K1 — `z` on a focused door window opens the closer look on that window's picture
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             at_door(br, base)
             reach = json.loads(br.evaluate("(%s)('.exd-window')" % FOCUS_PLACE))
             if not (reach.get("found") and reach.get("focused") and reach.get("pic")):
                 check(K_ROWS[0], False, f"REACH FAILED — the door window was not found/focusable/pictured: {reach}")
             else:
                 br.key("z")
-                br.sleep(0.8)
+                wait_for(br, ZOOM_OPEN)
                 opened = br.evaluate(ZOOM_OPEN)
                 pic = br.evaluate(ZOOM_PIC)
                 check(K_ROWS[0], bool(opened) and pic == reach["pic"],
                       f"zoom_open={opened} zoom_pic={pic!r} window_pic={reach['pic']!r}")
 
         # K2 — `z` on a focused polaroid opens the closer look; Enter on the same print still LIFTS it
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             if POLA_IDX is None:
                 skip(K_ROWS[1], "the fixture bakes no polaroid-variant series")
             else:
@@ -1014,22 +1149,22 @@ else:
                           f"REACH FAILED — the polaroid was not found/focusable/pictured: {reach}")
                 else:
                     br.key("z")
-                    br.sleep(0.8)
+                    wait_for(br, ZOOM_OPEN)
                     zopen = br.evaluate(ZOOM_OPEN)
                     zpic = br.evaluate(ZOOM_PIC)
                     br.evaluate(ZOOM_CLOSE_X)
-                    br.sleep(1.0)
+                    wait_for(br, layer_gone("ex-zoom"))
                     # Enter on the print keeps its own meaning — the lift, never the closer look
                     br.evaluate("(()=>{const p=document.querySelector('#exs-stage .exs-print');"
                                 "if(p)p.focus();})()")
                     br.key("Enter")
-                    br.sleep(0.5)
+                    wait_for(br, "!!document.querySelector('#exs-stage .exs-print.lift')")
                     lifted = br.evaluate("!!document.querySelector('#exs-stage .exs-print.lift')")
                     check(K_ROWS[1], bool(zopen) and zpic == reach["pic"] and bool(lifted),
                           f"zoom_open={zopen} zoom_pic={zpic!r} print_pic={reach['pic']!r} enter_lifts={lifted}")
 
         # K3 — `z` on a focused lane picture opens the closer look on it
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             if LANE_IDX is None:
                 skip(K_ROWS[2], "the fixture bakes no lane-variant series")
             else:
@@ -1040,7 +1175,7 @@ else:
                           f"REACH FAILED — the lane picture was not found/focusable/pictured: {reach}")
                 else:
                     br.key("z")
-                    br.sleep(0.8)
+                    wait_for(br, ZOOM_OPEN)
                     opened = br.evaluate(ZOOM_OPEN)
                     pic = br.evaluate(ZOOM_PIC)
                     check(K_ROWS[2], bool(opened) and pic == reach["pic"],
@@ -1055,36 +1190,38 @@ else:
             if not (reach.get("found") and reach.get("focused")):
                 return {"reach": False, "detail": f"not found/focusable: {reach}"}
             br.key("z")
-            br.sleep(0.8)
+            wait_for(br, ZOOM_OPEN)
             if not br.evaluate(ZOOM_OPEN):
                 return {"reach": False, "detail": "the closer look never opened on `z`"}
             br.evaluate(ZOOM_CLOSE_X)
-            br.sleep(1.1)
+            # the close hands focus back before the layer's flight hides it — a hidden layer is proof
+            # the restore has already run
+            wait_for(br, layer_gone("ex-zoom"))
             return {"reach": True, "restored": bool(br.evaluate(IS_OPENER))}
 
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base, tempo="0.05")
             legs["walk frame"] = restore_leg(br, ".exh-frame")
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             at_door(br, base, tempo="0.05")
             legs["door window"] = restore_leg(br, ".exd-window")
         if POLA_IDX is not None:
-            with Browser(width=1280, height=900) as br:
+            with shared(plain_br) as br:
                 in_room(br, base, POLA_IDX)
                 legs["polaroid"] = restore_leg(br, "#exs-stage .exs-print")
         if LANE_IDX is not None:
-            with Browser(width=1280, height=900) as br:
+            with shared(plain_br) as br:
                 in_room(br, base, LANE_IDX)
                 legs["lane picture"] = restore_leg(br, "#exs-stage > img")
         k4_ok = len(legs) == 4 and all(v.get("reach") and v.get("restored") for v in legs.values())
         check(K_ROWS[3], k4_ok, "legs=" + json.dumps(legs))
 
         # K5 — a standing closer look owns its keys: z opens nothing further, y no ceremony, Esc leaves
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base, tempo="0.05")
             reach = json.loads(br.evaluate("(%s)('.exh-frame')" % FOCUS_PLACE))
             br.key("z")
-            br.sleep(0.7)
+            wait_for(br, ZOOM_OPEN)
             if not (reach.get("focused") and br.evaluate(ZOOM_OPEN)):
                 check(K_ROWS[4], False,
                       f"REACH FAILED — the closer look never stood to be guarded: reach={reach} "
@@ -1092,15 +1229,15 @@ else:
             else:
                 pic0 = br.evaluate(ZOOM_PIC)
                 br.key("z")
-                br.sleep(0.5)
+                br.sleep(0.5)   # a NOTHING-happens wait: a second layer must never appear to poll for
                 still = br.evaluate(ZOOM_OPEN)
                 pic1 = br.evaluate(ZOOM_PIC)
                 nzooms = br.evaluate("document.querySelectorAll('#ex-zoom').length")
                 br.key("y")
-                br.sleep(0.5)
+                br.sleep(0.5)   # a NOTHING-happens wait: the ceremony must never open over the layer
                 gift = br.evaluate(GIFT_OPEN)
                 br.key("Escape")
-                br.sleep(0.9)
+                wait_for(br, layer_gone("ex-zoom"))
                 left = not br.evaluate(ZOOM_OPEN)
                 check(K_ROWS[4],
                       bool(still) and pic0 == pic1 and nzooms == 1 and (not gift) and left,
@@ -1109,34 +1246,34 @@ else:
 
         # K6/K7 — a polaroid and a lane picture each reach the gift ceremony by all THREE roads
         def three_roads(idx, place_sel, pic_sel, focus_sel):
-            """right-click (desktop) · real long press (touch) · real `y` — each on its own browser."""
+            """right-click (desktop) · real long press (touch) · real `y` — the fine-pointer roads on
+            the plain browser, the long press on the touch-emulated one."""
             out = {}
-            with Browser(width=1280, height=900) as br:            # right-click, fine pointer
+            with shared(plain_br) as br:                           # right-click, fine pointer
                 in_room(br, base, idx)
                 if not br.evaluate("!!document.querySelector(%s)" % json.dumps(pic_sel)):
                     out["right-click"] = "REACH FAILED — no picture at " + pic_sel
                 else:
                     br.evaluate("(%s)(%s)" % (CTX_ON, json.dumps(pic_sel)))
-                    br.sleep(0.6)
+                    wait_for(br, GIFT_OPEN)
                     out["right-click"] = bool(br.evaluate(GIFT_OPEN))
-            with Browser(width=1280, height=900) as br:            # a real long press, coarse pointer
-                br.touch(True, 2)
+            with shared(touch_br) as br:                           # a real long press, coarse pointer
                 in_room(br, base, idx)
                 began = br.evaluate("(%s)(%s)" % (LP_START, json.dumps(pic_sel)))
                 if not began:
                     out["long press"] = "REACH FAILED — no picture at " + pic_sel
                 else:
-                    br.sleep(0.8)                                  # past the ~500ms arm
+                    wait_for(br, GIFT_OPEN)                        # past the ~500ms arm
                     out["long press"] = bool(br.evaluate(GIFT_OPEN))
                     br.evaluate("(%s)()" % LP_END)
-            with Browser(width=1280, height=900) as br:            # the real `y` key from the focused place
+            with shared(plain_br) as br:                           # the real `y` key from the focused place
                 in_room(br, base, idx)
                 reach = json.loads(br.evaluate("(%s)(%s)" % (FOCUS_PLACE, json.dumps(focus_sel))))
                 if not (reach.get("found") and reach.get("focused")):
                     out["y key"] = f"REACH FAILED — not found/focusable: {reach}"
                 else:
                     br.key("y")
-                    br.sleep(0.6)
+                    wait_for(br, GIFT_OPEN)
                     out["y key"] = bool(br.evaluate(GIFT_OPEN))
             return out
 
@@ -1153,32 +1290,31 @@ else:
 
         # K8 — a door window answers all three roads with the gracious toast and NO ceremony
         r8 = {}
-        with Browser(width=1280, height=900) as br:                # right-click, fine pointer
+        with shared(plain_br) as br:                               # right-click, fine pointer
             at_door(br, base)
             if not br.evaluate("!!document.querySelector('.exd-window img')"):
                 r8["right-click"] = "REACH FAILED — no door window picture"
             else:
                 br.evaluate("(%s)('.exd-window img')" % CTX_ON)
-                br.sleep(0.5)
+                wait_for(br, TOAST_ON)                             # the gracious line is the answer
                 r8["right-click"] = {"toast": bool(br.evaluate(TOAST_ON)), "gift": bool(br.evaluate(GIFT_OPEN))}
-        with Browser(width=1280, height=900) as br:                # a real long press, coarse pointer
-            br.touch(True, 2)
+        with shared(touch_br) as br:                               # a real long press, coarse pointer
             at_door(br, base, tempo="1.0")
             began = br.evaluate("(%s)('.exd-window img')" % LP_START)
             if not began:
                 r8["long press"] = "REACH FAILED — no door window picture"
             else:
-                br.sleep(0.8)
+                wait_for(br, TOAST_ON)
                 r8["long press"] = {"toast": bool(br.evaluate(TOAST_ON)), "gift": bool(br.evaluate(GIFT_OPEN))}
                 br.evaluate("(%s)()" % LP_END)
-        with Browser(width=1280, height=900) as br:                # the real `y` key from the focused window
+        with shared(plain_br) as br:                               # the real `y` key from the focused window
             at_door(br, base)
             reach = json.loads(br.evaluate("(%s)('.exd-window')" % FOCUS_PLACE))
             if not (reach.get("found") and reach.get("focused")):
                 r8["y key"] = f"REACH FAILED — not found/focusable: {reach}"
             else:
                 br.key("y")
-                br.sleep(0.6)
+                wait_for(br, TOAST_ON)
                 r8["y key"] = {"toast": bool(br.evaluate(TOAST_ON)), "gift": bool(br.evaluate(GIFT_OPEN))}
         k8_ok = (len(r8) == 3 and all(isinstance(v, dict) and v.get("toast") and not v.get("gift")
                                       for v in r8.values()))
@@ -1186,17 +1322,17 @@ else:
 
         # K9 — every hanging place ANNOUNCES its keys in the live DOM
         ks = {}
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             at_door(br, base)
             ks["door window (z)"] = br.evaluate("(%s)('.exd-window')" % KEYSHORTCUTS)
             enter(br, base)
             ks["walk frame (z y)"] = br.evaluate("(%s)('.exh-frame')" % KEYSHORTCUTS)
         if POLA_IDX is not None:
-            with Browser(width=1280, height=900) as br:
+            with shared(plain_br) as br:
                 in_room(br, base, POLA_IDX)
                 ks["polaroid (z y)"] = br.evaluate("(%s)('#exs-stage .exs-print')" % KEYSHORTCUTS)
         if LANE_IDX is not None:
-            with Browser(width=1280, height=900) as br:
+            with shared(plain_br) as br:
                 in_room(br, base, LANE_IDX)
                 ks["lane picture (z y)"] = br.evaluate("(%s)('#exs-stage > img')" % KEYSHORTCUTS)
         k9_ok = (len(ks) == 4
@@ -1208,17 +1344,17 @@ else:
 
         # K10 — the opener has LEFT the page by the time the layer closes: focus lands on the surface
         # still standing beneath it (the walk stage here), never on the document body
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             enter(br, base, tempo="0.05")
             reach = json.loads(br.evaluate("(%s)('.exh-frame')" % FOCUS_PLACE))
             br.key("z")
-            br.sleep(0.8)
+            wait_for(br, ZOOM_OPEN)
             if not (reach.get("focused") and br.evaluate(ZOOM_OPEN)):
                 check(K_ROWS[9], False, f"REACH FAILED — the closer look never opened: reach={reach}")
             else:
                 br.evaluate("(()=>{window.__opener.remove();})()")   # the opener leaves the page
                 br.evaluate(ZOOM_CLOSE_X)
-                br.sleep(1.1)
+                wait_for(br, layer_gone("ex-zoom"))
                 landed = json.loads(br.evaluate(
                     "(()=>{const a=document.activeElement;return JSON.stringify({"
                     "body:a===document.body,id:a?(a.id||''):'',tag:a?a.tagName:''});})()"))
@@ -1229,20 +1365,20 @@ else:
         # room) must exit ONE layer at a time. The room's own Escape and the closer look's own Escape
         # are two independent document listeners, so an unguarded room takes a step back of its own and
         # the single key tears down both layers, landing the visitor out on the walk.
-        with Browser(width=1280, height=900) as br:
+        with shared(plain_br) as br:
             if POLA_IDX is None:
                 skip(K_ROWS[10], "the fixture bakes no polaroid-variant series")
             else:
                 in_room(br, base, POLA_IDX)
                 reach = json.loads(br.evaluate("(%s)('#exs-stage .exs-print')" % FOCUS_PLACE))
                 br.key("z")
-                br.sleep(0.8)
+                wait_for(br, ZOOM_OPEN)
                 if not (reach.get("focused") and br.evaluate(ZOOM_OPEN)):
                     check(K_ROWS[10], False,
                           f"REACH FAILED — the closer look never stood over the room: reach={reach}")
                 else:
                     br.key("Escape")
-                    br.sleep(1.4)
+                    wait_for(br, layer_gone("ex-zoom"))
                     after = json.loads(br.evaluate(
                         "(()=>{const z=document.getElementById('ex-zoom'),s=document.getElementById('ex-side');"
                         "return JSON.stringify({zoom:!!(z&&!z.hidden),room:!!(s&&!s.hidden),"
