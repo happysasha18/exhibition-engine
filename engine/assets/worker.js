@@ -89,6 +89,25 @@ function deathStatus(e) {                              // the throw carries "mod
 }
 async function markDead(env) { await env.@@NS_UPPER@@_I18N.put(DEAD_KEY, "1", { expirationTtl: DEAD_TTL }); }
 
+// EX-STORY-FILL (INV-107): the two ways a model call ends without lines. The answer-reader names the
+// class it is in as it throws, carrying that name on its own FIELD so the message keeps the plain
+// "model <status>" shape the dead-account read above is anchored on. A refusal stop reason and a body
+// that does not parse are the EMPTY class — a second ask meets the same fragments and the same prompt.
+// A non-ok status and a network throw are the TRANSIENT class — a second ask may pass. (The third
+// member of the empty class comes from the route's own line filter, not from here.)
+function classed(message, cls) {
+  const e = new Error(message);
+  e.cls = cls;
+  return e;
+}
+// The refusal record: an empty answer for ONE work, remembered for the hour the dead flag also takes.
+const NEG_PREFIX = "neg:";
+const NEG_TTL = 3600;
+const LOCK_TTL = 60;                                   // the backstop for a worker that dies mid-call
+async function rememberEmpty(env, key) {
+  await env.@@NS_UPPER@@_I18N.put(NEG_PREFIX + key, "1", { expirationTtl: NEG_TTL });
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -212,21 +231,32 @@ async function story(req, env) {
   const ids = Array.isArray(p.ids) ? p.ids.map(String) : null;
   const variant = String(p.variant || "");
   const lang = String(p.lang || "").toLowerCase();
+  const one = p.one === true;                          // a one-work ask marks itself (EX-STORY-FILL)
   // shaped input only — an id is digits, the variant one of A/B/C, the tag the i18n grammar (ST/I5);
   // free-form text never reaches the prompt or a KV key
   if (!ids || !ids.length || ids.length > 60 || !ids.every((x) => ID_RE.test(x))
-      || !/^[ABC]$/.test(variant) || !TAG_RE.test(lang)) {
+      || !/^[ABC]$/.test(variant) || !TAG_RE.test(lang) || (one && ids.length !== 1)) {
     return new Response("bad request", { status: 400 });
   }
   // only ids we actually hold a fragment for — the ORDER the client sent is preserved (the cache key)
   const known = ids.filter((id) => STORY_FRAGMENTS[id]);
   if (!known.length) return new Response("no story", { status: 404 });
 
-  // the ordered sequence hashes into a bounded KV key (a raw join can exceed KV's key limit)
+  // the ordered sequence hashes into a bounded KV key (a raw join can exceed KV's key limit).
+  // EX-STORY-FILL (INV-107): a one-work ask keys under its OWN shape, so a portion that happens to
+  // hold that single work and the ask for that same work keep separate entries.
   const seq = await sha256hex(known.join(","));
-  const key = "s:" + STORY_PARAMS_VERSION + ":" + variant + ":" + lang + ":" + seq;
+  const key = (one ? "s1:" : "s:") + STORY_PARAMS_VERSION + ":" + variant + ":" + lang + ":" + seq;
   const hit = await env.@@NS_UPPER@@_I18N.get(key);            // cache first — one model call per walk, ever
   if (hit) return json(hit);
+
+  // EX-STORY-FILL (INV-107): a one-work key whose answer came back empty is remembered for an hour,
+  // ahead of every fence and every model call — a work the model keeps leaving wordless costs one
+  // call an hour, and no rate slot in between. A PORTION's key carries no such record: an owed
+  // portion's re-asks must reach the model (the 2026-07-22 recovery, EX-STORY).
+  if (one && await env.@@NS_UPPER@@_I18N.get(NEG_PREFIX + key)) {
+    return new Response("no line", { status: 502 });
+  }
 
   // EX-EDGE-GUARD: a cached walk is still served above; an UNCACHED one that would call the model
   // is refused to a bot or a capped day (silence — the story is enhancement, INV-19), and a flooding
@@ -238,23 +268,55 @@ async function story(req, env) {
     return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
   }
 
-  const lock = "lock:" + key;                         // best-effort single flight (a burst warms once)
+  // EX-STORY-FILL (INV-107): the single-flight lock lives as long as the MODEL CALL. The request
+  // that lays it takes it away at each of its own exits — the served plot, the plot that left no
+  // line, and the throw alike; a request that met a standing lock owns none and deletes none, so
+  // single flight survives. The expiry is the backstop for a worker that dies with the call in
+  // flight. Before this, the lock outlived every call by its full minute and the client's own
+  // re-asks (2.5s, 6s) met it instead of the model — the retry ladder had never once run.
+  const lock = "lock:" + key;
   if (await env.@@NS_UPPER@@_I18N.get(lock)) {
     return new Response("warming", { status: 503, headers: { "Retry-After": "3" } });
   }
-  await env.@@NS_UPPER@@_I18N.put(lock, "1", { expirationTtl: 60 });
+  // The lock's VALUE names the request that laid it, and the delete happens only while that name
+  // still stands: a call that outlives the expiry must never take away the lock a later request laid.
+  const mine = String(Date.now()) + ":" + Math.random().toString(36).slice(2);
+  await env.@@NS_UPPER@@_I18N.put(lock, mine, { expirationTtl: LOCK_TTL });
+  let held = true;
+  const unlock = async () => {
+    if (!held) return;
+    held = false;
+    try {
+      if ((await env.@@NS_UPPER@@_I18N.get(lock)) === mine) await env.@@NS_UPPER@@_I18N.delete(lock);
+    } catch (e) {}
+  };
 
-  await chargeModelCall(env);                          // count it the moment we commit to the model
-  let out;
   try {
-    out = await narrate(env.ANTHROPIC_API_KEY, known, variant, lang);
-  } catch (e) {
-    return new Response("model unavailable: " + ((e && e.message) || "?"), { status: 502 });
-  }
-  if (!validateStory(out, known)) return new Response("malformed", { status: 502 });
-  const body = JSON.stringify({ story_variant: variant, lines: out.lines });
-  await env.@@NS_UPPER@@_I18N.put(key, body);
-  return json(body);
+    await chargeModelCall(env);                        // count it the moment we commit to the model
+    let out;
+    try {
+      out = await narrate(env.ANTHROPIC_API_KEY, known, variant, lang);
+    } catch (e) {
+      // EX-EDGE-DEAD (INV-68): a 4xx other than 429 names a dead ACCOUNT — flag the hour from this
+      // route the way the i18n route does, so a failing model stops being paid for.
+      if (deathStatus(e)) await markDead(env);
+      if (one && e && e.cls === "empty") await rememberEmpty(env, key);
+      return new Response("model unavailable: " + ((e && e.message) || "?"), { status: 502 });
+    }
+    // EX-STORY-FILL (INV-107): the answer is taken line by line — a spoiled entry costs its own work
+    // and its neighbours keep their lines. A plot that left no line at all is answered 502 and written
+    // nowhere, so the next rung reaches the cache, a fence, or the model.
+    const lines = keepLines(out, known);
+    if (!lines.length) {
+      if (one) await rememberEmpty(env, key);
+      return new Response("malformed", { status: 502 });
+    }
+    const body = JSON.stringify({ story_variant: variant, lines: lines });
+    await env.@@NS_UPPER@@_I18N.put(key, body);        // a short plot caches the way a whole one does
+    return json(body);
+  } finally {
+    await unlock();                                    // every exit of the request that laid it, a
+  }                                                    // storage fault on the way to the model included
 }
 
 async function narrate(apiKey, ids, variant, lang) {
@@ -298,11 +360,15 @@ async function narrate(apiKey, ids, variant, lang) {
       output_config: { format: { type: "json_schema", schema: storyShape() } },
     }),
   });
-  if (!r.ok) throw new Error("model " + r.status);
-  const msg = await r.json();
-  if (msg.stop_reason === "refusal") throw new Error("refused");
-  const text = (msg.content || []).find((b) => b.type === "text");
-  return JSON.parse(text.text);
+  if (!r.ok) throw classed("model " + r.status, "transient");
+  let msg;
+  try { msg = await r.json(); } catch (e) { throw classed("unreadable", "empty"); }
+  if (msg.stop_reason === "refusal") throw classed("refused", "empty");
+  try {
+    return JSON.parse(((msg.content || []).find((b) => b.type === "text") || {}).text);
+  } catch (e) {
+    throw classed("unreadable", "empty");
+  }
 }
 
 function storyShape() {
@@ -325,19 +391,28 @@ function storyShape() {
   };
 }
 
-function validateStory(out, ids) {
+// EX-STORY-FILL (INV-107): the answer is taken LINE BY LINE. Every entry the model wrote that is
+// well-formed stands — a line with characters in it, a provenance stamp of "note" or "facts", and an
+// id among the ids this request asked for — and the first entry for an id wins. A spoiled entry costs
+// its own work alone; its neighbours keep their lines. Before this, one blank line among ten made the
+// whole plot malformed and a walk of ten works went silent.
+function keepLines(out, ids) {
   try {
-    if (!out || !Array.isArray(out.lines)) return false;
-    const byId = {};
-    for (const l of out.lines) {
-      if (!l || typeof l.line !== "string" || !l.line.trim()) return false;
-      if (l.source !== "note" && l.source !== "facts") return false;
-      byId[String(l.id)] = true;
+    const asked = {};
+    for (const id of ids) asked[String(id)] = true;
+    const seen = {};
+    const kept = [];
+    for (const l of (out && Array.isArray(out.lines) ? out.lines : [])) {
+      if (!l || typeof l.line !== "string" || !l.line.trim()) continue;
+      if (l.source !== "note" && l.source !== "facts") continue;
+      const id = String(l.id);
+      if (!asked[id] || seen[id]) continue;
+      seen[id] = true;
+      kept.push({ id: id, line: l.line, source: l.source });
     }
-    for (const id of ids) if (!byId[String(id)]) return false;   // every work in the walk spoke
-    return true;
+    return kept;
   } catch (e) {
-    return false;
+    return [];
   }
 }
 

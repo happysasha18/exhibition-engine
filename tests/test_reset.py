@@ -40,7 +40,8 @@ AT_DOOR = "document.body.classList.contains('ex-door')"
 GREETED = "(()=>{const g=document.getElementById('exd-greet');return !!g && !g.hidden})()"
 KEYS_GONE = ("localStorage.getItem('ex.exhibition')===null"
              "&&sessionStorage.getItem('ex.place')===null"
-             "&&localStorage.getItem('ex-tempo')===null")
+             "&&localStorage.getItem('ex-tempo')===null"
+             "&&localStorage.getItem('ex.solo')===null")  # this hour's one-work asks (EX-STORY-FILL/INV-107)
 
 if not chrome_available():
     for r in BROWSER_ROWS:
@@ -64,6 +65,8 @@ else:
         pick(br)
         walked = not br.evaluate(AT_DOOR)
         br.evaluate("sessionStorage.setItem('ex.place','{\"v\":\"x\",\"id\":\"y\"}')")
+        # a solo count for this clock hour, in the shape the client writes it (EX-STORY-FILL)
+        br.evaluate("localStorage.setItem('ex.solo', JSON.stringify({h: Math.floor(Date.now()/3600000), n: 3}))")
         br.navigate(base + "/?reset")
         br.sleep(1.2)
         check(BROWSER_ROWS[0],

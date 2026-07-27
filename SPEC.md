@@ -636,7 +636,7 @@ does a one-work ask fired after it, each request reading the live tongue as it g
 is no thread to keep and no arc to re-voice).
 
 **The voice lives at the edge** (`EX-STORY-EDGE`): the walk sends the ordered ids + variant +
-language to `/api/story`; the worker reads the PRIVATE story fragments (title/place/subject/light
+language to `/api/story`, and the one-work mark when the ask is for a single work; the worker reads the PRIVATE story fragments (title/place/subject/light
 are public grounding; the `story_notes.json` note is the instance's own words, adapted never
 quoted) and calls a small model (Haiku); the answer is kept in KV forever under a key of the
 **ordered id sequence + variant + language + params_version** (bumped whenever
@@ -656,11 +656,15 @@ is answered `502` and written nowhere. Which portion a short plot leaves told, a
 wordless works go, the told-story rule decides (`EX-STORY`, `EX-STORY-FILL`).
 
 **The single-flight lock lives as long as the model call.** Ahead of the call the route lays a lock
-on the key, so a second request arriving mid-call answers `503 warming` with a `Retry-After` and the
-model is called once for that key while the call is in flight. The route deletes the lock it laid,
-at each of its own exits — the served answer, the answer that left no line, and the throw alike. A
-request that met a standing lock owns no lock and deletes nothing, so single flight survives. The
-lock's expiry stands as the backstop for a worker that dies with the call in flight.
+on the key, so a second request arriving mid-call answers `503 warming` with a `Retry-After`. The
+route deletes the lock it laid, at each of its own exits — the served answer, the answer that left
+no line, and the throw alike, a storage fault on the way to the model included. The lock carries the
+name of the request that laid it and is deleted only while that name still stands, so a call that
+outlived the expiry never takes away the lock a later request laid. A request that met a standing
+lock owns no lock and deletes nothing. The lock's expiry stands as the backstop for a worker that
+dies with the call in flight. The lock is best effort: the store it lives in answers each location
+from that location's own cache, so two requests arriving in different locations can both reach the
+model. It cuts the common burst, and the money fences are what bound the cost.
 
 **The two ways a call ends without lines.** The worker's answer-reader names the class it is in as
 it throws, carrying that name as its own field on the error so the message keeps the plain
@@ -712,14 +716,22 @@ mark; a work in the set with neither shows silence.
 
 **A browser spends at most five one-work asks an hour.** The count rolls with the clock hour, the
 unit the edge's own ceiling counts in, and it stands through a door pick so a second walk inherits
-what the first spent. The arithmetic stands on the knobs: a walk asks 1 + `max_unfolds` portions,
-each on its own three-rung ladder, which is 9 rungs at the defaults; two walks in one hour are 18,
-and five one-work asks at three rungs are 15, reaching 33 against the per-address ceiling of 40
-(`EX-EDGE-GUARD`). A knob raised past that makes this sentence read false, which is where the number
-is meant to be checked. The wordless works take the budget in the walk's own order, so the works the
-guest meets first are asked first. A work the budget cannot reach stays in the owed set and shows
-silence, and the next hour's count can reach it while the guest is still walking. A portion that
-stays owed re-asks at each beat and spends further rungs, which the ceiling itself bounds.
+what the first spent. The arithmetic of an ordinary hour stands on the knobs: a walk asks
+1 + `max_unfolds` portions, each on its own three-rung ladder, which is 9 rungs at the defaults; two
+walks in one hour are 18, and five one-work asks at three rungs are 15, reaching 33 against the
+per-address ceiling of 40 (`EX-EDGE-GUARD`). A standing test holds that sum, so a knob raised past
+the ceiling reds rather than leaves this sentence false. The ceiling itself is what bounds the hour
+a guest picks a third door, or meets a portion that keeps failing and re-asks at every beat: past it
+the edge answers `429` and the walk keeps its silence, which the count on the browser makes rare
+rather than impossible. The count lives in the browser's own storage and the museum's forget address
+clears it (`EX-RESET`), so it shapes an ordinary visit and guarantees nothing on its own.
+
+The wordless works take the count in the walk's own order, so the works the guest meets first are
+asked first. A work the count cannot reach stays in the owed set and shows silence, and the next
+hour's count can reach it while the guest is still walking. A work whose own ladder came to rest
+without a line is asked no more while this walk stands: it keeps its silence until a fresh arc, so a
+work the edge can never answer for spends one ask rather than the hour's whole count, and the works
+that could still speak keep their share.
 
 **A work stays owed until it speaks or the walk ends.** The owed set is swept at the walk's own
 beats — the hang building, an unfold, a return to the walk, and the focus beat that already asks the

@@ -17,8 +17,26 @@
   // равно нет сторителлинга» — a failed portion left the wait mark painted, never repainting to
   // silence, because owed() dropped the in-flight key but nothing re-ran fillTold).
   const retryingPortions = new Set();
+  // EX-STORY-FILL (INV-107): a work whose portion's plot came back carrying no line for it waits in
+  // the OWED set and travels by its OWN ask — a request naming that work by id and marked as a
+  // one-work ask, so the edge keys and locks it under its own shape. A work leaves the set when a
+  // line is seated for it or when the walk is replaced. A work in the set with an ask in flight or a
+  // re-ask queued wears the wait mark; a work in the set with neither shows silence.
+  const owedWorks = new Set();
+  const askingWorks = new Set();                       // its own ask is in flight
+  const retryingWorks = new Set();                     // its own ask failed and a re-ask is queued
+  const triedWorks = new Set();                        // its own ladder came to rest — it waits for a
+                                                       // fresh arc, so a work the edge can never answer
+                                                       // for spends one ask rather than the hour's five
+  const SOLO_PER_HOUR = 5;                             // a browser's own asks per CLOCK hour — the unit
+                                                       // the edge's per-address ceiling counts in
+  function markOwed() {
+    try { window.__@@NS@@Owed = Array.from(owedWorks); } catch (e) {}   // test read-side
+  }
   function portionPending(id) {
     if (id == null) return false;
+    const w = String(id);
+    if (askingWorks.has(w) || retryingWorks.has(w)) return true;   // its OWN ask is travelling
     const s = "," + String(id) + ",";
     for (const key of askingPortions) {                // in flight now
       if (("," + key + ",").indexOf(s) !== -1) return true;
@@ -111,6 +129,11 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: ids, variant: STORY_VARIANT, lang: lang }),
     }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
+      // A fresh door pick opened a new arc while this plot travelled: it belongs to the walk that is
+      // gone, so it is dropped WHOLE — its lines, its told stamp and its reveal (EX-STORY reset).
+      // The check stands AHEAD of every set change: picking the same door twice reproduces this very
+      // portion key, and dropping it would tear down the NEW walk's own in-flight mark.
+      if (gen !== storyGen) { done(); return; }
       askingPortions.delete(key);
       if (!data || !Array.isArray(data.lines)) { owed(); return; } // refused/failed → key NOT stamped → re-asks, then stays owed
       toldPortions.add(key);                           // told only once the plot has actually come back
@@ -129,9 +152,100 @@
       const portionText = data.lines
         .map((l) => (l && typeof l.line === "string") ? l.line : "").filter(Boolean).join(" ");
       if (portionText) announceStory(portionText);
+      // EX-STORY-FILL (INV-107): read the plot against the ids this request asked for — a work the
+      // plot passed over joins the owed set and is asked for on its own. The asks REGISTER here,
+      // before the coordinated reveal, so a wordless seat moves from one wait mark to the next with
+      // no blank between them.
+      for (const id of ids) {
+        const w = String(id);
+        if (STORYLINES[w]) owedWorks.delete(w); else owedWorks.add(w);
+      }
+      markOwed();
+      sweepOwed();
       revealPortion();                                 // …then ONE coordinated reveal (EX-STORY-WAIT)
       done();
-    }).catch(() => { askingPortions.delete(key); owed(); });   // a dead worker → re-ask shortly, then the portion stays owed
+    }).catch(() => {                                   // a dead worker → re-ask shortly, then the portion stays owed
+      if (gen !== storyGen) { done(); return; }        // the arc it belonged to is gone
+      askingPortions.delete(key);
+      owed();
+    });
+  }
+  // ---- EX-STORY-FILL (INV-107): the one-work ask ----------------------------------------------
+  // A browser spends at most SOLO_PER_HOUR own asks per CLOCK hour — the unit the edge's per-address
+  // ceiling counts in. The count stands through a door pick, so a second walk inherits what the first
+  // spent: at the shipped knobs two walks of 9 rungs plus five asks of 3 rungs reach 33 against the
+  // per-address ceiling of 40 (EX-EDGE-GUARD). A knob raised past that makes this sentence read false.
+  function soloTake() {
+    const hour = Math.floor(Date.now() / 3600000);
+    let rec = null;
+    try { rec = JSON.parse(localStorage.getItem(SOLO_KEY) || "null"); } catch (e) {}
+    if (!rec || rec.h !== hour) rec = { h: hour, n: 0 };   // a new clock hour brings a fresh count
+    if (rec.n >= SOLO_PER_HOUR) return false;
+    rec.n++;
+    try { localStorage.setItem(SOLO_KEY, JSON.stringify(rec)); } catch (e) {}
+    return true;
+  }
+  // The ask names the work by ID — never an order slice, which would land on whatever work sits at
+  // that position after a fresh pick. It rides the portion ladder's own bounds (the ask and two
+  // re-asks); the hour's count is taken once per ASK, at the sweep, so a ladder costs one slot.
+  function askWork(id, attempt) {
+    attempt = attempt || 0;
+    const gen = storyGen;
+    const w = String(id);
+    if (askingWorks.has(w) || STORYLINES[w]) return;
+    askingWorks.add(w);
+    const lang = (viewerLang() || "en").toLowerCase();  // the live tongue, read as the ask goes out
+    fetch("/api/story", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [w], variant: STORY_VARIANT, lang: lang, one: true }),
+    }).then((r) => (r && r.ok ? r.json() : null)).then((data) => {
+      if (gen !== storyGen) return;                    // the arc it was born from is gone — and the
+      askingWorks.delete(w);                           // NEW walk's own mark for this work must stand
+      const found = (data && Array.isArray(data.lines))
+        ? data.lines.find((l) => l && String(l.id) === w && typeof l.line === "string" && l.line)
+        : null;
+      if (!found) { soloOwed(w, gen, attempt); return; }
+      STORYLINES[w] = found.line;                      // the line settles on the house breath (EX-ARRIVE)
+      owedWorks.delete(w);
+      markOwed();
+      fillTold();                                      // …and lays no announcement in the polite region
+    }).catch(() => {
+      if (gen !== storyGen) return;
+      askingWorks.delete(w);
+      soloOwed(w, gen, attempt);
+    });
+  }
+  function soloOwed(w, gen, attempt) {                 // this ask's own bounded ladder
+    if (attempt >= STORY_RETRY_MS.length || !STORY_ON) {
+      retryingWorks.delete(w);                         // the ladder is spent — the work stays owed…
+      triedWorks.add(w);                               // …and rests: a further beat asks it no more,
+      fillTold();                                      // so one unanswerable work never eats the hour's
+      return;                                          // whole count. Its seat clears to silence (INV-8).
+    }
+    retryingWorks.add(w);                              // a re-ask is queued — the wait mark HOLDS
+    setTimeout(() => {
+      if (gen !== storyGen) return;                    // ahead of the set change, as everywhere here
+      retryingWorks.delete(w);
+      if (STORYLINES[w]) return;
+      askWork(w, attempt + 1);
+    }, STORY_RETRY_MS[attempt]);
+  }
+  // The owed set is swept at the walk's own beats — the hang building, an unfold, a return to the
+  // walk, and the focus beat that already asks the next portion ahead. The sweep stands AHEAD of that
+  // beat's own conditions, so it runs when the unfolds are spent and the guest walks on, which is
+  // where a work standing late in the last portion is reached. The works are taken in the WALK's own
+  // order, so the ones the guest meets first are asked first; a work the hour's count cannot reach
+  // stays owed and shows silence, and the next hour's count can reach it while he is still walking.
+  function sweepOwed() {
+    if (!STORY_ON || !owedWorks.size) return;
+    for (const id of order) {
+      const w = String(id);
+      if (!owedWorks.has(w) || STORYLINES[w]) continue;
+      if (askingWorks.has(w) || retryingWorks.has(w) || triedWorks.has(w)) continue;
+      if (!soloTake()) return;                         // the hour is spent — the rest stay owed
+      askWork(w, 0);
+    }
   }
   // tellStory re-asks every portion up to `shown` that is not yet told: the newly opened one on an
   // «ещё 5», plus any earlier portion still owed from a refusal (re-asked at this natural beat). A
@@ -139,6 +253,7 @@
   // the hang builds, an unfold grows the set, a return re-shows the walk.
   function tellStory() {
     if (!STORY_ON) return;
+    sweepOwed();                                       // the owed works ride this beat too (EX-STORY-FILL)
     for (const [lo, hi] of storyPortions(shown)) askPortion(lo, hi);
   }
   // EX-STORY-BEAT (INV-89): the voice stays ahead at the fork — as the focus comes within two
@@ -147,7 +262,10 @@
   // own tellStory finds the plot in flight or served, never double-charged; when no next portion
   // exists (the arc spent, the unfolding retired) nothing is asked.
   function storyPreAsk() {
-    if (!STORY_ON || focusedId == null) return;
+    if (!STORY_ON) return;
+    sweepOwed();                                       // ahead of this beat's OWN conditions, so an owed
+                                                       // work is reached once the unfolds are spent
+    if (focusedId == null) return;
     if (spentUnfolds() >= MAXU || shown >= order.length || shown >= CAP) return;   // no next portion
     const idx = order.indexOf(focusedId);
     if (idx < 0 || idx < shown - 2) return;            // not yet near the fork
@@ -160,6 +278,11 @@
     toldPortions.clear();
     askingPortions.clear();
     retryingPortions.clear();                          // …including a portion still queued for retry (its wait mark clears with the arc)
+    owedWorks.clear();                                 // every outstanding own ask stands down with the
+    askingWorks.clear();                               // arc it belonged to (EX-STORY-FILL/INV-107); the
+    retryingWorks.clear();                             // HOUR's count is not touched — it stands through a pick
+    triedWorks.clear();
+    markOwed();
     for (const k in STORYLINES) delete STORYLINES[k];
     storyVariant = null;
   }

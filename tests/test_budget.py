@@ -30,6 +30,7 @@ Run: python tests/test_budget.py   (exit 0 = under fence)
 """
 import gzip
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -84,6 +85,43 @@ for fname, (fence, reason, transform) in FENCES.items():
     check(f"BUDGET {fname}: gzip {size} B under the {fence} B fence ({reason})",
           size <= fence,
           f"gzip={size} B  fence={fence} B  ({'under' if size <= fence else 'OVER — bundle ballooned'})")
+
+# EX-STORY-FILL ratchet: SPEC.md states a browser's story requests stay under the edge's
+# per-address hourly ceiling — "two walks in one hour are 18, and five one-work asks at three
+# rungs are 15, reaching 33 against the per-address ceiling of 40." Read every number OUT OF
+# THE SOURCE (never hardcoded) so a knob raised past the ceiling reds this row rather than
+# leaving that sentence false.
+WORKER_JS = ASSETS / "worker.js"                              # RL_PER_HOUR (the edge's own fence)
+STORY_VOICE_JS = ASSETS.parent / "client" / "09-story-voice.js"  # SOLO_PER_HOUR, STORY_RETRY_MS
+BUILD_PY = ASSETS.parent / "build.py"                          # bake's default config: max_unfolds
+
+_rl_m = _solo_m = _retry_m = _maxu_m = None
+if WORKER_JS.exists():
+    _rl_m = re.search(r"RL_PER_HOUR\s*=\s*(\d+)", WORKER_JS.read_text())
+if STORY_VOICE_JS.exists():
+    _voice_src = STORY_VOICE_JS.read_text()
+    _solo_m = re.search(r"SOLO_PER_HOUR\s*=\s*(\d+)", _voice_src)
+    _retry_m = re.search(r"STORY_RETRY_MS\s*=\s*\[([^\]]*)\]", _voice_src)
+if BUILD_PY.exists():
+    _maxu_m = re.search(r'"max_unfolds":\s*(\d+)', BUILD_PY.read_text())
+
+if not (_rl_m and _solo_m and _retry_m and _maxu_m):
+    check("BUDGET EX-STORY-FILL: an hour's story requests stay under the edge's per-address ceiling",
+          False,
+          f"could not read RL_PER_HOUR({WORKER_JS.exists()}) SOLO_PER_HOUR/STORY_RETRY_MS"
+          f"({STORY_VOICE_JS.exists()}) max_unfolds({BUILD_PY.exists()}) — see paths in test source")
+else:
+    rl_per_hour = int(_rl_m.group(1))
+    solo_per_hour = int(_solo_m.group(1))
+    rungs = len([x for x in _retry_m.group(1).split(",") if x.strip()]) + 1  # ask + its re-asks
+    max_unfolds = int(_maxu_m.group(1))
+    total = 2 * (1 + max_unfolds) * rungs + solo_per_hour * rungs
+    check(f"BUDGET EX-STORY-FILL: two walks + the hour's solo asks ({total}) stay under "
+          f"RL_PER_HOUR ({rl_per_hour})",
+          total <= rl_per_hour,
+          f"rungs={rungs} (len(STORY_RETRY_MS)+1) max_unfolds={max_unfolds} "
+          f"SOLO_PER_HOUR={solo_per_hour} RL_PER_HOUR={rl_per_hour} — "
+          f"2*(1+max_unfolds)*rungs + SOLO_PER_HOUR*rungs = {total}")
 
 fails = [r for r in results if r[1] == "FAIL"]
 for name, st, detail in results:

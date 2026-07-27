@@ -191,6 +191,7 @@
   const BEEN_KEY = "@@NS@@.been";                         // EX-RETURN: this browser has walked the exhibition before
   const LAST_KEY = "@@NS@@.last";                        // EX-PULSE/INV-79: this browser's last-visit timestamp (return_gap); EX-RETURN reuses it for the welcome-back window
   const EXITS_KEY = "@@NS@@.exits";                      // EX-RETURN/INV-78: count of real walk→door exits (the farewell waits for the 2nd)
+  const SOLO_KEY = "@@NS@@.solo";                        // EX-STORY-FILL/INV-107: this clock hour's one-work asks (stands through a door pick)
   const MORE_EXIT_EN = "there is more still hanging — come again";   // the exit farewell (English fallback)
   const MORE_RETURN_EN = "back again — a new way in";               // the returning-arrival line (English fallback)
   // EX-RETURN/INV-78 window bounds — tunable, both ends bound in TIME so the door never over-speaks:

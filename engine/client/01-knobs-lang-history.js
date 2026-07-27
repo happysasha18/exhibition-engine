@@ -15,6 +15,7 @@
     try { localStorage.removeItem(LANG_KEY); } catch (e) {}     // the browser's tongue returns
     try { localStorage.removeItem(LAST_KEY); } catch (e) {}     // the return-gap clock resets (EX-PULSE/INV-79 — forgetting is whole)
     try { localStorage.removeItem(EXITS_KEY); } catch (e) {}    // the exit counter resets (EX-RETURN/INV-78 — the farewell starts over)
+    try { localStorage.removeItem(SOLO_KEY); } catch (e) {}     // the hour's one-work asks reset (EX-STORY-FILL/INV-107 — forgetting is whole)
     try { localStorage.removeItem(SND_KEY); } catch (e) {}      // the museum forgets the sound choice (EX-SOUND)
     try { sessionStorage.removeItem(QUIZ_STAGE_KEY); } catch (e) {}   // EX-QUIZ-FLOW (INV-69): the stage wipes with the walk
     const q = new URLSearchParams(location.search);
