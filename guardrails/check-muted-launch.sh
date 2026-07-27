@@ -123,9 +123,15 @@ if [ -n "$target" ]; then
 else
   cd "$REPO_ROOT"
   while IFS= read -r f; do
-    # the checker and its own test legitimately NAME the launch/mute flags to forbid or exercise them
+    # a SCANNER legitimately names the launch flags in code, because searching for a flag means
+    # holding its spelling. Three files in this tree are scanners: this checker, its own test, and
+    # the harness-drift guard, whose one-core row greps the tree for a second file that launches its
+    # own Chrome (`tests/test_harness_drift.py`, LAUNCH_FLAGS). None of the three spawns a browser.
+    # This is a list of names, which is the shape a class deserves better than; the class is "a file
+    # that names these flags to search for them", and giving it a machine-readable form is queued.
     [ "$f" = "guardrails/check-muted-launch.sh" ] && continue
     [ "$f" = "tests/test_muted_launch_guardrail.py" ] && continue
+    [ "$f" = "tests/test_harness_drift.py" ] && continue
     hit="$(scan_file "$f")"
     [ -n "$hit" ] && hits="$hits$hit"$'\n'
   done < <(
