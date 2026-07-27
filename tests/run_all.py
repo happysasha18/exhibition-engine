@@ -25,6 +25,7 @@ SUITES = [
     "pulse", "hand", "i18n", "lang", "lang_geo", "memory", "protect", "sound", "guard", "quiz",
     "quiz_copy", "shim", "compose", "dead", "quiz_flow", "parity", "zoom", "return", "gesture",
     "wheel", "glide_speed", "ratchet_lock", "beat_css", "assembly", "a11y", "about", "budget",
+    "harness_drift",
 ]
 
 

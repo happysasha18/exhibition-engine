@@ -165,7 +165,7 @@ To stand up a new site, supply a content directory and a `site.json` file. You c
 .venv/bin/python tests/run_all.py
 ```
 
-The suite runs 25 suites. It combines string-level checks with headless-Chrome browser tests driven by `engine/harness/headless.py`. All 25 suites currently pass.
+The suite runs 42 suites. It combines string-level checks with headless-Chrome browser tests driven by `tests/headless.py`, the project layer over the live-spec pack's canonical harness core vendored at `tests/headless_harness.py`. All 42 suites currently pass.
 
 ## Provenance
 

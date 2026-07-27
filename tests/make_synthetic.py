@@ -13,7 +13,7 @@ Zero pip dependencies — image generation via stdlib zlib+struct only.
 
 Side-effect-free outside the fixture tree: every write() call is checked at runtime to land
 under FIXTURE (tests/fixture_content/); a write anywhere else raises instead of silently
-touching a tracked file like engine/harness/headless.py.
+touching a tracked file like engine/assets/exhibition.js.
 """
 import hashlib
 import json

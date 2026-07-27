@@ -41,8 +41,8 @@ against this checkout.
 | The client styles (`exhibition.css`) | Motion tokens, face-lock/scrollbar-gutter rules, the loading-ladder plate/bar visuals, door/zoom/quiz/side-room layout | `EX-MOTION`, `EX-MOTION-R`, `EX-ARRIVE`, `EX-BOOT` (with the bake's inline `js` mark), INV-22, INV-23, INV-70, INV-95 | `engine/assets/exhibition.css:1` |
 | The client assembler (`engine/assemble_client.py` + `engine/client/`) | The served `exhibition.js` is a committed, GENERATED file: 21 ordered raw line-slice fragments in `engine/client/` joined verbatim (empty-string concat) by an explicit manifest into `engine/assets/exhibition.js`. A byte-parity test and a pre-push gate red on any drift, so the generated file is never hand-edited — edits land in a fragment. `build.py` is untouched (the `@@NS@@` tokens ride the join). | (infrastructure — preserves the client byte-for-byte, owns no spec anchor) | `engine/assemble_client.py:1`, `engine/client/`, `tests/test_assembly.py:1` |
 | The edge worker (`engine/assets/worker.js`) | Answers `/api/story`, `/api/quiz`, `/api/i18n`, `/api/geo`; holds the model API key, the baked-in private story fragments and quiz answers, the KV cache, and the three money fences. `/api/geo` returns the arriving country (`{c}` from `request.cf.country`, `cf-ipcountry` fallback), `no-store`, dispatched before the `/api/i18n` 404 gate — used only to narrow the language corner (`EX-LANG-GEO`), never stored, never on a beat | `EX-STORY-EDGE`, `EX-STORY-FILL`, `EX-QUIZ-EDGE`, `EX-I18N`, `EX-LANG-GEO`, `EX-EDGE-GUARD`, INV-26, INV-51, INV-59, INV-68, INV-105 | `engine/assets/worker.js:92` (`export default {`), `:372` (`async function quiz`), `:202` (`async function story`), `function geo(req)` |
-| The test harness (`engine/harness/headless.py`) | Serves a baked bundle locally and drives it with a real headless Chrome (DOM reads, gesture simulation) for every browser-level test row | (infrastructure — proves the anchors above, owns none itself) | `engine/harness/headless.py:230` (`class Browser`) |
-| The test suite (`tests/run_all.py` + `tests/test_*.py`) | Runs all 41 named suites and gates green/red; each `test_*.py` traces to the anchors it asserts | (infrastructure — traceability lives per-suite, not summarized here) | `tests/run_all.py:20` (`SUITES = [...]`) |
+| The test harness (`tests/headless.py` over `tests/headless_harness.py`) | Serves a baked bundle locally and drives it with a real headless Chrome (DOM reads, gesture simulation) for every browser-level test row. The core is the live-spec pack's canonical harness, vendored byte-identical; the engine's own driving methods subclass it | (infrastructure — proves the anchors above, owns none itself) | `tests/headless_harness.py:572` (`class Browser`), `tests/headless.py:74` (`class Browser(_CoreBrowser)`) |
+| The test suite (`tests/run_all.py` + `tests/test_*.py`) | Runs all 42 named suites and gates green/red; each `test_*.py` traces to the anchors it asserts | (infrastructure — traceability lives per-suite, not summarized here) | `tests/run_all.py:20` (`SUITES = [...]`) |
 | The ratchet/gate tooling (`scripts/`) | Spec style + redundancy lint, the ratchet manifest, the deploy recipe, the greeting-cache generator | (governs the SPEC/bundle, not a spec anchor itself) | `scripts/spec-style-lint.py:249` (`def lint`), `scripts/deploy.sh:1` |
 
 ## Seams
@@ -57,7 +57,7 @@ against this checkout.
 | client → worker | the door/story/quiz/chrome client · the edge worker | `/api/story`, `/api/quiz`, `/api/i18n` JSON requests and responses | the worker (`engine/assets/worker.js:294` `storyShape`, `:441` `shape`) |
 | the private-fragment seam | the bake · the worker | story notes and the single quiz answer are baked ONLY into `_worker.js`'s inline markers; they are never present in `exhibition_data.json`, `config.json`, or any other served static byte | the bake, enforced by INV-59/INV-60 |
 | worker → KV | the edge worker · Cloudflare KV | translation cache, coat-check seen-ids, rate/day/dead-model counters | the worker |
-| suite → client/worker | the test harness · the baked bundle served locally | DOM reads and simulated gestures over a real headless Chrome session | the harness (`engine/harness/headless.py`) |
+| suite → client/worker | the test harness · the baked bundle served locally | DOM reads and simulated gestures over a real headless Chrome session | the harness (`tests/headless.py` over the vendored core `tests/headless_harness.py`) |
 
 ## Runtime view
 
@@ -80,14 +80,14 @@ against this checkout.
 | The door/gallery/zoom/story/quiz/chrome client | the visitor's browser | vanilla JS (no framework), vanilla CSS |
 | The edge worker (`_worker.js`) | edge worker, routed only to `/api/*` via `_routes.json` | Cloudflare Pages Functions / Workers runtime + Workers KV |
 | Secrets (the Anthropic API key, the private story fragments, the private quiz answers) | live ONLY inside the deployed `_worker.js` and its KV bindings — never in the Site Bundle, never in a served static asset | injected at bake time from instance-owned files kept out of the public bundle (`engine/build.py:645`, `:665`) |
-| The test harness + suite | the author's machine / CI | python3 + a real local headless Chrome via CDP (`engine/harness/headless.py`) |
+| The test harness + suite | the author's machine / CI | python3 + a real local headless Chrome via CDP (`tests/headless.py` over the vendored core `tests/headless_harness.py`) |
 
 ## Quality budgets
 
 | Budget | Number | Instrumentation home | Watcher |
 |---|---|---|---|
 | Full-suite wall time | measured per run, not a fixed target | `tests/run_all.py` prints `wall {seconds}s` alongside the green/red count on every run (`tests/run_all.py:70`) | read by eye at every run; no red-past-N gate is wired |
-| Suite count | 41 named suites (`tests/run_all.py:20`) | the `SUITES` list itself, cross-checked against `test_*.py` files present (INV-5r) | `tests/run_all.py` fails the run if the two sets diverge |
+| Suite count | 42 named suites (`tests/run_all.py:20`) | the `SUITES` list itself, cross-checked against `test_*.py` files present (INV-5r) | `tests/run_all.py` fails the run if the two sets diverge |
 | Client JS bundle size | measured on the SERVED copy, which the bake strips of comments (1.14.0); the fence is `tests/test_budget.py` | `tests/test_budget.py` reads the shipped bytes through the same stripper the bake uses | `tests/test_budget.py` reds past the fence |
 | Client CSS bundle size | measured on the SERVED copy, comment-stripped at bake (2026-07-23); the fence is `tests/test_budget.py` | `tests/test_budget.py` reads the shipped, stripped bytes | `tests/test_budget.py` reds past the fence |
 | Edge worker size | 26,417 bytes (502 lines), `engine/assets/worker.js` template (grows with injected private fragments per instance) | `wc -c` on the template source | none wired; a budget with no watcher |
