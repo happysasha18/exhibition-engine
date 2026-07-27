@@ -1,5 +1,5 @@
   // ---- EX-PULSE/INV-79: the arrival's own facts — measured ONCE per load ------
-  // Placed AFTER quizArm/storyVariant are initialized: pulse() reads those dimension vars, so an
+  // Placed AFTER abArms/storyVariant are initialized: pulse() reads those dimension vars, so an
   // earlier call would hit their temporal dead zone and silently self-catch (the wire stays honest).
   // VIEWER LANGUAGE is the tongue the guest actually views in (a chosen override, else the browser),
   // whether or not they ever touch the door's tongue list — it tells RTL scope and which baked locales

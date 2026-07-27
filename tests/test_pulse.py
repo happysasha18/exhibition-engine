@@ -66,6 +66,14 @@ _work = next((TMP / "w").glob("*.html")).read_text(encoding="utf-8")
 _off = (TMP_OFF / "index.html").read_text(encoding="utf-8")
 JS_SRC = (TMP / "exhibition.js").read_text(encoding="utf-8")
 
+# EX-FRICTION rage-swipe knobs, read off the SERVED client rather than repeated as literals here —
+# a tune of any of these reds the rows below instead of silently passing (the ratchet convention
+# test_wheel.py/test_glide_speed.py already hold for their own constants).
+_FRICTION_CAP = int(re.search(r"const FRICTION_CAP\s*=\s*(\d+)", JS_SRC).group(1))
+_FRICTION_SWIPES = int(re.search(r"const FRICTION_SWIPES\s*=\s*(\d+)", JS_SRC).group(1))
+_WHEEL_IDLE_MS = int(re.search(r"const WHEEL_IDLE_MS\s*=\s*(\d+)", JS_SRC).group(1))
+_WHEEL_GAP_MS = _WHEEL_IDLE_MS + 60   # past the idle boundary so every dispatched wheel event opens its OWN fresh burst (one event, one stepFrame call)
+
 
 # ---- DOM row: consent speaks first --------------
 def _consent_ok(html):
@@ -147,19 +155,23 @@ BROWSER_ROWS = [
     "EX-ERROR a fault lays one error beat (closed kind + load phase, no raw string), capped at three per page",
     "EX-FRICTION rage-tap lays one friction beat (closed friction_kind=tap + where, no raw coord); an interactive press never counts",
     "EX-SHARE join a copy mints a token on share_copy; an arrival with ?s=<token> joins it on share_arrive; a bare arrival carries no token",
+    "EX-FRICTION rage-swipe — FRICTION_SWIPES clamped no-move steps at the walk's end lay ONE friction beat (friction_kind=swipe, where=walk, no raw count)",
+    "EX-FRICTION an advancing step clears the swipe burst — an ordinary browse (a real advance between clamped stretches) lays no friction beat",
+    "EX-FRICTION the swipe beat is capped at FRICTION_CAP per page — a further stuck burst past the cap lays none",
 ]
 
 # ---- EX-AB / INV-90 / INV-91 — the variant frame (SPEC "Experiments — the variant frame") ------
-# NOT YET BUILT: today `quiz_arm` is a hardcoded dimension that rides ONLY walk_unfold/walk_exit
-# (exhibition.js pulse()); the spec's registry-driven frame stamps EVERY dealt arm on EVERY
-# registry beat (INV-91), and mints the coat-check token (ex.visitor) ahead of the very first
-# seed read so the first visit already deals off the token a later visit holds (INV-90). These
-# rows are expected RED against current code.
+# The registry-driven frame stamps EVERY dealt arm on EVERY registry beat (INV-91), and mints the
+# coat-check token (ex.visitor) ahead of the very first seed read so the first visit already deals
+# off the token a later visit holds (INV-90). quiz_arm (on/control) was the frame's first rider and
+# proved this law; it RETIRED 2026-07-28 on the owner's word (SPEC.md carries the dated tombstone),
+# so these rows now exercise the law through quiz_chip_copy, the surviving live experiment on the
+# same frame.
 VF_ROWS = [
-    "VF-STAMP EX-AB/INV-91 the dealt quiz_arm rides EVERY registry beat, not only walk_unfold/walk_exit",
+    "VF-STAMP EX-AB/INV-91 the dealt quiz_chip_copy arm rides EVERY registry beat, not only walk_unfold/walk_exit",
     "VF-SEED-STABLE EX-AB/INV-90 a fixed seed token deals the same arm across two loads, matching EXQuiz's own hash",
     "VF-MINT-DEAL EX-AB/INV-90 a fresh profile mints ex.visitor at boot and deals off THAT token, not a later-read one",
-    "VF-RESET EX-AB/INV-90/EX-RESET ?reset deals a fresh token yet the next walk still stamps quiz_arm on its first beat",
+    "VF-RESET EX-AB/INV-90/EX-RESET ?reset deals a fresh token yet the next walk still stamps quiz_chip_copy on its first beat",
 ]
 
 EVLIST = ("JSON.stringify((window.dataLayer||[]).filter(e=>e[0]==='event')"
@@ -188,6 +200,18 @@ def count_of(evs, beat):
 
 def first_of(evs, beat):
     return next((p for n, p in evs if n == beat), None)
+
+
+def wheel_steps(br, deltas, gap_ms):
+    """dispatch len(deltas) real wheel events, each spaced `gap_ms` apart on the page's own clock —
+    past WHEEL_IDLE_MS every one opens its OWN fresh burst (one event, one wheelWalkStep, one
+    stepFrame call — EX-GLIDE/INV-84), so a run of clamped no-move steps lands as that many
+    DISTINCT stuck steps, exactly what the swipe burst counts."""
+    br.evaluate(
+        "(()=>{const ds=%s,gap=%d;ds.forEach((d,i)=>setTimeout(()=>{"
+        "dispatchEvent(new WheelEvent('wheel',{deltaY:d,cancelable:true,bubbles:true}));"
+        "},i*gap));})()" % (json.dumps(deltas), int(gap_ms)))
+    br.sleep(len(deltas) * gap_ms / 1000.0 + 0.5)
 
 
 def cold(br, base, visitor=None):
@@ -439,6 +463,65 @@ else:
                   one_beat and kind_ok and where_ok and no_raw,
                   f"friction={fr} one={one_beat} kind_ok={kind_ok} where_ok={where_ok} no_raw={no_raw} tapped={tapped}")
 
+    # ---- ROW: EX-FRICTION — rage-swipe: FRICTION_SWIPES clamped no-move steps at the walk's END --
+    with serve(TMP) as base:
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            cold(br, base)
+            enter_walk(br)
+            br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
+            br.sleep(0.5)                                  # land on the walk's LAST stop
+            wheel_steps(br, [120] * _FRICTION_SWIPES, _WHEEL_GAP_MS)  # each one clamps — nowhere left to go
+            fr = [p for n, p in evs_of(br) if n == "friction"]
+            one_beat = len(fr) == 1
+            kind_ok = fr and fr[0].get("friction_kind") == "swipe"
+            where_ok = fr and fr[0].get("where") == "walk"
+            no_raw = all(set(p.keys()) <= {"friction_kind", "where"} for p in fr)   # no delta/count rides (INV-1)
+            check(BROWSER_ROWS[9],
+                  bool(one_beat) and bool(kind_ok) and bool(where_ok) and no_raw,
+                  f"friction={fr} one={one_beat} kind_ok={kind_ok} where_ok={where_ok} no_raw={no_raw}")
+
+    # ---- ROW: EX-FRICTION — an advancing step clears the burst; an ordinary browse lays none -----
+    with serve(TMP) as base:
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            cold(br, base)
+            enter_walk(br)
+            br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
+            br.sleep(0.5)                                  # at the walk's LAST stop
+            # one combined burst — FRICTION_SWIPES-1 clamped, then a REAL advance off the end (clears
+            # the burst, 15-motion.js:158), a REAL advance back onto the end, then FRICTION_SWIPES-1
+            # clamped again. All inside ONE wheel_steps call (one trailing sleep) so the whole sequence
+            # stays inside FRICTION_SWIPE_MS — the two clamped stretches would sum past FRICTION_SWIPES
+            # if the middle advance had never cleared the burst.
+            seq = [120] * (_FRICTION_SWIPES - 1) + [-120, 120] + [120] * (_FRICTION_SWIPES - 1)
+            wheel_steps(br, seq, _WHEEL_GAP_MS)
+            fr = [p for n, p in evs_of(br) if n == "friction"]
+            check(BROWSER_ROWS[10],
+                  len(fr) == 0,
+                  f"friction={fr} (expect none — two runs of FRICTION_SWIPES-1 that a real advance kept apart, "
+                  f"never summing to FRICTION_SWIPES if the burst genuinely cleared)")
+
+    # ---- ROW: EX-FRICTION — the swipe beat is capped at FRICTION_CAP per page ---------------------
+    with serve(TMP) as base:
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.block(["*googletagmanager*", "*google-analytics*"])
+            cold(br, base)
+            enter_walk(br)
+            br.evaluate("document.getElementById('exh-fin').scrollIntoView({behavior:'instant'})")
+            br.sleep(0.5)
+            # FRICTION_CAP+1 full rounds of FRICTION_SWIPES clamped steps — one more round than the cap allows
+            wheel_steps(br, [120] * (_FRICTION_SWIPES * (_FRICTION_CAP + 1)), _WHEEL_GAP_MS)
+            fr = [p for n, p in evs_of(br) if n == "friction"]
+            capped = len(fr) == _FRICTION_CAP
+            kinds_ok = all(p.get("friction_kind") == "swipe" for p in fr)
+            check(BROWSER_ROWS[11],
+                  capped and kinds_ok,
+                  f"friction_count={len(fr)} expect={_FRICTION_CAP} kinds_ok={kinds_ok} friction={fr}")
+
     # ---- ROW: EX-SHARE join — a per-share token joins a copy to the open it produces -----------
     with serve(TMP) as base:
         _ids = [w["id"] for w in exdata["works"]]
@@ -477,25 +560,27 @@ else:
                                               # pre-seeded token is never overwritten by a fresh mint
 
     def _hash_arm_of(br, token):
-        """The expected arm for `token`, computed IN-PAGE via the client's own exported hash
-        (window.EXQuiz._hash — the quizHash the quiz arm has always drawn from), salt 'quizarm'."""
+        """The expected quiz_chip_copy arm for `token`, computed IN-PAGE via the client's own
+        exported hash (window.EXQuiz._hash — the quizHash the frame's arms have always drawn
+        from), salt 'quizcopy'."""
         return br.evaluate(
-            "(()=>{const h=window.EXQuiz._hash(%s+':quizarm');"
-            "return (h/4294967296)<0.5?'on':'control';})()" % json.dumps(token))
+            "(()=>{const h=window.EXQuiz._hash(%s+':quizcopy');"
+            "return (h/4294967296)<0.5?'place':'place_prize';})()" % json.dumps(token))
 
     with serve(TMP_VF) as base:
-        # ---- VF-STAMP: every event on the queue carries the dealt quiz_arm, not only unfold/exit
+        # ---- VF-STAMP: every event on the queue carries the dealt quiz_chip_copy arm, not only
+        # unfold/exit — the quiz_arm split once proved this same law here, RETIRED 2026-07-28
         with Browser(width=1280, height=900) as br:
             br.inject(CLIP_STUB)
             br.block(["*googletagmanager*", "*google-analytics*"])
             walk_all(br, base)                      # door_pick, share_copy, walk_unfold, walk_exit, share_arrive
             evs = evs_of(br)
-            arm = br.evaluate("window.EXQuiz && window.EXQuiz.arm()")
+            arm = br.evaluate("window.EXQuiz && window.EXQuiz.arms().quiz_chip_copy")
             beats = [n for n, p in evs]
-            every_has_arm = bool(evs) and all(p.get("quiz_arm") == arm for n, p in evs)
-            first_has_arm = bool(evs) and evs[0][1].get("quiz_arm") == arm
+            every_has_arm = bool(evs) and all(p.get("quiz_chip_copy") == arm for n, p in evs)
+            first_has_arm = bool(evs) and evs[0][1].get("quiz_chip_copy") == arm
             check(VF_ROWS[0],
-                  arm in ("on", "control") and every_has_arm and first_has_arm,
+                  arm in ("place", "place_prize") and every_has_arm and first_has_arm,
                   f"arm={arm} beats={beats} events={evs}")
 
         # ---- VF-SEED-STABLE: a fixed seed deals the same arm on both loads, matching the hash --
@@ -513,7 +598,7 @@ else:
             br.sleep(0.5)
             br.click("#ex-return", settle=0.6)
             exit1 = first_of(evs_of(br), "walk_exit")
-            arm1 = exit1.get("quiz_arm") if exit1 else None
+            arm1 = exit1.get("quiz_chip_copy") if exit1 else None
 
             br.navigate(base + "/")
             br.reload(); br.sleep(1.0)
@@ -523,15 +608,15 @@ else:
             br.sleep(0.5)
             br.click("#ex-return", settle=0.6)
             exit2 = first_of(evs_of(br), "walk_exit")
-            arm2 = exit2.get("quiz_arm") if exit2 else None
+            arm2 = exit2.get("quiz_chip_copy") if exit2 else None
             check(VF_ROWS[1],
                   stored_still == FIXED_SEED_TOKEN
                   and arm1 == expected_arm and arm2 == expected_arm and arm1 == arm2,
                   f"expected={expected_arm} arm1={arm1} arm2={arm2} stored_still={stored_still}")
 
         # ---- VF-MINT-DEAL: a FRESH profile mints ex.visitor at boot and deals off THAT token ----
-        # (today QUIZ_TOKEN/quizArm are computed before the visitor-memory mint runs, so the very
-        # first load deals off a throwaway per-tab id while a DIFFERENT token lands in storage)
+        # (QUIZ_TOKEN is computed before the visitor-memory mint runs, so an earlier bug dealt off
+        # a throwaway per-tab id while a DIFFERENT token landed in storage)
         with Browser(width=1280, height=900) as br:
             br.inject(CLIP_STUB)
             br.block(["*googletagmanager*", "*google-analytics*"])
@@ -543,11 +628,11 @@ else:
             valid_stored = bool(stored_token_first) and bool(
                 re.match(r"^[a-z0-9]{16,40}$", stored_token_first or ""))
             deals_off_stored = client_token_first == stored_token_first
-            arm_first = br.evaluate("window.EXQuiz && window.EXQuiz.arm()")
+            arm_first = br.evaluate("window.EXQuiz && window.EXQuiz.arms().quiz_chip_copy")
 
             br.reload(); br.sleep(1.0)               # a second load, same profile: the token now
             client_token_second = br.evaluate("window.EXQuiz && window.EXQuiz.token")  # persists
-            arm_second = br.evaluate("window.EXQuiz && window.EXQuiz.arm()")
+            arm_second = br.evaluate("window.EXQuiz && window.EXQuiz.arms().quiz_chip_copy")
             stable_token = client_token_second == stored_token_first
             stable_arm = arm_second == arm_first
             check(VF_ROWS[2],
@@ -557,7 +642,7 @@ else:
                   f"arm_first={arm_first} client_second={client_token_second} "
                   f"arm_second={arm_second} stable_token={stable_token} stable_arm={stable_arm}")
 
-        # ---- VF-RESET: ?reset deals a fresh token; the next walk still stamps quiz_arm ----------
+        # ---- VF-RESET: ?reset deals a fresh token; the next walk still stamps quiz_chip_copy ---
         # asserted on the FIRST beat the fresh walk lays (door_pick) — not only unfold/exit — the
         # same "every beat" law VF-STAMP proves, exercised through the reset road (EX-RESET).
         with Browser(width=1280, height=900) as br:
@@ -571,9 +656,9 @@ else:
             reminted = bool(token_after_reset) and token_after_reset != token1
             enter_walk(br)
             evs = evs_of(br)
-            first_beat_arm = evs[0][1].get("quiz_arm") if evs else None
+            first_beat_arm = evs[0][1].get("quiz_chip_copy") if evs else None
             check(VF_ROWS[3],
-                  reminted and first_beat_arm in ("on", "control"),
+                  reminted and first_beat_arm in ("place", "place_prize"),
                   f"token1={token1} token_after_reset={token_after_reset} reminted={reminted} "
                   f"events={evs} first_beat_arm={first_beat_arm}")
 

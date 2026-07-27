@@ -79,9 +79,14 @@ function englishFrom(src, plainGreet) {                // the baked English, ser
 // EX-EDGE-DEAD (INV-68): a dead model ACCOUNT — a billing/credit/auth refusal, i.e. a 4xx other
 // than 429 — flags the HOUR in KV; behind the flag no model call is attempted or charged. A 429,
 // a 5xx, or a network throw stays transient and never raises the flag. The TTL is the ~1h knob.
+// The flag is scoped PER ROUTE (the 2026-07-27 fix): the key carries the route that raised it, so
+// the i18n route and the story route hold two independent flags, same life, same raising class —
+// a route's own bad model answer stops only that route for the hour; the other keeps reaching the
+// model. Before this the key was one for the whole edge, so a 400 the story route's varied,
+// caller-shaped request could provoke took every language down with it.
 const DEAD_KEY = "dead:model";
 const DEAD_TTL = 3600;
-async function modelDead(env) { return !!(await env.@@NS_UPPER@@_I18N.get(DEAD_KEY)); }
+async function modelDead(env, route) { return !!(await env.@@NS_UPPER@@_I18N.get(DEAD_KEY + ":" + route)); }
 function deathStatus(e) {                              // the throw carries "model <status>"
   const m = /^model (\d{3})/.exec((e && e.message) || "");
   const s = m ? +m[1] : 0;
@@ -90,7 +95,7 @@ function deathStatus(e) {                              // the throw carries "mod
   // 429 is a flood; both stay transient, so a retirement never darkens every language for an hour.
   return (s >= 400 && s < 500 && s !== 429 && s !== 404) ? s : 0;
 }
-async function markDead(env) { await env.@@NS_UPPER@@_I18N.put(DEAD_KEY, "1", { expirationTtl: DEAD_TTL }); }
+async function markDead(env, route) { await env.@@NS_UPPER@@_I18N.put(DEAD_KEY + ":" + route, "1", { expirationTtl: DEAD_TTL }); }
 
 // EX-STORY-FILL (INV-107): the two ways a model call ends without lines. The answer-reader names the
 // class it is in as it throws, carrying that name on its own FIELD so the message keeps the plain
@@ -139,7 +144,7 @@ export default {
     // call, and NOT cached under this lang (a real speaker of it later still earns a real pass)
     // the death check rides the same pre-call fence line, so the served English is never cached
     // under the asked locale by construction (EX-EDGE-DEAD — the same early return as the bot path)
-    if (await modelDead(env)) return json(JSON.stringify(englishFrom(src, true)));
+    if (await modelDead(env, "i18n")) return json(JSON.stringify(englishFrom(src, true)));
     if (isBot(req) || await overBudget(env)) return json(JSON.stringify(englishFrom(src)));
     if (await overRate(env, req)) {
       return new Response("slow down", { status: 429, headers: { "Retry-After": "60" } });
@@ -157,7 +162,7 @@ export default {
       out = await translate(env.ANTHROPIC_API_KEY, lang, src);
     } catch (e) {
       if (deathStatus(e)) {                             // the ACCOUNT is dead — flag the hour and
-        await markDead(env);                            // answer the English day at once (INV-68);
+        await markDead(env, "i18n");                    // answer the English day at once (INV-68);
         return json(JSON.stringify(englishFrom(src, true)));   // the dying call stays charged
       }
       // the reason (never a secret): "model 401", "refused", a parse failure — debuggable by curl
@@ -264,7 +269,7 @@ async function story(req, env) {
   // EX-EDGE-GUARD: a cached walk is still served above; an UNCACHED one that would call the model
   // is refused to a bot or a capped day (silence — the story is enhancement, INV-19), and a flooding
   // IP is throttled — the narrator never becomes a money tap.
-  if (isBot(req) || await overBudget(env) || await modelDead(env)) {
+  if (isBot(req) || await overBudget(env) || await modelDead(env, "story")) {
     return new Response("no story", { status: 404 }); // the dead hour keeps the story's own silence
   }
   if (await overRate(env, req)) {
@@ -301,8 +306,10 @@ async function story(req, env) {
       out = await narrate(env.ANTHROPIC_API_KEY, known, variant, lang);
     } catch (e) {
       // EX-EDGE-DEAD (INV-68): a 4xx other than 429 names a dead ACCOUNT — flag the hour from this
-      // route the way the i18n route does, so a failing model stops being paid for.
-      if (deathStatus(e)) await markDead(env);
+      // route the way the i18n route does, so a failing model stops being paid for. The flag is this
+      // route's OWN key: a status the story route's caller-shaped request provokes never darkens the
+      // i18n route's languages, and the reverse holds.
+      if (deathStatus(e)) await markDead(env, "story");
       if (one && e && e.cls === "empty") await rememberEmpty(env, key);
       return new Response("model unavailable: " + ((e && e.message) || "?"), { status: 502 });
     }

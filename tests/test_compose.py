@@ -10,6 +10,7 @@ Ported from an instance's tests/test_compose.py — adapted for the engine:
 Run: .venv/bin/python tests/test_compose.py
 """
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -19,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
-from quiz_util import arm_of, find_token_arm_on  # noqa: E402
+from quiz_util import find_token_shows  # noqa: E402
 
 SITE_URL = "https://synth.example.com"
 results = []
@@ -48,8 +49,9 @@ quiz_works = [w for w in EXDATA.get("works", []) if w.get("quiz")]
 # We pre-compute it once here for skip-gate logic (not None check), then re-read in each row.
 QUIZ_WORK_ID = str(quiz_works[0]["id"]) if quiz_works else None
 
-# token with arm=on — any arm-on token works; the chosen work is read from EXQuiz.chosen()
-TOKEN_ARM_ON = find_token_arm_on() if quiz_works else None
+# any visitor token shows the chip on a walk with an eligible pick (the quiz_arm split retired
+# 2026-07-28); the chosen work is read from EXQuiz.chosen()
+TOKEN_ARM_ON = find_token_shows() if quiz_works else None
 
 # series data
 SERIES = EXDATA.get("series", [])
@@ -62,7 +64,7 @@ ANY_SERIES = SERIES[0] if SERIES else None
 # ---------------------------------------------------------------- VF5 EX-AB/INV-90 bake refusal
 # The served config's `experiments` registry (SPEC "Experiments — the variant frame", EX-AB/INV-90)
 # must refuse an entry with fewer than two arms, and refuse two entries sharing one salt. The
-# registry itself is only ever written by engine/build.py's own quiz_arm seam (under
+# registry itself is only ever written by engine/build.py's own quiz_chip_copy seam (under
 # enable=["quiz"]) — there is no clean config seam in the public build() call to inject a
 # MALFORMED entry — so this row calls the seam the build must expose for that refusal:
 # engine.build.validate_experiments(dict) -> raises SystemExit on either violation. That seam does
@@ -357,7 +359,7 @@ def overflow_free(ov):
 if not chrome_available() or QUIZ_WORK_ID is None or TOKEN_ARM_ON is None or ANY_SERIES is None:
     reason = ("chrome absent" if not chrome_available()
               else "no quiz works" if QUIZ_WORK_ID is None
-              else "arm-on token not found" if TOKEN_ARM_ON is None
+              else "no visitor token found" if TOKEN_ARM_ON is None
               else "no series in bake")
     for r in BROWSER_ROWS + CH_ROWS + SND_ROWS:
         skip(r, f"{reason} — browser rows pinned SKIP")
@@ -1189,6 +1191,239 @@ else:
             retracted, snd = snd_retracted(br)
             check(SND_ROWS[4], fired == "ok" and zoom_open and no_face and retracted,
                   f"fired={fired!r} zoom_open={zoom_open} no_covering_face={no_face} snd={snd}")
+
+        # ============ EX-COMPOSE / INV-67 — the caption's OWN controls under every covering face ============
+        # The series pill and the question chip live inside #exh-cap and carry pointer-events:auto
+        # at their OWN element (exhibition.css:306,621), so the parent's default pointer-events:none
+        # never reaches them by inheritance. Every covering face that structurally overlaps the
+        # caption's fixed z-index:30 already hides them regardless (the door z-index:100, the side
+        # room 90, the gift card 60, the zoom 120, the question card 150); only the closing sign
+        # (.exh-fin) carries no stacking context of its own (exhibition.css:438) and so covers
+        # nothing structurally — the two controls kept answering a press there. PRESS_SEL is read
+        # from the just-baked served client, never retyped, so a control added to the pressable
+        # class later (00-prelude.js:89-91's own law) joins this walk unasked.
+        CLIENT_JS_TEXT = (TMP_SND / "exhibition.js").read_text(encoding="utf-8")
+
+        def _press_sel_list(js_text):
+            m = re.search(r'PRESS_SEL\s*=\s*([^;]+);', js_text)
+            if not m:
+                raise AssertionError("PRESS_SEL not found in the served client — its source shape changed")
+            parts = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
+            return [s for s in "".join(parts).split(",") if s]
+
+        PRESS_SEL_LIST = _press_sel_list(CLIENT_JS_TEXT)
+
+        # Probe every PRESS_SEL selector in one round trip: for each matching element, whether a
+        # press at its OWN centre point lands on itself (or a descendant) — reachable — or on
+        # something else — refused. A selector absent from the DOM is simply absent from the
+        # result (the "missing from the document" half of the law).
+        CAP_PROBE_JS = (
+            "(sels)=>{const out={};for(const sel of sels){let els;"
+            "try{els=[...document.querySelectorAll(sel)];}catch(e){els=[];}"
+            "if(!els.length)continue;"
+            "out[sel]=els.map((el)=>{const r=el.getBoundingClientRect();"
+            "const cx=r.left+r.width/2, cy=r.top+r.height/2;"
+            "const hit=document.elementFromPoint(cx,cy);"
+            "const reach=!!(hit&&(hit===el||el.contains(hit)||(hit.closest&&hit.closest(sel)===el)));"
+            "return {reachable:reach};});}"
+            "return JSON.stringify(out);}"
+        )
+
+        def cap_probe(br):
+            return json.loads(br.evaluate(f"({CAP_PROBE_JS})({json.dumps(PRESS_SEL_LIST)})"))
+
+        def _scroll_to(br, work_id):
+            br.evaluate(
+                "(()=>{const f=document.querySelector('.exh-frame[data-id=\"%s\"]');"
+                "if(f)f.scrollIntoView({behavior:'instant'});})()" % str(work_id)
+            )
+            br.sleep(0.6)
+
+        def _resolve_content(br, mode):
+            """Fresh walk positioned so the caption will carry either the series pill or the
+            question chip once we scroll to the returned work id. None if unavailable this run."""
+            if mode == "series":
+                if ANY_SERIES is None:
+                    return None
+                wid = str(ANY_SERIES["members"][0])
+                setup_walk(br, quiz_work_pick=wid)
+                br.reload(); br.sleep(1.2)
+                return wid
+            else:
+                setup_walk(br)  # default pick — the chosen work lands elsewhere in the arc
+                br.reload(); br.sleep(1.2)
+                return get_quiz_work_id(br)
+
+        def raise_door(mode):
+            def _fn(br):
+                wid = _resolve_content(br, mode)
+                if not wid:
+                    return False
+                _scroll_to(br, wid)
+                br.evaluate("document.getElementById('exh-fin')?.scrollIntoView({behavior:'instant'})")
+                br.sleep(0.5)
+                if not br.evaluate("!!document.getElementById('ex-return')"):
+                    return False
+                br.click("#ex-return", settle=1.2)
+                raised = br.evaluate("document.body.classList.contains('ex-door')")
+                # the language corner's list (.exl-item) starts hidden (18-i18n-memory-lang.js:143)
+                # until its own toggle (.exl-cur) opens it — open it so its own chrome probes real
+                if raised and br.evaluate("!!document.querySelector('.exl-cur')"):
+                    br.click(".exl-cur", settle=0.4)
+                return raised
+            return _fn
+
+        def raise_gift(mode):
+            def _fn(br):
+                wid = _resolve_content(br, mode)
+                if not wid:
+                    return False
+                _scroll_to(br, wid)
+                return open_gift_card(br)
+            return _fn
+
+        def raise_quiz_card(mode):
+            def _fn(br):
+                wid = _resolve_content(br, mode)
+                if not wid:
+                    return False
+                return open_quiz_card(br)
+            return _fn
+
+        def raise_zoom(mode):
+            def _fn(br):
+                wid = _resolve_content(br, mode)
+                if not wid:
+                    return False
+                _scroll_to(br, wid)
+                fired = br.evaluate("(%s)('.exh-frame[data-id=\"%s\"] img.work')" % (PINCH, wid))
+                br.sleep(0.3)
+                return fired == "ok" and br.evaluate(ZOPEN)
+            return _fn
+
+        def raise_closing(mode):
+            def _fn(br):
+                wid = _resolve_content(br, mode)
+                if not wid:
+                    return False
+                _scroll_to(br, wid)
+                br.evaluate("document.getElementById('exh-fin')?.scrollIntoView({behavior:'instant'})")
+                br.sleep(0.8)
+                return br.evaluate("document.querySelector('#exh-fin')?.classList.contains('show')")
+            return _fn
+
+        SND_EXC_REASON = ("the sound control stays reachable at the closing sign — the guest "
+                          "keeps the means to stop the still-playing ambient track (the declared "
+                          "exception, EX-CHROME)")
+
+        FACE_DEFS = [
+            # the door's own language corner (#exd-lang) wears .exl-cur/.exl-item (18-i18n-memory-lang.js:137-141)
+            ("re-opened door", "series pill", raise_door("series"),
+             {".exd-window", ".exl-cur", ".exl-item"}, {}),
+            ("re-opened door", "question chip", raise_door("quiz"),
+             {".exd-window", ".exl-cur", ".exl-item"}, {}),
+            ("gift card", "series pill", raise_gift("series"),
+             {"#ex-gift-card .gift-yes", "#ex-gift-card .gift-no"}, {}),
+            ("gift card", "question chip", raise_gift("quiz"),
+             {"#ex-gift-card .gift-yes", "#ex-gift-card .gift-no"}, {}),
+            ("question card", "question chip", raise_quiz_card("quiz"), {".quiz-opt"}, {}),
+            ("zoom layer", "series pill", raise_zoom("series"), {"#ex-zoom .exz-btn"}, {}),
+            ("zoom layer", "question chip", raise_zoom("quiz"), {"#ex-zoom .exz-btn"}, {}),
+            ("closing sign", "series pill", raise_closing("series"), {".exh-fin .row > *"},
+             {".exsnd-btn": SND_EXC_REASON}),
+            ("closing sign", "question chip", raise_closing("quiz"), {".exh-fin .row > *"},
+             {".exsnd-btn": SND_EXC_REASON}),
+        ]
+
+        grid_cells = []
+        # cells the mechanics of entry cannot reach in this bake, named with the reason —
+        # not a gap in the walk, a fact about how each face is entered
+        unreached = [
+            "side room / question chip — the room only opens via .ex-series on a series-member "
+            "frame; that frame is not also the chosen quiz work in this bake, so the chip never "
+            "renders there to probe",
+            "question card / series pill — the card only opens via .ex-quiz-chip on the chosen "
+            "work's frame; that frame is not also a series member in this bake, so the pill never "
+            "renders there to probe",
+            "loading placeholder / series pill — #ex-loading carries z-index:1, under the "
+            "caption's fixed z-index:30 (exhibition.css:363); body.ex-live (which hides the "
+            "placeholder) is added at boot before any frame renders (17-place-hash-boot.js), so a "
+            "caption control is never on screen while the placeholder still is — no real or forced "
+            "state puts them in the same stacking order",
+            "loading placeholder / question chip — same reason as above",
+        ]
+        exercised = []
+
+        # side room: series pill only (open_side_room already positions on a series member)
+        with Browser(width=1280, height=900) as br:
+            br.navigate(snd_base + "/")
+            side_raised = open_side_room(br)
+            side_probe = cap_probe(br) if side_raised else {}
+        if side_raised:
+            exercised.append("side room / series pill")
+            for sel, elems in side_probe.items():
+                own = sel in {".exs-back"}   # the side room's own interior chrome —
+                                              # .exl-cur/.exl-item belong to the DOOR's language
+                                              # corner (#exd-lang), not the side room
+                for i, e in enumerate(elems):
+                    grid_cells.append(dict(
+                        face="side room", variant="series pill", sel=sel, i=i,
+                        reachable=e["reachable"], expected=own,
+                        reason="the face's own interior chrome" if own
+                               else "a covering face stands over the caption",
+                        ok=e["reachable"] == own,
+                    ))
+        else:
+            unreached.append("side room / series pill — the room did not open this run")
+
+        for face_name, variant, raise_fn, own_sels, extra_exempt in FACE_DEFS:
+            with Browser(width=1280, height=900) as br:
+                br.navigate(snd_base + "/")
+                raised = raise_fn(br)
+                probe = cap_probe(br) if raised else {}
+            if not raised:
+                unreached.append(f"{face_name} / {variant} — the face did not raise this run")
+                continue
+            exercised.append(f"{face_name} / {variant}")
+            for sel, elems in probe.items():
+                if sel in own_sels:
+                    expect, reason = True, "the face's own interior chrome"
+                elif sel in extra_exempt:
+                    expect, reason = True, extra_exempt[sel]
+                else:
+                    expect, reason = False, "a covering face stands over the caption"
+                for i, e in enumerate(elems):
+                    grid_cells.append(dict(
+                        face=face_name, variant=variant, sel=sel, i=i,
+                        reachable=e["reachable"], expected=expect, reason=reason,
+                        ok=e["reachable"] == expect,
+                    ))
+
+        bad_cells = [c for c in grid_cells if not c["ok"]]
+        check(
+            "CAP1 EX-COMPOSE the caption's own controls take no press while the label is hidden",
+            not bad_cells,
+            f"{len(grid_cells)} cells walked over {len(exercised)} face-instances "
+            f"({'; '.join(exercised)}); {len(bad_cells)} wrong: {bad_cells}; "
+            f"unreached: {unreached}",
+        )
+
+        # ---- CAP2: the exception fenced on its own — a later change that retracts the sound
+        # control at the closing sign must red HERE specifically, not just drop out of CAP1's grid.
+        with Browser(width=1280, height=900) as br:
+            br.navigate(snd_base + "/")
+            closing_raised = raise_closing("quiz")(br)
+            snd_ok = False
+            snd_detail = {}
+            if closing_raised:
+                snd_detail = json.loads(br.evaluate(SND_PROBE))
+                snd_ok = (snd_detail.get("pe") != "none" and snd_detail.get("op", 0) > 0
+                          and snd_detail.get("hit") is True)
+        check(
+            "CAP2 EX-COMPOSE the sound control stays reachable at the closing sign (declared exception)",
+            closing_raised and snd_ok,
+            f"closing_raised={closing_raised} sound_probe={snd_detail}",
+        )
 
 shutil.rmtree(TMP, ignore_errors=True)
 shutil.rmtree(TMP_SND, ignore_errors=True)

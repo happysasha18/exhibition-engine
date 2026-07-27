@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
-from quiz_util import find_token_copy_arm, arm_of, chip_copy_arm_of  # noqa: E402
+from quiz_util import find_token_copy_arm, chip_copy_arm_of  # noqa: E402
 
 SITE_URL = "https://synth.example.com"
 QUIZ_WORK_ID = "synth-01"
@@ -78,9 +78,10 @@ BROWSER_ROWS = [
     "EX-QUIZ-COPY the plain arm (place) names the act — the chip reads «guess the place»",
 ]
 
-# force each arm: a token that deals quiz_arm=on AND the wanted quiz_chip_copy arm. With the OTHER
-# quiz work answered in the walk, synth-01 is the ONLY eligible work, so it is always chosen and its
-# chip renders — the arm is the only free variable, exactly what these rows measure.
+# force each arm: a token that deals the wanted quiz_chip_copy arm. With the OTHER quiz work
+# answered in the walk, synth-01 is the ONLY eligible work, so it is always chosen and its
+# chip renders (the quiz_arm split retired 2026-07-28 — every visitor with the flag on is
+# eligible) — the quiz_chip_copy arm is the only free variable, exactly what these rows measure.
 TOK_PRIZE = find_token_copy_arm("place_prize")
 TOK_PLACE = find_token_copy_arm("place")
 

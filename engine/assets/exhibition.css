@@ -364,6 +364,15 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   padding-block:12px; padding-inline:15px 0; border-inline-start:1px solid rgba(179,162,132,.20);
   opacity:0; transform:translateY(8px); transition:opacity var(--d-soft) var(--ease), transform var(--d-soft) var(--ease); }
 .exh-capzone.show{ opacity:1; transform:none; }
+/* EX-COMPOSE / INV-67: the plaque's own controls (the series pill, the question chip, and any
+   later addition inside #exh-cap) each carry pointer-events:auto at their OWN element, so the
+   parent's default pointer-events:none above never reaches them by inheritance — a descendant's
+   own declared value always wins over one inherited from an ancestor. This guard reaches them
+   anyway: while #exh-cap stands without "show" (the closing sign is the one face that fades it
+   without covering it — exhibition.css:438 carries no stacking context of its own), no descendant
+   answers a press. One id-scoped rule: a control born inside #exh-cap later joins the guard by
+   standing there, no new rule owed. */
+#exh-cap:not(.show) *{ pointer-events:none !important; }
 /* the readability scrim (his word 2026-07-07): a feathered dark backing BEHIND the label — over
    the dark margin it's imperceptible, and where the column grows tall / the phone band reaches
    onto a bright work it keeps the letters legible. Backs INV-27 rather than replacing it: the

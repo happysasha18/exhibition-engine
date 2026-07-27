@@ -34,6 +34,7 @@ BROWSER_ROWS = [
     "INV-35(b) the param strips itself and lays NO history step; a reload re-wipes nothing",
     "INV-35(c) reset with nothing stored is the same cold door, never an error",
     "INV-35(d) the strip eats only `reset` — sibling params and the hash survive",
+    "EX-SHARE-ORIGIN ?reset forgets the remembered channel too (the museum's forgetting stays whole)",
 ]
 
 AT_DOOR = "document.body.classList.contains('ex-door')"
@@ -41,7 +42,8 @@ GREETED = "(()=>{const g=document.getElementById('exd-greet');return !!g && !g.h
 KEYS_GONE = ("localStorage.getItem('ex.exhibition')===null"
              "&&sessionStorage.getItem('ex.place')===null"
              "&&localStorage.getItem('ex-tempo')===null"
-             "&&localStorage.getItem('ex.solo')===null")  # this hour's one-work asks (EX-STORY-FILL/INV-107)
+             "&&localStorage.getItem('ex.solo')===null"
+             "&&sessionStorage.getItem('ex.origin')===null")  # the remembered channel (EX-SHARE-ORIGIN)
 
 if not chrome_available():
     for r in BROWSER_ROWS:
@@ -67,6 +69,9 @@ else:
         br.evaluate("sessionStorage.setItem('ex.place','{\"v\":\"x\",\"id\":\"y\"}')")
         # a solo count for this clock hour, in the shape the client writes it (EX-STORY-FILL)
         br.evaluate("localStorage.setItem('ex.solo', JSON.stringify({h: Math.floor(Date.now()/3600000), n: 3}))")
+        # a remembered channel for this visit (EX-SHARE-ORIGIN), same per-visit family as ex.place
+        br.evaluate("sessionStorage.setItem('ex.origin','testchan')")
+        origin_was_set = br.evaluate("sessionStorage.getItem('ex.origin')") == "testchan"
         br.navigate(base + "/?reset")
         br.sleep(1.2)
         check(BROWSER_ROWS[0],
@@ -74,6 +79,10 @@ else:
               and br.evaluate(KEYS_GONE),
               f"walked={walked} at_door={br.evaluate(AT_DOOR)} "
               f"greeted={br.evaluate(GREETED)} keys_gone={br.evaluate(KEYS_GONE)}")
+        origin_after_reset = br.evaluate("sessionStorage.getItem('ex.origin')")
+        check(BROWSER_ROWS[4],
+              origin_was_set and origin_after_reset is None,
+              f"origin_was_set={origin_was_set} origin_after_reset={origin_after_reset!r}")
 
         # b · the strip: no `reset` in the address, ONE history entry per navigation
         hl_before = br.evaluate("history.length")

@@ -103,9 +103,6 @@
       abArms[abName] = abList[Math.floor(abU * abList.length)];
     }
   } catch (e) {}
-  // the quiz arm is the frame's first rider (salt "quizarm", arms on/control — INV-62's split,
-  // unchanged); null when the flag is off so nothing stamps the GA beats (INV-60)
-  const quizArm = QUIZ_ON ? (abArms.quiz_arm || null) : null;
   // EX-QUIZ-ONCE (INV-66): ONE quiz chip per walk show, chosen deterministically from the eligible
   // set. eligible = works in the current order that carry a quiz AND are not yet answered.
   // The cooldown: a localStorage timestamp silences the chip for QUIZ_COOLDOWN_H hours after a show.
@@ -139,15 +136,17 @@
     quizChosenId = eligible[quizHash(QUIZ_TOKEN + ":once") % eligible.length];
     // stamp happens when the card is OPENED (quizCardOpen), not on pick: the pick is a
     // session-stable internal choice; the cooldown represents a card actually shown to the visitor.
-    // EX-QUIZ-FLOW (INV-69): the chip rendering is the "shown" stage — only under flag+on-arm,
-    // which is exactly the quizShows condition; control/flag-off never reach this branch (quizArm guard)
-    if (quizArm === "on") quizStageUp("shown");
+    // EX-QUIZ-FLOW (INV-69): the chip rendering is the "shown" stage — every visitor with the flag
+    // on and an eligible pick reaches this branch (the quiz_arm split retired 2026-07-28)
+    quizStageUp("shown");
   }
-  // a work surfaces its chip only when the flag is on, the arm is on, and this is the chosen work
-  const quizShows = (w) => QUIZ_ON && quizArm === "on" && !!(w && w.quiz) && w.id === quizChosenId;
-  // `_hash` is exported for the JS↔Python parity test (test_parity.py): the A/B arm and the
-  // per-work pick are drawn from this exact function, so the Python util must mirror it byte-for-byte.
-  try { window.@@NS_UPPER@@Quiz = { chosen: () => quizChosenId, arm: () => quizArm, token: QUIZ_TOKEN, _hash: quizHash }; } catch (e) {}
+  // a work surfaces its chip only when the flag is on and this is the chosen work
+  const quizShows = (w) => QUIZ_ON && !!(w && w.quiz) && w.id === quizChosenId;
+  // `_hash` is exported for the JS↔Python parity test (test_parity.py): the per-work pick and any
+  // registry arm are drawn from this exact function, so the Python util must mirror it byte-for-byte.
+  // `arms` exposes the whole dealt-arms map (EX-AB/INV-91) rather than one experiment's own arm, so
+  // a test can read whichever live experiment's arm rides the beats without a per-experiment export.
+  try { window.@@NS_UPPER@@Quiz = { chosen: () => quizChosenId, token: QUIZ_TOKEN, _hash: quizHash, arms: () => abArms }; } catch (e) {}
   const STORYLINES = Object.create(null);
   let storyVariant = null;          // the mode the served story reported — rides the GA beats (EX-STORY-AB)
   const toldPortions = new Set();   // portion keys whose plot has actually come back (told ONLY on a served plot)

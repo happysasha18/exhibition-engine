@@ -183,6 +183,7 @@
   const PLACE_KEY = "@@NS@@.place";                      // the per-tab place marker (INV-32c)
   const TEMPO_KEY = "@@NS@@-tempo";                      // the motion override (EX-MOTION-R)
   const SPENT_KEY = "@@NS@@.spent";                      // the hash hand-over, consumed once (EX-SHARE-IN)
+  const ORIGIN_KEY = "@@NS@@.origin";                    // the channel this visit first arrived under, folded (EX-SHARE-ORIGIN)
   const VISITOR_KEY = "@@NS@@.visitor";                  // the coat-check token (EX-MEMORY)
   const HAND_KEY = "@@NS@@.hand";                        // the last dealt threshold hand (EX-DOOR-3)
   const SEENC_KEY = "@@NS@@.seenc";                      // the seen-list's local copy (EX-DOOR-3)
@@ -422,6 +423,7 @@
     try { localStorage.removeItem(TEMPO_KEY); } catch (e) {}
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}
     try { sessionStorage.removeItem(SPENT_KEY); } catch (e) {}  // the hash re-seeds a FIRST arrival
+    try { sessionStorage.removeItem(ORIGIN_KEY); } catch (e) {}  // the remembered channel forgets too (EX-SHARE-ORIGIN)
     try { localStorage.removeItem(VISITOR_KEY); } catch (e) {}   // forgetting is whole (EX-MEMORY)
     try { localStorage.removeItem(HAND_KEY); } catch (e) {}
     try { localStorage.removeItem(SEENC_KEY); } catch (e) {}
@@ -738,9 +740,6 @@
       abArms[abName] = abList[Math.floor(abU * abList.length)];
     }
   } catch (e) {}
-  // the quiz arm is the frame's first rider (salt "quizarm", arms on/control — INV-62's split,
-  // unchanged); null when the flag is off so nothing stamps the GA beats (INV-60)
-  const quizArm = QUIZ_ON ? (abArms.quiz_arm || null) : null;
   // EX-QUIZ-ONCE (INV-66): ONE quiz chip per walk show, chosen deterministically from the eligible
   // set. eligible = works in the current order that carry a quiz AND are not yet answered.
   // The cooldown: a localStorage timestamp silences the chip for QUIZ_COOLDOWN_H hours after a show.
@@ -774,15 +773,17 @@
     quizChosenId = eligible[quizHash(QUIZ_TOKEN + ":once") % eligible.length];
     // stamp happens when the card is OPENED (quizCardOpen), not on pick: the pick is a
     // session-stable internal choice; the cooldown represents a card actually shown to the visitor.
-    // EX-QUIZ-FLOW (INV-69): the chip rendering is the "shown" stage — only under flag+on-arm,
-    // which is exactly the quizShows condition; control/flag-off never reach this branch (quizArm guard)
-    if (quizArm === "on") quizStageUp("shown");
+    // EX-QUIZ-FLOW (INV-69): the chip rendering is the "shown" stage — every visitor with the flag
+    // on and an eligible pick reaches this branch (the quiz_arm split retired 2026-07-28)
+    quizStageUp("shown");
   }
-  // a work surfaces its chip only when the flag is on, the arm is on, and this is the chosen work
-  const quizShows = (w) => QUIZ_ON && quizArm === "on" && !!(w && w.quiz) && w.id === quizChosenId;
-  // `_hash` is exported for the JS↔Python parity test (test_parity.py): the A/B arm and the
-  // per-work pick are drawn from this exact function, so the Python util must mirror it byte-for-byte.
-  try { window.@@NS_UPPER@@Quiz = { chosen: () => quizChosenId, arm: () => quizArm, token: QUIZ_TOKEN, _hash: quizHash }; } catch (e) {}
+  // a work surfaces its chip only when the flag is on and this is the chosen work
+  const quizShows = (w) => QUIZ_ON && !!(w && w.quiz) && w.id === quizChosenId;
+  // `_hash` is exported for the JS↔Python parity test (test_parity.py): the per-work pick and any
+  // registry arm are drawn from this exact function, so the Python util must mirror it byte-for-byte.
+  // `arms` exposes the whole dealt-arms map (EX-AB/INV-91) rather than one experiment's own arm, so
+  // a test can read whichever live experiment's arm rides the beats without a per-experiment export.
+  try { window.@@NS_UPPER@@Quiz = { chosen: () => quizChosenId, token: QUIZ_TOKEN, _hash: quizHash, arms: () => abArms }; } catch (e) {}
   const STORYLINES = Object.create(null);
   let storyVariant = null;          // the mode the served story reported — rides the GA beats (EX-STORY-AB)
   const toldPortions = new Set();   // portion keys whose plot has actually come back (told ONLY on a served plot)
@@ -790,7 +791,7 @@
 
 /*!04-arrival-facts.js*/
   // ---- EX-PULSE/INV-79: the arrival's own facts — measured ONCE per load ------
-  // Placed AFTER quizArm/storyVariant are initialized: pulse() reads those dimension vars, so an
+  // Placed AFTER abArms/storyVariant are initialized: pulse() reads those dimension vars, so an
   // earlier call would hit their temporal dead zone and silently self-catch (the wire stays honest).
   // VIEWER LANGUAGE is the tongue the guest actually views in (a chosen override, else the browser),
   // whether or not they ever touch the door's tongue list — it tells RTL scope and which baked locales
@@ -2513,6 +2514,39 @@
     return undefined;                                   // no token ⇒ the payload is byte-for-byte today's
   }
 
+  // ---- EX-SHARE-ORIGIN (INV-1): the channel a visit first arrived under, folded to a closed shape ----
+  // A value riding a stranger's own link (a folded `o` already on the address, else `utm_content`, else
+  // `utm_source` — the first one found wins) is never free text on the wire: lowercased, cut to the
+  // closed alphabet of letters, digits, hyphen and underscore, capped at 32 characters. An empty
+  // result rides nothing.
+  function foldOrigin(raw) {
+    return String(raw || "").toLowerCase().replace(/[^a-z0-9_-]+/g, "").slice(0, 32);
+  }
+  function readOriginParam() {
+    try {
+      const q = new URLSearchParams(location.search);
+      return foldOrigin(q.get("o") || q.get("utm_content") || q.get("utm_source") || "");
+    } catch (e) { return ""; }
+  }
+  // the FIRST channel this visit arrived under survives every forward: a folded origin already
+  // stored for this visit wins outright — only an EMPTY store takes THIS load's own reading — so a
+  // visitor who opens a forwarded copy keeps the channel their own first arrival met, never the
+  // copy's bare marks. Per-visit (sessionStorage), wiped with its siblings on ?reset (EX-RESET).
+  let shareOrigin = null;
+  try { shareOrigin = sessionStorage.getItem(ORIGIN_KEY) || null; } catch (e) {}
+  if (!shareOrigin) {
+    const o = readOriginParam();
+    if (o) {
+      shareOrigin = o;
+      try { sessionStorage.setItem(ORIGIN_KEY, o); } catch (e) {}
+    }
+  }
+  function shareArriveExtra() {                          // the join token AND the remembered channel, only when present
+    const extra = shareTokenExtra() || {};
+    if (shareOrigin) extra.origin = shareOrigin;
+    return Object.keys(extra).length ? extra : undefined;
+  }
+
   // ONE share control FLOATS over the walk (2026-07-09: the player and the link are chrome
   // ABOVE the room — they never ride a frame, so nothing drifts with a scroll). It acts on the
   // work IN VIEW (dataset.share follows the frame observer) and lives by the caption's law:
@@ -2531,12 +2565,15 @@
     // A fresh per-share token `s` rides too (EX-SHARE join / INV-1), stamped on this copy so the
     // matching arrival joins back to it.
     const s = mintShareToken();
-    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral&s=" + s + "#w-" + id;
+    // a stored origin (this visit's own remembered channel, EX-SHARE-ORIGIN) rides onward beside the
+    // house source mark and the join token; with nothing stored the link keeps exactly today's shape.
+    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral&s=" + s +
+      (shareOrigin ? "&o=" + shareOrigin : "") + "#w-" + id;
     const S = shareStrings();
     const write = (navigator.clipboard && navigator.clipboard.writeText)
       ? navigator.clipboard.writeText(link)
       : Promise.reject(new Error("no clipboard"));
-    pulse("share_copy", id, { s: s });
+    pulse("share_copy", id, shareOrigin ? { s: s, origin: shareOrigin } : { s: s });
     write.then(() => toast(S.copied))
          .catch(() => toast(link, true));              // never a silent failure (EX-SHARE-BTN)
   });
@@ -4560,7 +4597,7 @@
   }
   function arriveByHash(hid) {
     tlog("handover");
-    pulse("share_arrive", hid, shareTokenExtra());       // join back to the share that minted `s` (EX-SHARE / INV-1)
+    pulse("share_arrive", hid, shareArriveExtra());      // join back to the share that minted `s`, plus the remembered channel (EX-SHARE / EX-SHARE-ORIGIN / INV-1)
     const shownIds = entered ? order.slice(0, shown) : [];
     if (!(entered && shownIds.indexOf(hid) >= 0)) {    // (b) acts as a pick — fresh-top,
       pick = hid;                                      // the same law a door pick lives by

@@ -24,7 +24,7 @@
   }
   function arriveByHash(hid) {
     tlog("handover");
-    pulse("share_arrive", hid, shareTokenExtra());       // join back to the share that minted `s` (EX-SHARE / INV-1)
+    pulse("share_arrive", hid, shareArriveExtra());      // join back to the share that minted `s`, plus the remembered channel (EX-SHARE / EX-SHARE-ORIGIN / INV-1)
     const shownIds = entered ? order.slice(0, shown) : [];
     if (!(entered && shownIds.indexOf(hid) >= 0)) {    // (b) acts as a pick — fresh-top,
       pick = hid;                                      // the same law a door pick lives by

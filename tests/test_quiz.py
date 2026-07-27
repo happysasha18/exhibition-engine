@@ -273,15 +273,16 @@ if not chrome_available():
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
     ver = EXDATA_ON.get("version", "")
-    # VISITOR_KEY value chosen so quizArm==="on" AND quizChosenId==="synth-01" deterministically.
-    # Verified: quizHash("testtoken0001:quizarm") → arm=on; quizHash("testtoken0001:once") % 2 → synth-01
+    # VISITOR_KEY value chosen so quizChosenId==="synth-01" deterministically (the quiz_arm
+    # split retired 2026-07-28 — every visitor with the flag on is now eligible).
+    # Verified: quizHash("testtoken0001:once") % 2 → synth-01
     VISITOR_KEY_ON = "testtoken0001"
     with serve(TMP_ON) as base:
         # row A — chip renders + 4-option card opens/closes
         with Browser(width=1280, height=900) as br:
             br.navigate(base + "/")
             br.evaluate("localStorage.clear();sessionStorage.clear()")
-            # set a deterministic visitor key so quizArm==="on" and the chosen work is synth-01
+            # set a deterministic visitor key so the chosen work is synth-01
             br.evaluate("localStorage.setItem('ex.visitor',%s)" % json.dumps(VISITOR_KEY_ON))
             br.evaluate("localStorage.setItem('ex-tempo','0.1')")
             br.evaluate("localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"

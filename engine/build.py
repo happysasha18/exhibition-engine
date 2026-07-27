@@ -33,7 +33,7 @@ LOADING_LINE = ""        # EX-LOAD: the cold-arrival line, instance-supplied (ge
 HINT_LINE = ""           # the JS-off subtitle under the site name, instance-supplied (default in build)
 OG_IMAGE_ID = ""         # INV-25: the work a shared homepage link unfurls with; blank = first (INV-21)
 COPYRIGHT = ""           # composed in build() — the year is the bake run's own (static faces)
-COPYRIGHT_WALK = ""      # the same line for the CLIENT artifact, without the about link (INV-103)
+COPYRIGHT_NO_ABOUT = ""  # the same line where an about link would point at the page in hand (INV-103)
 _ENGINE_ASSETS = None
 _INSTANCE_ASSETS = None
 _NAMESPACE = "ex"        # EX-NS: storage-key/global/perf-mark namespace; instance overrides via site.json
@@ -222,10 +222,14 @@ a{color:inherit}
 .sign{color:#7c7c88;font-size:12.5px;margin-top:2.4em}
 .sign a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .about{max-width:62ch;padding-left:max(clamp(20px,4vw,56px),env(safe-area-inset-left));padding-right:max(clamp(20px,4vw,56px),env(safe-area-inset-right))}
-.about h1{font-weight:400;font-size:clamp(22px,3.4vw,30px);line-height:1.25;margin:0 0 1.1em}
+.about h1{font-weight:400;font-size:clamp(22px,3.4vw,30px);line-height:1.25;margin:1.5em 0 1.1em}
 .about p{max-width:60ch;line-height:1.75;margin:0 0 1.15em}
-.about-back{margin-top:2em}
-.about-back a{text-decoration:underline;text-underline-offset:3px}
+.about-back{display:inline-flex;align-items:center;gap:.5em;padding:.55em 1.1em;border:1px solid #3a3a42;border-radius:999px;text-decoration:none;color:#cfcfda;min-height:44px;font-size:14px}
+.about-back::before{content:"←"}
+[dir=rtl] .about-back::before{content:"→"}
+@media (hover:hover){.about-back:hover{border-color:#6a6a78;color:#e9e9ee}}
+.about-back:focus-visible{outline:2px solid #b3a284;outline-offset:3px}
+.about-back.is-press{border-color:#6a6a78;background:rgba(255,255,255,.05)}
 """
 
 
@@ -531,12 +535,25 @@ def render_about(site_url, about, lang, langs, fallback, direction=""):
         "author": {"@type": "Person", "name": CREATOR},
     }
     body_paras = "".join(f"<p>{esc(p)}</p>\n" for p in paras)
-    back_line = (f'<p class="about-back"><a href="/">{esc(back)}</a></p>\n' if back else "")
+    # the return control (EX-ABOUT / INV-102/103): a real anchor to "/" so the page works with
+    # scripting off. The inline script upgrades a same-site arrival into a step back through the
+    # visitor's OWN history; a direct or external arrival still follows the address to "/". It
+    # stands at the TOP of the page, above the heading, in the page's own flow. The script stays
+    # under 500 bytes and is inert when the control itself is absent (no `back` word).
+    back_ctl = (f'<a class="about-back" id="about-back" href="/">{esc(back)}</a>\n' if back else "")
+    back_script = (
+        '<script>(function(){var a=document.getElementById("about-back");if(!a)return;'
+        'a.addEventListener("click",function(e){if(document.referrer.indexOf(location.origin+"/")===0'
+        '&&history.length>1){e.preventDefault();history.back();}});'
+        '["pointerdown","pointerup","pointercancel","pointerleave"].forEach(function(t){'
+        'a.addEventListener(t,function(){a.classList.toggle("is-press",t==="pointerdown");});});'
+        '})();</script>\n'
+        if back else "")
     body = f"""<body>
 <main class="wrap about">
-<h1>{esc(title)}</h1>
-{body_paras}{back_line}<p class="sign">{COPYRIGHT}</p>
-</main>
+{back_ctl}<h1>{esc(title)}</h1>
+{body_paras}<p class="sign">{COPYRIGHT_NO_ABOUT}</p>
+{back_script}</main>
 </body>
 </html>
 """
@@ -1018,7 +1035,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     no instance. ``display_max``: cap the served images' long edge (px) — the deploy passes it,
     tests omit it so the bake stays fast (EX-PROTECT-RES / INV-56)."""
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
-    global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, COPYRIGHT_WALK
+    global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, COPYRIGHT_NO_ABOUT
     global _ENGINE_ASSETS, _INSTANCE_ASSETS, _NAMESPACE
     global HINT_LINE, OG_IMAGE_ID
     GA_ID = ga_id
@@ -1053,8 +1070,8 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # doors to one page side by side is what INV-103 forbids.
     COPYRIGHT = compose_sign(_year, CREATOR, SITE_NAME,
                              site_config.get("instagram"), about_word=about_word)
-    COPYRIGHT_WALK = compose_sign(_year, CREATOR, SITE_NAME,
-                                  site_config.get("instagram"))
+    COPYRIGHT_NO_ABOUT = compose_sign(_year, CREATOR, SITE_NAME,
+                                      site_config.get("instagram"))
     if OUT.exists():
         shutil.rmtree(OUT)                             # a fresh bundle, deterministic
     OUT.mkdir(parents=True)
@@ -1172,7 +1189,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     exdata = {"version": ex_version, "works": ex_works, "series": ex_series,
               # the walk's own face signs off with the same composed line (EX-COPY) — WITHOUT the
               # about link, because the closing screen carries its own (INV-103)
-              "copyright": COPYRIGHT_WALK,
+              "copyright": COPYRIGHT_NO_ABOUT,
               "v": {it["id"]: vectors[it["id"]] for it in items if it["id"] in vectors},
               # the threshold's pool ships INSIDE this one artifact — one fetch, under the same
               # bounded arrival INV-25 grants the walk (EX-DOOR; prover F1)
@@ -1334,7 +1351,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     if site_config.get("lang_geo"):
         config["lang_geo"] = site_config["lang_geo"]
     config["experiments"] = {}      # variant → flag → metric (empty registry)
-    # EX-QUIZ-ONCE (INV-66) + EX-QUIZ-AB: config seams join ONLY when the quiz is on —
+    # EX-QUIZ-ONCE (INV-66) + EX-QUIZ-COPY: config seams join ONLY when the quiz is on —
     # flag off leaves config.json byte-for-byte today's (INV-60 fence).
     # quiz_cooldown_hours: how long after one show the chip stays silent (~6h, tunable).
     # quiz_probability is GONE (INV-66 supersedes the per-walk coin with one-per-show).
@@ -1346,14 +1363,11 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         # ONLY when set, so the engine's own bake keeps the derived default (byte-identical).
         if site_config.get("quiz_prize_name"):
             config["exhibition"]["quiz_prize_name"] = site_config["quiz_prize_name"]
-        # the quiz A/B arm is the variant frame's first rider (EX-AB/INV-91: every registry beat)
-        config["experiments"]["quiz_arm"] = {
-            "arms": ["on", "control"],   # on = the quiz may surface; control = the measured baseline
-            "flag": "quiz",
-            "metric": "walk_unfold",     # the beat the owner watches for this experiment
-            "salt": "quizarm",           # the quiz's historic salt — pinned so no returning arm reshuffles (INV-90)
-        }
-        # EX-QUIZ-COPY (INV-93/EX-AB): the chip's words ride a second arm off the same frame — the
+        # the quiz_arm split (on/control) RETIRED 2026-07-28 on the owner's word (first said 2026-07-23):
+        # traffic is small, no split test is needed, so every visitor with the flag on is eligible
+        # (SPEC.md carries the dated tombstone). validate_experiments still refuses a registry entry
+        # under two arms — the rule stays; an experiment leaves rather than shrinking to one arm.
+        # EX-QUIZ-COPY (INV-93/EX-AB): the chip's words ride an arm off the same frame — the
         # plain arm names the act («guess the place»), the reward arm names the gift as well («guess
         # the place · win a wallpaper»). Its own salt keeps the draw independent of the quiz_arm split
         # (INV-90). Dealt only when the quiz ships; the client falls to the plain copy with no registry.

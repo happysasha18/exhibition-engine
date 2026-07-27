@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -40,6 +41,12 @@ _cfg_snd = TMP_SND / "config.json"
 _cfg_snd_data = json.loads(_cfg_snd.read_text())
 _cfg_snd_data["exhibition"]["sound_url"] = "/gallery/audio/ambient.m4a"
 _cfg_snd.write_text(json.dumps(_cfg_snd_data, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+
+# A third bake WITH a GA id, so window.gtag/dataLayer exist to read the beats back (EX-SHARE-ORIGIN
+# rows) — the plain bake above carries no analytics tag at all (GA_ID empty ⇒ no gtag anywhere).
+TMP_GA = Path(tempfile.mkdtemp(prefix="synth_share_ga_"))
+build_site.OUT = TMP_GA
+build_site.build(SITE_URL, ga_id="G-TESTTEST")
 
 DATA = json.loads((TMP / "exhibition_data.json").read_text(encoding="utf-8"))
 VER = str(DATA["version"])
@@ -75,6 +82,11 @@ BROWSER_ROWS = [
     "EX-SHARE-IN composes with the wipe (?reset#w-<id> → wipe first, then the hash seeds the arrival)",
     "EX-SHARE-BTN ∥ EX-SOUND one vertical rail — the link and the player centre on the SAME x, portrait AND landscape",
     "EX-SHARE the toast answers BESIDE the link button (right-aligned just above it), never far over the work",
+    "EX-SHARE-ORIGIN a plain channel tag on arrival mints a link carrying the folded origin beside the join token",
+    "EX-SHARE-ORIGIN a later load in the same visit never overwrites the FIRST remembered channel",
+    "EX-SHARE-ORIGIN a visit with no channel mints exactly today's link — no `o=` rides",
+    "EX-SHARE-ORIGIN the fold reduces an out-of-alphabet, over-length tag to the closed shape (lowercase, [a-z0-9_-], ≤32)",
+    "EX-SHARE-ORIGIN share_copy and share_arrive carry `origin` when a channel is remembered, omit it when none",
 ]
 
 CLIP_STUB = (
@@ -96,6 +108,10 @@ IN_VIEW = ("(()=>{const f=[...document.querySelectorAll('.exh-frame')].find(f=>{
            "return r.top<innerHeight*0.5 && r.bottom>innerHeight*0.5;});"
            "return f?f.dataset.id:null;})()")
 TOAST = "(()=>{const t=document.getElementById('ex-toast');return t&&!t.hidden?t.textContent:null;})()"
+# the GA events queue (dataLayer carries ['event', name, params] tuples pushed by gtag) — only
+# meaningful against TMP_GA, the bake carrying an actual GA id
+EVENTS_JS = ("JSON.stringify((window.dataLayer||[]).filter(function(e){return e[0]==='event';})"
+             ".map(function(e){return [e[1], e[2]||{}];}))")
 
 
 def enter(br, base, tempo="0.2"):
@@ -354,8 +370,121 @@ else:
                   all(v and abs(v["player"] - v["link"]) <= 1 for v in rails.values()),
                   f"center-x player vs link: {rails}")
 
+        # 13 · a plain channel tag on arrival mints a link carrying the folded origin
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.navigate(base + "/?utm_content=chatname_2707")
+            br.evaluate("localStorage.clear();sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+            br.reload()
+            br.sleep(1.0)
+            br.click(".exd-window:nth-child(1)", settle=0.1)
+            br.sleep(1.2)
+            br.click(".ex-share", settle=0.3)
+            copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
+            check(BROWSER_ROWS[13],
+                  len(copied) == 1 and "&o=chatname_2707#w-" in copied[0],
+                  f"copied={copied}")
+
+        # 14 · a later load in the SAME visit never overwrites the first remembered channel
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.navigate(base + "/?utm_content=channela")
+            br.evaluate("localStorage.clear();sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+            br.reload()                                   # the visit's FIRST real load — stores channela
+            br.sleep(1.0)
+            br.navigate(base + "/?utm_content=channelb")   # a later load, same visit — storage survives
+            br.sleep(1.0)
+            br.click(".exd-window:nth-child(1)", settle=0.1)
+            br.sleep(1.2)
+            br.click(".ex-share", settle=0.3)
+            copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
+            check(BROWSER_ROWS[14],
+                  len(copied) == 1 and "&o=channela#w-" in copied[0]
+                  and "channelb" not in copied[0].lower(),
+                  f"copied={copied}")
+
+        # 15 · no channel on arrival ⇒ the link keeps EXACTLY today's shape, no `o=` at all
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            enter(br, base)
+            br.click(".ex-share", settle=0.3)
+            copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
+            plain_re = re.compile(
+                r"^" + re.escape(f"{SITE_URL}/?utm_source=share&utm_medium=referral&s=")
+                + r"[a-z0-9]{1,16}#w-")
+            check(BROWSER_ROWS[15],
+                  len(copied) == 1 and bool(plain_re.match(copied[0])) and "o=" not in copied[0],
+                  f"copied={copied}")
+
+        # 16 · the fold reduces an out-of-alphabet, over-length tag to the closed shape
+        RAW_MESSY_ORIGIN = "Some Bad!! Tag_that-IS-way-too-long-for-the-Cap-1234567890"
+        EXPECTED_FOLD = re.sub(r"[^a-z0-9_-]+", "", RAW_MESSY_ORIGIN.lower())[:32]
+        with Browser(width=1280, height=900) as br:
+            br.inject(CLIP_STUB)
+            br.navigate(base + "/?utm_content=" + urllib.parse.quote(RAW_MESSY_ORIGIN))
+            br.evaluate("localStorage.clear();sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+            br.reload()
+            br.sleep(1.0)
+            br.click(".exd-window:nth-child(1)", settle=0.1)
+            br.sleep(1.2)
+            br.click(".ex-share", settle=0.3)
+            copied = json.loads(br.evaluate("JSON.stringify(window.__copied)") or "[]")
+            check(BROWSER_ROWS[16],
+                  len(copied) == 1 and f"&o={EXPECTED_FOLD}#w-" in copied[0],
+                  f"copied={copied} expected_fold={EXPECTED_FOLD!r} raw={RAW_MESSY_ORIGIN!r}")
+
+        # 17 · share_copy and share_arrive carry `origin` when a channel is remembered, omit it
+        #      when none — read back off the dataLayer (needs the GA-id bake, TMP_GA)
+        with serve(TMP_GA) as base_ga:
+            with Browser(width=1280, height=900) as br:
+                br.inject(CLIP_STUB)
+                br.navigate(base_ga + "/?utm_content=chatname_2707")
+                br.evaluate("localStorage.clear();sessionStorage.clear()")
+                br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+                br.reload()
+                br.sleep(1.0)
+                br.click(".exd-window:nth-child(1)", settle=0.1)
+                br.sleep(1.2)
+                br.click(".ex-share", settle=0.3)
+                events = json.loads(br.evaluate(EVENTS_JS) or "[]")
+                copy_events = [p for n, p in events if n == "share_copy"]
+                with_origin = bool(copy_events) and copy_events[-1].get("origin") == "chatname_2707"
+                shared_work = copy_events[-1].get("work") if copy_events else None
+
+            arrive_has_origin = False
+            if shared_work:
+                # the forwarded copy carries EXACTLY what the button minted (utm_source=share&
+                # utm_medium=referral&s=<x>&o=chatname_2707#w-<id>) — a fresh visit opening it
+                with Browser(width=1280, height=900) as br2:
+                    br2.inject(CLIP_STUB)
+                    br2.navigate(
+                        f"{base_ga}/?utm_source=share&utm_medium=referral&s=abc123def4"
+                        f"&o=chatname_2707#w-{shared_work}")
+                    br2.sleep(1.4)
+                    events2 = json.loads(br2.evaluate(EVENTS_JS) or "[]")
+                    arrive_events = [p for n, p in events2 if n == "share_arrive"]
+                    arrive_has_origin = (bool(arrive_events)
+                                         and arrive_events[-1].get("origin") == "chatname_2707")
+
+            with Browser(width=1280, height=900) as br3:
+                br3.inject(CLIP_STUB)
+                enter(br3, base_ga)
+                br3.click(".ex-share", settle=0.3)
+                events3 = json.loads(br3.evaluate(EVENTS_JS) or "[]")
+                copy3 = [p for n, p in events3 if n == "share_copy"]
+                omits = bool(copy3) and "origin" not in copy3[-1]
+
+            check(BROWSER_ROWS[17],
+                  with_origin and arrive_has_origin and omits,
+                  f"copy_with_origin={with_origin} arrive_with_origin={arrive_has_origin} "
+                  f"omits_when_none={omits}")
+
 shutil.rmtree(TMP, ignore_errors=True)
 shutil.rmtree(TMP_SND, ignore_errors=True)
+shutil.rmtree(TMP_GA, ignore_errors=True)
 
 fails = [r for r in results if r[1] == "FAIL"]
 skips = [r for r in results if r[1] == "SKIP"]

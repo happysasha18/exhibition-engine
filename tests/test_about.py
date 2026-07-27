@@ -103,7 +103,8 @@ for L, html in PAGES.items():
         bad.append(f"{L}: h1={h1!r} want {d['about_title']!r}")
     if want != [p for p in paras if p in want]:
         bad.append(f"{L}: paragraphs missing or reordered — got {paras!r}")
-    back = texts(html.split('class="about-back"', 1)[-1], "a")
+    back_m = re.search(r'<a class="about-back"[^>]*>(.*?)</a>', html, re.S)
+    back = [_html.unescape(re.sub(r"<[^>]+>", "", back_m.group(1))).strip()] if back_m else []
     if back[:1] != [d["about_back"]]:
         bad.append(f"{L}: return line is not the dictionary's — {back[:1]!r}")
     # nothing visible that the dictionary does not own (the signature is the one allowed extra)
@@ -203,6 +204,20 @@ check("AB9 INV-103 the signature composed for the walk omits the about link",
       "/about" not in walk_sign and "Instagram" in walk_sign,
       f"walk signature = {walk_sign!r}")
 
+# ---------------------------------------------------------------- AB21 no door to the page in hand
+# The page's own signature would otherwise point at the page the visitor already stands on, and on
+# a derived tongue that word stays in the source language while the whole page speaks another.
+bad = []
+for L, html in PAGES.items():
+    m = re.search(r'<p class="sign">(.*?)</p>', html, re.S)
+    if not m:
+        bad.append(f"{L}: no signature on the page")
+        continue
+    if "/about" in m.group(1):
+        bad.append(f"{L}: the signature links to the page in hand — {m.group(1)[:80]}")
+check("AB21 INV-103 the about page's own signature carries no link back to itself",
+      REACH and not bad, "; ".join(bad[:4]) or REACH_NOTE)
+
 # ---------------------------------------------------------------- AB11 only the entry word travels
 PAGE_KEYS = ("about_title", "about_1", "about_2", "about_3", "about_4", "about_back")
 client_langs = (EXDATA.get("greet") or {}).get("langs") or {}
@@ -244,13 +259,46 @@ finally:
     build_site.FIXTURE = _orig_fixture
     build_site.OUT = _orig_out
 
+# ---------------------------------------------------------------- AB15 the return control's top position
+bad = []
+for L, html in PAGES.items():
+    body = html.split("<body", 1)[-1]
+    m = re.search(r'<a class="about-back" id="about-back" href="/">', body)
+    if not m:
+        bad.append(f"{L}: no top return control")
+        continue
+    h1 = re.search(r"<h1\b", body)
+    if not h1 or h1.start() < m.start():
+        bad.append(f"{L}: return control does not stand above the heading")
+    if re.search(r'<p class="about-back"', html):
+        bad.append(f"{L}: the retired bottom paragraph link is still baked")
+check("AB15 INV-102 one return control stands at the top of the page, above the heading",
+      REACH and not bad, "; ".join(bad[:4]) or REACH_NOTE)
+
+# ---------------------------------------------------------------- AB16 the return control's own script
+bad = []
+for L, html in PAGES.items():
+    scripts = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)
+    back_scripts = [s for s in scripts if "about-back" in s]
+    if len(back_scripts) != 1:
+        bad.append(f"{L}: {len(back_scripts)} inline return-control scripts, want 1")
+    elif len(back_scripts[0].encode("utf-8")) >= 500:
+        bad.append(f"{L}: return-control script is "
+                    f"{len(back_scripts[0].encode('utf-8'))} bytes, want under 500")
+check("AB16 INV-102 the return control's behaviour is one inline script under 500 bytes, no src",
+      REACH and not bad, "; ".join(bad[:4]) or REACH_NOTE)
+
 # ---------------------------------------------------------------- browser rows
 BROWSER_ROWS = [
     "AB6 INV-102 the right-to-left page really lays out right-to-left",
-    "AB12 INV-16 the page renders whole with no script of its own",
+    "AB12 INV-16 the page renders whole with no script but the return control's own inline one",
     "AB13 CS-6 the column reads on a phone and does not stretch on a desktop",
     "AB8b/AB9b INV-103 the closing screen carries exactly one about link, in the visitor's tongue",
     "AB10 INV-103 the closing screen's about link belongs to the touch-press class",
+    "AB17 INV-102 a same-site arrival steps back one page in the visitor's own history",
+    "AB18 INV-102 a direct arrival with no referrer follows the return control's address to the root",
+    "AB19 INV-102 the return control's touch target measures at least 44 CSS pixels tall",
+    "AB20 INV-102 the Hebrew page's return arrow points the other way",
 ]
 
 if not chrome_available():
@@ -279,7 +327,7 @@ else:
                 "return JSON.stringify({scripts:document.querySelectorAll('script[src]').length,"
                 "paras:document.querySelectorAll('.about p').length,"
                 "h1:(document.querySelector('.about h1')||{}).textContent||'',"
-                "back:!!document.querySelector('.about-back a'),"
+                "back:!!document.getElementById('about-back'),"
                 "sign:!!document.querySelector('.sign'),"
                 "text:(m?m.innerText:'').length});})()"))
             check(BROWSER_ROWS[1],
@@ -336,6 +384,60 @@ else:
             check(BROWSER_ROWS[4],
                   pressed.get("on") and pressed.get("off"),
                   f"press={pressed} (lit under the finger, cleared on the lift)")
+
+        # AB17 — a same-site arrival steps back one page in the visitor's own history
+        with Browser(width=390, height=844) as br:
+            work_path = "/w/" + WORK_PAGES[0].name
+            br.navigate(base + work_path)
+            br.sleep(0.3)
+            br.evaluate(
+                '(()=>{const a=document.querySelector(\'a[href="/about"]\');if(a)a.click();})()')
+            br.sleep(0.3)
+            before = json.loads(br.evaluate(
+                "JSON.stringify({path:location.pathname,ref:document.referrer,"
+                "len:history.length,ctl:!!document.getElementById('about-back')})"))
+            br.evaluate(
+                "(()=>{const a=document.getElementById('about-back');if(a)a.click();})()")
+            br.sleep(0.3)
+            after = br.evaluate("location.pathname")
+            check(BROWSER_ROWS[5],
+                  before["ctl"] and before["ref"].startswith(base) and before["len"] > 1
+                  and after == work_path,
+                  f"before={before} after={after} (same-site referrer steps back to {work_path})")
+
+        # AB18 — a direct arrival with no referrer follows the return control's address to the root
+        with Browser(width=390, height=844) as br:
+            br.navigate(base + "/about")
+            br.sleep(0.3)
+            fresh = json.loads(br.evaluate(
+                "JSON.stringify({ref:document.referrer,len:history.length,"
+                "ctl:!!document.getElementById('about-back')})"))
+            br.evaluate(
+                "(()=>{const a=document.getElementById('about-back');if(a)a.click();})()")
+            br.sleep(0.3)
+            after = br.evaluate("location.pathname")
+            check(BROWSER_ROWS[6],
+                  fresh["ctl"] and fresh["ref"] == "" and after == "/",
+                  f"before={fresh} after={after!r} (no referrer follows the href to root)")
+
+        # AB19 / AB20 — the return control's touch target and its right-to-left arrow
+        MEASURE_CTL = ("(()=>{const a=document.getElementById('about-back');"
+                       "if(!a)return JSON.stringify({absent:1});"
+                       "return JSON.stringify({h:Math.round(a.getBoundingClientRect().height),"
+                       "arrow:getComputedStyle(a,'::before').content});})()")
+        with Browser(width=390, height=844) as br:
+            br.navigate(base + "/about")
+            br.sleep(0.3)
+            en = json.loads(br.evaluate(MEASURE_CTL))
+            check(BROWSER_ROWS[7], not en.get("absent") and en.get("h", 0) >= 44, f"en={en}")
+
+            br.navigate(base + "/about/he")
+            br.sleep(0.3)
+            he = json.loads(br.evaluate(MEASURE_CTL))
+            check(BROWSER_ROWS[8],
+                  not en.get("absent") and not he.get("absent")
+                  and en.get("arrow") and he.get("arrow") and en["arrow"] != he["arrow"],
+                  f"en={en} he={he}")
 
 # ---------------------------------------------------------------- report
 shutil.rmtree(TMP, ignore_errors=True)

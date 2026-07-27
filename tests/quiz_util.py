@@ -1,40 +1,34 @@
 #!/usr/bin/env python3
 """Quiz utilities shared across test suites — ported from an instance.
 
-arm_of and find_token_arm_on live HERE (one home); test suites import from this module.
-The jhash replica is the authoritative Python mirror of the JS quizHash() finalizer.
+find_token_shows and the quiz_chip_copy helpers live HERE (one home); test suites import from
+this module. The jhash replica is the authoritative Python mirror of the JS quizHash() finalizer.
+
+The quiz_arm split (on/control, salt "quizarm") RETIRED 2026-07-28 on the owner's word (first said
+2026-07-23): traffic is small, no split test is needed, so every visitor with the quiz flag on is
+now eligible — arm_of/find_token_arm_on are gone with it (SPEC.md carries the dated tombstone).
 
 REAL JS quizHash() at three sample inputs; any divergence goes RED.
 """
 
 
-def arm_of(tok):
-    """Return the A/B arm ('on' or 'control') for the given visitor token."""
-    return "on" if (jhash(tok + ":quizarm") / 4294967296) < 0.5 else "control"
+def find_token_shows(n=1000000, eligible_count=None):
+    """Find a token where the chosen eligible index is 0 — the pick work at arc position 0.
 
-
-def find_token_arm_on(n=1000000, eligible_count=None):
-    """Find a token with arm=on where the chosen eligible index is 0.
-
-    eligible_idx=0 means the chosen work is the FIRST quiz work in the arc order —
-    the pick work itself (at arc position 0). This guarantees the chosen work is always
-    in the first rendered frames, so the intersection observer can fire for it.
-    If eligible_count is unknown, fall back to any arm-on token.
+    Every visitor whose walk has a non-empty eligible set now shows the chip (the quiz_arm split
+    that once gated this on an "on" arm is retired), so the only free variable left is which
+    eligible work the once-hash lands on. eligible_idx=0 means the chosen work is the FIRST quiz
+    work in the arc order — the pick work itself — which guarantees the chosen work is always in
+    the first rendered frames, so the intersection observer can fire for it. With no eligible_count
+    given, any token shows the chip on a walk with an eligible pick, so a fixed token suffices.
     """
     if eligible_count is not None:
-        # preferred: find token where arm=on AND chosen = eligible[0] (the pick work)
         for i in range(n):
             tok = "qk%08d" % i
-            if arm_of(tok) != "on":
-                continue
             if jhash(tok + ":once") % eligible_count == 0:
                 return tok
-    # fallback: just arm=on
-    for i in range(300000):
-        tok = "qk%08d" % i
-        if arm_of(tok) == "on":
-            return tok
-    return None
+        return None
+    return "qk00000000"
 
 
 def chip_copy_arm_of(tok):
@@ -47,16 +41,14 @@ def chip_copy_arm_of(tok):
 
 
 def find_token_copy_arm(want_arm, eligible_count=None, n=2000000):
-    """Find a token that deals quiz_arm=on AND quiz_chip_copy=want_arm.
+    """Find a token that deals quiz_chip_copy=want_arm.
 
     When eligible_count is given, also require the chosen quiz work to be eligible[0] (the pick work
     at arc position 0), so scrolling to the pick frame reliably places the chip — the same
-    guarantee find_token_arm_on gives. want_arm is 'place' or 'place_prize'.
+    guarantee find_token_shows gives. want_arm is 'place' or 'place_prize'.
     """
     for i in range(n):
         tok = "qc%08d" % i
-        if arm_of(tok) != "on":
-            continue
         if chip_copy_arm_of(tok) != want_arm:
             continue
         if eligible_count is not None and jhash(tok + ":once") % eligible_count != 0:
@@ -92,18 +84,18 @@ def jhash(s):
 if __name__ == "__main__":
     # Smoke-check the replica against pinned values
     cases = [
-        ("qk00000000:quizarm", None),
-        ("qk00000001:quizarm", None),
-        ("hello:quizarm", None),
+        ("qk00000000:quizcopy", None),
+        ("qk00000001:quizcopy", None),
+        ("hello:quizcopy", None),
     ]
-    print("jhash smoke-check (value/arm):")
+    print("jhash smoke-check (value/quiz_chip_copy arm):")
     for s, _ in cases:
         v = jhash(s)
-        arm = "on" if v / 4294967296 < 0.5 else "control"
+        arm = "place" if v / 4294967296 < 0.5 else "place_prize"
         print(f"  jhash({s!r}) = {v} → {arm}")
-    print("arm_of spot-check:")
+    print("chip_copy_arm_of spot-check:")
     for i in range(5):
         tok = "qk%08d" % i
-        print(f"  arm_of({tok!r}) = {arm_of(tok)}")
-    tok = find_token_arm_on(eligible_count=2)
-    print(f"find_token_arm_on(eligible_count=2) = {tok!r} → arm={arm_of(tok) if tok else 'N/A'}")
+        print(f"  chip_copy_arm_of({tok!r}) = {chip_copy_arm_of(tok)}")
+    tok = find_token_shows(eligible_count=2)
+    print(f"find_token_shows(eligible_count=2) = {tok!r} → chip_copy_arm={chip_copy_arm_of(tok) if tok else 'N/A'}")

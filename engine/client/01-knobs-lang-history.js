@@ -8,6 +8,7 @@
     try { localStorage.removeItem(TEMPO_KEY); } catch (e) {}
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}
     try { sessionStorage.removeItem(SPENT_KEY); } catch (e) {}  // the hash re-seeds a FIRST arrival
+    try { sessionStorage.removeItem(ORIGIN_KEY); } catch (e) {}  // the remembered channel forgets too (EX-SHARE-ORIGIN)
     try { localStorage.removeItem(VISITOR_KEY); } catch (e) {}   // forgetting is whole (EX-MEMORY)
     try { localStorage.removeItem(HAND_KEY); } catch (e) {}
     try { localStorage.removeItem(SEENC_KEY); } catch (e) {}

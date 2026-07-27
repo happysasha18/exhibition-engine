@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """EX-QUIZ-FLOW / INV-69 — quiz funnel analytics (stage dimension on the walk beats).
 
-The quiz_stage dimension rides the SAME two beats the quiz_arm rides (walk_unfold /
-walk_exit). The stage is the FURTHEST step reached, session-scoped, never moves
-backwards. Four rungs: shown → opened → won|lost → gift.
+The quiz_stage dimension rides the SAME two beats a dealt experiment arm rides (walk_unfold /
+walk_exit) — the quiz_arm split once rode them this way and RETIRED 2026-07-28 (SPEC.md carries
+the dated tombstone); quiz_chip_copy rides them now. The stage is the FURTHEST step reached,
+session-scoped, never moves backwards. Four rungs: shown → opened → won|lost → gift.
 
 FL1–FL4: browser (headless Chrome, dataLayer assertions).
 FL5–FL6 (ga_report string rows): engine carries no ga_report.py — omitted; noted in SPEC
@@ -23,11 +24,10 @@ import engine_build as build_site  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
 
 SITE_URL = "https://synth.example.com"
-# "testtoken0001" is arm=on with the engine's quizHash AND picks synth-01 (eligible[0]).
-# Verified: quizHash("testtoken0001:quizarm") < 0.5*2^32 → on; quizHash("testtoken0001:once") % 2 = 0.
+# "testtoken0001" picks synth-01 (eligible[0]) with the engine's quizHash — every visitor with the
+# flag on shows the chip now (the quiz_arm on/control split retired 2026-07-28, SPEC.md tombstone).
+# Verified: quizHash("testtoken0001:once") % 2 = 0.
 VISITOR_KEY_ON = "testtoken0001"
-# "qk00000005" gives arm=control in the engine's quizHash (ratio > 0.5).
-VISITOR_KEY_CTRL = "qk00000005"
 QUIZ_WORK_ID = "synth-01"
 
 results = []
@@ -62,7 +62,7 @@ EVENTS_JS = ("JSON.stringify((window.dataLayer||[]).filter(function(e){return e[
 BROWSER_ROWS = [
     "FL1 EX-QUIZ-FLOW the stage rides the arm's two beats (INV-69 / INV-41)",
     "FL2 EX-QUIZ-FLOW the ladder never moves backwards and survives a reload (INV-69)",
-    "FL3 EX-QUIZ-FLOW control and flag-off stamp nothing (INV-69 / EX-QUIZ-AB)",
+    "FL3 EX-QUIZ-FLOW flag-off stamps nothing (INV-69 / INV-60)",
     "FL4 EX-QUIZ-FLOW only the quiz prize's yes stamps gift (INV-69 / EX-PROTECT-GIFT)",
     "FL7 EX-QUIZ-REPLY a slow in-flight submit shows the visible pending reassurance (INV-65)",
     "FL8 EX-QUIZ-REPLY a 503 edge holds the calm face and re-opens the choice, burning nothing (INV-65)",
@@ -227,10 +227,11 @@ else:
                 unfold_stage = unfold_params.get("quiz_stage")
                 unfold_ok = (unfold_stage is None) or (unfold_stage in ladder)
                 # no answer text leaking (INV-1): every beat value is a closed-ladder word — the stage
-                # ladder plus the dealt experiment arms (quiz_arm, quiz_chip_copy). A leaked answer
-                # would be a free-form string outside these closed sets; `place_prize` (a registered
+                # ladder plus the dealt quiz_chip_copy arm (the quiz_arm split rode this same closed
+                # set with on/control until it retired 2026-07-28). A leaked answer would be a
+                # free-form string outside these closed sets; `place_prize` (a registered
                 # quiz_chip_copy arm) is legitimate, so the closed arm words are allowed here too.
-                closed = ladder | {"on", "control", "place", "place_prize"}
+                closed = ladder | {"place", "place_prize"}
                 no_answer_text = not any(
                     len(str(v)) > 10 for v in exit_params.values()
                     if isinstance(v, str) and v not in closed
@@ -295,31 +296,13 @@ else:
 
             check(BROWSER_ROWS[1], fl2_ok, fl2_detail)
 
-        # ---- FL3: control-arm and flag-off stamp nothing --------------------
-        fl3_control_ok = False
+        # ---- FL3: a flag-off bake stamps no quiz_stage --------------------------------
+        # The control-arm sub-case this row once carried retired with the quiz_arm split
+        # (2026-07-28, SPEC.md tombstone): every visitor with the flag on now shows the chip, so
+        # there is no more arm value that silences it — only the flag itself still can (INV-60).
         fl3_flagoff_ok = False
         fl3_detail = ""
 
-        # Sub-case A: control-arm walk
-        with Browser(width=1280, height=900) as br:
-            br.block(["*googletagmanager*", "*google-analytics*"])
-            br.navigate(base_on + "/")
-            setup_walk(br, visitor_key=VISITOR_KEY_CTRL)
-            br.reload(); br.sleep(1.0)
-            br.evaluate("(function(){var f=document.getElementById('exh-fin');"
-                        "if(f) f.scrollIntoView({behavior:'instant'});})();")
-            br.sleep(0.5)
-            if br.evaluate("!!document.querySelector('#ex-return')"):
-                br.click('#ex-return', settle=0.5); br.sleep(0.5)
-            evs = events_dict(br)
-            exit_params = evs.get("walk_exit", {})
-            unfold_params = evs.get("walk_unfold", {})
-            # quiz_stage must NOT appear on control arm
-            fl3_control_ok = ("quiz_stage" not in exit_params and
-                              "quiz_stage" not in unfold_params)
-            fl3_detail += "control_exit=%s " % exit_params
-
-        # Sub-case B: flag-off bake (GA tag present but quiz flag off)
         with serve(TMP_OFF) as base_off:
             with Browser(width=1280, height=900) as br:
                 br.block(["*googletagmanager*", "*google-analytics*"])
@@ -338,8 +321,8 @@ else:
                 fl3_detail += "flagoff_exit=%s" % exit_params
 
         check(BROWSER_ROWS[2],
-              fl3_control_ok and fl3_flagoff_ok,
-              "control_ok=%s flagoff_ok=%s %s" % (fl3_control_ok, fl3_flagoff_ok, fl3_detail))
+              fl3_flagoff_ok,
+              "flagoff_ok=%s %s" % (fl3_flagoff_ok, fl3_detail))
 
         # ---- FL4: only quiz prize yes stamps gift ----------------------------
         # Sub-case A: plain right-click gift → yes → NO gift stage stamp

@@ -2,8 +2,9 @@
 """EX-EDGE-DEAD / INV-68 — The site outlives its model account.
 Seven rows, one per SPEC "The site outlives its model account" entry.
 
-EXPECTED FAIL today: DEAD-400, DEAD-STORY, DEAD-PLAIN-data, DEAD-PLAIN-payload, DEAD-DOUBLE
-EXPECTED PASS today: DEAD-TRANSIENT, DEAD-LIVE
+Every row passes. The five that once stood as expected failures — DEAD-400, DEAD-STORY,
+DEAD-PLAIN-data, DEAD-PLAIN-payload, DEAD-DOUBLE — were green well before 2026-07-27, and this
+header kept promising failures the suite no longer produces.
 
 Run: .venv/bin/python tests/test_dead.py
 
@@ -140,8 +141,11 @@ const EX_I18N = {
 };
 
 // ---- Pre-seed the death flag if requested ----
+// The flag is scoped PER ROUTE (2026-07-27 fix): the key carries the route that raised it, so a
+// scenario seeds the key of the route it is about to call — the story route's own flag ahead of
+// a story call, the language route's own flag ahead of an i18n call.
 if (scenario.seed_death_flag) {
-  kvMap.set('dead:model', '1');
+  kvMap.set(scenario.story_call ? 'dead:model:story' : 'dead:model:i18n', '1');
 }
 
 // ---- Pre-seed budget at some safe value (not over cap) ----
@@ -411,15 +415,15 @@ def row2_transient():
 
 
 # ---------------------------------------------------------------- ROW 3: DEAD-STORY quiet behind the flag
-# Pre-seed death flag, assert: (a) /api/story answers non-ok + zero model fetches;
-# (b) with the flag seeded, /api/i18n also serves English with zero model fetches (the flag check).
-# EXPECTED FAIL today: no flag check logic. STORY_FRAGMENTS is empty so story 404s early by
-# coincidence, but the i18n route ignores the flag and tries the model (which 502s on a bad account).
-# We assert both conditions; both must hold for PASS — today the i18n flag-check fails.
-# NOTE from brief: "if the fragments are empty in this bake, the story route 404s early —
-# assert the flag-standing scenario by the i18n route alone and note it in the checkpoint."
+# The flag is scoped PER ROUTE (2026-07-27 fix): pre-seed the STORY route's own flag and assert
+# /api/story answers non-ok + zero model fetches; pre-seed the LANGUAGE route's own flag (a separate
+# scenario, a separate key) and assert /api/i18n serves English with zero model fetches. Each route
+# quiets behind ITS OWN flag alone — before this fix the two shared one key ("dead:model"), so a
+# status the story route's own caller-shaped request provoked could silence every language too.
+# STORY_FRAGMENTS is empty in this bake, so Part A's 404 arrives before the flag is even read (the
+# story route 404s early on no fragments regardless); Part B is where the flag check itself is proven.
 def row3_story_quiet():
-    # Part A: /api/story with seeded flag — expect non-ok + zero model calls
+    # Part A: /api/story with the STORY route's own flag seeded — expect non-ok + zero model calls
     try:
         r_story = run_scenario({"anthropic_status": 200, "seed_death_flag": True, "lang": "pl"}, story_call=True)
     except Exception as e:
@@ -429,10 +433,10 @@ def row3_story_quiet():
     story_non_ok = r_story["firstStatus"] != 200
     story_zero_model = r_story["modelFetchCount"] == 0
 
-    # Part B: with the death flag seeded, /api/i18n should serve English with NO model fetch
-    # (the flag check prevents the model call). Today this FAILS: the worker ignores the flag.
-    # Use a 200-capable Anthropic stub — if the worker calls the model (ignoring the flag), it
-    # will succeed and cache; the absence of a model call is what we want to assert.
+    # Part B: with the LANGUAGE route's own flag seeded, /api/i18n should serve English with NO
+    # model fetch (the flag check prevents the model call). Use a 200-capable Anthropic stub — if
+    # the worker called the model anyway (the flag ignored, or read from the wrong route's key),
+    # it would succeed and cache; the absence of a model call is what proves the flag was read.
     try:
         r_i18n = run_scenario({"anthropic_status": 200, "seed_death_flag": True, "lang": "ru"})
     except Exception as e:
@@ -440,7 +444,6 @@ def row3_story_quiet():
         return
 
     i18n_200 = r_i18n["firstStatus"] == 200
-    # With the flag the model must NOT be called; today it IS called (no flag logic)
     i18n_zero_model = r_i18n["modelFetchCount"] == 0
 
     cond = story_non_ok and story_zero_model and i18n_200 and i18n_zero_model
@@ -448,8 +451,8 @@ def row3_story_quiet():
         f"story: status={r_story['firstStatus']} non_ok={story_non_ok} "
         f"story_zero_model={story_zero_model} "
         f"(STORY_FRAGMENTS empty — 404 before flag check; correct by construction today) "
-        f"| i18n behind flag: status={r_i18n['firstStatus']} i18n_200={i18n_200} "
-        f"i18n_zero_model={i18n_zero_model} (FAIL: flag ignored, model called) "
+        f"| i18n behind its own flag: status={r_i18n['firstStatus']} i18n_200={i18n_200} "
+        f"i18n_zero_model={i18n_zero_model} "
         f"i18n modelFetchCount={r_i18n['modelFetchCount']} (want 0)"
     )
     check("DEAD-STORY the story goes quiet behind the flag", cond, detail if not cond else "")

@@ -639,6 +639,113 @@ else:
                   ("the pinch gesture never scaled the picture (during={during!r}) — the row never "
                    "reached the defect".format(**out) if not reach_ok else f"out={out}"))
 
+# ---------------------------------------------------------------- EX-ZOOM/INV-87 the cold bottom slot
+# a door window pinched before the zoom LAYER's own <img> (#ex-zoom .exz-img — one element the whole
+# feature reuses, never re-created) has ever laid out still runs the real entry flight: zRestBox()
+# (12-zoom-inspect-grab.js:142-150) derives the rest box from the picture's natural fit into the CSS
+# max-box (94vw/88vh) instead of degrading to an instant swap (rule 6). The cold slot (offsetWidth/
+# offsetHeight reading 0) is forced by overriding the layer img's own getters — the only deterministic
+# way to reach it without racing real image decode/layout timing.
+COLD_ROWS = [
+    "EX-ZOOM/INV-87 a cold bottom slot (the zoom layer's own img not yet laid out, offsetWidth 0) "
+    "still runs the real entry flight, never an instant swap",
+]
+COLD_SLOT = (
+    "()=>{const img=document.querySelector('#ex-zoom .exz-img');"
+    "if(!img)return 'no-img';"
+    "Object.defineProperty(img,'offsetWidth',{configurable:true,get:()=>0});"
+    "Object.defineProperty(img,'offsetHeight',{configurable:true,get:()=>0});"
+    "return 'ok';}"
+)
+COLD_RESTORE = (
+    "()=>{const img=document.querySelector('#ex-zoom .exz-img');"
+    "if(!img)return 'no-img';"
+    "delete img.offsetWidth; delete img.offsetHeight; return 'ok';}"
+)
+# the stage's own computed transition right after the pin releases into the flight — an instant-swap
+# regression (zFlip's rect/box guard branch) sets transition:none, so this reads {tp:'none',ms:0}; the
+# real flight reads the CSS rule (transform, --d-cross), a measurable positive duration.
+STAGE_FLIGHT = (
+    "(()=>{const st=document.querySelector('#ex-zoom .exz-stage');if(!st)return JSON.stringify({err:1});"
+    "const cs=getComputedStyle(st);const d=(cs.transitionDuration||'0s').split(',')[0].trim();"
+    "const ms=d.slice(-2)==='ms'?parseFloat(d):parseFloat(d)*1000;"
+    "return JSON.stringify({tp:cs.transitionProperty,ms:ms});})()"
+)
+
+if not chrome_available():
+    for r in COLD_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+else:
+    with serve(TMP) as base:
+        with Browser(width=390, height=844) as br:       # INV-87: a cold slot still flies
+            _boot(br, base)
+            spoof = br.evaluate("(%s)()" % COLD_SLOT)
+            br.evaluate("(%s)('.exd-window img')" % PINCH)
+            flight = json.loads(br.evaluate(STAGE_FLIGHT))
+            for _ in range(20):
+                if flight.get("ms"):
+                    break
+                br.sleep(0.1)
+                flight = json.loads(br.evaluate(STAGE_FLIGHT))
+            restore = br.evaluate("(%s)()" % COLD_RESTORE)
+            real_flight = "transform" in (flight.get("tp") or "") and (flight.get("ms") or 0) > 0
+            check(COLD_ROWS[0], spoof == "ok" and real_flight,
+                  f"spoof={spoof!r} flight={flight} restore={restore!r} "
+                  f"(want a transform transition of measurable duration, never an instant swap)")
+
+# ------------------------------------------------------- EX-ZOOM/INV-87 the desktop close folds the LAG
+# closeZoom() (12-zoom-inspect-grab.js:271-306) reads getComputedStyle(zImg).transform (:285-288) so a
+# fast pinch-shut committed while the picture is still easing under the desktop ease (.desk, --d-pinch,
+# armed the moment a SECOND wheel notch changes the scale — the opening notch itself is finger-driven,
+# INV-81) folds what the eye ACTUALLY sees — a scale still lagging above the model's already-reset
+# zScale=1 — into the flight's start, never the model's own (already-reset) value.
+DESK_FOLD_ROWS = [
+    "EX-ZOOM/INV-87 a fast desktop pinch-shut committed while the picture is still easing under .desk "
+    "folds the LAGGING computed scale into the close, never the model's already-reset value",
+]
+
+if not chrome_available():
+    for r in DESK_FOLD_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+else:
+    with serve(TMP) as base:
+        with Browser(width=1280, height=900) as br:      # a real --d-pinch window (tempo 1) to catch the lag in
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear();sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex-tempo','1')")
+            br.reload(); br.sleep(1.1)
+            c = _elcenter(br, ".exd-window img")
+            if not c:
+                check(DESK_FOLD_ROWS[0], False, "no door window image to pinch")
+            else:
+                cx, cy = c
+                _wheel_notch(br, -400, cx, cy)      # opens at zScale=2.0 (desk removed by openZoom — instant, settled)
+                br.sleep(1.5)                        # let the ENTRY flight (--d-cross, 1.2s at tempo 1) fully
+                                                      # settle first — only the DESK-EASED img lag is under test
+                _wheel_notch(br, 700, cx, cy)        # crosses below 1x: desk now armed by THIS notch, model
+                                                      # resets to 1 but the img EASES from 2.0 toward 1.0 over
+                                                      # --d-pinch (160ms) — a re-base, no commit yet (zDesk=1)
+                br.sleep(0.05)                       # sample mid-ease, well under the 160ms window
+                br.evaluate(
+                    "window.__foldScale=null;"
+                    "const sc=(tr)=>{const m=/matrix\\(([-0-9.e]+), *([-0-9.e]+)/.exec(tr);"
+                    "return m?Math.hypot(parseFloat(m[1]),parseFloat(m[2])):(tr==='none'?1:null);};"
+                    "addEventListener('popstate',()=>{const st=document.querySelector("
+                    "'#ex-zoom .exz-stage');window.__foldScale=st?sc(getComputedStyle(st).transform):null;"
+                    "},{once:true});")
+                _wheel_notch(br, 60, cx, cy)         # a further FAST notch — commits the dismiss (zDesk<=0.92)
+                closed = False
+                for _ in range(30):                  # the exit flight itself rides --d-cross (1.2s at tempo 1)
+                    br.sleep(0.1)
+                    closed = ((not br.evaluate(ZOPEN)) and br.evaluate(ZHIDDEN) and br.evaluate(ON_PAGE))
+                    if closed:
+                        break
+                fold_scale = br.evaluate("window.__foldScale")
+                check(DESK_FOLD_ROWS[0],
+                      closed and isinstance(fold_scale, (int, float)) and fold_scale > 1.15,
+                      f"closed={closed} fold_scale={fold_scale} "
+                      f"(want the lagging scale >1.15 carried into the close, never the model's reset 1.0)")
+
 shutil.rmtree(TMP, ignore_errors=True)
 
 fails = [r for r in results if r[1] == "FAIL"]

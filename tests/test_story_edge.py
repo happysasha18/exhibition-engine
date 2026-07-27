@@ -62,6 +62,8 @@ ROWS = [
     "EX-STORY-FILL a call that outlived its expiry never takes away a later request's lock",
     "EX-STORY-FILL a work the edge holds no fragment for answers 404 ahead of every fence",
     "EX-EDGE-DEAD a retired model id stays transient — the hour's flag is for a dead ACCOUNT",
+    "EX-EDGE-DEAD the story route's own dead flag never stops the language route",
+    "EX-EDGE-DEAD the language route's own dead flag never stops the story route",
 ]
 
 # ---------------------------------------------------------------- bake once, story on
@@ -138,7 +140,12 @@ globalThis.fetch = async function (url, init) {
   }), { status: 200 });
 };
 
-const env = { ANTHROPIC_API_KEY: 'test-key', ASSETS: { async fetch() { return new Response('{}'); } } };
+// a fixed version so an i18n request's stale-version fence never fires — the story-edge suite
+// never cares about a real translation, only whether the LANGUAGE route reaches the model
+const env = { ANTHROPIC_API_KEY: 'test-key', ASSETS: { async fetch() {
+  return new Response(JSON.stringify({ version: '1', strings: {}, greet: {}, titles: {} }),
+                      { status: 200 });
+} } };
 env[scenario.binding] = KV;
 
 const worker = await import(workerPath);
@@ -155,6 +162,18 @@ function storyReq(step) {
       'cf-connecting-ip': step.ip || '203.0.113.7',
     },
     body: JSON.stringify(body),
+  });
+}
+
+// the LANGUAGE route's own request — used only to prove the two routes' dead flags are independent
+function i18nReq(step) {
+  const lang = step.lang || 'pl';
+  const v = step.v || '1';
+  return new Request('https://synth.example.com/api/i18n?lang=' + lang + '&v=' + v, {
+    headers: {
+      'user-agent': step.ua || scenario.ua,
+      'cf-connecting-ip': step.ip || '203.0.113.7',
+    },
   });
 }
 
@@ -188,6 +207,10 @@ for (const step of scenario.steps) {
   } else if (step.op === 'settle') {
     const got = await inflight[step.name];
     out.steps.push(Object.assign({ op: 'settle', modelCalls: modelCalls,
+                                   keys: Array.from(kv.keys()) }, got));
+  } else if (step.op === 'i18nreq') {
+    const got = await read(await handler.fetch(i18nReq(step), env));
+    out.steps.push(Object.assign({ op: 'i18nreq', modelCalls: modelCalls,
                                    keys: Array.from(kv.keys()) }, got));
   } else {
     const got = await read(await handler.fetch(storyReq(step), env));
@@ -382,15 +405,16 @@ def row_classes():
 
 
 def row_dead_flag():
-    """A 4xx other than 429 from the story route raises the hour-long dead flag (INV-68)."""
+    """A 4xx other than 429 from the story route raises the hour-long dead flag (INV-68), under a
+    key that carries this route's own name — the story route's flag, not the whole edge's."""
     asked = IDS[:3]
     r = run([ask(asked, "203.0.113.30"), {"op": "snapshot"}], answers=[{"kind": "status", "status": 401}])
     keys = r["steps"][1]["keys"]
-    flag = next((e for e in r["kv"] if e["k"] == "dead:model"), None)
+    flag = next((e for e in r["kv"] if e["k"] == "dead:model:story"), None)
     check(ROWS[11],
-          r["steps"][0]["status"] == 502 and "dead:model" in keys
+          r["steps"][0]["status"] == 502 and "dead:model:story" in keys
           and flag and flag["opts"].get("expirationTtl") == 3600,
-          f"status {r['steps'][0]['status']}, dead flag {'raised' if 'dead:model' in keys else 'absent'}"
+          f"status {r['steps'][0]['status']}, dead flag {'raised' if 'dead:model:story' in keys else 'absent'}"
           f"{'' if not flag else ', ttl ' + str(flag['opts'].get('expirationTtl'))}")
 
 
@@ -405,11 +429,11 @@ def row_retired_model():
     r403 = run([ask(asked, "203.0.113.91"), {"op": "snapshot"}],
                answers=[{"kind": "status", "status": 403}])
     check(ROWS[20],
-          r404["steps"][0]["status"] == 502 and "dead:model" not in r404["steps"][1]["keys"]
-          and "dead:model" in r403["steps"][1]["keys"],
+          r404["steps"][0]["status"] == 502 and "dead:model:story" not in r404["steps"][1]["keys"]
+          and "dead:model:story" in r403["steps"][1]["keys"],
           f"a 404 answered {r404['steps'][0]['status']} and "
-          f"{'raised' if 'dead:model' in r404['steps'][1]['keys'] else 'left'} the flag; a 403 "
-          f"{'raised' if 'dead:model' in r403['steps'][1]['keys'] else 'left'} it")
+          f"{'raised' if 'dead:model:story' in r404['steps'][1]['keys'] else 'left'} the flag; a 403 "
+          f"{'raised' if 'dead:model:story' in r403['steps'][1]['keys'] else 'left'} it")
 
 
 def row_record():
@@ -522,6 +546,57 @@ def row_unknown_work():
           f"{len(rate_puts)} — an unknown work costs neither money nor a slot, at every rung")
 
 
+def dead_keys(keys):
+    return [k for k in keys if k.startswith("dead:model")]
+
+
+# ---------------------------------------------------------- cross-route dead-flag isolation
+def row_story_dead_leaves_i18n():
+    """A dead-class status the STORY route provokes raises the story flag alone: a further story
+    ask meets that flag at once (no model call), while a LANGUAGE ask in the same hour still
+    reaches the model — the story route's own trouble never darkens every language."""
+    asked = IDS[:3]
+    r = run([
+        ask(asked, "203.0.113.95"),                                      # dies with a 401 — dead class
+        {"op": "snapshot"},
+        ask(asked, "203.0.113.96"),                                      # meets the flag: silence
+        {"op": "i18nreq", "lang": "de", "v": "1", "ip": "203.0.113.97"},  # the language route
+    ], answers=[{"kind": "status", "status": 401}])
+    died, after_die, blocked, lang_call = r["steps"]
+    check(ROWS[21],
+          died["status"] == 502 and dead_keys(after_die["keys"]) == ["dead:model:story"]
+          and blocked["status"] == 404 and blocked["modelCalls"] == after_die["modelCalls"]
+          and lang_call["modelCalls"] == after_die["modelCalls"] + 1,
+          f"the dying story call answered {died['status']} and raised {dead_keys(after_die['keys'])}; "
+          f"the next story ask answered {blocked['status']} with {blocked['modelCalls']} model calls "
+          f"(unchanged from {after_die['modelCalls']}); the language ask reached the model "
+          f"({lang_call['modelCalls']} model calls, up from {after_die['modelCalls']})")
+
+
+def row_i18n_dead_leaves_story():
+    """A dead-class status the LANGUAGE route provokes raises the i18n flag alone: a further ask
+    in that language meets the flag (the baked English day, no model call), while a STORY ask in
+    the same hour still reaches the model — the language route's own trouble never silences
+    the told story."""
+    asked = IDS[:3]
+    r = run([
+        {"op": "i18nreq", "lang": "fr", "v": "1", "ip": "203.0.113.98"},  # dies with a 400 — dead class
+        {"op": "snapshot"},
+        {"op": "i18nreq", "lang": "fr", "v": "1", "ip": "203.0.113.98"},  # meets the flag: English day
+        ask(asked, "203.0.113.99"),                                      # the story route
+    ], answers=[{"kind": "status", "status": 400}, {"kind": "ok", "lines": whole(asked)}])
+    died, after_die, blocked, story_call = r["steps"]
+    check(ROWS[22],
+          died["status"] == 200 and dead_keys(after_die["keys"]) == ["dead:model:i18n"]
+          and blocked["status"] == 200 and blocked["modelCalls"] == after_die["modelCalls"]
+          and story_call["status"] == 200 and story_call["modelCalls"] == after_die["modelCalls"] + 1,
+          f"the dying language call answered {died['status']} and raised {dead_keys(after_die['keys'])}; "
+          f"the repeat language ask answered {blocked['status']} with {blocked['modelCalls']} model "
+          f"calls (unchanged from {after_die['modelCalls']}); the story ask answered "
+          f"{story_call['status']} and reached the model ({story_call['modelCalls']} model calls, up "
+          f"from {after_die['modelCalls']})")
+
+
 # ---------------------------------------------------------------- run
 if not Path(NODE).exists():
     for name in ROWS:
@@ -529,7 +604,8 @@ if not Path(NODE).exists():
 else:
     for fn in (row_partial, row_no_line, row_lock, row_lock_on_failure, row_classes,
                row_dead_flag, row_record, row_portion_no_record, row_one_work_key,
-               row_lock_expiry, row_unknown_work, row_retired_model):
+               row_lock_expiry, row_unknown_work, row_retired_model,
+               row_story_dead_leaves_i18n, row_i18n_dead_leaves_story):
         try:
             fn()
         except Exception as e:                       # a row that cannot run is a red row, never a silent pass

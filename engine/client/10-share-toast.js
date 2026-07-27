@@ -99,6 +99,39 @@
     return undefined;                                   // no token ⇒ the payload is byte-for-byte today's
   }
 
+  // ---- EX-SHARE-ORIGIN (INV-1): the channel a visit first arrived under, folded to a closed shape ----
+  // A value riding a stranger's own link (a folded `o` already on the address, else `utm_content`, else
+  // `utm_source` — the first one found wins) is never free text on the wire: lowercased, cut to the
+  // closed alphabet of letters, digits, hyphen and underscore, capped at 32 characters. An empty
+  // result rides nothing.
+  function foldOrigin(raw) {
+    return String(raw || "").toLowerCase().replace(/[^a-z0-9_-]+/g, "").slice(0, 32);
+  }
+  function readOriginParam() {
+    try {
+      const q = new URLSearchParams(location.search);
+      return foldOrigin(q.get("o") || q.get("utm_content") || q.get("utm_source") || "");
+    } catch (e) { return ""; }
+  }
+  // the FIRST channel this visit arrived under survives every forward: a folded origin already
+  // stored for this visit wins outright — only an EMPTY store takes THIS load's own reading — so a
+  // visitor who opens a forwarded copy keeps the channel their own first arrival met, never the
+  // copy's bare marks. Per-visit (sessionStorage), wiped with its siblings on ?reset (EX-RESET).
+  let shareOrigin = null;
+  try { shareOrigin = sessionStorage.getItem(ORIGIN_KEY) || null; } catch (e) {}
+  if (!shareOrigin) {
+    const o = readOriginParam();
+    if (o) {
+      shareOrigin = o;
+      try { sessionStorage.setItem(ORIGIN_KEY, o); } catch (e) {}
+    }
+  }
+  function shareArriveExtra() {                          // the join token AND the remembered channel, only when present
+    const extra = shareTokenExtra() || {};
+    if (shareOrigin) extra.origin = shareOrigin;
+    return Object.keys(extra).length ? extra : undefined;
+  }
+
   // ONE share control FLOATS over the walk (2026-07-09: the player and the link are chrome
   // ABOVE the room — they never ride a frame, so nothing drifts with a scroll). It acts on the
   // work IN VIEW (dataset.share follows the frame observer) and lives by the caption's law:
@@ -117,12 +150,15 @@
     // A fresh per-share token `s` rides too (EX-SHARE join / INV-1), stamped on this copy so the
     // matching arrival joins back to it.
     const s = mintShareToken();
-    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral&s=" + s + "#w-" + id;
+    // a stored origin (this visit's own remembered channel, EX-SHARE-ORIGIN) rides onward beside the
+    // house source mark and the join token; with nothing stored the link keeps exactly today's shape.
+    const link = ROOT_URL + "/?utm_source=share&utm_medium=referral&s=" + s +
+      (shareOrigin ? "&o=" + shareOrigin : "") + "#w-" + id;
     const S = shareStrings();
     const write = (navigator.clipboard && navigator.clipboard.writeText)
       ? navigator.clipboard.writeText(link)
       : Promise.reject(new Error("no clipboard"));
-    pulse("share_copy", id, { s: s });
+    pulse("share_copy", id, shareOrigin ? { s: s, origin: shareOrigin } : { s: s });
     write.then(() => toast(S.copied))
          .catch(() => toast(link, true));              // never a silent failure (EX-SHARE-BTN)
   });

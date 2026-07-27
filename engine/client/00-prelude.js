@@ -182,6 +182,7 @@
   const PLACE_KEY = "@@NS@@.place";                      // the per-tab place marker (INV-32c)
   const TEMPO_KEY = "@@NS@@-tempo";                      // the motion override (EX-MOTION-R)
   const SPENT_KEY = "@@NS@@.spent";                      // the hash hand-over, consumed once (EX-SHARE-IN)
+  const ORIGIN_KEY = "@@NS@@.origin";                    // the channel this visit first arrived under, folded (EX-SHARE-ORIGIN)
   const VISITOR_KEY = "@@NS@@.visitor";                  // the coat-check token (EX-MEMORY)
   const HAND_KEY = "@@NS@@.hand";                        // the last dealt threshold hand (EX-DOOR-3)
   const SEENC_KEY = "@@NS@@.seenc";                      // the seen-list's local copy (EX-DOOR-3)

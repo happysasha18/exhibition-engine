@@ -5,6 +5,54 @@ private production instance and founded as its own product: a static gallery-sit
 adaptive-exhibition renderer, with the guided-journey product vision below. Method: the live-spec
 pack, loaded per session._
 
+## 2026-07-28 (night) — a page that can be left, a caption that stops taking presses, a flag per route
+
+Six engine-side landings, driven by an instance session that ran five lanes at once. Every suite in
+this tree is green: 43/43 at 182 s.
+
+**The about page carries a return control at its top (EX-ABOUT / INV-102).** A real anchor to the
+root, so the page works with scripting off, and one inline script under 500 bytes turns a same-site
+arrival into a step back through the visitor's own history. It renders as a pill in the static
+pages' own stylesheet, with an arrow that mirrors under right-to-left, a 44-pixel touch floor, the
+keyboard's focus ring and a press state. The retired bottom link is gone. Six rows in
+`tests/test_about.py`, red first.
+
+**A page never signs off with a link to itself.** The composed signature exists in two forms: one
+carrying the about link for the faces that lead to the page, and one without it for the client
+artifact and for the about page itself. The constant is renamed for what it is
+(`COPYRIGHT_NO_ABOUT`). On a derived tongue the self-link also held the entry word in the source
+language while the prose around it spoke another.
+
+**The caption's controls answer no press while the plaque is hidden (EX-COMPOSE / INV-67).** The
+series pill and the question chip each carry their own right to take a press, and the closing sign
+fades the plaque while standing in the same layer, so both kept answering under a surface the guest
+reads as empty. The protection sits on the plaque, so a control placed inside it later carries it
+from its first day. Proven by a walk over the whole grid — the pressable class read off the served
+client, thirteen controls against ten face states — in `tests/test_compose.py`, red first naming
+exactly those two cells. The sound player keeps its place at the closing sign, with its own fence
+row: the track is still playing and the guest keeps the means to stop it.
+
+**A copied link carries the channel its chain began in (EX-SHARE-ORIGIN).** The visit remembers the
+channel of its first arrival, folded to a closed alphabet and capped at 32 characters, stored beside
+the tab's own marks and wiped by the address reset. Every minted link carries it onward, so a
+forwarded copy keeps the first channel rather than the last hand. Both share beats name it. A visit
+with no channel mints exactly the earlier link. Five rows in `tests/test_share.py` plus one in
+`tests/test_reset.py`, red first.
+
+**The dead-account flag is scoped per route (EX-EDGE-DEAD).** One key held the whole edge, and the
+story route — whose request carries up to sixty work ids and the authored notes — could darken every
+language for an hour with a status particular to itself. Each route now holds its own flag with the
+same life and the same raising class. `tests/test_story_edge.py` 23/23, red first.
+
+**The quiz's split test retires; every visitor with the flag on is eligible.** The experiment leaves
+the bake and the client gate stops reading its arm. The wording experiment stays and now carries the
+frame's own law — a dealt arm rides every registry beat — which the retired experiment used to prove.
+Both spec files carry a dated tombstone.
+
+**Two close-up behaviours that shipped unproven are proven now.** A slot whose picture has not laid
+out still runs a real flight, and a fast dismiss folds the picture's own computed transform rather
+than the model's reset values. `tests/test_zoom.py` 27/27.
+
 ## 2026-07-27 — the glide keeps its speed across a re-time · the served script is comment-stripped
 
 Three landings, all engine-side, driven by an instance report and by the byte fence they tripped.

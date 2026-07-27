@@ -561,8 +561,10 @@ On every frame of the hang a quiet **share button** waits (a link glyph, ~36px, 
 on pointer devices, always visible on touch, ≥44px touch target). A click **copies, never
 navigates**: the frame's **room permalink** — the canonical root plus
 `?utm_source=share&utm_medium=referral` plus a fresh per-share join token `&s=<token>` (EX-SHARE join)
-plus `#w-<id>`, clean of whatever params the sharer's
-own address carries — onto the clipboard and answers with a quiet **toast** in the visitor's
+plus a folded **origin** `&o=<channel>` when this visit remembers the channel it first
+arrived under (`EX-SHARE-ORIGIN`, below)
+plus `#w-<id>`, carrying no other param the sharer's
+own address holds — onto the clipboard and answers with a quiet **toast** in the visitor's
 language (the `share_copied` string from the greeting cache; built-in Russian fallback). The UTM
 attribution separates shared arrivals from direct/bot noise in the walk's own analytics. If the
 clipboard is refused, the toast carries the link itself and stays until dismissed (`INV-29`). The
@@ -573,6 +575,19 @@ on the closing screen, and hides with the rest of the walk chrome at the door. T
 ONE vertical rail: the link and the sound player centre on the same x from the right edge at every
 width and orientation (his 2026-07-10 landscape note), and the toast answers right-aligned just above
 the link button it belongs to, never far away over the work. `EX-SHARE-BTN`
+
+**The channel a visit remembers** (`EX-SHARE-ORIGIN`): on the first load of a visit the client reads,
+in order, a folded `o` already riding the address, then `utm_content`, then `utm_source`, and keeps the
+first one it finds. The value is folded to a closed shape before it ever rides the wire (`INV-1`):
+lowercased, cut to the alphabet of letters, digits, hyphen and underscore, and capped at 32
+characters; an empty result is kept as nothing and rides nothing. The folded channel is stored for the
+visit beside its other per-visit marks and survives every later load inside that same visit, so a
+visitor who opens a forwarded copy and shares it onward mints a link carrying the FIRST channel the
+chain descended from, and a later hand passing the link along leaves that value as it stands.
+`?reset` forgets it with its siblings (`INV-35`). Both `share_copy` and `share_arrive` carry the
+remembered channel as a field named `origin` beside the join token, present exactly when a channel is
+remembered. A visit that arrived under no channel mints the link in its own earlier shape.
+`EX-SHARE-ORIGIN` `EX-SHARE` `INV-1`
 
 **The permalink arrival** (`EX-SHARE-IN`): opening the exhibition root with `#w-<id>` treats the
 hash as a handed-over pick. `(a)` If the work is among the frames already shown — an instant
@@ -1146,6 +1161,17 @@ a visitor mid-question rotates the phone — the card stays centred and locked, 
 still, and when the card leaves the frame re-centres; a key pressed during a question moves nothing;
 a lifted print re-centres on rotation `[default]`. `EX-COMPOSE` `INV-67`
 
+**The caption's own controls answer no press once the plaque is hidden.** The series pill and the
+question chip stand inside the caption plaque and each carries its own right to take a press, so a
+face that fades the plaque leaves them answering underneath a surface the guest reads as empty. A
+face that stands structurally over the plaque covers them by standing there. The closing sign fades
+the plaque while staying in the same layer, so the plaque's own state is what retracts them: while the
+plaque stands without its shown mark, nothing inside it takes a press, and everything inside it takes
+presses again the moment the plaque shows. The protection sits on the plaque, so a control placed
+inside it later carries the protection from its first day. One control stays reachable while the
+closing sign stands, the ambient sound player: the track keeps playing there and the guest keeps the
+means to stop it. `EX-COMPOSE` `EX-CHROME` `INV-67`
+
 **One page shape for the browser on every face (the 2026-07-10 rotation find, closed as law).**
 *Regression fences first (each citing the clause it guards): a standing face still owns the input
 (EX-COMPOSE); the last face still leaves into a fresh-measured room (EX-COMPOSE); the side room
@@ -1443,18 +1469,24 @@ Every dealt arm rides **every registry beat as a dimension**: the key is the exp
 value the arm — a word from the closed arms list, so the closed-ladder law stands (`INV-1`). The
 registry's first law holds: no beat is variant-blind, and a beat missing a live variant's dimension
 poisons the readout silently. The frame adds no beat (`INV-41` stands); a flag off, or no arm dealt,
-leaves the key absent and the payload byte-for-byte today's. The quiz arm (`EX-QUIZ-AB`/`INV-62`) is
-the frame's first rider — salt `quizarm`, arms `on`/`control`, the split unchanged, so a returning
-visitor keeps its arm. The story variant (`story_variant`, `EX-STORY-AB`) is a **declared
-dimension** rather than a dealt arm: config sets its value at deploy (`story.variant`), the stamp
-carries it on every beat exactly like a dealt arm, and it enters the registry as a dealt experiment
-only when a second story variant deploys `[target]`. The quiz funnel stage (`quiz_stage`,
-`EX-QUIZ-FLOW`/`INV-69`) is a stage rather than an arm and keeps its own law, riding the two walk
-beats. `INV-91`
+leaves the key absent and the payload byte-for-byte today's. **RETIRED 2026-07-28** on the owner's
+word (first said 2026-07-23; the traffic is small, no split test is needed here): the quiz arm
+(`EX-QUIZ-AB`/`INV-62`) was the frame's first rider — salt `quizarm`, arms `on`/`control` — gating
+whether the quiz could surface at all; every visitor with the quiz flag on is now eligible, so the
+registry carries no arm for the quiz itself. The chip's WORDING still rides its own arm on the same
+frame — `quiz_chip_copy` (`EX-QUIZ-COPY`/`INV-100`), salt `quizcopy`, arms `place`/`place_prize` —
+untouched by this retirement and now the frame's example rider below. The story variant
+(`story_variant`, `EX-STORY-AB`) is a **declared dimension** rather than a dealt arm: config sets
+its value at deploy (`story.variant`), the stamp carries it on every beat exactly like a dealt arm,
+and it enters the registry as a dealt experiment only when a second story variant deploys
+`[target]`. The quiz funnel stage (`quiz_stage`, `EX-QUIZ-FLOW`/`INV-69`) is a stage rather than an
+arm and keeps its own law — one question per walk with its cooldown window stand untouched
+(`EX-QUIZ-ONCE`/`INV-66`) — riding the two walk beats. `INV-91`
 
 The fences the frame owes: a flag off is byte-for-byte today's payload (`INV-60`); the two-way
 registry test still stands (`INV-41`); the coat-check record never widens (`INV-43`, `EX-MEMORY`);
-the quiz arm's salt and split are unchanged (`INV-62`); the consent posture is unchanged (`EX-PULSE`).
+a live experiment's salt and split are unchanged once dealt (`INV-90`, the law `INV-62` once held for
+the retired quiz arm and `quiz_chip_copy` holds now); the consent posture is unchanged (`EX-PULSE`).
 Facets are `N/A` — the frame wears no visible surface. On performance it costs one 32-bit hash per
 experiment at boot, with no network and no write. Non-goals: no new beat; an equal split only, weights
 a later parameter; no readout inside the engine (the read side is instance-owned, and the engine
@@ -1592,18 +1624,23 @@ that stands OUTSIDE the exhibition** and speaks in the site's own service voice,
 greeting and the signature already use. The rooms stay silent. `EX-ABOUT` `INV-102`
 
 **One page per baked language.** The page is flat static HTML written at bake time like the work
-pages, script-free (`INV-2`). A page of prose that runs no script cannot translate itself on
-arrival, so the baked languages are baked pages: the fallback tongue keeps the bare `/about`, every
-other tongue sits at `/about/<language>`. Each page names all its siblings with `hreflang`, and the
-fallback page also carries `x-default`. Each carries the document's own `lang` and `dir`, so a
-right-to-left tongue mirrors like every other face. `INV-102`
+pages: complete without JavaScript (`INV-2`), carrying nothing beyond one small inline script that
+upgrades its own return control. A page whose prose runs no script of its own cannot translate itself
+on arrival, so the baked languages are baked pages: the fallback tongue keeps the bare `/about`,
+every other tongue sits at `/about/<language>`. Each page names all its siblings with `hreflang`,
+and the fallback page also carries `x-default`. Each carries the document's own `lang` and `dir`, so
+a right-to-left tongue mirrors like every other face. `INV-102`
 
-**What stands on it.** A heading, four short paragraphs, one plain link back to `/`, and the same
-composed signature every public face carries (`EX-COPY`). **No photograph** — the exhibition hangs
-one picture at a time in a room built for it, and a page of prose is not that room — and **no share
-picture**: a page that names an empty `og:image` unfurls as a broken card, so the image tags are
-omitted whole and the Twitter card drops to its text form. It carries no axis name, no score, no
-confidence, and nothing about a visitor's stored state (`INV-1`). `INV-102`
+**What stands on it.** One control back to `/`, standing at the top of the page above the heading,
+in the page's own flow. It is a real anchor with a real `href`, so it works with scripting off; a
+small inline script upgrades it so a same-site arrival steps back one page through the visitor's own
+history, while a direct or external arrival still follows the address to `/`. Below it stand a
+heading, four short paragraphs, and the same composed signature every public face carries
+(`EX-COPY`). **No photograph** — the exhibition hangs one picture at a time in a room built for it,
+and a page of prose is not that room — and **no share picture**: a page that names an empty
+`og:image` unfurls as a broken card, so the image tags are omitted whole and the Twitter card drops
+to its text form. It carries no axis name, no score, no confidence, and nothing about a visitor's
+stored state (`INV-1`). `INV-102`
 
 **Every sentence on the page is content the instance owns.** The words are read from its copy dictionary
 (`data/greetings.json`) in each baked language — `about_title`, `about_1`..`about_4`, `about_back`,
@@ -1632,9 +1669,13 @@ link beside the optional creator link, pointing at the bare `/about`, since the 
 once into faces that carry no language of their own — the static root, every work page. The walk's
 closing screen carries the same word between «more» and «exit», pointing at the page in the
 visitor's own tongue, which that screen already speaks. That screen also signs off with the same
-composed line, so **the signature the walk carries omits the about link**: the walk is composed
-twice at bake, once for the static faces with the link and once for the client artifact without it,
-and a visitor never meets two doors to one page side by side. **The threshold gets nothing** — it
+composed line, so **the signature the walk carries omits the about link**: the line is composed twice
+at bake, once carrying the link for the static faces that lead to the page, and once without it for
+every face that already is the page or offers its own way there — the client artifact's closing
+screen and the about page's own signature — so a visitor never meets two doors to one page side by
+side, and no page signs off with a link to itself. On a page derived into another tongue that
+self-link would also hold the entry word in the source language while the prose around it speaks
+another. **The threshold gets nothing** — it
 stays a near-black screen with a wordmark and no explanation. Every language's page is listed once
 in the sitemap. `EX-ABOUT` `INV-103`
 
@@ -1644,14 +1685,17 @@ readable on a wide screen and its padding keeps the text clear of a phone's roun
 indicator. Renders whole with JavaScript off. Never animates, so reduced motion changes nothing.
 `INV-16` `INV-17`
 
-**Both entry links under every input.** Each is an ordinary anchor with a real `href`, so it works
-under a finger, a pointer and a keyboard alike, and a screen reader announces it by the word it
-wears. The closing screen's link is a chrome control on a touch surface, so it joins the
-touch-press CLASS (`EX-CHROME`, `INV-49`) by belonging to it rather than by being named in a list —
-lit under a press on a coarse pointer, taking the keyboard's accent focus, leaving no sticky fill
-when a finger lifts. The signature's link is a quiet text link in small print: it wears the
-signature's own muted tone and underline and, pointing INSIDE the site, opens in place rather than
-in a new tab the way the outbound creator link does. `EX-CHROME` `INV-103`
+**The entry links and the return control, under every input.** Each is an ordinary anchor with a
+real `href`, so all three work under a finger, a pointer and a keyboard alike, and a screen reader
+announces each by the word it wears. The closing screen's link is a chrome control on a touch
+surface, so it joins the touch-press CLASS (`EX-CHROME`, `INV-49`) by belonging to it rather than by
+being named in a list — lit under a press on a coarse pointer, taking the keyboard's accent focus,
+leaving no sticky fill when a finger lifts. The about page's own return control belongs to the same
+class: it lights under a real pointer's hover, takes the same keyboard accent focus, and shows a
+press state under a finger that clears the moment the finger lifts. The signature's link is a quiet
+text link in small print: it wears the signature's own muted tone and underline and, pointing INSIDE
+the site, opens in place rather than in a new tab the way the outbound creator link does. `EX-CHROME`
+`INV-103`
 
 ---
 
@@ -1807,7 +1851,7 @@ the worker.
 | `EX-QUIZ-PRIZE` | The prize is a marked gallery derivative; the master never ships |
 | `EX-QUIZ-ONCE` | Exactly one question per show, over the reachable∧unanswered set, silenced by a cooldown window |
 | `EX-QUIZ-GLINT` | A soft one-time light sweeps the chip as the question appears; only the chip; off under reduced-motion |
-| `EX-QUIZ-AB` | The quiz arm, dealt by the variant frame (`EX-AB`, salt `quizarm`, on/control, 50/50, seed-stable), rides every registry beat as a dimension; absent when the flag is off |
+| `EX-QUIZ-AB` | **RETIRED 2026-07-28** (tombstone) — the quiz arm once dealt by the variant frame (`EX-AB`, salt `quizarm`, on/control, 50/50, seed-stable), gating whether the quiz could surface at all; every visitor with the quiz flag on is now eligible (the owner's word, small traffic, no split test needed). `quiz_chip_copy` (`EX-QUIZ-COPY`/`INV-100`) is the frame's live rider now; the quiz still asks once per walk with a cooldown (`EX-QUIZ-ONCE`/`INV-66`), untouched |
 | `EX-QUIZ-COPY` | The chip's words ride the `quiz_chip_copy` arm (`EX-AB`, salt `quizcopy`, `place`/`place_prize`): the plain arm names the act «guess the place», the reward arm names the gift «guess the place · win a wallpaper»; localized (`quiz_ask_place`/`quiz_ask_prize`) with English fallbacks; an absent registry falls to the plain copy |
 | `EX-QUIZ-FLOW` | `quiz_stage` (shown → opened → won\|lost → gift) rides the same two beats as a running-max dimension; never a sixth beat; the stage wipes with the walk |
 | `EX-LADDER` | The responsive 640/960/1280 image ladder: a phone pulls light, a wide/retina screen sharp; base is the fallback |
@@ -1891,7 +1935,7 @@ the worker.
 | `INV-64` | The quiz is a four-option guess: prompt + four option labels public, the ONE correct answer + prize private in `_worker.js`; the tapped option judged at the edge (never a served byte, never a model call); one tap locks |
 | `INV-65` | A miss shows one localized line then the card fades, leaving the photograph; a hit shows a localized praise line then the gift ceremony; the card sits over the visible photo (light scrim), tints to the work, mirrors the active locale's `dir` |
 | `INV-66` | Exactly one question per show — the chip placed on one work chosen per walk over the reachable∧unanswered set — and silenced while less than the cooldown window (`quiz_cooldown_hours`, ~6h) has passed since a show that asked; `quiz_probability` retired |
-| `INV-62` | The quiz A/B arm (`quiz_arm`: on/control, 50/50, seed-stable) is dealt once by the variant frame (`EX-AB`/`INV-90`, salt `quizarm`) and rides every registry beat as a dimension; absent when the flag is off so the payload stays byte-for-byte today's |
+| `INV-62` | **RETIRED 2026-07-28** (tombstone) — guarded the quiz A/B arm (`quiz_arm`: on/control, 50/50, seed-stable), dealt once by the variant frame (`EX-AB`/`INV-90`, salt `quizarm`), riding every registry beat as a dimension; absent when the flag was off. On the owner's word (first said 2026-07-23), the split retired — traffic is small, no split test is needed — so every visitor with the quiz flag on is now eligible; `quiz_chip_copy` carries the same "arm rides every beat" law forward. The quiz keeps its other limits: one question per walk, drawn from the reachable-and-unanswered set, with the cooldown window before the same visitor is asked again (`EX-QUIZ-ONCE`/`INV-66`) |
 | `INV-67` | Faces-meet composition law: a standing face (quiz card, gift card, side room) owns the walk's input; the last face leaving discharges an instant re-centre to the live viewport; the card is viewport-honest; the closing screen is a stop. The zoom is the one face that opens OVER another — a pinch on a side-room print or a door window raises it above the standing room or door — covering exactly one face at a time, owning the input while it stands, and returning ownership to the face beneath on close (EX-ZOOM/INV-83) |
 | `INV-68` | Dead model account: a billing, credit or auth refusal (400/401/403) flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
 | `INV-69` | The quiz funnel stage (`quiz_stage`: shown → opened → won\|lost → gift) is session-scoped and runs monotonically upward — it never lowers; "gift" advances only from "won"; the stage rides `walk_unfold`/`walk_exit` as a dimension alongside the arm (no sixth beat, INV-41 stands); the stage wipes with the walk (?reset); control and flag-off visitors carry no stage |
@@ -1924,8 +1968,8 @@ the worker.
 | `INV-98` | The title and any wrapping caption prose break into near-equal balanced lines by the browser's own balancer, dictionary scripts included and no model call; below a narrow breakpoint the block runs narrower under a configurable type-step (engine default one step, 0 off) so the balanced text clears the picture |
 | `INV-100` | The quiz chip's words ride the `quiz_chip_copy` experiment (arms `place` / `place_prize`, salt `quizcopy`): the plain arm names the act («guess the place»), the reward arm names the gift as well («guess the place · win a wallpaper»); an absent registry falls to the plain «guess the place»; the words localize through EX-I18N (`quiz_ask_place` / `quiz_ask_prize`) with English source-tongue fallbacks and the ai_i18n edge speaks any offered tongue; the dealt arm rides every beat as the `quiz_chip_copy` dimension (`INV-91`), so a per-arm read of the chip's open-rate follows once the dimension is registered in GA |
 | `INV-101` | The sound control wears a music-note mark; on the visitor's first arrival only, a localized word («music», EX-I18N, English fallback) breathes in beside it, holds, then settles away leaving the bare note; the once-ness persists in `ex.sound` (`greeted`) so a return meets only the note; reduced motion / Save-Data stand the choreography down; a silent instance (`sound_url` empty) shows neither control nor greeting |
-| `INV-102` | The about page (`EX-ABOUT`) is flat script-free static HTML baked once per language — fallback at `/about`, the rest at `/about/<language>`, each naming every sibling with `hreflang` and the fallback carrying `x-default`, each carrying its own `lang`/`dir` — holding a heading, four paragraphs, a link back to `/` and the composed signature, every sentence read from the instance copy dictionary, showing no photograph and naming no `og:image`; a dictionary whose FALLBACK tongue carries no `about_title` bakes no page in any language, adds no entry anywhere, and leaves the bundle byte-identical. |
-| `INV-103` | The about page is entered from exactly two places — the composed signature's optional about link (bare `/about`) and the walk's closing screen (the page in the visitor's own tongue) — never both on one screen, so the signature composed INTO the client artifact omits the about link while the baked static faces carry it; the closing screen's link belongs to the touch-press class (`EX-CHROME`) rather than to any hand-kept list, and the signature's link opens in place; the threshold carries no mark, and every language's page is listed once in the sitemap. |
+| `INV-102` | The about page (`EX-ABOUT`) is flat static HTML, complete without JavaScript, baked once per language — fallback at `/about`, the rest at `/about/<language>`, each naming every sibling with `hreflang` and the fallback carrying `x-default`, each carrying its own `lang`/`dir` — opening with one return control at its top, above the heading: a real anchor to `/` that a small inline script upgrades so a same-site arrival steps back through the visitor's history while a direct or external arrival still follows the address to `/`; below it a heading, four paragraphs and the composed signature, every sentence read from the instance copy dictionary, showing no photograph and naming no `og:image`; a dictionary whose FALLBACK tongue carries no `about_title` bakes no page in any language, adds no entry anywhere, and leaves the bundle byte-identical. |
+| `INV-103` | The about page is entered from exactly two places — the composed signature's optional about link (bare `/about`) and the walk's closing screen (the page in the visitor's own tongue) — never both on one screen, so the signature composed INTO the client artifact omits the about link while the baked static faces carry it, and the about page's own signature omits it too, since a page never signs off with a link to itself; the closing screen's link belongs to the touch-press class (`EX-CHROME`) rather than to any hand-kept list, and the signature's link opens in place; the about page's own return control belongs to the same touch-press class, lit under a real pointer's hover, taking the keyboard's accent focus, and pressed under a finger; the threshold carries no mark, and every language's page is listed once in the sitemap. |
 | `INV-104` | The greet block shipped inside `exhibition_data.json` carries `about` alone; `about_title`, `about_1`..`about_4` and `about_back` are stripped from the client artifact at bake. |
 | `INV-105` | One work's missing line leaves its neighbours speaking: the edge serves every well-formed line an answer carries, caches a short plot the way it caches a whole one, and answers one carrying none with a `502` — plus, on a one-work key, an hour-long refusal record answered `502` ahead of every fence — while deleting the single-flight lock it laid at each of its own exits, so a re-ask meets the cache, the record, a fence, or the model; the walk asks for each wordless work by id under its own key shape, in the walk's own order, five asks to a clock hour across door picks and the rest owed to the walk's beats, each ask a three-rung ladder, wearing the wait mark until a line lands and falling to that work's own silence when the ladder is spent (CS-8); an ask the cache and the record leave unanswered passes the three money fences, and a dead account is flagged from this route. |
 
@@ -1945,7 +1989,7 @@ into the engine; each cites the engine commit that landed it.
 | `⟨DELTA-6⟩` | **RESOLVED** — the quiz (`EX-QUIZ`/`INV-59`/`INV-60`), the gift ceremony (`EX-PROTECT-GIFT`), and the client-side mark-split on take (`EX-PROTECT-RES`/`INV-56`) are ported and generalized: quiz data is an instance-supplied `<content>/quiz.json`, placement + probability are `exhibition.quiz` config knobs, the download filename is a slug of the config `site_name`, and the mark text is the config host — no work id, host, or brand literal in the engine. `test_quiz.py` (11 rows) + updated `test_protect.py` assert them. |
 | `⟨DELTA-7⟩` | **DEFERRED (minor)** — the quiz *prompt* localization (an instance's `quizzes` block in its `i18n_source.json` + the worker's `translate` merge) is not ported; the public prompt ships in the base language only. The chip label (`quiz_ask`) IS localized. Low value until an instance needs translated prompts; the mechanism is a small additive follow-on. |
 | `⟨DELTA-8⟩` | **RESOLVED** — a quiz+door fix batch proven on a live instance (2026-07-08), generic parts ported: (1) the `/api/quiz` attempt fence degrades gracefully when no KV is bound (`overQuizRate` returns unlimited instead of throwing — preview/local judges); (2) `normAnswer` NFKC-folds + lower-cases + keeps letters only, with the client sending the raw answer (parity by construction); (3) all quiz+gift chrome (`quiz_submit`, `quiz_wrong`, `gift_ask`/`gift_yes`/`gift_no`/`gift_buy`) joins the localized string set (worker `shape`/`validate` + `i18n_source`) with English client fallbacks; (4) a wrong answer shows one localized line then closes (~1s), no hint trail; (5) reopening resets the card; (6) the card's accent is the focused work's live tint. `test_quiz.py` asserts them. The door-variety + load-flash-banner deltas are instance-surface-specific and were NOT ported (no clean generic equivalent). |
-| `⟨DELTA-9⟩` | **RESOLVED** — the quiz funnel (`EX-QUIZ-FLOW`/`INV-69`) and A/B arm dimension (`EX-QUIZ-AB`/`INV-62`) ported: `quiz_arm` and `quiz_stage` ride the existing `walk_unfold`/`walk_exit` beats; `quizStageUp` is session-scoped and monotone; the stage wipes with `?reset`; `openGift` accepts an optional `onYes` callback so the quiz-win path stamps "gift" without touching the shared ceremony. Engine storage key: `ex.quizstage` (dot convention). `test_quiz_flow.py` (4 browser rows FL1–FL4; FL5–FL6 omitted — engine carries no `ga_report.py`) asserts them. |
+| `⟨DELTA-9⟩` | **RESOLVED** — the quiz funnel (`EX-QUIZ-FLOW`/`INV-69`) and A/B arm dimension (`EX-QUIZ-AB`/`INV-62`) ported: `quiz_arm` and `quiz_stage` ride the existing `walk_unfold`/`walk_exit` beats; `quizStageUp` is session-scoped and monotone; the stage wipes with `?reset`; `openGift` accepts an optional `onYes` callback so the quiz-win path stamps "gift" without touching the shared ceremony. Engine storage key: `ex.quizstage` (dot convention). `test_quiz_flow.py` (4 browser rows FL1–FL4; FL5–FL6 omitted — engine carries no `ga_report.py`) asserts them. **Later:** the `quiz_arm`/`EX-QUIZ-AB`/`INV-62` half of this entry RETIRED 2026-07-28 (tombstoned above under "Experiments — the variant frame"); `quiz_stage` and `quizStageUp` stand exactly as landed here. |
 | `⟨DELTA-10⟩` | **RESOLVED** — one page shape for the browser (`EX-CHROME`/`INV-70`, landed in engine commit `5a2d36a`): the root overflow cut is retired as a lock; `faceSync` mirrors any standing face onto `html.ex-face` (scrollbar-gutter stable, scrollbar hidden), rests keys/wheel/touch behind the face (EX-COMPOSE's own-scroll carve-out via `FACE_SEL`), and a `scroll` guard snaps back any scroll the house did not write, while the house's own writes re-freeze `guardHold`. The client already carried the `ex.*` / `ex-face` naming, so the js/css landed byte-parallel — no renames, no meaning drift. `test_compose.py` gains CH1–CH6. CH6 (the side room's lane scrolls native) pins **SKIP** in the synthetic fixture — its lane series has 3 members that fit the 1280px viewport, so the lane is not horizontally scrollable and the carve-out is untestable here; it exercises on real content with a wider lane. **Follow-on (a touch-device field find; engine commit `d758b7d`):** a resting finger is NOT input rest — while a pointer/touch is DOWN the guard HOLDS (an active touch rubber-bands the page a few px; correcting mid-touch made the finger drag again next frame, a per-frame fight the visitor saw as the whole screen trembling) and settles ONCE on lift, without reopening the foreign-scroll snap-back (CH3) or the face's own native scroll (CH6). The EX-CHROME clause gains the input-REST sentence; `test_compose.py` gains **CH7** (guard-writes-during-hold → 0, one settle on lift). The engine carries no `TEST_MATRIX.md`/`docs/prover` — the matrix CH7 row and prover finding from this feature's derivation fold into the SPEC clause + the CH7 test here. |
 | `⟨DELTA-11⟩` | **RESOLVED** — the full circle retires the hand (`EX-DOOR-4`/`INV-71`, landed in engine commit `b0954e9`): a walk whose whole hang has stood in view earns a fresh `EX-DOOR-3` deal on the next door render, with the four prover findings folded — an unconsumed circle wins once then the reload law resumes (F1), the exit control / browser-Back / returned-door reload behave alike and `INV-32a`'s as-it-stood yields (F2), the circle counts marks the moment they are made via an in-session `walkSeen` set written synchronously in the intersection callback so the debounced flush never delays it (F3), and a circle-less older hand reads as no circle consumed while a stale-versioned hand drops whole (F4). The consumed circle (pick + shown) rides the versioned `ex.hand` record so one circle earns one deal. The client already carried the `ex.*` / `__exSeen` naming, so the js port reduced to prefix renames onto the engine convention (`ex.hand`, `ex.seenc`). `test_door.py` gains rows 25–29 (all red-first vs HEAD). |
 | `⟨DELTA-13⟩` | **RESOLVED** — the in-flight ladder + the one-ahead preload (`EX-LOAD-2`/`INV-72`, `EX-LOAD-3`/`INV-73`, landed in engine commit `59a11a1`): the lone loading-breath hairline grows to black → the work's raw `dom` tone-plate → plate+bar → accelerated reveal, armed from the same in-view IntersectionObserver that grounds the tone (`arm()` reads the settled state — F1 — and arms once — F6), and the next work preloads one-ahead along the direction of travel (`preloadAhead`/`travelDir`, cancelled + re-aimed on a turn/`#w-` — F5). Five knobs join `config.exhibition` (`load_plate_grace` .35 / `load_bar_wait` 1.5 / `load_reveal` 2.0 / `load_reveal_fast` .6 / `preload_ahead` 1), all client-fallback-guarded; the client clamps `load_plate_grace` < `load_bar_wait` at boot (F7). No bake output — works already carry `dom` and `srcset`. The client already carried the `ex.*` / `ex:*` / `__exSeen` naming, so the port reduced to prefix renames onto the engine convention (`ex:plate`, `__exPreload`). `test_ladder.py` is new (15 rows, 14 browser + 1 traceability — 8 red-first vs HEAD); `test_load.py`'s three EX-LOAD browser rows swing breath→plate (1 red-first); `tests/headless.py` gains a network-log road (`net_capture`/`net_log`/`net_clear`) for the preload. All 15 ladder rows pin **SKIP** when Pillow is absent (the tier bake the composition row needs). |
