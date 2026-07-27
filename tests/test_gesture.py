@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gesture physics — INV-84 (one gesture → one frame; force scales SPEED not count), INV-85 (the
+"""Gesture physics — INV-84 (one gesture → one frame; force sets the glide's SPEED), INV-85 (the
 desktop trackpad pinch drives the zoom, parity with touch; the plain-wheel / ctrl-wheel split), and
 INV-86 (the walk and the open zoom survive a device rotation). One test per TEST_MATRIX row, on the
 engine's synthetic fixture, in a REAL headless Chrome — a ctrl+wheel is Blink's trackpad-pinch, a
@@ -272,7 +272,7 @@ else:
             check(GLIDE_ROWS[0], i1 == 1 and abs(o1) <= 2,
                   f"landed frame {i1} off {o1} (want EXACTLY frame 1, never 2)")
 
-        # 1 · force scales SPEED: the sharp burst settles sooner than the calm one, each ONE frame
+        # 1 · force sets the SPEED: the sharp burst settles sooner than the calm one, each ONE frame
         calm_ms, calm_land, calm_off = measure_settle(base, CALM)
         sharp_ms, sharp_land, sharp_off = measure_settle(base, SHARP)
         check(GLIDE_ROWS[1],

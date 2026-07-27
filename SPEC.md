@@ -479,12 +479,12 @@ at**. A glide begun from a resting walk enters at zero and is the calmest classi
 soft; over the whole range of entry speeds it stays monotonic 0→1, so it provably **cannot overshoot**
 and always lands centered, no bounce. It runs over `glide_ms` (config, default 520ms) scaled by
 `tempo/1.35` capped ×1.5 — the docking rides the one clock (`INV-33`), reduced motion collapses it
-near-instant. **Force scales SPEED, never count**
+near-instant. **Force sets the glide's SPEED**
 (`INV-84`): one continuous input gesture — one wheel burst, one touch swipe, one arrow press — always
 makes **exactly one** transition. On the WHEEL path the gesture's velocity sets that single glide's
 DURATION within a clamped range (a calm burst rides the full `glide_ms`, ~520ms; a sharp one eases down
 toward a floor of about half that, ~260ms `[default]`), so a violent trackpad flick lands the SAME one
-frame, only faster. The finger's own clock is stated with the touch pager below.
+frame, only faster. The count is fixed at one frame per gesture, at every force. The finger's own clock is stated with the touch pager below.
 
 **A glide replaced in flight keeps the speed it had** (`INV-84`): a rising wheel sample re-times the
 running glide to the same goal, and a second gesture chains it to the next frame; in both cases the new
