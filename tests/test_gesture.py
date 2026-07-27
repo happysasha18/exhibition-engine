@@ -11,6 +11,10 @@ ignores its `velocity` hook so a sharp and a calm gesture glide for the identica
 resize re-dock bails while a glide runs (`if (gliding) return`). The rows below therefore fail on
 the current bundle for the RIGHT reason (the behaviour is absent), and go green when it lands.
 
+The force→duration map is the WHEEL path's alone. The touch pager takes its step with the velocity
+argument absent (`engine/client/15-motion.js:494`), so every lift past the swipe floor rides the calm
+clock; the row below pins that equality so a later velocity read on the touch path shows up as a red.
+
 The glide-SPEED FEEL itself (how a sharp flick should feel against a calm one) stays Alexander's own
 eye on a real trackpad — the timing row here is a coarse machine proxy (the sharp glide provably
 settles sooner), never the arbiter of feel. Touch momentum + real trackpad cadence + the exit-FLIP's
@@ -58,6 +62,8 @@ GLIDE_ROWS = [
     "calm one at the same tempo, each still exactly one frame",
     "EX-GLIDE/INV-84 a firm TOUCH swipe advances exactly one frame (the desktop↔touch parity)",
     "EX-GLIDE/INV-84 one arrow press advances exactly one frame (already guarded, held here)",
+    "EX-GLIDE/INV-84 a finger swipe rides the CALM clock at every force — a gentle, a firm and a "
+    "hard swipe settle within 60ms of each other, each landing exactly one frame",
 ]
 # INV-85
 ZOOM_ROWS = [
@@ -200,6 +206,32 @@ SETTLE = """
 CALM = [2, 4, 9, 18, 34, 52, 38, 22, 12, 6, 3, 2]                 # a gentle swipe (low peak)
 SHARP = [120, 320, 500, 540, 420, 240, 120, 60]                  # a hard flick (high peak, fast)
 
+# the finger's own settle timer. The swipe itself arrives as REAL CDP touch events from the runner,
+# so the clock is taken in the page at the LIFT — the beat the touch pager acts on — and stopped the
+# moment the walk sits on the goal. Runner-side wall clock would carry the harness's own jitter.
+TOUCH_SETTLE = """
+(goal)=>{
+  window.__tms = null;
+  addEventListener('touchend', ()=>{
+    const t0 = performance.now();
+    const iv = setInterval(()=>{
+      if (scrollY>2 && Math.abs(scrollY-goal)<=2){ clearInterval(iv); window.__tms = Math.round(performance.now()-t0); }
+      else if (performance.now()-t0 > 2500){ clearInterval(iv); window.__tms = -1; }
+    }, 8);
+  }, {once:true});
+}
+"""
+# Three lifts of plainly different force, each past the 24px swipe floor (`15-motion.js:421`): a
+# gentle nudge just over it, a firm drag, and a hard three-step throw. Every swipe starts low in the
+# viewport so even the 600px travel stays on screen.
+SWIPES = [("gentle 40px", 40, 6), ("firm 380px", 380, 6), ("hard 600px, 3 steps", 600, 3)]
+# The wheel row above calls two glides DIFFERENT when the calm one settles at least 120ms later than
+# the sharp one. Equal duration is the opposite verdict, so the finger's swipes are held to a spread
+# of at most HALF that gate. The two verdicts then stand 60ms apart and no single pair of
+# measurements can satisfy both. 60ms is also about a tenth of the 520ms calm clock and far above the
+# 8ms poll of the settle timers.
+TOUCH_SPREAD_MS = 60
+
 
 def measure_settle(base, deltas):
     with Browser(width=1280, height=900) as b:
@@ -210,6 +242,20 @@ def measure_settle(base, deltas):
         ms = b.evaluate("(%s)(%s,%d)" % (SETTLE, json.dumps(deltas), goal), awaitp=True)
         landed = cur(b)
         return ms, landed, abs(off(b))
+
+
+def measure_swipe(base, px, steps):
+    """one finger swipe of `px` upward in `steps` moves → (settle ms, landed frame, |offset|)"""
+    with Browser(width=1280, height=900) as b:
+        b.touch(True)                                            # a phone's media (hover:none / coarse)
+        room(b, base, "1.35")                                    # the same default clock as the wheel row
+        if b.evaluate("%s.length" % SECTIONS) < 2:
+            return -1, -1, 99999
+        goal = stop(b, 1)
+        b.evaluate("(%s)(%d)" % (TOUCH_SETTLE, goal))
+        b.swipe(-px, y0=850, steps=steps, settle=1.4)            # low start → the 600px travel fits
+        ms = b.evaluate("window.__tms")
+        return (ms if isinstance(ms, (int, float)) else -1), cur(b), abs(off(b))
 
 
 if not chrome_available():
@@ -252,6 +298,23 @@ else:
             k1, ko1 = cur(br), off(br)
             check(GLIDE_ROWS[3], k1 == 1 and abs(ko1) <= 2,
                   f"arrow→frame {k1} off {ko1} (want exactly frame 1)")
+
+        # 4 · the finger rides the CALM clock at every force. The touch pager takes its step on the
+        #     lift with the velocity argument absent — `stepFrame(net > 0 ? 1 : -1)`
+        #     (`engine/client/15-motion.js:494`) — so `glideDur` reads 0 and returns the full calm
+        #     base (`15-motion.js:52-59`) for a gentle nudge and a hard throw alike. Wiring the
+        #     swipe's magnitude into that call is exactly what reds this row: it would drop the hard
+        #     swipe onto the 260ms sharp floor while the gentle one keeps the 520ms base.
+        sw = [(label,) + measure_swipe(base, px, steps) for label, px, steps in SWIPES]
+        times = [r[1] for r in sw]
+        spread = (max(times) - min(times)) if all(t > 0 for t in times) else 99999
+        one_frame = all(r[2] == 1 and r[3] <= 2 for r in sw)
+        print("-- finger settle at tempo 1.35: "
+              + " · ".join(f"{r[0]} {r[1]}ms" for r in sw) + f" (spread {spread}ms)")
+        check(GLIDE_ROWS[4],
+              all(t > 0 for t in times) and spread <= TOUCH_SPREAD_MS and one_frame,
+              " · ".join(f"{r[0]}: {r[1]}ms frame {r[2]} off {r[3]}" for r in sw)
+              + f" — spread {spread}ms (want ≤{TOUCH_SPREAD_MS}ms, each frame 1 centered ≤2)")
 
         # ---- INV-85 (desktop trackpad pinch = ctrl+wheel; the split) ----------------
         # 4 · ctrl+wheel pinch-OUT over a walk work opens #ex-zoom and scales it up
