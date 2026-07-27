@@ -1,3 +1,4 @@
+/*!00-prelude.js*/
 /* exhibition.js — the adaptive exhibition (EX): the DOOR → the GALLERY (the Room's museum hang).
    Norm for look & feel: gallery/door.html + gallery/room.html — the approved look-and-feel prototypes.
    The laws: a cold arrival meets the door — a small pool of works and
@@ -405,6 +406,7 @@
   addEventListener("visibilitychange", () => { if (document.hidden) layDoorReady(); });
   addEventListener("pagehide", layDoorReady);
 
+/*!01-knobs-lang-history.js*/
   // ---- EX-RESET (INV-35): the ?reset address — the museum forgets THIS browser --
   // One wipe, named keys only, BEFORE anything restores; the param strips itself via
   // replaceState — no history step laid (INV-32 fenced) and the pre-strip URL leaves
@@ -564,6 +566,7 @@
   const pushFace = (st) => { try { history.pushState({ @@NS@@: st }, ""); } catch (e) {} };
   const replaceFace = (st) => { try { history.replaceState({ @@NS@@: st }, ""); } catch (e) {} };
 
+/*!02-kinship-orderings.js*/
   // ---- baked data -----------------------------------------------------------
   const SERIES = data.series || [];                    // real series only (3+), variant each
   const VER = String(data.version || "1");
@@ -623,6 +626,7 @@
     return order;
   }
 
+/*!03-quiz-seed-ab-story.js*/
   // ---- the told story's ORDER (EX-STORY-ORDER, INV-47) ----------------------
   // The light leans the order, and only leans it. Beside kinship (the arc's own metric) the story
   // adds ONE soft term — the hour-discontinuity over the authored time-of-day mark SETS — weighted
@@ -778,6 +782,7 @@
   const toldPortions = new Set();   // portion keys whose plot has actually come back (told ONLY on a served plot)
   const askingPortions = new Set(); // portion keys with a request in flight (never double-ask the same portion)
 
+/*!04-arrival-facts.js*/
   // ---- EX-PULSE/INV-79: the arrival's own facts — measured ONCE per load ------
   // Placed AFTER quizArm/storyVariant are initialized: pulse() reads those dimension vars, so an
   // earlier call would hit their temporal dead zone and silently self-catch (the wire stays honest).
@@ -820,6 +825,7 @@
     } catch (e) { return base; }
   }
 
+/*!05-door-deal-circle-walkstate.js*/
   // EX-DOOR-4 (INV-71): the walk's own in-session seen marks — every hung frame that has stood
   // in view THIS session, added the MOMENT the mark is made (pending flush included, since this
   // set is written synchronously in the intersection callback). It feeds the circle check and the
@@ -1129,6 +1135,7 @@
   }
   const spentUnfolds = () => Math.max(0, Math.floor((shown - SPREAD) / UNFOLD));
 
+/*!06-ground-load-doorwarm.js*/
   // ---- EX-LADDER (INV-63): one home for the tier ladder -----------------------
   // The law is owed by EVERY work a visitor is shown, on every surface, so the ladder is
   // written once here and each surface hands only its own box description (`sizes`). The
@@ -1390,6 +1397,7 @@
     });
   }
 
+/*!07-door-face-ceremony.js*/
   // ---- THE DOOR (door.html's face — the norm) --------------------------------
   const door = document.createElement("div");
   door.id = "ex-door";
@@ -1908,6 +1916,7 @@
     }
   });
 
+/*!08-plaque-caption-io.js*/
   // ---- THE GALLERY (room.html's museum hang — the norm) ----------------------
   const counter = document.createElement("div");
   counter.className = "exh-counter"; counter.id = "exh-counter";
@@ -2106,6 +2115,7 @@
     cap.classList.add("cap-scrim");                    // a short window with no honest side column — the last resort backs the text (INV-97)
   }
 
+/*!09-story-voice.js*/
   // ---- the told line settles onto the plaque (EX-STORY-LINE / EX-STORY-WAIT) ----
   // A focused work's told-slot wears one of three states while the plot travels (EX-STORY-WAIT):
   //   pending — its portion is in flight and the line has not landed: a quiet wait mark holds the
@@ -2272,6 +2282,7 @@
     storyVariant = null;
   }
 
+/*!10-share-toast.js*/
   // ---- EX-SHARE: the quiet per-frame affordance — it copies, never navigates ----
   // (the ↗ corner link out to /w/ RETIRED with it, 2026-07-06 evening; /w/ pages stay
   // the machines' surface, reachable from the static index — CS-6)
@@ -2401,6 +2412,7 @@
          .catch(() => toast(link, true));              // never a silent failure (EX-SHARE-BTN)
   });
 
+/*!11-protect-gift.js*/
   // ---- EX-PROTECT (INV-49): a grabbed work meets a GIFT, not the browser's raw save ----
   // A right-click / long-press (contextmenu) or a drag on a work is intercepted and answered by
   // the SAME toast the share line rides — a quiet localized «enjoy» + the site host, arriving on
@@ -2624,6 +2636,7 @@
   giftCard.addEventListener("click", (ev) => { if (!ev.target.closest(".gift-inner")) closeGift(); });
   addEventListener("keydown", (ev) => { if (ev.key === "Escape" && giftOpen) closeGift(); });
 
+/*!12-zoom-inspect-grab.js*/
   // ---- EX-ZOOM: pinch to inspect a picture (his word 2026-07-12: «люди хотят зумить картинки») ----
   // A two-finger pinch on ANY exhibition picture — a work on the walk, a door window, a polaroid —
   // opens that picture in its own zoom layer: the image scales under the pinch, a × returns, and the
@@ -3325,6 +3338,7 @@
     if (e.touches.length > 1) e.preventDefault();          // a two-finger drag = a Blink pinch
   }, { passive: false });
 
+/*!13-quiz-card.js*/
   // ---- EX-QUIZ (INV-60/64/65/66): the 4-option chip + card + edge round-trip ----------------
   // A subtle chip advertises a work's question (placement is a config knob, INV-28). Tapping it
   // opens a modal card: the public prompt, a 2×2 grid of option buttons, and the response zone.
@@ -3572,6 +3586,7 @@
     if (!ev.target.closest(".quiz-inner")) quizCardClose();
   });
 
+/*!14-walk-render.js*/
   function frameHTML(id, n) {
     const w = byId[id];
     // EX-LADDER (INV-63): the ladder itself lives in one place (ladderAttr); the walk hands its
@@ -3636,6 +3651,7 @@
     counter.querySelector(".tot").textContent = String(shown).padStart(2, "0");
   }
 
+/*!15-motion.js*/
   // ---- EX-GLIDE (INV-39): one input → one centered frame (the paginated walk) ----------
   // The decided motion model (supersedes the old free-inertia settle): every input — an arrow
   // key, a wheel notch, a touch swipe, done HOWEVER — makes exactly ONE ideal transition to the
@@ -4133,6 +4149,7 @@
     }, { passive: true });
   }
 
+/*!16-renderhang-series.js*/
   function renderHang() {
     tlog("hang");
     recomputeQuizChoice();                               // EX-QUIZ-ONCE (INV-66): pick ONE eligible work
@@ -4377,6 +4394,7 @@
   addEventListener("orientationchange", sideReCentre);
   if (window.visualViewport) visualViewport.addEventListener("resize", sideReCentre);
 
+/*!17-place-hash-boot.js*/
   // ---- the walk TRACKS its place (INV-32c — the law outlived the ↗, its first carrier):
   // the io callback above writes the per-tab marker per frame in view; any return within
   // the tab (reload, the work page's plain link, Back) restores it
@@ -4474,6 +4492,7 @@
     replaceFace({ face: "walk" });
   }
 
+/*!18-i18n-memory-lang.js*/
   // ---- EX-I18N (INV-42): the museum speaks ANY language — after first paint ----
   // A locale outside the baked seven meets the fallback INSTANTLY; the site then quietly asks
   // its own worker for that locale's set (once per language-version, ever), keeps a browser
@@ -4739,6 +4758,7 @@
     redraw();
   }
 
+/*!98-sound.js*/
   // ---- EX-SOUND (INV-48): the ambient loop walks beside the guest ----------------------------
   // OFF by default — a fresh visit is silent and the audio loads ONLY on the first turn-on
   // (the perf fence), never on cold load. STREAMS from a <audio> element (preload none, native
@@ -5030,4 +5050,5 @@
                          url: SND_URL };
     } catch (e) {}
   })();
+/*!99-close.js*/
 })();

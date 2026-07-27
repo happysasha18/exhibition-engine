@@ -634,6 +634,10 @@ def strip_js_comments(js):
     code rather than explanation. The same lever the stylesheet already rides (strip_css_comments,
     2026-07-23), applied to the bigger of the two files.
 
+    A `/*! ... */` comment is KEPT — the long-standing convention for a marker that must survive
+    minification. The assembler writes one per client fragment, so a string-level test can scope
+    itself to a fragment's own region by structure instead of by hunting a sentence in prose.
+
     Deliberately conservative: only a comment that OPENS its line — the first non-whitespace on it —
     is dropped, whole. A trailing `// ...` after code is copied VERBATIM, so an apostrophe inside it
     can never be read as the start of a string. Quotes, template literals and regular-expression
@@ -687,6 +691,8 @@ def strip_js_comments(js):
         if c == "/" and i + 1 < n and js[i + 1] == "*":
             j = js.find("*/", i + 2)
             end = n if j == -1 else j + 2               # an unterminated comment drops the tail
+            if js[i + 2:i + 3] == "!":                  # a keep-marker rides through untouched
+                out.append(js[i:end]); i = end; line_start = False; continue
             if line_start:
                 while out and out[-1] in " \t":
                     out.pop()

@@ -53,11 +53,30 @@ MANIFEST = [
 
 
 def assemble():
+    """One concatenation, in MANIFEST order, each fragment opened by a keep-marker.
+
+    The marker is a `/*! ... */` comment — the convention for a mark that survives minification, and
+    the bake's comment strip (build.py: strip_js_comments) keeps exactly that form. It gives every
+    fragment a real boundary in the served file. Before it, a test that needed to scope itself to one
+    fragment's region hunted for a SENTENCE inside a comment, so rewording a comment silently moved
+    the region and stripping the comments erased it entirely.
+    """
     parts = []
     for name in MANIFEST:
         path = CLIENT_DIR / name
+        parts.append(f"/*!{name}*/\n")
         parts.append(path.read_text(encoding="utf-8"))
     return "".join(parts)
+
+
+def fragment_slice(js, name):
+    """The served region of one fragment, located by its keep-markers. Returns None when the marker
+    is absent, so a caller can report a lost region rather than pass on an empty read."""
+    start = js.find(f"/*!{name}*/")
+    if start < 0:
+        return None
+    nxt = js.find("/*!", start + 3)
+    return js[start:(nxt if nxt >= 0 else len(js))]
 
 
 def main():

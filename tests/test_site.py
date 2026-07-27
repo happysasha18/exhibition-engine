@@ -452,6 +452,9 @@ else:
 # since 2026-07-27): the visitor downloads code and rules, the source keeps every comment. Nothing
 # asserted the stylesheet half until now — the byte fence was its only witness, and a fence cannot
 # tell a stripped file from a file that simply never had comments.
+_engine_dir = Path(build_site._engine.__file__).resolve().parent
+sys.path.insert(0, str(_engine_dir))
+_manifest = __import__("assemble_client").MANIFEST      # the client fragment order, one home
 _served_js = (TMP / "exhibition.js").read_text(encoding="utf-8")
 _served_css = (TMP / "exhibition.css").read_text(encoding="utf-8")
 _source_js = build_site._engine.client_asset("exhibition.js").read_text(encoding="utf-8")
@@ -465,10 +468,18 @@ check("the served stylesheet carries no comments (the source keeps them all)",
       not _opens_a_comment(_served_css, ("/*",)) and "/*" not in _served_css
       and "/*" in build_site._engine.client_asset("exhibition.css").read_text(encoding="utf-8"),
       f"{len(_opens_a_comment(_served_css, ('/*',)))} comment lines survived into the bundle")
-check("the served script carries no line-opening comments (the source keeps them all)",
-      not _opens_a_comment(_served_js, ("//", "/*"))
-      and len(_opens_a_comment(_source_js, ("//", "/*"))) > 100,
-      f"{len(_opens_a_comment(_served_js, ('//', '/*')))} comment lines survived into the bundle")
+# The one comment form that MUST survive is the assembler's fragment keep-marker (`/*!name*/`) — the
+# boundary a string-level test scopes itself by. So the served script carries exactly those and
+# nothing else: one marker per fragment in the client MANIFEST, no other comment anywhere.
+_frag_names = [ln.strip()[3:-2] for ln in _served_js.splitlines() if ln.strip().startswith("/*!")]
+_other = [ln for ln in _opens_a_comment(_served_js, ("//", "/*"))
+          if not ln.strip().startswith("/*!")]
+check("the served script carries no comment except the fragment markers (the source keeps them all)",
+      not _other and len(_opens_a_comment(_source_js, ("//", "/*"))) > 100,
+      f"{len(_other)} comment line(s) survived into the bundle: {_other[:2]}")
+check("every client fragment opens with its own keep-marker in the served script",
+      len(_frag_names) == len(_manifest) and _frag_names == _manifest,
+      f"markers {_frag_names[:3]}... ({len(_frag_names)}) against MANIFEST ({len(_manifest)})")
 # The strip is deliberately conservative — it leaves a comment TRAILING code alone, because telling
 # one from a division or a regular expression needs a full parse. Assert that boundary, so a future
 # "smarter" strip that starts touching code has to face this row first.

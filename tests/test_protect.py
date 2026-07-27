@@ -34,14 +34,18 @@ build_site.build(SITE_URL)
 # ---------------------------------------------------------------- data rows
 
 def zoom_layer_slice(js):
-    """The assembled client is one concatenation with no fragment markers, so the zoom layer's own
-    region is located by two anchors it alone carries. A missing anchor is a FAILURE of the check
-    itself, never a quiet pass — a gate's verdict is worthless without its reach."""
-    a = js.find("a pinch over the OPEN zoom scales the picture")
-    b = js.find("Every way out is the same road")
-    if a < 0 or b < 0 or b <= a:
+    """The zoom layer's own region of the served client, located by the keep-markers the assembler
+    writes around every fragment (`/*!12-zoom-inspect-grab.js*/`, kept through the bake's comment
+    strip). A missing marker is a FAILURE of the check itself, never a quiet pass — a gate's verdict
+    is worthless without its reach. Until 2026-07-27 the region was found by hunting two SENTENCES
+    inside comments, so rewording a comment moved the region silently and stripping the comments
+    erased it outright."""
+    MARK = "/*!12-zoom-inspect-grab.js*/"
+    a = js.find(MARK)
+    if a < 0:
         return None
-    return js[a:b]
+    b = js.find("/*!", a + 3)
+    return js[a:(b if b >= 0 else len(js))]
 
 # 1 · the `enjoy` string is present in the greetings cache and the worker schema
 greet = json.loads((TMP / "exhibition_data.json").read_text()).get("greet") or {}
@@ -97,10 +101,10 @@ check("EX-PROTECT viewport: the meta pins scale to 1 (maximum-scale=1 + user-sca
 #   - a pinch that drops back to one finger re-takes the paginated walk (no native fly-through)
 css_src = (ROOT / "engine" / "assets" / "exhibition.css").read_text(encoding="utf-8")
 audit_ok = ("touch-action:pan-xpan-y" in css_src.replace(" ", "")   # body-level class rule kills double-tap too
-            and "if (e.ctrlKey) { e.preventDefault(); return; }" in js_src
+            and 'if (wheelMode === "zoom") { e.preventDefault(); pinchWheel(e); return; }' in js_src
             and "#ex-sound, .ex-share" in js_src
             and (lambda s: s is not None and "touchcancel" in s)(zoom_layer_slice(js_src))
-            and "re-take the gesture" in js_src)
+            and "e.touches.length === 1 && walkOwnsInput()" in js_src)
 check("EX-PROTECT touch audit: double-tap lock + ctrl-wheel guard + chrome native-touch + pinch-release re-arm",
       audit_ok, "one of the zoom/swipe audit fixes is missing (double-tap / ctrl-wheel / slider / re-arm)")
 
