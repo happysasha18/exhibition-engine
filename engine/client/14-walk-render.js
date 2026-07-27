@@ -31,6 +31,15 @@
     const FL = greetLang();
     const FT = FL ? FL.t : {};
     const moreLabel = (FT.more || MORE_EN).replace("{n}", String(UNFOLD));
+    // EX-ABOUT (INV-103): the closing screen is the one place the exhibition already offers a
+    // choice of where to go, so the door to the about page stands here — in the VISITOR's own
+    // tongue when that tongue has a page, else at the fallback page every bundle bakes first.
+    // The baked signature below carries no about link, so this screen shows exactly one door.
+    const AB = data.about;
+    const aboutWord = ((FT.about || "") + "").trim();
+    const aboutHref = !AB ? "" :
+      (FL && AB.langs.indexOf(FL.code) >= 0 && FL.code !== AB.fallback)
+        ? "/about/" + FL.code : "/about";
     const fin = document.createElement("section");
     fin.className = "exh-fin"; fin.id = "exh-fin";
     if (FL) {
@@ -41,6 +50,7 @@
       `<div class="q">${spent ? (FT.q_spent || "дальше — новый выбор") : (FT.q_more || "идти дальше?")}</div>` +
       '<div class="row">' +
       (spent ? "" : `<button type="button" class="more" id="ex-unfold">${moreLabel} ↓</button>`) +
+      (aboutHref && aboutWord ? `<a class="about" id="ex-about" href="${aboutHref}">${aboutWord}</a>` : "") +
       (doorAvailable ? `<button type="button" class="back" id="ex-return">${FT.exit || "выход"}</button>` : "") +
       "</div>" +
       // the archive signs its rooms (EX-COPY) — one baked line; missing field renders nothing

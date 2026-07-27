@@ -163,14 +163,19 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   transition:color calc(.3s*var(--tempo)), border-color calc(.3s*var(--tempo)); }
 .exl-cur:hover, .exl-cur:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
 /* EX-ARRIVE: opacity:0 base; .show added via rAF on open; removed before timeout-hide on close */
-.exl-list{ position:absolute; inset-inline-end:0; top:50px; display:flex; flex-direction:column; gap:2px;
-  background:rgba(14,13,11,.96); border:1px solid var(--hair); border-radius:12px; padding:7px;
+/* The open menu belongs to the SAME family as the mark that opens it: one capsule exactly the
+   mark's width, so its edges sit flush under the round chip instead of hanging to one side, and
+   its ends carry the chip's own curve rather than a squarer corner (his find, 2026-07-27). */
+.exl-list{ position:absolute; inset-inline-end:0; top:50px; display:flex; flex-direction:column; gap:0;
+  width:44px; overflow:hidden;
+  background:rgba(14,13,11,.96); border:1px solid var(--hair); border-radius:22px; padding:0;
   backdrop-filter:blur(8px); opacity:0; transition:opacity var(--d-soft) var(--ease); }
 .exl-list.show{ opacity:1; }
 .exl-list[hidden]{ display:none; }
-.exl-item{ min-width:44px; min-height:34px; font-family:var(--mono); font-size:10px;
-  letter-spacing:.16em; color:var(--muted-2); background:none; border:none; border-radius:8px;
-  cursor:pointer; padding:7px 14px; }
+.exl-item{ min-width:44px; width:100%; min-height:38px; font-family:var(--mono); font-size:10px;
+  letter-spacing:.16em; color:var(--muted-2); background:none; border:none; border-radius:0;
+  cursor:pointer; padding:7px 0; text-align:center; }
+.exl-item + .exl-item{ border-top:1px solid var(--hair); }
 .exl-item:hover, .exl-item:focus-visible{ color:var(--ink); background:rgba(255,255,255,.05); }
 .exl-item.cur{ color:var(--accent); }
 #ex-door.leaving .exd-lang{ opacity:0; transition:opacity var(--d-cross) var(--ease); }
@@ -233,7 +238,7 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 @media (hover:none){
   .ex-share.ex-press,#ex-zoom .exz-btn.ex-press,.ex-quiz-chip.ex-press,.exh-fin .more.ex-press{ background:var(--accent); color:#0c0b0a; border-color:var(--accent); }
   .ex-share.ex-press{ opacity:1; }
-  .exsnd-btn.ex-press,.exl-cur.ex-press,.ex-series.ex-press,.exs-back.ex-press,.exh-fin .back.ex-press{ color:var(--ink); border-color:var(--muted-2); }
+  .exsnd-btn.ex-press,.exl-cur.ex-press,.ex-series.ex-press,.exs-back.ex-press,.exh-fin .back.ex-press,.exh-fin .about.ex-press{ color:var(--ink); border-color:var(--muted-2); }
   .exl-item.ex-press{ color:var(--ink); background:rgba(255,255,255,.05); }
   .quiz-opt.ex-press{ color:var(--ink); border-color:color-mix(in srgb,var(--accent) 55%,transparent); background:rgba(30,27,22,.85); transform:translateY(-1px); }
   .exd-window.ex-press::after{ opacity:.75; }
@@ -442,12 +447,15 @@ body.ex-door .ex-share{ opacity:0 !important; pointer-events:none !important; }
 .exh-fin .q{ font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase;
   color:var(--faint); }
 .exh-fin .row{ display:flex; gap:18px; justify-content:center; }
-.exh-fin button{ font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+/* every control in the closing row wears one shape — a control added later inherits it by
+   standing in the row, the same way it joins the touch-press class (EX-ABOUT, 2026-07-27) */
+.exh-fin button,.exh-fin .row a{ font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
   cursor:pointer; background:transparent; border-radius:999px; padding:9px 18px; transition:all calc(.3s*var(--tempo)); }
+.exh-fin .row a{ text-decoration:none; display:inline-block; }
 .exh-fin .more{ color:var(--accent); border:1px solid color-mix(in srgb, var(--accent) 42%, transparent); }
 .exh-fin .more:hover{ background:var(--accent); color:#0c0b0a; }
-.exh-fin .back{ color:var(--muted-2); border:1px solid var(--hair); }
-.exh-fin .back:hover{ color:var(--ink); border-color:var(--muted-2); }
+.exh-fin .back,.exh-fin .about{ color:var(--muted-2); border:1px solid var(--hair); }
+.exh-fin .back:hover,.exh-fin .about:hover{ color:var(--ink); border-color:var(--muted-2); }
 /* the quiet signature (EX-COPY) — a faint line under the buttons, inert */
 .exh-fin .exh-sign{ font-family:var(--mono); font-size:11px; letter-spacing:.14em;
   color:var(--faint); margin-top:22px; }

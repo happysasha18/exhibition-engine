@@ -40,6 +40,7 @@ BROWSER_ROWS = [
     "EX-LANG a pick re-speaks and persists (Hebrew: ask+dir flip at once; survives reload)",
     "EX-LANG the outsider pick rides the one layer (PL in the list; instant baked switch; stub strings back)",
     "EX-LANG reset returns the browser's tongue",
+    "EX-LANG the open menu belongs to the mark's family — same width, flush edges, the same curve",
 ]
 
 # ONE injected stub for BOTH edge routes the corner touches: /api/geo → the arriving country (IL),
@@ -123,6 +124,29 @@ else:
                        and br.evaluate("localStorage.getItem('ex.lang')") == "he")
             check(BROWSER_ROWS[1], he_now and he_kept,
                   f"at_once={he_now} kept={he_kept} ask={br.evaluate(ASK)!r}")
+
+            # 4 · the open menu is the mark's own shape (his find 2026-07-27: a round chip over a
+            # squarer, wider menu that hung to one side). Measured, never read off the source.
+            br.navigate(base + "/")
+            br.sleep(1.0)
+            br.click("#exd-lang .exl-cur", settle=0.5)
+            shape = br.evaluate(
+                "(()=>{const c=document.querySelector('#exd-lang .exl-cur');"
+                "const l=document.querySelector('#exd-lang .exl-list');"
+                "if(!c||!l||l.hidden)return null;"
+                "const rc=c.getBoundingClientRect(),rl=l.getBoundingClientRect();"
+                "const sc=getComputedStyle(c),sl=getComputedStyle(l);"
+                "return {cw:Math.round(rc.width),lw:Math.round(rl.width),"
+                "cright:Math.round(rc.right),lright:Math.round(rl.right),"
+                "cleft:Math.round(rc.left),lleft:Math.round(rl.left),"
+                "crad:parseFloat(sc.borderTopLeftRadius),lrad:parseFloat(sl.borderTopLeftRadius)};})()")
+            check(BROWSER_ROWS[4],
+                  bool(shape)
+                  and shape["lw"] == shape["cw"]                       # one width, so no overhang
+                  and abs(shape["lright"] - shape["cright"]) <= 1      # flush on both sides
+                  and abs(shape["lleft"] - shape["cleft"]) <= 1
+                  and shape["lrad"] >= shape["cw"] / 2 - 1,            # the chip's own curve, not a squarer corner
+                  f"shape={shape}")
 
             # 3 · reset returns the browser's tongue
             br.navigate(base + "/?reset")

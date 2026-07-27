@@ -87,9 +87,13 @@
   // WHOLE control class — every chrome button that wears a hover/focus fill owes a touch-press twin
   // (his 2026-07-23 find: the series pill and the room's back button were left out, felt dead on a
   // finger). A press that drifts into a swipe clears on the browser's pointercancel.
+  // The closing screen's controls are matched by their PLACE in its row, never by name: a control
+  // added to that row later joins the class by standing there (2026-07-27, the about link). Naming
+  // `.more` and `.back` one by one is what left the series pill and the room's back button dead
+  // under a finger, with the consistency test sharing the code's own blind spot.
   const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.quiz-opt,.exl-cur,.exl-item," +
     ".exd-window,#ex-gift-card .gift-yes,#ex-gift-card .gift-no," +
-    ".ex-series,.exs-back,.ex-quiz-chip,.exh-fin .more,.exh-fin .back";
+    ".ex-series,.exs-back,.ex-quiz-chip,.exh-fin .row > *";
   let _pressEl = null;
   function _pressClear() { if (_pressEl) { _pressEl.classList.remove("ex-press"); _pressEl = null; } }
   addEventListener("pointerdown", (e) => {
@@ -3620,6 +3624,15 @@
     const FL = greetLang();
     const FT = FL ? FL.t : {};
     const moreLabel = (FT.more || MORE_EN).replace("{n}", String(UNFOLD));
+    // EX-ABOUT (INV-103): the closing screen is the one place the exhibition already offers a
+    // choice of where to go, so the door to the about page stands here — in the VISITOR's own
+    // tongue when that tongue has a page, else at the fallback page every bundle bakes first.
+    // The baked signature below carries no about link, so this screen shows exactly one door.
+    const AB = data.about;
+    const aboutWord = ((FT.about || "") + "").trim();
+    const aboutHref = !AB ? "" :
+      (FL && AB.langs.indexOf(FL.code) >= 0 && FL.code !== AB.fallback)
+        ? "/about/" + FL.code : "/about";
     const fin = document.createElement("section");
     fin.className = "exh-fin"; fin.id = "exh-fin";
     if (FL) {
@@ -3630,6 +3643,7 @@
       `<div class="q">${spent ? (FT.q_spent || "дальше — новый выбор") : (FT.q_more || "идти дальше?")}</div>` +
       '<div class="row">' +
       (spent ? "" : `<button type="button" class="more" id="ex-unfold">${moreLabel} ↓</button>`) +
+      (aboutHref && aboutWord ? `<a class="about" id="ex-about" href="${aboutHref}">${aboutWord}</a>` : "") +
       (doorAvailable ? `<button type="button" class="back" id="ex-return">${FT.exit || "выход"}</button>` : "") +
       "</div>" +
       // the archive signs its rooms (EX-COPY) — one baked line; missing field renders nothing

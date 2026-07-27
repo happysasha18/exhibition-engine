@@ -403,7 +403,9 @@ a list of baked languages plus the browser's own locale when it falls outside th
 `ai_i18n` is on). A pick re-speaks the threshold at once — the ask and greeting update
 immediately — persists across visits (`ex.lang`), and outranks the browser setting everywhere a
 language is read. RTL locales turn the door face right-to-left. `?reset` forgets the choice and
-the browser's own tongue returns. `EX-LANG`
+the browser's own tongue returns. The OPEN list belongs to the same shape family as the mark that
+opens it: one column exactly the mark's width, its edges flush under the mark rather than hanging to
+one side, and its ends carrying the mark's own curve rather than a squarer corner. `EX-LANG`
 
 **EX-LANG-GEO** (`INV-45` · `INV-1`). The language corner offers English (always, and first), then
 the languages of the visitor's arriving country as Cloudflare's edge reports it (`/api/geo` → `{c}`
@@ -1462,6 +1464,74 @@ fully present for machines and assistive voices.
 
 ---
 
+## About the exhibition — the one page that explains
+
+The exhibition never explains: the threshold asks one wordless question and every room answers by
+behaving. That law governs the exhibition's OWN voice, and it leaves a real gap — a showcase or a
+directory will only list a project with a page to read, an open call asks for a statement, and a
+visitor who has walked wants to know what they walked through. So an instance may carry **one page
+that stands OUTSIDE the exhibition** and speaks in the site's own service voice, the voice the
+greeting and the signature already use. The rooms stay silent. `EX-ABOUT` `INV-102`
+
+**One page per baked language.** The page is flat static HTML written at bake time like the work
+pages, script-free (`INV-2`). A page of prose that runs no script cannot translate itself on
+arrival, so the baked languages are baked pages: the fallback tongue keeps the bare `/about`, every
+other tongue sits at `/about/<language>`. Each page names all its siblings with `hreflang`, and the
+fallback page also carries `x-default`. Each carries the document's own `lang` and `dir`, so a
+right-to-left tongue mirrors like every other face. `INV-102`
+
+**What stands on it.** A heading, four short paragraphs, one plain link back to `/`, and the same
+composed signature every public face carries (`EX-COPY`). **No photograph** — the exhibition hangs
+one picture at a time in a room built for it, and a page of prose is not that room — and **no share
+picture**: a page that names an empty `og:image` unfurls as a broken card, so the image tags are
+omitted whole and the Twitter card drops to its text form. It carries no axis name, no score, no
+confidence, and nothing about a visitor's stored state (`INV-1`). `INV-102`
+
+**Every sentence on the page is content the instance owns.** The words are read from its copy dictionary
+(`data/greetings.json`) in each baked language — `about_title`, `about_1`..`about_4`, `about_back`,
+plus `about`, the one word the entry links wear. The bake hand-writes none of it. **The fallback
+tongue decides whether the feature runs at all:** a dictionary whose fallback language carries no
+`about_title` bakes no about page in ANY language and adds no entry anywhere, so the bundle is
+byte-identical to a bake without the feature — the bare `/about` the signature points at must
+exist before any sibling does. Above that floor a language bakes its own page when it carries its
+own `about_title`, and one that does not is simply absent from the `hreflang` set. `INV-20`
+`INV-102`
+
+**Only the entry word travels to the client.** The walk's closing screen needs exactly one word of
+this copy, so the greet block shipped inside `exhibition_data.json` carries `about` alone; the
+heading, the four paragraphs and the return line are stripped from it at bake. Prose no client code
+reads is weight on the one artifact every visitor fetches before the first picture hangs. `INV-25`
+`INV-104`
+
+**How a visitor reaches it.** Two entries, both where the site already speaks in its own voice, and
+**never both on one screen.** The composed signature (`EX-COPY`, `INV-28`) trails an optional about
+link beside the optional creator link, pointing at the bare `/about`, since the signature is baked
+once into faces that carry no language of their own — the static root, every work page. The walk's
+closing screen carries the same word between «more» and «exit», pointing at the page in the
+visitor's own tongue, which that screen already speaks. That screen also signs off with the same
+composed line, so **the signature the walk carries omits the about link**: the walk is composed
+twice at bake, once for the static faces with the link and once for the client artifact without it,
+and a visitor never meets two doors to one page side by side. **The threshold gets nothing** — it
+stays a near-black screen with a wordmark and no explanation. Every language's page is listed once
+in the sitemap. `EX-ABOUT` `INV-103`
+
+**Across the axes.** Stateless static HTML: no session state, no stored value, identical on every
+load. One readable column that reflows across viewport size, its measure capped so a line stays
+readable on a wide screen and its padding keeps the text clear of a phone's rounded corners and home
+indicator. Renders whole with JavaScript off. Never animates, so reduced motion changes nothing.
+`INV-16` `INV-17`
+
+**Both entry links under every input.** Each is an ordinary anchor with a real `href`, so it works
+under a finger, a pointer and a keyboard alike, and a screen reader announces it by the word it
+wears. The closing screen's link is a chrome control on a touch surface, so it joins the
+touch-press CLASS (`EX-CHROME`, `INV-49`) by belonging to it rather than by being named in a list —
+lit under a press on a coarse pointer, taking the keyboard's accent focus, leaving no sticky fill
+when a finger lifts. The signature's link is a quiet text link in small print: it wears the
+signature's own muted tone and underline and, pointing INSIDE the site, opens in place rather than
+in a new tab the way the outbound creator link does. `EX-CHROME` `INV-103`
+
+---
+
 ## Baking the site
 
 An instance owner runs **one local command** and the whole deployable site is regenerated from
@@ -1577,6 +1647,7 @@ the worker.
 | Anchor | What it covers |
 |--------|----------------|
 | `EX` | The exhibition root — one surface, two faces |
+| `EX-ABOUT` | The one page outside the exhibition that explains it, baked once per language |
 | `EX-DOOR` | The threshold on a cold arrival; thin/missing pool degrades |
 | `EX-DOOR-2a` | Entry by pick only; no skip affordance |
 | `EX-DOOR-2b` | One line, always (the layout algorithm) |
@@ -1729,6 +1800,9 @@ the worker.
 | `INV-98` | The title and any wrapping caption prose break into near-equal balanced lines by the browser's own balancer, dictionary scripts included and no model call; below a narrow breakpoint the block runs narrower under a configurable type-step (engine default one step, 0 off) so the balanced text clears the picture |
 | `INV-100` | The quiz chip's words ride the `quiz_chip_copy` experiment (arms `place` / `place_prize`, salt `quizcopy`): the plain arm names the act («guess the place»), the reward arm names the gift as well («guess the place · win a wallpaper»); an absent registry falls to the plain «guess the place»; the words localize through EX-I18N (`quiz_ask_place` / `quiz_ask_prize`) with English source-tongue fallbacks and the ai_i18n edge speaks any offered tongue; the dealt arm rides every beat as the `quiz_chip_copy` dimension (`INV-91`), so a per-arm read of the chip's open-rate follows once the dimension is registered in GA |
 | `INV-101` | The sound control wears a music-note mark; on the visitor's first arrival only, a localized word («music», EX-I18N, English fallback) breathes in beside it, holds, then settles away leaving the bare note; the once-ness persists in `ex.sound` (`greeted`) so a return meets only the note; reduced motion / Save-Data stand the choreography down; a silent instance (`sound_url` empty) shows neither control nor greeting |
+| `INV-102` | The about page (`EX-ABOUT`) is flat script-free static HTML baked once per language — fallback at `/about`, the rest at `/about/<language>`, each naming every sibling with `hreflang` and the fallback carrying `x-default`, each carrying its own `lang`/`dir` — holding a heading, four paragraphs, a link back to `/` and the composed signature, every sentence read from the instance copy dictionary, showing no photograph and naming no `og:image`; a dictionary whose FALLBACK tongue carries no `about_title` bakes no page in any language, adds no entry anywhere, and leaves the bundle byte-identical. |
+| `INV-103` | The about page is entered from exactly two places — the composed signature's optional about link (bare `/about`) and the walk's closing screen (the page in the visitor's own tongue) — never both on one screen, so the signature composed INTO the client artifact omits the about link while the baked static faces carry it; the closing screen's link belongs to the touch-press class (`EX-CHROME`) rather than to any hand-kept list, and the signature's link opens in place; the threshold carries no mark, and every language's page is listed once in the sitemap. |
+| `INV-104` | The greet block shipped inside `exhibition_data.json` carries `about` alone; `about_title`, `about_1`..`about_4` and `about_back` are stripped from the client artifact at bake. |
 
 ### Reconciliation log — how each behavior above landed in code
 

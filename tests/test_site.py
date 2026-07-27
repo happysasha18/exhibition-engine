@@ -262,9 +262,18 @@ check("CS-6 every work page links back to the exhibition root `/`", no_backptr =
 sm = ET.parse(TMP / "sitemap.xml").getroot()
 ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 locs = [e.text for e in sm.findall(".//s:loc", ns)]
-check("INV-17 sitemap = exhibition root + every work page, once",
-      len(locs) == len(ITEMS) + 1 and len(set(locs)) == len(locs) and f"{SITE_URL}/" in locs,
-      f"{len(locs)} locs vs {len(ITEMS)+1} expected")
+# EX-ABOUT (INV-103): the about pages join the map, one per baked language. The count is DERIVED
+# from the dictionary, so adding a language cannot leave this row green over a stale total.
+_greet = json.loads((build_site.FIXTURE / "data" / "greetings.json").read_text(encoding="utf-8"))
+ABOUT_LANGS = ([L for L, blk in _greet["langs"].items() if (blk.get("about_title") or "").strip()]
+               if (_greet["langs"].get(_greet["fallback"], {}).get("about_title") or "").strip()
+               else [])
+_expect = len(ITEMS) + 1 + len(ABOUT_LANGS)
+check("INV-17 sitemap = exhibition root + every work page + every about page, once",
+      len(locs) == _expect and len(set(locs)) == len(locs) and f"{SITE_URL}/" in locs
+      and (not ABOUT_LANGS or f"{SITE_URL}/about" in locs),
+      f"{len(locs)} locs vs {_expect} expected "
+      f"(root + {len(ITEMS)} works + {len(ABOUT_LANGS)} about pages)")
 robots = (TMP / "robots.txt").read_text()
 check("INV-17 robots allows prod + points at sitemap",
       "Allow: /" in robots and "sitemap.xml" in robots.lower())

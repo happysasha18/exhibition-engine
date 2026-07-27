@@ -46,7 +46,14 @@
       "gift_no": "not now",
       "gift_buy": "",
       "more_exit": "there is more still hanging — come again",
-      "more_return": "back again — a new way in"
+      "more_return": "back again — a new way in",
+      "about": "about",
+      "about_title": "A synthetic exhibition, explained",
+      "about_1": "Synthetic paragraph one: what the pictures are.",
+      "about_2": "Synthetic paragraph two: what the room adapts to.",
+      "about_3": "Synthetic paragraph three: what one choice sets off.",
+      "about_4": "Synthetic paragraph four: the route differs every time.",
+      "about_back": "enter the exhibition"
     },
     "ru": {
       "dir": "ltr",
@@ -89,7 +96,14 @@
       "gift_no": "не сейчас",
       "gift_buy": "",
       "more_exit": "внутри осталось ещё — заходи снова",
-      "more_return": "с возвращением — новый вход сегодня"
+      "more_return": "с возвращением — новый вход сегодня",
+      "about": "о выставке",
+      "about_title": "Синтетическая выставка, объяснение",
+      "about_1": "Синтетический абзац один: что это за снимки.",
+      "about_2": "Синтетический абзац два: под что подстраивается зал.",
+      "about_3": "Синтетический абзац три: что запускает один выбор.",
+      "about_4": "Синтетический абзац четыре: маршрут каждый раз новый.",
+      "about_back": "войти в выставку"
     },
     "he": {
       "dir": "rtl",
@@ -132,7 +146,14 @@
       "gift_no": "לא עכשיו",
       "gift_buy": "",
       "more_exit": "בפנים נשאר עוד — בואו שוב",
-      "more_return": "שוב כאן — כניסה חדשה היום"
+      "more_return": "שוב כאן — כניסה חדשה היום",
+      "about": "על התערוכה",
+      "about_title": "תערוכה סינתטית, בהסבר",
+      "about_1": "פסקה סינתטית אחת: מה הן התמונות.",
+      "about_2": "פסקה סינתטית שתיים: למה החדר מתאים את עצמו.",
+      "about_3": "פסקה סינתטית שלוש: מה בחירה אחת מפעילה.",
+      "about_4": "פסקה סינתטית ארבע: המסלול שונה בכל פעם.",
+      "about_back": "להיכנס לתערוכה"
     },
     "de": {
       "dir": "ltr",
@@ -175,7 +196,14 @@
       "gift_no": "nicht jetzt",
       "gift_buy": "",
       "more_exit": "drinnen hängt noch mehr — komm wieder",
-      "more_return": "wieder da — heute ein neuer Weg hinein"
+      "more_return": "wieder da — heute ein neuer Weg hinein",
+      "about": "über die Ausstellung",
+      "about_title": "Eine synthetische Ausstellung, erklärt",
+      "about_1": "Synthetischer Absatz eins: was die Bilder sind.",
+      "about_2": "Synthetischer Absatz zwei: woran der Raum sich anpasst.",
+      "about_3": "Synthetischer Absatz drei: was eine Wahl auslöst.",
+      "about_4": "Synthetischer Absatz vier: der Weg ist jedes Mal anders.",
+      "about_back": "die Ausstellung betreten"
     },
     "fr": {
       "dir": "ltr",

@@ -32,7 +32,8 @@ COLLECTION_NAME = ""
 LOADING_LINE = ""        # EX-LOAD: the cold-arrival line, instance-supplied (generic default)
 HINT_LINE = ""           # the JS-off subtitle under the site name, instance-supplied (default in build)
 OG_IMAGE_ID = ""         # INV-25: the work a shared homepage link unfurls with; blank = first (INV-21)
-COPYRIGHT = ""           # composed in build() — the year is the bake run's own
+COPYRIGHT = ""           # composed in build() — the year is the bake run's own (static faces)
+COPYRIGHT_WALK = ""      # the same line for the CLIENT artifact, without the about link (INV-103)
 _ENGINE_ASSETS = None
 _INSTANCE_ASSETS = None
 _NAMESPACE = "ex"        # EX-NS: storage-key/global/perf-mark namespace; instance overrides via site.json
@@ -148,18 +149,38 @@ def esc(s):
     return html.escape(s or "", quote=True)
 
 
-def compose_sign(year, creator, site_name, instagram=None):
+def compose_sign(year, creator, site_name, instagram=None, about_word=None):
     """EX-COPY (INV-28): the one quiet signature. The copyright line — composed from the bake
-    run's own year, the creator, and the site name — with an OPTIONAL creator social link
-    trailing it when the instance supplies `instagram` (a full URL or a bare @handle). An
-    instance that names no `instagram` gets the plain line, untouched."""
+    run's own year, the creator, and the site name — with up to two OPTIONAL links trailing it.
+
+    ``instagram`` (a full URL or a bare @handle) trails the creator's own social page: it leaves
+    the site, so it opens in a new tab under `noopener noreferrer`. ``about_word`` trails the
+    about page (EX-ABOUT / INV-103) at the bare `/about`: it stays INSIDE the site, so it opens
+    in place. An instance that names neither gets the plain line, untouched.
+
+    The about link is the caller's choice per SURFACE, not a global: the walk's closing screen
+    already carries its own about line in the visitor's own tongue, so the signature composed for
+    the client artifact passes no ``about_word`` and a visitor never meets two doors to one page
+    side by side (INV-103)."""
     line = f"© {year} {creator} · {site_name}"
     handle = (instagram or "").strip()
     if handle:
         url = handle if handle.startswith("http") else "https://instagram.com/" + handle.lstrip("@")
         line += (f' · <a class="sign-ig" href="{esc(url)}" target="_blank"'
                  f' rel="noopener noreferrer">Instagram</a>')
+    word = (about_word or "").strip()
+    if word:
+        line += f' · <a class="sign-about" href="/about">{esc(word)}</a>'
     return line
+
+
+def about_path(lang, fallback="en"):
+    """The address of the about page in one language (EX-ABOUT / INV-102). The fallback tongue
+    keeps the bare `about`, so every static face and every shared link can point at one stable
+    address; the others sit one level down. A page of prose carries no script, so it cannot
+    translate itself on arrival — one baked page per tongue is how a scriptless page speaks
+    several languages (INV-16)."""
+    return "about" if lang == fallback else f"about/{lang}"
 
 
 def pick_hero(items, og_image_id=None):
@@ -200,6 +221,11 @@ a{color:inherit}
 .site-h1{font-weight:600;font-size:clamp(26px,5vw,44px);margin:0 0 .3em}
 .sign{color:#7c7c88;font-size:12.5px;margin-top:2.4em}
 .sign a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.about{max-width:62ch;padding-left:max(clamp(20px,4vw,56px),env(safe-area-inset-left));padding-right:max(clamp(20px,4vw,56px),env(safe-area-inset-right))}
+.about h1{font-weight:400;font-size:clamp(22px,3.4vw,30px);line-height:1.25;margin:0 0 1.1em}
+.about p{max-width:60ch;line-height:1.75;margin:0 0 1.15em}
+.about-back{margin-top:2em}
+.about-back a{text-decoration:underline;text-underline-offset:3px}
 """
 
 
@@ -220,9 +246,29 @@ def ga_snippet():
     )
 
 
-def head(title, description, canonical, og_image, og_type, jsonld, extra_og="", extra_head=""):
+def og_image_tags(og_image, description):
+    """The share-picture tags, emitted ONLY when the page has a picture. The about page is prose
+    and carries none, and a page that names an empty image unfurls as a BROKEN card rather than a
+    plain one — so the tags are omitted whole and the caller drops the Twitter card to its text
+    form (INV-102)."""
+    if not og_image:
+        return ""
+    return (f'<meta property="og:image" content="{esc(og_image)}">\n'
+            f'<meta property="og:image:alt" content="{esc(description)}">\n')
+
+
+def head(title, description, canonical, og_image, og_type, jsonld, extra_og="", extra_head="",
+         lang="en", direction=""):
+    """``lang``/``direction``: the document's own tongue and reading direction. They default to
+    the values every page carried before the about page existed, so a caller that passes neither
+    bakes a byte-identical head (INV-102)."""
+    dir_attr = f' dir="{esc(direction)}"' if direction else ""
+    card = "summary_large_image" if og_image else "summary"
+    image_tags = og_image_tags(og_image, description)
+    twitter_image = (f'<meta name="twitter:image" content="{esc(og_image)}">\n'
+                     if og_image else "")
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{esc(lang)}"{dir_attr}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -239,13 +285,10 @@ def head(title, description, canonical, og_image, og_type, jsonld, extra_og="", 
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(description)}">
 <meta property="og:url" content="{esc(canonical)}">
-<meta property="og:image" content="{esc(og_image)}">
-<meta property="og:image:alt" content="{esc(description)}">
-{extra_og}<meta name="twitter:card" content="summary_large_image">
+{image_tags}{extra_og}<meta name="twitter:card" content="{card}">
 <meta name="twitter:title" content="{esc(title)}">
 <meta name="twitter:description" content="{esc(description)}">
-<meta name="twitter:image" content="{esc(og_image)}">
-<script type="application/ld+json">
+{twitter_image}<script type="application/ld+json">
 {json.dumps(jsonld, ensure_ascii=False, indent=0, sort_keys=True)}
 </script>
 <style>{STYLE}</style>
@@ -429,6 +472,77 @@ def render_exhibition(items, captions, slugs, site_url, display_max=None):
                f'<meta property="og:image:height" content="{hh}">\n') if hw and hh else ""
     return head(title, desc, canonical, og_image, "website", jsonld,
                 extra_og=hero_og, extra_head=extra_head) + body
+
+
+ABOUT_PARA_KEYS = ("about_1", "about_2", "about_3", "about_4")
+# the page copy the CLIENT never reads — stripped from the greet block that rides
+# exhibition_data.json, so page prose is not weight on every arrival (INV-104)
+ABOUT_PAGE_KEYS = ("about_title",) + ABOUT_PARA_KEYS + ("about_back",)
+
+
+def about_langs(greet):
+    """The languages that get a page (EX-ABOUT / INV-102), in the dictionary's own order.
+
+    The FALLBACK tongue is the floor: the signature's link is language-blind and always points at
+    the bare `/about`, so a bundle whose fallback carries no `about_title` would link a page that
+    was never baked. No copy there ⇒ NO page in any language and no entry anywhere, the bundle
+    byte-identical to a bake without the feature. Above that floor a language earns its own page
+    by carrying its own `about_title`."""
+    if not greet:
+        return []
+    fallback = greet.get("fallback")
+    langs = greet.get("langs") or {}
+    if not (langs.get(fallback) or {}).get("about_title", "").strip():
+        return []
+    return [L for L, blk in langs.items() if (blk.get("about_title") or "").strip()]
+
+
+def render_about(site_url, about, lang, langs, fallback, direction=""):
+    """The about page (EX-ABOUT / INV-102): one flat page that stands OUTSIDE the exhibition and
+    says what it is. The rooms never explain — the threshold asks wordlessly and every room
+    answers by behaving — so the account of the exhibition lives here, in the site's own service
+    voice, the voice the greeting and the signature already use. No photograph stands on it: the
+    exhibition hangs one picture at a time in a room built for it, and a page of prose is not that
+    room. No share picture either, or the link unfurls as a broken card.
+
+    ``about``: the copy for ONE language — `about_title`, `about_1`..`about_4`, `about_back` —
+    read from the instance's dictionary (INV-20; the bake hand-writes none of it). ``langs``: the
+    tongues that HAVE a page, so the sibling set names only pages that exist."""
+    canonical = f"{site_url}/{about_path(lang, fallback)}"
+    # every sibling named for a crawler, plus x-default on the fallback page (INV-102)
+    alts = "".join(
+        f'<link rel="alternate" hreflang="{esc(L)}" '
+        f'href="{esc(site_url)}/{about_path(L, fallback)}">\n' for L in langs)
+    if langs:
+        alts += (f'<link rel="alternate" hreflang="x-default" '
+                 f'href="{esc(site_url)}/{about_path(fallback, fallback)}">\n')
+    title = (about.get("about_title") or "").strip()
+    paras = [(about.get(k) or "").strip() for k in ABOUT_PARA_KEYS]
+    paras = [p for p in paras if p]
+    back = (about.get("about_back") or "").strip()
+    desc = paras[0] if paras else title
+    jsonld = {
+        "@context": "https://schema.org",
+        "@type": "AboutPage",
+        "name": title,
+        "url": canonical,
+        "isPartOf": f"{site_url}/",
+        "about": {"@type": "CollectionPage", "name": COLLECTION_NAME, "url": f"{site_url}/"},
+        "author": {"@type": "Person", "name": CREATOR},
+    }
+    body_paras = "".join(f"<p>{esc(p)}</p>\n" for p in paras)
+    back_line = (f'<p class="about-back"><a href="/">{esc(back)}</a></p>\n' if back else "")
+    body = f"""<body>
+<main class="wrap about">
+<h1>{esc(title)}</h1>
+{body_paras}{back_line}<p class="sign">{COPYRIGHT}</p>
+</main>
+</body>
+</html>
+"""
+    return head(title, desc, canonical, "", "article", jsonld,
+                extra_og=alts, extra_head='<meta name="robots" content="index,follow">\n',
+                lang=lang, direction=direction) + body
 
 
 # ---------------------------------------------------------------- bundle
@@ -904,7 +1018,8 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     no instance. ``display_max``: cap the served images' long edge (px) — the deploy passes it,
     tests omit it so the bake stays fast (EX-PROTECT-RES / INV-56)."""
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
-    global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, _ENGINE_ASSETS, _INSTANCE_ASSETS, _NAMESPACE
+    global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, COPYRIGHT_WALK
+    global _ENGINE_ASSETS, _INSTANCE_ASSETS, _NAMESPACE
     global HINT_LINE, OG_IMAGE_ID
     GA_ID = ga_id
     OUT = out_dir
@@ -924,8 +1039,22 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # 1.14.0; the engine's own words stand for an instance that names none.
     HINT_LINE = site_config.get("hint_line") or "an exhibition that assembles itself around you"
     OG_IMAGE_ID = site_config.get("og_image_id") or ""
-    COPYRIGHT = compose_sign(datetime.date.today().year, CREATOR, SITE_NAME,
-                             site_config.get("instagram"))
+    # The copy dictionary is read HERE, before the signature is composed and before any page is
+    # written, because the signature's about link is a word FROM it (EX-ABOUT / INV-103).
+    greet = greetings()
+    about_set = about_langs(greet)
+    about_word = ""
+    if about_set:
+        fb = greet["fallback"]
+        about_word = (greet["langs"][fb].get("about") or "").strip()
+    _year = datetime.date.today().year
+    # two signatures, one law: the STATIC faces carry the about link, the client artifact does
+    # not — the walk's closing screen has its own about line in the visitor's own tongue, and two
+    # doors to one page side by side is what INV-103 forbids.
+    COPYRIGHT = compose_sign(_year, CREATOR, SITE_NAME,
+                             site_config.get("instagram"), about_word=about_word)
+    COPYRIGHT_WALK = compose_sign(_year, CREATOR, SITE_NAME,
+                                  site_config.get("instagram"))
     if OUT.exists():
         shutil.rmtree(OUT)                             # a fresh bundle, deterministic
     OUT.mkdir(parents=True)
@@ -961,6 +1090,16 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
 
     # the exhibition root `/` (EX) — crawlable JS-off face + the client walk
     write(OUT / "index.html", render_exhibition(items, captions, slugs, site_url, display_max=display_max))
+
+    # the about page (EX-ABOUT / INV-102): one flat page per tongue that HAS copy, the fallback at
+    # the bare `/about`. No copy in the fallback tongue ⇒ about_set is empty ⇒ nothing here runs
+    # and the bundle is byte-identical to a bake without the feature.
+    for lang in about_set:
+        blk = greet["langs"][lang]
+        write(OUT / f"{about_path(lang, greet['fallback'])}.html",
+              render_about(site_url, blk, lang, about_set, greet["fallback"],
+                           direction="rtl" if blk.get("dir") == "rtl" else ""))
+
     copy_exhibition_assets()
 
     # the client walk's baked data: per-work normalized kinship vectors (neutral coords, INV-1) +
@@ -1031,8 +1170,9 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         if w["id"] in ser_of:
             w["ser"] = ser_of[w["id"]]                 # the pill's own mark (EX-SERIES)
     exdata = {"version": ex_version, "works": ex_works, "series": ex_series,
-              # the walk's own face signs off with the same composed line (EX-COPY)
-              "copyright": COPYRIGHT,
+              # the walk's own face signs off with the same composed line (EX-COPY) — WITHOUT the
+              # about link, because the closing screen carries its own (INV-103)
+              "copyright": COPYRIGHT_WALK,
               "v": {it["id"]: vectors[it["id"]] for it in items if it["id"] in vectors},
               # the threshold's pool ships INSIDE this one artifact — one fetch, under the same
               # bounded arrival INV-25 grants the walk (EX-DOOR; prover F1)
@@ -1040,10 +1180,19 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
                   {it["id"]: it for it in items}, captions,
                   diverse=flags["door_diversity"],
                   place_keywords=(site_config.get("door_diversity") or {}).get("place_keywords"))}}
-    # the greeting rides the SAME artifact — one fetch, INV-25's bounded arrival (EX-GREET)
-    greet = greetings()
+    # the greeting rides the SAME artifact — one fetch, INV-25's bounded arrival (EX-GREET).
+    # The about PAGE copy is stripped on the way out (INV-104): the client reads exactly one word
+    # of it — the entry word its closing screen puts on the link — and prose no code reads is
+    # weight on the one artifact every visitor fetches before the first picture hangs.
     if greet:
-        exdata["greet"] = greet
+        client_greet = dict(greet)
+        client_greet["langs"] = {
+            L: {k: v for k, v in blk.items() if k not in ABOUT_PAGE_KEYS}
+            for L, blk in greet["langs"].items()}
+        exdata["greet"] = client_greet
+    # the tongues that HAVE a page, so the closing screen can link the visitor's own (INV-103)
+    if about_set:
+        exdata["about"] = {"fallback": greet["fallback"], "langs": about_set}
     # EX-LADDER (INV-63): the `sizes` each hanging surface wears — joins only alongside the per-work
     # srcset (i.e. when the display cap runs), so a no-cap bake stays byte-identical.
     if display_max:
@@ -1065,6 +1214,10 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         img = f"{site_url}/gallery/{it['img']}"
         sm.append(f"  <url><loc>{esc(wu)}</loc><lastmod>{lastmod}</lastmod>"
                   f"<image:image><image:loc>{esc(img)}</image:loc></image:image></url>")
+    # the about pages join the map once each — no <image:image>, since no picture stands on them
+    for lang in about_set:
+        au = f"{site_url}/{about_path(lang, greet['fallback'])}"
+        sm.append(f"  <url><loc>{esc(au)}</loc><lastmod>{lastmod}</lastmod></url>")
     sm.append("</urlset>")
     write(OUT / "sitemap.xml", "\n".join(sm) + "\n")
 

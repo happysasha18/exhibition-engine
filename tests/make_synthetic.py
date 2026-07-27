@@ -346,6 +346,40 @@ GREETINGS = {
     },
 }
 
+# ── about copy (EX-ABOUT / INV-102) ──────────────────────────────────────────
+# Deliberately given to FOUR of the seven languages only. The fallback `en` carries it, so the
+# feature runs; `he` carries it so the right-to-left page is a real fixture; `fr`/`es`/`uk` carry
+# none, so a suite row can prove that a language without copy is simply ABSENT from the sibling
+# set rather than baked half-empty or filled from a neighbour's tongue.
+ABOUT = {
+    "en": {"about": "about", "about_title": "A synthetic exhibition, explained",
+           "about_1": "Synthetic paragraph one: what the pictures are.",
+           "about_2": "Synthetic paragraph two: what the room adapts to.",
+           "about_3": "Synthetic paragraph three: what one choice sets off.",
+           "about_4": "Synthetic paragraph four: the route differs every time.",
+           "about_back": "enter the exhibition"},
+    "ru": {"about": "о выставке", "about_title": "Синтетическая выставка, объяснение",
+           "about_1": "Синтетический абзац один: что это за снимки.",
+           "about_2": "Синтетический абзац два: под что подстраивается зал.",
+           "about_3": "Синтетический абзац три: что запускает один выбор.",
+           "about_4": "Синтетический абзац четыре: маршрут каждый раз новый.",
+           "about_back": "войти в выставку"},
+    "he": {"about": "על התערוכה", "about_title": "תערוכה סינתטית, בהסבר",
+           "about_1": "פסקה סינתטית אחת: מה הן התמונות.",
+           "about_2": "פסקה סינתטית שתיים: למה החדר מתאים את עצמו.",
+           "about_3": "פסקה סינתטית שלוש: מה בחירה אחת מפעילה.",
+           "about_4": "פסקה סינתטית ארבע: המסלול שונה בכל פעם.",
+           "about_back": "להיכנס לתערוכה"},
+    "de": {"about": "über die Ausstellung", "about_title": "Eine synthetische Ausstellung, erklärt",
+           "about_1": "Synthetischer Absatz eins: was die Bilder sind.",
+           "about_2": "Synthetischer Absatz zwei: woran der Raum sich anpasst.",
+           "about_3": "Synthetischer Absatz drei: was eine Wahl auslöst.",
+           "about_4": "Synthetischer Absatz vier: der Weg ist jedes Mal anders.",
+           "about_back": "die Ausstellung betreten"},
+}
+for _lang, _copy in ABOUT.items():
+    GREETINGS["langs"][_lang].update(_copy)
+
 
 # ── minimal PNG generator ─────────────────────────────────────────────────────
 

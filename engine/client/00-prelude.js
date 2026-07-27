@@ -86,9 +86,13 @@
   // WHOLE control class — every chrome button that wears a hover/focus fill owes a touch-press twin
   // (his 2026-07-23 find: the series pill and the room's back button were left out, felt dead on a
   // finger). A press that drifts into a swipe clears on the browser's pointercancel.
+  // The closing screen's controls are matched by their PLACE in its row, never by name: a control
+  // added to that row later joins the class by standing there (2026-07-27, the about link). Naming
+  // `.more` and `.back` one by one is what left the series pill and the room's back button dead
+  // under a finger, with the consistency test sharing the code's own blind spot.
   const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.quiz-opt,.exl-cur,.exl-item," +
     ".exd-window,#ex-gift-card .gift-yes,#ex-gift-card .gift-no," +
-    ".ex-series,.exs-back,.ex-quiz-chip,.exh-fin .more,.exh-fin .back";
+    ".ex-series,.exs-back,.ex-quiz-chip,.exh-fin .row > *";
   let _pressEl = null;
   function _pressClear() { if (_pressEl) { _pressEl.classList.remove("ex-press"); _pressEl = null; } }
   addEventListener("pointerdown", (e) => {
