@@ -85,7 +85,10 @@ async function modelDead(env) { return !!(await env.@@NS_UPPER@@_I18N.get(DEAD_K
 function deathStatus(e) {                              // the throw carries "model <status>"
   const m = /^model (\d{3})/.exec((e && e.message) || "");
   const s = m ? +m[1] : 0;
-  return (s >= 400 && s < 500 && s !== 429) ? s : 0;
+  // The requirement names the class member by member: the low-balance 400 and a revoked key's
+  // 401/403. A 404 names a missing resource — a model id retired out from under the bundle — and a
+  // 429 is a flood; both stay transient, so a retirement never darkens every language for an hour.
+  return (s >= 400 && s < 500 && s !== 429 && s !== 404) ? s : 0;
 }
 async function markDead(env) { await env.@@NS_UPPER@@_I18N.put(DEAD_KEY, "1", { expirationTtl: DEAD_TTL }); }
 

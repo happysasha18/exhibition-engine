@@ -61,6 +61,7 @@ ROWS = [
     "EX-STORY-FILL the lock carries its expiry, the backstop for a worker that dies mid-call",
     "EX-STORY-FILL a call that outlived its expiry never takes away a later request's lock",
     "EX-STORY-FILL a work the edge holds no fragment for answers 404 ahead of every fence",
+    "EX-EDGE-DEAD a retired model id stays transient — the hour's flag is for a dead ACCOUNT",
 ]
 
 # ---------------------------------------------------------------- bake once, story on
@@ -394,6 +395,23 @@ def row_dead_flag():
 
 
 # ---------------------------------------------------------------- rows 12-15: the refusal record
+def row_retired_model():
+    """The flag darkens every language for an hour, so what raises it is named member by member: the
+    low-balance 400 and a revoked key's 401/403. A 404 names a model id retired out from under the
+    bundle — a fault the daily call cap catches — and must leave the flag alone."""
+    asked = IDS[:3]
+    r404 = run([ask(asked, "203.0.113.90"), {"op": "snapshot"}],
+               answers=[{"kind": "status", "status": 404}])
+    r403 = run([ask(asked, "203.0.113.91"), {"op": "snapshot"}],
+               answers=[{"kind": "status", "status": 403}])
+    check(ROWS[20],
+          r404["steps"][0]["status"] == 502 and "dead:model" not in r404["steps"][1]["keys"]
+          and "dead:model" in r403["steps"][1]["keys"],
+          f"a 404 answered {r404['steps'][0]['status']} and "
+          f"{'raised' if 'dead:model' in r404['steps'][1]['keys'] else 'left'} the flag; a 403 "
+          f"{'raised' if 'dead:model' in r403['steps'][1]['keys'] else 'left'} it")
+
+
 def row_record():
     ip = "203.0.113.40"
     r = run([
@@ -511,7 +529,7 @@ if not Path(NODE).exists():
 else:
     for fn in (row_partial, row_no_line, row_lock, row_lock_on_failure, row_classes,
                row_dead_flag, row_record, row_portion_no_record, row_one_work_key,
-               row_lock_expiry, row_unknown_work):
+               row_lock_expiry, row_unknown_work, row_retired_model):
         try:
             fn()
         except Exception as e:                       # a row that cannot run is a red row, never a silent pass

@@ -673,7 +673,7 @@ parse are the **empty class**: a second ask meets the same fragments and the sam
 model status and a network throw are the **transient class**: a second ask may pass. The third
 member of the empty class comes from the route rather than the reader — an answer that parsed and
 left no well-formed entry, which the route meets at its own filter. A non-ok status that names a
-dead account — a 4xx other than 429 — raises the hour-long dead flag from this route the way the
+dead account — the low-balance 400 or a revoked key's 401/403 — raises the hour-long dead flag from this route the way the
 i18n route already raises it (`EX-EDGE-DEAD`, `INV-68`).
 
 **An empty one-work answer is remembered for an hour.** A one-work ask whose answer lands in the
@@ -1339,8 +1339,8 @@ words: «если закончились деньги на ИИ — всё на 
 untouched (EX-EDGE-GUARD); the baked seven still never touch the model (INV-42); a cached locale or
 walk still answers at $0 (INV-42/INV-47); the story's absence is still silence, never a broken frame
 (EX-STORY-EDGE); with the flags off nothing changes (INV-19).* When the model ACCOUNT itself is dead —
-Anthropic answers a committed call with a billing, credit, or auth refusal (a 4xx other than 429: the
-low-balance 400, a revoked key's 401/403) — the edge treats the rest of the hour like a capped day, and
+Anthropic answers a committed call with a billing, credit, or auth refusal (the low-balance
+400, a revoked key's 401 or 403) — the edge treats the rest of the hour like a capped day, and
 remembers: the death is flagged in KV for about an hour `[default — a config knob]`, and while the flag
 stands no model call is attempted or charged. Behind the flag the i18n route serves the baked ENGLISH
 straight (the bots' own path), never cached under the asked locale — a real speaker still earns a real
@@ -1350,8 +1350,8 @@ is one PLAIN neutral hello line, with no daypart variants and no flourish (his w
 tongue, so the English field is the load-bearing one; the shape check grows with it). The baked seven
 never meet this day at all, and the client changes nothing — the worker's payload is the whole story.
 Two calls dying together raise the same flag once (the write is idempotent), and the dying call itself
-stays charged — the cap's charge-on-commit law is untouched. Transient troubles stay transient: a 429,
-a 5xx, or a network failure keeps today's behaviour — one failed call, the existing `model unavailable`
+stays charged — the cap's charge-on-commit law is untouched. Transient troubles stay transient: a 429, a 404 naming a
+model id retired out from under the bundle, a 5xx, or a network failure keeps today's behaviour — one failed call, the existing `model unavailable`
 answer — and never raises the flag. *Facets:* nothing new
 faces the visitor beyond the quiet English; performance — one KV read the routes already pay.
 *Non-goals:* retry heroics; an operator alert (the traffic report shows the flag when he looks);
@@ -1893,7 +1893,7 @@ the worker.
 | `INV-66` | Exactly one question per show — the chip placed on one work chosen per walk over the reachable∧unanswered set — and silenced while less than the cooldown window (`quiz_cooldown_hours`, ~6h) has passed since a show that asked; `quiz_probability` retired |
 | `INV-62` | The quiz A/B arm (`quiz_arm`: on/control, 50/50, seed-stable) is dealt once by the variant frame (`EX-AB`/`INV-90`, salt `quizarm`) and rides every registry beat as a dimension; absent when the flag is off so the payload stays byte-for-byte today's |
 | `INV-67` | Faces-meet composition law: a standing face (quiz card, gift card, side room) owns the walk's input; the last face leaving discharges an instant re-centre to the live viewport; the card is viewport-honest; the closing screen is a stop. The zoom is the one face that opens OVER another — a pinch on a side-room print or a door window raises it above the standing room or door — covering exactly one face at a time, owning the input while it stands, and returning ownership to the face beneath on close (EX-ZOOM/INV-83) |
-| `INV-68` | Dead model account: a non-429 4xx flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
+| `INV-68` | Dead model account: a billing, credit or auth refusal (400/401/403) flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
 | `INV-69` | The quiz funnel stage (`quiz_stage`: shown → opened → won\|lost → gift) is session-scoped and runs monotonically upward — it never lowers; "gift" advances only from "won"; the stage rides `walk_unfold`/`walk_exit` as a dimension alongside the arm (no sixth beat, INV-41 stands); the stage wipes with the walk (?reset); control and flag-off visitors carry no stage |
 | `INV-70` | One page shape for the browser on every face: every standing face (the re-opened door, side room, question card, gift card) locks the walk by resting input plus a snap-back guard that corrects any scroll the house did not write (the ceremony glide, Back restore, and face-leave re-centre all pass), while the root scrollbar hides gutter-stable (no reflow) and the walk's own tall document stays in place beneath; the root overflow cut is retired as a locking device; a later face inherits the law by construction |
 | `INV-72` | The in-flight ladder: a walk frame whose pixels are late wears the work's RAW baked `dom` tone (a plate) past `load_plate_grace`, a wordless bar (no digit, no percentage — INV-1) joins past `load_bar_wait`, and the photo fades in OVER the plate — `load_reveal_fast` when it beat the plate, `load_reveal` when the plate stood; the arm reads the already-settled state (`complete`/`naturalWidth`, the errored case) and resolves synchronously (warm ⇒ reveal at once, no plate/clock; pre-errored ⇒ retire, caption+counter hold), arming ONCE per frame-taking-view so a post-reveal tier swap never re-plates; ONE reused overlay for the single in-view frame; every duration a beat ×tempo (INV-33) and `load_plate_grace` < `load_bar_wait` clamped at boot; runs at a SECOND call-site — the door's five windows (`EX-DOOR-2c`), each its own `.exd-plate` (five may fly at once, never the walk's single overlay), reading the settled state so a cached window / relayout re-render / fresh full-circle deal re-flashes no plate, the window's entrance and `liveAccent` halo standing while the plate speaks the raw `dom`; the door emits no walk marks and does not preload; the crossing and the side room stay outside — the ladder governs the walk's in-view frame and the door windows only and continues behind any standing face; supersedes EX-LOAD/INV-37's lone hairline, its promises re-carried whole |
