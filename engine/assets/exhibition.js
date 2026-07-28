@@ -1265,6 +1265,11 @@
   function ladderFlight(img, w, host, plateEl, timers, alive, mark) {
     host.insertBefore(plateEl, host.firstChild);        // behind the photo, same cell
     plateEl.style.aspectRatio = (w.w && w.h) ? (w.w + " / " + w.h) : "";
+    // the work's shape as a NUMBER too: a surface whose plate has no box of its own (the walk's
+    // centered frame, the room's lane) reads --ar to turn its own caps into this picture's box —
+    // aspect-ratio alone has nothing to be an aspect OF when both sides resolve to auto. Set for
+    // every plate, one place; a plate that already has a box (a door window's inset:0) ignores it.
+    if (w.w && w.h) plateEl.style.setProperty("--ar", w.w / w.h);
     plateEl.style.background = "rgb(" + w.dom.join(",") + ")";   // the work's RAW baked tone (not liveAccent)
     plateEl.hidden = false;
     void plateEl.offsetWidth;                           // a fresh fade from opacity 0
@@ -2620,6 +2625,15 @@
   // is taken (tlvphotos.com → tlvphotos), a plain slug, with a never-blank fallback.
   const DL_BASE = ((ROOT_URL.replace(/^https?:\/\//, "").split("/")[0].split(":")[0].split(".")[0])
                    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) || "gallery";
+  // EX-PROTECT-RES (INV-56): the file an ORDINARY grab hands over is capped on its LONG EDGE, on every
+  // screen. The walk's <img> resolves the responsive ladder to 640 / 960 / 1280 px by viewport x pixel
+  // density, so on a retina screen a right-click used to carry away a 1280 px file — LARGER than the
+  // quiz prize, which is the pre-marked ~1000 px bake. The prize is the reward for playing, so it must
+  // be the better file: the ceremony grab is drawn DOWN to this cap before it is stamped and encoded.
+  // The shown image is untouched — this governs only the copy that leaves the machine. An image already
+  // inside the cap is drawn at its own size (the cap never enlarges), and the quiz prize never travels
+  // this road at all (it goes out as the fetched pre-marked bytes).
+  const GRAB_MAX_PX = 800;        // [default] the long edge of a grabbed file (his word 2026-07-28)
   // ---- EX-PROTECT-GIFT: the picture is OFFERED, never dumped ----
   // The gift CEREMONY (his word 2026-07-08): a right-click on a work is answered by a gentle card
   // «like it? · a gift :)» and the picture is handed over only on a yes — never a blunt auto-download.
@@ -2682,6 +2696,12 @@
     } catch (e) { /* an engine without file-share falls through to the anchor */ }
     anchorSave(blob, name);
   }
+  // The last-resort road, reached ONLY when the canvas itself refused (a decode failure, a tainted
+  // canvas, a toBlob that returned nothing). It hands over the source bytes as they are, so it carries
+  // neither the host mark nor the GRAB_MAX_PX cap — the same canvas that would resize is the one that
+  // just failed, so no other road is left. A browser that cannot stamp still gets its picture rather
+  // than an error (INV-56's never-blocked clause); the marked, capped file is what every working
+  // browser receives.
   function rawDownload(src, name) {
     try { anchorSave(src, giftName(src, name)); } catch (e) { /* the walk loses nothing if a browser refuses the save */ }
   }
@@ -2693,10 +2713,15 @@
     const im = new Image();
     im.onload = () => {
       try {
+        const nw = im.naturalWidth || im.width, nh = im.naturalHeight || im.height;
+        // GRAB_MAX_PX caps the long edge; Math.min(1, ...) keeps a smaller image at its own size, so a
+        // grab never enlarges what it was given (a 640 px tier stays 640, it does not stretch to 800).
+        const k = Math.min(1, GRAB_MAX_PX / Math.max(nw, nh, 1));
         const cv = document.createElement("canvas");
-        cv.width = im.naturalWidth || im.width; cv.height = im.naturalHeight || im.height;
+        cv.width = Math.max(1, Math.round(nw * k)); cv.height = Math.max(1, Math.round(nh * k));
         const cx = cv.getContext("2d");
-        cx.drawImage(im, 0, 0);
+        cx.drawImage(im, 0, 0, cv.width, cv.height);
+        // the burnt host mark is sized off the CANVAS width, so it keeps its proportion at any cap
         const fs = Math.max(13, Math.round(cv.width * 0.022)), pad = Math.round(fs * 0.9);
         cx.font = "600 " + fs + "px -apple-system,'Segoe UI',sans-serif";
         cx.textAlign = "right"; cx.textBaseline = "alphabetic";
@@ -4409,6 +4434,25 @@
       faceSync();                                      // the room stands revealed; sideOpen keeps the lock (EX-CHROME)
     });
   }
+  // EX-LOAD-2 (INV-72): the room's pictures ride the walk's and the door's own in-flight ladder —
+  // the SAME core, knobs, classes and timings, never a second copy of them. A plate PER picture
+  // (a whole room may be in flight at once), and no ex: marks: the room stays off the walk's loading
+  // counter, exactly as the door does. The caller hands the host the plate is laid in and, in the
+  // lane, the grid column the picture stands in; a picture already in hand shows at once, no plate.
+  function seriesArm(img, w, host, col) {
+    if (!img || !w || !host) return;
+    if (img.complete) { img.dataset.ladder = "done"; return; }   // cached ⇒ shows at once, no plate
+    const p = document.createElement("div");
+    p.className = "exs-plate";
+    p.innerHTML = '<i class="ex-bar" aria-hidden="true"></i>';
+    if (w.w && w.h) p.style.setProperty("--ar", w.w / w.h);      // the lane's caps read the work's shape
+    if (col) { p.style.gridColumn = col; p.style.gridRow = "1"; }  // the picture's own cell
+    ladderFlight(img, w, host, p, [], () => img.isConnected, false);
+    // the core lays every plate at the host's head; in the LANE the host is the whole row, so the
+    // plate is moved to its own picture's side — the two then read as one pair, and the lane's rest
+    // can pass from the plate to the photograph the moment it lands (the CSS pair rule)
+    if (col) host.insertBefore(p, img);
+  }
   function dressSide(S, idx, laystep) {
     const st = side.querySelector("#exs-stage");
     st.className = "exs-stage " + S.variant;           // the series' own character picks the face
@@ -4421,20 +4465,23 @@
     const decodes = [];               // room before the pictures decode is never touched again
     let laneTaken = false;            // the visitor already took the lane in hand — the decode
                                        // re-affirm below must never yank it back out from under them
+    let laneCol = 0;                  // the lane is ONE grid row; each picture takes the next column
     S.members.forEach((id, i) => {
       const w = byId[id];
       if (!w) return;
       if (S.variant === "lane") {
+        const col = String(++laneCol);                   // the picture's own column — its plate shares it
         const im = new Image();
         ladderOn(im, w, ladderSizes("lane"));            // EX-LADDER (INV-63): the lane's box is CSS max-width:64vw
-        im.classList.add("ex-skel");                     // EX-SKEL (INV-48): the lane photograph shows it is still arriving
-        im.addEventListener("load", () => im.classList.remove("ex-skel"), { once: true });
         im.src = w.img;
         im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
         im.tabIndex = 0;                                 // N7-A11Y (INV-102, B4): the lane photograph is keyboard-reachable (the lane scrolls by arrow key — the side-level handler below)
         im.setAttribute("aria-keyshortcuts", "z y");     // N7-A11Y (INV-102, B2/B3): it ANNOUNCES the two keys it answers — the closer look and the gift
+        im.style.gridColumn = col;
+        im.style.gridRow = "1";
         st.appendChild(im);
+        seriesArm(im, w, st, col);                       // EX-LOAD-2 (INV-72): the work's own tone holds the place, the photograph fades in over it
         if (im.decode) decodes.push(im.decode().catch(() => {}));   // N7-A11Y (INV-102, D3): feature-guard like the three siblings (06/07/12) — no bare decode where it is unsupported
         return;
       }
@@ -4450,9 +4497,7 @@
       const pim = p.querySelector("img");                // N7-A11Y (INV-102, C6): the polaroid speaks
       if (pim) {
         pim.alt = workDesc(w.id);
-        pim.classList.add("ex-skel");                    // EX-SKEL (INV-48): the polaroid shows it is still arriving
-        if (pim.complete && pim.naturalWidth) pim.classList.remove("ex-skel");   // a cached print never flashes the shimmer
-        else pim.addEventListener("load", () => pim.classList.remove("ex-skel"), { once: true });
+        seriesArm(pim, w, p);                            // EX-LOAD-2 (INV-72): the plate covers the photograph's slot; the cream paper stays paper
       }
       // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space
       p.tabIndex = 0;

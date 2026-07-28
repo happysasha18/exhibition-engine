@@ -33,6 +33,13 @@ DATA = json.loads((TMP / "exhibition_data.json").read_text(encoding="utf-8"))
 VER = str(DATA["version"])
 PICK = DATA["door"]["pool"][0]["id"]
 WALK = json.dumps({"v": VER, "pick": PICK, "shown": 10})
+# the shape row drives the work whose aspect is FURTHEST from square (deterministic, tie-broken by
+# id) — a square work would let a plate sized by one cap alone pass a shape assertion by accident
+_SHAPED = [w for w in DATA["works"]
+           if w.get("w") and w.get("h") and (TMP / w["img"].lstrip("/")).exists()]
+SHAPE_W = max(_SHAPED, key=lambda w: (abs(float(w["w"]) / float(w["h"]) - 1), w["id"]))
+SHAPE_AR = float(SHAPE_W["w"]) / float(SHAPE_W["h"])
+SHAPE_WALK = json.dumps({"v": VER, "pick": SHAPE_W["id"], "shown": 10})
 
 # ---- data row: asset-weight budget
 heavy = []
@@ -112,11 +119,20 @@ BROWSER_ROWS = [
     "EX-TIMING marks are laid, export on ask; nothing in the DOM (INV-1)",
     "EX-BOOT/INV-95 the first paint breathes",
     "EX-BOOT/INV-95 scripts-off honestly falls back",
+    "EX-LOAD-2 the walk's in-flight plate is a real rectangle in the work's own shape, inside the frame",
 ]
 
 # the in-flight ladder's superseding face: the plate (EX-LOAD-2) replaced the lone breath hairline
 PLATE_ON = ("(()=>{const p=document.getElementById('ex-plate');"
             "return !!p && !p.hidden && p.classList.contains('show')})()")
+# the plate's own measured box next to the walk frame's — the rectangle the visitor actually sees
+PLATE_RECT = ("(()=>{const p=document.getElementById('ex-plate');"
+              "const f=document.querySelector('.exh-frame');"
+              "if(!p||p.hidden||!f) return null;"
+              "const a=p.getBoundingClientRect(),b=f.getBoundingClientRect();"
+              "return {shown:p.classList.contains('show'),"
+              "w:a.width,h:a.height,x:a.left,y:a.top,"
+              "fw:b.width,fh:b.height,fx:b.left,fy:b.top};})()")
 MARKS = ("JSON.stringify(Object.fromEntries(performance.getEntriesByType('mark')"
          ".filter(m=>m.name.startsWith('ex:')).map(m=>[m.name.slice(3),m.startTime])))")
 FIRST_IMG = "document.querySelector('.exh-frame img.work')"
@@ -169,6 +185,36 @@ else:
                   mid["plate"] and not mid["complete"] and mid["text"].strip() == ""
                   and not after["plate"] and after["ok"] and after["op"] > 0.5,
                   f"mid={mid} after={after}")
+        HOLD.clear()
+
+        # 1b · the in-flight plate is a REAL rectangle: while the picture is in flight the plate
+        # holds the place the photograph is about to take — a non-zero box, the work's own aspect,
+        # standing inside the walk frame's own box. Measured, not merely painted: the tone can be
+        # right and the box still be 0×0, which paints nothing at all.
+        HOLD.update(match=SHAPE_W["id"], delay=3.0)
+        with Browser(width=1280, height=900) as br:
+            br.navigate("about:blank")
+            br.navigate(base + "/")
+            br.evaluate(f"localStorage.setItem('ex.exhibition', {json.dumps(SHAPE_WALK)})")
+            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+            br.reload()
+            rect = None
+            for _ in range(30):                        # poll for the standing plate, then measure it
+                br.sleep(0.1)
+                r = br.evaluate(PLATE_RECT)
+                if r and r.get("shown") and r.get("w") is not None:
+                    rect = r
+                    break
+            got_ar = (rect["w"] / rect["h"]) if rect and rect["h"] else 0
+            inside = bool(rect) and (
+                rect["x"] >= rect["fx"] - 0.5 and rect["y"] >= rect["fy"] - 0.5
+                and rect["x"] + rect["w"] <= rect["fx"] + rect["fw"] + 0.5
+                and rect["y"] + rect["h"] <= rect["fy"] + rect["fh"] + 0.5)
+            check(BROWSER_ROWS[7],
+                  bool(rect) and rect["w"] > 4 and rect["h"] > 4
+                  and abs(got_ar - SHAPE_AR) <= 0.02 * SHAPE_AR and inside,
+                  f"work={SHAPE_W['id']} {SHAPE_W['w']}x{SHAPE_W['h']} rect={rect} "
+                  f"work_ar={SHAPE_AR:.4f} plate_ar={got_ar:.4f} inside={inside}")
         HOLD.clear()
 
         # 2 · a healthy line never sees the plate: a normal local crossing lays no ex:plate

@@ -59,6 +59,25 @@
       faceSync();                                      // the room stands revealed; sideOpen keeps the lock (EX-CHROME)
     });
   }
+  // EX-LOAD-2 (INV-72): the room's pictures ride the walk's and the door's own in-flight ladder —
+  // the SAME core, knobs, classes and timings, never a second copy of them. A plate PER picture
+  // (a whole room may be in flight at once), and no ex: marks: the room stays off the walk's loading
+  // counter, exactly as the door does. The caller hands the host the plate is laid in and, in the
+  // lane, the grid column the picture stands in; a picture already in hand shows at once, no plate.
+  function seriesArm(img, w, host, col) {
+    if (!img || !w || !host) return;
+    if (img.complete) { img.dataset.ladder = "done"; return; }   // cached ⇒ shows at once, no plate
+    const p = document.createElement("div");
+    p.className = "exs-plate";
+    p.innerHTML = '<i class="ex-bar" aria-hidden="true"></i>';
+    if (w.w && w.h) p.style.setProperty("--ar", w.w / w.h);      // the lane's caps read the work's shape
+    if (col) { p.style.gridColumn = col; p.style.gridRow = "1"; }  // the picture's own cell
+    ladderFlight(img, w, host, p, [], () => img.isConnected, false);
+    // the core lays every plate at the host's head; in the LANE the host is the whole row, so the
+    // plate is moved to its own picture's side — the two then read as one pair, and the lane's rest
+    // can pass from the plate to the photograph the moment it lands (the CSS pair rule)
+    if (col) host.insertBefore(p, img);
+  }
   function dressSide(S, idx, laystep) {
     const st = side.querySelector("#exs-stage");
     st.className = "exs-stage " + S.variant;           // the series' own character picks the face
@@ -71,20 +90,23 @@
     const decodes = [];               // room before the pictures decode is never touched again
     let laneTaken = false;            // the visitor already took the lane in hand — the decode
                                        // re-affirm below must never yank it back out from under them
+    let laneCol = 0;                  // the lane is ONE grid row; each picture takes the next column
     S.members.forEach((id, i) => {
       const w = byId[id];
       if (!w) return;
       if (S.variant === "lane") {
+        const col = String(++laneCol);                   // the picture's own column — its plate shares it
         const im = new Image();
         ladderOn(im, w, ladderSizes("lane"));            // EX-LADDER (INV-63): the lane's box is CSS max-width:64vw
-        im.classList.add("ex-skel");                     // EX-SKEL (INV-48): the lane photograph shows it is still arriving
-        im.addEventListener("load", () => im.classList.remove("ex-skel"), { once: true });
         im.src = w.img;
         im.alt = workDesc(w.id);                         // N7-A11Y (INV-102, C6): the lane photograph speaks
         im.dataset.id = w.id;                            // EX-PICSTAT: the room look reads its pic
         im.tabIndex = 0;                                 // N7-A11Y (INV-102, B4): the lane photograph is keyboard-reachable (the lane scrolls by arrow key — the side-level handler below)
         im.setAttribute("aria-keyshortcuts", "z y");     // N7-A11Y (INV-102, B2/B3): it ANNOUNCES the two keys it answers — the closer look and the gift
+        im.style.gridColumn = col;
+        im.style.gridRow = "1";
         st.appendChild(im);
+        seriesArm(im, w, st, col);                       // EX-LOAD-2 (INV-72): the work's own tone holds the place, the photograph fades in over it
         if (im.decode) decodes.push(im.decode().catch(() => {}));   // N7-A11Y (INV-102, D3): feature-guard like the three siblings (06/07/12) — no bare decode where it is unsupported
         return;
       }
@@ -100,9 +122,7 @@
       const pim = p.querySelector("img");                // N7-A11Y (INV-102, C6): the polaroid speaks
       if (pim) {
         pim.alt = workDesc(w.id);
-        pim.classList.add("ex-skel");                    // EX-SKEL (INV-48): the polaroid shows it is still arriving
-        if (pim.complete && pim.naturalWidth) pim.classList.remove("ex-skel");   // a cached print never flashes the shimmer
-        else pim.addEventListener("load", () => pim.classList.remove("ex-skel"), { once: true });
+        seriesArm(pim, w, p);                            // EX-LOAD-2 (INV-72): the plate covers the photograph's slot; the cream paper stays paper
       }
       // N7-A11Y (INV-102, B4): the polaroid is a keyboard button — focusable, named, opened by Enter/Space
       p.tabIndex = 0;

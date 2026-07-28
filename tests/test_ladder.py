@@ -97,6 +97,10 @@ BROWSER_ROWS = [
     "EX-LADDER a series lane picture rides the ladder (INV-63)",
     "EX-LADDER a polaroid on the table rides the ladder — the smallest tier for a thumb-sized box (INV-63)",
     "EX-LOAD-FRAME the walk plate raises the loading frame (body.ex-loading-frame) + the counter's loading mark renders while it stands; both clear when the picture lands (his 2026-07-22 note)",
+    "EX-LOAD-2 · SL1 a lane picture still arriving wears its work's OWN baked tone, in the picture's own shape and size (the grey shimmer is gone from the lane)",
+    "EX-LOAD-2 · SL2 a polaroid still arriving wears its work's OWN baked tone, and the plate covers the photograph's slot alone — never the cream paper border",
+    "EX-LOAD-2 · SL3 a genuinely long wait adds the crawling bar on a room picture (no bar while the plate first stands; wordless throughout — INV-1)",
+    "EX-LOAD-2 · SL4 a fast room picture shows no plate at all (the ladder ran — every room picture is marked done — and laid nothing)",
 ]
 
 # ---- DL1/DL2 helpers: the door's per-window plate (class .exd-plate, five may fly at once) --------
@@ -499,15 +503,24 @@ else:
         LANE = next((s for s in SERIES if s["variant"] == "lane"), None)
         PRINTS = next((s for s in SERIES if s["variant"] == "polaroids"), None)
 
-        def open_series(br, member):
+        def walk_on(br, member, tempo="0.2"):
+            """boot a stored walk resting on `member` and let it settle (the room is one chip away)."""
             br.navigate(base + "/")
             br.evaluate("localStorage.clear();sessionStorage.clear()")
-            br.evaluate("localStorage.setItem('ex-tempo','0.2')")
+            br.evaluate("localStorage.setItem('ex-tempo','%s')" % tempo)
             br.evaluate("localStorage.setItem('ex.exhibition', JSON.stringify({v:%s, pick:%s, shown:10}))"
                         % (json.dumps(VER), json.dumps(member)))
             br.reload()
             br.sleep(1.3)
+
+        def cross_to_room(br):
+            """the series chip → the room dresses. The wire's state is the CALLER's to set, so a row
+            can boot the walk over a healthy link and hold only the room's own pictures (SL1–SL4)."""
             br.click("#exh-cap .ex-series", settle=0.8)
+
+        def open_series(br, member):
+            walk_on(br, member)
+            cross_to_room(br)
 
         if LANE:
             with Browser(width=1280, height=900) as br:
@@ -569,6 +582,153 @@ else:
               and landed.get("frame") is False and landed.get("mark") is False
               and landed.get("markShown") is False,
               f"while the plate stood={stood}  after it landed={landed}")
+
+        # 20–23 · SL1–SL4 — the SERIES ROOM rides the very same in-flight ladder the walk and the
+        # door ride (his 2026-07-28 word). A lane picture and a polaroid still arriving each wear
+        # their work's OWN raw baked tone in the picture's own shape and size; a genuinely long wait
+        # adds the same crawling bar; a fast picture lays no plate at all. One plate PER picture
+        # (.exs-plate, a whole room may fly at once), never the walk's single #ex-plate. The wire is
+        # held only from the CROSSING on, so the room's own pictures are the ones in flight.
+        ROOM_ASSETS = "/gallery/assets/"
+        ANY_ROOM_BAR = "!!document.querySelector('#exs-stage .exs-plate.bar')"
+        ROOM_PLATES = "document.querySelectorAll('#exs-stage .exs-plate').length"
+        ROOM_PLATES_SHOWN = "document.querySelectorAll('#exs-stage .exs-plate.show').length"
+
+        # The LANE hangs each picture as a DIRECT child of #exs-stage — the reach every other surface
+        # reads it by (the grab guard and the keyboard hang set both spell `#exs-stage > img`) — so a
+        # lane plate is the picture's SIBLING sharing its grid cell, and the two are paired by the
+        # column they stand in. The POLAROID already has a wrapper, so its plate lives inside it.
+        LANE_PLATE = (
+            "(()=>{const st=document.getElementById('exs-stage');if(!st)return '';"
+            "for(const p of st.querySelectorAll(':scope > .exs-plate')){"
+            "if(p.hidden||!p.classList.contains('show'))continue;"
+            "const col=p.style.gridColumn;"
+            "const i=[...st.querySelectorAll(':scope > img')].find(x=>x.style.gridColumn===col);"
+            "if(!i)continue;"
+            "const a=p.getBoundingClientRect(),m=i.getBoundingClientRect();"
+            "return JSON.stringify({id:i.dataset.id||'',bg:getComputedStyle(p).backgroundColor,"
+            "bar:p.classList.contains('bar'),text:(p.textContent||''),col:col,"
+            "plate:[a.left,a.top,a.width,a.height],img:[m.left,m.top,m.width,m.height]});}"
+            "return '';})()")
+        PRINT_PLATE = (
+            "(()=>{for(const b of document.querySelectorAll('#exs-stage .exs-print')){"
+            "const p=b.querySelector('.exs-plate');"
+            "if(!p||p.hidden||!p.classList.contains('show'))continue;"
+            "const i=b.querySelector('img');if(!i)continue;"
+            "const a=p.getBoundingClientRect(),m=i.getBoundingClientRect(),"
+            "c=b.getBoundingClientRect();"
+            "return JSON.stringify({id:b.dataset.id||'',bg:getComputedStyle(p).backgroundColor,"
+            "bar:p.classList.contains('bar'),text:(p.textContent||''),"
+            "plate:[a.left,a.top,a.width,a.height],img:[m.left,m.top,m.width,m.height],"
+            "paper:[c.left,c.top,c.width,c.height]});}"
+            "return '';})()")
+
+        def poll_plate(br, probe, tries=45):
+            """poll a plate probe — JSON while a plate stands, '' while none does."""
+            for _ in range(tries):
+                br.sleep(0.1)
+                d = json.loads(br.evaluate(probe) or "{}")
+                if d:
+                    return d
+            return {}
+
+        # 20 · SL1 the lane picture + 22 · SL3 the crawling bar — one held room serves both: the
+        # plate is read the moment it stands (no bar yet), then the wait runs long and the bar joins.
+        if LANE:
+            HOLD.clear()
+            with Browser(width=1280, height=900) as br:
+                walk_on(br, LANE["members"][0], tempo="1")     # a healthy walk…
+                HOLD.update(match=ROOM_ASSETS, delay=4.0)      # …then the room's pictures crawl in
+                cross_to_room(br)
+                lp = poll_plate(br, LANE_PLATE)
+                skel = int(br.evaluate("document.querySelectorAll('#exs-stage img.ex-skel').length") or 0)
+                lane_bar = False
+                for _ in range(45):                            # poll past bar_wait (1.5s), still held
+                    br.sleep(0.1)
+                    if br.evaluate(ANY_ROOM_BAR):
+                        lane_bar = True
+                        break
+                bar_text = br.evaluate(
+                    "(()=>{const p=document.querySelector('#exs-stage .exs-plate.bar');"
+                    "return p?(p.textContent||''):'';})()")
+            HOLD.clear()
+            lw = BYID.get(str(lp.get("id")))
+            lane_tone = bool(lw) and near_rgb(lp.get("bg"), lw["dom"], 6)
+            lrect = lp.get("plate") or [0, 0, 0, 0]
+            lslot = lp.get("img") or [-999, -999, 0, 0]
+            lane_real = lrect[2] > 40 and lrect[3] > 40          # a real rectangle, not a 0×0 ghost
+            want_ar = (lw["w"] / lw["h"]) if (lw and lw.get("h")) else None
+            lane_shape = bool(want_ar) and lrect[3] > 0 and abs(lrect[2] / lrect[3] - want_ar) <= 0.04 * want_ar
+            # the plate stands in the PICTURE's own place: the still-empty <img>'s box falls inside it
+            lane_cell = (lrect[0] - 2 <= lslot[0] <= lrect[0] + lrect[2] + 2
+                         and lrect[1] - 2 <= lslot[1] <= lrect[1] + lrect[3] + 2)
+            check(BROWSER_ROWS[20],
+                  bool(lp.get("id")) and lane_tone and lane_real and lane_shape and lane_cell and skel == 0,
+                  f"plated_id={lp.get('id')} tone={lane_tone}(bg={lp.get('bg')} vs "
+                  f"dom={(lw or {}).get('dom')}) plate={lrect} picture_slot={lslot} col={lp.get('col')} "
+                  f"want_ar={want_ar} real_box={lane_real} shape={lane_shape} same_cell={lane_cell} "
+                  f"lane ex-skel count={skel}")
+            wordless = ((lp.get("text") or "").strip() == "" and (bar_text or "").strip() == ""
+                        and not re.search(r"\d", (lp.get("text") or "") + (bar_text or "")))
+            check(BROWSER_ROWS[22],
+                  bool(lp.get("id")) and not lp.get("bar") and lane_bar and wordless,
+                  f"bar_at_first_show={lp.get('bar')} (must be False) bar_past_the_long_wait={lane_bar} "
+                  f"wordless={wordless} plate_text={lp.get('text')!r} bar_text={bar_text!r}")
+        else:
+            skip(BROWSER_ROWS[20], "the fixture bakes no lane series")
+            skip(BROWSER_ROWS[22], "the fixture bakes no lane series")
+
+        # 21 · SL2 the polaroid — the plate covers the PHOTOGRAPH's slot; the cream paper stays paper
+        if PRINTS:
+            HOLD.clear()
+            with Browser(width=1280, height=900) as br:
+                walk_on(br, PRINTS["members"][0], tempo="1")
+                HOLD.update(match=ROOM_ASSETS, delay=4.0)
+                cross_to_room(br)
+                pp = poll_plate(br, PRINT_PLATE)
+                pskel = int(br.evaluate("document.querySelectorAll('#exs-stage img.ex-skel').length") or 0)
+            HOLD.clear()
+            pw = BYID.get(str(pp.get("id")))
+            print_tone = bool(pw) and near_rgb(pp.get("bg"), pw["dom"], 6)
+            a, m, c = (pp.get("plate") or [0] * 4), (pp.get("img") or [0] * 4), (pp.get("paper") or [0] * 4)
+            covers_slot = a[2] > 20 and all(abs(a[i] - m[i]) <= 1.5 for i in range(4))
+            inside_paper = (a[0] > c[0] + 3 and a[1] > c[1] + 3
+                            and a[2] < c[2] - 6 and a[3] < c[3] - 20)
+            check(BROWSER_ROWS[21],
+                  bool(pp.get("id")) and print_tone and covers_slot and inside_paper and pskel == 0,
+                  f"plated_id={pp.get('id')} tone={print_tone}(bg={pp.get('bg')} vs "
+                  f"dom={(pw or {}).get('dom')}) plate={a} photo_slot={m} paper={c} "
+                  f"covers_slot={covers_slot} inside_paper={inside_paper} ex-skel count={pskel}")
+        else:
+            skip(BROWSER_ROWS[21], "the fixture bakes no polaroid series")
+
+        # 23 · SL4 a fast room picture lays no plate at all. Anchored on the ladder having actually
+        # RUN — every room picture carries the ladder's own done mark — so the row cannot green on a
+        # room that simply has no ladder in it.
+        if LANE:
+            HOLD.clear()
+            with Browser(width=1280, height=900) as br:
+                walk_on(br, LANE["members"][0], tempo="1")
+                cross_to_room(br)                              # a healthy wire — the pictures land at once
+                flashed = 0
+                for _ in range(14):
+                    br.sleep(0.1)
+                    flashed = max(flashed, int(br.evaluate(ROOM_PLATES_SHOWN) or 0))
+                br.sleep(0.8)
+                left = int(br.evaluate(ROOM_PLATES) or 0)
+                marked = json.loads(br.evaluate(
+                    "(()=>{const im=[...document.querySelectorAll('#exs-stage img')];"
+                    "return JSON.stringify({n:im.length,"
+                    "done:im.filter(i=>i.dataset.ladder==='done').length,"
+                    "shown:im.filter(i=>i.complete&&i.naturalWidth>0"
+                    "&&+getComputedStyle(i).opacity>0.5).length});})()") or "{}")
+            check(BROWSER_ROWS[23],
+                  flashed == 0 and left == 0 and marked.get("n", 0) > 0
+                  and marked.get("done") == marked.get("n")
+                  and marked.get("shown") == marked.get("n"),
+                  f"plates_shown={flashed} plates_left={left} pictures={marked}")
+        else:
+            skip(BROWSER_ROWS[23], "the fixture bakes no lane series")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

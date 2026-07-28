@@ -120,6 +120,11 @@
   function ladderFlight(img, w, host, plateEl, timers, alive, mark) {
     host.insertBefore(plateEl, host.firstChild);        // behind the photo, same cell
     plateEl.style.aspectRatio = (w.w && w.h) ? (w.w + " / " + w.h) : "";
+    // the work's shape as a NUMBER too: a surface whose plate has no box of its own (the walk's
+    // centered frame, the room's lane) reads --ar to turn its own caps into this picture's box —
+    // aspect-ratio alone has nothing to be an aspect OF when both sides resolve to auto. Set for
+    // every plate, one place; a plate that already has a box (a door window's inset:0) ignores it.
+    if (w.w && w.h) plateEl.style.setProperty("--ar", w.w / w.h);
     plateEl.style.background = "rgb(" + w.dom.join(",") + ")";   // the work's RAW baked tone (not liveAccent)
     plateEl.hidden = false;
     void plateEl.offsetWidth;                           // a fresh fade from opacity 0

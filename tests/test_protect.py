@@ -8,7 +8,10 @@ import json
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
+
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
@@ -31,6 +34,24 @@ TMP = Path(tempfile.mkdtemp(prefix="synth_protect_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)
 
+# ---------------------------------------------------------------- carry-home resolution probes
+# EX-PROTECT-RES (INV-56): the file a grab hands over is capped at GRAB_MAX_PX on its long edge, so the
+# quiz prize (the pre-marked ~1000 px bake) stays the better file on every screen. The synthetic fixture
+# hangs 64 px stand-ins, so the rows below hang a probe image of a KNOWN size on the work instead and
+# read the dimensions of the real file the browser saved. Two probes: one over the cap, one under it.
+GRAB_MAX_PX = 800                      # mirrors the client constant (engine/client/11-protect-gift.js)
+PROBE_OVER = ("probe-over.jpg", 1600, 1000)     # a retina-tier grab: must come back capped
+PROBE_UNDER = ("probe-under.jpg", 320, 200)     # already inside the cap: must come back untouched
+
+
+def write_probe(name, w, h):
+    """A real JPEG of exactly w x h, served from the bake so the canvas is never tainted."""
+    Image.linear_gradient("L").resize((w, h)).convert("RGB").save(TMP / name, "JPEG", quality=88)
+
+
+for _n, _w, _h in (PROBE_OVER, PROBE_UNDER):
+    write_probe(_n, _w, _h)
+
 # ---------------------------------------------------------------- data rows
 
 def zoom_layer_slice(js):
@@ -46,6 +67,29 @@ def zoom_layer_slice(js):
         return None
     b = js.find("/*!", a + 3)
     return js[a:(b if b >= 0 else len(js))]
+
+
+def protect_layer_slice(js):
+    """The gift/protect layer's own region of the served client, located by the same keep-marker idiom
+    the zoom slice uses (`/*!11-protect-gift.js*/`). A missing marker fails the check that reads it."""
+    MARK = "/*!11-protect-gift.js*/"
+    a = js.find(MARK)
+    if a < 0:
+        return None
+    b = js.find("/*!", a + 3)
+    return js[a:(b if b >= 0 else len(js))]
+
+
+def between(text, start, end):
+    """The region of `text` from `start` up to `end` — both located by their literal opening. Returns
+    "" when either anchor is missing, so a row built on it fails rather than passing on nothing."""
+    if not text:
+        return ""
+    i = text.find(start)
+    if i < 0:
+        return ""
+    j = text.find(end, i + len(start))
+    return text[i:(j if j >= 0 else len(text))]
 
 # 1 · the `enjoy` string is present in the greetings cache and the worker schema
 greet = json.loads((TMP / "exhibition_data.json").read_text()).get("greet") or {}
@@ -174,6 +218,32 @@ prerender_ok = ("function renderGiftBlob(" in js_src
 check("EX-PROTECT-RES JS: the gift blob is pre-rendered on open so the yes-tap shares within the gesture",
       prerender_ok, "renderGiftBlob is not wired into openGift / not consumed by giftDownload")
 
+# 8b · EX-PROTECT-RES (INV-56): the two handed-over files differ ON PURPOSE, and only ONE of them is
+#      capped. The ordinary grab is drawn down to GRAB_MAX_PX and stamped; the quiz prize is the
+#      pre-marked bake and travels a road with no canvas on it at all, so winning the quiz always
+#      brings home the larger picture. Red before 2026-07-28: no cap existed, so a retina right-click
+#      carried away a 1280 px file while the prize stayed ~1000 px.
+_pslice = protect_layer_slice(js_src)
+_stamp_fn = between(_pslice, "function stampToBlob(", "function renderGiftBlob(")
+_deliver = between(_pslice, "function renderGiftBlob(", "function openGift(")
+_prize_branch = between(between(_deliver, "function giftDownload(", "\n  }\n"), "if (preMarked) {", "} else {")
+prize_bits = {
+    "the protect layer's region is located (reach — the row reads its own subject)": _pslice is not None,
+    "the cap is a named constant in the fragment": "GRAB_MAX_PX = 800" in (_pslice or ""),
+    "the cap is applied where the grabbed file is drawn (inside stampToBlob)":
+        "GRAB_MAX_PX" in _stamp_fn and "drawImage(im, 0, 0, cv.width, cv.height)" in _stamp_fn,
+    "the cap never enlarges a smaller image (Math.min(1, ...))": "Math.min(1, GRAB_MAX_PX" in _stamp_fn,
+    "no cap sits on the delivery routing itself": "GRAB_MAX_PX" not in _deliver,
+    "the prize road hands the pre-marked bytes over as they are (fetch → blob → saveBlob, no canvas)":
+        bool(_prize_branch) and "fetch(src)" in _prize_branch and "saveBlob(blob" in _prize_branch
+        and "stampToBlob" not in _prize_branch,
+}
+check("EX-PROTECT-RES (INV-56): the ordinary grab is capped at GRAB_MAX_PX (800) on its long edge and "
+      "never enlarged, while the quiz prize keeps travelling its own pre-marked road untouched — the "
+      "won picture stays the better file on every screen",
+      all(prize_bits.values()),
+      "failing: " + ", ".join(k for k, v in prize_bits.items() if not v))
+
 # 9 · JS: the buy line stays HIDDEN until a shop exists — an empty content key hides it with NO
 #     literal fallback (his word 2026-07-22: rephrase to «buy a larger print», hide until it exists)
 buy_ok = ("buyEl.hidden" in js_src and "for a larger print — buy" not in js_src)
@@ -204,7 +274,60 @@ BROWSER_ROWS = [
     "EX-PROTECT the enlarged view refuses a raw save on Blink (Android's engine): a contextmenu on "
     ".exz-img is prevented and answered by the gracious line, the road Android relies on (iOS uses the "
     "callout instead, which Blink ignores)",
+    "EX-PROTECT-RES (INV-56) an ordinary grab of a work shown larger than the cap saves a file whose "
+    "long edge is exactly 800 px — the real file the browser wrote, measured on disk",
+    "EX-PROTECT-RES (INV-56) a work already shown smaller than the cap is saved at its own size — the "
+    "cap shrinks a grab, it never enlarges one",
 ]
+
+# ---- EX-PROTECT-RES (INV-56): what the visitor actually carries home -----------------------------
+# The rows read the REAL saved file: the harness routes every download into its own throwaway profile
+# dir (the idiom test_download_guard pins), so a grab leaves a .jpg on disk that PIL can measure.
+SET_PROBE = ("(u)=>{const im=document.querySelector('.exh-frame img.work');"
+             "if(!im)return 'no-work';"
+             "im.removeAttribute('srcset');im.removeAttribute('sizes');"      # the ladder must not re-pick
+             "im.src=u;return 'set';}")
+PROBE_STATE = ("(()=>{const im=document.querySelector('.exh-frame img.work');if(!im)return 'null';"
+               "return JSON.stringify({w:im.naturalWidth,h:im.naturalHeight,done:!!im.complete,"
+               "src:im.currentSrc||im.getAttribute('src')||''});})()")
+
+
+def wait_for_saved(profile, pattern, timeout=12.0):
+    """Poll the throwaway profile dir for the saved gift file (the save is async: load → canvas → blob)."""
+    end = time.time() + timeout
+    while time.time() < end:
+        hits = sorted(f for f in Path(profile).glob(pattern) if not f.name.endswith(".crdownload"))
+        if hits:
+            return hits[0]
+        time.sleep(0.2)
+    return None
+
+
+def grab_probe(br, base, probe):
+    """Hang a probe image of a known size on the first work, right-click it, say yes — and return
+    (dimensions_of_the_saved_file, detail). None dimensions means no file ever left the browser."""
+    name, w, h = probe
+    enter(br, base)
+    if br.evaluate("(%s)(%s)" % (SET_PROBE, json.dumps("/" + name))) != "set":
+        return None, "the probe could not be hung on a work"
+    state = {}
+    for _ in range(60):
+        state = json.loads(br.evaluate(PROBE_STATE) or "null") or {}
+        if state.get("done") and state.get("w") == w and state.get("src", "").endswith(name):
+            break
+        br.sleep(0.1)
+    if not (state.get("w") == w and state.get("h") == h):
+        return None, f"the probe never became the shown image: {state}"
+    br.evaluate("document.querySelector('.exh-frame img.work')"
+                ".dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))")
+    br.sleep(0.5)
+    br.click(".gift-yes", settle=0.6)                    # yes → giftDownload → a real file is saved
+    saved = wait_for_saved(br._profile, "*" + Path(name).stem + "*")
+    if saved is None:
+        return None, f"no saved file in the profile dir (shown {w}x{h})"
+    with Image.open(saved) as im:
+        dims = im.size
+    return dims, f"shown={w}x{h} saved={saved.name} dims={dims[0]}x{dims[1]}"
 
 # open the enlarged view by a two-finger pinch on the walk work, then long-press it (contextmenu). On
 # Blink — Android Chrome's engine — a picture's native long-press "Save image" menu rides `contextmenu`,
@@ -306,6 +429,21 @@ else:
                   zc.get("opened") is True and zc.get("prevented") is True
                   and toast is not None and len(str(toast).strip()) > 0,
                   f"zoom_open={zc.get('opened')} contextmenu_prevented={zc.get('prevented')} toast={toast!r}")
+
+        # 5 · the carry-home cap: a work shown at 1600x1000 is saved at 800x500 (the long edge lands
+        #     exactly on the cap, the shape is kept), so the quiz prize stays the larger picture
+        with Browser(width=1280, height=900) as br:
+            dims, detail = grab_probe(br, base, PROBE_OVER)
+            check(BROWSER_ROWS[5],
+                  dims == (800, 500),
+                  detail)
+
+        # 6 · the cap only ever shrinks: a work shown at 320x200 is saved at 320x200, not stretched
+        with Browser(width=1280, height=900) as br:
+            dims, detail = grab_probe(br, base, PROBE_UNDER)
+            check(BROWSER_ROWS[6],
+                  dims == (320, 200),
+                  detail)
 
 shutil.rmtree(TMP, ignore_errors=True)
 

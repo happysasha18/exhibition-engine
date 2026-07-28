@@ -266,7 +266,13 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    in-view frame ever ladders). It sits in the same centered grid cell as the photo, sized to the
    work's aspect within the SAME caps, so nothing jumps when the picture lands. Wordless (INV-1);
    the tone fades in on the soft token; under reduce it stands still (no fade, no crawl). */
-#ex-plate{ position:relative; z-index:0; max-height:82vh; max-height:82dvh; max-width:88vw; width:auto; height:auto;
+/* the frame CENTERS its one cell rather than stretching it, and the plate is an empty box, so an
+   auto width and height both resolve to zero and the promised rectangle paints nothing (his find
+   2026-07-28). --ar — the work's width over its height, set by the ladder on every plate — turns the
+   frame's OWN caps into this one picture's box, the same shape and place the photograph is about to
+   take, so the tone stands as a real rectangle and nothing jumps when the pixels land. */
+#ex-plate{ position:relative; z-index:0; max-height:82vh; max-height:82dvh; max-width:88vw; width:auto;
+  height:min(82vh, calc(88vw / var(--ar,1))); height:min(82dvh, calc(88vw / var(--ar,1)));
   border-radius:2px; overflow:hidden; pointer-events:none;
   box-shadow:0 10px 34px rgba(0,0,0,.22);
   opacity:0; transition:opacity var(--d-soft) var(--ease); }
@@ -275,15 +281,16 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 /* the crawling bar — a thin wordless hairline in the accent riding the plate's foot; it eases
    toward but NEVER reaches the end until the photo lands, and on a silent stall it simply holds
    there (the honest indefinite state — the ladder owns no timeout). No number, ever (INV-1). */
-#ex-plate .ex-bar, .exd-plate .ex-bar{ position:absolute; left:0; bottom:0; height:2px; width:100%;
+#ex-plate .ex-bar, .exd-plate .ex-bar, .exs-plate .ex-bar{ position:absolute; left:0; bottom:0; height:2px; width:100%;
   transform-origin:left center; transform:scaleX(0); opacity:0;
   background:var(--glow,var(--accent,#b3a284)); box-shadow:0 0 7px rgba(179,162,132,.55); }
-#ex-plate.bar .ex-bar, .exd-plate.bar .ex-bar{ opacity:1; animation:ex-bar-crawl calc(6s*var(--tempo)) var(--ease) forwards; }
+#ex-plate.bar .ex-bar, .exd-plate.bar .ex-bar, .exs-plate.bar .ex-bar{ opacity:1; animation:ex-bar-crawl calc(6s*var(--tempo)) var(--ease) forwards; }
 @keyframes ex-bar-crawl{ 0%{ transform:scaleX(.04); } 55%{ transform:scaleX(.66); } 100%{ transform:scaleX(.92); } }
-@media (max-width:640px){ #ex-plate{ max-height:70vh; max-height:70dvh; max-width:92vw; } }
+@media (max-width:640px){ #ex-plate{ max-height:70vh; max-height:70dvh; max-width:92vw;
+  height:min(70vh, calc(92vw / var(--ar,1))); height:min(70dvh, calc(92vw / var(--ar,1))); } }
 @media (prefers-reduced-motion:reduce){
-  #ex-plate, .exd-plate{ transition:none; }
-  #ex-plate.bar .ex-bar, .exd-plate.bar .ex-bar{ animation:none; transform:scaleX(.5); }
+  #ex-plate, .exd-plate, .exs-plate{ transition:none; }
+  #ex-plate.bar .ex-bar, .exd-plate.bar .ex-bar, .exs-plate.bar .ex-bar{ animation:none; transform:scaleX(.5); }
 }
 
 /* EX-LOAD: the loading breath — one thin hairline in the accent tone, wordless (INV-1);
@@ -320,7 +327,13 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   border-radius:999px; padding:9px 15px; cursor:pointer; min-height:44px; }
 .exs-back:hover, .exs-back:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
 .exs-stage{ position:absolute; inset:0; }
-.exs-stage.lane{ display:flex; align-items:center; gap:7vw; padding:0 16vw;
+/* ONE grid row, a column per picture (EX-LOAD-2): a picture and its own tone plate stand in the
+   SAME column, so the plate holds the picture's place while its pixels are still crossing the wire —
+   and the photograph stays a DIRECT child of #exs-stage, the reach the grab guard and the keyboard
+   hang set read it by. The columns take their content's own width, so the lane overflows and scrolls
+   exactly as it did while it was a flex row. */
+.exs-stage.lane{ display:grid; grid-auto-flow:column; grid-auto-columns:max-content;
+  align-items:center; gap:7vw; padding:0 16vw;
   overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
   -webkit-overflow-scrolling:touch;                 /* iOS momentum — a rightward flick carries (2026-07-15) */
   scroll-snap-type:x proximity;                      /* the lane rests near a picture, never mid-gap */
@@ -342,7 +355,30 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
      deter as the hung work and the door window — no text-select drag, no ghost drag-image, no iOS
      long-press save sheet. Without this the phone's native «Save to Photos» rose on the print in
      front of the gift ceremony (his find 2026-07-22); the class covers every place, not most. */
+  position:relative; z-index:1;                   /* the photograph rides ABOVE its plate (EX-LOAD-2) */
   user-select:none; -webkit-user-select:none; -webkit-user-drag:none; -webkit-touch-callout:none; }
+/* EX-LOAD-2 (INV-72): the room's own in-flight plate — the same tone, grace, bar and reveal the walk
+   and the door ride, one plate PER picture (a whole room may fly at once). The .ex-bar, .show and
+   crawl rules are the shared ones above; only the box differs per surface. In the LANE the plate
+   stands in the picture's own column and carries the work's shape and size while the <img> still has
+   no pixels to be measured by: --ar is the work's width over its height, which turns the lane's own
+   caps into that one picture's box, so nothing jumps when the photograph lands. On the POLAROID the
+   plate is inset by the paper's own padding, so it covers the photograph's slot and the cream border
+   around it stays paper. */
+.exs-plate{ position:relative; z-index:0; width:auto; height:auto; border-radius:2px;
+  overflow:hidden; pointer-events:none; opacity:0; transition:opacity var(--d-soft) var(--ease); }
+.exs-plate.show{ opacity:1; }
+.exs-plate[hidden]{ display:none; }
+.exs-stage.lane .exs-plate{ place-self:center; max-height:56vh; max-height:56dvh; max-width:64vw;
+  height:min(56vh, calc(64vw / var(--ar,1))); height:min(56dvh, calc(64vw / var(--ar,1)));
+  box-shadow:0 10px 34px rgba(0,0,0,.22); }
+.exs-stage.lane > img{ z-index:1; }               /* the photograph rides ABOVE its plate */
+/* while a picture is still arriving its own box is empty, so the LANE'S REST reads the plate — the
+   picture's real box — and the empty photograph yields its snap point for exactly that long. Without
+   this the lane re-snapped the moment a picture landed and moved a resting visitor (INV-88). */
+.exs-stage.lane > .exs-plate{ scroll-snap-align:center; }
+.exs-stage.lane > .exs-plate + img{ scroll-snap-align:none; }
+.exs-print .exs-plate{ position:absolute; inset:7px 7px 28px; border-radius:0; }
 .exs-print:hover{ transform:rotate(var(--rot)) translate(0,-8px); }
 /* N7-A11Y (INV-102, B4): the room's polaroids + lane photographs are keyboard-reachable — a focus-visible halo */
 .exs-print:focus{ outline:none; }
@@ -544,9 +580,11 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
   .ex-busy-ring svg, .ex-busy-ring circle{ animation:none; }
   .ex-busy-ring circle{ stroke-dashoffset:44; } }
 
-/* ===== EX-SKEL (INV-48): the waiting mark for a picture still arriving where the single #ex-plate does
-   not fit — the series room's many photographs + polaroids, a cold closer-look slot. A shimmer sweeps
-   the box until the image paints, then the class is dropped (the picture sibling of the EX-BUSY ring). */
+/* ===== EX-SKEL (INV-48): the waiting mark for a picture still arriving where a tone plate does not
+   fit — the cold closer-look slot, whose box is the picture's own arriving crop. A shimmer sweeps the
+   box until the image paints, then the class is dropped (the picture sibling of the EX-BUSY ring).
+   The series room left this mark on 2026-07-28: its lane pictures and its polaroids now wear the
+   work's own tone on the in-flight ladder, the same one the walk and the door ride (EX-LOAD-2). */
 .ex-skel{ background-color:rgba(255,255,255,.03);
   background-image:linear-gradient(100deg, rgba(255,255,255,0) 32%, rgba(255,255,255,.07) 50%, rgba(255,255,255,0) 68%);
   background-size:220% 100%; background-repeat:no-repeat;

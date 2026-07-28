@@ -1301,6 +1301,24 @@ else:
                 return fired == "ok" and br.evaluate(ZOPEN)
             return _fn
 
+        def raise_zoom_at_door(mode):
+            """The zoom opens over ANY face, the door included: a two-finger touch is picked against
+            ZOOM_SEL, which carries `.exd-window img`, and the opener never closes the door
+            (12-zoom-inspect-grab.js:450,459-468 against 07-door-face-ceremony.js:426-431). So a
+            guest can pinch a door window and stand with the door AND the zoom raised together. In
+            that state the door's own chrome — its windows and its language corner — is itself under
+            a covering face and owes the same refusal as any other control. One caption variant
+            covers it: the caption's own controls are covered by the door in either variant, and the
+            cells this face adds are the door's chrome, which no variant changes."""
+            def _fn(br):
+                if not raise_door(mode)(br):
+                    return False
+                fired = br.evaluate("(%s)('.exd-window img')" % PINCH)
+                br.sleep(0.3)
+                return (fired == "ok" and br.evaluate(ZOPEN)
+                        and br.evaluate("document.body.classList.contains('ex-door')"))
+            return _fn
+
         def raise_closing(mode):
             def _fn(br):
                 wid = _resolve_content(br, mode)
@@ -1328,6 +1346,11 @@ else:
              {"#ex-gift-card .gift-yes", "#ex-gift-card .gift-no"}, {}),
             ("question card", "question chip", raise_quiz_card("quiz"), {".quiz-opt"}, {}),
             ("zoom layer", "series pill", raise_zoom("series"), {"#ex-zoom .exz-btn"}, {}),
+            # the door's chrome sits INSIDE #ex-door's own stacking context (exhibition.css:79), so
+            # the zoom's root-level z-index:120 paints over the whole subtree although .exd-lang
+            # carries 125 (exhibition.css:157) — an already-true fence that pins the relationship
+            ("zoom over the door", "series pill", raise_zoom_at_door("series"),
+             {"#ex-zoom .exz-btn"}, {}),
             ("zoom layer", "question chip", raise_zoom("quiz"), {"#ex-zoom .exz-btn"}, {}),
             ("closing sign", "series pill", raise_closing("series"), {".exh-fin .row > *"},
              {".exsnd-btn": SND_EXC_REASON}),
@@ -1400,12 +1423,18 @@ else:
                     ))
 
         bad_cells = [c for c in grid_cells if not c["ok"]]
+        # The grid's own REACH: a face that fails to raise drops its whole column into `unreached`
+        # and the walk would pass on nothing. Every declared face owes its instance; the cells no
+        # navigation can produce are the named `unreached` list above, which is written by hand.
+        missing_faces = [f"{d[0]} / {d[1]}" for d in FACE_DEFS if f"{d[0]} / {d[1]}" not in exercised]
+        if "side room / series pill" not in exercised:
+            missing_faces.append("side room / series pill")
         check(
             "CAP1 EX-COMPOSE the caption's own controls take no press while the label is hidden",
-            not bad_cells,
+            not bad_cells and not missing_faces,
             f"{len(grid_cells)} cells walked over {len(exercised)} face-instances "
             f"({'; '.join(exercised)}); {len(bad_cells)} wrong: {bad_cells}; "
-            f"unreached: {unreached}",
+            f"faces that never raised: {missing_faces}; unreached: {unreached}",
         )
 
         # ---- CAP2: the exception fenced on its own — a later change that retracts the sound

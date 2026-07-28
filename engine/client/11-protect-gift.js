@@ -17,6 +17,15 @@
   // is taken (tlvphotos.com → tlvphotos), a plain slug, with a never-blank fallback.
   const DL_BASE = ((ROOT_URL.replace(/^https?:\/\//, "").split("/")[0].split(":")[0].split(".")[0])
                    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) || "gallery";
+  // EX-PROTECT-RES (INV-56): the file an ORDINARY grab hands over is capped on its LONG EDGE, on every
+  // screen. The walk's <img> resolves the responsive ladder to 640 / 960 / 1280 px by viewport x pixel
+  // density, so on a retina screen a right-click used to carry away a 1280 px file — LARGER than the
+  // quiz prize, which is the pre-marked ~1000 px bake. The prize is the reward for playing, so it must
+  // be the better file: the ceremony grab is drawn DOWN to this cap before it is stamped and encoded.
+  // The shown image is untouched — this governs only the copy that leaves the machine. An image already
+  // inside the cap is drawn at its own size (the cap never enlarges), and the quiz prize never travels
+  // this road at all (it goes out as the fetched pre-marked bytes).
+  const GRAB_MAX_PX = 800;        // [default] the long edge of a grabbed file (his word 2026-07-28)
   // ---- EX-PROTECT-GIFT: the picture is OFFERED, never dumped ----
   // The gift CEREMONY (his word 2026-07-08): a right-click on a work is answered by a gentle card
   // «like it? · a gift :)» and the picture is handed over only on a yes — never a blunt auto-download.
@@ -79,6 +88,12 @@
     } catch (e) { /* an engine without file-share falls through to the anchor */ }
     anchorSave(blob, name);
   }
+  // The last-resort road, reached ONLY when the canvas itself refused (a decode failure, a tainted
+  // canvas, a toBlob that returned nothing). It hands over the source bytes as they are, so it carries
+  // neither the host mark nor the GRAB_MAX_PX cap — the same canvas that would resize is the one that
+  // just failed, so no other road is left. A browser that cannot stamp still gets its picture rather
+  // than an error (INV-56's never-blocked clause); the marked, capped file is what every working
+  // browser receives.
   function rawDownload(src, name) {
     try { anchorSave(src, giftName(src, name)); } catch (e) { /* the walk loses nothing if a browser refuses the save */ }
   }
@@ -90,10 +105,15 @@
     const im = new Image();
     im.onload = () => {
       try {
+        const nw = im.naturalWidth || im.width, nh = im.naturalHeight || im.height;
+        // GRAB_MAX_PX caps the long edge; Math.min(1, ...) keeps a smaller image at its own size, so a
+        // grab never enlarges what it was given (a 640 px tier stays 640, it does not stretch to 800).
+        const k = Math.min(1, GRAB_MAX_PX / Math.max(nw, nh, 1));
         const cv = document.createElement("canvas");
-        cv.width = im.naturalWidth || im.width; cv.height = im.naturalHeight || im.height;
+        cv.width = Math.max(1, Math.round(nw * k)); cv.height = Math.max(1, Math.round(nh * k));
         const cx = cv.getContext("2d");
-        cx.drawImage(im, 0, 0);
+        cx.drawImage(im, 0, 0, cv.width, cv.height);
+        // the burnt host mark is sized off the CANVAS width, so it keeps its proportion at any cap
         const fs = Math.max(13, Math.round(cv.width * 0.022)), pad = Math.round(fs * 0.9);
         cx.font = "600 " + fs + "px -apple-system,'Segoe UI',sans-serif";
         cx.textAlign = "right"; cx.textBaseline = "alphabetic";
