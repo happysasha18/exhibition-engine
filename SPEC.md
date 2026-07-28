@@ -639,8 +639,21 @@ from the title, place, subject, and light marks only. Never invents a name, pers
 weather, or history the fragments do not hold. Never names technique (no camera, lens, exposure,
 editing, filter, or cut). Arrives by the house breath on `--tone`-tinted text.
 
+**The opening plot covers the works a visit reads** (`EX-STORY-LEAD`): the first spread carries two
+portions. The opening plot covers the first `story_lead` works (three by default, clamped 1–12) and
+is asked the moment the walk stands; a second plot covers the rest of that spread and is asked once
+the focus comes within one work of it. Every portion past the first spread opens on its own unfold
+exactly as before. The walk's own record is the ground: most visits rest inside the opening works,
+so an arrival that asked for ten works bought a telling for works that were never reached. A shorter
+opening slice also repeats across visitors far more often, so the edge serves it from cache more
+often. Each portion keeps its own ordered ids and its own cache key (`EX-STORY`), so no work is told
+twice and no line shifts under the eye, and a visitor who walks the whole spread reads exactly the
+same lines. *Success measure:* an arrival asks once and names the opening works alone; reaching the
+opening portion's last work asks the rest of the spread once, with no work named in both.
+`EX-STORY-LEAD` `INV-108`
+
 **A plot per opened portion** (`EX-STORY`, resolves `⟨DELTA-16⟩`): the story's unit is the PORTION
-just opened — the cold first spread is itself the first portion, then each «ещё N». Every portion
+just opened — the cold first spread opens as two of them (`EX-STORY-LEAD`), then each «ещё N». Every portion
 asks `/api/story` for ITS OWN ordered ids alone (never the grown `0..shown` set), under its own
 cache key, so a line already read is never re-requested and never shifts under the eye, and no
 portion is ever named a «part N» of another. A plot carrying at least one line counts as told, and the works it left wordless join the owed set
@@ -849,15 +862,21 @@ stands; on **resumes from it**, never from the beginning. The element owns the p
 starts the loop from the top. `INV-52`
 
 **A word greets on the first visit** (`EX-SOUND-GREET`): the resting control wears a small
-music-note mark in place of the bare play triangle — the mark that says *sound lives here*. On a
-visitor's very first arrival, and only then, a single localized word breathes in beside the note
-(«music» in the source tongue, the viewer's own tongue wherever the greet set carries the string,
-`EX-I18N`), holds a moment, then settles away — leaving the bare note. The word is a greeting, never
-a control: the button stays pressable the whole while, and the note is what remains once the word has
-gone. The once-ness persists in `ex.sound` (a `greeted` mark written the moment the word first
-shows), so a return visit meets only the quiet note, never the word again. Under reduced motion or
-Save-Data the choreography stands down — the note rests from the first frame with no breathing word
-(`INV-33`). A configured-silent instance (`sound_url` empty) shows no control and no greeting.
+music-note mark, the mark that says sound lives here. On a visitor's very first arrival, and only
+then, a small pill carrying a single localized word breathes in beside the note («music» in the
+source tongue, the viewer's own tongue wherever the greet set carries the string, `EX-I18N`), holds
+a moment, then settles away, leaving the bare note. A soft one-time glint sweeps the pill as it
+arrives, the same sweep the quiz chip wears, off the same keyframes (`EX-QUIZ-GLINT`). The pill is a
+second hit area for the control standing beside it: a press on the word turns the sound on. It
+carries `aria-hidden` and no tab stop, because that one control is reachable by finger, pointer and
+key alike, so the walk keeps one sound control and announces one. The greeting and the quiz chip are
+never offered at the same time: the word waits for a moment when no chip stands on the walk, and a
+chip arriving while the word shows withdraws the word at once and releases the first-arrival mark,
+so a later quiet moment still greets a first-time visitor. The once-ness persists in `ex.sound` (a
+`greeted` mark written the moment the word shows, released again by an interrupted greeting), so a
+return visit meets only the quiet note. Under reduced motion or Save-Data the choreography stands
+down, the note resting from the first frame with no word and no glint (`INV-33`). A
+configured-silent instance (`sound_url` empty) shows no control and no greeting.
 `EX-SOUND-GREET` `INV-101`
 
 ### The gracious deterrent
@@ -1075,7 +1094,7 @@ An instance may attach a **quiz** to any work through an optional `<content>/qui
 the chip label localized — while the **one correct answer is private**, together with the prize
 path, baked **only into `_worker.js`** (the one bundle Pages never serves) and only when the `quiz`
 flag ships on; flag off ⇒ no quiz key on any work and the walk is byte-identical. A quiz-bearing work
-advertises a subtle **guess-the-place chip** on its plaque whose words ride the `quiz_chip_copy` arm
+advertises a subtle **guess-the-place chip** on its plaque naming the question and its gift
 (`EX-QUIZ-COPY`, localized), over which a soft one-time glint runs as it appears (`EX-QUIZ-GLINT`). Tapping the chip opens a **compact card that
 sits over the still-visible photograph** — a light scrim for legibility, never a black curtain — with
 the prompt and the **four options in a 2×2 grid**. The card's accent is the **focused work's own live
@@ -1112,14 +1131,15 @@ non-English literal ever ships; the **question content** stays instance-supplied
 unknown id ⇒ the route 404s and the walk loses nothing.
 `EX-QUIZ` `EX-QUIZ-EDGE` `EX-QUIZ-PRIZE` `EX-QUIZ-ONCE` `EX-QUIZ-GLINT` `INV-59` `INV-60` `INV-64` `INV-65` `INV-66`
 
-**EX-QUIZ-COPY** (`INV-100` · `EX-AB`). The quiz chip speaks its offer plainly. Its words ride the
-`quiz_chip_copy` experiment (arms `place` and `place_prize`, salt `quizcopy`): the plain arm names
-the act — «guess the place» — and the reward arm names the gift as well — «guess the place · win a
-wallpaper». An absent registry falls to the plain «guess the place». The words localize through
-EX-I18N (`quiz_ask_place` / `quiz_ask_prize`) with English source-tongue fallbacks, and the ai_i18n
-edge speaks any offered tongue. The dealt arm rides every beat as the `quiz_chip_copy` dimension
-(`INV-91`), so a per-arm read of the chip's open-rate follows once that dimension is registered in
-GA.
+**EX-QUIZ-COPY** (`INV-100`). The quiz chip speaks one sentence, the owner's own (2026-07-28): it
+names the question the chip asks and the gift a right answer gives — «where was this shot? · win a
+wallpaper». The words ride the ordinary localized set (`quiz_ask`, `EX-I18N`) with the English
+source tongue standing as the fallback, so the sentence reaches every tongue the greet set carries
+and the edge translator speaks any tongue past those. The `quiz_chip_copy` split (arms `place` /
+`place_prize`, salt `quizcopy`) RETIRED 2026-07-28 on the owner's word, the same day and for the
+same reason as the quiz arm before it: he read both wordings and adopted one, and an instance's
+traffic could not settle a two-arm test in any useful time. No experiment rides the quiz under this
+flag now, so the registry stays empty and a beat carries no `quiz_chip_copy` dimension.
 `EX-QUIZ-COPY` `INV-100`
 
 **The faces meet — input, chrome, and viewport when surfaces stand together (the 2026-07-09 bug class
@@ -1491,9 +1511,11 @@ leaves the key absent and the payload byte-for-byte today's. **RETIRED 2026-07-2
 word (first said 2026-07-23; the traffic is small, no split test is needed here): the quiz arm
 (`EX-QUIZ-AB`/`INV-62`) was the frame's first rider — salt `quizarm`, arms `on`/`control` — gating
 whether the quiz could surface at all; every visitor with the quiz flag on is now eligible, so the
-registry carries no arm for the quiz itself. The chip's WORDING still rides its own arm on the same
-frame — `quiz_chip_copy` (`EX-QUIZ-COPY`/`INV-100`), salt `quizcopy`, arms `place`/`place_prize` —
-untouched by this retirement and now the frame's example rider below. The story variant
+registry carries no arm for the quiz itself. The chip's wording rode its own arm on the same frame —
+`quiz_chip_copy` (`EX-QUIZ-COPY`/`INV-100`), salt `quizcopy`, arms `place`/`place_prize` — until it
+**RETIRED the same day**, for the reason `EX-QUIZ-COPY` states in full. No experiment rides the quiz
+under this flag now, so the registry carries no arm for the quiz or its chip's words, and a beat
+carries neither dimension. The story variant
 (`story_variant`, `EX-STORY-AB`) is a **declared dimension** rather than a dealt arm: config sets
 its value at deploy (`story.variant`), the stamp carries it on every beat exactly like a dealt arm,
 and it enters the registry as a dealt experiment only when a second story variant deploys
@@ -1504,7 +1526,8 @@ arm and keeps its own law — one question per walk with its cooldown window sta
 The fences the frame owes: a flag off is byte-for-byte today's payload (`INV-60`); the two-way
 registry test still stands (`INV-41`); the coat-check record never widens (`INV-43`, `EX-MEMORY`);
 a live experiment's salt and split are unchanged once dealt (`INV-90`, the law `INV-62` once held for
-the retired quiz arm and `quiz_chip_copy` holds now); the consent posture is unchanged (`EX-PULSE`).
+the retired quiz arm and `INV-100` holds the same tombstone shape for the retired `quiz_chip_copy`
+split now); the consent posture is unchanged (`EX-PULSE`).
 Facets are `N/A` — the frame wears no visible surface. On performance it costs one 32-bit hash per
 experiment at boot, with no network and no write. Non-goals: no new beat; an equal split only, weights
 a later parameter; no readout inside the engine (the read side is instance-owned, and the engine
@@ -1860,7 +1883,7 @@ the worker.
 | `EX-SHARE` | The share feature as a whole |
 | `EX-SOUND` | The ambient loop: off by default, streams from a `<audio>` element on turn-on (instant start), credit from config |
 | `EX-SOUND-PAUSE` | Pause holds the moment; resume continues from it |
-| `EX-SOUND-GREET` | A note-marked control; a localized word greets once on the first visit, then settles to the bare note |
+| `EX-SOUND-GREET` | A note-marked control; on the first visit a pressable pill carrying a localized word breathes in beside the note under a one-time glint, then settles away — a press on the pill turns the sound on; never shown alongside the quiz chip |
 | `EX-PROTECT` | The gracious deterrent (desktop right-click → gift ceremony; drag/touch → gift toast; a pinch has the browser's viewport-zoom refused but the GESTURE handed to our own zoom — touch and desktop trackpad alike, EX-ZOOM/`INV-85`) |
 | `EX-PROTECT-GIFT` | The gift ceremony: a grab card carries no picture of its own (the work is already in view behind it; a thumbnail would be a second unguarded clean copy), a won quiz reveals the marked prize; the file handed over only on a yes |
 | `EX-PROTECT-RES` | The clean shown image; the site-host mark rides only a taken copy (client canvas / prize / capped serve) |
@@ -1869,8 +1892,8 @@ the worker.
 | `EX-QUIZ-PRIZE` | The prize is a marked gallery derivative; the master never ships |
 | `EX-QUIZ-ONCE` | Exactly one question per show, over the reachable∧unanswered set, silenced by a cooldown window |
 | `EX-QUIZ-GLINT` | A soft one-time light sweeps the chip as the question appears; only the chip; off under reduced-motion |
-| `EX-QUIZ-AB` | **RETIRED 2026-07-28** (tombstone) — the quiz arm once dealt by the variant frame (`EX-AB`, salt `quizarm`, on/control, 50/50, seed-stable), gating whether the quiz could surface at all; every visitor with the quiz flag on is now eligible (the owner's word, small traffic, no split test needed). `quiz_chip_copy` (`EX-QUIZ-COPY`/`INV-100`) is the frame's live rider now; the quiz still asks once per walk with a cooldown (`EX-QUIZ-ONCE`/`INV-66`), untouched |
-| `EX-QUIZ-COPY` | The chip's words ride the `quiz_chip_copy` arm (`EX-AB`, salt `quizcopy`, `place`/`place_prize`): the plain arm names the act «guess the place», the reward arm names the gift «guess the place · win a wallpaper»; localized (`quiz_ask_place`/`quiz_ask_prize`) with English fallbacks; an absent registry falls to the plain copy |
+| `EX-QUIZ-AB` | **RETIRED 2026-07-28** (tombstone) — the quiz arm once dealt by the variant frame (`EX-AB`, salt `quizarm`, on/control, 50/50, seed-stable), gating whether the quiz could surface at all; every visitor with the quiz flag on is now eligible (the owner's word, small traffic, no split test needed). `quiz_chip_copy` (`EX-QUIZ-COPY`/`INV-100`) retired the same day for the same reason (tombstoned below); the quiz still asks once per walk with a cooldown (`EX-QUIZ-ONCE`/`INV-66`), untouched |
+| `EX-QUIZ-COPY` | **RETIRED 2026-07-28** (tombstone) — the chip's words once rode the `quiz_chip_copy` arm (`EX-AB`, salt `quizcopy`, `place`/`place_prize`: the plain arm named the act «guess the place», the reward arm named the gift as well «guess the place · win a wallpaper»); the owner read both wordings and adopted one, the same day and for the same reason as the quiz arm before it. The chip now speaks the one sentence «where was this shot? · win a wallpaper» through the ordinary localized set (`quiz_ask`, `EX-I18N`) with an English fallback; no experiment rides the quiz under this flag, and a beat carries no `quiz_chip_copy` dimension |
 | `EX-QUIZ-FLOW` | `quiz_stage` (shown → opened → won\|lost → gift) rides the same two beats as a running-max dimension; never a sixth beat; the stage wipes with the walk |
 | `EX-LADDER` | The responsive 640/960/1280 image ladder: a phone pulls light, a wide/retina screen sharp; base is the fallback |
 | `EX-LOAD` | The loading breath: solemn hairline while pixels travel; a cold-arrival line before the walk is live (instance text) |
@@ -1884,6 +1907,7 @@ the worker.
 | `EX-STORY-LINE` | Each line's laws: ≤12 words, associative, note-grounded, no technique |
 | `EX-STORY-EDGE` | The voice at the edge: `/api/story`, private fragments, KV cache |
 | `EX-STORY-FILL` | The one-work ask: a work its plot left wordless is asked for by id under its own key shape, five to an hour, owed to the walk's beats, silent when its ladder is spent |
+| `EX-STORY-LEAD` | The first spread's two portions: an opening plot over the first `story_lead` works asked as the walk stands, and the rest of that spread asked as the focus comes near it |
 | `EX-STORY-AB` | `story_variant` rides the GA beats as a dimension |
 | `EX-I18N` | The any-language layer: one deferred fetch per new locale, KV-cached |
 | `EX-EDGE-GUARD` | Three money fences before any model call |
@@ -1953,7 +1977,7 @@ the worker.
 | `INV-64` | The quiz is a four-option guess: prompt + four option labels public, the ONE correct answer + prize private in `_worker.js`; the tapped option judged at the edge (never a served byte, never a model call); one tap locks |
 | `INV-65` | A miss shows one localized line then the card fades, leaving the photograph; a hit shows a localized praise line then the gift ceremony; the card sits over the visible photo (light scrim), tints to the work, mirrors the active locale's `dir` |
 | `INV-66` | Exactly one question per show — the chip placed on one work chosen per walk over the reachable∧unanswered set — and silenced while less than the cooldown window (`quiz_cooldown_hours`, ~6h) has passed since a show that asked; `quiz_probability` retired |
-| `INV-62` | **RETIRED 2026-07-28** (tombstone) — guarded the quiz A/B arm (`quiz_arm`: on/control, 50/50, seed-stable), dealt once by the variant frame (`EX-AB`/`INV-90`, salt `quizarm`), riding every registry beat as a dimension; absent when the flag was off. On the owner's word (first said 2026-07-23), the split retired — traffic is small, no split test is needed — so every visitor with the quiz flag on is now eligible; `quiz_chip_copy` carries the same "arm rides every beat" law forward. The quiz keeps its other limits: one question per walk, drawn from the reachable-and-unanswered set, with the cooldown window before the same visitor is asked again (`EX-QUIZ-ONCE`/`INV-66`) |
+| `INV-62` | **RETIRED 2026-07-28** (tombstone) — guarded the quiz A/B arm (`quiz_arm`: on/control, 50/50, seed-stable), dealt once by the variant frame (`EX-AB`/`INV-90`, salt `quizarm`), riding every registry beat as a dimension; absent when the flag was off. On the owner's word (first said 2026-07-23), the split retired — traffic is small, no split test is needed — so every visitor with the quiz flag on is now eligible; `INV-100` tombstones the same "arm rides every beat" law for the chip's own retired `quiz_chip_copy` split, retired the same day. The quiz keeps its other limits: one question per walk, drawn from the reachable-and-unanswered set, with the cooldown window before the same visitor is asked again (`EX-QUIZ-ONCE`/`INV-66`) |
 | `INV-67` | Faces-meet composition law: a standing face (quiz card, gift card, side room) owns the walk's input; the last face leaving discharges an instant re-centre to the live viewport; the card is viewport-honest; the closing screen is a stop. The zoom is the one face that opens OVER another — a pinch on a side-room print or a door window raises it above the standing room or door — covering exactly one face at a time, owning the input while it stands, and returning ownership to the face beneath on close (EX-ZOOM/INV-83) |
 | `INV-68` | Dead model account: a billing, credit or auth refusal (400/401/403) flags the hour in KV; behind the flag i18n serves baked English with a plain hello uncached under the asked locale; story is silence; nothing further charged |
 | `INV-69` | The quiz funnel stage (`quiz_stage`: shown → opened → won\|lost → gift) is session-scoped and runs monotonically upward — it never lowers; "gift" advances only from "won"; the stage rides `walk_unfold`/`walk_exit` as a dimension alongside the arm (no sixth beat, INV-41 stands); the stage wipes with the walk (?reset); control and flag-off visitors carry no stage |
@@ -1984,12 +2008,14 @@ the worker.
 | `INV-96` | While a standing side room's sideways lane is under the finger and the drag axis is still ambiguous, the client watches only and consumes no event, so the browser's native scroll hand-off is left unpoisoned; past the ambiguous window the dominant axis decides (sideways runs the lane); every other face keeps the first-few-pixels verdict |
 | `INV-97` | The caption block seats in the free zone the picture leaves and clear of the share control's reserved column: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim where no honest gutter remains; the side band serves a short landscape viewport while a tall desktop window keeps the bottom band for every work with the scrim where a tall picture meets the text; contained within the viewport; measured once per frame settle and re-seated on a turn (`INV-86`); RTL mirrors through logical properties |
 | `INV-98` | The title and any wrapping caption prose break into near-equal balanced lines by the browser's own balancer, dictionary scripts included and no model call; below a narrow breakpoint the block runs narrower under a configurable type-step (engine default one step, 0 off) so the balanced text clears the picture |
-| `INV-100` | The quiz chip's words ride the `quiz_chip_copy` experiment (arms `place` / `place_prize`, salt `quizcopy`): the plain arm names the act («guess the place»), the reward arm names the gift as well («guess the place · win a wallpaper»); an absent registry falls to the plain «guess the place»; the words localize through EX-I18N (`quiz_ask_place` / `quiz_ask_prize`) with English source-tongue fallbacks and the ai_i18n edge speaks any offered tongue; the dealt arm rides every beat as the `quiz_chip_copy` dimension (`INV-91`), so a per-arm read of the chip's open-rate follows once the dimension is registered in GA |
-| `INV-101` | The sound control wears a music-note mark; on the visitor's first arrival only, a localized word («music», EX-I18N, English fallback) breathes in beside it, holds, then settles away leaving the bare note; the once-ness persists in `ex.sound` (`greeted`) so a return meets only the note; reduced motion / Save-Data stand the choreography down; a silent instance (`sound_url` empty) shows neither control nor greeting |
+| `INV-100` | **RETIRED 2026-07-28** (tombstone) — guarded the quiz chip's wording arm (`quiz_chip_copy`: `place`/`place_prize`, salt `quizcopy`), dealt once by the variant frame (`EX-AB`/`INV-90`), riding every registry beat as a dimension; absent when the flag was off. On the owner's word, retired the same day and for the same reason as the quiz arm (`INV-62`) before it: he read both wordings and adopted one, and an instance's traffic could not settle a two-arm test in any useful time. The chip now speaks one sentence — «where was this shot? · win a wallpaper» — through the ordinary localized set (`quiz_ask`, `EX-I18N`) with an English fallback (`EX-QUIZ-COPY`) |
+| `INV-101` | The sound control wears a music-note mark; on the visitor's first arrival only, a pressable pill carrying a localized word («music», EX-I18N, English fallback) breathes in beside it under a one-time glint off the quiz chip's own keyframes (`EX-QUIZ-GLINT`), holds, then settles away leaving the bare note — a press on the pill turns the sound on, `aria-hidden` and no tab stop since the control beside it already reaches finger, pointer and key alike; the greeting and the quiz chip never show together, a chip arriving mid-greeting withdrawing the word and releasing the first-arrival mark; the once-ness persists in `ex.sound` (`greeted`, released again by an interrupted greeting) so a return meets only the note; reduced motion / Save-Data stand the choreography down; a silent instance (`sound_url` empty) shows neither control nor greeting |
 | `INV-102` | The about page (`EX-ABOUT`) is flat static HTML, complete without JavaScript, baked once per language — fallback at `/about`, the rest at `/about/<language>`, each naming every sibling with `hreflang` and the fallback carrying `x-default`, each carrying its own `lang`/`dir` — opening with one return control at its top, above the heading: a real anchor to `/` that a small inline script upgrades so a same-site arrival steps back through the visitor's history while a direct or external arrival still follows the address to `/`; below it a heading, four paragraphs and the composed signature, every sentence read from the instance copy dictionary, showing no photograph and naming no `og:image`; a dictionary whose FALLBACK tongue carries no `about_title` bakes no page in any language, adds no entry anywhere, and leaves the bundle byte-identical. |
 | `INV-103` | The about page is entered from exactly two places — the composed signature's optional about link (bare `/about`) and the walk's closing screen (the page in the visitor's own tongue) — never both on one screen, so the signature composed INTO the client artifact omits the about link while the baked static faces carry it, and the about page's own signature omits it too, since a page never signs off with a link to itself; the closing screen's link belongs to the touch-press class (`EX-CHROME`) rather than to any hand-kept list, and the signature's link opens in place; the about page's own return control belongs to the same touch-press class, lit under a real pointer's hover, taking the keyboard's accent focus, and pressed under a finger; the threshold carries no mark, and every language's page is listed once in the sitemap. |
 | `INV-104` | The greet block shipped inside `exhibition_data.json` carries `about` alone; `about_title`, `about_1`..`about_4` and `about_back` are stripped from the client artifact at bake. |
 | `INV-105` | One work's missing line leaves its neighbours speaking: the edge serves every well-formed line an answer carries, caches a short plot the way it caches a whole one, and answers one carrying none with a `502` — plus, on a one-work key, an hour-long refusal record answered `502` ahead of every fence — while deleting the single-flight lock it laid at each of its own exits, so a re-ask meets the cache, the record, a fence, or the model; the walk asks for each wordless work by id under its own key shape, in the walk's own order, five asks to a clock hour across door picks and the rest owed to the walk's beats, each ask a three-rung ladder, wearing the wait mark until a line lands and falling to that work's own silence when the ladder is spent (CS-8); an ask the cache and the record leave unanswered passes the three money fences, and a dead account is flagged from this route. |
+
+| `INV-108` | The first spread is told by two plots: an opening one over the first `story_lead` works, asked the moment the walk stands, and a second over the rest of that spread, asked once the focus comes within one work of it. Each keeps its own ordered ids and its own cache key, so no work is told twice and a visitor who walks the whole spread reads the same lines either way. |
 
 ### Reconciliation log — how each behavior above landed in code
 

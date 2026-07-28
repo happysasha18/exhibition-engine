@@ -484,6 +484,11 @@
   const SPREAD = clampInt(EX.spread_size, 10, 3, 12);   // the hang shows ~10, never the catalogue
   const UNFOLD = clampInt(EX.unfold_step, 5, 1, 12);
   const MAXU = clampInt(EX.max_unfolds, 2, 0, 5);       // «ещё 5» retires after this (INV-30)
+  // EX-STORY-LEAD: how many works of the FIRST spread the opening plot covers. The rest of that
+  // spread is told by a second plot, asked as the visitor comes near it. Most visits rest inside the
+  // first few works, so the opening ask buys what a visit actually reads and the deeper walk pays
+  // for its own reading as it happens (his 2026-07-28 word, read against the walk's own record).
+  const STORY_LEAD = clampInt(EX.story_lead, 3, 1, 12);
   const DOOR_SIZE = clampInt(EX.door_size, 5, 3, 5);    // works at the threshold (EX-DOOR)
   // EX-DOOR-3 (door_diversity): when the bake ships the block, the door deals a FRESH, evenly-spread,
   // place-guaranteed set every open (variety over the session-held hand — his word 2026-07-12). Absent
@@ -2229,12 +2234,30 @@
   // Retry-After: a re-ask that lands inside the window is refused server-side (429/dead-flag, before
   // any model call) and the portion simply stays owed, so the client re-asks freely and holds no
   // backoff clock of its own. Every failure path is silence (CS-8, INV-19).
+  // EX-STORY-LEAD: the first spread carries TWO portions — a short opening plot over the first
+  // STORY_LEAD works, then one plot over the rest of that spread. The opening one is asked the moment
+  // the walk stands; the remainder waits until the visitor comes within a work of it (storyPreAsk),
+  // so a visit that rests in the first few works never buys the whole spread's telling. Each portion
+  // still lands under its own edge cache key, and a shorter opening slice repeats across visitors
+  // more often, so it is served from that cache more often as well.
   function storyPortions(n) {                          // [[lo,hi], …] over order indices, the unfold's own beats
     const parts = [];
     const first = Math.min(SPREAD, n);
-    if (first > 0) parts.push([0, first]);
+    if (first > 0) {
+      const lead = Math.min(STORY_LEAD, first);
+      parts.push([0, lead]);
+      if (lead < first) parts.push([lead, first]);
+    }
     for (let s = first; s < n; ) { const e = Math.min(n, s + UNFOLD); parts.push([s, e]); s = e; }
     return parts;
+  }
+  // A portion inside the FIRST spread past the opening one waits for the visitor to come near it;
+  // every other portion is asked at its own beat, exactly as before (an unfold opens its own slice).
+  function portionReached(lo) {
+    if (lo <= 0 || lo >= SPREAD) return true;
+    if (focusedId == null) return false;
+    const idx = order.indexOf(focusedId);
+    return idx >= 0 && idx >= lo - 1;
   }
   // An owed portion (a refused, failed, or dead-worker outcome) re-asks ITSELF a bounded number of
   // times before it falls back to waiting for the next natural beat (an unfold, a return). Without it
@@ -2395,7 +2418,7 @@
   function tellStory() {
     if (!STORY_ON) return;
     sweepOwed();                                       // the owed works ride this beat too (EX-STORY-FILL)
-    for (const [lo, hi] of storyPortions(shown)) askPortion(lo, hi);
+    for (const [lo, hi] of storyPortions(shown)) { if (portionReached(lo)) askPortion(lo, hi); }
   }
   // EX-STORY-BEAT (INV-89): the voice stays ahead at the fork — as the focus comes within two
   // works of the spread's end, the NEXT portion (the very slice an «ещё 5» would open) is asked
@@ -2406,6 +2429,14 @@
     if (!STORY_ON) return;
     sweepOwed();                                       // ahead of this beat's OWN conditions, so an owed
                                                        // work is reached once the unfolds are spent
+    // EX-STORY-LEAD: the rest of the first spread is asked here, as the focus comes within a work of
+    // it. Only a portion INSIDE the first spread rides this beat: a portion an unfold opened keeps
+    // the cadence it always had — its own unfold, a return to the walk, or its bounded self-retry —
+    // so a refused slice is never re-asked once per scroll. The portion keys dedupe, so a slice
+    // already told or in flight costs nothing to name again.
+    for (const [lo, hi] of storyPortions(shown)) {
+      if (lo > 0 && lo < SPREAD && portionReached(lo)) askPortion(lo, hi);
+    }
     if (focusedId == null) return;
     if (spentUnfolds() >= MAXU || shown >= order.length || shown >= CAP) return;   // no next portion
     const idx = order.indexOf(focusedId);
@@ -3563,13 +3594,12 @@
   // Every chrome string localizes through EX-I18N with ENGLISH source-tongue fallbacks.
   function quizLabel() {
     const T = (greetLang() || { t: {} }).t;
-    // EX-QUIZ-COPY (INV-100): the chip's words ride the quiz_chip_copy arm — the reward-named arm
-    // speaks the gift, the plain arm names only the act; either drops the bare «question?». The
-    // arm is dealt in 03 (abArms); an absent registry falls to the plain copy. English source-
-    // tongue fallbacks stand when a locale lacks the key (EX-I18N).
-    const arm = (abArms && abArms.quiz_chip_copy) || null;
-    if (arm === "place_prize") return T.quiz_ask_prize || "guess the place · win a wallpaper";
-    return T.quiz_ask_place || "guess the place";
+    // EX-QUIZ-COPY (INV-100): ONE sentence, the owner's own (2026-07-28) — it names the question
+    // the chip asks and the gift a right answer gives. The quiz_chip_copy split (place/place_prize)
+    // RETIRED with it on the same word: the traffic cannot settle a two-arm test, so the wording is
+    // adopted rather than dealt (SPEC.md carries the dated tombstone). The words ride the ordinary
+    // localized set (`quiz_ask`, EX-I18N) with the English source tongue standing as the fallback.
+    return T.quiz_ask || "where was this shot? · win a wallpaper";
   }
   function quizChipHTML(id) {
     // a soft, slow one-time glint runs across the chip as it appears (EX-QUIZ-GLINT) — the
@@ -5093,26 +5123,59 @@
     // The once-ness is consumed only when the word actually shows and persists in ex.sound (`greeted`),
     // so a return meets only the quiet note. Reduced motion / Save-Data stand the choreography down (the
     // note rests, unmarked, so a later ordinary visit may still greet once). The word is a greeting,
-    // never a control — aria-hidden, pointer-off; the button keeps its label and stays pressable.
+    // The word rides a small pill that is a SECOND HIT AREA for the control beside it: a press on the
+    // word turns the sound on (the owner's word of 2026-07-28 — "a button carrying the word music").
+    // It stays aria-hidden with no tab stop, since the control it presses stands next to it and every
+    // road — finger, pointer, key — already reaches that one button; the press is forwarded to it.
+    // A one-time glint sweeps the pill as it arrives, the same sweep the quiz chip wears.
+    // NEVER BOTH AT ONCE (his same word): the word waits for a moment when no quiz chip stands on the
+    // walk, and a chip arriving while the word shows withdraws the word at once and RELEASES the
+    // first-arrival mark, so a later quiet moment still greets a first-time visitor properly.
     let greeted = !!(pref && pref.greeted);
+    const chipStands = () => !!document.querySelector(".ex-quiz-chip");
     function greetOnce() {
       if (greeted || REDUCED || dataSaver()) return;
       greeted = true;
       persist();                                          // consume the first arrival on show
-      const g = document.createElement("span");
+      const g = document.createElement("button");
+      g.type = "button";
       g.className = "exsnd-greet";
-      g.setAttribute("aria-hidden", "true");              // a greeting, never a control
+      g.setAttribute("aria-hidden", "true");              // the control beside it owns every road in
+      g.tabIndex = -1;                                    // one control on the tab road, never two
       g.textContent = SNDT.sound_greet || SOUND_GREET_EN;
+      const gl = document.createElement("span");
+      gl.className = "exsnd-glint";
+      gl.setAttribute("aria-hidden", "true");
+      g.appendChild(gl);
+      g.addEventListener("click", () => { try { btn.click(); } catch (e) {} });
       box.appendChild(g);
       requestAnimationFrame(() => g.classList.add("greet"));
-      g.addEventListener("animationend", () => { try { g.remove(); } catch (e) {} });
+      g.addEventListener("animationend", (ev) => {
+        if (ev.target !== g) return;                      // the glint's own end never removes the word
+        try { g.remove(); } catch (e) {}
+      });
+      // the never-both watch: a chip that arrives mid-word takes the moment, the word leaves and the
+      // first arrival is handed back (the mark is released, so the greeting is still owed)
+      let watch = 0;
+      (function watchChip() {
+        if (!g.isConnected) return;
+        if (chipStands()) {
+          g.classList.add("yield");
+          greeted = false; persist();
+          setTimeout(() => { try { g.remove(); } catch (e) {} }, 400);
+          return;
+        }
+        if (++watch > 400) return;
+        requestAnimationFrame(watchChip);
+      })();
     }
     if (!greeted && !REDUCED && !dataSaver()) {
       let tries = 0;
       (function waitVisible() {
         if (greeted) return;
         const shown = parseFloat(getComputedStyle(box).opacity || "0") > 0.5
-                      && !document.body.classList.contains("ex-door");
+                      && !document.body.classList.contains("ex-door")
+                      && !chipStands();                   // never offered beside the quiz chip
         if (shown) { greetOnce(); return; }
         if (++tries > 600) return;                        // ~10s cap — the visitor never left the door
         requestAnimationFrame(waitVisible);

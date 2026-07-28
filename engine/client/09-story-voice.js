@@ -88,12 +88,30 @@
   // Retry-After: a re-ask that lands inside the window is refused server-side (429/dead-flag, before
   // any model call) and the portion simply stays owed, so the client re-asks freely and holds no
   // backoff clock of its own. Every failure path is silence (CS-8, INV-19).
+  // EX-STORY-LEAD: the first spread carries TWO portions — a short opening plot over the first
+  // STORY_LEAD works, then one plot over the rest of that spread. The opening one is asked the moment
+  // the walk stands; the remainder waits until the visitor comes within a work of it (storyPreAsk),
+  // so a visit that rests in the first few works never buys the whole spread's telling. Each portion
+  // still lands under its own edge cache key, and a shorter opening slice repeats across visitors
+  // more often, so it is served from that cache more often as well.
   function storyPortions(n) {                          // [[lo,hi], …] over order indices, the unfold's own beats
     const parts = [];
     const first = Math.min(SPREAD, n);
-    if (first > 0) parts.push([0, first]);
+    if (first > 0) {
+      const lead = Math.min(STORY_LEAD, first);
+      parts.push([0, lead]);
+      if (lead < first) parts.push([lead, first]);
+    }
     for (let s = first; s < n; ) { const e = Math.min(n, s + UNFOLD); parts.push([s, e]); s = e; }
     return parts;
+  }
+  // A portion inside the FIRST spread past the opening one waits for the visitor to come near it;
+  // every other portion is asked at its own beat, exactly as before (an unfold opens its own slice).
+  function portionReached(lo) {
+    if (lo <= 0 || lo >= SPREAD) return true;
+    if (focusedId == null) return false;
+    const idx = order.indexOf(focusedId);
+    return idx >= 0 && idx >= lo - 1;
   }
   // An owed portion (a refused, failed, or dead-worker outcome) re-asks ITSELF a bounded number of
   // times before it falls back to waiting for the next natural beat (an unfold, a return). Without it
@@ -254,7 +272,7 @@
   function tellStory() {
     if (!STORY_ON) return;
     sweepOwed();                                       // the owed works ride this beat too (EX-STORY-FILL)
-    for (const [lo, hi] of storyPortions(shown)) askPortion(lo, hi);
+    for (const [lo, hi] of storyPortions(shown)) { if (portionReached(lo)) askPortion(lo, hi); }
   }
   // EX-STORY-BEAT (INV-89): the voice stays ahead at the fork — as the focus comes within two
   // works of the spread's end, the NEXT portion (the very slice an «ещё 5» would open) is asked
@@ -265,6 +283,14 @@
     if (!STORY_ON) return;
     sweepOwed();                                       // ahead of this beat's OWN conditions, so an owed
                                                        // work is reached once the unfolds are spent
+    // EX-STORY-LEAD: the rest of the first spread is asked here, as the focus comes within a work of
+    // it. Only a portion INSIDE the first spread rides this beat: a portion an unfold opened keeps
+    // the cadence it always had — its own unfold, a return to the walk, or its bounded self-retry —
+    // so a refused slice is never re-asked once per scroll. The portion keys dedupe, so a slice
+    // already told or in flight costs nothing to name again.
+    for (const [lo, hi] of storyPortions(shown)) {
+      if (lo > 0 && lo < SPREAD && portionReached(lo)) askPortion(lo, hi);
+    }
     if (focusedId == null) return;
     if (spentUnfolds() >= MAXU || shown >= order.length || shown >= CAP) return;   // no next portion
     const idx = order.indexOf(focusedId);

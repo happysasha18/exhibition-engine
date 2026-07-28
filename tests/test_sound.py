@@ -207,6 +207,38 @@ check("EX-SOUND-GREET fires only once the player is visible past the door",
       "ex-door" in js_src and "getComputedStyle(box).opacity" in js_src,
       "visible-gate (door check + opacity read) missing from greetOnce/waitVisible")
 
+# 12 · EX-SOUND-GREET the word rides a pill that PRESSES the control beside it (his 2026-07-28 word:
+#      a button carrying the word «music»), while the tab road and the announcement stay with the one
+#      control — the pill is aria-hidden with no tab stop and forwards its press
+greet_pressable = ('g.addEventListener("click", () => { try { btn.click(); } catch (e) {} })' in js_src
+                   and 'document.createElement("button")' in js_src
+                   and "g.tabIndex = -1" in js_src
+                   and 'g.setAttribute("aria-hidden", "true")' in js_src)
+check("EX-SOUND-GREET the word is a second hit area for the control — a press forwards to the "
+      "button, and the pill carries aria-hidden with no tab stop",
+      greet_pressable,
+      "the greeting pill is not a press-forwarding button (or it took a tab stop / an announcement)")
+
+# 13 · EX-SOUND-GREET the pill glints exactly the way the quiz chip glints — the SAME keyframes
+greet_glint = (".exsnd-glint" in css_src
+               and "animation:ex-quiz-glint" in css_src.split(".exsnd-glint", 1)[1][:400]
+               and 'gl.className = "exsnd-glint"' in js_src
+               and ".exsnd-glint{ display:none; }" in css_src)
+check("EX-SOUND-GREET the greeting pill glints off the quiz chip's own keyframes, and the glint "
+      "stands down under reduced motion",
+      greet_glint, "the greeting glint is missing, runs off its own keyframes, or never stands down")
+
+# 14 · EX-SOUND-GREET the never-both rule: the word waits while a quiz chip stands, and a chip
+#      arriving mid-word withdraws the word and HANDS BACK the first arrival
+never_both = ('document.querySelector(".ex-quiz-chip")' in js_src
+              and "!chipStands()" in js_src
+              and 'g.classList.add("yield")' in js_src
+              and "greeted = false; persist();" in js_src
+              and ".exsnd-greet.yield" in css_src)
+check("EX-SOUND-GREET the word and the quiz chip are never offered at once — the word waits on a "
+      "standing chip, and a chip arriving mid-word withdraws it and releases the first arrival",
+      never_both, "the never-both gate, the mid-word yield, or the released once-ness is missing")
+
 # ---------------------------------------------------------------- browser rows
 
 BROWSER_ROWS = [
@@ -216,6 +248,10 @@ BROWSER_ROWS = [
     "EX-SOUND ?reset clears the sound pref (SND_KEY wiped alongside other walk keys)",
     "EX-SOUND-GREET first visit persists greeted:true and renders the note glyph",
     "EX-SOUND-GREET return visit shows no .exsnd-greet element (once-ness held)",
+    "EX-SOUND-GREET a press on the greeting word reaches the sound control (the word is a second "
+    "hit area for that one button)",
+    "EX-SOUND-GREET a standing quiz chip holds the greeting back — the word never shows beside it, "
+    "and the first arrival is still owed",
 ]
 
 SND_OP = ("(()=>{const e=document.getElementById('ex-sound');"
@@ -336,6 +372,58 @@ else:
                 br.sleep(0.1)
             check(BROWSER_ROWS[5], not seen_greet,
                   "`.exsnd-greet` appeared on a return visit despite greeted:true persisted")
+
+        # 6 · EX-SOUND-GREET the word is a second hit area — a press on it reaches the one control.
+        #     The row watches the CONTROL's own click, so it proves the press arrived where the
+        #     sound is turned on without depending on a headless browser actually playing audio.
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base2 + "/")
+            br.clear_storage()
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
+            br.reload()
+            br.sleep(1.0)
+            enter_walk(br)
+            pill = False
+            for _ in range(25):
+                if br.evaluate("!!document.querySelector('.exsnd-greet')"):
+                    pill = True
+                    break
+                br.sleep(0.15)
+            reached = br.evaluate(
+                "(()=>{const g=document.querySelector('.exsnd-greet');"
+                "const b=document.querySelector('.exsnd-btn');"
+                "if(!g||!b) return null;"
+                "window.__sndHit=false; b.addEventListener('click',()=>{window.__sndHit=true;});"
+                "g.click(); return window.__sndHit===true;})()")
+            check(BROWSER_ROWS[6], pill and reached is True,
+                  f"greeting pill present={pill}; the press reached the control={reached}")
+
+        # 7 · EX-SOUND-GREET the never-both rule, in a real browser: a quiz chip standing on the walk
+        #     holds the word back entirely, and the first arrival is still owed afterwards. The chip
+        #     is planted at the door and held there, since no fixture bake seats one on the first frame.
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base2 + "/")
+            br.clear_storage()
+            br.evaluate("localStorage.setItem('ex-tempo','0.5')")
+            br.reload()
+            br.sleep(1.0)
+            br.evaluate(
+                "(()=>{const c=document.createElement('button');c.className='ex-quiz-chip';"
+                "c.textContent='q';c.style.cssText='position:fixed;left:-9999px;top:0';"
+                "document.body.appendChild(c);"
+                "setInterval(()=>{if(!document.querySelector('.ex-quiz-chip'))"
+                "document.body.appendChild(c);},50);})()")
+            enter_walk(br)
+            held = True
+            for _ in range(20):
+                if br.evaluate("!!document.querySelector('.exsnd-greet')"):
+                    held = False
+                    break
+                br.sleep(0.15)
+            owed = br.evaluate("(()=>{const p=JSON.parse(localStorage.getItem('ex.sound')||'null');"
+                               "return !(p&&p.greeted===true);})()")
+            check(BROWSER_ROWS[7], held and owed is True,
+                  f"word held back while a chip stood={held}; first arrival still owed={owed}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 shutil.rmtree(TMP_SND, ignore_errors=True)

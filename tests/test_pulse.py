@@ -164,14 +164,16 @@ BROWSER_ROWS = [
 # The registry-driven frame stamps EVERY dealt arm on EVERY registry beat (INV-91), and mints the
 # coat-check token (ex.visitor) ahead of the very first seed read so the first visit already deals
 # off the token a later visit holds (INV-90). quiz_arm (on/control) was the frame's first rider and
-# proved this law; it RETIRED 2026-07-28 on the owner's word (SPEC.md carries the dated tombstone),
-# so these rows now exercise the law through quiz_chip_copy, the surviving live experiment on the
-# same frame.
+# proved this law; quiz_chip_copy proved it after; both RETIRED 2026-07-28 on the owner's word
+# (SPEC.md carries the dated tombstone), so a plain bake now ships an empty registry. These rows
+# exercise the law through probe_ab, a test-only experiment injected into the baked config.json
+# (see the TMP_VF setup above) standing in for whatever experiment is live — the law holds for any
+# registered experiment, not one particular wording.
 VF_ROWS = [
-    "VF-STAMP EX-AB/INV-91 the dealt quiz_chip_copy arm rides EVERY registry beat, not only walk_unfold/walk_exit",
+    "VF-STAMP EX-AB/INV-91 the dealt probe_ab arm rides EVERY registry beat, not only walk_unfold/walk_exit",
     "VF-SEED-STABLE EX-AB/INV-90 a fixed seed token deals the same arm across two loads, matching EXQuiz's own hash",
     "VF-MINT-DEAL EX-AB/INV-90 a fresh profile mints ex.visitor at boot and deals off THAT token, not a later-read one",
-    "VF-RESET EX-AB/INV-90/EX-RESET ?reset deals a fresh token yet the next walk still stamps quiz_chip_copy on its first beat",
+    "VF-RESET EX-AB/INV-90/EX-RESET ?reset deals a fresh token yet the next walk still stamps probe_ab on its first beat",
 ]
 
 EVLIST = ("JSON.stringify((window.dataLayer||[]).filter(e=>e[0]==='event')"
@@ -261,6 +263,18 @@ else:
     TMP_VF = Path(tempfile.mkdtemp(prefix="synth_pulse_vf_"))
     build_site.OUT = TMP_VF
     build_site.build(SITE_URL, ga_id="G-TESTTEST", enable=["quiz", "visitor_memory"])
+
+    # quiz_chip_copy retired 2026-07-28, so a plain bake now ships an empty experiments registry —
+    # nothing left for the variant-frame law to ride. A test-only probe experiment stands in for
+    # whatever experiment happens to be live, injected straight into the baked config.json so the
+    # frame's law (EX-AB/INV-90/INV-91) is proven off ANY registered experiment, not one wording.
+    _vf_cfg_path = TMP_VF / "config.json"
+    _vf_cfg = json.loads(_vf_cfg_path.read_text(encoding="utf-8"))
+    _vf_cfg["experiments"]["probe_ab"] = {
+        "arms": ["a", "b"], "flag": "quiz", "metric": "walk_unfold", "salt": "probeab",
+    }
+    _vf_cfg_path.write_text(
+        json.dumps(_vf_cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     # ---- ROW: the five beats fire (re-scoped under the registry) --------------
     with serve(TMP) as base:
@@ -560,27 +574,27 @@ else:
                                               # pre-seeded token is never overwritten by a fresh mint
 
     def _hash_arm_of(br, token):
-        """The expected quiz_chip_copy arm for `token`, computed IN-PAGE via the client's own
+        """The expected probe_ab arm for `token`, computed IN-PAGE via the client's own
         exported hash (window.EXQuiz._hash — the quizHash the frame's arms have always drawn
-        from), salt 'quizcopy'."""
+        from), salt 'probeab'."""
         return br.evaluate(
-            "(()=>{const h=window.EXQuiz._hash(%s+':quizcopy');"
-            "return (h/4294967296)<0.5?'place':'place_prize';})()" % json.dumps(token))
+            "(()=>{const h=window.EXQuiz._hash(%s+':probeab');"
+            "return (h/4294967296)<0.5?'a':'b';})()" % json.dumps(token))
 
     with serve(TMP_VF) as base:
-        # ---- VF-STAMP: every event on the queue carries the dealt quiz_chip_copy arm, not only
+        # ---- VF-STAMP: every event on the queue carries the dealt probe_ab arm, not only
         # unfold/exit — the quiz_arm split once proved this same law here, RETIRED 2026-07-28
         with Browser(width=1280, height=900) as br:
             br.inject(CLIP_STUB)
             br.block(["*googletagmanager*", "*google-analytics*"])
             walk_all(br, base)                      # door_pick, share_copy, walk_unfold, walk_exit, share_arrive
             evs = evs_of(br)
-            arm = br.evaluate("window.EXQuiz && window.EXQuiz.arms().quiz_chip_copy")
+            arm = br.evaluate("window.EXQuiz && window.EXQuiz.arms().probe_ab")
             beats = [n for n, p in evs]
-            every_has_arm = bool(evs) and all(p.get("quiz_chip_copy") == arm for n, p in evs)
-            first_has_arm = bool(evs) and evs[0][1].get("quiz_chip_copy") == arm
+            every_has_arm = bool(evs) and all(p.get("probe_ab") == arm for n, p in evs)
+            first_has_arm = bool(evs) and evs[0][1].get("probe_ab") == arm
             check(VF_ROWS[0],
-                  arm in ("place", "place_prize") and every_has_arm and first_has_arm,
+                  arm in ("a", "b") and every_has_arm and first_has_arm,
                   f"arm={arm} beats={beats} events={evs}")
 
         # ---- VF-SEED-STABLE: a fixed seed deals the same arm on both loads, matching the hash --
@@ -598,7 +612,7 @@ else:
             br.sleep(0.5)
             br.click("#ex-return", settle=0.6)
             exit1 = first_of(evs_of(br), "walk_exit")
-            arm1 = exit1.get("quiz_chip_copy") if exit1 else None
+            arm1 = exit1.get("probe_ab") if exit1 else None
 
             br.navigate(base + "/")
             br.reload(); br.sleep(1.0)
@@ -608,7 +622,7 @@ else:
             br.sleep(0.5)
             br.click("#ex-return", settle=0.6)
             exit2 = first_of(evs_of(br), "walk_exit")
-            arm2 = exit2.get("quiz_chip_copy") if exit2 else None
+            arm2 = exit2.get("probe_ab") if exit2 else None
             check(VF_ROWS[1],
                   stored_still == FIXED_SEED_TOKEN
                   and arm1 == expected_arm and arm2 == expected_arm and arm1 == arm2,
@@ -628,13 +642,14 @@ else:
             valid_stored = bool(stored_token_first) and bool(
                 re.match(r"^[a-z0-9]{16,40}$", stored_token_first or ""))
             deals_off_stored = client_token_first == stored_token_first
-            arm_first = br.evaluate("window.EXQuiz && window.EXQuiz.arms().quiz_chip_copy")
+            arm_first = br.evaluate("window.EXQuiz && window.EXQuiz.arms().probe_ab")
 
             br.reload(); br.sleep(1.0)               # a second load, same profile: the token now
             client_token_second = br.evaluate("window.EXQuiz && window.EXQuiz.token")  # persists
-            arm_second = br.evaluate("window.EXQuiz && window.EXQuiz.arms().quiz_chip_copy")
+            arm_second = br.evaluate("window.EXQuiz && window.EXQuiz.arms().probe_ab")
             stable_token = client_token_second == stored_token_first
-            stable_arm = arm_second == arm_first
+            # a dealt arm must actually BE there: comparing two absent arms would pass on nothing
+            stable_arm = arm_first in ("a", "b") and arm_second == arm_first
             check(VF_ROWS[2],
                   valid_stored and deals_off_stored and stable_token and stable_arm,
                   f"stored_first={stored_token_first} valid={valid_stored} "
@@ -642,7 +657,7 @@ else:
                   f"arm_first={arm_first} client_second={client_token_second} "
                   f"arm_second={arm_second} stable_token={stable_token} stable_arm={stable_arm}")
 
-        # ---- VF-RESET: ?reset deals a fresh token; the next walk still stamps quiz_chip_copy ---
+        # ---- VF-RESET: ?reset deals a fresh token; the next walk still stamps probe_ab ---
         # asserted on the FIRST beat the fresh walk lays (door_pick) — not only unfold/exit — the
         # same "every beat" law VF-STAMP proves, exercised through the reset road (EX-RESET).
         with Browser(width=1280, height=900) as br:
@@ -656,9 +671,9 @@ else:
             reminted = bool(token_after_reset) and token_after_reset != token1
             enter_walk(br)
             evs = evs_of(br)
-            first_beat_arm = evs[0][1].get("quiz_chip_copy") if evs else None
+            first_beat_arm = evs[0][1].get("probe_ab") if evs else None
             check(VF_ROWS[3],
-                  reminted and first_beat_arm in ("place", "place_prize"),
+                  reminted and first_beat_arm in ("a", "b"),
                   f"token1={token1} token_after_reset={token_after_reset} reminted={reminted} "
                   f"events={evs} first_beat_arm={first_beat_arm}")
 

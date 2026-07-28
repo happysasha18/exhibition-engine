@@ -9,13 +9,12 @@
   // Every chrome string localizes through EX-I18N with ENGLISH source-tongue fallbacks.
   function quizLabel() {
     const T = (greetLang() || { t: {} }).t;
-    // EX-QUIZ-COPY (INV-100): the chip's words ride the quiz_chip_copy arm — the reward-named arm
-    // speaks the gift, the plain arm names only the act; either drops the bare «question?». The
-    // arm is dealt in 03 (abArms); an absent registry falls to the plain copy. English source-
-    // tongue fallbacks stand when a locale lacks the key (EX-I18N).
-    const arm = (abArms && abArms.quiz_chip_copy) || null;
-    if (arm === "place_prize") return T.quiz_ask_prize || "guess the place · win a wallpaper";
-    return T.quiz_ask_place || "guess the place";
+    // EX-QUIZ-COPY (INV-100): ONE sentence, the owner's own (2026-07-28) — it names the question
+    // the chip asks and the gift a right answer gives. The quiz_chip_copy split (place/place_prize)
+    // RETIRED with it on the same word: the traffic cannot settle a two-arm test, so the wording is
+    // adopted rather than dealt (SPEC.md carries the dated tombstone). The words ride the ordinary
+    // localized set (`quiz_ask`, EX-I18N) with the English source tongue standing as the fallback.
+    return T.quiz_ask || "where was this shot? · win a wallpaper";
   }
   function quizChipHTML(id) {
     // a soft, slow one-time glint runs across the chip as it appears (EX-QUIZ-GLINT) — the

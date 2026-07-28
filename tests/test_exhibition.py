@@ -317,14 +317,16 @@ else:
     # every later ask. Under the plot-per-portion law the refused portion's key is never burned, so it
     # stays owed and the next natural beat (a return to the walk) re-asks it and serves.
     STUB_REFUSE_FOLLOWON = """
-    window.__storyCalls=0; window.__storyBodies=[];
+    window.__storyCalls=0; window.__storyBodies=[]; window.__refuseStory=false;
     (function(){const _f=window.fetch;
     window.fetch=function(u,o){
       if(String(u).indexOf('/api/story')>=0){
         window.__storyCalls++;
         let ids=[]; try{ids=JSON.parse(o.body).ids;}catch(e){}
         window.__storyBodies.push(ids.map(String));
-        if(window.__storyCalls===2){ return Promise.resolve(new Response('no story',{status:404})); }
+        /* the test opens and closes the refusal itself: the first spread is told by TWO portions
+           (EX-STORY-LEAD), so a call counter no longer names the follow-on the row is about */
+        if(window.__refuseStory){ return Promise.resolve(new Response('no story',{status:404})); }
         return Promise.resolve(new Response(JSON.stringify({
           story_variant:'B', lines: ids.map(id=>({id:String(id),line:'told '+id,source:'facts'}))
         }),{status:200,headers:{'Content-Type':'application/json'}}));
@@ -416,7 +418,8 @@ else:
                 skip(PORTION_ROWS[2], "no «ещё N» available on this pick (arc ≤ spread)")
             else:
                 to_fin(br)
-                br.click("#ex-unfold", settle=0.9)        # call #2 — refused (404)
+                br.evaluate("window.__refuseStory=true")  # the follow-on the unfold opens is refused
+                br.click("#ex-unfold", settle=0.9)
                 br.sleep(0.6)
                 calls_after_unfold = br.evaluate("window.__storyCalls")
                 new_frame_ids = json.loads(br.evaluate(
@@ -433,6 +436,7 @@ else:
                 if not had_return:
                     skip(PORTION_ROWS[2], "no door to return to on this bundle (pool < door_size)")
                 else:
+                    br.evaluate("window.__refuseStory=false")   # the edge answers again
                     to_fin(br)
                     br.click("#ex-return", settle=1.0)     # → the door
                     try:

@@ -85,26 +85,59 @@
     // The once-ness is consumed only when the word actually shows and persists in ex.sound (`greeted`),
     // so a return meets only the quiet note. Reduced motion / Save-Data stand the choreography down (the
     // note rests, unmarked, so a later ordinary visit may still greet once). The word is a greeting,
-    // never a control — aria-hidden, pointer-off; the button keeps its label and stays pressable.
+    // The word rides a small pill that is a SECOND HIT AREA for the control beside it: a press on the
+    // word turns the sound on (the owner's word of 2026-07-28 — "a button carrying the word music").
+    // It stays aria-hidden with no tab stop, since the control it presses stands next to it and every
+    // road — finger, pointer, key — already reaches that one button; the press is forwarded to it.
+    // A one-time glint sweeps the pill as it arrives, the same sweep the quiz chip wears.
+    // NEVER BOTH AT ONCE (his same word): the word waits for a moment when no quiz chip stands on the
+    // walk, and a chip arriving while the word shows withdraws the word at once and RELEASES the
+    // first-arrival mark, so a later quiet moment still greets a first-time visitor properly.
     let greeted = !!(pref && pref.greeted);
+    const chipStands = () => !!document.querySelector(".ex-quiz-chip");
     function greetOnce() {
       if (greeted || REDUCED || dataSaver()) return;
       greeted = true;
       persist();                                          // consume the first arrival on show
-      const g = document.createElement("span");
+      const g = document.createElement("button");
+      g.type = "button";
       g.className = "exsnd-greet";
-      g.setAttribute("aria-hidden", "true");              // a greeting, never a control
+      g.setAttribute("aria-hidden", "true");              // the control beside it owns every road in
+      g.tabIndex = -1;                                    // one control on the tab road, never two
       g.textContent = SNDT.sound_greet || SOUND_GREET_EN;
+      const gl = document.createElement("span");
+      gl.className = "exsnd-glint";
+      gl.setAttribute("aria-hidden", "true");
+      g.appendChild(gl);
+      g.addEventListener("click", () => { try { btn.click(); } catch (e) {} });
       box.appendChild(g);
       requestAnimationFrame(() => g.classList.add("greet"));
-      g.addEventListener("animationend", () => { try { g.remove(); } catch (e) {} });
+      g.addEventListener("animationend", (ev) => {
+        if (ev.target !== g) return;                      // the glint's own end never removes the word
+        try { g.remove(); } catch (e) {}
+      });
+      // the never-both watch: a chip that arrives mid-word takes the moment, the word leaves and the
+      // first arrival is handed back (the mark is released, so the greeting is still owed)
+      let watch = 0;
+      (function watchChip() {
+        if (!g.isConnected) return;
+        if (chipStands()) {
+          g.classList.add("yield");
+          greeted = false; persist();
+          setTimeout(() => { try { g.remove(); } catch (e) {} }, 400);
+          return;
+        }
+        if (++watch > 400) return;
+        requestAnimationFrame(watchChip);
+      })();
     }
     if (!greeted && !REDUCED && !dataSaver()) {
       let tries = 0;
       (function waitVisible() {
         if (greeted) return;
         const shown = parseFloat(getComputedStyle(box).opacity || "0") > 0.5
-                      && !document.body.classList.contains("ex-door");
+                      && !document.body.classList.contains("ex-door")
+                      && !chipStands();                   // never offered beside the quiz chip
         if (shown) { greetOnce(); return; }
         if (++tries > 600) return;                        // ~10s cap — the visitor never left the door
         requestAnimationFrame(waitVisible);

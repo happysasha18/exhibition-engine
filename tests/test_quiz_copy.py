@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""EX-QUIZ-COPY (INV-93 · EX-AB): the quiz chip's words ride the quiz_chip_copy experiment.
+"""EX-QUIZ-COPY (INV-100): the quiz chip speaks ONE adopted sentence.
 
-The chip drops the bare «question?». Its words are dealt off the visitor's seed by the
-quiz_chip_copy arm (salt "quizcopy", arms ["place","place_prize"]): the plain arm names the act
-(«guess the place»), the reward arm names the gift as well («guess the place · win a wallpaper»).
-The words localize through EX-I18N (quiz_ask_place / quiz_ask_prize) with English source-tongue
-fallbacks; an absent registry falls to the plain copy.
+The chip names the question it asks and the gift a right answer gives — «where was this shot? ·
+win a wallpaper», the owner's own sentence of 2026-07-28. The words ride the ordinary localized
+set (`quiz_ask`, EX-I18N) with the English source tongue standing as the fallback.
+
+The quiz_chip_copy split (arms place / place_prize, salt quizcopy) RETIRED 2026-07-28 on his word,
+the same day and for the same reason as the quiz arm before it: he read both wordings and adopted
+one, and this instance's traffic could not settle a two-arm test in any useful time. These rows are
+the fence that keeps the retirement true — a registry entry that came back, an arm read that came
+back, or two visitors reading different words would each turn a row red.
 
 Two levels:
-  1. the registry + baked strings (string/data) — always runs, no Chrome
-  2. the chip's rendered words per forced arm (browser) — a token forced to each arm drives the
-     real chip; Chrome absent → pinned expected SKIPs.
+  1. the registry + the baked strings + the label's own source (string/data) — always runs, no Chrome
+  2. the chip's rendered words (browser) — two visitors whose tokens once dealt OPPOSITE arms must
+     now read the very same sentence; Chrome absent → pinned expected SKIPs.
 
 Run: python tests/test_quiz_copy.py
 """
@@ -29,6 +33,7 @@ from quiz_util import find_token_copy_arm, chip_copy_arm_of  # noqa: E402
 SITE_URL = "https://synth.example.com"
 QUIZ_WORK_ID = "synth-01"
 OTHER_QUIZ_ID = "synth-03"   # answered in the walk so only synth-01 stays eligible (chosen is fixed)
+ADOPTED_EN = "where was this shot? · win a wallpaper"
 results = []
 
 
@@ -50,43 +55,40 @@ EXDATA_ON = json.loads((TMP_ON / "exhibition_data.json").read_text())
 js_src = (ROOT / "engine" / "assets" / "exhibition.js").read_text(encoding="utf-8")
 EN = (EXDATA_ON.get("greet") or {}).get("langs", {}).get("en", {})
 
-# ---- STRING/DATA row: the experiment is registered with the pinned arms + salt (EX-AB/INV-90) ----
-exp = (CONFIG_ON.get("experiments") or {}).get("quiz_chip_copy") or {}
-reg_ok = (exp.get("arms") == ["place", "place_prize"]
-          and exp.get("salt") == "quizcopy"
-          and exp.get("flag") == "quiz"
-          and exp.get("metric") == "walk_unfold")
-check("EX-QUIZ-COPY the quiz_chip_copy experiment is registered when the quiz ships "
-      "(arms place/place_prize, salt quizcopy, metric walk_unfold)",
-      reg_ok, f"entry={exp}")
+# ---- STRING/DATA row: no experiment rides the quiz any more (the retirement, EX-AB/INV-90) -------
+exps = CONFIG_ON.get("experiments") or {}
+check("EX-QUIZ-COPY the quiz ships with NO experiment on its flag — the quiz_chip_copy split is "
+      "retired and the registry carries no entry for it",
+      "quiz_chip_copy" not in exps, f"experiments={sorted(exps)}")
 
-# ---- STRING/DATA row: quizLabel reads BOTH keys with English source-tongue fallbacks; the plain
-#      arm is the no-registry default; the bare «question?» chip fallback is gone ----------------
-label_reads_arm = ("abArms && abArms.quiz_chip_copy" in js_src
-                   and 'T.quiz_ask_prize || "guess the place · win a wallpaper"' in js_src
-                   and 'T.quiz_ask_place || "guess the place"' in js_src)
-no_bare_question = '"question?"' not in js_src        # the bare-question chip fallback is retired
-keys_baked = "quiz_ask_place" in EN and "quiz_ask_prize" in EN
-check("EX-QUIZ-COPY quizLabel deals the words off the arm with English fallbacks; keys baked; "
-      "the bare «question?» chip fallback is retired",
-      label_reads_arm and no_bare_question and keys_baked,
-      f"reads_arm={label_reads_arm} no_bare_question={no_bare_question} keys_baked={keys_baked}")
+# ---- STRING/DATA row: the label reads the ordinary localized key with the English sentence as its
+#      fallback; the arm read and both retired keys are gone from the bundle and from the bake ----
+label_reads_key = ('T.quiz_ask || "%s"' % ADOPTED_EN) in js_src
+no_arm_read = "abArms.quiz_chip_copy" not in js_src
+no_retired_keys = ("quiz_ask_place" not in js_src and "quiz_ask_prize" not in js_src
+                   and "quiz_ask_place" not in EN and "quiz_ask_prize" not in EN)
+key_baked = (EN.get("quiz_ask") or "").strip() != ""
+check("EX-QUIZ-COPY the chip's words come off the localized quiz_ask key with the adopted English "
+      "sentence as the fallback; the arm read and both retired keys are gone",
+      label_reads_key and no_arm_read and no_retired_keys and key_baked,
+      f"reads_key={label_reads_key} no_arm_read={no_arm_read} "
+      f"no_retired_keys={no_retired_keys} key_baked={key_baked}")
 
 # ---------------------------------------------------------------- browser rows
 BROWSER_ROWS = [
-    "EX-QUIZ-COPY the reward arm (place_prize) names the gift — the chip reads «guess the place · win a wallpaper»",
-    "EX-QUIZ-COPY the plain arm (place) names the act — the chip reads «guess the place»",
+    "EX-QUIZ-COPY the chip reads the adopted sentence — «%s»" % ADOPTED_EN,
+    "EX-QUIZ-COPY two visitors whose tokens once dealt OPPOSITE arms now read the SAME sentence "
+    "(the split is retired, the wording is adopted)",
 ]
 
-# force each arm: a token that deals the wanted quiz_chip_copy arm. With the OTHER quiz work
-# answered in the walk, synth-01 is the ONLY eligible work, so it is always chosen and its
-# chip renders (the quiz_arm split retired 2026-07-28 — every visitor with the flag on is
-# eligible) — the quiz_chip_copy arm is the only free variable, exactly what these rows measure.
-TOK_PRIZE = find_token_copy_arm("place_prize")
-TOK_PLACE = find_token_copy_arm("place")
+# the two anchor tokens: under the retired split these dealt opposite arms, so they are exactly the
+# pair that would expose a split that quietly came back. With the OTHER quiz work answered in the
+# walk, synth-01 is the ONLY eligible work, so it is always the chosen chip.
+TOK_A = find_token_copy_arm("place_prize")
+TOK_B = find_token_copy_arm("place")
 
-if not chrome_available() or TOK_PRIZE is None or TOK_PLACE is None:
-    reason = "Chrome not installed" if not chrome_available() else "arm token search failed"
+if not chrome_available() or TOK_A is None or TOK_B is None:
+    reason = "Chrome not installed" if not chrome_available() else "anchor token search failed"
     for r in BROWSER_ROWS:
         skip(r, f"{reason} (pinned expected skip)")
 else:
@@ -114,15 +116,13 @@ else:
 
     with serve(TMP_ON) as base:
         with Browser(width=1280, height=900) as br:
-            prize_text = chip_text_for(br, base, TOK_PRIZE)
-            check(BROWSER_ROWS[0],
-                  prize_text == "guess the place · win a wallpaper",
-                  f"token={TOK_PRIZE} copy_arm={chip_copy_arm_of(TOK_PRIZE)} chip={prize_text!r}")
+            text_a = chip_text_for(br, base, TOK_A)
         with Browser(width=1280, height=900) as br:
-            place_text = chip_text_for(br, base, TOK_PLACE)
-            check(BROWSER_ROWS[1],
-                  place_text == "guess the place",
-                  f"token={TOK_PLACE} copy_arm={chip_copy_arm_of(TOK_PLACE)} chip={place_text!r}")
+            text_b = chip_text_for(br, base, TOK_B)
+    check(BROWSER_ROWS[0], text_a == ADOPTED_EN,
+          f"token={TOK_A} once_dealt={chip_copy_arm_of(TOK_A)} chip={text_a!r}")
+    check(BROWSER_ROWS[1], text_a is not None and text_a == text_b,
+          f"a={text_a!r} ({chip_copy_arm_of(TOK_A)})  b={text_b!r} ({chip_copy_arm_of(TOK_B)})")
 
 shutil.rmtree(TMP_ON, ignore_errors=True)
 

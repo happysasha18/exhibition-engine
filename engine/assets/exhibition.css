@@ -591,19 +591,37 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
   animation:ex-skel-sweep calc(1.7s*var(--tempo)) var(--ease) infinite; }
 @keyframes ex-skel-sweep{ 0%{ background-position:150% 0; } 100%{ background-position:-150% 0; } }
 @media (prefers-reduced-motion:reduce){ .ex-skel{ animation:none; background-image:none; } }
-/* the first-visit greeting word: breathes in beside the note, holds, then settles away. Absolutely
-   placed just inline-start of the fixed control (RTL mirrors on the logical inset), so the button
-   never shifts. A greeting, never a control — pointer-events off, aria-hidden in the markup. */
+/* the first-visit greeting word: a small pill breathes in beside the note, holds, then settles away.
+   Absolutely placed just inline-start of the fixed control (RTL mirrors on the logical inset), so the
+   button never shifts. The pill is a SECOND HIT AREA for the control beside it — a press on the word
+   turns the sound on, the owner's word of 2026-07-28 ("a button carrying the word music") — and it
+   carries aria-hidden with no tab stop, because the control it presses stands next to it and is
+   reachable by finger, pointer and key alike; the pill is pressable only while the word shows. */
 .exsnd-greet{ position:absolute; inset-inline-end:calc(100% + 10px); top:50%;
-  transform:translateY(-50%); white-space:nowrap; font-size:13px; letter-spacing:.02em;
-  color:var(--faint); opacity:0; pointer-events:none; }
-.exsnd-greet.greet{ animation:exsnd-greet-io calc(4.4s*var(--tempo)) var(--ease) forwards; }
+  transform:translateY(-50%); white-space:nowrap; overflow:hidden;
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--told);
+  background:rgba(8,8,7,.72); border:1px solid var(--hair); border-radius:999px; padding:8px 15px;
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  opacity:0; pointer-events:none; cursor:pointer; }
+.exsnd-greet.greet{ pointer-events:auto;
+  animation:exsnd-greet-io calc(4.4s*var(--tempo)) var(--ease) forwards; }
 @keyframes exsnd-greet-io{
   0%{ opacity:0; transform:translateY(-50%) translateX(6px); }
   12%{ opacity:1; transform:translateY(-50%) translateX(0); }
   70%{ opacity:1; transform:translateY(-50%) translateX(0); }
   100%{ opacity:0; transform:translateY(-50%) translateX(-3px); } }
-@media (prefers-reduced-motion:reduce){ .exsnd-greet, .exsnd-greet.greet{ animation:none; opacity:0; } }
+/* a chip arrived while the word stood: the word leaves at once, so the walk never offers the two
+   together (EX-SOUND-GREET, the owner's never-both rule) */
+.exsnd-greet.yield{ animation:none; opacity:0; pointer-events:none;
+  transition:opacity calc(.28s*var(--tempo)) var(--ease); }
+/* EX-SOUND-GREET: the word glints exactly the way the quiz chip glints — the same one-time sweep,
+   the same keyframes, clipped to the pill by its own overflow:hidden */
+.exsnd-glint{ position:absolute; top:-30%; bottom:-30%; width:85%; left:-90%; z-index:1;
+  pointer-events:none; transform:skewX(-14deg); mix-blend-mode:screen; filter:blur(9px);
+  background:linear-gradient(100deg, transparent 0%, rgba(255,247,232,.18) 50%, transparent 100%);
+  animation:ex-quiz-glint calc(2.4s*var(--tempo)) var(--ease) calc(.5s*var(--tempo)) 1 both; }
+@media (prefers-reduced-motion:reduce){ .exsnd-greet, .exsnd-greet.greet{ animation:none; opacity:0; }
+  .exsnd-glint{ display:none; } }
 /* the tiny eq glyph — three bars, shown only while playing, breathing */
 .exsnd-eq{ display:none; align-items:flex-end; gap:2.5px; height:13px; }
 #ex-sound.playing .exsnd-eq{ display:flex; }

@@ -69,6 +69,11 @@
   const SPREAD = clampInt(EX.spread_size, 10, 3, 12);   // the hang shows ~10, never the catalogue
   const UNFOLD = clampInt(EX.unfold_step, 5, 1, 12);
   const MAXU = clampInt(EX.max_unfolds, 2, 0, 5);       // «ещё 5» retires after this (INV-30)
+  // EX-STORY-LEAD: how many works of the FIRST spread the opening plot covers. The rest of that
+  // spread is told by a second plot, asked as the visitor comes near it. Most visits rest inside the
+  // first few works, so the opening ask buys what a visit actually reads and the deeper walk pays
+  // for its own reading as it happens (his 2026-07-28 word, read against the walk's own record).
+  const STORY_LEAD = clampInt(EX.story_lead, 3, 1, 12);
   const DOOR_SIZE = clampInt(EX.door_size, 5, 3, 5);    // works at the threshold (EX-DOOR)
   // EX-DOOR-3 (door_diversity): when the bake ships the block, the door deals a FRESH, evenly-spread,
   // place-guaranteed set every open (variety over the session-held hand — his word 2026-07-12). Absent

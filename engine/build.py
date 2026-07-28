@@ -1285,6 +1285,10 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         # the crossing rides the cross token (1.2s × tempo)
         "kinship_axes": "all",   # which axes drive distance: 'all' | [indices] (core-vs-descriptive)
         "unfold_step": 5,        # works appended per «ещё 5» along the current arc
+        # EX-STORY-LEAD: how many works of the FIRST spread the opening plot covers (1–12). The rest
+        # of that spread is told by a second plot, asked as the visitor comes near it, so a visit that
+        # rests in the opening works never buys the whole spread's telling.
+        "story_lead": 3,
         "max_unfolds": 2,        # unfold steps before «ещё 5» retires — the arc ENDS (INV-30)
         "door_size": 5,          # works at the threshold, 3–5 (EX-DOOR)
         "greeting": "ask",       # where the door's greeting hangs: ask (his pick) | top | off (EX-GREET)
@@ -1367,16 +1371,11 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         # traffic is small, no split test is needed, so every visitor with the flag on is eligible
         # (SPEC.md carries the dated tombstone). validate_experiments still refuses a registry entry
         # under two arms — the rule stays; an experiment leaves rather than shrinking to one arm.
-        # EX-QUIZ-COPY (INV-93/EX-AB): the chip's words ride an arm off the same frame — the
-        # plain arm names the act («guess the place»), the reward arm names the gift as well («guess
-        # the place · win a wallpaper»). Its own salt keeps the draw independent of the quiz_arm split
-        # (INV-90). Dealt only when the quiz ships; the client falls to the plain copy with no registry.
-        config["experiments"]["quiz_chip_copy"] = {
-            "arms": ["place", "place_prize"],
-            "flag": "quiz",
-            "metric": "walk_unfold",     # the beat whose per-arm open-rate the owner reads
-            "salt": "quizcopy",          # independent of quizarm so the two arms never correlate
-        }
+        # The quiz_chip_copy split (place/place_prize) RETIRED 2026-07-28 the same way and on the same
+        # reason: the owner read both wordings and adopted one, and the traffic this instance carries
+        # could not settle a two-arm test in any useful time. The chip now speaks one sentence off the
+        # ordinary localized set (`quiz_ask`, EX-QUIZ-COPY/INV-100); SPEC.md carries the tombstone.
+        # No experiment rides the quiz any more, so the registry stays empty under this flag.
     # EX-DOOR-3 (door_diversity): tell the client to deal a fresh, evenly-spread, place-guaranteed set
     # every open, and the place fraction to guarantee among the shown windows. Flag off → the key is
     # absent and the client falls back to the curated hand (INV-19, byte-identical config).
@@ -1451,7 +1450,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
                          # every quiz + gift string speaks the guest's tongue for ALL locales
                          # (the client keeps ENGLISH source-tongue fallbacks); the QUESTION content
                          # stays instance-supplied, never in this chrome set
-                         "enjoy", "quiz_ask", "quiz_ask_place", "quiz_ask_prize",
+                         "enjoy", "quiz_ask",
                          "quiz_submit", "quiz_win", "quiz_wrong",
                          "gift_ask", "gift_yes", "gift_no", "gift_buy")},
             "greet": en.get("greet") or {},
