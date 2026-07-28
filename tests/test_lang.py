@@ -8,6 +8,7 @@ threshold at once (RTL turns the face), persists, and rides the ONE string layer
 the browser's tongue. Here the arriving country is stubbed to IL (he/ru/ar) with a Polish browser.
 Chrome absent → pinned expected SKIPs. Run: python tests/test_lang.py
 """
+import json
 import shutil
 import sys
 import tempfile
@@ -41,6 +42,8 @@ BROWSER_ROWS = [
     "EX-LANG the outsider pick rides the one layer (PL in the list; instant baked switch; stub strings back)",
     "EX-LANG reset returns the browser's tongue",
     "EX-LANG the open menu belongs to the mark's family — same width, flush edges, the same curve",
+    "EX-LANG/INV-102 a tongue landing while a work is in view speaks the wall label again — the polite "
+    "region carries the new tongue's caption, never the tongue the label has left",
 ]
 
 # ONE injected stub for BOTH edge routes the corner touches: /api/geo → the arriving country (IL),
@@ -64,6 +67,51 @@ window.fetch=function(u,o){
 ASK = "document.querySelector('.exd-ask').textContent"
 DIR = "document.getElementById('ex-door').getAttribute('dir')"
 LIST = "Array.from(document.querySelectorAll('#exd-lang .exl-item')).map(b=>b.dataset.lang)"
+
+# a tongue whose strings are HELD at the edge until the test lets them land — the guest is already
+# walking by then, which is the only way a tongue arrives mid-walk (the corner mark lives at the door)
+STUB_HELD = """
+window.__i18nCalls=0;
+(function(){const _f=window.fetch;
+window.fetch=function(u,o){
+  if(String(u).indexOf('/api/geo')>=0){
+    return Promise.resolve(new Response(JSON.stringify({c:'IL'}),{status:200}));
+  }
+  if(String(u).indexOf('/api/i18n')>=0){
+    window.__i18nCalls++;
+    return new Promise(function(res){
+      window.__langLand=function(titles){
+        res(new Response(JSON.stringify({
+          dir:'ltr',ask:'HELD-ASK',exit:'HELD-EXIT',more:'HELD {n}',q_more:'HELD?',q_spent:'HELD.',
+          untitled:'HELD-UNTITLED',
+          greet:{night:['HELD-G'],morning:['HELD-G'],day:['HELD-G'],evening:['HELD-G']},
+          titles:titles}),{status:200,headers:{'Content-Type':'application/json'}}));
+      };
+    });
+  }
+  return _f.apply(this,arguments);};})();
+"""
+IN_VIEW = ("(()=>{const fs=Array.from(document.querySelectorAll('.exh-frame'));"
+           "const f=fs.find(x=>{const r=x.getBoundingClientRect();"
+           "return r.top<innerHeight*0.5&&r.bottom>innerHeight*0.5;});"
+           "const t=document.querySelector('#exh-cap .title');"
+           "return JSON.stringify({id:f?f.dataset.id:'',"
+           "title:t?t.textContent:'',untitled:!!(t&&t.classList.contains('untitled')),"
+           "shown:!!document.querySelector('#exh-cap.show')});})()")
+REGION = "(()=>{const e=document.getElementById('ex-live-cap');return e?e.textContent:'';})()"
+
+
+def poll(br, expr, timeout=8.0, step=0.05):
+    """Poll a JS expression until truthy (or the deadline) — no fixed-sleep races."""
+    import time
+    end = time.time() + timeout
+    val = None
+    while time.time() < end:
+        val = br.evaluate(expr)
+        if val:
+            return val
+        br.sleep(step)
+    return val
 
 if not chrome_available():
     for r in BROWSER_ROWS:
@@ -155,6 +203,48 @@ else:
             check(BROWSER_ROWS[3],
                   lang_key is None and br.evaluate(ASK) == "что ближе сейчас?",
                   f"lang_key={lang_key!r} ask={br.evaluate(ASK)!r}")
+
+        # INV-102 — a tongue landing mid-walk speaks the wall label again. The strings are held at the
+        # edge while the guest crosses the threshold, then let land: the label's title changes under
+        # their eye, so the polite region must carry the new tongue too (EX-HANG).
+        with Browser(width=1280, height=900) as br:
+            br.inject(STUB_HELD)
+            br.pretend("pl-PL", 15)                    # a locale OUTSIDE the baked seven
+            br.navigate(base + "/")
+            br.evaluate("localStorage.clear();sessionStorage.clear()")
+            br.evaluate("localStorage.setItem('ex-tempo','0.4')")
+            br.reload()
+            poll(br, "document.querySelectorAll('.exd-window').length>0")
+            br.click(".exd-window:nth-child(1)", settle=0.05)
+            poll(br, "!!document.querySelector('#exh-cap.show')")
+            # The door picks the works, so whether the one in view carries a title is not the
+            # test's to choose: BOTH faces of the label re-speak, and the expected word is read off
+            # the work in view rather than hunted for (a scroll-until-titled search was this row's
+            # own flake on 2026-07-28).
+            view = json.loads(poll(br, IN_VIEW) or "null") or {}
+            titled = bool(view.get("id")) and not view.get("untitled")
+            want = "TITLE-HELD" if titled else "HELD-UNTITLED"
+            titles = {view["id"]: "TITLE-HELD"} if titled else {}
+            before = br.evaluate(REGION) or ""
+            landed = poll(br, "!!window.__langLand")   # the ask leaves 400 ms after arrival
+            if not landed or not view.get("id"):
+                check(BROWSER_ROWS[5], False,
+                      f"the tongue never travelled or no work stood in view: "
+                      f"held={landed} view={view}")
+            else:
+                br.evaluate("window.__langLand(%s)" % json.dumps(titles))
+                poll(br, "(document.querySelector('#exh-cap .title')||{}).textContent===%s"
+                         % json.dumps(want))
+                after = poll(br, "(()=>{const e=document.getElementById('ex-live-cap');"
+                                 "return (e&&e.textContent.indexOf(%s)>=0)?e.textContent:'';})()"
+                                 % json.dumps(want))
+                label = json.loads(br.evaluate(IN_VIEW) or "null") or {}
+                check(BROWSER_ROWS[5],
+                      bool(after) and want in (after or "")
+                      and label.get("title") == want
+                      and want not in before,
+                      f"want={want!r} titled={titled} region before={before[:80]!r} "
+                      f"after={(after or '')[:80]!r} label={label}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

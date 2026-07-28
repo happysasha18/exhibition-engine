@@ -32,6 +32,10 @@
     const tEl = cap.querySelector(".title");
     if (w && tEl && w.title) { tEl.textContent = w.title; tEl.classList.remove("untitled"); }
     else if (tEl && tEl.classList.contains("untitled")) { tEl.textContent = T.untitled || UNTITLED_EN; }
+    // N7-A11Y (INV-102, EX-HANG): the label just changed tongue under the guest's eye, so the ear is
+    // told it again — otherwise the region would stand in a tongue the label has left, and a guest
+    // using a screen reader would get no sign at all that the switch landed.
+    if (w && cap.classList.contains("show")) announceLabel(w);
     const fin = document.getElementById("exh-fin");
     if (fin) {
       fin.setAttribute("lang", L.code);

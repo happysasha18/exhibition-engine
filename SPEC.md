@@ -431,6 +431,16 @@ an optional told-story line, and an optional series pill; the **counter** (`01 /
 the share button in the frame's margin; the **ground breathing** the current work's dominant
 tone. `EX-HANG`
 
+**A polite live region carries what that caption zone carries for the work in view**, so a guest
+using a screen reader meets the same wall label the eye meets. A walk step replaces the region with
+the work's own caption — title, section, place — and the work's told line follows the caption there
+as soon as the line is known: on the step itself where the line already stands, and at the moment it
+lands where the guest is still at that work. A line belonging to a work the guest is not standing at
+is announced nowhere, and each step announces its work's line at most once. Reaching the closing
+screen clears the caption zone, and the region clears with it, so the walk's last title never stands
+there over the farewell. The quiz verdict and the gift result speak in a **separate** polite region,
+so a result and a told line never overwrite each other. `EX-HANG` `INV-102`
+
 **The breathing ground and the live accent** (`EX-ACCENT`): the focused work's dominant colour
 (`dom`) is raised to a readable luminance (target Y≈170, mixed 80/20 with the raised dominant
 and bone brass `#b3a284`; a near-black dominant falls back to bone whole) and set as `--accent`
@@ -760,9 +770,9 @@ leaves the seat silent, the way the walk already treats a portion whose plot nev
 picture stays whole (CS-8, `INV-8`). A work the edge holds no fragment for answers `404` at every
 rung, refused ahead of every fence and every model call, and lands on the same silence — an instance
 whose deployed worker lags its deployed data is where this arises. A landed line settles into the
-slot on the house breath (`EX-ARRIVE`) and lays no announcement in the polite live region; what a
-late single line says to a screen reader is decided with the walk step's own announcement, which is
-its own movement. The line is written for one work alone, so its sentence may sit outside the arc
+slot on the house breath (`EX-ARRIVE`) and reaches the polite live region under the walk step's own
+law (`EX-HANG`): a guest still standing at that work hears the line as it lands, and a line landing
+for any other work is announced nowhere. The line is written for one work alone, so its sentence may sit outside the arc
 its portion was composing; the guest meets a grounded line under the work. The ask reads the
 visitor's language at the moment it fires (`EX-STORY-LINE`).
 

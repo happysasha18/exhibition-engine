@@ -1940,6 +1940,18 @@
   addEventListener("resize", () => { lastResizeAt = performance.now(); });   // through a reflow —
                                                         // a rotation must not drift the eye's mark
 
+  // N7-A11Y (INV-102, EX-HANG): ONE composer of what a screen reader hears on the walk, so the ear and
+  // the eye can never drift — the wall label's three voices, then that work's told line if it has one.
+  // Its callers are the walk step below and the tongue layer (18), which speaks the label again when a
+  // newly picked tongue lands while the guest is already walking.
+  function announceLabel(w) {
+    if (!w) return;
+    const T = (greetLang() || { t: {} }).t;
+    announceCaption([(w.title || T.untitled || UNTITLED_EN), (w.sec || ""), (w.place || "")]
+      .filter((s) => s && String(s).trim()).join(" · "));
+    fillTold();                                         // the line, where the narrator has spoken
+  }
+
   const io = new IntersectionObserver((es) => es.forEach((x) => {
     if (!x.isIntersecting) return;
     if (!sideOpen && !quizOpen && !giftOpen
@@ -1949,7 +1961,9 @@
     // the closing screen is not a work: the plaque must not strand the last work's title + told
     // story over the finale. Fade the caption out like a frame leaving — never a jump, never stale.
     if (x.target.id === "exh-fin") {                   // the closing screen clears the walk chrome
-      cap.classList.remove("show"); shareBtn.classList.remove("show"); focusedId = null; return;
+      cap.classList.remove("show"); shareBtn.classList.remove("show"); focusedId = null;
+      clearLabelRegion();                              // N7-A11Y (INV-102): the ear loses the label too
+      return;
     }
     x.target.classList.add("seen");
     const w = byId[x.target.dataset.id];
@@ -1996,11 +2010,8 @@
       (QUIZ_PLACE.indexOf("plaque") >= 0 && quizShows(w) ? quizChipHTML(w.id) : "");
     cap.classList.add("show");
     focusedId = w.id;
-    // N7-A11Y (INV-102): announce this work's caption to the polite region — a walk step REPLACES it,
-    // so a screen reader hears the current work rather than a pile-up (the story portions append below).
-    announceCaption([(w.title || untitledWord), (w.sec || ""), (w.place || "")]
-      .filter((s) => s && String(s).trim()).join(" · "));
-    fillTold();                                        // the narrator's line for this work, if spoken
+    announceLabel(w);                                  // N7-A11Y (INV-102): the ear gets this label too
+    // …which also fills the visible told seat for this work, if the narrator has spoken (EX-STORY)
     storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
     capSettle(x.target.querySelector("img.work"));     // EX-CAPTION (INV-97): seat the caption in the free zone at the frame's settle
   }), { threshold: 0.55 });
@@ -2177,6 +2188,11 @@
     const id = focusedId != null ? String(focusedId) : null;
     const line = id != null ? STORYLINES[id] : "";
     if (line) {                                        // arrived — the narrator's line, faded in
+      // N7-A11Y (INV-102, EX-HANG): the ONE road every told line takes to the ear, whichever way it
+      // came — a portion's coordinated reveal or a one-work ask's own landing. It reads the work IN
+      // VIEW, so a line landing for a work the guest has left is announced nowhere, and the step's own
+      // slot keeps a second arrival over the same seat silent.
+      announceLine(line);
       if (toldEl.textContent === line && !toldEl.querySelector(".told-wait")) return;
       toldEl.textContent = line;                       // replaces any wait mark held in the seat
       toldEl.style.animation = "none"; void toldEl.offsetWidth; toldEl.style.animation = "";  // EX-ARRIVE
@@ -2272,11 +2288,6 @@
       for (const l of data.lines) {                    // the whole portion's lines land TOGETHER…
         if (l && l.id != null && typeof l.line === "string") STORYLINES[String(l.id)] = l.line;
       }
-      // N7-A11Y (INV-102 / F5): the arriving portion APPENDS to the caption-and-story region — earlier
-      // portions stand, the caption above them stands, until the next walk step replaces the region.
-      const portionText = data.lines
-        .map((l) => (l && typeof l.line === "string") ? l.line : "").filter(Boolean).join(" ");
-      if (portionText) announceStory(portionText);
       // EX-STORY-FILL (INV-107): read the plot against the ids this request asked for — a work the
       // plot passed over joins the owed set and is asked for on its own. The asks REGISTER here,
       // before the coordinated reveal, so a wordless seat moves from one wait mark to the next with
@@ -2334,7 +2345,7 @@
       STORYLINES[w] = found.line;                      // the line settles on the house breath (EX-ARRIVE)
       owedWorks.delete(w);
       markOwed();
-      fillTold();                                      // …and lays no announcement in the polite region
+      fillTold();                                      // …and reaches the ear by the walk step's own law
     }).catch(() => {
       if (gen !== storyGen) return;
       askingWorks.delete(w);
@@ -2457,11 +2468,13 @@
   addEventListener("keydown", (ev) => { if (ev.key === "Escape") toastOff(); });
 
   // ---- N7-A11Y (INV-102 / F5): two polite live regions beside the toast — one creator, disciplined
-  // writers. The caption-and-story region takes the walk caption (REPLACE on each walk step, from the
-  // caption plaque 08) and the streamed story portions (APPEND as the story fills, from the voice 09).
-  // The result region takes the quiz verdict (13) and the gift result (11) on a REPLACE discipline. A
-  // story portion and a result therefore land in DIFFERENT nodes and never overwrite each other. Both
-  // are visually hidden (screen-reader present) via inline style, so no CSS dependency is added.
+  // writers. The caption-and-line region carries what the VISIBLE wall label carries for the work in
+  // view: the caption (REPLACE on each walk step, from the caption plaque 08) and that one work's told
+  // line appended under it (from the story's seat-filling path 09, wherever the line arrived from — a
+  // portion's reveal or a one-work ask), at most once per step. The result region takes the quiz
+  // verdict (13) and the gift result (11) on a REPLACE discipline. A told line and a result therefore
+  // land in DIFFERENT nodes and never overwrite each other. Both are visually hidden (screen-reader
+  // present) via inline style, so no CSS dependency is added.
   function srLive(id) {
     const el = document.createElement("div");
     el.id = id;
@@ -2473,19 +2486,28 @@
     document.body.appendChild(el);
     return el;
   }
-  const liveCap = srLive("ex-live-cap");               // caption (replace) + story portions (append)
+  const liveCap = srLive("ex-live-cap");               // caption (replace) + this work's told line (once)
   const liveResult = srLive("ex-live-result");         // quiz verdict + gift result (replace), a SEPARATE node
-  function announceCaption(text) {                     // a walk step REPLACES — clears the prior caption AND its portions
+  // The step's line slot: a caption opens it, the line closes it. It starts CLOSED, so a line can never
+  // stand in the region with no label above it (the door, the closing screen).
+  let capLineSaid = true;
+  function announceCaption(text) {                     // a walk step REPLACES — the prior label goes whole
     if (text == null) return;
     const d = document.createElement("div");
     d.className = "ex-sr-cap"; d.textContent = String(text);
     liveCap.replaceChildren(d);
+    capLineSaid = false;                               // …and opens this step's one line slot
   }
-  function announceStory(text) {                        // a story portion APPENDS — earlier portions stand
-    if (!text) return;
+  function clearLabelRegion() {                        // the closing screen: the label goes, the region with it
+    liveCap.replaceChildren();
+    capLineSaid = true;
+  }
+  function announceLine(text) {                        // the work IN VIEW's told line, once per step
+    if (!text || capLineSaid) return;
     const d = document.createElement("div");
-    d.className = "ex-sr-portion"; d.textContent = String(text);
+    d.className = "ex-sr-told"; d.textContent = String(text);
     liveCap.appendChild(d);
+    capLineSaid = true;
   }
   function announceResult(text) {                       // the SEPARATE result region, REPLACE discipline
     if (text == null) return;
@@ -4703,6 +4725,10 @@
     const tEl = cap.querySelector(".title");
     if (w && tEl && w.title) { tEl.textContent = w.title; tEl.classList.remove("untitled"); }
     else if (tEl && tEl.classList.contains("untitled")) { tEl.textContent = T.untitled || UNTITLED_EN; }
+    // N7-A11Y (INV-102, EX-HANG): the label just changed tongue under the guest's eye, so the ear is
+    // told it again — otherwise the region would stand in a tongue the label has left, and a guest
+    // using a screen reader would get no sign at all that the switch landed.
+    if (w && cap.classList.contains("show")) announceLabel(w);
     const fin = document.getElementById("exh-fin");
     if (fin) {
       fin.setAttribute("lang", L.code);

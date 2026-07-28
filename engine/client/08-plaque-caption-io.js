@@ -14,6 +14,18 @@
   addEventListener("resize", () => { lastResizeAt = performance.now(); });   // through a reflow —
                                                         // a rotation must not drift the eye's mark
 
+  // N7-A11Y (INV-102, EX-HANG): ONE composer of what a screen reader hears on the walk, so the ear and
+  // the eye can never drift — the wall label's three voices, then that work's told line if it has one.
+  // Its callers are the walk step below and the tongue layer (18), which speaks the label again when a
+  // newly picked tongue lands while the guest is already walking.
+  function announceLabel(w) {
+    if (!w) return;
+    const T = (greetLang() || { t: {} }).t;
+    announceCaption([(w.title || T.untitled || UNTITLED_EN), (w.sec || ""), (w.place || "")]
+      .filter((s) => s && String(s).trim()).join(" · "));
+    fillTold();                                         // the line, where the narrator has spoken
+  }
+
   const io = new IntersectionObserver((es) => es.forEach((x) => {
     if (!x.isIntersecting) return;
     if (!sideOpen && !quizOpen && !giftOpen
@@ -23,7 +35,9 @@
     // the closing screen is not a work: the plaque must not strand the last work's title + told
     // story over the finale. Fade the caption out like a frame leaving — never a jump, never stale.
     if (x.target.id === "exh-fin") {                   // the closing screen clears the walk chrome
-      cap.classList.remove("show"); shareBtn.classList.remove("show"); focusedId = null; return;
+      cap.classList.remove("show"); shareBtn.classList.remove("show"); focusedId = null;
+      clearLabelRegion();                              // N7-A11Y (INV-102): the ear loses the label too
+      return;
     }
     x.target.classList.add("seen");
     const w = byId[x.target.dataset.id];
@@ -70,11 +84,8 @@
       (QUIZ_PLACE.indexOf("plaque") >= 0 && quizShows(w) ? quizChipHTML(w.id) : "");
     cap.classList.add("show");
     focusedId = w.id;
-    // N7-A11Y (INV-102): announce this work's caption to the polite region — a walk step REPLACES it,
-    // so a screen reader hears the current work rather than a pile-up (the story portions append below).
-    announceCaption([(w.title || untitledWord), (w.sec || ""), (w.place || "")]
-      .filter((s) => s && String(s).trim()).join(" · "));
-    fillTold();                                        // the narrator's line for this work, if spoken
+    announceLabel(w);                                  // N7-A11Y (INV-102): the ear gets this label too
+    // …which also fills the visible told seat for this work, if the narrator has spoken (EX-STORY)
     storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
     capSettle(x.target.querySelector("img.work"));     // EX-CAPTION (INV-97): seat the caption in the free zone at the frame's settle
   }), { threshold: 0.55 });

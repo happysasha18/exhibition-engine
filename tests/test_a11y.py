@@ -7,7 +7,10 @@ and a REAL headless Chrome:
   · C1      every walk frame <img> speaks a real alt = the work's desc (never the always-`alt=""` defect)
   · C3      the walk frame names itself a photograph (role + aria-label present)
   · C2      two polite live regions exist beside the toast, distinct nodes/ids (three live nodes total)
-  · C2/F5   a walk step REPLACES the caption region; a story portion APPENDS; results ride a SEPARATE region
+  · C2/F5   a walk step REPLACES the caption region; the region carries the work in view's told line
+            (and no other work's), at most once per step; the closing screen clears it; results ride a
+            SEPARATE region (the tongue landing mid-walk rides `tests/test_lang.py`, whose bake has the
+            tongue layer on)
   · C4/C5   the four modal layers (gift·zoom·quiz·series) each carry an accessible name (aria-label)
   · C6      the series polaroids + lane images speak (alt = the work's desc)
   · C7      the inspected (zoomed) image speaks (alt = the inspected work's desc)
@@ -140,10 +143,10 @@ def counter_at(n):
             "return !!e&&e.textContent.trim()===%s;})()" % json.dumps("%02d" % n))
 
 
-def portions_at_least(n):
-    """At least `n` story portions stand in the caption live region."""
+def lines_at_least(n):
+    """At least `n` told lines stand in the caption-and-line live region."""
     return ("(()=>{const e=document.getElementById('ex-live-cap');"
-            "return !!e&&e.querySelectorAll('.ex-sr-portion').length>=%d;})()" % n)
+            "return !!e&&e.querySelectorAll('.ex-sr-told').length>=%d;})()" % n)
 
 
 # ---------------------------------------------------------------- bake once (story + quiz on)
@@ -253,9 +256,14 @@ BROWSER_ROWS = [
     "C3 the walk frame names itself a photograph (non-empty role + aria-label)",
     "C2 three distinct polite live nodes exist (#ex-toast + #ex-live-cap + #ex-live-result, aria-live=polite)",
     "C2 a walk step REPLACES the caption region (the prior work's caption is gone, one caption node)",
-    "C2/F5 a story portion APPENDS to the caption region (the caption stands; two portions accumulate)",
-    "C2/F5 a gift result rides the SEPARATE result region while a story portion holds the caption region "
-    "(a result and a story portion never share a node)",
+    "C2/F5 the region carries the work in view's told line — the label's own line, announced as it lands "
+    "and again on a step onto a work whose line already stands",
+    "C2/F5 no line for a work the guest is not standing at (a portion of many lines announces one; the "
+    "region never holds two line nodes)",
+    "C2/F5 a step announces its work's line at most once (a later reveal over the same seat adds none)",
+    "C2/F5 the closing screen clears the caption region (no caption, no line standing over the farewell)",
+    "C2/F5 a gift result rides the SEPARATE result region while a told line holds the caption region "
+    "(a result and a told line never share a node)",
     "C4/C5 the four modal layers (gift·zoom·quiz·series) each carry a non-empty accessible name (aria-label)",
     "C6 the series polaroids + lane images speak (each img's alt = its work's desc)",
     "C7 the inspected (zoomed) image speaks (alt = the inspected work's desc)",
@@ -288,8 +296,16 @@ LIVE_NODES = (
 CAP_STATE = (
     "(()=>{const e=document.getElementById('ex-live-cap');if(!e)return 'null';"
     "return JSON.stringify({cap:Array.from(e.querySelectorAll('.ex-sr-cap')).map(x=>x.textContent),"
-    "portions:Array.from(e.querySelectorAll('.ex-sr-portion')).map(x=>x.textContent),"
+    "lines:Array.from(e.querySelectorAll('.ex-sr-told')).map(x=>x.textContent),"
     "all:e.textContent||''});})()"
+)
+# the VISIBLE wall label — the region is asserted against this, since the law is that the region
+# carries what the label carries for the work in view (EX-HANG / INV-102)
+LABEL_STATE = (
+    "(()=>{const c=document.getElementById('exh-cap');if(!c)return 'null';"
+    "return JSON.stringify({title:(c.querySelector('.title')||{}).textContent||'',"
+    "told:(c.querySelector('.told')||{}).textContent||'',"
+    "shown:c.classList.contains('show')});})()"
 )
 RESULT_STATE = "(()=>{const e=document.getElementById('ex-live-result');return e?(e.textContent||''):null;})()"
 MODAL_LABELS = (
@@ -398,33 +414,98 @@ else:
                   and now[0] != prior and prior not in (st1.get("all") or "").replace(now[0], ""))
             check(BROWSER_ROWS[3], ok, f"before={st0} after={st1}")
 
-        # C2/F5 — a story portion APPENDS (the caption stands above; a second portion accumulates). Each
-        # «ещё N» opens a new story portion with NO caption replace after (focus stays), so the appended
-        # portions stand together — the append discipline, shown across two portions.
+        # C2/F5 — the region carries the work in view's told line: the line landing while the guest
+        # stands there is announced then, and a step onto a work whose line ALREADY stands announces
+        # it with the caption. The assertion is against the VISIBLE label, since the law is that the
+        # region carries what the label carries (EX-HANG / INV-102).
         with shared(story_br) as br:
             enter(br, base)
-            wait_for(br, "!!document.getElementById('ex-unfold')")   # the finale's control stands
-            br.evaluate("(()=>{const u=document.getElementById('ex-unfold');if(u)u.click();})()")
-            wait_for(br, portions_at_least(1))
-            a = json.loads(br.evaluate(CAP_STATE) or "null")
-            br.evaluate("(()=>{const u=document.getElementById('ex-unfold');if(u)u.click();})()")
-            wait_for(br, portions_at_least(2))
-            b = json.loads(br.evaluate(CAP_STATE) or "null")
-            append_ok = (isinstance(a, dict) and isinstance(b, dict)
-                         and len(a.get("portions", [])) >= 1
-                         and len(b.get("portions", [])) >= 2
-                         and len(b.get("cap", [])) == 1                # the caption still stands, one node
-                         and a["portions"][0] in b["portions"])        # the earlier portion still stands
-            check(BROWSER_ROWS[4], append_ok, f"after_unfold1={a} after_unfold2={b}")
+            wait_for(br, lines_at_least(1))            # the cold spread's plot has come back
+            lab0 = json.loads(br.evaluate(LABEL_STATE) or "null")
+            st0 = json.loads(br.evaluate(CAP_STATE) or "null")
+            arrive_ok = (isinstance(st0, dict) and isinstance(lab0, dict)
+                         and lab0.get("told", "").strip()
+                         and len(st0.get("lines", [])) == 1
+                         and st0["lines"][0] == lab0["told"]
+                         and (st0.get("all") or "").startswith(st0["cap"][0]))   # caption first, line after
+            br.evaluate("(()=>{const fs=document.querySelectorAll('.exh-frame');"
+                        "if(fs[1])fs[1].scrollIntoView({block:'center',behavior:'instant'});})()")
+            wait_for(br, counter_at(2))
+            wait_for(br, lines_at_least(1))            # the step re-announces: caption, then this line
+            lab1 = json.loads(br.evaluate(LABEL_STATE) or "null")
+            st1 = json.loads(br.evaluate(CAP_STATE) or "null")
+            step_ok = (isinstance(st1, dict) and isinstance(lab1, dict)
+                       and len(st1.get("cap", [])) == 1
+                       and len(st1.get("lines", [])) == 1
+                       and st1["lines"][0] == lab1.get("told", "")
+                       and st1["lines"][0] != st0["lines"][0])          # this work's own line, not the last
+            check(BROWSER_ROWS[4], bool(arrive_ok and step_ok),
+                  f"landed={st0} label={lab0} after_step={st1} label_after={lab1}")
 
-        # C2/F5 — a gift result rides the SEPARATE result region while a story portion holds the caption
+        # C2/F5 — no line for a work the guest is not standing at. The stub answers every id with
+        # `told <id>`, so counting that prefix across the whole region counts announced lines: a
+        # portion of ten works must leave exactly ONE — the work in view.
         with shared(story_br) as br:
             enter(br, base)
+            wait_for(br, lines_at_least(1))
+            st = json.loads(br.evaluate(CAP_STATE) or "null")
+            one_only = (isinstance(st, dict) and len(st.get("lines", [])) == 1
+                        and (st.get("all") or "").count("told ") == 1)
+            # a fresh portion resolves for works FURTHER along while the guest stands still — its
+            # lines belong to works out of view and reach the region nowhere
+            reveals0 = br.evaluate(f"window.__{NS_UPPER}Reveals||0")
             wait_for(br, "!!document.getElementById('ex-unfold')")   # the finale's control stands
-            # a story portion stands in the caption region (an «ещё N» opens one, no caption replace after)
             br.evaluate("(()=>{const u=document.getElementById('ex-unfold');if(u)u.click();})()")
-            wait_for(br, portions_at_least(1))
-            # open the gift ceremony on the in-view work (a grab) — its result speaks in the result region
+            wait_for(br, f"(window.__{NS_UPPER}Reveals||0)>{reveals0}")
+            st2 = json.loads(br.evaluate(CAP_STATE) or "null")
+            away_ok = (isinstance(st2, dict) and len(st2.get("lines", [])) == 1
+                       and (st2.get("all") or "").count("told ") == 1)
+            check(BROWSER_ROWS[5], bool(one_only and away_ok),
+                  f"landed={st} after_unfold={st2}")
+
+        # C2/F5 — a step announces its work's line at most once, and stepping BACK announces the
+        # work's own line again in its turn (the caption's replacement opens the next slot).
+        with shared(story_br) as br:
+            enter(br, base)
+            wait_for(br, lines_at_least(1))
+            first = json.loads(br.evaluate(CAP_STATE) or "null")
+            br.evaluate("(()=>{const fs=document.querySelectorAll('.exh-frame');"
+                        "if(fs[1])fs[1].scrollIntoView({block:'center',behavior:'instant'});})()")
+            wait_for(br, counter_at(2))
+            wait_for(br, lines_at_least(1))
+            second = json.loads(br.evaluate(CAP_STATE) or "null")
+            br.evaluate("(()=>{const fs=document.querySelectorAll('.exh-frame');"
+                        "if(fs[0])fs[0].scrollIntoView({block:'center',behavior:'instant'});})()")
+            wait_for(br, counter_at(1))
+            wait_for(br, lines_at_least(1))
+            back = json.loads(br.evaluate(CAP_STATE) or "null")
+            once_ok = (isinstance(second, dict) and isinstance(back, dict)
+                       and len(second.get("lines", [])) == 1
+                       and len(back.get("lines", [])) == 1
+                       and back["lines"][0] == first["lines"][0]        # the first work's own line again
+                       and back["lines"][0] != second["lines"][0])
+            check(BROWSER_ROWS[6], bool(once_ok),
+                  f"first={first} second={second} back={back}")
+
+        # C2/F5 — the closing screen clears the region with the wall label it mirrors
+        with shared(story_br) as br:
+            enter(br, base)
+            wait_for(br, lines_at_least(1))
+            br.evaluate("(()=>{const f=document.getElementById('exh-fin');"
+                        "if(f)f.scrollIntoView({block:'center',behavior:'instant'});})()")
+            wait_for(br, "(()=>{const c=document.getElementById('exh-cap');"
+                          "return !!c&&!c.classList.contains('show');})()")
+            lab = json.loads(br.evaluate(LABEL_STATE) or "null")
+            st = json.loads(br.evaluate(CAP_STATE) or "null")
+            fin_ok = (isinstance(st, dict) and isinstance(lab, dict) and not lab.get("shown")
+                      and len(st.get("cap", [])) == 0 and len(st.get("lines", [])) == 0
+                      and not (st.get("all") or "").strip())
+            check(BROWSER_ROWS[7], bool(fin_ok), f"label={lab} region={st}")
+
+        # C2/F5 — a gift result rides the SEPARATE result region while a told line holds the caption
+        with shared(story_br) as br:
+            enter(br, base)
+            wait_for(br, lines_at_least(1))            # the work in view's line stands in the region
             br.evaluate("document.querySelector('.exh-frame img.work')"
                         ".dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))")
             # openGift announces the result BEFORE it unhides the card (11-protect-gift.js), so a
@@ -432,26 +513,26 @@ else:
             wait_for(br, layer_up("ex-gift-card"))
             cap = json.loads(br.evaluate(CAP_STATE) or "null")
             res = br.evaluate(RESULT_STATE)
-            portion = (cap or {}).get("portions", [""])
-            portion0 = portion[0] if portion else ""
-            sep_ok = (isinstance(cap, dict) and portion0
+            told = (cap or {}).get("lines", [""])
+            told0 = told[0] if told else ""
+            sep_ok = (isinstance(cap, dict) and told0
                       and isinstance(res, str) and res.strip()
-                      and portion0 not in res                       # the story portion is NOT in the result node
-                      and res not in (cap.get("all") or ""))        # the result is NOT in the caption node
-            check(BROWSER_ROWS[5], sep_ok, f"cap={cap} result={res!r}")
+                      and told0 not in res
+                      and res not in (cap.get("all") or ""))
+            check(BROWSER_ROWS[8], sep_ok, f"cap={cap} result={res!r}")
 
         # C4/C5 — the four modal layers each carry an accessible name
         with shared(plain_br) as br:
             enter(br, base)
             labels = json.loads(br.evaluate(MODAL_LABELS) or "[]")
             ok = len(labels) == 4 and all(m.get("label") and str(m["label"]).strip() for m in labels)
-            check(BROWSER_ROWS[6], ok, f"labels={labels}")
+            check(BROWSER_ROWS[9], ok, f"labels={labels}")
 
         # C6 — the series room's images speak (open a real series by its own chip)
         with shared(plain_br) as br:
             enter(br, base)
             if not SERIES:
-                skip(BROWSER_ROWS[7], "the fixture bakes no series (3+)")
+                skip(BROWSER_ROWS[10], "the fixture bakes no series (3+)")
             else:
                 try:
                     br.evaluate("(%s)(0)" % OPEN_SERIES)
@@ -460,9 +541,9 @@ else:
                     ok = (isinstance(imgs, list) and len(imgs) >= 1
                           and all(im["alt"].strip() and im["alt"] == DESC_BY_ID.get(str(im["id"]), "\0")
                                   for im in imgs))
-                    check(BROWSER_ROWS[7], ok, f"room_imgs={imgs}")
+                    check(BROWSER_ROWS[10], ok, f"room_imgs={imgs}")
                 except Exception as e:
-                    check(BROWSER_ROWS[7], False, f"exception={e!r}")
+                    check(BROWSER_ROWS[10], False, f"exception={e!r}")
 
         # C7 — the inspected image speaks (pinch a walk work open, read the zoom img alt)
         with shared(touch_br) as br:
@@ -471,7 +552,7 @@ else:
             ok = (isinstance(out, dict) and out.get("opened")
                   and (out.get("alt") or "").strip()
                   and out["alt"] == DESC_BY_ID.get(str(out.get("id")), "\0"))
-            check(BROWSER_ROWS[8], ok, f"zoom={out}")
+            check(BROWSER_ROWS[11], ok, f"zoom={out}")
 
         # C8 — the gift prize / won-wallpaper thumbnail speaks. Driven deterministically: a KNOWN quiz
         # work's chip is injected into the caption and clicked (the real delegated opener quizCardOpen —
@@ -480,7 +561,7 @@ else:
         with shared(quizwin_br) as br:
             enter(br, base)
             if not QUIZ_IDS:
-                skip(BROWSER_ROWS[9], "the fixture bakes no quiz works")
+                skip(BROWSER_ROWS[12], "the fixture bakes no quiz works")
             else:
                 try:
                     qid = QUIZ_IDS[0]
@@ -496,9 +577,9 @@ else:
                                        "return t?(t.getAttribute('alt')||'@empty'):'';})()", timeout=6.0)
                     ok = (isinstance(alt, str) and alt not in ("@empty", "")
                           and alt == DESC_BY_ID.get(qid, "\0"))
-                    check(BROWSER_ROWS[9], ok, f"qid={qid} thumb_alt={alt!r} want={DESC_BY_ID.get(qid)!r}")
+                    check(BROWSER_ROWS[12], ok, f"qid={qid} thumb_alt={alt!r} want={DESC_BY_ID.get(qid)!r}")
                 except Exception as e:
-                    check(BROWSER_ROWS[9], False, f"exception={e!r}")
+                    check(BROWSER_ROWS[12], False, f"exception={e!r}")
 
 # ======================= Batch-B — the KEYBOARD + FOCUS-MANAGEMENT pole =======================
 # B1-B5 + the modal-role / aria-modal / Escape class of the input-modality axis (CS-9 / INV-102,

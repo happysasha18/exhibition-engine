@@ -42,11 +42,13 @@
   addEventListener("keydown", (ev) => { if (ev.key === "Escape") toastOff(); });
 
   // ---- N7-A11Y (INV-102 / F5): two polite live regions beside the toast — one creator, disciplined
-  // writers. The caption-and-story region takes the walk caption (REPLACE on each walk step, from the
-  // caption plaque 08) and the streamed story portions (APPEND as the story fills, from the voice 09).
-  // The result region takes the quiz verdict (13) and the gift result (11) on a REPLACE discipline. A
-  // story portion and a result therefore land in DIFFERENT nodes and never overwrite each other. Both
-  // are visually hidden (screen-reader present) via inline style, so no CSS dependency is added.
+  // writers. The caption-and-line region carries what the VISIBLE wall label carries for the work in
+  // view: the caption (REPLACE on each walk step, from the caption plaque 08) and that one work's told
+  // line appended under it (from the story's seat-filling path 09, wherever the line arrived from — a
+  // portion's reveal or a one-work ask), at most once per step. The result region takes the quiz
+  // verdict (13) and the gift result (11) on a REPLACE discipline. A told line and a result therefore
+  // land in DIFFERENT nodes and never overwrite each other. Both are visually hidden (screen-reader
+  // present) via inline style, so no CSS dependency is added.
   function srLive(id) {
     const el = document.createElement("div");
     el.id = id;
@@ -58,19 +60,28 @@
     document.body.appendChild(el);
     return el;
   }
-  const liveCap = srLive("ex-live-cap");               // caption (replace) + story portions (append)
+  const liveCap = srLive("ex-live-cap");               // caption (replace) + this work's told line (once)
   const liveResult = srLive("ex-live-result");         // quiz verdict + gift result (replace), a SEPARATE node
-  function announceCaption(text) {                     // a walk step REPLACES — clears the prior caption AND its portions
+  // The step's line slot: a caption opens it, the line closes it. It starts CLOSED, so a line can never
+  // stand in the region with no label above it (the door, the closing screen).
+  let capLineSaid = true;
+  function announceCaption(text) {                     // a walk step REPLACES — the prior label goes whole
     if (text == null) return;
     const d = document.createElement("div");
     d.className = "ex-sr-cap"; d.textContent = String(text);
     liveCap.replaceChildren(d);
+    capLineSaid = false;                               // …and opens this step's one line slot
   }
-  function announceStory(text) {                        // a story portion APPENDS — earlier portions stand
-    if (!text) return;
+  function clearLabelRegion() {                        // the closing screen: the label goes, the region with it
+    liveCap.replaceChildren();
+    capLineSaid = true;
+  }
+  function announceLine(text) {                        // the work IN VIEW's told line, once per step
+    if (!text || capLineSaid) return;
     const d = document.createElement("div");
-    d.className = "ex-sr-portion"; d.textContent = String(text);
+    d.className = "ex-sr-told"; d.textContent = String(text);
     liveCap.appendChild(d);
+    capLineSaid = true;
   }
   function announceResult(text) {                       // the SEPARATE result region, REPLACE discipline
     if (text == null) return;

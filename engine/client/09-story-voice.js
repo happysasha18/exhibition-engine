@@ -52,6 +52,11 @@
     const id = focusedId != null ? String(focusedId) : null;
     const line = id != null ? STORYLINES[id] : "";
     if (line) {                                        // arrived — the narrator's line, faded in
+      // N7-A11Y (INV-102, EX-HANG): the ONE road every told line takes to the ear, whichever way it
+      // came — a portion's coordinated reveal or a one-work ask's own landing. It reads the work IN
+      // VIEW, so a line landing for a work the guest has left is announced nowhere, and the step's own
+      // slot keeps a second arrival over the same seat silent.
+      announceLine(line);
       if (toldEl.textContent === line && !toldEl.querySelector(".told-wait")) return;
       toldEl.textContent = line;                       // replaces any wait mark held in the seat
       toldEl.style.animation = "none"; void toldEl.offsetWidth; toldEl.style.animation = "";  // EX-ARRIVE
@@ -147,11 +152,6 @@
       for (const l of data.lines) {                    // the whole portion's lines land TOGETHER…
         if (l && l.id != null && typeof l.line === "string") STORYLINES[String(l.id)] = l.line;
       }
-      // N7-A11Y (INV-102 / F5): the arriving portion APPENDS to the caption-and-story region — earlier
-      // portions stand, the caption above them stands, until the next walk step replaces the region.
-      const portionText = data.lines
-        .map((l) => (l && typeof l.line === "string") ? l.line : "").filter(Boolean).join(" ");
-      if (portionText) announceStory(portionText);
       // EX-STORY-FILL (INV-107): read the plot against the ids this request asked for — a work the
       // plot passed over joins the owed set and is asked for on its own. The asks REGISTER here,
       // before the coordinated reveal, so a wordless seat moves from one wait mark to the next with
@@ -209,7 +209,7 @@
       STORYLINES[w] = found.line;                      // the line settles on the house breath (EX-ARRIVE)
       owedWorks.delete(w);
       markOwed();
-      fillTold();                                      // …and lays no announcement in the polite region
+      fillTold();                                      // …and reaches the ear by the walk step's own law
     }).catch(() => {
       if (gen !== storyGen) return;
       askingWorks.delete(w);
