@@ -607,13 +607,22 @@
   // order; qualityTier and diagnostics do, because a per-pair score has no business setting them.
   const PASS_KEY = "@@NS@@-pass";
   const PASS_ORDER = ["session", "score", "site", "default"];
-  const PASS_INSTRUMENTS = [];
+  const PASS_INSTRUMENTS = ["weave"];
   const PASS_DRIVERS = ["static", "phase", "velocity", "pointer", "capability"];
   const PASS_DRIVERS_BUILT = ["static"];
   const PASS_CURVES = ["linear", "smooth", "ease-in", "ease-out", "spline"];
   // A limit is part of the CAPABILITY, so raising one is a rebuild, never a setting.
-  const PASS_LIMITS = { camera: 64, phases: 3, instruments: 8, curve: 128, text: 200, bytes: 8192 };
+  // `text` is the fence on a NAME — a setting name, a cause, an instrument name — and it keeps its
+  // full force there. `intent` is a separate fence on the one field §4.4 calls prose: a score's
+  // opening line, authored at build time, which the lab's own generator writes at about 250
+  // characters. Reading one limit for both would have refused a real score for being a sentence.
+  const PASS_LIMITS = { camera: 64, phases: 3, instruments: 8, curve: 128, text: 200,
+                        intent: 400, bytes: 8192 };
   const PASS_SCORE_FIELDS = ["schema", "intent", "seed", "pair", "params"];
+  // PASS-API §4.4a: two schema versions live at once. Version 2 carries the cue list a host plays;
+  // version 1 keeps working, because such an address can already sit in a visitor's session store.
+  const PASS_SCORE_FIELDS2 = ["schema", "intent", "pair", "seed", "duration", "direction",
+                              "interruption", "failLand", "camera", "cues", "quality", "provenance"];
 
   // The register. `def` is the safe default; `kind` decides the check.
   // landProgress — where in a frame's travel the walk calls the arriving work current. 0.55 is
@@ -799,10 +808,12 @@
     let bytes = 0;
     try { bytes = JSON.stringify(raw).length; } catch (e) { return { ok: false, why: "does not write out" }; }
     if (bytes > PASS_LIMITS.bytes) return { ok: false, why: "over " + PASS_LIMITS.bytes + " bytes" };
-    if (raw.schema !== 1) return { ok: false, why: "names no schema 1" };
-    const stray = Object.keys(raw).filter((k) => PASS_SCORE_FIELDS.indexOf(k) < 0);
+    const v = raw.schema;
+    if (v !== 1 && v !== 2) return { ok: false, why: "names no schema 1 or 2" };
+    const stray = Object.keys(raw).filter(
+      (k) => (v === 2 ? PASS_SCORE_FIELDS2 : PASS_SCORE_FIELDS).indexOf(k) < 0);
     if (stray.length) return { ok: false, why: "unknown field «" + stray[0] + "»" };
-    if (raw.intent !== undefined && (typeof raw.intent !== "string" || raw.intent.length > PASS_LIMITS.text)) {
+    if (raw.intent !== undefined && (typeof raw.intent !== "string" || raw.intent.length > PASS_LIMITS.intent)) {
       return { ok: false, why: "intent is no short text" };
     }
     if (raw.seed !== undefined && !Number.isFinite(Number(raw.seed))) return { ok: false, why: "seed is no number" };
@@ -814,7 +825,20 @@
       const shut = Object.keys(p).filter((k) => (PASS_REG[k].order || PASS_ORDER).indexOf("score") < 0);
       if (shut.length) return { ok: false, why: "«" + shut[0] + "» is closed to a score" };
     }
-    return { ok: true, score: raw };
+    return { ok: true, score: raw, read: v };
+  }
+
+  // The pair's own score, without an engine rebuild. The site writes `pass.scores`, keyed
+  // "<departing id>__<arriving id>", into its own site.json; the bake carries the whole `pass` block
+  // into config.json as DATA and judges none of it (engine/build.py), so a new score for a pair is a
+  // content change. A pair with no score of its own keeps the walk's own glide, which is the
+  // standing fallback — the same road a refused score takes.
+  function passScoreFor(fromEl, toEl) {
+    const rec = (((EX && EX.pass) || (cfg && cfg.pass) || {})).scores;
+    if (!rec) return null;
+    const a = fromEl && fromEl.dataset ? fromEl.dataset.id : null;
+    const b = toEl && toEl.dataset ? toEl.dataset.id : null;
+    return (a && b) ? (rec[a + "__" + b] || null) : null;
   }
 
   // Every setting resolves ONCE, at nav-start, and the result is frozen onto the command. A live
@@ -870,10 +894,20 @@
     passGen += 1;
     const g = passGen;
     let score = null;
-    if (a.score) {
-      const seen = passScoreCheck(a.score);
-      if (seen.ok) score = seen.score;
-      else passNote(passRefusals, { what: "score", name: a.score.intent || "unnamed", why: seen.why });
+    const raw = a.score || passScoreFor(a.fromEl, a.toEl);
+    if (raw) {
+      const seen = passScoreCheck(raw);
+      if (seen.ok) {
+        score = seen.score;
+        // The checker says which version it read (§4.4a). A version-1 score is read forward: its
+        // five fields keep feeding the settings ladder exactly as they always did, and it names no
+        // cue — so no instrument takes the command and the walk's glide plays, which is what a
+        // version-1 score has always meant. The reading is recorded rather than assumed.
+        if (seen.read === 1) {
+          passNote(passRefusals, { what: "score", name: "schema 1",
+                                   why: "read forward: params feed the ladder, no cue to play" });
+        }
+      } else passNote(passRefusals, { what: "score", name: raw.intent || "unnamed", why: seen.why });
     }
     const cmd = Object.freeze({
       gen: g,
@@ -889,6 +923,9 @@
       dpr: window.devicePixelRatio || 1,
       viewport: Object.freeze({ w: innerWidth, h: innerHeight }),
       params: passSnapshot(score),
+      // The score travels frozen ON the command, so the host reads the cue, the duration and the
+      // fail policy of THIS transaction and never a live value that moved under it mid-flight.
+      score: score,
       signal: Object.freeze({ get aborted() { return g !== passGen; } }),
     });
     passNav = cmd;
