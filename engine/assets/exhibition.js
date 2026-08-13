@@ -1011,12 +1011,16 @@
   // that stands in front of the walk. Reaches the host too (a takeover the per-frame glide checker
   // never sees, because during a takeover that loop does not run) and then ends the bundle's own
   // bookkeeping the way passAbortNow always has.
+  // The host is told FIRST, and unconditionally. The bundle's own bookkeeping can already have
+  // landed while a renderer still holds the frame — a takeover whose command has flushed its
+  // nav-land is exactly that state — and returning early on `passNav` left the renderer drawing
+  // over a walk the product believed it had finished with. §10.3's whole claim is that a surface
+  // standing in front of the walk reaches the renderer; it cannot depend on the bundle's own record.
   function interrupt(reason) {
-    if (!passNav) return;
     if (passLayer && typeof passLayer.cancel === "function") {
       try { passLayer.cancel(reason); } catch (e) {}
     }
-    passAbortNow(reason);
+    if (passNav) passAbortNow(reason);
   }
 
   // reframe(viewport) — the resize/orientation road tells a RUNNING transaction its frame changed

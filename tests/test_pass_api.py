@@ -192,6 +192,16 @@ def arm_host(br, base):
     return wait_host(br)
 
 
+def room(br):
+    """Put the walk back at its first frame. A row that needs a REAL step needs a frame to step to,
+    and by this point in the file the walk has been stepped a dozen times — at the last stop an
+    ArrowDown is a clamped no-move, which declares nothing (15-motion's own law) and leaves the row
+    reading a transaction that was never offered. Pre-existing flake, fixed here by giving the row
+    its room rather than by softening what it asserts."""
+    br.evaluate("scrollTo(0, 0)")
+    br.sleep(0.4)
+
+
 def reload_and_prime(br):
     """After a reload the page is fresh — pass-layer.js, the host and the test instrument all get
     re-created from nothing, so `window.__exPass.host`/`.test` do not exist until the client's own
@@ -200,6 +210,7 @@ def reload_and_prime(br):
     step it actually means to test."""
     ready(br)
     br.sleep(0.4)
+    room(br)
     br.key("ArrowDown")
     wait_host(br)
 
@@ -298,6 +309,7 @@ else:
                 # must move the walk exactly as it does with no renderer at all — no canvas, no
                 # curtain class, no pixel of the renderer's own.
                 br.evaluate("window.__exPass.test.reset()")   # mode defaults to 'decline'
+                room(br)
                 y0 = int(br.evaluate("String(Math.round(scrollY))") or 0)
                 br.key("ArrowDown")
                 br.sleep(1.2)
@@ -317,6 +329,7 @@ else:
                                           # mode step re-arms window.__exPass.host/test before a row
                                           # sets a mode and takes the step it actually means to test
                 br.evaluate("window.__exPass.test.mode('never')")   # holds 'running' until cancelled
+                room(br)
                 br.key("ArrowDown")
                 br.sleep(0.3)
                 mid = jhost(br)
@@ -337,6 +350,7 @@ else:
                 # running — the watchdog itself is a different row (10), not this one.
                 br.evaluate("window.__exPass.host.configure({prepareBudgetMs:120, settleSlackMs:4000})")
                 br.evaluate("window.__exPass.test.mode('stale')")
+                room(br)
                 br.key("ArrowDown")
                 br.sleep(0.3)
                 rep = jhost(br)
@@ -357,6 +371,7 @@ else:
                 # is fully current — caption/counter/share all speak the arriving work, not the one
                 # the visitor left.
                 br.evaluate("window.__exPass.test.mode('fail')")
+                room(br)
                 g0 = br.evaluate("String(window.__exPass.report().events.length)")
                 br.key("ArrowDown")
                 ok = False
@@ -390,6 +405,7 @@ else:
                 reload_and_prime(br)
                 br.evaluate("window.__exPass.host.configure({prepareBudgetMs:20, settleSlackMs:20})")
                 br.evaluate("window.__exPass.test.mode('never')")
+                room(br)
                 br.key("ArrowDown")
                 fired = False
                 for _ in range(40):
@@ -423,6 +439,7 @@ else:
                 # 12 · the covered walk is inert and hidden from the accessibility tree while running
                 br.evaluate("window.__exPass.host.configure({prepareBudgetMs:120, settleSlackMs:4000})")
                 br.evaluate("window.__exPass.test.mode('never')")
+                room(br)
                 br.key("ArrowDown")
                 br.sleep(0.3)
                 hidden = br.evaluate("document.getElementById('ex-stage').getAttribute('aria-hidden')")
