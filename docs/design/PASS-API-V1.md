@@ -6,13 +6,17 @@ share/history, every input method, resize/orientation/DPR, RTL, reduced motion, 
 analytics/A-B and the static layer. A crossing is a subordinate visual transaction A → B; it owns
 none of those.
 
-**Status, 2026-08-14 03:00.** Built and standing: the transaction of §2 with its watchdog, its
+**Status, 2026-08-14 06:00.** Built and standing: the transaction of §2 with its watchdog, its
 idempotence guard and its token check; the frame half of §1.2 and §7 — one canvas, one WebGL2
 context with the drawing buffer unpreserved, the two source textures, the programme cache, the frame
 loop, the clock handed down as transaction seconds, resize, the resolution ladder, the name-driven
 uniform binding, the resource census and context loss and restoration; the first instrument, the
-woven one of §8, with its manifest; and the score's road from a site's own `pass` record onto a
-declared command. Still written and unbuilt: the interruption cadence, the camera's own flight, the
+woven one of §8, with its manifest and with every one of its nine handles reachable from a score;
+the score's road from a site's own `pass` record onto a declared command; the driver graph of §5 —
+its sources, its ten operator kinds, named nodes with references, and cycles refused with the ring
+named; the camera of §6 — the pose record, the dolly in log space, one authority at every instant
+with the stage's flight held across an owned window, the handoff measured at the window's own edge
+and the rest read off the pose; and the interruption cadence of §2.5. Still written and unbuilt: the
 `pointer` driver, a stack of more than one cue, and the levels and tier-budget checks of §4.4.
 Section 11 lists what is declared-and-unbuilt with its owner.
 
@@ -326,9 +330,22 @@ node with three readers. Cycles are refused at validation.
 No `eval`, no `new Function`, no string that is executed. A conformance row greps the built client
 for both and reds on either.
 
-**Built in the alpha:** `static`, `phase`/`time` curves and splines, `oscillate`, `velocity`
-response, node references. **Declared and falling back to base:** `pointer`, `capability` variants
-beyond the three named tiers. Every fallback is recorded with its reason on the diagnostic surface.
+**Built, 2026-08-14:** the sources `progress`, `cueProgress`, `time`, `velocity`, `capability` and
+`noise(seed, stream)`; the operators named curve (the lab engine's own four, carried across
+unchanged), monotone spline (Fritsch–Carlson, the whole-track course his word of 2026-08-11 named
+after judging speed steps at segment joints), `map`, `add`, `multiply`, `mix`, `clamp`,
+`hold`/`segment`, `ramp`/`slew` and `oscillate` with its three shapes; named nodes with references;
+and cycles refused at validation with the ring written out. `oscillate` reads its rate in cycles a
+second and its phase in radians, so an instrument's own voice — `sin(t · 0.021 · TAU + 1.1)` — is
+carried into a score digit for digit rather than through a conversion nobody can check by eye.
+
+**Declared and falling back to base:** `pointer`, and `capability` variants beyond the three named
+tiers. Every fallback is recorded with its reason on the diagnostic surface.
+
+**`ramp`/`slew` is the one node that remembers**, since a rate limit is a statement about how fast a
+value may travel and nothing can say that from one instant alone. It carries its own value forward,
+keyed per transaction, and a run with a pinned clock holds it perfectly still — which is what keeps
+the seeded-repeat row honest.
 
 ---
 
@@ -529,16 +546,24 @@ resizes a running transaction rather than replacing it.
 
 | item | state | owner |
 |---|---|---|
-| the interruption cadence — every handle to its nearest door within its own envelope | declared in the score, unbuilt in both repositories; today only a hard stop exists | the host, this branch |
+| the interruption cadence — every handle to its nearest door within its own envelope | built 2026-08-14: the whole transition picks the door its own door-handle stands nearer, every handle then walks to the value IT takes at that door on its own named curve, and the host force-ends at the deadline with the last frame drawn ON the door | closed |
+| the cadence ahead of a *supersede* | a superseded transition puts every handle on its door in one step instead of walking there, because the product's `declare` is synchronous and this branch left the product side untouched. Every handle still lands at a door and the record says `forced` | the bundle, a later branch |
 | `pointer` driver | declared; one normalised host signal arrives later; instruments attach no listeners | a later branch |
 | PairDossier direction A→B against B→A | recorded nowhere today | site build |
 | offline masks and segments | parked until the semantic pass is promoted | parked |
 | the byte fence for the renderer's own file | closed 2026-08-14: 42 000 B raw (measured 39 415) and 13 000 B gzipped (measured 11 646), each with its breakdown written into its test | closed |
 
-**The interruption field is accepted and its fallback is recorded.** A score may name
-`interruption` today. Until the cadence is built, the host accepts the field, plays a hard resolve,
-and records the fallback with its reason on the diagnostic surface — the same treatment every
-unbuilt driver kind gets. Silence about an unbuilt field is what makes an unbuilt field dangerous.
+**The interruption field is read and what happened is recorded.** A score names `interruption` with
+its own `withinMs`, and the host reads it. The diagnostic surface then carries the whole cadence: the
+reason, the door it walked to, the budget it had, the milliseconds it actually took, and, per handle,
+what the door wanted against where the handle finished. A cadence that had to be forced says so.
+Silence about a field is what makes a field dangerous.
+
+**The two tolerances the camera is judged by are stated, not implied.** The pose rests on the
+arriving work within 1e-6, and two authorities agree across a handoff within 1e-3. Both are
+computation tolerances rather than matters of taste: the check reads the pose, a spline evaluated at
+its own last point returns that point, and the handoff is measured at the window's own edge rather
+than at whichever frame landed past it — so a slower device cannot read as a bigger discontinuity.
 
 ## 12. Where the code lives, and what fits
 
