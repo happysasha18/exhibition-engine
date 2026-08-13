@@ -52,6 +52,8 @@
                              // from manifests, so one host carries many instruments)
   var probe = null;          // the diagnostics-only test instrument, when one is registered
   var cur = null;            // the current transaction record, or null between transactions
+  var lastRun = null;        // what the last transaction left behind for the diagnostic surface:
+                             // the camera's rest, its handoffs and the cadence it landed through
   var prepareBudgetMs = 120; // within PREPARE_MIN…PREPARE_MAX; overridable for testing (host.configure)
   var settleSlackMs = 300;   // within SLACK_MIN…SLACK_MAX
   // The two pins are a TESTING seam, set only through host.configure: with a pinned clock and a
@@ -409,6 +411,476 @@
   }
 
   // ================================================================================================
+  // DRIVER AST v1 (§5) — A GRAPH OF DATA, EVALUATED
+  // ================================================================================================
+  // Every node is a plain record and every operator is a named branch of one switch. There is no
+  // eval, no new Function and no string that is executed anywhere on this road — a conformance row
+  // greps the BUILT file for both and reds on either.
+  //
+  // TWO RULES THE REVIEWS FOUND NECESSARY.
+  //   · NAMED NODES WITH REFERENCES. A cue declares `nodes` by name; anywhere a node is expected a
+  //     record `{node:"name"}` stands in its place. One node therefore feeds several channels, which
+  //     is exactly what the grammar's fifth law needs — the balance that drives duty, travel
+  //     amplitude and the geometric cap at once is ONE node with three readers, not three copies
+  //     that can drift apart.
+  //   · CYCLES REFUSED AT VALIDATION, WITH THE CYCLE NAMED. A graph is walked once before a command
+  //     is taken; a node that reaches itself is refused and the path is written out, so the score's
+  //     author reads which three names close the ring rather than watching a frame hang.
+  var TAU = Math.PI * 2;
+
+  // The four named curves are the lab engine's own (lab/crossing-engine.js SHAPES), carried across
+  // unchanged so one score reads the same on both roads. Not one number here is new.
+  var CURVES = {
+    linear: function (u) { return u; },
+    smooth: function (u) { return u * u * (3 - 2 * u); },
+    "in": function (u) { return u * u; },
+    out: function (u) { return 1 - (1 - u) * (1 - u); },
+  };
+  // `oscillate`'s three shapes. The argument is an ANGLE IN RADIANS, so a rate reads in cycles a
+  // second and a phase reads in radians — which is how every voice in the lab's own instruments is
+  // written (weave.js: `sin(t * 0.021 * TAU + 1.1)`), and a score can therefore carry those numbers
+  // across digit for digit instead of through a conversion nobody can check by eye.
+  var SHAPES = {
+    sin: function (a) { return Math.sin(a); },
+    tri: function (a) { var p = a / TAU + 0.25; return 1 - 4 * Math.abs(p - Math.floor(p) - 0.5); },
+    "cubed-sin": function (a) { var s = Math.sin(a); return s * s * s; },
+  };
+
+  // The one hash the woven instrument's shader already rolls its over/under order from
+  // (weave.js hash21, constants 41.317 / 289.107 / 43758.5453). `noise(seed, stream)` uses the same
+  // three numbers, so a seeded score and a seeded shader agree about what chance means.
+  function noiseOf(seed, stream) {
+    var s = Math.sin(Number(seed) * 41.317 + Number(stream) * 289.107) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
+  // THE MONOTONE SPLINE, Fritsch–Carlson — lab/crossing-engine.js `flowSlopes`/`flowAt` carried over
+  // whole. One curve through all of a track's points, so a track changes SPEED as smoothly as it
+  // changes value: one tangent per point shared by the segments either side of it, no overshoot and
+  // no return, and both end tangents zero so the track rests where it is held. His word 2026-08-11
+  // after judging speed steps at segment joints; the same shape belongs here.
+  function splineSlopes(pts, get) {
+    var n = pts.length, d = [], m = [], i, h, a, b, s;
+    for (i = 0; i < n - 1; i++) {
+      h = pts[i + 1].at - pts[i].at;
+      d.push(h > 0 ? (get(pts[i + 1]) - get(pts[i])) / h : 0);
+    }
+    for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+    for (i = 0; i < n - 1; i++) {
+      if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+      a = m[i] / d[i]; b = m[i + 1] / d[i];
+      if (a < 0) { a = 0; m[i] = 0; }
+      if (b < 0) { b = 0; m[i + 1] = 0; }
+      s = a * a + b * b;
+      if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+    }
+    return m;
+  }
+  function splineAt(pts, x, get) {
+    var n = pts.length, m, i, a, b, h, u, u2, u3;
+    if (!n) return 0;
+    if (n === 1 || x <= pts[0].at) return get(pts[0]);
+    if (x >= pts[n - 1].at) return get(pts[n - 1]);
+    m = splineSlopes(pts, get);
+    for (i = 1; i < n - 1; i++) if (x <= pts[i].at) break;
+    a = pts[i - 1]; b = pts[i];
+    h = b.at - a.at;
+    if (h <= 0) return get(b);
+    u = (x - a.at) / h; u2 = u * u; u3 = u2 * u;
+    return (2 * u3 - 3 * u2 + 1) * get(a) + (u3 - 2 * u2 + u) * h * m[i - 1] +
+           (3 * u2 - 2 * u3) * get(b) + (u3 - u2) * h * m[i];
+  }
+  function pointValue(p) { return p.value; }
+
+  // `hold` and `segment` read the same list of points the same way — held before the first point,
+  // held after the last — and differ only in what happens between two of them: `hold` stands still
+  // until the next point arrives, `segment` walks there on the named curve of the point it ends at.
+  function stepAt(pts, x, curved) {
+    var i, a, b, span;
+    if (!pts || !pts.length) return 0;
+    if (x <= pts[0].at) return pts[0].value;
+    for (i = 1; i < pts.length; i++) {
+      a = pts[i - 1]; b = pts[i];
+      if (x <= b.at) {
+        if (!curved) return a.value;
+        span = b.at - a.at;
+        if (span <= 0) return b.value;
+        return a.value + (b.value - a.value) * (CURVES[b.shape] || CURVES.linear)((x - a.at) / span);
+      }
+    }
+    return pts[pts.length - 1].value;
+  }
+
+  // The only slots that ever hold another node. `from`, `to`, `points`, `rate`, `phase`, `min` and
+  // `max` are plain numbers or plain lists of points and are never walked as graph edges.
+  var KID_KEYS = ["in", "a", "b", "t"];
+  function eachChild(n, fn) {
+    if (!n || typeof n !== "object") return;
+    for (var i = 0; i < KID_KEYS.length; i++) {
+      var v = n[KID_KEYS[i]];
+      if (v === null || v === undefined || typeof v !== "object") continue;
+      if (Object.prototype.toString.call(v) === "[object Array]") {
+        for (var j = 0; j < v.length; j++) if (v[j] && typeof v[j] === "object") fn(v[j]);
+      } else fn(v);
+    }
+  }
+
+  // THE CYCLE, NAMED. A depth-first walk of every declared node; the moment a name is met that is
+  // already on the walk's own stack, the ring is written out from that name back round to itself.
+  function cycleIn(nodes) {
+    var state = {}, path = [], found = null;
+    function inline(spec) {
+      if (found || !spec || typeof spec !== "object") return;
+      if (spec.node) { named(spec.node); return; }
+      eachChild(spec, inline);
+    }
+    function named(name) {
+      if (found) return;
+      if (state[name] === 1) {
+        found = path.slice(path.indexOf(name)).concat([name]).join(" → ");
+        return;
+      }
+      if (state[name] === 2) return;
+      state[name] = 1;
+      path.push(name);
+      inline(nodes[name]);
+      path.pop();
+      state[name] = 2;
+    }
+    Object.keys(nodes || {}).forEach(named);
+    return found;
+  }
+
+  function okv(v) { return { ok: true, v: v }; }
+  function nov(why) { return { ok: false, why: why }; }
+
+  // ONE EVALUATION. `ctx` carries the sources of §5 and the cue's own node table; `spec` is any node
+  // record, a `{node:"name"}` reference, or a bare number. A node that cannot answer returns its
+  // reason rather than a number, and the caller records the fallback with that reason — silence
+  // about an unbuilt field is what makes an unbuilt field dangerous.
+  function evalNode(spec, ctx, depth) {
+    if (spec === null || spec === undefined) return nov("names no node");
+    if (typeof spec === "number") return okv(spec);
+    if (typeof spec !== "object") return nov("is not a node record");
+    depth = depth || 0;
+    if (depth > 64) return nov("the graph is deeper than 64 nodes");
+    if (spec.node) {
+      var ref = (ctx.nodes || {})[spec.node];
+      if (!ref) return nov("names the node «" + spec.node + "», which the cue never declares");
+      return evalNode(ref, ctx, depth + 1);
+    }
+    if (spec.source !== undefined) return evalSource(spec, ctx);
+    return evalOp(spec, ctx, depth);
+  }
+
+  function evalSource(spec, ctx) {
+    switch (spec.source) {
+      case "progress": return okv(ctx.progress);
+      case "cueProgress": return okv(ctx.cueProgress);
+      case "time": return okv(ctx.seconds);
+      case "velocity": return okv(ctx.velocity);
+      case "capability": return okv(ctx.capability);
+      case "noise": return okv(noiseOf(spec.seed, spec.stream));
+      // DECLARED AND FALLING BACK TO ITS BASE (§5/§11). One normalised host signal arrives on a
+      // later branch; instruments attach no listeners of their own, so until it does there is
+      // nothing honest to answer with, and the fallback is recorded with this reason.
+      case "pointer":
+        return nov("the source «pointer» is declared and one normalised host signal arrives later");
+      default:
+        return nov("names the source «" + spec.source + "», which the host does not carry");
+    }
+  }
+
+  function evalList(list, ctx, depth) {
+    var out = [];
+    if (Object.prototype.toString.call(list) !== "[object Array]") return { ok: false, why: "«in» is not a list" };
+    for (var i = 0; i < list.length; i++) {
+      var r = evalNode(list[i], ctx, depth + 1);
+      if (!r.ok) return r;
+      out.push(r.v);
+    }
+    return { ok: true, list: out };
+  }
+
+  function evalOp(spec, ctx, depth) {
+    var op = spec.op, i, r, x, c, pts;
+    switch (op) {
+      case "static":
+        return okv(Number(spec.value));
+
+      case "curve":
+        c = CURVES[spec.name];
+        if (!c) return nov("names the curve «" + spec.name + "» — the host draws linear, smooth, in, out");
+        r = evalNode(spec["in"], ctx, depth + 1);
+        if (!r.ok) return r;
+        x = r.v < 0 ? 0 : r.v > 1 ? 1 : r.v;
+        return okv(c(x));
+
+      // The monotone spline: the whole track's own course, the shape his word of 2026-08-11 named
+      // after judging speed steps at segment joints.
+      case "spline":
+        pts = spec.points;
+        if (Object.prototype.toString.call(pts) !== "[object Array]" || !pts.length) {
+          return nov("a spline is a list of points over its own input");
+        }
+        r = evalNode(spec["in"] === undefined ? { source: "progress" } : spec["in"], ctx, depth + 1);
+        if (!r.ok) return r;
+        return okv(splineAt(pts, r.v, pointValue));
+
+      case "hold":
+      case "segment":
+        pts = spec.points;
+        if (Object.prototype.toString.call(pts) !== "[object Array]" || !pts.length) {
+          return nov("«" + op + "» is a list of points over its own input");
+        }
+        r = evalNode(spec["in"] === undefined ? { source: "progress" } : spec["in"], ctx, depth + 1);
+        if (!r.ok) return r;
+        return okv(stepAt(pts, r.v, op === "segment"));
+
+      case "map":
+        r = evalNode(spec["in"], ctx, depth + 1);
+        if (!r.ok) return r;
+        var f = spec.from || [0, 1], t = spec.to || [0, 1];
+        var span = Number(f[1]) - Number(f[0]);
+        if (!span) return nov("«map» reads from an empty range");
+        return okv(Number(t[0]) + (Number(t[1]) - Number(t[0])) * ((r.v - Number(f[0])) / span));
+
+      case "add":
+      case "multiply":
+        r = evalList(spec["in"], ctx, depth);
+        if (!r.ok) return r;
+        x = op === "add" ? 0 : 1;
+        for (i = 0; i < r.list.length; i++) x = op === "add" ? x + r.list[i] : x * r.list[i];
+        return okv(x);
+
+      case "mix":
+        var ra = evalNode(spec.a, ctx, depth + 1); if (!ra.ok) return ra;
+        var rb = evalNode(spec.b, ctx, depth + 1); if (!rb.ok) return rb;
+        var rt = evalNode(spec.t, ctx, depth + 1); if (!rt.ok) return rt;
+        return okv(ra.v + (rb.v - ra.v) * rt.v);
+
+      case "clamp":
+        r = evalNode(spec["in"], ctx, depth + 1);
+        if (!r.ok) return r;
+        var lo = spec.min === undefined ? -Infinity : Number(spec.min);
+        var hi = spec.max === undefined ? Infinity : Number(spec.max);
+        return okv(r.v < lo ? lo : r.v > hi ? hi : r.v);
+
+      // `ramp`/`slew` is the ONE node that remembers: it carries its own value forward and is
+      // allowed to move it by at most `rate` a second. It therefore keeps state per transaction,
+      // keyed by the node's place in the score, and a run with a pinned clock holds it perfectly
+      // still — which is what keeps the seeded-repeat row honest.
+      case "ramp":
+      case "slew":
+        r = evalNode(spec["in"], ctx, depth + 1);
+        if (!r.ok) return r;
+        var key = spec.__id || (spec.__id = "slew" + (++slewIds));
+        var had = ctx.state[key];
+        if (had === undefined) { ctx.state[key] = r.v; return okv(r.v); }
+        var step = Math.abs(Number(spec.rate) || 0) * ctx.dt;
+        var d = r.v - had;
+        if (d > step) d = step; else if (d < -step) d = -step;
+        ctx.state[key] = had + d;
+        return okv(ctx.state[key]);
+
+      // Almost every instrument's breath is a periodic function of unbounded time, and every named
+      // curve above is a bounded monotone shape — which is why the review of 2026-08-13 added this.
+      case "oscillate":
+        var sh = SHAPES[spec.shape === undefined ? "sin" : spec.shape];
+        if (!sh) return nov("names the shape «" + spec.shape + "» — the host plays sin, tri, cubed-sin");
+        r = evalNode(spec["in"] === undefined ? { source: "time" } : spec["in"], ctx, depth + 1);
+        if (!r.ok) return r;
+        return okv(sh(TAU * (Number(spec.rate) || 0) * r.v + (Number(spec.phase) || 0)));
+
+      default:
+        return nov("the operator «" + op + "» is declared and drawn by no evaluator yet");
+    }
+  }
+  var slewIds = 0;
+
+  // ================================================================================================
+  // THE CAMERA (§6) — one continuous voice with its own arc, resting exactly on B
+  // ================================================================================================
+  // The pose is ONE RECORD, applied ONCE, BY THE HOST, above whatever the instrument does to its own
+  // surface inside the frame. The two never mix: the instrument draws its picture into the host's
+  // canvas, and the host then carries that whole canvas through the pose. An instrument that moved
+  // the point of view by its own construction would be doubling as a camera, which §6 forbids.
+  //
+  // Pan is normalised — a fraction of the frame. Pitch, yaw, roll and the field of view are RADIANS.
+  // Dolly travels in LOG SPACE and is interpolated there: `logScale` IS the logarithm, so a plain
+  // interpolation of it is a geometric interpolation of scale, and the applied factor is exp of it.
+  // The existing lab engine interpolates raw scale on both of its paths, which the charter's own law
+  // contradicts; the lock states log space and a row proves it.
+  var CAM_KEYS = ["panX", "panY", "logScale", "pitch", "yaw", "roll", "fov"];
+  var CAM_NEUTRAL = { panX: 0, panY: 0, logScale: 0, pitch: 0, yaw: 0, roll: 0, fov: null };
+  // The pose rests on the arriving work within this much. The check READS THE POSE rather than the
+  // picture, so the number is a computation tolerance and not a matter of taste: a spline evaluated
+  // at its own last point returns that point, and only floating point stands between.
+  var CAM_REST_TOL = 1e-6;
+  // A handoff between two authorities is continuous within this much, measured on the pose across
+  // the handoff frame. Normalised pan and radians share one bar.
+  var CAM_HANDOFF_TOL = 1e-3;
+
+  function camRead(p, key) {
+    if (key === "panX") return p.pan ? p.pan.x : undefined;
+    if (key === "panY") return p.pan ? p.pan.y : undefined;
+    return p[key];
+  }
+  // A track point stands at a second, or at one of the two doors the pass runs between: "a" is the
+  // departing work at zero and "b" is the arriving work at the pass's own last second.
+  function camWhen(p, durationSec) {
+    if (p.at === "a") return 0;
+    if (p.at === "b") return durationSec;
+    var n = Number(p.at);
+    return isFinite(n) ? n : 0;
+  }
+
+  // WHO HOLDS THE CAMERA AT THIS INSTANT. The score names the owner per window: a cue carrying the
+  // camera by its own device declares `cameraAuthority:"own"`, and across that window the stage's
+  // flight holds still. Exactly one owner is returned at every instant — two cues claiming one
+  // instant is refused before the command is taken (scoreWhyNo below), so the runtime never has to
+  // guess between them.
+  function camOwnerAt(score, tSec) {
+    var cues = (score && score.cues) || [];
+    for (var i = 0; i < cues.length; i++) {
+      var c = cues[i], w = c.window || [0, 0];
+      if (c.cameraAuthority === "own" && tSec >= w[0] && tSec <= w[1]) return "cue:" + c.id;
+    }
+    return "stage";
+  }
+  // THE STAGE'S FLIGHT HOLDS STILL ACROSS AN OWNED WINDOW. Held means its own clock stops, not that
+  // its pose freezes and then jumps: resuming at the second the visitor has actually reached would
+  // put a step into the flight, and a camera cut is the wipe under another name.
+  // The second an owned window opens or closes — the instant a handoff is judged at.
+  function camEdge(score, ownerName, entering) {
+    var id = ownerName && ownerName.indexOf("cue:") === 0 ? ownerName.slice(4) : null;
+    var cues = (score && score.cues) || [];
+    for (var i = 0; i < cues.length; i++) {
+      if (cues[i].id === id) { var w = cues[i].window || [0, 0]; return entering ? w[0] : w[1]; }
+    }
+    return null;
+  }
+  function camStageClock(score, tSec) {
+    var cues = (score && score.cues) || [], spent = 0;
+    for (var i = 0; i < cues.length; i++) {
+      var c = cues[i], w = c.window || [0, 0];
+      if (c.cameraAuthority !== "own" || tSec <= w[0]) continue;
+      spent += Math.min(tSec, w[1]) - w[0];
+    }
+    return tSec - spent;
+  }
+
+  // The stage's own pose at a second: one monotone spline per place, held before the first point and
+  // after the last. A place no point names a number for stands at its neutral, and the fallback is
+  // recorded with its reason — `fov` has no identity value, so a track that never names one leaves
+  // the field of view unapplied rather than inventing an angle.
+  function camStagePose(score, tSec, durationSec, say) {
+    var cam = (score && score.camera) || null;
+    var track = cam && cam.track;
+    var pose = { panX: 0, panY: 0, logScale: 0, pitch: 0, yaw: 0, roll: 0, fov: null };
+    if (Object.prototype.toString.call(track) !== "[object Array]" || !track.length) {
+      if (say) say("camera", "the score names no camera track; the stage rests at the neutral pose");
+      return pose;
+    }
+    var pts = track.map(function (p) { return { at: camWhen(p, durationSec), p: p }; });
+    pts.sort(function (a, b) { return a.at - b.at; });
+    CAM_KEYS.forEach(function (k) {
+      var all = true;
+      for (var i = 0; i < pts.length; i++) {
+        if (typeof camRead(pts[i].p, k) !== "number") { all = false; break; }
+      }
+      if (!all) {
+        if (say) say("camera:" + k, "no point names a number for «" + k + "»; it stands at its neutral");
+        pose[k] = CAM_NEUTRAL[k];
+        return;
+      }
+      pose[k] = splineAt(pts, tSec, function (q) { return camRead(q.p, k); });
+    });
+    return pose;
+  }
+
+  // WHICH PLACES THIS DEVICE CAN CARRY. Pan, dolly and roll are a plain affine of the frame and every
+  // device the host runs on carries them. Pitch, yaw and the field of view need the perspective road,
+  // and §7's degrade ladder lightens the score FIRST — so the `lean` variant drops those three and
+  // records the fallback. Which axes lean drops is a taste call and is named as a question.
+  function camCaps(variant) {
+    var deep = variant !== "lean";
+    return { panX: true, panY: true, logScale: true, roll: true, pitch: deep, yaw: deep, fov: deep };
+  }
+
+  // The pose, applied. One transform on the host's own canvas, above every pixel the instrument drew.
+  function camApply(pose, caps) {
+    if (!stage) return;
+    if (!pose) { stage.canvas.style.transform = ""; return; }
+    var s = Math.exp(caps.logScale ? pose.logScale : 0);
+    var deg = 180 / Math.PI;
+    var t = "";
+    if (caps.fov && typeof pose.fov === "number" && pose.fov > 0) {
+      t += "perspective(" + (0.5 * Math.max(cssH, 1) / Math.tan(pose.fov / 2)).toFixed(3) + "px) ";
+    }
+    t += "translate(" + (caps.panX ? pose.panX * 100 : 0).toFixed(4) + "%,"
+       + (caps.panY ? pose.panY * 100 : 0).toFixed(4) + "%) ";
+    if (caps.pitch && pose.pitch) t += "rotateX(" + (pose.pitch * deg).toFixed(4) + "deg) ";
+    if (caps.yaw && pose.yaw) t += "rotateY(" + (pose.yaw * deg).toFixed(4) + "deg) ";
+    if (caps.roll && pose.roll) t += "rotate(" + (pose.roll * deg).toFixed(4) + "deg) ";
+    t += "scale(" + s.toFixed(6) + ")";
+    stage.canvas.style.transformOrigin = "50% 50%";
+    stage.canvas.style.transform = t;
+  }
+
+  function camOff(a, b) {
+    var worst = 0;
+    CAM_KEYS.forEach(function (k) {
+      var x = typeof a[k] === "number" ? a[k] : 0, y = typeof b[k] === "number" ? b[k] : 0;
+      var d = Math.abs(x - y);
+      if (d > worst) worst = d;
+    });
+    return worst;
+  }
+
+  // The camera of ONE INSTANT, whoever holds it. A cue that owns the camera reports its pose each
+  // frame; the host applies THAT and holds its own flight still. A cue that owns the camera and then
+  // stops reporting hands authority back at the pose it last reported — authority never lapses into
+  // nobody's hands.
+  function camPoseAt(rec, tSec) {
+    var score = rec.cmd.score || {}, durationSec = rec.duration / 1000;
+    var owner = camOwnerAt(score, tSec);
+    var stagePose = camStagePose(score, camStageClock(score, tSec), durationSec, function (what, why) {
+      if (rec.said["cam:" + what]) return;
+      rec.said["cam:" + what] = true;
+      logEvt("camera-fallback", rec.cmd.gen, what + ": " + why);
+    });
+    var pose = stagePose;
+    if (owner !== "stage") pose = rec.ownPose || rec.lastPose || stagePose;
+    // THE HANDOFF ITSELF, MEASURED. §6: at a handoff instant the two poses must agree within a
+    // stated tolerance. What is compared is therefore the pose the OUTGOING authority reads at this
+    // instant against the pose the INCOMING one reads at the same instant — never this frame against
+    // the frame before it, which would count one frame of ordinary flight as a discontinuity. The
+    // host writes the distance it actually saw onto the diagnostic surface, so the row reads a
+    // number rather than a claim. The very first frame has no authority behind it and is no handoff.
+    if (owner !== rec.camOwner) {
+      if (rec.camOwner !== null) {
+        // Measured AT THE WINDOW'S OWN EDGE, never at whichever frame happened to land past it —
+        // otherwise a slower frame rate would read as a bigger discontinuity, and the tolerance
+        // would be measuring the device instead of the score.
+        var edge = camEdge(score, owner === "stage" ? rec.camOwner : owner, owner !== "stage");
+        var at = edge === null ? tSec : edge;
+        var there = camStagePose(score, camStageClock(score, at), durationSec, null);
+        var off = camOff(there, rec.ownPose || there);
+        rec.handoffs.push({ at: +at.toFixed(4), from: rec.camOwner, to: owner,
+                            off: +off.toFixed(9), within: off <= CAM_HANDOFF_TOL });
+        if (off > CAM_HANDOFF_TOL) {
+          logEvt("camera-handoff-jump", rec.cmd.gen,
+                 rec.camOwner + " → " + owner + " moves the pose by " + off.toFixed(6));
+        }
+      }
+      rec.camOwner = owner;
+    }
+    rec.lastPose = pose;
+    return { owner: owner, pose: pose, stage: stagePose };
+  }
+
+  // ================================================================================================
   // THE TRANSACTION (§2)
   // ================================================================================================
   function register(inst) {
@@ -430,6 +902,32 @@
     if (!s || !s.cues || !s.cues.length) return null;
     return s.cues[0];
   }
+  // THE SCORE, JUDGED ONCE, BEFORE ANYTHING IS TAKEN (§5/§6). Returns the reason it is refused, or
+  // null. Two things are checked here because both are properties of the WHOLE score and neither can
+  // be seen from inside a single frame: a driver graph that reaches itself, and two cues both
+  // claiming the camera at one instant.
+  function scoreWhyNo(cmd) {
+    var s = cmd && cmd.score;
+    if (!s) return null;
+    var cues = s.cues || [], i, j;
+    for (i = 0; i < cues.length; i++) {
+      var ring = cycleIn(cues[i].nodes || {});
+      if (ring) return "cue «" + cues[i].id + "» draws a cycle: " + ring;
+    }
+    var own = [];
+    for (i = 0; i < cues.length; i++) if (cues[i].cameraAuthority === "own") own.push(cues[i]);
+    for (i = 0; i < own.length; i++) {
+      for (j = i + 1; j < own.length; j++) {
+        var a = own[i].window || [0, 0], b = own[j].window || [0, 0];
+        if (a[0] <= b[1] && b[0] <= a[1]) {
+          return "cues «" + own[i].id + "» and «" + own[j].id + "» both carry the camera across "
+               + Math.max(a[0], b[0]) + "…" + Math.min(a[1], b[1]) + " s — one authority at a time";
+        }
+      }
+    }
+    return null;
+  }
+
   function pick(cmd) {
     var cue = cueOf(cmd);
     if (!cue) return probe;              // no score: only the diagnostics probe can take a command
@@ -472,7 +970,21 @@
     if (!rec || rec.docked) return;
     rec.docked = true;
     clearTimeout(rec.watchdogT);
+    clearTimeout(rec.deadlineT);
     if (rec.raf) { cancelAnimationFrame(rec.raf); rec.raf = 0; }
+    // THE CAMERA RESTS ON THE ARRIVING WORK. The distance the last pose stood from the neutral pose
+    // is written down before the transform is cleared, so the row reads the POSE rather than the
+    // picture and stays honest when the picture changes.
+    rec.rest = { off: +camOff(rec.lastPose || CAM_NEUTRAL, CAM_NEUTRAL).toFixed(9),
+                 tol: CAM_REST_TOL, owner: rec.camOwner };
+    rec.rest.rested = rec.rest.off <= CAM_REST_TOL;
+    if (!rec.rest.rested) {
+      logEvt("camera-not-rested", rec.cmd.gen,
+             "the last pose stands " + rec.rest.off.toFixed(6) + " from the neutral pose");
+    }
+    lastRun = { camera: rec.camera || null, rest: rec.rest, handoffs: rec.handoffs,
+                cadence: rec.cadence || null, handles: rec.lastHandles || null };
+    camApply(null, rec.caps);
     logEvt(landState, rec.cmd.gen, why || null);
     stageShow(false);
     try { rec.hooks.curtain(false); } catch (e) {}
@@ -514,24 +1026,39 @@
   }
 
   // ---- the handles a score drives (§4.4b / §5) ----------------------------------------------------
-  // Driver AST v1, the built subset: `progress`, `time` and `static`. A handle the score leaves
-  // untracked falls back to the manifest's own default and the fallback is recorded with its reason,
-  // which is the treatment every unbuilt driver kind gets (§5).
-  function nodeValue(cue, spec, progress, seconds) {
-    var n = spec;
-    if (n && n.node) n = (cue.nodes || {})[n.node];
-    if (!n) return { ok: false, why: "names no node" };
-    if (n.source === "progress") return { ok: true, v: progress };
-    if (n.source === "time") return { ok: true, v: seconds };
-    if (n.op === "static") return { ok: true, v: Number(n.value) };
-    return { ok: false, why: "driver «" + (n.op || n.source) + "» is declared and drawn by no evaluator yet" };
+  // Every handle the instrument publishes is read through the driver graph above. A handle the score
+  // leaves untracked falls back to the manifest's own default and the fallback is recorded with its
+  // reason — which is the treatment every unbuilt driver kind gets, and is what keeps §4.4b's
+  // determinism row honest: a handle that kept its own clock would make that row red and the row
+  // would name the handle.
+  //
+  // A handle marked `open` in the manifest is one the instrument can answer for itself (the woven
+  // instrument derives its balance from `mix` when no score drives `bal` directly). It is left
+  // UNDEFINED rather than defaulted when the score names no track, and no fallback is recorded,
+  // because nothing fell back.
+  function driverCtx(rec, progress, seconds, dt) {
+    var cue = rec.cue || {}, w = cue.window || [0, rec.duration / 1000];
+    var span = (w[1] - w[0]) || 1;
+    return {
+      nodes: cue.nodes || {},
+      progress: progress,
+      cueProgress: Math.max(0, Math.min(1, (seconds - w[0]) / span)),
+      seconds: seconds,
+      velocity: Number(rec.cmd.velocity) || 0,
+      // The capability, as one number a curve can read: the three named tiers in their own order.
+      capability: rec.variant === "rich" ? 1 : rec.variant === "lean" ? 0 : 0.5,
+      dt: dt || 0,
+      state: rec.driverState,
+    };
   }
-  function handlesOf(rec, progress, seconds) {
+  function handlesOf(rec, progress, seconds, dt) {
     var m = rec.inst.manifest, cue = rec.cue, out = {};
+    var ctx = driverCtx(rec, progress, seconds, dt);
     Object.keys(m.handles).forEach(function (k) {
       var h = m.handles[k], got = null;
-      if (cue && cue.tracks && cue.tracks[k]) got = nodeValue(cue, cue.tracks[k], progress, seconds);
+      if (cue && cue.tracks && cue.tracks[k]) got = evalNode(cue.tracks[k], ctx, 0);
       if (!got || !got.ok) {
+        if (h.open && !(cue && cue.tracks && cue.tracks[k])) { out[k] = undefined; return; }
         if (!rec.said[k]) {
           rec.said[k] = true;
           logEvt("handle-fallback", rec.cmd.gen, k + ": " + ((got && got.why) || "the score drives it with no track"));
@@ -541,29 +1068,164 @@
         out[k] = clampNum(got.v, h.min, h.max);
       }
     });
+    rec.lastHandles = out;
     return out;
   }
 
+  // ---- the interruption cadence (§2.5 / §11) ------------------------------------------------------
+  // WHAT STOOD HERE BEFORE was a hard stop: a cancel resolved the transaction inside one call and the
+  // picture jumped to whatever the curtain dropped on. §2.5 and the charter's nineteenth shelf ask for
+  // the other thing — on an interruption every handle TRAVELS to its nearest door through its own
+  // envelope, inside the score's own budget, and the transition then lands. The host force-ends at the
+  // deadline, so a slow envelope can no more strand the visitor than a silent instrument can.
+  var CADENCE_MIN = 0, CADENCE_MAX = 2000;
+
+  function budgetOf(cmd) {
+    var s = cmd && cmd.score, i = s && s.interruption;
+    return clampNum(i && i.withinMs !== undefined ? i.withinMs : 0, CADENCE_MIN, CADENCE_MAX);
+  }
+
+  // WHICH DOOR THE VISITOR IS NEAREST. The cue names its two doors by ONE handle and its two values;
+  // whichever value the live handle stands nearer is the door the cadence walks to. The whole
+  // transition picks one door — every handle then travels to the value IT takes at that door, so the
+  // picture that lands is a whole work and never a mongrel of two.
+  function nearestDoorOf(rec, live) {
+    var cue = rec.cue || {}, doors = cue.doors || {};
+    var din = doors["in"], dout = doors.out;
+    if (!din || !dout || din.handle !== dout.handle) return null;
+    var k = din.handle, at = Number(live[k]);
+    if (!isFinite(at)) return null;
+    var toIn = Math.abs(at - Number(din.value)), toOut = Math.abs(at - Number(dout.value));
+    var which = toIn <= toOut ? "in" : "out";
+    var seconds = (cue.window || [0, rec.duration / 1000])[which === "in" ? 0 : 1];
+    var progress = which === "in" ? 0 : 1;
+    // Every handle at the door: its own track read at the door's own instant, with the door handle
+    // itself pinned to exactly the value the door names.
+    var want = handlesOf(rec, progress, seconds, 0);
+    var at_door = {};
+    Object.keys(want).forEach(function (h) { at_door[h] = want[h]; });
+    at_door[k] = clampNum(doors[which].value, rec.inst.manifest.handles[k].min,
+                          rec.inst.manifest.handles[k].max);
+    return { which: which, handle: k, value: Number(doors[which].value), handles: at_door,
+             progress: progress, seconds: seconds };
+  }
+
+  // Each handle travels on its OWN envelope. A cue may name one per handle in `cadence` — any of the
+  // four named curves — and a handle the cue says nothing about walks on `smooth`, which leaves and
+  // arrives at rest.
+  function envelopeFor(cue, handle) {
+    var named = cue && cue.cadence ? cue.cadence[handle] : null;
+    return CURVES[named] || CURVES.smooth;
+  }
+
+  function cadenceStart(rec, reason, immediate) {
+    var live = rec.lastHandles || handlesOf(rec, rec.lastProgress || 0, rec.lastSeconds || 0, 0);
+    var door = nearestDoorOf(rec, live);
+    var budget = immediate ? 0 : budgetOf(rec.cmd);
+    rec.cadence = {
+      reason: reason, budget: budget, forced: !!immediate,
+      door: door ? door.which : null, doorHandle: door ? door.handle : null,
+      seconds: door ? door.seconds : undefined,
+      from: live, to: door ? door.handles : live,
+      t0: performance.now(), landedInMs: null, ended: false, atDoor: null,
+    };
+    if (!door) {
+      logEvt("cadence-no-door", rec.cmd.gen,
+             "the cue names no pair of doors on one handle; the handles hold where they stand");
+    }
+    logEvt("cadence", rec.cmd.gen,
+           reason + " → door «" + (door ? door.which : "none") + "» within " + budget + " ms");
+    try { if (rec.inst && rec.inst.cancel) rec.inst.cancel(reason); } catch (e) {}
+    if (budget <= 0) { cadenceEnd(rec, "at once"); return; }
+    rec.deadlineT = setTimeout(function () { cadenceEnd(rec, "deadline"); }, budget);
+  }
+
+  // Where every handle stands part-way through the cadence.
+  function cadenceHandles(rec, now) {
+    var c = rec.cadence, cue = rec.cue;
+    var u = c.budget > 0 ? Math.max(0, Math.min(1, (now - c.t0) / c.budget)) : 1;
+    var out = {};
+    Object.keys(c.to).forEach(function (k) {
+      var a = c.from[k], b = c.to[k];
+      if (typeof a !== "number" || typeof b !== "number") { out[k] = b; return; }
+      out[k] = a + (b - a) * envelopeFor(cue, k)(u);
+    });
+    return { handles: out, u: u };
+  }
+
+  function cadenceEnd(rec, why) {
+    if (!rec.cadence || rec.cadence.ended) return;
+    var c = rec.cadence;
+    c.ended = true;
+    c.landedInMs = Math.round(performance.now() - c.t0);
+    // ONE LAST FRAME, ON THE DOOR ITSELF, so the picture the curtain drops on is the door and not
+    // wherever the envelope had reached when the deadline arrived. This is what makes the host's
+    // force-end at the deadline a landing rather than a cut.
+    if (rec.inst && rec.inst.manifest && !rec.docked) {
+      try { playFrame(rec, c.seconds === undefined ? (rec.lastSeconds || 0) : c.seconds,
+                      rec.lastProgress || 0, 0, c.to); }
+      catch (e) { logEvt("cadence-frame-threw", rec.cmd.gen, String((e && e.message) || e)); }
+    }
+    // EVERY HANDLE AT A DOOR, written down as a number rather than asserted. The last frame put each
+    // handle on its envelope's own end; this is the distance that actually remained.
+    c.atDoor = {};
+    Object.keys(c.to).forEach(function (k) {
+      var want = c.to[k], is = (rec.lastHandles || {})[k];
+      c.atDoor[k] = { want: want, is: is,
+                      off: (typeof want === "number" && typeof is === "number")
+                        ? +Math.abs(want - is).toFixed(9) : null };
+    });
+    clearTimeout(rec.deadlineT);
+    logEvt("cadence-end", rec.cmd.gen, why + " in " + c.landedInMs + " ms");
+    finish("cancelled", c.reason);
+  }
+
   // ---- the frame loop ----------------------------------------------------------------------------
+  // One frame of the instrument, with the camera's pose applied by the host above whatever the
+  // instrument drew. `hold` is the cadence's own handle set when a cadence is playing; a cadence
+  // frame is `pinned`, so the instrument walks to the door on the host's envelope instead of
+  // settling of its own accord half-way through it.
+  function playFrame(rec, seconds, progress, dt, hold) {
+    var cam = camPoseAt(rec, seconds);
+    rec.camera = cam;
+    rec.inst.frame({
+      token: rec.cmd.gen, t: seconds, progress: progress,
+      handles: hold || handlesOf(rec, progress, seconds, dt),
+      viewport: { w: cssW, h: cssH, dpr: dpr },
+      reduced: !!rec.cmd.reduced,
+      camera: cam.pose,
+      // a pinned run is a bench run: it holds its pose instead of walking to the end door, so a
+      // conformance row can photograph one instant twice and compare it to itself
+      pinned: pinProgress !== null || !!hold,
+      draw: function (pose) { drawPose(rec.inst, pose, rec.src); },
+      // A cue that carries the camera by its own device reports its pose here, once a frame. The
+      // host applies it and holds its own flight still across that window.
+      reportPose: function (p) { if (p) rec.ownPose = p; },
+      settle: settle, fail: fail,
+    });
+    camApply(cam.pose, rec.caps);
+    if (hold) rec.lastHandles = hold;
+  }
+
   function runFrame(rec, now) {
     if (cur !== rec || rec.docked) return;
     rec.raf = requestAnimationFrame(function (t) { runFrame(rec, t); });
     noteFrame(now);
+    var dt = rec.lastNow ? (now - rec.lastNow) / 1000 : 0;
+    rec.lastNow = now;
     var seconds = pinClock !== null ? pinClock : (now - rec.t0) / 1000;
     var progress = pinProgress !== null ? pinProgress
       : (rec.duration > 0 ? Math.min(1, (now - rec.t0) / rec.duration) : 1);
+    rec.lastSeconds = seconds;
+    rec.lastProgress = progress;
     try {
-      rec.inst.frame({
-        token: rec.cmd.gen, t: seconds, progress: progress,
-        handles: handlesOf(rec, progress, seconds),
-        viewport: { w: cssW, h: cssH, dpr: dpr },
-        reduced: !!rec.cmd.reduced,
-        // a pinned run is a bench run: it holds its pose instead of walking to the end door, so a
-        // conformance row can photograph one instant twice and compare it to itself
-        pinned: pinProgress !== null,
-        draw: function (pose) { drawPose(rec.inst, pose, rec.src); },
-        settle: settle, fail: fail,
-      });
+      if (rec.cadence && !rec.cadence.ended) {
+        var walk = cadenceHandles(rec, now);
+        playFrame(rec, seconds, progress, dt, walk.handles);
+        if (walk.u >= 1) cadenceEnd(rec, "on its own envelope");
+        return;
+      }
+      playFrame(rec, seconds, progress, dt, null);
     } catch (e) {
       logEvt("frame-threw", rec.cmd.gen, String((e && e.message) || e));
       fail(rec.cmd.gen, "frame threw");
@@ -576,8 +1238,16 @@
   function offer(cmd, hooks) {
     var inst = pick(cmd);
     if (!inst) return false;
-    if (cur) cancel("superseded");   // defensive: declare's own supersede already ended the bundle's
-                                     // OWN bookkeeping; this keeps the host's own record in step too
+    // THE GRAPH IS WALKED BEFORE THE COMMAND IS TAKEN. A cycle, or two cues claiming the camera at
+    // one instant, is refused here with its own reason rather than met half-way through a frame.
+    var no = scoreWhyNo(cmd);
+    if (no) {
+      logEvt("score-refused", cmd.gen, no);
+      try { hooks.glide(cmd); } catch (e) {}
+      return true;
+    }
+    if (cur) cancel("superseded", true);   // defensive: declare's own supersede already ended the
+                                     // bundle's OWN bookkeeping; this keeps the host's record in step
     var duration = durationOf(cmd);
     var budget = clampNum(prepareBudgetMs, PREPARE_MIN, PREPARE_MAX);
     var slack = clampNum(settleSlackMs, SLACK_MIN, SLACK_MAX);
@@ -585,7 +1255,10 @@
     var variant = variantOf(cmd);
     var rec = { cmd: cmd, hooks: hooks, inst: inst, cue: cue, variant: variant, state: "offered",
                 docked: false, watchdogT: null, duration: duration, raf: 0, t0: 0, src: null,
-                said: {} };
+                said: {}, driverState: {}, lastHandles: null, lastNow: 0,
+                lastSeconds: 0, lastProgress: 0,
+                caps: camCaps(variant), camOwner: null, camera: null, lastPose: null, ownPose: null,
+                handoffs: [], cadence: null, deadlineT: null, rest: null };
     cur = rec;
     logEvt("offer", cmd.gen, inst.name + " at " + variant);
     var answered = false;
@@ -665,14 +1338,28 @@
     return inst.manifest ? ((inst.manifest.resources || {})[variant] || null) : null;
   }
 
-  // cancel(reason) — an interruption (§2.2/§10.3). Before takeover it is a plain decline; armed or
-  // running, §11's hard stop resolves at once (the graded interruption cadence is declared and
-  // unbuilt) and lands through the SAME single dock every other exit uses.
-  function cancel(reason) {
+  // cancel(reason) — an interruption (§2.2/§10.3/§2.5). Before takeover it is a plain decline, and
+  // that costs the visitor nothing. Running, the CADENCE plays: every handle travels to its nearest
+  // door through its own envelope inside the score's own budget, and the transition then lands
+  // through the SAME single dock every other exit uses.
+  //
+  // `immediate` collapses the envelope to nothing. It is the supersede's own road: §2.5 wants the
+  // cadence played before the next command declares, but the product's declare is synchronous and
+  // this branch leaves the product side untouched, so a superseded transition puts every handle ON
+  // its door in one step instead of walking there. Every handle still lands at a door; only the
+  // walking is skipped, and the record says so (`forced`). Playing the full cadence ahead of a
+  // supersede needs the bundle's declare to become deferrable, which is named as a question.
+  function cancel(reason, immediate) {
     if (!cur || cur.docked) return;
     if (cur.state === "offered") { declineCurrent(cur, reason || "cancelled"); return; }
-    try { if (cur.inst && cur.inst.cancel) cur.inst.cancel(reason); } catch (e) {}
-    finish("cancelled", reason || "cancelled");
+    if (cur.cadence) { if (immediate) cadenceEnd(cur, "superseded mid-cadence"); return; }
+    if (!cur.inst || !cur.inst.manifest) {
+      // an instrument that draws nothing has no handle to walk and no door to walk to
+      try { if (cur.inst && cur.inst.cancel) cur.inst.cancel(reason); } catch (e) {}
+      finish("cancelled", reason || "cancelled");
+      return;
+    }
+    cadenceStart(cur, reason || "cancelled", !!immediate);
   }
 
   function resize(viewport) {
@@ -723,6 +1410,16 @@
                 preserveDrawingBuffer: stage ? stage.gl.getContextAttributes().preserveDrawingBuffer : null,
                 buffer: W + "x" + H, scale: STEPS[stepIx], changes: changes, dpr: dpr },
       resources: grantRow(),
+      // §9's inspector: the drivers with their evaluated values, the camera with its authority and
+      // its pose, the handoffs it measured, and the cadence an interruption landed through. What the
+      // last transaction left behind stays readable after it has gone, so a row can read a landing.
+      handles: cur ? cur.lastHandles : (lastRun ? lastRun.handles : null),
+      camera: cur ? cur.camera : (lastRun ? lastRun.camera : null),
+      camCaps: cur ? cur.caps : null,
+      rest: cur ? cur.rest : (lastRun ? lastRun.rest : null),
+      handoffs: cur ? cur.handoffs : (lastRun ? lastRun.handoffs : []),
+      cadence: cur ? cur.cadence : (lastRun ? lastRun.cadence : null),
+      camTolerances: { rest: CAM_REST_TOL, handoff: CAM_HANDOFF_TOL },
       frames: { count: s.length, p95: +quantile(s, 0.95).toFixed(2), p50: +quantile(s, 0.5).toFixed(2) },
     };
   }
@@ -928,6 +1625,21 @@
       // EVERY handle a score can drive (§4.4b). `mix` is the dial; `clock` is the second the host
       // hands down; the other four were the module's own params and its own die, and they are
       // published here so no handle keeps a clock or a roll of its own.
+      //
+      // THE THREE THAT ANSWERED TO NO TRACK, brought across 2026-08-14. The module ran these on its
+      // own eased clock, so under a scored run they kept moving on wall time and one seed gave a
+      // different picture (§4.4b names exactly this defect):
+      //   · `nMul` — THE STRIP-COUNT BREATH. The module drifts it as 1 + 0.35·sin(t·0.021·TAU + 1.1)
+      //     when nobody drives, and the hand reaches 0.62 … 1.65 across the frame (weave.js:452,
+      //     :443). Those two ends are the module's own, so they are the range here.
+      //   · `press` — THE PRESS RESPONSE. It eases toward PRESS = 1.30 held down and back to 1 let
+      //     go (weave.js:236, :466). Resting at 1 is what the module itself does under a parked
+      //     pointer, so 1 is the default and 1.30 the far end.
+      //   · `bal` — THE BALANCE ITSELF, which the module drifts as 0.97·sin(t·0.030·TAU)³ when no
+      //     dial holds it (weave.js:450–451). It is OPEN: a score that names no track for it leaves
+      //     the instrument deriving the balance from `mix` through the response curve, exactly as
+      //     the module lets its own dial win over the drift (weave.js:459). Nothing falls back, so
+      //     nothing is recorded as a fallback.
       handles: {
         mix: { min: 0, max: 1, def: 0 },
         clock: { min: 0, max: 14, def: 0 },
@@ -935,6 +1647,9 @@
         axis: { min: 0, max: 2, def: 2 },
         speed: { min: 0.1, max: 2.5, def: 1 },
         seed: { min: 0, max: 8, def: 0 },
+        nMul: { min: 0.62, max: 1.65, def: 1 },
+        press: { min: 1, max: PRESS, def: 1 },
+        bal: { min: -1, max: 1, def: 1, open: true },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -942,7 +1657,9 @@
       // Both doors frame alike, so one record covers them: the constant centre crop the strips'
       // travel pays for (ZOOM above; module-contract.json publishes the same 1.29).
       framings: { "0": { coverCrop: ZOOM }, "1": { coverCrop: ZOOM } },
-      drivers: ["progress", "time", "static"],
+      drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
+                "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
+                "ramp", "slew", "oscillate", "node"],
       camera: { needs: "none", authority: "stage" },
       gl: { preserveDrawingBuffer: false },
       neutralPose: { bal: 1, nMul: 1, press: 1, strips: 28, axis: 2, cssWidth: 1000, t: 0, reduced: false },
@@ -990,15 +1707,24 @@
         return { take: true };
       },
       start: function () { live = true; },
-      // The pose the shader draws. `nMul` and `press` are the hand's own channels and the hand is
-      // parked under a score, so both stand at 1 — the module's own note says the press rests at 1
-      // under a parked pointer, so a scored run never has it settling at all.
+      // The pose the shader draws. Every number in it now comes from a handle a score can drive, so
+      // a seeded run repeats to the pixel with every voice scored. `bal` is the one open handle: a
+      // score that drives it directly carries the module's own drift, and a score that says nothing
+      // about it leaves the balance derived from the dial through the response curve, which is how
+      // the module itself resolves the same pair.
+      //
+      // The remaining voices ride these handles rather than constants: the two width breaths at
+      // their own unaligned rates (0.31 and 0.24 + 1.7 rad) and the 27 s turn with its unequal holds
+      // of 3.2 s and 4.9 s read `clock`; the strips' travel reads `clock` and `speed` together
+      // (speed × 0.17, the horizontal at 0.86 of it + 0.31 turn); the over/under order reads `seed`.
+      // Their rates stay inside the shader and inside rotForTime, where their author put them.
       frame: function (st) {
         if (!live) return;
         var h = st.handles;
+        var bal = typeof h.bal === "number" ? h.bal : 1 - 2 * feelOf(clamp(h.mix, 0, 1));
         st.draw({
-          bal: 1 - 2 * feelOf(clamp(h.mix, 0, 1)),
-          nMul: 1, press: 1,
+          bal: bal,
+          nMul: h.nMul, press: h.press,
           strips: h.strips, axis: h.axis, speed: h.speed, seed: h.seed,
           cssWidth: st.viewport.w, t: h.clock, reduced: st.reduced,
         });
@@ -1095,6 +1821,42 @@
       manifest: function (id) { return instruments[id] ? instruments[id].manifest : null; },
       register: function (inst) { return register(inst); },
       es3: function (src, isVert) { return toES3(src, !!isVert); },
+      // ---- the driver graph and the camera, read as data ----------------------------------------
+      // A row states inputs and reads the value the evaluator answers with. Nothing is stubbed: this
+      // is the same evalNode a running frame calls, and the same camera evaluation a running frame
+      // applies — only the transaction around them is spared.
+      driver: function (spec, nodes, ctx) {
+        ctx = ctx || {};
+        return evalNode(spec, {
+          nodes: nodes || {},
+          progress: ctx.progress || 0, cueProgress: ctx.cueProgress || 0,
+          seconds: ctx.seconds || 0, velocity: ctx.velocity || 0,
+          capability: ctx.capability === undefined ? 0.5 : ctx.capability,
+          dt: ctx.dt || 0, state: ctx.state || {},
+        }, 0);
+      },
+      cycle: function (nodes) { return cycleIn(nodes || {}); },
+      scoreWhyNo: function (score) { return scoreWhyNo({ score: score, gen: 0 }); },
+      camera: function (score, tSec, ownPose) {
+        var rec = { cmd: { score: score, gen: 0 }, duration: (score.duration || 0),
+                    said: {}, handoffs: [], camOwner: null, lastPose: null, ownPose: ownPose || null };
+        var got = camPoseAt(rec, tSec);
+        return { owner: got.owner, pose: got.pose, stage: got.stage, handoffs: rec.handoffs };
+      },
+      // ONE RECORD walked across several instants, so a handoff is measured inside one flight the
+      // way a running transaction measures it, rather than across records that each start afresh.
+      cameraWalk: function (score, times, ownPose) {
+        var rec = { cmd: { score: score, gen: 0 }, duration: (score.duration || 0),
+                    said: {}, handoffs: [], camOwner: null, lastPose: null, ownPose: ownPose || null };
+        var poses = times.map(function (t) {
+          var got = camPoseAt(rec, t);
+          return { at: t, owner: got.owner, pose: got.pose, stage: got.stage };
+        });
+        return { poses: poses, handoffs: rec.handoffs };
+      },
+      camNeutral: function () { return CAM_NEUTRAL; },
+      camCaps: function (variant) { return camCaps(variant); },
+      camTolerances: function () { return { rest: CAM_REST_TOL, handoff: CAM_HANDOFF_TOL }; },
       ladder: function (ms, frames) {
         var t = 1e6;
         for (var i = 0; i < frames; i++) { t += ms; noteFrame(t); }
