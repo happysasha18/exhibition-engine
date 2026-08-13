@@ -6,10 +6,15 @@ share/history, every input method, resize/orientation/DPR, RTL, reduced motion, 
 analytics/A-B and the static layer. A crossing is a subordinate visual transaction A → B; it owns
 none of those.
 
-**Status, 2026-08-13 23:30.** This document is a written contract and nothing in it is built yet. The
-renderer's file `engine/assets/pass-layer.js` is still the 19-line stub that declines every command,
-and the host described here has no file on disk. Section 11 lists what is declared-and-unbuilt; that
-list is a subset of "unbuilt", because at this moment the whole contract is.
+**Status, 2026-08-14 03:00.** Built and standing: the transaction of §2 with its watchdog, its
+idempotence guard and its token check; the frame half of §1.2 and §7 — one canvas, one WebGL2
+context with the drawing buffer unpreserved, the two source textures, the programme cache, the frame
+loop, the clock handed down as transaction seconds, resize, the resolution ladder, the name-driven
+uniform binding, the resource census and context loss and restoration; the first instrument, the
+woven one of §8, with its manifest; and the score's road from a site's own `pass` record onto a
+declared command. Still written and unbuilt: the interruption cadence, the camera's own flight, the
+`pointer` driver, a stack of more than one cue, and the levels and tier-budget checks of §4.4.
+Section 11 lists what is declared-and-unbuilt with its owner.
 
 Any line below that reads as a description of behaviour is a specification of behaviour to be built,
 and the conformance rows of §9 are the evidence that will make each one true.
@@ -528,7 +533,7 @@ resizes a running transaction rather than replacing it.
 | `pointer` driver | declared; one normalised host signal arrives later; instruments attach no listeners | a later branch |
 | PairDossier direction A→B against B→A | recorded nowhere today | site build |
 | offline masks and segments | parked until the semantic pass is promoted | parked |
-| the byte fence for the renderer's own file | 4 000 B today, holding a 167 B stub; a real host and instrument will need a larger number with its reason written into the test | this branch |
+| the byte fence for the renderer's own file | closed 2026-08-14: 42 000 B raw (measured 39 415) and 13 000 B gzipped (measured 11 646), each with its breakdown written into its test | closed |
 
 **The interruption field is accepted and its fallback is recorded.** A score may name
 `interruption` today. Until the cadence is built, the host accepts the field, plays a hard resolve,
