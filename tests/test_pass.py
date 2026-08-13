@@ -312,7 +312,11 @@ else:
             opened = br.evaluate("String(document.documentElement.classList.contains('ex-face'))") == "true"
             rep = report(br)
             fresh = since(rep, g0)
-            faced = [e for e in fresh if e["name"] == "nav-abort" and e["why"] == "a face stands"]
+            # PASS-API §10.3 adds adapter.interrupt("zoom"), called the instant the closer look opens
+            # — before the per-frame faceStands() guard this row was written against (the three-flag
+            # bug) even gets a tick, so it now wins the abort's reason. Both stop the SAME flight; the
+            # row's own guarantee (a closer look mid-flight stops it) keeps its full force either way.
+            faced = [e for e in fresh if e["name"] == "nav-abort" and e["why"] in ("a face stands", "zoom")]
             if not opened:
                 skip(BROWSER_ROWS[11], "the closer look did not open on a plain click in this build")
             else:
