@@ -74,7 +74,9 @@ def scored(pair_a="a", pair_b="b"):
     the three voices that used to run on the module's own eased clock all reach the instrument
     instead of falling back to a default.
 
-    THE FOUR STATICS are nodes the generator already put in the file — nothing there is invented.
+    THE FOUR STATICS are nodes the generator already put in the file, and it now writes their tracks
+    too, so re-stating them here changes nothing — it only keeps this file honest against a score
+    written before it did. Nothing there is invented.
     THE TWO VOICES are the module's own numbers, carried digit for digit out of lab/effects/weave.js:
     the strip-count breath 1 + 0.35·sin(t·0.021·TAU + 1.1) (weave.js:452) and the press resting at 1
     under a parked pointer (weave.js:466 with :236). They stand here as driver nodes rather than as
