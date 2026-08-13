@@ -101,27 +101,37 @@ check("PASS-API the test instrument is reachable only when diagnostics are on",
       and "if (diag) {" in LAYER_SRC,
       "no diagnostics surface means no test instrument gets registered")
 
+# Read against the BUILT artifact rather than the source, since 2026-08-14. §5's own sentence is
+# "a conformance row greps the BUILT client for both", and the built file is the comment-stripped one
+# a visitor downloads — so the row judges code and cannot be tripped, either way, by prose that
+# merely names the two forbidden things. The emptiness guard keeps it from passing on nothing.
 check("PASS-API no eval, no new Function anywhere the host reads a command",
-      "eval(" not in LAYER_SRC and "new Function" not in LAYER_SRC,
-      "the host's own file must obey the same law as the bundle's driver graph")
+      len(LAYER_BUILT) > 1000 and "eval(" not in LAYER_BUILT and "new Function" not in LAYER_BUILT,
+      f"the host's own file must obey the same law as the bundle's driver graph "
+      f"(built file is {len(LAYER_BUILT)} characters)")
 
 # The renderer file's own byte fence (§11/§12), measured at each landing rather than guessed:
 #   4 000 B  held the 167 B stub.
 #  12 000 B  held the state machine, the watchdog, the idempotence guard and the test instrument
 #            (2026-08-13) — measured at 8 273 B.
-#  42 000 B  holds those PLUS the frame half and the first real instrument (2026-08-14), measured at
-#            39 415 B. Where the growth went, in raw source bytes: the frame stage 19 386 (canvas,
-#            WebGL2 context, vertex buffer, the two source textures, the programme cache keyed by
-#            branch name, the resolution ladder, the shader-version translator, the name-driven
-#            uniform binding, the census and context loss/restoration); the woven instrument 14 184,
-#            of which its shader alone is 5 810; the transaction 15 017. None of it rides the walk's
-#            bundle: this file is fetched only on a visit that actually draws (§12's split), so the
-#            67 000 B gzipped bundle fence is untouched by every byte above.
-LAYER_FENCE = 42000
-check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 12 000)",
+#  42 000 B  held those PLUS the frame half and the first real instrument (2026-08-14 morning),
+#            measured at 39 415 B.
+#  70 000 B  holds those PLUS the transition's own travel and its camera (2026-08-14 afternoon),
+#            measured at 63 235 B. Where this growth went, in stripped source bytes: the driver
+#            graph of §5, 8 928 (the six sources, the ten operator kinds, named nodes with
+#            references, and the cycle refusal that names the ring); the camera of §6, 5 341 (the
+#            pose record, the dolly in log space, one authority per instant, the handoff measured at
+#            the window's own edge, and the rest read off the pose); and the interruption cadence of
+#            §2.5, which took the transaction region from 15 017 to 18 858. The frame stage stands at
+#            11 867 and the woven instrument at 12 070, of which its shader alone is 5 810.
+#            None of it rides the walk's bundle: this file is fetched only on a visit that actually
+#            draws (§12's split), so the 67 000 B gzipped bundle fence is untouched by every byte
+#            above — the bundle is measured at 66 735 B and no product-side file changed.
+LAYER_FENCE = 70000
+check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 42 000)",
       len(LAYER_BUILT.encode("utf-8")) < LAYER_FENCE,
-      f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the host's frame half and one "
-      f"real instrument no longer fit the machinery-only fence")
+      f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the driver graph, the camera "
+      f"and the interruption cadence no longer fit the frame-half fence")
 
 # ---------------------------------------------------------------- browser rows
 

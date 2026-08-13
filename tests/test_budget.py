@@ -68,11 +68,26 @@ strip_css_comments, strip_js_comments = _load_strip()
 FENCES = {
     "exhibition.js": (67_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture travels separately (pass-layer.js) since 2026-08-13", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
-    # 2026-08-14: the stub became a host with a frame half and one real instrument (the woven one),
-    # measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind. This file is
-    # fetched ONLY on a visit that actually draws — reduced motion, Save-Data, no WebGL2 and
-    # visualLayer:off never ask for it — so its bytes never touch the walk's own bundle above.
-    "pass-layer.js": (13_000, "the drawing layer's own file, fetched only when a walk asks for it: the host's frame half plus the woven instrument and its shader", strip_js_comments),
+    # 2026-08-14, morning: the stub became a host with a frame half and one real instrument (the
+    # woven one), measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind.
+    #
+    # 2026-08-14, afternoon — MOVED AGAIN, TO 21 000 B, MEASURED AT 18 174 B. What arrived is the
+    # second half of the woven slice: the transition's nonlinear travel and its camera. In stripped
+    # source bytes, measured region by region:
+    #   · the driver graph of §5, 8 928 B — the sources (progress, cueProgress, time, velocity,
+    #     capability, noise), the operators (named curve, monotone Fritsch-Carlson spline, map, add,
+    #     multiply, mix, clamp, hold/segment, ramp/slew, oscillate), named nodes with references, and
+    #     the cycle refusal that names the ring;
+    #   · the camera of §6, 5 341 B — the pose record, the dolly in log space, the single authority
+    #     per instant with the stage's flight held across an owned window, the capability gate, the
+    #     handoff measured at the window's own edge, and the rest read off the pose;
+    #   · the interruption cadence of §2.5 inside the transaction region, which grew from 15 017 B to
+    #     18 858 B — every handle to its nearest door on its own envelope, the deadline the host
+    #     force-ends at, and the last frame drawn ON the door.
+    # This file is fetched ONLY on a visit that actually draws — reduced motion, Save-Data, no WebGL2
+    # and visualLayer:off never ask for it — so its bytes never touch the walk's own bundle above,
+    # which stands untouched at 66 735 B against its own 67 000 B fence.
+    "pass-layer.js": (21_000, "the drawing layer's own file, fetched only when a walk asks for it: the host's frame half, the driver graph, the camera, the interruption cadence, and the woven instrument with its shader", strip_js_comments),
 }
 
 results = []
