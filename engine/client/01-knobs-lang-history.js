@@ -4,6 +4,12 @@
   // history with it; a storage refusal never blocks the arrival; a sibling window's
   // later save re-creates state by INV-26's last-writer rule.
   if (new URLSearchParams(location.search).has("reset")) {
+    // EX-PASS §10.3 names "reset" among the surfaces that stand in front of the walk, but this road
+    // runs at BOOT — before 01a-pass.js's own `let passNav` has left the temporal dead zone — so
+    // calling interrupt() here would throw on every ?reset visit rather than no-op quietly. Nothing
+    // can be mid-transaction this early regardless (no declare has run yet), so there is nothing for
+    // interrupt to do; the surfaces that stand in front of an ALREADY-WALKING visitor (zoom, quiz,
+    // gift, door, series, popstate) are the ones actually wired.
     try { localStorage.removeItem(KEY); } catch (e) {}
     try { localStorage.removeItem(TEMPO_KEY); } catch (e) {}
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}

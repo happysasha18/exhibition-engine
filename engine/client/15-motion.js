@@ -165,13 +165,13 @@
     // direction and the force, and it is the place that calls the landing — so a picture layer can
     // be handed a whole command and hand control back on the arriving work. A clamped no-move step
     // declares nothing: there is no work to arrive at.
-    const cmd = (k === cur) ? null : passStart({
+    const cmd = (k === cur) ? null : declare({
       fromEl: els[cur], toEl: els[k], dir: dir,
       span: Math.abs(stops[k] - stops[cur]),
       kind: "step", cause: "step", velocity: velocity,
     });
     if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
-    if (cmd && passVisualTakes(cmd) && passRun(cmd)) return;   // transitions; the layer's file is asked for once
+    if (cmd && passVisualTakes(cmd) && passOffer(cmd)) return;   // transitions; the layer's file is asked for once
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
     if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }
@@ -186,6 +186,10 @@
   // zoom standing the walk beneath is re-docked too (invisibly, under the layer) so its exit lands true.
   let turnT = null, turnTargetEl = null;
   function onViewportTurn() {
+    // EX-PASS §10.3: a turn arriving while a renderer has TAKEN the command resizes the running
+    // transaction in place — the host's own instrument keeps its progress — rather than superseding
+    // it the way a fresh declare would. The free-glide path below is unaffected and unchanged.
+    if (passRunning()) { reframe({ w: innerWidth, h: innerHeight }); return; }
     if (gliding && glideTargetEl && document.body.contains(glideTargetEl)) {
       turnTargetEl = glideTargetEl;                    // remember the destination across coalesced turn events
       glideCancel(); glideGoal = null;                 // stop writing OLD-viewport positions at once

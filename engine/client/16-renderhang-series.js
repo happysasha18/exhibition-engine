@@ -36,6 +36,7 @@
   function openSide(idx, laystep) {
     const S = SERIES[idx];
     if (!S || sideOpen || busy) return;
+    interrupt("series");   // EX-PASS §10.3: the series room stands in front of the walk
     sideOpener = document.activeElement;               // N7-A11Y (B1): remember the opener (the series chip) before the crossing
     sideOpen = true;
     faceSync();                                        // the room is a face — arm the rest + guard (EX-CHROME)

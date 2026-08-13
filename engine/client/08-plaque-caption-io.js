@@ -104,7 +104,12 @@
           && performance.now() - lastResizeAt > 250) {
         restingEl = x.target;                          // the eye's section, fin included — organic
       }                                                // moves only, never a reflow's stale pixels
-      passLandGate(x.target, "observe", landOn);
+      // PASS-API §3: the gate binds the TAKEOVER road, where two landings could actually happen —
+      // never the plain walk. With visualLayer off the watcher runs exactly as it does on the
+      // shipped engine (fe52eac): every intersecting report re-runs landOn whole, ungated, so a
+      // repeat report after a rebuilt threshold or a language switch still refills the caption.
+      if (passGet("visualLayer") === "pass") passLandGate(x.target, "observe", landOn);
+      else landOn(x.target, "observe");
     });
   }
   function ioBuild() {

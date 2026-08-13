@@ -419,6 +419,12 @@
   // history with it; a storage refusal never blocks the arrival; a sibling window's
   // later save re-creates state by INV-26's last-writer rule.
   if (new URLSearchParams(location.search).has("reset")) {
+    // EX-PASS §10.3 names "reset" among the surfaces that stand in front of the walk, but this road
+    // runs at BOOT — before 01a-pass.js's own `let passNav` has left the temporal dead zone — so
+    // calling interrupt() here would throw on every ?reset visit rather than no-op quietly. Nothing
+    // can be mid-transaction this early regardless (no declare has run yet), so there is nothing for
+    // interrupt to do; the surfaces that stand in front of an ALREADY-WALKING visitor (zoom, quiz,
+    // gift, door, series, popstate) are the ones actually wired.
     try { localStorage.removeItem(KEY); } catch (e) {}
     try { localStorage.removeItem(TEMPO_KEY); } catch (e) {}
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}
@@ -2287,6 +2293,8 @@
   // 2026-07-06 evening) — only the WAITS shortened; the reveal fade keeps its full span
   function doorPick(w, win) {
     if (busy) return;
+    interrupt("door");                                  // EX-PASS §10.3: the door ceremony stands in
+                                                         // front of the walk — end any transaction first
     busy = true;
     faceSync();                                        // the ceremony holds the lock (EX-CHROME)
     tlog("pick");
@@ -2411,6 +2419,8 @@
   let walkY = 0;                                       // the walk's place while a door covers it
   function doorReturn() {                              // the gallery's quiet exit (INV-31)
     if (busy || !doorAvailable) return;
+    interrupt("door");                                  // EX-PASS §10.3: leaving to the door also
+                                                         // stands in front of the walk
     tlog("exit");
     pulse("walk_exit");
     noteExit();                                        // EX-RETURN/INV-78: this real leave counts toward the 2nd-exit farewell
@@ -2430,6 +2440,9 @@
   }
 
   addEventListener("popstate", (ev) => {               // Back/Forward walk the faces (INV-32)
+    interrupt("popstate");                              // EX-PASS §10.3: the address road stands in
+                                                         // front of the walk too — end any transaction
+                                                         // in flight before a face renders over it
     const wasWalk = !atDoor;                            // the face we are LEAVING (before any render)
     const wasSide = sideOpen;                           // the side room may be the face we leave (EX-SERIES)
     ceremonyCancel();                                  // navigation wins mid-ceremony (EX-DOOR-2e)
@@ -2486,7 +2499,12 @@
     if (atDoor) {
       closeDoor();
       if (pick && byId[pick]) ground(byId[pick].dom);
-      passJump(null, "popstate");                      // EX-PASS: Back lands on a work too; the eye's own watcher names which
+      // EX-PASS §1.1: declare refuses an absent destination, so the section this Back is about
+      // to rest on (the same measured stop doorReturn remembered as walkY) is named here — the
+      // same nearest-stop reading the rotation road already uses, not a null left for the watcher.
+      const stops = frameStops();
+      const sections = stage.querySelectorAll(".exh-frame, .exh-fin");
+      passJump(stops.length ? sections[nearestStop(stops, walkY)] : null, "popstate");
       scrollTo(0, walkY);                              // the closing screen the visitor left (INV-32b)
       tellStory();                                     // a return is a natural beat — any owed portion re-asks (EX-STORY)
     }
@@ -2599,7 +2617,12 @@
           && performance.now() - lastResizeAt > 250) {
         restingEl = x.target;                          // the eye's section, fin included — organic
       }                                                // moves only, never a reflow's stale pixels
-      passLandGate(x.target, "observe", landOn);
+      // PASS-API §3: the gate binds the TAKEOVER road, where two landings could actually happen —
+      // never the plain walk. With visualLayer off the watcher runs exactly as it does on the
+      // shipped engine (fe52eac): every intersecting report re-runs landOn whole, ungated, so a
+      // repeat report after a rebuilt threshold or a language switch still refills the caption.
+      if (passGet("visualLayer") === "pass") passLandGate(x.target, "observe", landOn);
+      else landOn(x.target, "observe");
     });
   }
   function ioBuild() {
@@ -3397,6 +3420,7 @@
   // a quiz-win passes the chip); a pointer / touch open passes nothing, so the ceremony forces NO focus and
   // the walk beneath is left as it was. openTrap treats a falsy opener as "restore none" (D4, 2026-07-21).
   function openGift(src, name, preMarked, onYes, workId, opener) {
+    interrupt("gift");   // EX-PASS §10.3: the gift ceremony stands in front of the walk
     const T = (greetLang() || { t: {} }).t;
     // EX-PROTECT-RES (INV-56): the GRAB ceremony carries NO picture of its own. On a right-click the
     // work is already in view behind the card, so a thumb of the CLEAN source would only add a SECOND,
@@ -3708,6 +3732,7 @@
     if (zoomOpen || !el) return;
     const src = el.currentSrc || el.getAttribute("src") || el.src;
     if (!src) return;
+    interrupt("zoom");   // EX-PASS §10.3: the closer look stands in front of the walk
     inspectLaid = false; clearInspect();               // EX-PICSTAT: a fresh open is a new inspect episode
     zCancelTeardown();                                 // a reopen mid-teardown lands clean (rule 7)
     zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close
@@ -4232,6 +4257,7 @@
   function quizCardOpen(id) {
     const w = byId[id];
     if (!w || !w.quiz) return;
+    interrupt("quiz");   // EX-PASS §10.3: the question card stands in front of the walk
     const opener = document.activeElement;             // N7-A11Y (INV-102, B1): the card returns focus to its opener (the chip)
     quizOpener = opener;                               // remembered so the prize gift restores to the chip too (D4)
     quizWorkId = id;
@@ -4664,13 +4690,13 @@
     // direction and the force, and it is the place that calls the landing — so a picture layer can
     // be handed a whole command and hand control back on the arriving work. A clamped no-move step
     // declares nothing: there is no work to arrive at.
-    const cmd = (k === cur) ? null : passStart({
+    const cmd = (k === cur) ? null : declare({
       fromEl: els[cur], toEl: els[k], dir: dir,
       span: Math.abs(stops[k] - stops[cur]),
       kind: "step", cause: "step", velocity: velocity,
     });
     if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
-    if (cmd && passVisualTakes(cmd) && passRun(cmd)) return;   // transitions; the layer's file is asked for once
+    if (cmd && passVisualTakes(cmd) && passOffer(cmd)) return;   // transitions; the layer's file is asked for once
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
     if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }
@@ -4685,6 +4711,10 @@
   // zoom standing the walk beneath is re-docked too (invisibly, under the layer) so its exit lands true.
   let turnT = null, turnTargetEl = null;
   function onViewportTurn() {
+    // EX-PASS §10.3: a turn arriving while a renderer has TAKEN the command resizes the running
+    // transaction in place — the host's own instrument keeps its progress — rather than superseding
+    // it the way a fresh declare would. The free-glide path below is unaffected and unchanged.
+    if (passRunning()) { reframe({ w: innerWidth, h: innerHeight }); return; }
     if (gliding && glideTargetEl && document.body.contains(glideTargetEl)) {
       turnTargetEl = glideTargetEl;                    // remember the destination across coalesced turn events
       glideCancel(); glideGoal = null;                 // stop writing OLD-viewport positions at once
@@ -5053,6 +5083,7 @@
   function openSide(idx, laystep) {
     const S = SERIES[idx];
     if (!S || sideOpen || busy) return;
+    interrupt("series");   // EX-PASS §10.3: the series room stands in front of the walk
     sideOpener = document.activeElement;               // N7-A11Y (B1): remember the opener (the series chip) before the crossing
     sideOpen = true;
     faceSync();                                        // the room is a face — arm the rest + guard (EX-CHROME)

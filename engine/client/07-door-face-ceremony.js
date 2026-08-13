@@ -312,6 +312,8 @@
   // 2026-07-06 evening) — only the WAITS shortened; the reveal fade keeps its full span
   function doorPick(w, win) {
     if (busy) return;
+    interrupt("door");                                  // EX-PASS §10.3: the door ceremony stands in
+                                                         // front of the walk — end any transaction first
     busy = true;
     faceSync();                                        // the ceremony holds the lock (EX-CHROME)
     tlog("pick");
@@ -436,6 +438,8 @@
   let walkY = 0;                                       // the walk's place while a door covers it
   function doorReturn() {                              // the gallery's quiet exit (INV-31)
     if (busy || !doorAvailable) return;
+    interrupt("door");                                  // EX-PASS §10.3: leaving to the door also
+                                                         // stands in front of the walk
     tlog("exit");
     pulse("walk_exit");
     noteExit();                                        // EX-RETURN/INV-78: this real leave counts toward the 2nd-exit farewell
@@ -455,6 +459,9 @@
   }
 
   addEventListener("popstate", (ev) => {               // Back/Forward walk the faces (INV-32)
+    interrupt("popstate");                              // EX-PASS §10.3: the address road stands in
+                                                         // front of the walk too — end any transaction
+                                                         // in flight before a face renders over it
     const wasWalk = !atDoor;                            // the face we are LEAVING (before any render)
     const wasSide = sideOpen;                           // the side room may be the face we leave (EX-SERIES)
     ceremonyCancel();                                  // navigation wins mid-ceremony (EX-DOOR-2e)
@@ -511,7 +518,12 @@
     if (atDoor) {
       closeDoor();
       if (pick && byId[pick]) ground(byId[pick].dom);
-      passJump(null, "popstate");                      // EX-PASS: Back lands on a work too; the eye's own watcher names which
+      // EX-PASS §1.1: declare refuses an absent destination, so the section this Back is about
+      // to rest on (the same measured stop doorReturn remembered as walkY) is named here — the
+      // same nearest-stop reading the rotation road already uses, not a null left for the watcher.
+      const stops = frameStops();
+      const sections = stage.querySelectorAll(".exh-frame, .exh-fin");
+      passJump(stops.length ? sections[nearestStop(stops, walkY)] : null, "popstate");
       scrollTo(0, walkY);                              // the closing screen the visitor left (INV-32b)
       tellStory();                                     // a return is a natural beat — any owed portion re-asks (EX-STORY)
     }

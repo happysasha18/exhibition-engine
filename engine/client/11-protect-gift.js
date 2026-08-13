@@ -166,6 +166,7 @@
   // a quiz-win passes the chip); a pointer / touch open passes nothing, so the ceremony forces NO focus and
   // the walk beneath is left as it was. openTrap treats a falsy opener as "restore none" (D4, 2026-07-21).
   function openGift(src, name, preMarked, onYes, workId, opener) {
+    interrupt("gift");   // EX-PASS §10.3: the gift ceremony stands in front of the walk
     const T = (greetLang() || { t: {} }).t;
     // EX-PROTECT-RES (INV-56): the GRAB ceremony carries NO picture of its own. On a right-click the
     // work is already in view behind the card, so a thumb of the CLEAN source would only add a SECOND,
