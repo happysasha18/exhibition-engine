@@ -170,8 +170,8 @@
       span: Math.abs(stops[k] - stops[cur]),
       kind: "step", cause: "step", velocity: velocity,
     });
-    if (cmd) passObserverSync();                       // a changed landProgress takes effect between transitions
-    if (cmd && passVisualTakes(cmd)) { passLayer.run(cmd, passLandNow); return; }
+    if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
+    if (cmd && passVisualTakes(cmd) && passRun(cmd)) return;   // transitions; the layer's file is asked for once
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
     if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }

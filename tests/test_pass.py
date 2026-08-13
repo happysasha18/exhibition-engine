@@ -75,6 +75,11 @@ check("EX-PASS the driver graph is declared whole, and only the static kind is b
       and 'PASS_DRIVERS_BUILT = ["static"]' in SRC,
       "the schema carries all five kinds; the unbuilt ones fall back to their base")
 
+check("EX-PASS the drawing layer travels as its own file, and the bake ships it",
+      (TMP / "pass-layer.js").exists() and "__exPassLayer" in (TMP / "pass-layer.js").read_text(encoding="utf-8")
+      and 'PASS_SRC = "pass-layer.js"' in SRC,
+      "the picture's file must reach the site beside the bundle")
+
 check("EX-PASS the seam registers no input listener of its own",
       not re.search(r"addEventListener\(\s*[\"'](pointer|touch|wheel|key|mouse)", SRC),
       "input stays with the motion layer; a pointer signal arrives normalized, later")
@@ -98,6 +103,9 @@ BROWSER_ROWS = [
     "EX-PASS entering the walk declares a jump command",
     "EX-PASS the command's parameters are frozen at the start",
     "EX-PASS a closer look opening mid-flight stops the flight",
+    "EX-PASS the drawing layer's file is never fetched while the setting stands off",
+    "EX-PASS the setting fetches the layer, it registers, and the walk keeps stepping",
+    "EX-PASS reduced motion refuses the layer and records why",
 ]
 
 
@@ -310,6 +318,46 @@ else:
             else:
                 check(BROWSER_ROWS[11], bool(faced),
                       f"events={[(e['name'], e['why']) for e in fresh]}")
+
+            # 12 · the layer's file stays unfetched while the setting is off
+            br.net_capture()
+            enter(br, base, "diagnostics:on")
+            br.net_clear()
+            br.key("ArrowDown")
+            br.sleep(1.2)
+            asked = [u for u in br.net_log() if "pass-layer" in u]
+            check(BROWSER_ROWS[12],
+                  not asked and report(br)["layer"] == "absent",
+                  f"requests={asked} layer={report(br)['layer']}")
+
+            # 13 · the setting fetches it, the stub registers, and the walk still steps
+            enter(br, base, "diagnostics:on,visualLayer:pass")
+            br.net_clear()
+            y0 = int(br.evaluate("String(Math.round(scrollY))") or 0)
+            br.key("ArrowDown")
+            br.sleep(1.6)
+            rep = report(br)
+            got = [u for u in br.net_log() if "pass-layer" in u]
+            y1 = int(br.evaluate("String(Math.round(scrollY))") or 0)
+            check(BROWSER_ROWS[13],
+                  bool(got) and rep["layer"] == "registered" and y1 > y0
+                  and rep["device"]["webgl2"] is True,
+                  f"requests={len(got)} layer={rep['layer']} scroll {y0}->{y1} webgl2={rep['device']['webgl2']}")
+
+            # 14 · a visitor who asked for less motion is never sent the picture's file
+            br.emulate_media(prefers_reduced_motion="reduce")
+            enter(br, base, "diagnostics:on,visualLayer:pass")
+            br.net_clear()
+            br.key("ArrowDown")
+            br.sleep(1.2)
+            rep = report(br)
+            quiet = [u for u in br.net_log() if "pass-layer" in u]
+            said = [r for r in rep["refusals"] if r.get("why") == "reduced motion"]
+            check(BROWSER_ROWS[14],
+                  not quiet and bool(said) and rep["layer"] == "absent"
+                  and rep["device"]["reduced"] is True,
+                  f"requests={quiet} refusals={said[:1]} layer={rep['layer']}")
+            br.emulate_media()
 
 # ---------------------------------------------------------------- report
 import shutil  # noqa: E402

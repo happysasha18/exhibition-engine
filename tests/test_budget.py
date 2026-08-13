@@ -20,6 +20,16 @@ current measured size plus ~10-15% headroom, rounded up — enough that ordinary
 tight enough that a real jump (a whole new feature's worth of code, a heavy dependency) trips it and
 sends the delivery question back to the SPEC's non-goal.
 
+Moved 2026-08-13, with its reason, because the fence did its job. The transition seam (EX-PASS) took
+the bundle from ≈60_100 B to ≈65_334 B and tripped the 65_000 B fence. The delivery question the
+fence exists to raise was ANSWERED rather than waved through: the drawing layer now ships as its own
+file, `pass-layer.js`, fetched by the client only when the visualLayer setting asks for it, the
+device reports WebGL2, and the visit runs neither reduced motion nor Save-Data. What stays in the
+bundle is the CONTRACT — the settings register, the one transition command, the landing owner and the
+door that decides whether to fetch anything at all — which cannot live outside it, since it is what
+makes the decision. So the JS fence tracks the new baseline at 67_000 B (about 2.5% headroom,
+deliberately tight), and the separately delivered file gets a fence of its own from day one.
+
 Measured 2026-07-21: JS gzip ≈ 92_967 B (raw). CSS as-shipped 2026-07-23: gzip ≈ 7_415 B
 (comment-stripped; the commented source is ≈ 18_801 B — comments were ~60% of the served weight).
 JS as-shipped 2026-07-27: gzip ≈ 57_311 B (comment-stripped; the commented source is ≈ 104_495 B —
@@ -56,8 +66,9 @@ strip_css_comments, strip_js_comments = _load_strip()
 # fence value + one-line reason, per asset. current × ~1.1–1.15, rounded to a round number above it.
 # The transform is the exact bake-time treatment of the served asset (None = shipped verbatim).
 FENCES = {
-    "exhibition.js": (65_000, "monolithic all-pole bundle, comment-stripped as shipped; ~13% over the 2026-07-27 gzip of ~57_311 B", strip_js_comments),
+    "exhibition.js": (67_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture travels separately (pass-layer.js) since 2026-08-13", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
+    "pass-layer.js": (4_000, "the drawing layer's own file, fetched only when a walk asks for it; a stub today", strip_js_comments),
 }
 
 results = []

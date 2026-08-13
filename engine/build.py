@@ -866,6 +866,15 @@ def copy_exhibition_assets():
     write(OUT / "exhibition.js", strip_js_comments(js_src))
     css_src = client_asset("exhibition.css").read_text(encoding="utf-8")
     write(OUT / "exhibition.css", strip_css_comments(css_src))
+    # EX-PASS: the drawing layer travels as its own file, fetched by the client only when a walk
+    # asks for it. Absent from the assets dir, the bundle simply has none and every transition
+    # rides the walk's own glide.
+    layer_path = client_asset("pass-layer.js")
+    if layer_path.exists():
+        layer_src = layer_path.read_text(encoding="utf-8")
+        if "@@NS@@" in layer_src or "@@NS_UPPER@@" in layer_src:
+            layer_src = apply_namespace(layer_src, _NAMESPACE)
+        write(OUT / "pass-layer.js", strip_js_comments(layer_src))
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
         if cand and cand.exists():

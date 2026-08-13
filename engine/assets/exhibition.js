@@ -919,13 +919,60 @@
   // A drawing layer registers itself here. With none registered — the state of this branch — every
   // command falls through to the walk's own glide, which is the fallback the seam keeps reversible:
   // turning the layer off is a setting, never a rebuild.
-  let passLayer = null;
-  function passLayerSet(layer) { passLayer = (layer && typeof layer.run === "function") ? layer : null; }
+  let passLayer = null, passState = "absent";
+  function passLayerSet(layer) {
+    passLayer = (layer && typeof layer.run === "function") ? layer : null;
+    passState = passLayer ? "registered" : "absent";
+  }
   function passVisualTakes(cmd) {
     if (!passLayer) return false;
     if (cmd.kind === "jump") return false;
     if (cmd.reduced || cmd.saveData) return false;
     return cmd.params.visualLayer.base === "pass";
+  }
+  // A layer that throws is dropped for the rest of the visit and the walk's glide takes over at
+  // once; a layer that answers anything other than true has declined this command.
+  function passRun(cmd) {
+    try { return passLayer.run(cmd, passLandNow) === true; }
+    catch (e) {
+      passNote(passRefusals, { what: "layer", name: "run", why: "threw" });
+      passLayerSet(null);
+      return false;
+    }
+  }
+
+  // The drawing layer ships as its OWN file, fetched the first time a walk wants it: this bundle
+  // carries the door and none of the picture. One request per visit, one capability probe, and
+  // every refusal on the diagnostic surface. The walk keeps gliding throughout — the layer joins a
+  // later transition when it arrives, and a visit where it never arrives is the walk as it is today.
+  const PASS_SRC = "pass-layer.js";
+  let passAsked = false, passAble = null;
+  function passCan() {
+    if (passAble === null) {
+      try {
+        const g = document.createElement("canvas").getContext("webgl2");
+        passAble = !!g;
+        const lose = g && g.getExtension("WEBGL_lose_context");
+        if (lose) lose.loseContext();
+      } catch (e) { passAble = false; }
+    }
+    return passAble;
+  }
+  function passOpen() {
+    if (passAsked || passLayer) return;
+    if (passGet("visualLayer") !== "pass") return;
+    const no = REDUCED ? "reduced motion" : dataSaver() ? "save data" : passCan() ? null : "no webgl2";
+    if (no) { passNote(passRefusals, { what: "layer", name: PASS_SRC, why: no }); passAsked = true; return; }
+    passAsked = true;
+    passState = "asked";
+    try {
+      window.__@@NS@@PassLayer = passLayerSet;
+      const s = document.createElement("script");
+      s.src = PASS_SRC;
+      s.async = true;
+      s.onerror = () => { passState = "absent"; passNote(passRefusals, { what: "layer", name: PASS_SRC, why: "load failed" }); };
+      document.head.appendChild(s);
+    } catch (e) { passState = "absent"; passNote(passRefusals, { what: "layer", name: PASS_SRC, why: "no door" }); }
   }
 
   // The diagnostic surface: technical rows only — the register, the lifecycle, the refusals, the
@@ -949,10 +996,10 @@
       nav: passNav ? { gen: passNav.gen, kind: passNav.kind, cause: passNav.cause,
                        to: passNav.to ? passNav.to.id : null, params: passPlain(passNav.params) } : null,
       device: { reduced: !!REDUCED, saveData: !!dataSaver(), dpr: window.devicePixelRatio || 1,
-                viewport: { w: innerWidth, h: innerHeight } },
+                webgl2: passAble, viewport: { w: innerWidth, h: innerHeight } },
       limits: PASS_LIMITS,
       drivers: { declared: PASS_DRIVERS.slice(), built: PASS_DRIVERS_BUILT.slice() },
-      layer: passLayer ? "registered" : "absent",
+      layer: passState,
     };
   }
   // `score` is the checker itself, handed over so a score can be judged without being played — the
@@ -4492,8 +4539,8 @@
       span: Math.abs(stops[k] - stops[cur]),
       kind: "step", cause: "step", velocity: velocity,
     });
-    if (cmd) passObserverSync();                       // a changed landProgress takes effect between transitions
-    if (cmd && passVisualTakes(cmd)) { passLayer.run(cmd, passLandNow); return; }
+    if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
+    if (cmd && passVisualTakes(cmd) && passRun(cmd)) return;   // transitions; the layer's file is asked for once
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
     if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }
