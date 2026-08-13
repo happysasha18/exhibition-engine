@@ -25,6 +25,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
 """
 import base64
 import json
+import math
 import os
 import shutil
 import sys
@@ -66,23 +67,89 @@ def score_of():
 
 
 def scored(pair_a="a", pair_b="b"):
-    """The lab's own score for this pair, with the four handles the generator left untracked wired to
-    the static nodes it already wrote. build-scores-v1.py names only `mix` and `clock` in tracks
-    because module-contract.json publishes only those two; the port publishes all six (§4.4b), so the
-    strips, the axis, the speed and the die reach the instrument instead of falling back to the
-    module's own defaults. Nothing is invented: every value is a node the generator already put in
-    the file."""
+    """The lab's own score for this pair, with every handle the generator left untracked wired up.
+
+    build-scores-v1.py names only `mix` and `clock` in tracks because module-contract.json publishes
+    only those two; the port publishes NINE (§4.4b), so the strips, the axis, the speed, the die and
+    the three voices that used to run on the module's own eased clock all reach the instrument
+    instead of falling back to a default.
+
+    THE FOUR STATICS are nodes the generator already put in the file — nothing there is invented.
+    THE TWO VOICES are the module's own numbers, carried digit for digit out of lab/effects/weave.js:
+    the strip-count breath 1 + 0.35·sin(t·0.021·TAU + 1.1) (weave.js:452) and the press resting at 1
+    under a parked pointer (weave.js:466 with :236). They stand here as driver nodes rather than as
+    constants inside the instrument, which is what makes the seeded repeat below mean anything.
+
+    `bal` is deliberately NOT tracked: the balance drift is the module's IDLE life, and this score's
+    intent is the crossing, where the dial owns the balance. A score that wants the drift names
+    `tracks.bal` and the node is written out in this build's return."""
     s = score_of()
     s["pair"] = {"a": pair_a, "b": pair_b}
     cue = s["cues"][0]
     cue["nodes"]["axisStatic"] = {"op": "static", "value": 0,
                                   "note": "walk-v1.json steps[0].axis is 'up and down' = index 0, "
                                           "the same fact rotStatic 0 records"}
+    cue["nodes"]["breath"] = {"op": "oscillate", "rate": 0.021, "phase": 1.1, "shape": "sin",
+                              "in": {"source": "time"},
+                              "note": "lab/effects/weave.js:452 — the strip-count drift's own rate "
+                                      "and its own head start, unchanged"}
+    cue["nodes"]["nMulDrive"] = {"op": "add", "in": [{"op": "static", "value": 1},
+                                                     {"op": "multiply",
+                                                      "in": [{"op": "static", "value": 0.35},
+                                                             {"node": "breath"}]}]}
+    cue["nodes"]["pressStatic"] = {"op": "static", "value": 1,
+                                   "note": "weave.js:466 — the press rests at 1 under a parked "
+                                           "pointer, and a scored run parks it"}
     cue["tracks"]["strips"] = {"node": "stripsStatic"}
     cue["tracks"]["speed"] = {"node": "speedStatic"}
     cue["tracks"]["seed"] = {"node": "seedStatic"}
     cue["tracks"]["axis"] = {"node": "axisStatic"}
+    cue["tracks"]["nMul"] = {"node": "nMulDrive"}
+    cue["tracks"]["press"] = {"node": "pressStatic"}
     return s
+
+
+def coupled(pair_a="a", pair_b="b"):
+    """ONE NODE FEEDING TWO CHANNELS — the fifth law of the grammar, on the real instrument. The one
+    breath above drives the strip count AND the press, so the two cannot disagree; the row reads both
+    handles off the diagnostic surface and solves them back to the single value they came from."""
+    s = scored(pair_a, pair_b)
+    cue = s["cues"][0]
+    cue["nodes"]["pressDrive"] = {"op": "add", "in": [
+        {"op": "static", "value": 1},
+        {"op": "multiply", "in": [{"op": "static", "value": 0.30},
+                                  {"op": "clamp", "in": {"node": "breath"}, "min": 0, "max": 1}]}]}
+    cue["tracks"]["press"] = {"node": "pressDrive"}
+    return s
+
+
+def with_statics(strips=None, nMul=None, press=None, pair_a="a", pair_b="b"):
+    """The same score with one voice moved. Used to prove a handle reaches the PICTURE and not only
+    the diagnostic record — reading a driver's value back off the surface says the graph evaluated,
+    and says nothing about whether the instrument obeyed it.
+
+    `strips` is raised to 28, the module's own declared default, for these runs alone: this pair's
+    score names 8, and on a 390-point frame the count lands at clamp(8 * nMul * 0.5, 6, 64), whose
+    floor of 6 swallows most of the breath's range. At 28 the same range moves the count from about
+    ten strips to about twenty, which is the difference the row is trying to see."""
+    s = scored(pair_a, pair_b)
+    cue = s["cues"][0]
+    if strips is not None:
+        cue["nodes"]["stripsAlt"] = {"op": "static", "value": strips}
+        cue["tracks"]["strips"] = {"node": "stripsAlt"}
+    if nMul is not None:
+        cue["nodes"]["nMulAlt"] = {"op": "static", "value": nMul}
+        cue["tracks"]["nMul"] = {"node": "nMulAlt"}
+    if press is not None:
+        cue["nodes"]["pressAlt"] = {"op": "static", "value": press}
+        cue["tracks"]["press"] = {"node": "pressAlt"}
+    return s
+
+
+def breath_at(seconds):
+    """The very formula the node above carries, computed here so the row states its number instead of
+    reading one back and calling it correct."""
+    return math.sin(2 * math.pi * 0.021 * seconds + 1.1)
 
 
 # ---------------------------------------------------------------- bake once
@@ -120,8 +187,17 @@ check("PASS-WEAVE the woven instrument creates no context, no canvas, no loop an
       "§1.2's fence, read against the instrument's own region of the file")
 
 check("PASS-WEAVE every handle the instrument publishes is a handle a score can drive",
-      all(('%s: { min' % h) in LAYER for h in ["mix", "clock", "strips", "axis", "speed", "seed"]),
-      "§4.4b: a handle that keeps its own clock or its own roll makes the determinism row red")
+      all(('%s: { min' % h) in LAYER for h in
+          ["mix", "clock", "strips", "axis", "speed", "seed", "nMul", "press", "bal"]),
+      "§4.4b: a handle that keeps its own clock or its own roll makes the determinism row red — "
+      "`nMul`, `press` and `bal` were the three that answered to no track until 2026-08-14")
+
+check("PASS-WEAVE the instrument reads its balance, its strip-count breath and its press from handles",
+      "nMul: h.nMul, press: h.press" in LAYER
+      and "typeof h.bal === \"number\" ? h.bal :" in LAYER
+      and LAYER.count("nMul: 1, press: 1") == 1,
+      "the two constants standing where the module's own eased clock used to run are gone — the one "
+      "remaining pair is the manifest's neutral pose, which is a pose and not a channel")
 
 check("PASS-WEAVE the score's road into the walk needs no engine rebuild",
       "function passScoreFor" in (ROOT / "engine" / "client" / "01a-pass.js").read_text(encoding="utf-8"),
@@ -152,7 +228,19 @@ BROWSER_ROWS = [
     "PASS-WEAVE §7 · a manifest naming a uniform the host cannot supply is refused, with its reason",
     "PASS-WEAVE §7 · one canvas, one context, two source textures, one pass a frame",
     "PASS-WEAVE the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
+    "PASS-WEAVE §2.5 · an interruption at each of five instants lands inside the score's own budget",
+    "PASS-WEAVE §2.5 · every handle stands on its door when the cadence ends",
+    "PASS-WEAVE §2.5 · the cadence walks to the NEARER door, not always the same one",
+    "PASS-WEAVE row 9  · one camera authority through a real pass, and the pose rests on the arrival",
+    "PASS-WEAVE §5     · one node drives two handles of the real instrument, and moves both",
+    "PASS-WEAVE §4.4b  · the strip-count breath and the press reach the PICTURE, not just the record",
 ]
+
+# §2.5's landing slack. The host's own force-end is a timer at the score's `withinMs`; a browser
+# fires a timer a little late and the frame that draws the door is scheduled after it, so the
+# measured landing is allowed this much past the budget. It is a scheduling number, not a pacing
+# one — the pacing number is `withinMs` and it belongs to the score.
+LAND_SLACK_MS = 100
 
 WALK_ROWS = [
     "PASS-WEAVE the walk reads the pair's own score and freezes it onto the command",
@@ -385,8 +473,16 @@ else:
                 # ---- curtain up, one pass drawn, exactly one dock -------------------------------
                 # The pin comes off, so the pass runs to its own end door and the instrument settles
                 # of its own accord — the whole road, from the offer to the single dock.
-                br.evaluate("window.__cancel('before the whole pass'); "
-                            "window.__hooks.docks.length = 0; window.__hooks.curtains.length = 0; 0")
+                # The standing transaction is ended and LET LAND before the hooks are cleared: since
+                # 2026-08-14 a cancel plays the interruption cadence, so its own dock arrives a few
+                # hundred milliseconds later. Clearing first would have left that dock counted
+                # against the pass this row is actually about.
+                br.evaluate("window.__cancel('before the whole pass'); 0")
+                for _ in range(60):
+                    if js(br, "return window.__report().state;") == "idle":
+                        break
+                    br.sleep(0.05)
+                br.evaluate("window.__hooks.docks.length = 0; window.__hooks.curtains.length = 0; 0")
                 took = js(br, "return window.__offer(%s, {});" % SCORE_JSON)
                 br.sleep(0.5)
                 mid = js(br, "return {state: window.__report().state, "
@@ -403,6 +499,134 @@ else:
                       and end["state"] == "idle" and len(end["docks"]) == 1
                       and end["curtains"][-1] is False and "docked" in end["events"],
                       f"mid={mid} end={end}")
+
+                # ---- row 9: the camera through the whole pass ----------------------------------
+                # Read off the RUN THAT JUST LANDED. This score's flight is a rest at the neutral
+                # pose, so the pass never leaves it — which is exactly what "rests on B" asks of a
+                # score that authors no dolly. The row reads the POSE, never the picture.
+                cam = js(br, "var r = window.__report(); "
+                             "return {camera: r.camera, rest: r.rest, handoffs: r.handoffs, "
+                             "tol: r.camTolerances};")
+                check(BROWSER_ROWS[18],
+                      cam["camera"] and cam["camera"]["owner"] == "stage"
+                      and cam["handoffs"] == []
+                      and cam["rest"] and cam["rest"]["rested"] is True
+                      and cam["rest"]["off"] <= cam["tol"]["rest"],
+                      f"owner={cam['camera'] and cam['camera']['owner']} "
+                      f"rest={cam['rest']} handoffs={cam['handoffs']} tolerances={cam['tol']}")
+
+                # ---- §2.5: the interruption cadence, at five instants ---------------------------
+                # The pass is pinned at each instant in turn, then interrupted. The host reads the
+                # score's own budget, walks every handle to its nearest door on that handle's own
+                # envelope, force-ends at the deadline and lands through the one dock. Everything
+                # below is read off the host's own record of what it actually did.
+                WITHIN = score_of()["interruption"]["withinMs"]
+                lands = []
+                for at in (0.1, 0.3, 0.5, 0.7, 0.9):
+                    br.evaluate("window.__hooks.docks.length = 0; "
+                                "window.__hooks.curtains.length = 0; 0")
+                    js(br, "return window.__offer(%s, {clock: 1.5, progress: %r});"
+                       % (SCORE_JSON, at))
+                    br.sleep(0.3)
+                    js(br, "window.__cancel('row-19 at %r'); return null;" % at)
+                    for _ in range(60):
+                        if js(br, "return window.__report().state;") == "idle":
+                            break
+                        br.sleep(0.05)
+                    r = js(br, "var rep = window.__report(); "
+                               "return {cadence: rep.cadence, state: rep.state, "
+                               "docks: window.__hooks.docks.length, "
+                               "curtains: window.__hooks.curtains.slice()};")
+                    lands.append({"at": at, "r": r})
+
+                inside = [L for L in lands
+                          if L["r"]["cadence"] and L["r"]["cadence"]["ended"]
+                          and L["r"]["cadence"]["landedInMs"] <= WITHIN + LAND_SLACK_MS
+                          and L["r"]["state"] == "idle" and L["r"]["docks"] == 1
+                          and L["r"]["curtains"][-1] is False]
+                check(BROWSER_ROWS[15], len(inside) == 5,
+                      "budget %d ms + %d ms of scheduling slack; landings "
+                      % (WITHIN, LAND_SLACK_MS)
+                      + ", ".join("%s→%s ms (door %s, %d dock)"
+                                  % (L["at"],
+                                     L["r"]["cadence"] and L["r"]["cadence"]["landedInMs"],
+                                     L["r"]["cadence"] and L["r"]["cadence"]["door"],
+                                     L["r"]["docks"]) for L in lands))
+
+                # EVERY HANDLE AT A DOOR. The host writes down, per handle, what the door wanted and
+                # where the handle actually stood when the cadence ended.
+                measured = []
+                for L in lands:
+                    for h, v in ((L["r"]["cadence"] or {}).get("atDoor") or {}).items():
+                        if v.get("off") is None:
+                            continue
+                        measured.append((v["off"], "%s at %s" % (h, L["at"])))
+                # Eight of the nine handles carry a number at a door; `bal` is the open one this
+                # score leaves to the dial, so it has no door value of its own to be measured
+                # against. Five landings therefore owe forty readings, and a row that read none
+                # would be vacuous — so the count is asserted alongside the distance.
+                worst = max(measured) if measured else (255.0, "nothing was measured at all")
+                check(BROWSER_ROWS[16], len(measured) == 40 and worst[0] <= 1e-9,
+                      f"{len(measured)} handle readings across five landings; the furthest any "
+                      f"handle finished from its door was {worst[0]} ({worst[1]}) — the doors are "
+                      f"exact, so the bar is 1e-09")
+
+                doors = [(L["at"], (L["r"]["cadence"] or {}).get("door")) for L in lands]
+                check(BROWSER_ROWS[17],
+                      [d for _, d in doors] == ["in", "in", "in", "out", "out"],
+                      f"nearest door per instant: {doors} — the dial's own two ends are 0 and 1, so "
+                      f"0.5 and below walks back to «in» and past it walks on to «out»")
+
+                # ---- §5: one node, two handles, on the real instrument -------------------------
+                # The one breath drives the strip count and the press together. Read at two clocks:
+                # both move, and both stand exactly where that single value puts them.
+                COUPLED = json.dumps(coupled())
+                seen = []
+                for sec in (1.5, 13.0):
+                    js(br, "return window.__offer(%s, {clock: %r, progress: 0.5});" % (COUPLED, sec))
+                    br.sleep(0.4)
+                    seen.append(js(br, "return window.__report().handles;"))
+                    br.evaluate("window.__cancel('coupled'); 0")
+                    br.sleep(0.7)
+                want = []
+                for sec in (1.5, 13.0):
+                    b = breath_at(sec)
+                    want.append({"nMul": 1 + 0.35 * b, "press": 1 + 0.30 * max(0.0, min(1.0, b))})
+                moved = (abs(seen[0]["nMul"] - seen[1]["nMul"]) > 1e-6
+                         and abs(seen[0]["press"] - seen[1]["press"]) > 1e-6)
+                exact = all(abs(seen[i]["nMul"] - want[i]["nMul"]) <= 1e-9
+                            and abs(seen[i]["press"] - want[i]["press"]) <= 1e-9 for i in (0, 1))
+                check(BROWSER_ROWS[19], moved and exact,
+                      f"at 1.5 s {seen[0]['nMul']:.9f}/{seen[0]['press']:.9f}, at 13 s "
+                      f"{seen[1]['nMul']:.9f}/{seen[1]['press']:.9f} — wanted "
+                      f"{want[0]['nMul']:.9f}/{want[0]['press']:.9f} and "
+                      f"{want[1]['nMul']:.9f}/{want[1]['press']:.9f} from the one breath node")
+
+                # ---- §4.4b: the two voices reach the picture ------------------------------------
+                # A handle read back off the diagnostic surface proves the GRAPH evaluated it. It
+                # says nothing about whether the instrument obeyed it — a port that kept its
+                # constants would still report the driver's number. So these three runs differ by
+                # exactly one voice each and are photographed: a picture that did not move is a
+                # handle the instrument is not actually reading.
+                br.evaluate("window.__show('host'); 0")
+                shot = {}
+                for name, s_ in (("base", with_statics(strips=28, nMul=1.0, press=1.0)),
+                                 ("breath", with_statics(strips=28, nMul=1.4, press=1.0)),
+                                 ("press", with_statics(strips=28, nMul=1.0, press=1.30))):
+                    js(br, "return window.__offer(%s, {clock: 1.5, progress: 0.5});" % json.dumps(s_))
+                    br.sleep(0.7)
+                    shot[name] = png(br, SHOTS / ("voice-" + name + ".png"))
+                    br.evaluate("window.__cancel('voice row'); 0")
+                    br.sleep(0.7)
+                dBreath, mxBreath = diff(shot["base"], shot["breath"])
+                dPress, mxPress = diff(shot["base"], shot["press"])
+                # The bar is the project's own seam threshold, 6 of 255: a difference smaller than
+                # that is what the door rows call "the same picture", so a voice must move the frame
+                # by more than the seam to count as having reached it.
+                check(BROWSER_ROWS[20], dBreath > SEAM and dPress > SEAM,
+                      f"the strip-count breath at 1.0 against 1.4 moves the frame by {dBreath:.4f} "
+                      f"of 255 (worst channel {mxBreath}); the press at 1 against 1.30 moves it by "
+                      f"{dPress:.4f} (worst channel {mxPress}); the seam threshold is {SEAM}")
 
     shutil.rmtree(BENCH, ignore_errors=True)
     shutil.rmtree(SHOTS, ignore_errors=True)
