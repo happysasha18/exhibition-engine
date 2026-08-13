@@ -4,6 +4,7 @@
     document.documentElement.classList.add("ex-walk");   // the walk's face (geometry in CSS)
     stage.innerHTML = "";
     appendFrames(order.slice(0, shown), 1);
+    passJump(stage.querySelector(".exh-frame"), "hang");  // EX-PASS: a fresh hang stands at its first work
     scrollTo(0, 0);
     if (faceStands()) guardHold = 0;                     // the walk builds under the ceremony's veil — hold its top (EX-CHROME)
     tellStory();                                         // the voice, if the story is on (set-guarded)
@@ -203,7 +204,9 @@
       if (document.documentElement.classList.contains("ex-walk")) {
         const stops = frameStops();
         if (stops.length) {
-          const y = restingEl ? frameCenter(restingEl) : stops[nearestStop(stops, scrollY)];
+          const i = nearestStop(stops, scrollY);
+          const y = restingEl ? frameCenter(restingEl) : stops[i];
+          passJump(restingEl || stage.querySelectorAll(".exh-frame, .exh-fin")[i] || null, "series");
           scrollTo(0, y);
           guardHold = y;                                     // the guard holds the re-centred frame (EX-CHROME)
         }

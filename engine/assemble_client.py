@@ -30,6 +30,7 @@ OUT_PATH = HERE / "assets" / "exhibition.js"
 MANIFEST = [
     "00-prelude.js",
     "01-knobs-lang-history.js",
+    "01a-pass.js",
     "02-kinship-orderings.js",
     "03-quiz-seed-ab-story.js",
     "04-arrival-facts.js",

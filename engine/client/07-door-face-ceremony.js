@@ -511,6 +511,7 @@
     if (atDoor) {
       closeDoor();
       if (pick && byId[pick]) ground(byId[pick].dom);
+      passJump(null, "popstate");                      // EX-PASS: Back lands on a work too; the eye's own watcher names which
       scrollTo(0, walkY);                              // the closing screen the visitor left (INV-32b)
       tellStory();                                     // a return is a natural beat — any owed portion re-asks (EX-STORY)
     }

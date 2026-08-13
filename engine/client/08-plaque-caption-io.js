@@ -26,12 +26,14 @@
     fillTold();                                         // the line, where the narrator has spoken
   }
 
-  const io = new IntersectionObserver((es) => es.forEach((x) => {
-    if (!x.isIntersecting) return;
-    if (!sideOpen && !quizOpen && !giftOpen
-        && performance.now() - lastResizeAt > 250) {
-      restingEl = x.target;                            // the eye's section, fin included — organic
-    }                                                  // moves only, never a reflow's stale pixels
+  // EX-PASS: ONE owner of «this work is now current». Everything the arriving work switches — the
+  // seen mark, the circle's count, the ladder, the remembered place, the tone, the counter, the
+  // share link, the plaque, the ear's label, the narrator's next ask — lives in this one function.
+  // The in-view watcher below calls it, and so does the end of a transition when the landCommit
+  // setting says so; passLandGate lets exactly one of them through per work per generation.
+  function landOn(target, reason) {
+    // the watcher's own shape, kept whole so the body below reads exactly as it did in the callback
+    const x = { target: target };
     // the closing screen is not a work: the plaque must not strand the last work's title + told
     // story over the finale. Fade the caption out like a frame leaving — never a jump, never stale.
     if (x.target.id === "exh-fin") {                   // the closing screen clears the walk chrome
@@ -88,7 +90,38 @@
     // …which also fills the visible told seat for this work, if the narrator has spoken (EX-STORY)
     storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
     capSettle(x.target.querySelector("img.work"));     // EX-CAPTION (INV-97): seat the caption in the free zone at the frame's settle
-  }), { threshold: 0.55 });
+  }
+
+  // The watcher itself carries no product state any more: it names the eye's section and hands the
+  // arriving work to its one owner. Its threshold is the live landProgress setting, taken EXACTLY —
+  // a rounded threshold would make the setting lie about the moment it names. A changed value
+  // rebuilds the watcher at the next transition start (EX-PASS), never inside a running one.
+  let io = null, ioAt = null;
+  function ioSaw(es) {
+    es.forEach((x) => {
+      if (!x.isIntersecting) return;
+      if (!sideOpen && !quizOpen && !giftOpen
+          && performance.now() - lastResizeAt > 250) {
+        restingEl = x.target;                          // the eye's section, fin included — organic
+      }                                                // moves only, never a reflow's stale pixels
+      passLandGate(x.target, "observe", landOn);
+    });
+  }
+  function ioBuild() {
+    const t = passGet("landProgress");
+    const held = [];
+    if (io) {
+      stage.querySelectorAll(".exh-frame.observed").forEach((f) => held.push(f));
+      const fin = document.getElementById("exh-fin");
+      if (fin) held.push(fin);
+      io.disconnect();
+    }
+    io = new IntersectionObserver(ioSaw, { threshold: t });
+    ioAt = t;
+    held.forEach((f) => io.observe(f));                 // a re-watch re-reports what is already in view;
+  }                                                    // the gate's per-generation claim absorbs that
+  function passObserverSync() { if (passGet("landProgress") !== ioAt) ioBuild(); }
+  ioBuild();
 
   // ---- EX-CAPTION (INV-97/98): the caption keeps to its own space -------------------------------
   // The centred picture is never moved or scaled here (INV-27); the caption block alone measures the

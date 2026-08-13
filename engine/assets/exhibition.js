@@ -422,6 +422,7 @@
     try { localStorage.removeItem(KEY); } catch (e) {}
     try { localStorage.removeItem(TEMPO_KEY); } catch (e) {}
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}
+    try { sessionStorage.removeItem("@@NS@@-pass"); } catch (e) {}   // the session's seam overrides go too (EX-PASS — forgetting is whole)
     try { sessionStorage.removeItem(SPENT_KEY); } catch (e) {}  // the hash re-seeds a FIRST arrival
     try { sessionStorage.removeItem(ORIGIN_KEY); } catch (e) {}  // the remembered channel forgets too (EX-SHARE-ORIGIN)
     try { localStorage.removeItem(VISITOR_KEY); } catch (e) {}   // forgetting is whole (EX-MEMORY)
@@ -579,6 +580,386 @@
   const pushFace = (st) => { try { history.pushState({ @@NS@@: st }, ""); } catch (e) {} };
   const replaceFace = (st) => { try { history.replaceState({ @@NS@@: st }, ""); } catch (e) {} };
 
+/*!01a-pass.js*/
+  // ---- EX-PASS: the transition seam — live settings, one command, one landing owner -------------
+  // The seam a visual transition layer plugs into. It draws NOTHING. With no layer registered the
+  // walk's own glide (15-motion.js) runs exactly as it always did, so on the served walk this
+  // fragment changes no pixel until a layer registers itself through passLayerSet.
+  //
+  // Every value below is a LIVE SETTING: a validated name with a range, a safe default, a source
+  // ladder, an observable applied value and a recorded fallback. None is a compile-time constant.
+  // Changing a registered value needs no rebuild. A rebuild belongs to a change of CAPABILITY —
+  // a new name in the register, a new instrument, a new driver kind, a new shader branch — never
+  // to a change of a registered value.
+  //
+  // Placed right after the knobs fragment because the in-view watcher (08) builds its observer at
+  // EVALUATION time and reads landProgress from here; everything else is called from handlers,
+  // long after the whole client has evaluated.
+  //
+  // The standard source ladder, first match wins: the session's own override, then the pair's
+  // score, then the site's live config, then the built-in default. A descriptor may name its own
+  // order; qualityTier and diagnostics do, because a per-pair score has no business setting them.
+  const PASS_KEY = "@@NS@@-pass";
+  const PASS_ORDER = ["session", "score", "site", "default"];
+  const PASS_INSTRUMENTS = [];
+  const PASS_DRIVERS = ["static", "phase", "velocity", "pointer", "capability"];
+  const PASS_DRIVERS_BUILT = ["static"];
+  const PASS_CURVES = ["linear", "smooth", "ease-in", "ease-out", "spline"];
+  // A limit is part of the CAPABILITY, so raising one is a rebuild, never a setting.
+  const PASS_LIMITS = { camera: 64, phases: 3, instruments: 8, curve: 128, text: 200, bytes: 8192 };
+  const PASS_SCORE_FIELDS = ["schema", "intent", "seed", "pair", "params"];
+
+  // The register. `def` is the safe default; `kind` decides the check.
+  // landProgress — where in a frame's travel the walk calls the arriving work current. 0.55 is
+  // today's value, carried over so the seam changes no behaviour; it is a setting like any other.
+  // landCommit — who commits the arriving work: the in-view watcher, or the transition's end.
+  // flightMs — the transition's own duration; 0 hands the duration back to the walk's glide.
+  const PASS_REG = {
+    landProgress: { kind: "number", min: 0, max: 1, def: 0.55 },
+    landCommit: { kind: "enum", of: ["observe", "transitionEnd"], def: "observe" },
+    flightMs: { kind: "number", min: 0, max: 4000, def: 0 },
+    phaseWindows: { kind: "ratio3", def: [0.25, 0.5, 0.25] },
+    cameraTrack: { kind: "points", max: PASS_LIMITS.camera, def: [] },
+    instruments: { kind: "names", of: PASS_INSTRUMENTS, max: PASS_LIMITS.instruments, def: [] },
+    qualityTier: { kind: "enum", of: ["rich", "standard", "lean"], def: "standard",
+                   order: ["session", "site", "default"] },
+    visualLayer: { kind: "enum", of: ["off", "pass"], def: "off" },
+    diagnostics: { kind: "enum", of: ["off", "on"], def: "off",
+                   order: ["session", "site", "default"] },
+  };
+
+  const passEvents = [];
+  const passRefusals = [];
+  const passApplied = {};
+  function passNote(list, row) { list.push(row); if (list.length > 64) list.shift(); }
+
+  // ?pass=landProgress:0.531,diagnostics:on writes the session store once, the way ?reset writes its
+  // wipe once, then the address strips itself so the walk's own address stays clean.
+  function passSession() {
+    try {
+      const o = JSON.parse(sessionStorage.getItem(PASS_KEY) || "{}");
+      return (o && typeof o === "object") ? o : {};
+    } catch (e) { return {}; }
+  }
+  (function () {
+    const q = new URLSearchParams(location.search);
+    const raw = q.get("pass");
+    if (!raw) return;
+    const put = passSession();
+    raw.split(",").forEach((pair) => {
+      const i = pair.indexOf(":");
+      if (i <= 0) return;
+      const k = pair.slice(0, i).trim(), v = pair.slice(i + 1).trim();
+      if (!PASS_REG[k]) { passNote(passRefusals, { what: "setting", name: k, why: "unknown name" }); return; }
+      put[k] = /^-?\d*\.?\d+$/.test(v) ? parseFloat(v) : v;
+    });
+    try { sessionStorage.setItem(PASS_KEY, JSON.stringify(put)); } catch (e) {}
+    q.delete("pass");
+    const rest = q.toString();
+    try {
+      history.replaceState(history.state, "",
+        location.pathname + (rest ? "?" + rest : "") + location.hash);
+    } catch (e) {}
+  })();
+
+  // One value, checked. Returns {ok, value, why}. A refused value never reaches the walk; the
+  // caller falls back and the report says so, so a bad setting is visible instead of silent.
+  function passCheck(d, v) {
+    if (v === undefined || v === null) return { ok: false, why: "absent" };
+    const k = d.kind;
+    if (k === "number") {
+      const n = typeof v === "number" ? v : parseFloat(v);
+      if (!Number.isFinite(n)) return { ok: false, why: "no number" };
+      if (n < d.min || n > d.max) return { ok: false, why: "outside " + d.min + "…" + d.max };
+      return { ok: true, value: n };
+    }
+    if (k === "enum") {
+      const s = String(v);
+      return d.of.indexOf(s) < 0 ? { ok: false, why: "outside the named set" } : { ok: true, value: s };
+    }
+    if (k === "ratio3") {
+      if (!Array.isArray(v) || v.length !== PASS_LIMITS.phases) return { ok: false, why: "wants three shares" };
+      const a = v.map(Number);
+      if (a.some((x) => !Number.isFinite(x) || x < 0 || x > 1)) return { ok: false, why: "a share outside 0…1" };
+      if (Math.abs(a[0] + a[1] + a[2] - 1) > 0.001) return { ok: false, why: "the shares miss 1" };
+      return { ok: true, value: Object.freeze(a) };
+    }
+    if (k === "points") {
+      if (!Array.isArray(v)) return { ok: false, why: "wants a list" };
+      if (v.length > d.max) return { ok: false, why: "over " + d.max };
+      const pts = [];
+      for (let i = 0; i < v.length; i++) {
+        const p = v[i];
+        if (!p || typeof p !== "object" || Array.isArray(p)) return { ok: false, why: "no record" };
+        if (Object.keys(p).some((f) => ["at", "x", "y", "scale"].indexOf(f) < 0)) {
+          return { ok: false, why: "unknown field" };
+        }
+        const at = Number(p.at);
+        if (!Number.isFinite(at) || at < 0 || at > 1) return { ok: false, why: "outside 0…1" };
+        pts.push(Object.freeze({ at: at, x: Number(p.x) || 0, y: Number(p.y) || 0,
+                                 scale: Number.isFinite(Number(p.scale)) ? Number(p.scale) : 1 }));
+      }
+      return { ok: true, value: Object.freeze(pts) };
+    }
+    if (k === "names") {
+      if (!Array.isArray(v)) return { ok: false, why: "wants a list" };
+      if (v.length > d.max) return { ok: false, why: "over " + d.max };
+      const out = [];
+      for (let i = 0; i < v.length; i++) {
+        const s = String(v[i]);
+        if (s.length > PASS_LIMITS.text) return { ok: false, why: "name too long" };
+        if (d.of.indexOf(s) < 0) return { ok: false, why: "no allow-list" };
+        out.push(s);
+      }
+      return { ok: true, value: Object.freeze(out) };
+    }
+    return { ok: false, why: "no check" };
+  }
+
+  // The driver graph. A setting's value may be a plain value (a static driver, written short) or a
+  // record naming how the frame's value is found: base + phase-curve + velocity-response +
+  // pointer-response. Only the static kind is BUILT here; the rest are part of the declared schema,
+  // validate like any other, and fall back to their base with the fallback recorded. Nonlinear shape
+  // rides named curves and spline points from the score — the format accepts no expression and no
+  // executable field.
+  function passDriver(d, v) {
+    if (v === null || v === undefined || typeof v !== "object" || Array.isArray(v) || !v.driver) {
+      const plain = passCheck(d, v);
+      return plain.ok
+        ? { ok: true, node: { driver: "static", base: plain.value, curve: null, points: null, supported: true } }
+        : { ok: false, why: plain.why };
+    }
+    if (Object.keys(v).some((f) => ["driver", "base", "curve", "points"].indexOf(f) < 0)) {
+      return { ok: false, why: "driver names an unknown field" };
+    }
+    const kind = String(v.driver);
+    if (PASS_DRIVERS.indexOf(kind) < 0) return { ok: false, why: "driver on no allow-list" };
+    const base = passCheck(d, v.base);
+    if (!base.ok) return { ok: false, why: "driver base " + base.why };
+    let curve = null, points = null;
+    if (v.curve !== undefined) {
+      curve = String(v.curve);
+      if (PASS_CURVES.indexOf(curve) < 0) return { ok: false, why: "curve on no allow-list" };
+    }
+    if (v.points !== undefined) {
+      if (!Array.isArray(v.points)) return { ok: false, why: "points want a list" };
+      if (v.points.length > PASS_LIMITS.curve) return { ok: false, why: "over " + PASS_LIMITS.curve };
+      const pts = v.points.map(Number);
+      if (pts.some((x) => !Number.isFinite(x))) return { ok: false, why: "a point is no number" };
+      points = Object.freeze(pts);
+    }
+    const built = PASS_DRIVERS_BUILT.indexOf(kind) >= 0;
+    if (!built) passNote(passRefusals, { what: "driver", name: kind, why: "declared, drawn by no renderer yet — the base stands" });
+    return { ok: true, node: { driver: built ? kind : "static", asked: kind, base: base.value,
+                               curve: curve, points: points, supported: built } };
+  }
+
+  function passRawFrom(src, key, score) {
+    if (src === "session") return passSession()[key];
+    if (src === "score") return (score && score.params) ? score.params[key] : undefined;
+    if (src === "site") return (((EX && EX.pass) || (cfg && cfg.pass) || {}))[key];
+    if (src === "default") return PASS_REG[key].def;
+    return undefined;
+  }
+  // Resolve one name against the ladder, recording what was asked, who won, what got applied.
+  function passResolve(key, score) {
+    const d = PASS_REG[key];
+    const order = d.order || PASS_ORDER;
+    let asked, from = null, why = null, node = null;
+    for (let i = 0; i < order.length; i++) {
+      const src = order[i];
+      const raw = passRawFrom(src, key, score);
+      if (raw === undefined || raw === null) continue;
+      const got = passDriver(d, raw);
+      if (got.ok) { asked = raw; from = src; node = got.node; break; }
+      if (why === null) { asked = raw; why = got.why; }
+      passNote(passRefusals, { what: "setting", name: key, source: src, why: got.why });
+    }
+    if (from === null) { node = passDriver(d, d.def).node; from = "default"; }
+    passApplied[key] = Object.freeze({
+      name: key, asked: asked === undefined ? null : asked, source: from, applied: node.base,
+      driver: node.asked || node.driver, supported: node.supported,
+      fallback: why !== null || from === "default", why: why });
+    return Object.freeze(node);
+  }
+  // The one convenience read for code that wants a value now (the watcher's threshold, the layer
+  // switch). Anything inside a running transition reads the frozen snapshot instead.
+  function passGet(key, score) { return passResolve(key, score).base; }
+
+  // The score: a versioned record with an allow-list of fields. An unknown field refuses the WHOLE
+  // score, so a typo lands as a refusal in the report instead of half-applying.
+  function passScoreCheck(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, why: "no record" };
+    let bytes = 0;
+    try { bytes = JSON.stringify(raw).length; } catch (e) { return { ok: false, why: "does not write out" }; }
+    if (bytes > PASS_LIMITS.bytes) return { ok: false, why: "over " + PASS_LIMITS.bytes + " bytes" };
+    if (raw.schema !== 1) return { ok: false, why: "names no schema 1" };
+    const stray = Object.keys(raw).filter((k) => PASS_SCORE_FIELDS.indexOf(k) < 0);
+    if (stray.length) return { ok: false, why: "unknown field «" + stray[0] + "»" };
+    if (raw.intent !== undefined && (typeof raw.intent !== "string" || raw.intent.length > PASS_LIMITS.text)) {
+      return { ok: false, why: "intent is no short text" };
+    }
+    if (raw.seed !== undefined && !Number.isFinite(Number(raw.seed))) return { ok: false, why: "seed is no number" };
+    const p = raw.params;
+    if (p !== undefined) {
+      if (!p || typeof p !== "object" || Array.isArray(p)) return { ok: false, why: "params is no record" };
+      const bad = Object.keys(p).filter((k) => !PASS_REG[k]);
+      if (bad.length) return { ok: false, why: "params names «" + bad[0] + "», in no register" };
+      const shut = Object.keys(p).filter((k) => (PASS_REG[k].order || PASS_ORDER).indexOf("score") < 0);
+      if (shut.length) return { ok: false, why: "«" + shut[0] + "» is closed to a score" };
+    }
+    return { ok: true, score: raw };
+  }
+
+  // Every setting resolves ONCE, at nav-start, and the result is frozen onto the command. A live
+  // change lands on the NEXT transition; the geometry and the camera of a transition already in
+  // flight stay as they were. A setting whose descriptor names a way to apply live may travel inside
+  // the flight; none does yet, so a running transition is fully frozen.
+  function passSnapshot(score) {
+    const out = {};
+    Object.keys(PASS_REG).forEach((k) => { out[k] = passResolve(k, score); });
+    return Object.freeze(out);
+  }
+
+  let passGen = 0;
+  let passNav = null;
+  let passPending = null;
+  let passLastEl = null, passLastGen = -1;
+  function passWhere(el) {
+    if (!el) return null;
+    return Object.freeze({ id: (el.dataset && el.dataset.id) || null,
+                           n: (el.dataset && el.dataset.n) ? +el.dataset.n : null });
+  }
+  // The marks carry their own prefix, so the walk's existing timings keep their exact shape and the
+  // suite's mark counts stay honest; the seam's own suite filters this prefix.
+  function passMark(name, cmd, extra) {
+    const row = { at: Math.round(performance.now()), name: name,
+                  gen: cmd ? cmd.gen : 0, kind: cmd ? cmd.kind : null, cause: cmd ? cmd.cause : null,
+                  from: cmd && cmd.from ? cmd.from.id : null, to: cmd && cmd.to ? cmd.to.id : null,
+                  why: extra || null };
+    passNote(passEvents, row);
+    try { performance.mark("@@NS@@-pass:" + name, { detail: row }); }
+    catch (e) { try { performance.mark("@@NS@@-pass:" + name); } catch (e2) {} }
+  }
+  // A held-back landing always lands, never strands.
+  function passFlush() {
+    const p = passPending; passPending = null;
+    if (p) { passLastEl = p.el; passLastGen = passGen; p.commit(p.el, "flush"); }
+  }
+  function passEnd(name, why) {
+    if (!passNav) return;
+    const cmd = passNav; passNav = null;
+    passFlush();
+    passMark(name, cmd, why);
+  }
+  // The one place a transition is declared. Every road that moves the visitor from one work to
+  // another comes through here — the stepping input AND every programmatic jump — so the state
+  // contract is the same for all of them, whatever the picture does.
+  function passStart(a) {
+    passEnd("nav-abort", "superseded");
+    passGen += 1;
+    const g = passGen;
+    let score = null;
+    if (a.score) {
+      const seen = passScoreCheck(a.score);
+      if (seen.ok) score = seen.score;
+      else passNote(passRefusals, { what: "score", name: a.score.intent || "unnamed", why: seen.why });
+    }
+    const cmd = Object.freeze({
+      gen: g,
+      from: passWhere(a.fromEl), to: passWhere(a.toEl),
+      dir: (+a.dir < 0) ? -1 : 1,
+      span: Math.abs(+a.span || 0),
+      kind: a.kind === "jump" ? "jump" : "step",
+      cause: String(a.cause || "step").slice(0, PASS_LIMITS.text),
+      velocity: +a.velocity || 0,
+      reduced: !!REDUCED,
+      saveData: !!dataSaver(),
+      rtl: (document.documentElement.getAttribute("dir") === "rtl"),
+      dpr: window.devicePixelRatio || 1,
+      viewport: Object.freeze({ w: innerWidth, h: innerHeight }),
+      params: passSnapshot(score),
+      signal: Object.freeze({ get aborted() { return g !== passGen; } }),
+    });
+    passNav = cmd;
+    passMark("nav-start", cmd);
+    return cmd;
+  }
+  function passLandNow() { passEnd("nav-land", null); }
+  function passAbortNow(why) { passEnd("nav-abort", why || "cancelled"); }
+  // A programmatic move — a restored place, a pasted link, a closed room, a rotation, a fresh hang,
+  // the Back arrow. It takes the SAME command and the same landing owner, so the state contract
+  // covers every road between two works; the picture layer declines it by kind, so the eye still
+  // sees an instant land.
+  function passJump(toEl, cause, fromEl) {
+    const cmd = passStart({ fromEl: fromEl || null, toEl: toEl || null, dir: 1, span: 0,
+                            kind: "jump", cause: cause, velocity: 0 });
+    passLandNow();
+    return cmd;
+  }
+
+  // The one owner of «this work is now current». The in-view watcher (08) and the end of a
+  // transition both arrive here. A work that is ALREADY the last one landed, inside the same
+  // generation, is a repeat — that is the watcher re-reporting what is still on screen after a
+  // rebuilt threshold, and it commits nothing twice. A visitor who walks back to a work does land
+  // it again: the work between them moved the last-landed mark.
+  function passLandGate(el, reason, commit) {
+    if (!el) return;
+    if (el === passLastEl && passGen === passLastGen) return;
+    if (reason === "observe" && passNav && passNav.to
+        && passNav.to.id === ((el.dataset && el.dataset.id) || null)
+        && passGet("landCommit") === "transitionEnd") {
+      passPending = { el: el, commit: commit };
+      return;
+    }
+    passLastEl = el; passLastGen = passGen;
+    commit(el, reason);
+  }
+
+  // A drawing layer registers itself here. With none registered — the state of this branch — every
+  // command falls through to the walk's own glide, which is the fallback the seam keeps reversible:
+  // turning the layer off is a setting, never a rebuild.
+  let passLayer = null;
+  function passLayerSet(layer) { passLayer = (layer && typeof layer.run === "function") ? layer : null; }
+  function passVisualTakes(cmd) {
+    if (!passLayer) return false;
+    if (cmd.kind === "jump") return false;
+    if (cmd.reduced || cmd.saveData) return false;
+    return cmd.params.visualLayer.base === "pass";
+  }
+
+  // The diagnostic surface: technical rows only — the register, the lifecycle, the refusals, the
+  // command in flight, and what the device reports. The told story, the quiz answers, the gift, the
+  // visitor's own marks, the remembered place and anything the counting wire carries stay out by
+  // construction: this function reads its own four lists and nothing else.
+  function passPlain(params) {
+    const out = {};
+    Object.keys(params).forEach((k) => { out[k] = params[k].base; });
+    return out;
+  }
+  function passReport() {
+    return {
+      version: 1,
+      // resolved FRESH on every read: the register's rows report where each name stands NOW, so a
+      // value changed mid-session is visible at once. What a running transition froze is a separate
+      // row of its own, below, and the two never pretend to be the same reading.
+      settings: Object.keys(PASS_REG).map((k) => { passResolve(k, null); return passApplied[k]; }),
+      events: passEvents.slice(),
+      refusals: passRefusals.slice(),
+      nav: passNav ? { gen: passNav.gen, kind: passNav.kind, cause: passNav.cause,
+                       to: passNav.to ? passNav.to.id : null, params: passPlain(passNav.params) } : null,
+      device: { reduced: !!REDUCED, saveData: !!dataSaver(), dpr: window.devicePixelRatio || 1,
+                viewport: { w: innerWidth, h: innerHeight } },
+      limits: PASS_LIMITS,
+      drivers: { declared: PASS_DRIVERS.slice(), built: PASS_DRIVERS_BUILT.slice() },
+      layer: passLayer ? "registered" : "absent",
+    };
+  }
+  // `score` is the checker itself, handed over so a score can be judged without being played — the
+  // surface stays read-only about the walk and decides nothing on its own.
+  if (passGet("diagnostics") === "on") {
+    try { window.__@@NS@@Pass = { report: passReport, score: passScoreCheck, version: 1 }; } catch (e) {}
+  }
 /*!02-kinship-orderings.js*/
   // ---- baked data -----------------------------------------------------------
   const SERIES = data.series || [];                    // real series only (3+), variant each
@@ -1928,6 +2309,7 @@
     if (atDoor) {
       closeDoor();
       if (pick && byId[pick]) ground(byId[pick].dom);
+      passJump(null, "popstate");                      // EX-PASS: Back lands on a work too; the eye's own watcher names which
       scrollTo(0, walkY);                              // the closing screen the visitor left (INV-32b)
       tellStory();                                     // a return is a natural beat — any owed portion re-asks (EX-STORY)
     }
@@ -1962,12 +2344,14 @@
     fillTold();                                         // the line, where the narrator has spoken
   }
 
-  const io = new IntersectionObserver((es) => es.forEach((x) => {
-    if (!x.isIntersecting) return;
-    if (!sideOpen && !quizOpen && !giftOpen
-        && performance.now() - lastResizeAt > 250) {
-      restingEl = x.target;                            // the eye's section, fin included — organic
-    }                                                  // moves only, never a reflow's stale pixels
+  // EX-PASS: ONE owner of «this work is now current». Everything the arriving work switches — the
+  // seen mark, the circle's count, the ladder, the remembered place, the tone, the counter, the
+  // share link, the plaque, the ear's label, the narrator's next ask — lives in this one function.
+  // The in-view watcher below calls it, and so does the end of a transition when the landCommit
+  // setting says so; passLandGate lets exactly one of them through per work per generation.
+  function landOn(target, reason) {
+    // the watcher's own shape, kept whole so the body below reads exactly as it did in the callback
+    const x = { target: target };
     // the closing screen is not a work: the plaque must not strand the last work's title + told
     // story over the finale. Fade the caption out like a frame leaving — never a jump, never stale.
     if (x.target.id === "exh-fin") {                   // the closing screen clears the walk chrome
@@ -2024,7 +2408,38 @@
     // …which also fills the visible told seat for this work, if the narrator has spoken (EX-STORY)
     storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
     capSettle(x.target.querySelector("img.work"));     // EX-CAPTION (INV-97): seat the caption in the free zone at the frame's settle
-  }), { threshold: 0.55 });
+  }
+
+  // The watcher itself carries no product state any more: it names the eye's section and hands the
+  // arriving work to its one owner. Its threshold is the live landProgress setting, taken EXACTLY —
+  // a rounded threshold would make the setting lie about the moment it names. A changed value
+  // rebuilds the watcher at the next transition start (EX-PASS), never inside a running one.
+  let io = null, ioAt = null;
+  function ioSaw(es) {
+    es.forEach((x) => {
+      if (!x.isIntersecting) return;
+      if (!sideOpen && !quizOpen && !giftOpen
+          && performance.now() - lastResizeAt > 250) {
+        restingEl = x.target;                          // the eye's section, fin included — organic
+      }                                                // moves only, never a reflow's stale pixels
+      passLandGate(x.target, "observe", landOn);
+    });
+  }
+  function ioBuild() {
+    const t = passGet("landProgress");
+    const held = [];
+    if (io) {
+      stage.querySelectorAll(".exh-frame.observed").forEach((f) => held.push(f));
+      const fin = document.getElementById("exh-fin");
+      if (fin) held.push(fin);
+      io.disconnect();
+    }
+    io = new IntersectionObserver(ioSaw, { threshold: t });
+    ioAt = t;
+    held.forEach((f) => io.observe(f));                 // a re-watch re-reports what is already in view;
+  }                                                    // the gate's per-generation claim absorbs that
+  function passObserverSync() { if (passGet("landProgress") !== ioAt) ioBuild(); }
+  ioBuild();
 
   // ---- EX-CAPTION (INV-97/98): the caption keeps to its own space -------------------------------
   // The centred picture is never moved or scaled here (INV-27); the caption block alone measures the
@@ -4023,11 +4438,15 @@
     glideSpan = plan.span;
     gliding = true;
     const step = (nw) => {
-      if (atDoor || busy || sideOpen) { glideCancel(); glideGoal = null; return; }
+      // EVERY standing face stops the flight, by the one predicate the rest of this fragment uses.
+      // The three-flag list this replaced left a glide writing scrollY under an open closer-look or
+      // question card, where the snap-back guard is already holding the place — the two then fought
+      // for the position frame by frame.
+      if (faceStands()) { glideCancel(); glideGoal = null; passAbortNow("a face stands"); return; }
       const p = Math.min(1, (nw - t0) / dur);
       scrollTo(0, from + d * cv.at(p));                // the animator OWNS the position
       if (p < 1) glideRaf = requestAnimationFrame(step);
-      else { glideCancel(); glideGoal = null; }        // landed centered — no tail, no drift
+      else { glideCancel(); glideGoal = null; passLandNow(); }  // landed centered — no tail, no drift
     };
     glideRaf = requestAnimationFrame(step);
   }
@@ -4064,7 +4483,19 @@
     const k = Math.min(stops.length - 1, Math.max(0, cur + dir));
     if (k === cur) noteStuckStep(); else stuckBurst = [];   // EX-FRICTION: a clamped no-move step vs a real advance
     glideTargetEl = els[k];                              // the destination SECTION — a mid-glide rotation docks HERE (INV-86)
+    // EX-PASS: the transition is DECLARED here. This is the one place holding both works, the
+    // direction and the force, and it is the place that calls the landing — so a picture layer can
+    // be handed a whole command and hand control back on the arriving work. A clamped no-move step
+    // declares nothing: there is no work to arrive at.
+    const cmd = (k === cur) ? null : passStart({
+      fromEl: els[cur], toEl: els[k], dir: dir,
+      span: Math.abs(stops[k] - stops[cur]),
+      kind: "step", cause: "step", velocity: velocity,
+    });
+    if (cmd) passObserverSync();                       // a changed landProgress takes effect between transitions
+    if (cmd && passVisualTakes(cmd)) { passLayer.run(cmd, passLandNow); return; }
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
+    if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }
   // the viewport metric moves under a RESTING walk (phone chrome collapses, a window resize) —
   // quietly re-dock the frame the eye is on to the new centre; mid-glide the landing already
@@ -4086,10 +4517,11 @@
       if (document.documentElement.classList.contains("ex-walk")) {
         const stops = frameStops();
         if (stops.length) {
-          let y;
-          if (turnTargetEl && document.body.contains(turnTargetEl)) { y = frameCenter(turnTargetEl); restingEl = turnTargetEl; }
-          else if (restingEl && document.body.contains(restingEl)) y = frameCenter(restingEl);
-          else y = stops[nearestStop(stops, scrollY)];
+          let y, docked = null;
+          if (turnTargetEl && document.body.contains(turnTargetEl)) { docked = turnTargetEl; y = frameCenter(docked); restingEl = docked; }
+          else if (restingEl && document.body.contains(restingEl)) { docked = restingEl; y = frameCenter(docked); }
+          else { const i = nearestStop(stops, scrollY); y = stops[i]; docked = stage.querySelectorAll(".exh-frame, .exh-fin")[i] || null; }
+          passJump(docked, "rotate");                  // EX-PASS: a turn lands on a work, so it carries a command too
           scrollTo(0, y);
           guardHold = y;                               // if the zoom (a face) stands, hold the recomputed place beneath (EX-CHROME)
         }
@@ -4175,7 +4607,10 @@
     if (!document.documentElement.classList.contains("ex-walk")) return;
     const stops = frameStops();
     if (!stops.length) return;
-    scrollTo(0, restingEl ? frameCenter(restingEl) : stops[nearestStop(stops, scrollY)]);
+    const i = nearestStop(stops, scrollY);
+    const under = restingEl || stage.querySelectorAll(".exh-frame, .exh-fin")[i] || null;
+    passJump(under, "recentre");                       // EX-PASS: the re-centre under a leaving face lands on a work
+    scrollTo(0, restingEl ? frameCenter(restingEl) : stops[i]);
   }
   // DESKTOP wheel: one gesture → one frame. A mouse notch is a single event; a trackpad swipe is
   // a burst of them — both coalesce to ONE step (force ignored, phase 1). preventDefault kills
@@ -4409,6 +4844,7 @@
     document.documentElement.classList.add("ex-walk");   // the walk's face (geometry in CSS)
     stage.innerHTML = "";
     appendFrames(order.slice(0, shown), 1);
+    passJump(stage.querySelector(".exh-frame"), "hang");  // EX-PASS: a fresh hang stands at its first work
     scrollTo(0, 0);
     if (faceStands()) guardHold = 0;                     // the walk builds under the ceremony's veil — hold its top (EX-CHROME)
     tellStory();                                         // the voice, if the story is on (set-guarded)
@@ -4608,7 +5044,9 @@
       if (document.documentElement.classList.contains("ex-walk")) {
         const stops = frameStops();
         if (stops.length) {
-          const y = restingEl ? frameCenter(restingEl) : stops[nearestStop(stops, scrollY)];
+          const i = nearestStop(stops, scrollY);
+          const y = restingEl ? frameCenter(restingEl) : stops[i];
+          passJump(restingEl || stage.querySelectorAll(".exh-frame, .exh-fin")[i] || null, "series");
           scrollTo(0, y);
           guardHold = y;                                     // the guard holds the re-centred frame (EX-CHROME)
         }
@@ -4677,7 +5115,7 @@
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}   // one-shot
     if (!m || m.v !== VER) return;                     // stale/foreign marker → the top, never an error
     const f = stage.querySelector('.exh-frame[data-id="' + m.id + '"]');
-    if (f) scrollTo(0, frameCenter(f));               // centered in the LIVE viewport (EX-GLIDE)
+    if (f) { passJump(f, "restore"); scrollTo(0, frameCenter(f)); }   // centered in the LIVE viewport (EX-GLIDE)
   }
 
   // ---- the permalink arrival (EX-SHARE-IN): the hash is a doorway, not a leash ----
@@ -4716,7 +5154,7 @@
     // frame, forward by default until a step declares a direction (EX-LOAD-3 / prover F5)
     travelDir = 1; preloadCancel();
     const f = stage.querySelector('.exh-frame[data-id="' + hid + '"]');
-    if (f) scrollTo(0, frameCenter(f));               // instant, centered in the LIVE viewport
+    if (f) { passJump(f, "hash"); scrollTo(0, frameCenter(f)); }      // instant, centered in the LIVE viewport
     // the consuming jump writes the place marker so the room's memory agrees with the eye
     try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: hid })); } catch (e) {}
   }

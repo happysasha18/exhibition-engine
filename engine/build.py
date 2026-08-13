@@ -1354,6 +1354,13 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # pick chips — it never enters a beat, so no analytics seam rides here (INV-1).
     if site_config.get("lang_geo"):
         config["lang_geo"] = site_config["lang_geo"]
+    # EX-PASS: the transition seam's site rung. The bake passes the block through as DATA and judges
+    # nothing in it — every name, range and limit is checked in the client at read time, and a value
+    # the register refuses falls back to its default with the refusal on the diagnostic surface. An
+    # absent block leaves every setting on its built-in default, so a site that sets nothing behaves
+    # exactly as it did before the seam.
+    if isinstance(site_config.get("pass"), dict) and site_config["pass"]:
+        config["pass"] = site_config["pass"]
     config["experiments"] = {}      # variant → flag → metric (empty registry)
     # EX-QUIZ-ONCE (INV-66) + EX-QUIZ-COPY: config seams join ONLY when the quiz is on —
     # flag off leaves config.json byte-for-byte today's (INV-60 fence).

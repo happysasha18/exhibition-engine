@@ -116,11 +116,15 @@
     glideSpan = plan.span;
     gliding = true;
     const step = (nw) => {
-      if (atDoor || busy || sideOpen) { glideCancel(); glideGoal = null; return; }
+      // EVERY standing face stops the flight, by the one predicate the rest of this fragment uses.
+      // The three-flag list this replaced left a glide writing scrollY under an open closer-look or
+      // question card, where the snap-back guard is already holding the place — the two then fought
+      // for the position frame by frame.
+      if (faceStands()) { glideCancel(); glideGoal = null; passAbortNow("a face stands"); return; }
       const p = Math.min(1, (nw - t0) / dur);
       scrollTo(0, from + d * cv.at(p));                // the animator OWNS the position
       if (p < 1) glideRaf = requestAnimationFrame(step);
-      else { glideCancel(); glideGoal = null; }        // landed centered — no tail, no drift
+      else { glideCancel(); glideGoal = null; passLandNow(); }  // landed centered — no tail, no drift
     };
     glideRaf = requestAnimationFrame(step);
   }
@@ -157,7 +161,19 @@
     const k = Math.min(stops.length - 1, Math.max(0, cur + dir));
     if (k === cur) noteStuckStep(); else stuckBurst = [];   // EX-FRICTION: a clamped no-move step vs a real advance
     glideTargetEl = els[k];                              // the destination SECTION — a mid-glide rotation docks HERE (INV-86)
+    // EX-PASS: the transition is DECLARED here. This is the one place holding both works, the
+    // direction and the force, and it is the place that calls the landing — so a picture layer can
+    // be handed a whole command and hand control back on the arriving work. A clamped no-move step
+    // declares nothing: there is no work to arrive at.
+    const cmd = (k === cur) ? null : passStart({
+      fromEl: els[cur], toEl: els[k], dir: dir,
+      span: Math.abs(stops[k] - stops[cur]),
+      kind: "step", cause: "step", velocity: velocity,
+    });
+    if (cmd) passObserverSync();                       // a changed landProgress takes effect between transitions
+    if (cmd && passVisualTakes(cmd)) { passLayer.run(cmd, passLandNow); return; }
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
+    if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }
   // the viewport metric moves under a RESTING walk (phone chrome collapses, a window resize) —
   // quietly re-dock the frame the eye is on to the new centre; mid-glide the landing already
@@ -179,10 +195,11 @@
       if (document.documentElement.classList.contains("ex-walk")) {
         const stops = frameStops();
         if (stops.length) {
-          let y;
-          if (turnTargetEl && document.body.contains(turnTargetEl)) { y = frameCenter(turnTargetEl); restingEl = turnTargetEl; }
-          else if (restingEl && document.body.contains(restingEl)) y = frameCenter(restingEl);
-          else y = stops[nearestStop(stops, scrollY)];
+          let y, docked = null;
+          if (turnTargetEl && document.body.contains(turnTargetEl)) { docked = turnTargetEl; y = frameCenter(docked); restingEl = docked; }
+          else if (restingEl && document.body.contains(restingEl)) { docked = restingEl; y = frameCenter(docked); }
+          else { const i = nearestStop(stops, scrollY); y = stops[i]; docked = stage.querySelectorAll(".exh-frame, .exh-fin")[i] || null; }
+          passJump(docked, "rotate");                  // EX-PASS: a turn lands on a work, so it carries a command too
           scrollTo(0, y);
           guardHold = y;                               // if the zoom (a face) stands, hold the recomputed place beneath (EX-CHROME)
         }
@@ -268,7 +285,10 @@
     if (!document.documentElement.classList.contains("ex-walk")) return;
     const stops = frameStops();
     if (!stops.length) return;
-    scrollTo(0, restingEl ? frameCenter(restingEl) : stops[nearestStop(stops, scrollY)]);
+    const i = nearestStop(stops, scrollY);
+    const under = restingEl || stage.querySelectorAll(".exh-frame, .exh-fin")[i] || null;
+    passJump(under, "recentre");                       // EX-PASS: the re-centre under a leaving face lands on a work
+    scrollTo(0, restingEl ? frameCenter(restingEl) : stops[i]);
   }
   // DESKTOP wheel: one gesture → one frame. A mouse notch is a single event; a trackpad swipe is
   // a burst of them — both coalesce to ONE step (force ignored, phase 1). preventDefault kills
