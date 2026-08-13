@@ -1,16 +1,30 @@
 /*!pass-layer.js*/
-// The drawing layer's own file — PassHost (PASS-API-V1 §1.2/§2/§12), the renderer's own half of the
-// transition. Fetched separately so the walk's bundle stays under its byte fence; the client asks
+// The drawing layer's own file — PassHost (PASS-API-V1 §1.2/§2/§7/§12), the renderer's own half of
+// the transition. Fetched separately so the walk's bundle stays under its byte fence; the client asks
 // for this file once, only when the visualLayer setting asks for it, the device reports WebGL2, and
 // the visit runs neither reduced motion nor Save-Data.
 //
-// This build draws NOTHING and owns no GPU object. It is the state machine
-// idle → offered → armed → running → docked/recovered/cancelled → disposed, the watchdog, the
-// idempotence guard, and a registry taking exactly one instrument. With no instrument registered —
-// the state of every real visit today, since no production instrument has landed — every offer
-// declines at once and the walk's own glide runs, exactly as the old stub's unconditional decline
-// did. A TEST INSTRUMENT registers itself here, reachable only when diagnostics are on (§9's
-// conformance rows are built against it — see tests/test_pass_api.py).
+// Root: his word 2026-08-13 23:03 — carry the woven instrument across first, with a real pair score
+// feeding a real instrument.
+//
+// THREE PARTS LIVE HERE.
+//   1. The transaction: idle → offered → armed → running → docked/recovered/cancelled → disposed,
+//      the watchdog, the idempotence guard and the token check (§2). Unchanged from the build of
+//      2026-08-13 except where the frame half needed a hand.
+//   2. The frame half (§1.2/§7): one canvas above the walk, one WebGL2 context with the drawing
+//      buffer unpreserved, one vertex buffer, the two source textures of the pair, a programme cache
+//      keyed by branch name, the frame loop, the clock handed down as transaction seconds, resize,
+//      the resolution ladder, the resource census and context loss/restoration. This is the lab's
+//      shared carrier (lab/gl-carrier.js) carried onto the host under the contract's ownership rules,
+//      with one difference that matters: the carrier names one instrument's six uniforms literally,
+//      and the host binds BY DECLARED NAME from each instrument's manifest instead.
+//   3. The instruments: a registry keyed by id. The woven instrument (§8) ships here as an isolated
+//      module — its mathematics and its shader carried across from lab/effects/weave.js, its own
+//      canvas, context, frame loop and pointer code left behind. A TEST INSTRUMENT registers itself
+//      too, reachable only when diagnostics are on (§9's lifecycle rows are built against it).
+//
+// A command carrying no score reaches no production instrument at all: the score names the cue, the
+// cue names the instrument. With no score the walk's own glide runs, which is the standing fallback.
 (function () {
   var join = window.__@@NS@@PassLayer;
   if (typeof join !== "function") return;
@@ -34,16 +48,421 @@
     return row;
   }
 
-  var instrument = null;     // the ONE registered instrument (a registry taking one, §12)
+  var instruments = {};      // the registry, keyed by instrument id (§7: the render graph is built
+                             // from manifests, so one host carries many instruments)
+  var probe = null;          // the diagnostics-only test instrument, when one is registered
   var cur = null;            // the current transaction record, or null between transactions
   var prepareBudgetMs = 120; // within PREPARE_MIN…PREPARE_MAX; overridable for testing (host.configure)
   var settleSlackMs = 300;   // within SLACK_MIN…SLACK_MAX
+  // The two pins are a TESTING seam, set only through host.configure: with a pinned clock and a
+  // pinned progress the frame loop stops reading the wall clock, so a seeded run can be compared
+  // frame against frame (§9 row 10). A live visit never sets either.
+  var pinClock = null, pinProgress = null, fixedScale = false;
 
-  function register(inst) { instrument = inst || null; }
+  // ================================================================================================
+  // THE FRAME STAGE — the host's own hardware, owned by nobody else (§1.2, §7)
+  // ================================================================================================
+  // The numbers below are the shared carrier's own, carried across unchanged from lab/gl-carrier.js:
+  // the release envelope asks for steady 30 frames a second, p95 within 33 ms, so the ladder drops a
+  // step above 33 ms and climbs back below 22 ms; a device pixel ratio past two costs memory a
+  // full-screen pass never sees back.
+  var STEPS = [1.0, 0.85, 0.72, 0.60, 0.50];
+  var DPR_CAP = 2, P95_DROP = 33, P95_RAISE = 22, WIN_DROP = 45, WIN_RAISE = 120, KEEP = 240;
 
+  var stage = null;          // {canvas, gl, vao, quad, texA, texB, programs}
+  var stepIx = 0, W = 1, H = 1, cssW = 1, cssH = 1, dpr = 1;
+  var times = [], changes = 0, sinceChange = 0, lastAt = 0;
+  // The census (§7). `stage` counts what the host holds for everyone; `grant` counts what was created
+  // for the instrument holding the frame, and that is the half the manifest's declaration is judged
+  // against. Bytes are sized from real dimensions, never from an object count.
+  var census = { canvases: 0, contexts: 0, textures: 0, buffers: 0, framebuffers: 0,
+                 programs: 0, bytes: 0, passesLastFrame: 0, uploads: 0, restores: 0 };
+  var grant = { textures: 0, programs: 0, framebuffers: 0, bytes: 0 };
+  var declared = null;       // what the running instrument's manifest promised, per variant
+
+  function quantile(sorted, q) {
+    if (!sorted.length) return 0;
+    var i = (sorted.length - 1) * q;
+    var lo = Math.floor(i), hi = Math.ceil(i);
+    return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+  }
+
+  function makeTex(gl) {
+    var tx = gl.createTexture();
+    census.textures++;
+    gl.bindTexture(gl.TEXTURE_2D, tx);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    return tx;
+  }
+
+  // One canvas above the walk, one context, the drawing buffer unpreserved. The canvas is the
+  // curtain's own pixels: the product's curtain(on) hides the walk beneath it and this shows it.
+  function stageMake() {
+    if (stage) return stage;
+    var canvas = document.createElement("canvas");
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.style.cssText = "position:fixed;inset:0;width:100%;height:100%;display:block;" +
+      "z-index:2147483000;background:#08080a;pointer-events:none;visibility:hidden;";
+    document.body.appendChild(canvas);
+    census.canvases++;
+    var gl = canvas.getContext("webgl2", {
+      antialias: false, alpha: false, depth: false, stencil: false,
+      preserveDrawingBuffer: false, powerPreference: "high-performance",
+    });
+    if (!gl) {
+      if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+      census.canvases--;
+      return null;
+    }
+    census.contexts++;
+    canvas.addEventListener("webglcontextlost", onContextLost, false);
+    canvas.addEventListener("webglcontextrestored", onContextRestored, false);
+    stage = { canvas: canvas, gl: gl, vao: null, quad: null, texA: null, texB: null, programs: {} };
+    stageBuild();
+    return stage;
+  }
+
+  // Everything the context itself owns. Split out from stageMake because a restored context has to
+  // rebuild exactly this and nothing else (§7's context-loss law).
+  function stageBuild() {
+    var gl = stage.gl;
+    stage.vao = gl.createVertexArray();
+    gl.bindVertexArray(stage.vao);
+    stage.quad = gl.createBuffer();
+    census.buffers++;
+    gl.bindBuffer(gl.ARRAY_BUFFER, stage.quad);
+    // one triangle covers the frame: a third fewer edge points across the diagonal than two
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    stage.texA = makeTex(gl);
+    stage.texB = makeTex(gl);
+    stage.programs = {};
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    W = H = 1;
+    stageResize();
+  }
+
+  function stageShow(on) {
+    if (stage) stage.canvas.style.visibility = on ? "visible" : "hidden";
+  }
+
+  function stageResize() {
+    if (!stage) return;
+    cssW = Math.max(1, Math.round(window.innerWidth || 1));
+    cssH = Math.max(1, Math.round(window.innerHeight || 1));
+    dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+    var s = STEPS[stepIx];
+    var w = Math.max(1, Math.round(cssW * dpr * s));
+    var h = Math.max(1, Math.round(cssH * dpr * s));
+    if (w !== W || h !== H) {
+      W = w; H = h;
+      stage.canvas.width = W;
+      stage.canvas.height = H;
+      stage.gl.viewport(0, 0, W, H);
+    }
+  }
+
+  // The measurement belongs to its own resolution: changing the step forgets the frame times, which
+  // were taken on a different number of points and say nothing about the new one.
+  function changeStep(to) {
+    stepIx = to;
+    times = [];
+    sinceChange = 0;
+    changes++;
+    stageResize();
+  }
+  function p95Over(n) {
+    if (times.length < n) return null;
+    var tail = times.slice(times.length - n).sort(function (a, b) { return a - b; });
+    return quantile(tail, 0.95);
+  }
+  function decideScale() {
+    if (fixedScale) return;
+    var hot = p95Over(WIN_DROP);
+    if (hot !== null && hot > P95_DROP && stepIx < STEPS.length - 1 && sinceChange >= WIN_DROP) {
+      changeStep(stepIx + 1); return;
+    }
+    var cool = p95Over(WIN_RAISE);
+    if (cool !== null && cool < P95_RAISE && stepIx > 0 && sinceChange >= WIN_RAISE) {
+      changeStep(stepIx - 1);
+    }
+  }
+  function noteFrame(now) {
+    if (lastAt) {
+      var dt = now - lastAt;
+      times.push(dt);
+      if (times.length > KEEP) times.shift();
+      sinceChange++;
+      decideScale();
+    }
+    lastAt = now;
+  }
+
+  // ---- shader version handling (§7) --------------------------------------------------------------
+  // The lab modules were written for WebGL 1, where a shader declares varying and writes to
+  // gl_FragColor; the host's one context is the second version, so the translation is mechanical and
+  // touches no line of mathematics. A module that already ships GLSL ES 3.00 carries its own header,
+  // and a second one is a build-time red — so the header is stamped only where none is present, and
+  // a source that already has one is handed through untouched.
+  function toES3(src, isVert) {
+    if (/^\s*#version\b/.test(src)) return src;
+    var out = src
+      .replace(/\battribute\b/g, "in")
+      .replace(/\bvarying\b/g, isVert ? "out" : "in")
+      .replace(/\btexture2D\b/g, "texture");
+    if (!isVert) {
+      out = out.replace(/\bgl_FragColor\b/g, "oColour");
+      out = out.replace(/(precision[^\n]*\n)/, "$1out vec4 oColour;\n");
+      if (out.indexOf("out vec4 oColour;") < 0) out = "out vec4 oColour;\n" + out;
+    }
+    return "#version 300 es\n" + out;
+  }
+
+  function compile(gl, type, src, what) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      var info = gl.getShaderInfoLog(s);
+      gl.deleteShader(s);
+      throw new Error(what + ": " + info);
+    }
+    return s;
+  }
+
+  // Programmes live by branch name and outlive every transaction: a second pass over the same branch
+  // takes the built programme, so a walk never pays for a shader build twice.
+  function programFor(pass) {
+    var P = stage.programs;
+    if (P[pass.program]) return P[pass.program];
+    var gl = stage.gl;
+    var vs = compile(gl, gl.VERTEX_SHADER, toES3(pass.vert, true), pass.program + " vertex");
+    var fs = compile(gl, gl.FRAGMENT_SHADER, toES3(pass.frag, false), pass.program + " fragment");
+    var p = gl.createProgram();
+    census.programs++;
+    grant.programs++;
+    gl.attachShader(p, vs);
+    gl.attachShader(p, fs);
+    gl.bindAttribLocation(p, 0, pass.position || "aPos");
+    gl.linkProgram(p);
+    gl.deleteShader(vs);
+    gl.deleteShader(fs);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      throw new Error(pass.program + " link: " + gl.getProgramInfoLog(p));
+    }
+    // THE UNIFORM CONTRACT IS NAME-DRIVEN (§7). Every location is looked up by the name the manifest
+    // declares — never by position and never from a list written into the host.
+    var U = {};
+    pass.uniforms.forEach(function (u) { U[u.name] = gl.getUniformLocation(p, u.name); });
+    P[pass.program] = { prog: p, U: U };
+    return P[pass.program];
+  }
+
+  // ---- what the host can supply, and the refusal of anything else (§7) ---------------------------
+  var SUPPLY = { textureA: 1, textureB: 1, fitA: 1, fitB: 1, resolution: 1, seconds: 1 };
+  var UTYPE = { sampler2D: 1, float: 1, vec2: 1, vec4: 1 };
+  function supplySeen(source, provides) {
+    if (SUPPLY[source]) return true;
+    if (source.indexOf("frame:") === 0) return provides.frame.indexOf(source.slice(6)) >= 0;
+    if (source.indexOf("handle:") === 0) return provides.handles.indexOf(source.slice(7)) >= 0;
+    return false;
+  }
+
+  // A manifest is judged ONCE, at registration (§7: binding by position or by a hardcoded list is
+  // refused at registration). Returns the reason it was refused, or null.
+  function manifestWhyNo(inst) {
+    var m = inst.manifest;
+    if (!m) return null;                       // an instrument that draws nothing declares nothing
+    if (m.gl && m.gl.preserveDrawingBuffer === true) {
+      return "asks for the drawing buffer to be preserved";
+    }
+    if (!m.passes || !m.passes.length) return "declares no pass";
+    var provides = { handles: Object.keys(m.handles || {}), frame: [] };
+    try { provides.frame = Object.keys(inst.values(m.neutralPose) || {}); }
+    catch (e) { return "its own frame values do not answer a neutral pose"; }
+    for (var i = 0; i < m.passes.length; i++) {
+      var pass = m.passes[i];
+      if (!pass.uniforms || !pass.uniforms.length) return "pass «" + pass.program + "» names no uniform";
+      for (var j = 0; j < pass.uniforms.length; j++) {
+        var u = pass.uniforms[j];
+        if (!u.name) return "a uniform of «" + pass.program + "» has no name";
+        if (!UTYPE[u.type]) return "uniform «" + u.name + "» names the unknown type «" + u.type + "»";
+        if (!supplySeen(String(u.source), provides)) {
+          return "uniform «" + u.name + "» asks for «" + u.source + "», which the host cannot supply";
+        }
+      }
+    }
+    return null;
+  }
+
+  // ---- one frame ---------------------------------------------------------------------------------
+  function bindUniform(gl, loc, u, box) {
+    var v;
+    if (u.source === "textureA") v = 0;
+    else if (u.source === "textureB") v = 1;
+    else if (u.source === "fitA") v = box.fitA;
+    else if (u.source === "fitB") v = box.fitB;
+    else if (u.source === "resolution") v = [W, H];
+    else if (u.source === "seconds") v = box.seconds;
+    else if (u.source.indexOf("frame:") === 0) v = box.frame[u.source.slice(6)];
+    else v = box.handles[u.source.slice(7)];
+    if (u.type === "sampler2D") gl.uniform1i(loc, v);
+    else if (u.type === "float") gl.uniform1f(loc, Number(v) || 0);
+    else if (u.type === "vec2") gl.uniform2f(loc, v[0], v[1]);
+    else gl.uniform4f(loc, v[0], v[1], v[2], v[3]);
+  }
+
+  // The one draw. The instrument hands its pose; the host asks the instrument's own pure functions
+  // for the numbers of the frame and the seating of each work, then binds every declared uniform by
+  // its declared name and issues the declared passes.
+  function drawPose(inst, pose, src) {
+    if (!stage) return;
+    stageResize();
+    census.passesLastFrame = 0;
+    var gl = stage.gl;
+    var box = {
+      frame: inst.values(pose),
+      handles: pose,
+      seconds: pose.t,
+      fitA: inst.fit(src.aw, src.ah, W, H),
+      fitB: inst.fit(src.bw, src.bh, W, H),
+    };
+    inst.manifest.passes.forEach(function (pass) {
+      var p = programFor(pass);
+      gl.useProgram(p.prog);
+      gl.bindVertexArray(stage.vao);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, stage.texA);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, stage.texB);
+      pass.uniforms.forEach(function (u) {
+        var loc = p.U[u.name];
+        if (loc !== null && loc !== undefined) bindUniform(gl, loc, u, box);
+      });
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      census.passesLastFrame++;
+    });
+  }
+
+  // ---- the sources: the host arms and decodes both works before takeover (§4.1/§10.1) ------------
+  function workImg(id) {
+    if (!id) return null;
+    var f = document.querySelector('.exh-frame[data-id="' + String(id).replace(/"/g, "") + '"]');
+    return f ? f.querySelector("img") : null;
+  }
+  function decodeOf(im) {
+    if (im.loading === "lazy") im.loading = "eager";
+    if (im.complete && im.naturalWidth) return Promise.resolve(im);
+    if (!im.decode) return Promise.reject(new Error("no decode"));
+    return im.decode().then(function () { return im; });
+  }
+  function armSources(cmd) {
+    var a = workImg(cmd.from && cmd.from.id), b = workImg(cmd.to && cmd.to.id);
+    if (!a || !b) return Promise.reject(new Error("no picture for " + (a ? "the arriving" : "the departing") + " work"));
+    return Promise.all([decodeOf(a), decodeOf(b)]).then(function () {
+      return { a: a, b: b, aw: a.naturalWidth, ah: a.naturalHeight,
+               bw: b.naturalWidth, bh: b.naturalHeight };
+    });
+  }
+  // The two source textures are the stage's own and survive every change of pair: a new pair is an
+  // upload into the same two objects, never two more.
+  function uploadPair(src) {
+    var gl = stage.gl;
+    gl.bindTexture(gl.TEXTURE_2D, stage.texA);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, src.a);
+    gl.bindTexture(gl.TEXTURE_2D, stage.texB);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, src.b);
+    census.uploads++;
+    // sized from real dimensions, three bytes a point at RGB/UNSIGNED_BYTE — the size of a thing,
+    // which an object count misses entirely (§7)
+    census.bytes = (src.aw * src.ah + src.bw * src.bh) * 3;
+  }
+
+  // ---- context loss and restoration (§7) ---------------------------------------------------------
+  function onContextLost(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    logEvt("context-lost", cur ? cur.cmd.gen : null, null);
+    if (stage) { stage.programs = {}; stage.texA = stage.texB = stage.vao = stage.quad = null; }
+    stageShow(false);
+    Object.keys(instruments).forEach(function (k) {
+      try { if (instruments[k].contextLost) instruments[k].contextLost(); } catch (err) {}
+    });
+    if (cur && !cur.docked) fail(cur.cmd.gen, "context lost");
+  }
+  function onContextRestored() {
+    logEvt("context-restored", cur ? cur.cmd.gen : null, null);
+    census.restores++;
+    try { stageBuild(); }
+    catch (e) { logEvt("no-rebuild", null, String((e && e.message) || e)); return; }
+    Object.keys(instruments).forEach(function (k) {
+      var inst = instruments[k];
+      if (!inst.contextRestored) return;
+      try { inst.contextRestored({ stage: true }); }
+      catch (e2) { if (cur) fail(cur.cmd.gen, "no rebuild"); }
+    });
+  }
+
+  // ================================================================================================
+  // THE TRANSACTION (§2)
+  // ================================================================================================
+  function register(inst) {
+    if (!inst) return false;
+    var why = manifestWhyNo(inst);
+    if (why) {
+      logEvt("manifest-refused", null, (inst.name || "unnamed") + ": " + why);
+      return false;
+    }
+    instruments[inst.name] = inst;
+    if (inst.probe) probe = inst;
+    return true;
+  }
+
+  // This slice plays ONE cue, the woven instrument's own single gesture; a stack of cues sharing a
+  // window is the next unit, and §4.4's levels law is what will judge it.
+  function cueOf(cmd) {
+    var s = cmd && cmd.score;
+    if (!s || !s.cues || !s.cues.length) return null;
+    return s.cues[0];
+  }
+  function pick(cmd) {
+    var cue = cueOf(cmd);
+    if (!cue) return probe;              // no score: only the diagnostics probe can take a command
+    var id = cue.instrument && cue.instrument.id;
+    if (instruments[id]) return instruments[id];
+    logEvt("no-instrument", cmd.gen, String(id));
+    return null;
+  }
   function durationOf(cmd) {
+    var s = cmd && cmd.score;
+    if (s && s.duration !== undefined) return clampNum(s.duration, DURATION_MIN, DURATION_MAX);
     var p = cmd && cmd.params && cmd.params.flightMs;
     return clampNum(p ? p.base : 0, DURATION_MIN, DURATION_MAX);
+  }
+  // §7's quality tier finally gains a consumer: the host reads it at prepare, picks the variant and
+  // records the decision with its reason.
+  function variantOf(cmd) {
+    var t = cmd && cmd.params && cmd.params.qualityTier;
+    var name = t ? t.base : "standard";
+    return name === "rich" || name === "lean" ? name : "standard";
+  }
+
+  // The census against the declaration (§7). The instrument declared textures, framebuffers and a
+  // byte estimate; the host counts what was actually created FOR IT and shows both, so a declaration
+  // that understates its counts or its bytes reads as the lie it is.
+  function grantRow() {
+    var d = declared || {};
+    return {
+      declared: d, granted: { textures: grant.textures, programs: grant.programs,
+                              framebuffers: grant.framebuffers, bytes: grant.bytes },
+      over: (grant.textures > (d.textures || 0) || grant.programs > (d.programs || 0)
+             || grant.framebuffers > (d.framebuffers || 0) || grant.bytes > (d.bytesEstimate || 0)),
+    };
   }
 
   // Every exit from `running` ends in exactly one dock (§2.4/row 25/row 1) — `finish` is the single
@@ -53,11 +472,13 @@
     if (!rec || rec.docked) return;
     rec.docked = true;
     clearTimeout(rec.watchdogT);
+    if (rec.raf) { cancelAnimationFrame(rec.raf); rec.raf = 0; }
     logEvt(landState, rec.cmd.gen, why || null);
+    stageShow(false);
     try { rec.hooks.curtain(false); } catch (e) {}
     try { rec.hooks.dock(rec.cmd); } catch (e) {}
     try { rec.hooks.mark("host-" + landState, rec.cmd, why || null); } catch (e) {}
-    try { if (instrument && instrument.dispose) instrument.dispose(); } catch (e) {}
+    try { if (rec.inst && rec.inst.dispose) rec.inst.dispose(); } catch (e) {}
     cur = null;
   }
 
@@ -92,19 +513,81 @@
     fail(rec.cmd.gen, "no settle");
   }
 
+  // ---- the handles a score drives (§4.4b / §5) ----------------------------------------------------
+  // Driver AST v1, the built subset: `progress`, `time` and `static`. A handle the score leaves
+  // untracked falls back to the manifest's own default and the fallback is recorded with its reason,
+  // which is the treatment every unbuilt driver kind gets (§5).
+  function nodeValue(cue, spec, progress, seconds) {
+    var n = spec;
+    if (n && n.node) n = (cue.nodes || {})[n.node];
+    if (!n) return { ok: false, why: "names no node" };
+    if (n.source === "progress") return { ok: true, v: progress };
+    if (n.source === "time") return { ok: true, v: seconds };
+    if (n.op === "static") return { ok: true, v: Number(n.value) };
+    return { ok: false, why: "driver «" + (n.op || n.source) + "» is declared and drawn by no evaluator yet" };
+  }
+  function handlesOf(rec, progress, seconds) {
+    var m = rec.inst.manifest, cue = rec.cue, out = {};
+    Object.keys(m.handles).forEach(function (k) {
+      var h = m.handles[k], got = null;
+      if (cue && cue.tracks && cue.tracks[k]) got = nodeValue(cue, cue.tracks[k], progress, seconds);
+      if (!got || !got.ok) {
+        if (!rec.said[k]) {
+          rec.said[k] = true;
+          logEvt("handle-fallback", rec.cmd.gen, k + ": " + ((got && got.why) || "the score drives it with no track"));
+        }
+        out[k] = h.def;
+      } else {
+        out[k] = clampNum(got.v, h.min, h.max);
+      }
+    });
+    return out;
+  }
+
+  // ---- the frame loop ----------------------------------------------------------------------------
+  function runFrame(rec, now) {
+    if (cur !== rec || rec.docked) return;
+    rec.raf = requestAnimationFrame(function (t) { runFrame(rec, t); });
+    noteFrame(now);
+    var seconds = pinClock !== null ? pinClock : (now - rec.t0) / 1000;
+    var progress = pinProgress !== null ? pinProgress
+      : (rec.duration > 0 ? Math.min(1, (now - rec.t0) / rec.duration) : 1);
+    try {
+      rec.inst.frame({
+        token: rec.cmd.gen, t: seconds, progress: progress,
+        handles: handlesOf(rec, progress, seconds),
+        viewport: { w: cssW, h: cssH, dpr: dpr },
+        reduced: !!rec.cmd.reduced,
+        // a pinned run is a bench run: it holds its pose instead of walking to the end door, so a
+        // conformance row can photograph one instant twice and compare it to itself
+        pinned: pinProgress !== null,
+        draw: function (pose) { drawPose(rec.inst, pose, rec.src); },
+        settle: settle, fail: fail,
+      });
+    } catch (e) {
+      logEvt("frame-threw", rec.cmd.gen, String((e && e.message) || e));
+      fail(rec.cmd.gen, "frame threw");
+    }
+  }
+
   // offer(cmd, hooks) — the ONE bridge the bundle calls. Returns true the moment the host has taken
   // responsibility for landing this command, whether by eventually taking over or by calling the
   // glide hook itself on decline; it never means a renderer is now drawing.
   function offer(cmd, hooks) {
-    if (!instrument) return false;
+    var inst = pick(cmd);
+    if (!inst) return false;
     if (cur) cancel("superseded");   // defensive: declare's own supersede already ended the bundle's
                                      // OWN bookkeeping; this keeps the host's own record in step too
     var duration = durationOf(cmd);
     var budget = clampNum(prepareBudgetMs, PREPARE_MIN, PREPARE_MAX);
     var slack = clampNum(settleSlackMs, SLACK_MIN, SLACK_MAX);
-    var rec = { cmd: cmd, hooks: hooks, state: "offered", docked: false, watchdogT: null, duration: duration };
+    var cue = cueOf(cmd);
+    var variant = variantOf(cmd);
+    var rec = { cmd: cmd, hooks: hooks, inst: inst, cue: cue, variant: variant, state: "offered",
+                docked: false, watchdogT: null, duration: duration, raf: 0, t0: 0, src: null,
+                said: {} };
     cur = rec;
-    logEvt("offer", cmd.gen, null);
+    logEvt("offer", cmd.gen, inst.name + " at " + variant);
     var answered = false;
     var budgetTimer = setTimeout(function () {
       if (answered || cur !== rec) return;
@@ -112,6 +595,7 @@
       logEvt("prepare-timeout", cmd.gen, "over " + budget + "ms");
       declineCurrent(rec, "prepare timeout");
     }, budget);
+
     function onAnswer(res) {
       if (answered || cur !== rec) return;
       answered = true;
@@ -119,24 +603,66 @@
       if (!res || res.take !== true) { declineCurrent(rec, (res && res.why) || "declined"); return; }
       rec.state = "armed";
       logEvt("armed", cmd.gen, null);
+      // Everything that can still fail happens BEFORE the curtain: `armed` sits before takeover, and
+      // a decline there costs the visitor nothing (§2.1).
+      if (inst.manifest) {
+        try {
+          if (!stageMake()) { declineCurrent(rec, "no webgl2"); return; }
+          uploadPair(rec.src);
+          inst.manifest.passes.forEach(function (pass) { programFor(pass); });
+        } catch (e) {
+          logEvt("stage-threw", cmd.gen, String((e && e.message) || e));
+          declineCurrent(rec, "stage threw");
+          return;
+        }
+        declared = (inst.manifest.resources || {})[variant] || null;
+        stageShow(true);
+      }
       try { hooks.curtain(true); } catch (e) {}
       rec.state = "running";
+      rec.t0 = performance.now();
       logEvt("running", cmd.gen, null);
-      try { instrument.start(cmd.gen); }
+      try { inst.start(cmd.gen); }
       catch (e) { logEvt("start-threw", cmd.gen, String((e && e.message) || e)); fail(cmd.gen, "start threw"); return; }
+      if (inst.manifest) { lastAt = 0; runFrame(rec, performance.now()); }
       rec.watchdogT = setTimeout(function () { watchdogFire(rec); }, duration + slack);
     }
-    try {
-      var res = instrument.prepare({ cmd: cmd, token: cmd.gen, duration: duration, budgetMs: budget });
-      if (res && typeof res.then === "function") {
-        res.then(onAnswer, function () { onAnswer({ take: false, why: "prepare rejected" }); });
-      } else {
-        onAnswer(res);
+
+    function ask() {
+      try {
+        var res = inst.prepare({ cmd: cmd, token: cmd.gen, duration: duration, budgetMs: budget,
+                                 score: cmd.score || null, cue: cue, variant: variant,
+                                 sources: rec.src, grant: declaredFor(inst, variant) });
+        if (res && typeof res.then === "function") {
+          res.then(onAnswer, function () { onAnswer({ take: false, why: "prepare rejected" }); });
+        } else {
+          onAnswer(res);
+        }
+      } catch (e) {
+        if (!answered) { answered = true; clearTimeout(budgetTimer); declineCurrent(rec, "prepare threw"); }
       }
-    } catch (e) {
-      if (!answered) { answered = true; clearTimeout(budgetTimer); declineCurrent(rec, "prepare threw"); }
+    }
+
+    // The host owns every FrameSource and decodes both works during prepare, so an instrument that
+    // takes a command receives sources already decoded (§4.1/§10.1).
+    if (inst.manifest) {
+      armSources(cmd).then(function (src) {
+        if (answered || cur !== rec) return;
+        rec.src = src;
+        ask();
+      }, function (e) {
+        if (answered || cur !== rec) return;
+        answered = true;
+        clearTimeout(budgetTimer);
+        declineCurrent(rec, String((e && e.message) || e));
+      });
+    } else {
+      ask();
     }
     return true;
+  }
+  function declaredFor(inst, variant) {
+    return inst.manifest ? ((inst.manifest.resources || {})[variant] || null) : null;
   }
 
   // cancel(reason) — an interruption (§2.2/§10.3). Before takeover it is a plain decline; armed or
@@ -145,38 +671,59 @@
   function cancel(reason) {
     if (!cur || cur.docked) return;
     if (cur.state === "offered") { declineCurrent(cur, reason || "cancelled"); return; }
-    try { if (instrument && instrument.cancel) instrument.cancel(reason); } catch (e) {}
+    try { if (cur.inst && cur.inst.cancel) cur.inst.cancel(reason); } catch (e) {}
     finish("cancelled", reason || "cancelled");
   }
 
   function resize(viewport) {
-    if (cur && cur.state === "running" && instrument && instrument.resize) {
-      try { instrument.resize(viewport); } catch (e) {}
+    stageResize();
+    if (cur && cur.state === "running" && cur.inst && cur.inst.resize) {
+      try { cur.inst.resize(viewport); } catch (e) {}
     }
   }
   function contextLost() {
-    if (instrument && instrument.contextLost) { try { instrument.contextLost(); } catch (e) {} }
+    Object.keys(instruments).forEach(function (k) {
+      if (instruments[k].contextLost) { try { instruments[k].contextLost(); } catch (e) {} }
+    });
     if (cur && !cur.docked) fail(cur.cmd.gen, "context lost");
   }
   function contextRestored(resources) {
-    if (instrument && instrument.contextRestored) {
-      try { instrument.contextRestored(resources); } catch (e) { fail(cur ? cur.cmd.gen : null, "no rebuild"); }
-    }
+    Object.keys(instruments).forEach(function (k) {
+      var inst = instruments[k];
+      if (!inst.contextRestored) return;
+      try { inst.contextRestored(resources); } catch (e) { fail(cur ? cur.cmd.gen : null, "no rebuild"); }
+    });
   }
   function configure(opts) {
     if (!opts) return;
     if (opts.prepareBudgetMs !== undefined) prepareBudgetMs = clampNum(opts.prepareBudgetMs, PREPARE_MIN, PREPARE_MAX);
     if (opts.settleSlackMs !== undefined) settleSlackMs = clampNum(opts.settleSlackMs, SLACK_MIN, SLACK_MAX);
+    if (opts.clockPin !== undefined) pinClock = opts.clockPin === null ? null : Number(opts.clockPin);
+    if (opts.progressPin !== undefined) pinProgress = opts.progressPin === null ? null : Number(opts.progressPin);
+    if (opts.fixedScale !== undefined) fixedScale = !!opts.fixedScale;
   }
   function report() {
+    var s = times.slice().sort(function (a, b) { return a - b; });
     return {
       state: cur ? cur.state : "idle",
       active: !!cur,
       gen: cur ? cur.cmd.gen : null,
       duration: cur ? cur.duration : null,
+      variant: cur ? cur.variant : null,
       prepareBudgetMs: prepareBudgetMs, settleSlackMs: settleSlackMs,
       events: log.slice(),
-      instrument: instrument ? instrument.name : null,
+      instrument: cur ? cur.inst.name : null,
+      registered: Object.keys(instruments),
+      // §7's census, both halves side by side on the one surface
+      census: { canvases: census.canvases, contexts: census.contexts, textures: census.textures,
+                buffers: census.buffers, framebuffers: census.framebuffers,
+                programs: census.programs, programsCached: stage ? Object.keys(stage.programs).length : 0,
+                bytes: census.bytes, passesLastFrame: census.passesLastFrame,
+                uploads: census.uploads, restores: census.restores,
+                preserveDrawingBuffer: stage ? stage.gl.getContextAttributes().preserveDrawingBuffer : null,
+                buffer: W + "x" + H, scale: STEPS[stepIx], changes: changes, dpr: dpr },
+      resources: grantRow(),
+      frames: { count: s.length, p95: +quantile(s, 0.95).toFixed(2), p50: +quantile(s, 0.5).toFixed(2) },
     };
   }
 
@@ -186,6 +733,286 @@
     contextLost: contextLost, contextRestored: contextRestored,
     settle: settle, fail: fail, register: register, configure: configure, report: report,
   };
+
+  // ================================================================================================
+  // THE WOVEN INSTRUMENT (§8) — lab/effects/weave.js carried across
+  // ================================================================================================
+  // What came over: the shader, the seating of a work in the frame (coverFit), the response curve
+  // (feelOf), the turn of the weave (rotForTime) and the numbers of one frame (frameValuesOf). Not
+  // one number changed; this is the same mathematics, standing on the host's frame.
+  //
+  // What stayed behind: its own canvas, its own WebGL 1 context, its own frame loop, its pointer and
+  // resize listeners, its 2D fallback and its own clock. The instrument here reads no wall clock,
+  // holds no listener, creates no context and loads no picture (§1.2's fence).
+  function weaveInstrument() {
+    var VERT = [
+      "attribute vec2 aPos;",
+      "varying vec2 vUv;",
+      "void main(){ vUv = vec2(aPos.x * 0.5 + 0.5, 0.5 - aPos.y * 0.5); gl_Position = vec4(aPos, 0.0, 1.0); }",
+    ].join("\n");
+
+    var FRAG = [
+      "precision highp float;",
+      "varying vec2 vUv;",
+      "uniform sampler2D uA;",
+      "uniform sampler2D uB;",
+      "uniform vec4 uFitA;",
+      "uniform vec4 uFitB;",
+      "uniform vec2 uRes;",
+      "uniform float uT;",
+      "uniform float uNv;",
+      "uniform float uDuty;",
+      "uniform float uAmp;",
+      "uniform float uRot;",
+      "uniform float uSpeed;",
+      "uniform float uSeed;",
+      "const float TAU = 6.28318530718;",
+      "vec2 into(vec2 p, vec4 f){",
+      "  return clamp((p - 0.5) * f.xy + 0.5 + f.zw, 0.0008, 0.9992);",
+      "}",
+      "vec3 texA(vec2 p){ return texture2D(uA, into(p, uFitA)).rgb; }",
+      "vec3 texB(vec2 p){ return texture2D(uB, into(p, uFitB)).rgb; }",
+      "float sqI(float t, float d){ return floor(t) * d + min(fract(t), d); }",
+      "float sqcov(float x, float d, float w){",
+      "  w = max(w, 1e-5);",
+      "  if (d >= 1.0) return 1.0;",
+      "  if (d <= 0.0) return 0.0;",
+      "  return clamp((sqI(x + w, d) - sqI(x - w, d)) / (2.0 * w), 0.0, 1.0);",
+      "}",
+      "float hash21(vec2 p){ return fract(sin(dot(p, vec2(41.317, 289.107))) * 43758.5453); }",
+      "float warpV(float x, float k, float ph){ return x + 0.42 * sin(k * TAU * x + ph) / (k * TAU); }",
+      "float warpD(float x, float k, float ph){ return 1.0 + 0.42 * cos(k * TAU * x + ph); }",
+      "void main(){",
+      "  vec2 uv = vUv;",
+      "  float aspect = uRes.x / max(uRes.y, 1.0);",
+      "  float av = clamp(2.0 - 2.0 * uRot, 0.0, 1.0);",
+      "  float ah = clamp(2.0 * uRot, 0.0, 1.0);",
+      "  float basket = min(av, ah);",
+      "  float nV = max(5.0, uNv * (1.0 - 0.25 * basket));",
+      "  float nH = max(3.0, nV / max(aspect, 0.05));",
+      "  float phV = uT * 0.31;",
+      "  float phH = uT * 0.24 + 1.7;",
+      "  float alive = smoothstep(0.0, 0.10, uDuty) * smoothstep(1.0, 0.90, uDuty);",
+      "  float aV1 = TAU * (uv.y * 1.7 - uT * 0.090);",
+      "  float aV2 = TAU * (uv.y * 3.1 + uT * 0.062 + 1.3);",
+      "  float edgeV = alive * (0.34 * sin(aV1) + 0.17 * sin(aV2));",
+      "  float dEdgeV = alive * TAU * (0.34 * 1.7 * cos(aV1) + 0.17 * 3.1 * cos(aV2));",
+      "  float aH1 = TAU * (uv.x * 1.6 + uT * 0.081);",
+      "  float aH2 = TAU * (uv.x * 2.9 - uT * 0.055 + 0.7);",
+      "  float edgeH = alive * (0.34 * sin(aH1) + 0.17 * sin(aH2));",
+      "  float dEdgeH = alive * TAU * (0.34 * 1.6 * cos(aH1) + 0.17 * 2.9 * cos(aH2));",
+      "  float cV = warpV(uv.x, 2.0, phV) * nV + edgeV;",
+      "  float cH = warpV(uv.y, 3.0, phH) * nH + edgeH;",
+      "  float iv = floor(cV), fv = fract(cV);",
+      "  float ih = floor(cH), fh = fract(cH);",
+      "  float wV = 0.5 * (nV * warpD(uv.x, 2.0, phV) / uRes.x + abs(dEdgeV) / uRes.y);",
+      "  float wH = 0.5 * (nH * warpD(uv.y, 3.0, phH) / uRes.y + abs(dEdgeH) / uRes.x);",
+      "  float ph = uT * uSpeed * 0.17;",
+      "  float offV = uAmp * sin(TAU * (ph + (iv + 0.5) / nV * 1.5 + 0.35 * hash21(vec2(iv, uSeed))));",
+      "  float offH = uAmp * sin(TAU * (ph * 0.86 + (ih + 0.5) / nH * 1.5 + 0.31 + 0.35 * hash21(vec2(uSeed, ih))));",
+      "  float push = 2.0 * basket * uDuty * (1.0 - uDuty);",
+      "  float dutyV = clamp(uDuty + push, 0.0, 1.0);",
+      "  float dutyH = clamp(uDuty - push, 0.0, 1.0);",
+      "  float guardV = smoothstep(0.0, 0.12, dutyV) * smoothstep(1.0, 0.88, dutyV);",
+      "  float guardH = smoothstep(0.0, 0.12, dutyH) * smoothstep(1.0, 0.88, dutyH);",
+      "  float covV = sqcov(cV, dutyV, wV);",
+      "  vec3 colV = mix(texB(uv + vec2(0.0, -offV)), texA(uv + vec2(0.0, offV)), covV);",
+      "  float swV = max(4.0 * wV, min(0.12, 0.35 * min(dutyV, 1.0 - dutyV)));",
+      "  float parV = step(0.5, mod(iv, 2.0));",
+      "  float onBv = exp(-max(fv - dutyV, 0.0) / swV) * (1.0 - covV);",
+      "  float onAv = exp(-max(dutyV - fv, 0.0) / swV) * covV;",
+      "  colV *= 1.0 - 0.34 * guardV * mix(onBv, onAv, parV);",
+      "  float covH = sqcov(cH, dutyH, wH);",
+      "  vec3 colH = mix(texB(uv + vec2(-offH, 0.0)), texA(uv + vec2(offH, 0.0)), covH);",
+      "  float swH = max(4.0 * wH, min(0.12, 0.35 * min(dutyH, 1.0 - dutyH)));",
+      "  float parH = step(0.5, mod(ih, 2.0));",
+      "  float onBh = exp(-max(fh - dutyH, 0.0) / swH) * (1.0 - covH);",
+      "  float onAh = exp(-max(dutyH - fh, 0.0) / swH) * covH;",
+      "  colH *= 1.0 - 0.34 * guardH * mix(onBh, onAh, parH);",
+      "  float bv = floor(iv * 0.5), bh = floor(ih * 0.5);",
+      "  float pV = av / max(av + ah, 1e-4);",
+      "  float parity = step(mod(bv + bh, 2.0), 0.5);",
+      "  float chooseB = clamp(parity + (2.0 * uDuty - 1.0), 0.0, 1.0);",
+      "  float choose = mix(pV, chooseB, basket);",
+      "  float ord = mix(0.5 * ((bv * 2.0 + 1.0) / nV + (bh * 2.0 + 1.0) / nH),",
+      "                  hash21(vec2(bv, bh) + uSeed), 0.4);",
+      "  float showV = step(ord * 0.996 + 0.002, choose);",
+      "  vec3 col = mix(colH, colV, showV);",
+      "  float fbv = fract(cV * 0.5), fbh = fract(cH * 0.5);",
+      "  float grooveV = 1.0 - smoothstep(0.0, 0.05, min(fv, 1.0 - fv));",
+      "  float grooveH = 1.0 - smoothstep(0.0, 0.05, min(fh, 1.0 - fh));",
+      "  float diveV = 1.0 - smoothstep(0.0, 0.16, min(fbh, 1.0 - fbh));",
+      "  float diveH = 1.0 - smoothstep(0.0, 0.16, min(fbv, 1.0 - fbv));",
+      "  float shade = mix(0.55 * diveH + 0.30 * grooveH, 0.55 * diveV + 0.30 * grooveV, showV);",
+      "  float shadeGate = smoothstep(0.0, 0.22, uDuty) * smoothstep(1.0, 0.78, uDuty);",
+      "  col *= 1.0 - basket * shadeGate * min(shade, 0.62);",
+      "  gl_FragColor = vec4(col, 1.0);",
+      "}",
+    ].join("\n");
+
+    function smoothstep(a, b, x) {
+      var t = (x - a) / (b - a);
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      return t * t * (3 - 2 * t);
+    }
+    function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+    // How far a ribbon may slide along its own axis, as a fraction of the frame. Every sample the
+    // shader takes is the frame coordinate pushed by at most TRAVEL, so the cover-fit is pulled in by
+    // TRAVEL at each end: ZOOM is derived from TRAVEL and is not a free number.
+    var AMP = 0.10, PRESS = 1.30, TRAVEL = AMP * PRESS, ZOOM = 1 + 2 * TRAVEL + 0.03;
+
+    // cover-fit a work into the frame, then pull in by the travel headroom. The host hands the
+    // source's own dimensions, so the instrument never touches an image object.
+    function fit(iw, ih, w, h) {
+      var fa = w / Math.max(h, 1);
+      var ia = iw / Math.max(ih, 1);
+      var sx, sy;
+      if (ia > fa) { sx = fa / ia; sy = 1; } else { sx = 1; sy = ia / fa; }
+      return [sx / ZOOM, sy / ZOOM, 0, 0];
+    }
+
+    var AXES = ["up and down", "side to side", "both"];
+    function axisNameOf(axis) {
+      if (typeof axis === "number") return AXES[clamp(Math.round(axis), 0, 2)];
+      return AXES.indexOf(axis) >= 0 ? axis : "both";
+    }
+    function rotForTime(time, axis) {
+      var a = axisNameOf(axis);
+      if (a === "up and down") return 0;
+      if (a === "side to side") return 1;
+      var p = (time / 27) % 1;
+      if (p < 0) p += 1;
+      return 0.5 * smoothstep(0.06, 0.16, p) + 0.5 * smoothstep(0.28, 0.38, p)
+        - 0.5 * smoothstep(0.56, 0.66, p) - 0.5 * smoothstep(0.78, 0.88, p);
+    }
+
+    // THE RESPONSE CURVE (darkroom draft D2): equal movements of the hand produce equal felt change.
+    // A two-piece exponential hinged at the median of the felt change of one half, mirrored about the
+    // middle because a whole work stands at either end. The dead bands at either end are what make
+    // both doors exact: at mix 0 the duty is a whole 1 and at mix 1 a whole 0.
+    var FEEL_D0 = 0.06, FEEL_C = 0.43, FEEL_K1 = -1.6, FEEL_K2 = 1.8;
+    function feelLog(x, k) {
+      return Math.abs(k) < 1e-6 ? x : (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
+    }
+    function feelKnee(u) {
+      return u <= 0.5 ? FEEL_C * feelLog(2 * u, FEEL_K1)
+                      : FEEL_C + (1 - FEEL_C) * feelLog(2 * u - 1, FEEL_K2);
+    }
+    function feelOf(u) {
+      var f = u <= 0.5 ? 0.5 * feelKnee(2 * u) : 1 - 0.5 * feelKnee(2 - 2 * u);
+      return FEEL_D0 + (1 - 2 * FEEL_D0) * f;
+    }
+
+    // The numbers of one frame: everything the shader gets beyond the seating of the two works is a
+    // pure function of the pose. The host calls this; so does the lab's own carrier, from the same
+    // source — which is why the two roads can be compared frame against frame.
+    function values(st) {
+      var ab = Math.abs(st.bal);
+      var shaped = (st.bal < 0 ? -1 : 1) * smoothstep(0.08, 0.88, ab);
+      var duty = 0.5 + 0.5 * shaped;
+      var weave = 1 - smoothstep(0.14, 0.86, ab);
+      return {
+        duty: duty,
+        amp: Math.min(AMP * weave * st.press, TRAVEL),
+        nV: clamp(st.strips * st.nMul * clamp(st.cssWidth / 1000, 0.5, 1), 6, 64),
+        rot: st.reduced ? 0 : rotForTime(st.t, st.axis),
+      };
+    }
+
+    var manifest = {
+      id: "weave", api: 1, arity: 2,
+      roles: ["disassembly", "mystery", "assembly"],
+      levels: ["SURFACE", "CELL"],
+      params: { strips: [8, 64], axis: [0, 2], speed: [0.1, 2.5] },
+      // EVERY handle a score can drive (§4.4b). `mix` is the dial; `clock` is the second the host
+      // hands down; the other four were the module's own params and its own die, and they are
+      // published here so no handle keeps a clock or a roll of its own.
+      handles: {
+        mix: { min: 0, max: 1, def: 0 },
+        clock: { min: 0, max: 14, def: 0 },
+        strips: { min: 8, max: 64, def: 28 },
+        axis: { min: 0, max: 2, def: 2 },
+        speed: { min: 0.1, max: 2.5, def: 1 },
+        seed: { min: 0, max: 8, def: 0 },
+      },
+      neutrals: { a: 0, b: 1 },
+      doors: { in: { handle: "mix", value: 0, work: "a" },
+               out: { handle: "mix", value: 1, work: "b" } },
+      // Both doors frame alike, so one record covers them: the constant centre crop the strips'
+      // travel pays for (ZOOM above; module-contract.json publishes the same 1.29).
+      framings: { "0": { coverCrop: ZOOM }, "1": { coverCrop: ZOOM } },
+      drivers: ["progress", "time", "static"],
+      camera: { needs: "none", authority: "stage" },
+      gl: { preserveDrawingBuffer: false },
+      neutralPose: { bal: 1, nMul: 1, press: 1, strips: 28, axis: 2, cssWidth: 1000, t: 0, reduced: false },
+      passes: [{
+        program: "weave", vert: VERT, frag: FRAG, position: "aPos",
+        uniforms: [
+          { name: "uA", type: "sampler2D", source: "textureA" },
+          { name: "uB", type: "sampler2D", source: "textureB" },
+          { name: "uFitA", type: "vec4", source: "fitA" },
+          { name: "uFitB", type: "vec4", source: "fitB" },
+          { name: "uRes", type: "vec2", source: "resolution" },
+          { name: "uT", type: "float", source: "seconds" },
+          { name: "uNv", type: "float", source: "frame:nV" },
+          { name: "uDuty", type: "float", source: "frame:duty" },
+          { name: "uAmp", type: "float", source: "frame:amp" },
+          { name: "uRot", type: "float", source: "frame:rot" },
+          { name: "uSpeed", type: "float", source: "handle:speed" },
+          { name: "uSeed", type: "float", source: "handle:seed" },
+        ],
+      }],
+      // The instrument allocates NOTHING of its own: it spends the two source-texture slots the host
+      // already holds and the one programme the host builds from this manifest.
+      resources: { lean: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
+                           passes: 1, bytesEstimate: 0, variant: "lean" },
+                   standard: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
+                               passes: 1, bytesEstimate: 0, variant: "standard" },
+                   rich: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
+                           passes: 1, bytesEstimate: 0, variant: "rich" } },
+      capabilities: ["webgl2"],
+      decline: ["one work only", "a source that never decoded"],
+      provenance: { labPath: "lab/effects/weave.js", commit: "547a100" },
+      readiness: "production-ready",
+    };
+
+    var live = false;
+    return {
+      name: "weave",
+      manifest: manifest,
+      values: values,
+      fit: fit,
+      feel: feelOf,
+      prepare: function (o) {
+        if (!o.sources) return { take: false, why: "the woven instrument needs both works" };
+        if (!o.cue) return { take: false, why: "no cue names it" };
+        return { take: true };
+      },
+      start: function () { live = true; },
+      // The pose the shader draws. `nMul` and `press` are the hand's own channels and the hand is
+      // parked under a score, so both stand at 1 — the module's own note says the press rests at 1
+      // under a parked pointer, so a scored run never has it settling at all.
+      frame: function (st) {
+        if (!live) return;
+        var h = st.handles;
+        st.draw({
+          bal: 1 - 2 * feelOf(clamp(h.mix, 0, 1)),
+          nMul: 1, press: 1,
+          strips: h.strips, axis: h.axis, speed: h.speed, seed: h.seed,
+          cssWidth: st.viewport.w, t: h.clock, reduced: st.reduced,
+        });
+        if (st.progress >= 1 && !st.pinned) st.settle(st.token);
+      },
+      resize: function () {},
+      cancel: function () {},
+      dispose: function () { live = false; },
+      contextLost: function () { live = false; },
+      contextRestored: function () {},
+    };
+  }
+
+  register(weaveInstrument());
 
   // ---- the test instrument (§9/brief): reachable only when diagnostics are on -------------------
   // Ships INSIDE this file rather than as a separate registration point because it must be able to
@@ -201,6 +1028,7 @@
     var lateMs = 30;
     var inst = {
       name: "test",
+      probe: true,
       prepare: function (offer) {
         counts.prepare++;
         lastToken = offer.token;
@@ -244,6 +1072,35 @@
     register(test.inst);
     diag.host = host;
     diag.test = test;
+    // The bench: the diagnostics-only hand a conformance row draws one frame with. It is the exact
+    // road a running transaction takes — the same drawPose, the same programme cache, the same two
+    // source textures — with the pose handed in instead of derived from a score, so the host's frame
+    // and the lab module's frame can be compared on ONE pose rather than on two guesses at one.
+    diag.bench = {
+      make: function () { return !!stageMake(); },
+      pair: function (a, b) {
+        if (!stageMake()) return false;
+        uploadPair({ a: a, b: b, aw: a.naturalWidth, ah: a.naturalHeight,
+                     bw: b.naturalWidth, bh: b.naturalHeight });
+        return true;
+      },
+      draw: function (id, pose) {
+        var inst = instruments[id];
+        if (!inst || !stage) return false;
+        inst.manifest.passes.forEach(function (pass) { programFor(pass); });
+        drawPose(inst, pose, { aw: pose.aw, ah: pose.ah, bw: pose.bw, bh: pose.bh });
+        return true;
+      },
+      show: stageShow,
+      manifest: function (id) { return instruments[id] ? instruments[id].manifest : null; },
+      register: function (inst) { return register(inst); },
+      es3: function (src, isVert) { return toES3(src, !!isVert); },
+      ladder: function (ms, frames) {
+        var t = 1e6;
+        for (var i = 0; i < frames; i++) { t += ms; noteFrame(t); }
+        return { scale: STEPS[stepIx], changes: changes };
+      },
+    };
   }
 
   join(host);
