@@ -827,6 +827,10 @@
   let passLastEl = null, passLastGen = -1;
   function passWhere(el) {
     if (!el) return null;
+    // PASS-API §1.1: the door is a destination like any other. It carries no dataset.id of its own
+    // (it is not a work), so it is named by its element id instead — the one case passWhere resolves
+    // by anything other than dataset.
+    if (el.id === "ex-door") return Object.freeze({ id: "door", n: null });
     return Object.freeze({ id: (el.dataset && el.dataset.id) || null,
                            n: (el.dataset && el.dataset.n) ? +el.dataset.n : null });
   }
@@ -887,15 +891,122 @@
   }
   function passLandNow() { passEnd("nav-land", null); }
   function passAbortNow(why) { passEnd("nav-abort", why || "cancelled"); }
+
+  // ---- ProductNavigationAdapter (PASS-API §1.1) -------------------------------------------------
+  // declare(a) is the ONE door every road between two works now knocks on — the stepping road and
+  // every programmatic jump alike. It adds the two locks §1.1 names on top of passStart's freeze:
+  //   - a command whose destination is absent is refused outright (never reaches passStart, never
+  //     mints a generation) — the class of defect a null-destination jump could leave behind (a
+  //     landing keyed on the destination has nothing to read).
+  //   - two declares inside one animation frame make the second a refusal with its reason; a declare
+  //     arriving while another is merely RUNNING still supersedes it (passStart's own job, unchanged)
+  //     — only the same-frame race is new law.
+  let passFrameLock = false;
+  function passFrameUnlock() { passFrameLock = false; }
+  function declare(a) {
+    if (!a || !a.toEl) {
+      passNote(passRefusals, { what: "declare", name: (a && a.cause) || "unnamed", why: "no destination" });
+      return null;
+    }
+    if (passFrameLock) {
+      passNote(passRefusals, { what: "declare", name: a.cause || "unnamed", why: "second declare in one frame" });
+      return null;
+    }
+    passFrameLock = true;
+    try { requestAnimationFrame(passFrameUnlock); } catch (e) { passFrameLock = false; }
+    return passStart(a);
+  }
   // A programmatic move — a restored place, a pasted link, a closed room, a rotation, a fresh hang,
   // the Back arrow. It takes the SAME command and the same landing owner, so the state contract
   // covers every road between two works; the picture layer declines it by kind, so the eye still
-  // sees an instant land.
+  // sees an instant land. A jump with no destination is refused by declare and lands nothing.
   function passJump(toEl, cause, fromEl) {
-    const cmd = passStart({ fromEl: fromEl || null, toEl: toEl || null, dir: 1, span: 0,
-                            kind: "jump", cause: cause, velocity: 0 });
-    passLandNow();
+    const cmd = declare({ fromEl: fromEl || null, toEl: toEl || null, dir: 1, span: 0,
+                          kind: "jump", cause: cause, velocity: 0 });
+    if (cmd) passLandNow();
     return cmd;
+  }
+
+  // dock(cmd) — PASS-API §1.1/§2.4: makes the arriving work current, exactly once, keyed on the
+  // command's OWN frozen generation together with its destination (never the live global passGen,
+  // which is exactly the key the seam got wrong — §10.2). Called by the host on settle/fail/cancel;
+  // reads cmd.to and takes no element, so a caller cannot dock a work the command never named.
+  const passDockKeys = Object.create(null);
+  function passResolveEl(to) {
+    if (!to) return null;
+    if (to.id === "door" || to.id === null) return { id: "exh-fin" };  // the door's own landing clears
+    return stage.querySelector('.exh-frame[data-id="' + String(to.id).replace(/"/g, "") + '"]');
+  }
+  function dock(cmd) {
+    if (!cmd || !cmd.to) return;
+    const key = cmd.gen + ":" + (cmd.to.id === null ? "" : cmd.to.id);
+    if (passDockKeys[key]) {
+      passNote(passRefusals, { what: "dock", name: key, why: "already docked" });
+      return;
+    }
+    passDockKeys[key] = true;
+    const el = passResolveEl(cmd.to);
+    if (el) {
+      passLandGate(el, "dock", landOn, cmd.gen);
+      // the curtain already dropped (the host calls curtain(false) before dock — §2.2 settle/fail);
+      // focus returns to the arriving work here, the moment it is current (§1.1's curtain law).
+      if (el.focus && !stage.contains(document.activeElement)) { try { el.focus({ preventScroll: true }); } catch (e) {} }
+    }
+    passMark("dock", cmd, cmd.to.id === "door" ? "door" : null);
+  }
+
+  // glide(cmd) — the walk's own scroll animation, the standing fallback; called by the host when no
+  // renderer takes the command (a decline, a timed-out prepare, or no renderer registered at all).
+  function glide(cmd) {
+    if (!cmd) return;
+    const el = passResolveEl(cmd.to);
+    if (el && el.getBoundingClientRect) glideToFrame(frameCenter(el), cmd.velocity || 0, "pass");
+    else passLandNow();
+  }
+
+  // interrupt(reason) — PASS-API §1.1/§10.3: ends the transaction in flight from a product surface
+  // that stands in front of the walk. Reaches the host too (a takeover the per-frame glide checker
+  // never sees, because during a takeover that loop does not run) and then ends the bundle's own
+  // bookkeeping the way passAbortNow always has.
+  function interrupt(reason) {
+    if (!passNav) return;
+    if (passLayer && typeof passLayer.cancel === "function") {
+      try { passLayer.cancel(reason); } catch (e) {}
+    }
+    passAbortNow(reason);
+  }
+
+  // reframe(viewport) — the resize/orientation road tells a RUNNING transaction its frame changed
+  // size, so it resizes in place instead of being superseded (§10.3's third repair).
+  function reframe(viewport) {
+    if (passLayer && typeof passLayer.resize === "function") {
+      try { passLayer.resize(viewport); } catch (e) {}
+    }
+  }
+  function passRunning() {
+    try { return !!(passLayer && passLayer.report && passLayer.report().active); }
+    catch (e) { return false; }
+  }
+
+  // curtain(on) — the host only. Covers the walk with the renderer's canvas and hides the covered
+  // walk from the accessibility tree; the caption's own size/change watchers suspend with it. Focus
+  // returns to the arriving work at the landing (dock already restores the plaque/counter/share).
+  function curtain(on) {
+    document.body.classList.toggle("ex-pass-curtain", !!on);
+    if (on) { stage.setAttribute("aria-hidden", "true"); stage.inert = true; }
+    else { stage.removeAttribute("aria-hidden"); stage.inert = false; }
+    try {
+      if (capRO) {
+        if (on) capRO.disconnect();
+        else { const im = capInViewImg(); if (im) capRO.observe(im); }
+      }
+    } catch (e) {}
+    try {
+      if (capMO) {
+        if (on) capMO.disconnect();
+        else capMO.observe(cap, { childList: true, subtree: true, characterData: true });
+      }
+    } catch (e) {}
   }
 
   // The one owner of «this work is now current». The in-view watcher (08) and the end of a
@@ -903,16 +1014,21 @@
   // generation, is a repeat — that is the watcher re-reporting what is still on screen after a
   // rebuilt threshold, and it commits nothing twice. A visitor who walks back to a work does land
   // it again: the work between them moved the last-landed mark.
-  function passLandGate(el, reason, commit) {
+  // `gen` lets a caller pin the generation the check reads against instead of the LIVE passGen — the
+  // host's own dock(cmd) passes cmd.gen, its command's own frozen generation, so a callback arriving
+  // after a newer command has already declared still keys against the generation it actually belongs
+  // to (PASS-API §10.2: keyed on generation AND destination, never a global that has moved on).
+  function passLandGate(el, reason, commit, gen) {
     if (!el) return;
-    if (el === passLastEl && passGen === passLastGen) return;
+    const g = gen === undefined ? passGen : gen;
+    if (el === passLastEl && g === passLastGen) return;
     if (reason === "observe" && passNav && passNav.to
         && passNav.to.id === ((el.dataset && el.dataset.id) || null)
         && passGet("landCommit") === "transitionEnd") {
       passPending = { el: el, commit: commit };
       return;
     }
-    passLastEl = el; passLastGen = passGen;
+    passLastEl = el; passLastGen = g;
     commit(el, reason);
   }
 
@@ -920,8 +1036,11 @@
   // command falls through to the walk's own glide, which is the fallback the seam keeps reversible:
   // turning the layer off is a setting, never a rebuild.
   let passLayer = null, passState = "absent";
+  // PASS-API §12: the renderer's own file registers the HOST here — a registry taking one
+  // instrument, exposing offer/resize/cancel/report. The seam's old {name, run} shape is gone with
+  // the single run(cmd, done) entry point it belonged to (§0, "Where it stands").
   function passLayerSet(layer) {
-    passLayer = (layer && typeof layer.run === "function") ? layer : null;
+    passLayer = (layer && typeof layer.offer === "function") ? layer : null;
     passState = passLayer ? "registered" : "absent";
   }
   function passVisualTakes(cmd) {
@@ -930,12 +1049,14 @@
     if (cmd.reduced || cmd.saveData) return false;
     return cmd.params.visualLayer.base === "pass";
   }
-  // A layer that throws is dropped for the rest of the visit and the walk's glide takes over at
-  // once; a layer that answers anything other than true has declined this command.
-  function passRun(cmd) {
-    try { return passLayer.run(cmd, passLandNow) === true; }
+  // A layer that throws is dropped for the rest of the visit and the walk's glide takes at once. The
+  // host owns the offer/prepare/decline decision entirely (§2.1); a `true` return means the host has
+  // taken responsibility for landing this command — by taking over, or by calling the glide hook
+  // itself when it declines — never that a renderer is now drawing.
+  function passOffer(cmd) {
+    try { return passLayer.offer(cmd, { dock: dock, glide: glide, curtain: curtain, mark: passMark }) === true; }
     catch (e) {
-      passNote(passRefusals, { what: "layer", name: "run", why: "threw" });
+      passNote(passRefusals, { what: "layer", name: "offer", why: "threw" });
       passLayerSet(null);
       return false;
     }
@@ -1003,9 +1124,18 @@
     };
   }
   // `score` is the checker itself, handed over so a score can be judged without being played — the
-  // surface stays read-only about the walk and decides nothing on its own.
+  // surface stays read-only about the walk and decides nothing on its own. `adapter` and `layer` are
+  // a TESTING seam, gated the same way: they let a conformance row construct a real command and drive
+  // the host directly, on real elements, without needing to simulate every input road by hand.
   if (passGet("diagnostics") === "on") {
-    try { window.__@@NS@@Pass = { report: passReport, score: passScoreCheck, version: 1 }; } catch (e) {}
+    try {
+      window.__@@NS@@Pass = {
+        report: passReport, score: passScoreCheck, version: 1,
+        adapter: { declare: declare, dock: dock, glide: glide, interrupt: interrupt,
+                   reframe: reframe, curtain: curtain, mark: passMark },
+        layer: function () { return passLayer; },
+      };
+    } catch (e) {}
   }
 /*!02-kinship-orderings.js*/
   // ---- baked data -----------------------------------------------------------
