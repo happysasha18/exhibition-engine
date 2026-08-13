@@ -105,13 +105,23 @@ check("PASS-API no eval, no new Function anywhere the host reads a command",
       "eval(" not in LAYER_SRC and "new Function" not in LAYER_SRC,
       "the host's own file must obey the same law as the bundle's driver graph")
 
-# The renderer file's own byte fence (§11/§12): 4 000 B held a 167 B stub. A real host plus one
-# instrument does not fit that — this is the measured number that replaces it, with its reason here.
-LAYER_FENCE = 12000
-check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 4 000)",
+# The renderer file's own byte fence (§11/§12), measured at each landing rather than guessed:
+#   4 000 B  held the 167 B stub.
+#  12 000 B  held the state machine, the watchdog, the idempotence guard and the test instrument
+#            (2026-08-13) — measured at 8 273 B.
+#  42 000 B  holds those PLUS the frame half and the first real instrument (2026-08-14), measured at
+#            39 415 B. Where the growth went, in raw source bytes: the frame stage 19 386 (canvas,
+#            WebGL2 context, vertex buffer, the two source textures, the programme cache keyed by
+#            branch name, the resolution ladder, the shader-version translator, the name-driven
+#            uniform binding, the census and context loss/restoration); the woven instrument 14 184,
+#            of which its shader alone is 5 810; the transaction 15 017. None of it rides the walk's
+#            bundle: this file is fetched only on a visit that actually draws (§12's split), so the
+#            67 000 B gzipped bundle fence is untouched by every byte above.
+LAYER_FENCE = 42000
+check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 12 000)",
       len(LAYER_BUILT.encode("utf-8")) < LAYER_FENCE,
-      f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — a real state machine, watchdog, "
-      f"idempotence guard and diagnostics-gated test instrument no longer fit a stub's fence")
+      f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the host's frame half and one "
+      f"real instrument no longer fit the machinery-only fence")
 
 # ---------------------------------------------------------------- browser rows
 

@@ -68,7 +68,11 @@ strip_css_comments, strip_js_comments = _load_strip()
 FENCES = {
     "exhibition.js": (67_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture travels separately (pass-layer.js) since 2026-08-13", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
-    "pass-layer.js": (4_000, "the drawing layer's own file, fetched only when a walk asks for it; a stub today", strip_js_comments),
+    # 2026-08-14: the stub became a host with a frame half and one real instrument (the woven one),
+    # measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind. This file is
+    # fetched ONLY on a visit that actually draws — reduced motion, Save-Data, no WebGL2 and
+    # visualLayer:off never ask for it — so its bytes never touch the walk's own bundle above.
+    "pass-layer.js": (13_000, "the drawing layer's own file, fetched only when a walk asks for it: the host's frame half plus the woven instrument and its shader", strip_js_comments),
 }
 
 results = []
