@@ -127,8 +127,30 @@ check("PASS-API no eval, no new Function anywhere the host reads a command",
 #            None of it rides the walk's bundle: this file is fetched only on a visit that actually
 #            draws (§12's split), so the 67 000 B gzipped bundle fence is untouched by every byte
 #            above — the bundle is measured at 66 735 B and no product-side file changed.
-LAYER_FENCE = 70000
-check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 42 000)",
+#  80 000 B  holds those PLUS a SECOND instrument, the matter one of §8, carried over from
+#            lab/effects/matter.js (2026-08-14 evening) and measured at 72 535 B. Two instruments
+#            now stand in this file: the woven one and the matter one, and the render graph is built
+#            from their manifests rather than from one shader written into the host.
+#            Where this instrument's 9 248 B went, measured region by region in the built file:
+#              3 287 B  its shader — the seeded field of two grains over a plain ladder, the
+#                       travelling threshold, the drag along the field's own gradient and the
+#                       contact shadow;
+#              3 130 B  its manifest — nine handles with their neutrals, both doors and their
+#                       framings, the driver kinds, the camera, one pass of fourteen uniforms bound
+#                       by declared name, resources for three tiers, the decline rules and the
+#                       provenance;
+#              2 831 B  its mathematics and its wiring — the response curve of twenty-one measured
+#                       shares, the field constants, the seating of a work in the frame, the numbers
+#                       of one frame and the instrument's own lifecycle methods.
+#            THE HEADROOM LEFT IS 7 465 B, about a tenth of the fence. That is less than this
+#            instrument itself cost, so a third instrument landing here moves this number again —
+#            which is what §12 asks for, a fence measured at each landing rather than guessed once.
+#            THIS FENCE IS A PROXY, AND THE COST IT PROXIES IS INTACT. What travels to a phone is the
+#            gzipped file, and that fence stands at 21 000 B with this file measured at 19 712 B,
+#            1 288 B under it (tests/test_budget.py, which carries its own breakdown). The walk's own
+#            bundle is untouched at 67 279 B: this file is fetched only on a visit that draws.
+LAYER_FENCE = 80000
+check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 70 000)",
       len(LAYER_BUILT.encode("utf-8")) < LAYER_FENCE,
       f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the driver graph, the camera "
       f"and the interruption cadence no longer fit the frame-half fence")
