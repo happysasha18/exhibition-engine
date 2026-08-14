@@ -193,6 +193,28 @@ check("PASS-GEARS every handle the instrument publishes is a handle a score can 
       "§4.4b: the module ran its wheels on its own accumulating clock and held its judges, its die, "
       "its flank, its pair size and its tooth pitch as constants — all fifteen are handles here")
 
+# ---- the handles whose published shape misdescribed them, swept 2026-08-14 ----------------------
+check("PASS-GEARS the ratio handle publishes the ladder it steps through, with the ladder's one home",
+      'ratio: { min: 0, max: 1, def: 0.5, kind: "enum", step: 1 / (RATIOS.length - 1),' in REGION
+      and "rungs: RATIOS" in REGION
+      and "function ratioAt(v) { return RATIOS[Math.round(" in REGION,
+      "the handle carried a bare 0 to 1 while ratioAt rounds it to one of seven rungs before any "
+      "tooth count is taken; the rungs are published by reference, so the ladder keeps one home")
+
+check("PASS-GEARS the two handles the instrument scales back together publish that they are scaled",
+      'tooth: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "order" } }' in REGION
+      and 'order: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "tooth" } }' in REGION
+      and "amp *= back;" in REGION and "spread *= back;" in REGION,
+      "a tooth stands no taller than the wheel it stands on: past the field's own depth both are "
+      "multiplied by one factor, and a composer reads that here rather than measuring it downstream")
+
+check("PASS-GEARS the pair's size publishes that it is rounded to whole teeth",
+      'size: { min: 0.3, max: 8, def: 4.5, applied: { roundedToWholeTeeth: true, leastTeeth: 3 } }'
+      in REGION
+      and "while (rr[0] * k < 3 || rr[1] * k < 3) k++;" in REGION,
+      "both counts come from one whole multiplier, so the drawn size is the nearest one that leaves "
+      "the rung's ratio exact and each wheel at three teeth or more")
+
 check("PASS-GEARS the manifest declares the drawing buffer unpreserved",
       "preserveDrawingBuffer: false" in REGION,
       "the module asks for it at gears.js:276; the redraw it stood in for is carried instead")
