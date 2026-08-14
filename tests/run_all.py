@@ -29,6 +29,7 @@ SUITES = [
     "pass_hang",
     "pass_matter",
     "pass_gears",
+    "pass_stack",
 ]
 
 

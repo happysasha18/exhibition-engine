@@ -186,6 +186,7 @@ ROWS = [
     "PASS-HANG row 7 · a resize mid-passage reframes without a jump and still lands on the box",
     "PASS-HANG row 7 · an orientation change mid-passage does the same",
     "PASS-HANG row 7 · a moved destination moves the picture at no instant, and still lands exactly",
+    "PASS-HANG row 51 · the hangGeometry measurement callback mutates nothing",
 ]
 
 HOOKS = """window.HOOKS = function () {
@@ -359,6 +360,56 @@ else:
                 br.sleep(0.8)
                 enter(br, base)
                 br.evaluate(HOOKS)
+
+                # ---- row 51 · the one declared exception carries its own evidence ------------
+                # §1.1 fences the adapter: only the product may call it and the renderer holds no
+                # reference to it. §2.6 was built with the product handing the host ONE read-only
+                # hook, which the host calls at `prepare` and at `reframe`, and the contract now
+                # declares that a single exception. What makes it an exception rather than a hole is
+                # that the call changes nothing — so it is measured here rather than asserted.
+                #
+                # The command is the easiest half and the strongest: the callback is handed a work
+                # id and nothing else, so it never receives a command and cannot touch one. The DOM
+                # and the product's own observable state are compared across three calls.
+                mut = js(br, """
+                  var A = window.__exPass.adapter;
+                  function store() {
+                    try {
+                      return Object.keys(window.localStorage).sort().map(function (k) {
+                        return k + "=" + window.localStorage.getItem(k); }).join("\\u0001");
+                    } catch (e) { return "unreadable"; }
+                  }
+                  function snap() {
+                    var f = document.activeElement;
+                    return {
+                      dom: document.documentElement.outerHTML,
+                      focus: f ? (f.tagName + "#" + (f.id || "") + "." + (f.className || "")) : null,
+                      scroll: Math.round(window.scrollX) + "," + Math.round(window.scrollY),
+                      title: document.title, url: location.href, store: store(),
+                    };
+                  }
+                  var before = snap();
+                  var g1 = A.hangGeometry(%r);
+                  var g2 = A.hangGeometry(%r);
+                  var g3 = A.hangGeometry(%r);
+                  var after = snap();
+                  var moved = Object.keys(before).filter(function (k) {
+                    return before[k] !== after[k]; });
+                  return { moved: moved, arity: A.hangGeometry.length,
+                           measured: !!(g1 && g1.w > 0 && g1.h > 0 && g2 && g2.w > 0 && g2.h > 0),
+                           repeats: JSON.stringify(g1) === JSON.stringify(g3),
+                           domBytes: before.dom.length };
+                """ % (A, B, A))
+                check(ROWS[12],
+                      mut["moved"] == [] and mut["arity"] == 1 and mut["measured"] is True
+                      and mut["repeats"] is True,
+                      "three calls of the measurement hook across a live walk, on both works. The "
+                      "callback takes %d argument — a work id, never a command, so a command cannot "
+                      "be touched by it. Across the calls the DOM (%d characters), the focused "
+                      "element, the scroll position, the title, the address and the whole of local "
+                      "storage are identical; what moved: %s. Both works measured a real box, and "
+                      "one work read twice returned the same record."
+                      % (mut["arity"], mut["domBytes"], mut["moved"] or "nothing"))
 
                 # ---- row 8 · the departure ------------------------------------------------
                 # The walk stands on A with its chrome up. The renderer takes the frame, held at its

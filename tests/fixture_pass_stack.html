@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>a stack of cues — three instruments on one frame</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen so
+     the host's own canvas is the only thing a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src.slice(0, 60)); };
+  });
+
+  function go() {
+    var gen = 500;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+
+    // The real transaction road, offered to the real host: a hand-made command of exactly the shape
+    // the bundle freezes. `clock` and `progress` pin the frame loop so one instant of the pass can
+    // be photographed twice and compared with itself.
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: !!opts.reduced, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 6500 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__clearHooks = function () {
+      window.__hooks.docks = []; window.__hooks.curtains = [];
+      window.__hooks.glides = []; window.__hooks.marks = [];
+    };
+
+    // ONE INSTANT OF THE PASS, HELD AND PHOTOGRAPHED. The pass is offered with its clock and its
+    // progress pinned at the instant asked for, the host runs its real frame loop against those
+    // pins, and what the report says about the stack at that instant is handed back beside the
+    // pixels on screen. Nothing here stubs the host: this is `offer` and the host's own frames.
+    window.__at = function (score, seconds, dur) {
+      var p = dur > 0 ? Math.max(0, Math.min(1, seconds / dur)) : 1;
+      return window.__offer(score, { clock: seconds, progress: p });
+    };
+
+    // What the stack looked like on the last frame drawn, in draw order.
+    window.__stack = function () {
+      var r = window.__host.report();
+      return { stack: r.stack, live: r.live, drew: r.drew, passes: r.census.passesLastFrame,
+               canvases: r.census.canvases, contexts: r.census.contexts,
+               textures: r.census.textures, programs: r.census.programs,
+               framebuffers: r.census.framebuffers, buffers: r.census.buffers,
+               resources: r.resources, budget: r.budget, grant: r.grant,
+               state: r.state, events: r.events.map(function (e) { return e.name; }) };
+    };
+
+    // The pure checks, read as data — the same functions a running transaction calls.
+    window.__whyNo = function (score) { return window.__exPass.bench.scoreWhyNo(score); };
+    window.__order = function (cues) { return window.__exPass.bench.stackOrder(cues); };
+    window.__live = function (cues, s) { return window.__exPass.bench.liveAt(cues, s); };
+    window.__budget = function (score) { return window.__exPass.bench.budget(score); };
+    window.__grant = function (score, variant) { return window.__exPass.bench.grant(score, variant); };
+    window.__budgets = function () { return window.__exPass.bench.budgets(); };
+    window.__canvasCount = function () { return document.querySelectorAll("canvas").length; };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>

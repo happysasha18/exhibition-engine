@@ -323,10 +323,27 @@
   // The one draw. The instrument hands its pose; the host asks the instrument's own pure functions
   // for the numbers of the frame and the seating of each work, then binds every declared uniform by
   // its declared name and issues the declared passes.
-  function drawPose(inst, pose, src) {
+  //
+  // `over` says this cue is being laid down onto a frame another cue has already drawn into. The
+  // stack is DEPTH ORDER and nothing else: the charter's own law hands out no opacity handle and
+  // lets no plan fade a layer, so the host imposes no weight of its own on any cue. What it does is
+  // read the alpha the INSTRUMENT'S OWN shader writes, through plain source-over on premultiplied
+  // colour, so an instrument that writes coverage — matter here, nothing there — lets the frame
+  // beneath show through where it carries nothing. All three instruments standing today write
+  // `vec4(col, 1.0)`, so each covers the frame whole and the stack reads as plain occlusion.
+  // Blending is switched off again for the bottom cue of every frame, so a one-cue score meets a
+  // context in exactly the state the stage was built in.
+  function drawPose(inst, pose, src, over) {
     if (!stage) return;
     stageResize();
-    census.passesLastFrame = 0;
+    var gl0 = stage.gl;
+    if (over) {
+      gl0.enable(gl0.BLEND);
+      gl0.blendFunc(gl0.ONE, gl0.ONE_MINUS_SRC_ALPHA);
+    } else {
+      gl0.disable(gl0.BLEND);
+      census.passesLastFrame = 0;
+    }
     var gl = stage.gl;
     var box = {
       frame: inst.values(pose),
@@ -1062,17 +1079,229 @@
     return true;
   }
 
-  // This slice plays ONE cue, the woven instrument's own single gesture; a stack of cues sharing a
-  // window is the next unit, and §4.4's levels law is what will judge it.
+  // A score names one cue or several. The FIRST LINE is the primary one: it is the cue whose doors
+  // the interruption cadence walks to and whose instrument seats the two hang boxes, so a one-cue
+  // score reads exactly as it always did and a stack adds voices around that same spine.
   function cueOf(cmd) {
     var s = cmd && cmd.score;
     if (!s || !s.cues || !s.cues.length) return null;
     return s.cues[0];
   }
-  // THE SCORE, JUDGED ONCE, BEFORE ANYTHING IS TAKEN (§5/§6). Returns the reason it is refused, or
-  // null. Two things are checked here because both are properties of the WHOLE score and neither can
-  // be seen from inside a single frame: a driver graph that reaches itself, and two cues both
-  // claiming the camera at one instant.
+  function cuesOf(cmd) {
+    var s = cmd && cmd.score;
+    return (s && s.cues && s.cues.length) ? s.cues : [];
+  }
+
+  // ---- the stack (§4.4's `stack`) -----------------------------------------------------------------
+  // THE SCORE'S OWN ORDER IS THE STACK UNLESS THE SCORE SAYS OTHERWISE. Where no cue names a
+  // `stack`, the first line stands topmost, so the first cue takes the highest number and the last
+  // takes the lowest. Higher stands nearer the eye. The returned list is DRAW ORDER — ascending, so
+  // the cue nearest the eye is laid down last and covers what it draws over.
+  //
+  // The tie is broken by the same sentence: where two cues name one number, the earlier line is the
+  // nearer of the two, so it is drawn later.
+  function stackOrder(cues) {
+    var n = cues.length;
+    var rows = cues.map(function (c, i) {
+      var s = (c.stack === undefined || c.stack === null) ? (n - i) : Number(c.stack);
+      if (!isFinite(s)) s = n - i;
+      return { cue: c, stack: s, line: i };
+    });
+    rows.sort(function (p, q) { return (p.stack - q.stack) || (q.line - p.line); });
+    return rows;
+  }
+
+  // WHETHER A CUE IS PLAYING AT THIS SECOND. A cue naming no window plays the whole pass, which is
+  // what a one-cue score written before windows existed means. Both edges are inside the window, so
+  // a cue whose window closes exactly at the pass's own last second still draws the door it lands.
+  function cueLiveAt(cue, seconds) {
+    var w = cue && cue.window;
+    if (Object.prototype.toString.call(w) !== "[object Array]" || w.length < 2) return true;
+    return seconds >= Number(w[0]) && seconds <= Number(w[1]);
+  }
+  // ---- the three properties of a WHOLE score that no single frame can see -------------------------
+  // Two cues share an instant when their windows touch: both edges are inside a window, so a cue
+  // closing at the very second another opens is live at that one second and the two are judged
+  // together. A cue naming no window plays the whole pass and therefore meets every other cue.
+  function windowsMeet(a, b) {
+    var wa = a && a.window, wb = b && b.window;
+    var arr = "[object Array]";
+    if (Object.prototype.toString.call(wa) !== arr) return true;
+    if (Object.prototype.toString.call(wb) !== arr) return true;
+    return Number(wa[0]) <= Number(wb[1]) && Number(wb[0]) <= Number(wa[1]);
+  }
+  function metAcross(a, b) {
+    var wa = a.window || [0, 0], wb = b.window || [0, 0];
+    return Math.max(Number(wa[0]), Number(wb[0])) + "…" + Math.min(Number(wa[1]), Number(wb[1]));
+  }
+
+  // THE LEVELS LAW (§4.4, the charter's shelf 17). One voice to a structural level: two cues whose
+  // level lists intersect in windows that meet are a red, UNLESS one of them declares itself the
+  // accompaniment of the other on that level. The declaration is the cue's own `levelOwnership`
+  // record, keyed by level name, reading `owns` or `accompanies:<the other cue's id>`. Naming the
+  // other cue is what makes the escape checkable: an unaddressed «accompanies» would let two cues
+  // each stand aside for nobody and both keep the level.
+  // The reading, level by level. A cue standing on a level either OWNS it or ACCOMPANIES a named
+  // cue that owns it. Two owners whose windows meet are the noise the law refuses. Several
+  // accompaniments standing aside for ONE owner are not two voices claiming a level — they are one
+  // voice with its accompaniments, which is what the composed passage of the worked pair is: the
+  // band family owns SURFACE for the whole pass and the other two play over it there.
+  //
+  // The accompaniment must NAME the cue it stands aside for, and that cue must actually own the
+  // level and be playing at the same time. An unaddressed «accompanies» would let every cue stand
+  // aside for nobody and all of them keep the level.
+  function levelsWhyNo(cues) {
+    var byId = {}, levels = [], i, j, k;
+    for (i = 0; i < cues.length; i++) byId[cues[i].id] = cues[i];
+    for (i = 0; i < cues.length; i++) {
+      var ls = cues[i].levels || [];
+      for (k = 0; k < ls.length; k++) if (levels.indexOf(ls[k]) < 0) levels.push(ls[k]);
+    }
+    for (k = 0; k < levels.length; k++) {
+      var L = levels[k], on = [], owners = [];
+      for (i = 0; i < cues.length; i++) {
+        if ((cues[i].levels || []).indexOf(L) < 0) continue;
+        on.push(cues[i]);
+        var say = (cues[i].levelOwnership || {})[L];
+        if (typeof say !== "string" || say.indexOf("accompanies:") !== 0) owners.push(cues[i]);
+      }
+      for (i = 0; i < owners.length; i++) {
+        for (j = i + 1; j < owners.length; j++) {
+          if (!windowsMeet(owners[i], owners[j])) continue;
+          return "cues «" + owners[i].id + "» and «" + owners[j].id + "» both stand on " + L
+               + " across " + metAcross(owners[i], owners[j]) + " s — one voice to a level, unless "
+               + "one declares itself the accompaniment of the cue that owns it there";
+        }
+      }
+      for (i = 0; i < on.length; i++) {
+        var claim = (on[i].levelOwnership || {})[L];
+        if (typeof claim !== "string" || claim.indexOf("accompanies:") !== 0) continue;
+        var whose = byId[claim.slice(12)];
+        if (!whose) {
+          return "cue «" + on[i].id + "» accompanies «" + claim.slice(12) + "» on " + L
+               + ", and this score names no such cue";
+        }
+        var theirs = (whose.levelOwnership || {})[L];
+        if ((whose.levels || []).indexOf(L) < 0
+            || (typeof theirs === "string" && theirs.indexOf("accompanies:") === 0)) {
+          return "cue «" + on[i].id + "» accompanies «" + whose.id + "» on " + L
+               + ", and «" + whose.id + "» does not own " + L;
+        }
+        if (!windowsMeet(on[i], whose)) {
+          return "cue «" + on[i].id + "» accompanies «" + whose.id + "» on " + L
+               + ", and the two never play at once";
+        }
+      }
+    }
+    return null;
+  }
+
+  // THE TIER BUDGET (§4.4, the charter's shelf 17). The reckoning is a plain record so a row can
+  // read every number it is judged on rather than only the verdict.
+  //
+  // The three bands, in seconds, and what each carries:
+  //   quiet        2…4    exactly one letter, at most one accompaniment, no miracle
+  //   middle       5…8    at most two letters, at most two accompaniments, at most one miracle
+  //   culmination  9…14   two or three letters, at most three accompaniments, exactly one miracle
+  //
+  // A duration falling in NO band names no tier, and the budget then stands aside with that reason
+  // recorded. §2.5 makes `duration: 0` a legal instant transition and the bands leave gaps between
+  // them, so a score outside every band is a score the tier rules say nothing about.
+  var TIERS = [
+    { name: "quiet", lo: 2, hi: 4, lettersLo: 1, lettersHi: 1, accompaniments: 1,
+      miraclesLo: 0, miraclesHi: 0 },
+    { name: "middle", lo: 5, hi: 8, lettersLo: 0, lettersHi: 2, accompaniments: 2,
+      miraclesLo: 0, miraclesHi: 1 },
+    { name: "culmination", lo: 9, hi: 14, lettersLo: 2, lettersHi: 3, accompaniments: 3,
+      miraclesLo: 1, miraclesHi: 1 },
+  ];
+  var HELD_MAX = 1 / 3;
+
+  // The seconds of the pass some cue's window covers, with the overlaps merged so a second under
+  // three cues counts once. What is left over is HELD TIME: the passage standing with no voice
+  // playing, which is the reading of the charter's «held time (vistas + crests)» the host can
+  // actually measure from a score.
+  function coveredSeconds(cues, durSec) {
+    var spans = [], i;
+    for (i = 0; i < cues.length; i++) {
+      var w = cues[i].window;
+      var lo = 0, hi = durSec;
+      if (Object.prototype.toString.call(w) === "[object Array]" && w.length >= 2) {
+        lo = Math.max(0, Number(w[0]));
+        hi = Math.min(durSec, Number(w[1]));
+      }
+      if (hi > lo) spans.push([lo, hi]);
+    }
+    spans.sort(function (p, q) { return p[0] - q[0]; });
+    var total = 0, at = -1;
+    for (i = 0; i < spans.length; i++) {
+      var s = Math.max(spans[i][0], at < 0 ? spans[i][0] : at);
+      if (spans[i][1] > s) { total += spans[i][1] - s; at = spans[i][1]; }
+      else if (at < spans[i][1]) at = spans[i][1];
+    }
+    return total;
+  }
+
+  function budgetOfScore(score) {
+    var cues = (score && score.cues) || [];
+    var durSec = clampNum(score && score.duration, DURATION_MIN, DURATION_MAX) / 1000;
+    var letters = 0, accompaniments = 0, miracles = 0;
+    cues.forEach(function (c) {
+      if (c.voice === "letter") letters++;
+      else if (c.voice === "accompaniment") accompaniments++;
+      else if (c.voice === "miracle") miracles++;
+    });
+    // THE CAMERA COUNTS AS ONE ACCOMPANIMENT wherever the score names a camera track (§4.4, amended
+    // 2026-08-14 10:31). The camera is carried in the score's own `camera` record rather than as a
+    // cue, so a count reading the cues alone never saw it and every scored flight was one short.
+    // The charter's shelf 17 opens its list of accompaniment voices with the camera and closes with
+    // «EVERYTHING counts; no never-counted class exists».
+    var track = score && score.camera && score.camera.track;
+    var camera = Object.prototype.toString.call(track) === "[object Array]" && track.length > 0;
+    if (camera) accompaniments++;
+    var covered = coveredSeconds(cues, durSec);
+    var held = durSec > 0 ? (durSec - covered) / durSec : 0;
+    var tier = null;
+    for (var i = 0; i < TIERS.length; i++) {
+      if (durSec >= TIERS[i].lo && durSec <= TIERS[i].hi) { tier = TIERS[i]; break; }
+    }
+    var rec = { tier: tier ? tier.name : null, seconds: +durSec.toFixed(4),
+                letters: letters, accompaniments: accompaniments, miracles: miracles,
+                camera: camera, cameraCounted: camera ? 1 : 0,
+                coveredSeconds: +covered.toFixed(4), held: +held.toFixed(6), heldMax: HELD_MAX,
+                why: null };
+    if (held >= HELD_MAX) {
+      rec.why = "held time stands at " + (held * 100).toFixed(1) + " percent of the pass, and a "
+              + "third is the ceiling — " + (durSec - covered).toFixed(3) + " s of " + durSec
+              + " s carry no cue at all";
+      return rec;
+    }
+    if (!tier) {
+      rec.whyNoTier = "a duration of " + durSec + " s falls in no tier band (2…4, 5…8, 9…14), so "
+                    + "the tier rules say nothing about this score";
+      return rec;
+    }
+    if (letters < tier.lettersLo || letters > tier.lettersHi) {
+      rec.why = "a " + tier.name + " carries " + (tier.lettersLo === tier.lettersHi
+                ? tier.lettersLo + " letter" : tier.lettersLo + " to " + tier.lettersHi + " letters")
+              + " and this score carries " + letters;
+    } else if (accompaniments > tier.accompaniments) {
+      rec.why = "a " + tier.name + " carries at most " + tier.accompaniments + " accompaniments and "
+              + "this score carries " + accompaniments
+              + (camera ? ", the camera among them" : "");
+    } else if (miracles < tier.miraclesLo || miracles > tier.miraclesHi) {
+      rec.why = "a " + tier.name + " carries " + (tier.miraclesLo === tier.miraclesHi
+                ? "exactly " + tier.miraclesLo : "at most " + tier.miraclesHi) + " miracle"
+              + (tier.miraclesHi === 1 ? "" : "s") + " and this score carries " + miracles;
+    }
+    return rec;
+  }
+
+  // THE SCORE, JUDGED ONCE, BEFORE ANYTHING IS TAKEN (§5/§6/§4.4). Returns the reason it is refused,
+  // or null. Everything checked here is a property of the WHOLE score that no single frame can see:
+  // a driver graph that reaches itself, two cues both claiming the camera at one instant, two cues
+  // standing on one structural level at one instant, one instrument asked to carry two cues at once,
+  // and the tier budget.
   function scoreWhyNo(cmd) {
     var s = cmd && cmd.score;
     if (!s) return null;
@@ -1092,6 +1321,24 @@
         }
       }
     }
+    // ONE INSTRUMENT CARRIES ONE CUE AT A TIME. An instrument is one object on the host's registry
+    // with one set of its own state, so two cues naming it across windows that meet would have it
+    // playing two parts at once through a single `live` flag and a single pose.
+    for (i = 0; i < cues.length; i++) {
+      for (j = i + 1; j < cues.length; j++) {
+        var ia = cues[i].instrument && cues[i].instrument.id;
+        var ib = cues[j].instrument && cues[j].instrument.id;
+        if (ia && ia === ib && windowsMeet(cues[i], cues[j])) {
+          return "cues «" + cues[i].id + "» and «" + cues[j].id + "» both name the instrument «"
+               + ia + "» across " + metAcross(cues[i], cues[j])
+               + " s — one instrument carries one cue at a time";
+        }
+      }
+    }
+    var lv = levelsWhyNo(cues);
+    if (lv) return lv;
+    var bud = budgetOfScore(s);
+    if (bud.why) return "the tier budget: " + bud.why;
     return null;
   }
 
@@ -1102,6 +1349,38 @@
     if (instruments[id]) return instruments[id];
     logEvt("no-instrument", cmd.gen, String(id));
     return null;
+  }
+
+  // THE VOICES OF THE STACK, in draw order, each carrying the instrument its own cue names. A
+  // command with no score at all reaches only the diagnostics probe, which is what a command with no
+  // score has always meant. ONE unknown instrument refuses the whole score: a stack missing a voice
+  // is not the passage the score names, and playing it short would be a picture nobody wrote.
+  function voicesFor(cmd) {
+    var cues = cuesOf(cmd);
+    if (!cues.length) {
+      if (!probe) return null;
+      return [{ cue: null, inst: probe, said: {}, driverState: {}, lastHandles: null,
+                live: true, stack: 0, line: 0 }];
+    }
+    var rows = stackOrder(cues), out = [];
+    for (var i = 0; i < rows.length; i++) {
+      var id = rows[i].cue.instrument && rows[i].cue.instrument.id;
+      if (!instruments[id]) { logEvt("no-instrument", cmd.gen, String(id)); return null; }
+      out.push({ cue: rows[i].cue, inst: instruments[id], said: {}, driverState: {},
+                 lastHandles: null, live: false, stack: rows[i].stack, line: rows[i].line });
+    }
+    return out;
+  }
+  // The instruments of a stack, each named once, in draw order — what `prepare`, the programme
+  // build and `dispose` walk, so an instrument carrying two cues is asked once.
+  function instrumentsOf(voices) {
+    var seen = [], out = [];
+    voices.forEach(function (v) {
+      if (seen.indexOf(v.inst) >= 0) return;
+      seen.push(v.inst);
+      out.push(v.inst);
+    });
+    return out;
   }
   function durationOf(cmd) {
     var s = cmd && cmd.score;
@@ -1117,9 +1396,106 @@
     return name === "rich" || name === "lean" ? name : "standard";
   }
 
-  // The census against the declaration (§7). The instrument declared textures, framebuffers and a
-  // byte estimate; the host counts what was actually created FOR IT and shows both, so a declaration
-  // that understates its counts or its bytes reads as the lie it is.
+  // ---- resources across a stack (§7) --------------------------------------------------------------
+  var RES_KEYS = ["textures", "textureSlots", "framebuffers", "pingPong", "programs", "passes",
+                  "bytesEstimate"];
+  // THE BUDGET PER QUALITY VARIANT. §7 has the host compare a declaration against the budget for the
+  // chosen variant and then grant it, grant a lower variant, or decline. The budget itself had no
+  // home in the code until a stack made the sum worth comparing against anything.
+  //
+  // These three rows are a FIRST DEFAULT and carry no measurement behind them. They are set so one
+  // instrument fits every variant, a stack of three fits `standard` and `rich`, and `lean` stops at
+  // two — which is §7's own floor, «below which the plain fallback plays instead of a thin miracle».
+  // The numbers await his eye the way the per-tier duration and render scale already do; what is
+  // built here is the road that reads them, and moving a row moves no line of that road.
+  var VARIANTS = ["lean", "standard", "rich"];
+  var BUDGET = {
+    lean: { textures: 2, textureSlots: 4, framebuffers: 1, pingPong: 0, programs: 2, passes: 2,
+            bytesEstimate: 8388608 },
+    standard: { textures: 4, textureSlots: 8, framebuffers: 2, pingPong: 1, programs: 4, passes: 4,
+                bytesEstimate: 33554432 },
+    rich: { textures: 8, textureSlots: 16, framebuffers: 4, pingPong: 2, programs: 8, passes: 8,
+            bytesEstimate: 100663296 },
+  };
+
+  // What ONE cue declares at a variant. A cue may carry its own per-variant map, or one flat record
+  // naming the variant it stands for; carrying neither, the instrument's manifest answers for it.
+  function cueDeclares(cue, inst, variant) {
+    var r = cue && cue.resources;
+    if (r) {
+      if (r[variant]) return r[variant];
+      if (typeof r.variant === "string") return r;
+    }
+    return (inst && inst.manifest && (inst.manifest.resources || {})[variant]) || null;
+  }
+
+  // THE PEAK OF THE STACK, which is the thing a budget has to be compared against. With several
+  // instruments live at once the grants add up, so the sum is taken across the cues live at one
+  // instant. The live set changes only where a window opens, so summing at every opening second
+  // finds the true worst instant without sampling the pass. Each resource takes its own ceiling.
+  function peakDeclared(voices, variant) {
+    var edges = [0], i, k, n;
+    for (i = 0; i < voices.length; i++) {
+      var w = voices[i].cue && voices[i].cue.window;
+      if (Object.prototype.toString.call(w) === "[object Array]") edges.push(Number(w[0]));
+    }
+    var peak = { textures: 0, textureSlots: 0, framebuffers: 0, pingPong: 0, programs: 0,
+                 passes: 0, bytesEstimate: 0 };
+    var most = 0, at = 0, ids = [];
+    for (k = 0; k < edges.length; k++) {
+      var sum = { textures: 0, textureSlots: 0, framebuffers: 0, pingPong: 0, programs: 0,
+                  passes: 0, bytesEstimate: 0 }, here = [];
+      for (i = 0; i < voices.length; i++) {
+        if (!cueLiveAt(voices[i].cue, edges[k])) continue;
+        var d = cueDeclares(voices[i].cue, voices[i].inst, variant) || {};
+        for (n = 0; n < RES_KEYS.length; n++) sum[RES_KEYS[n]] += Number(d[RES_KEYS[n]]) || 0;
+        here.push(voices[i].cue && voices[i].cue.id);
+      }
+      for (n = 0; n < RES_KEYS.length; n++) {
+        if (sum[RES_KEYS[n]] > peak[RES_KEYS[n]]) peak[RES_KEYS[n]] = sum[RES_KEYS[n]];
+      }
+      if (here.length > most) { most = here.length; at = edges[k]; ids = here; }
+    }
+    peak.at = at;
+    peak.cues = ids;
+    return peak;
+  }
+
+  function overBudget(sum, budget) {
+    for (var i = 0; i < RES_KEYS.length; i++) {
+      if ((sum[RES_KEYS[i]] || 0) > (budget[RES_KEYS[i]] || 0)) return RES_KEYS[i];
+    }
+    return null;
+  }
+
+  // §7's grant, made a road: compare the summed declaration against the chosen variant's budget and
+  // grant it, grant a LOWER variant, or decline. The ladder walks down only — a device asking for
+  // `lean` is never handed `rich` because the sum happened to fit up there.
+  function grantVariant(voices, want) {
+    var ix = VARIANTS.indexOf(want);
+    if (ix < 0) ix = VARIANTS.indexOf("standard");
+    var tried = [];
+    for (var i = ix; i >= 0; i--) {
+      var name = VARIANTS[i], sum = peakDeclared(voices, name);
+      var over = overBudget(sum, BUDGET[name]);
+      tried.push({ variant: name, over: over, asked: over ? sum[over] : null,
+                   grants: over ? BUDGET[name][over] : null });
+      if (!over) {
+        return { variant: name, sum: sum, budget: BUDGET[name], tried: tried, why: null,
+                 lowered: name !== want };
+      }
+    }
+    var last = tried[tried.length - 1], floor = VARIANTS[0];
+    return { variant: null, sum: peakDeclared(voices, floor), budget: BUDGET[floor], tried: tried,
+             lowered: false,
+             why: "the stack asks for " + last.asked + " " + last.over + " at «" + floor
+                + "», which grants " + last.grants };
+  }
+
+  // The census against the declaration (§7). The cues declared textures, framebuffers and a byte
+  // estimate; the host counts what was actually created FOR THEM and shows both, so a declaration
+  // that understates its counts or its bytes reads as the lie it is. With a stack the declaration
+  // being judged is the SUM at the pass's worst instant.
   function grantRow() {
     var d = declared || {};
     return {
@@ -1166,7 +1542,16 @@
     }
     lastRun = { camera: rec.camera || null, rest: rec.rest, handoffs: rec.handoffs,
                 cadence: rec.cadence || null, handles: rec.lastHandles || null,
-                hang: hangRow(rec) };
+                hang: hangRow(rec),
+                stack: (rec.voices || []).map(function (v) {
+                  return { id: v.cue ? v.cue.id : null, instrument: v.inst.name, stack: v.stack,
+                           line: v.line, live: !!v.live,
+                           window: v.cue ? (v.cue.window || null) : null,
+                           levels: v.cue ? (v.cue.levels || null) : null,
+                           handles: v.lastHandles || null };
+                }),
+                live: rec.liveCues || [], drew: rec.drewLastFrame || 0,
+                budget: budgetOfScore(rec.cmd.score), grant: rec.grant || null };
     logEvt(landState, rec.cmd.gen, why || null);
     // THE HANDOFF, INSIDE ONE FRAME. The DOM's work is revealed and the canvas released in that
     // order, inside one task, so no frame draws neither picture. The canvas at rest already carries
@@ -1181,7 +1566,10 @@
     camApply(null, rec.caps);
     try { rec.hooks.dock(rec.cmd); } catch (e) {}
     try { rec.hooks.mark("host-" + landState, rec.cmd, why || null); } catch (e) {}
-    try { if (rec.inst && rec.inst.dispose) rec.inst.dispose(); } catch (e) {}
+    // EVERY instrument of the stack releases what it was granted, in draw order.
+    instrumentsOf(rec.voices || []).forEach(function (x) {
+      try { if (x.dispose) x.dispose(); } catch (e) {}
+    });
     cur = null;
   }
 
@@ -1227,8 +1615,11 @@
   // instrument derives its balance from `mix` when no score drives `bal` directly). It is left
   // UNDEFINED rather than defaulted when the score names no track, and no fallback is recorded,
   // because nothing fell back.
-  function driverCtx(rec, progress, seconds, dt) {
-    var cue = rec.cue || {}, w = cue.window || [0, rec.duration / 1000];
+  // Each voice of the stack carries its OWN node table, its own cue progress and its own remembering
+  // driver state, so one cue's `slew` can never be read by another and two cues naming one node name
+  // stay apart.
+  function driverCtx(rec, v, progress, seconds, dt) {
+    var cue = v.cue || {}, w = cue.window || [0, rec.duration / 1000];
     var span = (w[1] - w[0]) || 1;
     return {
       nodes: cue.nodes || {},
@@ -1239,19 +1630,19 @@
       // The capability, as one number a curve can read: the three named tiers in their own order.
       capability: rec.variant === "rich" ? 1 : rec.variant === "lean" ? 0 : 0.5,
       dt: dt || 0,
-      state: rec.driverState,
+      state: v.driverState,
     };
   }
-  function handlesOf(rec, progress, seconds, dt) {
-    var m = rec.inst.manifest, cue = rec.cue, out = {};
-    var ctx = driverCtx(rec, progress, seconds, dt);
+  function handlesOf(rec, v, progress, seconds, dt) {
+    var m = v.inst.manifest, cue = v.cue, out = {};
+    var ctx = driverCtx(rec, v, progress, seconds, dt);
     Object.keys(m.handles).forEach(function (k) {
       var h = m.handles[k], got = null;
       if (cue && cue.tracks && cue.tracks[k]) got = evalNode(cue.tracks[k], ctx, 0);
       if (!got || !got.ok) {
         if (h.open && !(cue && cue.tracks && cue.tracks[k])) { out[k] = undefined; return; }
-        if (!rec.said[k]) {
-          rec.said[k] = true;
+        if (!v.said[k]) {
+          v.said[k] = true;
           logEvt("handle-fallback", rec.cmd.gen, k + ": " + ((got && got.why) || "the score drives it with no track"));
         }
         out[k] = h.def;
@@ -1259,7 +1650,33 @@
         out[k] = clampNum(got.v, h.min, h.max);
       }
     });
-    rec.lastHandles = out;
+    v.lastHandles = out;
+    if (v === rec.primary) rec.lastHandles = out;
+    return out;
+  }
+
+  // WHERE A CUE HOLDS WHILE IT IS NOT PLAYING. A cue outside its window draws nothing and holds
+  // every handle at the value ITS OWN DOOR gives — the entry door before the window opens, the exit
+  // door after it closes. Each is that cue's own tracks read at the door's own instant, with the
+  // door handle pinned to exactly the number the door names, which is the same reckoning the
+  // interruption cadence walks to. The record is built once per pass and per door, since neither
+  // the tracks nor the doors move.
+  function doorHandles(rec, v, which) {
+    var key = "door:" + which;
+    if (v[key]) return v[key];
+    var cue = v.cue || {}, doors = cue.doors || {}, d = doors[which];
+    var w = cue.window || [0, rec.duration / 1000];
+    var seconds = which === "in" ? Number(w[0]) : Number(w[1]);
+    var progress = rec.duration > 0 ? Math.max(0, Math.min(1, seconds * 1000 / rec.duration))
+                                    : (which === "in" ? 0 : 1);
+    var at = handlesOf(rec, v, progress, seconds, 0);
+    var out = {};
+    Object.keys(at).forEach(function (h) { out[h] = at[h]; });
+    if (d && d.handle && v.inst.manifest.handles[d.handle]) {
+      out[d.handle] = clampNum(d.value, v.inst.manifest.handles[d.handle].min,
+                               v.inst.manifest.handles[d.handle].max);
+    }
+    v[key] = out;
     return out;
   }
 
@@ -1281,7 +1698,7 @@
   // transition picks one door — every handle then travels to the value IT takes at that door, so the
   // picture that lands is a whole work and never a mongrel of two.
   function nearestDoorOf(rec, live) {
-    var cue = rec.cue || {}, doors = cue.doors || {};
+    var v = rec.primary, cue = v.cue || {}, doors = cue.doors || {};
     var din = doors["in"], dout = doors.out;
     if (!din || !dout || din.handle !== dout.handle) return null;
     var k = din.handle, at = Number(live[k]);
@@ -1292,11 +1709,11 @@
     var progress = which === "in" ? 0 : 1;
     // Every handle at the door: its own track read at the door's own instant, with the door handle
     // itself pinned to exactly the value the door names.
-    var want = handlesOf(rec, progress, seconds, 0);
+    var want = handlesOf(rec, v, progress, seconds, 0);
     var at_door = {};
     Object.keys(want).forEach(function (h) { at_door[h] = want[h]; });
-    at_door[k] = clampNum(doors[which].value, rec.inst.manifest.handles[k].min,
-                          rec.inst.manifest.handles[k].max);
+    at_door[k] = clampNum(doors[which].value, v.inst.manifest.handles[k].min,
+                          v.inst.manifest.handles[k].max);
     return { which: which, handle: k, value: Number(doors[which].value), handles: at_door,
              progress: progress, seconds: seconds };
   }
@@ -1310,7 +1727,8 @@
   }
 
   function cadenceStart(rec, reason, immediate) {
-    var live = rec.lastHandles || handlesOf(rec, rec.lastProgress || 0, rec.lastSeconds || 0, 0);
+    var live = rec.lastHandles
+             || handlesOf(rec, rec.primary, rec.lastProgress || 0, rec.lastSeconds || 0, 0);
     var door = nearestDoorOf(rec, live);
     var budget = immediate ? 0 : budgetOf(rec.cmd);
     rec.cadence = {
@@ -1326,7 +1744,9 @@
     }
     logEvt("cadence", rec.cmd.gen,
            reason + " → door «" + (door ? door.which : "none") + "» within " + budget + " ms");
-    try { if (rec.inst && rec.inst.cancel) rec.inst.cancel(reason); } catch (e) {}
+    instrumentsOf(rec.voices || []).forEach(function (x) {
+      try { if (x.cancel) x.cancel(reason); } catch (e) {}
+    });
     if (budget <= 0) { cadenceEnd(rec, "at once"); return; }
     rec.deadlineT = setTimeout(function () { cadenceEnd(rec, "deadline"); }, budget);
   }
@@ -1376,26 +1796,78 @@
   // instrument drew. `hold` is the cadence's own handle set when a cadence is playing; a cadence
   // frame is `pinned`, so the instrument walks to the door on the host's envelope instead of
   // settling of its own accord half-way through it.
+  // ONE FRAME OF THE WHOLE STACK. The camera is read once for the instant, because §6 keeps one
+  // authority per instant however many voices are playing, and it is applied once to the canvas
+  // above everything drawn into it.
+  //
+  // The voices are walked in DRAW ORDER — ascending stack, so the cue nearest the eye is laid down
+  // last. Every live cue draws into THE ONE CANVAS and THE ONE CONTEXT; nothing here makes a second
+  // of either, which is §7's law and holds at any number of cues. A cue outside its window draws
+  // nothing and holds its handles at its own door.
+  //
+  // `drew` counts what has already been laid down this frame, so the first cue clears the frame's
+  // pass count and every later one composites over what stands there.
   function playFrame(rec, seconds, progress, dt, hold) {
     var cam = camPoseAt(rec, seconds);
     rec.camera = cam;
-    rec.inst.frame({
+    // A CUE'S WINDOW IS WRITTEN IN THE PASS'S OWN SECONDS, and the pass's own seconds run from zero
+    // to its duration. A second outside that span is judged AT THE NEAREST END OF IT, because that
+    // is where the transaction actually stands: a frame landing at 3.01 s of a 3 s pass is the pass
+    // at its last instant, and the cue holding the last door is the cue that must draw it. Without
+    // this, the frames past the final second fall outside every window, nothing draws, and a pass
+    // whose instrument settles on its own last frame never settles at all.
+    //
+    // It is also what keeps a pinned bench clock honest. The pins stop the frame loop reading the
+    // wall clock so one instant can be photographed twice; a bench that pins the clock past the
+    // pass's end is still photographing the pass's last instant, and the picture it draws reads the
+    // pinned second exactly as it always did — only the question of WHICH cues are playing is asked
+    // at the pass's own end.
+    var span = rec.duration > 0 ? rec.duration / 1000 : 0;
+    var judge = span > 0 ? Math.max(0, Math.min(seconds, span)) : 0;
+    var drew = 0, live = [];
+    for (var i = 0; i < rec.voices.length; i++) {
+      var v = rec.voices[i];
+      var on = cueLiveAt(v.cue, judge);
+      v.live = on;
+      if (!on) {
+        // Held at its own door: the entry door before its window opens, the exit door after it
+        // closes. Nothing is drawn, and the handles a reader sees are the door's own numbers.
+        v.lastHandles = doorHandles(rec, v, judge < Number((v.cue.window || [0, 0])[0])
+                                            ? "in" : "out");
+        continue;
+      }
+      live.push(v.cue && v.cue.id);
+      var handles = (hold && v === rec.primary) ? hold
+                  : (hold ? doorHandles(rec, v, (rec.cadence && rec.cadence.door) || "out")
+                          : handlesOf(rec, v, progress, seconds, dt));
+      v.inst.frame(frameState(rec, v, seconds, progress, handles, cam, hold, drew));
+      if (v.drawnThisFrame) { drew++; v.drawnThisFrame = false; }
+      if (hold) v.lastHandles = handles;
+    }
+    rec.liveCues = live;
+    rec.drewLastFrame = drew;
+    camApply(cam.pose, rec.caps);
+    if (hold) rec.lastHandles = hold;
+  }
+
+  // The record one voice receives. Held apart from the loop above so the closure over `v` and `drew`
+  // is made once per voice per frame rather than captured by accident from a shared variable.
+  function frameState(rec, v, seconds, progress, handles, cam, hold, drew) {
+    return {
       token: rec.cmd.gen, t: seconds, progress: progress,
-      handles: hold || handlesOf(rec, progress, seconds, dt),
+      handles: handles,
       viewport: { w: cssW, h: cssH, dpr: dpr },
       reduced: !!rec.cmd.reduced,
       camera: cam.pose,
       // a pinned run is a bench run: it holds its pose instead of walking to the end door, so a
       // conformance row can photograph one instant twice and compare it to itself
       pinned: pinProgress !== null || !!hold,
-      draw: function (pose) { drawPose(rec.inst, pose, rec.src); },
+      draw: function (pose) { v.drawnThisFrame = true; drawPose(v.inst, pose, rec.src, drew > 0); },
       // A cue that carries the camera by its own device reports its pose here, once a frame. The
       // host applies it and holds its own flight still across that window.
       reportPose: function (p) { if (p) rec.ownPose = p; },
       settle: settle, fail: fail,
-    });
-    camApply(cam.pose, rec.caps);
-    if (hold) rec.lastHandles = hold;
+    };
   }
 
   function runFrame(rec, now) {
@@ -1444,8 +1916,17 @@
     var budget = clampNum(prepareBudgetMs, PREPARE_MIN, PREPARE_MAX);
     var slack = clampNum(settleSlackMs, SLACK_MIN, SLACK_MAX);
     var cue = cueOf(cmd);
-    var variant = variantOf(cmd);
+    var voices = voicesFor(cmd);
+    if (!voices) return false;
+    var primary = voices[0];
+    for (var vi = 0; vi < voices.length; vi++) if (voices[vi].line === 0) primary = voices[vi];
+    // §7's grant across the whole stack: the summed declaration at the pass's worst instant against
+    // the chosen variant's budget, granted, lowered a rung, or declined.
+    var asked = variantOf(cmd);
+    var got = grantVariant(voices, asked);
+    var variant = got.variant || asked;
     var rec = { cmd: cmd, hooks: hooks, inst: inst, cue: cue, variant: variant, state: "offered",
+                voices: voices, primary: primary, grant: got, liveCues: [], drewLastFrame: 0,
                 docked: false, watchdogT: null, duration: duration, raf: 0, t0: 0, src: null,
                 said: {}, driverState: {}, lastHandles: null, lastNow: 0,
                 lastSeconds: 0, lastProgress: 0,
@@ -1456,7 +1937,16 @@
                 hangA: null, hangB: null, hangPoseA: null, hangPoseB: null, hangEdge: null,
                 lastAnchor: null, carry: null, carryFrom: 0, placed: false };
     cur = rec;
-    logEvt("offer", cmd.gen, inst.name + " at " + variant);
+    logEvt("offer", cmd.gen, instrumentsOf(voices).map(function (x) { return x.name; }).join(" + ")
+                             + " at " + variant + (got.lowered ? " (lowered from " + asked + ")" : ""));
+    if (!got.variant) {
+      // §7's floor: the stack asks for more than even the leanest variant grants, so the plain
+      // fallback plays instead of a thin miracle.
+      logEvt("resources-declined", cmd.gen, got.why);
+      declineCurrent(rec, "resources: " + got.why);
+      return true;
+    }
+    if (got.lowered) logEvt("variant-lowered", cmd.gen, asked + " → " + variant + ": " + got.tried[0].over);
     var answered = false;
     var budgetTimer = setTimeout(function () {
       if (answered || cur !== rec) return;
@@ -1478,13 +1968,19 @@
         try {
           if (!stageMake()) { declineCurrent(rec, "no webgl2"); return; }
           uploadPair(rec.src);
-          inst.manifest.passes.forEach(function (pass) { programFor(pass); });
+          // EVERY instrument the score names gets its programmes built before takeover, so no cue
+          // pays for a shader build on the frame its window opens.
+          instrumentsOf(voices).forEach(function (x) {
+            x.manifest.passes.forEach(function (pass) { programFor(pass); });
+          });
         } catch (e) {
           logEvt("stage-threw", cmd.gen, String((e && e.message) || e));
           declineCurrent(rec, "stage threw");
           return;
         }
-        declared = (inst.manifest.resources || {})[variant] || null;
+        // The declaration the census is judged against is the SUM at the pass's worst instant, so a
+        // stack is measured against what the stack actually asked for.
+        declared = got.sum;
         // BOTH BOXES ARE READ BEFORE TAKEOVER (§1.1). The host asks the product for the hang
         // geometry of A and of B here, while `armed` still sits before the curtain, so the very
         // first frame it draws can stand on A's own box rather than on the whole frame.
@@ -1498,7 +1994,10 @@
       rec.state = "running";
       rec.t0 = performance.now();
       logEvt("running", cmd.gen, null);
-      try { inst.start(cmd.gen); }
+      // Every instrument of the stack is started, in draw order. §2.2's promise — the first frame
+      // after start is a complete picture of A at its door — is the WHOLE stack's promise, and the
+      // frame drawn just below is what keeps it.
+      try { instrumentsOf(voices).forEach(function (x) { x.start(cmd.gen); }); }
       catch (e) { logEvt("start-threw", cmd.gen, String((e && e.message) || e)); fail(cmd.gen, "start threw"); return; }
       if (inst.manifest && cur === rec && !rec.docked) {
         lastAt = 0;
@@ -1519,19 +2018,37 @@
       rec.watchdogT = setTimeout(function () { watchdogFire(rec); }, duration + slack);
     }
 
+    // EVERY INSTRUMENT THE SCORE NAMES IS PREPARED, each on its own cue and its own grant. One
+    // decline refuses the whole command with that instrument's reason: the score names a passage of
+    // several voices, and a passage short of a voice is not the one the score wrote.
     function ask() {
       try {
-        var res = inst.prepare({ cmd: cmd, token: cmd.gen, duration: duration, budgetMs: budget,
-                                 score: cmd.score || null, cue: cue, variant: variant,
-                                 sources: rec.src, grant: declaredFor(inst, variant) });
-        if (res && typeof res.then === "function") {
-          res.then(onAnswer, function () { onAnswer({ take: false, why: "prepare rejected" }); });
+        var answers = voices.map(function (v) {
+          return v.inst.prepare({ cmd: cmd, token: cmd.gen, duration: duration, budgetMs: budget,
+                                  score: cmd.score || null, cue: v.cue, variant: variant,
+                                  sources: rec.src,
+                                  grant: cueDeclares(v.cue, v.inst, variant) });
+        });
+        var thenable = answers.some(function (r) { return r && typeof r.then === "function"; });
+        if (thenable) {
+          Promise.all(answers.map(function (r) { return Promise.resolve(r); }))
+            .then(function (all) { onAnswer(firstNo(all)); },
+                  function () { onAnswer({ take: false, why: "prepare rejected" }); });
         } else {
-          onAnswer(res);
+          onAnswer(firstNo(answers));
         }
       } catch (e) {
         if (!answered) { answered = true; clearTimeout(budgetTimer); declineCurrent(rec, "prepare threw"); }
       }
+    }
+    function firstNo(all) {
+      for (var i = 0; i < all.length; i++) {
+        var r = all[i];
+        if (!r || r.take !== true) {
+          return { take: false, why: voices[i].inst.name + ": " + ((r && r.why) || "declined") };
+        }
+      }
+      return { take: true };
     }
 
     // The host owns every FrameSource and decodes both works during prepare, so an instrument that
@@ -1573,7 +2090,9 @@
     if (cur.cadence) { if (immediate) cadenceEnd(cur, "superseded mid-cadence"); return; }
     if (!cur.inst || !cur.inst.manifest) {
       // an instrument that draws nothing has no handle to walk and no door to walk to
-      try { if (cur.inst && cur.inst.cancel) cur.inst.cancel(reason); } catch (e) {}
+      instrumentsOf(cur.voices || []).forEach(function (x) {
+        try { if (x.cancel) x.cancel(reason); } catch (e) {}
+      });
       finish("cancelled", reason || "cancelled");
       return;
     }
@@ -1587,7 +2106,9 @@
     stageResize();
     if (cur && cur.state === "running") {
       reseatHang(cur);
-      if (cur.inst && cur.inst.resize) { try { cur.inst.resize(viewport); } catch (e) {} }
+      instrumentsOf(cur.voices || []).forEach(function (x) {
+        if (x.resize) { try { x.resize(viewport); } catch (e) {} }
+      });
     }
   }
   function contextLost() {
@@ -1623,6 +2144,24 @@
       events: log.slice(),
       instrument: cur ? cur.inst.name : null,
       registered: Object.keys(instruments),
+      // THE STACK, as the host actually walks it: draw order, ascending, the cue nearest the eye
+      // last. `live` is what the last frame drew, `drew` how many cues that frame laid down, and
+      // `handles` each cue's own numbers — a cue outside its window shows the door it is holding at.
+      stack: cur ? cur.voices.map(function (v) {
+        return { id: v.cue ? v.cue.id : null, instrument: v.inst.name, stack: v.stack,
+                 line: v.line, live: !!v.live,
+                 window: v.cue ? (v.cue.window || null) : null,
+                 levels: v.cue ? (v.cue.levels || null) : null,
+                 handles: v.lastHandles || null };
+      }) : (lastRun ? lastRun.stack : null),
+      live: cur ? cur.liveCues : (lastRun ? lastRun.live : null),
+      drew: cur ? cur.drewLastFrame : (lastRun ? lastRun.drew : null),
+      // §4.4's tier reckoning, every number it is judged on rather than only its verdict
+      budget: cur ? budgetOfScore(cur.cmd.score) : (lastRun ? lastRun.budget : null),
+      // §7's grant across the stack: what was asked, what the ladder landed on, and the sum the
+      // census below is judged against
+      grant: cur ? cur.grant : (lastRun ? lastRun.grant : null),
+      budgets: BUDGET,
       // §7's census, both halves side by side on the one surface
       census: { canvases: census.canvases, contexts: census.contexts, textures: census.textures,
                 buffers: census.buffers, framebuffers: census.framebuffers,
@@ -2820,6 +3359,29 @@
       },
       cycle: function (nodes) { return cycleIn(nodes || {}); },
       scoreWhyNo: function (score) { return scoreWhyNo({ score: score, gen: 0 }); },
+      // ---- the stack, the levels law, the tier budget and the grant, read as data ---------------
+      // The same functions a running transaction calls, with the transaction spared, so a row states
+      // a score and reads the number the host actually judges it on.
+      stackOrder: function (cues) {
+        return stackOrder(cues || []).map(function (r) {
+          return { id: r.cue.id, stack: r.stack, line: r.line };
+        });
+      },
+      levelsWhyNo: function (cues) { return levelsWhyNo(cues || []); },
+      liveAt: function (cues, seconds) {
+        return (cues || []).filter(function (c) { return cueLiveAt(c, seconds); })
+                           .map(function (c) { return c.id; });
+      },
+      budget: function (score) { return budgetOfScore(score); },
+      grant: function (score, variant) {
+        var vs = voicesFor({ score: score, gen: 0 });
+        if (!vs) return null;
+        return grantVariant(vs, variant || "standard");
+      },
+      declares: function (cue, instrumentId, variant) {
+        return cueDeclares(cue, instruments[instrumentId], variant || "standard");
+      },
+      budgets: function () { return BUDGET; },
       camera: function (score, tSec, ownPose) {
         var rec = { cmd: { score: score, gen: 0 }, duration: (score.duration || 0),
                     said: {}, handoffs: [], camOwner: null, lastPose: null, ownPose: ownPose || null };
