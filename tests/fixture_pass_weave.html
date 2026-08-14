@@ -47,6 +47,14 @@
 <script>
 (function () {
   var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  // WHICH TWO WORKS THIS PAGE STANDS. The doors and the three poses are read on the pair the
+  // carrier check itself compares on, and that pair stays the default. The three-band acceptance
+  // is read on the WORKED PAIR's own two photographs instead — the band family it asks for, 480 px
+  // of a 1440 px frame, is a measurement of those two works and of no others — so the two sources
+  // are addressable. Set before the load below, so a page given them never fetches the defaults.
+  var q = new URLSearchParams(location.search);
+  if (q.get("a")) imgs[0].src = q.get("a");
+  if (q.get("b")) imgs[1].src = q.get("b");
   var left = imgs.length;
   imgs.forEach(function (im) {
     if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
@@ -86,6 +94,18 @@
     window.__mix = function (v) { api.onParam("mix", v); };
     window.__clock = function (s) { api.onParam("clock", s); };
     window.__pose = function () { return api.pose(); };
+    // The module's own declared handles, driven through its own door — the band count and the
+    // ribbon axis. A three-band pose is asked for here and nowhere else, so what the host is then
+    // handed is the pose the module actually settled on rather than a pose written out by a row.
+    window.__param = function (key, value) { api.onParam(key, value); };
+    // THE NUMBERS OF ONE FRAME, BY BOTH ROADS. The engine instrument answers through the host's own
+    // bench (the same pure function its draw calls) and the lab module through its own
+    // frameValues, so a row can hold the count the manifest's chain resolves against the count the
+    // module resolves from one and the same pose instead of trusting either alone.
+    window.__values = function (pose) {
+      return { host: window.__exPass.bench.values("weave", pose),
+               module: window.LAB.branchSource.weave.frameValues(pose) };
+    };
     window.__show = function (which) {
       bench.show(which === "host");
       moduleStage.classList.toggle("hidden", which !== "module");

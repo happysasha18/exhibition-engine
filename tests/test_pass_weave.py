@@ -19,6 +19,12 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   uses (the two doors and the woven middle, at second 7). Two roads of one frame, never two guesses
   at one.
 
+  Three bands. The count the lowered floors exist for, on the worked pair's own two works and on
+  both frames it has to hold on: a handle of 3 on 1440 px and a handle of 6 on the 390 px phone,
+  each drawing three bands. The two roads are compared there as well, and the drawn frame is read
+  by the collection's own banding measure (lab/cut-lines.py, imported) to say where the band family
+  actually lands — 1440 / 3 is the pair's own period of 480 px, and 390 / 3 is 130 px.
+
   The lab tree is READ ONLY and is found at $TLVPHOTOS_LAB_ROOT, defaulting to the immersive
   worktree's lab. Absent, every browser row here is a pinned SKIP that names the missing path —
   never a silent pass.
@@ -43,6 +49,18 @@ LAB = Path(os.environ.get("TLVPHOTOS_LAB_ROOT", "/Users/sashaabramovich/tlvphoto
 # the immersive one does not copy. Either root is read only here.
 PHOTOS = [Path("/Users/sashaabramovich/tlvphotos/lab/photos/towers.jpg"),
           Path("/Users/sashaabramovich/tlvphotos/lab/photos/glassgrid.jpg")]
+# THE WORKED PAIR'S OWN TWO WORKS, which the three-band rows below are read on. The band family the
+# composed passage stands on was measured on THESE two: vertical, period 480 px in a 1440 px frame,
+# held at 0.8807 and 0.8437 (lab/data/cut-lines.json). A drawn frame read on any other pair answers
+# a different question, so the acceptance names its own two files.
+PAIR_WORKS = [Path("/Users/sashaabramovich/tlvphotos/gallery/assets/"
+                   "constructed/17847744487144891.jpg"),
+              Path("/Users/sashaabramovich/tlvphotos/gallery/assets/"
+                   "coda/17897050660015868.jpg")]
+# The collection's own banding measure, IMPORTED and not copied — the very function that read the
+# two numbers above off the two photographs. A copy could drift from the number the pair was judged
+# by, which is the same rule lab/weave-bands-measure.py states for itself.
+CUT_LINES = LAB / "cut-lines.py"
 SCORE = LAB / "data" / "scores" / "17847744487144891__17897050660015868.json"
 
 SITE_URL = "https://synth.example.com"
@@ -256,9 +274,13 @@ check("PASS-WEAVE the band count publishes the floor the instrument applies, and
       and _app.group(3) == "1000" and _app.group(4) == _clamp.group(1)
       and _app.group(5) == _shader.group(1).split(".")[0]
       and _app.group(6) == _shader.group(2),
-      "the handle floored at 8 while the applied number floors at 6 and the shader's own floor "
-      "stands at 5 beneath it, so a composer asking for a measured band family of three read none "
-      "of the three floors it would meet")
+      "the four gates between the handle and the shader — the declared param range, the published "
+      "handle range, the frame number clamp and the shader floor — stood at 8, 8, 6 and 5, one "
+      "behind another and none of them published, so a composer asking for a measured band family "
+      "of three read none of the floors it would meet and got six bands whatever it asked. They "
+      f"now read {_pub and _pub.group(1)}, {_app and _app.group(1)}, {_clamp and _clamp.group(2)} "
+      f"and {_shader and _shader.group(1)}: the number the manifest publishes and the number the "
+      "frame draws are one number, at three bands as at six")
 
 check("PASS-WEAVE the capture bench serves the record and the files it names, before the host",
       'shutil.copy2(tmp / "config.json"' in CAPTURE
@@ -315,6 +337,22 @@ BROWSER_ROWS = [
     "PASS-WEAVE row 9  · one camera authority through a real pass, and the pose rests on the arrival",
     "PASS-WEAVE §5     · one node drives two handles of the real instrument, and moves both",
     "PASS-WEAVE §4.4b  · the strip-count breath and the press reach the PICTURE, not just the record",
+]
+
+# THE THREE-BAND ACCEPTANCE. The floors were lowered so that the band family the composed passage
+# stands on could be REACHED at all; before it, a handle of 3, 4, 5, 6 or 8 all drew six bands. The
+# rows above hold the instrument against the lab module on the poses the carrier check already used,
+# and not one of them asks for three bands, so the pose the whole change exists for went unmeasured.
+# These four rows are that pose: the module driven to it through its own handles, the host handed
+# the pose the module settled on, and the drawn frame read by the collection's own banding measure
+# on the worked pair's own two works — on a 1440 px frame, where three bands is the pair's own
+# period of 480 px, and on the 390 px phone frame, where a handle of 6 is what puts three bands on
+# the glass and the peak tracks the count row for row.
+BAND_ROWS = [
+    "PASS-WEAVE three bands · 1440 wide: a request of three draws three, and the drawn frame's band family lands on the frame's own third",
+    "PASS-WEAVE three bands · 1440 wide: the host's frame and the lab module's frame agree",
+    "PASS-WEAVE three bands · 390 wide: a request of three draws three, and the drawn frame's band family lands on the frame's own third",
+    "PASS-WEAVE three bands · 390 wide: the host's frame and the lab module's frame agree",
 ]
 
 # §2.5's landing slack. The host's own force-end is a timer at the score's `withinMs`; a browser
@@ -404,7 +442,7 @@ def bench_dir():
         shutil.copy2(_inst, d / _inst.name)
     shutil.copy2(LAB / "effects" / "weave.js", d / "weave.js")
     (d / "photos").mkdir()
-    for p in PHOTOS:
+    for p in PHOTOS + [w for w in PAIR_WORKS if w.exists()]:
         shutil.copy2(p, d / "photos" / p.name)
     shutil.copy2(ROOT / "tests" / "fixture_pass_weave.html", d / "index.html")
     return d
@@ -423,10 +461,10 @@ def js(br, expr):
 
 
 if not chrome_available():
-    for r in BROWSER_ROWS:
+    for r in BROWSER_ROWS + BAND_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 elif missing:
-    for r in BROWSER_ROWS:
+    for r in BROWSER_ROWS + BAND_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
 else:
     SHOTS = Path(tempfile.mkdtemp(prefix="synth_weaveshots_"))
@@ -731,6 +769,109 @@ else:
                       f"the strip-count breath at 1.0 against 1.4 moves the frame by {dBreath:.4f} "
                       f"of 255 (worst channel {mxBreath}); the press at 1 against 1.30 moves it by "
                       f"{dPress:.4f} (worst channel {mxPress}); the seam threshold is {SEAM}")
+
+        # ---- the three-band acceptance ------------------------------------------------------
+        # THE POSE THE FLOORS WERE LOWERED FOR. Each frame gets its own browser, because the count
+        # the instrument draws is scaled by the frame's own width and a phone and a wide frame are
+        # two different questions: on 1440 px a handle of 3 draws three bands and 1440 / 3 is the
+        # pair's own period of 480 px; on 390 px the width term rests on its floor of 0.5, so a
+        # handle of 6 is what puts three bands on the glass and the period is 130 px.
+        #
+        # THE POSE IS PINNED THE WAY lab/weave-bands-rig.html PINS IT, through the module's own
+        # declared handles and nothing else: the ribbon axis standing up and down (the axis the
+        # pair's own band family was measured on, so the turn never enters), the dial at the middle
+        # where the weave is widest, and the clock held at the second where the module's own
+        # strip-count breath, 1 + 0.35·sin(t·0.021·TAU + 1.1), crosses 1 exactly. Held there, the
+        # breath eases onto 1 and the drawn count is the handle times the width term, with nothing
+        # drifting under the shot. The dwell is the ease's own time constant of 0.5 s many times
+        # over, so the count is settled to a thousandth before anything is read.
+        FLAT_CLOCK = (math.pi - 1.1) / (2 * math.pi * 0.021)
+        BAND_TOL = 0.06          # lab/weave-bands-measure.py's own bar for «the peak IS the strips»
+        pair_missing = [str(w) for w in PAIR_WORKS if not w.exists()] + \
+                       ([] if CUT_LINES.exists() else [str(CUT_LINES)])
+        if pair_missing:
+            for r_ in BAND_ROWS:
+                skip(r_, "the worked pair's own material is read-only source and is absent here: "
+                         + pair_missing[0])
+        else:
+            import importlib.util
+            _spec = importlib.util.spec_from_file_location("cut_lines", str(CUT_LINES))
+            cut_lines = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(cut_lines)
+
+            def band_of(path):
+                """The drawn frame read by the collection's own measure, on the road the two
+                photographs' own numbers travelled: prep_arrays resamples the long side to 512 and
+                takes Rec.709 luma, measure_banding reads the column and row profiles, and the
+                period comes back rescaled into the frame's own pixels."""
+                gray, _rgb, to_orig, ow, oh = cut_lines.prep_arrays(str(path))
+                b = cut_lines.measure_banding(gray)
+                return {"axis": b["axis"],
+                        "period": b["period_px_working"] * to_orig,
+                        "score": b["score"],
+                        "vertical_period": b["vertical"]["period_px"] * to_orig,
+                        "vertical_score": b["vertical"]["score"],
+                        "size": (ow, oh)}
+
+            works = "?a=photos/%s&b=photos/%s" % (PAIR_WORKS[0].name, PAIR_WORKS[1].name)
+            for i, (fw, fh, handle) in enumerate(((1440, 900, 3), (VW, VH, 6))):
+                rows = BAND_ROWS[2 * i:2 * i + 2]
+                with Browser(width=fw, height=fh) as bb:
+                    bb.navigate(base + "/index.html" + works)
+                    if not ready(bb):
+                        for r_ in rows:
+                            skip(r_, "the bench never came up: "
+                                 + bb.evaluate("JSON.stringify(window.__errs||[])"))
+                        continue
+                    bb.evaluate("window.__param('axis', 'up and down'); 0")
+                    bb.evaluate("window.__param('strips', %d); 0" % handle)
+                    bb.evaluate("window.__mix(0.5); 0")
+                    bb.evaluate("window.__clock(%.9f); 0" % FLAT_CLOCK)
+                    bb.sleep(5.0)
+                    pose = js(bb, "return window.__hostDraw();")
+                    vals = js(bb, "return window.__values(window.__pose());")
+                    bb.sleep(0.2)
+                    bb.evaluate("window.__show('host'); 0")
+                    bb.sleep(0.3)
+                    ph = png(bb, SHOTS / ("bands3-%d-host.png" % fw))
+                    bb.evaluate("window.__show('module'); 0")
+                    bb.sleep(0.3)
+                    pm = png(bb, SHOTS / ("bands3-%d-module.png" % fw))
+
+                nv_host, nv_mod = vals["host"]["nV"], vals["module"]["nV"]
+                drawn = fw / nv_host if nv_host else 0.0
+                b = band_of(ph)
+                # The count is read off BOTH roads and they must be one number: the manifest's own
+                # chain resolved by the instrument, and the module's frameValues resolved from the
+                # same pose. The peak is read on the VERTICAL family, which is the family the pair
+                # was measured on and the family the axis handle asks for — the strongest reading of
+                # any axis is reported beside it rather than asserted, because at a wide frame in a
+                # woven pose the row set can be the louder one and that is a property of the picture,
+                # not of the count.
+                check(rows[0],
+                      abs(nv_host - 3.0) < 0.005 and abs(nv_host - nv_mod) < 1e-9
+                      and abs(b["vertical_period"] - drawn) <= BAND_TOL * drawn,
+                      "a handle of %d on a %d×%d frame draws %.2f bands by the instrument's own "
+                      "numbers and %.2f by the lab module's, so the two roads resolve one count. "
+                      "The drawn period is %.1f px and the collection's own banding measure reads "
+                      "the vertical family of the drawn frame at %.1f px, strength %.4f (bar: "
+                      "within %d%% of the drawn period). Strongest family of either axis: %s at "
+                      "%.1f px, strength %.4f. WHERE the peak lands is what this row judges; HOW "
+                      "STRONG the family reads is reported beside it and moves with the second the "
+                      "pose is held at — the module's own sweep at the pair's seed read 0.4149 on "
+                      "the wide frame and 0.3735 on the phone at another second, and the floor was "
+                      "lowered to buy reachability, never a strength"
+                      % (handle, fw, fh, nv_host, nv_mod, drawn, b["vertical_period"],
+                         b["vertical_score"], int(BAND_TOL * 100), b["axis"], b["period"],
+                         b["score"]))
+
+                dm, dx = diff(ph, pm)
+                check(rows[1], dm < SAME,
+                      "three bands, %d×%d: mean %.4f of 255 (threshold %.1f), worst channel %d. "
+                      "The pose is the module's own — its handles are driven, its pose() is read, "
+                      "and the host is handed that pose — so what is compared is two roads of one "
+                      "frame at the count the lowered floors exist for"
+                      % (fw, fh, dm, SAME, dx))
 
     shutil.rmtree(BENCH, ignore_errors=True)
     shutil.rmtree(SHOTS, ignore_errors=True)
