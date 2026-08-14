@@ -6,7 +6,7 @@ share/history, every input method, resize/orientation/DPR, RTL, reduced motion, 
 analytics/A-B and the static layer. A crossing is a subordinate visual transaction A → B; it owns
 none of those.
 
-**Status, 2026-08-14 06:00.** Built and standing: the transaction of §2 with its watchdog, its
+**Status, 2026-08-14 08:47.** Built and standing: the transaction of §2 with its watchdog, its
 idempotence guard and its token check; the frame half of §1.2 and §7 — one canvas, one WebGL2
 context with the drawing buffer unpreserved, the two source textures, the programme cache, the frame
 loop, the clock handed down as transaction seconds, resize, the resolution ladder, the name-driven
@@ -16,12 +16,26 @@ the score's road from a site's own `pass` record onto a declared command; the dr
 its sources, its ten operator kinds, named nodes with references, and cycles refused with the ring
 named; the camera of §6 — the pose record, the dolly in log space, one authority at every instant
 with the stage's flight held across an owned window, the handoff measured at the window's own edge
-and the rest read off the pose; and the interruption cadence of §2.5. Still written and unbuilt: the
-`pointer` driver, a stack of more than one cue, and the levels and tier-budget checks of §4.4.
-Section 11 lists what is declared-and-unbuilt with its owner.
+and the rest read off the pose; and the interruption cadence of §2.5. Still written and unbuilt from
+the lock of 2026-08-13: the `pointer` driver, a stack of more than one cue, and the levels and
+tier-budget checks of §4.4.
+
+**Written and unbuilt, added 2026-08-14 08:47 on his word of 08:39.** Four sections were added and
+none of them is built: §4.6 ElementSet with its one provider contract and its five providers, §4.7
+ScenePlan and the passage composer that emits it, §2.6 the return to the hang with its two exact
+geometries and its chrome reveal, and §4.8 EdgeMemory with the hysteresis across a directed pair. No
+line of code answers to any of the four today. Conformance rows 32 through 49 are their evidence and
+every one of those rows is unwritten. Section 11 lists all of it with its owner.
+
+The failure this document has recorded before is a status line that claimed an implementation that
+did not exist. This block states the built half and the written half separately for that reason,
+and the written half above is written only.
 
 Any line below that reads as a description of behaviour is a specification of behaviour to be built,
 and the conformance rows of §9 are the evidence that will make each one true.
+
+The superseded text of this block, with its date, is in `PASS-API-V1-HISTORY.md`. Every amendment
+below carries the same pointer.
 
 **Where it stands against what already exists.** The seam (`seam-v2`, `d20475c` and `f6f9d63`) built
 the register of live settings, the frozen command, the generation counter, the score checker and the
@@ -46,6 +60,11 @@ Only the product layer may call these. The renderer never holds a reference to t
 | `reframe(viewport)` | tells the transaction the frame changed size or orientation | the resize and orientation-change road |
 | `curtain(on)` | covers the walk with the renderer's canvas, and hides the covered walk from the accessibility tree and from its own observers | the host only |
 | `mark(name, cmd, why)` | writes a lifecycle mark under the seam's own prefix | the host only |
+| `hangGeometry(workId)` | measures the work's real place in the exhibition layout off the DOM at this instant — position, crop, fit, pixel ratio, orientation | the stepping road at `declare`, and the resize and orientation road (§2.6) |
+
+`hangGeometry` reads the DOM, so it belongs to the product layer like every other row of this table.
+The host receives the measurement as data on the offer at `prepare` and again on `reframe`, and
+holds no reference to the adapter. §2.6 states why the reading was placed this way.
 
 `dock` takes the command and reads its destination from `cmd.to`. It takes no element argument, so
 a caller cannot dock a work the command never named. See §10.2.
@@ -169,6 +188,74 @@ naming `duration: 0` is a legal instant transition and the diagnostic surface sh
 transaction that outlives its watchdog is shown as a hang with the instrument named. The two never
 look alike.
 
+### 2.6 Return to the hang
+
+Added 2026-08-14 08:47 on his word of 08:39. Nothing in this section is built.
+
+The passage becomes fullscreen while it plays. The work it leaves and the work it lands on both have
+a real place in the exhibition layout, and the beginning and the end of the passage must be pixel-
+accurate against those two places. A visitor who sees the picture shift by a few pixels at either
+end has watched the machinery.
+
+**Each door carries two exact geometries.**
+
+- `hangGeometry` — the work's real position, crop, fit, pixel ratio and orientation in the exhibition
+  layout, measured off the DOM at that instant by `adapter.hangGeometry(workId)` of §1.1.
+- `immersiveGeometry` — the fullscreen scene state the passage plays in.
+
+The two are carried on the command's `doors` as `{ from:{hangGeometry, immersiveGeometry},
+to:{hangGeometry, immersiveGeometry} }`. The from-door is measured at `declare` and handed to the
+host on the offer at `prepare`; the to-door is measured at `declare` and re-measured on `reframe`.
+
+**The flow, in order.**
+
+1. The work hangs in the gallery at its own hang geometry.
+2. The chrome enters a waiting state.
+3. An exact handoff from the DOM to the fullscreen renderer: the first frame the instrument draws
+   lays A's immersive frame onto A's hang geometry. §2.2's promise that the first frame after
+   `start(t0)` is a complete picture of A at its door is read this way, and A's door is A's hang
+   geometry.
+4. The passage plays, with its world and its camera.
+5. B reconstructs fullscreen.
+6. The camera moves B continuously into its exact hang geometry.
+7. A pixel-identical handoff from the canvas back to the DOM.
+8. The chrome reveal.
+
+**This amends §6's rest law.** §6 read that the last pose equals the neutral pose within 1e-6. The
+arriving pose is now the pose that lays B's immersive frame exactly onto B's hang geometry, and the
+neutral pose is the special case where the hang geometry is the whole frame. The tolerance stays at
+1e-6 and row 9 of §9 keeps its wording and its reach, read under the amended law. §6 carries the
+amendment in place and the superseded sentence is in `PASS-API-V1-HISTORY.md` with its date.
+
+**Why the host reads the geometry as data.** §1.1 states that only the product layer may call the
+adapter and that the renderer holds no reference to it, while his word of 08:39 has the host read
+`hangGeometry(workId)` at `prepare` and re-read it at `reframe`. Both readings cannot stand
+together. The reversible one is taken: the adapter gains the method and the product calls it, and
+the host receives the measurement on the offer at `prepare` and again on `reframe`. The host has the
+geometry at both instants his word named, and §1.1's fence keeps its full force. Reversing this
+costs one field on the offer; reversing the other reading would cost the fence, and a fence that
+opened once has opened.
+
+**The handoff carries no opacity transition and no generic fade.** The DOM element is revealed and
+the canvas released within one frame. No flash, no blank frame and no z-index leak. This is the same
+law the charter's ban on the alpha crossfade states for arrival, applied at the seam between the two
+renderers.
+
+**`chromeReveal` is its own scoreable product choreography.** It runs after the handoff and exactly
+once per command. Its parts are named so a score can time them: the title and plaque, the counter,
+share, the sound control, the series and control affordances, and the focus and accessibility
+handoff. Naming the parts lets a score time the landing. An unnamed reveal appears all at once.
+
+**Audio state survives the passage.** Sound running when the passage began keeps running through it
+and after it. The chrome appears after arrival and handoff, and at no earlier instant.
+
+**A resize or an orientation change during a passage** recalculates the destination hang geometry
+through `adapter.hangGeometry(cmd.to)`, hands it to the running transaction on `reframe(viewport)`,
+and reframes the camera toward the new destination without a jump. §10.3's repair already routes the
+orientation road to `reframe`, and this is the arriving half of it.
+
+Conformance rows 38 through 44 carry this section.
+
 ---
 
 ## 3. `visualLayer=off` and the untouched walk
@@ -194,9 +281,24 @@ renderer that throws on registration. Each of the six refusals is recorded with 
 
 ---
 
-## 4. The four data objects
+## 4. The data objects
 
-Pixels, knowledge about one work, and knowledge about a pair stay apart.
+Pixels, knowledge about one work, knowledge about a pair, the elements a work breaks into, the plan
+a passage plays and the site's own memory of an edge all stay apart.
+
+**The pipeline, end to end.** A WorkDossier and a PairDossier feed a decomposition, which returns an
+ElementSet per work (§4.6). The passage composer reads both ElementSets and emits a ScenePlan
+(§4.7). The ScenePlan serialises into the score of §4.4, whose cues overlap freely and which the
+PassHost plays. The passage ends by returning the arriving work to its exact place in the hang
+(§2.6). The site's own walk keeps an EdgeMemory (§4.8) and hands the composer a `returnOf` record
+when the visitor crosses an edge that has been crossed before.
+
+The composer is the layer his word of 2026-08-14 08:39 named as missing. Before it, a pair went from
+its dossier straight to a score, so nothing decided which parts of which work became actors, and the
+answer defaulted to both works entire.
+
+**Amended 2026-08-14 08:47.** The heading read "The four data objects" and the opening sentence
+named three kinds. The superseded text is in `PASS-API-V1-HISTORY.md` with its date.
 
 ### 4.1 FrameSource — pixels and framing
 
@@ -221,6 +323,12 @@ compatible doors, seed and provenance. The review of 2026-08-13 found no directi
 today although the charter's model requires an asymmetric relation; §11 carries it as a gap with an
 owner.
 
+**Amended 2026-08-14 08:47: where the direction lives.** §4.8 states it. A ScenePlan carries
+`direction`, EdgeMemory keys an unordered edge with a direction beside it, and the two directed
+plans of one pair hold the same family and the same pivot while everything else may differ. The
+measured shape of today's gap: `lab/data/pair-shared.json` holds 7260 unordered pairs, each appearing
+exactly once with no reverse row, so the pivot candidates on file read the same for both directions.
+
 ### 4.4 Score — the data a transition plays
 
 A versioned record with an allow-list of fields, refused whole on any unknown field. The score names
@@ -241,7 +349,8 @@ Each cue:
 ```
 { id, instrument:{ id, api },
   voice:"letter"|"accompaniment"|"miracle",
-  roles:["disassembly"|"mystery"|"assembly"],
+  roles:["disassembly"|"mystery"|"assembly"|"world"|"surface"|"fragment"
+        |"light-colour"|"breath"|"witness-camera"],
   levels:["WORLD"|"SURFACE"|"CELL"|"CELL CONTENT"|"TEXTURE"|"LIGHT-COLOUR", ...],
   window:[t0,t1], works:["a","b"], stack, cameraAuthority:"stage"|"own",
   doors:{ in:{handle,value,measured}, out:{handle,value,measured} },
@@ -256,6 +365,13 @@ counts as in the budget — a structural gesture, an accompanying voice, or the 
 `roles` says what the cue does dramatically inside the pass. The budget check reads `voice`; the
 composition check reads `roles`. Writing only one of them made the tier budgets uncheckable, which
 the adversarial review of 2026-08-13 23:30 proved by writing a legal score that broke them.
+
+**Amended 2026-08-14 08:47: `roles` carries nine values.** The enumeration read
+`disassembly`, `mystery`, `assembly`, and a ScenePlan cue carries one or more of the nine of §4.7. A
+cue naming `world` or `witness-camera` would have been refused whole against the old three, which
+would have left the ScenePlan with no serialised form. The superseded line is in
+`PASS-API-V1-HISTORY.md`. The rest of the allow-list is untouched: a score is still refused whole on
+any unknown field, and no field was added to the cue record.
 
 **`levels` is a list**, because a real instrument occupies more than one at once — the woven
 instrument moves at SURFACE while each strip turns at CELL, which is exactly why it reads as alive.
@@ -339,6 +455,250 @@ was not present in the authored source file, and the diagnostic surface shows fr
 the diagnostics setting is on. A conformance row plants a story fragment into an authored intent
 line and watches the build red.
 
+### 4.6 ElementSet, and the one provider contract
+
+Added 2026-08-14 08:47 on his word of 08:39. Nothing in this section is built; the measurement files
+it reads exist and are named below.
+
+A work enters a passage as a set of elements that become actors. The charter's shelf 12 is the
+source: a work disassembles along five axes and its fragments become the actors of the crossing. A
+whole photograph is the degenerate member of that set, and §4.7 states where the degenerate case is
+refused.
+
+```
+{ schema, workId, provider, providerVersion, seed,
+  elements:[ { id, kind, level, geometry, weight, motifRef?, maskRef? } ],
+  complement, coverage, provenance:{ source, measuredAt, by } }
+```
+
+`kind` is one of `strip`, `wedge`, `ring`, `tile`, `panel`, `band` (a tonal zone), `scale` (a detail
+scale), `field` (chromatic), `region` (semantic or author-drawn).
+
+`level` is the structural level the element occupies, from the levels law of shelf 17 that §4.4
+already checks: WORLD, SURFACE, CELL, CELL CONTENT, TEXTURE, LIGHT-COLOUR. An element declares the
+one level it sits on; a cue that casts several elements declares the levels it occupies, and that
+list is what row 17 reads.
+
+`geometry` is the element's place in the work's own frame, in the units its measurements are written
+in. `weight` is the share of the frame the element holds, which is how the composer casts a leading
+actor apart from an accompanying one. `motifRef` points into the motif list of `lab/data/motifs.json`
+where the element carries one; `maskRef` points at an offline mask where one exists.
+
+**The complement law, carried from shelf 12.** Every set stores its complement, so the whole frame
+is reconstructable at any instant. The charter states it for the semantic axis; it binds every
+provider here, because a passage that drops the parts it did not name leaves holes, and the eye
+reads a hole as damage. `coverage` records the fraction of the frame the named elements hold, and
+`complement` carries the remainder as one element of kind `region`.
+
+The law already has a working implementation to cite. `lab/data/objects-pass2.json` derives the
+complement on a 32-cell grid and stores it as a region of its own beside the named ones, for all 121
+works. A provider returning a set whose elements and complement fail to reconstruct the frame is a
+red, and conformance row 32 measures the reconstruction against the source.
+
+**One provider contract serves five providers.**
+
+`decompose(workDossier, request) -> ElementSet | decline{why}`
+
+| provider | what it reads | where its data lives |
+|---|---|---|
+| `structural` | strips, axes, horizon, symmetry, tiles, contrast regions | `lab/data/recipes.json`, all 121 works, and `lab/data/motifs.json` |
+| `semantic` | named classes with per-region boxes and confidences | `lab/data/objects-pass2.json`, all 121 works |
+| `hybrid` | both of the above at once | both files |
+| `author` | hand-drawn masks and regions | no file today; see §11 |
+| `fallback` | tonal zones plus detail scales | derived from each work's own measurements |
+
+**`structural`** reads the measurements that already stand: mirror scores per axis, fold order,
+rotational count and score, polar strength, droste factor, slice period, colour including the pushed
+value, busyness and source region. Beside them `lab/data/motifs.json` carries, per work, the figure
+and void shares, the radial centre and the seam position, measured 2026-08-13 against four stated
+thresholds.
+
+**`semantic`** reads `lab/data/objects-pass2.json`: five named classes, per-region boxes with
+confidences, and the derived complement, extracted by `qwen3-vl:8b` under prompt version
+`objects-pass2-v3` and measured 2026-08-12. `lab/data/material-subject.json` stands beside it with
+the construction matter and the depicted substance per work — the two layers of the charter's shelf
+1 — voted three times at temperature zero against a fixed vocabulary shuffled per work, with a label
+kept only on two votes of three.
+
+The measurements exist and the provider that reads them is unbuilt. Its owner is the site build,
+which already writes every file above; §11 carries the row. The charter's PARKED list holds the
+semantic *extraction* pipeline, and the extraction of 2026-08-12 answered that item, so the block
+the earlier text of §11 recorded is lifted.
+
+**`hybrid`** runs structural and semantic together. Where the two overlap, semantic wins, and the
+merge records that it did: the resulting set names both the element it kept and the element it
+displaced, so a reader of the diagnostic surface can see which axis drew each boundary.
+
+**`author`** carries hand-drawn masks and regions where artistic direction asks for them. It is
+declared and unbuilt, and no file backs it today. Its owner is the author's seat, which the charter
+seats on Fable.
+
+**`fallback` is the majority road on this collection, and it answers the same provider contract as
+the other four.** It
+returns tonal zones and detail scales, which apply to any pair by construction, so it serves every
+work whatever the pair holds in common. Shelf 12 names exactly this pair — tonal and
+spectral — as the lawful universal bridge for pairs sharing nothing.
+
+The measured reason it ranks beside the structural provider:
+`lab/data/pair-shared.json` holds all 7260 unordered pairs of the 121 works, and 4793 of them —
+66.02 percent — carry `shared_measure: null`, meaning no measure of the seven-measure table holds on
+both works at once. A reader who takes the structural road for the normal one has designed for a
+third of the traffic. Conformance row 34 therefore asks the fallback provider for an ElementSet on
+every ordered pair in the collection and reds on a single decline.
+
+**Declining, and the order of the fall.** A provider that cannot serve a work returns
+`decline{why}`, and the composer falls to the next provider in the request's own order. The order is
+the request's own word, so a passage that asks for the semantic
+read first and a passage that excludes it are both expressible. Every decline is recorded with its
+reason on the diagnostic surface, the same way §3's six refusals are. Conformance row 33 plants a
+declining provider and follows the fall.
+
+### 4.7 ScenePlan — the passage composer's output
+
+Added 2026-08-14 08:47 on his word of 08:39. Nothing in this section is built.
+
+ScenePlan is data-only and versioned. It sits between the PairDossier and the score's cues: the
+passage composer emits a ScenePlan, and the score of §4.4 is that plan's serialisation for the host.
+
+```
+{ schema, id, pair:{a,b}, direction:"a->b"|"b->a", seed, tier:"quiet"|"middle"|"culmination",
+  returnOf?:{ family, seed, passIndex },
+  pivot:{ kind, value, held:true },
+  actors:[ { ref:"a"|"b", elementSet, elementIds:[...], role } ],
+  middle:{ kind:"world"|"surface"|"none", world? },
+  cues:[ ... ], camera:{ ... }, doors:{ from, to },
+  quality:{ lean, standard, rich }, interruption, failLand, provenance }
+```
+
+**`pivot` is the pair's shared invariant, held throughout.** The charter's own law stands behind it:
+the pivot is the pair's invariant shared part, and everything outside the pivot travels. `held` is
+written `true` and stays `true`; a plan that lets the pivot travel has no pivot.
+
+The idea has prior art on disk, and the contract names it as the pivot's provenance.
+`lab/data/pair-shared.json` carries, for each of the 7260 unordered pairs, the shared measure, that
+measure's strength, the cut the measure implies and the transform the cut implies. The mapping on
+file reads: regions to regions to `region_dissolve`; named objects to named boxes to
+`object_by_object`; texture to grain to `grain_wipe`; banding to bands to `band_slide`; radial to
+rings or spokes to `radial_unfold`; dominant object to figure and ground to `object_reveal`; grid to
+tiles to `tile_crossfade`. That is a first version of the road from a pair's invariant to its
+actors, and the `pivot` and `actors` fields here are its successor.
+
+The one thing that file lacks is the direction. Its 7260 rows are unordered — each unordered pair
+appears exactly once and no row's reverse is present — so A to B and B to A read from one row. That
+is precisely the gap §11 has carried since the review of 2026-08-13, and §4.8 closes it.
+
+**`middle` is the third constructed event.** It is a world or a surface built from both works'
+elements and belonging to neither, which is the charter's enfilade: a room of its own with two
+doors, the door out of A speaking A's language and the door into B speaking B's. `middle.kind` may
+be `none`, and a quiet link is where that reading is usual.
+
+**Cue roles are nine, and a cue may carry more than one:** `disassembly`, `mystery`, `assembly`,
+`world`, `surface`, `fragment`, `light-colour`, `breath`, `witness-camera`. §4.4's enumeration was
+amended on the same date to carry all nine.
+
+**Cues may overlap freely.** The grammar is not reduced to fixed linear phase windows. A single cue
+may cover the whole passage, as the woven instrument does today. Different scores may carry separate
+departure, mystery and arrival mechanisms, or fold all three into one continuous gesture, and both
+are legal shapes.
+
+The levels law keeps its full reach across that freedom, and the two rules answer different
+questions. Overlap in time is free. Overlap on one structural level in overlapping windows is a red
+under row 17 unless one cue declares itself the accompaniment of the other. Conformance row 37
+proves both halves at once, so a later reading of "freely" cannot quietly retire row 17.
+
+**How a ScenePlan cue maps onto §4.4's cue.** The serialised cue keeps every field §4.4 lists and
+gains none. `id`, `instrument`, `voice`, `roles`, `levels`, `window`, `works`, `stack`,
+`cameraAuthority`, `doors`, `nodes`, `tracks` and `resources` travel across unchanged. The actor
+casting resolves at serialisation: the geometries of the elements a cue casts are written into that
+cue's `nodes` and `tracks` as static nodes, exactly as §4.4c's table fills a template's named slots,
+and the ScenePlan's `id` is written into the score's `provenance.source`. The score's allow-list
+therefore stays closed and every existing checker keeps working. `returnOf` stays in the plan and
+reaches no score, which is the fence §4.8 states.
+
+**The declared tier and the measured one must agree.** §4.4's budget check infers the tier from the
+score's duration and its voice counts, while a ScenePlan declares `tier` outright. A disagreement
+between the two is a red, and conformance row 36 measures it. Neither value silently wins.
+
+**The correction, made mechanical.** The defect his word of 2026-08-14 named is a passage where two
+whole photographs become fullscreen strips: one instrument, both works entire, for the whole
+crossing. The refusal that closes it reads on the plan's actors.
+
+**A ScenePlan is refused when no actor names any element of either work — when every actor is a
+whole frame.** A plan must name at least one actor drawn from A's ElementSet and at least one drawn
+from B's. Conformance row 35 carries it, in his own naming of the row: the scene plan contains real
+actors, never one accidental fullscreen cue.
+
+The lawful whole-passage cue survives this untouched. A cue may still span the entire passage. The
+refusal removes a plan that names no element at all. The woven instrument keeps its whole-passage
+cue on the day its port names A's strips and B's strips as its actors.
+
+**What the refusal binds, and what it leaves alone.** The scores shipping today are filled from the
+template and the table of §4.4c and no ScenePlan stands behind them, so the refusal binds a composed
+ScenePlan only. Until the composer lands, §4.4c keeps producing scores under its own rules and the
+crossing standing on the live preview keeps playing. The alternative reading would refuse every
+score on file today and stop the shipped crossing, which no word of 2026-08-14 asked for. This is
+the reversible choice of the two, and the day the composer lands is the day the woven instrument's
+port owes its actors; §11 carries that port with its owner.
+
+**Where the composer runs is undecided.** §12 splits the bundle from the renderer's own file by what
+a visit that never draws needs. The composer reads dossiers and emits data, and it is needed only on
+a visit that draws, which argues for the renderer's file; its size is unmeasured, so the split stays
+open here and §11 carries the question with its owner.
+
+### 4.8 EdgeMemory, and the hysteresis across a directed pair
+
+Added 2026-08-14 08:47 on his word of 08:39. Nothing in this section is built.
+
+Hysteresis is mandatory. A to B and B to A are distinct directed ScenePlans, and `direction` on the
+plan is what distinguishes them.
+
+**EdgeMemory is TLV's own private record, held by the walk in the site's layer.** The engine never
+sees it. The engine receives `returnOf` inside a ScenePlan and nothing else of it. That boundary is
+the same one §4.5 draws for visitor identity, remembered place and the counting wire, and it is
+drawn here for the same reason: an edge record is a fact about one visitor's session.
+
+```
+{ edgeKey: the unordered pair key, direction, family, pivot, seed,
+  passCount, lastAt, cooldown, provenance:{ previousScenePlanId } }
+```
+
+`edgeKey` is unordered and `direction` sits beside it, so one edge holds both of its directed
+crossings. `lab/data/pair-shared.json` keys the same way and carries no direction at all, which is
+the gap this record closes.
+
+**What crosses the boundary.** When the visitor returns B to A, the walk hands the composer
+`returnOf:{ family, seed, passIndex }` naming the previous pass. Those three fields are the whole of
+what crosses. `passCount`, `lastAt`, `cooldown` and `previousScenePlanId` stay in the site's layer,
+and conformance row 49 plants an EdgeMemory field into a ScenePlan and reds on it.
+
+**What holds across the return.** The crossing stays recognisably related to the one before it: the
+same family and the same pivot. The cue order, the element selection, the camera route, the rhythm
+and the phases may all differ. This is the charter's shelf 16 read at the scale of one edge — the
+backward door is kin to the forward one.
+
+**Two refusals, each with its own check.**
+
+An automatic reversed video is refused. A backward plan that replays the forward pass frame for
+frame carries no authorship, and conformance row 46 plays a pair forward, plays it back, and reds on
+a time-reversed match.
+
+An unrelated novelty is refused. A backward plan sharing neither the family nor the pivot of the
+recorded pass has lost the kinship shelf 16 asks for, and conformance row 47 reds on it. Row 45
+states the positive form: B to A after A to B keeps the family and the pivot of the recorded pass.
+
+**Repetition and determinism.** Repeated crossings of one edge vary only declared handles and
+deterministic history indices. An exact repeat stays reproducible for the same visit, the same seed
+and the same history, which keeps §4.4b's seeded-repeat row honest across a return; conformance row
+48 measures it.
+
+**What stays a product jump.** Browser-history restoration and layout jumps stay product jumps and
+fallbacks. An authored directed passage is invoked by a real adjacent walk command and by nothing
+else, so a restored history entry lands the visitor without playing a crossing that was never
+declared.
+
+**Both directions keep doors that match to the pixel.** The two geometries of §2.6 are measured per
+direction, and neither direction inherits the other's arriving geometry.
+
 ---
 
 ## 5. Driver AST v1 — data only
@@ -397,8 +757,16 @@ its own device declares `cameraAuthority:"own"`, and the stage's flight holds st
 window. Handoffs are continuous: at a handoff instant the two poses must agree within a stated
 tolerance, and a conformance row measures the pose across the handoff frame by frame.
 
-**Rest on B.** The last pose equals the neutral pose within tolerance, and the check reads the pose
-rather than the picture, so it stays honest when the picture changes.
+**Rest on B, amended 2026-08-14 08:47.** The last pose equals the pose that lays B's immersive frame
+exactly onto B's hang geometry, within tolerance. The check reads the pose rather than the picture,
+so it stays honest when the picture changes.
+
+The neutral pose is the special case where B's hang geometry is the whole frame. §6 read that the
+last pose equals the neutral pose, full stop; the superseded sentence is in `PASS-API-V1-HISTORY.md`
+with its date. It was amended because the passage plays fullscreen while the arriving work has a
+real place in the exhibition layout to return to, and a pose resting on the neutral frame would put
+the visitor a few pixels off the hang at every landing. The tolerance stays 1e-6, row 9 of §9 keeps
+its wording, and §2.6 states the geometry the arriving pose is measured against.
 
 **Where a cue's own device carries the camera.** Some instruments move the point of view by their
 own construction — a floor's pitch, a box turning, a depth of tilt. Such a cue declares
@@ -531,6 +899,34 @@ carries; it reads its own lists and nothing else.
 30. the full tlvphotos prover is green against the pinned staging engine
 31. a 120-second phone profile, when a physical device is available
 
+**Rows 32 to 49 were added 2026-08-14 08:47 on his word of 08:39, and every one of them is
+unwritten.** They are the evidence for §4.6, §4.7, §2.6 and §4.8, and each reds when its rule is
+removed, like every row above it.
+
+32. an ElementSet plus its complement reconstructs the source frame within the seam threshold
+33. a provider that cannot serve a work declines with its reason, and the composer falls to the next
+    provider in the request's own order
+34. the fallback provider returns an ElementSet for every ordered pair in the collection, a single
+    decline reading red
+35. the scene plan contains real actors, never one accidental fullscreen cue: a ScenePlan naming no
+    element of either work is refused, and one naming at least one element of each is accepted
+36. a ScenePlan's declared tier agrees with the serialised score's duration band and voice counts
+37. two cues overlapping in time pass, and two cues intersecting on one structural level in
+    overlapping windows still red under row 17
+38. the renderer's door for B agrees with the DOM's hang geometry for B, to the pixel
+39. the handoff from canvas to DOM shows no flash, no blank frame and no z-index leak
+40. `chromeReveal` runs exactly once per command
+41. the chrome appears after arrival and handoff, and at no earlier instant
+42. focus and the accessibility tree change exactly once across a passage
+43. audio, history, story and caption stay coherent across a passage
+44. the viewport and orientation matrix passes: a resize or orientation change mid-passage
+    recalculates the destination hang geometry and reframes the camera with no jump
+45. B to A after A to B keeps the family and the pivot of the recorded pass
+46. a backward plan that replays the forward pass frame for frame is refused
+47. a backward plan sharing neither the family nor the pivot of the recorded pass is refused
+48. a repeat crossing of one edge, under the same visit, seed and history, repeats to the pixel
+49. no EdgeMemory field beyond `family`, `seed` and `passIndex` reaches a ScenePlan or a score
+
 The existing prover is never weakened to make a new picture pass. Lifecycle evidence is added first;
 an old check changes only when the replacement is proved equivalent.
 
@@ -580,8 +976,19 @@ resizes a running transaction rather than replacing it.
 | the interruption cadence — every handle to its nearest door within its own envelope | built 2026-08-14: the whole transition picks the door its own door-handle stands nearer, every handle then walks to the value IT takes at that door on its own named curve, and the host force-ends at the deadline with the last frame drawn ON the door | closed |
 | the cadence ahead of a *supersede* | a superseded transition puts every handle on its door in one step instead of walking there, because the product's `declare` is synchronous and this branch left the product side untouched. Every handle still lands at a door and the record says `forced` | the bundle, a later branch |
 | `pointer` driver | declared; one normalised host signal arrives later; instruments attach no listeners | a later branch |
-| PairDossier direction A→B against B→A | recorded nowhere today | site build |
-| offline masks and segments | parked until the semantic pass is promoted | parked |
+| PairDossier direction A→B against B→A | amended 2026-08-14: §4.8 states where the direction is recorded and what holds across it. `lab/data/pair-shared.json` is unordered — 7260 rows, no row's reverse present — so the direction lives in EdgeMemory and in the ScenePlan's own `direction` field. Unbuilt | site build, with the walk |
+| offline masks and segments | amended 2026-08-14: the extraction landed. `lab/data/objects-pass2.json` carries five named classes with per-region boxes, confidences and a complement on a 32-cell grid, for all 121 works, measured 2026-08-12 by `qwen3-vl:8b`. The provider that reads them is unbuilt | site build |
+| the `structural` element provider | unbuilt; `lab/data/recipes.json` and `lab/data/motifs.json` stand, all 121 works | site build |
+| the `semantic` element provider | unbuilt; its data stands, as the row above records | site build |
+| the `hybrid` element provider | unbuilt; blocked on neither file, since both stand. Semantic wins where the two overlap and the merge records that it did | site build |
+| the `fallback` element provider — tonal zones plus detail scales | unbuilt, and the majority road: 4793 of 7260 pairs, 66.02 percent, share no measure | site build |
+| the `author` element provider — hand-drawn masks and regions | declared and unbuilt; no file backs it today | the author's seat (Fable) |
+| the passage composer that emits a ScenePlan (§4.7) | declared and unbuilt. Until it lands, §4.4c's template and table stay the road that produces scores | a later branch |
+| where the passage composer runs — the bundle or the renderer's own file | undecided; its size is unmeasured, and §12's split is the question it answers | a later branch, at the composer's first landing |
+| the woven instrument's ElementSet-naming port | the instrument plays two whole works today. Its port names A's strips and B's strips as actors at the composer's landing, which is what row 35 asks of it | the instrument's port, at the composer's landing |
+| the return to the hang (§2.6) — `hangGeometry`, the two exact geometries, the canvas-to-DOM handoff | declared and unbuilt | the bundle for `hangGeometry` and the reveal; the renderer's file for the arriving pose |
+| `chromeReveal` as a scoreable product choreography with its six named parts | declared and unbuilt | the bundle |
+| EdgeMemory (§4.8) | declared and unbuilt; held by the walk in the site's layer, and the engine sees only `returnOf` | the walk, in tlvphotos |
 | the byte fence for the renderer's own file | closed 2026-08-14: 42 000 B raw (measured 39 415) and 13 000 B gzipped (measured 11 646), each with its breakdown written into its test | closed |
 
 **The interruption field is read and what happened is recorded.** A score names `interruption` with
@@ -591,7 +998,8 @@ what the door wanted against where the handle finished. A cadence that had to be
 Silence about a field is what makes a field dangerous.
 
 **The two tolerances the camera is judged by are stated, not implied.** The pose rests on the
-arriving work within 1e-6, and two authorities agree across a handoff within 1e-3. Both are
+arriving work within 1e-6 — on the arriving work's hang geometry, since the amendment of
+2026-08-14 08:47 to §6 — and two authorities agree across a handoff within 1e-3. Both are
 computation tolerances rather than matters of taste: the check reads the pose, a spline evaluated at
 its own last point returns that point, and the handoff is measured at the window's own edge rather
 than at whichever frame landed past it — so a slower device cannot read as a bigger discontinuity.
