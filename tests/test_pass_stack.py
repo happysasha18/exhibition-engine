@@ -39,12 +39,14 @@ WHAT IS BUILT AND WHAT IS MEASURED HERE.
   declaration compared against a variant's budget is the SUM at the pass's worst instant, and the
   census counts what was actually created against that sum.
 
-THE ACCEPTANCE TARGET IS A PICTURE, and it is the real composed passage of the worked pair:
-lab/data/sceneplans/plan-example-17847744487144891__17897050660015868__ab.json. The woven instrument
-carries the band family from 0 to 6.5 s and owns SURFACE; the meshing instrument travels from an
-angular reading to a ring reading from 1.17 to 5.59 and owns CELL; `matter` carries the arrival from
-4.03 to 6.5 and owns TEXTURE; the camera pans as the stage's own voice. Every number in the score
-below is read off that plan or off the manifests of the three instruments. None is invented.
+THE ACCEPTANCE TARGET IS A PICTURE, and it is the real composed passage of the worked pair, as the
+site serialises it: lab/data/sceneplan-scores/17847744487144891__17897050660015868__ab.json, built
+from lab/data/sceneplans/plan-example-17847744487144891__17897050660015868__ab.json. The woven
+instrument carries the band family from 0 to 6.5 s and owns SURFACE; the meshing instrument travels
+from an angular reading to a ring reading from 0.00 to 5.59 and owns CELL; `matter` carries the
+arrival from 4.03 to 6.5 and owns TEXTURE; the camera pans as the stage's own voice. Every number in
+the score below is read off that serialised score or off the manifests of the three instruments.
+None is invented.
 
   The two photographs are stand-ins. The worked pair's own files are not in this tree, so the walk's
   own two pictures stand in their place. What the rows measure is the stack — which cue draws when,
@@ -78,25 +80,66 @@ PHOTOS = [Path("/Users/sashaabramovich/tlvphotos/lab/photos/towers.jpg"),
 SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844          # the phone frame every instrument suite measures on
 
-# ---- the composed passage's own numbers, read off the plan -------------------------------------
+# ---- the composed passage's own numbers, read off the score the site serialises -----------------
+#
+# THE ONE HOME OF THESE NUMBERS is the composer's own serialised score for the worked pair, SCORE_SRC
+# below, built from the authored plan beside it. This bench holds a frozen copy so it can play the
+# passage without the site tree, and a frozen copy goes stale: the copy here still opened the
+# meshing cue a fifth of the way into a pass the site has opened at its own door since site commit
+# 24f0b45, and still asked the ground for twice the bands the composer measured. Refreshed against
+# that score on 2026-08-14, the way the coverage bench was at engine commit 12b9099 — a field at a
+# time, every instant that is a window's own edge derived from the window rather than written out:
+#   · THE MESHING CUE'S WINDOW, [1.17, 5.59] → [0.00, 5.59]. The travelling voice opens on the
+#     pass's own entry door. The camera's two middle track points are placed at that cue's window
+#     edges below, so the camera follows the same move — which is what the serialised camera track
+#     carries, its middle points standing at 0.00 and 5.59.
+#   · THE GROUND'S BAND-COUNT HANDLE, 12 → 3, the number the score carries. The woven instrument
+#     draws nV = clamp(strips * nMul * clamp(cssWidth/1000, 0.5, 1), 3, 64) bands
+#     (engine/assets/pass-inst-weave.js:220), and on this 390-point frame the middle term clamps to
+#     0.5, so a handle of 3 lands on the floor and draws THREE bands — the family the composer
+#     measured, 480 px of a 1440-px work — where 12 drew six. The floor itself fell from 6 to 3 on
+#     2026-08-14, which is why the old handle had to sit at twice the family's own number.
+#   · THE TRAVELLING VOICE'S SIZE RAMP, a smoothed segment climbing 0.7 → 1.8019, becomes the
+#     score's own plain mix falling 1.9919 → 0.7: the first work's measured ring reading down to the
+#     second's. The upper figure is the composer's own since the plans were re-serialised on
+#     2026-08-14 (site commit 7464c50); it read 1.8019 before that. The coverage bench keeps the old
+#     direction on purpose, because the score's own reds a row there that nothing may weaken: at
+#     that size the meshing pair's meeting line reaches inside the frame at the entry door, and that
+#     bench proves an entry door free at EVERY point. No row here asks that of the meshing voice —
+#     the door row below measures the whole three-cue stack against a one-cue pass of the same
+#     instrument and prints what it read — so this copy carries the score's own ramp.
+#   · THE SEED EACH CUE IS HANDED, 1.9837, the four figures the serialiser writes, where the score's
+#     own top-level seed keeps its full 1.983657397.
+# One divergence is left standing and written down rather than quietly closed: the banding AXIS. The
+# score asks for 0 and this copy carries 2, as the coverage bench also does against the same score.
+# It is not one of the fields this refresh was asked for, and it belongs to whoever owns the
+# composer's own axis reading.
+SCORE_SRC = ("lab/data/sceneplan-scores/"
+             "17847744487144891__17897050660015868__ab.json")
 PLAN = ("lab/data/sceneplans/"
         "plan-example-17847744487144891__17897050660015868__ab.json")
 DUR_MS, DUR = 6500, 6.5
-W_PIVOT, W_TRAVEL, W_ARRIVAL = [0.0, 6.5], [1.17, 5.59], [4.03, 6.5]
-SEED = 1.983657397                  # the plan's own seed
+W_PIVOT, W_TRAVEL, W_ARRIVAL = [0.0, 6.5], [0.0, 5.59], [4.03, 6.5]
+SEED = 1.983657397                  # the score's own seed
+CUE_SEED = 1.9837                   # the seed each cue is handed, as the serialiser rounds it
 BAND_HELD = 0.3333                  # the pivot: the band family, held for the whole pass
 RATIO_HELD = 0.3333
 CENTRE_X, CENTRE_Y = 0.5481, 0.425  # the meshing pair's own centre; the FIELD's centre pans by camera
-SIZE_FROM, SIZE_TO = 0.7, 1.8019    # angular to ring; the travel stays above 0.7 by measurement
-# The woven instrument's own floor. The measured band family is 480 px of a 1440-px work — three
-# bands across the frame — and the woven instrument clamps its strip count to a floor of 6, so the
-# score sits ON that floor rather than on the family's own number. Written down because it is a
-# measured limit of the port and not a choice: nV = clamp(strips * nMul * clamp(cssWidth/1000,
-# 0.5, 1), 6, 64), and at 390 points wide the middle term clamps to 0.5.
-PIVOT_STRIPS = 12
+SIZE_FROM, SIZE_TO = 1.9919, 0.7    # angular to ring, the score's own direction and figures
+PIVOT_STRIPS = 3
 
-# The instants the pass is photographed and read at: both doors and five across the middle.
-INSTANTS = [0.0, 1.17, 2.5, 4.03, 5.0, 5.59, 6.5]
+# WHERE THE THREE VOICES MEET, from the windows themselves: the last of the three openings to the
+# first of the three closings. Every row that needs all three cues live reads its instant from here
+# instead of naming a second, so the rows follow the score when the composer moves a window.
+MEET = [max(W_PIVOT[0], W_TRAVEL[0], W_ARRIVAL[0]), min(W_PIVOT[1], W_TRAVEL[1], W_ARRIVAL[1])]
+MEET_MID = round((MEET[0] + MEET[1]) / 2.0, 2)
+
+# The instants the pass is photographed and read at: every door and window edge the score itself
+# carries, and three readings across the middle. The travelling voice's opening no longer stands
+# apart from the entry door — its window begins where the pass does — so 1.17 s, which used to be
+# that opening, stays in the grid as one of the middle readings.
+INSTANTS = sorted({W_PIVOT[0], W_TRAVEL[0], W_ARRIVAL[0], W_TRAVEL[1], W_PIVOT[1],
+                   1.17, 2.5, 5.0})
 
 results = []
 
@@ -142,7 +185,7 @@ def cue_pivot():
             "pivot-strips": _static(PIVOT_STRIPS),
             "pivot-axis": _static(2),
             "pivot-speed": _static(1),
-            "pivot-seed": _static(SEED),
+            "pivot-seed": _static(CUE_SEED),
             "pivot-nMul": _static(1),
             "pivot-press": _static(1),
         },
@@ -174,16 +217,18 @@ def cue_travel():
         "nodes": {
             "travel-mix": {"source": "cueProgress"},
             "travel-clock": {"source": "time"},
-            "travel-size": {"op": "segment", "in": {"source": "cueProgress"}, "points": [
-                {"at": 0, "value": SIZE_FROM},
-                {"at": 1, "value": SIZE_TO, "shape": "smooth"}]},
+            # The score's own shape for this track: a plain mix over the cue's progress, from the
+            # first work's measured ring reading to the second's.
+            "travel-size": {"op": "mix", "a": SIZE_FROM, "b": SIZE_TO,
+                            "t": {"source": "cueProgress"}},
             "travel-centreX": _static(CENTRE_X),
             "travel-centreY": _static(CENTRE_Y),
             "travel-bandPeriod": _static(BAND_HELD),
             "travel-ratio": _static(RATIO_HELD),
             "travel-tooth": _static(0.4), "travel-order": _static(0.4),
             "travel-turn": _static(0.55), "travel-flank": _static(0.35),
-            "travel-seed": _static(SEED), "travel-shade": _static(1), "travel-travel": _static(1),
+            "travel-seed": _static(CUE_SEED), "travel-shade": _static(1),
+            "travel-travel": _static(1),
         },
         "tracks": {"mix": {"node": "travel-mix"}, "clock": {"node": "travel-clock"},
                    "size": {"node": "travel-size"},
@@ -214,7 +259,7 @@ def cue_arrival():
             "arrival-clock": {"source": "time"},
             "arrival-loosen": _static(0.6), "arrival-drift": _static(0.45),
             "arrival-gather": _static(0.3), "arrival-grain": _static(0.45),
-            "arrival-seed": _static(SEED), "arrival-shade": _static(1),
+            "arrival-seed": _static(CUE_SEED), "arrival-shade": _static(1),
             "arrival-travel": _static(1),
         },
         "tracks": {"mix": {"node": "arrival-mix"}, "clock": {"node": "arrival-clock"},
@@ -585,13 +630,17 @@ else:
                 # 1 at the exit, so at either door every live cue draws THE SAME picture — the
                 # departing work whole at 0, the arriving work whole at the end. That is why a
                 # stack lands its doors exactly however the middle composites.
-                sample(br, ONE, 0.0, 3.0, "door-a-onecue")
-                dmean, dmax = diff(shots[0.0], str(SHOTS / "door-a-onecue.png"))
+                sample(br, ONE, W_PIVOT[0], 3.0, "door-a-onecue")
+                dmean, dmax = diff(shots[W_PIVOT[0]], str(SHOTS / "door-a-onecue.png"))
                 check(BROWSER_ROWS[13], dmean <= 1.0,
-                      "door A of the three-cue pass against door A of a one-cue pass of the same "
-                      "instrument: mean %.4f, worst channel %d of 255. At a door every live cue "
-                      "draws one picture, so the stack and the single cue land the same door."
-                      % (dmean, dmax))
+                      "door A of the three-cue pass at %.2f s against door A of a one-cue pass of "
+                      "the same instrument: mean %.4f, worst channel %d of 255. At a door every "
+                      "live cue draws one picture, so the stack and the single cue land the same "
+                      "door. Since the travelling voice's window now opens on the pass's own entry "
+                      "door it is live here too, and it lands the same door because its shader "
+                      "publishes the arriving work's absence as its own alpha: at the entry door "
+                      "that work is absent everywhere, so it covers nothing."
+                      % (W_PIVOT[0], dmean, dmax))
 
                 # ---- row 3: the order --------------------------------------------------------
                 named = js(br, "return window.__order(%s);"
@@ -670,7 +719,7 @@ else:
                 g_std = js(br, "return window.__grant(%s, 'standard');" % SCORE)
                 g_lean = js(br, "return window.__grant(%s, 'lean');" % SCORE)
                 budgets = js(br, "return window.__budgets();")
-                st_end, _ = sample(br, SCORE, 5.0, DUR)
+                st_end, _ = sample(br, SCORE, MEET_MID, DUR)
                 res = st_end["resources"]
                 check(BROWSER_ROWS[6],
                       g_std["variant"] == "standard"
@@ -680,12 +729,14 @@ else:
                       and res["declared"]["programs"] == 3
                       and res["granted"]["programs"] == 3
                       and res["over"] is False,
-                      "the three cues meet at 4.03…5.59 s, so the sum at the pass's worst instant "
-                      "is %d programmes, %d passes and %d texture slots. `standard` grants %d/%d/%d "
+                      "the three cues meet at %.2f…%.2f s — the windows' own overlap, read here at "
+                      "%.2f s — so the sum at the pass's worst instant is %d programmes, %d passes "
+                      "and %d texture slots. `standard` grants %d/%d/%d "
                       "and takes it; `lean` grants %d/%d/%d and declines with «%s», which is §7's "
                       "own floor. The census then counts %d programmes actually created against "
                       "the %d declared, and does not overrun."
-                      % (g_std["sum"]["programs"], g_std["sum"]["passes"],
+                      % (MEET[0], MEET[1], MEET_MID,
+                         g_std["sum"]["programs"], g_std["sum"]["passes"],
                          g_std["sum"]["textureSlots"],
                          budgets["standard"]["programs"], budgets["standard"]["passes"],
                          budgets["standard"]["textureSlots"],
@@ -694,7 +745,7 @@ else:
                          res["granted"]["programs"], res["declared"]["programs"]))
 
                 # ---- row 7: one canvas, one context ------------------------------------------
-                st_mid, _ = sample(br, SCORE, 4.5, DUR)
+                st_mid, _ = sample(br, SCORE, MEET_MID, DUR)
                 in_dom = int(br.evaluate("String(window.__canvasCount())"))
                 check(BROWSER_ROWS[7],
                       st_mid["canvases"] == 1 and st_mid["contexts"] == 1 and in_dom == 1
@@ -715,11 +766,13 @@ else:
                 check(BROWSER_ROWS[8],
                       isinstance(cam_no, str) and "travel" in cam_no and "arrival" in cam_no
                       and "camera" in cam_no,
-                      "the two cues meet across 4.03…5.59 s and both declare `own`: %r" % cam_no)
+                      "the two cues meet across %.2f…%.2f s — their windows' own overlap — and both "
+                      "declare `own`: %r"
+                      % (max(W_TRAVEL[0], W_ARRIVAL[0]), min(W_TRAVEL[1], W_ARRIVAL[1]), cam_no))
 
                 # ---- row 9: a seeded three-cue run repeats to the pixel ----------------------
-                _, r1 = sample(br, SCORE, 4.5, DUR, "repeat-1")
-                _, r2 = sample(br, SCORE, 4.5, DUR, "repeat-2")
+                _, r1 = sample(br, SCORE, MEET_MID, DUR, "repeat-1")
+                _, r2 = sample(br, SCORE, MEET_MID, DUR, "repeat-2")
                 rmean, rmax = diff(r1, r2)
                 check(BROWSER_ROWS[9], rmean == 0.0 and rmax == 0,
                       "one seeded three-cue score, the same instant of the pass photographed "
