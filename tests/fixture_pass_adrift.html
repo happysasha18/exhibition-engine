@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the adrift instrument — the host's frame beside the lab module's</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own canvas.
+     One is visible at a time; the check shows the one it means and photographs it. -->
+<div id="moduleStage" class="stage"></div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="adrift.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  /* THE PAIR'S OWN MEASUREMENTS, taken by the project's own measuring script — the `measure()` of
+     lab/step1-motifs.py, run on these two files on 2026-08-14. Neither photograph appears in
+     lab/data/motifs.json, whose 121 works are the constructed set, so the numbers were measured
+     rather than looked up, and by the same code that wrote that file.
+
+     THE SECOND WORK CARRIES NO EMPTINESS: its figure share is 0.9232 and its void share 0.0768, so
+     the motif «объект в пустоте» does not fire on it. That is the case the composed passage actually
+     has — the analysis records that this instrument's own motif fires on none of the 570 pairs it
+     buys, so it plays on the elements a plan hands it. The bench is that case rather than a flattering
+     one. */
+  var MEAS = [
+    { box: [0.5625, 0.084, 0.8477, 1.0], share: 0.19, voidShare: 0.3295, seam: 0.0882 },
+    { box: [0.0, 0.0, 1.0, 1.0], share: 0.9232, voidShare: 0.0768, seam: 0.0016 }
+  ];
+
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. The instruments live in
+    // pass-pack.js, which the host fetches by address and loads once its bytes weigh to the digest
+    // the build stamped; the host joins only when that question is settled. So the bench is waited
+    // for rather than assumed, which is what a real visitor's walk does too.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    var moduleStage = document.getElementById("moduleStage");
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "adrift") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «adrift» effect"); return; }
+
+    // The one record both roads read. The module keeps its own copy of these four inside its
+    // closure; this is the same set handed to it at creation and moved through the same onParam,
+    // so the pose the host draws is the pose the module drew and never a guess at it.
+    var P = { flight: 0.55, horizon: 0.55, grain: 0.66, shrink: 0.5 };
+    var hand = 0, clockAt = 0, maskAt = 0;
+    var ctx = { images: imgs, reduced: false,
+                params: { flight: P.flight, horizon: P.horizon, grain: P.grain, shrink: P.shrink,
+                          seed: 20260813, measures: MEAS } };
+    var api = def.create(moduleStage, ctx);
+    window.__api = api;
+
+    /* WHAT THE MODULE READ OFF THE TWO FILES, and what the port takes as handles. The module opens
+       each work once at build and solves three numbers on it: the ground colour outside the measured
+       box, the density its silhouette is cut at so the mask's area is the measured share, and the
+       density nothing in the work reaches. This file may not open a picture (§1.2), so a score row
+       carries those three per work. They are read back out of the module here, so both roads stand on
+       one set of numbers and the comparison below is two roads of one frame. */
+    var W = api.reading().works;
+    function handles() {
+      return {
+        flight: P.flight, horizon: P.horizon, grain: P.grain, shrink: P.shrink,
+        shade: 1, travel: 1, mask: maskAt,
+        homeAx: 0.5 * (MEAS[0].box[0] + MEAS[0].box[2]), homeAy: 0.5 * (MEAS[0].box[1] + MEAS[0].box[3]),
+        homeBx: 0.5 * (MEAS[1].box[0] + MEAS[1].box[2]), homeBy: 0.5 * (MEAS[1].box[1] + MEAS[1].box[3]),
+        voidAr: W[0].voidCol[0], voidAg: W[0].voidCol[1], voidAb: W[0].voidCol[2],
+        voidBr: W[1].voidCol[0], voidBg: W[1].voidCol[1], voidBb: W[1].voidCol[2],
+        thrA: W[0].thr, thrB: W[1].thr, maxA: W[0].max, maxB: W[1].max,
+        voidShareA: MEAS[0].voidShare, voidShareB: MEAS[1].voidShare,
+        seamA: MEAS[0].seam, seamB: MEAS[1].seam
+      };
+    }
+    window.__measured = function () { return { meas: MEAS, works: W, handles: handles() }; };
+
+    window.__mix = function (v) { hand = +v; api.onParam("mix", v); };
+    window.__clock = function (s) { clockAt = +s; api.onParam("clock", s); };
+    window.__param = function (k, v) { P[k] = +v; api.onParam(k, v); };
+    window.__mask = function (v) { maskAt = +v; api.onParam("mask", v); };
+    window.__reading = function () { return api.reading(); };
+    window.__show = function (which) {
+      bench.show(which === "host");
+      moduleStage.classList.toggle("hidden", which !== "module");
+    };
+
+    // THE HOST DRAWS THE SAME POSE. The die is taken from the module through its own reading(),
+    // since the module rolls it once at creation from the number it was handed; everything else is
+    // the record above and the measurements both roads stand on.
+    window.__hostDraw = function () {
+      var r = api.reading();
+      var h = handles();
+      h.mix = hand;
+      h.seed = r.seed;
+      h.t = clockAt;
+      h.reduced = false;
+      h.aw = imgs[0].naturalWidth; h.ah = imgs[0].naturalHeight;
+      h.bw = imgs[1].naturalWidth; h.bh = imgs[1].naturalHeight;
+      bench.draw("adrift", h);
+      return r;
+    };
+
+    // ---- the real transaction road ---------------------------------------------------------
+    // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
+    // arms and decodes both works off the walk markup above, builds the programme from the
+    // manifest, raises its curtain and runs its own frame loop.
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>
