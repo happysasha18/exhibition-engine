@@ -379,11 +379,17 @@ check("PASS-STACK the host imposes no opacity of its own on any cue",
       "instrument's own shader writes and names no weight of its own — so no blendColor, no "
       "constant alpha, and no opacity in the host OR in the pack")
 
-check("PASS-STACK all three instruments write a whole frame, so a stack reads as occlusion",
-      PACK.count("gl_FragColor = vec4(col, 1.0)") == 3,
-      "each of the three shaders writes alpha 1.0, so each covers the frame whole. The host's "
-      "source-over is therefore a no-op today and the nearest-the-eye live cue is what is seen. A "
-      "stack reads as a stack the day a port writes its own coverage")
+# SUPERSEDED 2026-08-14 by the coverage law. This row used to assert the debt — all three shaders
+# writing alpha 1.0, so a stack read as plain occlusion. Coverage landed, so the row now asserts what
+# replaced it: the ground fills the frame and the two voices above it publish their own masks.
+check("PASS-STACK the ground fills the frame and the voices above it write coverage",
+      PACK.count("gl_FragColor = vec4(col, 1.0)") == 1
+      and PACK.count("gl_FragColor = vec4(col, 1.0 - cov)") == 2,
+      "the woven instrument has no absence to publish — its two ribbon sets partition the frame and "
+      "both branches of every mix are picture — so it writes alpha 1.0 and carries the ground. "
+      "`matter` and the meshing instrument each publish the mask they already build, 1.0 - cov, the "
+      "share of the arriving work, so the frame beneath them reaches the eye where their own matter "
+      "is absent")
 
 check("PASS-STACK the draw walks the stack ascending, so the first line is topmost by default",
       "(c.stack === undefined || c.stack === null) ? (n - i)" in LAYER

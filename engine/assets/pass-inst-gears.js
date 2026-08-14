@@ -167,7 +167,17 @@
       "  vec3 col = mix(colB, colA, cov);",
 
       "  col *= 1.0 - 0.32 * uGuard * (1.0 - cov) * exp(-max(-d, 0.0) / 7.0);",
-      "  gl_FragColor = vec4(col, 1.0);",
+      // THE COVERAGE LAW (§7). `cov` is 1 for the points wheel A owns and 0 for the points wheel B
+      // owns, so `1.0 - cov` is the territory of the ARRIVING wheel — this instrument's own matter.
+      // The line where the two rims meet, which is what the eye actually sees here, is the boundary
+      // of that territory. At the entry door the alpha is 0 at every point, so the instant the cue's
+      // window opens the frame does not change; at the exit door it is 1 at every point, so the door
+      // is this instrument's own whole work.
+      //
+      // THE COLOUR CHANNEL IS UNTOUCHED, which is what makes a one-cue score byte-identical: laid
+      // down first the host disables blending and reads no alpha, so `col` reaches the frame exactly
+      // as it always did. The blend is STRAIGHT source-over, never premultiplied — see the host.
+      "  gl_FragColor = vec4(col, 1.0 - cov);",
       "}",
     ].join("\n");
 
@@ -437,6 +447,13 @@
       // surface, so the witness camera stays the stage's (§6).
       camera: { needs: "none", authority: "stage" },
       gl: { preserveDrawingBuffer: false },
+      // THE COVERAGE LAW (§7). The mask the shader already builds to decide which wheel owns each
+      // point is published as the alpha: `1.0 - cov`, the share of the frame inside the arriving
+      // wheel's rim. Both doors stay whole because `reachFor` solves the placement so that at either
+      // door every corner of the frame lies inside ONE rim — so the alpha is 0 at every point at the
+      // entry door and 1 at every point at the exit door, never a mixture.
+      coverage: { writes: true,
+                  how: "1.0 - cov, the share of the frame inside the arriving wheel's rim" },
       neutralPose: { dial: 0, size: 4.5, centreX: 0.5, centreY: 0.5, bandPeriod: 1 / 6, ratio: 0.5,
                      tooth: 0.4, order: 0.4, turn: 0.55, flank: 0.35, shade: 1, travel: 1,
                      cssWidth: 1000, cssHeight: 1000, t: 0, reduced: false },

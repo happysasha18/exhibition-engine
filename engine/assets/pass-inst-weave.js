@@ -328,6 +328,19 @@
                 "ramp", "slew", "oscillate", "node"],
       camera: { needs: "none", authority: "stage" },
       gl: { preserveDrawingBuffer: false },
+      // THE COVERAGE LAW (§7), and this instrument's answer to it: it has no absence to publish.
+      // Its two ribbon sets partition the frame — `showV` is 0 or 1 at every point and
+      // `col = mix(colH, colV, showV)` takes one set or the other — and inside each set `covV`
+      // chooses between work A and work B, so both branches of every mix are picture. The union of
+      // the sets is the frame and no point is left unclaimed, which is why it carries the passage's
+      // ground: it is the cue with nothing drawn beneath it but the cleared buffer.
+      //
+      // The grooves are NOT an absence. `grooveV`/`diveV` and their partners reach the picture only
+      // through the multiply on `col`; writing them into the alpha would punch the fabric with a
+      // hole at every ribbon edge and the cleared buffer would show through.
+      coverage: { writes: false,
+                  how: "the fabric partitions the frame between its two ribbon sets, so no point "
+                     + "of the frame is left unclaimed and the alpha is the constant 1" },
       neutralPose: { bal: 1, nMul: 1, press: 1, strips: 28, axis: 2, cssWidth: 1000, t: 0, reduced: false },
       passes: [{
         program: "weave", vert: VERT, frag: FRAG, position: "aPos",

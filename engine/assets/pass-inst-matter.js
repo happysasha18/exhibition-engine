@@ -142,7 +142,17 @@
       "  vec3 colB = texture2D(uB, into(uv + pullB, uFitB)).rgb;",
       "  vec3 col = mix(colB, colA, cov);",
       "  col *= 1.0 - 0.32 * uGuard * cov * exp(-max(d, 0.0) / 7.0);",
-      "  gl_FragColor = vec4(col, 1.0);",
+      // THE COVERAGE LAW (§7). `cov` is 1 where the point still stands on work A's side of the
+      // travelling threshold and 0 where the front has passed it, so `1.0 - cov` is the territory
+      // the ARRIVING work has taken — this instrument's own matter. Work B then grows out of the
+      // frame beneath it rather than being pasted over it, which is what lets an arrival be carried.
+      //
+      // ONE THING IS LOST HERE AND IS RECORDED RATHER THAN HIDDEN: the contact shadow on the line
+      // above rides `cov`, so it stands on the side this alpha clears and is discarded wherever a
+      // cue plays beneath. The meshing instrument's shadow rides `(1.0 - cov)` and survives. Casting
+      // a shadow onto what plays underneath would need a multiply blend, which would let one cue
+      // darken another — an imposed weight by another road, which the charter bans as a class.
+      "  gl_FragColor = vec4(col, 1.0 - cov);",
       "}",
     ].join("\n");
 
@@ -257,6 +267,13 @@
                 "ramp", "slew", "oscillate", "node"],
       camera: { needs: "none", authority: "stage" },
       gl: { preserveDrawingBuffer: false },
+      // THE COVERAGE LAW (§7). The mask the shader already builds from the travelling threshold is
+      // published as the alpha: `1.0 - cov`, the share of the arriving work. The threshold travels a
+      // tenth past either end of the field, so at the entry door every point stands on A's side and
+      // the alpha is 0 at every point, and at the exit door every point stands on B's side and the
+      // alpha is 1 at every point. That is what keeps door B this instrument's own whole work.
+      coverage: { writes: true,
+                  how: "1.0 - cov, the share of the arriving work at the travelling threshold" },
       neutralPose: { mix: 0, loosen: 0.6, drift: 0.45, gather: 0.3, grain: 0.45,
                      seed: 0, shade: 1, travel: 1, t: 0, reduced: false },
       passes: [{
