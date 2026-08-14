@@ -27,6 +27,7 @@ import base64
 import json
 import math
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -172,6 +173,9 @@ LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 # test_pass_pack.py demand that no instrument name appear in the host at all.
 PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
 WEAVE = PACK.split("function weaveInstrument()")[1].split("function matterInstrument()")[0]
+# The one script in this tree that raises a bench of its own for this instrument; it has to serve
+# the same two files a visitor is served, and a row below holds it to that.
+CAPTURE = (ROOT / "scripts" / "capture-weave.py").read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------- string rows
 
@@ -206,6 +210,61 @@ check("PASS-WEAVE the instrument reads its balance, its strip-count breath and i
       and WEAVE.count("nMul: 1, press: 1") == 1,
       "the two constants standing where the module's own eased clock used to run are gone — the one "
       "remaining pair is the manifest's neutral pose, which is a pose and not a channel")
+
+# ---- the two handles whose published shape misdescribed them, repaired 2026-08-14 ---------------
+# Both rows read the manifest against the very lines it describes, so a number that moves in one
+# place and stands still in the other is red rather than quietly wrong.
+
+AXIS_ENUM = re.search(
+    r'axis: \{ min: 0, max: 2, def: 2, kind: "enum", step: 1, names: AXES,\s*'
+    r'banding: \["vertical", "horizontal"\], turns: 2, turnPeriodS: 27 \}', WEAVE)
+check("PASS-WEAVE the ribbon axis publishes three named states, their band directions, and the one that turns",
+      bool(AXIS_ENUM)
+      and 'var AXES = ["up and down", "side to side", "both"];' in WEAVE
+      and 'if (a === "up and down") return 0;' in WEAVE
+      and 'if (a === "side to side") return 1;' in WEAVE
+      and "var p = (time / 27) % 1;" in WEAVE,
+      "the handle carried min 0, max 2 — the shape of a continuous range — over three named states, "
+      "of which only «both» answers the clock; the published names, the band direction each stands "
+      "for and the 27 s turn all read off the lines above")
+
+# The other half of the same fact lives in the tree that MEASURES the band family. A row here keeps
+# the two vocabularies tied together: the day the composer's encoding flips, this reds in the engine.
+SCENEPLAN = LAB / "build-sceneplan-v1.py"
+if SCENEPLAN.exists():
+    _plan = SCENEPLAN.read_text(encoding="utf-8")
+    check("PASS-WEAVE the axis handle's 0 and 1 are the banding measure's own vertical and horizontal",
+          '0 if e["axis"] == "vertical" else 1' in _plan
+          and '"axis: 0 vertical, 1 horizontal"' in _plan,
+          "the composer encodes a measured vertical family as 0 and a horizontal one as 1, which is "
+          "the same pair the shader draws at uRot 0 and uRot 1")
+else:
+    skip("PASS-WEAVE the axis handle's 0 and 1 are the banding measure's own vertical and horizontal",
+         f"the lab tree is absent at {SCENEPLAN}")
+
+_pub = re.search(r"strips: \{ min: (\d+), max: (\d+), def: (\d+),", WEAVE)
+_app = re.search(r"applied: \{ floor: (\d+), ceiling: (\d+), timesHandle: \"nMul\",\s*"
+                 r"frameWidth: \{ full: (\d+), least: ([\d.]+) \},\s*"
+                 r"drawnFloor: (\d+), basketTakes: ([\d.]+) \}", WEAVE)
+_clamp = re.search(r"clamp\(st\.strips \* st\.nMul \* clamp\(st\.cssWidth / 1000, ([\d.]+), 1\), "
+                   r"(\d+), (\d+)\)", WEAVE)
+_shader = re.search(r"float nV = max\(([\d.]+), uNv \* \(1\.0 - ([\d.]+) \* basket\)\);", WEAVE)
+check("PASS-WEAVE the band count publishes the floor the instrument applies, and every number in it names its own line",
+      all([_pub, _app, _clamp, _shader])
+      and (_pub.group(1), _pub.group(2)) == (_clamp.group(2), _clamp.group(3))
+      and (_app.group(1), _app.group(2)) == (_clamp.group(2), _clamp.group(3))
+      and _app.group(3) == "1000" and _app.group(4) == _clamp.group(1)
+      and _app.group(5) == _shader.group(1).split(".")[0]
+      and _app.group(6) == _shader.group(2),
+      "the handle floored at 8 while the applied number floors at 6 and the shader's own floor "
+      "stands at 5 beneath it, so a composer asking for a measured band family of three read none "
+      "of the three floors it would meet")
+
+check("PASS-WEAVE the capture bench serves the pack the host fetches, and names it before the host",
+      'shutil.copy2(tmp / "pass-pack.js"' in CAPTURE
+      and CAPTURE.index('tmp / "pass-pack.js"') < CAPTURE.index('tmp / "pass-layer.js"'),
+      "the instruments left the host for the pack on 2026-08-14; a bench root carrying the host "
+      "alone answers the host's own fetch for the pack with a 404 and the page never reaches ready")
 
 check("PASS-WEAVE the score's road into the walk needs no engine rebuild",
       "function passScoreFor" in (ROOT / "engine" / "client" / "01a-pass.js").read_text(encoding="utf-8"),

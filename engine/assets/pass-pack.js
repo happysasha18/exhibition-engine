@@ -223,7 +223,7 @@
       id: "weave", api: 1, arity: 2,
       roles: ["disassembly", "mystery", "assembly"],
       levels: ["SURFACE", "CELL"],
-      params: { strips: [8, 64], axis: [0, 2], speed: [0.1, 2.5] },
+      params: { strips: [6, 64], axis: [0, 2], speed: [0.1, 2.5] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial; `clock` is the second the host
       // hands down; the other four were the module's own params and its own die, and they are
       // published here so no handle keeps a clock or a roll of its own.
@@ -242,11 +242,72 @@
       //     the instrument deriving the balance from `mix` through the response curve, exactly as
       //     the module lets its own dial win over the drift (weave.js:459). Nothing falls back, so
       //     nothing is recorded as a fallback.
+      //
+      // THE RIBBON AXIS IS THREE NAMED STATES (2026-08-14). The entry carried min 0, max 2, def 2 —
+      // the shape of a continuous range — while the handle maps onto the three names in AXES and
+      // rounds anything between them to the nearest one (axisNameOf above). It now says which kind
+      // it is, what each value is called, which band direction each one stands for, and which of
+      // them answers the clock.
+      //
+      // THE TWO VOCABULARIES AGREE, AND THE SHADER IS WHERE THAT WAS READ. At axis 0 rotForTime
+      // holds uRot at 0, so av is 1, ah is 0, basket is 0 and showV is 1: the frame draws the column
+      // set, whose cell coordinate cV reads uv.x. Columns are the frame's VERTICAL bands and their
+      // travel is along y, which is what "up and down" names. At axis 1 uRot holds at 1, showV is 0
+      // and the frame draws the row set, whose cH reads uv.y: horizontal bands travelling along x.
+      // The banding measurement encodes the same pair the same way — "axis: 0 vertical, 1
+      // horizontal" (lab/build-sceneplan-v1.py:1475, legend at :1491) — and the lab module's own
+      // uniform carries the same reading (lab/effects/weave.js:29). So a measured vertical family
+      // reaches this handle as 0 and is drawn vertical, and `banding` below publishes that
+      // correspondence instead of leaving it to be read out of a shader.
+      //
+      // ONLY THE THIRD VALUE TURNS. rotForTime returns a constant 0 for "up and down" and a constant
+      // 1 for "side to side"; for "both" it walks a 27 second turn between them, holding 3.2 s and
+      // 4.9 s at the two ends. Left at the default of 2 under a band family measured as standing one
+      // way, the passage's own ground turns on a clock nothing measured, which is what `turns` and
+      // `turnPeriodS` are here to say. The `clock` handle's range tops out at 14 s, so one pass
+      // covers about half of that turn.
+      //
+      // THE BAND COUNT, AND WHAT THE INSTRUMENT DOES WITH THE NUMBER IT IS HANDED (measured
+      // 2026-08-14). The handle published a floor of 8 while the number that reaches the shader is
+      //     clamp(strips · nMul · clamp(cssWidth / 1000, 0.5, 1), 6, 64)
+      // and the shader holds a floor of its own beneath that, max(5.0, uNv · (1 − 0.25 · basket)).
+      // Three floors stood one behind another and none of them was published, so a composer asking
+      // for the band family it had measured could not read what the frame would draw.
+      //
+      // WHAT WAS MEASURED. The composed passage's ground is its pair's band family: 480 px of a
+      // 1440 px frame, three bands, vertical. The score asks for 3 and carries 8. On a 390 px phone
+      // frame the width factor is 0.5, so a request of 3 and a request of 8 both come to rest on the
+      // clamp at 6 and draw THE SAME FRAME: the banding measure the composition itself uses
+      // (lab/cut-lines.py measure_banding) reads that frame's vertical family at a period of 65 px
+      // with a strength of 0.25, and the frame's strongest reading is no longer a band family. At
+      // three bands the same measure reads 130 px at 0.74 on the phone and 480 px at 0.82 on a
+      // 1440 px frame — the pair's own number, at a strength standing with the two works' own.
+      //
+      // WHAT THE FLOOR PROTECTS: nothing that was found to break. The anti-aliasing half-width, the
+      // living edge's wobble and the two shading terms are all in cell units and hold their
+      // proportion at every count; the narrowest drawn band grows from 17 px at eight bands to 51 px
+      // at three; and both doors stand exact at 3, 5, 6 and 8 bands on both axes, measured against a
+      // whole white and a whole black work. The one number that changes class is the basket's, where
+      // the shader takes a quarter off the count and its own floor of 5 then binds, and where the
+      // row count carries a floor of 3 of its own (nH above).
+      //
+      // WHAT MOVED, AND WHAT DID NOT. The published floor moves from 8 to 6, the floor the
+      // instrument applies on a frame 1000 px wide or wider, so the number the manifest publishes
+      // and the number the frame draws are one number. Below 6 the two remaining floors are the lab
+      // module's own mathematics carried here character for character — the clamp in values()
+      // (weave.js:324) and the shader's max(5.0) (weave.js:73) — and the conformance rows hold this
+      // frame against that module's frame point for point. Moving them here would fork this pack
+      // from the source it is built from. So three bands stands outside what this instrument draws
+      // today, and `applied` publishes the whole chain for a composer to read.
       handles: {
         mix: { min: 0, max: 1, def: 0 },
         clock: { min: 0, max: 14, def: 0 },
-        strips: { min: 8, max: 64, def: 28 },
-        axis: { min: 0, max: 2, def: 2 },
+        strips: { min: 6, max: 64, def: 28,
+                  applied: { floor: 6, ceiling: 64, timesHandle: "nMul",
+                             frameWidth: { full: 1000, least: 0.5 },
+                             drawnFloor: 5, basketTakes: 0.25 } },
+        axis: { min: 0, max: 2, def: 2, kind: "enum", step: 1, names: AXES,
+                banding: ["vertical", "horizontal"], turns: 2, turnPeriodS: 27 },
         speed: { min: 0.1, max: 2.5, def: 1 },
         seed: { min: 0, max: 8, def: 0 },
         nMul: { min: 0.62, max: 1.65, def: 1 },
@@ -980,17 +1041,33 @@
       // `dial` is OPEN: a score that names no track for it leaves the instrument deriving the
       // travelled number from `mix` through the measured response curve, exactly as the module does.
       // Nothing falls back, so nothing is recorded as a fallback.
+      //
+      // THE THREE HANDLES THAT TAKE A NUMBER OTHER THAN THE ONE THEY ARE HANDED, published here
+      // beside their ranges by the same rule the woven instrument's band count is published by.
+      //   · `ratio` — A PLACE ON A LADDER OF SEVEN RUNGS, never a number between them. ratioAt
+      //     rounds it to a rung before any tooth count is taken, because a mesh closes on itself
+      //     only at a ratio of small whole numbers. The seven pairs are RATIOS above, published here
+      //     by reference so the ladder has one home, and `step` is the distance between two rungs.
+      //   · `size` — ROUNDED TO WHOLE TEETH. Both counts come from one whole multiplier k, and the
+      //     pair's drawn radii follow from the counts, so the size the frame draws is the nearest
+      //     one that leaves the rung's ratio exact and each wheel at three teeth or more.
+      //   · `tooth` and `order` — SCALED BACK TOGETHER. A tooth stands no taller than the wheel it
+      //     stands on: while 2·amp + spread/2 asks for more than the field's own depth of
+      //     2·min(R1,R2)·0.85 − 0.02, both are multiplied by one factor, which keeps their
+      //     proportion and keeps both doors whole. At the module's own size nothing comes near it;
+      //     at a small pair with a far-apart rung it binds.
       handles: {
         mix: { min: 0, max: 1, def: 0 },
         clock: { min: 0, max: 14, def: 0 },
         dial: { min: 0, max: 1, def: 0, open: true },
-        size: { min: 0.3, max: 8, def: 4.5 },
+        size: { min: 0.3, max: 8, def: 4.5, applied: { roundedToWholeTeeth: true, leastTeeth: 3 } },
         centreX: { min: 0, max: 1, def: 0.5 },
         centreY: { min: 0, max: 1, def: 0.5 },
         bandPeriod: { min: 0.02, max: 1, def: 1 / 6 },
-        ratio: { min: 0, max: 1, def: 0.5 },
-        tooth: { min: 0, max: 1, def: 0.4 },
-        order: { min: 0, max: 1, def: 0.4 },
+        ratio: { min: 0, max: 1, def: 0.5, kind: "enum", step: 1 / (RATIOS.length - 1),
+                 rungs: RATIOS },
+        tooth: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "order" } },
+        order: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "tooth" } },
         turn: { min: 0, max: 1, def: 0.55 },
         flank: { min: 0.05, max: 1, def: 0.35 },
         seed: { min: 0, max: 8, def: 0 },

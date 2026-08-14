@@ -56,6 +56,7 @@ loads, from this suite's own copy of it, and never through git. The source tree 
 which also keeps this suite safe to run beside the others under tests/run_all.py.
 """
 import base64
+import hashlib
 import json
 import os
 import re
@@ -306,11 +307,25 @@ PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
 # THE SAME FILE AS IT STOOD BEFORE THE STACK WAS BUILT, put through the very same two steps the
 # build puts the source through — the namespace resolution and the comment strip — so what row 2
 # compares is two builds of one file and never a build against a source.
+#
+# THE PACK'S OWN ADDRESS IS STAMPED THE WAY THE BUILD STAMPS IT. Until 2026-08-14 the host carried
+# its instruments inline and asked for no second file, so the namespace and the comment strip were
+# the whole of a build. Since the instruments left for pass-pack.js the host carries two tokens the
+# build fills — the pack's version and the digest of the served pack — and a host whose tokens stand
+# unfilled refuses every pack it is offered. Left unstamped, this row's older bench drew no
+# instrument at all and the comparison read as a whole picture of difference. Both benches serve the
+# SAME built pack, so both are stamped with that pack's own numbers and what the row compares is
+# again two builds of the host over one picture.
 HEAD_BUILT = None
 try:
     _head = subprocess.run(["git", "show", "HEAD:engine/assets/pass-layer.js"],
                            cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
-    HEAD_BUILT = _engine.strip_js_comments(_engine.apply_namespace(_head, _engine._NAMESPACE))
+    _served = (TMP / "pass-pack.js").read_bytes()
+    _version = re.search(r'var\s+PACK_VERSION\s*=\s*"([^"]+)"', PACK).group(1)
+    _head = (_engine.apply_namespace(_head, _engine._NAMESPACE)
+             .replace("@@PACK_VERSION@@", _version)
+             .replace("@@PACK_DIGEST@@", hashlib.sha256(_served).hexdigest()))
+    HEAD_BUILT = _engine.strip_js_comments(_head)
 except Exception as e:  # noqa: BLE001 — the reason is reported on the row itself
     HEAD_BUILT = None
     HEAD_WHY = str(e)
