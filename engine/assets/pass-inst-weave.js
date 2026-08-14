@@ -90,7 +90,7 @@
       "  float av = clamp(2.0 - 2.0 * uRot, 0.0, 1.0);",
       "  float ah = clamp(2.0 * uRot, 0.0, 1.0);",
       "  float basket = min(av, ah);",
-      "  float nV = max(5.0, uNv * (1.0 - 0.25 * basket));",
+      "  float nV = max(3.0, uNv * (1.0 - 0.25 * basket));",
       "  float nH = max(3.0, nV / max(aspect, 0.05));",
       "  float phV = uT * 0.31;",
       "  float phH = uT * 0.24 + 1.7;",
@@ -217,7 +217,7 @@
       return {
         duty: duty,
         amp: Math.min(AMP * weave * st.press, TRAVEL),
-        nV: clamp(st.strips * st.nMul * clamp(st.cssWidth / 1000, 0.5, 1), 6, 64),
+        nV: clamp(st.strips * st.nMul * clamp(st.cssWidth / 1000, 0.5, 1), 3, 64),
         rot: st.reduced ? 0 : rotForTime(st.t, st.axis),
       };
     }
@@ -226,7 +226,7 @@
       id: "weave", api: 1, arity: 2,
       roles: ["disassembly", "mystery", "assembly"],
       levels: ["SURFACE", "CELL"],
-      params: { strips: [6, 64], axis: [0, 2], speed: [0.1, 2.5] },
+      params: { strips: [3, 64], axis: [0, 2], speed: [0.1, 2.5] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial; `clock` is the second the host
       // hands down; the other four were the module's own params and its own die, and they are
       // published here so no handle keeps a clock or a roll of its own.
@@ -270,45 +270,63 @@
       // `turnPeriodS` are here to say. The `clock` handle's range tops out at 14 s, so one pass
       // covers about half of that turn.
       //
-      // THE BAND COUNT, AND WHAT THE INSTRUMENT DOES WITH THE NUMBER IT IS HANDED (measured
-      // 2026-08-14). The handle published a floor of 8 while the number that reaches the shader is
-      //     clamp(strips · nMul · clamp(cssWidth / 1000, 0.5, 1), 6, 64)
-      // and the shader holds a floor of its own beneath that, max(5.0, uNv · (1 − 0.25 · basket)).
-      // Three floors stood one behind another and none of them was published, so a composer asking
-      // for the band family it had measured could not read what the frame would draw.
+      // THE BAND-COUNT FLOOR, AND WHAT IT PUBLISHES (2026-08-14, the lowered floors carried across
+      // from lab/effects/weave.js at 148affb, where the same block stands as THE BAND-COUNT FLOOR).
+      // The four gates between the handle and the shader all read 3, and they are: the declared
+      // param range (`params.strips` above), the handle range published here, the frame number clamp
+      //     clamp(strips · nMul · clamp(cssWidth / 1000, 0.5, 1), 3, 64)     — values() above
+      // and the shader floor beneath it, max(3.0, uNv · (1 − 0.25 · basket)). They stood at 8, 8, 6
+      // and 5, one behind another and none of them published, so a handle of 3, 4, 5, 6 or 8 all
+      // drew six bands and a composer asking for the band family it had measured could not read what
+      // the frame would draw.
       //
-      // WHAT WAS MEASURED. The composed passage's ground is its pair's band family: 480 px of a
-      // 1440 px frame, three bands, vertical. The score asks for 3 and carries 8. On a 390 px phone
-      // frame the width factor is 0.5, so a request of 3 and a request of 8 both come to rest on the
-      // clamp at 6 and draw THE SAME FRAME: the banding measure the composition itself uses
-      // (lab/cut-lines.py measure_banding) reads that frame's vertical family at a period of 65 px
-      // with a strength of 0.25, and the frame's strongest reading is no longer a band family. At
-      // three bands the same measure reads 130 px at 0.74 on the phone and 480 px at 0.82 on a
-      // 1440 px frame — the pair's own number, at a strength standing with the two works' own.
+      // WHY THREE AND NOT LOWER. Three is the smallest band count the project's own banding measure
+      // can confirm: measure_banding skips the first three bins of the column spectrum
+      // (lab/cut-lines.py:172, min_k = 3), and three bands in a frame IS that first bin. At two bands
+      // and below the measure reports whatever else it finds and the reading carries no meaning, so a
+      // floor under three would put the instrument where no check of ours can judge it. Below three
+      // the frame also stops being a weave in the eye: at two cells with the balance at the middle
+      // each photograph holds a half of the frame, and the strip travel (AMP, a tenth of the frame)
+      // is a third of a cell, which reads as two pictures sliding rather than as strips woven.
+      //
+      // WHY THREE AND NOT HIGHER. The composition asks for three bands because the worked pair shares
+      // a vertical family of period 480 px in a 1440 px frame, and 1440 / 3 = 480: at a handle of 3
+      // on a wide frame the instrument draws the pair's own period exactly.
+      //
+      // THE PUBLISHED LIMITS, measured at the pair's own seed on 2026-08-14 and recorded in
+      // docs/immersive/evidence/2026-08-14-weavefloor-deterministic.md (the module) and
+      // docs/design/evidence/2026-08-14-engine-weavefloor.md (this instrument):
+      //   · the range of the handle is 3..64, and all four gates agree on both ends;
+      //   · a handle of N on a frame at least 1000 px wide draws N bands; below 1000 px the count is
+      //     scaled by cssWidth / 1000 and held at half, so a 390 px phone draws N / 2 and a handle of
+      //     6 is what puts three bands on a phone;
+      //   · at three drawn bands the peak lands on the frame's own third: 480 px on 1440 wide and
+      //     130 px on 390 wide, by the composition's own banding measure;
+      //   · the floor buys REACHABILITY, not strength. At three drawn bands the band family measures
+      //     0.36 to 0.42, under the module bar of 0.5 and far under the pair's own 0.8437, and the
+      //     engine-side 0.82 once quoted here is RETIRED — fourteen seeded readings across three
+      //     frames found no reading near it, the strongest vertical family anywhere being 0.5342.
       //
       // WHAT THE FLOOR PROTECTS: nothing that was found to break. The anti-aliasing half-width, the
       // living edge's wobble and the two shading terms are all in cell units and hold their
       // proportion at every count; the narrowest drawn band grows from 17 px at eight bands to 51 px
       // at three; and both doors stand exact at 3, 5, 6 and 8 bands on both axes, measured against a
       // whole white and a whole black work. The one number that changes class is the basket's, where
-      // the shader takes a quarter off the count and its own floor of 5 then binds, and where the
-      // row count carries a floor of 3 of its own (nH above).
+      // the shader takes a quarter off the count and its own floor of 3 then binds, and where the row
+      // count carries a floor of 3 of its own (nH above).
       //
-      // WHAT MOVED, AND WHAT DID NOT. The published floor moves from 8 to 6, the floor the
-      // instrument applies on a frame 1000 px wide or wider, so the number the manifest publishes
-      // and the number the frame draws are one number. Below 6 the two remaining floors are the lab
-      // module's own mathematics carried here character for character — the clamp in values()
-      // (weave.js:324) and the shader's max(5.0) (weave.js:73) — and the conformance rows hold this
-      // frame against that module's frame point for point. Moving them here would fork this pack
-      // from the source it is built from. So three bands stands outside what this instrument draws
-      // today, and `applied` publishes the whole chain for a composer to read.
+      // ONE NUMBER, NOT THREE. The published handle floor, the number the frame draws and the shader
+      // floor now say the same 3, so what the manifest publishes and what the frame draws are one
+      // number at three bands as at six, and `applied` publishes the whole chain for a composer to
+      // read. Every one of these gates is the lab module's own, carried here character for character;
+      // the conformance rows hold this frame against that module's frame point for point.
       handles: {
         mix: { min: 0, max: 1, def: 0 },
         clock: { min: 0, max: 14, def: 0 },
-        strips: { min: 6, max: 64, def: 28,
-                  applied: { floor: 6, ceiling: 64, timesHandle: "nMul",
+        strips: { min: 3, max: 64, def: 28,
+                  applied: { floor: 3, ceiling: 64, timesHandle: "nMul",
                              frameWidth: { full: 1000, least: 0.5 },
-                             drawnFloor: 5, basketTakes: 0.25 } },
+                             drawnFloor: 3, basketTakes: 0.25 } },
         axis: { min: 0, max: 2, def: 2, kind: "enum", step: 1, names: AXES,
                 banding: ["vertical", "horizontal"], turns: 2, turnPeriodS: 27 },
         speed: { min: 0.1, max: 2.5, def: 1 },
@@ -369,7 +387,7 @@
                            passes: 1, bytesEstimate: 0, variant: "rich" } },
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
-      provenance: { labPath: "lab/effects/weave.js", commit: "547a100" },
+      provenance: { labPath: "lab/effects/weave.js", commit: "148affb" },
       readiness: "production-ready",
     };
 
