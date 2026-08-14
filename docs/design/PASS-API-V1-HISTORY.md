@@ -10,6 +10,60 @@ word that superseded it.
 
 ---
 
+## 2026-08-14 09:52 — what the first implementation found
+
+Root: three design gaps the first serialiser built against §4.7 proved, reported through the
+coordinator, plus his word of 2026-08-14 09:34 on how the making grammar reads.
+
+### From §4.7, the ScenePlan record
+
+Superseded record header:
+
+> ```
+> { schema, id, pair:{a,b}, direction:"a->b"|"b->a", seed, tier:"quiet"|"middle"|"culmination",
+>   returnOf?:{ family, seed, passIndex },
+> ```
+
+Replaced because the record carried no `intent` line, while the charter requires every crossing plan
+to open with an authored one and fails an empty or generic one by definition, and because `duration`
+was unstated although the implementation derives it from the last cue window.
+
+### From §4.7, the cue mapping
+
+> **How a ScenePlan cue maps onto §4.4's cue.** The serialised cue keeps every field §4.4 lists and
+> gains none.
+
+That sentence stands, and it fenced only the score cue. The text around it left the plan cue
+unfenced, and a reader concluded the two were one record. §4.7 now states that a plan cue may carry
+fields the score cue lacks, names `cast` as the first of them, and states that every such field
+resolves away at serialisation.
+
+### From §4.7, the direction dialect
+
+No text was superseded here; the mapping was absent. The plan writes `a->b` and the score writes
+`a-to-b`. Both stay, because the score's form already ships and a stored address can carry it. The
+mapping is now written into §4.7 so a third form never appears.
+
+### From the Status block
+
+The instrument sentence read:
+
+> the first instrument, the
+> woven one of §8, with its manifest and with every one of its nine handles reachable from a score;
+
+Replaced because three instruments now stand on the host's frame, all green: the woven one, `matter`
+at `a3416b7` on `pass-api-v1-ports` with 29 conformance rows, and the meshing `gears` at `6485972`
+on `pass-api-v1-gears` with 31.
+
+### His word of 2026-08-14 09:34, added rather than superseding
+
+No text was replaced. §4.7 gains one paragraph confirming that no rule of the contract requires a
+sequence of roles or a minimum count of them, and one naming the four optional registers — discovery,
+provocation, feedback, apparition. The correction is recorded in the tlvphotos tree at
+`docs/V2-STATUS.md` and its working consequences at `lab/PASSAGE-COMPOSER.md` §1a, commit `f2cdb11`.
+
+---
+
 ## 2026-08-14 08:47 — the passage composer amendment
 
 Root: his word of 2026-08-14 08:39, which named the missing layer between the PairDossier and the

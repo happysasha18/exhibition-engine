@@ -10,22 +10,29 @@ none of those.
 idempotence guard and its token check; the frame half of §1.2 and §7 — one canvas, one WebGL2
 context with the drawing buffer unpreserved, the two source textures, the programme cache, the frame
 loop, the clock handed down as transaction seconds, resize, the resolution ladder, the name-driven
-uniform binding, the resource census and context loss and restoration; the first instrument, the
-woven one of §8, with its manifest and with every one of its nine handles reachable from a score;
-the score's road from a site's own `pass` record onto a declared command; the driver graph of §5 —
-its sources, its ten operator kinds, named nodes with references, and cycles refused with the ring
-named; the camera of §6 — the pose record, the dolly in log space, one authority at every instant
-with the stage's flight held across an owned window, the handoff measured at the window's own edge
-and the rest read off the pose; and the interruption cadence of §2.5. Still written and unbuilt from
-the lock of 2026-08-13: the `pointer` driver, a stack of more than one cue, and the levels and
-tier-budget checks of §4.4.
+uniform binding, the resource census and context loss and restoration; three instruments of §8 on
+the host's frame, each with its manifest and every handle reachable from a score — the woven one,
+`matter` at `a3416b7` on `pass-api-v1-ports` with 29 conformance rows green, and the meshing `gears`
+at `6485972` on `pass-api-v1-gears` with 31 green; the score's road from a site's own `pass` record
+onto a declared command; the driver graph of §5 — its sources, its ten operator kinds, named nodes
+with references, and cycles refused with the ring named; the camera of §6 — the pose record, the
+dolly in log space, one authority at every instant with the stage's flight held across an owned
+window, the handoff measured at the window's own edge and the rest read off the pose; and the
+interruption cadence of §2.5. Still written and unbuilt from the lock of 2026-08-13: the `pointer`
+driver, a stack of more than one cue, and the levels and tier-budget checks of §4.4.
 
 **Written and unbuilt, added 2026-08-14 08:47 on his word of 08:39.** Four sections were added and
 none of them is built: §4.6 ElementSet with its one provider contract and its five providers, §4.7
 ScenePlan and the passage composer that emits it, §2.6 the return to the hang with its two exact
 geometries and its chrome reveal, and §4.8 EdgeMemory with the hysteresis across a directed pair. No
-line of code answers to any of the four today. Conformance rows 32 through 49 are their evidence and
+line of code answers to any of the four today. Conformance rows 32 through 50 are their evidence and
 every one of those rows is unwritten. Section 11 lists all of it with its owner.
+
+**Amended 2026-08-14 09:52.** The first implementation built against §4.7 found three things the
+contract left unsaid, and all three are now written into it: a plan cue may carry fields the score
+cue lacks, the plan record carries an authored `intent` line and a derived `duration`, and the two
+direction dialects are mapped onto each other. §4.7 also carries his word of 09:34 on how the making
+grammar reads. The superseded text of each is in `PASS-API-V1-HISTORY.md`.
 
 The failure this document has recorded before is a status line that claimed an implementation that
 did not exist. This block states the built half and the written half separately for that reason,
@@ -562,6 +569,7 @@ passage composer emits a ScenePlan, and the score of §4.4 is that plan's serial
 
 ```
 { schema, id, pair:{a,b}, direction:"a->b"|"b->a", seed, tier:"quiet"|"middle"|"culmination",
+  intent, duration,
   returnOf?:{ family, seed, passIndex },
   pivot:{ kind, value, held:true },
   actors:[ { ref:"a"|"b", elementSet, elementIds:[...], role } ],
@@ -569,6 +577,27 @@ passage composer emits a ScenePlan, and the score of §4.4 is that plan's serial
   cues:[ ... ], camera:{ ... }, doors:{ from, to },
   quality:{ lean, standard, rich }, interruption, failLand, provenance }
 ```
+
+**`intent` is the authored line the plan opens with, added 2026-08-14 09:52.** The charter requires
+every crossing plan to carry one written line naming this adventure and the shelves it draws from,
+and states that a plan whose intent line is empty or generic fails review by definition. The first
+implementation found the field missing from the record.
+
+The line is authored at build time, under §4.5's fence. §4.5 forbids free text assembled from
+visitor state at run time and refuses a score whose free text was absent from the authored source
+file, and `intent` obeys that rule word for word. The authored line carries into the score's own
+`intent` field of §4.4 unchanged, so one sentence serves the plan, the score and the run bar.
+
+What the line may say is bounded by his word of 2026-08-14 09:34. It may describe what happens on
+screen and what the passage draws from the charter's shelves. A claim about how a work was actually
+made belongs in it only where he has documented that himself, because the measurement files read the
+finished picture and a measured period is an affordance the passage draws on. Conformance row 50
+refuses an empty or generic line.
+
+**`duration` is derived, and the record names the derivation.** It is the end of the last cue
+window. The first implementation computes it that way, and stating it here means a reader sees where
+the number comes from. The derived value is what serialises into the score's `duration`, and it must
+land inside §2.5's range of 0 to 14 000 ms, where §4.4's tier budget check reads it.
 
 **`pivot` is the pair's shared invariant, held throughout.** The charter's own law stands behind it:
 the pivot is the pair's invariant shared part, and everything outside the pivot travels. `held` is
@@ -601,10 +630,31 @@ may cover the whole passage, as the woven instrument does today. Different score
 departure, mystery and arrival mechanisms, or fold all three into one continuous gesture, and both
 are legal shapes.
 
+**No rule of this contract requires a sequence of roles or a minimum count of them.** His word of
+2026-08-14 09:34 settles how the making grammar reads, and this sentence carries it into the API.
+The charter's line about one work's mechanism coming apart while the other's assembles points a
+direction for the eye and carries no factual claim about how any photograph was made. Taking apart,
+the middle and arriving are available gestures. A passage carried by a single continuous move is a
+complete answer, and a plan that names one role is as legal as a plan that names six.
+
+Four registers are available where a pair rewards them, each optional and none owed: discovery,
+provocation, feedback, apparition. They name what a passage may reach for; no check counts them and
+no plan owes any of them. The working consequences live in `lab/PASSAGE-COMPOSER.md` §1a in the
+tlvphotos tree, and `docs/V2-STATUS.md` carries the correction as it was given.
+
 The levels law keeps its full reach across that freedom, and the two rules answer different
 questions. Overlap in time is free. Overlap on one structural level in overlapping windows is a red
 under row 17 unless one cue declares itself the accompaniment of the other. Conformance row 37
 proves both halves at once, so a later reading of "freely" cannot quietly retire row 17.
+
+**A plan cue and a score cue are two records, amended 2026-08-14 09:52.** The text here fenced the
+score cue and left the plan cue unfenced, and a reader concluded the two were one record, which the
+first serialiser proved they are not. A plan cue may carry fields the score cue lacks, and every such
+field resolves away at serialisation, so nothing of it reaches the host.
+
+`cast` is the first of them. It holds the element ids that cue casts, drawn from the plan's own
+`actors`. A later field may join it under the same rule: it lives in the plan, it resolves at
+serialisation, and the score's allow-list stays closed against it.
 
 **How a ScenePlan cue maps onto §4.4's cue.** The serialised cue keeps every field §4.4 lists and
 gains none. `id`, `instrument`, `voice`, `roles`, `levels`, `window`, `works`, `stack`,
@@ -613,7 +663,13 @@ casting resolves at serialisation: the geometries of the elements a cue casts ar
 cue's `nodes` and `tracks` as static nodes, exactly as §4.4c's table fills a template's named slots,
 and the ScenePlan's `id` is written into the score's `provenance.source`. The score's allow-list
 therefore stays closed and every existing checker keeps working. `returnOf` stays in the plan and
-reaches no score, which is the fence §4.8 states.
+reaches no score, which is the fence §4.8 states, and `cast` resolves the same way.
+
+**Direction is written in two dialects, and the mapping is stated.** The plan writes `a->b` and
+`b->a`; the score of §4.4 writes `a-to-b` and `b-to-a`. Both stay. The score's form already ships
+and a stored or shared address can carry it, which is the same reason §4.4a reads a version-1 score
+forward. The serialiser maps `a->b` onto `a-to-b` and `b->a` onto `b-to-a`, and the mapping is
+written here so a third form never appears.
 
 **The declared tier and the measured one must agree.** §4.4's budget check infers the tier from the
 score's duration and its voice counts, while a ScenePlan declares `tier` outright. A disagreement
@@ -899,9 +955,9 @@ carries; it reads its own lists and nothing else.
 30. the full tlvphotos prover is green against the pinned staging engine
 31. a 120-second phone profile, when a physical device is available
 
-**Rows 32 to 49 were added 2026-08-14 08:47 on his word of 08:39, and every one of them is
-unwritten.** They are the evidence for §4.6, §4.7, §2.6 and §4.8, and each reds when its rule is
-removed, like every row above it.
+**Rows 32 to 49 were added 2026-08-14 08:47 on his word of 08:39, and row 50 on 2026-08-14 09:52.
+Every one of them is unwritten.** They are the evidence for §4.6, §4.7, §2.6 and §4.8, and each reds
+when its rule is removed, like every row above it.
 
 32. an ElementSet plus its complement reconstructs the source frame within the seam threshold
 33. a provider that cannot serve a work declines with its reason, and the composer falls to the next
@@ -926,6 +982,8 @@ removed, like every row above it.
 47. a backward plan sharing neither the family nor the pivot of the recorded pass is refused
 48. a repeat crossing of one edge, under the same visit, seed and history, repeats to the pixel
 49. no EdgeMemory field beyond `family`, `seed` and `passIndex` reaches a ScenePlan or a score
+50. a ScenePlan whose `intent` line is empty or generic is refused, and an authored line reaches the
+    score's own `intent` unchanged (added 2026-08-14 09:52)
 
 The existing prover is never weakened to make a new picture pass. Lifecycle evidence is added first;
 an old check changes only when the replacement is proved equivalent.
