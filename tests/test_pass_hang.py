@@ -50,9 +50,46 @@ RISE, FALL = 0.4, 0.9
 TURN_AT = 0.75      # where in the pass the reframe rows turn the frame — inside the fall
 REST_TOL = 1e-6     # §6's rest tolerance, now read against the hang pose
 # How much more sharply the pose may turn across a reframe than it turns in the same flight
-# undisturbed. The bar is the flight's OWN sharpest turn, measured on a control run, times this.
-# A carried reframe adds no corner at all; a cut one adds exactly one.
+# undisturbed. The bar is the flight's own sharpest turn, times this. A carried reframe adds no
+# corner at all; a cut one adds exactly one.
 JUMP_FACTOR = 3.0
+
+# THE UNDISTURBED FLIGHT'S OWN SHARPEST TURN, in pose units per second squared, measured on this
+# walk on 2026-08-14 and written down here.
+#
+# WHY IT IS WRITTEN DOWN RATHER THAN RE-FLOWN. Until 2026-08-14 a control flight was flown on every
+# run and its reading became the denominator of both reframe rows, so the bar travelled with
+# whatever that one flight happened to read. Two things made the reading swing. The turn was
+# measured as a bare second difference between three samples, which grows with the SQUARE of the gap
+# between them; and that gap, in headless Chrome, runs about 8 ms at its middle, reaches 50 ms when
+# a frame stalls on an idle machine and passes 200 ms on a loaded one, so a single stall during the
+# sharpest stretch multiplied the reading by 35 and more.
+# Seven runs read the control at 0.0916, 0.0938, 0.2222, 0.2529, 0.2848, 0.3739 and 0.5956 — a
+# factor of 6.5 between the smallest and the largest — and one of the seven went red at 3.12 times a
+# control that had landed low. The reading now divides by the gap, so it is the second derivative of
+# the pose against the pass's own clock rather than a reading of the frame rate, and the number it
+# is compared against stands still.
+#
+# WHAT IT IS A PROPERTY OF. The pose between the two hangs is a monotone spline through four points
+# this file itself fixes — the departing box, the whole frame twice, the arriving box — flown over
+# the rise and fall this file's own score names, at this file's own viewport. Its sharpest turn
+# belongs to that curve, so it is the same number wherever the same score is flown. What remains of
+# the run-to-run spread is where the frames happen to fall around the spline's own knots, which the
+# measurements below bound.
+#
+# THE VALUE AND ITS HEADROOM. On an unloaded machine seven undisturbed flights read this turn at
+# 98.85, 103.25, 104.02, 104.64, 104.75, 106.16 and 106.42 — a band four percent wide. The number
+# below is the bottom of that band, rounded down, so the bar it sets is the tightest the measurement
+# supports rather than a comfortable one. Twenty runs on a loaded machine then read the orientation
+# row between 97.40 and 103.81 and the resize row between 58.34 and 106.40, and all forty flights
+# passed; the highest reading yet taken stands 2.8 times under the 3.0× bar of 300. Load pushes the
+# reading DOWN rather than up, which is what the one-sided guard further down rests on.
+#
+# PROVED AGAINST THE DEFECT on 2026-08-14 by cutting the carry in reseatHang, so the reframe is cut
+# instead of carried: the orientation row read 821.58 on panY at 1.848 s, the instant the frame
+# turns, and the resize row 399.73 — each of them over the bar, because a step taken inside one
+# frame is divided by that one frame's gap squared.
+CTRL_TURN = 100.0
 
 results = []
 
@@ -678,6 +715,14 @@ else:
                     # outside returns every thirty or forty milliseconds, and a pose that stepped
                     # once within a single frame would be spread across that whole gap and read as
                     # ordinary travel. One sample a frame is what makes a step visible as a step.
+                    #
+                    # EACH SAMPLE CARRIES THE SECOND THE RENDERER DREW IT AT. The pose and the
+                    # `clock` handle are written by one call of the renderer's own frame, so the two
+                    # are read together here and the series below stands on the pass's own clock
+                    # instead of on the sampler's. That clock is what the turn is measured against,
+                    # and it is also how a sample that read a frame already seen is recognised: the
+                    # sampler and the renderer hold separate animation-frame callbacks, so the
+                    # sampler can run twice over one drawn frame.
                     br.evaluate("""
                       window.__poses = [];
                       (function tick() {
@@ -685,7 +730,7 @@ else:
                         var r = window.__exPass.host.report();
                         if (r.active && r.state === 'running' && r.camera && r.camera.pose) {
                           window.__poses.push({gen: r.gen, pose: r.camera.pose,
-                                               t: performance.now()});
+                                               sec: r.handles ? r.handles.clock : null});
                         }
                       })(); 0""")
                     got = declare_and_offer(br, A, B, "hang-reframe")
@@ -701,21 +746,51 @@ else:
                       cancelAnimationFrame(window.__raf);
                       var r = window.__exPass.host.report();
                       var gen = window.__cmd.gen;
-                      var p = window.__poses.filter(function (s) { return s.gen === gen; });
-                      // HOW SHARPLY THE POSE TURNS, frame against frame — the change in its change.
+                      var p = window.__poses.filter(function (s) {
+                        return s.gen === gen && typeof s.sec === 'number'; });
+                      // ONE SAMPLE PER DRAWN FRAME. A second already seen is a second read of one
+                      // frame, and a repeated pose would read as a stop followed by a step.
+                      var q = [];
+                      for (var i = 0; i < p.length; i++) {
+                        if (!q.length || p[i].sec > q[q.length - 1].sec) q.push(p[i]);
+                      }
+                      // HOW SHARPLY THE POSE TURNS, in pose units per second squared — the second
+                      // derivative of the pose against the pass's own clock, taken on the uneven
+                      // grid the frames actually landed on.
+                      //
                       // The rise and the fall are real motion, and fast motion, so the plain step
                       // between two frames is large by nature and says nothing about continuity: a
                       // reframe's own step hides inside it. A STEP, though, is a corner, and a
-                      // corner shows in the second difference while smooth travel does not, however
+                      // corner shows in the second derivative while smooth travel does not, however
                       // fast that travel is. This is what tells a reframe carried across from a
                       // reframe cut.
-                      var worst = 0;
-                      for (var i = 2; i < p.length; i++) {
+                      //
+                      // DIVIDING BY THE GAP IS WHAT MAKES THE READING A PROPERTY OF THE FLIGHT. A
+                      // bare second difference between three samples grows with the square of the
+                      // gap between them, so the same smooth curve read at a 33 ms gap reads four
+                      // times what it reads at 16 ms, and the frame rate here swings by that much
+                      // within one run. Divided, it is the curve's own turn: the same number at any
+                      // frame rate. It also sharpens the corner a cut reframe leaves, because a
+                      // step taken inside one frame is divided by that one frame's gap squared.
+                      var worst = 0, at = null, key = null, gaps = [];
+                      for (var i = 2; i < q.length; i++) {
+                        var h1 = q[i-1].sec - q[i-2].sec, h2 = q[i].sec - q[i-1].sec;
+                        gaps.push(h2);
+                        if (!(h1 > 0 && h2 > 0)) continue;
                         ['panX','panY','logScale'].forEach(function (k) {
-                          var a = p[i-2].pose[k]||0, b = p[i-1].pose[k]||0, c = p[i].pose[k]||0;
-                          var d = Math.abs(c - 2*b + a);
-                          if (d > worst) worst = d; }); }
-                      return {worst: worst, n: p.length, rest: r.rest,
+                          var a = q[i-2].pose[k]||0, b = q[i-1].pose[k]||0, c = q[i].pose[k]||0;
+                          var d = Math.abs(2 * ((c - b) / h2 - (b - a) / h1) / (h1 + h2));
+                          if (d > worst) { worst = d; at = q[i].sec; key = k; } }); }
+                      gaps.sort(function (a, b) { return a - b; });
+                      // A flight too short to hold three frames leaves no turn to report. The two
+                      // stand-ins keep the row's own line printable, and the frame count below is
+                      // what the row reds on in that case.
+                      return {worst: worst, at: at === null ? -1 : at,
+                              key: key === null ? "none" : key, n: q.length, read: p.length,
+                              gap: {min: gaps.length ? gaps[0] : 0,
+                                    mid: gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0,
+                                    max: gaps.length ? gaps[gaps.length - 1] : 0},
+                              rest: r.rest,
                               hang: r.hang, events: r.events.filter(function (e) {
                                 return e.name === 'reframe-hang'; }).length};
                     """)
@@ -727,14 +802,29 @@ else:
                     out["landed"] = landed
                     return out
 
-                # THE CONTROL. The rise and the fall are real motion — the pose travels the whole way
-                # from the departing box to the whole frame inside a fifth of the pass — so the step
-                # between two samples is large by nature, and a bare number would say nothing about
-                # continuity. The same flight, undisturbed, is what the reframed ones are read
-                # against: a reframe that put a step into the flight would show as a step BEYOND the
-                # one the flight already takes.
+                # THE CONTROL, now the witness of the written-down number rather than the bar itself.
+                # The rise and the fall are real motion — the pose travels the whole way from the
+                # departing box to the whole frame inside a fifth of the pass — so a bare number
+                # would say nothing about continuity. The undisturbed flight is what the reframed
+                # ones are read against: a reframe that put a step into the flight shows as a turn
+                # beyond the one the flight already takes.
+                #
+                # The flight is still flown, and its reading still printed, because a number written
+                # into a test goes stale the day the walk's geometry or this file's score changes,
+                # and a stale one nobody reads would let both rows pass on the wrong bar.
+                #
+                # THE GUARD IS ONE-SIDED, and this is the reason. The turn is a maximum over the
+                # frames of one flight, taken where the spline's own knots are, so a flight sampled
+                # coarsely reads the knot across a wider window and comes in BELOW the true turn: on
+                # a loaded machine, where a frame can take 200 ms, forty runs read the control
+                # between 54.68 and 106.98. A low reading is a reading of the load. A reading above
+                # the written-down number is what no sampling can produce, so that is the side the
+                # guard watches, and a bar gone stale upwards is also the only direction in which a
+                # stale bar would be too generous.
+                CTRL_BAND = 2.0
                 control = one_flight(None)
                 CTRL = control["worst"]
+                ctrl_fresh = CTRL <= CTRL_TURN * CTRL_BAND
 
                 def reframe_case(row, w2, h2):
                     out = one_flight((w2, h2))
@@ -747,17 +837,24 @@ else:
                     edge = (out.get("hang") or {}).get("edge") or {}
                     scored_edges = (abs(edge.get("rise", -1) - RISE) < 1e-9
                                     and abs(edge.get("fall", -1) - FALL) < 1e-9)
+                    g = out["gap"]
                     check(row,
-                          scored_edges and
+                          scored_edges and ctrl_fresh and
                           out["took"] and out["landed"] and out["n"] >= 5 and out["events"] >= 1
-                          and out["worst"] <= CTRL * JUMP_FACTOR and rest.get("rested") is True
+                          and out["worst"] <= CTRL_TURN * JUMP_FACTOR and rest.get("rested") is True
                           and rest.get("on") == "hang" and centred,
-                          f"{out['n']} poses sampled, {out['events']} reframe(s) recorded; the "
-                          f"sharpest the pose turned was {out['worst']:.6f} against the "
-                          f"undisturbed flight's own {CTRL:.6f} (bar {JUMP_FACTOR}×); it rested "
-                          f"{rest.get('off')} from the {rest.get('on')} pose (tolerance "
-                          f"{rest.get('tol')}) on the box {hangb}, centred in the new frame: "
-                          f"{centred}; the score's own rise and fall were flown: {edge}")
+                          f"{out['n']} frames sampled ({out['read']} reads), {out['events']} "
+                          f"reframe(s) recorded; the sharpest the pose turned was "
+                          f"{out['worst']:.3f} units per second squared, on {out['key']} at "
+                          f"{out['at']:.3f} s, against the written-down {CTRL_TURN} (bar "
+                          f"{JUMP_FACTOR}×, so {CTRL_TURN * JUMP_FACTOR:.1f}); the undisturbed "
+                          f"flight read {CTRL:.3f} this run, under the {CTRL_BAND}× staleness "
+                          f"ceiling: {ctrl_fresh}; the gaps between frames ran "
+                          f"{g['min'] * 1000:.1f}/{g['mid'] * 1000:.1f}/{g['max'] * 1000:.1f} ms "
+                          f"(least, middle, most); it rested {rest.get('off')} from the "
+                          f"{rest.get('on')} pose (tolerance {rest.get('tol')}) on the box "
+                          f"{hangb}, centred in the new frame: {centred}; the score's own rise and "
+                          f"fall were flown: {edge}")
 
                 reframe_case(ROWS[9], 760, 900)      # a plain resize: the frame narrows
                 reframe_case(ROWS[10], 900, 760)     # an orientation change: the frame turns
