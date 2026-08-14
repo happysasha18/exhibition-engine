@@ -166,6 +166,12 @@ TMP = Path(tempfile.mkdtemp(prefix="synth_passweave_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)
 LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
+# Since 2026-08-14 the instruments ship in their OWN built file, which the host fetches by address,
+# version and digest. A row about the HOST reads LAYER; a row about the woven instrument's own
+# mathematics reads its region of PACK. Splitting the two is what lets the boundary row in
+# test_pass_pack.py demand that no instrument name appear in the host at all.
+PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
+WEAVE = PACK.split("function weaveInstrument()")[1].split("function matterInstrument()")[0]
 
 # ---------------------------------------------------------------- string rows
 
@@ -183,21 +189,21 @@ check("PASS-WEAVE the host's own context leaves the drawing buffer unpreserved",
       "one canvas, one context, nothing kept between frames (§7)")
 
 check("PASS-WEAVE the woven instrument creates no context, no canvas, no loop and no listener",
-      all(s not in LAYER.split("function weaveInstrument()")[1].split("register(weaveInstrument())")[0]
+      all(s not in WEAVE
           for s in ["createElement", "getContext", "requestAnimationFrame", "addEventListener",
                     "performance.now", "Date.now", "new Image"]),
       "§1.2's fence, read against the instrument's own region of the file")
 
 check("PASS-WEAVE every handle the instrument publishes is a handle a score can drive",
-      all(('%s: { min' % h) in LAYER for h in
+      all(('%s: { min' % h) in WEAVE for h in
           ["mix", "clock", "strips", "axis", "speed", "seed", "nMul", "press", "bal"]),
       "§4.4b: a handle that keeps its own clock or its own roll makes the determinism row red — "
       "`nMul`, `press` and `bal` were the three that answered to no track until 2026-08-14")
 
 check("PASS-WEAVE the instrument reads its balance, its strip-count breath and its press from handles",
-      "nMul: h.nMul, press: h.press" in LAYER
-      and "typeof h.bal === \"number\" ? h.bal :" in LAYER
-      and LAYER.count("nMul: 1, press: 1") == 1,
+      "nMul: h.nMul, press: h.press" in WEAVE
+      and "typeof h.bal === \"number\" ? h.bal :" in WEAVE
+      and WEAVE.count("nMul: 1, press: 1") == 1,
       "the two constants standing where the module's own eased clock used to run are gone — the one "
       "remaining pair is the manifest's neutral pose, which is a pose and not a channel")
 
@@ -317,6 +323,9 @@ def bench_dir():
     two roads of one frame side by side."""
     d = Path(tempfile.mkdtemp(prefix="synth_weavebench_"))
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
+    # The host fetches its pack by address and weighs its bytes, so the bench root serves the built
+    # pack beside the built host: the same two files a visitor gets, unaltered.
+    shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
     shutil.copy2(LAB / "effects" / "weave.js", d / "weave.js")
     (d / "photos").mkdir()
     for p in PHOTOS:

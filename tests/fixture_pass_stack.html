@@ -45,6 +45,10 @@
   });
 
   function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. Since 2026-08-14 the
+    // instruments live in pass-pack.js, which the host fetches by address and loads once its bytes
+    // weigh to the digest the build stamped; the host joins only when that question is settled.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
     var gen = 500;
     window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
     var hooks = {

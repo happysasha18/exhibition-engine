@@ -179,6 +179,21 @@ window.__@@NS@@PassLayer = function (h) { window.__host = h; };
 require(process.argv[2]);
 var bench = window.__@@NS@@Pass.bench;
 var host = window.__host;
+
+// THE PACK, PUT ON THE REGISTRY BY THE HOST'S OWN DOOR. Since 2026-08-14 the instruments ship in
+// their own file, which a browser host fetches by address and weighs before running. Node offers
+// neither a fetch of a relative address nor a blob script road, so the host refuses its pack here
+// and says why — and this runner then performs the same two steps by hand: read the built pack,
+// and hand each instrument it declares to host.register, which is the very function the browser
+// road calls. The manifest rows below therefore read a real manifest off a real registry, judged
+// by the real manifestWhyNo, with nothing stubbed.
+var pack = null;
+window.__@@NS@@PassPack = function (p) { pack = p; };
+require(process.argv[4]);
+if (!pack) { process.stderr.write("the built pack declared nothing\n"); process.exit(3); }
+pack.instruments.forEach(function (i) {
+  if (!host.register(i)) { process.stderr.write("host refused " + i.name + "\n"); process.exit(4); }
+});
 var E = JSON.parse(process.argv[3]);
 var out = {};
 
@@ -385,7 +400,8 @@ def run_node():
         return None, "the built file names no PassLayer join point"
     runner = TMP / "drivers-runner.js"
     runner.write_text(RUNNER.replace("@@NS@@", ns.group(1)), encoding="utf-8")
-    proc = subprocess.run([NODE, str(runner), str(TMP / "pass-layer.js"), json.dumps(EXPECT)],
+    proc = subprocess.run([NODE, str(runner), str(TMP / "pass-layer.js"), json.dumps(EXPECT),
+                           str(TMP / "pass-pack.js")],
                           capture_output=True, text=True, timeout=120)
     if proc.returncode != 0:
         return None, (proc.stderr or proc.stdout)[-600:]

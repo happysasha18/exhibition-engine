@@ -165,11 +165,24 @@ check("PASS-API no eval, no new Function anywhere the host reads a command",
 #            phone is the gzipped file, at 24 270 B under a 27 000 B fence (tests/test_budget.py,
 #            which carries its own breakdown). The walk's own bundle stands apart at 67 985 B: this
 #            file is fetched only on a visit that draws.
-LAYER_FENCE = 102000
-check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 80 000)",
+#            2026-08-14, midday — MOVED DOWN FROM 102 000 B TO 86 000 B, MEASURED AT 78 237 B, with
+#            7 763 B under it, about a tenth. The repair the three moves above kept naming has
+#            landed: the three instruments left this file for pass-pack.js, which the host fetches
+#            by address and loads once its bytes weigh to the digest the build stamped. This fence
+#            stops tracking the effect farm and starts tracking the host alone, so it moves DOWN and
+#            keeps its bite: an instrument landing in the pack no longer touches this number, and a
+#            host that grows a whole new machine still trips it. What left, measured:
+#              · the three instruments with their shaders, 34 392 B of stripped source;
+#              · the run-time levels check, 2 121 B, whose home moved to build time (see below).
+#            What arrived is the pack loader, about 3 600 B: the address, version and digest the
+#            build stamps here, the fetch, the digest weighed over what arrived, the blob the
+#            weighed bytes run from, and the refusal roads with their reasons.
+LAYER_FENCE = 86000
+check(f"PASS-API the renderer file's fence moves DOWN on the split, measured not guessed (now {LAYER_FENCE} B, was 102 000)",
       len(LAYER_BUILT.encode("utf-8")) < LAYER_FENCE,
-      f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the host, the driver graph, "
-      f"the camera, the interruption cadence, the return to the hang and three instruments")
+      f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the host alone: the state "
+      f"machine, the frame half, the driver graph, the camera, the interruption cadence, the "
+      f"return to the hang and the pack loader. The instruments travel in pass-pack.js")
 
 # ---------------------------------------------------------------- browser rows
 

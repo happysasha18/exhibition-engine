@@ -57,6 +57,7 @@ which also keeps this suite safe to run beside the others under tests/run_all.py
 """
 import base64
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -288,10 +289,19 @@ def one_cue():
 build_site.SITE_CONFIG = dict(build_site.SITE_CONFIG)
 build_site.SITE_CONFIG["pass"] = {"visualLayer": "pass", "diagnostics": "on"}
 
+# WHERE THE LEVELS LAW IS ENFORCED SINCE 2026-08-14 — the composition gate over the authored plans,
+# in the tlvphotos tree, which is READ ONLY here. Absent, row 4 is a pinned SKIP naming this path,
+# which is the same shape the lab-module rows in test_pass_weave.py use.
+GATE = Path(os.environ.get("TLVPHOTOS_SCENEPLAN_ROOT",
+                           "/Users/sashaabramovich/tlvphotos-sceneplan/lab")) / "sceneplan-build-check.py"
+
 TMP = Path(tempfile.mkdtemp(prefix="synth_passstack_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)
 LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
+# Since 2026-08-14 the instruments ship in their own built file, fetched by the host by address,
+# version and digest. A row about the HOST reads LAYER; a row about the shaders reads PACK.
+PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
 
 # THE SAME FILE AS IT STOOD BEFORE THE STACK WAS BUILT, put through the very same two steps the
 # build puts the source through — the namespace resolution and the comment strip — so what row 2
@@ -312,14 +322,15 @@ check("PASS-STACK the host imposes no opacity of its own on any cue",
       "blendFunc" in LAYER
       and "ONE_MINUS_SRC_ALPHA" in LAYER
       and not re.search(r"\bblendColor\b|\bCONSTANT_ALPHA\b", LAYER)
-      and not re.search(r"\bopacity\b", LAYER),
+      and not re.search(r"\bopacity\b", LAYER)
+      and not re.search(r"\bopacity\b", PACK),
       "the charter forbids it: «a score carries no opacity field, the engine hands out no opacity "
       "handle» and «a plan physically cannot fade layers». The host composites on the alpha the "
       "instrument's own shader writes and names no weight of its own — so no blendColor, no "
-      "constant alpha, and no opacity anywhere in the file")
+      "constant alpha, and no opacity in the host OR in the pack")
 
 check("PASS-STACK all three instruments write a whole frame, so a stack reads as occlusion",
-      LAYER.count("gl_FragColor = vec4(col, 1.0)") == 3,
+      PACK.count("gl_FragColor = vec4(col, 1.0)") == 3,
       "each of the three shaders writes alpha 1.0, so each covers the frame whole. The host's "
       "source-over is therefore a no-op today and the nearest-the-eye live cue is what is seen. A "
       "stack reads as a stack the day a port writes its own coverage")
@@ -343,7 +354,7 @@ BROWSER_ROWS = [
     "PASS-STACK row 1  · a cue outside its window draws nothing and holds at its own door",
     "PASS-STACK row 2  · a one-cue score is byte-identical to what it drew before the stack",
     "PASS-STACK row 3  · draw order follows `stack`, and the line order where no `stack` is named",
-    "PASS-STACK row 4  · two cues on one level red, and pass when one accompanies the owner",
+    "PASS-STACK row 4  · the levels law is enforced where the plan is authored",
     "PASS-STACK row 5  · the tier budget holds, with the camera counted as an accompaniment",
     "PASS-STACK row 6  · the summed declaration meets the variant budget, and the census matches",
     "PASS-STACK row 7  · one canvas and one context across a three-cue pass",
@@ -357,7 +368,6 @@ BROWSER_ROWS = [
 ]
 
 RED_ROWS = [
-    "PASS-STACK red-on-bug · the levels law removed: the stripped pair stops reddening",
     "PASS-STACK red-on-bug · the camera dropped from the count: accompaniments fall by one",
     "PASS-STACK red-on-bug · the window gate removed: every cue draws at every instant",
     "PASS-STACK red-on-bug · the default stack order reversed: the last line becomes topmost",
@@ -395,6 +405,10 @@ def bench_dir(layer_text):
     """A served root holding one BUILT pass-layer.js, the two photographs and the fixture."""
     d = Path(tempfile.mkdtemp(prefix="synth_stackbench_"))
     (d / "pass-layer.js").write_text(layer_text, encoding="utf-8")
+    # The host fetches its pack by address and weighs its bytes before running them, so the bench
+    # root serves the built pack beside it. The build of HEAD served by row 2 carries its own
+    # instruments and never asks for this file, which is what makes that comparison meaningful.
+    shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
     (d / "photos").mkdir()
     for p in PHOTOS:
         shutil.copy2(p, d / "photos" / p.name)
@@ -530,17 +544,33 @@ else:
                       "and the FIRST line is topmost, which is the charter's own sentence."
                       % (order_named, [r["stack"] for r in unnamed], order_bare))
 
-                # ---- row 4: the levels law ---------------------------------------------------
+                # ---- row 4: the levels law, and where it now lives ---------------------------
+                # MOVED OUT OF THE HOST ON 2026-08-14, AND THE LAW KEEPS ITS FULL FORCE. The
+                # declaration it reads is the cue's own `levelOwnership` record, and §4.4's cue
+                # allow-list is closed and does not carry that field — a score is refused whole on
+                # any unknown field, so a run-time checker here stood on a field no legal score may
+                # carry. The levels law is a law about how a passage is COMPOSED and is decidable
+                # from the authored plan alone, so it is enforced where the plan is authored.
+                #
+                # This row reads that gate's own source, the way the browser rows above read the
+                # lab modules: the per-level reading that gathers each level's holders, requires
+                # every declared level to be owned or accompanied, and refuses two owners of one
+                # level. A row that merely asserted the host no longer checks would prove the check
+                # was deleted and say nothing about whether the law survived the move.
                 three_ok = js(br, "return window.__whyNo(%s);" % SCORE)
-                stripped = [cue_pivot(), cue_travel(), cue_arrival()]
-                stripped[2]["levelOwnership"] = {"TEXTURE": "owns"}   # arrival stops accompanying
-                bad = js(br, "return window.__whyNo(%s);" % json.dumps(passage(stripped)))
-                check(BROWSER_ROWS[4],
-                      three_ok is None and isinstance(bad, str)
-                      and "SURFACE" in bad and "pivot" in bad and "arrival" in bad,
-                      "the three cues meet on SURFACE and pass, because the band family owns it and "
-                      "the other two name it as the cue they accompany there (refusal: %r). Strip "
-                      "the arrival's own declaration and the same pair reds: %r" % (three_ok, bad))
+                if not GATE.exists():
+                    skip(BROWSER_ROWS[4], "the composition gate is not on this machine: %s" % GATE)
+                else:
+                    gate = GATE.read_text(encoding="utf-8")
+                    check(BROWSER_ROWS[4],
+                          three_ok is None
+                          and 'c.get("levelOwnership")' in gate
+                          and '"owns"' in gate
+                          and 'for lv in sorted(' in gate,
+                          "the host takes the composed passage without a word about levels (%r), "
+                          "because the law is checked over the authored plan at build time. Its "
+                          "home is %s, which reads each level's holders and refuses two owners of "
+                          "one level." % (three_ok, GATE))
 
                 # ---- row 5: the tier budget --------------------------------------------------
                 b = js(br, "return window.__budget(%s);" % SCORE)
@@ -718,9 +748,6 @@ else:
         finally:
             shutil.rmtree(d, ignore_errors=True)
 
-    strip3 = [cue_pivot(), cue_travel(), cue_arrival()]
-    strip3[2]["levelOwnership"] = {"TEXTURE": "owns"}
-    STRIPPED = json.dumps(passage(strip3))
     twoacc = [cue_pivot(), cue_travel(), cue_arrival()]
     twoacc[1]["voice"] = "accompaniment"
     OVERBUDGET = json.dumps(passage(twoacc))
@@ -728,21 +755,18 @@ else:
                        for c in (cue_pivot(), cue_travel(), cue_arrival())])
 
     red_on_bug(RED_ROWS[0],
-               "var lv = levelsWhyNo(cues);", "var lv = null;",
-               "return window.__whyNo(%s);" % STRIPPED, None)
-    red_on_bug(RED_ROWS[1],
                "if (camera) accompaniments++;", "",
                "return window.__budget(%s).accompaniments;" % OVERBUDGET, 2)
     ALLCUES = json.dumps([cue_pivot(), cue_travel(), cue_arrival()])
-    red_on_bug(RED_ROWS[2],
+    red_on_bug(RED_ROWS[1],
                "return seconds >= Number(w[0]) && seconds <= Number(w[1]);", "return true;",
                "return window.__live(%s, 0.5);" % ALLCUES,
                ["pivot", "travel", "arrival"])
-    red_on_bug(RED_ROWS[3],
+    red_on_bug(RED_ROWS[2],
                "? (n - i)", "? i",
                "return window.__order(%s).map(function(r){return r.id;});" % BARE,
                ["pivot", "travel", "arrival"])
-    red_on_bug(RED_ROWS[4],
+    red_on_bug(RED_ROWS[3],
                "if (!cueLiveAt(voices[i].cue, edges[k])) continue;", "if (i > 0) continue;",
                "return window.__grant(%s, 'standard').sum.programs;" % json.dumps(passage()), 1)
 

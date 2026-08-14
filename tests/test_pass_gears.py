@@ -157,7 +157,11 @@ build_site.build(SITE_URL)
 LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 
 # The instrument's own region of the built file, so the fence rows read it and nothing else.
-REGION = LAYER.split("function gearsInstrument()")[1].split("register(gearsInstrument())")[0]
+# Since 2026-08-14 the instruments ship in their OWN built file, which the host fetches by address,
+# version and digest. A row about the HOST reads LAYER; a row about this instrument's own mathematics
+# reads its region of PACK.
+PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
+REGION = PACK.split("function gearsInstrument()")[1].split("join({")[0]
 
 # ---------------------------------------------------------------- string rows
 
@@ -166,7 +170,8 @@ check("PASS-GEARS the host binds this instrument's uniforms by declared name",
       and all(('name: "%s"' % u) in REGION for u in
               ["uCA", "uCB", "uR1", "uR2", "uN1", "uN2", "uAmp", "uPh", "uFlank", "uSpread",
                "uOff", "uGuard"])
-      and "U.uCA" not in LAYER and "U.uPh" not in LAYER,
+      and "U.uCA" not in LAYER and "U.uPh" not in LAYER
+      and "U.uCA" not in PACK and "U.uPh" not in PACK,
       "the meshing set shares only six names with the woven one; twelve more are its own, and none "
       "of them is written into the host")
 
@@ -276,6 +281,9 @@ def bench_dir():
     two roads of one frame side by side."""
     d = Path(tempfile.mkdtemp(prefix="synth_gearsbench_"))
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
+    # The host fetches its pack by address and weighs its bytes, so the bench root serves the
+    # built pack beside the built host: the same two files a visitor gets, unaltered.
+    shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
     shutil.copy2(LAB / "effects" / "gears.js", d / "gears.js")
     (d / "photos").mkdir()
     for p in PHOTOS:

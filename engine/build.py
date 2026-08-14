@@ -869,11 +869,37 @@ def copy_exhibition_assets():
     # EX-PASS: the drawing layer travels as its own file, fetched by the client only when a walk
     # asks for it. Absent from the assets dir, the bundle simply has none and every transition
     # rides the walk's own glide.
+    #
+    # THE PACK IS BAKED FIRST, AND THE HOST IS STAMPED WITH WHAT THE PACK WEIGHED (§7). The engine
+    # knows no effect name: the instruments live in pass-pack.js, and the host is told an address, a
+    # version and a digest, refusing anything that fails to match. So the order here is fixed — bake
+    # the pack, weigh the bytes that will actually be served, then bake the host with those numbers
+    # substituted in. Stamping a digest taken over the SOURCE would weigh a file no visitor fetches.
+    #
+    # The version has one home, the pack's own `PACK_VERSION` literal, and is read back out of the
+    # source here. A pack absent from the assets dir leaves the host with its tokens unsubstituted,
+    # and the host then refuses to load anything, which is the same landing as a pack that 404s.
+    pack_path = client_asset("pass-pack.js")
+    pack_version, pack_digest = "", ""
+    if pack_path.exists():
+        pack_src = pack_path.read_text(encoding="utf-8")
+        found = re.search(r'var\s+PACK_VERSION\s*=\s*"([^"]+)"', pack_src)
+        if not found:
+            raise SystemExit("pass-pack.js declares no PACK_VERSION — the host has no version to pin")
+        pack_version = found.group(1)
+        if "@@NS@@" in pack_src or "@@NS_UPPER@@" in pack_src:
+            pack_src = apply_namespace(pack_src, _NAMESPACE)
+        pack_out = strip_js_comments(pack_src)
+        write(OUT / "pass-pack.js", pack_out)
+        pack_digest = hashlib.sha256((OUT / "pass-pack.js").read_bytes()).hexdigest()
+
     layer_path = client_asset("pass-layer.js")
     if layer_path.exists():
         layer_src = layer_path.read_text(encoding="utf-8")
         if "@@NS@@" in layer_src or "@@NS_UPPER@@" in layer_src:
             layer_src = apply_namespace(layer_src, _NAMESPACE)
+        layer_src = layer_src.replace("@@PACK_VERSION@@", pack_version)
+        layer_src = layer_src.replace("@@PACK_DIGEST@@", pack_digest)
         write(OUT / "pass-layer.js", strip_js_comments(layer_src))
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None

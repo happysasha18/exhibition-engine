@@ -123,7 +123,29 @@ FENCES = {
     # WHAT THIS FILE COSTS A VISITOR: it is fetched only on a visit that actually draws. Reduced
     # motion, Save-Data, a device with no WebGL2 and the layer switched off never ask for it, and
     # the walk's own bundle above stands apart at 67 985 B against its own 68 000 B fence.
-    "pass-layer.js": (27_000, "the drawing layer's own file, fetched only when a walk asks for it: the host's frame half, the driver graph, the camera, the interruption cadence, the return to the hang, and three instruments with their shaders — the woven one, the matter one and the meshing one", strip_js_comments),
+    # 2026-08-14, midday — MOVED DOWN FROM 27 000 B TO 24 000 B, MEASURED AT 21 528 B, with 2 472 B
+    # under it. THE REPAIR THE NOTE ABOVE KEPT NAMING HAS LANDED, and this fence stops tracking the
+    # effect farm. The three instruments left this file for pass-pack.js, which the host fetches by
+    # address and loads once its bytes weigh to the digest the build stamped into the host. What
+    # stands here is the host alone, and the fence moves DOWN to match, which is what keeps it
+    # biting: an instrument landing in the pack no longer moves this number at all, and it is the
+    # pack's own fence below that answers for the picture's weight.
+    "pass-layer.js": (24_000, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera, the interruption cadence, the return to the hang and the pack loader — no instrument and no effect name", strip_js_comments),
+    # 2026-08-14, midday — A FENCE FROM DAY ONE, at 8 700 B against a measurement of 7 894 B, about
+    # a tenth under it, by the same rule §12 states for the renderer's own file.
+    #
+    # WHAT IT MEASURES AND WHY THE NUMBER MATTERS. This is the picture itself — three instruments,
+    # each with its shader, its response curve, its field constants and its manifest of handles and
+    # name-bound uniforms. It is fetched only after the host has been fetched, so it reaches only a
+    # visit that actually draws: reduced motion, Save-Data, a device with no WebGL2 and the layer
+    # switched off never ask for either file.
+    #
+    # THIS NUMBER IS EXPECTED TO GROW, and that is the point of separating it. 25 lab modules stand
+    # on disk and the pack is where they land, so the growth that used to push the host's fence
+    # every few hours now pushes this one, where a move can be read as what it is: more picture. A
+    # move here answers one question — is the added picture worth its bytes to a phone — and it no
+    # longer drags the host's own budget with it.
+    "pass-pack.js": (8_700, "the effect pack: three instruments with their shaders, response curves and manifests — the woven one, the matter one and the meshing one; fetched by the host, after the host, on a visit that draws", strip_js_comments),
 }
 
 results = []

@@ -73,6 +73,11 @@
   });
 
   function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. Since 2026-08-14 the
+    // instruments live in pass-pack.js, which the host fetches by address and loads once its bytes
+    // weigh to the digest the build stamped; the host joins only when that question is settled.
+    // So the bench is waited for rather than assumed, which is what a real visitor's walk does too.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
     var moduleStage = document.getElementById("moduleStage");
     var bench = window.__exPass.bench;
     if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }

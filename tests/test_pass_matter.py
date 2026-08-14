@@ -156,7 +156,11 @@ build_site.build(SITE_URL)
 LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 # The instrument's own region of the BUILT file — the real artifact, comments stripped as it ships —
 # which is what the ownership fence and every other string row below are read against.
-REGION = LAYER.split("function matterInstrument()")[1].split("register(matterInstrument())")[0]
+# Since 2026-08-14 the instruments ship in their OWN built file, which the host fetches by address,
+# version and digest. A row about the HOST reads LAYER; a row about this instrument's own mathematics
+# reads its region of PACK.
+PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
+REGION = PACK.split("function matterInstrument()")[1].split("function gearsInstrument()")[0]
 
 # ---------------------------------------------------------------- string rows
 
@@ -323,6 +327,9 @@ def bench_dir():
     the two roads of one frame side by side."""
     d = Path(tempfile.mkdtemp(prefix="synth_matterbench_"))
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
+    # The host fetches its pack by address and weighs its bytes, so the bench root serves the
+    # built pack beside the built host: the same two files a visitor gets, unaltered.
+    shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
     shutil.copy2(MODULE, d / "matter.js")
     (d / "photos").mkdir()
     for p in PHOTOS:
