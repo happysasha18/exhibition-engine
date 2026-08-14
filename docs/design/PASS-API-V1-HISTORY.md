@@ -10,6 +10,53 @@ word that superseded it.
 
 ---
 
+## 2026-08-14 13:26 — the effect pack landed
+
+Root: the split named in §12 as the delivery answer was built at `b212ef3`. Every figure below was
+measured in this worktree before it was written.
+
+### From §12, the delivery answer stated as a forecast
+
+> **The delivery answer this section exists to give.** His word of 2026-08-14 08:39 names the shape
+> that ends it: the engine knows no TLV effect name and loads a version-pinned opaque effect pack,
+> and tlvphotos owns that pack and its manifests. […] The split is queued behind the first composed
+> passage playing, and §11 carries it as a row with an owner.
+
+Replaced because the split landed. §12 now describes what stands: the boundary, the equivalence
+proof at mean 0.000000 and worst channel 0 of 255, and the four fences with both host fences moved
+down. The ownership half is carried separately, since the engine still bakes the pack.
+
+### From §12, the renderer file's figures and the red fence
+
+> **Where the renderer's file stood at `83ddc82`, measured 2026-08-14.** Raw, 92 669 B against a
+> 102 000 B fence […] Gzipped, 24 270 B against a 27 000 B fence […]
+
+> **The gzipped fence is red as this is written.** A run of `tests/test_budget.py` at 2026-08-14
+> 11:12 reports the file at 28 137 B against the 27 000 B fence, 1 137 B over […]
+
+Both replaced. The red is resolved by the split rather than by a fence move: the host now measures
+78 237 B raw against 86 000 and 21 669 B gzipped against 24 000, both fences moved DOWN, and the
+instruments that caused the overflow ship in the pack under its own fences of 38 000 B raw and
+8 700 B gzipped.
+
+### From §4.4, where the levels gate lives
+
+> The gate that judges a
+> plan already carries the law with hundreds of rows beside it, and that is where the law is enforced.
+
+Replaced because it was written from a brief that placed the gate in the engine with a row count
+beside it. The gate is `lab/sceneplan-build-check.py`, in the tlvphotos tree on the branch
+`immersive-alpha-sceneplan`, verified present there and absent from that tree's main branch. The row
+count came with the same mistake and is not repeated.
+
+### One figure that did not match, and the measured one was written
+
+The pack landing was reported with the host at 21 528 B gzipped and 2 472 B of headroom. A run of
+`tests/test_budget.py` in this worktree reports 21 669 B and 2 331 B — 141 B apart. The other four
+figures matched exactly. The measured value is what §12 carries.
+
+---
+
 ## 2026-08-14 12:40 — five decisions from the first composed passages
 
 Root: five decisions taken by the coordinating seat after the first plans were composed and the host
