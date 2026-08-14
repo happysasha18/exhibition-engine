@@ -2000,41 +2000,6 @@
   // supply. It is the ratio of the two numbers the host already binds as `resolution`, so it is
   // computed from those inside the shader and every use of it reads the same number as before.
   function matterInstrument() {
-  // THE MESHING INSTRUMENT (§8) — lab/effects/gears.js carried across
-  // ================================================================================================
-  // TWO WHEELS, MESHING. Their centres stand off the frame on either side, so what the eye sees is
-  // the line where the two rims meet — a row of interlocking teeth running down the picture — and the
-  // crossing is that line rolling across the frame, one work riding each wheel.
-  //
-  // What came over: the shader, the seating of a work in the frame (coverFit), the response curve
-  // (the measured inverse FEEL_Q), the ladder of small whole ratios, and the numbers of one frame
-  // (values). What stayed behind: its own canvas, its own WebGL 1 context, its own frame loop, its
-  // resize listener and its own clock. The instrument here reads no wall clock, holds no listener,
-  // creates no context and loads no picture (§1.2's fence).
-  //
-  // THE FOUR THINGS THE MODULE'S CARD ASKED A PORT TO PROVE (docs/immersive/effects/gears.md §11),
-  // and where each stands here.
-  //   1. The uniform set is bound BY DECLARED NAME from the manifest below — nineteen names, of
-  //      which only six are shared with the woven instrument. The host reads the manifest; no list
-  //      of names is written into the host.
-  //   2. `preserveDrawingBuffer` is off. The lab module asked for it at gears.js:276 and drew only
-  //      on a parameter change, on a resize and on its own frame loop, so the preserved buffer was
-  //      standing in for the frames it did not draw. THE REDRAW IT STOOD IN FOR IS CARRIED: this
-  //      instrument draws on EVERY frame the host hands it, including a reduced-motion run, where
-  //      the module rendered once and stopped. Reduced motion stops the wheels' drive and never the
-  //      drawing.
-  //   3. The `ratio` handle steps through the module's own ladder of small whole pairs and is never
-  //      interpolated. A tooth count is a whole number by the time it reaches the shader, so a tooth
-  //      of one wheel always meets a gap of the other and the mesh closes on itself.
-  //   4. The shader carries no version header of its own, so the host's translator stamps exactly
-  //      one. A row counts them.
-  //
-  // ONE LINE OF THE SHADER IS NOT THE MODULE'S. The lab module hands the frame's aspect in as its
-  // own uniform, computed from the drawing buffer it owns. The host owns the buffer here and already
-  // binds its size as `uRes`, so the aspect is derived from `uRes` inside the shader. The mathematics
-  // then reads the buffer the host actually drew into, whatever the resolution ladder has done to it.
-  // Every other line of the shader is the module's own, character for character.
-  function gearsInstrument() {
     var VERT = [
       "attribute vec2 aPos;",
       "varying vec2 vUv;",
@@ -2106,6 +2071,240 @@
       "  vec3 colB = texture2D(uB, into(uv + pullB, uFitB)).rgb;",
       "  vec3 col = mix(colB, colA, cov);",
       "  col *= 1.0 - 0.32 * uGuard * cov * exp(-max(d, 0.0) / 7.0);",
+      "  gl_FragColor = vec4(col, 1.0);",
+      "}",
+    ].join("\n");
+
+    function smoothstep(a, b, x) {
+      var t = (x - a) / (b - a);
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      return t * t * (3 - 2 * t);
+    }
+    function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+    // HOW COARSE THE MATERIAL IS, in cells across the frame's height, at either end of the `grain`
+    // handle (matter.js:191). The fine grain rides at three times the coarse one, which is what
+    // gives the front its crumb.
+    var GRAIN_MIN = 4, GRAIN_MAX = 34, GRAIN_FINE = 3.0;
+    // How far the picture is dragged at the fullest loosening, in frame heights, and the crop that
+    // pays for it (matter.js:195-196). ZOOM is derived from AMP and is no free number.
+    var AMP = 0.07, ZOOM = 1 + 2 * AMP + 0.03;
+    // Six parts plain ladder against four parts grain (matter.js:205). At four parts ladder the
+    // field has no direction, the loosened band is the whole frame, and the picture reads as marble.
+    var LADDER = 0.6;
+
+    // cover-fit a work into the frame, then pull in by the drag's own headroom. The host hands the
+    // source's own dimensions, so the instrument never touches an image object.
+    function fit(iw, ih, w, h) {
+      var fa = w / Math.max(h, 1);
+      var ia = iw / Math.max(ih, 1);
+      var sx, sy;
+      if (ia > fa) { sx = fa / ia; sy = 1; } else { sx = 1; sy = ia / fa; }
+      return [sx / ZOOM, sy / ZOOM, 0, 0];
+    }
+
+    // THE RESPONSE CURVE, MEASURED (matter.js:267-307, the module's re-fit of 2026-08-13): equal
+    // movements of the hand, equal felt change. The rate of change of the picture per unit of the
+    // raw threshold was measured with the curve taken out, that rate integrated, and this is the
+    // inverse of the integral at twenty-one evenly spaced shares with straight lines between them.
+    // The two-piece logarithm the module carried before it cannot hold this handle: the field's own
+    // values crowd the middle and thin to nothing at both ends, so the curve stands nearly vertical
+    // at both ends and nearly flat across the middle. Carried here digit for digit; the port
+    // re-derives nothing.
+    var FEEL_D0 = 0.05;
+    var FEEL_Q = [0, 0.1994, 0.2488, 0.2852, 0.3168, 0.3454, 0.372, 0.3972, 0.4215, 0.4454,
+                  0.469, 0.4925, 0.5162, 0.5405, 0.5657, 0.5923, 0.621, 0.653, 0.6902,
+                  0.7388, 1];
+    function feelOf(u) {
+      var x = clamp((u - FEEL_D0) / (1 - 2 * FEEL_D0), 0, 1);
+      var s = x * (FEEL_Q.length - 1), i = Math.min(FEEL_Q.length - 2, Math.floor(s));
+      return FEEL_Q[i] + (FEEL_Q[i + 1] - FEEL_Q[i]) * (s - i);
+    }
+
+    // The numbers of one frame: everything the shader gets beyond the seating of the two works is a
+    // pure function of the pose (matter.js:309-329). The threshold travels a tenth past either end
+    // of the field and no further — past the field's own range every point stands on one side and
+    // the work is whole, which is what makes both doors exact.
+    function values(st) {
+      var d = feelOf(clamp(st.mix, 0, 1));
+      var grainA = GRAIN_MIN + (GRAIN_MAX - GRAIN_MIN) * clamp(st.grain, 0, 1);
+      var reach = 0.5 + 0.10;
+      var drift = (st.reduced ? 0 : st.t) * 0.11 * clamp(st.drift, 0, 1);
+      return {
+        dial: d, grainA: grainA, grainB: grainA * GRAIN_FINE, ladder: LADDER,
+        gather: 0.04 + 0.26 * clamp(st.gather, 0, 1),
+        tau: 0.5 - reach + 2 * reach * d,
+        drift: [drift, drift * 0.6],
+        loosen: st.travel * AMP * clamp(st.loosen, 0, 1) * 4 * d * (1 - d),
+        guard: st.shade * smoothstep(0, 0.09, d) * smoothstep(1, 0.91, d),
+      };
+    }
+
+    var manifest = {
+      id: "matter", api: 1, arity: 2,
+      // The module's own header ties it to the release envelope's disassembly–mystery–reassembly
+      // class: the first work comes apart into the material and the second gathers out of it.
+      roles: ["disassembly", "mystery", "assembly"],
+      // READ OFF THE MODULE'S OWN CONSTRUCTION. The vocabulary table publishes no level for this
+      // module (lab/CROSSING-BRIEF.md carries no `matter` row), so these two are derived and said to
+      // be derived: one field runs over the whole frame at SURFACE, and its grain is the TEXTURE.
+      levels: ["SURFACE", "TEXTURE"],
+      params: { loosen: [0, 1], drift: [0, 1], gather: [0, 1], grain: [0, 1] },
+      // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
+      // hands down; the four below them are the module's declared params; `seed` is its die; and
+      // `shade` and `travel` are the two judge channels the module keeps for measuring a law on the
+      // picture — the frame with the contact shadow against the frame without it, and the same for
+      // the drag. They rest at 1, which is what the module does with them.
+      //
+      // NO HANDLE HERE KEEPS A CLOCK OF ITS OWN. The one place the module reads time is the drift of
+      // the field, `t * 0.11 * drift` (matter.js:321), where `t` was its own accumulated frame time.
+      // It reads the `clock` handle instead, so a seeded score repeats to the pixel.
+      handles: {
+        mix: { min: 0, max: 1, def: 0 },
+        clock: { min: 0, max: 14, def: 0 },
+        loosen: { min: 0, max: 1, def: 0.6 },
+        drift: { min: 0, max: 1, def: 0.45 },
+        gather: { min: 0, max: 1, def: 0.3 },
+        grain: { min: 0, max: 1, def: 0.45 },
+        seed: { min: 0, max: 8, def: 0 },
+        shade: { min: 0, max: 1, def: 1 },
+        travel: { min: 0, max: 1, def: 1 },
+      },
+      // The dial's two ends. At 0 the threshold stands a tenth below the field's whole range, so
+      // every point covers on A; at 1 it stands a tenth above it and every point covers on B. The
+      // drag and the contact shadow are both nothing there, so each door is one work and nothing
+      // else. Neither is published in module-contract.json, which carries no `matter` entry — both
+      // are read off the module's own geometry and the conformance rows measure them.
+      neutrals: { a: 0, b: 1 },
+      doors: { in: { handle: "mix", value: 0, work: "a" },
+               out: { handle: "mix", value: 1, work: "b" } },
+      // Both doors frame alike: the crop the drag's headroom is paid for with is a constant, while
+      // the drag itself dies at both ends.
+      framings: { "0": { coverCrop: ZOOM }, "1": { coverCrop: ZOOM } },
+      drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
+                "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
+                "ramp", "slew", "oscillate", "node"],
+      camera: { needs: "none", authority: "stage" },
+      gl: { preserveDrawingBuffer: false },
+      neutralPose: { mix: 0, loosen: 0.6, drift: 0.45, gather: 0.3, grain: 0.45,
+                     seed: 0, shade: 1, travel: 1, t: 0, reduced: false },
+      passes: [{
+        program: "matter", vert: VERT, frag: FRAG, position: "aPos",
+        uniforms: [
+          { name: "uA", type: "sampler2D", source: "textureA" },
+          { name: "uB", type: "sampler2D", source: "textureB" },
+          { name: "uFitA", type: "vec4", source: "fitA" },
+          { name: "uFitB", type: "vec4", source: "fitB" },
+          { name: "uRes", type: "vec2", source: "resolution" },
+          { name: "uGrainA", type: "float", source: "frame:grainA" },
+          { name: "uGrainB", type: "float", source: "frame:grainB" },
+          { name: "uDrift", type: "vec2", source: "frame:drift" },
+          { name: "uLadder", type: "float", source: "frame:ladder" },
+          { name: "uTau", type: "float", source: "frame:tau" },
+          { name: "uLoosen", type: "float", source: "frame:loosen" },
+          { name: "uGather", type: "float", source: "frame:gather" },
+          { name: "uGuard", type: "float", source: "frame:guard" },
+          { name: "uSeed", type: "float", source: "handle:seed" },
+        ],
+      }],
+      // The instrument allocates nothing of its own: it spends the two source-texture slots the host
+      // already holds and the one programme the host builds from this manifest.
+      resources: { lean: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
+                           passes: 1, bytesEstimate: 0, variant: "lean" },
+                   standard: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
+                               passes: 1, bytesEstimate: 0, variant: "standard" },
+                   rich: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
+                           passes: 1, bytesEstimate: 0, variant: "rich" } },
+      capabilities: ["webgl2"],
+      decline: ["one work only", "a source that never decoded"],
+      provenance: { labPath: "lab/effects/matter.js", commit: "e0f1b91" },
+      readiness: "production-ready",
+    };
+
+    var live = false;
+    return {
+      name: "matter",
+      manifest: manifest,
+      values: values,
+      fit: fit,
+      feel: feelOf,
+      prepare: function (o) {
+        if (!o.sources) return { take: false, why: "the matter instrument needs both works" };
+        if (!o.cue) return { take: false, why: "no cue names it" };
+        return { take: true };
+      },
+      start: function () { live = true; },
+      // The pose the shader draws. Every number in it comes from a handle a score can drive, and the
+      // field's drift reads the second the host hands down, so a seeded run repeats to the pixel.
+      frame: function (st) {
+        if (!live) return;
+        var h = st.handles;
+        st.draw({
+          mix: h.mix, loosen: h.loosen, drift: h.drift, gather: h.gather, grain: h.grain,
+          shade: h.shade, travel: h.travel, seed: h.seed, t: h.clock, reduced: st.reduced,
+        });
+        if (st.progress >= 1 && !st.pinned) st.settle(st.token);
+      },
+      resize: function () {},
+      cancel: function () {},
+      dispose: function () { live = false; },
+      contextLost: function () { live = false; },
+      contextRestored: function () {},
+    };
+  }
+
+  register(matterInstrument());
+
+  // ================================================================================================
+  // THE MESHING INSTRUMENT (§8) — lab/effects/gears.js carried across
+  // ================================================================================================
+  // TWO WHEELS, MESHING. Their centres stand off the frame on either side, so what the eye sees is
+  // the line where the two rims meet — a row of interlocking teeth running down the picture — and the
+  // crossing is that line rolling across the frame, one work riding each wheel.
+  //
+  // What came over: the shader, the seating of a work in the frame (coverFit), the response curve
+  // (the measured inverse FEEL_Q), the ladder of small whole ratios, and the numbers of one frame
+  // (values). What stayed behind: its own canvas, its own WebGL 1 context, its own frame loop, its
+  // resize listener and its own clock. The instrument here reads no wall clock, holds no listener,
+  // creates no context and loads no picture (§1.2's fence).
+  //
+  // THE FOUR THINGS THE MODULE'S CARD ASKED A PORT TO PROVE (docs/immersive/effects/gears.md §11),
+  // and where each stands here.
+  //   1. The uniform set is bound BY DECLARED NAME from the manifest below — nineteen names, of
+  //      which only six are shared with the woven instrument. The host reads the manifest; no list
+  //      of names is written into the host.
+  //   2. `preserveDrawingBuffer` is off. The lab module asked for it at gears.js:276 and drew only
+  //      on a parameter change, on a resize and on its own frame loop, so the preserved buffer was
+  //      standing in for the frames it did not draw. THE REDRAW IT STOOD IN FOR IS CARRIED: this
+  //      instrument draws on EVERY frame the host hands it, including a reduced-motion run, where
+  //      the module rendered once and stopped. Reduced motion stops the wheels' drive and never the
+  //      drawing.
+  //   3. The `ratio` handle steps through the module's own ladder of small whole pairs and is never
+  //      interpolated. A tooth count is a whole number by the time it reaches the shader, so a tooth
+  //      of one wheel always meets a gap of the other and the mesh closes on itself.
+  //   4. The shader carries no version header of its own, so the host's translator stamps exactly
+  //      one. A row counts them.
+  //
+  // ONE LINE OF THE SHADER IS NOT THE MODULE'S. The lab module hands the frame's aspect in as its
+  // own uniform, computed from the drawing buffer it owns. The host owns the buffer here and already
+  // binds its size as `uRes`, so the aspect is derived from `uRes` inside the shader. The mathematics
+  // then reads the buffer the host actually drew into, whatever the resolution ladder has done to it.
+  // Every other line of the shader is the module's own, character for character.
+  function gearsInstrument() {
+    var VERT = [
+      "attribute vec2 aPos;",
+      "varying vec2 vUv;",
+      "void main(){ vUv = vec2(aPos.x * 0.5 + 0.5, 0.5 - aPos.y * 0.5); gl_Position = vec4(aPos, 0.0, 1.0); }",
+    ].join("\n");
+
+    var FRAG = [
+      "precision highp float;",
+      "varying vec2 vUv;",
+      "uniform sampler2D uA;",
+      "uniform sampler2D uB;",
+      "uniform vec4 uFitA;",
+      "uniform vec4 uFitB;",
+      "uniform vec2 uRes;",
       "uniform vec2 uCA;",            // the first wheel's centre, frame half-heights
       "uniform vec2 uCB;",            // the second wheel's
       "uniform float uR1;",           // their pitch radii
@@ -2195,20 +2394,6 @@
       t = t < 0 ? 0 : t > 1 ? 1 : t;
       return t * t * (3 - 2 * t);
     }
-    function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
-
-    // HOW COARSE THE MATERIAL IS, in cells across the frame's height, at either end of the `grain`
-    // handle (matter.js:191). The fine grain rides at three times the coarse one, which is what
-    // gives the front its crumb.
-    var GRAIN_MIN = 4, GRAIN_MAX = 34, GRAIN_FINE = 3.0;
-    // How far the picture is dragged at the fullest loosening, in frame heights, and the crop that
-    // pays for it (matter.js:195-196). ZOOM is derived from AMP and is no free number.
-    var AMP = 0.07, ZOOM = 1 + 2 * AMP + 0.03;
-    // Six parts plain ladder against four parts grain (matter.js:205). At four parts ladder the
-    // field has no direction, the loosened band is the whole frame, and the picture reads as marble.
-    var LADDER = 0.6;
-
-    // cover-fit a work into the frame, then pull in by the drag's own headroom. The host hands the
 
     // THE SMALL WHOLE RATIOS the handle walks. A gear pair is only a gear pair when the two counts
     // stand in a ratio of small whole numbers — that is what makes the mesh close on itself — so the
@@ -2252,40 +2437,6 @@
       return [sx / ZOOM, sy / ZOOM, 0, 0];
     }
 
-    // THE RESPONSE CURVE, MEASURED (matter.js:267-307, the module's re-fit of 2026-08-13): equal
-    // movements of the hand, equal felt change. The rate of change of the picture per unit of the
-    // raw threshold was measured with the curve taken out, that rate integrated, and this is the
-    // inverse of the integral at twenty-one evenly spaced shares with straight lines between them.
-    // The two-piece logarithm the module carried before it cannot hold this handle: the field's own
-    // values crowd the middle and thin to nothing at both ends, so the curve stands nearly vertical
-    // at both ends and nearly flat across the middle. Carried here digit for digit; the port
-    // re-derives nothing.
-    var FEEL_D0 = 0.05;
-    var FEEL_Q = [0, 0.1994, 0.2488, 0.2852, 0.3168, 0.3454, 0.372, 0.3972, 0.4215, 0.4454,
-                  0.469, 0.4925, 0.5162, 0.5405, 0.5657, 0.5923, 0.621, 0.653, 0.6902,
-                  0.7388, 1];
-    function feelOf(u) {
-      var x = clamp((u - FEEL_D0) / (1 - 2 * FEEL_D0), 0, 1);
-      var s = x * (FEEL_Q.length - 1), i = Math.min(FEEL_Q.length - 2, Math.floor(s));
-      return FEEL_Q[i] + (FEEL_Q[i + 1] - FEEL_Q[i]) * (s - i);
-    }
-
-    // The numbers of one frame: everything the shader gets beyond the seating of the two works is a
-    // pure function of the pose (matter.js:309-329). The threshold travels a tenth past either end
-    // of the field and no further — past the field's own range every point stands on one side and
-    // the work is whole, which is what makes both doors exact.
-    function values(st) {
-      var d = feelOf(clamp(st.mix, 0, 1));
-      var grainA = GRAIN_MIN + (GRAIN_MAX - GRAIN_MIN) * clamp(st.grain, 0, 1);
-      var reach = 0.5 + 0.10;
-      var drift = (st.reduced ? 0 : st.t) * 0.11 * clamp(st.drift, 0, 1);
-      return {
-        dial: d, grainA: grainA, grainB: grainA * GRAIN_FINE, ladder: LADDER,
-        gather: 0.04 + 0.26 * clamp(st.gather, 0, 1),
-        tau: 0.5 - reach + 2 * reach * d,
-        drift: [drift, drift * 0.6],
-        loosen: st.travel * AMP * clamp(st.loosen, 0, 1) * 4 * d * (1 - d),
-        guard: st.shade * smoothstep(0, 0.09, d) * smoothstep(1, 0.91, d),
     function ratioAt(v) { return RATIOS[Math.round(clamp(v, 0, 1) * (RATIOS.length - 1))]; }
 
     // ---- WHERE THE RIMS MEET AT A DOOR, SOLVED RATHER THAN APPROXIMATED ---------------------------
@@ -2429,31 +2580,6 @@
     }
 
     var manifest = {
-      id: "matter", api: 1, arity: 2,
-      // The module's own header ties it to the release envelope's disassembly–mystery–reassembly
-      // class: the first work comes apart into the material and the second gathers out of it.
-      roles: ["disassembly", "mystery", "assembly"],
-      // READ OFF THE MODULE'S OWN CONSTRUCTION. The vocabulary table publishes no level for this
-      // module (lab/CROSSING-BRIEF.md carries no `matter` row), so these two are derived and said to
-      // be derived: one field runs over the whole frame at SURFACE, and its grain is the TEXTURE.
-      levels: ["SURFACE", "TEXTURE"],
-      params: { loosen: [0, 1], drift: [0, 1], gather: [0, 1], grain: [0, 1] },
-      // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
-      // hands down; the four below them are the module's declared params; `seed` is its die; and
-      // `shade` and `travel` are the two judge channels the module keeps for measuring a law on the
-      // picture — the frame with the contact shadow against the frame without it, and the same for
-      // the drag. They rest at 1, which is what the module does with them.
-      //
-      // NO HANDLE HERE KEEPS A CLOCK OF ITS OWN. The one place the module reads time is the drift of
-      // the field, `t * 0.11 * drift` (matter.js:321), where `t` was its own accumulated frame time.
-      // It reads the `clock` handle instead, so a seeded score repeats to the pixel.
-      handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
-        loosen: { min: 0, max: 1, def: 0.6 },
-        drift: { min: 0, max: 1, def: 0.45 },
-        gather: { min: 0, max: 1, def: 0.3 },
-        grain: { min: 0, max: 1, def: 0.45 },
       id: "gears", api: 1, arity: 2,
       roles: ["disassembly", "mystery", "assembly"],
       levels: ["SURFACE", "CELL"],
@@ -2498,16 +2624,6 @@
         shade: { min: 0, max: 1, def: 1 },
         travel: { min: 0, max: 1, def: 1 },
       },
-      // The dial's two ends. At 0 the threshold stands a tenth below the field's whole range, so
-      // every point covers on A; at 1 it stands a tenth above it and every point covers on B. The
-      // drag and the contact shadow are both nothing there, so each door is one work and nothing
-      // else. Neither is published in module-contract.json, which carries no `matter` entry — both
-      // are read off the module's own geometry and the conformance rows measure them.
-      neutrals: { a: 0, b: 1 },
-      doors: { in: { handle: "mix", value: 0, work: "a" },
-               out: { handle: "mix", value: 1, work: "b" } },
-      // Both doors frame alike: the crop the drag's headroom is paid for with is a constant, while
-      // the drag itself dies at both ends.
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
                out: { handle: "mix", value: 1, work: "b" } },
@@ -2517,12 +2633,6 @@
       drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
                 "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
                 "ramp", "slew", "oscillate", "node"],
-      camera: { needs: "none", authority: "stage" },
-      gl: { preserveDrawingBuffer: false },
-      neutralPose: { mix: 0, loosen: 0.6, drift: 0.45, gather: 0.3, grain: 0.45,
-                     seed: 0, shade: 1, travel: 1, t: 0, reduced: false },
-      passes: [{
-        program: "matter", vert: VERT, frag: FRAG, position: "aPos",
       // The construction moves no point of view: it decides which wheel owns each point of the frame
       // and slides the two works along their own rims inside it. Both are what it does to its own
       // surface, so the witness camera stays the stage's (§6).
@@ -2539,13 +2649,6 @@
           { name: "uFitA", type: "vec4", source: "fitA" },
           { name: "uFitB", type: "vec4", source: "fitB" },
           { name: "uRes", type: "vec2", source: "resolution" },
-          { name: "uGrainA", type: "float", source: "frame:grainA" },
-          { name: "uGrainB", type: "float", source: "frame:grainB" },
-          { name: "uDrift", type: "vec2", source: "frame:drift" },
-          { name: "uLadder", type: "float", source: "frame:ladder" },
-          { name: "uTau", type: "float", source: "frame:tau" },
-          { name: "uLoosen", type: "float", source: "frame:loosen" },
-          { name: "uGather", type: "float", source: "frame:gather" },
           { name: "uCA", type: "vec2", source: "frame:cA" },
           { name: "uCB", type: "vec2", source: "frame:cB" },
           { name: "uR1", type: "float", source: "frame:R1" },
@@ -2571,34 +2674,23 @@
                            passes: 1, bytesEstimate: 0, variant: "rich" } },
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
-      provenance: { labPath: "lab/effects/matter.js", commit: "e0f1b91" },
       provenance: { labPath: "lab/effects/gears.js", commit: "e0f1b91" },
       readiness: "production-ready",
     };
 
     var live = false;
     return {
-      name: "matter",
       name: "gears",
       manifest: manifest,
       values: values,
       fit: fit,
       feel: feelOf,
       prepare: function (o) {
-        if (!o.sources) return { take: false, why: "the matter instrument needs both works" };
         if (!o.sources) return { take: false, why: "the meshing instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };
         return { take: true };
       },
       start: function () { live = true; },
-      // The pose the shader draws. Every number in it comes from a handle a score can drive, and the
-      // field's drift reads the second the host hands down, so a seeded run repeats to the pixel.
-      frame: function (st) {
-        if (!live) return;
-        var h = st.handles;
-        st.draw({
-          mix: h.mix, loosen: h.loosen, drift: h.drift, gather: h.gather, grain: h.grain,
-          shade: h.shade, travel: h.travel, seed: h.seed, t: h.clock, reduced: st.reduced,
       // The pose the shader draws. Every number in it comes from a handle a score can drive.
       //
       // THE REDRAW THE PRESERVED BUFFER STOOD IN FOR. The lab module drew on a parameter change, on
@@ -2627,7 +2719,6 @@
     };
   }
 
-  register(matterInstrument());
   register(gearsInstrument());
 
   // ---- the test instrument (§9/brief): reachable only when diagnostics are on -------------------

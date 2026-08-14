@@ -149,11 +149,27 @@ check("PASS-API no eval, no new Function anywhere the host reads a command",
 #            gzipped file, and that fence stands at 21 000 B with this file measured at 19 712 B,
 #            1 288 B under it (tests/test_budget.py, which carries its own breakdown). The walk's own
 #            bundle is untouched at 67 279 B: this file is fetched only on a visit that draws.
-LAYER_FENCE = 80000
-check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 70 000)",
+#            2026-08-14, 10:05 — MOVED FROM 80 000 B TO 102 000 B, MEASURED AT 92 669 B AFTER THE
+#            MERGE, with 9 331 B under it, about a tenth. One move carrying two arrivals, sized on
+#            the merged tree rather than estimated from either branch alone:
+#              · the third instrument, the meshing one of §8 from lab/effects/gears.js, which carries
+#                a radial field from an angular reading to a ring reading;
+#              · the return to the hang of §2.6 — the two exact door geometries, the anchor laying
+#                the first drawn frame onto the departing work's real box, the carry that reseats the
+#                picture without moving it, and the rest read against the arriving hang pose.
+#            THE HEADROOM IS AGAIN SMALLER THAN ONE INSTRUMENT COSTS, and the repair is named rather
+#            than deferred silently: his word of 2026-08-14 08:39 has the engine load a version-
+#            pinned opaque effect pack owned by tlvphotos, under which this file holds the host alone
+#            and this fence stops tracking the effect farm. Queued behind the first composed passage.
+#            THIS FENCE IS A PROXY, AND THE COST IT PROXIES IS MEASURED BESIDE IT. What travels to a
+#            phone is the gzipped file, at 24 270 B under a 27 000 B fence (tests/test_budget.py,
+#            which carries its own breakdown). The walk's own bundle stands apart at 67 985 B: this
+#            file is fetched only on a visit that draws.
+LAYER_FENCE = 102000
+check(f"PASS-API the renderer file's fence moves, measured not guessed (now {LAYER_FENCE} B, was 80 000)",
       len(LAYER_BUILT.encode("utf-8")) < LAYER_FENCE,
-      f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the driver graph, the camera "
-      f"and the interruption cadence no longer fit the frame-half fence")
+      f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the host, the driver graph, "
+      f"the camera, the interruption cadence, the return to the hang and three instruments")
 
 # ---------------------------------------------------------------- browser rows
 

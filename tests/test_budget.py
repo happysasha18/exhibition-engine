@@ -102,7 +102,28 @@ FENCES = {
     # and its manifest of nine handles and fourteen name-bound uniforms. In stripped source bytes
     # the whole addition is 1 538 B gzipped, and 1 288 B of the fence remain under it. The number
     # did not move; only this reason did, so the file's own record names both instruments it holds.
-    "pass-layer.js": (21_000, "the drawing layer's own file, fetched only when a walk asks for it: the host's frame half, the driver graph, the camera, the interruption cadence, and two instruments with their shaders — the woven one and the matter one", strip_js_comments),
+    # 2026-08-14, 10:05 — MOVED FROM 21 000 B TO 27 000 B, MEASURED AT 24 270 B, with 2 730 B under
+    # it. Two things arrived at once and this is the single move that carries both, sized after the
+    # merge rather than estimated before it.
+    #   · THE THIRD INSTRUMENT, the meshing one of §8, carried over from lab/effects/gears.js: its
+    #     shader, its seating of a work in the frame, its measured response curve, its ladder of
+    #     small whole ratios, and a manifest of fifteen handles and nineteen name-bound uniforms. It
+    #     is the instrument that carries a radial field from an angular reading to a ring reading,
+    #     which is the travel the demonstration pair asks for.
+    #   · THE RETURN TO THE HANG of §2.6, the frame half of it: the two exact door geometries, the
+    #     anchor that lays the renderer's first frame onto the departing work's real box, the carry
+    #     that reseats the picture without moving it, and the rest read against the arriving hang
+    #     pose instead of the neutral one.
+    # THE REASON THIS NUMBER WILL KEEP MOVING, AND THE REPAIR THAT STOPS IT. Each instrument that
+    # lands adds its own shader and manifest to this one file, and 25 lab modules stand on disk. His
+    # word of 2026-08-14 08:39 already states the shape that ends it: the engine knows no TLV effect
+    # name and loads a version-pinned opaque effect pack, and tlvphotos owns that pack and its
+    # manifests. Under that shape this file holds the host alone and its fence stops tracking the
+    # effect farm. The split is queued behind the first composed passage.
+    # WHAT THIS FILE COSTS A VISITOR: it is fetched only on a visit that actually draws. Reduced
+    # motion, Save-Data, a device with no WebGL2 and the layer switched off never ask for it, and
+    # the walk's own bundle above stands apart at 67 985 B against its own 68 000 B fence.
+    "pass-layer.js": (27_000, "the drawing layer's own file, fetched only when a walk asks for it: the host's frame half, the driver graph, the camera, the interruption cadence, the return to the hang, and three instruments with their shaders — the woven one, the matter one and the meshing one", strip_js_comments),
 }
 
 results = []
