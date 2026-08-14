@@ -838,6 +838,163 @@
     return worst;
   }
 
+  // ================================================================================================
+  // THE TWO GEOMETRIES PER DOOR (§6) — the whole frame, and the box the work hangs in
+  // ================================================================================================
+  // The immersive geometry is the fullscreen scene, which is the neutral pose. The HANG geometry is
+  // the work's real box in the exhibition layout at that instant, measured off the DOM by the
+  // product and handed down through the offer's own hooks — the renderer holds no reference to the
+  // adapter, only the one function it was given.
+  //
+  // THE POSE THAT LAYS ONE ONTO THE OTHER IS A PLAIN PAN AND A DOLLY, and that is a fact about the
+  // two roads rather than a convenience. The walk seats a work inside its box without cropping it,
+  // so the box carries the work's own aspect; the instrument cover-fits the work into the frame and
+  // then pulls in by its own framing headroom, so the work's WHOLE extent inside the frame carries
+  // that same aspect. Two rectangles of one shape are carried onto each other by one scale, and the
+  // pose record of §6 needs no new place to say it.
+  //
+  // The extent is read from the instrument's OWN fit rather than recomputed here. `fit` answers the
+  // share of the source the frame shows, so the whole work spans 1/share frames. Asking the
+  // instrument keeps the two seatings identical by construction, framing headroom and all.
+  function hangPoseOf(geom, inst, iw, ih) {
+    if (!geom || !geom.w || !geom.h || cssW <= 0 || cssH <= 0) return null;
+    var f;
+    try { f = inst.fit(iw, ih, W, H); } catch (e) { return null; }
+    if (!f) return null;
+    var shareX = Math.abs(f[0]), shareY = Math.abs(f[1]);
+    if (!shareX || !shareY) return null;
+    var ew = cssW / shareX, eh = cssH / shareY;     // the work's whole extent, in frame points
+    var k = geom.w / ew;
+    if (!isFinite(k) || k <= 0) return null;
+    return {
+      panX: (geom.x + geom.w / 2 - cssW / 2) / cssW,
+      panY: (geom.y + geom.h / 2 - cssH / 2) / cssH,
+      logScale: Math.log(k), pitch: 0, yaw: 0, roll: 0, fov: null,
+      // What the two readings of one scale disagree by. Both roads keep the work's aspect, so this
+      // stands at zero; it is written down rather than asserted, because a layout that began to crop
+      // would show up here as a number instead of as a soft edge nobody can name.
+      aspectOff: +Math.abs(geom.h / eh - k).toFixed(9),
+    };
+  }
+
+  // THE FLIGHT'S TWO ENDS ARE THE TWO HANGS. A passage leaves the departing work exactly where it
+  // hangs, rises to the whole frame for the crossing itself, and comes back down onto the arriving
+  // work's own box. The rise and the fall are seconds a score may name; with none named they take a
+  // share of the pass at either end, and the whole middle stands at the neutral pose.
+  var HANG_SHARE = 0.18;
+  function hangEdges(rec) {
+    var cam = (rec.cmd && rec.cmd.score && rec.cmd.score.camera) || {}, h = cam.hang || {};
+    var dur = rec.duration / 1000, half = dur / 2;
+    var rise = Number(h.rise), fall = Number(h.fall);
+    if (!isFinite(rise) || rise < 0) rise = dur * HANG_SHARE;
+    if (!isFinite(fall) || fall < 0) fall = dur * HANG_SHARE;
+    return { rise: Math.min(rise, half), fall: Math.min(fall, half), dur: dur };
+  }
+
+  // The anchor at one second: one monotone spline per place through four points — the departing
+  // hang, the whole frame, the whole frame again, the arriving hang. The two middle points hold the
+  // same value, so the spline's own slopes there are zero and the crossing plays at the whole frame
+  // without drifting through it.
+  function anchorPose(rec, tSec) {
+    var A = rec.hangPoseA, B = rec.hangPoseB;
+    if (!A && !B) return null;
+    var e = rec.hangEdge || hangEdges(rec), N = CAM_NEUTRAL;
+    var at = [0, e.rise, e.dur - e.fall, e.dur];
+    var poses = [A || N, N, N, B || N];
+    var out = {};
+    CAM_KEYS.forEach(function (k) {
+      if (k === "fov") { out[k] = null; return; }
+      var pts = [], i;
+      for (i = 0; i < 4; i++) {
+        pts.push({ at: at[i], value: typeof poses[i][k] === "number" ? poses[i][k] : 0 });
+      }
+      out[k] = splineAt(pts, tSec, pointValue);
+    });
+    return out;
+  }
+
+  // A REFRAME IS CARRIED, NEVER CUT. When the frame changes size or turns, the destination box moves
+  // and the anchor moves with it. The distance between the pose the old geometry read at that
+  // instant and the pose the new one reads is held as a carry and spent down across the rest of the
+  // flight: the picture goes on from where it actually was, and it still arrives on the exact box,
+  // because at the end the carry is zero and the rest reads the hang pose to the last decimal.
+  function carryWeight(rec, tSec) {
+    if (!rec.carry) return 0;
+    var e = rec.hangEdge, span = e ? e.dur - rec.carryFrom : 0;
+    if (!(span > 0)) return 0;
+    var u = (tSec - rec.carryFrom) / span;
+    return u <= 0 ? 1 : u >= 1 ? 0 : 1 - CURVES.smooth(u);
+  }
+
+  // Where the pose actually stands: the anchor the host holds, plus what the score's own track says
+  // on top of it, plus whatever a reframe is still spending down. A transaction with no hang
+  // geometry and no carry hands the track back untouched, which is what every bench row reads.
+  function camCompose(anchor, track, carry, weight) {
+    if (!anchor && !carry) return track;
+    var out = {};
+    CAM_KEYS.forEach(function (k) {
+      if (k === "fov") { out[k] = typeof track[k] === "number" ? track[k] : null; return; }
+      var t = typeof track[k] === "number" ? track[k] : 0;
+      var a = (anchor && typeof anchor[k] === "number") ? anchor[k] : 0;
+      var c = (carry && typeof carry[k] === "number") ? carry[k] : 0;
+      out[k] = a + t + c * weight;
+    });
+    return out;
+  }
+
+  // Both boxes, read now. The product measures; the host only asks and seats.
+  function readHang(rec) {
+    var ask = rec.hooks && rec.hooks.hangGeometry;
+    if (typeof ask !== "function" || !rec.src || !rec.inst) return;
+    var aId = rec.cmd.from && rec.cmd.from.id, bId = rec.cmd.to && rec.cmd.to.id;
+    try { rec.hangA = aId ? ask(aId) : null; } catch (e) { rec.hangA = null; }
+    try { rec.hangB = bId ? ask(bId) : null; } catch (e) { rec.hangB = null; }
+    rec.hangPoseA = hangPoseOf(rec.hangA, rec.inst, rec.src.aw, rec.src.ah);
+    rec.hangPoseB = hangPoseOf(rec.hangB, rec.inst, rec.src.bw, rec.src.bh);
+    if (!rec.hangPoseB && !rec.said.hang) {
+      rec.said.hang = true;
+      logEvt("hang-fallback", rec.cmd.gen,
+             "the arriving work reports no box; the pass rests at the whole frame");
+    }
+  }
+
+  // THE WALK IS RE-HUNG UNDER COVER. Until the walk moves, the arriving work's box sits a viewport
+  // away from where that work actually hangs, because a takeover returns before the walk's own glide
+  // ever runs. The one moment the walk can be placed without the eye seeing it move is the middle of
+  // the passage, where the anchor stands at the whole frame and the canvas covers everything. The
+  // product does the placing; the host then asks for the arriving box again and gets a measured
+  // truth instead of a predicted one, and the descent lands on that.
+  function placeUnderCover(rec, seconds) {
+    if (rec.placed || !rec.hangEdge || typeof rec.hooks.handoff !== "function") return;
+    var e = rec.hangEdge;
+    if (seconds < (e.rise + (e.dur - e.fall)) / 2) return;
+    rec.placed = true;
+    try { rec.hooks.handoff(rec.cmd, true); } catch (err) { return; }
+    rec.lastSeconds = seconds;
+    reseatHang(rec);
+  }
+
+  // Re-read both boxes and hold the difference, so a resize or a turn mid-passage moves the
+  // destination without putting a step into the flight.
+  function reseatHang(rec) {
+    if (!rec || !rec.src) return;
+    var before = anchorPose(rec, rec.lastSeconds);
+    var held = rec.carry, w = carryWeight(rec, rec.lastSeconds);
+    rec.hangEdge = hangEdges(rec);
+    readHang(rec);
+    var after = anchorPose(rec, rec.lastSeconds);
+    if (!before || !after) return;
+    rec.carry = {};
+    CAM_KEYS.forEach(function (k) {
+      if (k === "fov") return;
+      var b = typeof before[k] === "number" ? before[k] : 0;
+      var a = typeof after[k] === "number" ? after[k] : 0;
+      rec.carry[k] = b - a + ((held && typeof held[k] === "number") ? held[k] * w : 0);
+    });
+    rec.carryFrom = rec.lastSeconds;
+    logEvt("reframe-hang", rec.cmd.gen, "the destination box moved; the pose is carried across it");
+  }
+
   // The camera of ONE INSTANT, whoever holds it. A cue that owns the camera reports its pose each
   // frame; the host applies THAT and holds its own flight still. A cue that owns the camera and then
   // stops reporting hands authority back at the pose it last reported — authority never lapses into
@@ -845,11 +1002,17 @@
   function camPoseAt(rec, tSec) {
     var score = rec.cmd.score || {}, durationSec = rec.duration / 1000;
     var owner = camOwnerAt(score, tSec);
-    var stagePose = camStagePose(score, camStageClock(score, tSec), durationSec, function (what, why) {
+    var track = camStagePose(score, camStageClock(score, tSec), durationSec, function (what, why) {
       if (rec.said["cam:" + what]) return;
       rec.said["cam:" + what] = true;
       logEvt("camera-fallback", rec.cmd.gen, what + ": " + why);
     });
+    // The score's own track rides ON the anchor the host holds between the two hangs, so a score
+    // that rests at its neutral leaves both ends exact and a score that flies still departs from
+    // the departing work's own box and arrives on the arriving one's.
+    var anchor = anchorPose(rec, tSec);
+    rec.lastAnchor = anchor;
+    var stagePose = camCompose(anchor, track, rec.carry, carryWeight(rec, tSec));
     var pose = stagePose;
     if (owner !== "stage") pose = rec.ownPose || rec.lastPose || stagePose;
     // THE HANDOFF ITSELF, MEASURED. §6: at a handoff instant the two poses must agree within a
@@ -865,7 +1028,11 @@
         // would be measuring the device instead of the score.
         var edge = camEdge(score, owner === "stage" ? rec.camOwner : owner, owner !== "stage");
         var at = edge === null ? tSec : edge;
-        var there = camStagePose(score, camStageClock(score, at), durationSec, null);
+        // Measured on the pose as APPLIED, anchor and carry included, so the two authorities are
+        // compared on the same footing rather than one of them reading a bare track.
+        var there = camCompose(anchorPose(rec, at),
+                               camStagePose(score, camStageClock(score, at), durationSec, null),
+                               rec.carry, carryWeight(rec, at));
         var off = camOff(there, rec.ownPose || there);
         rec.handoffs.push({ at: +at.toFixed(4), from: rec.camOwner, to: owner,
                             off: +off.toFixed(9), within: off <= CAM_HANDOFF_TOL });
@@ -963,6 +1130,17 @@
     };
   }
 
+  // The two boxes and the flight between them, as the diagnostic surface reads them: what was
+  // measured at either end, the pose each box asks for, the seconds the rise and the fall take, and
+  // whatever a reframe is still spending down.
+  function hangRow(rec) {
+    if (!rec) return null;
+    return { a: rec.hangA || null, b: rec.hangB || null,
+             poseA: rec.hangPoseA || null, poseB: rec.hangPoseB || null,
+             edge: rec.hangEdge || null, carry: rec.carry || null,
+             carryFrom: rec.carryFrom === undefined ? null : rec.carryFrom };
+  }
+
   // Every exit from `running` ends in exactly one dock (§2.4/row 25/row 1) — `finish` is the single
   // place that can make that true, since it is the only place that ever sets `docked`.
   function finish(landState, why) {
@@ -972,22 +1150,35 @@
     clearTimeout(rec.watchdogT);
     clearTimeout(rec.deadlineT);
     if (rec.raf) { cancelAnimationFrame(rec.raf); rec.raf = 0; }
-    // THE CAMERA RESTS ON THE ARRIVING WORK. The distance the last pose stood from the neutral pose
-    // is written down before the transform is cleared, so the row reads the POSE rather than the
-    // picture and stays honest when the picture changes.
-    rec.rest = { off: +camOff(rec.lastPose || CAM_NEUTRAL, CAM_NEUTRAL).toFixed(9),
-                 tol: CAM_REST_TOL, owner: rec.camOwner };
+    // THE CAMERA RESTS ON THE ARRIVING WORK'S OWN BOX. What the last pose is measured against is the
+    // HANG pose of the arriving work — the pose that lays the immersive frame exactly onto the box
+    // the work hangs in. The neutral pose is the special case of that, where the box is the whole
+    // frame, so a transaction with no hang geometry reads exactly as it always did. The row reads
+    // the POSE rather than the picture, and stays honest when the picture changes.
+    var restAt = rec.hangPoseB || CAM_NEUTRAL;
+    rec.rest = { off: +camOff(rec.lastPose || CAM_NEUTRAL, restAt).toFixed(9),
+                 tol: CAM_REST_TOL, owner: rec.camOwner,
+                 on: rec.hangPoseB ? "hang" : "neutral", hang: rec.hangB || null };
     rec.rest.rested = rec.rest.off <= CAM_REST_TOL;
     if (!rec.rest.rested) {
       logEvt("camera-not-rested", rec.cmd.gen,
-             "the last pose stands " + rec.rest.off.toFixed(6) + " from the neutral pose");
+             "the last pose stands " + rec.rest.off.toFixed(6) + " from the " + rec.rest.on + " pose");
     }
     lastRun = { camera: rec.camera || null, rest: rec.rest, handoffs: rec.handoffs,
-                cadence: rec.cadence || null, handles: rec.lastHandles || null };
-    camApply(null, rec.caps);
+                cadence: rec.cadence || null, handles: rec.lastHandles || null,
+                hang: hangRow(rec) };
     logEvt(landState, rec.cmd.gen, why || null);
+    // THE HANDOFF, INSIDE ONE FRAME. The DOM's work is revealed and the canvas released in that
+    // order, inside one task, so no frame draws neither picture. The canvas at rest already carries
+    // the very pixels the DOM carries, so there is nothing to fade between and nothing is faded.
+    // The transform is cleared only once the canvas is gone: clearing it while the canvas still
+    // stood would snap it back to the whole frame for one frame, which is the flash itself.
+    try {
+      if (rec.hooks.handoff) rec.hooks.handoff(rec.cmd);
+      else rec.hooks.curtain(false);
+    } catch (e) {}
     stageShow(false);
-    try { rec.hooks.curtain(false); } catch (e) {}
+    camApply(null, rec.caps);
     try { rec.hooks.dock(rec.cmd); } catch (e) {}
     try { rec.hooks.mark("host-" + landState, rec.cmd, why || null); } catch (e) {}
     try { if (rec.inst && rec.inst.dispose) rec.inst.dispose(); } catch (e) {}
@@ -1218,6 +1409,7 @@
       : (rec.duration > 0 ? Math.min(1, (now - rec.t0) / rec.duration) : 1);
     rec.lastSeconds = seconds;
     rec.lastProgress = progress;
+    placeUnderCover(rec, seconds);
     try {
       if (rec.cadence && !rec.cadence.ended) {
         var walk = cadenceHandles(rec, now);
@@ -1258,7 +1450,11 @@
                 said: {}, driverState: {}, lastHandles: null, lastNow: 0,
                 lastSeconds: 0, lastProgress: 0,
                 caps: camCaps(variant), camOwner: null, camera: null, lastPose: null, ownPose: null,
-                handoffs: [], cadence: null, deadlineT: null, rest: null };
+                handoffs: [], cadence: null, deadlineT: null, rest: null,
+                // the two boxes, the pose each asks for, the flight's own edges, and the carry a
+                // reframe leaves behind — all null until prepare has read them
+                hangA: null, hangB: null, hangPoseA: null, hangPoseB: null, hangEdge: null,
+                lastAnchor: null, carry: null, carryFrom: 0, placed: false };
     cur = rec;
     logEvt("offer", cmd.gen, inst.name + " at " + variant);
     var answered = false;
@@ -1289,15 +1485,37 @@
           return;
         }
         declared = (inst.manifest.resources || {})[variant] || null;
-        stageShow(true);
+        // BOTH BOXES ARE READ BEFORE TAKEOVER (§1.1). The host asks the product for the hang
+        // geometry of A and of B here, while `armed` still sits before the curtain, so the very
+        // first frame it draws can stand on A's own box rather than on the whole frame.
+        rec.hangEdge = hangEdges(rec);
+        readHang(rec);
       }
+      // The curtain goes up BEFORE start, and stays there. `start` can end the whole transaction
+      // inside its own call — an instrument that fails at once does exactly that — and a curtain
+      // raised afterwards would be raised over a transaction that had already landed and lowered it.
       try { hooks.curtain(true); } catch (e) {}
       rec.state = "running";
       rec.t0 = performance.now();
       logEvt("running", cmd.gen, null);
       try { inst.start(cmd.gen); }
       catch (e) { logEvt("start-threw", cmd.gen, String((e && e.message) || e)); fail(cmd.gen, "start threw"); return; }
-      if (inst.manifest) { lastAt = 0; runFrame(rec, performance.now()); }
+      if (inst.manifest && cur === rec && !rec.docked) {
+        lastAt = 0;
+        // THE FIRST FRAME IS DRAWN BEFORE THE CANVAS IS SHOWN. §2.2 asks that the first frame after
+        // start be a complete picture of A at its door, and this sharpens it to A at its HANG box:
+        // showing an unpainted canvas would put one frame of its own clear colour between the walk
+        // and the passage, which is the blank frame the conformance row measures. Painted first, the
+        // canvas appears already carrying A, seated exactly where the DOM hangs it.
+        try { playFrame(rec, 0, 0, 0, null); }
+        catch (e) {
+          logEvt("frame-threw", cmd.gen, String((e && e.message) || e));
+          fail(cmd.gen, "frame threw");
+          return;
+        }
+        stageShow(true);
+        runFrame(rec, performance.now());
+      }
       rec.watchdogT = setTimeout(function () { watchdogFire(rec); }, duration + slack);
     }
 
@@ -1362,10 +1580,14 @@
     cadenceStart(cur, reason || "cancelled", !!immediate);
   }
 
+  // A resize or an orientation change reaches here through the product's own reframe road (§10.3).
+  // The frame is resized, the destination box is re-read, and the pose is carried across the change
+  // instead of stepping — the transaction goes on rather than being replaced.
   function resize(viewport) {
     stageResize();
-    if (cur && cur.state === "running" && cur.inst && cur.inst.resize) {
-      try { cur.inst.resize(viewport); } catch (e) {}
+    if (cur && cur.state === "running") {
+      reseatHang(cur);
+      if (cur.inst && cur.inst.resize) { try { cur.inst.resize(viewport); } catch (e) {} }
     }
   }
   function contextLost() {
@@ -1417,6 +1639,9 @@
       camera: cur ? cur.camera : (lastRun ? lastRun.camera : null),
       camCaps: cur ? cur.caps : null,
       rest: cur ? cur.rest : (lastRun ? lastRun.rest : null),
+      // the two geometries of §6 as they were actually measured, so a row reads the boxes the pass
+      // departed from and arrived on rather than the ones it was meant to
+      hang: cur ? hangRow(cur) : (lastRun ? lastRun.hang : null),
       handoffs: cur ? cur.handoffs : (lastRun ? lastRun.handoffs : []),
       cadence: cur ? cur.cadence : (lastRun ? lastRun.cadence : null),
       camTolerances: { rest: CAM_REST_TOL, handoff: CAM_HANDOFF_TOL },
@@ -1853,6 +2078,38 @@
           return { at: t, owner: got.owner, pose: got.pose, stage: got.stage };
         });
         return { poses: poses, handoffs: rec.handoffs };
+      },
+      // ---- the two geometries, read as data ------------------------------------------------------
+      // THE RESEAT ITSELF, on stated boxes. A live flight cannot isolate this: on a walk that hangs
+      // its works centred and small, the destination's pose barely moves when the frame changes, so
+      // the step a cut reframe would leave is a fraction of what the flight is travelling anyway and
+      // hides inside it. Here the two boxes are stated, and they may differ as much as a row likes.
+      // The REAL reseatHang runs — the very function a resize reaches — so a reframe that stopped
+      // carrying the pose across would show up as the picture moving at the instant the destination
+      // did, which is the whole claim.
+      hangReseat: function (scoreRec, durationMs, geomA, geomB, geomB2, tSec) {
+        var turned = false;
+        var rec = {
+          cmd: { score: scoreRec, gen: 0, from: { id: "a" }, to: { id: "b" } },
+          duration: durationMs, said: {}, placed: false,
+          src: { aw: 1000, ah: 1000, bw: 1000, bh: 1000 },
+          inst: instruments.weave,
+          hooks: { hangGeometry: function (id) {
+            if (id === "a") return geomA;
+            return turned ? geomB2 : geomB;
+          } },
+          carry: null, carryFrom: 0, lastSeconds: tSec,
+        };
+        rec.hangEdge = hangEdges(rec);
+        readHang(rec);
+        function applied(t) {
+          return camCompose(anchorPose(rec, t), CAM_NEUTRAL, rec.carry, carryWeight(rec, t));
+        }
+        var before = applied(tSec);
+        turned = true;                 // the frame changed: the arriving work hangs elsewhere now
+        reseatHang(rec);
+        return { before: before, after: applied(tSec), end: applied(durationMs / 1000),
+                 wants: rec.hangPoseB, carry: rec.carry };
       },
       camNeutral: function () { return CAM_NEUTRAL; },
       camCaps: function (variant) { return camCaps(variant); },

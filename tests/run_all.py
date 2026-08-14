@@ -26,6 +26,7 @@ SUITES = [
     "quiz_copy", "shim", "compose", "dead", "quiz_flow", "parity", "zoom", "return", "gesture",
     "wheel", "glide_speed", "ratchet_lock", "beat_css", "assembly", "a11y", "about", "budget",
     "harness_drift", "story_edge", "story_lead", "pass", "pass_api", "pass_weave", "pass_drivers",
+    "pass_hang",
 ]
 
 

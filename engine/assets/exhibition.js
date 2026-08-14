@@ -622,7 +622,8 @@
   // PASS-API §4.4a: two schema versions live at once. Version 2 carries the cue list a host plays;
   // version 1 keeps working, because such an address can already sit in a visitor's session store.
   const PASS_SCORE_FIELDS2 = ["schema", "intent", "pair", "seed", "duration", "direction",
-                              "interruption", "failLand", "camera", "cues", "quality", "provenance"];
+                              "interruption", "failLand", "camera", "cues", "quality", "provenance",
+                              "chromeReveal"];
 
   // The register. `def` is the safe default; `kind` decides the check.
   // landProgress — where in a frame's travel the walk calls the arriving work current. 0.55 is
@@ -1042,13 +1043,122 @@
     }
     passDockKeys[key] = true;
     const el = passResolveEl(cmd.to);
-    if (el) {
-      passLandGate(el, "dock", landOn, cmd.gen);
-      // the curtain already dropped (the host calls curtain(false) before dock — §2.2 settle/fail);
-      // focus returns to the arriving work here, the moment it is current (§1.1's curtain law).
-      if (el.focus && !stage.contains(document.activeElement)) { try { el.focus({ preventScroll: true }); } catch (e) {} }
-    }
+    if (el) passLandGate(el, "dock", landOn, cmd.gen);
     passMark("dock", cmd, cmd.to.id === "door" ? "door" : null);
+    // The chrome comes back HERE and nowhere else, so it can only ever follow the arrival. The
+    // curtain has already dropped and the canvas has already been released (the host calls
+    // handoff(cmd) before dock — §2.2 settle/fail), so this is the first instant the walk owns its
+    // own pixels again. Focus travels with the chrome rather than standing apart from it: the
+    // accessibility handoff is one of the chrome's named parts, and two owners would move focus
+    // twice.
+    chromeReveal(cmd);
+  }
+
+  // ---- hangGeometry (PASS-API §1.1) --------------------------------------------------------------
+  // THE WORK'S REAL BOX in the exhibition layout at this instant, measured off the DOM. The walk
+  // seats a work by CSS — max-height 82dvh, max-width 88vw, the work's own aspect kept, a 2px radius
+  // — so only the element itself knows where it stands, and the number changes with every resize,
+  // turn and re-hang. The renderer lays its own frame onto this box at both ends of a passage, which
+  // is what makes the two handoffs exact instead of approximately right.
+  //
+  // The element measured is the PICTURE, never the section around it: the section is a full-viewport
+  // grid cell and says nothing about where the work hangs inside it.
+  function hangGeometry(workId) {
+    const el = passResolveEl({ id: workId });
+    const im = (el && el.querySelector) ? el.querySelector("img.work") : null;
+    if (!im || !im.getBoundingClientRect) return null;
+    const r = im.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    // The walk shows a work WHOLE, so its crop is 1 and its fit contains rather than covers. Both
+    // are READ rather than assumed, because a layout that ever crops must say so here instead of
+    // letting the renderer seat a whole work into a cropped box. The radius and any transform the
+    // layout applies travel with them for the same reason.
+    const cs = getComputedStyle(im);
+    return Object.freeze({
+      workId: workId, x: r.left, y: r.top, w: r.width, h: r.height,
+      fit: cs.objectFit || "fill", crop: 1,
+      radius: parseFloat(cs.borderTopLeftRadius) || 0,
+      transform: cs.transform === "none" ? null : cs.transform,
+      dpr: window.devicePixelRatio || 1,
+      orientation: innerWidth >= innerHeight ? "landscape" : "portrait",
+    });
+  }
+
+  // handoff(cmd) — the DOM's work is shown and the renderer's canvas released inside ONE frame.
+  // The work's own reveal carries an opacity transition on the walk's road (it fades in as the
+  // visitor scrolls to it); a passage has already drawn that work, so the transition is switched off
+  // for this one reveal and the picture is simply there. Nothing fades, and no frame draws neither
+  // picture: the DOM is revealed FIRST and the canvas dropped after, inside the same task.
+  // THE WALK IS PLACED AT THE ARRIVING WORK. A takeover returns before the walk's own glide ever
+  // runs (15-motion.js: an offer that is taken returns), so nothing else moves the walk, and the
+  // work a passage arrived at would be revealed a viewport away from the eye. The placement is
+  // instant — the passage was the animation, and a second one here would be the walk travelling
+  // twice — and it is called once under cover, mid-passage, while the renderer's canvas stands at
+  // the whole frame and nothing of the walk is in sight.
+  //
+  // `place` asks for that placement alone. Called without it the whole handoff runs: the work's own
+  // reveal carries an opacity transition on the walk's road, and a passage has already drawn that
+  // work, so the transition is switched off for this one reveal and the picture is simply there.
+  // Nothing fades, and no frame draws neither picture — the DOM is revealed FIRST and the canvas
+  // dropped after, inside the same task.
+  function handoff(cmd, place) {
+    if (!cmd || !cmd.to) return;
+    const el = passResolveEl(cmd.to);
+    const im = (el && el.querySelector) ? el.querySelector("img.work") : null;
+    if (im) scrollTo(0, frameCenter(el));
+    if (place) { passMark("place", cmd, null); return; }
+    if (im) { im.style.transition = "none"; im.style.opacity = "1"; }
+    if (el && el.classList) el.classList.add("seen");
+    curtain(false);
+    passMark("handoff", cmd, null);
+  }
+
+  // ---- chromeReveal (PASS-API §1.1) --------------------------------------------------------------
+  // The walk's own chrome comes back after the arrival and the handoff, ONCE per command, with its
+  // parts named: the title and plaque, the counter, share, the sound control, the series and control
+  // affordances, and the focus and accessibility handoff. The timing is data a score may name; with
+  // no score naming it the default below plays, so a site that writes no timing still gets the whole
+  // choreography.
+  //
+  // SOUND IS SHOWN, NEVER TOUCHED. The control is put back on screen; whether it is playing, at what
+  // volume, and what the visitor asked for are the sound player's own state and cross a passage
+  // untouched.
+  // The six parts and the millisecond each waits by default. One record names them, so the parts a
+  // score may time and the parts the choreography plays can never drift apart.
+  //
+  // THE REVEAL IS ONCE BECAUSE THE LANDING IS ONCE. dock is its only caller, and dock already keeps
+  // the one ledger that says whether this command has landed — keyed on the command's own
+  // generation together with its destination (§2.4/§10.2). A second ledger here would be a second
+  // home for one fact, and the two could disagree; the conformance rows measure the reveal count
+  // across every exit rather than trusting either.
+  const PASS_CHROME_MS = { plaque: 0, counter: 0, share: 90, sound: 90, series: 140, focus: 0 };
+  function chromeReveal(cmd) {
+    if (!cmd || !cmd.to) return;
+    const el = passResolveEl(cmd.to);
+    const named = (cmd.score && cmd.score.chromeReveal) || {};
+    // Four of the six are one element each, put back by the very class the walk already shows them
+    // with. `series` stands up the series and control affordances, which live INSIDE the plaque the
+    // landing wrote — one body class carries them together. `focus` is the accessibility handoff.
+    const one = { plaque: cap, counter: counter, share: shareBtn,
+                  sound: document.getElementById("ex-sound") };
+    Object.keys(PASS_CHROME_MS).forEach((name) => {
+      const asked = Number(named[name]);
+      const ok = Number.isFinite(asked) && asked >= 0 && asked <= 2000;
+      if (named[name] !== undefined && !ok) {
+        passNote(passRefusals, { what: "chrome", name: name, why: "outside 0…2000 ms" });
+      }
+      const go = () => {
+        try {
+          if (one[name]) one[name].classList.add("show");
+          else if (name === "series") document.body.classList.add("ex-pass-chrome");
+          else if (el && el.focus && !stage.contains(document.activeElement)) el.focus({ preventScroll: true });
+        } catch (e) {}
+        passMark("chrome-" + name, cmd, null);
+      };
+      const ms = ok ? asked : PASS_CHROME_MS[name];
+      if (ms > 0) setTimeout(go, ms); else go();
+    });
+    passMark("chrome", cmd, null);
   }
 
   // glide(cmd) — the walk's own scroll animation, the standing fallback; called by the host when no
@@ -1154,7 +1264,10 @@
   // taken responsibility for landing this command — by taking over, or by calling the glide hook
   // itself when it declines — never that a renderer is now drawing.
   function passOffer(cmd) {
-    try { return passLayer.offer(cmd, { dock: dock, glide: glide, curtain: curtain, mark: passMark }) === true; }
+    try {
+      return passLayer.offer(cmd, { dock: dock, glide: glide, curtain: curtain, mark: passMark,
+                                    hangGeometry: hangGeometry, handoff: handoff }) === true;
+    }
     catch (e) {
       passNote(passRefusals, { what: "layer", name: "offer", why: "threw" });
       passLayerSet(null);
@@ -1232,7 +1345,8 @@
       window.__@@NS@@Pass = {
         report: passReport, score: passScoreCheck, fill: passFillScore, version: 1,
         adapter: { declare: declare, dock: dock, glide: glide, interrupt: interrupt,
-                   reframe: reframe, curtain: curtain, mark: passMark },
+                   reframe: reframe, curtain: curtain, mark: passMark,
+                   hangGeometry: hangGeometry, handoff: handoff, chromeReveal: chromeReveal },
         layer: function () { return passLayer; },
       };
     } catch (e) {}
