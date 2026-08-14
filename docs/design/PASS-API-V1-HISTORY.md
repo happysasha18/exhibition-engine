@@ -10,6 +10,54 @@ word that superseded it.
 
 ---
 
+## 2026-08-14 12:40 — five decisions from the first composed passages
+
+Root: five decisions taken by the coordinating seat after the first plans were composed and the host
+began drawing a stack of cues in one frame.
+
+### From §4.4, the levels rule
+
+> The levels law is then checkable: two cues whose level lists intersect, in overlapping windows, are
+> a red unless one of them declares itself the accompaniment of the other.
+
+Replaced because a cue's `levels` now names the levels it OWNS, and a level a cue plays over without
+owning stays out of that list. The first composed plans exposed the conflation: the plan says per
+level who owns and who accompanies, while this rule read a cue's whole `voice`, so every composed
+plan was refused as a score. Voicing a cue `accompaniment` to pass would have corrupted the budget,
+since the cue in question is the passage's one impossible event. The accompaniment relation now
+lives in the plan's `levelOwnership` record and reaches no score.
+
+### From §9, row 17
+
+> 17. two cues whose level lists intersect in overlapping windows are a red, unless one declares
+>     itself the other's accompaniment
+
+Replaced for the same reason, and to name where the law is enforced. The check read a field the
+score's closed allow-list does not hold, so the host had nothing to judge; it now runs at build time
+in the plan gate, which already carries the law with hundreds of rows beside it.
+
+### What §7, §8 and §4.7 gained rather than replaced
+
+No text was superseded in these three.
+
+- §7 gains the coverage law: an instrument writes opaque where its own matter stands and clear where
+  its matter is absent, and the space between its elements belongs to whatever plays underneath. It
+  is the charter's twelfth shelf read at the level of one drawn frame. The finding that forced it:
+  every instrument wrote an opaque frame, so on the worked pair the band family is drawn under every
+  frame from 1.17 seconds onward and seen at no instant, and three voices read as one.
+- §8's manifest gains `coverage:{ writes, how }` so an instrument declares whether it writes
+  coverage.
+- §4.7 gains `levelOwnership` as a plan-only field, names the four plan-only fields as one set, and
+  states that the delivery road ships serialised scores while the plan form never travels.
+
+### One earlier line this sharpens rather than contradicts
+
+§4.7 already said a plan cue may carry fields the score cue lacks and named `cast` as the first. The
+set is now closed and named — `cast`, `levelOwnership`, `measuredHandles`, `returnOf` — and row 56
+reds if any of them reaches a shipped file.
+
+---
+
 ## 2026-08-14 11:12 — §12's numbers caught up with the branch
 
 Root: §12 was flagged stale at 10:31 and left alone as outside that ask. The decision came back that

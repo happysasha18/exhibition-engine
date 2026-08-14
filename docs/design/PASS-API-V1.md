@@ -39,6 +39,12 @@ divergence between what §2.6 asks and what was built.
 §4.6, §4.7 and §4.8 have offline builders and checks in the tlvphotos tree, and no engine code
 answers to them. Their conformance rows in §9 are unwritten.
 
+**Two measurements from 2026-08-14 worth carrying.** The immersive road's boot fell from 285 074 B
+gzipped to 136 190 B once the score table and the plans moved onto a digest-pinned pack road, with
+23 255 B gzipped fetched before the first crossing. And the woven instrument's band count stands at
+a floor of 8 against this pair's measured 3, recorded as requested-against-applied across 1935 cues;
+§11 carries that divergence with an owner.
+
 This block read that no line of code answers to any of the four, which was true at 08:47 and is
 false for §2.6 now. The superseded sentence is in `PASS-API-V1-HISTORY.md` with its date. Section 11
 lists what is unbuilt with its owner.
@@ -403,6 +409,13 @@ Each cue:
               bytesEstimate, variant } }
 ```
 
+**Accompaniment is said in two senses, and they are different questions, stated 2026-08-14 12:40.**
+`voice:"accompaniment"` is what a cue counts as in the tier budget. Accompanying on a level is a
+statement about one level in the plan's `levelOwnership` record. A cue voiced `letter` or `miracle`
+in the budget may still accompany on a level it does not own, and that is the ordinary case rather
+than an exception. Reading the second sense off the first is the conflation that refused every
+composed plan as a score.
+
 **`voice` and `roles` are two different questions and both are asked.** `voice` says what the cue
 counts as in the budget — a structural gesture, an accompanying voice, or the one impossible event.
 `roles` says what the cue does dramatically inside the pass. The budget check reads `voice`; the
@@ -418,8 +431,25 @@ any unknown field, and no field was added to the cue record.
 
 **`levels` is a list**, because a real instrument occupies more than one at once — the woven
 instrument moves at SURFACE while each strip turns at CELL, which is exactly why it reads as alive.
-The levels law is then checkable: two cues whose level lists intersect, in overlapping windows, are
-a red unless one of them declares itself the accompaniment of the other.
+
+**A cue's `levels` names the levels it OWNS, amended 2026-08-14 12:40.** A level a cue plays over
+without owning stays out of that list. The levels law is then checkable in its own terms: two cues
+that own one level in overlapping windows are a red, because the law is about two voices contending
+on one level, and a cue that accompanies there is not contending.
+
+The accompaniment relation lives in the plan's own `levelOwnership` record of §4.7 and reaches no
+score. The rule read that a cue declares itself the accompaniment of another, and the first composed
+plans exposed the conflation: the plan says per level who owns and who accompanies, while this rule
+read a cue's whole `voice`, so every composed plan was refused as a score. Voicing a cue
+`accompaniment` to get it through would corrupt the budget, since the cue in question is the
+passage's one impossible event. The worked pair now emits its ground at SURFACE, its travel at CELL
+and its arrival at TEXTURE, each naming only what it owns. The superseded sentence is in
+`PASS-API-V1-HISTORY.md` with its date.
+
+**The levels check runs at build time, and the host no longer carries it.** It read a field the
+score's closed allow-list does not hold, so the host had nothing to judge. The gate that judges a
+plan already carries the law with hundreds of rows beside it, and that is where the law is enforced.
+Row 17 names the build-time home.
 
 **The tier budget check.** From `voice`, `levels`, `window`, the score's `duration` and the score's
 `camera` record: a quiet link carries one letter, at most one accompaniment, no miracle, 2–4 s; a
@@ -717,6 +747,19 @@ field resolves away at serialisation, so nothing of it reaches the host.
 `actors`. A later field may join it under the same rule: it lives in the plan, it resolves at
 serialisation, and the score's allow-list stays closed against it.
 
+**`levelOwnership` is the second, added 2026-08-14 12:40.** It records, per level, which cue owns
+that level and which cues accompany on it. §4.4's levels rule reads ownership alone, so the
+accompaniment relation has a home in the plan and reaches no score. The plan gate judges the law
+against this record at build time.
+
+**The plan-only fields, named as one set.** `cast`, `levelOwnership`, `measuredHandles` and
+`returnOf` live in the plan and resolve away at serialisation by design. None of them reaches a
+score and none of them travels.
+
+`measuredHandles` is named here as a member of that set on the word of 2026-08-14 12:40. Its shape
+is the plan gate's to define and this contract does not fix it; what this contract fixes is that it
+stays in the plan. §11 carries the definition with an owner.
+
 **How a ScenePlan cue maps onto §4.4's cue.** The serialised cue keeps every field §4.4 lists and
 gains none. `id`, `instrument`, `voice`, `roles`, `levels`, `window`, `works`, `stack`,
 `cameraAuthority`, `doors`, `nodes`, `tracks` and `resources` travel across unchanged. The actor
@@ -725,6 +768,12 @@ cue's `nodes` and `tracks` as static nodes, exactly as §4.4c's table fills a te
 and the ScenePlan's `id` is written into the score's `provenance.source`. The score's allow-list
 therefore stays closed and every existing checker keeps working. `returnOf` stays in the plan and
 reaches no score, which is the fence §4.8 states, and `cast` resolves the same way.
+
+**The delivery road ships serialised scores, added 2026-08-14 12:40.** The plan form is a
+build-time artefact and never travels. Shipping the plan form would put a build-time record on the
+wire, and §4.8's fence is where that costs most: three fields of the edge memory ever cross, and a
+plan on the wire is exactly how that fence would leak, since `returnOf` is a plan field. Conformance
+row 56 reds if any plan-only field reaches a shipped file.
 
 **Direction is written in two dialects, and the mapping is stated.** The plan writes `a->b` and
 `b->a`; the score of §4.4 writes `a-to-b` and `b-to-a`. Both stay. The score's form already ships
@@ -950,6 +999,27 @@ lightens the score first, then drops accompaniment voices to 30 frames a second 
 gesture keeps 60, then eases resolution toward 0.75 of device pixels, and stops at a floor below
 which the plain fallback plays instead of a thin miracle.
 
+**The coverage law, added 2026-08-14 12:40.** The host draws several cues in one frame. An
+instrument writes opaque where its own matter stands and clear where its matter is absent. The frame
+it hands back is its elements together with the space between them, and that space belongs to
+whatever plays underneath.
+
+This is the charter's twelfth shelf read at the level of one drawn frame. Every element is stored
+with its complement so the whole frame is reconstructable; the complement of a cue's matter is the
+region the cue beneath it fills.
+
+No per-cue weight of presence. No alpha imposed by the host. The charter bans that mechanism in its
+own words, and a stack leaning on it would be the crossfade under another name.
+
+**The finding that forced it.** Every instrument wrote an opaque frame, so a visitor saw only the
+cue nearest the eye. On the worked pair the band family is drawn under every frame from 1.17 seconds
+onward and is seen at no instant, and three voices read as one. The law is the artistic finding of
+2026-08-14 rather than a housekeeping rule.
+
+The per-instrument specification is being written to `docs/design/COVERAGE.md` on the branch
+`pass-api-v1-coverage` by a separate worker. That file does not stand yet, and this section states
+the law while the per-instrument detail belongs there. Conformance rows 52 to 55 carry it.
+
 **Context loss.** `contextLost()` drops instrument handles and the curtain; `contextRestored()`
 rebuilds from granted resources or fails. A census row proves that texture, program and framebuffer
 counts return to their baseline after repeated runs.
@@ -962,6 +1032,7 @@ counts return to their baseline after repeated runs.
 { id, api, arity:1|2, roles, params:{...}, handles:{...},
   neutrals:{...}, doors:{...}, framings:{...}, drivers:[...],
   camera:{ needs, authority }, passes:[...],
+  coverage:{ writes:true|false, how },
   resources:{ lean:{...}, standard:{...}, rich:{...} },
   capabilities:[...], decline:[...], provenance:{ labPath, commit },
   readiness:"production-ready"|"needs-port"|"lab-only"|"failed-proof" }
@@ -970,6 +1041,13 @@ counts return to their baseline after repeated runs.
 The lab modules are source material. Their own canvas, context, frame loop and pointer code is not a
 production port; a port is the instrument's mathematics carried onto the host's frame with a
 manifest and a passing conformance run.
+
+**`coverage` declares whether the instrument writes coverage, added 2026-08-14 12:40.** `writes` is
+`true` where the instrument leaves the space between its elements clear, under §7's coverage law,
+and `how` names the mechanism its port uses. An instrument declaring `writes:false` may be drawn
+only as the cue nearest the eye, because a stack under it would be drawn and never seen. The host
+reads this at `prepare` and records the decision with its reason, the same way it records the
+quality variant.
 
 ---
 
@@ -999,8 +1077,9 @@ carries; it reads its own lists and nothing else.
 14. no resource leak after repeated runs
 15. the console stays clean
 16. captures and goldens exist for every landed instrument
-17. two cues whose level lists intersect in overlapping windows are a red, unless one declares
-    itself the other's accompaniment
+17. two cues that OWN one level in overlapping windows are a red, judged at build time by the plan
+    gate rather than by the host, and read against the plan's `levelOwnership` record; a cue that
+    accompanies on a level it does not own is no contention (amended 2026-08-14 12:40)
 18. the tier budget holds: letters, accompaniments, miracles, duration and held time, with the
     camera counted as one accompaniment wherever the score names a camera track — a score carrying
     two accompaniment cues, a camera and a middle tier reads red (extended 2026-08-14 10:31)
@@ -1053,6 +1132,15 @@ when its rule is removed, like every row above it.
 51. the `hangGeometry` measurement callback mutates nothing — the product's own state, the DOM and
     the command are byte-identical across a call, which is what makes §1.1's declared exception an
     exception rather than a hole (added 2026-08-14 10:31)
+52. a cue that writes coverage lets the cue beneath it reach the frame, measured on a stack where
+    the lower cue would otherwise be drawn and never seen (added 2026-08-14 12:40)
+53. both doors stay whole within the seam threshold when cues are stacked under the coverage law
+54. a one-cue score is unchanged to the pixel under the coverage law, so the law costs nothing where
+    nothing is stacked
+55. no instrument writes a weight of presence over its whole frame, and no alpha is imposed by the
+    host
+56. no plan-only field — `cast`, `levelOwnership`, `measuredHandles`, `returnOf` — reaches a shipped
+    file, which is the fence §4.8 depends on
 
 The existing prover is never weakened to make a new picture pass. Lifecycle evidence is added first;
 an old check changes only when the replacement is proved equivalent.
@@ -1118,6 +1206,9 @@ resizes a running transaction rather than replacing it.
 | how the two geometries reach the host | §2.6 asks them to arrive as data frozen onto the command's `doors`. What was built hands the measurement through a read-only hook the product owns, which the host calls at `prepare` and at `reframe`, because freezing the record onto every declared command costs bundle bytes and the walk's bundle stands at 67 985 B against a 68 000 B fence — 15 B remaining. §1.1 declares the exception and row 51, unwritten, is what will prove the callback mutates nothing. The two readings are reconciled by that declaration and the divergence stays open as a design question | a later branch, when the bundle has room |
 | `chromeReveal` as a scoreable product choreography with its six named parts | built 2026-08-14 at `7ee2708`: the chrome is revealed once, after the landing, with its parts named — plaque, counter, focus, share, sound and series — and a score may name the chrome's own timing | closed |
 | EdgeMemory (§4.8) | declared and unbuilt; held by the walk in the site's layer, and the engine sees only `returnOf` | the walk, in tlvphotos |
+| the instruments leaving the renderer's own file | under way 2026-08-14: a worker is splitting them into a version-pinned pack the host loads by address and digest, knowing no instrument name. §12 already names this as the delivery answer, and when the split lands §12 describes what is rather than what will be | a worker on the split, in flight |
+| the shape of the plan's `measuredHandles` field | named 2026-08-14 as a plan-only field that never travels, with its shape left to the plan gate. This contract fixes only that it stays in the plan; what it holds is undefined here | the plan gate's owner |
+| the woven instrument's band count | the floor stands at 8 against this pair's measured 3, recorded as requested-against-applied across 1935 cues. It is the first place his brief's requirement that every meaningful number carry both values actually bites, and the divergence between what the pair measures and what the instrument will draw is unresolved | the instrument's port, with his eye on the motion |
 | the version-pinned opaque effect pack (§12) | declared and unbuilt. The engine knows no TLV effect name and loads the pack; tlvphotos owns it and its manifests, and the renderer's file then holds the host alone. It is what stops the renderer file's fence tracking the effect farm — 25 lab modules on disk, and headroom after each move smaller than one instrument costs. Queued behind the first composed passage playing | a later branch, on his word of 2026-08-14 08:39 |
 | the byte fence for the renderer's own file | moved again 2026-08-14 at `83ddc82`, sized after the merge of three instruments and the return to the hang: 102 000 B raw (measured 92 669) and 27 000 B gzipped (measured 24 270), each with its breakdown written into its test. The row read 42 000 B raw and 13 000 B gzipped until 11:12 | closed, and §12 states what ends the moving |
 
