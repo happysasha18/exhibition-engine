@@ -90,10 +90,10 @@ def host_names(text):
 
 
 check("PASS-PACK the host knows no instrument name — the built host names none of the three",
-      len(LAYER) > 1000 and len(NAMES) == 3 and not host_names(LAYER),
+      len(LAYER) > 1000 and len(NAMES) >= 3 and not host_names(LAYER),
       "the engine loads an opaque pack and registers whatever it declares, by the name each "
-      "manifest carries. The three the pack ships today are %s, and the built host (%d characters) "
-      "names %s" % (NAMES, len(LAYER), host_names(LAYER) or "none of them"))
+      "manifest carries. The %d the pack ships today are %s, and the built host (%d characters) "
+      "names %s" % (len(NAMES), NAMES, len(LAYER), host_names(LAYER) or "none of them"))
 
 check("PASS-PACK the build stamps an address, a version and a digest into the host",
       STAMP["src"] == "pass-pack.js"
@@ -235,7 +235,7 @@ UNSUPPLYABLE = """
 def with_stranger(text):
     """The pack, plus one instrument the host cannot supply, declared last."""
     text = text.replace("  join({", UNSUPPLYABLE + "\n  join({", 1)
-    return text.replace("gearsInstrument()]", "gearsInstrument(), strangerInstrument()]", 1)
+    return text.replace("Instrument()]", "Instrument(), strangerInstrument()]", 1)
 
 
 if not chrome_available():
