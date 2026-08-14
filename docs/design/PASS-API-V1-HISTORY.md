@@ -10,6 +10,57 @@ word that superseded it.
 
 ---
 
+## 2026-08-14 10:31 — the camera in the budget, and how the geometry travels
+
+Root: the composer's first real run against §4.4, and the implementation of §2.6 at `7ee2708`.
+
+### From §4.4, the tier budget check
+
+> **The tier budget check.** From `voice`, `levels`, `window` and the score's `duration`: a quiet link
+> carries one letter, at most one accompaniment, no miracle, 2–4 s; a middle carries at most two
+> letters, at most two accompaniments, at most one miracle, 5–8 s; a culmination carries two or three
+> letters, at most three accompaniments, exactly one miracle, 9–14 s; and held time stays under a
+> third of the pass. Everything counts, and no cue is exempt.
+
+Replaced because the check counted voices from the cues alone. The camera is carried in the score's
+`camera` record instead of as a cue, so it never reached the count, and a passage with two
+accompaniment cues and a camera passed as carrying two. The charter's shelf 17 opens its list of
+accompaniment voices with the camera, and its own words are that everything counts and no
+never-counted class exists. The budget numbers are unchanged; what changed is what the count reads.
+
+### From §2.6, how the two geometries reach the host
+
+> The two are carried on the command's `doors` as `{ from:{hangGeometry, immersiveGeometry},
+> to:{hangGeometry, immersiveGeometry} }`. The from-door is measured at `declare` and handed to the
+> host on the offer at `prepare`; the to-door is measured at `declare` and re-measured on `reframe`.
+
+Replaced because what was built at `7ee2708` hands the measurement through a read-only hook the
+product owns, which the host calls at `prepare` and at `reframe`. Freezing the record onto every
+declared command costs bundle bytes and the walk's bundle stands at 67 985 B against a 68 000 B
+fence. The divergence is recorded in §11 with an owner rather than closed by the document adopting
+what the code happened to do.
+
+### From §1.1, the placement of the measurement
+
+> The host receives the measurement as data on the offer at `prepare` and again on `reframe`, and
+> holds no reference to the adapter. §2.6 states why the reading was placed this way.
+
+Replaced by the declared exception now written in §1.1. That paragraph was itself written at 08:47
+to resolve a conflict between his word and §1.1's fence, and the reading it chose was the one the
+implementation then found too expensive in bundle bytes. The fence stands for the adapter as a
+whole; one read-only measurement callback is the single exception, and conformance row 51 proves it
+mutates nothing.
+
+### From the Status block
+
+> No
+> line of code answers to any of the four today.
+
+Replaced because it was true at 08:47 and is false for §2.6 at `7ee2708`. The four sections stand at
+two different states, and the block now names each state separately.
+
+---
+
 ## 2026-08-14 09:52 — what the first implementation found
 
 Root: three design gaps the first serialiser built against §4.7 proved, reported through the

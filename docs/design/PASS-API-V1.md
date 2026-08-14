@@ -21,12 +21,23 @@ window, the handoff measured at the window's own edge and the rest read off the 
 interruption cadence of §2.5. Still written and unbuilt from the lock of 2026-08-13: the `pointer`
 driver, a stack of more than one cue, and the levels and tier-budget checks of §4.4.
 
-**Written and unbuilt, added 2026-08-14 08:47 on his word of 08:39.** Four sections were added and
-none of them is built: §4.6 ElementSet with its one provider contract and its five providers, §4.7
-ScenePlan and the passage composer that emits it, §2.6 the return to the hang with its two exact
-geometries and its chrome reveal, and §4.8 EdgeMemory with the hysteresis across a directed pair. No
-line of code answers to any of the four today. Conformance rows 32 through 50 are their evidence and
-every one of those rows is unwritten. Section 11 lists all of it with its owner.
+**Added 2026-08-14 08:47 on his word of 08:39, and their state at 10:31.** Four sections were added:
+§4.6 ElementSet with its one provider contract and its five providers, §4.7 ScenePlan and the
+passage composer that emits it, §2.6 the return to the hang with its two exact geometries and its
+chrome reveal, and §4.8 EdgeMemory with the hysteresis across a directed pair. The four stand at two
+different states and the sentence that flattened them is corrected here.
+
+§2.6 is built on this branch at `7ee2708`, with 21 conformance rows green and five red-on-bug
+proofs. Departure and arrival agree with the DOM at 0.4053 and 0.3757 of 255 against a seam
+threshold of 6, and the rest reads 0.000000000 from the arriving hang pose against a tolerance of
+1e-6. §11 carries the one divergence between what §2.6 asks and what was built.
+
+§4.6, §4.7 and §4.8 have offline builders and checks in the tlvphotos tree, and no engine code
+answers to them. Their conformance rows in §9 are unwritten.
+
+This block read that no line of code answers to any of the four, which was true at 08:47 and is
+false for §2.6 now. The superseded sentence is in `PASS-API-V1-HISTORY.md` with its date. Section 11
+lists what is unbuilt with its owner.
 
 **Amended 2026-08-14 09:52.** The first implementation built against §4.7 found three things the
 contract left unsaid, and all three are now written into it: a plan cue may carry fields the score
@@ -35,8 +46,9 @@ direction dialects are mapped onto each other. §4.7 also carries his word of 09
 grammar reads. The superseded text of each is in `PASS-API-V1-HISTORY.md`.
 
 The failure this document has recorded before is a status line that claimed an implementation that
-did not exist. This block states the built half and the written half separately for that reason,
-and the written half above is written only.
+did not exist. The opposite error costs the same care: a status line that keeps calling a built
+thing unbuilt is wrong in the other direction, and the correction above is that. This block states
+the built half and the written half separately for both reasons.
 
 Any line below that reads as a description of behaviour is a specification of behaviour to be built,
 and the conformance rows of §9 are the evidence that will make each one true.
@@ -70,8 +82,16 @@ Only the product layer may call these. The renderer never holds a reference to t
 | `hangGeometry(workId)` | measures the work's real place in the exhibition layout off the DOM at this instant — position, crop, fit, pixel ratio, orientation | the stepping road at `declare`, and the resize and orientation road (§2.6) |
 
 `hangGeometry` reads the DOM, so it belongs to the product layer like every other row of this table.
-The host receives the measurement as data on the offer at `prepare` and again on `reframe`, and
-holds no reference to the adapter. §2.6 states why the reading was placed this way.
+
+**The one declared exception to this section's fence, added 2026-08-14 10:31.** This paragraph read
+that the host receives the measurement as data on the offer and holds no reference to the adapter.
+The implementation of §2.6 at `7ee2708` hands it through a read-only hook the product owns, which
+the host calls at `prepare` and at `reframe`, for the bundle-byte reason §2.6 states.
+
+This seat's reading of the fence: it stands for the adapter as a whole, and every other row of the
+table keeps it whole. A single read-only measurement callback that returns a record and mutates
+nothing is a declared exception, and it is declared here rather than left as a quiet fact of the
+code. Conformance row 51 proves it mutates nothing, so the exception carries its own evidence.
 
 `dock` takes the command and reads its destination from `cmd.to`. It takes no element argument, so
 a caller cannot dock a work the command never named. See §10.2.
@@ -210,9 +230,17 @@ end has watched the machinery.
   layout, measured off the DOM at that instant by `adapter.hangGeometry(workId)` of §1.1.
 - `immersiveGeometry` — the fullscreen scene state the passage plays in.
 
-The two are carried on the command's `doors` as `{ from:{hangGeometry, immersiveGeometry},
-to:{hangGeometry, immersiveGeometry} }`. The from-door is measured at `declare` and handed to the
-host on the offer at `prepare`; the to-door is measured at `declare` and re-measured on `reframe`.
+The two are named on the command's `doors` as `{ from:{hangGeometry, immersiveGeometry},
+to:{hangGeometry, immersiveGeometry} }`. The from-door is read at `prepare` and the to-door is read
+at `prepare` and again at `reframe`.
+
+**How the measurement reaches the host was amended 2026-08-14 10:31.** This paragraph read that both
+geometries were frozen onto the declared command and handed to the host as data on the offer. What
+was built at `7ee2708` hands the measurement through a read-only hook the product owns, which the
+host calls at `prepare` and at `reframe`. The reason is measured: freezing the record onto every
+declared command costs bundle bytes, and the walk's bundle stands at 67 985 B against a 68 000 B
+fence, so 15 B remain. §11 carries the divergence with its owner and §1.1 states the exception to
+its own fence. The superseded sentence is in `PASS-API-V1-HISTORY.md` with its date.
 
 **The flow, in order.**
 
@@ -385,11 +413,22 @@ instrument moves at SURFACE while each strip turns at CELL, which is exactly why
 The levels law is then checkable: two cues whose level lists intersect, in overlapping windows, are
 a red unless one of them declares itself the accompaniment of the other.
 
-**The tier budget check.** From `voice`, `levels`, `window` and the score's `duration`: a quiet link
-carries one letter, at most one accompaniment, no miracle, 2–4 s; a middle carries at most two
-letters, at most two accompaniments, at most one miracle, 5–8 s; a culmination carries two or three
-letters, at most three accompaniments, exactly one miracle, 9–14 s; and held time stays under a
-third of the pass. Everything counts, and no cue is exempt.
+**The tier budget check.** From `voice`, `levels`, `window`, the score's `duration` and the score's
+`camera` record: a quiet link carries one letter, at most one accompaniment, no miracle, 2–4 s; a
+middle carries at most two letters, at most two accompaniments, at most one miracle, 5–8 s; a
+culmination carries two or three letters, at most three accompaniments, exactly one miracle,
+9–14 s; and held time stays under a third of the pass. Everything counts, and no cue is exempt.
+
+**The camera counts as one accompaniment, amended 2026-08-14 10:31.** The check read the cues alone
+and counted from their `voice` fields. The camera is carried in the score's own `camera` record
+instead of as a cue, so it never reached the count, and a passage with two accompaniment cues and a
+camera passed as carrying two. The charter's shelf 17 settles what the answer is: its list of
+accompaniment voices opens with the camera, and the shelf's own words are that everything counts and
+no never-counted class exists.
+
+So the budget's counts read the cues together with the camera record. A score naming a camera track
+carries one accompaniment before a single cue is counted. The composer's first real run against
+§4.4 found this, and the superseded paragraph is in `PASS-API-V1-HISTORY.md` with its date.
 
 ### 4.4a Two schema versions live at once
 
@@ -594,10 +633,13 @@ made belongs in it only where he has documented that himself, because the measur
 finished picture and a measured period is an affordance the passage draws on. Conformance row 50
 refuses an empty or generic line.
 
-**`duration` is derived, and the record names the derivation.** It is the end of the last cue
-window. The first implementation computes it that way, and stating it here means a reader sees where
-the number comes from. The derived value is what serialises into the score's `duration`, and it must
-land inside §2.5's range of 0 to 14 000 ms, where §4.4's tier budget check reads it.
+**`duration` is derived, and the record names the derivation.** The field is `duration`, in
+milliseconds, on the plan and on the score alike; §2.5 gives the unit and the range. The first
+composer wrote it as `durationMs` and is renaming, and the name is fixed here so no third form
+appears. Its value is the end of the last cue window. The first implementation computes it that way,
+and stating it here means a reader sees where the number comes from. The derived value is what
+serialises into the score's `duration`, and it must land inside §2.5's range of 0 to 14 000 ms,
+where §4.4's tier budget check reads it.
 
 **`pivot` is the pair's shared invariant, held throughout.** The charter's own law stands behind it:
 the pivot is the pair's invariant shared part, and everything outside the pivot travels. `held` is
@@ -615,6 +657,13 @@ actors, and the `pivot` and `actors` fields here are its successor.
 The one thing that file lacks is the direction. Its 7260 rows are unordered — each unordered pair
 appears exactly once and no row's reverse is present — so A to B and B to A read from one row. That
 is precisely the gap §11 has carried since the review of 2026-08-13, and §4.8 closes it.
+
+**The camera's resting pose is resolved at run time, and no plan carries it.** `camera` on the plan
+names the flight; the pose it rests on is the arriving work's hang pose, resolved when the passage
+runs. No file carries a per-direction hang geometry, and none should: §2.6 measures the geometry off
+the DOM at `prepare` and again at `reframe`, so a plan that carried the pose would be carrying a
+copy that goes stale on the first resize, orientation change or layout shift. The first composer
+wrote the neutral frame into its plans for want of this sentence.
 
 **`middle` is the third constructed event.** It is a world or a surface built from both works'
 elements and belonging to neither, which is the charter's enfilade: a room of its own with two
@@ -939,7 +988,9 @@ carries; it reads its own lists and nothing else.
 16. captures and goldens exist for every landed instrument
 17. two cues whose level lists intersect in overlapping windows are a red, unless one declares
     itself the other's accompaniment
-18. the tier budget holds: letters, accompaniments, miracles, duration and held time
+18. the tier budget holds: letters, accompaniments, miracles, duration and held time, with the
+    camera counted as one accompaniment wherever the score names a camera track — a score carrying
+    two accompaniment cues, a camera and a middle tier reads red (extended 2026-08-14 10:31)
 19. a score naming a door the instrument's manifest leaves blank is refused at build time
 20. a version-1 score and a version-2 score both pass the checker, and the reader says which it read
 21. an authored intent line carrying a private sentence reds the build
@@ -984,6 +1035,9 @@ when its rule is removed, like every row above it.
 49. no EdgeMemory field beyond `family`, `seed` and `passIndex` reaches a ScenePlan or a score
 50. a ScenePlan whose `intent` line is empty or generic is refused, and an authored line reaches the
     score's own `intent` unchanged (added 2026-08-14 09:52)
+51. the `hangGeometry` measurement callback mutates nothing — the product's own state, the DOM and
+    the command are byte-identical across a call, which is what makes §1.1's declared exception an
+    exception rather than a hole (added 2026-08-14 10:31)
 
 The existing prover is never weakened to make a new picture pass. Lifecycle evidence is added first;
 an old check changes only when the replacement is proved equivalent.
@@ -1044,7 +1098,8 @@ resizes a running transaction rather than replacing it.
 | the passage composer that emits a ScenePlan (§4.7) | declared and unbuilt. Until it lands, §4.4c's template and table stay the road that produces scores | a later branch |
 | where the passage composer runs — the bundle or the renderer's own file | undecided; its size is unmeasured, and §12's split is the question it answers | a later branch, at the composer's first landing |
 | the woven instrument's ElementSet-naming port | the instrument plays two whole works today. Its port names A's strips and B's strips as actors at the composer's landing, which is what row 35 asks of it | the instrument's port, at the composer's landing |
-| the return to the hang (§2.6) — `hangGeometry`, the two exact geometries, the canvas-to-DOM handoff | declared and unbuilt | the bundle for `hangGeometry` and the reveal; the renderer's file for the arriving pose |
+| the return to the hang (§2.6) — `hangGeometry`, the two exact geometries, the canvas-to-DOM handoff | built 2026-08-14 at `7ee2708`: 21 conformance rows green, five red-on-bug proofs, departure and arrival agreeing with the DOM at 0.4053 and 0.3757 of 255 against a seam threshold of 6, and the rest at 0.000000000 against 1e-6 | closed, except the divergence in the row below |
+| how the two geometries reach the host | §2.6 asks them to arrive as data frozen onto the command's `doors`. What was built hands the measurement through a read-only hook the product owns, which the host calls at `prepare` and at `reframe`, because freezing the record onto every declared command costs bundle bytes and the walk's bundle stands at 67 985 B against a 68 000 B fence — 15 B remaining. §1.1 declares the exception and row 51 proves the callback mutates nothing. The two readings are reconciled by that declaration and the divergence stays open as a design question | a later branch, when the bundle has room |
 | `chromeReveal` as a scoreable product choreography with its six named parts | declared and unbuilt | the bundle |
 | EdgeMemory (§4.8) | declared and unbuilt; held by the walk in the site's layer, and the engine sees only `returnOf` | the walk, in tlvphotos |
 | the byte fence for the renderer's own file | closed 2026-08-14: 42 000 B raw (measured 39 415) and 13 000 B gzipped (measured 11 646), each with its breakdown written into its test | closed |
