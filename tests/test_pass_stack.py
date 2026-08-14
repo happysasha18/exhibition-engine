@@ -317,6 +317,19 @@ PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
 # SAME built pack, so both are stamped with that pack's own numbers and what the row compares is
 # again two builds of the host over one picture.
 HEAD_BUILT = None
+HEAD_PACK = None
+HEAD_WHY = ""
+
+
+def _head_file(path):
+    return subprocess.run(["git", "show", "HEAD:" + path],
+                          cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
+
+
+def _bake(src):
+    return _engine.strip_js_comments(_engine.apply_namespace(src, _engine._NAMESPACE))
+
+
 try:
     _head = subprocess.run(["git", "show", "HEAD:engine/assets/pass-layer.js"],
                            cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
@@ -328,6 +341,7 @@ try:
     HEAD_BUILT = _engine.strip_js_comments(_head)
 except Exception as e:  # noqa: BLE001 — the reason is reported on the row itself
     HEAD_BUILT = None
+    HEAD_PACK = None
     HEAD_WHY = str(e)
 
 # ---------------------------------------------------------------- string rows
@@ -344,11 +358,17 @@ check("PASS-STACK the host imposes no opacity of its own on any cue",
       "instrument's own shader writes and names no weight of its own — so no blendColor, no "
       "constant alpha, and no opacity in the host OR in the pack")
 
-check("PASS-STACK all three instruments write a whole frame, so a stack reads as occlusion",
-      PACK.count("gl_FragColor = vec4(col, 1.0)") == 3,
-      "each of the three shaders writes alpha 1.0, so each covers the frame whole. The host's "
-      "source-over is therefore a no-op today and the nearest-the-eye live cue is what is seen. A "
-      "stack reads as a stack the day a port writes its own coverage")
+# SUPERSEDED 2026-08-14 by the coverage law. This row used to assert the debt — all three shaders
+# writing alpha 1.0, so a stack read as plain occlusion. Coverage landed, so the row now asserts what
+# replaced it: the ground fills the frame and the two voices above it publish their own masks.
+check("PASS-STACK the ground fills the frame and the voices above it write coverage",
+      PACK.count("gl_FragColor = vec4(col, 1.0)") == 1
+      and PACK.count("gl_FragColor = vec4(col, 1.0 - cov)") == 2,
+      "the woven instrument has no absence to publish — its two ribbon sets partition the frame and "
+      "both branches of every mix are picture — so it writes alpha 1.0 and carries the ground. "
+      "`matter` and the meshing instrument each publish the mask they already build, 1.0 - cov, the "
+      "share of the arriving work, so the frame beneath them reaches the eye where their own matter "
+      "is absent")
 
 check("PASS-STACK the draw walks the stack ascending, so the first line is topmost by default",
       "(c.stack === undefined || c.stack === null) ? (n - i)" in LAYER
@@ -416,14 +436,20 @@ def spread(p):
     return st.stddev[0], st.mean[0]
 
 
-def bench_dir(layer_text):
-    """A served root holding one BUILT pass-layer.js, the two photographs and the fixture."""
+def bench_dir(layer_text, pack_text=None):
+    """A served root holding one BUILT pass-layer.js, the two photographs and the fixture.
+
+    THE PACK SERVED MUST BE THE ONE THE HOST WAS STAMPED AGAINST. The host fetches its pack by
+    address, weighs its bytes and refuses anything whose digest disagrees, so a bench that serves
+    this tree's pack to a host built elsewhere draws nothing at all — which is a blank frame rather
+    than a comparison. Row 2 therefore hands its own matching pack, and every other caller takes
+    this tree's."""
     d = Path(tempfile.mkdtemp(prefix="synth_stackbench_"))
     (d / "pass-layer.js").write_text(layer_text, encoding="utf-8")
-    # The host fetches its pack by address and weighs its bytes before running them, so the bench
-    # root serves the built pack beside it. The build of HEAD served by row 2 carries its own
-    # instruments and never asks for this file, which is what makes that comparison meaningful.
-    shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
+    if pack_text is None:
+        shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
+    else:
+        (d / "pass-pack.js").write_text(pack_text, encoding="utf-8")
     (d / "photos").mkdir()
     for p in PHOTOS:
         shutil.copy2(p, d / "photos" / p.name)
@@ -707,7 +733,7 @@ else:
     if HEAD_BUILT is None:
         skip(BROWSER_ROWS[2], "the file as it stood before the stack could not be read: " + HEAD_WHY)
     else:
-        OLD = bench_dir(HEAD_BUILT)
+        OLD = bench_dir(HEAD_BUILT, HEAD_PACK)
         NEW = bench_dir(LAYER)
         pair = {}
         for tag, root in (("before", OLD), ("after", NEW)):
