@@ -1047,9 +1047,24 @@ cue nearest the eye. On the worked pair the band family is drawn under every fra
 onward and is seen at no instant, and three voices read as one. The law is the artistic finding of
 2026-08-14 rather than a housekeeping rule.
 
-The per-instrument specification is being written to `docs/design/COVERAGE.md` on the branch
-`pass-api-v1-coverage` by a separate worker. That file does not stand yet, and this section states
-the law while the per-instrument detail belongs there. Conformance rows 52 to 55 carry it.
+**Where the alpha comes from.** The alpha each instrument writes rests on a quantity its own shader
+already computes, so the law adds no new mathematics to any port. The woven instrument stays at a
+constant 1, having no absence to write. `matter` and the meshing instrument each write one minus
+their own mask, whose boundary is the material's own edge.
+
+**The blend is straight source-over on the source alpha, and premultiplied alpha is refused with a
+measured reason.** The first cue laid down meets blending disabled, and multiplying colour by alpha
+would go black wherever alpha stands below 1. Colour channels stay untouched, which is what makes
+the one-cue row of 54 hold by construction rather than by measurement.
+
+**Both doors stay whole, and the reason differs per instrument.** The woven one's alpha is a
+constant. `matter`'s mask is zero everywhere at its exit door. The meshing instrument's own door
+placement puts all four corners inside the door condition. Row 53 measures the three together.
+
+The per-instrument specification is `docs/design/COVERAGE.md` on the branch `pass-api-v1-coverage`,
+committed at `aa495fb`, 460 lines, with every claim carrying the line it was read from. Verified
+present at that commit on 2026-08-14 before being cited here. This section states the law and that
+file carries the per-instrument detail. Conformance rows 52 to 55 and 61 carry it.
 
 **Context loss.** `contextLost()` drops instrument handles and the curtain; `contextRestored()`
 rebuilds from granted resources or fails. A census row proves that texture, program and framebuffer
@@ -1075,10 +1090,21 @@ manifest and a passing conformance run.
 
 **`coverage` declares whether the instrument writes coverage, added 2026-08-14 12:40.** `writes` is
 `true` where the instrument leaves the space between its elements clear, under §7's coverage law,
-and `how` names the mechanism its port uses. An instrument declaring `writes:false` may be drawn
-only as the cue nearest the eye, because a stack under it would be drawn and never seen. The host
-reads this at `prepare` and records the decision with its reason, the same way it records the
-quality variant.
+and `how` names the mechanism its port uses. The host reads this at `prepare` and records the
+decision with its reason, the same way it records the quality variant.
+
+**Where a cue declaring `writes:false` may stand, amended 2026-08-14 14:05.** In a stack of more
+than one cue, the lowest cue may declare that it writes no coverage, and every cue above it declares
+that it writes coverage. A one-cue score is exempt, since nothing stands beneath it. Row 61 reds on
+an opaque cue standing above another.
+
+This paragraph read that an instrument declaring `writes:false` may be drawn only as the cue nearest
+the eye. That is the mirror of the rule that holds, and it would have refused the arrangement that
+works while permitting the defect of 10:47. The woven instrument has no absence: its two ribbon sets
+partition the frame and both branches of every mix are picture, so it writes a whole frame honestly
+and declares `writes:false`. It is also the ground of the composed passage and sits at the bottom of
+the stack, farthest from the eye. The superseded sentence is in `PASS-API-V1-HISTORY.md` with its
+date.
 
 ---
 
@@ -1180,6 +1206,8 @@ when its rule is removed, like every row above it.
 59. a uniform sourced from outside the closed set of §7 is refused at registration
 60. a pack whose digest or declared version disagrees with its address is refused, and the walk's own
     glide lands with the reason recorded
+61. in a stack of more than one cue, only the lowest cue may declare `coverage:{writes:false}`: an
+    opaque cue standing above another reds, and a one-cue score is exempt (added 2026-08-14 14:05)
 
 The existing prover is never weakened to make a new picture pass. Lifecycle evidence is added first;
 an old check changes only when the replacement is proved equivalent.

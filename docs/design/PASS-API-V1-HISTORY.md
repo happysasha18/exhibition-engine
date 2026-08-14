@@ -10,6 +10,38 @@ word that superseded it.
 
 ---
 
+## 2026-08-14 14:05 — the coverage rule was written upside down
+
+Root: a reading of the three shaders, which inverted a sentence written at 12:40.
+
+### From §8, where a cue declaring `writes:false` may stand
+
+> An instrument declaring `writes:false` may be drawn
+> only as the cue nearest the eye, because a stack under it would be drawn and never seen.
+
+Replaced by its mirror. The rule that holds: in a stack of more than one cue, the lowest cue may
+declare that it writes no coverage, and every cue above it declares that it writes coverage. A
+one-cue score is exempt, since nothing stands beneath it.
+
+The finding that inverted it: the woven instrument has no absence. Its two ribbon sets partition the
+frame and both branches of every mix are picture, so it writes a whole frame honestly and declares
+`writes:false`. It is also the ground of the composed passage and sits at the bottom of the stack,
+farthest from the eye. The superseded sentence would have refused the arrangement that works, and
+permitted an opaque cue nearest the eye — which is the defect of 10:47, where three voices read as
+one.
+
+The superseded sentence was written from the law rather than from the shaders. The law was right and
+the inference from it was backwards, which is the kind of error that survives a careful reading of
+the document and dies on a careful reading of the code.
+
+### What §7 gained rather than replaced
+
+Three measured facts, so the law is checkable rather than described: where each instrument's alpha
+comes from, that the blend is straight source-over with premultiplied alpha refused for a measured
+reason, and that both doors stay whole for a different reason in each of the three instruments.
+
+---
+
 ## 2026-08-14 13:26 — the effect pack landed
 
 Root: the split named in §12 as the delivery answer was built at `b212ef3`. Every figure below was
