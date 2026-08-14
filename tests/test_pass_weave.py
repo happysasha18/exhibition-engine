@@ -975,9 +975,14 @@ else:
                               instrument: window.__exPass.host.report().instrument};
                     """ % (WORKS[0], WORKS[1]))
                     # the curtain rises after the prepare, not inside the offer call, so it is read
-                    # once the pass has actually run its course
+                    # once the pass has actually run its course. The running instrument is read the
+                    # same way: inside the offer call the host is still awaiting its instrument's
+                    # own file, so it names none yet, and the name is captured here as it passes.
                     for _ in range(60):
-                        if js(br, "return window.__exPass.host.report().state;") == "idle":
+                        rep = js(br, "return window.__exPass.host.report();")
+                        if rep["instrument"]:
+                            r["instrument"] = rep["instrument"]
+                        if rep["state"] == "idle":
                             break
                         br.sleep(0.1)
                     seen = js(br, "return window.__tseen;")
