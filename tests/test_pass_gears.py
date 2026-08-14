@@ -160,8 +160,8 @@ LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 # Since 2026-08-14 the instruments ship in their OWN built file, which the host fetches by address,
 # version and digest. A row about the HOST reads LAYER; a row about this instrument's own mathematics
 # reads its region of PACK.
-PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
-REGION = PACK.split("function gearsInstrument()")[1].split("join({")[0]
+PACK = "\n".join(p.read_text(encoding="utf-8") for p in sorted(TMP.glob("pass-inst-*.js")))
+REGION = (TMP / "pass-inst-gears.js").read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------- string rows
 
@@ -305,7 +305,12 @@ def bench_dir():
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
     # The host fetches its pack by address and weighs its bytes, so the bench root serves the
     # built pack beside the built host: the same two files a visitor gets, unaltered.
-    shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
+    # Each instrument travels as its own file and the host learns every address from the site's own
+    # settings record, so the bench root serves that record and the files it names — the same files
+    # a visitor is served, unaltered.
+    shutil.copy2(TMP / "config.json", d / "config.json")
+    for _inst in sorted(TMP.glob("pass-inst-*.js")):
+        shutil.copy2(_inst, d / _inst.name)
     shutil.copy2(LAB / "effects" / "gears.js", d / "gears.js")
     (d / "photos").mkdir()
     for p in PHOTOS:

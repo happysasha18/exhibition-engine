@@ -82,12 +82,15 @@ def main():
     build_site.build("https://synth.example.com")
 
     bench = Path(tempfile.mkdtemp(prefix="weave_capture_bench_"))
-    # THE PACK STANDS FIRST, AND THE HOST SECOND. Since 2026-08-14 the instruments and their
-    # manifests live in pass-pack.js, which the host fetches by address and weighs against the digest
-    # the build stamped; the host itself carries the machinery and names no instrument. So a reader
-    # looking for an instrument's manifest reads the pack, and while both files stand the pack is the
-    # one named first. The bench root serves both, the same two files a visitor gets.
-    shutil.copy2(tmp / "pass-pack.js", bench / "pass-pack.js")
+    # THE INSTRUMENTS STAND FIRST, AND THE HOST SECOND. Each instrument and its manifest live in a
+    # file of their own, which the host fetches by the address the site's own settings record gives
+    # the instrument's name and weighs against the digest that record carries; the host itself
+    # carries the machinery and names no instrument. So a reader looking for an instrument's manifest
+    # reads that instrument's file, and while both stand the instruments are named first. The bench
+    # root serves the record and the files it names, the same files a visitor is served.
+    shutil.copy2(tmp / "config.json", bench / "config.json")
+    for p in sorted(tmp.glob("pass-inst-*.js")):
+        shutil.copy2(p, bench / p.name)
     shutil.copy2(tmp / "pass-layer.js", bench / "pass-layer.js")
     shutil.copy2(LAB / "effects" / "weave.js", bench / "weave.js")
     (bench / "photos").mkdir()

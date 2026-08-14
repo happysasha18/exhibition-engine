@@ -692,6 +692,24 @@ def client_asset(name):
     return cand if (cand and cand.exists()) else _ENGINE_ASSETS / name
 
 
+# The instrument record this bake produced: name → {src, version, digest}, filled by
+# copy_exhibition_assets and read at the config assembly. One home for one fact.
+_PASS_INSTRUMENTS = {}
+
+
+def _pass_instrument_sources():
+    """Every instrument file that ships, one path each. An instrument the INSTANCE carries wins over
+    the engine's own copy of the same name, which is client_asset's rule applied file by file; an
+    instrument only the instance carries ships too, so a site can bring instruments of its own."""
+    names = {}
+    for d in (_ENGINE_ASSETS, _INSTANCE_ASSETS):
+        if not d:
+            continue
+        for p in d.glob("pass-inst-*.js"):
+            names[p.name] = p
+    return list(names.values())
+
+
 def apply_namespace(text, ns):
     """Resolve the client's namespace tokens to the instance's namespace (EX-NS). The engine client
     carries its namespace-bearing literals as tokens — storage-key prefix ``@@NS@@.``, hyphen key
@@ -870,36 +888,50 @@ def copy_exhibition_assets():
     # asks for it. Absent from the assets dir, the bundle simply has none and every transition
     # rides the walk's own glide.
     #
-    # THE PACK IS BAKED FIRST, AND THE HOST IS STAMPED WITH WHAT THE PACK WEIGHED (§7). The engine
-    # knows no effect name: the instruments live in pass-pack.js, and the host is told an address, a
-    # version and a digest, refusing anything that fails to match. So the order here is fixed — bake
-    # the pack, weigh the bytes that will actually be served, then bake the host with those numbers
-    # substituted in. Stamping a digest taken over the SOURCE would weigh a file no visitor fetches.
+    # EVERY INSTRUMENT TRAVELS AS ITS OWN FILE, AND THE SITE'S RECORD NAMES WHAT EXISTS (§7). The
+    # engine knows no effect name, so nothing here is stamped into the host: the host is told
+    # neither an address nor a name at bake. What the bake produces instead is a RECORD — one entry
+    # per instrument, keyed by the instrument's own name, carrying the address the file is served
+    # at, the version it declares and the digest its served bytes weigh to. That record joins the
+    # site's own `pass` block in config.json (see the `pass` seam at the config assembly below),
+    # which is the same block that already carries the score tables and the score templates. A cue
+    # names an instrument, the host looks the name up in the record, and fetches that one file.
     #
-    # The version has one home, the pack's own `PACK_VERSION` literal, and is read back out of the
-    # source here. A pack absent from the assets dir leaves the host with its tokens unsubstituted,
-    # and the host then refuses to load anything, which is the same landing as a pack that 404s.
-    pack_path = client_asset("pass-pack.js")
-    pack_version, pack_digest = "", ""
-    if pack_path.exists():
-        pack_src = pack_path.read_text(encoding="utf-8")
-        found = re.search(r'var\s+PACK_VERSION\s*=\s*"([^"]+)"', pack_src)
+    # WHY ONE FILE EACH. One file holding the farm makes a visit pay for twenty-five instruments to
+    # see one crossing, and it makes one byte fence answer for a number nobody can act on. One file
+    # per instrument makes the fence the honest unit and makes a visit pay for its own passage.
+    #
+    # THE FILE'S NAME IS THE INSTRUMENT'S NAME, and it is read from the file name alone — the source
+    # `pass-inst-<name>.js` serves as `pass-inst-<name>.js` and is recorded under `<name>`. The host
+    # refuses a file whose instrument declares a different name than the one it was fetched for, so
+    # a file name and the instrument inside it cannot drift apart unnoticed.
+    #
+    # The version has one home, each file's own `INSTRUMENT_VERSION` literal, read back out here.
+    # The digest is taken over the bytes actually written, never over the source: a digest over a
+    # file no visitor fetches would weigh the wrong thing.
+    global _PASS_INSTRUMENTS
+    _PASS_INSTRUMENTS = {}
+    for inst_path in sorted(_pass_instrument_sources()):
+        name = inst_path.name[len("pass-inst-"):-len(".js")]
+        inst_src = inst_path.read_text(encoding="utf-8")
+        found = re.search(r'var\s+INSTRUMENT_VERSION\s*=\s*"([^"]+)"', inst_src)
         if not found:
-            raise SystemExit("pass-pack.js declares no PACK_VERSION — the host has no version to pin")
-        pack_version = found.group(1)
-        if "@@NS@@" in pack_src or "@@NS_UPPER@@" in pack_src:
-            pack_src = apply_namespace(pack_src, _NAMESPACE)
-        pack_out = strip_js_comments(pack_src)
-        write(OUT / "pass-pack.js", pack_out)
-        pack_digest = hashlib.sha256((OUT / "pass-pack.js").read_bytes()).hexdigest()
+            raise SystemExit("%s declares no INSTRUMENT_VERSION — the site has no version to pin"
+                             % inst_path.name)
+        if "@@NS@@" in inst_src or "@@NS_UPPER@@" in inst_src:
+            inst_src = apply_namespace(inst_src, _NAMESPACE)
+        write(OUT / inst_path.name, strip_js_comments(inst_src))
+        _PASS_INSTRUMENTS[name] = {
+            "src": inst_path.name,
+            "version": found.group(1),
+            "digest": hashlib.sha256((OUT / inst_path.name).read_bytes()).hexdigest(),
+        }
 
     layer_path = client_asset("pass-layer.js")
     if layer_path.exists():
         layer_src = layer_path.read_text(encoding="utf-8")
         if "@@NS@@" in layer_src or "@@NS_UPPER@@" in layer_src:
             layer_src = apply_namespace(layer_src, _NAMESPACE)
-        layer_src = layer_src.replace("@@PACK_VERSION@@", pack_version)
-        layer_src = layer_src.replace("@@PACK_DIGEST@@", pack_digest)
         write(OUT / "pass-layer.js", strip_js_comments(layer_src))
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
@@ -1395,7 +1427,25 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # absent block leaves every setting on its built-in default, so a site that sets nothing behaves
     # exactly as it did before the seam.
     if isinstance(site_config.get("pass"), dict) and site_config["pass"]:
-        config["pass"] = site_config["pass"]
+        config["pass"] = dict(site_config["pass"])
+    # THE SITE NAMES WHAT EXISTS (§7). Beside everything the site wrote, the `pass` block carries the
+    # instrument record: one entry per instrument, keyed by its own name, with the address it is
+    # served at, the version it declares and the digest its served bytes weigh to. The host reads the
+    # instrument names out of the score's cues and their addresses out of this record, so the engine
+    # holds no instrument name and no instrument address of its own.
+    #
+    # A site may write entries of its own for instruments this bake does not carry, and they pass
+    # through untouched like every other value in the block. An entry whose name this bake DID write
+    # a file for takes the bake's own numbers: the bake weighed the bytes it served, and a digest
+    # from anywhere else would weigh a file no visitor fetches.
+    if _PASS_INSTRUMENTS:
+        block = config.get("pass")
+        if not isinstance(block, dict):
+            block = {}
+        record = dict(block.get("instruments") or {})
+        record.update(_PASS_INSTRUMENTS)
+        block["instruments"] = record
+        config["pass"] = block
     config["experiments"] = {}      # variant → flag → metric (empty registry)
     # EX-QUIZ-ONCE (INV-66) + EX-QUIZ-COPY: config seams join ONLY when the quiz is on —
     # flag off leaves config.json byte-for-byte today's (INV-60 fence).

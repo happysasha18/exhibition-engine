@@ -171,8 +171,8 @@ LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 # version and digest. A row about the HOST reads LAYER; a row about the woven instrument's own
 # mathematics reads its region of PACK. Splitting the two is what lets the boundary row in
 # test_pass_pack.py demand that no instrument name appear in the host at all.
-PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
-WEAVE = PACK.split("function weaveInstrument()")[1].split("function matterInstrument()")[0]
+PACK = "\n".join(p.read_text(encoding="utf-8") for p in sorted(TMP.glob("pass-inst-*.js")))
+WEAVE = (TMP / "pass-inst-weave.js").read_text(encoding="utf-8")
 # The one script in this tree that raises a bench of its own for this instrument; it has to serve
 # the same two files a visitor is served, and a row below holds it to that.
 CAPTURE = (ROOT / "scripts" / "capture-weave.py").read_text(encoding="utf-8")
@@ -260,11 +260,13 @@ check("PASS-WEAVE the band count publishes the floor the instrument applies, and
       "stands at 5 beneath it, so a composer asking for a measured band family of three read none "
       "of the three floors it would meet")
 
-check("PASS-WEAVE the capture bench serves the pack the host fetches, and names it before the host",
-      'shutil.copy2(tmp / "pass-pack.js"' in CAPTURE
-      and CAPTURE.index('tmp / "pass-pack.js"') < CAPTURE.index('tmp / "pass-layer.js"'),
-      "the instruments left the host for the pack on 2026-08-14; a bench root carrying the host "
-      "alone answers the host's own fetch for the pack with a 404 and the page never reaches ready")
+check("PASS-WEAVE the capture bench serves the record and the files it names, before the host",
+      'shutil.copy2(tmp / "config.json"' in CAPTURE
+      and 'tmp.glob("pass-inst-*.js")' in CAPTURE
+      and CAPTURE.index('tmp.glob("pass-inst-*.js")') < CAPTURE.index('tmp / "pass-layer.js"'),
+      "the instruments left the host on 2026-08-14 and left the single pack for a file each; a "
+      "bench root carrying the host alone answers its fetch for the site's own record with a 404, "
+      "and a root carrying the record without the files it names answers every instrument with one")
 
 check("PASS-WEAVE the score's road into the walk needs no engine rebuild",
       "function passScoreFor" in (ROOT / "engine" / "client" / "01a-pass.js").read_text(encoding="utf-8"),
@@ -272,10 +274,22 @@ check("PASS-WEAVE the score's road into the walk needs no engine rebuild",
 
 # The delivery road's own row: what a site wrote into site.json is what the served settings file
 # carries, byte for byte, with the bake judging none of it.
+#
+# THE BAKE ADDS ONE MEMBER OF ITS OWN, and this row names it rather than letting it pass unread: the
+# instrument record, keyed by instrument name, carrying the address each file is served at, the
+# version it declares and the digest its served bytes weigh to. The bake weighed the bytes it wrote,
+# so that record is the one thing in the block the site cannot author for the files the bake ships.
+# Everything else the site wrote reaches the file untouched, which is what the second half reads.
 served = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
-check("PASS-WEAVE the site's pass record reaches the served settings file untouched",
-      served.get("pass") == build_site.SITE_CONFIG["pass"],
-      f"config.json carries {served.get('pass')} exactly as site.json wrote it")
+_block = served.get("pass") or {}
+_added = sorted(set(_block) - set(build_site.SITE_CONFIG["pass"]))
+_kept = {k: v for k, v in _block.items() if k in build_site.SITE_CONFIG["pass"]}
+check("PASS-WEAVE the site's pass record reaches the served settings file untouched, "
+      "with the bake's own instrument record beside it",
+      _kept == build_site.SITE_CONFIG["pass"] and _added == ["instruments"]
+      and all(sorted(e) == ["digest", "src", "version"] for e in _block["instruments"].values()),
+      f"config.json carries {_kept} exactly as site.json wrote it, and the bake added "
+      f"{_added} — {sorted(_block.get('instruments') or {})}, each with its address, version and digest")
 
 # ---------------------------------------------------------------- browser rows
 
@@ -382,9 +396,12 @@ def bench_dir():
     two roads of one frame side by side."""
     d = Path(tempfile.mkdtemp(prefix="synth_weavebench_"))
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
-    # The host fetches its pack by address and weighs its bytes, so the bench root serves the built
-    # pack beside the built host: the same two files a visitor gets, unaltered.
-    shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
+    # Each instrument travels as its own file and the host learns every address from the site's own
+    # settings record, so the bench root serves that record and the files it names — the same files
+    # a visitor is served, unaltered.
+    shutil.copy2(TMP / "config.json", d / "config.json")
+    for _inst in sorted(TMP.glob("pass-inst-*.js")):
+        shutil.copy2(_inst, d / _inst.name)
     shutil.copy2(LAB / "effects" / "weave.js", d / "weave.js")
     (d / "photos").mkdir()
     for p in PHOTOS:
