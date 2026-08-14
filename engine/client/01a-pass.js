@@ -239,17 +239,70 @@
     return { ok: true, score: raw, read: v };
   }
 
+  // A SCORE PER PAIR CANNOT COVER A DEALT WALK. The walk deals its works afresh each visit and
+  // orders them by its own arc, so a pair scored ahead of time essentially never comes up; and a
+  // collection of 121 works holds about fourteen thousand ordered pairs, which one whole score each
+  // would make ~50 MB of settings file. So a site may carry, beside `pass.scores`:
+  //   pass.scoreTemplates[<instrument>]  one score with its per-pair numbers left empty and its
+  //                                      slots named — cue, roles, levels, window, doors, camera,
+  //                                      quality, interruption and driver graph, all of it the same
+  //                                      whatever two works are in hand;
+  //   pass.scoreTables[<instrument>]     one row per ordered pair, carrying ONLY that pair's
+  //                                      measured numbers.
+  // Filling a template's named slots from a row is a data operation: nothing is measured in the
+  // browser, so the law that measuring and casting happen at build time keeps its full force. A pair
+  // with no row hands back nothing and the walk's own glide runs, exactly as a pair with no score of
+  // its own always has; a row the template cannot take is refused WHOLE and says why, the same way a
+  // score naming an unknown field is.
+  // `readiness` is the one row field that fills no slot: it is the pair's own measured readiness,
+  // and the row is refused outright when it stands under the table's floor — the same floor the
+  // build-time walk applies, carried in the table so the refusal needs no measurement here. The
+  // score is built on a COPY of the template, so a row refused halfway leaves nothing behind.
+  function passFillScore(key) {
+    const p = (((EX && EX.pass) || (cfg && cfg.pass) || {}));
+    const tables = p.scoreTables || {}, templates = p.scoreTemplates || {};
+    const insts = Object.keys(tables);
+    for (let i = 0; i < insts.length; i++) {
+      const tbl = tables[insts[i]] || {}, row = (tbl.rows || {})[key];
+      if (!row || typeof row !== "object") continue;
+      const no = (why) => { passNote(passRefusals, { what: "row", name: key, why: why }); return null; };
+      const tpl = templates[insts[i]] || {}, slots = tpl.slots;
+      let score = null;
+      try { score = JSON.parse(JSON.stringify(tpl.score)); } catch (e) {}
+      if (!score || !slots || typeof slots !== "object") return no("no template for this table's instrument");
+      const stray = Object.keys(row).filter((k) => !slots[k] && k !== "readiness");
+      if (stray.length) return no("row names «" + stray[0] + "», a slot the template lacks");
+      if (typeof tbl.readinessFloor === "number" && !(row.readiness >= tbl.readinessFloor)) {
+        return no("readiness " + row.readiness + " stands under the floor " + tbl.readinessFloor);
+      }
+      const names = Object.keys(slots);
+      for (let j = 0; j < names.length; j++) {
+        const n = names[j], s = slots[n];
+        const cue = (score.cues || []).filter((c) => c && c.id === s.cue)[0];
+        if (typeof row[n] !== "number" || !Number.isFinite(row[n])) return no("the row's «" + n + "» is no measured number");
+        if (!cue || !cue.nodes || !cue.nodes[s.node]) return no("slot «" + n + "» names a node the template lacks");
+        cue.nodes[s.node].value = row[n];
+        if (s.score) score[s.score] = row[n];
+      }
+      const ids = key.split("__");
+      score.pair = { a: ids[0], b: ids[1] };
+      return score;
+    }
+    return null;
+  }
   // The pair's own score, without an engine rebuild. The site writes `pass.scores`, keyed
   // "<departing id>__<arriving id>", into its own site.json; the bake carries the whole `pass` block
   // into config.json as DATA and judges none of it (engine/build.py), so a new score for a pair is a
-  // content change. A pair with no score of its own keeps the walk's own glide, which is the
-  // standing fallback — the same road a refused score takes.
+  // content change. A pair with a score of its own takes it; a pair with only a row takes the filled
+  // template; a pair with neither keeps the walk's own glide, which is the standing fallback — the
+  // same road a refused score takes.
   function passScoreFor(fromEl, toEl) {
-    const rec = (((EX && EX.pass) || (cfg && cfg.pass) || {})).scores;
-    if (!rec) return null;
     const a = fromEl && fromEl.dataset ? fromEl.dataset.id : null;
     const b = toEl && toEl.dataset ? toEl.dataset.id : null;
-    return (a && b) ? (rec[a + "__" + b] || null) : null;
+    if (!a || !b) return null;
+    const key = a + "__" + b;
+    const rec = (((EX && EX.pass) || (cfg && cfg.pass) || {})).scores;
+    return (rec && rec[key]) || passFillScore(key);
   }
 
   // Every setting resolves ONCE, at nav-start, and the result is frozen onto the command. A live
@@ -588,7 +641,7 @@
   if (passGet("diagnostics") === "on") {
     try {
       window.__@@NS@@Pass = {
-        report: passReport, score: passScoreCheck, version: 1,
+        report: passReport, score: passScoreCheck, fill: passFillScore, version: 1,
         adapter: { declare: declare, dock: dock, glide: glide, interrupt: interrupt,
                    reframe: reframe, curtain: curtain, mark: passMark },
         layer: function () { return passLayer; },

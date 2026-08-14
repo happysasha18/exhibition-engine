@@ -291,6 +291,37 @@ score, and the conformance row for determinism is the proof: two runs of one see
 frame by frame, must match to the pixel. A handle that keeps its own clock makes that row red, and
 the row names the handle.
 
+### 4.4c One template per instrument, one row per ordered pair
+
+A score per pair covers nothing on a walk that deals its works afresh each visit. The walk orders
+its ten works by its own arc, so a pair scored ahead of time essentially never comes up; and a
+collection of 121 works holds about fourteen thousand ordered pairs, which one whole score each
+would make some fifty megabytes of settings file. The preview of 2026-08-14 showed exactly this: a
+renderer registered, a score on file, and not one crossing played.
+
+So a site may carry, beside `pass.scores`:
+
+- `pass.scoreTemplates[<instrument>]` — one score with its per-pair numbers left empty and its
+  slots named. Everything that does not depend on which two works are in hand lives here: the cue,
+  its roles and levels and window, the doors, the camera, the quality variants, the interruption
+  and the whole driver graph. Each slot names the cue and the static node its number fills, and may
+  name a score-level field carrying the same number.
+- `pass.scoreTables[<instrument>]` — one row per ordered pair, keyed the way `pass.scores` is,
+  holding only that pair's measured numbers, plus the pair's own readiness.
+
+At the moment a transition is declared, the product fills the template's named slots from the row
+and hands the resulting score to the host. Filling named slots is a data operation: nothing is
+measured in the browser, so §4.5's law that measurement and casting happen at build time keeps its
+full force. A pair with no row hands back no score at all and the walk's own glide runs, which is
+what a pair with no score has always meant. A row is refused WHOLE, with its reason, when it names
+a slot the template lacks, when a field of it is no number, or when its readiness stands under the
+table's own floor — the same floor the build-time walk applies, carried in the table so the refusal
+needs no measurement either.
+
+The conformance rows: a pair with a row produces a score the host accepts; a pair without one
+produces none; a bad row is refused and recorded; and the filled score is identical, field for
+field, to the score the per-pair builder wrote for the one pair that has both.
+
 ### 4.5 The private fence
 
 `quiz.json` and `story_notes.json` in the site's content root are keyed by the same work-id strings
