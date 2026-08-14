@@ -447,9 +447,12 @@ and its arrival at TEXTURE, each naming only what it owns. The superseded senten
 `PASS-API-V1-HISTORY.md` with its date.
 
 **The levels check runs at build time, and the host no longer carries it.** It read a field the
-score's closed allow-list does not hold, so the host had nothing to judge. The gate that judges a
-plan already carries the law with hundreds of rows beside it, and that is where the law is enforced.
-Row 17 names the build-time home.
+score's closed allow-list does not hold, so the host had nothing to judge.
+
+The gate that judges a plan is `lab/sceneplan-build-check.py`, in the tlvphotos tree on the branch
+`immersive-alpha-sceneplan`, and that is where the law is enforced. An earlier brief placed this
+gate in the engine with a row count beside it. It has never lived in the engine, and the count came
+with the same mistake, so neither is repeated here. Row 17 names the build-time home.
 
 **The tier budget check.** From `voice`, `levels`, `window`, the score's `duration` and the score's
 `camera` record: a quiet link carries one letter, at most one accompaniment, no miracle, 2–4 s; a
@@ -999,6 +1002,34 @@ lightens the score first, then drops accompaniment voices to 30 frames a second 
 gesture keeps 60, then eases resolution toward 0.75 of device pixels, and stops at a floor below
 which the plain fallback plays instead of a thin miracle.
 
+**The pack boundary, added 2026-08-14 13:26 and built at `b212ef3`.** The instruments live in
+`engine/assets/pass-pack.js`; the host lives in `engine/assets/pass-layer.js` and loads the pack by
+address, checking its declared version and a digest of the bytes that arrived, then registers what
+it finds by manifest name.
+
+**The host knows no instrument name.** Row 57 greps the built host for each of the three and reds on
+any occurrence. Measured 2026-08-14: the built host carries zero occurrences of `weave`, `matter`
+and `gears`, and the pack carries eight, seven and six.
+
+*The host owns:* the state machine, the watchdog, the idempotence guard, the cadence, the frame
+loop, the GPU and resource machinery, the driver evaluator, the camera, the census, the diagnostic
+surface's renderer half, and the pack loader with its version and digest check.
+
+*The pack owns:* the instruments — their shaders, their response curves and their manifests — and
+nothing else.
+
+**The version and the digest.** The version lives in one literal inside the pack, so one edit moves
+it and no second copy can disagree. The digest is taken over the built, comment-stripped bytes, the
+same bytes the byte fence measures, so the two read one artefact. The baking order is fixed: the
+pack is baked first and the host second, because the host's copy of the digest is computed from the
+pack that already exists. A pack whose digest or declared version disagrees with the address is
+refused, and row 60 carries the refusal.
+
+**The uniform sources are a closed set.** A uniform may be sourced from the two source textures,
+their fits, the resolution, the transaction's seconds, a value the instrument answers, or a handle.
+Anything else is refused at registration, which is the same law §7 already states for binding by
+name rather than by position, carried across the pack boundary. Row 59 carries it.
+
 **The coverage law, added 2026-08-14 12:40.** The host draws several cues in one frame. An
 instrument writes opaque where its own matter stands and clear where its matter is absent. The frame
 it hands back is its elements together with the space between them, and that space belongs to
@@ -1141,6 +1172,14 @@ when its rule is removed, like every row above it.
     host
 56. no plan-only field — `cast`, `levelOwnership`, `measuredHandles`, `returnOf` — reaches a shipped
     file, which is the fence §4.8 depends on
+57. the built host contains no instrument name: a grep for each of the three reds on any occurrence
+    (added 2026-08-14 13:26; measured that day at zero occurrences in the host against eight, seven
+    and six in the pack)
+58. the monolithic file and the host-plus-pack, stood side by side on one score, agree to the pixel —
+    mean 0.000000 and worst channel 0 of 255 at all three sampled instants
+59. a uniform sourced from outside the closed set of §7 is refused at registration
+60. a pack whose digest or declared version disagrees with its address is refused, and the walk's own
+    glide lands with the reason recorded
 
 The existing prover is never weakened to make a new picture pass. Lifecycle evidence is added first;
 an old check changes only when the replacement is proved equivalent.
@@ -1206,7 +1245,11 @@ resizes a running transaction rather than replacing it.
 | how the two geometries reach the host | §2.6 asks them to arrive as data frozen onto the command's `doors`. What was built hands the measurement through a read-only hook the product owns, which the host calls at `prepare` and at `reframe`, because freezing the record onto every declared command costs bundle bytes and the walk's bundle stands at 67 985 B against a 68 000 B fence — 15 B remaining. §1.1 declares the exception and row 51, unwritten, is what will prove the callback mutates nothing. The two readings are reconciled by that declaration and the divergence stays open as a design question | a later branch, when the bundle has room |
 | `chromeReveal` as a scoreable product choreography with its six named parts | built 2026-08-14 at `7ee2708`: the chrome is revealed once, after the landing, with its parts named — plaque, counter, focus, share, sound and series — and a score may name the chrome's own timing | closed |
 | EdgeMemory (§4.8) | declared and unbuilt; held by the walk in the site's layer, and the engine sees only `returnOf` | the walk, in tlvphotos |
-| the instruments leaving the renderer's own file | under way 2026-08-14: a worker is splitting them into a version-pinned pack the host loads by address and digest, knowing no instrument name. §12 already names this as the delivery answer, and when the split lands §12 describes what is rather than what will be | a worker on the split, in flight |
+| the instruments leaving the renderer's own file | landed 2026-08-14 at `b212ef3`: the three instruments live in `engine/assets/pass-pack.js`, the host loads it by address under a version and digest rule, the built host carries no instrument name, and the old file and the new pair agree to the pixel. §7 states the boundary and §12 the fences | closed |
+| who owns the pack and its manifests | his brief has tlvphotos owning them; the engine bakes the pack today, so the boundary stands in the code while the ownership does not. The handover needs three decisions: the file's shape, the version and digest rule, and where the address is recorded | tlvphotos, on his brief; unscheduled |
+| the pack loads through a blob script | no content-security policy is set by the engine today, so nothing refuses it now. A policy added later must name this road, or the picture stops loading on the deployment that adds it | whoever adds the first content-security policy |
+| the digest check fails closed with no subtle-crypto | a browser offering no subtle-crypto cannot verify the digest, so the pack is refused and the walk's own glide lands with the reason recorded. This costs the picture on a plain-http deployment, where subtle-crypto is unavailable by the browser's own rule | a later branch, with the deployment's owner |
+| a conformance row reads a build-time gate in the tlvphotos tree | the row degrades to a named skip when that tree is absent, so an engine-only checkout reports a skip rather than a pass. A skip that reads as a pass is the failure to watch for here | the suite's owner |
 | the shape of the plan's `measuredHandles` field | named 2026-08-14 as a plan-only field that never travels, with its shape left to the plan gate. This contract fixes only that it stays in the plan; what it holds is undefined here | the plan gate's owner |
 | the woven instrument's band count | the floor stands at 8 against this pair's measured 3, recorded as requested-against-applied across 1935 cues. It is the first place his brief's requirement that every meaningful number carry both values actually bites, and the divergence between what the pair measures and what the instrument will draw is unresolved | the instrument's port, with his eye on the motion |
 | the version-pinned opaque effect pack (§12) | declared and unbuilt. The engine knows no TLV effect name and loads the pack; tlvphotos owns it and its manifests, and the renderer's file then holds the host alone. It is what stops the renderer file's fence tracking the effect farm — 25 lab modules on disk, and headroom after each move smaller than one instrument costs. Queued behind the first composed passage playing | a later branch, on his word of 2026-08-14 08:39 |
@@ -1246,36 +1289,52 @@ the renderer's file never arrives.
 
 *In the renderer's own file:* the host — the state machine, the watchdog, the idempotence guard, the
 cadence, the frame loop, the GPU and resource machinery, the driver evaluator, the camera, the
-census and the diagnostic surface's renderer half. None of it is needed on a visit that never draws.
+census, the diagnostic surface's renderer half, and the pack loader. None of it is needed on a visit
+that never draws.
+
+*In the pack, fetched after the host on a visit that draws:* the instruments, with their shaders,
+their response curves and their manifests. §7 states the boundary and what each side owns.
 
 **The renderer file's fence moves with its reason written into the test**, the same way the bundle's
 did on 2026-08-13. This section used to promise that the number would be measured at the first
 landing of a real instrument. That landing has happened three times over, so the promise is replaced
 by the record.
 
-**Where the renderer's file stood at `83ddc82`, measured 2026-08-14.** Raw, 92 669 B against a
-102 000 B fence, the fence carried as `LAYER_FENCE` in `tests/test_pass_api.py`. Gzipped, 24 270 B
-against a 27 000 B fence in `tests/test_budget.py`. Both fences moved once at `83ddc82`, sized after
-the merge of three instruments and the return to the hang, each with its breakdown written into its
-own test. The gzipped figure is the one that travels to a phone; the raw fence is a proxy, and the
-cost it proxies is measured beside it.
+**The split landed at `b212ef3`, and this section now describes what stands.** The three
+instruments left the renderer's own file for `engine/assets/pass-pack.js`, which the host loads by
+address under the version and digest rule of §7. Until 2026-08-14 13:26 this section described the
+split as the delivery answer it was waiting for; the superseded text is in `PASS-API-V1-HISTORY.md`
+with its date.
 
-**The gzipped fence is red as this is written.** A run of `tests/test_budget.py` at 2026-08-14 11:12
-reports the file at 28 137 B against the 27 000 B fence, 1 137 B over, with work in flight in the
-worktree that has not landed. The figures above are the record at `83ddc82` and the number moved
-between one measurement and the next inside the same hour. That is the argument of the paragraphs
-below stated as an event rather than as a forecast.
+**The proof that the split changed no pixel.** The old monolithic file and the new host-plus-pack
+were stood side by side on one score and read a mean of 0.000000 with a worst channel of 0 of 255,
+at all three sampled instants. A delivery change that moves a pixel is a product change wearing a
+build change's clothes, so this is the row that licenses the split rather than the byte counts.
+Row 58 carries it.
 
-**The fence keeps moving, and the section should say why that ends rather than only that it
-happens.** Each instrument that lands writes its shader and its manifest into that one file, 25 lab
-modules stand on disk, and the headroom left after each move is smaller than one instrument costs.
-A fence that moves at every landing is measuring a farm that grows, so it stops being a budget and
-becomes a record of what was added.
+**The four fences, measured 2026-08-14 13:26 in this worktree.** The gzipped figures come from
+`python3 tests/test_budget.py`, which strips comments as the shipped file is stripped; the raw
+figures come from building the site and sizing the artefacts, against constants carried in
+`tests/test_pass_api.py` and `tests/test_pass_pack.py`. The unit is bytes.
 
-**The delivery answer this section exists to give.** His word of 2026-08-14 08:39 names the shape
-that ends it: the engine knows no TLV effect name and loads a version-pinned opaque effect pack,
-and tlvphotos owns that pack and its manifests. Under that shape the renderer's file holds the host
-alone — the state machine, the driver evaluator, the camera, the resource machinery and the
-diagnostic surface — and its fence stops tracking the effect farm, because the farm ships in the
-pack under its own version and its own budget. The split is queued behind the first composed
-passage playing, and §11 carries it as a row with an owner.
+| file | measured | fence | headroom |
+|---|---|---|---|
+| the host, built raw | 78 237 B | 86 000 B, down from 102 000 | 7 763 B |
+| the host, gzipped | 21 669 B | 24 000 B, down from 27 000 | 2 331 B |
+| the pack, raw | 34 589 B | 38 000 B, new on its first day | 3 411 B |
+| the pack, gzipped | 7 894 B | 8 700 B, new | 806 B |
+| the walk's own bundle | 67 985 B | 68 000 B, untouched | 15 B |
+
+**Both host fences moved DOWN**, which is the fact worth reading twice. Every earlier move of this
+fence went up, because each landing instrument wrote its shader into the one file. The fences now
+track the host and have stopped tracking the effect farm, so a fourth instrument moves the pack's
+fence and leaves the host's alone.
+
+The walk's own bundle is untouched at 15 B of headroom. That is a live constraint: a bundle-side
+line added today breaks that fence, and a reader who adds one should expect the red.
+
+**The ownership half is not done, and it is a handover rather than a promise.** His brief has
+tlvphotos owning the pack and its manifests. Today the engine still bakes it, so the boundary stands
+in the code while the ownership does not. Three things the handover needs, and each is a decision
+rather than a task: the file's shape, the version and digest rule, and where the address is
+recorded. §11 carries it as a row with an owner.
