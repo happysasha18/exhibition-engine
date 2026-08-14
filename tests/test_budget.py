@@ -66,7 +66,16 @@ strip_css_comments, strip_js_comments = _load_strip()
 # fence value + one-line reason, per asset. current × ~1.1–1.15, rounded to a round number above it.
 # The transform is the exact bake-time treatment of the served asset (None = shipped verbatim).
 FENCES = {
-    "exhibition.js": (67_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture travels separately (pass-layer.js) since 2026-08-13", strip_js_comments),
+    # 2026-08-14, night — MOVED FROM 67 000 B TO 68 000 B, MEASURED AT 67 279 B. What arrived is the
+    # fill: a walk that deals its works afresh each visit can now carry a crossing on ANY of its
+    # steps, because the settings file may hold one score template per instrument plus a row of
+    # measured numbers per ordered pair, and the adapter fills the template's named slots from the
+    # row at declare time. In stripped source bytes the whole addition is 1 858 B — 544 B gzipped —
+    # and it buys every step of every deal; the alternative, a whole score for each of the ~14 000
+    # ordered pairs of a 121-work collection, is ~50 MB of settings file and was never servable.
+    # It could not live in pass-layer.js instead: that file is fetched lazily, and the score must be
+    # frozen onto the command the moment the transition is declared, which happens first.
+    "exhibition.js": (68_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture travels separately (pass-layer.js) since 2026-08-13", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
     # 2026-08-14, morning: the stub became a host with a frame half and one real instrument (the
     # woven one), measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind.
