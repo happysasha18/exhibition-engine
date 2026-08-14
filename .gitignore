@@ -5,3 +5,6 @@ __pycache__/
 .adopt-checkpoint.md
 .live-spec/checkpoints/*
 !.live-spec/checkpoints/.gitkeep
+# A suite's kept captures (§9 row 16). They stay on disk after a run, where the row that counts them
+# reads them; each run writes them afresh, and eleven megabytes of that belongs outside the history.
+tests/captures/

@@ -11,7 +11,10 @@ idempotence guard and its token check; the frame half of §1.2 and §7 — one c
 context with the drawing buffer unpreserved, the two source textures, the programme cache, the frame
 loop, the clock handed down as transaction seconds, resize, the resolution ladder, the name-driven
 uniform binding, the resource census and context loss and restoration; the first instrument, the
-woven one of §8, with its manifest and with every one of its nine handles reachable from a score;
+woven one of §8, with its manifest and with every one of its nine handles reachable from a score; the
+second instrument, the matter one, carried over from `lab/effects/matter.js` on 2026-08-14 with its
+manifest, its nine handles and its fourteen uniforms bound by declared name — it carries disassembly
+and assembly, which the woven one does not;
 the score's road from a site's own `pass` record onto a declared command; the driver graph of §5 —
 its sources, its ten operator kinds, named nodes with references, and cycles refused with the ring
 named; the camera of §6 — the pose record, the dolly in log space, one authority at every instant

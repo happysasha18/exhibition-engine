@@ -96,7 +96,13 @@ FENCES = {
     # This file is fetched ONLY on a visit that actually draws — reduced motion, Save-Data, no WebGL2
     # and visualLayer:off never ask for it — so its bytes never touch the walk's own bundle above,
     # which stands untouched at 66 735 B against its own 67 000 B fence.
-    "pass-layer.js": (21_000, "the drawing layer's own file, fetched only when a walk asks for it: the host's frame half, the driver graph, the camera, the interruption cadence, and the woven instrument with its shader", strip_js_comments),
+    # 2026-08-14, evening — THE FENCE STANDS AT 21 000 B, MEASURED AT 19 712 B. A second instrument
+    # arrived, the matter one of §8, carried over from lab/effects/matter.js: its shader, its
+    # response curve of twenty-one measured shares, its field constants, its numbers of one frame
+    # and its manifest of nine handles and fourteen name-bound uniforms. In stripped source bytes
+    # the whole addition is 1 538 B gzipped, and 1 288 B of the fence remain under it. The number
+    # did not move; only this reason did, so the file's own record names both instruments it holds.
+    "pass-layer.js": (21_000, "the drawing layer's own file, fetched only when a walk asks for it: the host's frame half, the driver graph, the camera, the interruption cadence, and two instruments with their shaders — the woven one and the matter one", strip_js_comments),
 }
 
 results = []
