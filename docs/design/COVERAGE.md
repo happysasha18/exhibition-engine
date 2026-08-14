@@ -15,10 +15,17 @@ like. It changes no code.
 
 **Where the code being cited lives.** The three instruments left `engine/assets/pass-layer.js` on
 2026-08-14 at `b212ef3` and now stand in `engine/assets/pass-pack.js`, the version-pinned pack the
-host loads by address and digest. The move changed no pixel and no line of shader mathematics. Every
-shader citation below is `pass-pack.js` at `b212ef3`; every host citation is `pass-layer.js` at the
-same commit. A reader following a citation into the older monolithic file will find the same lines at
-different numbers.
+host loads by address and digest. Every shader citation below is `pass-pack.js` and every host
+citation is `pass-layer.js`, both as they stand with coverage landed. A reader following a citation
+into the pre-coverage tree, or into the older monolithic file, will find the same lines at different
+numbers.
+
+**What is built, and what this document now records.** The specification was accepted on 2026-08-14
+and built in the order §8 sets out. The three instruments carry their alpha and their `coverage`
+block, the host composites straight source-over and refuses a stack whose floor writes coverage, and
+conformance rows 52 to 55 are green in `tests/test_pass_coverage.py` with a red-on-bug proof each.
+Every number in §5, §7 and §9 below is a measurement from that suite rather than a prediction, and
+where a prediction was wrong the correction is marked as one.
 
 ---
 
@@ -102,29 +109,29 @@ constant centre crop of 1.29 the travel is paid for with.
 
 ---
 
-## 3. `matter` — `pass-pack.js:384–451`
+## 3. `matter` — `pass-pack.js:397–474`
 
 ### 3.1 Where its matter stands
 
-The quantity is `cov`, at `:433`:
+The quantity is `cov`, at `:446`:
 
     float d = (F - uTau) / (grad * h);
     float cov = clamp(0.5 + d, 0.0, 1.0);
 
-`F` (`:428`) is the field — six parts a plain ladder across the frame, four parts two grains of value
+`F` (`:441`) is the field — six parts a plain ladder across the frame, four parts two grains of value
 noise. `uTau` is the threshold, which travels from a tenth below the field's whole range to a tenth
-above it as the dial runs (`tau`, `:511`). `d` is the signed distance from the threshold measured in
-points, since `h = 1.0 / uRes.y` (`:422`) and `grad` is the field's own gradient length (`:431`). So
+above it as the dial runs (`tau`, `:534`). `d` is the signed distance from the threshold measured in
+points, since `h = 1.0 / uRes.y` (`:435`) and `grad` is the field's own gradient length (`:444`). So
 `cov` is a one-point antialiased mask: 1 where the point still stands on work A's side of the front, 0
 where the front has passed it and work B has arrived.
 
-`col = mix(colB, colA, cov)` (`:447`) reads it as the share of A. `1.0 - cov` is therefore the share
+`col = mix(colB, colA, cov)` (`:460`) reads it as the share of A. `1.0 - cov` is therefore the share
 of B: the territory the arriving work has taken. That territory is what this instrument builds. The
 quantity is the lab module's own, under the module's own name (`lab/effects/matter.js:115`).
 
 ### 3.2 The alpha it should carry
 
-    gl_FragColor = vec4(col, 1.0 - cov);    // replacing :449
+    gl_FragColor = vec4(col, 1.0 - cov);    // replacing :472
 
     coverage: { writes: true,
                 how: "1.0 - cov, the share of the arriving work at the travelling threshold" }
@@ -149,7 +156,7 @@ and close it showing nothing at all.
 ### 3.3 Its doors
 
 At `mix = 1` the alpha is 1 at every point, the drag is 0 (`loosen` carries the factor `4·d·(1-d)`,
-`:513`) and the contact shadow is 0 (`guard` through `smoothstep(1, 0.91, d)`, `:514`). Door B is
+`:536`) and the contact shadow is 0 (`guard` through `smoothstep(1, 0.91, d)`, `:537`). Door B is
 `texB` whole and opaque under the crop of 1.17, unchanged from what it is today, and it is what the
 composed passage's own door B is measured against.
 
@@ -160,22 +167,22 @@ beneath it.
 
 ---
 
-## 4. The meshing instrument — `pass-pack.js:673–762`
+## 4. The meshing instrument — `pass-pack.js:703–802`
 
 ### 4.1 Where its matter stands
 
-The quantity is `cov`, at `:749`, built from the same shape:
+The quantity is `cov`, at `:779`, built from the same shape:
 
     float M = (RA - rA) - (RB - rB) + uSpread * (ord - 0.5);
     float d = M / (grad * h);
     float cov = clamp(0.5 + d, 0.0, 1.0);
 
-`RA` and `RB` (`:732–733`) are the two rims with their teeth standing on them, the second wheel's
-teeth being the first's turned inside out. `M` (`:741`) is how far inside wheel A's rim the point lies
-against how far inside wheel B's, with the tooth handover spread across the mesh (`:737–739`). `grad`
-is the field's exact gradient (`:744–747`), `h = 2.0 / uRes.y` (`:715`), so `d` is again a signed
+`RA` and `RB` (`:762–763`) are the two rims with their teeth standing on them, the second wheel's
+teeth being the first's turned inside out. `M` (`:771`) is how far inside wheel A's rim the point lies
+against how far inside wheel B's, with the tooth handover spread across the mesh (`:767–769`). `grad`
+is the field's exact gradient (`:774–777`), `h = 2.0 / uRes.y` (`:745`), so `d` is again a signed
 distance in points and `cov` is a one-point mask: 1 for the points wheel A owns, 0 for the points
-wheel B owns. `col = mix(colB, colA, cov)` (`:757`) reads it. The name and the line came across from
+wheel B owns. `col = mix(colB, colA, cov)` (`:787`) reads it. The name and the line came across from
 `lab/effects/gears.js:136`.
 
 The line where the two rims meet — the row of interlocking teeth, which is what the eye actually sees
@@ -184,7 +191,7 @@ the instrument's own matter, which is what it already is geometrically.
 
 ### 4.2 The alpha it should carry
 
-    gl_FragColor = vec4(col, 1.0 - cov);    // replacing :760
+    gl_FragColor = vec4(col, 1.0 - cov);    // replacing :800
 
     coverage: { writes: true,
                 how: "1.0 - cov, the share of the frame inside the arriving wheel's rim" }
@@ -196,12 +203,12 @@ departing wheel is what stood on screen before this cue opened.
 
 ### 4.3 Its doors
 
-The doors are exact by construction rather than by margin. `reachFor` (`:859–874`) bisects on the
-distance the wheel pair is carried out until `doorsHold` (`:855–858`) reports that all four corners of
+The doors are exact by construction rather than by margin. `reachFor` (`:899–914`) bisects on the
+distance the wheel pair is carried out until `doorsHold` (`:895–898`) reports that all four corners of
 the frame satisfy the door condition with the teeth and the spread allowed for. At `mix = 1`,
-`xc = -reach` (`:932`) puts every point of the frame inside wheel B's rim: `cov` is 0 at every point,
-the alpha is 1 at every point, the tangential sweep is 0 (`off`, `:947`) and the contact shadow is 0
-(`guard`, `:948`). Door B is `texB` whole and opaque under the crop of 1.13.
+`xc = -reach` (`:972`) puts every point of the frame inside wheel B's rim: `cov` is 0 at every point,
+the alpha is 1 at every point, the tangential sweep is 0 (`off`, `:987`) and the contact shadow is 0
+(`guard`, `:988`). Door B is `texB` whole and opaque under the crop of 1.13.
 
 At `mix = 0`, `xc = +reach` puts every point inside wheel A's rim, `cov` is 1 at every point and the
 alpha is 0 at every point. The same condition as `matter`'s entry door applies. In the composed
@@ -217,35 +224,54 @@ The worked pair is `17847744487144891 → 17897050660015868`, played by the scor
 Each cue drives its `mix` from `cueProgress`, so each runs its own door-to-door dial across its own
 window. Every number in the table is that arithmetic.
 
-| second | band family, duty | travel, dial and pair placement | arrival, dial and threshold | what stands on screen |
-|---|---|---|---|---|
-| 0.000 | 1.0000 — work A whole | not live | not live | work A whole, the pivot alone, blending off |
-| 1.170 | 0.8201 | 0.0000, `xc = +reach` | not live | the travel opens at alpha 0 everywhere and the frame does not change |
-| 2.000 | 0.7223 | 0.0832, `xc = +0.834·reach` | not live | the band family, with the mesh line entering from one edge |
-| 2.500 | 0.6234 | 0.1498, `xc = +0.700·reach` | not live | the mesh line moving in over the held band family |
-| 4.030 | 0.3695 | 0.4788, `xc = +0.043·reach` | 0.0000, `tau = -0.100` | the mesh line at the frame's middle; the arrival opens at alpha 0 and the frame does not change |
-| 5.000 | 0.2181 | 0.8310, `xc = -0.662·reach` | 0.4122, `tau = +0.395` | the arrival's ragged front over the rings, band family in the strip the rings have not taken |
-| 5.590 | 0.1414 | 1.0000, `xc = -reach` | 0.5387, `tau = +0.546` | the travel reaches its exit door opaque and then leaves — see §9.2 |
-| 6.500 | 0.0000 — work B whole | not live | 1.0000, `tau = +1.100` | work B whole, the arrival opaque over everything |
+**The last column is measured rather than predicted.** The share is the fraction of frame points where
+the stacked frame and the ground drawn alone agree within 6 of 255 in every channel — `agree_share()`
+in `tests/test_pass_coverage.py`, over 390×844 screenshots, run by `python3
+tests/test_pass_coverage.py`. It answers whether the cue beneath reaches the eye, it falls as the
+voices above claim territory, and before coverage it was nil at every instant below.
 
-**At 2 seconds** a visitor sees the vertical band family across the whole frame — work A's ribbons
-holding about 72 percent of each period with work B's narrow between them, the strips sliding along
-their own axis at an amplitude of 0.060 frame heights — and, entering from one edge, the row of teeth
-where the two rims meet, with work B's picture inside wheel B's rim beyond it. The meshing instrument
-claims only that band; over the rest of the frame its alpha is 0 and the band family stands through
-it. Today at this instant the visitor sees the meshing instrument alone, filling the frame, and no
-band at all.
+| second | band family, duty | travel, dial and pair placement | arrival, dial and threshold | the ground's share |
+|---|---|---|---|---|
+| 0.000 | 1.0000 — work A whole | not live | not live | door A, the pivot alone |
+| 1.170 | 0.8201 | 0.0000, `xc = +reach` | not live | 100.0% |
+| 2.000 | 0.7223 | 0.0832, `xc = +0.834·reach` | not live | 100.0% |
+| 2.500 | 0.6234 | 0.1498, `xc = +0.700·reach` | not live | 100.0% |
+| 3.000 | 0.5087 | 0.2380 | not live | 100.0% |
+| 3.500 | 0.4374 | 0.3350 | not live | 96.9% |
+| 4.030 | 0.3695 | 0.4788, `xc = +0.043·reach` | 0.0000, `tau = -0.100` | 61.4% |
+| 4.500 | 0.3006 | 0.6420 | 0.1913 | 15.6% |
+| 5.000 | 0.2181 | 0.8310, `xc = -0.662·reach` | 0.4122, `tau = +0.395` | 15.8% |
+| 5.590 | 0.1414 | 1.0000, `xc = -reach` | 0.5387, `tau = +0.546` | 26.6% |
+| 6.500 | 0.0000 — work B whole | not live | 1.0000, `tau = +1.100` | door B, the arrival opaque |
+
+**A correction to this document's own prediction.** An earlier draft said that at 2 seconds the mesh
+line would be entering from one edge. It is not. The meshing instrument claims no point of the frame
+until about 3.5 seconds: `reachFor` carries the wheel pair far enough out that at a dial of 0.0832 the
+meeting line still stands beyond the frame's edge. So the travelling voice's window opens at 1.17 s
+and the voice has nothing to show for the first 2.3 seconds of it. That is the score's business rather
+than the instrument's — the dial curve and the reach are what set it — and it is recorded here because
+the measurement found it where the reasoning had not.
+
+**At 2 seconds** a visitor sees the vertical band family across the whole frame and nothing else: work
+A's ribbons holding about 72 percent of each period with work B's narrow between them, warped by the
+two width breaths and sliding along their own axis at an amplitude of 0.060 frame heights. Before
+coverage this instant was one flat photograph — the meshing instrument at a low dial, drawing work A
+across the whole frame, with the band family underneath it and invisible. The pivot is now the picture.
+
+**At 4.03 seconds**, where the arrival's window opens, three voices are readable at once: the band
+family's ribbons carrying work A down one side, the wheel's rim sweeping through the frame, and work
+B's glass grid standing inside the arriving rim. This is the instant the whole law was for, and the
+frame moved by mean 68.63 of 255 against the same instant before coverage.
 
 **At 5 seconds** the arrival's front stands as a ragged vertical boundary about a third of the way
 across the frame — the field is six parts a ladder in `uv.x`, so `F = tau` falls near
 `x = (tau - 0.4·g) / 0.6` for a grain value `g` — with the grain crumbling along it and work B whole
-and opaque behind it. Through the two thirds the arrival has not claimed, the meshing instrument's
-rings carry work B over most of the frame, and the band family shows in the strip near one edge that
-the rings have not yet taken. The ground thins as the two upper voices approach their doors, which is
-the right shape for an arrival: the pivot is visible through the middle of the passage and gives way
-as the passage lands.
+and opaque behind it. Through the rest, the meshing instrument's rings carry work B, and the band
+family holds 15.8 percent of the frame in the strip the rings have not taken. The ground thins as the
+two upper voices approach their doors, which is the right shape for an arrival: the pivot is visible
+through the middle of the passage and gives way as the passage lands.
 
-**Both doors are exactly what they are today.** At 0.000 s only the pivot is live, it is the bottom
+**Both doors are exactly what they were before coverage.** At 0.000 s only the pivot is live, it is the bottom
 cue, blending is off, and it writes work A whole. At 6.500 s the pivot and the arrival are live; the
 arrival stands topmost at its exit door with alpha 1 at every point, so door B is `matter`'s own
 canonical frame and the pivot beneath it reaches no point. Row 7's comparison against the canonical
@@ -259,12 +285,12 @@ files, within the seam threshold of 6 of 255, reads the same pixels it reads now
 
     gl0.blendFunc(gl0.SRC_ALPHA, gl0.ONE_MINUS_SRC_ALPHA);
 
-The host writes `gl0.blendFunc(gl0.ONE, gl0.ONE_MINUS_SRC_ALPHA)` today (`pass-layer.js:346`), which
+The host writes `gl0.blendFunc(gl0.ONE, gl0.ONE_MINUS_SRC_ALPHA)` today (`pass-layer.js:359`), which
 is source-over on premultiplied colour. That form cannot be used here, and the reason is in the host's
 own draw path. One and the same fragment shader serves two jobs. Laid over another cue it must
 contribute only its own matter. Laid down first — as the bottom cue of a stack, or as the whole of a
 one-cue score — it must write the picture it writes today, and there blending is disabled
-(`pass-layer.js:348`), so the fourth component is never read. A shader emitting `rgb * a` would then
+(`pass-layer.js:361`), so the fourth component is never read. A shader emitting `rgb * a` would then
 write black wherever its alpha is below 1, and a one-cue `matter` score would go black across the
 field.
 
@@ -284,10 +310,11 @@ cue darken or brighten what plays beneath it. That is an imposed weight arriving
 the charter bans the class rather than the spelling. So `coverage` declares, and the host composites.
 
 **A one-cue score does no blending at all, and that is the law rather than a convenience.** The host
-already skips it: `drawPose` is called with `drew > 0` (`pass-layer.js:1839`), where `drew` counts
-what has already been laid down in this frame (`:1818`), and on the first call of a frame it takes the
-`else` branch and disables blending (`:348`). So the bottom cue of any stack — one cue or three —
-meets a context in exactly the state `stageBuild` left it (`gl.disable(gl.BLEND)`, `:152`), and its
+already skips it: `drawPose` is called with `drew > 0` (`pass-layer.js:1894`), where `drew` counts
+what has already been laid down in this frame (`pass-layer.js:1873`), and on the first call of a frame
+it takes the `else` branch and disables blending (`pass-layer.js:361`). So the bottom cue of any
+stack — one cue or three — meets a context in exactly the state `stageBuild` left it
+(`gl.disable(gl.BLEND)`, `pass-layer.js:152`), and its
 alpha never reaches the frame. Three things follow and each should be written down rather than left to
 be rediscovered:
 
@@ -309,9 +336,10 @@ the defect of 10:47. The rule that holds is the mirror of it, in two halves:
 - **every cue above the lowest must declare `writes: true`**, because a frame-filling cue anywhere
   above the floor is drawn over voices that are then never seen.
 
-A one-cue score is exempt from both, since it never blends. The host reads the declaration at
-`prepare` and refuses the command with its reason, the way the levels law and the camera-authority
-check already do. This document cannot amend §8; the divergence is recorded in §10.
+A one-cue score is exempt from both, since it never blends. This is built as `coverageWhyNo` in the
+host, called from `scoreWhyNo`, refusing the command with its reason the way the camera-authority
+check already does. `PASS-API-V1.md` is read-only from this branch, so §8's sentence still points the
+other way; the divergence is recorded in §10 for its owner.
 
 **What it costs.** One raster blend per fragment for every cue past the first in a frame: at 390×844
 points, a device pixel ratio of 2 and the ladder's top step, 1.32 M fragments a cue. It adds no pass,
@@ -322,42 +350,48 @@ and one `coverage` block per manifest.
 
 ---
 
-## 7. What conformance rows 52 to 55 must measure to be failable
+## 7. Conformance rows 52 to 55, and what each measures
 
-§9 carries the four rows already, one line each. Each needs a measurement that can red, and this is
-what each should read.
+§9 carries the four rows, one line each. They are written and green in `tests/test_pass_coverage.py`,
+each with a red-on-bug proof that reverts one rule in the suite's own copy of the built pack — the
+source tree is never written to. A crippled pack weighs differently and the host refuses a pack whose
+digest disagrees, so each revert re-stamps the host with the digest of the bytes the bench will serve.
+The suite runs 18 rows. What each of the four reads, with the number it read:
 
-**52 — a cue that writes coverage lets the cue beneath it reach the frame.** Photograph three frames
-of the composed passage at 2.000 s with the clock pinned: the whole stack; the pivot cue alone; the
-travel cue alone. Read the travel cue's alpha over the frame. The row asserts that the set of points
-where that alpha is 0 is a majority of the frame, and that at every one of those points the stack's
-frame equals the pivot-alone frame within 6 of 255. It reds the moment the travel writes `1.0`,
-because the zero set is then empty and the first assertion has nothing to stand on.
+**52 — a cue that writes coverage lets the cue beneath it reach the frame.** Three frames of the
+composed passage at 2.000 s with the clock pinned: the whole stack, the pivot cue alone, the travel
+cue alone. The row asserts that the stack agrees with the pivot alone across a majority of the frame
+and differs from the travel alone by more than the seam threshold. It read 100.0 percent agreement
+with the ground and mean 42.478 of 255 against the travel. Reverting the travel's alpha to `1.0` drops
+the ground to 18.5 percent and makes the stack identical to the travel again at worst channel 0.
 
-**53 — both doors stay whole when cues are stacked.** At 0.000 s and at 6.500 s the composed passage's
-frame matches its canonical file within 6 of 255 at every point, which is row 7 read against a stack
-instead of against one cue. Beside it, the two statements that make it hold: at each of `mix = 0` and
-`mix = 1` an instrument's alpha reads 0 at every point of the frame or 1 at every point, never a
-mixture of the two; and the score's stack satisfies §6's placement rule, with a `writes: true` cue at
-the floor of a multi-cue stack refused with its reason. It reds on an instrument whose door alpha is
-spatially mixed, and it reds on a score that leaves a coverage-writing cue standing alone at a door.
+**53 — both doors stay whole when cues are stacked**, and an alpha at a door is 0 at every point or 1
+at every point. Two rows. Door A at 0.000 s against the ground drawn alone and door B at 6.500 s
+against the arrival drawn alone both read mean 0.000000, worst channel 0 — pixel-exact, which is what
+those two constants mean once the frames are composited. Beside them the entry doors: at 1.170 s the
+travel opens and the frame is the ground untouched, at 4.030 s the arrival opens and the frame is the
+ground and the travel untouched, both at worst channel 0. Inverting the travel's coverage to `cov`
+makes it open at alpha 1 instead and moves 1.170 s by mean 36.860 of 255.
 
-**54 — a one-cue score is unchanged to the pixel.** The byte-identity row already in
-`tests/test_pass_stack.py` runs again, against the same stored file, at all seven instants, for each
-of the three instruments alone. It reds if any shader emits premultiplied colour, and it reds if the
-host enables blending for a frame's first cue.
+**54 — a one-cue score is unchanged to the pixel.** Each of the three instruments alone, at all seven
+instants, drawn by the tree as it stood before coverage and by the tree as it stands now: 21
+comparisons, worst channel 0. Both trees are baked the way `engine/build.py` bakes them, the pack
+first and the host stamped with the digest of the bytes that will actually be served, so the
+comparison is two builds rather than a build against a source. Removing the host's skip — enabling
+blending for a frame's first cue — moves a one-cue arrival by mean 127.159 of 255. This is the row
+that keeps the law free where nothing is stacked.
 
-**55 — no instrument writes a weight of presence over its whole frame.** For each instrument, at ten
-instants across a pass, read the alpha over the frame. The row refuses a frame whose alpha is
-spatially constant at a value strictly between 0 and 1 — a mask varies across the frame, and a
-constant is legal only at exactly 0 or exactly 1, which is a door. It refuses an alpha that is a
-function of `mix` or `cueProgress` with no dependence on the fragment's position, measured by
-comparing two instants whose dials differ and whose spatial pattern does not. It refuses an instrument
-declaring `writes: false` that is measured writing an alpha below 1, which is the lie §7 already names
-for a resource declaration. Beside the measurement, the source check: the score allow-list carries no
-field of opacity, no manifest publishes a handle whose value multiplies the whole frame's alpha, and
-the host binds no such uniform. This is the row that catches the banned crossfade returning under
-another name.
+**55 — no instrument writes a weight of presence over its whole frame.** A uniform weight `w` would
+make the stack the exact blend `w·T + (1-w)·P` at every point for one number `w`. The row fits the
+best such `w` in closed form and reads the residual: 39.70 channel units at 4.030 s and 21.64 at
+5.000 s, where a crossfade would leave nothing. Replacing the mask with one number over the whole
+frame — the meshing instrument's own `uOff`, which is spatially constant and moves with the dial —
+drops the residual to 0.30, which is the banned crossfade answering to its own name.
+
+**The row is read where the mask is partial, and that is a real limit.** At 2.000 s the travelling
+voice claims no point of the frame, so the stack simply is the ground, every model fits it with `w=0`,
+and the instant separates a mask from a weight not at all. The first draft of this row measured there
+and passed vacuously in both directions. It now reads 4.030 s and 5.000 s and says why.
 
 ---
 
@@ -387,21 +421,34 @@ the first cue drawn over another under this law.
 
 ## 9. The risks, read off the code
 
-**9.1 `matter` loses its contact shadow.** Its shadow rides `cov`:
+**9.1 `matter` loses its contact shadow — measured, and the loss is nearly total.** Drawn alone,
+switching the arrival's shadow off moves its own frame by mean 3.6917 of 255, worst channel 64. Inside
+the stack the same switch moves the frame by mean 0.0968, worst channel 16 — about a fortieth of the
+footprint survives, and only where it falls inside the arriving work's own territory. The row is
+`risk 9.1` in `tests/test_pass_coverage.py`, taken at 5.000 s with the `shade` handle at 1 against 0.
+The mechanism is the line below.
 
-    col *= 1.0 - 0.32 * uGuard * cov * exp(-max(d, 0.0) / 7.0);            // :448
+Its shadow rides `cov`:
+
+    col *= 1.0 - 0.32 * uGuard * cov * exp(-max(d, 0.0) / 7.0);            // :461
 
 `cov` is 1 on the side the coverage makes clear, and `exp(-max(d, 0.0) / 7.0)` reaches about seven
 points into that side, so the whole shadow band sits where the alpha is 0 and is discarded. The
 meshing instrument's equivalent rides the other factor — `(1.0 - cov) * exp(-max(-d, 0.0) / 7.0)`
-(`:759`) — so it falls on the side the coverage keeps and survives untouched. The two modules stand
+(`:789`) — so it falls on the side the coverage keeps and survives untouched. The two modules stand
 their contact shadow on opposite sides of their own front, so one coverage rule treats them
 differently. Casting the shadow onto what plays beneath would need a multiply blend, which is refused
 in §6 for the reason given there. The shadow stays where the alpha is 1 and is lost where the alpha is
 0; whether that loss is acceptable at the front is a question for his eye rather than for this
 document.
 
-**9.2 The travel cue leaves its window at full opacity.** At 5.590 s its dial is exactly 1.000 and
+**9.2 The travel cue leaves its window at full opacity — measured at 14.56 of 255.** Across
+5.58 → 5.60 s the frame moves by mean 14.5592, worst channel 220, against mean 6.3848, worst channel
+232, on the tree before coverage. Coverage did not create the step and it did not much enlarge the
+worst channel; what it did was spread the step across the frame, since the ground now shows where the
+travel stops covering. The number is the row `risk 9.2` in `tests/test_pass_coverage.py`.
+
+At 5.590 s its dial is exactly 1.000 and
 `xc = -reach`, so its alpha is 1 at every point and it is drawing work B whole. One frame later it is
 outside its window and draws nothing. Beneath it stand the band family at a duty of 0.1414 and the
 arrival at a threshold of 0.546, which claims a little over half the frame — so across the rest, the
@@ -433,7 +480,7 @@ gives. Coverage turns a total replacement into a partial one and does not remove
 reading in row 8 is what makes that visible rather than a surprise.
 
 **9.6 The meshing field is ill-conditioned near a wheel centre.** `rA` and `rB` are floored at `1e-5`
-(`:720–721`) and `grad` at `1e-5` (`:747`); where a centre stands inside the frame the gradient
+(`:750–751`) and `grad` at `1e-5` (`:777`); where a centre stands inside the frame the gradient
 collapses and `d` swings, so a coverage mask taken from it would flicker at a point. The composed
 passage does not reach it: `reachFor` carries both centres well off the frame at either door, and the
 score holds `size` above 0.7 for its own measured reason. A smaller pair, or a `centreX` near an edge,
@@ -451,8 +498,12 @@ fills the frame and stands at `stack: 0`. `PASS-API-V1.md` is read-only from thi
 correction is carried here and belongs in the contract at the same time as the first instrument's
 coverage lands.
 
-**Two seams need his eye.** §9.1 is a question about how the front should read once the shadow's side
-becomes clear. §9.2 is a question the composer answers in a score rather than in an instrument.
+**Three things need his eye, each with its number.** The arrival's contact shadow is all but gone
+inside a stack — mean 0.0968 of 255 surviving against 3.6917 drawn alone — and whether the front
+should carry something in its place is a question about how it reads. The step where the travel leaves
+its window stands at mean 14.5592 of 255 and belongs to the score, since that window closes before the
+pass does. And the travelling voice now shows nothing for the first 2.3 seconds of its own window,
+which is the dial curve against `reachFor`'s placement rather than anything coverage did.
 
 **The template question stays open.** Two of the three instruments share one construction and the
 third is a constant, so this document sets no template for a fourth. An instrument arriving with a

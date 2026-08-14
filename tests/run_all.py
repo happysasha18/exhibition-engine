@@ -31,6 +31,7 @@ SUITES = [
     "pass_gears",
     "pass_stack",
     "pass_pack",
+    "pass_coverage",
 ]
 
 

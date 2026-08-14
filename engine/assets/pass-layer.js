@@ -331,19 +331,32 @@
   // `over` says this cue is being laid down onto a frame another cue has already drawn into. The
   // stack is DEPTH ORDER and nothing else: the charter's own law hands out no opacity handle and
   // lets no plan fade a layer, so the host imposes no weight of its own on any cue. What it does is
-  // read the alpha the INSTRUMENT'S OWN shader writes, through plain source-over on premultiplied
-  // colour, so an instrument that writes coverage — matter here, nothing there — lets the frame
-  // beneath show through where it carries nothing. All three instruments standing today write
-  // `vec4(col, 1.0)`, so each covers the frame whole and the stack reads as plain occlusion.
+  // read the alpha the INSTRUMENT'S OWN shader writes, so an instrument that writes coverage —
+  // matter here, nothing there — lets the frame beneath show through where it carries nothing.
+  //
+  // THE BLEND IS STRAIGHT SOURCE-OVER, AND PREMULTIPLIED IS REFUSED. One and the same fragment
+  // shader serves two jobs. Laid over another cue it must contribute only its own matter. Laid down
+  // FIRST — as the bottom cue of a stack, or as the whole of a one-cue score — it must write the
+  // picture it has always written, and there the `else` branch below disables blending and the
+  // fourth component is never read. A shader emitting premultiplied `rgb * a` would then write BLACK
+  // wherever its alpha stands below 1, and a one-cue `matter` score would go black across its field.
+  // Under SRC_ALPHA/ONE_MINUS_SRC_ALPHA the colour channel of every instrument is untouched, so a
+  // one-cue score is byte-identical by construction rather than by measurement luck (row 54).
+  //
+  // No separate alpha equation is needed: the context is created with `alpha: false`, so the
+  // destination alpha never reaches the page and no factor here reads it.
+  //
   // Blending is switched off again for the bottom cue of every frame, so a one-cue score meets a
-  // context in exactly the state the stage was built in.
+  // context in exactly the state the stage was built in. That is why the LOWEST cue of a stack must
+  // be an instrument that fills the frame — its gaps would show the cleared buffer, there being
+  // nothing drawn beneath it — which `coverageWhyNo` refuses at validation.
   function drawPose(inst, pose, src, over) {
     if (!stage) return;
     stageResize();
     var gl0 = stage.gl;
     if (over) {
       gl0.enable(gl0.BLEND);
-      gl0.blendFunc(gl0.ONE, gl0.ONE_MINUS_SRC_ALPHA);
+      gl0.blendFunc(gl0.SRC_ALPHA, gl0.ONE_MINUS_SRC_ALPHA);
     } else {
       gl0.disable(gl0.BLEND);
       census.passesLastFrame = 0;
@@ -1295,10 +1308,52 @@
         }
       }
     }
+    var cov = coverageWhyNo(cues);
+    if (cov) return cov;
     // The levels law is checked over the authored plan at build time and not here; see the note
     // above budgetOfScore for where it lives and why it moved.
     var bud = budgetOfScore(s);
     if (bud.why) return "the tier budget: " + bud.why;
+    return null;
+  }
+
+  // THE COVERAGE PLACEMENT RULE (§7's coverage law, §8's `coverage` block).
+  //
+  // A stack is drawn ASCENDING, so the lowest cue is laid down first onto the cleared buffer and the
+  // cue nearest the eye is laid down last. Two placements follow, and they are mirror images:
+  //
+  //   · THE LOWEST CUE MUST FILL THE FRAME. Nothing is drawn beneath it, blending is disabled for
+  //     it, and its alpha is never read — so where its matter is absent the cleared buffer shows.
+  //     That cue's instrument must declare `coverage.writes === false`.
+  //   · EVERY CUE ABOVE THE LOWEST MUST WRITE COVERAGE. A frame-filling cue anywhere above the floor
+  //     is drawn over voices that are then never seen, which is exactly the defect measured on
+  //     2026-08-14: three instruments in one frame, every one of them opaque, and the band family
+  //     the whole passage stands on visible at no instant.
+  //
+  // A ONE-CUE SCORE IS EXEMPT FROM BOTH. It never enables blending, so its alpha is never read and
+  // the law costs it nothing — which is what row 54 measures.
+  //
+  // An instrument the registry does not carry is left to `voicesFor`, which refuses the whole score
+  // on its own terms; this check stays silent about it rather than reporting a second reason.
+  function coverageWhyNo(cues) {
+    if (!cues || cues.length < 2) return null;
+    var rows = stackOrder(cues), i, inst, m, id;
+    for (i = 0; i < rows.length; i++) {
+      id = rows[i].cue.instrument && rows[i].cue.instrument.id;
+      inst = instruments[id];
+      m = inst && inst.manifest;
+      if (!m) continue;
+      var fills = !(m.coverage && m.coverage.writes === true);
+      if (i === 0 && !fills) {
+        return "cue «" + rows[i].cue.id + "» stands lowest in the stack and its instrument «" + id
+             + "» writes coverage — the lowest cue is drawn onto the cleared buffer with no blending,"
+             + " so it must fill the frame";
+      }
+      if (i > 0 && fills) {
+        return "cue «" + rows[i].cue.id + "» stands over another cue and its instrument «" + id
+             + "» fills the frame whole — everything beneath it would be drawn and never seen";
+      }
+    }
     return null;
   }
 
@@ -2414,6 +2469,13 @@
       },
       cycle: function (nodes) { return cycleIn(nodes || {}); },
       scoreWhyNo: function (score) { return scoreWhyNo({ score: score, gen: 0 }); },
+      coverageWhyNo: function (cues) { return coverageWhyNo(cues || []); },
+      // What each registered instrument declares about its own coverage (§8), so a row reads the
+      // declaration the host actually judges a placement on.
+      coverageOf: function (id) {
+        var inst = instruments[id];
+        return inst && inst.manifest ? (inst.manifest.coverage || null) : null;
+      },
       // ---- the stack, the levels law, the tier budget and the grant, read as data ---------------
       // The same functions a running transaction calls, with the transaction spared, so a row states
       // a score and reads the number the host actually judges it on.

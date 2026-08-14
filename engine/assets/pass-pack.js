@@ -264,6 +264,19 @@
                 "ramp", "slew", "oscillate", "node"],
       camera: { needs: "none", authority: "stage" },
       gl: { preserveDrawingBuffer: false },
+      // THE COVERAGE LAW (§7), and this instrument's answer to it: it has no absence to publish.
+      // Its two ribbon sets partition the frame — `showV` is 0 or 1 at every point and
+      // `col = mix(colH, colV, showV)` takes one set or the other — and inside each set `covV`
+      // chooses between work A and work B, so both branches of every mix are picture. The union of
+      // the sets is the frame and no point is left unclaimed, which is why it carries the passage's
+      // ground: it is the cue with nothing drawn beneath it but the cleared buffer.
+      //
+      // The grooves are NOT an absence. `grooveV`/`diveV` and their partners reach the picture only
+      // through the multiply on `col`; writing them into the alpha would punch the fabric with a
+      // hole at every ribbon edge and the cleared buffer would show through.
+      coverage: { writes: false,
+                  how: "the fabric partitions the frame between its two ribbon sets, so no point "
+                     + "of the frame is left unclaimed and the alpha is the constant 1" },
       neutralPose: { bal: 1, nMul: 1, press: 1, strips: 28, axis: 2, cssWidth: 1000, t: 0, reduced: false },
       passes: [{
         program: "weave", vert: VERT, frag: FRAG, position: "aPos",
@@ -446,7 +459,17 @@
       "  vec3 colB = texture2D(uB, into(uv + pullB, uFitB)).rgb;",
       "  vec3 col = mix(colB, colA, cov);",
       "  col *= 1.0 - 0.32 * uGuard * cov * exp(-max(d, 0.0) / 7.0);",
-      "  gl_FragColor = vec4(col, 1.0);",
+      // THE COVERAGE LAW (§7). `cov` is 1 where the point still stands on work A's side of the
+      // travelling threshold and 0 where the front has passed it, so `1.0 - cov` is the territory
+      // the ARRIVING work has taken — this instrument's own matter. Work B then grows out of the
+      // frame beneath it rather than being pasted over it, which is what lets an arrival be carried.
+      //
+      // ONE THING IS LOST HERE AND IS RECORDED RATHER THAN HIDDEN: the contact shadow on the line
+      // above rides `cov`, so it stands on the side this alpha clears and is discarded wherever a
+      // cue plays beneath. The meshing instrument's shadow rides `(1.0 - cov)` and survives. Casting
+      // a shadow onto what plays underneath would need a multiply blend, which would let one cue
+      // darken another — an imposed weight by another road, which the charter bans as a class.
+      "  gl_FragColor = vec4(col, 1.0 - cov);",
       "}",
     ].join("\n");
 
@@ -561,6 +584,13 @@
                 "ramp", "slew", "oscillate", "node"],
       camera: { needs: "none", authority: "stage" },
       gl: { preserveDrawingBuffer: false },
+      // THE COVERAGE LAW (§7). The mask the shader already builds from the travelling threshold is
+      // published as the alpha: `1.0 - cov`, the share of the arriving work. The threshold travels a
+      // tenth past either end of the field, so at the entry door every point stands on A's side and
+      // the alpha is 0 at every point, and at the exit door every point stands on B's side and the
+      // alpha is 1 at every point. That is what keeps door B this instrument's own whole work.
+      coverage: { writes: true,
+                  how: "1.0 - cov, the share of the arriving work at the travelling threshold" },
       neutralPose: { mix: 0, loosen: 0.6, drift: 0.45, gather: 0.3, grain: 0.45,
                      seed: 0, shade: 1, travel: 1, t: 0, reduced: false },
       passes: [{
@@ -757,7 +787,17 @@
       "  vec3 col = mix(colB, colA, cov);",
 
       "  col *= 1.0 - 0.32 * uGuard * (1.0 - cov) * exp(-max(-d, 0.0) / 7.0);",
-      "  gl_FragColor = vec4(col, 1.0);",
+      // THE COVERAGE LAW (§7). `cov` is 1 for the points wheel A owns and 0 for the points wheel B
+      // owns, so `1.0 - cov` is the territory of the ARRIVING wheel — this instrument's own matter.
+      // The line where the two rims meet, which is what the eye actually sees here, is the boundary
+      // of that territory. At the entry door the alpha is 0 at every point, so the instant the cue's
+      // window opens the frame does not change; at the exit door it is 1 at every point, so the door
+      // is this instrument's own whole work.
+      //
+      // THE COLOUR CHANNEL IS UNTOUCHED, which is what makes a one-cue score byte-identical: laid
+      // down first the host disables blending and reads no alpha, so `col` reaches the frame exactly
+      // as it always did. The blend is STRAIGHT source-over, never premultiplied — see the host.
+      "  gl_FragColor = vec4(col, 1.0 - cov);",
       "}",
     ].join("\n");
 
@@ -1011,6 +1051,13 @@
       // surface, so the witness camera stays the stage's (§6).
       camera: { needs: "none", authority: "stage" },
       gl: { preserveDrawingBuffer: false },
+      // THE COVERAGE LAW (§7). The mask the shader already builds to decide which wheel owns each
+      // point is published as the alpha: `1.0 - cov`, the share of the frame inside the arriving
+      // wheel's rim. Both doors stay whole because `reachFor` solves the placement so that at either
+      // door every corner of the frame lies inside ONE rim — so the alpha is 0 at every point at the
+      // entry door and 1 at every point at the exit door, never a mixture.
+      coverage: { writes: true,
+                  how: "1.0 - cov, the share of the frame inside the arriving wheel's rim" },
       neutralPose: { dial: 0, size: 4.5, centreX: 0.5, centreY: 0.5, bandPeriod: 1 / 6, ratio: 0.5,
                      tooth: 0.4, order: 0.4, turn: 0.55, flank: 0.35, shade: 1, travel: 1,
                      cssWidth: 1000, cssHeight: 1000, t: 0, reduced: false },

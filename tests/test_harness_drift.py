@@ -170,13 +170,29 @@ def _positional_names(fn):
     return [a.arg for a in (getattr(fn.args, "posonlyargs", []) + fn.args.args)]
 
 
+def _dotted(node):
+    """``br`` for a plain name and ``self.br`` for one attribute deep, otherwise nothing. One level is
+    all the census needs: a suite either holds its browser in a local or hangs it on an object."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+        return node.value.id + "." + node.attr
+    return None
+
+
 def _browser_vars(tree):
-    """The variable names that hold a ``Browser`` in ONE file. Seeded from every ``with … Browser(…)
-    as NAME``, then widened along the calls in the same file: a suite that hands its browser to a
-    helper (``enter(br, base)``) drives the harness through that helper's PARAMETER name, so the
-    parameter joins the set and the helper's own calls are counted. Widening repeats until it
-    settles, so a helper calling a helper is reached too. Scoping per file keeps an unrelated
-    variable of the same name in another file out of the census."""
+    """The names that hold a ``Browser`` in ONE file. Seeded from every ``with … Browser(…) as NAME``
+    and from every assignment of a ``Browser(…)``, then widened along the calls in the same file: a
+    suite that hands its browser to a helper (``enter(br, base)``) drives the harness through that
+    helper's PARAMETER name, so the parameter joins the set and the helper's own calls are counted.
+    Widening repeats until it settles, so a helper calling a helper is reached too. Scoping per file
+    keeps an unrelated variable of the same name in another file out of the census.
+
+    WIDENED 2026-08-14 for a suite that holds its browser on an object. `test_pass_coverage.py` wraps
+    a served root and a browser in one small class and drives the harness through `self.br`, so the
+    seeding that read only `with` statements found no browser in it and the census silently covered
+    none of it — which the row above this one caught. An assignment target is therefore read too, and
+    a name may now be one attribute deep."""
     names = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.With, ast.AsyncWith)):
@@ -186,6 +202,14 @@ def _browser_vars(tree):
                         and call.func.id == "Browser"
                         and isinstance(item.optional_vars, ast.Name)):
                     names.add(item.optional_vars.id)
+        elif isinstance(node, ast.Assign):
+            call = node.value
+            if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) \
+                    and call.func.id == "Browser":
+                for target in node.targets:
+                    got = _dotted(target)
+                    if got:
+                        names.add(got)
     functions = _callables(tree)
     growing = True
     while growing:
@@ -229,8 +253,7 @@ for _tf in sorted(TESTS.glob("test_*.py")):
         continue
     _reached.add(_tf.name)
     for node in ast.walk(_tree):
-        if (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
-                and node.value.id in _vars):
+        if isinstance(node, ast.Attribute) and _dotted(node.value) in _vars:
             _driven.setdefault(node.attr, set()).add(_tf.name)
 
 # The census's own reach, asserted rather than assumed: a suite that imports Browser but out of which
