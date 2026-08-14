@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>pass-pack bench</title>
+<title>the instrument-file bench</title>
 <style>html,body{margin:0;background:#111;height:100%}</style>
 </head>
 <body>
@@ -26,20 +26,33 @@
 <script src="pass-layer.js"></script>
 <script>
 (function () {
-  // THE HOST JOINS ONCE THE PACK QUESTION IS SETTLED — loaded, or refused with its reason. That is
+  // THE HOST JOINS ONCE THE SITE'S RECORD IS SETTLED — read, or refused with its reason. That is
   // one fetch later than this file's own script tag, so the page waits for it. Every road through
-  // the loader ends in a join, including every refusal, so this wait always ends.
+  // the record reader ends in a join, including every refusal, so this wait always ends. No
+  // instrument file is fetched at that point: a visit asks for the instruments its own score names.
   function go() {
     if (!window.__host) { setTimeout(go, 20); return; }
     var host = window.__host;
     var gen = 900;
 
-    // What the host says about its pack: the address, the version and digest it was told to load,
-    // where the load stands, and the reason in its own words when it was refused.
-    window.__pack = function () { return host.report().pack; };
+    // What the host says about the site's record: where it read it, whether it was read or refused,
+    // the reason in the host's own words, and the names the record carries.
+    window.__record = function () { return host.report().record; };
+    // Every instrument file this visit has asked for, and nothing it has not.
+    window.__files = function () { return host.report().files; };
     window.__registered = function () { return host.report().registered; };
     window.__events = function () {
       return host.report().events.map(function (e) { return { name: e.name, why: e.why }; });
+    };
+
+    // ASK FOR INSTRUMENTS BY NAME, the same road an offer takes. A bench draws no command of its
+    // own here, so the load is asked for outright and its answer — one reason per name, or null
+    // where the instrument reached the registry — is left where a row can read it.
+    window.__loaded = null;
+    window.__load = function (names) {
+      window.__loaded = null;
+      window.__exPass.bench.load(names, function (whys) { window.__loaded = whys; });
+      return true;
     };
 
     // A real command, offered to the real host. `took` is the host's own answer: true means it has

@@ -69,12 +69,23 @@
     { box: [0.0, 0.0, 1.0, 1.0], share: 0.9232, voidShare: 0.0768, seam: 0.0016 }
   ];
 
+  var asked = false, warmed = false;
   function go() {
-    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. The instruments live in
-    // pass-pack.js, which the host fetches by address and loads once its bytes weigh to the digest
-    // the build stamped; the host joins only when that question is settled. So the bench is waited
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled. So the bench is waited
     // for rather than assumed, which is what a real visitor's walk does too.
     if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    // EACH INSTRUMENT TRAVELS AS ITS OWN FILE, and a visit fetches only the ones its own score
+    // names. This page draws poses as well as commands, and a bench measures one instrument against
+    // another as often as it measures one alone, so it asks for every instrument the site's record
+    // names — by the same road an offer takes — and waits for the answer before it draws anything.
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
     var moduleStage = document.getElementById("moduleStage");
     var bench = window.__exPass.bench;
     if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }

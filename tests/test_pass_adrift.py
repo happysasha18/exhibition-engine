@@ -188,10 +188,11 @@ TMP = Path(tempfile.mkdtemp(prefix="synth_passadrift_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)
 LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
-PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
-# The instrument's own region of the BUILT file — the real artifact, comments stripped as it ships.
-REGION = PACK.split("function adriftInstrument()")[1].split("function weaveInstrument()")[0]
-STAMP_DIGEST = (re.search(r'digest: "([^"]*)"', LAYER) or [None, None])[1]
+# THE INSTRUMENT'S OWN BUILT FILE — the real artifact a visitor is served, comments stripped. Since
+# every instrument travels alone, the whole of this file is this instrument and nothing else.
+PACK = (TMP / "pass-inst-adrift.js").read_text(encoding="utf-8")
+REGION = PACK
+SOURCE = ROOT / "engine" / "assets" / "pass-inst-adrift.js"
 
 # ---------------------------------------------------------------- string rows
 
@@ -453,20 +454,25 @@ def apart(p, work):
 
 
 def bench_dir(pack_text=None):
-    """The bench's own served root: the BUILT pass-layer.js and the BUILT pack — the real artifacts,
-    namespace applied and comments stripped — the lab module unchanged, the two photographs, and the
-    page that stands the two roads of one frame side by side.
+    """The bench's own served root: the BUILT pass-layer.js, the site's own settings record and the
+    BUILT instrument files it names — the real artifacts, namespace applied and comments stripped —
+    the lab module unchanged, the two photographs, and the page that stands the two roads of one
+    frame side by side.
 
-    A row proving a rule reds hands over a CHANGED pack and re-stamps the host with the digest of the
-    bytes actually served, which is what the build does. The source file on disk is never touched, so
-    nothing has to be restored and no working tree can be left changed by a red-on-bug proof."""
+    A row proving a rule reds hands over a CHANGED instrument file and writes the record with the
+    digest of the bytes actually served, which is what the build does. The source file on disk is
+    never touched, so nothing has to be restored and no working tree can be left changed by a
+    red-on-bug proof."""
     d = Path(tempfile.mkdtemp(prefix="synth_adriftbench_"))
     pack = PACK if pack_text is None else pack_text
-    layer = LAYER
-    if pack_text is not None:
-        layer = layer.replace(STAMP_DIGEST, hashlib.sha256(pack.encode("utf-8")).hexdigest())
-    (d / "pass-layer.js").write_text(layer, encoding="utf-8")
-    (d / "pass-pack.js").write_text(pack, encoding="utf-8")
+    shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
+    for _inst in sorted(TMP.glob("pass-inst-*.js")):
+        shutil.copy2(_inst, d / _inst.name)
+    (d / "pass-inst-adrift.js").write_text(pack, encoding="utf-8")
+    record = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+    record["pass"]["instruments"]["adrift"]["digest"] = hashlib.sha256(
+        pack.encode("utf-8")).hexdigest()
+    (d / "config.json").write_text(json.dumps(record), encoding="utf-8")
     shutil.copy2(MODULE, d / "adrift.js")
     (d / "photos").mkdir()
     for p in PHOTOS:
@@ -575,7 +581,7 @@ else:
                       m["levels"] == ["SURFACE", "CELL CONTENT"]
                       and "CELL CONTENT" in m["levels"]
                       and "READ OFF THE MODULE'S OWN CONSTRUCTION" in
-                      (ROOT / "engine" / "assets" / "pass-pack.js").read_text(encoding="utf-8"),
+                      SOURCE.read_text(encoding="utf-8"),
                       f"levels={m['levels']}. Neither the vocabulary table nor module-contract.json "
                       f"carries a row for this module, so both are read off its own construction and "
                       f"said to be derived: the two things themselves are the content of a named "

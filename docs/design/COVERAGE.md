@@ -14,9 +14,10 @@ is, the alpha it should carry, what happens at its doors, and what the composed 
 like. It changes no code.
 
 **Where the code being cited lives.** The three instruments left `engine/assets/pass-layer.js` on
-2026-08-14 at `b212ef3` and now stand in `engine/assets/pass-pack.js`, the version-pinned pack the
-host loads by address and digest. Every shader citation below is `pass-pack.js` and every host
-citation is `pass-layer.js`, both as they stand with coverage landed. A reader following a citation
+2026-08-14 at `b212ef3`, and each of them now travels in a version-pinned file of its own —
+`engine/assets/pass-inst-<name>.js` — which the host loads at the address the site's own settings
+record gives that instrument's name. Every shader citation below names the file its own instrument
+travels in and every host citation is `pass-layer.js`, both as they stand with coverage landed. A reader following a citation
 into the pre-coverage tree, or into the older monolithic file, will find the same lines at different
 numbers.
 
@@ -57,7 +58,7 @@ would refuse at registration.
 
 ---
 
-## 2. The woven instrument — `pass-pack.js:53–150`
+## 2. The woven instrument — `pass-inst-weave.js:56–153`
 
 ### 2.1 Where its matter stands
 
@@ -109,7 +110,7 @@ constant centre crop of 1.29 the travel is paid for with.
 
 ---
 
-## 3. `matter` — `pass-pack.js:397–474`
+## 3. `matter` — `pass-inst-matter.js:80–157`
 
 ### 3.1 Where its matter stands
 
@@ -167,7 +168,7 @@ beneath it.
 
 ---
 
-## 4. The meshing instrument — `pass-pack.js:703–802`
+## 4. The meshing instrument — `pass-inst-gears.js:83–182`
 
 ### 4.1 Where its matter stands
 

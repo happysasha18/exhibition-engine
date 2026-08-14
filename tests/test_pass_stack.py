@@ -300,48 +300,69 @@ TMP = Path(tempfile.mkdtemp(prefix="synth_passstack_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)
 LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
-# Since 2026-08-14 the instruments ship in their own built file, fetched by the host by address,
-# version and digest. A row about the HOST reads LAYER; a row about the shaders reads PACK.
-PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
+# Since 2026-08-14 every instrument ships in a built file of its own, fetched by the host at the
+# address the site's own settings record gives its name. A row about the HOST reads LAYER; a row
+# about the shaders reads PACK, which is every instrument file this bake wrote.
+PACK = "\n".join(p.read_text(encoding="utf-8") for p in sorted(TMP.glob("pass-inst-*.js")))
 
-# THE SAME FILE AS IT STOOD BEFORE THE STACK WAS BUILT, put through the very same two steps the
-# build puts the source through — the namespace resolution and the comment strip — so what row 2
-# compares is two builds of one file and never a build against a source.
+# THE ARRANGEMENT AS IT STANDS AT HEAD, rebuilt from git and put through the very same steps the
+# build puts the source through, so what row 2 compares is two builds and never a build against a
+# source. Every part of that arrangement is reconstructed — the host, the picture it draws with, and
+# the bench page that drives it — because a host of one arrangement driven by the other's page draws
+# nothing at all, and a comparison against nothing reads as a whole picture of difference while
+# proving no picture.
 #
-# THE PACK'S OWN ADDRESS IS STAMPED THE WAY THE BUILD STAMPS IT. Until 2026-08-14 the host carried
-# its instruments inline and asked for no second file, so the namespace and the comment strip were
-# the whole of a build. Since the instruments left for pass-pack.js the host carries two tokens the
-# build fills — the pack's version and the digest of the served pack — and a host whose tokens stand
-# unfilled refuses every pack it is offered. Left unstamped, this row's older bench drew no
-# instrument at all and the comparison read as a whole picture of difference. Both benches serve the
-# SAME built pack, so both are stamped with that pack's own numbers and what the row compares is
-# again two builds of the host over one picture.
-HEAD_BUILT = None
-HEAD_PACK = None
+# The two arrangements the engine has carried are read apart by what HEAD's assets dir holds. One
+# pack file: the host is stamped at bake with that pack's version and the digest of its served
+# bytes, and it fetches that one file. One file per instrument: the host is stamped with nothing and
+# reads every address out of the site's own record, so the record is written here with the digests
+# of the bytes this bench actually serves.
 HEAD_WHY = ""
 
 
-def _head_file(path):
-    return subprocess.run(["git", "show", "HEAD:" + path],
-                          cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
+def head_text(path):
+    return subprocess.run(["git", "show", "HEAD:" + path], cwd=str(ROOT),
+                          capture_output=True, check=True).stdout.decode("utf-8")
 
 
-def _bake(src):
-    return _engine.strip_js_comments(_engine.apply_namespace(src, _engine._NAMESPACE))
+def head_built():
+    """The files HEAD's arrangement serves: {served name: text}, with the host under 'pass-layer.js'
+    and the site's record under 'config.json' when that arrangement reads one."""
+    names = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", "engine/assets/"],
+                           cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
+    names = [n.split("/")[-1] for n in names.split("\n") if n.strip()]
+    built = lambda src: _engine.strip_js_comments(_engine.apply_namespace(src, _engine._NAMESPACE))
+    layer = _engine.apply_namespace(head_text("engine/assets/pass-layer.js"), _engine._NAMESPACE)
+    out = {}
+    if "pass-pack.js" in names:
+        pack = built(head_text("engine/assets/pass-pack.js"))
+        version = re.search(r'var\s+PACK_VERSION\s*=\s*"([^"]+)"',
+                            head_text("engine/assets/pass-pack.js")).group(1)
+        layer = (layer.replace("@@PACK_VERSION@@", version)
+                      .replace("@@PACK_DIGEST@@", hashlib.sha256(pack.encode("utf-8")).hexdigest()))
+        out["pass-pack.js"] = pack
+    else:
+        record = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+        rows = {}
+        for n in [n for n in names if n.startswith("pass-inst-") and n.endswith(".js")]:
+            src = head_text("engine/assets/" + n)
+            text = built(src)
+            rows[n[len("pass-inst-"):-len(".js")]] = {
+                "src": n, "version": re.search(r'var\s+INSTRUMENT_VERSION\s*=\s*"([^"]+)"',
+                                               src).group(1),
+                "digest": hashlib.sha256(text.encode("utf-8")).hexdigest()}
+            out[n] = text
+        record["pass"]["instruments"] = rows
+        out["config.json"] = json.dumps(record)
+    out["pass-layer.js"] = _engine.strip_js_comments(layer)
+    out["index.html"] = head_text("tests/fixture_pass_stack.html")
+    return out
 
 
 try:
-    _head = subprocess.run(["git", "show", "HEAD:engine/assets/pass-layer.js"],
-                           cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
-    _served = (TMP / "pass-pack.js").read_bytes()
-    _version = re.search(r'var\s+PACK_VERSION\s*=\s*"([^"]+)"', PACK).group(1)
-    _head = (_engine.apply_namespace(_head, _engine._NAMESPACE)
-             .replace("@@PACK_VERSION@@", _version)
-             .replace("@@PACK_DIGEST@@", hashlib.sha256(_served).hexdigest()))
-    HEAD_BUILT = _engine.strip_js_comments(_head)
+    HEAD_BUILT = head_built()
 except Exception as e:  # noqa: BLE001 — the reason is reported on the row itself
     HEAD_BUILT = None
-    HEAD_PACK = None
     HEAD_WHY = str(e)
 
 # ---------------------------------------------------------------- string rows
@@ -387,7 +408,7 @@ check("PASS-STACK the camera counts as one accompaniment in the tier budget",
 BROWSER_ROWS = [
     "PASS-STACK row 1  · three cues play, each drawing inside its window and nothing outside it",
     "PASS-STACK row 1  · a cue outside its window draws nothing and holds at its own door",
-    "PASS-STACK row 2  · a one-cue score is byte-identical to what it drew before the stack",
+    "PASS-STACK row 2  · a one-cue score draws what the arrangement at HEAD drew, to the pixel",
     "PASS-STACK row 3  · draw order follows `stack`, and the line order where no `stack` is named",
     "PASS-STACK row 4  · the levels law is enforced where the plan is authored",
     "PASS-STACK row 5  · the tier budget holds, with the camera counted as an accompaniment",
@@ -436,24 +457,30 @@ def spread(p):
     return st.stddev[0], st.mean[0]
 
 
-def bench_dir(layer_text, pack_text=None):
-    """A served root holding one BUILT pass-layer.js, the two photographs and the fixture.
+def bench_dir(layer_text=None, arrangement=None):
+    """A served root holding one BUILT pass-layer.js, the picture it draws with, the two photographs
+    and the fixture.
 
-    THE PACK SERVED MUST BE THE ONE THE HOST WAS STAMPED AGAINST. The host fetches its pack by
-    address, weighs its bytes and refuses anything whose digest disagrees, so a bench that serves
-    this tree's pack to a host built elsewhere draws nothing at all — which is a blank frame rather
-    than a comparison. Row 2 therefore hands its own matching pack, and every other caller takes
-    this tree's."""
+    With no argument it stands THIS branch's arrangement: the built host, the site's own record and
+    the instrument files that record names, each fetched by the host as a visitor's browser fetches
+    them. `layer_text` replaces the host alone, which is how a red-on-bug proof serves a crippled
+    one. `arrangement` stands a whole arrangement of its own — every served file by name — which is
+    how row 2 stands HEAD's beside this one."""
     d = Path(tempfile.mkdtemp(prefix="synth_stackbench_"))
-    (d / "pass-layer.js").write_text(layer_text, encoding="utf-8")
-    if pack_text is None:
-        shutil.copy2(TMP / "pass-pack.js", d / "pass-pack.js")
+    if arrangement:
+        for name, text in arrangement.items():
+            (d / name).write_text(text, encoding="utf-8")
     else:
-        (d / "pass-pack.js").write_text(pack_text, encoding="utf-8")
+        (d / "pass-layer.js").write_text(layer_text or LAYER, encoding="utf-8")
+        # Each instrument travels as its own file, and the host reads every address out of the
+        # site's own settings record, so the bench root serves that record and the files it names.
+        shutil.copy2(TMP / "config.json", d / "config.json")
+        for _inst in sorted(TMP.glob("pass-inst-*.js")):
+            shutil.copy2(_inst, d / _inst.name)
+        shutil.copy2(ROOT / "tests" / "fixture_pass_stack.html", d / "index.html")
     (d / "photos").mkdir()
     for p in PHOTOS:
         shutil.copy2(p, d / "photos" / p.name)
-    shutil.copy2(ROOT / "tests" / "fixture_pass_stack.html", d / "index.html")
     return d
 
 
@@ -731,10 +758,10 @@ else:
 
     # ---- row 2: the one-cue picture, before the stack and after ---------------------------
     if HEAD_BUILT is None:
-        skip(BROWSER_ROWS[2], "the file as it stood before the stack could not be read: " + HEAD_WHY)
+        skip(BROWSER_ROWS[2], "the arrangement as it stands at HEAD could not be rebuilt: " + HEAD_WHY)
     else:
-        OLD = bench_dir(HEAD_BUILT, HEAD_PACK)
-        NEW = bench_dir(LAYER)
+        OLD = bench_dir(arrangement=HEAD_BUILT)
+        NEW = bench_dir()
         pair = {}
         for tag, root in (("before", OLD), ("after", NEW)):
             with serve(root) as b2:

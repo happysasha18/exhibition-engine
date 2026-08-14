@@ -91,12 +91,25 @@ TMP = Path(tempfile.mkdtemp(prefix="synth_passcov_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)
 LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
-PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
 
-# THE TREE AS IT STOOD BEFORE COVERAGE, baked the way engine/build.py bakes it: the pack first, then
-# the host stamped with the digest of the bytes that will actually be served. The host refuses a pack
-# whose digest disagrees, so a bench that mixes one tree's host with another's pack draws nothing.
-HEAD_LAYER = HEAD_PACK = None
+# EVERY INSTRUMENT TRAVELS AS ITS OWN BUILT FILE, at the address the site's own settings record gives
+# its name. A row about the HOST reads LAYER; a row about the shaders reads PACK, which is every
+# instrument file this bake wrote, taken in the record's own order; and a revert names the ONE file
+# it cripples by the instrument's own name rather than counting occurrences inside one pack. The
+# names are read out of the record rather than written here, so a fifth instrument landing tomorrow
+# is covered without anyone remembering to add it.
+RECORD = (json.loads((TMP / "config.json").read_text(encoding="utf-8")).get("pass") or {})
+RECORD = RECORD.get("instruments") or {}
+NAMES = sorted(RECORD)
+BUILT = {n: (TMP / RECORD[n]["src"]).read_text(encoding="utf-8") for n in NAMES}
+PACK = "\n".join(BUILT[n] for n in NAMES)
+
+# THE ARRANGEMENT AS IT STANDS AT HEAD, rebuilt from git and put through the very same steps the
+# build puts the source through: the host, the site's own record, and every instrument file that
+# record names, each entry carrying the digest of the bytes this bench will actually serve. A host
+# reading a record whose digest disagrees loads no instrument at all, so it would draw nothing — and
+# a comparison against nothing reads as a whole picture of difference while proving no picture.
+HEAD_BUILT = None
 HEAD_WHY = ""
 
 
@@ -105,20 +118,38 @@ def _head_file(path):
                           cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
 
 
-def _bake_pair(layer_src, pack_src):
-    pack = _engine.strip_js_comments(_engine.apply_namespace(pack_src, _engine._NAMESPACE))
-    ver = re.search(r'var\s+PACK_VERSION\s*=\s*"([^"]+)"', pack)
-    host = _engine.apply_namespace(layer_src, _engine._NAMESPACE)
-    host = host.replace("@@PACK_VERSION@@", ver.group(1) if ver else "")
-    host = host.replace("@@PACK_DIGEST@@", hashlib.sha256(pack.encode("utf-8")).hexdigest())
-    return _engine.strip_js_comments(host), pack
+def _bake(src):
+    return _engine.strip_js_comments(_engine.apply_namespace(src, _engine._NAMESPACE))
+
+
+def head_arrangement():
+    """The files HEAD's arrangement serves: {served name: text}, with the host under
+    'pass-layer.js' and the site's own settings record under 'config.json'. The bench page is not
+    among them: both eras are driven by the same fixture, so what the comparison holds apart is the
+    arrangement and never the page."""
+    names = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", "engine/assets/"],
+                           cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
+    names = [n.split("/")[-1] for n in names.split("\n") if n.strip()]
+    settings = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+    out, rows = {}, {}
+    for n in [x for x in names if x.startswith("pass-inst-") and x.endswith(".js")]:
+        src = _head_file("engine/assets/" + n)
+        text = _bake(src)
+        rows[n[len("pass-inst-"):-len(".js")]] = {
+            "src": n,
+            "version": re.search(r'var\s+INSTRUMENT_VERSION\s*=\s*"([^"]+)"', src).group(1),
+            "digest": hashlib.sha256(text.encode("utf-8")).hexdigest()}
+        out[n] = text
+    settings["pass"]["instruments"] = rows
+    out["config.json"] = json.dumps(settings)
+    out["pass-layer.js"] = _bake(_head_file("engine/assets/pass-layer.js"))
+    return out
 
 
 try:
-    HEAD_LAYER, HEAD_PACK = _bake_pair(_head_file("engine/assets/pass-layer.js"),
-                                       _head_file("engine/assets/pass-pack.js"))
+    HEAD_BUILT = head_arrangement()
 except Exception as e:  # noqa: BLE001 — the reason is reported on the rows that wanted it
-    HEAD_LAYER = HEAD_PACK = None
+    HEAD_BUILT = None
     HEAD_WHY = str(e)
 
 
@@ -364,23 +395,34 @@ def blend_residual(s, t, p):
     return w, float(np.sqrt((res @ res) / res.size))
 
 
-def bench_dir(layer_text, pack_text):
+def bench_dir(layer_text=None, files=None, arrangement=None):
+    """A served root holding the host, the site's own record, the instrument files that record names,
+    the two photographs and the fixture.
+
+    With no argument it stands THIS branch's arrangement. `layer_text` replaces the host alone, which
+    is how a red-on-bug proof serves a crippled one. `files` replaces the text served for an
+    instrument, by name; the record is then written with the digest of the bytes actually served —
+    which is what the build does, and a crippled file left unstamped would be refused unread rather
+    than measured. `arrangement` stands a whole arrangement of its own, every served file by name,
+    which is how the tree at HEAD stands beside this one."""
     d = Path(tempfile.mkdtemp(prefix="synth_covbench_"))
-    (d / "pass-layer.js").write_text(layer_text, encoding="utf-8")
-    (d / "pass-pack.js").write_text(pack_text, encoding="utf-8")
+    if arrangement:
+        for name, text in arrangement.items():
+            (d / name).write_text(text, encoding="utf-8")
+    else:
+        (d / "pass-layer.js").write_text(layer_text or LAYER, encoding="utf-8")
+        settings = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+        rows = settings["pass"]["instruments"]
+        for n in NAMES:
+            text = (files or {}).get(n, BUILT[n])
+            rows[n]["digest"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            (d / rows[n]["src"]).write_text(text, encoding="utf-8")
+        (d / "config.json").write_text(json.dumps(settings), encoding="utf-8")
     (d / "photos").mkdir()
     for p in PHOTOS:
         shutil.copy2(p, d / "photos" / p.name)
     shutil.copy2(ROOT / "tests" / "fixture_pass_stack.html", d / "index.html")
     return d
-
-
-def restamp(layer_text, old_pack, new_pack):
-    """A crippled pack weighs differently, and the host refuses a pack whose digest disagrees. The
-    revert therefore re-stamps the host with the digest of the bytes the bench will actually serve —
-    which changes nothing about the rule under test and everything about whether it runs at all."""
-    return layer_text.replace(hashlib.sha256(old_pack.encode("utf-8")).hexdigest(),
-                              hashlib.sha256(new_pack.encode("utf-8")).hexdigest())
 
 
 def ready(br, tries=80):
@@ -401,9 +443,9 @@ if not chrome_available():
 elif missing:
     for r in ROWS + RED + REPORTS:
         skip(r, "the walk's own photographs are absent here: " + missing[0])
-elif HEAD_LAYER is None:
+elif HEAD_BUILT is None:
     for r in ROWS + RED + REPORTS:
-        skip(r, "the tree as it stood before coverage could not be read: " + HEAD_WHY)
+        skip(r, "the arrangement as it stands at HEAD could not be rebuilt: " + HEAD_WHY)
 else:
     CAPS.mkdir(parents=True, exist_ok=True)
     for old in CAPS.glob("*.png"):
@@ -412,8 +454,8 @@ else:
     class Bench:
         """One served root and one browser, holding the pass still at any instant asked for."""
 
-        def __init__(self, layer_text, pack_text):
-            self.d = bench_dir(layer_text, pack_text)
+        def __init__(self, layer_text=None, files=None, arrangement=None):
+            self.d = bench_dir(layer_text, files, arrangement)
             self.ctx = serve(self.d)
             self.base = self.ctx.__enter__()
             self.br = Browser(width=VW, height=VH)
@@ -436,7 +478,7 @@ else:
             finally:
                 shutil.rmtree(self.d, ignore_errors=True)
 
-    NOW = Bench(LAYER, PACK)
+    NOW = Bench()
     if not NOW.ok:
         for r in ROWS + RED + REPORTS:
             skip(r, "the bench never came up: "
@@ -521,7 +563,7 @@ else:
 
         step_now = diff(NOW.shot(STACK, 5.58, "risk-step-after-5.58"),
                         NOW.shot(STACK, 5.60, "risk-step-after-5.60"))
-        BEFORE = Bench(HEAD_LAYER, HEAD_PACK)
+        BEFORE = Bench(arrangement=HEAD_BUILT)
         if not BEFORE.ok:
             skip(REPORTS[1], "the before-coverage bench never came up")
             skip(REPORTS[2], "the before-coverage bench never came up")
@@ -560,8 +602,8 @@ else:
         okay = True
         for tag, sc in (("ground", ONLY_PIVOT), ("travel", ONLY_TRAVEL), ("arrival", ONLY_ARRIVAL)):
             pair = {}
-            for era, (lay, pk) in (("before", (HEAD_LAYER, HEAD_PACK)), ("after", (LAYER, PACK))):
-                b = Bench(lay, pk)
+            for era, seat in (("before", {"arrangement": HEAD_BUILT}), ("after", {})):
+                b = Bench(**seat)
                 if not b.ok:
                     okay = False
                     b.close()
@@ -582,33 +624,24 @@ else:
                   % (len(one_offs), worst))
 
         # ---- the red-on-bug proofs --------------------------------------------------------
-        # THE ALPHA LINE APPEARS TWICE — `matter` writes it first in the file and the meshing
-        # instrument second — so a revert that takes the first match cripples the wrong voice, and
-        # at 2.000 s `matter` is not even playing. Every revert below names WHICH occurrence it
-        # means, and the count is asserted so a future edit that adds a third cannot pass silently.
+        # THE ALPHA LINE STANDS IN TWO INSTRUMENTS — `matter` and the meshing instrument — and each
+        # of them travels in a file of its own, so a revert names the FILE it cripples instead of
+        # counting occurrences inside one pack. At 2.000 s `matter` is not even playing, which is
+        # why every revert below cripples the meshing instrument. The per-file count is asserted so
+        # a future edit that adds a second line to that file cannot pass silently.
         ALPHA = "gl_FragColor = vec4(col, 1.0 - cov);"
-        GEARS_ALPHA = 1          # the second occurrence, counting from zero: the meshing instrument
+        GEARS = "gears"          # the meshing instrument, in the one file it travels in
 
-        def replace_nth(text, find, repl, n):
-            i = -1
-            for _ in range(n + 1):
-                i = text.find(find, i + 1)
-                if i < 0:
-                    return None
-            return text[:i] + repl + text[i + len(find):]
-
-        def red_pack(row, nth, replace, measure, why):
-            """Revert ONE rule in this suite's own copy of the built pack, re-stamp the host so the
-            bench will serve it, take the same measurement, and pass when the answer MOVES."""
-            if PACK.count(ALPHA) != 2:
-                check(row, False, "the built pack carries %d coverage lines, expected 2"
-                      % PACK.count(ALPHA))
+        def red_pack(row, replace, measure, why):
+            """Revert ONE rule in this suite's own copy of ONE built instrument file, serve it with
+            the record stamped for the bytes it really is, take the same measurement, and pass when
+            the answer MOVES."""
+            if BUILT.get(GEARS, "").count(ALPHA) != 1:
+                check(row, False, "the built «%s» file carries %d coverage lines, expected 1"
+                      % (GEARS, BUILT.get(GEARS, "").count(ALPHA)))
                 return
-            hurt = replace_nth(PACK, ALPHA, replace, nth)
-            if hurt is None:
-                check(row, False, "occurrence %d of the coverage line was not found" % nth)
-                return
-            b = Bench(restamp(LAYER, PACK, hurt), hurt)
+            hurt = BUILT[GEARS].replace(ALPHA, replace)
+            b = Bench(files={GEARS: hurt})
             try:
                 if not b.ok:
                     check(row, False, "the crippled bench never came up: "
@@ -630,7 +663,7 @@ else:
                 "`1.0` the ground reaches %.1f%% and the stack IS that voice again (worst channel "
                 "%d)" % (100 * share2, off2[1], 100 * sh, off[1]))
 
-        red_pack(RED[0], GEARS_ALPHA, "gl_FragColor = vec4(col, 1.0);", m_ground_gone,
+        red_pack(RED[0], "gl_FragColor = vec4(col, 1.0);", m_ground_gone,
                  "the meshing instrument's coverage is what gives the band family back")
 
         def m_door_pops(b):
@@ -643,7 +676,7 @@ else:
                 "`cov` it opens at alpha 1 and the same instant moves by mean %.3f of 255 (worst "
                 "channel %d)" % (gate17[1], off[0], off[1]))
 
-        red_pack(RED[1], GEARS_ALPHA, "gl_FragColor = vec4(col, cov);", m_door_pops,
+        red_pack(RED[1], "gl_FragColor = vec4(col, cov);", m_door_pops,
                  "an entry door is free only because the arriving territory starts empty")
 
         def m_weight_fits(b):
@@ -662,8 +695,7 @@ else:
 
         # `uOff` is the meshing instrument's tangential sweep: one number for the whole frame, moving
         # with the dial. Standing it in for the mask is exactly a per-cue weight of presence.
-        red_pack(RED[3], GEARS_ALPHA,
-                 "gl_FragColor = vec4(col, clamp(uOff * 20.0, 0.0, 1.0));", m_weight_fits,
+        red_pack(RED[3], "gl_FragColor = vec4(col, clamp(uOff * 20.0, 0.0, 1.0));", m_weight_fits,
                  "a weight of presence over the whole frame is the crossfade under another name")
 
         # The one that matters most: blending must never be enabled for a frame's first cue.
@@ -671,13 +703,13 @@ else:
             check(RED[2], False, "the rule's own text was not found in the built host")
         else:
             hurt = LAYER.replace("drew > 0", "true", 1)
-            b = Bench(hurt, PACK)
+            b = Bench(layer_text=hurt)
             try:
                 if not b.ok:
                     check(RED[2], False, "the crippled bench never came up")
                 else:
                     was = NOW_ONE = None
-                    b2 = Bench(LAYER, PACK)
+                    b2 = Bench()
                     if b2.ok:
                         was = b2.shot(ONLY_ARRIVAL, 2.0, "red-blend-sound-2.00")
                         NOW_ONE = b.shot(ONLY_ARRIVAL, 2.0, "red-blend-crippled-2.00")

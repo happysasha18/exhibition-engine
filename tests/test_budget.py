@@ -130,22 +130,35 @@ FENCES = {
     # stands here is the host alone, and the fence moves DOWN to match, which is what keeps it
     # biting: an instrument landing in the pack no longer moves this number at all, and it is the
     # pack's own fence below that answers for the picture's weight.
-    "pass-layer.js": (24_000, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera, the interruption cadence, the return to the hang and the pack loader — no instrument and no effect name", strip_js_comments),
-    # 2026-08-14, midday — A FENCE FROM DAY ONE, at 8 700 B against a measurement of 7 894 B, about
-    # a tenth under it, by the same rule §12 states for the renderer's own file.
+    # 2026-08-14, afternoon — the single pack became a file per instrument, and this fence stayed at
+    # 24 000 B. The host grew by the loader that reads the site's own record and asks for one file
+    # per name, from 21 528 B to 22 503 B, and it still names no instrument.
+    "pass-layer.js": (24_000, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
+    # 2026-08-14, afternoon — ONE FENCE PER INSTRUMENT, each at its own measurement plus about a
+    # tenth, by the same rule §12 states for the renderer's own file.
     #
-    # WHAT IT MEASURES AND WHY THE NUMBER MATTERS. This is the picture itself — three instruments,
-    # each with its shader, its response curve, its field constants and its manifest of handles and
-    # name-bound uniforms. It is fetched only after the host has been fetched, so it reaches only a
-    # visit that actually draws: reduced motion, Save-Data, a device with no WebGL2 and the layer
-    # switched off never ask for either file.
+    # WHY THESE ARE FOUR NUMBERS AND NOT ONE. The single pack of the morning broke its own fence the
+    # day it was raised: a fourth instrument landed, the pack measured 53 732 B raw against a 38 000
+    # B fence, and no fourth instrument of that family fitted at any size. A fence over a bag of
+    # instruments answers a question nobody can act on — it says the bag is too heavy and names no
+    # instrument. One fence per instrument makes the unit honest: one instrument, one number, and a
+    # move here answers one question — is THIS picture worth its bytes to a phone.
     #
-    # THIS NUMBER IS EXPECTED TO GROW, and that is the point of separating it. 25 lab modules stand
-    # on disk and the pack is where they land, so the growth that used to push the host's fence
-    # every few hours now pushes this one, where a move can be read as what it is: more picture. A
-    # move here answers one question — is the added picture worth its bytes to a phone — and it no
-    # longer drags the host's own budget with it.
-    "pass-pack.js": (8_700, "the effect pack: three instruments with their shaders, response curves and manifests — the woven one, the matter one and the meshing one; fetched by the host, after the host, on a visit that draws", strip_js_comments),
+    # WHAT A VISIT ACTUALLY PAYS. Each instrument travels as its own file and a visit fetches only
+    # the ones its own score names. The composer's census says most passages carry one to three
+    # cues, so a one-cue passage pays 4 069 B gzipped where the single pack cost 11 465 B, and the
+    # worked pair's three-cue passage pays 11 822 B for the three it names rather than 11 465 B for
+    # a farm of four it draws three of. The saving grows with every instrument that lands: the
+    # twenty-five lab modules on disk would each have added their whole weight to every visit under
+    # the single pack, and add nothing at all to a visit whose score never names them.
+    #
+    # None of these files reaches a visit that does not draw: reduced motion, Save-Data, a device
+    # with no WebGL2 and the layer switched off never ask for the host, and nothing is asked for
+    # before a score names it.
+    "pass-inst-adrift.js": (6_000, "the adrift instrument, measured at 5 444 B: a dense thing leaves across an empty field and the field itself changes hands along a measured front — its shader, its two silhouettes, its contact shadow, its response curves and its manifest", strip_js_comments),
+    "pass-inst-gears.js": (5_000, "the meshing instrument, measured at 4 532 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
+    "pass-inst-matter.js": (3_550, "the matter instrument, measured at 3 221 B: one work loosens into a grain dragged along a seeded field and the other condenses out of it — its shader, its response curve and its manifest", strip_js_comments),
+    "pass-inst-weave.js": (4_500, "the woven instrument, measured at 4 069 B: a band family warping across the frame — its shader, its seating of a work in the frame, its response curve, the turn of the weave and its manifest", strip_js_comments),
 }
 
 results = []

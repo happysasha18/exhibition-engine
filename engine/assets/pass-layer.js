@@ -18,13 +18,15 @@
 //      shared carrier (lab/gl-carrier.js) carried onto the host under the contract's ownership rules,
 //      with one difference that matters: the carrier names one instrument's six uniforms literally,
 //      and the host binds BY DECLARED NAME from each instrument's manifest instead.
-//   3. The registry and the pack loader (§7). The instruments themselves live in their own file,
-//      pass-pack.js, which this host fetches by address and loads once its bytes weigh to the digest
-//      the build stamped here and it declares the version this host was told. Each instrument lands
-//      on the registry under the name its own manifest carries. NO INSTRUMENT NAME IS WRITTEN IN
-//      THIS FILE, and a conformance row greps the built host for the three that ship today and reds
-//      on any of them. A TEST INSTRUMENT registers itself here, reachable only when diagnostics are
-//      on (§9's lifecycle rows are built against it); it draws nothing and belongs to the host's own
+//   3. The registry and the instrument loader (§7). Every instrument lives in a file of its own,
+//      and a visit fetches only the ones its own score names. The names come out of the score's
+//      cues; the addresses, versions and digests come out of the site's own settings record, which
+//      this host reads at boot. A file loads once its bytes weigh to the digest the record gives its
+//      name and it declares the version the record gives it, and its instrument lands on the
+//      registry under the name its own manifest carries. NO INSTRUMENT NAME IS WRITTEN IN THIS FILE,
+//      and a conformance row greps the built host for every name that ships today and reds on any of
+//      them. A TEST INSTRUMENT registers itself here, reachable only when diagnostics are on (§9's
+//      lifecycle rows are built against it); it draws nothing and belongs to the host's own
 //      machinery rather than to the picture.
 //
 // A command carrying no score reaches no production instrument at all: the score names the cue, the
@@ -36,6 +38,13 @@
   // ---- the three ranges of contract §2.5 — a legal value must read differently from a hang -------
   var DURATION_MIN = 0, DURATION_MAX = 14000;
   var PREPARE_MIN = 0, PREPARE_MAX = 400;
+  // HOW LONG A COMMAND WAITS FOR THE INSTRUMENT FILES ITS OWN SCORE NAMES, and why it is its own
+  // number rather than the prepare budget's. The prepare budget bounds an instrument that is
+  // already in hand; this bounds a file crossing the network, which is a different thing and fails
+  // for different reasons. It is short on purpose: the walk's own glide is what runs when the wait
+  // runs out, and a visitor whose network is slow should meet that glide a quarter of a second late
+  // rather than watch a still frame while a file arrives.
+  var LOAD_MIN = 0, LOAD_MAX = 4000;
   var SLACK_MIN = 0, SLACK_MAX = 2000;
   function clampNum(n, lo, hi) {
     n = Number(n);
@@ -59,6 +68,7 @@
   var lastRun = null;        // what the last transaction left behind for the diagnostic surface:
                              // the camera's rest, its handoffs and the cadence it landed through
   var prepareBudgetMs = 120; // within PREPARE_MIN…PREPARE_MAX; overridable for testing (host.configure)
+  var loadBudgetMs = 250;    // within LOAD_MIN…LOAD_MAX; overridable for testing (host.configure)
   var settleSlackMs = 300;   // within SLACK_MIN…SLACK_MAX
   // The two pins are a TESTING seam, set only through host.configure: with a pinned clock and a
   // pinned progress the frame loop stops reading the wall clock, so a seeded run can be compared
@@ -1928,7 +1938,48 @@
   // offer(cmd, hooks) — the ONE bridge the bundle calls. Returns true the moment the host has taken
   // responsibility for landing this command, whether by eventually taking over or by calling the
   // glide hook itself on decline; it never means a renderer is now drawing.
+  // THE COMMAND WAITS FOR ITS OWN INSTRUMENTS, AND FOR NO LONGER THAN THE PREPARE BUDGET. Every
+  // instrument a score names is fetched at the address the site's record gives its name, and a
+  // command whose instruments are all in hand goes on at once, by the road below, unchanged. A
+  // command still waiting on a file waits inside the same budget every other pre-takeover failure
+  // is bounded by: the files land and the pass runs, or the budget runs out and the walk's own
+  // glide lands the transition. Nothing is on the screen yet either way — the curtain goes up after
+  // prepare — so a wait costs the visitor a delayed glide at worst, never a stalled picture.
+  var offeredGen = 0;
+  var awaiting = null;      // the command held while its files cross the network, and its own gen
   function offer(cmd, hooks) {
+    offeredGen = cmd && cmd.gen;
+    var waiting = warmFor(cmd);
+    if (!waiting) return offerNow(cmd, hooks);
+    var budget = clampNum(loadBudgetMs, LOAD_MIN, LOAD_MAX);
+    var answered = false;
+    // A HELD COMMAND IS NOT AN IDLE HOST, and the diagnostic surface says so: `state` reads
+    // «awaiting» for as long as the files are in the air. A surface that read «idle» here would
+    // tell a reader the transaction had finished when it had not begun.
+    awaiting = { gen: cmd.gen, names: waiting };
+    logEvt("instruments-awaited", cmd.gen, waiting + " of the score's instruments");
+    function release() { if (awaiting && awaiting.gen === cmd.gen) awaiting = null; }
+    var timer = setTimeout(function () {
+      if (answered) return;
+      answered = true;
+      release();
+      logEvt("instruments-timeout", cmd.gen, "over " + budget + "ms");
+      try { hooks.glide(cmd); } catch (e) {}
+    }, budget);
+    whenNamedLoaded(cmd, function () {
+      if (answered) return;
+      answered = true;
+      clearTimeout(timer);
+      release();
+      // A newer declare has superseded this one, and the newer command owns its own landing. Running
+      // a glide for the command that was superseded would move the walk twice.
+      if (cmd.gen !== offeredGen) { logEvt("offer-superseded", cmd.gen, null); return; }
+      if (!offerNow(cmd, hooks)) { try { hooks.glide(cmd); } catch (e) {} }
+    });
+    return true;
+  }
+
+  function offerNow(cmd, hooks) {
     var inst = pick(cmd);
     if (!inst) return false;
     // THE GRAPH IS WALKED BEFORE THE COMMAND IS TAKEN. A cycle, or two cues claiming the camera at
@@ -2156,6 +2207,7 @@
   function configure(opts) {
     if (!opts) return;
     if (opts.prepareBudgetMs !== undefined) prepareBudgetMs = clampNum(opts.prepareBudgetMs, PREPARE_MIN, PREPARE_MAX);
+    if (opts.loadBudgetMs !== undefined) loadBudgetMs = clampNum(opts.loadBudgetMs, LOAD_MIN, LOAD_MAX);
     if (opts.settleSlackMs !== undefined) settleSlackMs = clampNum(opts.settleSlackMs, SLACK_MIN, SLACK_MAX);
     if (opts.clockPin !== undefined) pinClock = opts.clockPin === null ? null : Number(opts.clockPin);
     if (opts.progressPin !== undefined) pinProgress = opts.progressPin === null ? null : Number(opts.progressPin);
@@ -2164,20 +2216,27 @@
   function report() {
     var s = times.slice().sort(function (a, b) { return a - b; });
     return {
-      state: cur ? cur.state : "idle",
+      state: cur ? cur.state : (awaiting ? "awaiting" : "idle"),
       active: !!cur,
       gen: cur ? cur.cmd.gen : null,
       duration: cur ? cur.duration : null,
       variant: cur ? cur.variant : null,
-      prepareBudgetMs: prepareBudgetMs, settleSlackMs: settleSlackMs,
+      prepareBudgetMs: prepareBudgetMs, settleSlackMs: settleSlackMs, loadBudgetMs: loadBudgetMs,
       events: log.slice(),
       instrument: cur ? cur.inst.name : null,
       registered: Object.keys(instruments),
-      // THE PACK, on the diagnostic surface: where it was fetched from, the version and digest this
-      // host was told to load, where the load stands and — when it was refused — the reason in the
-      // host's own words. A refusal is readable here without reading the event log for it.
-      pack: { src: PACK.src, wantVersion: PACK.version, wantDigest: PACK.digest,
-              state: packState, version: packVersion, why: packWhy },
+      // THE SITE'S RECORD, on the diagnostic surface: where it was read from, whether it was read
+      // or refused, the reason in the host's own words when it was refused, and the names it
+      // carries. A refusal is readable here without reading the event log for it.
+      record: { src: RECORD_SRC, state: recordState, why: recordWhy,
+                names: record ? Object.keys(record) : [] },
+      // EVERY INSTRUMENT FILE THIS VISIT HAS ASKED FOR, and nothing it has not: the address and
+      // version it was told, where the load stands, and the reason when it was refused. A visit
+      // that names one instrument shows one row here, which is the whole point of the shape.
+      files: Object.keys(files).map(function (n) {
+        return { name: n, src: files[n].src, version: files[n].version,
+                 state: files[n].state, why: files[n].why };
+      }),
       // THE STACK, as the host actually walks it: draw order, ascending, the cue nearest the eye
       // last. `live` is what the last frame drew, `drew` how many cues that frame laid down, and
       // `handles` each cue's own numbers — a cue outside its window shows the door it is holding at.
@@ -2230,30 +2289,42 @@
   };
 
   // ================================================================================================
-  // THE EFFECT PACK (§7) — the instruments arrive as their own file
+  // THE INSTRUMENT FILES (§7) — each instrument arrives as its own file, and a visit fetches only
+  // the ones its own score names
   // ================================================================================================
-  // His word of 2026-08-14 08:39: the engine knows no effect name and loads a version-pinned opaque
-  // effect pack, and tlvphotos owns that pack and its manifests. So this file holds the host alone.
-  // No instrument name is written anywhere in it — a conformance row greps the built host for the
-  // three that ship today and reds on any of them, which is what makes the boundary checkable
+  // His word of 2026-08-14 08:39: the engine knows no effect name and loads version-pinned opaque
+  // effect files, and tlvphotos owns them and their manifests. So this file holds the host alone.
+  // No instrument name is written anywhere in it — a conformance row greps the built host for every
+  // name that ships today and reds on any of them, which is what makes the boundary checkable
   // rather than merely intended.
   //
-  // THE THREE THINGS THE HOST IS TOLD, and the build stamps all three here:
-  //   · the address the pack is fetched from,
-  //   · the version the pack must declare,
+  // WHERE THE NAMES COME FROM, AND WHERE THE ADDRESSES DO. Nothing is stamped into this file at
+  // bake. A score's cue names its instrument, and that is where every name this host ever handles
+  // comes from. The addresses come from the SITE'S OWN SETTINGS RECORD — the same record that
+  // already carries the score tables and the score templates — where each instrument has an entry
+  // under its own name carrying three things:
+  //   · the address its file is served at,
+  //   · the version that file must declare,
   //   · the digest its bytes must weigh to.
-  // The tokens below stand unsubstituted in the source and are filled at bake (build.py:
-  // copy_exhibition_assets). A host reaching a visitor with the tokens still in place was never
-  // baked, and it refuses the pack with that reason rather than loading whatever answers.
-  var PACK = { src: "pass-pack.js", version: "@@PACK_VERSION@@", digest: "@@PACK_DIGEST@@" };
-  var packState = "asked";     // asked → loaded | refused
-  var packWhy = null;          // the reason, when refused
-  var packVersion = null;      // the version the loaded pack declared
+  // The host reads that record once, at boot, and holds it as data. A name the record does not
+  // carry is refused with that reason, `pick` then answers null, `offer` returns false, and the
+  // walk's own glide lands the transition.
+  //
+  // WHY ONE FILE EACH. One file holding every instrument makes a visit pay for the whole farm to
+  // see one crossing, and it makes one byte fence answer for a number nobody can act on. One file
+  // per instrument makes the fence the honest unit — one instrument, one number — and makes a visit
+  // pay for the instruments its own passage uses.
+  var RECORD_SRC = "config.json";
+  var record = null;           // name → { src, version, digest }, once the record has been read
+  var recordState = "asked";   // asked → read | refused
+  var recordWhy = null;        // the reason, when refused
+  var files = {};              // name → { state, why, src, version, waiting }
 
-  function packRefuse(why) {
-    packState = "refused";
-    packWhy = why;
-    logEvt("pack-refused", null, PACK.src + ": " + why);
+  function recordRefuse(why) {
+    recordState = "refused";
+    recordWhy = why;
+    record = {};
+    logEvt("record-refused", null, RECORD_SRC + ": " + why);
   }
 
   function hexOf(buf) {
@@ -2262,56 +2333,172 @@
     return s;
   }
 
-  // WHAT A PACK MUST SATISFY BEFORE ANY OF IT IS REGISTERED. The version is checked first, then
-  // every manifest, and only then is anything put on the registry: a pack half-registered would
-  // leave the host carrying some of a picture nobody wrote. Registration is name-driven throughout
-  // — each instrument lands under the name its own manifest carries, and manifestWhyNo judges what
-  // it asks for against what the host can supply, refusing at registration with its reason (§7).
-  function packWhyNo(pack) {
-    if (!pack || typeof pack !== "object") return "handed over nothing a pack could be read from";
-    if (String(pack.version) !== String(PACK.version)) {
-      return "declares version «" + pack.version + "», and this host was told to load «"
-           + PACK.version + "»";
+  // WHAT A RECORD MUST SATISFY BEFORE ANY OF IT IS HELD. Every entry is judged, and one bad entry
+  // refuses the record whole: a record half-held would leave the host fetching some addresses and
+  // silently missing others, and a visitor would meet a stack with a voice absent from it.
+  function recordWhyNo(settings) {
+    var block = settings && settings.pass;
+    var rows = block && block.instruments;
+    if (!rows || typeof rows !== "object") return "carries no instrument record";
+    var names = Object.keys(rows), out = {}, i, e;
+    if (!names.length) return "carries an instrument record with nothing in it";
+    for (i = 0; i < names.length; i++) {
+      e = rows[names[i]];
+      if (!e || typeof e !== "object" || typeof e.src !== "string" || !e.src
+          || typeof e.version !== "string" || !e.version
+          || !/^[0-9a-f]{64}$/.test(String(e.digest))) {
+        return "its entry «" + names[i] + "» carries no address, version and digest";
+      }
+      out[names[i]] = { src: e.src, version: e.version, digest: String(e.digest) };
     }
-    var list = pack.instruments;
-    if (Object.prototype.toString.call(list) !== "[object Array]" || !list.length) {
-      return "declares no instrument";
+    record = out;
+    return null;
+  }
+
+  // WHETHER THIS PAGE CAN LOAD AN INSTRUMENT AT ALL, asked once and answered in plain words. Three
+  // things are needed and each is named: a fetch to bring a file, a script road to run the bytes
+  // that arrived, and a digest engine to weigh them before they run. Running unweighed bytes
+  // because the scales are missing would make the digest a courtesy, and it is a condition of
+  // loading. A page missing any of the three is told so at boot rather than at the first score, and
+  // the host joins the walk with that reason on its diagnostic surface.
+  function noRoad() {
+    if (typeof fetch !== "function") return "this page cannot fetch a file";
+    if (typeof document === "undefined" || typeof URL === "undefined"
+        || typeof URL.createObjectURL !== "function") {
+      return "this page cannot run a file it has fetched";
     }
-    for (var i = 0; i < list.length; i++) {
-      var inst = list[i];
-      if (!inst || !inst.name) return "carries an instrument that declares no name";
-      var why = manifestWhyNo(inst);
-      if (why) return "its instrument «" + inst.name + "» " + why;
+    var sub = window.crypto && window.crypto.subtle;
+    if (!sub || typeof sub.digest !== "function") {
+      return "this page offers no digest engine, so a file's bytes cannot be weighed";
     }
     return null;
   }
 
-  // THE LOAD. The bytes are weighed before they run, and the bytes that were weighed are the bytes
-  // that run: one fetch, one digest over what arrived, and the very same buffer evaluated. Fetching
-  // twice — once to weigh and once to run — would leave a gap between the two reads that the check
-  // is there to close.
-  //
-  // Every road ends by calling `done` exactly once. A pack that fails to arrive, fails its version,
-  // fails its digest or fails registration leaves the host standing with no production instrument,
-  // and a command then finds none: `pick` answers null, `offer` returns false, and the walk's own
-  // glide lands the transition. That is the product's own behaviour, which is what a visit with no
-  // renderer file at all has always looked like (§2's refusal roads).
-  function packLoad(done) {
+  function recordLoad(done) {
     var ran = false;
     function finishOnce() { if (!ran) { ran = true; done(); } }
-    if (PACK.digest.indexOf("@@") === 0 || PACK.version.indexOf("@@") === 0) {
-      packRefuse("this host was never baked, so it carries no version or digest to check against");
+    var road = noRoad();
+    if (road) {
+      recordRefuse(road + ", so no instrument can be loaded");
       return finishOnce();
     }
-    var sub = window.crypto && window.crypto.subtle;
-    if (typeof fetch !== "function" || !sub || typeof sub.digest !== "function") {
-      // The check cannot be performed, so the pack is refused. Running unweighed bytes because the
-      // scales are missing would make the digest a courtesy, and it is a condition of loading.
-      packRefuse("this page offers no digest engine, so the pack's bytes cannot be weighed");
-      return finishOnce();
+    fetch(RECORD_SRC, { credentials: "omit" }).then(function (r) {
+      if (!r.ok) throw new Error("the server answered " + r.status);
+      return r.json();
+    }).then(function (settings) {
+      var no = recordWhyNo(settings);
+      if (no) throw new Error(no);
+      recordState = "read";
+      logEvt("record-read", null, RECORD_SRC + ": " + Object.keys(record).length + " instruments");
+      finishOnce();
+    })["catch"](function (e) {
+      recordRefuse(e && e.message ? e.message : String(e));
+      finishOnce();
+    });
+  }
+
+  // ONE FILE RUNS AT A TIME, and the fetches run together. Two files evaluating at once would share
+  // the one join point below, and each would be handed whatever the other declared. So the network
+  // half is parallel and the evaluation half is a queue of one.
+  var evalBusy = false, evalQ = [];
+  function evalPump() {
+    if (evalBusy || !evalQ.length) return;
+    evalBusy = true;
+    var job = evalQ.shift();
+    // THE WEIGHED BUFFER RUNS, AND NOTHING ELSE DOES. The blob is built from the very buffer that
+    // was digested, so what executes is the bytes that passed the check — a second fetch of the same
+    // address would leave a gap between weighing and running. It travels as a script element rather
+    // than through eval or a Function body: §5's law is that a score is data and no string a command
+    // carries is ever executed, and this host's own file is held to it too (a conformance row greps
+    // the built host for both and reds on either).
+    var url = URL.createObjectURL(new Blob([job.bytes], { type: "text/javascript" }));
+    var s = document.createElement("script");
+    var joined = null;
+    window["__@@NS@@PassInstrument"] = function (p) { joined = p; };
+    function clear() {
+      URL.revokeObjectURL(url);
+      if (s.parentNode) s.parentNode.removeChild(s);
+      try { delete window["__@@NS@@PassInstrument"]; }
+      catch (e2) { window["__@@NS@@PassInstrument"] = null; }
+      evalBusy = false;
+      setTimeout(evalPump, 0);
     }
+    // A file whose own code throws still fires onload, and it reaches the same landing one line
+    // down: it declared nothing, and the host has no instrument. onerror is the road for bytes the
+    // page would not run as a script at all.
+    s.onload = function () { clear(); job.ok(joined); };
+    s.onerror = function () { clear(); job.no(new Error("its bytes would not run as a script")); };
+    s.src = url;
+    document.head.appendChild(s);
+  }
+
+  // WHAT A FILE MUST SATISFY BEFORE ITS INSTRUMENT IS REGISTERED. The version is checked first, then
+  // the name, then the manifest. The name check is what keeps an address and the instrument at it
+  // from drifting apart: this host asked one address for one name, and a file answering with another
+  // instrument is refused rather than registered under a name nobody asked for.
+  function fileWhyNo(joined, name, want) {
+    if (!joined || typeof joined !== "object") {
+      return "handed over nothing an instrument could be read from";
+    }
+    if (String(joined.version) !== String(want.version)) {
+      return "declares version «" + joined.version + "», and this host was told to load «"
+           + want.version + "»";
+    }
+    var inst = joined.instrument;
+    if (!inst || !inst.name) return "declares no named instrument";
+    if (String(inst.name) !== String(name)) {
+      return "declares the instrument «" + inst.name + "», and this host asked that address for «"
+           + name + "»";
+    }
+    var why = manifestWhyNo(inst);
+    return why ? "its instrument " + why : null;
+  }
+
+  // ONE INSTRUMENT, FETCHED BY THE ADDRESS THE RECORD GIVES ITS NAME. The bytes are weighed before
+  // they run, and the bytes that were weighed are the bytes that run: one fetch, one digest over
+  // what arrived, and the very same buffer evaluated.
+  //
+  // Every road ends by calling `done` exactly once with the reason, or with null when the instrument
+  // is on the registry. A file that fails to arrive, fails its version, fails its digest, fails its
+  // name or fails registration leaves the host without that instrument, and a command naming it
+  // finds none: `pick` answers null, `offer` returns false, and the walk's own glide lands the
+  // transition. That is the product's own behaviour, which is what a visit with no renderer file at
+  // all has always looked like (§2's refusal roads).
+  function instLoad(name, done) {
+    done = done || function () {};
+    if (instruments[name]) return done(null);
+    var f = files[name];
+    if (f) {
+      if (f.state === "asked") { f.waiting.push(done); return; }
+      return done(f.why);
+    }
+    var road = noRoad();
+    if (road) {
+      files[name] = { state: "refused", src: null, version: null, waiting: [], why: road };
+      logEvt("instrument-refused", null, name + ": " + road);
+      return done(road);
+    }
+    var want = record && record[name];
+    if (!want) {
+      files[name] = { state: "refused", src: null, version: null, waiting: [],
+                      why: "the site's record names no instrument by that name" };
+      logEvt("instrument-refused", null, name + ": " + files[name].why);
+      return done(files[name].why);
+    }
+    var rec = { state: "asked", why: null, src: want.src, version: want.version, waiting: [done] };
+    files[name] = rec;
+    function land(why) {
+      rec.state = why ? "refused" : "loaded";
+      rec.why = why || null;
+      logEvt(why ? "instrument-refused" : "instrument-loaded", null,
+             name + " (" + want.src + ")" + (why ? ": " + why : " v" + want.version));
+      var q = rec.waiting, i;
+      rec.waiting = [];
+      for (i = 0; i < q.length; i++) q[i](why);
+    }
+    var sub = window.crypto.subtle;
     var bytes = null;
-    fetch(PACK.src, { credentials: "omit" }).then(function (r) {
+    fetch(want.src, { credentials: "omit" }).then(function (r) {
       if (!r.ok) throw new Error("the server answered " + r.status);
       return r.arrayBuffer();
     }).then(function (buf) {
@@ -2319,49 +2506,58 @@
       return sub.digest("SHA-256", buf);
     }).then(function (d) {
       var got = hexOf(d);
-      if (got !== PACK.digest) {
+      if (got !== want.digest) {
         throw new Error("its bytes weigh to " + got.slice(0, 16) + "…, and this host was told "
-                      + PACK.digest.slice(0, 16) + "…");
+                      + want.digest.slice(0, 16) + "…");
       }
-      // THE WEIGHED BUFFER RUNS, AND NOTHING ELSE DOES. The blob is built from the very buffer that
-      // was just digested, so what executes is the bytes that passed the check — a second fetch of
-      // the same address would leave a gap between weighing and running. It travels as a script
-      // element rather than through eval or a Function body: §5's law is that a score is data and
-      // no string a command carries is ever executed, and this host's own file is held to it too
-      // (a conformance row greps the built host for both and reds on either).
       return new Promise(function (resolve, reject) {
-        var url = URL.createObjectURL(new Blob([bytes], { type: "text/javascript" }));
-        var s = document.createElement("script");
-        var joined = null;
-        window["__@@NS@@PassPack"] = function (p) { joined = p; };
-        function clear() {
-          URL.revokeObjectURL(url);
-          if (s.parentNode) s.parentNode.removeChild(s);
-          try { delete window["__@@NS@@PassPack"]; }
-          catch (e2) { window["__@@NS@@PassPack"] = null; }
-        }
-        s.src = url;
-        s.onload = function () { clear(); resolve(joined); };
-        // A pack whose own code throws still fires onload, and it reaches the same landing one line
-        // down: it declared nothing, and the host has no instrument. onerror is the road for bytes
-        // the page would not run as a script at all.
-        s.onerror = function () { clear(); reject(new Error("its bytes would not run as a script")); };
-        document.head.appendChild(s);
+        evalQ.push({ bytes: bytes, ok: resolve, no: reject });
+        evalPump();
       });
     }).then(function (joined) {
-      if (!joined) throw new Error("it ran and declared nothing");
-      var no = packWhyNo(joined);
+      var no = fileWhyNo(joined, name, want);
       if (no) throw new Error(no);
-      for (var i = 0; i < joined.instruments.length; i++) register(joined.instruments[i]);
-      packState = "loaded";
-      packVersion = String(joined.version);
-      logEvt("pack-loaded", null, PACK.src + " v" + packVersion + ": "
-                                 + joined.instruments.length + " instruments");
-      finishOnce();
+      if (!register(joined.instrument)) throw new Error("its instrument was refused at registration");
+      land(null);
     })["catch"](function (e) {
-      packRefuse(e && e.message ? e.message : String(e));
-      finishOnce();
+      land(e && e.message ? e.message : String(e));
     });
+  }
+
+  // THE NAMES ONE COMMAND CARRIES, each named once. A score naming one instrument on three cues
+  // asks for one file.
+  function namedBy(cmd) {
+    var cues = cuesOf(cmd), out = [], i, id;
+    for (i = 0; i < cues.length; i++) {
+      id = cues[i] && cues[i].instrument && cues[i].instrument.id;
+      if (id && out.indexOf(String(id)) < 0) out.push(String(id));
+    }
+    return out;
+  }
+
+  // WHAT A COMMAND NAMES AND THIS HOST DOES NOT HOLD IS ASKED FOR HERE, and the count of what is
+  // still in the air is handed back so the caller knows whether to wait. A name already asked for
+  // is not asked for twice, and a name already refused stays refused for the rest of the visit: a
+  // file that would not load once is not going to load on the next step, and a walk that retried it
+  // every transition would spend the visit fetching the same refusal.
+  function warmFor(cmd) {
+    var names = namedBy(cmd), waiting = 0, i, id;
+    for (i = 0; i < names.length; i++) {
+      id = names[i];
+      if (instruments[id]) continue;
+      if (!files[id]) instLoad(id);
+      if (files[id] && files[id].state === "asked") waiting++;
+    }
+    return waiting;
+  }
+
+  // Ring back once every instrument this command names has landed — on the registry, or refused
+  // with its reason. Every road through instLoad ends in its callback, so this always rings.
+  function whenNamedLoaded(cmd, done) {
+    var names = namedBy(cmd), left = names.length, i;
+    if (!left) return done();
+    function one() { if (!--left) done(); }
+    for (i = 0; i < names.length; i++) instLoad(names[i], one);
   }
 
   // ---- the test instrument (§9/brief): reachable only when diagnostics are on -------------------
@@ -2416,12 +2612,13 @@
     };
   }
 
-  // THE HOST REACHES THE WALK ONCE THE PACK QUESTION IS SETTLED — the instruments are on the
-  // registry, or the pack has been refused with its reason. Joining earlier would leave a window in
-  // which the walk can see a host whose instruments are still in the air, and a transition falling
-  // inside that window would decline for a reason that stops being true a moment later. The walk
-  // glides throughout, which is what it does for the whole time this file itself is being fetched.
-  packLoad(function () {
+  // THE HOST REACHES THE WALK ONCE THE SITE'S RECORD IS SETTLED — read, or refused with its reason.
+  // Joining earlier would leave a window in which the walk can see a host that cannot yet say
+  // whether it knows an address for the instrument a score names, and a transition falling inside
+  // that window would decline for a reason that stops being true a moment later. No instrument file
+  // is fetched here: what a score names is asked for when a score arrives. The walk glides
+  // throughout, which is what it does for the whole time this file itself is being fetched.
+  recordLoad(function () {
   var diag = window.__@@NS@@Pass;
   if (diag) {
     var test = makeTestInstrument();
@@ -2448,6 +2645,19 @@
         return true;
       },
       show: stageShow,
+      // The hand a conformance row warms an instrument with. A bench draws one pose rather than one
+      // command, so no offer passes by to ask for the file the instrument travels in; this asks for
+      // it by the same road an offer would, and answers each name with its reason or with null.
+      load: function (names, done) {
+        var whys = {}, left = names.length;
+        if (!left) return done ? done(whys) : undefined;
+        names.forEach(function (n) {
+          instLoad(String(n), function (why) {
+            whys[n] = why || null;
+            if (!--left && done) done(whys);
+          });
+        });
+      },
       manifest: function (id) { return instruments[id] ? instruments[id].manifest : null; },
       // The numbers of one frame, read without drawing it: the same pure function the draw calls.
       values: function (id, pose) { return instruments[id] ? instruments[id].values(pose) : null; },

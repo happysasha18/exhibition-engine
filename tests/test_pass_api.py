@@ -177,12 +177,20 @@ check("PASS-API no eval, no new Function anywhere the host reads a command",
 #            What arrived is the pack loader, about 3 600 B: the address, version and digest the
 #            build stamps here, the fetch, the digest weighed over what arrived, the blob the
 #            weighed bytes run from, and the refusal roads with their reasons.
+#            2026-08-14, afternoon — THE FENCE HOLDS AT 86 000 B AND THE HOST MEASURES 81 326 B,
+#            with 4 674 B under it. The single pack broke its own fence the same day it was raised,
+#            so each instrument now travels as its own file and a visit fetches only the ones its
+#            score names. Nothing is stamped into this file any more: it reads the addresses,
+#            versions and digests out of the site's own settings record, keyed by instrument name,
+#            and the instrument names themselves out of the score. What arrived is about 3 100 B —
+#            the record reader, the per-name loader with its digest, version and name checks, the
+#            one-at-a-time evaluation queue, and the refusal roads with their reasons.
 LAYER_FENCE = 86000
 check(f"PASS-API the renderer file's fence moves DOWN on the split, measured not guessed (now {LAYER_FENCE} B, was 102 000)",
       len(LAYER_BUILT.encode("utf-8")) < LAYER_FENCE,
       f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the host alone: the state "
       f"machine, the frame half, the driver graph, the camera, the interruption cadence, the "
-      f"return to the hang and the pack loader. The instruments travel in pass-pack.js")
+      f"return to the hang and the instrument loader. Each instrument travels in a file of its own")
 
 # ---------------------------------------------------------------- browser rows
 
