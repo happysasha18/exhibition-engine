@@ -61,16 +61,53 @@ SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844                  # the phone frame every instrument suite measures on
 SEAM = 6.0                         # the seam threshold, 6 of 255
 
-# ---- the composed passage's own numbers, the same score the stack suite plays ------------------
+# ---- the composed passage's own numbers, read off the score the site serialises -----------------
+#
+# THE ONE HOME OF THESE NUMBERS is the composer's own serialised score for the worked pair,
+# lab/data/sceneplan-scores/17847744487144891__17897050660015868__ab.json in the site tree, built
+# from lab/data/sceneplans/plan-example-…__ab.json. This bench holds a frozen copy so it can play
+# the passage without the site tree, and a frozen copy goes stale: on 2026-08-14 the copy below
+# still opened the meshing cue at 0.18 of the pass while the site's plans, its serialised scores and
+# its staging bake had all carried 0.00 since site commit 24f0b45. A capture rig reading this file
+# then measured the OLD window and reported it as what plays
+# (docs/immersive/evidence/2026-08-14-mesh-window-check.md). Refreshed here against that score,
+# field by field:
+#   · the meshing cue's window, 1.17 → 0.00 s: the travelling voice now opens on the pass's own
+#     entry door rather than a fifth of the way in;
+#   · the ground's band-count handle, 12 → 6, which is the number the score actually carries. It was
+#     12 because a handle of 6 and a handle of 12 drew the same six bands while the instrument's
+#     floor stood at 6; with the floors lowered to three (2026-08-14) a handle of 6 on this 390 px
+#     frame draws THREE bands, which is the family the composer measured and asked for. The score's
+#     own plan requests 3, and on a 390 px frame a handle of 3 and a handle of 6 draw the same three
+#     bands, so this figure survives the composer's next serialisation either way;
+# The travelling voice's SIZE RAMP is the one field left as this copy has carried it, and the
+# divergence is written down rather than quietly closed. The serialised score ramps the size from
+# the first work's measured ring reading DOWN to the second's, 1.8019 to 0.7, through a plain mix;
+# this copy ramps it the other way through a smoothed segment. Carried across as the score has it,
+# the meshing instrument's entry door stops being free at every point: at 1.8019 its wheel pair
+# stands large enough that the meeting line reaches inside the frame at the door, and door A at
+# 0.000 s then reads mean 0.000052 of 255 with a worst channel of 18 — one pixel of the arriving
+# work at an alpha of about 0.07 where the law says every point is 0. That is a reading about the
+# score the composer serialises, not about the coverage law this suite proves, and the row it reds
+# is a row nothing here may weaken, so the direction stays as it stood and the finding goes to
+# whoever owns the composer's own ramp.
+#   · the seed each cue is handed, 1.9837, the four figures the serialiser writes, where the score's
+#     own top-level seed keeps its full 1.983657397;
+#   · the interruption budget, 320 → 500 ms.
 DUR_MS, DUR = 6500, 6.5
-W_PIVOT, W_TRAVEL, W_ARRIVAL = [0.0, 6.5], [1.17, 5.59], [4.03, 6.5]
-SEED = 1.983657397
+W_PIVOT, W_TRAVEL, W_ARRIVAL = [0.0, 6.5], [0.0, 5.59], [4.03, 6.5]
+SEED = 1.983657397                 # the score's own seed
+CUE_SEED = 1.9837                  # the seed each cue is handed, as the serialiser rounds it
+WITHIN_MS = 500
 BAND_HELD = RATIO_HELD = 0.3333
 CENTRE_X, CENTRE_Y = 0.5481, 0.425
-SIZE_FROM, SIZE_TO = 0.7, 1.8019
-PIVOT_STRIPS = 12
+SIZE_FROM, SIZE_TO = 0.7, 1.8019    # see the note above: NOT the score's own direction
+PIVOT_STRIPS = 6
 
-# both doors, the two window openings, and three instants across the middle
+# Both doors, the arrival's opening, the travelling voice's close, and three instants across the
+# middle. The travelling voice's own opening no longer stands apart from the entry door — its window
+# begins where the pass does — so 1.17 s, which used to be that opening, stays in the grid as one of
+# the three middle readings.
 INSTANTS = [0.0, 1.17, 2.0, 4.03, 5.0, 5.59, 6.5]
 CAPS = ROOT / "tests" / "captures" / "pass-coverage"
 
@@ -195,7 +232,7 @@ def cue_pivot(window=None, alone=False):
         "nodes": {"m": _dial(W_PIVOT, w), "c": {"source": "time"}},
         "tracks": {"mix": {"node": "m"}, "clock": {"node": "c"},
                    "strips": _static(PIVOT_STRIPS), "axis": _static(2), "speed": _static(1),
-                   "seed": _static(SEED), "nMul": _static(1), "press": _static(1)},
+                   "seed": _static(CUE_SEED), "nMul": _static(1), "press": _static(1)},
         "resources": dict(RESOURCES),
     }
 
@@ -218,7 +255,7 @@ def cue_travel(window=None, alone=False, stack=1):
                    "centreX": _static(CENTRE_X), "centreY": _static(CENTRE_Y),
                    "bandPeriod": _static(BAND_HELD), "ratio": _static(RATIO_HELD),
                    "tooth": _static(0.4), "order": _static(0.4), "turn": _static(0.55),
-                   "flank": _static(0.35), "seed": _static(SEED), "shade": _static(1),
+                   "flank": _static(0.35), "seed": _static(CUE_SEED), "shade": _static(1),
                    "travel": _static(1)},
         "resources": dict(RESOURCES),
     }
@@ -237,7 +274,7 @@ def cue_arrival(window=None, alone=False, stack=2, shade=1):
         "nodes": {"m": _dial(W_ARRIVAL, w), "c": {"source": "time"}},
         "tracks": {"mix": {"node": "m"}, "clock": {"node": "c"},
                    "loosen": _static(0.6), "drift": _static(0.45), "gather": _static(0.3),
-                   "grain": _static(0.45), "seed": _static(SEED), "shade": _static(shade),
+                   "grain": _static(0.45), "seed": _static(CUE_SEED), "shade": _static(shade),
                    "travel": _static(1)},
         "resources": dict(RESOURCES),
     }
@@ -265,7 +302,7 @@ def score(cues):
     return json.dumps({
         "schema": 2, "duration": DUR_MS, "direction": "a-to-b", "failLand": "arrive",
         "seed": SEED, "pair": {"a": "a", "b": "b"}, "intent": INTENT,
-        "interruption": {"withinMs": 320, "resolve": "nearest-door"},
+        "interruption": {"withinMs": WITHIN_MS, "resolve": "nearest-door"},
         "camera": CAMERA, "cues": cues,
         "quality": {v: {"renderScale": 1.0} for v in ("lean", "standard", "rich")},
         "provenance": {"source": "sceneplan-v1/17847744487144891__17897050660015868__ab",
@@ -521,13 +558,19 @@ else:
               "work and the ground beneath it reaches no point (the seam threshold is %.1f)"
               % (doorA[0], doorA[1], doorB[0], doorB[1], SEAM))
 
-        gate17, gate403 = diff(S[1.17], P[1.17]), diff(S[4.03], PT[4.03])
-        check(ROWS[2], gate17[1] == 0 and gate403[1] == 0,
-              "an entry door is FREE: at 1.170 s the travelling voice opens and the frame is the "
-              "ground untouched (mean %.6f worst %d); at 4.030 s the arrival opens and the frame is "
+        # Each voice is read at ITS OWN opening, taken from the window the score carries rather than
+        # written out here — the composer moved the travelling voice's opening onto the pass's own
+        # entry door on 2026-08-14, and a row naming the second it used to open at would have gone
+        # on measuring an instant that is no longer a door.
+        gateT, gate403 = diff(S[W_TRAVEL[0]], P[W_TRAVEL[0]]), diff(S[W_ARRIVAL[0]], PT[W_ARRIVAL[0]])
+        check(ROWS[2], gateT[1] == 0 and gate403[1] == 0,
+              "an entry door is FREE: at %.3f s the travelling voice opens and the frame is the "
+              "ground untouched (mean %.6f worst %d); at %.3f s the arrival opens and the frame is "
               "the ground and the travel untouched (mean %.6f worst %d). Both are alpha 0 at every "
-              "point, measured as an exact agreement rather than asserted"
-              % (gate17[0], gate17[1], gate403[0], gate403[1]))
+              "point, measured as an exact agreement rather than asserted. The travelling voice's "
+              "window now begins where the pass does, so its entry door and the pass's own entry "
+              "door are one instant and one frame answers here and in the door row above"
+              % (W_TRAVEL[0], gateT[0], gateT[1], W_ARRIVAL[0], gate403[0], gate403[1]))
 
         # ---- row 55 -----------------------------------------------------------------------
         # MEASURED WHERE THE MASK IS ACTUALLY PARTIAL. At an instant where the upper cue claims none
@@ -667,14 +710,17 @@ else:
                  "the meshing instrument's coverage is what gives the band family back")
 
         def m_door_pops(b):
-            s = b.shot(STACK, 1.17, "red-invert-stack-1.17")
-            p = b.shot(ONLY_PIVOT, 1.17, "red-invert-ground-1.17")
+            # The travelling voice's OWN opening, taken from its window rather than written out, so
+            # this proof follows the score when the composer moves that window.
+            at = W_TRAVEL[0]
+            s = b.shot(STACK, at, "red-invert-stack-%.2f" % at)
+            p = b.shot(ONLY_PIVOT, at, "red-invert-ground-%.2f" % at)
             off = diff(s, p)
             return off[1] > SEAM, (
                 "with the rule in place the travelling voice opens at alpha 0 and the frame at "
-                "1.170 s is the ground untouched (worst channel %d); with the coverage inverted to "
+                "%.3f s is the ground untouched (worst channel %d); with the coverage inverted to "
                 "`cov` it opens at alpha 1 and the same instant moves by mean %.3f of 255 (worst "
-                "channel %d)" % (gate17[1], off[0], off[1]))
+                "channel %d)" % (at, gateT[1], off[0], off[1]))
 
         red_pack(RED[1], "gl_FragColor = vec4(col, cov);", m_door_pops,
                  "an entry door is free only because the arriving territory starts empty")
