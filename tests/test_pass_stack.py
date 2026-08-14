@@ -303,14 +303,29 @@ LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 # version and digest. A row about the HOST reads LAYER; a row about the shaders reads PACK.
 PACK = (TMP / "pass-pack.js").read_text(encoding="utf-8")
 
-# THE SAME FILE AS IT STOOD BEFORE THE STACK WAS BUILT, put through the very same two steps the
-# build puts the source through — the namespace resolution and the comment strip — so what row 2
-# compares is two builds of one file and never a build against a source.
+# THE SAME FILE AS IT STOOD BEFORE THE STACK WAS BUILT, put through the very same THREE steps the
+# build puts the source through — the namespace resolution, the comment strip and the pack's address
+# stamp — so what row 2 compares is two builds of one file and never a build against a source.
+#
+# THE STAMP WAS MISSING UNTIL 2026-08-14, and the row could not measure a picture without it. Since
+# the pack split at b212ef3 the source carries `@@PACK_VERSION@@` and `@@PACK_DIGEST@@` and the build
+# substitutes both; a host still holding the placeholders refuses every pack on sight
+# (pass-layer.js: the digest beginning "@@" is its own refusal), so the road built here drew nothing
+# at all while the road beside it drew the picture, and the row read that gap as a difference in the
+# drawing. It reds on ANY edit to the pack, which is a fact about this bench rather than about the
+# frame. Stamping it here is what the build does, and it leaves the road beside it untouched: LAYER
+# comes out of the build already stamped, so the same substitution finds nothing to replace in it.
 HEAD_BUILT = None
 try:
     _head = subprocess.run(["git", "show", "HEAD:engine/assets/pass-layer.js"],
                            cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
     HEAD_BUILT = _engine.strip_js_comments(_engine.apply_namespace(_head, _engine._NAMESPACE))
+    HEAD_BUILT = HEAD_BUILT.replace(
+        "@@PACK_DIGEST@@",
+        __import__("hashlib").sha256((TMP / "pass-pack.js").read_bytes()).hexdigest())
+    HEAD_BUILT = HEAD_BUILT.replace(
+        "@@PACK_VERSION@@",
+        re.search(r'var PACK_VERSION = "([^"]+)"', PACK).group(1))
 except Exception as e:  # noqa: BLE001 — the reason is reported on the row itself
     HEAD_BUILT = None
     HEAD_WHY = str(e)
