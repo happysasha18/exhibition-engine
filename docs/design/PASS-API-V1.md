@@ -19,7 +19,9 @@ with references, and cycles refused with the ring named; the camera of §6 — t
 dolly in log space, one authority at every instant with the stage's flight held across an owned
 window, the handoff measured at the window's own edge and the rest read off the pose; and the
 interruption cadence of §2.5. Still written and unbuilt from the lock of 2026-08-13: the `pointer`
-driver, a stack of more than one cue, and the levels and tier-budget checks of §4.4.
+driver alone. The stack of more than one cue and the levels and tier-budget checks of §4.4 have
+since landed in the renderer's file, and this sentence carried them as unbuilt until 2026-08-14
+11:12.
 
 **Added 2026-08-14 08:47 on his word of 08:39, and their state at 10:31.** Four sections were added:
 §4.6 ElementSet with its one provider contract and its five providers, §4.7 ScenePlan and the
@@ -28,9 +30,11 @@ chrome reveal, and §4.8 EdgeMemory with the hysteresis across a directed pair. 
 different states and the sentence that flattened them is corrected here.
 
 §2.6 is built on this branch at `7ee2708`, with 21 conformance rows green and five red-on-bug
-proofs. Departure and arrival agree with the DOM at 0.4053 and 0.3757 of 255 against a seam
-threshold of 6, and the rest reads 0.000000000 from the arriving hang pose against a tolerance of
-1e-6. §11 carries the one divergence between what §2.6 asks and what was built.
+proofs. The fixed numbers are the seam threshold of 6 of 255 and the rest tolerance of 1e-6, and the
+rest reads 0.000000000 from the arriving hang pose. Departure and arrival agree with the DOM well
+inside the threshold; the pixel means themselves drift from run to run, so this block names the
+threshold they are judged against instead of pinning one run's decimals. §11 carries the one
+divergence between what §2.6 asks and what was built.
 
 §4.6, §4.7 and §4.8 have offline builders and checks in the tlvphotos tree, and no engine code
 answers to them. Their conformance rows in §9 are unwritten.
@@ -91,7 +95,8 @@ the host calls at `prepare` and at `reframe`, for the bundle-byte reason §2.6 s
 This seat's reading of the fence: it stands for the adapter as a whole, and every other row of the
 table keeps it whole. A single read-only measurement callback that returns a record and mutates
 nothing is a declared exception, and it is declared here rather than left as a quiet fact of the
-code. Conformance row 51 proves it mutates nothing, so the exception carries its own evidence.
+code. Conformance row 51 is what will prove it mutates nothing. That row is unwritten, so the
+exception rests on this declaration alone until the row exists, and §11 carries it.
 
 `dock` takes the command and reads its destination from `cmd.to`. It takes no element argument, so
 a caller cannot dock a work the command never named. See §10.2.
@@ -217,7 +222,10 @@ look alike.
 
 ### 2.6 Return to the hang
 
-Added 2026-08-14 08:47 on his word of 08:39. Nothing in this section is built.
+Added 2026-08-14 08:47 on his word of 08:39, and built the same day at `7ee2708`. The Status block
+carries the measurements and §11 carries the one divergence between what this section asks and what
+was built. This line read that nothing in the section was built, which was true when it was written
+and false from `7ee2708` onward.
 
 The passage becomes fullscreen while it plays. The work it leaves and the work it lands on both have
 a real place in the exhibition layout, and the beginning and the end of the passage must be pixel-
@@ -503,8 +511,9 @@ line and watches the build red.
 
 ### 4.6 ElementSet, and the one provider contract
 
-Added 2026-08-14 08:47 on his word of 08:39. Nothing in this section is built; the measurement files
-it reads exist and are named below.
+Added 2026-08-14 08:47 on his word of 08:39. No engine code answers to this section; offline
+builders and checks stand in the tlvphotos tree, and the measurement files it reads exist and are
+named below.
 
 A work enters a passage as a set of elements that become actors. The charter's shelf 12 is the
 source: a work disassembles along five axes and its fragments become the actors of the crossing. A
@@ -601,7 +610,8 @@ declining provider and follows the fall.
 
 ### 4.7 ScenePlan — the passage composer's output
 
-Added 2026-08-14 08:47 on his word of 08:39. Nothing in this section is built.
+Added 2026-08-14 08:47 on his word of 08:39. No engine code answers to this section; the composer's
+own builders and checks stand in the tlvphotos tree.
 
 ScenePlan is data-only and versioned. It sits between the PairDossier and the score's cues: the
 passage composer emits a ScenePlan, and the score of §4.4 is that plan's serialisation for the host.
@@ -688,8 +698,10 @@ complete answer, and a plan that names one role is as legal as a plan that names
 
 Four registers are available where a pair rewards them, each optional and none owed: discovery,
 provocation, feedback, apparition. They name what a passage may reach for; no check counts them and
-no plan owes any of them. The working consequences live in `lab/PASSAGE-COMPOSER.md` §1a in the
-tlvphotos tree, and `docs/V2-STATUS.md` carries the correction as it was given.
+no plan owes any of them. `docs/V2-STATUS.md` in the tlvphotos tree carries the correction
+as it was given. The working consequences are written at `lab/PASSAGE-COMPOSER.md` §1a, commit
+`f2cdb11`, which stands in the composer's own tree and has not reached the tlvphotos tree read
+here.
 
 The levels law keeps its full reach across that freedom, and the two rules answer different
 questions. Overlap in time is free. Overlap on one structural level in overlapping windows is a red
@@ -752,7 +764,8 @@ open here and §11 carries the question with its owner.
 
 ### 4.8 EdgeMemory, and the hysteresis across a directed pair
 
-Added 2026-08-14 08:47 on his word of 08:39. Nothing in this section is built.
+Added 2026-08-14 08:47 on his word of 08:39. No engine code answers to this section, and the walk
+that would hold the record is unbuilt.
 
 Hysteresis is mandatory. A to B and B to A are distinct directed ScenePlans, and `direction` on the
 plan is what distinguishes them.
@@ -1006,8 +1019,10 @@ carries; it reads its own lists and nothing else.
 30. the full tlvphotos prover is green against the pinned staging engine
 31. a 120-second phone profile, when a physical device is available
 
-**Rows 32 to 49 were added 2026-08-14 08:47 on his word of 08:39, and row 50 on 2026-08-14 09:52.
-Every one of them is unwritten.** They are the evidence for §4.6, §4.7, §2.6 and §4.8, and each reds
+**Rows 32 to 49 were added 2026-08-14 08:47 on his word of 08:39, row 50 on 2026-08-14 09:52 and
+row 51 on 10:31.** Rows 38 to 44 are written and green, in `tests/test_pass_hang.py` at `7ee2708`.
+Rows 32 to 37, 45 to 51 are unwritten. This note read that every one of them was unwritten, which
+was true at 08:47. They are the evidence for §4.6, §4.7, §2.6 and §4.8, and each reds
 when its rule is removed, like every row above it.
 
 32. an ElementSet plus its complement reconstructs the source frame within the seam threshold
@@ -1098,11 +1113,13 @@ resizes a running transaction rather than replacing it.
 | the passage composer that emits a ScenePlan (§4.7) | declared and unbuilt. Until it lands, §4.4c's template and table stay the road that produces scores | a later branch |
 | where the passage composer runs — the bundle or the renderer's own file | undecided; its size is unmeasured, and §12's split is the question it answers | a later branch, at the composer's first landing |
 | the woven instrument's ElementSet-naming port | the instrument plays two whole works today. Its port names A's strips and B's strips as actors at the composer's landing, which is what row 35 asks of it | the instrument's port, at the composer's landing |
-| the return to the hang (§2.6) — `hangGeometry`, the two exact geometries, the canvas-to-DOM handoff | built 2026-08-14 at `7ee2708`: 21 conformance rows green, five red-on-bug proofs, departure and arrival agreeing with the DOM at 0.4053 and 0.3757 of 255 against a seam threshold of 6, and the rest at 0.000000000 against 1e-6 | closed, except the divergence in the row below |
-| how the two geometries reach the host | §2.6 asks them to arrive as data frozen onto the command's `doors`. What was built hands the measurement through a read-only hook the product owns, which the host calls at `prepare` and at `reframe`, because freezing the record onto every declared command costs bundle bytes and the walk's bundle stands at 67 985 B against a 68 000 B fence — 15 B remaining. §1.1 declares the exception and row 51 proves the callback mutates nothing. The two readings are reconciled by that declaration and the divergence stays open as a design question | a later branch, when the bundle has room |
-| `chromeReveal` as a scoreable product choreography with its six named parts | declared and unbuilt | the bundle |
+| the return to the hang (§2.6) — `hangGeometry`, the two exact geometries, the canvas-to-DOM handoff | built 2026-08-14 at `7ee2708`: 21 conformance rows green, five red-on-bug proofs, departure and arrival agreeing with the DOM inside the seam threshold of 6 of 255, and the rest at 0.000000000 against 1e-6. The row named one run's pixel means until 11:12; they drift per run and the threshold is the judged fact | closed, except the divergence in the row below and the flake in the row under it |
+| §2.6's row 7, the orientation change mid-passage | observed flaky 2026-08-14 11:12: one run of `tests/test_pass_hang.py` failed it with the pose turning 0.629031 against the undisturbed flight's 0.186345 on a 3.0× bar, and a re-run passed 21 of 21. A row that reds intermittently proves nothing on the run where it passes | the hang suite's owner, before §2.6 is called closed |
+| how the two geometries reach the host | §2.6 asks them to arrive as data frozen onto the command's `doors`. What was built hands the measurement through a read-only hook the product owns, which the host calls at `prepare` and at `reframe`, because freezing the record onto every declared command costs bundle bytes and the walk's bundle stands at 67 985 B against a 68 000 B fence — 15 B remaining. §1.1 declares the exception and row 51, unwritten, is what will prove the callback mutates nothing. The two readings are reconciled by that declaration and the divergence stays open as a design question | a later branch, when the bundle has room |
+| `chromeReveal` as a scoreable product choreography with its six named parts | built 2026-08-14 at `7ee2708`: the chrome is revealed once, after the landing, with its parts named — plaque, counter, focus, share, sound and series — and a score may name the chrome's own timing | closed |
 | EdgeMemory (§4.8) | declared and unbuilt; held by the walk in the site's layer, and the engine sees only `returnOf` | the walk, in tlvphotos |
-| the byte fence for the renderer's own file | closed 2026-08-14: 42 000 B raw (measured 39 415) and 13 000 B gzipped (measured 11 646), each with its breakdown written into its test | closed |
+| the version-pinned opaque effect pack (§12) | declared and unbuilt. The engine knows no TLV effect name and loads the pack; tlvphotos owns it and its manifests, and the renderer's file then holds the host alone. It is what stops the renderer file's fence tracking the effect farm — 25 lab modules on disk, and headroom after each move smaller than one instrument costs. Queued behind the first composed passage playing | a later branch, on his word of 2026-08-14 08:39 |
+| the byte fence for the renderer's own file | moved again 2026-08-14 at `83ddc82`, sized after the merge of three instruments and the return to the hang: 102 000 B raw (measured 92 669) and 27 000 B gzipped (measured 24 270), each with its breakdown written into its test. The row read 42 000 B raw and 13 000 B gzipped until 11:12 | closed, and §12 states what ends the moving |
 
 **The interruption field is read and what happened is recorded.** A score names `interruption` with
 its own `withinMs`, and the host reads it. The diagnostic surface then carries the whole cadence: the
@@ -1119,10 +1136,15 @@ than at whichever frame landed past it — so a slower device cannot read as a b
 
 ## 12. Where the code lives, and what fits
 
-**Bundle headroom, measured 2026-08-13 23:16 on `pass-api-v1`:** the walk's bundle is 64 828 B
-gzipped against a 67 000 B fence, so 2 172 B gzipped remain — about 7 500 B of source at this
-bundle's own ratio. The seam's own product-side fragment already costs about 4 800 B, and the
-machinery described here is larger than that, so the whole transaction cannot live in the bundle.
+**Bundle headroom, measured 2026-08-14 at `83ddc82` on `pass-api-v1`** by running
+`tests/test_budget.py` in this worktree: the walk's own bundle is 67 985 B gzipped against a
+68 000 B fence. **15 B remain.** The machinery described here is larger than that by orders, so the
+whole transaction cannot live in the bundle.
+
+Fifteen bytes is a live constraint rather than a rounding note. Any bundle-side line added today
+breaks that fence, and a reader who adds one should expect the red. The section's earlier figure —
+64 828 B against a 67 000 B fence, measured 2026-08-13 23:16 — is superseded; both numbers moved,
+and the superseded text is in `PASS-API-V1-HISTORY.md` with its date.
 
 **The split is therefore stated, and it is the delivery answer the fence exists to force.**
 
@@ -1136,5 +1158,33 @@ cadence, the frame loop, the GPU and resource machinery, the driver evaluator, t
 census and the diagnostic surface's renderer half. None of it is needed on a visit that never draws.
 
 **The renderer file's fence moves with its reason written into the test**, the same way the bundle's
-did on 2026-08-13. A host plus one instrument will not fit 4 000 B, and the number that replaces it
-is measured rather than guessed, at the first landing of a real instrument.
+did on 2026-08-13. This section used to promise that the number would be measured at the first
+landing of a real instrument. That landing has happened three times over, so the promise is replaced
+by the record.
+
+**Where the renderer's file stood at `83ddc82`, measured 2026-08-14.** Raw, 92 669 B against a
+102 000 B fence, the fence carried as `LAYER_FENCE` in `tests/test_pass_api.py`. Gzipped, 24 270 B
+against a 27 000 B fence in `tests/test_budget.py`. Both fences moved once at `83ddc82`, sized after
+the merge of three instruments and the return to the hang, each with its breakdown written into its
+own test. The gzipped figure is the one that travels to a phone; the raw fence is a proxy, and the
+cost it proxies is measured beside it.
+
+**The gzipped fence is red as this is written.** A run of `tests/test_budget.py` at 2026-08-14 11:12
+reports the file at 28 137 B against the 27 000 B fence, 1 137 B over, with work in flight in the
+worktree that has not landed. The figures above are the record at `83ddc82` and the number moved
+between one measurement and the next inside the same hour. That is the argument of the paragraphs
+below stated as an event rather than as a forecast.
+
+**The fence keeps moving, and the section should say why that ends rather than only that it
+happens.** Each instrument that lands writes its shader and its manifest into that one file, 25 lab
+modules stand on disk, and the headroom left after each move is smaller than one instrument costs.
+A fence that moves at every landing is measuring a farm that grows, so it stops being a budget and
+becomes a record of what was added.
+
+**The delivery answer this section exists to give.** His word of 2026-08-14 08:39 names the shape
+that ends it: the engine knows no TLV effect name and loads a version-pinned opaque effect pack,
+and tlvphotos owns that pack and its manifests. Under that shape the renderer's file holds the host
+alone — the state machine, the driver evaluator, the camera, the resource machinery and the
+diagnostic surface — and its fence stops tracking the effect farm, because the farm ships in the
+pack under its own version and its own budget. The split is queued behind the first composed
+passage playing, and §11 carries it as a row with an owner.

@@ -10,6 +10,77 @@ word that superseded it.
 
 ---
 
+## 2026-08-14 11:12 — §12's numbers caught up with the branch
+
+Root: §12 was flagged stale at 10:31 and left alone as outside that ask. The decision came back that
+a stale number in this document is the exact failure it warns about, so it is fixed rather than
+carried. Every figure below was measured in this worktree at `83ddc82` before it was written.
+
+### From §12, the bundle headroom
+
+> **Bundle headroom, measured 2026-08-13 23:16 on `pass-api-v1`:** the walk's bundle is 64 828 B
+> gzipped against a 67 000 B fence, so 2 172 B gzipped remain — about 7 500 B of source at this
+> bundle's own ratio. The seam's own product-side fragment already costs about 4 800 B, and the
+> machinery described here is larger than that, so the whole transaction cannot live in the bundle.
+
+Replaced because both numbers moved. `tests/test_budget.py`, run in this worktree, reports the
+walk's own bundle at 67 985 B gzipped against a 68 000 B fence, leaving 15 B. The claim about the
+seam's product-side fragment costing about 4 800 B was dropped rather than restated, because no
+measurement on this branch carries it and the conclusion it supported holds without it.
+
+### From §12, the closing promise
+
+> A host plus one instrument will not fit 4 000 B, and the number that replaces it
+> is measured rather than guessed, at the first landing of a real instrument.
+
+Replaced because that landing happened three times over — the woven instrument, `matter` at
+`a3416b7` and `gears` at `6485972` — and the fence moved at `83ddc82` to 102 000 B raw against a
+measured 92 669 B and 27 000 B gzipped against a measured 24 270 B. A promise that has been kept
+three times is replaced by the record of what it now stands at.
+
+### From §11, the byte fence row
+
+> | the byte fence for the renderer's own file | closed 2026-08-14: 42 000 B raw (measured 39 415)
+> and 13 000 B gzipped (measured 11 646), each with its breakdown written into its test | closed |
+
+Replaced because the fence moved again at `83ddc82` to 102 000 B raw against a measured 92 669 B and
+27 000 B gzipped against a measured 24 270 B. §12 already carried the current figures, so the
+document contradicted itself across two sections until this was fixed.
+
+### Five more stale claims, found by a sweep of the whole document at 11:12
+
+Each was true when written and false at `83ddc82`. All five are corrected in place.
+
+- The Status block listed a stack of more than one cue and the levels and tier-budget checks of §4.4
+  as unbuilt. All three have landed in the renderer's file. Only the `pointer` driver remains from
+  that lock's list.
+- §2.6's own opening read that nothing in the section is built, contradicting the Status block four
+  hundred lines above it.
+- §9's note on the added rows read that every one of rows 32 to 51 is unwritten. Rows 38 to 44 are
+  written and green in `tests/test_pass_hang.py`.
+- §11 carried `chromeReveal` as declared and unbuilt. It is built at `7ee2708`, with its six parts
+  named and its timing nameable from a score.
+- §1.1 and §11 both read that conformance row 51 proves the measurement callback mutates nothing.
+  Row 51 is unwritten, so §1.1's declared exception rested on evidence that does not exist — the
+  document's own recorded failure, in the section that declares an exception to its own fence.
+
+### One measurement restated rather than corrected
+
+The Status block and §11 pinned the departure and arrival pixel means at 0.4053 and 0.3757 of 255.
+Those are one run's figures and they drift per run; a re-measurement gave 0.3237 and 0.4344, in the
+opposite order. Both sit far inside the seam threshold of 6, which is the judged fact, so both
+places now name the threshold and drop the decimals.
+
+### What §12 gained rather than replaced
+
+The section understated what it exists to state. It recorded that the fence moves and left unsaid
+why the moving ends: each instrument writes its shader and its manifest into that one file, 25 lab
+modules stand on disk, and the headroom after each move is smaller than one instrument costs. §12
+now names the version-pinned opaque effect pack of his word of 2026-08-14 08:39 as the delivery
+answer, and §11 carries it as a row with an owner.
+
+---
+
 ## 2026-08-14 10:31 — the camera in the budget, and how the geometry travels
 
 Root: the composer's first real run against §4.4, and the implementation of §2.6 at `7ee2708`.
