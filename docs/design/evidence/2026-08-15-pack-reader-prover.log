@@ -1,0 +1,116 @@
+[OK ] site: 54 passed / 0 failed
+[OK ] exhibition: 16 passed / 0 failed / 0 skipped
+[OK ] door: 42 passed / 0 failed / 0 skipped
+[OK ] vector: 6 passed / 0 failed
+[OK ] back: 7 rows: 7 pass, 0 fail, 0 skip
+[OK ] greet: 11 passed / 0 failed / 0 skipped
+[OK ] series: 8 rows: 7 pass, 0 fail, 1 skip
+[OK ] motion: 12 passed / 0 failed / 0 skipped
+[OK ] consistency: 19 rows: 19 pass, 0 fail, 0 skip
+[OK ] reset: 5 rows: 5 pass, 0 fail, 0 skip
+[OK ] load: 16 rows: 16 pass, 0 fail, 0 skip
+[OK ] ladder: 25 rows: 25 pass, 0 fail, 0 skip
+[OK ] share: 19 rows: 19 pass, 0 fail, 0 skip
+[OK ] glide: 14 rows: 14 pass, 0 fail, 0 skip
+[OK ] pulse: 19 rows: 19 pass, 0 fail, 0 skip
+[OK ] hand: 5 rows: 5 pass, 0 fail, 0 skip
+[OK ] i18n: 7 rows: 7 pass, 0 fail, 0 skip
+[OK ] lang: 6 rows: 6 pass, 0 fail, 0 skip
+[OK ] lang_geo: 13 rows: 13 pass, 0 fail, 0 skip
+[OK ] memory: 5 rows: 5 pass, 0 fail, 0 skip
+[OK ] protect: 26 rows: 26 pass, 0 fail, 0 skip
+[OK ] sound: 33 rows: 33 pass, 0 fail, 0 skip
+[OK ] guard: 19 rows: 19 pass, 0 fail
+[OK ] quiz: 15 rows: 15 pass, 0 fail, 0 skip
+[OK ] quiz_copy: 4 rows: 4 pass, 0 fail, 0 skip
+[OK ] shim: 10 rows: 10 pass, 0 fail
+[OK ] compose: 28 rows: 26 pass, 0 fail, 2 skip
+[OK ] dead: 8 rows: 8 pass, 0 fail, 0 skip
+[OK ] quiz_flow: test_quiz_flow: 6 passed, 0 failed, 0 skipped
+[OK ] parity: test_parity: 4 passed, 0 failed, 0 skipped
+[OK ] zoom: 27 rows: 27 pass, 0 fail, 0 skip
+[OK ] return: 8 rows: 8 pass, 0 fail, 0 skip
+[OK ] gesture: 12 rows: 12 pass, 0 fail, 0 skip
+[OK ] wheel: 17 rows: 17 pass, 0 fail, 0 skip
+[OK ] glide_speed: 10 passed / 0 failed
+[OK ] ratchet_lock: 3 passed in 0.33s
+[OK ] beat_css: 9 rows: 9 pass, 0 fail
+[OK ] assembly: 5 rows: 5 pass, 0 fail, 0 skip
+[OK ] a11y: 58 rows: 58 pass, 0 fail, 0 skip
+[OK ] about: 22 passed / 0 failed / 0 skipped
+[OK ] budget: 9 rows: 9 pass, 0 fail
+[OK ] harness_drift: 6 rows: 6 pass, 0 skip, 0 fail
+[OK ] story_edge: 23 rows: 23 pass, 0 fail, 0 skip
+[OK ] story_lead: 4 rows: 4 pass, 0 fail, 0 skip
+[OK ] pass: 25 passed / 0 failed / 0 skipped
+[OK ] pass_api: 28 passed / 0 failed / 0 skipped
+[OK ] pass_weave: 47 passed / 0 failed / 0 skipped
+[OK ] pass_drivers: 20 passed / 0 failed / 0 skipped
+[OK ] pass_hang: 22 passed / 0 failed / 0 skipped
+[OK ] pass_matter: 29 passed / 0 failed / 0 skipped
+[OK ] pass_gears: 34 passed / 0 failed / 0 skipped
+[OK ] pass_stack: 23 passed / 0 failed / 0 skipped
+[OK ] pass_pack: 24 passed / 0 failed / 0 skipped
+[OK ] pass_adrift: 40 passed / 0 failed / 0 skipped
+[OK ] pass_coverage: 18 passed / 0 failed / 0 skipped
+[OK ] pass_reader: 19 rows: 19 pass, 0 fail, 0 skip
+
+56/56 suites green · wall 255s
+
+suite timings, slowest first:
+  compose: 192.1s
+  door: 169.4s
+  pass_coverage: 128.4s
+  pass_adrift: 110.6s
+  a11y: 106.5s
+  pulse: 105.2s
+  ladder: 96.1s
+  share: 71.7s
+  glide: 63.7s
+  pass_weave: 59.7s
+  zoom: 51.2s
+  exhibition: 46.8s
+  pass_reader: 45.8s
+  pass_hang: 45.4s
+  gesture: 43.2s
+  greet: 42.6s
+  pass_stack: 41.6s
+  pass: 41.3s
+  quiz_flow: 39.9s
+  pass_gears: 39.9s
+  back: 39.5s
+  pass_matter: 36.8s
+  return: 36.1s
+  series: 34.9s
+  pass_pack: 34.3s
+  load: 31.8s
+  sound: 28.9s
+  protect: 27.9s
+  motion: 27.7s
+  consistency: 26.3s
+  pass_api: 18.2s
+  hand: 16.3s
+  lang: 15.3s
+  reset: 14.5s
+  quiz: 14.3s
+  i18n: 13.3s
+  about: 12.9s
+  memory: 11.4s
+  lang_geo: 7.0s
+  quiz_copy: 6.8s
+  story_lead: 6.4s
+  harness_drift: 3.1s
+  story_edge: 2.7s
+  dead: 1.4s
+  shim: 0.6s
+  ratchet_lock: 0.6s
+  site: 0.6s
+  beat_css: 0.4s
+  pass_drivers: 0.4s
+  vector: 0.2s
+  wheel: 0.2s
+  assembly: 0.2s
+  glide_speed: 0.2s
+  budget: 0.2s
+  guard: 0.2s
+  parity: 0.2s
