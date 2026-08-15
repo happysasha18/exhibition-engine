@@ -235,6 +235,7 @@ ROWS = [
     "the other",
     "PASS-READER the filled score is the pack's own score, to the last leaf",
     "PASS-READER only the works the walk landed on were ever asked for on the wire",
+    "PASS-READER a landing that arrives while the pack is still opening is held, never dropped",
     "PASS-READER a missing shard glides, with the server's own answer on the diagnostic surface",
     "PASS-READER a tampered shard is refused with both digests, and the crossing glides",
     "PASS-READER a score over the fence is refused with the size it was measured at",
@@ -436,6 +437,49 @@ else:
                       "answers inside declare and a fetch begun there could not arrive in time"
                       % (len(asked), asked, landed))
 
+                # ---- several landings inside one open ---------------------------------------
+                # THE FIRST LANDING OF A VISIT OPENS THE PACK, and the walk can land again — a
+                # restored place, a step taken while the head is still crossing the wire — before
+                # that open has finished. Those are exactly the shards a visitor needs first. A
+                # fresh reader is built here and handed three works at once, which is that race
+                # stated plainly, and all three shards must arrive.
+                three = [w for w in (A, B, C) if w in ROWS_BY_WORK]
+                js(br, """
+                  window.__mk = null;
+                  window.__exPassReader = function (p) { window.__mk = p; };
+                  var s = document.createElement('script');
+                  s.src = 'pass-reader.js';
+                  document.head.appendChild(s);
+                  return {};
+                """)
+                for _ in range(40):
+                    if br.evaluate("String(!!window.__mk)") == "true":
+                        break
+                    br.sleep(0.2)
+                js(br, """
+                  window.__rd = window.__mk.make({packs: %s, note: function(){}});
+                  %s
+                  return {};
+                """ % (json.dumps({"synthPlans": json.loads(json.dumps(
+                          json.loads((TMP / "config.json").read_text())["pass"]["packs"]
+                          ["synthPlans"]))}),
+                       "".join("window.__rd.warm(%s);" % json.dumps(w) for w in three)))
+                states = None
+                for _ in range(40):
+                    rep = js(br, "return window.__rd.report();")
+                    states = {s["work"]: s["state"] for s in rep["packs"][0]["shards"]}
+                    if states and all(v != "asked" for v in states.values()):
+                        break
+                    br.sleep(0.25)
+                check(ROWS[4],
+                      len(three) >= 2 and len(states or {}) == len(three)
+                      and all(states[w] == "read" for w in three),
+                      "three works were handed to a reader in one breath, before its pack had "
+                      "finished opening, and every shard arrived: %s. Held in a queue that the "
+                      "open flushes either way, so a landing during the open is answered rather "
+                      "than lost — which is the state the first landing of every visit is in"
+                      % json.dumps(states))
+
                 # ---- a missing shard --------------------------------------------------------
                 stand(drop="rows/%s.json" % A)
                 br.navigate(base + "/")
@@ -443,7 +487,7 @@ else:
                 enter(br, base)
                 r = declare(br, A, B, "missing-shard")
                 whys = " | ".join(x["why"] for x in r["refusals"])
-                check(ROWS[4],
+                check(ROWS[5],
                       r["got"] and r["score"] is None and "404" in whys,
                       "the manifest names the shard and the server does not serve it: the command "
                       "carries no score, so the walk's own glide lands the step, and the surface "
@@ -456,7 +500,7 @@ else:
                 enter(br, base)
                 r = declare(br, A, B, "tampered-shard")
                 whys = " | ".join(x["why"] for x in r["refusals"])
-                check(ROWS[5],
+                check(ROWS[6],
                       r["got"] and r["score"] is None and "weigh" in whys and "manifest" in whys,
                       "the shard's bytes changed after the manifest weighed them, so it is refused "
                       "unread and the crossing glides: «%s»" % whys[:300])
@@ -479,7 +523,7 @@ else:
                 said = js(br, "return window.__exPass.report().refusals.filter("
                               "function(x){ return x.what === 'score'; });")
                 whys = " | ".join(str(x.get("why")) for x in said)
-                check(ROWS[6],
+                check(ROWS[7],
                       r["got"] and r["score"] is None and str(heavy_bytes) in whys
                       and "12288" in whys,
                       "a score of %d B reached the client from the pack and was refused before any "
@@ -501,11 +545,11 @@ else:
                 r2 = declare(br, A, B, "pixels-inline")
                 from_inline = shot(br, "inline") if r2["score"] else None
                 if not from_pack or not from_inline:
-                    check(ROWS[7], False,
+                    check(ROWS[8], False,
                           "one of the two roads carried no score: pack=%s inline=%s"
                           % (bool(from_pack), bool(from_inline)))
                 else:
-                    check(ROWS[7], same_bytes(from_pack, from_inline),
+                    check(ROWS[8], same_bytes(from_pack, from_inline),
                           "the pass held at %.2f s of %d ms, photographed on the walk's own road "
                           "with the score fetched from the pack and with the same score written "
                           "into the settings file: the two frames are byte-identical"

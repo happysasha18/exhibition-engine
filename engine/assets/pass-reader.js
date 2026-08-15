@@ -129,8 +129,21 @@
     // `authored.json` carries whole scores that stand as authored rather than being filled from a
     // row, keyed by the ordered pair. A pack whose head names no shapes cannot be FILLED here — its
     // rows are of another form — so it opens for its authored scores alone and says so.
+    // A LANDING THAT ARRIVES WHILE THE PACK IS STILL OPENING IS HELD, NEVER DROPPED. The pack is
+    // opened by the first landing of the visit, and the walk can land again — a restored place, a
+    // step taken while the head is still crossing the wire — before that open has finished. Those
+    // landings are the ones whose shards a visitor is most likely to need, so each waits here and
+    // is answered the moment the open settles, either way.
+    function packSettled(pk, state) {
+      pk.state = state;
+      var q = pk.waiting;
+      pk.waiting = [];
+      for (var i = 0; i < q.length; i++) q[i]();
+    }
     function packOpen(pk, done) {
-      if (pk.state !== "shut") return done();
+      if (pk.state === "read" || pk.state === "refused") return done();
+      pk.waiting.push(done);
+      if (pk.state === "asked") return;
       pk.state = "asked";
       fetchJson(pk, pk.files.manifest, pk.digest, function (manifest) {
         pk.manifest = manifest;
@@ -149,8 +162,7 @@
                               + "rule than this reader's; only its authored scores are read");
             once(pk.name, pk.why);
           }
-          pk.state = "read";
-          done();
+          packSettled(pk, "read");
         }
         function part(rel, into, needed) {
           var want = digestOf(pk, rel);
@@ -169,10 +181,9 @@
         part(pk.files.templates, "templates", true);
         part(pk.files.authored, "authored", false);
       }, function (why) {
-        pk.state = "refused";
         pk.why = pk.files.manifest + ": " + why;
         once(pk.name, pk.why);
-        done();
+        packSettled(pk, "refused");
       });
     }
 
@@ -309,7 +320,7 @@
                  authored: String(e.authored || "authored.json"),
                  rows: String(e.rows) },
         manifest: null, head: null, templates: null, authored: null,
-        hasShard: {}, shards: {}, fills: false,
+        hasShard: {}, shards: {}, fills: false, waiting: [],
       };
     }
     names = Object.keys(open);
