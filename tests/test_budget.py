@@ -75,7 +75,18 @@ FENCES = {
     # ordered pairs of a 121-work collection, is ~50 MB of settings file and was never servable.
     # It could not live in pass-layer.js instead: that file is fetched lazily, and the score must be
     # frozen onto the command the moment the transition is declared, which happens first.
-    "exhibition.js": (68_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture travels separately (pass-layer.js) since 2026-08-13", strip_js_comments),
+    # 2026-08-15 — MOVED FROM 68 000 B TO 69 000 B, MEASURED AT 68 459 B. What arrived is the door
+    # to the DELIVERY PACK, and the fence did its job before it arrived: the bundle stood at 67 985 B
+    # with 15 B of headroom, so the delivery question was answered rather than waved through. The
+    # reader itself — the fetch, the digest chain over a pack's own files, the per-shape template
+    # pick and the fill — travels in its own file, pass-reader.js below, weighing 3 125 B gzipped:
+    # 200 times the headroom this fence had left, and 4.6 times the host's own 673 B, so neither
+    # could have carried it. What lands HERE is 474 B, and it is the part that cannot live outside
+    # the bundle: the address the reader is fetched from, the ONE synchronous question a declare
+    # puts to it (passScoreFor answers inside declare, and a fetch begun there could never arrive in
+    # time), and the landing that warms the next crossing's shard. The bundle keeps the contract and
+    # the picture keeps travelling, which is the same division pass-layer.js stands on.
+    "exhibition.js": (69_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the delivery pack's reader (pass-reader.js) since 2026-08-15 travel separately", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
     # 2026-08-14, morning: the stub became a host with a frame half and one real instrument (the
     # woven one), measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind.
@@ -155,6 +166,13 @@ FENCES = {
     # None of these files reaches a visit that does not draw: reduced motion, Save-Data, a device
     # with no WebGL2 and the layer switched off never ask for the host, and nothing is asked for
     # before a score names it.
+    # 2026-08-15 — A FENCE FROM DAY ONE, at the measured 3 125 B plus about a tenth, by the same rule
+    # §12 states for the host's own file and §7 for each instrument. This file is the delivery pack's
+    # reader: the fetch, the digest chain (the settings record weighs the pack's manifest, and the
+    # manifest weighs every other file in the pack), the per-shape template pick and the fill. It
+    # reaches only a visit whose settings record actually names a pack and whose layer is on, and it
+    # is asked for once, at the first landing — a visit that never draws never asks for it.
+    "pass-reader.js": (3_500, "the delivery pack's reader, fetched only by a walk whose settings record names a pack: the digest chain over a pack's own files, the per-shape template pick and the fill, with the shard for a work's outgoing crossings warmed at the landing", strip_js_comments),
     "pass-inst-adrift.js": (6_000, "the adrift instrument, measured at 5 444 B: a dense thing leaves across an empty field and the field itself changes hands along a measured front — its shader, its two silhouettes, its contact shadow, its response curves and its manifest", strip_js_comments),
     "pass-inst-gears.js": (5_000, "the meshing instrument, measured at 4 532 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
     "pass-inst-matter.js": (3_550, "the matter instrument, measured at 3 221 B: one work loosens into a grain dragged along a seeded field and the other condenses out of it — its shader, its response curve and its manifest", strip_js_comments),

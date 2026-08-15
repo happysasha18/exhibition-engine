@@ -27,8 +27,22 @@
   // full force there. `intent` is a separate fence on the one field §4.4 calls prose: a score's
   // opening line, authored at build time, which the lab's own generator writes at about 250
   // characters. Reading one limit for both would have refused a real score for being a sentence.
+  //
+  // `bytes` IS AN OBSERVED BASELINE WITH ITS EVIDENCE, NOT A CHOSEN ROUND NUMBER. It stood at
+  // 8192 B while the only score a pair could carry was the one a site wrote by hand. Since the
+  // passage composer ships, a crossing's score is a serialised composed passage, and those were
+  // measured: the delivery pack of 2026-08-15 (`plans/v2-b27cc41a8bf15346/`, built by the site's own
+  // lab/build-delivery-v1.py) carries 7708 filled scores whose median weighs 7029 B and whose
+  // LONGEST weighs 10 851 B, read as JSON.stringify writes them — the very measure passScoreCheck
+  // applies below. At 8192 B, 1783 of those 7708 were refused before any instrument saw them, which
+  // is 23.1 percent of everything the composer had to say. The baseline is therefore set at
+  // 12 288 B: the shipped pack's longest score passes with 1 437 B to spare, and a score half again
+  // as long as anything the composer has ever written still does not.
+  // It is a CAPABILITY and not a setting — raising it is this rebuild — and the bake publishes it
+  // into the settings record under `pass.capabilities`, so the composer measures a filled score
+  // against the number the client actually applies instead of against a copy of it.
   const PASS_LIMITS = { camera: 64, phases: 3, instruments: 8, curve: 128, text: 200,
-                        intent: 400, bytes: 8192 };
+                        intent: 400, bytes: 12288 };
   const PASS_SCORE_FIELDS = ["schema", "intent", "seed", "pair", "params"];
   // PASS-API §4.4a: two schema versions live at once. Version 2 carries the cue list a host plays;
   // version 1 keeps working, because such an address can already sit in a visitor's session store.
@@ -219,7 +233,13 @@
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, why: "no record" };
     let bytes = 0;
     try { bytes = JSON.stringify(raw).length; } catch (e) { return { ok: false, why: "does not write out" }; }
-    if (bytes > PASS_LIMITS.bytes) return { ok: false, why: "over " + PASS_LIMITS.bytes + " bytes" };
+    // The refusal names the size it MEASURED beside the fence it applied. A score refused for its
+    // weight is refused for a number, and a reason that gives only the fence leaves the one thing
+    // its author has to act on unsaid.
+    if (bytes > PASS_LIMITS.bytes) {
+      return { ok: false, why: "weighs " + bytes + " bytes, over the " + PASS_LIMITS.bytes
+                             + " a score may weigh" };
+    }
     const v = raw.schema;
     if (v !== 1 && v !== 2) return { ok: false, why: "names no schema 1 or 2" };
     const stray = Object.keys(raw).filter(
@@ -291,6 +311,77 @@
     }
     return null;
   }
+  // ---- the delivery pack (§4.4b) ----------------------------------------------------------------
+  // A SCORE PER PAIR CANNOT TRAVEL IN THE SETTINGS FILE EITHER, once the composer writes one for
+  // every ordered pair: 7708 composed scores are megabytes, and the settings file is parsed at boot
+  // by every visitor. So the site ships them as a PACK of static files — a head, one template per
+  // passage shape, and one row file per DEPARTING work — and its settings record carries the pack's
+  // addresses alone, under `pass.packs`.
+  //
+  // THE READER TRAVELS AS ITS OWN FILE, the way the picture and the instruments do. It is fetched
+  // once, on the first landing of a walk whose settings record actually names a pack and whose
+  // layer is on, and a visit that never reaches that state never asks for it. What stays HERE is
+  // the door: where the reader is asked for, the one synchronous question a declare puts to it, and
+  // the landing that warms the next crossing's shard. That division is the byte fence's own
+  // answer — the bundle carries the contract and the picture travels — and it is the same shape
+  // pass-layer.js already stands on.
+  const PASS_PACK_SRC = "pass-reader.js";
+  let passPack = null, passPackAsked = false, passPackState = "absent", passPackWarm = null;
+  function passPackBlock() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).packs; }
+  // The reader hands over a factory rather than a finished reader, so the bundle stays the one
+  // owner of the settings block and of the diagnostic surface: the reader is handed the addresses
+  // it may fetch and one way to speak, and it reaches nothing else in this file.
+  function passPackSet(part) {
+    passPack = null;
+    const mk = part && part.make;
+    if (typeof mk !== "function") {
+      passPackState = "refused";
+      passNote(passRefusals, { what: "pack", name: PASS_PACK_SRC, why: "handed over no reader" });
+      return;
+    }
+    try {
+      passPack = mk({
+        packs: passPackBlock(),
+        note: (name, why) => passNote(passRefusals, { what: "pack", name: name, why: why }),
+      }) || null;
+    } catch (e) { passPack = null; }
+    passPackState = passPack ? "read" : "refused";
+    if (passPack && passPackWarm) { try { passPack.warm(passPackWarm); } catch (e) {} }
+  }
+  function passPackOpen() {
+    if (passPackAsked) return;
+    const block = passPackBlock();
+    if (!block || typeof block !== "object" || !Object.keys(block).length) return;
+    if (passGet("visualLayer") !== "pass") return;
+    passPackAsked = true;
+    passPackState = "asked";
+    try {
+      window.__@@NS@@PassReader = passPackSet;
+      const s = document.createElement("script");
+      s.src = PASS_PACK_SRC;
+      s.async = true;
+      s.onerror = () => {
+        passPackState = "absent";
+        passNote(passRefusals, { what: "pack", name: PASS_PACK_SRC, why: "load failed" });
+      };
+      document.head.appendChild(s);
+    } catch (e) {
+      passPackState = "absent";
+      passNote(passRefusals, { what: "pack", name: PASS_PACK_SRC, why: "no door" });
+    }
+  }
+  // THE WALK LANDED ON A WORK. The shard holding that work's outgoing crossings is asked for now,
+  // because a crossing is declared the instant the visitor moves and passScoreFor answers inside
+  // that same call — a fetch begun there could never arrive in time. The reader asks once per work;
+  // a landing before the reader itself has arrived is remembered, and warmed the moment it joins.
+  function passWarm(el) {
+    const id = el && el.dataset ? el.dataset.id : null;
+    if (!id) return;
+    passPackOpen();
+    passPackWarm = id;
+    if (passPack) { try { passPack.warm(id); } catch (e) {} }
+  }
+
   // The pair's own score, without an engine rebuild. The site writes `pass.scores`, keyed
   // "<departing id>__<arriving id>", into its own site.json; the bake carries the whole `pass` block
   // into config.json as DATA and judges none of it (engine/build.py), so a new score for a pair is a
@@ -303,7 +394,14 @@
     if (!a || !b) return null;
     const key = a + "__" + b;
     const rec = (((EX && EX.pass) || (cfg && cfg.pass) || {})).scores;
-    return (rec && rec[key]) || passFillScore(key);
+    if (rec && rec[key]) return rec[key];
+    // The pack, asked for what has ALREADY arrived. This road never waits and never fetches: a
+    // shard that has not landed answers nothing, the reason goes on the diagnostic surface, and the
+    // crossing falls through to the walk's own glide exactly as a pair with no score always has.
+    if (passPack) {
+      try { const s = passPack.scoreFor(key); if (s) return s; } catch (e) {}
+    }
+    return passFillScore(key);
   }
 
   // Every setting resolves ONCE, at nav-start, and the result is frozen onto the command. A live
@@ -641,6 +739,7 @@
   // to (PASS-API §10.2: keyed on generation AND destination, never a global that has moved on).
   function passLandGate(el, reason, commit, gen) {
     if (!el) return;
+    passWarm(el);
     const g = gen === undefined ? passGen : gen;
     if (el === passLastEl && g === passLastGen) return;
     if (reason === "observe" && passNav && passNav.to
@@ -745,6 +844,10 @@
       limits: PASS_LIMITS,
       drivers: { declared: PASS_DRIVERS.slice(), built: PASS_DRIVERS_BUILT.slice() },
       layer: passState,
+      // The delivery pack, on the same surface: where the reader stands, and what it says about
+      // every pack the settings record names and every shard this visit has asked for.
+      pack: Object.assign({ src: PASS_PACK_SRC, state: passPackState, warm: passPackWarm },
+                          passPack ? passPack.report() : {}),
     };
   }
   // `score` is the checker itself, handed over so a score can be judged without being played — the

@@ -684,6 +684,28 @@ def copy_gallery(display_max=None, mark_text=None):
             shutil.copytree(src / "assets", dst / "assets", dirs_exist_ok=True)
 
 
+def pass_capabilities():
+    """EX-PASS §4.4b — THE CLIENT'S OWN LIMITS, PUBLISHED SO THE COMPOSER CAN MEASURE AGAINST THEM.
+
+    A limit is part of the client's CAPABILITY: raising one is a rebuild, never a setting, and the
+    one home of the number is the `PASS_LIMITS` literal in engine/client/01a-pass.js. A site that
+    composes scores has to know what the client will accept — a score written past the fence is
+    refused before any instrument sees it, and the composer that wrote it never hears — so the
+    number is READ BACK OUT of the served client here and written into the settings record. Reading
+    it rather than restating it is what keeps the published number and the applied number one
+    number; a second copy could only drift.
+
+    `scoreBytes` is the whole weight a score may have, measured the way passScoreCheck measures it:
+    the length of the score written out as JSON. It is an observed baseline with its evidence, and
+    the evidence stands beside the literal it is read from."""
+    src = client_asset("exhibition.js").read_text(encoding="utf-8")
+    found = re.search(r"PASS_LIMITS\s*=\s*\{[^}]*\bbytes:\s*(\d+)", src)
+    if not found:
+        raise SystemExit("engine/assets/exhibition.js declares no PASS_LIMITS.bytes — the site has "
+                         "no score fence to measure against")
+    return {"scoreBytes": int(found.group(1))}
+
+
 def client_asset(name):
     """One client source file (exhibition.js/css, the worker template): the INSTANCE's own copy
     wins when its assets dir carries one — an instance that grew its client first keeps shipping
@@ -927,12 +949,18 @@ def copy_exhibition_assets():
             "digest": hashlib.sha256((OUT / inst_path.name).read_bytes()).hexdigest(),
         }
 
-    layer_path = client_asset("pass-layer.js")
-    if layer_path.exists():
-        layer_src = layer_path.read_text(encoding="utf-8")
-        if "@@NS@@" in layer_src or "@@NS_UPPER@@" in layer_src:
-            layer_src = apply_namespace(layer_src, _NAMESPACE)
-        write(OUT / "pass-layer.js", strip_js_comments(layer_src))
+    # EX-PASS §4.4b: the delivery pack's reader travels the same way — its own file, fetched by the
+    # bundle only on a walk whose settings record actually names a pack. A bake without it simply
+    # serves none, the bundle's fetch answers 404, the refusal lands on the diagnostic surface and
+    # every crossing keeps the walk's own glide.
+    for _name in ("pass-layer.js", "pass-reader.js"):
+        _p = client_asset(_name)
+        if not _p.exists():
+            continue
+        _src = _p.read_text(encoding="utf-8")
+        if "@@NS@@" in _src or "@@NS_UPPER@@" in _src:
+            _src = apply_namespace(_src, _NAMESPACE)
+        write(OUT / _name, strip_js_comments(_src))
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
         if cand and cand.exists():
@@ -1446,6 +1474,12 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         record.update(_PASS_INSTRUMENTS)
         block["instruments"] = record
         config["pass"] = block
+    # AND THE CLIENT NAMES WHAT IT CAN TAKE (§4.4b). Beside the instrument record stands the
+    # capability record: the limits the client applies, read out of the served client itself. The
+    # site composes against them — a score longer than `scoreBytes` is refused before any instrument
+    # sees it — and a site that reads the published number never has to keep a copy of it.
+    if isinstance(config.get("pass"), dict) and config["pass"]:
+        config["pass"]["capabilities"] = pass_capabilities()
     config["experiments"] = {}      # variant → flag → metric (empty registry)
     # EX-QUIZ-ONCE (INV-66) + EX-QUIZ-COPY: config seams join ONLY when the quiz is on —
     # flag off leaves config.json byte-for-byte today's (INV-60 fence).
