@@ -33,6 +33,7 @@ SUITES = [
     "pass_pack",
     "pass_adrift",
     "pass_coverage",
+    "pass_reader",
 ]
 
 

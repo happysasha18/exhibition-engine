@@ -297,18 +297,21 @@ check("PASS-WEAVE the score's road into the walk needs no engine rebuild",
 # The delivery road's own row: what a site wrote into site.json is what the served settings file
 # carries, byte for byte, with the bake judging none of it.
 #
-# THE BAKE ADDS ONE MEMBER OF ITS OWN, and this row names it rather than letting it pass unread: the
-# instrument record, keyed by instrument name, carrying the address each file is served at, the
-# version it declares and the digest its served bytes weigh to. The bake weighed the bytes it wrote,
+# THE BAKE ADDS TWO MEMBERS OF ITS OWN, and this row names them rather than letting them pass unread.
+# The instrument record, keyed by instrument name, carrying the address each file is served at, the
+# version it declares and the digest its served bytes weigh to: the bake weighed the bytes it wrote,
 # so that record is the one thing in the block the site cannot author for the files the bake ships.
+# And, since 2026-08-15, the capability record — the limits the client applies, read out of the
+# served client itself, so a site composing scores measures them against the number the client will
+# actually accept instead of against a copy of it.
 # Everything else the site wrote reaches the file untouched, which is what the second half reads.
 served = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
 _block = served.get("pass") or {}
 _added = sorted(set(_block) - set(build_site.SITE_CONFIG["pass"]))
 _kept = {k: v for k, v in _block.items() if k in build_site.SITE_CONFIG["pass"]}
 check("PASS-WEAVE the site's pass record reaches the served settings file untouched, "
-      "with the bake's own instrument record beside it",
-      _kept == build_site.SITE_CONFIG["pass"] and _added == ["instruments"]
+      "with the bake's own instrument and capability records beside it",
+      _kept == build_site.SITE_CONFIG["pass"] and _added == ["capabilities", "instruments"]
       and all(sorted(e) == ["digest", "src", "version"] for e in _block["instruments"].values()),
       f"config.json carries {_kept} exactly as site.json wrote it, and the bake added "
       f"{_added} — {sorted(_block.get('instruments') or {})}, each with its address, version and digest")
