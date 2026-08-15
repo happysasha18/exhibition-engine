@@ -70,6 +70,22 @@ HELD_BAND = (WORK_BAND_PX / WORK_DIM) * ZOOM
 # measurement below re-runs: the reading crosses from angular to ring between 0.6 and 0.7.
 SIZE_ANGULAR, SIZE_MID, SIZE_RING = 0.35, 0.6, 2.0
 
+# ---- THE ONE DOOR THAT LEAKED, AND THE NUMBER IT LEAKED BY ---------------------------------------
+# Not this suite's own pose: the composer's. On 2026-08-14 the site's own rig ran this very
+# instrument over 1996 meshing poses and found 228 entry doors and 531 exit doors where the size it
+# was about to be handed left a point of the wrong work standing in a door
+# (tlvphotos-immersive/docs/immersive/evidence/2026-08-14-composed-pass-accepted.md §1). The pose
+# below is the one that record names in its own red-on-bug row — pair
+# 17843080526947498__17894700938773432__ab, pose key
+# 0.166667|0.833300|0.350000|0.475000|1.269800|1.473000|4.500000 — with the size it asked for, the
+# alpha the record measured there, and the whole size it moved to instead.
+DOOR_CENTRE = (0.35, 0.475)
+DOOR_BAND = 1 / 6.0
+DOOR_RATIO = 0.8333
+DOOR_SEED = 1.2698
+SIZE_LEAKING, SIZE_WHOLE = 1.473, 1.213
+DOOR_ALPHA = "0.153454"
+
 results = []
 
 
@@ -145,6 +161,20 @@ def score_of(size_from=SIZE_ANGULAR, size_to=SIZE_RING):
                           for v in ("lean", "standard", "rich")},
         }],
     }
+
+
+def score_at_the_measured_pose(size_from, size_to=4.5):
+    """This suite's own score, standing at the composer's measured pose above: the same six tracks,
+    with the pair's centre, its tooth period, its rung and its die held at the numbers the record
+    names. What is offered is then the very passage whose entry door the record measured."""
+    s = json.loads(json.dumps(score_of(size_from, size_to)))
+    n = s["cues"][0]["nodes"]
+    n["centreXTravel"] = {"op": "static", "value": DOOR_CENTRE[0]}
+    n["centreYTravel"] = {"op": "static", "value": DOOR_CENTRE[1]}
+    n["bandHeld"] = {"op": "static", "value": DOOR_BAND}
+    n["ratioStatic"] = {"op": "static", "value": DOOR_RATIO}
+    n["seedStatic"] = {"op": "static", "value": DOOR_SEED}
+    return s
 
 
 # ---------------------------------------------------------------- bake once
@@ -253,6 +283,7 @@ BROWSER_ROWS = [
     "PASS-GEARS the band period the handle names is the period the picture shows",
     "PASS-GEARS the pair's centre reaches the picture and moves it",
     "PASS-GEARS both doors stand whole at every size the travel passes through",
+    "PASS-GEARS a door the instrument cannot keep whole is refused, with the alpha it measured",
 ]
 
 missing = [str(p) for p in (PHOTOS + [LAB / "effects" / "gears.js", CUTLINES]) if not p.exists()]
@@ -773,6 +804,84 @@ else:
                       "0.005 and 0.010."
                       % (len(doorrows), worst["off"], worst["std"], worst["size"], worst["ratio"],
                          worst["tooth"], worst["dial"], worst["work"], worst["reach"]))
+
+                # ---- THE DOOR THE INSTRUMENT REFUSES FOR ITSELF -------------------------------
+                # The row above sweeps doors this instrument KEEPS whole. This one is about a door
+                # it cannot: the pose the composer's own record measured, at the size it was about
+                # to be handed. Two things have to be true at once. The instrument has to name that
+                # door's own alpha — the record's 0.153454 on one point of the entry door, which it
+                # can only get by reading its own mask — and it has to stay silent at the whole size
+                # the composer moved to, at the pose's other door, away from a door altogether, and
+                # at this suite's own two doors, which is what "the whole sizes keep playing" means.
+                # Then the same thing is asked of the real transaction road, where a refusal has to
+                # reach the host and the picture the visitor gets falls back to the walk's own glide.
+                def door_pose(size, dial, seed=DOOR_SEED, over=None):
+                    p = {"dial": dial, "size": size,
+                         "centreX": DOOR_CENTRE[0], "centreY": DOOR_CENTRE[1],
+                         "bandPeriod": DOOR_BAND, "ratio": DOOR_RATIO, "seed": seed,
+                         "tooth": 0.4, "order": 0.4, "turn": 0.55, "flank": 0.35,
+                         "shade": 1, "travel": 1,
+                         "cssWidth": VW, "cssHeight": VH, "t": 0, "reduced": False}
+                    p.update(over or {})
+                    return p
+
+                def why_no(p):
+                    return js(br, "return {why: window.__exPass.bench.values('gears', %s)"
+                                  ".doorWhyNo || null};" % json.dumps(p))["why"]
+
+                own = {"seed": 4.91016, "bandPeriod": HELD_BAND, "ratio": 0}
+                said = why_no(door_pose(SIZE_LEAKING, 0))
+                silent = [
+                    ("the whole size the composer hands instead, at the same entry door",
+                     why_no(door_pose(SIZE_WHOLE, 0))),
+                    ("the same pose's own exit door",
+                     why_no(door_pose(4.5, 1))),
+                    ("the leaking size itself, away from either door",
+                     why_no(door_pose(SIZE_LEAKING, 0.5))),
+                    ("this suite's own entry door",
+                     why_no(door_pose(SIZE_ANGULAR, 0, over=dict(own, centreX=A_CENTRE[0],
+                                                                 centreY=A_CENTRE[1])))),
+                    ("this suite's own exit door",
+                     why_no(door_pose(SIZE_RING, 1, over=dict(own, centreX=B_CENTRE[0],
+                                                              centreY=B_CENTRE[1])))),
+                ]
+
+                def offered(size_from):
+                    br.evaluate("window.__cancel('door guard row'); 0")
+                    br.sleep(0.5)
+                    # the host's log carries every transaction of this run, so a refusal is read
+                    # against THIS offer's own generation and never a neighbour's
+                    gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                             % json.dumps(score_at_the_measured_pose(size_from)))["gen"]
+                    br.sleep(0.9)
+                    r = js(br, "var r = window.__report(); return {state: r.state, drew: r.drew, "
+                               "refused: r.events.filter(function(e){ return e.gen === %d && e.why "
+                               "&& String(e.why).indexOf('door leaks') >= 0; })"
+                               ".map(function(e){ return e.name + ': ' + e.why; })};" % gen)
+                    br.evaluate("window.__cancel('door guard row'); 0")
+                    br.sleep(0.5)
+                    return r
+
+                leaked = offered(SIZE_LEAKING)
+                played = offered(SIZE_WHOLE)
+                check(BROWSER_ROWS[25],
+                      bool(said) and DOOR_ALPHA in said and str(SIZE_LEAKING) in said
+                      and "entry door" in said
+                      and all(w is None for _, w in silent)
+                      and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
+                      and leaked["refused"][0].startswith("recovered: the entry door leaks")
+                      and ("at a size of %s" % SIZE_LEAKING) in leaked["refused"][0]
+                      and "an alpha of 0." in leaked["refused"][0]
+                      and not played["refused"] and played["state"] == "running"
+                      and played["drew"] == 1,
+                      "the pose the record names, at the size it asked for → «%s»; silent at %s. On "
+                      "the real road the leaking ramp is refused with «%s», and the host lands the "
+                      "transaction on it (state %s), while the whole size draws (%d cue, state %s)"
+                      % (said,
+                         "; ".join("%s → %s" % (n, "nothing said" if w is None else "SAID «%s»" % w)
+                                   for n, w in silent),
+                         (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
+                         played["drew"], played["state"]))
 
     shutil.rmtree(BENCH, ignore_errors=True)
     print("\nthe captures this run judged are kept at %s" % SHOTS)
