@@ -143,9 +143,13 @@ check("PASS-PACK every file declares its own version in one place, and the build
 # What travels to a phone is the gzipped file; tests/test_budget.py carries the gzip fence for each
 # of these files with its own breakdown.
 # ================================================================================================
+# 2026-08-15 — the meshing instrument's fence moved from 14 800 B to 18 300 B, measured at 16 592 B.
+# It now reads its own doors and refuses a pose whose door leaks, with the alpha it measured in the
+# reason; the reading is its own mask, carried across from its own shader, at the pixels around each
+# wheel's centre. tests/test_budget.py carries the same move on the gzipped bytes with its own note.
 FENCES = {
     "adrift": (20_700, 18_846),
-    "gears": (14_800, 13_472),
+    "gears": (18_300, 16_592),
     "matter": (10_500, 9_529),
     "weave": (13_900, 12_611),
 }

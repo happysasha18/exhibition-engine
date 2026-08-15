@@ -174,7 +174,13 @@ FENCES = {
     # is asked for once, at the first landing — a visit that never draws never asks for it.
     "pass-reader.js": (3_500, "the delivery pack's reader, fetched only by a walk whose settings record names a pack: the digest chain over a pack's own files, the per-shape template pick and the fill, with the shard for a work's outgoing crossings warmed at the landing", strip_js_comments),
     "pass-inst-adrift.js": (6_000, "the adrift instrument, measured at 5 444 B: a dense thing leaves across an empty field and the field itself changes hands along a measured front — its shader, its two silhouettes, its contact shadow, its response curves and its manifest", strip_js_comments),
-    "pass-inst-gears.js": (5_000, "the meshing instrument, measured at 4 532 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
+    # 2026-08-15 — MOVED FROM 5 000 B TO 6 100 B, MEASURED AT 5 551 B. The meshing instrument now
+    # reads its own doors: at either door it evaluates its own mask around each wheel's centre — the
+    # one place a leak can stand — and refuses a pose whose door is two works at once, with the alpha
+    # it measured in the reason. That is 1 019 gzipped bytes, and it is what makes the coverage law
+    # this instrument's manifest publishes true by the instrument's own reading rather than by an
+    # argument made upstream of it. The file reaches only a visit whose own score names it.
+    "pass-inst-gears.js": (6_100, "the meshing instrument, measured at 5 551 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve, the door reading that refuses a leaking pose, and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
     "pass-inst-matter.js": (3_550, "the matter instrument, measured at 3 221 B: one work loosens into a grain dragged along a seeded field and the other condenses out of it — its shader, its response curve and its manifest", strip_js_comments),
     "pass-inst-weave.js": (4_500, "the woven instrument, measured at 4 069 B: a band family warping across the frame — its shader, its seating of a work in the frame, its response curve, the turn of the weave and its manifest", strip_js_comments),
 }
