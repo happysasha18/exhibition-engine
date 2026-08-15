@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PASS-API-V1 §4.4b — the delivery pack's reader on the walk's own road.
+"""PASS-API-V1 §4.4d — the delivery pack's reader on the walk's own road.
 Run: python3 tests/test_pass_reader.py
 
 Root: the full-walk drive of 2026-08-14 (the site tree's

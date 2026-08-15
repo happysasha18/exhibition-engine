@@ -525,6 +525,71 @@ The conformance rows: a pair with a row produces a score the host accepts; a pai
 produces none; a bad row is refused and recorded; and the filled score is identical, field for
 field, to the score the per-pair builder wrote for the one pair that has both.
 
+### 4.4d The delivery pack, and the reader that plays it
+
+§4.4c's inline road holds while a site scores by hand. It stops holding the moment a composer scores
+every pair: the composed pack of 2026-08-15 carries 7708 serialised scores, and a settings file
+parsed at boot by every visitor cannot carry them. It also takes ONE TEMPLATE PER INSTRUMENT, and a
+composed pack does not have that shape — it factors by PASSAGE SHAPE, twenty-five of them, and each
+pair's row names its own. So a site ships the scores as a pack of static files and its settings
+record carries the pack's addresses alone, under `pass.packs`, one entry per pack:
+
+- `base` — the address every file of the pack stands under, carrying the pack's version and the
+  first sixteen characters of its digest, so a stale file has no fresh address to answer at;
+- `digest` — `sha256:` and the pack's own digest, which is the SHA-256 of its `manifest.json`;
+- `manifest`, `head`, `templates`, `authored` and `rows` — the file names, `rows` carrying
+  `{departing}` where the departing work's id goes.
+
+A pack's `head.json` names its passage shapes; `templates.json` carries one score per shape with its
+per-pair leaves left open and each open leaf addressed by the path that reaches it; a shard,
+`rows/<departing work>.json`, carries every row that DEPARTS that work, each row opening with its own
+shape's index into the head's list; and `authored.json` carries whole scores that stand as authored,
+keyed by the ordered pair.
+
+**The reader travels as its own file.** The walk's own bundle carries the door — the address, the one
+synchronous question a declare puts to it, and the landing that warms — and the reading itself lives
+in `pass-reader.js`, fetched once, only on a walk whose settings record actually names a pack and
+whose layer is on. This is the division §12 states for the picture, applied to the same fence for the
+same reason: the reader weighs 3 201 B gzipped and the bundle had 15 B of headroom.
+
+**Warming is at the LANDING, and nothing ever waits on the wire.** `passScoreFor` answers
+synchronously inside `declare`, and a crossing is declared the instant the visitor moves, so a fetch
+begun there could never arrive in time. The shard holding a work's outgoing crossings is therefore
+asked for when the walk LANDS on that work. A crossing whose shard has arrived plays; one whose shard
+has not glides, with the reason on the diagnostic surface. Each work is asked for once, and a file
+refused once stays refused for the visit — the same law §7 states for an instrument file.
+
+**Every fetched file is weighed before it is read.** The settings record's digest weighs the pack's
+manifest, and the manifest weighs every other file in the pack: one chain, rooted in the record the
+bake wrote. A file whose bytes weigh to anything else is refused with both digests named, unread.
+
+**A pack whose head names no shapes is not filled here**, and says so: its rows are of another form,
+and only its authored scores are read.
+
+The conformance rows are `tests/test_pass_reader.py`: a crossing takes its score from the pack; the
+row's own shape picks its template while a second row of the same shard picks the other; the filled
+score is the pack's own score to the last leaf; only the works the walk landed on are ever asked for;
+a landing during the pack's own open is held rather than dropped; a missing shard glides with the
+server's answer recorded; a tampered shard is refused with both digests; a score over the fence is
+refused with the size it was measured at; and a pack-served score draws a frame byte-identical to the
+same score served inline. Four of them carry a red-on-bug proof that serves a crippled copy of the
+reader, or of the walk's own bundle, and passes when the answer moves.
+
+### 4.4e The client's limits, published as a capability
+
+A limit is part of the CAPABILITY: raising one is a rebuild, never a setting. A site that composes
+scores has to know what the client will accept, because a score past the fence is refused before any
+instrument sees it and the composer that wrote it never hears. So the bake reads the limits out of
+the served client and writes them into the settings record under `pass.capabilities`:
+
+- `scoreBytes` — the whole weight a score may have, measured as the length of the score written out
+  as JSON, which is the very measure the client applies.
+
+The number is READ rather than restated, so the published number and the applied number are one
+number. `scoreBytes` stands at **12 288 B as an observed baseline with its evidence**: the composed
+pack of 2026-08-15 carries 7708 filled scores whose median weighs 7029 B and whose longest weighs
+10 851 B, and the 8192 B that stood before refused 1783 of them — 23.1 percent — unread.
+
 ### 4.5 The private fence
 
 `quiz.json` and `story_notes.json` in the site's content root are keyed by the same work-id strings

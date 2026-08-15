@@ -685,7 +685,7 @@ def copy_gallery(display_max=None, mark_text=None):
 
 
 def pass_capabilities():
-    """EX-PASS §4.4b — THE CLIENT'S OWN LIMITS, PUBLISHED SO THE COMPOSER CAN MEASURE AGAINST THEM.
+    """EX-PASS §4.4d — THE CLIENT'S OWN LIMITS, PUBLISHED SO THE COMPOSER CAN MEASURE AGAINST THEM.
 
     A limit is part of the client's CAPABILITY: raising one is a rebuild, never a setting, and the
     one home of the number is the `PASS_LIMITS` literal in engine/client/01a-pass.js. A site that
@@ -949,7 +949,7 @@ def copy_exhibition_assets():
             "digest": hashlib.sha256((OUT / inst_path.name).read_bytes()).hexdigest(),
         }
 
-    # EX-PASS §4.4b: the delivery pack's reader travels the same way — its own file, fetched by the
+    # EX-PASS §4.4d: the delivery pack's reader travels the same way — its own file, fetched by the
     # bundle only on a walk whose settings record actually names a pack. A bake without it simply
     # serves none, the bundle's fetch answers 404, the refusal lands on the diagnostic surface and
     # every crossing keeps the walk's own glide.
@@ -1474,7 +1474,7 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         record.update(_PASS_INSTRUMENTS)
         block["instruments"] = record
         config["pass"] = block
-    # AND THE CLIENT NAMES WHAT IT CAN TAKE (§4.4b). Beside the instrument record stands the
+    # AND THE CLIENT NAMES WHAT IT CAN TAKE (§4.4d). Beside the instrument record stands the
     # capability record: the limits the client applies, read out of the served client itself. The
     # site composes against them — a score longer than `scoreBytes` is refused before any instrument
     # sees it — and a site that reads the published number never has to keep a copy of it.

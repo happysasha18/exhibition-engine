@@ -311,7 +311,7 @@
     }
     return null;
   }
-  // ---- the delivery pack (§4.4b) ----------------------------------------------------------------
+  // ---- the delivery pack (§4.4d) ----------------------------------------------------------------
   // A SCORE PER PAIR CANNOT TRAVEL IN THE SETTINGS FILE EITHER, once the composer writes one for
   // every ordered pair: 7708 composed scores are megabytes, and the settings file is parsed at boot
   // by every visitor. So the site ships them as a PACK of static files — a head, one template per

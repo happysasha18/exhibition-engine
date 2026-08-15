@@ -1,5 +1,5 @@
 /*!pass-reader.js*/
-// The delivery pack's reader — the play side of PASS-API-V1 §4.4b. Fetched separately, the way the
+// The delivery pack's reader — the play side of PASS-API-V1 §4.4d. Fetched separately, the way the
 // host and the instruments are, so the walk's own bundle carries the door alone and none of this.
 //
 // WHAT IT CLOSES. The site composes a score for an ordered pair at build time and ships it in a
