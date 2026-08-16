@@ -650,7 +650,18 @@
     flightMs: { kind: "number", min: 0, max: 4000, def: 0 },
     phaseWindows: { kind: "ratio3", def: [0.25, 0.5, 0.25] },
     cameraTrack: { kind: "points", max: PASS_LIMITS.camera, def: [] },
-    instruments: { kind: "names", of: PASS_INSTRUMENTS, max: PASS_LIMITS.instruments, def: [] },
+    // instrumentNames — the instruments a transition may name, as a list of names off the
+    // allow-list. THE NAME IS THE REGISTER'S OWN and it is not the record's. The bake writes the
+    // instrument ADDRESS record — one entry per instrument, each with its file, version and digest
+    // — into the settings block under `pass.instruments` (engine/build.py), and this register once
+    // carried a setting of that same name. The register's site rung reads the settings block by the
+    // name, so every resolve handed a record to a check that wants a list, and «setting
+    // `instruments`: wants a list» went onto the refusal ring about four times per step — the ring
+    // holds 64 rows, so within ten steps it had pushed every real refusal off (U10 §5 had to read
+    // the layer's own refusal one step into the visit for exactly that reason). The record's name
+    // is the landed contract of PASS-API §4.4d and the site's own delivery check reads it, so the
+    // record keeps it and the register's setting takes a name of its own.
+    instrumentNames: { kind: "names", of: PASS_INSTRUMENTS, max: PASS_LIMITS.instruments, def: [] },
     qualityTier: { kind: "enum", of: ["rich", "standard", "lean"], def: "standard",
                    order: ["session", "site", "default"] },
     visualLayer: { kind: "enum", of: ["off", "pass"], def: "off" },
@@ -942,6 +953,18 @@
     const block = passPackBlock();
     if (!block || typeof block !== "object" || !Object.keys(block).length) return;
     if (passGet("visualLayer") !== "pass") return;
+    // THE STAND-DOWN LAW BINDS AN OPTIONAL PREFETCH AS A CLASS (EX-LOAD-3 / INV-73). The reader and
+    // the shards every landing warms are exactly that: a fetch made ahead of a crossing, for a
+    // crossing the layer itself refuses under either request — `passOpen` below reads the same two
+    // and stands the drawing machinery down. Read alone, the pack asked for ten shards a visitor
+    // under Save-Data can never use: 443 844 B on disk and 36 420 B gzipped (U10 §6), which is
+    // MORE gzipped than standing the machinery down saves. So the pack asks the same two questions.
+    const no = REDUCED ? "reduced motion" : dataSaver() ? "save data" : null;
+    if (no) {
+      passPackAsked = true;
+      passNote(passRefusals, { what: "pack", name: PASS_PACK_SRC, why: no });
+      return;
+    }
     passPackAsked = true;
     passPackState = "asked";
     try {
@@ -1141,6 +1164,17 @@
     }
     passDockKeys[key] = true;
     const el = passResolveEl(cmd.to);
+    // THE WALK'S REST RECORD FOLLOWS THE DOCK (INV-86). `restingEl` — the section under the eye,
+    // the one a turn re-docks to — is written by the in-view watcher's organic intersection alone
+    // (08). A crossing moves the eye without one: the walk's own scroll stands still for the whole
+    // flight, and a device change arriving mid-flight brings some other section across the
+    // threshold inside the watcher's own 250 ms reflow guard, so the report that would have named
+    // the arriving work is the one report the guard swallows. The record then keeps naming the
+    // DEPARTING work and the next turn honours it — the visitor is thrown back one work. The
+    // landing is where the arriving work is known for certain, so the landing corrects the record.
+    // A door landing carries no section of its own (passResolveEl hands back a plain marker), and
+    // that is what the dataset check keeps out.
+    if (el && el.dataset && document.body.contains(el)) restingEl = el;
     if (el) passLandGate(el, "dock", landOn, cmd.gen);
     passMark("dock", cmd, cmd.to.id === "door" ? "door" : null);
     // The chrome comes back HERE and nowhere else, so it can only ever follow the arrival. The
@@ -2924,6 +2958,16 @@
   function ioSaw(es) {
     es.forEach((x) => {
       if (!x.isIntersecting) return;
+      // WHILE A RENDERER HOLDS THE COMMAND, THE COMMAND OWNS WHERE THE WALK IS. The walk's own
+      // scroll stands still under the curtain for the whole flight, so a device change arriving
+      // mid-flight leaves that standing offset naming a different section in the new viewport, and
+      // this watcher then reports a work the visitor is neither on nor going to — which warms its
+      // picture ladder and its one-ahead (U10 §4a measured 19 fresh requests on one turn, 18 of
+      // them pictures, for a work eight frames away). The report for the command's OWN destination
+      // is the arrival and passes exactly as it always did; every other section, for the length of
+      // the flight, is the stale offset speaking and is left alone.
+      if (passRunning() && passNav && passNav.to
+          && passNav.to.id !== ((x.target.dataset && x.target.dataset.id) || null)) return;
       if (!sideOpen && !quizOpen && !giftOpen
           && performance.now() - lastResizeAt > 250) {
         restingEl = x.target;                          // the eye's section, fin included — organic
@@ -4992,7 +5036,23 @@
     const els = stage.querySelectorAll(".exh-frame, .exh-fin");
     const stops = Array.prototype.map.call(els, frameCenter);
     if (!stops.length) return;
-    const base = gliding && glideGoal != null ? glideGoal : scrollY;
+    // WHERE THE STEP COUNTS FROM. The walk's own glide names its goal, and a step taken while it
+    // flies chains from that goal — that road is unchanged. A RENDERER holding the command is the
+    // second road to the same law (EX-GLIDE, SPEC.md:1329-1331): a new input mid-transition chains
+    // to the next frame and never re-rounds backward. While the renderer holds it the walk's own
+    // scroll has not moved — the passage is the motion, and the placement comes at the handoff — so
+    // `scrollY` still names the DEPARTING frame and a second gesture re-rounds onto it and
+    // re-declares the very step already in flight (U10 §3, four rows red: the visitor's second
+    // swipe bought a shortened crossing and no progress). The running transaction's own destination
+    // is where the walk is headed, so that is what this step counts from.
+    let base = scrollY;
+    if (gliding && glideGoal != null) base = glideGoal;
+    else if (passRunning() && passNav && passNav.kind === "step" && passNav.to) {
+      const held = passNav.to.id
+        ? stage.querySelector('.exh-frame[data-id="' + String(passNav.to.id).replace(/"/g, "") + '"]')
+        : document.getElementById("exh-fin");
+      if (held && document.body.contains(held)) base = frameCenter(held);
+    }
     const cur = nearestStop(stops, base);
     const k = Math.min(stops.length - 1, Math.max(0, cur + dir));
     if (k === cur) noteStuckStep(); else stuckBurst = [];   // EX-FRICTION: a clamped no-move step vs a real advance

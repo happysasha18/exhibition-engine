@@ -100,6 +100,16 @@
   function ioSaw(es) {
     es.forEach((x) => {
       if (!x.isIntersecting) return;
+      // WHILE A RENDERER HOLDS THE COMMAND, THE COMMAND OWNS WHERE THE WALK IS. The walk's own
+      // scroll stands still under the curtain for the whole flight, so a device change arriving
+      // mid-flight leaves that standing offset naming a different section in the new viewport, and
+      // this watcher then reports a work the visitor is neither on nor going to — which warms its
+      // picture ladder and its one-ahead (U10 §4a measured 19 fresh requests on one turn, 18 of
+      // them pictures, for a work eight frames away). The report for the command's OWN destination
+      // is the arrival and passes exactly as it always did; every other section, for the length of
+      // the flight, is the stale offset speaking and is left alone.
+      if (passRunning() && passNav && passNav.to
+          && passNav.to.id !== ((x.target.dataset && x.target.dataset.id) || null)) return;
       if (!sideOpen && !quizOpen && !giftOpen
           && performance.now() - lastResizeAt > 250) {
         restingEl = x.target;                          // the eye's section, fin included — organic

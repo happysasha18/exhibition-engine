@@ -156,7 +156,23 @@
     const els = stage.querySelectorAll(".exh-frame, .exh-fin");
     const stops = Array.prototype.map.call(els, frameCenter);
     if (!stops.length) return;
-    const base = gliding && glideGoal != null ? glideGoal : scrollY;
+    // WHERE THE STEP COUNTS FROM. The walk's own glide names its goal, and a step taken while it
+    // flies chains from that goal — that road is unchanged. A RENDERER holding the command is the
+    // second road to the same law (EX-GLIDE, SPEC.md:1329-1331): a new input mid-transition chains
+    // to the next frame and never re-rounds backward. While the renderer holds it the walk's own
+    // scroll has not moved — the passage is the motion, and the placement comes at the handoff — so
+    // `scrollY` still names the DEPARTING frame and a second gesture re-rounds onto it and
+    // re-declares the very step already in flight (U10 §3, four rows red: the visitor's second
+    // swipe bought a shortened crossing and no progress). The running transaction's own destination
+    // is where the walk is headed, so that is what this step counts from.
+    let base = scrollY;
+    if (gliding && glideGoal != null) base = glideGoal;
+    else if (passRunning() && passNav && passNav.kind === "step" && passNav.to) {
+      const held = passNav.to.id
+        ? stage.querySelector('.exh-frame[data-id="' + String(passNav.to.id).replace(/"/g, "") + '"]')
+        : document.getElementById("exh-fin");
+      if (held && document.body.contains(held)) base = frameCenter(held);
+    }
     const cur = nearestStop(stops, base);
     const k = Math.min(stops.length - 1, Math.max(0, cur + dir));
     if (k === cur) noteStuckStep(); else stuckBurst = [];   // EX-FRICTION: a clamped no-move step vs a real advance
