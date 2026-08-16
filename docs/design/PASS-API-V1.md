@@ -1067,6 +1067,14 @@ lightens the score first, then drops accompaniment voices to 30 frames a second 
 gesture keeps 60, then eases resolution toward 0.75 of device pixels, and stops at a floor below
 which the plain fallback plays instead of a thin miracle.
 
+**The frame state names the drawing buffer, added 2026-08-16.** The state handed to `frame` carries
+the CSS frame as `viewport.w`/`viewport.h` and the drawing buffer as `viewport.bufferW`/
+`viewport.bufferH` — the same two numbers the host binds as the `resolution` uniform source. The
+buffer is the CSS frame times the device ratio times the live resolution step, so it is settled
+after any plan is serialised and it moves while a pass plays. An instrument whose own law depends on
+where a sample lands reads it there: the meshing instrument's doors are read on the buffer, because
+a leak is one sample landing on a singular point and the sample positions come from the buffer.
+
 **The pack boundary, added 2026-08-14 13:26 and built at `b212ef3`.** The instruments live in
 `engine/assets/pass-pack.js`; the host lives in `engine/assets/pass-layer.js` and loads the pack by
 address, checking its declared version and a digest of the bytes that arrived, then registers what

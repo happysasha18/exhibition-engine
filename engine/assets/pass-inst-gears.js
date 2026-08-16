@@ -320,7 +320,44 @@
     // THE SEED IS READ FROM THE POSE, which is exactly where the host binds `uSeed` from: the
     // manifest declares that uniform's source as `handle:seed` and the host resolves it against the
     // very object handed to `values` below. So the reading and the drawing cannot see two seeds.
+    //
+    // ON WHICH GRID, settled 2026-08-16 by the sweep of the frames a visitor holds
+    // (tlvphotos-immersive/docs/immersive/evidence/2026-08-15-door-frame-sweep.md §3). A leak is one
+    // sample landing on the singular point, so the grid that decides it is the one the shader
+    // samples on — the DRAWING BUFFER the host binds as `uRes`, whose own `h` of 2/uRes.y is the
+    // width the mask crosses over inside. That buffer is the CSS frame times the device ratio times
+    // the host's own resolution step, so it is not known when a plan is serialised and it moves
+    // while a pass plays. The reading below takes the buffer the host hands it and falls back to the
+    // CSS frame where none is handed, which is what a bench pose carries. On the very frame the
+    // acceptance capture was taken at, the table's own sizes leak on 632 door instants of the
+    // 780 x 1688 buffer a phone at full quality draws and on none of the 390 x 844 CSS frame.
     var DOOR_READ = 3;   // pixels either side of a centre
+
+    // ---- THE DOOR HELD, RATHER THAN THE POSE REFUSED ---------------------------------------------
+    // The seat's ruling of 2026-08-16 02:44, from U7's own accepted law that the door's wholeness
+    // outranks the ratio's fidelity with the loss recorded: at a door whose size leaks on the buffer
+    // being drawn, the instrument moves to the nearest size whose door is whole there, and the
+    // refusal below stands only where no whole size stands near. The composer's serialised size
+    // stays the request and is published beside the applied one, so the loss is on the record.
+    //
+    // WHAT "THE NEAREST SIZE" MEANS HERE. The drawn pose depends on the size ONLY through the whole
+    // multiplier `k` the two tooth counts come from, so every size that lands on one multiplier
+    // draws one and the same door. The search therefore steps outward over those multipliers — the
+    // request's own first, then one rung below and one above, then two — and the applied size is the
+    // size that multiplier stands at. Stepping in sizes rather than in rungs would read the same
+    // door many times over for nothing.
+    //
+    // HOW FAR "NEAR" REACHES, and why it is two rungs. Measured on the composer's own 3 992 door
+    // instants: on the 780 x 1688 buffer 632 leak, of which 76.4% stand one rung from a whole door
+    // and 98.6% within two. The bound cannot reach three, because the door U11's guard refuses —
+    // the pose the composer's record measured, at a size of 1.473 — has its nearest whole size three
+    // rungs away, and a guard that never refuses proves nothing. Two rungs is therefore the widest
+    // reach that closes what the buffers actually leak and still leaves the refusal standing.
+    //
+    // WHY THE MOVE COSTS THE PICTURE NOTHING AT THE DOOR ITSELF. At a door the frame is one whole
+    // work by the same law being kept, so no tooth of either wheel is on screen to show which
+    // multiplier drew it; what moves is where the mesh line starts its ramp one frame later.
+    var DOOR_HOLD = 2;   // how far the hold reaches, in whole rungs of the mesh
 
     // The shader's own `cov` at one point of the frame, in the frame's own half-heights. Every line
     // has its counterpart in FRAG above and nothing is simplified.
@@ -353,8 +390,17 @@
     // door, since away from the doors a mixture of the two works is the picture rather than a fault.
     // `want` is what the door's own law asks `cov` to be at every point: 1 at the entry door, where
     // the frame is the departing work whole, and 0 at the exit door, where it is the arriving one.
+    // The grid the door is read on: the drawing buffer the host hands, and the CSS frame where it
+    // hands none. `drawn` says which of the two the sentence below names, since a reader who is told
+    // «a 780 x 1688 frame» would look for a device that has no such frame.
+    function doorGridOf(st) {
+      var bw = Math.round(st.bufWidth), bh = Math.round(st.bufHeight);
+      if (bw >= 1 && bh >= 1) return { w: bw, h: bh, drawn: true };
+      return { w: Math.round(st.cssWidth), h: Math.round(st.cssHeight), drawn: false };
+    }
+
     function doorWhyNoOf(v, st) {
-      var W = Math.round(st.cssWidth), H = Math.round(st.cssHeight);
+      var g = doorGridOf(st), W = g.w, H = g.h;
       var want = v.dial === 0 ? 1 : (v.dial === 1 ? 0 : -1);
       if (want < 0 || !(W >= 1) || !(H >= 1)) return null;
       var seed = Number(st.seed) || 0, asp = W / H, h = 2 / H, worst = 0, pts = 0;
@@ -375,8 +421,8 @@
       return (want ? "the entry" : "the exit") + " door leaks: at a size of " + v.size
            + " this instrument's own mask draws an alpha of " + (want ? worst : 1 - worst).toFixed(6)
            + " on " + pts + " point" + (pts === 1 ? "" : "s") + " of a " + W + " x " + H
-           + " frame, where the " + (want ? "entry" : "exit") + " door's own law asks for "
-           + (want ? "0" : "1") + " at every point";
+           + (g.drawn ? " buffer" : " frame") + ", where the " + (want ? "entry" : "exit")
+           + " door's own law asks for " + (want ? "0" : "1") + " at every point";
     }
 
     // THE NUMBERS OF ONE FRAME. Everything the shader gets beyond the seating of the two works is a
@@ -384,7 +430,11 @@
     // published as handles: the pair's own size (the module's R_BASE), the tooth pitch (the module's
     // `teeth`, said as the band period it makes) and the pair's centre (the module pins it to the
     // middle of the frame's height).
-    function values(st) {
+    //
+    // The size is a parameter here rather than read from the pose, because the hold in `values`
+    // below asks this same function for the same pose at a neighbouring size. Nothing else about it
+    // moved.
+    function posed(st, sizeAsked) {
       var aspect = Math.max(st.cssWidth, 1) / Math.max(st.cssHeight, 1);
       var d = clamp(st.dial, 0, 1);
       var rr = ratioAt(st.ratio);
@@ -395,7 +445,7 @@
       // holds, said in frame half-heights; the counts follow from it and from the pair's size,
       // rounded to whole teeth so the closing is exact.
       var pitch = clamp(2 * st.bandPeriod, 0.04, 2.0);
-      var size = clamp(st.size, 0.3, 8);
+      var size = clamp(sizeAsked, 0.3, 8);
       // BOTH COUNTS COME FROM ONE WHOLE MULTIPLIER, which is what holds them in the rung's own
       // ratio. The module takes the first count from the geometry and the second by rounding
       // `n1 · r2/r1`, and at the rungs whose first number is above one that rounding lands off the
@@ -455,10 +505,46 @@
         // read on the diagnostic surface, bound to no uniform: what the handles came to
         pitch: pitch, reach: reach, xc: xc, rate: rate, dial: d, size: size,
         ratioN: rr[0] * 1000 + rr[1],
+        // the whole multiplier both counts come from, and the size one step of it stands at: the
+        // hold below walks in these rather than in sizes, because two sizes inside one step draw
+        // one and the same door
+        rungs: k, rungSize: span * pitch / (2 * TAU),
       };
-      // AND WHAT THIS POSE'S OWN DOORS COME TO, on the same surface and bound to no uniform either:
-      // null where the pose stands no leaking point, and the refusal's own sentence where it does.
-      v.doorWhyNo = doorWhyNoOf(v, st);
+      return v;
+    }
+
+    // THE NUMBERS OF ONE FRAME, WITH ITS DOOR HELD WHOLE ON THE BUFFER BEING DRAWN. Away from a door
+    // this is `posed` and nothing more: `doorWhyNoOf` reads nothing there and no size moves. At a
+    // door whose size leaks it searches outward over the whole multiplier — the smaller side first,
+    // the way the composer's own closing search runs — and answers with the first pose whose door is
+    // whole. What the composer asked for and what was applied are both on the record: `size` is the
+    // size drawn, `sizeRequest` is the size handed in, `sizeRungs` says how many rungs apart they
+    // stand, and `doorHeld` carries the leak the request would have drawn, in its own words.
+    // Where no whole size stands within reach, U11's refusal stands unchanged and says so.
+    function values(st) {
+      var v = posed(st, st.size);
+      v.sizeRequest = v.size;
+      v.sizeRungs = 0;
+      v.doorHeld = null;
+      var no = doorWhyNoOf(v, st);
+      if (!no) { v.doorWhyNo = null; return v; }
+      for (var step = 1; step <= DOOR_HOLD; step++) {
+        for (var dir = -1; dir <= 1; dir += 2) {
+          var kTry = v.rungs + dir * step;
+          if (kTry < 1) continue;
+          var sizeTry = kTry * v.rungSize;
+          if (sizeTry < 0.3 || sizeTry > 8) continue;
+          var w = posed(st, sizeTry);
+          if (w.n1 === v.n1 && w.n2 === v.n2) continue;   // the same counts draw the same door
+          if (doorWhyNoOf(w, st)) continue;
+          w.sizeRequest = v.size;
+          w.sizeRungs = dir * step;
+          w.doorHeld = no;
+          w.doorWhyNo = null;
+          return w;
+        }
+      }
+      v.doorWhyNo = no + ", and no whole size stands within " + DOOR_HOLD + " rungs of the mesh";
       return v;
     }
 
@@ -509,7 +595,10 @@
         mix: { min: 0, max: 1, def: 0 },
         clock: { min: 0, max: 14, def: 0 },
         dial: { min: 0, max: 1, def: 0, open: true },
-        size: { min: 0.3, max: 8, def: 4.5, applied: { roundedToWholeTeeth: true, leastTeeth: 3 } },
+        size: { min: 0.3, max: 8, def: 4.5,
+                applied: { roundedToWholeTeeth: true, leastTeeth: 3,
+                           heldWholeAtADoor: { rungs: DOOR_HOLD, readOn: "the drawing buffer",
+                                               reads: "sizeRequest" } } },
         centreX: { min: 0, max: 1, def: 0.5 },
         centreY: { min: 0, max: 1, def: 0.5 },
         bandPeriod: { min: 0.02, max: 1, def: 1 / 6 },
@@ -620,6 +709,11 @@
           ratio: h.ratio, tooth: h.tooth, order: h.order, turn: h.turn, flank: h.flank,
           shade: h.shade, travel: h.travel,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h, t: h.clock, reduced: st.reduced,
+          // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
+          // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The
+          // host settles it from the device ratio and its own resolution step, so it moves while a
+          // pass plays and each door is read on the grid standing at that door's own instant.
+          bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
         };
         if (dial === 0 || dial === 1) {
           var no = values(pose).doorWhyNo;
