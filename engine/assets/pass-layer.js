@@ -1895,7 +1895,12 @@
     return {
       token: rec.cmd.gen, t: seconds, progress: progress,
       handles: handles,
-      viewport: { w: cssW, h: cssH, dpr: dpr },
+      // The frame, and the grid it is drawn on. `w`/`h` are CSS pixels; `bufferW`/`bufferH` are the
+      // drawing buffer this host binds as the `resolution` source, which is the CSS frame times the
+      // device ratio times the live resolution step. An instrument whose own law depends on where a
+      // sample lands — the meshing one reads its doors there — has to read the buffer, because the
+      // step moves under it while a pass plays and no serialised plan can know it. Added 2026-08-16.
+      viewport: { w: cssW, h: cssH, dpr: dpr, bufferW: W, bufferH: H },
       reduced: !!rec.cmd.reduced,
       camera: cam.pose,
       // a pinned run is a bench run: it holds its pose instead of walking to the end door, so a

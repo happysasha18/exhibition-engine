@@ -180,7 +180,12 @@ FENCES = {
     # it measured in the reason. That is 1 019 gzipped bytes, and it is what makes the coverage law
     # this instrument's manifest publishes true by the instrument's own reading rather than by an
     # argument made upstream of it. The file reaches only a visit whose own score names it.
-    "pass-inst-gears.js": (6_100, "the meshing instrument, measured at 5 551 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve, the door reading that refuses a leaking pose, and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
+    # 2026-08-16 — moved from 6 100 B to 6 600 B, measured at 6 026 B. The door reading moved off the
+    # CSS frame onto the drawing buffer the shader samples on, and a door whose size leaks there is
+    # held to the nearest whole size rather than refused, with the composer's request kept beside the
+    # size applied. What a visit pays for the whole instrument is 6 026 B gzipped, and only a visit
+    # whose own score names it pays them.
+    "pass-inst-gears.js": (6_600, "the meshing instrument, measured at 6 026 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve, the door reading on the buffer it draws on that holds a leaking size whole, and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
     "pass-inst-matter.js": (3_550, "the matter instrument, measured at 3 221 B: one work loosens into a grain dragged along a seeded field and the other condenses out of it — its shader, its response curve and its manifest", strip_js_comments),
     "pass-inst-weave.js": (4_500, "the woven instrument, measured at 4 069 B: a band family warping across the frame — its shader, its seating of a work in the frame, its response curve, the turn of the weave and its manifest", strip_js_comments),
 }

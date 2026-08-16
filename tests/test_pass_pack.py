@@ -147,9 +147,14 @@ check("PASS-PACK every file declares its own version in one place, and the build
 # It now reads its own doors and refuses a pose whose door leaks, with the alpha it measured in the
 # reason; the reading is its own mask, carried across from its own shader, at the pixels around each
 # wheel's centre. tests/test_budget.py carries the same move on the gzipped bytes with its own note.
+# 2026-08-16 — the meshing instrument's fence moved from 18 300 B to 20 000 B, measured at 18 190 B.
+# Its door reading moved off the CSS frame onto the drawing buffer the shader samples on, and a door
+# whose size leaks there is now held to the nearest whole size instead of refused, with the
+# composer's own request kept beside the size applied. tests/test_budget.py carries the same move on
+# the gzipped bytes with its own note.
 FENCES = {
     "adrift": (20_700, 18_846),
-    "gears": (18_300, 16_592),
+    "gears": (20_000, 18_190),
     "matter": (10_500, 9_529),
     "weave": (13_900, 12_611),
 }

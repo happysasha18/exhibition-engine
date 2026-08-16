@@ -174,8 +174,10 @@
     };
     window.__offer = function (score, opts) {
       opts = opts || {};
+      // The resolution step is held still for every row but the one that measures what happens when
+      // it moves: that row hands fixedScale false and drives the host's own governor.
       window.__host.configure({
-        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: opts.fixedScale !== false,
         clockPin: opts.clock === undefined ? null : opts.clock,
         progressPin: opts.progress === undefined ? null : opts.progress,
       });

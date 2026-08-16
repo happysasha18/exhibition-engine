@@ -86,6 +86,48 @@ DOOR_SEED = 1.2698
 SIZE_LEAKING, SIZE_WHOLE = 1.473, 1.213
 DOOR_ALPHA = "0.153454"
 
+# ---- THE DOOR THE CSS FRAME CALLS WHOLE AND THE DRAWN BUFFER LEAKS -------------------------------
+# The composer's record again, read on the grid the shader samples on rather than on the frame around
+# it (tlvphotos-immersive/docs/immersive/evidence/2026-08-15-door-frame-sweep.md §3). A phone at a
+# device ratio of 2 draws a 390 x 844 CSS frame on a 780 x 1688 buffer at full quality, and there the
+# sizes the composer's table holds leak on 632 of its 3 992 door instants while the CSS frame reads
+# every one of them whole. The pose below is the worst of the 632: the exit door of pair
+# 18218859922151519__18324823441037344__ba, at the size the table holds, drawing 0.457750 of the
+# departing work into a door whose law asks for the arriving one at every point.
+BUF_POSE = {"centreX": 0.525, "centreY": 0.45, "bandPeriod": 0.3333, "ratio": 0.1667,
+            "seed": 6.0409}
+BUF_SIZE_FROM, BUF_SIZE_TO = 2.7491, 0.7
+BUF_ALPHA = "0.542250"          # what the mask draws there; the exit door's law asks for 1
+BUF_APPLIED = 0.37132439772770104   # the nearest whole size on that buffer, one rung under
+BUF_W, BUF_H = 780, 1688
+
+# ---- THE DOOR THAT LEAKS ONLY AFTER THE RESOLUTION STEP HAS MOVED --------------------------------
+# The case the ruling of 2026-08-16 turns on: the buffer is settled at run time and moves DURING a
+# pass, so the grid the exit door is drawn on need not be the grid the entry door was drawn on. Both
+# of this pose's doors are whole on the 390 x 844 buffer the pass starts at; on every one of the four
+# lower steps of the host's own ladder its exit door leaks, and on every one of them the hold lands
+# on the same size, one rung under the request. Which step the governor actually reaches depends on
+# how slow the frames are, so the row reads the buffer the host reports and states its numbers.
+LAD_POSE = {"centreX": 0.4309, "centreY": 0.425, "bandPeriod": 0.3333, "ratio": 0, "seed": 0.7203}
+LAD_SIZE_FROM, LAD_SIZE_TO = 8, 0.7
+LAD_APPLIED = 0.6365561103903445
+
+# ---- THE ONE DOOR OF THE COMPOSER'S RECORD THAT NO SIZE WITHIN REACH MAKES WHOLE ----------------
+# The refusal of U11 stands where the hold cannot reach, and this is the door the real transaction
+# road actually meets it on. Of the composer's own 3 992 door instants, exactly one leaks on the
+# 390 x 844 buffer with no whole size within two rungs of it, read at the seed the host binds — pair
+# 17994945094661841__18023729152236427__ba, whose exit door the table holds at 0.84.
+#
+# WHY THE ROAD'S OWN CASE IS NOT THE POSE THE RECORD NAMES. The host binds `uSeed` at 0 in every
+# pass it drives — the `seed` handle never reaches this instrument's shader, which U11 parked as a
+# unit of its own — and the door reading takes its seed from the same pose, so both the reading and
+# the drawing on the road stand at seed 0. At that seed a whole size stands one rung from the
+# record's own 1.473, so the road holds that door instead of refusing it. The refusal at the record's
+# own pose and its own seed is read on the pose surface below, where the seed is the record's.
+REFUSE_POSE = {"centreX": 0.475, "centreY": 0.425, "bandPeriod": 1 / 6.0, "ratio": 0.5,
+               "seed": 4.3773}
+REFUSE_FROM, REFUSE_TO = 0.7685, 0.84
+
 results = []
 
 
@@ -177,6 +219,19 @@ def score_at_the_measured_pose(size_from, size_to=4.5):
     return s
 
 
+def score_at(handles, size_from, size_to):
+    """The same score standing at any one of the composer's own poses: its centre, its tooth period,
+    its rung and its die held at the numbers the record names for that pair."""
+    s = json.loads(json.dumps(score_of(size_from, size_to)))
+    n = s["cues"][0]["nodes"]
+    n["centreXTravel"] = {"op": "static", "value": handles["centreX"]}
+    n["centreYTravel"] = {"op": "static", "value": handles["centreY"]}
+    n["bandHeld"] = {"op": "static", "value": handles["bandPeriod"]}
+    n["ratioStatic"] = {"op": "static", "value": handles["ratio"]}
+    n["seedStatic"] = {"op": "static", "value": handles["seed"]}
+    return s
+
+
 # ---------------------------------------------------------------- bake once
 build_site.SITE_CONFIG = dict(build_site.SITE_CONFIG)
 build_site.SITE_CONFIG["pass"] = {"visualLayer": "pass", "diagnostics": "on"}
@@ -239,11 +294,18 @@ check("PASS-GEARS the two handles the instrument scales back together publish th
       "multiplied by one factor, and a composer reads that here rather than measuring it downstream")
 
 check("PASS-GEARS the pair's size publishes that it is rounded to whole teeth",
-      'size: { min: 0.3, max: 8, def: 4.5, applied: { roundedToWholeTeeth: true, leastTeeth: 3 } }'
-      in REGION
+      "applied: { roundedToWholeTeeth: true, leastTeeth: 3," in REGION
       and "while (rr[0] * k < 3 || rr[1] * k < 3) k++;" in REGION,
       "both counts come from one whole multiplier, so the drawn size is the nearest one that leaves "
       "the rung's ratio exact and each wheel at three teeth or more")
+
+check("PASS-GEARS the pair's size publishes that a leaking door moves it, and by how far",
+      'heldWholeAtADoor: { rungs: DOOR_HOLD, readOn: "the drawing buffer",' in REGION
+      and 'reads: "sizeRequest" }' in REGION
+      and "var DOOR_HOLD = 2;" in REGION,
+      "the size is the second handle here that takes a number other than the one it is handed: at a "
+      "door whose size leaks on the buffer being drawn it moves to the nearest whole one, and a "
+      "composer reads the reach and where the request is kept here rather than measuring it")
 
 check("PASS-GEARS the manifest declares the drawing buffer unpreserved",
       "preserveDrawingBuffer: false" in REGION,
@@ -284,6 +346,9 @@ BROWSER_ROWS = [
     "PASS-GEARS the pair's centre reaches the picture and moves it",
     "PASS-GEARS both doors stand whole at every size the travel passes through",
     "PASS-GEARS a door the instrument cannot keep whole is refused, with the alpha it measured",
+    "PASS-GEARS the door is read on the buffer the shader draws on, not the CSS frame around it",
+    "PASS-GEARS the buffer the phone actually draws: the leaking door is held and the pass plays",
+    "PASS-GEARS the buffer moves between a pass's two doors and the exit door still holds",
 ]
 
 missing = [str(p) for p in (PHOTOS + [LAB / "effects" / "gears.js", CUTLINES]) if not p.exists()]
@@ -846,13 +911,13 @@ else:
                                                               centreY=B_CENTRE[1])))),
                 ]
 
-                def offered(size_from):
+                def offered_score(score, progress=0):
                     br.evaluate("window.__cancel('door guard row'); 0")
                     br.sleep(0.5)
                     # the host's log carries every transaction of this run, so a refusal is read
                     # against THIS offer's own generation and never a neighbour's
-                    gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
-                             % json.dumps(score_at_the_measured_pose(size_from)))["gen"]
+                    gen = js(br, "return window.__offer(%s, {clock: 0, progress: %s});"
+                             % (json.dumps(score), json.dumps(progress)))["gen"]
                     br.sleep(0.9)
                     r = js(br, "var r = window.__report(); return {state: r.state, drew: r.drew, "
                                "refused: r.events.filter(function(e){ return e.gen === %d && e.why "
@@ -862,26 +927,200 @@ else:
                     br.sleep(0.5)
                     return r
 
-                leaked = offered(SIZE_LEAKING)
+                def offered(size_from):
+                    return offered_score(score_at_the_measured_pose(size_from), 0)
+
+                leaked = offered_score(score_at(REFUSE_POSE, REFUSE_FROM, REFUSE_TO), 1)
                 played = offered(SIZE_WHOLE)
                 check(BROWSER_ROWS[25],
                       bool(said) and DOOR_ALPHA in said and str(SIZE_LEAKING) in said
                       and "entry door" in said
+                      and "no whole size stands within 2 rungs" in said
                       and all(w is None for _, w in silent)
                       and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
-                      and leaked["refused"][0].startswith("recovered: the entry door leaks")
-                      and ("at a size of %s" % SIZE_LEAKING) in leaked["refused"][0]
+                      and leaked["refused"][0].startswith("recovered: the exit door leaks")
+                      and ("at a size of %s" % REFUSE_TO) in leaked["refused"][0]
                       and "an alpha of 0." in leaked["refused"][0]
+                      and "no whole size stands within 2 rungs" in leaked["refused"][0]
                       and not played["refused"] and played["state"] == "running"
                       and played["drew"] == 1,
                       "the pose the record names, at the size it asked for → «%s»; silent at %s. On "
-                      "the real road the leaking ramp is refused with «%s», and the host lands the "
-                      "transaction on it (state %s), while the whole size draws (%d cue, state %s)"
+                      "the real road the one door of the record that no size within reach makes "
+                      "whole is refused with «%s», and the host lands the transaction on it "
+                      "(state %s), while the whole size draws (%d cue, state %s)"
                       % (said,
                          "; ".join("%s → %s" % (n, "nothing said" if w is None else "SAID «%s»" % w)
                                    for n, w in silent),
                          (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
                          played["drew"], played["state"]))
+
+                # ---- THE GRID THE DOOR IS READ ON --------------------------------------------
+                # The rows above read the door on the CSS frame the host hands the instrument. The
+                # shader samples on the DRAWING BUFFER — the CSS frame times the device ratio times
+                # the host's own resolution step — and a leak is one sample landing on the singular
+                # point, so the buffer is the grid that decides it. This row states one door the CSS
+                # frame calls whole and the drawn buffer does not, and asks three things of the
+                # instrument: that it sees the leak the buffer has, that it moves to the nearest
+                # size whose door is whole THERE, and that the composer's own request stays on the
+                # record beside the size applied.
+                def pose_of(handles, size, dial, buf=None, seed=None):
+                    # `seed` is handed in where the row mirrors the real transaction road, which
+                    # binds 0 whatever the score says (U11's parked note), and left at the score's
+                    # own number where the row reads the composer's record on its own terms.
+                    p = {"dial": dial, "size": size,
+                         "centreX": handles["centreX"], "centreY": handles["centreY"],
+                         "bandPeriod": handles["bandPeriod"], "ratio": handles["ratio"],
+                         "seed": handles["seed"] if seed is None else seed,
+                         "tooth": 0.4, "order": 0.4, "turn": 0.55, "flank": 0.35,
+                         "shade": 1, "travel": 1,
+                         "cssWidth": VW, "cssHeight": VH, "t": 0, "reduced": False}
+                    if buf:
+                        p["bufWidth"], p["bufHeight"] = int(buf[0]), int(buf[1])
+                    return p
+
+                def values_of(p):
+                    return js(br, "return window.__exPass.bench.values('gears', %s);"
+                              % json.dumps(p))
+
+                def per_door_ms(p, n=2000):
+                    return js(br, "var p = %s, b = window.__exPass.bench;"
+                                  "for (var i = 0; i < 400; i++) b.values('gears', p);"
+                                  "var t0 = performance.now();"
+                                  "for (var j = 0; j < %d; j++) b.values('gears', p);"
+                                  "return {ms: (performance.now() - t0) / %d};"
+                                  % (json.dumps(p), n, n))["ms"]
+
+                on_css = values_of(pose_of(BUF_POSE, BUF_SIZE_TO, 1))
+                on_buf = values_of(pose_of(BUF_POSE, BUF_SIZE_TO, 1, (BUF_W, BUF_H)))
+                applied = on_buf.get("size")
+                on_applied = values_of(pose_of(BUF_POSE, applied, 1, (BUF_W, BUF_H)))
+                held_ms = per_door_ms(pose_of(BUF_POSE, BUF_SIZE_TO, 1, (BUF_W, BUF_H)))
+                whole_ms = per_door_ms(pose_of(BUF_POSE, applied, 1, (BUF_W, BUF_H)))
+                away_ms = per_door_ms(pose_of(BUF_POSE, BUF_SIZE_TO, 0.5, (BUF_W, BUF_H)))
+                check(BROWSER_ROWS[26],
+                      on_css["doorWhyNo"] is None and on_css["doorHeld"] is None
+                      and on_css["sizeRungs"] == 0 and on_css["size"] == BUF_SIZE_TO
+                      and on_buf["doorWhyNo"] is None
+                      and BUF_ALPHA in (on_buf["doorHeld"] or "")
+                      and ("%d x %d buffer" % (BUF_W, BUF_H)) in (on_buf["doorHeld"] or "")
+                      and on_buf["sizeRequest"] == BUF_SIZE_TO
+                      and on_buf["sizeRungs"] == -1 and applied != BUF_SIZE_TO
+                      and on_applied["doorHeld"] is None and on_applied["doorWhyNo"] is None,
+                      "on the %d x %d CSS frame the size the table holds says «%s»; on the "
+                      "%d x %d buffer that frame is drawn on it says «%s», moves %d rung to %.6f "
+                      "and keeps the request at %s. The applied size read again on that buffer: "
+                      "«%s». One door instant costs %.4f ms held, %.4f ms whole and %.4f ms away "
+                      "from a door, on this machine."
+                      % (VW, VH, on_css["doorHeld"] or "nothing", BUF_W, BUF_H,
+                         on_buf["doorHeld"] or "nothing", on_buf["sizeRungs"], applied or -1,
+                         on_buf["sizeRequest"], on_applied["doorHeld"] or "nothing",
+                         held_ms, whole_ms, away_ms))
+
+                # ---- THE BUFFER A PHONE ACTUALLY DRAWS, ON THE REAL ROAD ---------------------
+                # The frame is taken to 780 x 1688, which is the buffer a device ratio of 2 draws a
+                # 390 x 844 CSS frame on at full quality — the grid §3 of the sweep measured. The
+                # pass whose exit door leaks worst there is offered to the host, and the door it
+                # lands on has to be one whole work: nothing refused, one cue drawn, and the picture
+                # standing against the arriving work's own file inside the project's seam.
+                def road(gen):
+                    return js(br, "var r = window.__report(); return {state: r.state, "
+                                  "drew: r.drew, buffer: r.census.buffer, scale: r.census.scale, "
+                                  "refused: r.events.filter(function(e){ return e.gen === %d "
+                                  "&& e.why && String(e.why).indexOf('door leaks') >= 0; })"
+                                  ".map(function(e){ return e.name + ': ' + e.why; })};" % gen)
+
+                br.set_viewport(BUF_W, BUF_H)
+                br.sleep(0.8)
+                buf_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 1});"
+                             % json.dumps(score_at(BUF_POSE, BUF_SIZE_FROM, BUF_SIZE_TO)))["gen"]
+                br.sleep(1.1)
+                at_buf = road(buf_gen)
+                shot = png(br, SHOTS / "buffer-exit-door.png")
+                bw = int(br.evaluate("String(document.querySelector('canvas').width)"))
+                bh = int(br.evaluate("String(document.querySelector('canvas').height)"))
+                glass_big = work_in_the_frame(BENCH / "photos" / "glassgrid.jpg", bw, bh, ZOOM)
+                b_mean, b_max = apart(shot, glass_big)
+                # what the instrument's own record says at that door, read at the seed the host
+                # binds there, which is the road's own reading
+                on_road = values_of(pose_of(BUF_POSE, BUF_SIZE_TO, 1, (BUF_W, BUF_H), seed=0))
+                br.evaluate("window.__cancel('buffer row'); 0")
+                br.sleep(0.5)
+                br.set_viewport(VW, VH)
+                br.sleep(0.8)
+                check(BROWSER_ROWS[27],
+                      at_buf["buffer"] == "%dx%d" % (BUF_W, BUF_H)
+                      and at_buf["state"] == "running" and at_buf["drew"] == 1
+                      and not at_buf["refused"]
+                      and (bw, bh) == (BUF_W, BUF_H) and b_mean <= SEAM
+                      and on_road["doorWhyNo"] is None
+                      and ("%d x %d buffer" % (BUF_W, BUF_H)) in (on_road["doorHeld"] or "")
+                      and on_road["sizeRequest"] == BUF_SIZE_TO
+                      and on_road["sizeRungs"] == -1
+                      and abs(on_road["size"] - BUF_APPLIED) < 1e-9,
+                      "the host drew on %s at scale %s; the exit door of the pose the sweep names "
+                      "as the worst of that buffer's 632 was neither refused nor drawn as two "
+                      "works: %d cue drawn, refused %s, and the frame stands against glassgrid.jpg "
+                      "at a mean of %.4f of 255 (threshold %s), worst channel %d. At the seed the "
+                      "host binds there the record reads «%s» and moves %d rung to %.6f, keeping "
+                      "the request at %s"
+                      % (at_buf["buffer"], at_buf["scale"], at_buf["drew"],
+                         at_buf["refused"] or "nothing", b_mean, SEAM, b_max,
+                         on_road["doorHeld"] or "nothing", on_road["sizeRungs"],
+                         on_road["size"], on_road["sizeRequest"]))
+
+                # ---- THE BUFFER MOVES BETWEEN THE TWO DOORS ----------------------------------
+                # The case the ruling turns on, on the real transaction road: the host's own
+                # resolution governor is let run, the pass is held at its entry door, the governor
+                # is driven down its ladder, and the pass is then walked to its exit door — which is
+                # therefore drawn on a grid that did not exist when the entry door was drawn, and
+                # which no serialised table could have been solved for. Every reading here is taken
+                # at the seed the host binds, so what the row reads is what the road drew.
+                br.evaluate("window.__cancel('ladder row'); 0")
+                br.sleep(0.5)
+                lad_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                             % json.dumps(score_at(LAD_POSE, LAD_SIZE_FROM, LAD_SIZE_TO)))["gen"]
+                br.sleep(0.9)
+                at_entry = road(lad_gen)
+                entry_buf = at_entry["buffer"].split("x")
+                exit_on_entry_buf = values_of(pose_of(LAD_POSE, LAD_SIZE_TO, 1, entry_buf, seed=0))
+                # the governor is let go for exactly as long as it takes to walk down its ladder on
+                # the frame times a slow device would hand it, then held again so the exit door is
+                # read on the grid it is actually drawn on
+                js(br, "window.__host.configure({fixedScale: false});"
+                       "return {stood: window.__exPass.bench.ladder(40, 60)};")
+                br.evaluate("window.__host.configure({fixedScale: true, progressPin: 1}); 0")
+                br.sleep(0.9)
+                at_exit = road(lad_gen)
+                exit_buf = at_exit["buffer"].split("x")
+                exit_on_exit_buf = values_of(pose_of(LAD_POSE, LAD_SIZE_TO, 1, exit_buf, seed=0))
+                br.evaluate("window.__cancel('ladder row'); 0")
+                br.sleep(0.5)
+                check(BROWSER_ROWS[28],
+                      at_entry["buffer"] == "%dx%d" % (VW, VH)
+                      and at_exit["buffer"] != at_entry["buffer"]
+                      and at_entry["state"] == "running" and at_exit["state"] == "running"
+                      and at_exit["drew"] == 1
+                      and not at_entry["refused"] and not at_exit["refused"]
+                      and exit_on_entry_buf["doorHeld"] is None
+                      and exit_on_entry_buf["doorWhyNo"] is None
+                      and exit_on_exit_buf["doorWhyNo"] is None
+                      and (" x ".join(exit_buf) + " buffer") in (exit_on_exit_buf["doorHeld"] or "")
+                      and exit_on_exit_buf["sizeRequest"] == LAD_SIZE_TO
+                      and exit_on_exit_buf["sizeRungs"] == -1
+                      and abs(exit_on_exit_buf["size"] - LAD_APPLIED) < 1e-9,
+                      "the entry door drew on %s at scale %s (state %s, %s cue) and the exit door "
+                      "on %s at scale %s (state %s, %s cue), "
+                      "one pass and two grids. The exit size the composer serialised is whole on "
+                      "the first (%s) and on the second says «%s», where it moves %d rung to %.6f "
+                      "and keeps the request at %s. Refused on the road: %s"
+                      % (at_entry["buffer"], at_entry["scale"], at_entry["state"],
+                         at_entry["drew"], at_exit["buffer"],
+                         at_exit["scale"], at_exit["state"], at_exit["drew"],
+                         exit_on_entry_buf["doorHeld"] or "nothing said",
+                         exit_on_exit_buf["doorHeld"] or "nothing",
+                         exit_on_exit_buf["sizeRungs"], exit_on_exit_buf.get("size") or -1,
+                         exit_on_exit_buf["sizeRequest"],
+                         (at_entry["refused"] + at_exit["refused"]) or "nothing"))
 
     shutil.rmtree(BENCH, ignore_errors=True)
     print("\nthe captures this run judged are kept at %s" % SHOTS)
