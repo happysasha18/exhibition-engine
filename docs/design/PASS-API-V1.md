@@ -599,8 +599,9 @@ row MAY carry a FAMILY-BOUNDS record, and the fill rolls the handles that record
 
 **Where the bounds live: on the ROW, beside its measured numbers.** They belong to the pair, because
 what a handle may do is what that pair's own measurement supports, and no two pairs support the same
-spans. The template holds no bounds, and a pack's addresses and digests do not move for them: a row
-grew, and a row is the one place per-pair numbers have always lived (§4.4c).
+spans. The template holds no bounds; no new file and no addressing scheme arrive for them, and the
+pack's own digest moves with any rebuild, as it always has. A row grew, and a row is the one
+place per-pair numbers have always lived (§4.4c).
 
 **The record.**
 
