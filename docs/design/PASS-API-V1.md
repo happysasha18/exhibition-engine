@@ -590,6 +590,76 @@ number. `scoreBytes` stands at **12 288 B as an observed baseline with its evide
 pack of 2026-08-15 carries 7708 filled scores whose median weighs 7029 B and whose longest weighs
 10 851 B, and the 8192 B that stood before refused 1783 of them — 23.1 percent — unread.
 
+### 4.4f Family bounds, and the roll at fill time
+
+A pair flipped twice inside one visit plays one score, byte for byte, because a row carries measured
+numbers and the fill writes them exactly. The charter asks for the opposite: the same passage family
+each time, with small shifts pass by pass — variation, never repetition and never total novelty. So a
+row MAY carry a FAMILY-BOUNDS record, and the fill rolls the handles that record names.
+
+**Where the bounds live: on the ROW, beside its measured numbers.** They belong to the pair, because
+what a handle may do is what that pair's own measurement supports, and no two pairs support the same
+spans. The template holds no bounds, and a pack's addresses and digests do not move for them: a row
+grew, and a row is the one place per-pair numbers have always lived (§4.4c).
+
+**The record.**
+
+```
+{ spans: { <slot>: [low, high], ... }, seed: true|false }
+```
+
+- `spans` names, per SLOT the row already fills, the closed span the fill may roll that slot's value
+  inside. A slot is exactly one handle a cue drives — the inline road names it by the slot's own name
+  (§4.4c), the pack road by the slot's ordinal in its shape's `slots` list (§4.4d), written as a
+  string key. A slot the record does not name fills exactly as it fills today.
+- `seed: true` re-rolls the score's own `seed` field each pass. A seed has no meaningful span — it is
+  re-rolled or it is not — so it is a yes-or-no rather than a pair of numbers. A cue's own seed
+  HANDLE, where one is a slot, is bounded like any other handle, and its whole range as its span is
+  what re-rolling means for it.
+- Both fields are optional and the record is refused whole on any other field, exactly as a score is.
+
+**The order of writing is stated, because two of these can reach one field.** The row's measured
+numbers are written first, then the rolled values at the slots the record bounds, then the score's own
+`seed` when `seed: true` asks for it. A slot may name a score-level field of its own (§4.4c), so a
+slot named `seed` writes `score.seed` too — and where both roads reach that field, the re-roll is last
+and stands. The conformance row reads exactly that case, so the precedence is a fact rather than an
+accident of the code.
+
+**The roll is per PASS, and its seed is stated.** The fill derives one seed for the crossing being
+declared from three things — the visit's own seed, the pass index (the generation `declare` mints),
+and the pair's key — and each bounded slot's value is drawn from that seed and the slot's own name.
+So the same pair flipped twice in one visit fills two kin scores whose bounded handles differ, and
+the same crossing met again in a later visit differs again, while everything the record does not
+bound stays identical: the same family, the same cues, the same instruments, the same stack.
+
+**The visit's seed is read once and is pinnable.** The register carries `familySeed`: zero, its
+default, means this visit rolls its own seed, which is the public bar — every public run exists once.
+Any other number pins it, and a run at a pinned seed reproduces its predecessor to the pixel, which
+is the judging mode. `familySeed` resolves on the session, site and default rungs alone; a per-pair
+score has no business setting the mode a whole visit is judged in. The seeded road of §4.4b keeps its
+full force: a score whose row carries no bounds is unaffected, and a pinned visit makes a bounded one
+just as reproducible.
+
+**A bad bounds record refuses the ROW, whole.** A span that is no low-to-high pair of finite numbers,
+a slot the shape or template does not carry, an unknown field, and a rolled value that lands outside
+its own span all refuse the whole row with the reason on the diagnostic surface, and the crossing
+takes the walk's own glide. Half a rolled score is the one outcome no road here produces — the same
+law §4.4c states for a row and §4.4 for a score.
+
+**What the diagnostic surface carries**: the visit's seed and whether it was pinned, and per rolled
+crossing the pair, the pass index, the seed the roll ran on, the spans it read and the value it
+applied to each bounded slot. The applied values are readable beside the spans they were drawn from,
+so a picture that looks wrong can be read back to the number that made it.
+
+**The conformance rows** stand in `tests/test_pass_reader.py` for the pack road and
+`tests/test_pass_weave.py` for the inline one: a bounded pair flipped twice in one visit fills two
+scores that differ in the bounded handles alone, each inside its span; a pinned visit fills the same
+crossing byte-identically twice; a row with no bounds fills byte-identically to the fill that stood
+before this section; a malformed span refuses the row and names it. Two carry a red-on-bug proof that
+serves a crippled copy of the walk's own bundle — one with the roll removed, which reproduces the
+defect this section repairs, and one whose roll answers outside the span it was given, which the
+refusal must catch.
+
 ### 4.5 The private fence
 
 `quiz.json` and `story_notes.json` in the site's content root are keyed by the same work-id strings
@@ -1375,6 +1445,14 @@ than at whichever frame landed past it — so a slower device cannot read as a b
 `tests/test_budget.py` in this worktree: the walk's own bundle is 67 985 B gzipped against a
 68 000 B fence. **15 B remain.** The machinery described here is larger than that by orders, so the
 whole transaction cannot live in the bundle.
+
+**Re-measured 2026-08-16 on `pass-api-v1-familybreath`**, again by running `tests/test_budget.py` in
+the worktree: the bundle is 69 614 B gzipped against a fence moved to 70 000 B, so **386 B remain**.
+The fence moved because the family roll of §4.4f landed in the bundle — 980 B gzipped — and the
+delivery question it forces was answered rather than waved through: the roll is called from inside
+`declare` on BOTH fill roads, and a site scoring by §4.4c's template and table fetches no reader file
+at all, so the roll cannot travel in `pass-reader.js` and cannot exist twice. The reader is handed it.
+The 68 000 B reading below is superseded and kept for its reasoning.
 
 Fifteen bytes is a live constraint rather than a rounding note. Any bundle-side line added today
 breaks that fence, and a reader who adds one should expect the red. The section's earlier figure —

@@ -78,6 +78,10 @@
   function make(env) {
     var packs = env && env.packs;
     var note = (env && typeof env.note === "function") ? env.note : function () {};
+    // The family roll of §4.4f, handed over by the walk's own bundle. It is the ONE roll both fill
+    // roads run on: this file never mints a seed of its own, so a pack-served crossing and an
+    // inline one breathe by the same rule, and a pinned visit pins both.
+    var breath = (env && typeof env.breath === "function") ? env.breath : null;
     if (!packs || typeof packs !== "object") return null;
     var names = Object.keys(packs);
     if (!names.length) return null;
@@ -221,6 +225,16 @@
       if (Object.prototype.toString.call(row) !== "[object Array]" || !row.length) {
         return no(pk, key, "its row is no list of values");
       }
+      // THE ROW'S FAMILY BOUNDS, WHEN IT CARRIES THEM (§4.4f). A row is a list of numbers, so the
+      // bounds travel as its LAST entry and are recognised by being a record rather than a number:
+      // the pack keeps one row shape, and a row that carries none is the row it has always been.
+      // The values are read here and applied AFTER every measured number is in place, below.
+      var fam = null, count = row.length - 1;
+      var tail = row[row.length - 1];
+      if (tail && typeof tail === "object" && Object.prototype.toString.call(tail) !== "[object Array]") {
+        fam = tail;
+        count -= 1;
+      }
       var shape = pk.head.shapes[row[0]];
       if (shape === undefined) {
         return no(pk, key, "its row names shape " + row[0] + ", and the pack's head names "
@@ -230,8 +244,8 @@
       if (!tpl || !tpl.score || Object.prototype.toString.call(tpl.slots) !== "[object Array]") {
         return no(pk, key, "its shape «" + shape + "» names no template in this pack");
       }
-      if (tpl.slots.length !== row.length - 1) {
-        return no(pk, key, "its row carries " + (row.length - 1) + " values and the shape «" + shape
+      if (tpl.slots.length !== count) {
+        return no(pk, key, "its row carries " + count + " values and the shape «" + shape
                          + "» names " + tpl.slots.length + " slots");
       }
       var score = null;
@@ -242,6 +256,31 @@
           return no(pk, key, "slot " + i + " of shape «" + shape + "» reaches nothing in its own "
                            + "template");
         }
+      }
+      // THE ROLL IS THE WALK'S OWN, NEVER THIS FILE'S. The bundle hands it over in this reader's
+      // environment record, so the pack road and the inline road roll by one rule and one seed
+      // ladder (§4.4f). A row that carries bounds on a walk that hands over no roll is refused
+      // whole rather than filled flat: a score that quietly stopped breathing is the very defect
+      // this section repairs, and it must never arrive in silence.
+      if (fam) {
+        if (typeof breath !== "function") {
+          return no(pk, key, "its row carries family bounds and this walk hands the reader no roll");
+        }
+        var got = breath(key, fam);
+        if (!got || got.why) return no(pk, key, got ? got.why : "the roll answered nothing");
+        var at, ks = Object.keys(got.v);
+        for (i = 0; i < ks.length; i++) {
+          at = +ks[i];
+          if (!(at >= 0) || at !== Math.floor(at) || at >= tpl.slots.length) {
+            return no(pk, key, "its family bounds name slot «" + ks[i] + "», and the shape «"
+                             + shape + "» names " + tpl.slots.length);
+          }
+          if (!setAt(score, tpl.slots[at], got.v[ks[i]])) {
+            return no(pk, key, "the bounded slot " + at + " of shape «" + shape + "» reaches "
+                             + "nothing in its own template");
+          }
+        }
+        if (got.seed !== null && got.seed !== undefined) score.seed = got.seed;
       }
       return score;
     }
@@ -331,7 +370,7 @@
     // because a shard was missing is readable here without reading anything else.
     function report() {
       return {
-        version: READER_VERSION, road: road,
+        version: READER_VERSION, road: road, breathes: !!breath,
         packs: names.map(function (n) {
           var pk = open[n];
           return { name: n, base: pk.base, state: pk.state, why: pk.why, fills: pk.fills,

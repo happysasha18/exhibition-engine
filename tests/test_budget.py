@@ -86,7 +86,25 @@ FENCES = {
     # puts to it (passScoreFor answers inside declare, and a fetch begun there could never arrive in
     # time), and the landing that warms the next crossing's shard. The bundle keeps the contract and
     # the picture keeps travelling, which is the same division pass-layer.js stands on.
-    "exhibition.js": (69_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the delivery pack's reader (pass-reader.js) since 2026-08-15 travel separately", strip_js_comments),
+    # 2026-08-16 — MOVED FROM 69 000 B TO 70 000 B, MEASURED AT 69 614 B, with 386 B under it. What
+    # arrived is the FAMILY ROLL of §4.4f: a pack row or a table row may name, per slot it already
+    # fills, the span the fill may roll that slot inside, and the fill rolls it once per pass from a
+    # seed made of the visit, the pass index and the pair. Before it, a pair flipped twice inside one
+    # visit played one score byte for byte — the site's own U9 measurement read exactly that on four
+    # flips of one pair — and the charter asks for the same family with small shifts each pass.
+    # In stripped source bytes the whole addition is 3 449 B, 980 B gzipped: the `familySeed` setting
+    # and its rungs, the visit's own seed read once, the two integer mixes the roll runs on, the
+    # bounds check with a reason per refusal, the application on the inline road, and the roll's own
+    # rows on the diagnostic surface.
+    # THE DELIVERY QUESTION THIS FENCE EXISTS TO FORCE, ANSWERED. The roll cannot travel in
+    # pass-reader.js, the way the pack's fetch and digest chain do. It is called from INSIDE the
+    # declare that mints a pass — passFillScore fills a table row there, and no reader file is
+    # fetched at all on a site that scores by §4.4c's template and table, so a roll living in the
+    # reader would leave the inline road filling flat. Nor can it live in both: two copies would be
+    # two ideas of what a family is, and the contract has one. So the reader is HANDED this roll in
+    # its environment record (the `breath` entry), the bundle keeps the one implementation, and what
+    # crosses the wire for a pack-served walk is the call, not a second copy.
+    "exhibition.js": (70_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the delivery pack's reader (pass-reader.js) since 2026-08-15 travel separately, and the family roll of §4.4f stays here because both fill roads call it inside declare", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
     # 2026-08-14, morning: the stub became a host with a frame half and one real instrument (the
     # woven one), measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind.
@@ -172,7 +190,13 @@ FENCES = {
     # manifest weighs every other file in the pack), the per-shape template pick and the fill. It
     # reaches only a visit whose settings record actually names a pack and whose layer is on, and it
     # is asked for once, at the first landing — a visit that never draws never asks for it.
-    "pass-reader.js": (3_500, "the delivery pack's reader, fetched only by a walk whose settings record names a pack: the digest chain over a pack's own files, the per-shape template pick and the fill, with the shard for a work's outgoing crossings warmed at the landing", strip_js_comments),
+    # 2026-08-16 — MOVED FROM 3 500 B TO 4 000 B, MEASURED AT 3 522 B, with 478 B under it. The
+    # reader now reads a row's family bounds (§4.4f): a row may carry them as its last entry, the
+    # reader recognises that entry by being a record rather than a number, and it writes the rolled
+    # values at the same slot paths it fills the measured ones at. It mints NO seed of its own — the
+    # roll is handed to it by the walk's bundle — so what landed here is 1 318 B of stripped source,
+    # 321 B gzipped, and it is the reading of the row, not the rolling.
+    "pass-reader.js": (4_000, "the delivery pack's reader, fetched only by a walk whose settings record names a pack: the digest chain over a pack's own files, the per-shape template pick and the fill, with the shard for a work's outgoing crossings warmed at the landing", strip_js_comments),
     "pass-inst-adrift.js": (6_000, "the adrift instrument, measured at 5 444 B: a dense thing leaves across an empty field and the field itself changes hands along a measured front — its shader, its two silhouettes, its contact shadow, its response curves and its manifest", strip_js_comments),
     # 2026-08-15 — MOVED FROM 5 000 B TO 6 100 B, MEASURED AT 5 551 B. The meshing instrument now
     # reads its own doors: at either door it evaluates its own mask around each wheel's centre — the

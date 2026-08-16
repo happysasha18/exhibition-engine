@@ -382,6 +382,10 @@ TABLE_ROWS = [
     "PASS-TABLE a row whose readiness stands under the table's floor is refused, and says so",
     "PASS-TABLE a pair with a row reaches the walk with a score, and the instrument takes it",
     "PASS-TABLE a pair with no row hands back nothing, and the walk's own glide runs",
+    # §4.4f — the family roll on the INLINE road, so the two fill roads behave alike
+    "PASS-TABLE a row carrying family bounds fills the same way twice inside one pass, and "
+    "differently inside its span on the next",
+    "PASS-TABLE a family bound naming a slot the template lacks refuses the row, and names it",
 ]
 
 TEMPLATE = LAB / "data" / "scores" / "template-weave.json"
@@ -1030,10 +1034,18 @@ else:
                 # under the key this walk actually steps over. The two planted rows are the bad
                 # ones: one names a slot the template has never heard of, one stands under the
                 # table's own readiness floor.
+                # The last two rows carry FAMILY BOUNDS (§4.4f): one sound — the cue's own seed may
+                # roll inside a span around its measured value, and the score's seed re-rolls with
+                # it — and one that names a slot the template has never heard of.
+                FAM_SPAN = [round(lab_row["seed"] - 0.4, 4), round(lab_row["seed"] + 0.4, 4)]
                 rows = {LAB_KEY: lab_row, PAIR_KEY: dict(lab_row),
                         "stray__row": dict(lab_row, tilt=0.5),
                         "unready__row": dict(lab_row,
-                                             readiness=round(table["readinessFloor"] - 0.01, 4))}
+                                             readiness=round(table["readinessFloor"] - 0.01, 4)),
+                        "family__row": dict(lab_row,
+                                            family={"spans": {"seed": FAM_SPAN}, "seed": True}),
+                        "famstray__row": dict(lab_row,
+                                              family={"spans": {"tilt": [0.0, 1.0]}})}
                 cfg = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
                 cfg["pass"].pop("scores", None)
                 cfg["pass"]["scoreTemplates"] = {template["instrument"]: template}
@@ -1152,6 +1164,61 @@ else:
                     check(TABLE_ROWS[5],
                           r["score"] is None and r["glide"] is True and r["curtains"] == [],
                           f"score={r['score']} glide={r['glide']} curtains={r['curtains']}")
+
+                    # ---- §4.4f, the family roll on the inline road --------------------------
+                    # THE PASS IS THE UNIT, NOT THE CALL. Two fills of one row inside ONE declared
+                    # pass are the same score — a crossing has one score, however often it is
+                    # asked for — and the next declared pass rolls again, inside the span the row
+                    # named and nowhere else. The declare in the middle is what mints that pass.
+                    r = js(br, """
+                      var A = document.querySelector('.exh-frame[data-id="%s"]');
+                      var B = document.querySelector('.exh-frame[data-id="%s"]');
+                      var one = window.__exPass.fill('family__row');
+                      var again = window.__exPass.fill('family__row');
+                      window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
+                                                       kind:'step', cause:'family-next',
+                                                       velocity:0});
+                      var next = window.__exPass.fill('family__row');
+                      var fam = window.__exPass.report().family;
+                      return {one: one, again: again, next: next, family: fam};
+                    """ % (WORKS[0], WORKS[1]))
+                    one, again, nxt = r["one"], r["again"], r["next"]
+
+                    def kin_seed(x, y):
+                        a, b = json.loads(json.dumps(x)), json.loads(json.dumps(y))
+                        for d in (a, b):
+                            d["seed"] = None
+                            d["cues"][0]["nodes"]["seedStatic"]["value"] = None
+                        return a == b
+                    lo, hi = FAM_SPAN
+                    got1 = one and one["cues"][0]["nodes"]["seedStatic"]["value"]
+                    got2 = nxt and nxt["cues"][0]["nodes"]["seedStatic"]["value"]
+                    check(TABLE_ROWS[6],
+                          bool(one and again and nxt) and one == again and got1 != got2
+                          and lo <= got1 <= hi and lo <= got2 <= hi
+                          and one["seed"] == again["seed"] and one["seed"] != nxt["seed"]
+                          and one["seed"] != got1
+                          and kin_seed(one, nxt)
+                          and r["family"]["visit"] and len(r["family"]["rolls"]) >= 3,
+                          "inside one pass the row filled the bounded seed node at %s twice; the "
+                          "next declared pass filled it at %s — both inside %s…%s, and every "
+                          "other field identical. The row also asks for the score's own seed to "
+                          "re-roll, and it stands at %s against %s across the two passes: the "
+                          "re-roll is applied after the slots, so it wins over the score-level "
+                          "field this slot also writes. The roll's record reads %s"
+                          % (got1, got2, lo, hi, one and one["seed"], nxt and nxt["seed"],
+                             json.dumps(r["family"]["rolls"][-1:])[:300]))
+
+                    r = js(br, """
+                      var s = window.__exPass.fill('famstray__row');
+                      var said = window.__exPass.report().refusals.filter(function(x){
+                        return x.what === 'row' && x.name === 'famstray__row'; });
+                      return {score: s, why: said.length ? said[said.length - 1].why : null};
+                    """)
+                    check(TABLE_ROWS[7],
+                          r["score"] is None and "tilt" in (r["why"] or "")
+                          and "slot the template lacks" in (r["why"] or ""),
+                          f"filled={'a whole score' if r['score'] else 'nothing'} why={r['why']!r}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

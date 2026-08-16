@@ -242,12 +242,21 @@ ROWS = [
     "PASS-READER a pack-served score draws the same frame as the same score served inline",
     "PASS-READER a visitor asking for stillness, or to save data, is sent neither the reader nor a "
     "shard",
+    # §4.4f — the family roll, on the pack road
+    "PASS-READER a bounded pair flipped twice in one visit fills two kin scores differing in the "
+    "bounded handles alone, each inside its span",
+    "PASS-READER a pinned visit fills the same bounded crossing byte-identically",
+    "PASS-READER a row carrying no family bounds fills exactly as it filled before §4.4f",
+    "PASS-READER a family span that is no low-to-high pair of numbers refuses the row and names it",
+    "PASS-READER a rolled value landing outside its own span refuses the row and names the span",
 ]
 RED = [
     "PASS-READER red-on-bug · the digest comparison removed: the tampered shard is taken",
     "PASS-READER red-on-bug · the refusal note removed: the missing shard glides in silence",
     "PASS-READER red-on-bug · the fence raised: the over-weight score is taken",
     "PASS-READER red-on-bug · the shape index ignored: the pack road stops matching the inline one",
+    "PASS-READER red-on-bug · the roll disabled: the pair flipped twice plays one score twice",
+    "PASS-READER red-on-bug · the span check removed: the out-of-span value is filled",
 ]
 
 
@@ -640,6 +649,168 @@ else:
                           "the frame moves — twenty-five shapes ship, and one template per "
                           "instrument is what this proves the pack cannot use"
                           % (got["score"] or {}).get("duration"))
+
+                # ---- §4.4f, the family roll on the pack road --------------------------------
+                # A ROW MAY SAY WHAT MAY BREATHE. The A→B row below carries family bounds as its
+                # LAST entry: slot 2 — the cue's own seed node — may roll inside 3.0…9.0, and the
+                # score's own seed re-rolls. Everything else the row fills stays exact, so two
+                # passes over one pair are KIN: same shape, same cue, same instrument, same stack,
+                # same duration, and two numbers apart.
+                FAM = {"spans": {"2": [3.0, 9.0]}, "seed": True}
+                FAM_ROWS = {}
+                for _i in range(len(WORKS) - 2):
+                    _a, _b, _c = WORKS[_i], WORKS[_i + 1], WORKS[_i + 2]
+                    FAM_ROWS[_a] = {_a + "__" + _b + "__ab": [1, _a, _b, SEED_AB, dict(FAM)],
+                                    _c + "__" + _a + "__ba": [0, _a, _c, SEED_AC]}
+
+                def bounded(a, b, cause):
+                    """One declare over a bounded pair, with the roll's own record beside it."""
+                    got = declare(br, a, b, cause)
+                    got["family"] = js(br, "return window.__exPass.report().family;")
+                    return got
+
+                def kin(x, y):
+                    """Everything but the two rolled numbers, so two passes can be compared as
+                    members of one family rather than as two documents."""
+                    d = json.loads(json.dumps(x))
+                    d["seed"] = None
+                    d["cues"][0]["nodes"]["pivot-seed"]["value"] = None
+                    e = json.loads(json.dumps(y))
+                    e["seed"] = None
+                    e["cues"][0]["nodes"]["pivot-seed"]["value"] = None
+                    return d == e
+
+                def rolled(s):
+                    return s["cues"][0]["nodes"]["pivot-seed"]["value"]
+
+                stand(rows=FAM_ROWS)
+                br.navigate(base + "/")
+                br.sleep(0.9)
+                enter(br, base)
+                f1 = bounded(A, B, "family-first")
+                f2 = bounded(A, B, "family-second")
+                two = f1["score"] and f2["score"]
+                check(ROWS[10],
+                      bool(two) and rolled(f1["score"]) != rolled(f2["score"])
+                      and 3.0 <= rolled(f1["score"]) <= 9.0 and 3.0 <= rolled(f2["score"]) <= 9.0
+                      and f1["score"]["seed"] != f2["score"]["seed"]
+                      and kin(f1["score"], f2["score"])
+                      and f2["family"]["visit"] and len(f2["family"]["rolls"]) >= 2
+                      and f2["family"]["rolls"][-1]["at"] != f2["family"]["rolls"][-2]["at"],
+                      "the same pair declared twice inside one visit filled the bounded seed node "
+                      "at %s and %s, both inside 3.0…9.0, and the score's own seed at %s and %s; "
+                      "everything else is identical field for field. The roll's own record reads "
+                      "%s"
+                      % (two and rolled(f1["score"]), two and rolled(f2["score"]),
+                         two and f1["score"]["seed"], two and f2["score"]["seed"],
+                         json.dumps(f2["family"]["rolls"][-2:])[:400] if two else "nothing"))
+
+                # THE JUDGING MODE. A pinned visit reproduces: the seed the roll runs on is made of
+                # the visit's seed, the pass index and the pair, so pinning the first makes two
+                # whole visits fill the same crossing identically at the same index. The rows are
+                # matched BY index rather than by their order in the ring, because entering the
+                # walk declares steps of its own and a visit need not reach the same index first.
+                def pinned_visit(pin, cause):
+                    br.navigate(base + "/?pass=familySeed:%d" % pin)
+                    br.sleep(0.9)
+                    enter(br, base)
+                    out = {}
+                    for i in range(3):
+                        g = bounded(A, B, "%s-%d" % (cause, i))
+                        if g["score"]:
+                            out[g["family"]["rolls"][-1]["at"]] = g["score"]
+                    return out, js(br, "return window.__exPass.report().family;")
+
+                p1, rep1 = pinned_visit(778811, "pinned-a")
+                p2, rep2 = pinned_visit(778811, "pinned-b")
+                shared = sorted(set(p1) & set(p2))
+                check(ROWS[11],
+                      bool(shared) and all(p1[k] == p2[k] for k in shared)
+                      and rep1["visit"] == 778811 and rep2["visit"] == 778811
+                      and rep1["pinned"] is True and rep2["pinned"] is True
+                      and len(set(rolled(p1[k]) for k in shared)) == len(shared),
+                      "two whole visits pinned at 778811 met the same crossing at pass indices %s "
+                      "and filled it byte-identically at each of them, and the rolled values "
+                      "across those indices are %s — pinned is reproducible without being frozen"
+                      % (shared, [round(rolled(p1[k]), 6) for k in shared]) if shared else
+                      "the two pinned visits shared no pass index: %s against %s" % (sorted(p1), sorted(p2)))
+
+                # The pair with no bounds in the same pack, filled on the same visit: §4.4f changes
+                # nothing for a row that carries no family record.
+                flat = declare(br, A, C, "family-none")
+                check(ROWS[12], flat["score"] == WANT_AC,
+                      "A→C's row carries no family bounds and filled the pack's own score for that "
+                      "pair to the last leaf, unchanged by the section that made A→B breathe"
+                      if flat["score"] == WANT_AC else
+                      "it differs: %s" % json.dumps(flat["score"])[:300])
+
+                # A BAD BOUND REFUSES THE ROW, WHOLE. The span below runs high-to-low, which is no
+                # span at all; the crossing takes the walk's own glide and the surface says why.
+                BAD = dict(FAM_ROWS)
+                BAD[A] = dict(BAD[A])
+                BAD[A][C + "__" + A + "__ba"] = [0, A, C, SEED_AC,
+                                                 {"spans": {"2": [9.0, 3.0]}}]
+                stand(rows=BAD)
+                br.navigate(base + "/")
+                br.sleep(0.9)
+                enter(br, base)
+                bad = declare(br, A, C, "family-bad")
+                bad_why = " ".join(x["why"] for x in bad["refusals"])
+                check(ROWS[13],
+                      bad["score"] is None and "low-to-high" in bad_why,
+                      "the row was refused whole and the crossing glided, with «%s» on the "
+                      "diagnostic surface" % bad_why[:200])
+
+                # A ROLLED VALUE OUTSIDE ITS OWN SPAN IS THE ROLL ITSELF BEING WRONG, and it is
+                # caught rather than drawn. The roll is crippled to answer under the low end; the
+                # check that reads it must refuse the row and name the span it read.
+                ROLL = "const got = lo + (passMix(pass, passText(names[i])) / 4294967296) * (hi - lo);"
+                GUARD = "if (!(got >= lo && got <= hi)) {"
+                if ROLL not in bundle_txt or GUARD not in bundle_txt:
+                    check(ROWS[14], False, "the roll's own text was not found in the served bundle")
+                    check(RED[5], False, "the roll's own text was not found in the served bundle")
+                else:
+                    stand(rows=FAM_ROWS)
+                    hurt = bundle_txt.replace(ROLL, "const got = lo - 1;", 1)
+                    out = crippled(BUNDLE, hurt, lambda: declare(br, A, B, "family-outside"))
+                    why = " ".join(x["why"] for x in out["refusals"])
+                    check(ROWS[14],
+                          out["score"] is None and "outside its span" in why,
+                          "with the roll answering 2.0 for a span of 3.0…9.0 the row is refused "
+                          "whole and the surface reads «%s»" % why[:220])
+
+                    hurt2 = hurt.replace(GUARD, "if (false) {", 1)
+                    out2 = crippled(BUNDLE, hurt2, lambda: declare(br, A, B, "red-span"))
+                    check(RED[5],
+                          out2["score"] is not None and rolled(out2["score"]) == 2.0,
+                          "with the span check removed the same broken roll fills the score and "
+                          "the bounded node reads %s, outside the 3.0…9.0 the row named — so the "
+                          "row above is held by that check and by nothing else"
+                          % (out2["score"] and rolled(out2["score"])))
+
+                # THE ROLL DISABLED, which is the defect this section repairs, stated as a proof:
+                # with the walk handing the reader a roll that answers no values, the same pair
+                # flipped twice plays ONE score twice — the site's own U9 measurement, reproduced.
+                HAND = "breath: passBreath,"
+                if HAND not in bundle_txt:
+                    check(RED[4], False, "the roll's hand-over was not found in the served bundle")
+                else:
+                    stand(rows=FAM_ROWS)
+                    hurt = bundle_txt.replace(HAND, "breath: function(){return {v:{},seed:null};},", 1)
+
+                    def flip_twice():
+                        one = declare(br, A, B, "red-flat-1")
+                        two_ = declare(br, A, B, "red-flat-2")
+                        return one, two_
+
+                    o1, o2 = crippled(BUNDLE, hurt, flip_twice)
+                    check(RED[4],
+                          o1["score"] is not None and o1["score"] == o2["score"],
+                          "with the roll handed over, two declares over one pair fill two scores "
+                          "that differ in their bounded handles; with a roll that answers no "
+                          "values the two fills are byte-identical — the repetition the charter "
+                          "forbids, reproduced on demand. Rolled node: %s twice"
+                          % (o1["score"] and rolled(o1["score"])))
 
                 # ---- the two requests the device makes, and the pack that must hear them ------
                 # EX-LOAD-3 / INV-73 read as the CLASS law it is: the reader, and the shard every

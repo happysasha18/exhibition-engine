@@ -667,6 +667,15 @@
     visualLayer: { kind: "enum", of: ["off", "pass"], def: "off" },
     diagnostics: { kind: "enum", of: ["off", "on"], def: "off",
                    order: ["session", "site", "default"] },
+    // familySeed — the seed the visit's own family roll runs on (§4.4f). Zero, the default, means
+    // this visit rolls a seed of its own, which is the public bar: a crossing's bounded handles
+    // land where no other visit's landed and every public run exists once. Any other number PINS
+    // the visit, and a run at a pinned seed reproduces its predecessor to the pixel — the judging
+    // mode. It resolves on the session, site and default rungs alone: a per-pair score has no
+    // business setting the mode a whole visit is judged in, exactly as it has none for the tier or
+    // the diagnostics switch.
+    familySeed: { kind: "number", min: 0, max: 4294967295, def: 0,
+                  order: ["session", "site", "default"] },
   };
 
   const passEvents = [];
@@ -879,6 +888,84 @@
   // and the row is refused outright when it stands under the table's floor — the same floor the
   // build-time walk applies, carried in the table so the refusal needs no measurement here. The
   // score is built on a COPY of the template, so a row refused halfway leaves nothing behind.
+  // ---- family breath (§4.4f) ---------------------------------------------------------------------
+  // A ROW MAY SAY WHAT MAY BREATHE. Filling a row's measured numbers exactly means a pair flipped
+  // twice inside one visit plays one score byte for byte — the defect the site's own U9 measurement
+  // read on four flips of one pair. The charter asks for the same family each time with small shifts
+  // pass by pass, so a row may carry a family-bounds record naming, per SLOT it already fills, the
+  // closed span the fill may roll that slot inside, and whether the score's own seed re-rolls.
+  //
+  // THE ROLL LIVES HERE, AND BOTH ROADS CALL IT. The inline road below fills from a template and a
+  // table; the pack's reader fills from a shape's template and a shard's row in its own file. One
+  // roll serves both — the reader is handed this function in its environment record — so the two
+  // roads cannot drift into two ideas of what a family is. This function knows nothing about slot
+  // paths or slot names: it is given the spans keyed however that road keys its slots and hands back
+  // the rolled values under the same keys, and each road writes them through its own fill.
+  //
+  // THE SEED IS THE VISIT, THE PASS INDEX AND THE PAIR. The pass index is the generation `declare`
+  // has already minted for the crossing being declared, so a pair flipped twice in one visit rolls
+  // twice; the visit's seed keeps the whole visit apart from every other visit; and the pair's key
+  // keeps two crossings declared at the same index from sharing a roll. Nothing here reads a clock:
+  // a wall-time roll would make a pinned run irreproducible, which is the very thing §4.4b's
+  // determinism row exists to hold.
+  const passFamilies = [];
+  let passVisit = 0, passVisitPinned = false;
+  function passVisitSeed() {
+    if (!passVisit) {
+      // Read ONCE, at the first crossing that breathes, and held for the visit: a seed that
+      // re-resolved per crossing would let a mid-visit change split one visit into two families.
+      const pin = passGet("familySeed") >>> 0;
+      passVisit = pin || ((Math.random() * 4294967296) >>> 0) || 1;
+      passVisitPinned = !!pin;
+    }
+    return passVisit;
+  }
+  function passMix(a, b) {
+    let h = Math.imul((a >>> 0) ^ 0x9e3779b9, 0x85ebca6b) >>> 0;
+    h = Math.imul(h ^ (b >>> 0), 0xc2b2ae35) >>> 0;
+    return (h ^ (h >>> 15)) >>> 0;
+  }
+  function passText(s) {
+    let h = 2166136261 >>> 0;
+    s = String(s);
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+    return h >>> 0;
+  }
+  // The rolled values for one crossing, or a reason. A record that does not check out hands back a
+  // reason and the caller refuses the WHOLE row — half a rolled score is the one outcome no road
+  // here produces. A rolled value is checked against its own span before it is handed back: the
+  // roll cannot produce one outside, so a value that lands there says the roll itself is broken, and
+  // that is a refusal rather than a picture nobody can read back to a number.
+  function passBreath(key, fam) {
+    if (!fam || typeof fam !== "object" || Array.isArray(fam)) return { why: "its family bounds are no record" };
+    const odd = Object.keys(fam).filter((f) => ["spans", "seed"].indexOf(f) < 0);
+    if (odd.length) return { why: "its family bounds name «" + odd[0] + "», in no allow-list" };
+    if (fam.seed !== undefined && typeof fam.seed !== "boolean") return { why: "its family seed is no yes-or-no" };
+    const spans = fam.spans === undefined ? {} : fam.spans;
+    if (!spans || typeof spans !== "object" || Array.isArray(spans)) return { why: "its family spans are no record" };
+    const at = passGen, visit = passVisitSeed();
+    const pass = passMix(passMix(visit, at), passText(key));
+    const names = Object.keys(spans), v = {};
+    for (let i = 0; i < names.length; i++) {
+      const s = spans[names[i]];
+      if (!Array.isArray(s) || s.length !== 2 || !Number.isFinite(+s[0]) || !Number.isFinite(+s[1])
+          || +s[0] > +s[1]) {
+        return { why: "the span for «" + names[i] + "» is no low-to-high pair of numbers" };
+      }
+      const lo = +s[0], hi = +s[1];
+      const got = lo + (passMix(pass, passText(names[i])) / 4294967296) * (hi - lo);
+      if (!(got >= lo && got <= hi)) {
+        return { why: "the rolled «" + names[i] + "» " + got + " stands outside its span "
+                      + lo + "…" + hi };
+      }
+      v[names[i]] = got;
+    }
+    const seed = fam.seed ? passMix(pass, 0x5eed5) / 4294967296 : null;
+    passNote(passFamilies, { pair: key, at: at, visit: visit, pinned: passVisitPinned, seed: pass,
+                             scoreSeed: seed, spans: spans, applied: v });
+    return { v: v, seed: seed, at: at, visit: visit, seedOfPass: pass };
+  }
+
   function passFillScore(key) {
     const p = (((EX && EX.pass) || (cfg && cfg.pass) || {}));
     const tables = p.scoreTables || {}, templates = p.scoreTemplates || {};
@@ -891,7 +978,7 @@
       let score = null;
       try { score = JSON.parse(JSON.stringify(tpl.score)); } catch (e) {}
       if (!score || !slots || typeof slots !== "object") return no("no template for this table's instrument");
-      const stray = Object.keys(row).filter((k) => !slots[k] && k !== "readiness");
+      const stray = Object.keys(row).filter((k) => !slots[k] && k !== "readiness" && k !== "family");
       if (stray.length) return no("row names «" + stray[0] + "», a slot the template lacks");
       if (typeof tbl.readinessFloor === "number" && !(row.readiness >= tbl.readinessFloor)) {
         return no("readiness " + row.readiness + " stands under the floor " + tbl.readinessFloor);
@@ -904,6 +991,26 @@
         if (!cue || !cue.nodes || !cue.nodes[s.node]) return no("slot «" + n + "» names a node the template lacks");
         cue.nodes[s.node].value = row[n];
         if (s.score) score[s.score] = row[n];
+      }
+      // THE ROW'S OWN FAMILY BOUNDS, applied after every measured number is in place (§4.4f). The
+      // rolled value REPLACES the measured one at that slot, which is what a span centred on the
+      // measurement means; a slot the record does not name keeps the row's number exactly. `family`
+      // is the second row field that fills no slot of its own, beside `readiness`.
+      if (row.family !== undefined) {
+        const b = passBreath(key, row.family);
+        if (b.why) return no(b.why);
+        const bn = Object.keys(b.v);
+        for (let j = 0; j < bn.length; j++) {
+          const s = slots[bn[j]];
+          if (!s) return no("its family bounds name «" + bn[j] + "», a slot the template lacks");
+          const cue = (score.cues || []).filter((c) => c && c.id === s.cue)[0];
+          if (!cue || !cue.nodes || !cue.nodes[s.node]) {
+            return no("its family bounds name «" + bn[j] + "», whose node the template lacks");
+          }
+          cue.nodes[s.node].value = b.v[bn[j]];
+          if (s.score) score[s.score] = b.v[bn[j]];
+        }
+        if (b.seed !== null) score.seed = b.seed;
       }
       const ids = key.split("__");
       score.pair = { a: ids[0], b: ids[1] };
@@ -943,6 +1050,10 @@
       passPack = mk({
         packs: passPackBlock(),
         note: (name, why) => passNote(passRefusals, { what: "pack", name: name, why: why }),
+        // The one roll, handed over rather than copied (§4.4f): the pack road and the inline road
+        // fill from different files and must not grow two ideas of what a family is. The reader
+        // reaches nothing else of this file, exactly as it reaches no settings block of its own.
+        breath: passBreath,
       }) || null;
     } catch (e) { passPack = null; }
     passPackState = passPack ? "read" : "refused";
@@ -1471,6 +1582,11 @@
       // every pack the settings record names and every shard this visit has asked for.
       pack: Object.assign({ src: PASS_PACK_SRC, state: passPackState, warm: passPackWarm },
                           passPack ? passPack.report() : {}),
+      // The family roll, on the same surface (§4.4f): the visit's own seed and whether it was
+      // pinned, and one row per rolled crossing carrying the pair, the pass index, the seed that
+      // pass ran on, the spans it read and the value it applied to each bounded slot. A picture
+      // that looks wrong reads back to the number that made it without reading anything else.
+      family: { visit: passVisit || null, pinned: passVisitPinned, rolls: passFamilies.slice() },
     };
   }
   // `score` is the checker itself, handed over so a score can be judged without being played — the
