@@ -240,6 +240,8 @@ ROWS = [
     "PASS-READER a tampered shard is refused with both digests, and the crossing glides",
     "PASS-READER a score over the fence is refused with the size it was measured at",
     "PASS-READER a pack-served score draws the same frame as the same score served inline",
+    "PASS-READER a visitor asking for stillness, or to save data, is sent neither the reader nor a "
+    "shard",
 ]
 RED = [
     "PASS-READER red-on-bug · the digest comparison removed: the tampered shard is taken",
@@ -638,6 +640,73 @@ else:
                           "the frame moves — twenty-five shapes ship, and one template per "
                           "instrument is what this proves the pack cannot use"
                           % (got["score"] or {}).get("duration"))
+
+                # ---- the two requests the device makes, and the pack that must hear them ------
+                # EX-LOAD-3 / INV-73 read as the CLASS law it is: the reader, and the shard every
+                # landing warms, are an optional prefetch made for a crossing the layer itself has
+                # already refused — `passOpen` reads the stillness request and the data request and
+                # stands the drawing machinery down under either. U10 §6 priced the gap: under
+                # Save-Data a visit still fetched ten shards, 443 844 B on disk and 36 420 B
+                # gzipped, for crossings that could never play — more, gzipped, than standing the
+                # machinery down saves. This row walks a whole visit under each request and reads
+                # the wire.
+                #
+                # IT STANDS LAST on purpose: the Save-Data half overrides what the browser reports
+                # to every document it loads, and the override is removed inside the row itself.
+                PACK_FILES = ("pass-reader.js", "manifest.json", "head.json", "templates.json",
+                              "/rows/")
+
+                def visit_under(request_word):
+                    """One whole visit — door, entry and three steps — with the wire watched."""
+                    br.navigate(base + "/")
+                    br.clear_storage()
+                    br.navigate(base + "/")
+                    br.sleep(0.9)
+                    br.net_capture()
+                    br.net_clear()
+                    if br.evaluate("String(!!document.querySelector('.exd-window'))") == "true":
+                        br.click(".exd-window", settle=1.4)
+                    for _ in range(25):
+                        if br.evaluate(
+                                "String(document.documentElement.classList.contains('ex-walk') "
+                                "&& !document.documentElement.classList.contains('ex-face'))"
+                        ) == "true":
+                            break
+                        br.sleep(0.2)
+                    br.sleep(0.4)
+                    for _ in range(3):
+                        br.key("ArrowDown")
+                        br.sleep(0.9)
+                    wire = [u.rsplit("/plans/", 1)[-1] for u in br.net_log()
+                            if any(p in u for p in PACK_FILES)]
+                    rep = js(br, "return window.__exPass.report();")
+                    said = [r for r in rep["refusals"]
+                            if r.get("what") == "pack" and r.get("why") == request_word]
+                    return wire, rep["pack"]["state"], said, rep["device"]
+
+                stand()
+                saver = br._cmd("Page.addScriptToEvaluateOnNewDocument", source=(
+                    "Object.defineProperty(Navigator.prototype,'connection',"
+                    "{get:function(){return {saveData:true};},configurable:true});"))
+                s_wire, s_state, s_said, s_dev = visit_under("save data")
+                br._cmd("Page.removeScriptToEvaluateOnNewDocument",
+                        identifier=saver["identifier"])
+                br.emulate_media(prefers_reduced_motion="reduce")
+                r_wire, r_state, r_said, r_dev = visit_under("reduced motion")
+                br.emulate_media()
+                check(ROWS[9],
+                      s_dev["saveData"] is True and not s_wire and s_state == "absent"
+                      and bool(s_said)
+                      and r_dev["reduced"] is True and not r_wire and r_state == "absent"
+                      and bool(r_said),
+                      "a visit that asked to save data (the page read saveData=%s) fetched %s of "
+                      "the pack and left the reader %s, with the refusal on the surface: %s. A "
+                      "visit that asked for stillness (reduced=%s) fetched %s, reader %s, refusal: "
+                      "%s. The layer refuses itself under both, so the files fetched for it stand "
+                      "down with it"
+                      % (s_dev["saveData"], s_wire or "nothing", s_state,
+                         json.dumps(s_said[:1]), r_dev["reduced"], r_wire or "nothing", r_state,
+                         json.dumps(r_said[:1])))
 
     shutil.rmtree(SHOTS, ignore_errors=True)
 

@@ -106,7 +106,60 @@ BROWSER_ROWS = [
     "EX-PASS the drawing layer's file is never fetched while the setting stands off",
     "EX-PASS the setting fetches the layer, it registers, and the walk keeps stepping",
     "EX-PASS reduced motion refuses the layer and records why",
+    "EX-PASS the walk's rest record follows the dock: the turn after a crossing holds the arriving work",
+    "EX-PASS a second gesture while a renderer holds the command chains to the NEXT frame",
+    "EX-PASS the register names nothing the settings record already owns, so real refusals stand",
 ]
+
+# A HOST THAT TAKES THE COMMAND AND HOLDS IT, registered through the seam's own door — the same
+# function the drawing file registers itself with. It draws nothing, which is why these three rows
+# need no WebGL and no score: what they read is the WALK's side of the seam — where the walk stands
+# while a renderer holds the command, what a device change does to it, and what a second gesture
+# declares. The renderer's own picture has its own suites.
+STUB_HOST = """
+(function () {
+  if (typeof window.__exPassLayer !== 'function') return 'no door';
+  window.__stub = { active: false, cmd: null, hooks: null, resized: 0, offers: 0 };
+  window.__exPassLayer({
+    offer: function (cmd, hooks) {
+      var s = window.__stub;
+      s.active = true; s.cmd = cmd; s.hooks = hooks; s.offers++;
+      hooks.curtain(true);
+      return true;                       // the host takes responsibility for this landing
+    },
+    resize: function () { window.__stub.resized++; },
+    cancel: function () { window.__stub.active = false; },
+    report: function () { return { active: window.__stub.active }; }
+  });
+  return 'registered';
+})()
+"""
+
+# The settle a real host runs at the end of a passage (§2.2): the DOM is revealed and the walk
+# placed, the canvas comes down, and the command docks.
+STUB_SETTLE = """
+(function () {
+  var s = window.__stub;
+  if (!s || !s.cmd) return 'nothing in flight';
+  s.hooks.handoff(s.cmd);
+  s.hooks.curtain(false);
+  s.active = false;
+  s.hooks.dock(s.cmd);
+  return String(s.cmd.to.id);
+})()
+"""
+
+WHERE = ("var els=[].slice.call(document.querySelectorAll('.exh-frame'));"
+         "var mid=innerHeight/2, best=-1, bd=1e9;"
+         "els.forEach(function(e,i){var r=e.getBoundingClientRect();"
+         "var d=Math.abs(r.top+r.height/2-mid); if(d<bd){bd=d;best=i;}});"
+         "return {i:best, id:best>=0?els[best].dataset.id:null, off:Math.round(bd),"
+         " y:Math.round(scrollY)};")
+
+
+def where(br):
+    """The work the walk actually stands on: the frame whose centre is nearest the eye."""
+    return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % WHERE))
 
 
 # the two-finger touch that opens the closer look, the road tests/test_zoom.py drives it by
@@ -361,6 +414,107 @@ else:
                   not quiet and bool(said) and rep["layer"] == "absent"
                   and rep["device"]["reduced"] is True,
                   f"requests={quiet} refusals={said[:1]} layer={rep['layer']}")
+            br.emulate_media()
+
+            # 15 · the rest record follows the dock — red on U10 §4b's five rows.
+            #
+            # THE SCENARIO IS THE MATRIX'S OWN: a device change arrives while a renderer holds the
+            # command, and the NEXT one throws the walk back to the work it came from. The frame
+            # heights here are chosen so the turn reproduces the road exactly. The walk's sections
+            # are one viewport tall, so a walk resting on frame 1 stands at scrollY = 900; halving
+            # the height mid-crossing puts that same offset on frame 2 — the ARRIVING work — inside
+            # the watcher's own 250 ms reflow guard, which is the one report that would have named
+            # it. The handoff then places the walk at the very same offset, so no threshold is
+            # crossed and no second report ever comes. With the record left uncorrected the next
+            # turn honours the departing work.
+            enter(br, base, "diagnostics:on,visualLayer:pass")
+            br.key("ArrowDown")                     # the step that fetches the picture's own file
+            br.sleep(1.8)
+            door = br.evaluate(STUB_HOST)
+            if door != "registered":
+                for i in (15, 16):
+                    skip(BROWSER_ROWS[i], f"the seam's registration door never opened: {door}")
+            else:
+                start = where(br)
+                ids = json.loads(br.evaluate(
+                    "JSON.stringify([].slice.call(document.querySelectorAll('.exh-frame'))"
+                    ".map(function(e){return e.dataset.id;}))"))
+                br.key("ArrowDown")                 # the crossing the host takes and holds
+                br.sleep(0.5)
+                held = br.evaluate("String(!!(window.__stub && window.__stub.active))")
+                br.set_viewport(1280, 450)          # the device changes mid-crossing (INV-86)
+                br.sleep(0.5)
+                arrived = br.evaluate(STUB_SETTLE)
+                br.sleep(0.7)
+                docked = where(br)
+                br.set_viewport(1280, 900)          # and the NEXT device change, at the rest
+                br.sleep(0.8)
+                after = where(br)
+                check(BROWSER_ROWS[15],
+                      held == "true" and start["i"] == 1 and arrived == ids[2]
+                      and docked["id"] == ids[2] and after["id"] == ids[2],
+                      f"the walk rested on {start['id']} (frame {start['i']}), the host held the "
+                      f"crossing to {arrived}, a turn arrived mid-crossing, the crossing docked on "
+                      f"{docked['id']} and the next turn left the walk on {after['id']} — the work "
+                      f"it came from is {start['id']}")
+
+                # 16 · a second gesture mid-crossing chains — red on U10 §3's four rows.
+                # EX-GLIDE (SPEC.md:1329-1331): a new input mid-transition chains to the NEXT frame
+                # and never re-rounds backward. While a renderer holds the command the walk's own
+                # scroll has not moved, so a step counted from it re-declares the very crossing
+                # already in flight — the visitor's second swipe buys a shortened passage and no
+                # progress. The two declarations are read off the seam's own event ring.
+                enter(br, base, "diagnostics:on,visualLayer:pass")
+                br.key("ArrowDown")
+                br.sleep(1.8)
+                br.evaluate(STUB_HOST)
+                # the walk deals its works afresh every visit, so this visit's order is read again
+                ids = json.loads(br.evaluate(
+                    "JSON.stringify([].slice.call(document.querySelectorAll('.exh-frame'))"
+                    ".map(function(e){return e.dataset.id;}))"))
+                stood = where(br)
+                g0 = gen_now(br)
+                br.key("ArrowDown")                 # the crossing, taken and held
+                br.sleep(0.5)
+                br.key("ArrowDown")                 # the second gesture, mid-crossing
+                br.sleep(0.6)
+                starts = [e for e in since(report(br), g0)
+                          if e["name"] == "nav-start" and e["kind"] == "step"]
+                first = starts[0]["to"] if starts else None
+                second = starts[1]["to"] if len(starts) > 1 else None
+                check(BROWSER_ROWS[16],
+                      stood["i"] == 1 and len(starts) >= 2 and first == ids[2]
+                      and second == ids[3],
+                      f"from {stood['id']} the walk declared {len(starts)} steps while the host "
+                      f"held the command: first to {first}, then to {second}; the frames in order "
+                      f"are {ids[1:4]}")
+                br.set_viewport(1280, 900)
+
+            # 17 · the register names nothing the settings record already owns — red on U8's find,
+            # still standing at U10 §5. The bake writes the instrument ADDRESS record into the
+            # settings block under `pass.instruments`; a register setting of that same name read the
+            # record off the site rung and refused it, «wants a list», about four times per step.
+            # The ring holds 64 rows, so within ten steps every real refusal had been pushed off it
+            # — which is why U10 had to read the layer's own word one step into the visit. Both
+            # halves are read here: no such note is minted, and the layer's own refusal, minted at
+            # the first step, still stands ten steps later.
+            br.emulate_media(prefers_reduced_motion="reduce")
+            enter(br, base, "diagnostics:on,visualLayer:pass")
+            for _ in range(10):
+                br.key("ArrowDown")
+                br.sleep(0.25)
+            rep = report(br)
+            owned = [r for r in rep["refusals"]
+                     if r.get("what") == "setting" and r.get("name") in ("instruments",
+                                                                         "instrumentNames")]
+            layer_said = [r for r in rep["refusals"] if r.get("why") == "reduced motion"]
+            names = sorted(s["name"] for s in rep["settings"] if s)
+            check(BROWSER_ROWS[17],
+                  not owned and bool(layer_said) and "instruments" not in names
+                  and "instrumentNames" in names,
+                  f"after ten steps the ring carries {len(rep['refusals'])} refusals; notes about a "
+                  f"setting the record owns: {owned[:2]}; the layer's own «reduced motion» note "
+                  f"still on the ring: {bool(layer_said)}; the register's names are {names}")
             br.emulate_media()
 
 # ---------------------------------------------------------------- report
