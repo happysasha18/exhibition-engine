@@ -96,7 +96,7 @@ ROWS = [
     "PASS-DRV §6 · a handoff that jumps is measured and recorded as a jump",
     "PASS-DRV §4.4b · the woven instrument publishes its two clock-driven handles to the score",
     "PASS-DRV §6 · orbit and tilt stand on the pose, each carried in its own coordinate",
-    "PASS-DRV §6 · each place is carried through the points that name it, so each travels its own arc",
+    "PASS-DRV §6 · a plane is held at an angle across the middle while the dolly flies its own edges",
     "PASS-DRV §6 · an orbit turns the view about the subject where a yaw turns the camera in place",
     "PASS-DRV §6 · a turn is seen through a projection even where the score names no field of view",
     "PASS-DRV §6 · the lean variant drops the two turning axes and keeps the pan and the dolly",
@@ -420,27 +420,32 @@ out.orbit = {
 };
 
 // ---- EACH PLACE ON ITS OWN POINTS, SO EACH TRAVELS ITS OWN ARC --------------------------------
-// The dolly rises and falls over the two edges while the tilt holds a plane at an angle across a
-// window of its own. Neither axis names a point at the other's seconds. Before 2026-08-17 a place
-// was carried only where EVERY point named a number for it, so this track carried neither.
+// THE PARQUET'S OWN FLIGHT, written as the instruments lane asked for it (S1-D-report, «what I need
+// from the flight itself»): the plane reaches its working angle over the first third of the passage,
+// holds it through the middle where the parquet grows, and comes back flat over the last third —
+// one unbroken arc, resting at exactly zero at both doors. 1.05 rad is 60 degrees, the middle of the
+// 50…75 degree band that lane reads as a plane going away. The dolly meanwhile rises and falls over
+// the two EDGES, on its own points at its own seconds, and neither axis names a point at the other's.
+// Before 2026-08-17 a place was carried only where every point named a number for it, so this track
+// carried neither axis at all.
 var arcs = { duration: 6000, camera: { owner: "stage", rests: "b", track: [
     { at: "a", logScale: 0, tilt: 0 },
     { at: 0.8, logScale: 0.35 },
-    { at: 1.2, tilt: 0.33 },
-    { at: 4.6, tilt: 0.33 },
+    { at: 2.0, tilt: 1.05 },
+    { at: 4.0, tilt: 1.05 },
     { at: 5.2, logScale: 0.35 },
     { at: "b", logScale: 0, tilt: 0 }] },
   cues: [{ id: "weave-main", window: [0, 6], cameraAuthority: "stage" }] };
 function arcAt(t) { var p = bench.camera(arcs, t).pose; return { logScale: p.logScale, tilt: p.tilt }; }
-var arcRead = { at0: arcAt(0), at1: arcAt(1.2), at3: arcAt(3.0), at46: arcAt(4.6), at6: arcAt(6.0) };
+var arcRead = { at0: arcAt(0), at2: arcAt(2.0), at3: arcAt(3.0), at4: arcAt(4.0), at6: arcAt(6.0) };
 out.arcs = {
   read: arcRead,
-  // the tilt holds its own angle right across its own window while the dolly stands at its own
+  // the tilt holds its working angle right across the middle while the dolly stands at its own
   // plateau, and both are back at zero when the arriving work stands
-  ok: near(arcRead.at1.tilt, 0.33, 1e-9) && near(arcRead.at3.tilt, 0.33, 1e-9)
-      && near(arcRead.at46.tilt, 0.33, 1e-9)
+  ok: near(arcRead.at2.tilt, 1.05, 1e-9) && near(arcRead.at3.tilt, 1.05, 1e-9)
+      && near(arcRead.at4.tilt, 1.05, 1e-9)
       && near(arcRead.at3.logScale, 0.35, 1e-9)
-      && arcRead.at1.logScale > 0.34 && arcRead.at0.tilt === 0 && arcRead.at0.logScale === 0
+      && arcRead.at2.logScale > 0.34 && arcRead.at0.tilt === 0 && arcRead.at0.logScale === 0
       && near(arcRead.at6.tilt, 0, 1e-9) && near(arcRead.at6.logScale, 0, 1e-9)
 };
 
@@ -665,7 +670,8 @@ else:
                            + ("still its own arcs, so the row is vacuous"
                               if bad["arcs"]["ok"] else "both places at their neutrals"))
                 check(ROWS[17], out["arcs"]["ok"] and not bad["arcs"]["ok"],
-                      f"tilt holds 0.33 across 1.2…4.6 s while the dolly stands at its own plateau: "
+                      f"tilt holds 1.05 rad (60 degrees) across 2.0…4.0 s of a 6 s passage while "
+                      f"the dolly stands at its own plateau, and both rest at zero at either door: "
                       f"{out['arcs']['read']} · {arc_red}")
             else:
                 check(ROWS[17], False, "the crippled copy did not answer: " + str(_))
