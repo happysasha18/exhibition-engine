@@ -121,6 +121,22 @@ check("EX-COMPOSED the served bundle carries the composer's door and none of the
       'PASS_COMPOSER_SRC = "pass-composer.js"' in JS and "passComposeFor" in JS and not back,
       f"roads still named in the served bundle: {back}")
 
+# THE TWO FENCES A FILLED SCORE HAS TO PASS, BOTH PUBLISHED. A limit is part of the client's
+# capability and its one home is the `PASS_LIMITS` literal; the bake reads it back out of the served
+# client and writes it into the settings record, so the number the composer measures against and the
+# number the client applies are one number. `scoreBytes` travelled that road already; `intentChars`
+# joins it here, because stage 0 measured what an unpublished prose fence costs — 1 004 of 6 304
+# composed crossings refused whole for a line nobody could measure.
+CFG = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+CAPS = (CFG.get("pass") or {}).get("capabilities") or {}
+CLIENT_LIMITS = re.search(r"PASS_LIMITS\s*=\s*\{([^}]*)\}", SRC)
+CLIENT_BYTES = int(re.search(r"\bbytes:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
+CLIENT_INTENT = int(re.search(r"\bintent:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
+check("EX-COMPOSED the bake publishes both fences a filled score is measured against",
+      CAPS.get("scoreBytes") == CLIENT_BYTES and CAPS.get("intentChars") == CLIENT_INTENT,
+      f"the client applies {CLIENT_BYTES} B and {CLIENT_INTENT} characters; the settings record "
+      f"publishes {CAPS.get('scoreBytes')} and {CAPS.get('intentChars')}")
+
 check("EX-COMPOSED nothing on the product path is keyed by a pair",
       "passRequestFor" in JS and "workRecordA" in JS
       and not re.search(r"scoreTemplates|passFillScore|passPack\b", JS),
@@ -151,6 +167,8 @@ NODE_ROWS = [
     "EX-COMPOSED every handle the composer drives names the measurement it reads",
     "EX-COMPOSED a handle the instrument declares open is never driven at a door",
     "EX-COMPOSED no filled score of the real collection crosses the byte or the intent fence",
+    "EX-COMPOSED the composer measures its line against the fence it is handed, not against its own "
+    "fallback",
     "EX-COMPOSED every one of the 14 520 ordered pairs either composes or declines by name",
     "EX-COMPOSED every field the request gained reproduces the four-value call exactly",
     "EX-COMPOSED a route role outside the five is refused by name",
@@ -423,7 +441,29 @@ const roadNotes = {};
 for (const n of forward.roadNotes) roadNotes[n.road] = {ok: n.ok, why: n.why};
 out.roadNotes = roadNotes;
 
-// 8 · the three fences of the entry
+// 8 · the composer measures its line against the number it is HANDED, not against its fallback.
+//     The constants are handed a cap of their own and the longest line the composer writes has to
+//     fall under it — which is the wire the bake's `intentChars` travels, proved without planting.
+const handed = joined.make(Object.assign({}, fix.consts, {intentFenceChars: 300}));
+let handedMax = 0, handedShort = 0, handedN = 0;
+for (let i = 0; i < ids.length; i++) {
+  for (let j = 0; j < ids.length; j++) {
+    if (i === j) continue;
+    const a = works.works[ids[i]], b = works.works[ids[j]];
+    const dir = i < j ? "a-to-b" : "b-to-a";
+    const wa = i < j ? a : b, wb = i < j ? b : a;
+    const key = wa.id + "__" + wb.id + "__" + (dir === "a-to-b" ? "ab" : "ba");
+    const p = handed.passageFor({workRecordA: wa, workRecordB: wb, direction: dir, seed: die(key)});
+    if (!p.json) continue;
+    handedN++;
+    if (p.score.intent.length > handedMax) handedMax = p.score.intent.length;
+    if ((p.plan.intentDropped || []).length) handedShort++;
+  }
+}
+out.handed = {cap: 300, max: handedMax, shortened: handedShort, composed: handedN,
+              own: out.sweep.maxIntent};
+
+// 9 · the three fences of the entry
 const ask = (extra) => {
   const p = composer.passageFor(Object.assign(
     {workRecordA: A, workRecordB: B, direction: "a-to-b", seed: fix.seeds[KEY_AB]}, extra));
@@ -593,9 +633,17 @@ else:
               f"{sweep['maxIntent']} characters against its {sweep['intentCap']}; over the byte "
               f"fence: {sweep['overByte']}, over the intent fence: {sweep['overIntent']}")
 
+        # --- row 10 · the composer reads the fence it is handed ----------------------------------
+        h = got["handed"]
+        check(NODE_ROWS[10],
+              h["shortened"] > 0 and sweep["intentShortened"] == 0,
+              f"handed a cap of {h['cap']} characters in its own constants, the composer shortened "
+              f"{h['shortened']} of {h['composed']} lines and its longest ran {h['max']}; on the "
+              f"number the client actually applies its longest runs {h['own']}")
+
         # --- row 10 · every pair is answered ------------------------------------------------------
         named = all(w.strip() for w in sweep["declines"])
-        check(NODE_ROWS[10],
+        check(NODE_ROWS[11],
               sweep["composed"] + sweep["declined"] == sweep["ordered"] and named,
               f"{sweep['composed']} of {sweep['ordered']} ordered pairs compose and "
               f"{sweep['declined']} decline, each by name: "
@@ -603,22 +651,22 @@ else:
 
         # --- row 11 · the defaults reproduce the four-value call -----------------------------------
         dd = got["defaults"]
-        check(NODE_ROWS[11], dd["spelledSame"] and dd["coreSame"],
+        check(NODE_ROWS[12], dd["spelledSame"] and dd["coreSame"],
               f"the six fields named at their defaults read the same bytes: {dd['spelledSame']}; "
               f"the choice core's own four-value call reads them too: {dd['coreSame']}")
 
         # --- rows 12-14 · the three fences ---------------------------------------------------------
         f = got["fences"]
-        check(NODE_ROWS[12],
+        check(NODE_ROWS[13],
               f["role"]["composed"] is False and "grand finale" in (f["role"]["declined"] or "")
               and "route role" in (f["role"]["declined"] or ""),
               f"refusal: {f['role']['declined']!r}; the five it names: {got['routeRoles']}")
-        check(NODE_ROWS[13],
+        check(NODE_ROWS[14],
               f["memory"]["composed"] is False and "cooldown" in (f["memory"]["declined"] or "")
               and f["memoryOk"]["composed"] is True,
               f"a fourth field refuses: {f['memory']['declined']!r}; the three §4.8 lets cross "
               f"compose: {f['memoryOk']['composed']}")
-        check(NODE_ROWS[14],
+        check(NODE_ROWS[15],
               f["seedHigh"]["composed"] is False and f["seedLow"]["composed"] is False
               and "seed" in (f["seedHigh"]["declined"] or ""),
               f"a die of 9 refuses: {f['seedHigh']['declined']!r}; a die of -1 refuses: "
@@ -630,33 +678,33 @@ else:
         # judged on whether the answer MOVES and twenty-four works are 552 ordered pairs of proof.
         CORNER = 24
         PLANTS = [
-            (NODE_ROWS[15], [["if (ROUTE_ROLES.indexOf(role) < 0) {", "if (false) {"]],
+            (NODE_ROWS[16], [["if (ROUTE_ROLES.indexOf(role) < 0) {", "if (false) {"]],
              lambda g: g["fences"]["role"]["composed"] is True),
-            (NODE_ROWS[16], [["if (odd.length) {", "if (false) {"]],
+            (NODE_ROWS[17], [["if (odd.length) {", "if (false) {"]],
              lambda g: g["fences"]["memory"]["composed"] is True),
-            (NODE_ROWS[17],
+            (NODE_ROWS[18],
              [["roadFor(fromW, toW, FLOORS, step, memory || null, seed, key)",
                "roadFor(fromW, toW, FLOORS, step, memory || null, 0, key)"]],
              lambda g: len(g["dice"]["distinct"]) == 1),
-            (NODE_ROWS[18],
+            (NODE_ROWS[19],
              [["if (num(nearAxis.delta) > SIMILAR_DELTA) {", "if (false) {"]],
              lambda g: g["roadNotes"]["shared-ground"]["ok"] is True
              and got["roadNotes"]["shared-ground"]["ok"] is True),
-            (NODE_ROWS[19], [["if (fits) break;", "break;"]],
+            (NODE_ROWS[20], [["if (fits) break;", "break;"]],
              lambda g: (g["roles"]["quiet link"].get("budget") or {}).get("letters", 0) > 1
              or (g["roles"]["quiet link"].get("budget") or {}).get("miracles", 0) > 0
              or g["roles"]["quiet link"].get("duration", 0) > 4000),
             # A LED PASSAGE IS A READING OF TWO THINGS, and each is proved by taking it away.
-            (NODE_ROWS[20], [["LED_ROLES.indexOf(role) >= 0", "true"]],
+            (NODE_ROWS[21], [["LED_ROLES.indexOf(role) >= 0", "true"]],
              lambda g: g["sweep"]["ledElsewhere"] > 0),
-            (NODE_ROWS[21], [["made.cameraTravels && ", ""]],
+            (NODE_ROWS[22], [["made.cameraTravels && ", ""]],
              lambda g: g["sweep"]["ledAtTonic"] > 0.6 * g["sweep"]["tonic"]),
-            (NODE_ROWS[22],
+            (NODE_ROWS[23],
              [["          if (familyOf(whole[i], fromW, toW, floors) === memory.family) {\n            held = whole[i];\n            heldBy = \"family\";",
                "          if (false) {\n            held = whole[i];\n            heldBy = \"family\";"]],
              lambda g: g["memory"]["heldAgainBy"] != "family"
              and g["memory"]["heldBackBy"] != "family"),
-            (NODE_ROWS[23],
+            (NODE_ROWS[24],
              [["      var wantTransform = memory && memory.family ? String(memory.family).split(\"+\")[0] : null;",
                "      var wantTransform = null;"],
               ["      if (memory && memory.family) {\n        var whole = pool.concat(found.roads).concat([BRIDGE_ROAD]);",
@@ -667,7 +715,7 @@ else:
             # makes the row honest is the one that DOES hand it over: a cue's tracks named off the
             # manifest itself. With the fence in place the open handle is still skipped; the second
             # plant removes the fence under the same pressure and it is driven.
-            (NODE_ROWS[24],
+            (NODE_ROWS[25],
              [["        if (manifest[h].open) continue;", ""],
               ['var why = HANDLE_SOURCE[h][1];',
                'var why = (HANDLE_SOURCE[h] || ["", "an open handle"])[1];'],
@@ -676,7 +724,7 @@ else:
                " var spec = HANDLE_SPECS[instr][handle] || [m0.min, m0.max, m0[\"def\"]],"
                " lo = spec[0], hi = spec[1], dflt = spec[2];"]],
              lambda g: "bal" in g["sweep"]["openDriven"]),
-            (NODE_ROWS[25],
+            (NODE_ROWS[26],
              [["var INTENT_FENCE_CHARS = consts.intentFenceChars || 600;",
                "var INTENT_FENCE_CHARS = consts.intentFenceChars || 120;"],
               ["if (line.length > INTENT_FENCE_CHARS && fields.returnPhrase) {", "if (false) {"],

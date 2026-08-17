@@ -434,9 +434,13 @@
     // refused WHOLE with «intent is no short text», so an intent nobody measured is a crossing
     // nobody sees: stage 0 found 1 004 of 6 304 composed crossings standing over the 400 the client
     // then applied, every one of them refused before an instrument saw it, and raised the client's
-    // cap to 600. The number belongs to the client and travels in the collection's constants where
-    // the bake publishes it; the fallback here is the number the client applies today, and it is a
-    // fallback rather than a copy — the day the bake carries the field, this file reads it.
+    // cap to 600. The number belongs to the client, and the engine's bake now publishes it out of
+    // the served client's own `PASS_LIMITS` literal as `pass.capabilities.intentChars`, exactly as
+    // it has always published the score's byte fence — so the site's staging step carries it into
+    // these constants beside `scoreFenceBytes` and the number this file measures against is the
+    // number the client applies rather than a second copy of it. What stands after the `||` is a
+    // FALLBACK for a settings record built before that line landed; it is the number the client
+    // applies today, and a record that carries the field overrides it without argument.
     var INTENT_FENCE_CHARS = consts.intentFenceChars || 600;
 
     var HANDLE_SPECS = {};
