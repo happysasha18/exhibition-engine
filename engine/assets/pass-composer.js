@@ -405,6 +405,17 @@
     field: ["transaction", "the passage's own travel, one envelope for the plane and the parquet"],
     parquetPeriod: ["measured", "structure.ownDevice.stepPx over the work's own frame side"],
     parquetTurn: ["measured", "structure.ownDevice.angleDeg, the angle that step was cut at"],
+    // THE UNFOLD'S OTHER THREE. Its manifest now travels in the composer's own constants — the
+    // settings record carries every instrument the composer CAN cast, not only the ones it casts
+    // today — so the register names them, and the day a kind maps to this instrument a score for it
+    // can be written. `panels` and `stagger` read the work; `tilt` is the plane's own attitude and
+    // reads the same measured angle the parquet turns at.
+    panels: ["measured", "two faces or four, from the departing work's own measured region count, "
+                         + "structure.regions.count"],
+    stagger: ["measured", "the golden-angle stagger of that count, charter shelf 13's stagger "
+                          + "instrument on the sheet's own time axis"],
+    tilt: ["measured", "structure.ownDevice.angleDeg, the angle the work's own step was cut at, "
+                       + "which is the attitude the plane is laid away at"],
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
                           + "between a streak reading and this handle is recorded, so the "
