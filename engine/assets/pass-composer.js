@@ -301,42 +301,72 @@
     centreY: ["measured", "the midpoint of the two measured radial centres"],
     shade: ["module-rest", "a judge channel the module rests at 1"],
     travel: ["module-rest", "a judge channel the module rests at 1"],
-    grain: ["uncalibrated", "the spectral reading exists in tone-texture.json; no scale between "
-                            + "a detail size in pixels and this handle's 0 to 1 is recorded"],
-    order: ["uncalibrated", "the rotational order exists in cut-lines.json; no scale between a "
-                            + "turn count and this handle's 0 to 1 is recorded"],
-    gather: ["uncalibrated", "the arriving figure's share exists in motifs.json; no scale "
-                             + "between a share of frame and this handle's 0 to 1 is recorded"],
-    loosen: ["uncalibrated", "the void share exists in motifs.json; no scale between it and "
-                             + "this handle's 0 to 1 is recorded"],
-    nMul: ["unmeasured", "no measurement in this tree bears on it"],
+    // THE GEOMETRY-FROM-THE-WORK SWEEP, 2026-08-17 (U27 stage 1, lane A). His 19:13 word lifted to
+    // the class at 19:21: every geometric and temporal parameter derives from the work's own
+    // measured structure and names the measurement it reads. Nine handles that stood here as
+    // «uncalibrated» or «unmeasured» now name theirs; the two that still do not say why, and the
+    // two above are the module's own resting channels rather than parameters of the work.
+    grain: ["measured", "the two works' own measured spectral periods, said in cells across the "
+                        + "frame's height, positioned about the handle's default by their ratio"],
+    order: ["measured", "the golden-angle stagger of the work's own measured ring count, charter "
+                        + "shelf 13's stagger instrument on the radial time axis"],
+    gather: ["measured", "the share of the frame each work's own measured dominant object holds"],
+    loosen: ["measured", "the share of the frame each work's own measured open ground holds"],
+    nMul: ["measured", "the ratio of the two works' measured strip counts, so the fabric's count "
+                       + "travels from the departing family to the arriving one"],
+    speed: ["measured", "the strip count against the instrument's own default count, so one strip "
+                        + "crosses one strip's width in the same time whatever the pair"],
+    drift: ["measured", "the fractional part of the two works' measured spectral periods in "
+                        + "ratio, charter shelf 13's incommensurate-period instrument"],
+    tooth: ["measured", "how much finer each work's measured ring repeat is than the cut it was "
+                        + "given, which is the relief a tooth stands in"],
+    turn: ["measured", "each work's own measured radial score, so a work whose rings are its own "
+                       + "device drives the mesh and one that barely reads radial barely turns"],
     press: ["unmeasured", "the hand's own pressure, which no build-time file measures"],
-    speed: ["unmeasured", "no measurement in this tree bears on it"],
-    drift: ["unmeasured", "no measurement in this tree bears on it"],
-    tooth: ["unmeasured", "no measurement in this tree bears on it"],
-    turn: ["unmeasured", "no measurement in this tree bears on it"],
-    flank: ["unmeasured", "no measurement in this tree bears on it"]
+    flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
+                          + "measured in the polar block and reads on exactly this, but no scale "
+                          + "between a streak reading and this handle is recorded, so the "
+                          + "instrument's own default stands and the gap is named"]
   };
 
+  // THE ROAD OPENS THE AUTHORED LINE. §4.7: the intent is the one written line a plan opens with,
+  // naming this adventure and the shelves it draws from, and a generic line fails review by
+  // definition. Under the plural-source law the first thing a person needs to know about a crossing
+  // is which of the seven roads it took, so the road says so in its own words before the reading
+  // that qualified it. The universal bridge opens with nothing, so a crossing that takes it reads
+  // exactly as it read before the roads existed.
+  var ROAD_PHRASES = {
+    "shared-ground": "Along what the two works share. ",
+    "spin": "The radial work turns. ",
+    "kaleidoscope": "The rings open. ",
+    "symmetry-slide": "The parts slide along the works' own symmetry. ",
+    "stripes": "The two band families cross into stripes. ",
+    "box-fold": "The work folds along its own region lines. ",
+    "dissimilar-mystery": "Along what the two works do not share. ",
+    "bridge": ""
+  };
+  // What a further pass on one edge says for itself: charter shelf 16's family drift, in a clause.
+  var RETURN_PHRASE = " Pass {passIndex}: same family, handles breathing.";
+
   var INTENT_TEMPLATES = {
-    quiet: "The {pivotName} holds at {pivotStrength} and never moves, and the crossing is the one "
+    quiet: "{roadPhrase}The {pivotName} holds at {pivotStrength} and never moves, and the crossing is the one "
       + "held ground played through: {aCount} parts of the first work hand over to {bCount} of "
       + "the second along that cut, and the second work arrives {arrival}{locusPhrase}. "
-      + "Shelves 9 the held pivot, 7 the arrival, 17 a quiet link.{registerPhrase}",
-    "middle-travel": "The {pivotName} holds at {pivotStrength} and the ground stays while the "
+      + "Shelves 9 the held pivot, 7 the arrival, 17 a quiet link.{registerPhrase}{returnPhrase}",
+    "middle-travel": "{roadPhrase}The {pivotName} holds at {pivotStrength} and the ground stays while the "
       + "{axisName} travels from {fromValue} to {toValue}{centrePhrase}. One generator changes "
       + "over a held family, and the second work arrives {arrival}{locusPhrase}. Shelves 9 one "
       + "generator at a time, 12 the parts that become actors, 7 the arrival, 17 a "
-      + "middle.{registerPhrase}",
-    "middle-world": "The {pivotName} holds at {pivotStrength} and over it the flat picture "
+      + "middle.{registerPhrase}{returnPhrase}",
+    "middle-world": "{roadPhrase}The {pivotName} holds at {pivotStrength} and over it the flat picture "
       + "becomes a {worldName} the viewer stands inside: the {axisName} travels from {fromValue} "
       + "to {toValue}{centrePhrase}, and the second work arrives {arrival}{locusPhrase}. Shelves "
-      + "8 the one folded space, 9 the held pivot, 7 the arrival, 17 a middle.{registerPhrase}",
-    culmination: "The {pivotName} holds at {pivotStrength} and is the whole ground of a long "
+      + "8 the one folded space, 9 the held pivot, 7 the arrival, 17 a middle.{registerPhrase}{returnPhrase}",
+    culmination: "{roadPhrase}The {pivotName} holds at {pivotStrength} and is the whole ground of a long "
       + "crossing: the {axisName} travels the wide distance from {fromValue} to "
       + "{toValue}{centrePhrase}, the flat picture opens into a {worldName}, and the second work "
       + "arrives {arrival}{locusPhrase}. Shelves 8 the one folded space, 9 the held pivot, 15 the "
-      + "far pair, 17 a culmination.{registerPhrase}"
+      + "far pair, 17 a culmination.{registerPhrase}{returnPhrase}"
   };
   var PIVOT_NAMES = {
     banding: "vertical band family", grid: "tile grid", radial: "radial family",
@@ -396,6 +426,14 @@
     var THRESHOLDS = consts.thresholds;
     var PROVENANCE = consts.provenance;
     var SCORE_FENCE_BYTES = consts.scoreFenceBytes;
+    // THE CLIENT'S OWN FENCE ON THE ONE FIELD §4.4 CALLS PROSE. A score whose intent runs past it is
+    // refused WHOLE with «intent is no short text», so an intent nobody measured is a crossing
+    // nobody sees: stage 0 found 1 004 of 6 304 composed crossings standing over the 400 the client
+    // then applied, every one of them refused before an instrument saw it, and raised the client's
+    // cap to 600. The number belongs to the client and travels in the collection's constants where
+    // the bake publishes it; the fallback here is the number the client applies today, and it is a
+    // fallback rather than a copy — the day the bake carries the field, this file reads it.
+    var INTENT_FENCE_CHARS = consts.intentFenceChars || 600;
 
     var HANDLE_SPECS = {};
     var FILLS_THE_FRAME = {};
@@ -991,10 +1029,35 @@
       return parts.join("-");
     }
 
+    // THE COMPOSER LEAVES THE BALANCE ALONE AT A DOOR, and this is the one place it could reach it.
+    // His architecture decision of 2026-08-17 18:00: at a door instant the state belongs to the
+    // instrument's own reading of the buffer it is drawing on, and the composer emits the artistic
+    // request and the bounds. The woven instrument's `bal` is exactly that state — the share of
+    // every band each work holds — and its manifest declares it OPEN, which is the instrument's own
+    // way of saying so: a score that names no track for it leaves the instrument deriving the
+    // balance from `mix` through its own measured response curve, and a score that DOES name one
+    // lands a door wherever its track says, where the doors lane measured 38.4176 of 255 of the
+    // other photograph standing in a door that should have been whole.
+    //
+    // Nothing here drives it today and nothing here may: an open handle is not in HANDLE_SPECS and
+    // the collection's own instrument list does not carry it, so the two roads it could arrive by
+    // are both shut. This function is where a cue's tracks are named, so the fence stands here,
+    // where it can only be crossed on purpose.
     function tracksFor(instr, cueId) {
-      var out = {}, handles = INSTRUMENTS[instr].handles, i;
-      for (i = 0; i < handles.length; i++) out[handles[i]] = { node: cueId + "-" + handles[i] };
+      var out = {}, handles = INSTRUMENTS[instr].handles, i, h;
+      for (i = 0; i < handles.length; i++) {
+        h = handles[i];
+        if (isDoorState(instr, h)) continue;
+        out[h] = { node: cueId + "-" + h };
+      }
       return out;
+    }
+
+    // A handle the instrument declares OPEN is a state the instrument reads at its own doors. The
+    // manifest is the one home of that fact, so this asks the manifest rather than keeping a list.
+    function isDoorState(instr, handle) {
+      var m = MANIFESTS[instr];
+      return !!(m && m.handles[handle] && m.handles[handle].open);
     }
 
     function resourcesBlock(variant) {
@@ -1077,7 +1140,8 @@
         failLand: "arrive",
         quality: quality,
         intent: INTENT_TEMPLATES[spec.intentKey],
-        intentKey: spec.intentKey
+        intentKey: spec.intentKey,
+        road: spec.road, role: spec.role, passIndex: spec.passIndex
       };
     }
 
@@ -1648,7 +1712,7 @@
         arrivalLeads: arrivalLeads,
         middle: world ? { kind: "world", world: world }
           : (travelInstr ? { kind: "surface" } : { kind: "none" }),
-        budget: counts, intentKey: intentKey, road: road.id, role: role
+        budget: counts, intentKey: intentKey, road: road.id, role: role, passIndex: passIndex
       };
       var shape = shapeId(pivotInstr, pivotKindsOf(pivot).join("+"), travelInstr, arrivalInstr,
                           voices, arrivalLeads, world);
@@ -1694,6 +1758,33 @@
       return [flt(reading.score)];
     }
 
+    // THE PER-WORK READINGS THE FILL DRIVES HANDLES FROM. Everything here comes off the work's own
+    // record; the fill below names, handle by handle, which of these each one reads.
+    function measuredParts(work) {
+      var st = work.structure || {}, tex = work.texture || {}, mot = work.motifs || {};
+      var side = Number(work.frameSide) || 0;
+      var box = (st.dominantObject || {}).bbox || [0, 0, 0, 0];
+      var ring = setFor(work, "ring"), strip = setFor(work, "strip");
+      var spectral = Number(tex.spectralPeriodPx) || 0;
+      return {
+        // the work's own spectral period, said as cells across the frame's height — the very unit
+        // the material instrument's coarse grain is published in
+        grainCells: spectral > 0 && side > 0 ? side / spectral : 0,
+        spectralPeriodPx: spectral,
+        // the share of the frame the work's measured open ground holds
+        voidShare: Number(mot.voidShare) || 0,
+        // the share of the frame the work's dominant object holds, off its own measured box
+        figureShare: Math.max(0, (box[2] - box[0])) * Math.max(0, (box[3] - box[1])),
+        // how strongly the work reads as radial, and how many rings its own cut measured
+        radialScore: Number((st.radial || {}).score) || 0,
+        ringGrain: ring ? Number(ring.measuredGrain) || 0 : 0,
+        // how much finer the work's own measured repeat is than the cut it was given
+        ringMerge: ring ? Number(ring.mergeFactor) || 0 : 0,
+        // the strip family the woven instrument cuts on
+        strips: strip && strip.realCount ? Number(strip.count) || 0 : 0
+      };
+    }
+
     function workParts(work, floors) {
       var sets = {}, counts = {}, fig = {}, ends = {}, i, s, reading;
       for (i = 0; i < work.sets.length; i++) {
@@ -1719,7 +1810,7 @@
         }
       }
       return {
-        sets: sets, counts: counts, fig: fig, ends: ends,
+        sets: sets, counts: counts, fig: fig, ends: ends, measured: measuredParts(work),
         locus: [LOCUS_KINDS.indexOf(locusKind)].concat(locus || [0, 0]),
         world: (best && bestv && bestv > 0) ? WORLDS.indexOf(POLAR_WORLD[best]) : -1,
         providerOf: (function () {
@@ -1751,6 +1842,92 @@
     }
 
     // ---- the fill, and the score it serialises into ----
+
+    function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+    function fractional(v) { return v - Math.floor(v); }
+
+    // The golden angle of a count: charter shelf 13's stagger instrument, which is what keeps no
+    // two fragments of a cascade in line. The constant is the golden section itself and is
+    // measured by nothing, because it is a number rather than a reading.
+    var GOLDEN = 0.6180339887;
+    function goldenStagger(count) { return fractional(count * GOLDEN); }
+
+    // ONE SCALE, STATED ONCE, FROM A MEASURED RATIO TO A SHARE OF A HANDLE'S OWN SPAN. A handle
+    // publishes a floor, a ceiling and a default; a work publishes a reading. What no file in this
+    // tree records is how many units of a reading one step of a handle is worth — the gap
+    // HANDLE_SOURCE calls «uncalibrated». What IS measured is the RATIO between the two works'
+    // readings, and a ratio needs one number to become a position: how many doublings of the
+    // reading cross the handle's whole span. That number is typed here, it is the only one of its
+    // kind in this file, and it stands on the revisit list.
+    // THE FAMILY BREATHES ON A FURTHER PASS. Charter shelf 16 and §4.4f: the same passage family
+    // each time an edge is met again, with small shifts pass by pass — variation, never repetition
+    // and never total novelty — each bounded slot's value drawn from the crossing's own seed and
+    // the slot's own name. The span a handle may be rolled inside is DERIVED here rather than
+    // written down anywhere: the measured value plus or minus DRIFT_SHARE of the handle's own
+    // published range, clipped to that range. So nothing pairwise is stored, the bound is the
+    // instrument's own, and on the first pass of an edge nothing is rolled and the score is exactly
+    // the score. DRIFT_SHARE is a share nothing measures and it stands on the revisit list.
+    var DRIFT_SHARE = 0.06;
+    // The die's own handles: the crossing's seed is the die itself and the banding axis is a
+    // direction rather than an amount, so neither breathes.
+    var NEVER_DRIFTS = ["seed", "axis"];
+
+    function driftOne(instr, handle, value, seed, passIndex) {
+      var spec = HANDLE_SPECS[instr] && HANDLE_SPECS[instr][handle];
+      if (!spec || !passIndex || NEVER_DRIFTS.indexOf(handle) >= 0) return value;
+      var lo = num(spec[0]), hi = num(spec[1]);
+      var roll = dieAmong(seed, handle + "#" + passIndex, 2001) / 1000.0 - 1.0;
+      var v = num(value) + roll * (hi - lo) * DRIFT_SHARE;
+      v = Math.min(hi, Math.max(lo, v));
+      // A handle the fill asked for as a whole number stays a whole number when it breathes.
+      if (Number.isInteger(num(value))) return Math.round(v);
+      return flt(r4(v));
+    }
+
+    function driftTheFamily(instr, wanted, seed, passIndex) {
+      if (!passIndex) return null;
+      var bounds = {};
+      Object.keys(wanted).forEach(function (h) {
+        var spec = HANDLE_SPECS[instr] && HANDLE_SPECS[instr][h];
+        if (!spec || NEVER_DRIFTS.indexOf(h) >= 0) return;
+        var lo = num(spec[0]), hi = num(spec[1]), reach = (hi - lo) * DRIFT_SHARE;
+        if (Array.isArray(wanted[h])) {
+          bounds[h] = wanted[h].map(function (v) {
+            return [r4(Math.max(lo, num(v) - reach)), r4(Math.min(hi, num(v) + reach))];
+          });
+          wanted[h] = wanted[h].map(function (v) {
+            return driftOne(instr, h, v, seed, passIndex);
+          });
+        } else {
+          bounds[h] = [r4(Math.max(lo, num(wanted[h]) - reach)),
+                       r4(Math.min(hi, num(wanted[h]) + reach))];
+          wanted[h] = driftOne(instr, h, wanted[h], seed, passIndex);
+        }
+      });
+      return bounds;
+    }
+
+    var OCTAVES_PER_SPAN = 4;
+
+    // WHERE A READING STANDS IN ONE HANDLE'S OWN RANGE, READ OFF ONTO ANOTHER'S. Two handles of one
+    // instrument that answer to the same thing — the count a fabric is cut into and the speed that
+    // count travels at — carry their own published ranges, and a position in the first is a
+    // position in the second. No number of this file's own enters, so nothing here can go stale
+    // against a manifest that moves.
+    function betweenSpans(instr, fromHandle, toHandle, value) {
+      var a = HANDLE_SPECS[instr][fromHandle], b = HANDLE_SPECS[instr][toHandle];
+      var lo = num(a[0]), hi = num(a[1]);
+      var at = hi > lo ? (Math.min(hi, Math.max(lo, value)) - lo) / (hi - lo) : 0;
+      return num(b[0]) + at * (num(b[1]) - num(b[0]));
+    }
+
+    function acrossTheSpan(instr, handle, from, to) {
+      var spec = HANDLE_SPECS[instr][handle], lo = spec[0], hi = spec[1], mid = num(spec[2]);
+      var d = Math.log2(Math.max(from, 1e-6) / Math.max(to, 1e-6)) / OCTAVES_PER_SPAN;
+      d = Math.max(-1, Math.min(1, d)) / 2 * (hi - lo);
+      return [flt(r4(Math.min(hi, Math.max(lo, mid + d)))),
+              flt(r4(Math.min(hi, Math.max(lo, mid - d))))];
+    }
 
     function appliedValue(instr, handle, requested) {
       var spec = HANDLE_SPECS[instr][handle], lo = spec[0], hi = spec[1], dflt = spec[2];
@@ -1831,6 +2008,7 @@
                       locusKind: locusKind,
                       locus: locusKind === "none" ? null : [toP.locus[1], toP.locus[2]] };
 
+      var familyBounds = {};
       var castOf = { pivot: ["pivot-carrier"], travel: ["traveller"],
                      arrival: ["arriving-figure", "departing-figure"] };
       var cues = [];
@@ -1847,6 +2025,7 @@
         });
         var instr = c.instrument.id;
         var wanted = { seed: flt(r4(Math.min(8.0, Math.max(0.0, num(row[4]))))) };
+        var mf = fromP.measured, mt = toP.measured;
         if (instr === "weave") {
           var n = 0;
           actors.forEach(function (a) {
@@ -1857,13 +2036,86 @@
           if (ax !== undefined && ax !== null) {
             if (num(ax[2]) < BANDING.length) wanted.axis = AXIS_OF_BANDING[BANDING[num(ax[2])]];
           }
-        } else if (instr === "gears" && num(row[11]) >= 0) {
-          wanted.ratio = row[13];
-          wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
-          wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
-          wanted.size = [row[11], row[12]];
-          if (num(row[14]) >= 0) wanted.bandPeriod = row[14];
+          // THE STRIP COUNT TRAVELS FROM ONE WORK'S FAMILY TO THE OTHER'S. `strips` above is a
+          // single number and it is the DEPARTING work's own count, so the fabric held that one
+          // work's structure the whole way — the charter's own words for the defect: a bridge
+          // playing only one work's structure reads as artificial. `nMul` multiplies the count in
+          // the instrument itself, so driving it from 1 to the ratio of the two measured counts
+          // makes the count travel exactly as the bridge law asks, alongside the handle. Nothing is
+          // scaled and nothing is invented: the handle IS a multiplier and the two counts are
+          // measured. Where the ratio runs past the handle's published span the instrument's own
+          // range answers, and the note beside the node says so.
+          if (n && mt.strips) wanted.nMul = [flt(1.0), flt(r4(mt.strips / n))];
+          // HOW FAST THE FABRIC TRAVELS, read off the count it is cut into. Charter shelf 4: larger
+          // fragments carry more inertia, so a coarse fabric of a few wide strips travels slowly
+          // and a fine one quickly. The reading is placed by where the count stands inside the
+          // strip handle's OWN published range, mapped onto the speed handle's own range — two
+          // spans the instrument publishes and no third number, so nothing here goes stale and
+          // nothing is invented. At the module's own default count this lands within a twelfth of
+          // the module's own default speed.
+          if (n) wanted.speed = flt(r4(betweenSpans("weave", "strips", "speed", n)));
+        } else if (instr === "gears") {
+          if (num(row[11]) >= 0) {
+            wanted.ratio = row[13];
+            wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
+            wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
+            wanted.size = [row[11], row[12]];
+            if (num(row[14]) >= 0) wanted.bandPeriod = row[14];
+          }
+          // HOW HARD THE WHEELS TURN, read off how strongly each work reads as radial. A work whose
+          // rings and spokes are its own device drives the mesh; one that barely reads radial
+          // barely turns, and the rate travels from the one to the other with the crossing.
+          if (mf.radialScore > 0 || mt.radialScore > 0) {
+            wanted.turn = [flt(r4(clamp01(mf.radialScore))), flt(r4(clamp01(mt.radialScore)))];
+          }
+          // HOW FAR APART THE TEETH'S OWN MOMENTS STAND — the stagger, which is charter shelf 13's
+          // golden-angle instrument on the radial time axis: no two of a cascade's fragments align
+          // when the stagger is the golden angle of the count. The count is the work's own measured
+          // ring grain, so the number is the work's and the law is the shelf's.
+          if (mf.ringGrain > 0 && mt.ringGrain > 0) {
+            wanted.order = [flt(r4(goldenStagger(mf.ringGrain))),
+                            flt(r4(goldenStagger(mt.ringGrain)))];
+          }
+          // HOW FAR A TOOTH STANDS OUT OF ITS PITCH CIRCLE, read off how much finer the work's own
+          // measured ring repeat is than the cut it was given: a work whose measurement outruns its
+          // cut carries the relief the teeth stand in. The handle's own range answers anything past
+          // it.
+          if (mf.ringMerge > 0 && mt.ringMerge > 0) {
+            wanted.tooth = [flt(r4(clamp01(mf.ringMerge - 1))), flt(r4(clamp01(mt.ringMerge - 1)))];
+          }
+        } else if (instr === "matter") {
+          // HOW COARSE THE MATERIAL IS. The instrument publishes its coarse grain in cells across
+          // the frame's height, and the work's own measured spectral period says how many cells
+          // that work is made of. What no file in this tree records is how many cells one step of
+          // the handle is worth — HANDLE_SOURCE has called this handle uncalibrated since it was
+          // written — so what travels is the RATIO of the two works' readings, positioned about the
+          // handle's own default across OCTAVES_PER_SPAN doublings.
+          if (mf.grainCells > 0 && mt.grainCells > 0) {
+            wanted.grain = acrossTheSpan("matter", "grain", mf.grainCells, mt.grainCells);
+          }
+          // HOW FAR THE PICTURE IS DRAGGED, read off the share of the frame each work's own
+          // measured open ground holds: a work with room to move is dragged further. The reading
+          // is already a share of the frame and the handle is already a share of its own range, so
+          // no scale stands between them.
+          if (mf.voidShare > 0 || mt.voidShare > 0) {
+            wanted.loosen = [flt(r4(clamp01(mf.voidShare))), flt(r4(clamp01(mt.voidShare)))];
+          }
+          // HOW WIDE THE LOOSENED BAND IS, read off the share of the frame each work's own
+          // dominant object holds: the material gathers over as much of the frame as the figure
+          // that is arriving in it. A share against a share again, with nothing between them.
+          if (mf.figureShare > 0 || mt.figureShare > 0) {
+            wanted.gather = [flt(r4(clamp01(mf.figureShare))), flt(r4(clamp01(mt.figureShare)))];
+          }
+          // WHERE THE MATERIAL HAS DRIFTED TO — charter shelf 13's third rubato instrument, the
+          // incommensurate period, on the material's own time axis. The two works' measured
+          // spectral periods stand in a ratio that is almost never a whole number, and its
+          // fractional part is a deviation that never comes back into step.
+          if (mf.spectralPeriodPx > 0 && mt.spectralPeriodPx > 0) {
+            wanted.drift = flt(r4(fractional(mf.spectralPeriodPx / mt.spectralPeriodPx)));
+          }
         }
+        var bounds = driftTheFamily(instr, wanted, num(row[4]), tpl.passIndex || 0);
+        if (bounds) familyBounds[c.id] = bounds;
         var measured = {}, nodes = {};
         Object.keys(c.tracks).sort().forEach(function (h) {
           var nodeName = (c.tracks[h] || {}).node || (c.id + "-" + h);
@@ -1913,6 +2165,8 @@
 
       var world = null;
       if (tpl.middle.kind === "world" && num(toP.world) >= 0) world = WORLDS[num(toP.world)];
+      var said = realiseIntent(tpl, row, axis, arrival, fromP, toP, cutKinds, pivotKind,
+                               pivotMeasure, world);
 
       return {
         schema: SCHEMA,
@@ -1935,9 +2189,12 @@
         interruption: tpl.interruption,
         failLand: tpl.failLand,
         readiness: row[5],
+        // §4.4f's family bounds, derived per pass rather than stored per pair: the span each
+        // breathing handle was rolled inside on this pass. A plan field, so it reaches no score.
+        familyBounds: familyBounds,
         register: REGISTERS[num(row[15])],
-        intent: realiseIntent(tpl, row, axis, arrival, fromP, toP, cutKinds, pivotKind,
-                              pivotMeasure, world),
+        intent: said[0],
+        intentDropped: said[1],
         provenance: PROVENANCE
       };
     }
@@ -1951,6 +2208,9 @@
         bCount += toP.counts[k] === undefined ? 0 : toP.counts[k];
       });
       var fields = {
+        roadPhrase: ROAD_PHRASES[tpl.road] === undefined ? "" : ROAD_PHRASES[tpl.road],
+        returnPhrase: tpl.passIndex
+          ? RETURN_PHRASE.replace("{passIndex}", String(tpl.passIndex)) : "",
         pivotName: PIVOT_NAMES[pivotMeasure || pivotKind] || "shared ground",
         pivotStrength: row[2],
         arrival: ARRIVAL_PHRASES[arrival.mode],
@@ -1973,7 +2233,23 @@
       }
       if (world) fields.worldName = WORLD_NAMES[world];
       fields.registerPhrase = REGISTER_PHRASES[REGISTERS[num(row[15])]];
-      return fill(tpl.intent, fields);
+      // THE LINE IS MEASURED AGAINST THE FENCE IT HAS TO PASS. The clauses this lane added are the
+      // ones that go first, in the order of what a person can most afford to lose: the pass count,
+      // then the road's own opening. What was there before this lane is never touched, so a line
+      // that fitted still fits and a line that would not have fitted arrives shortened rather than
+      // refused whole. Which clauses were dropped stands on the plan.
+      var dropped = [], line = fill(tpl.intent, fields);
+      if (line.length > INTENT_FENCE_CHARS && fields.returnPhrase) {
+        fields.returnPhrase = "";
+        dropped.push("returnPhrase");
+        line = fill(tpl.intent, fields);
+      }
+      if (line.length > INTENT_FENCE_CHARS && fields.roadPhrase) {
+        fields.roadPhrase = "";
+        dropped.push("roadPhrase");
+        line = fill(tpl.intent, fields);
+      }
+      return [line, dropped];
     }
 
     function planDurationMs(plan) {
