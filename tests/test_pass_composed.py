@@ -202,14 +202,13 @@ KEY_AB, KEY_BA = A_ID + "__" + B_ID + "__ab", A_ID + "__" + B_ID + "__ba"
 # The seven roads, each with the shape of qualification the module states for it. The row for each
 # finds a real pair of the collection that takes it and prints the reading that qualified that pair.
 ROADS = ["shared-ground", "spin", "kaleidoscope", "symmetry-slide", "stripes",
-         "dissimilar-mystery", "bridge"]
-# The eighth road states its measurements and is stopped by its instrument, which is a finding
-# rather than a road: no instrument in this collection cuts on panels.
-ROAD_UNBUILT = "box-fold"
+         "dissimilar-mystery", "bridge", "box-fold"]
+ROLES_ALL_PY = ["entrance", "quiet link", "middle", "culmination", "return"]
 
 NODE_ROWS = [
     "EX-COMPOSED the seven roads all carry real pairs, and each names the reading that qualified it",
-    "EX-COMPOSED the box fold states its measurements and is stopped by its missing instrument",
+    "EX-COMPOSED the frame folds into a solid, and only where the step's role may spend a miracle",
+    "EX-COMPOSED every pair composes at every one of the five route roles without throwing",
     "EX-COMPOSED the die chooses the road, so a pinned seed reproduces the choice",
     "EX-COMPOSED the camera leads a passage at the walk's two tonic steps and nowhere else",
     "EX-COMPOSED the five route roles compose five passages, each inside shelf 17's own budget",
@@ -238,6 +237,9 @@ NODE_ROWS = [
     "EX-COMPOSED red-on-bug · the open-handle fence removed: the composer drives a door's own state",
     "EX-COMPOSED red-on-bug · the intent fence removed: a line stands over the cap it is measured "
     "against",
+    "EX-COMPOSED red-on-bug · the fold's own role gate removed: a step with no miracle folds",
+    "EX-COMPOSED red-on-bug · the fold stops counting as the miracle: a folding crossing spends "
+    "none",
     "EX-COMPOSED the intent fence gives up this lane's own clauses before the line is refused whole",
 ]
 
@@ -429,6 +431,16 @@ let composed = 0, declined = 0, maxBytes = 0, maxIntent = 0, overByte = 0, overI
 let drivenUnmeasured = [], openDriven = [], drivenNoteMissing = [];
 let intentShortened = 0, roadKept = 0, boxReasons = {};
 let ledAtTonic = 0, ledElsewhere = 0, ledWithWorldCue = 0, tonic = 0;
+// THE FOLD, counted per role. A crossing that folds the frame into a solid spends the one miracle
+// shelf 6 allows, so it may not stand at a role shelf 17 gives none, may not stand beside a second
+// impossible thing, and may not claim the world level beside a camera-led flight.
+const ROLES_ALL = ["entrance", "quiet link", "middle", "culmination", "return"];
+const folded = {}, worldCue = {}, ledAndWorld = {}, twoMiracles = {}, roleThrew = {}, roleN = {};
+const foldUnspent = {};
+for (const r of ROLES_ALL) { folded[r] = 0; worldCue[r] = 0; ledAndWorld[r] = 0;
+                             twoMiracles[r] = 0; roleThrew[r] = null; roleN[r] = 0;
+                             foldUnspent[r] = 0; }
+let boxQualified = 0;
 const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns. ",
                       "The rings open. ", "The parts slide along the works' own symmetry. ",
                       "The two band families cross into stripes. ",
@@ -459,6 +471,37 @@ for (let i = 0; i < ids.length; i++) {
       byRoad[p.road] = {key: key, brief: brief(p),
                         why: (p.roadNotes.filter((n) => n.road === p.road)[0] || {}).why || null};
     }
+    // EVERY ROLE IS COMPOSED FOR EVERY PAIR. A plan shape the authored lines have no template for
+    // throws inside `declare`, on the product path, where nothing may throw — and a sweep at one
+    // role will not see it, because the shape a role reaches for is the role's own. This walks all
+    // five and records the first pair and role that threw, which is exactly how the folding
+    // culmination's missing line was found.
+    for (const r of ROLES_ALL) {
+      let q = null;
+      try {
+        q = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: dir,
+                                 seed: die(key), routeRole: r});
+      } catch (e) {
+        if (!roleThrew[r]) roleThrew[r] = key + ": " + String(e && e.message).slice(0, 120);
+        continue;
+      }
+      const bf = (q.roadNotes || []).filter((n) => n.road === "box-fold")[0];
+      if (r === "middle" && bf && bf.ok) boxQualified++;
+      if (!q.score) continue;
+      roleN[r]++;
+      const cues = q.score.cues;
+      if (cues.some((x) => x.instrument.id === "boxfold")) folded[r]++;
+      const claimsWorld = cues.some((x) => (x.levels || []).indexOf("WORLD") >= 0);
+      if (claimsWorld) worldCue[r]++;
+      if (claimsWorld && q.score.camera.lead) ledAndWorld[r]++;
+      const miracles = cues.filter((x) => x.voice === "miracle").length;
+      if (miracles > 1) twoMiracles[r]++;
+      // A CROSSING THAT FOLDS THE FRAME AND SPENDS NO MIRACLE FOR IT has lost the law rather than
+      // kept it: the fold IS the impossible event, so a folding score with no miracle voice means
+      // the slot went unspent and a second impossible thing could stand beside it.
+      if (cues.some((x) => x.instrument.id === "boxfold") && miracles === 0) foldUnspent[r]++;
+    }
+
     // THE CAMERA-LED PASSAGE, counted at a tonic step and at one that is not. A led flight spends
     // the world voice, so no led score may give a cue the WORLD level.
     const atTonic = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: dir,
@@ -507,7 +550,9 @@ out.sweep = {works: ids.length, ordered: ids.length * (ids.length - 1), composed
              drivenUnmeasured: drivenUnmeasured.sort(), openDriven: openDriven.sort(),
              drivenNoteMissing: drivenNoteMissing.slice(0, 4),
              intentShortened, roadKept, boxReasons,
-             ledAtTonic, ledElsewhere, ledWithWorldCue, tonic};
+             ledAtTonic, ledElsewhere, ledWithWorldCue, tonic,
+             folded, worldCue, ledAndWorld, twoMiracles, roleThrew, roleN, boxQualified,
+             foldUnspent};
 
 // 7 · the road every pair is measured against, and the one road no instrument can play
 const roadNotes = {};
@@ -605,41 +650,45 @@ else:
         check(NODE_ROWS[0], not missing,
               f"roads with no pair of the real collection: {missing}; the rest: {shown}")
 
-        # --- row 1 · the road that states its measurements and has no instrument ---------------
-        classes = {"qualifies, waiting on the instrument that cuts on panels": 0,
-                   "the departing work's regions read under the tight floor": 0,
-                   "the departing work cuts into too few faces": 0}
-        for word, count in sweep["boxReasons"].items():
-            if "instrument" in word:
-                classes["qualifies, waiting on the instrument that cuts on panels"] += count
-            elif "faces" in word:
-                classes["the departing work cuts into too few faces"] += count
-            else:
-                classes["the departing work's regions read under the tight floor"] += count
-        waiting = classes["qualifies, waiting on the instrument that cuts on panels"]
+        # --- row 1 · the fold, and the two laws that bind it ------------------------------------
+        noMiracle = ["entrance", "quiet link", "return"]
+        leaked = [r for r in noMiracle if sweep["folded"][r]]
+        bothWays = [r for r in sweep["ledAndWorld"] if sweep["ledAndWorld"][r]]
+        stacked = [r for r in sweep["twoMiracles"] if sweep["twoMiracles"][r]]
+        unspent = [r for r in sweep["foldUnspent"] if sweep["foldUnspent"][r]]
         check(NODE_ROWS[1],
-              ROAD_UNBUILT not in sweep["roads"] and waiting > 0,
-              f"the box fold is taken by {sweep['roads'].get(ROAD_UNBUILT, 0)} pair(s); over the "
-              f"collection its own words fall into "
-              + json.dumps(classes, ensure_ascii=False)
-              + f" — {waiting} pair(s) qualify on the measurements and wait on an instrument this "
-                f"collection has not got")
+              sweep["folded"]["middle"] > 0 and not leaked and not bothWays and not stacked
+              and not unspent,
+              "the frame folds for "
+              + ", ".join(f"{sweep['folded'][r]} pair(s) at a {r}" for r in ROLES_ALL_PY)
+              + f"; {sweep['boxQualified']} pairs qualify for the box-fold road on their own "
+              f"measurements. Roles that spend no miracle and folded anyway: {leaked or 'none'}; "
+              f"scores led by the camera with a world-level cue beside it: {bothWays or 'none'}; "
+              f"scores carrying two impossible things: {stacked or 'none'}; folding scores that "
+              f"spend no miracle for the fold: {unspent or 'none'}")
 
-        # --- row 2 · the die chooses the road --------------------------------------------------
+        # --- row 2 · every role composes for every pair -------------------------------------------
+        threw = {r: w for r, w in sweep["roleThrew"].items() if w}
+        check(NODE_ROWS[2], not threw,
+              "over the real collection at all five roles — "
+              + ", ".join(f"{r}: {sweep['roleN'][r]}" for r in ROLES_ALL_PY)
+              + f" composed — nothing threw inside the entry: {threw or 'none'}")
+
+        # --- row 3 · the die chooses the road --------------------------------------------------
         d = got["dice"]
-        check(NODE_ROWS[2], len(d["distinct"]) > 1 and d["pinnedRepeats"],
+        check(NODE_ROWS[3], len(d["distinct"]) > 1 and d["pinnedRepeats"],
               f"seventeen dice over one pair chose {d['distinct']}; a pinned die reproduces its own "
               f"run: {d['pinnedRepeats']}")
 
-        # --- row 3 · the camera-led passage ------------------------------------------------------
-        check(NODE_ROWS[3],
+        # --- row 4 · the camera-led passage ------------------------------------------------------
+        check(NODE_ROWS[4],
               sweep["ledAtTonic"] > 0 and sweep["ledElsewhere"] == 0
               and sweep["ledWithWorldCue"] == 0,
               f"of {sweep['tonic']} quiet links {sweep['ledAtTonic']} are carried by the flight "
               f"itself, and of {sweep['composed']} middles {sweep['ledElsewhere']} are; no led "
               f"score gives a cue the world level ({sweep['ledWithWorldCue']} did)")
 
-        # --- row 3 · the five roles, each inside shelf 17's budget ------------------------------
+        # --- row 5 · the five roles, each inside shelf 17's budget ------------------------------
         roles = got["roles"]
         bad = []
         for role, want in ROLE_BUDGET.items():
@@ -656,7 +705,7 @@ else:
             if not (want["seconds"][0] <= secs <= want["seconds"][1]):
                 bad.append(f"{role} runs {secs} s, outside {want['seconds']}")
         told = len({json.dumps(roles[k].get("digest")) for k in roles if roles[k].get("digest")})
-        check(NODE_ROWS[4], not bad and told >= 3,
+        check(NODE_ROWS[5], not bad and told >= 3,
               "; ".join(f"{k}: {v.get('road')} {v.get('tier')} {v.get('duration')} ms "
                         f"{v.get('cues')}" for k, v in roles.items())
               + f" — {told} distinct scores over one pair"
@@ -666,7 +715,7 @@ else:
         m = got["memory"]
         agree = (m["saidForward"] == m["walkForward"] and m["saidBack"] == m["walkBack"]
                  and m["saidAgain"] == m["walkAgain"])
-        check(NODE_ROWS[5], agree and bool(m["walkForward"]),
+        check(NODE_ROWS[6], agree and bool(m["walkForward"]),
               f"the composer hands back «{m['saidForward']}» and the walk reads «{m['walkForward']}» "
               f"off the same plan; the way back: «{m['saidBack']}» against «{m['walkBack']}»; the "
               f"third pass: «{m['saidAgain']}» against «{m['walkAgain']}»")
@@ -678,7 +727,7 @@ else:
         movedAgain = [k for k in ("order", "opens", "actors", "camera")
                       if m["shapingAgain"] and m["shapingForward"]
                       and m["shapingAgain"][k] != m["shapingForward"][k]]
-        check(NODE_ROWS[6],
+        check(NODE_ROWS[7],
               (m["backKeepsFamily"] or m["backKeepsPivot"]) and bool(moved)
               and m["againDiffers"] and m["heldAgain"],
               f"out on {m['forward']['road']} as «{m['walkForward']}», back on "
@@ -691,20 +740,20 @@ else:
               + "; ".join(m["measuredNamed"]))
 
         # --- row 7 · the geometry sweep ---------------------------------------------------------
-        check(NODE_ROWS[7],
+        check(NODE_ROWS[8],
               not sweep["drivenUnmeasured"] and not sweep["drivenNoteMissing"],
               f"over {sweep['composed']} composed passages of the real collection, every driven "
               f"handle's own note names its measurement; handles driven from something no "
               f"measurement bears on: {sweep['drivenUnmeasured']}")
 
         # --- row 8 · the open handle ------------------------------------------------------------
-        check(NODE_ROWS[8], not sweep["openDriven"],
+        check(NODE_ROWS[9], not sweep["openDriven"],
               f"handles the instruments declare open that the composer drove: "
               f"{sweep['openDriven']} — the woven balance is the one at stake, and at a door that "
               f"state is the instrument's own reading of the buffer (his 18:00 decision)")
 
         # --- row 9 · the two fences a filled score has to pass -----------------------------------
-        check(NODE_ROWS[9], sweep["overByte"] == 0 and sweep["overIntent"] == 0,
+        check(NODE_ROWS[10], sweep["overByte"] == 0 and sweep["overIntent"] == 0,
               f"the heaviest score of the collection weighs {sweep['maxBytes']} B against the "
               f"{sweep['byteCap']} the client applies, and the longest intent runs "
               f"{sweep['maxIntent']} characters against its {sweep['intentCap']}; over the byte "
@@ -712,7 +761,7 @@ else:
 
         # --- row 10 · the composer reads the fence it is handed ----------------------------------
         h = got["handed"]
-        check(NODE_ROWS[10],
+        check(NODE_ROWS[11],
               h["shortened"] > 0 and sweep["intentShortened"] == 0,
               f"handed a cap of {h['cap']} characters in its own constants, the composer shortened "
               f"{h['shortened']} of {h['composed']} lines and its longest ran {h['max']}; on the "
@@ -720,7 +769,7 @@ else:
 
         # --- row 10 · every pair is answered ------------------------------------------------------
         named = all(w.strip() for w in sweep["declines"])
-        check(NODE_ROWS[11],
+        check(NODE_ROWS[12],
               sweep["composed"] + sweep["declined"] == sweep["ordered"] and named,
               f"{sweep['composed']} of {sweep['ordered']} ordered pairs compose and "
               f"{sweep['declined']} decline, each by name: "
@@ -728,7 +777,7 @@ else:
 
         # --- row 11 · the defaults reproduce the four-value call -----------------------------------
         dd = got["defaults"]
-        check(NODE_ROWS[12], dd["spelledSame"] and dd["coreSame"],
+        check(NODE_ROWS[13], dd["spelledSame"] and dd["coreSame"],
               f"the six fields named at their defaults read the same bytes: {dd['spelledSame']}; "
               f"the choice core's own four-value call reads them too: {dd['coreSame']}. The equality "
               f"is against the composer's own output on this same run, never against the prebaked "
@@ -736,16 +785,16 @@ else:
 
         # --- rows 12-14 · the three fences ---------------------------------------------------------
         f = got["fences"]
-        check(NODE_ROWS[13],
+        check(NODE_ROWS[14],
               f["role"]["composed"] is False and "grand finale" in (f["role"]["declined"] or "")
               and "route role" in (f["role"]["declined"] or ""),
               f"refusal: {f['role']['declined']!r}; the five it names: {got['routeRoles']}")
-        check(NODE_ROWS[14],
+        check(NODE_ROWS[15],
               f["memory"]["composed"] is False and "cooldown" in (f["memory"]["declined"] or "")
               and f["memoryOk"]["composed"] is True,
               f"a fourth field refuses: {f['memory']['declined']!r}; the three §4.8 lets cross "
               f"compose: {f['memoryOk']['composed']}")
-        check(NODE_ROWS[15],
+        check(NODE_ROWS[16],
               f["seedHigh"]["composed"] is False and f["seedLow"]["composed"] is False
               and "seed" in (f["seedHigh"]["declined"] or ""),
               f"a die of 9 refuses: {f['seedHigh']['declined']!r}; a die of -1 refuses: "
@@ -757,33 +806,33 @@ else:
         # judged on whether the answer MOVES and twenty-four works are 552 ordered pairs of proof.
         CORNER = 24
         PLANTS = [
-            (NODE_ROWS[16], [["if (ROUTE_ROLES.indexOf(role) < 0) {", "if (false) {"]],
+            (NODE_ROWS[17], [["if (ROUTE_ROLES.indexOf(role) < 0) {", "if (false) {"]],
              lambda g: g["fences"]["role"]["composed"] is True),
-            (NODE_ROWS[17], [["if (odd.length) {", "if (false) {"]],
+            (NODE_ROWS[18], [["if (odd.length) {", "if (false) {"]],
              lambda g: g["fences"]["memory"]["composed"] is True),
-            (NODE_ROWS[18],
+            (NODE_ROWS[19],
              [["roadFor(fromW, toW, FLOORS, step, memory || null, seed, key)",
                "roadFor(fromW, toW, FLOORS, step, memory || null, 0, key)"]],
              lambda g: len(g["dice"]["distinct"]) == 1),
-            (NODE_ROWS[19],
+            (NODE_ROWS[20],
              [["if (num(nearAxis.delta) > SIMILAR_DELTA) {", "if (false) {"]],
              lambda g: g["roadNotes"]["shared-ground"]["ok"] is True
              and got["roadNotes"]["shared-ground"]["ok"] is True),
-            (NODE_ROWS[20], [["if (fits) break;", "break;"]],
+            (NODE_ROWS[21], [["if (fits) break;", "break;"]],
              lambda g: (g["roles"]["quiet link"].get("budget") or {}).get("letters", 0) > 1
              or (g["roles"]["quiet link"].get("budget") or {}).get("miracles", 0) > 0
              or g["roles"]["quiet link"].get("duration", 0) > 4000),
             # A LED PASSAGE IS A READING OF TWO THINGS, and each is proved by taking it away.
-            (NODE_ROWS[21], [["LED_ROLES.indexOf(role) >= 0", "true"]],
+            (NODE_ROWS[22], [["LED_ROLES.indexOf(role) >= 0", "true"]],
              lambda g: g["sweep"]["ledElsewhere"] > 0),
-            (NODE_ROWS[22], [["made.cameraTravels && ", ""]],
+            (NODE_ROWS[23], [["made.cameraTravels && ", ""]],
              lambda g: g["sweep"]["ledAtTonic"] > 0.6 * g["sweep"]["tonic"]),
-            (NODE_ROWS[23],
+            (NODE_ROWS[24],
              [["          if (familyOf(whole[i], fromW, toW, floors) === memory.family) {\n            held = whole[i];\n            heldBy = \"family\";",
                "          if (false) {\n            held = whole[i];\n            heldBy = \"family\";"]],
              lambda g: g["memory"]["heldAgainBy"] != "family"
              and g["memory"]["heldBackBy"] != "family"),
-            (NODE_ROWS[24],
+            (NODE_ROWS[25],
              [["      var wantTransform = memory && memory.family ? String(memory.family).split(\"+\")[0] : null;",
                "      var wantTransform = null;"],
               ["      if (memory && memory.family) {\n        var whole = pool.concat(found.roads).concat([BRIDGE_ROAD]);",
@@ -794,8 +843,10 @@ else:
             # makes the row honest is the one that DOES hand it over: a cue's tracks named off the
             # manifest itself. With the fence in place the open handle is still skipped; the second
             # plant removes the fence under the same pressure and it is driven.
-            (NODE_ROWS[25],
+            (NODE_ROWS[26],
              [["        if (manifest[h].open) continue;", ""],
+              ["var unnamed = Object.keys(c.tracks).filter(function (h) { return !HANDLE_SOURCE[h]; });",
+               "var unnamed = [];"],
               ['var why = HANDLE_SOURCE[h][1];',
                'var why = (HANDLE_SOURCE[h] || ["", "an open handle"])[1];'],
               ["var spec = HANDLE_SPECS[instr][handle], lo = spec[0], hi = spec[1], dflt = spec[2];",
@@ -803,10 +854,29 @@ else:
                " var spec = HANDLE_SPECS[instr][handle] || [m0.min, m0.max, m0[\"def\"]],"
                " lo = spec[0], hi = spec[1], dflt = spec[2];"]],
              lambda g: "bal" in g["sweep"]["openDriven"]),
-            (NODE_ROWS[26],
+            (NODE_ROWS[27],
              [["if (line.length > INTENT_FENCE_CHARS && fields.returnPhrase) {", "if (false) {"],
               ["if (line.length > INTENT_FENCE_CHARS && fields.roadPhrase) {", "if (false) {"]],
              lambda g: g["handed"]["roadKept"] > 0),
+            # THE FOLD'S TWO LAWS, each proved by taking its own gate away. The first is read off
+            # the instrument's own manifest — an instrument declaring the WORLD level folds the
+            # space — so removing that reading is removing the law.
+            (NODE_ROWS[28],
+             [["      if (noMiracle && spendsTheMiracle(instrumentOfKind(kind))) return false;",
+               "      if (false) return false;"],
+              ["        } else if (spendsTheMiracle(travelInstr) && !(ROLE_BUDGETS[role] || {}).miracle) {",
+               "        } else if (false) {"]],
+             lambda g: sum(g["sweep"]["folded"][r]
+                           for r in ("entrance", "quiet link", "return")) > 0),
+            # THE FOLD IS THE MIRACLE, and this is the line that says so. The OTHER half of the
+            # law — that the arriving work's own folded space stands down beside a fold, so no
+            # crossing carries two — is in the code and cannot be reddened on this collection: no
+            # pair of the 121 can produce both at once, measured. It is kept because it is the law
+            # and the collection changes; it is named here rather than dressed as a proof.
+            (NODE_ROWS[29],
+             [['      if (folds === "pivot") voices.pivot = "miracle";',
+               '      if (false) voices.pivot = "miracle";']],
+             lambda g: sum(g["sweep"]["foldUnspent"][r] for r in g["sweep"]["foldUnspent"]) > 0),
         ]
         # The intent fence's own standing row: with the cap planted DOWN and the guard in place,
         # every line the composer writes still fits under it. The red-on-bug above removes the guard

@@ -256,9 +256,20 @@
                                    elementKind: "band" }
   };
   var PIVOT_KINDS_OF_CUT = { "tonal-and-spectral-bridge": ["band", "scale"] };
+  // WHICH INSTRUMENT CUTS ON WHICH ELEMENT KIND. `panel: "boxfold"` landed 2026-08-17 with the
+  // instruments lane's port of the lab's own box module, and it is the one word that turns the
+  // box-fold road on: a work folding along its own strong directions folds into a box under the
+  // charter's five-condition law of 12.08 23:49.
+  //
+  // A NAME HERE IS A WISH AND THE MANIFESTS ARE THE FACT. This table says which instrument WOULD
+  // cut on a kind; whether the collection actually ships that instrument is a question only the
+  // manifests the composer was made over can answer, and `instrumentOfKind` below asks them. A
+  // settings record built before an instrument landed therefore reads exactly as it did — the road
+  // that names the instrument stands down and says which one it wanted — instead of composing a
+  // score for a file that will never arrive.
   var INSTRUMENT_OF_KIND = {
     strip: "weave", band: "matter", scale: "matter", ring: "gears", wedge: "gears",
-    tile: null, panel: null, region: null, field: null
+    tile: null, panel: "boxfold", region: null, field: null
   };
   var MISSING_INSTRUMENT = {
     tile: "an instrument that cuts on tiles, for tile_crossfade",
@@ -315,7 +326,12 @@
     clock: ["transaction", "the second the host hands down"],
     seed: ["measured", "the ordered pair's own seed"],
     strips: ["measured", "the pivot's band family, its measured count along the cut"],
-    axis: ["measured", "the banding axis cut-lines.json recorded"],
+    // WIDENED 2026-08-17 for the box: for the woven instrument `axis` is which way the ribbons run,
+    // for the folding one it is which way the solid turns — the crease upright or lying flat. Both
+    // derive from the one recorded banding axis, so the crease crosses the works' own structure
+    // rather than being laid across it, and one row serves both because one measurement does.
+    axis: ["measured", "the banding axis cut-lines.json recorded — which way the ribbons run, and "
+                       + "which way the solid turns so its crease crosses that"],
     size: ["measured", "the two works' measured ring counts"],
     ratio: ["measured", "the two works' measured ring counts, on seven steps"],
     bandPeriod: ["measured", "the pivot's own period as a fraction of frame height"],
@@ -345,6 +361,50 @@
     turn: ["measured", "each work's own measured radial score, so a work whose rings are its own "
                        + "device drives the mesh and one that barely reads radial barely turns"],
     press: ["unmeasured", "the hand's own pressure, which no build-time file measures"],
+    // THE FOLDING INSTRUMENT'S OWN SEVEN, checked against the class law here rather than carried
+    // over as they were handed. His 19:13 word lifted to the class at 19:21: a handle that cannot
+    // name a measurement is a FINDING, not a constant. Three that arrived as «unmeasured» name one
+    // after all — `depth` reads how strongly the departing work already reads as a corridor,
+    // `dip` reads that work's own measured horizon, and `lead` is the finger count read from one
+    // published range onto another and turned over, so a joint of many fingers bites shallow and
+    // one of few bites deep and the joint's own travel holds. One names a different measurement
+    // than the row it was handed in: `fingers` was written against `structure.grid.countFrom`,
+    // which is stripped before a work record reaches the engine, and the period that count is
+    // derived from is not — so the same number is derived here from the number that travels. And
+    // one is a real gap, stated rather than filled: see `seam`.
+    //
+    // A NOTE TRAVELS IN EVERY SCORE, SO IT IS A SENTENCE AND NOT AN ESSAY. Each of these strings is
+    // written into every node the handle drives, and the first draft of this block put 823 of the
+    // collection's scores over the client's own byte fence — where a score is refused WHOLE, which
+    // is the same lesson the intent cap taught one section down. The reasoning lives in this
+    // comment, where it costs a reader nothing and the wire nothing at all.
+    depth: ["measured", "the departing work's own corridor reading, structure.polar.tunnel"],
+    dip: ["measured", "the departing work's own measured horizon, structure.horizon.y"],
+    lead: ["measured", "the finger count, read off its own range onto this one and turned over"],
+    fingers: ["measured", "the departing work's repeat across the crease: its frame side over "
+                          + "structure.grid.periodPx"],
+    // THE ONE REAL GAP. Where along the turn the departing work falls into two regions is measured
+    // in lab/cut-lines.py and STRIPPED before the engine sees it: a work record carries
+    // structure.regions.count and .score and no position at all. So this file can hand no line. The
+    // instrument keeps its own edge, and `seamScore` is handed under the instrument's own floor so
+    // it says as much rather than folding on a line nobody measured — which is the first of the
+    // charter's five box conditions, honestly unmet rather than quietly claimed.
+    seam: ["unmeasured", "where the work's region line stands; the position is stripped before a "
+                         + "record reaches the engine"],
+    seamScore: ["measured", "structure.regions.score, handed at nothing while the line itself "
+                            + "does not travel"],
+    mask: ["module-rest", "a judge channel the module rests shut"],
+    // THE WAVED RIBBON AND THE PARQUET, from the instruments lane's own manifests. No template names
+    // these yet; the rows stand so a score that names them can be written, and so the register keeps
+    // its promise that every handle says where it comes from. The wave's own two readings —
+    // texture.type and texture.localStraightness — are stripped before the engine sees them, so the
+    // composer can hand only nothing, which is the straight ribbon and the reference look.
+    wave: ["measured", "texture.type at «рябь», with 1 - texture.localStraightness as the depth"],
+    wavePeriod: ["measured", "texture.spectralPeriodPx over the work's own frame side"],
+    waveDrift: ["measured", "the same spectral period, as a share of it travelled in a second"],
+    field: ["transaction", "the passage's own travel, one envelope for the plane and the parquet"],
+    parquetPeriod: ["measured", "structure.ownDevice.stepPx over the work's own frame side"],
+    parquetTurn: ["measured", "structure.ownDevice.angleDeg, the angle that step was cut at"],
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
                           + "between a streak reading and this handle is recorded, so the "
@@ -384,6 +444,21 @@
       + "becomes a {worldName} the viewer stands inside: the {axisName} travels from {fromValue} "
       + "to {toValue}{centrePhrase}, and the second work arrives {arrival}{locusPhrase}. Shelves "
       + "8 the one folded space, 9 the held pivot, 7 the arrival, 17 a middle.{registerPhrase}{returnPhrase}",
+    // THE FOLD HAS ITS OWN TWO LINES, because a crossing that folds the frame into a solid has no
+    // polar world to name and the world's own templates ask for one. Added 2026-08-17 with the
+    // panel road: the miracle these describe is the solid, and shelf 8's folded space is what both
+    // cite. A plan shape with no template is a throw inside `declare`, so the suite now composes
+    // every pair at every one of the five roles and the row that reads it is what caught this.
+    "middle-fold": "{roadPhrase}The {pivotName} holds at {pivotStrength} and the flat picture "
+      + "folds into a solid the viewer is carried round: {aCount} parts of the first work hand "
+      + "over to {bCount} of the second along that cut, and the second work arrives "
+      + "{arrival}{locusPhrase}. Shelves 8 the one folded space, 9 the held pivot, 7 the arrival, "
+      + "17 a middle.{registerPhrase}{returnPhrase}",
+    "culmination-fold": "{roadPhrase}The {pivotName} holds at {pivotStrength} and is the whole "
+      + "ground of a long crossing: the flat picture folds into a solid the viewer is carried "
+      + "round, {aCount} parts of the first work hand over to {bCount} of the second along that "
+      + "cut, and the second work arrives {arrival}{locusPhrase}. Shelves 8 the one folded space, "
+      + "9 the held pivot, 15 the far pair, 17 a culmination.{registerPhrase}{returnPhrase}",
     culmination: "{roadPhrase}The {pivotName} holds at {pivotStrength} and is the whole ground of a long "
       + "crossing: the {axisName} travels the wide distance from {fromValue} to "
       + "{toValue}{centrePhrase}, the flat picture opens into a {worldName}, and the second work "
@@ -501,9 +576,25 @@
     // A measure whose cut an instrument in this collection can actually play. KIND_OF_MEASURE says
     // which element kind a measure cuts on and INSTRUMENT_OF_KIND which instrument cuts on that
     // kind; four kinds have none and MISSING_INSTRUMENT names each of the four.
+    // The instrument that cuts on a kind AND that this collection actually publishes a manifest
+    // for. INSTRUMENT_OF_KIND names the wish; MANIFESTS is the fact.
+    // AN INSTRUMENT THAT DECLARES THE WORLD LEVEL SPENDS THE CROSSING'S ONE MIRACLE. Folding the
+    // space a work lives in is a world act — shelf 8's folded space, which shelf 6 says consumes
+    // the slot and never stacks — and the instrument's own manifest is what declares it, so this
+    // reads the manifest instead of keeping a list of names. It is the same fact the host reads
+    // when it refuses a world-level cue beside a camera-led flight.
+    function spendsTheMiracle(iid) {
+      var m = iid && MANIFESTS[iid];
+      return !!(m && (m.levels || []).indexOf("WORLD") >= 0);
+    }
+
+    function instrumentOfKind(kind) {
+      var name = kind ? INSTRUMENT_OF_KIND[kind] : null;
+      return name && MANIFESTS[name] && INSTRUMENTS[name] ? name : null;
+    }
+
     function playable(measure) {
-      var kind = KIND_OF_MEASURE[measure];
-      return !!(kind && INSTRUMENT_OF_KIND[kind]);
+      return !!instrumentOfKind(KIND_OF_MEASURE[measure]);
     }
 
     // A measure this PAIR can actually stand on: an instrument cuts on it, and both works carry
@@ -511,9 +602,15 @@
     // ground the actors cannot be drawn from — the refusal `castActors` names two steps later — and
     // a ground a pair cannot hold is not the pair's ground. Both readings come off the works' own
     // element sets.
-    function holdable(a, b, measure) {
+    function holdable(a, b, measure, noMiracle) {
       var kind = KIND_OF_MEASURE[measure];
       if (!playable(measure)) return false;
+      // A GROUND THAT FOLDS IS A GROUND THAT SPENDS THE MIRACLE, so a step whose role carries none
+      // cannot stand on it. The gate belongs HERE and not on the road alone: once an instrument
+      // that folds cuts on a kind, any road at all can land on that ground by simply holding the
+      // strongest shared measure, and a quiet link would fold the world without ever naming the
+      // road that does it.
+      if (noMiracle && spendsTheMiracle(instrumentOfKind(kind))) return false;
       var sa = setFor(a, kind), sb = setFor(b, kind);
       return !!(sa && sa.realCount && sb && sb.realCount);
     }
@@ -546,16 +643,18 @@
     // reading cannot also hold it still. The ground then stands on the next playable shared measure,
     // or on one of the three below. `prefer` names a measure the road asks to stand on — a return
     // holding the pivot of the pass it answers uses it — and it wins wherever the pair can hold it.
-    function pivotOfPair(a, b, free, prefer) {
+    function pivotOfPair(a, b, free, prefer, noMiracle) {
       // The four pivots in the elements builder's own order of precedence.
       var all = sharedMeasures(a, b), v, na, nb, strength, ra, rb, hues, i;
       var best = null;
       if (prefer && prefer !== free && all.per[prefer] && all.per[prefer].both
-          && holdable(a, b, prefer)) {
+          && holdable(a, b, prefer, noMiracle)) {
         best = prefer;
       }
       if (best === null) {
-        best = strongestHeld(all, function (m) { return m !== free && holdable(a, b, m); });
+        best = strongestHeld(all, function (m) {
+          return m !== free && holdable(a, b, m, noMiracle);
+        });
       }
       var shared = best === null ? null : { measure: best, strength: all.per[best].min };
       if (shared) {
@@ -610,12 +709,12 @@
       return Math.min(sa, sb) * (Math.min(pa, pb) / Math.max(pa, pb));
     }
 
-    function pairOf(a, b, direction, seed, free, prefer) {
+    function pairOf(a, b, direction, seed, free, prefer, noMiracle) {
       // §4.3's PairDossier, in the shape `compose` reads it: the pivot the two works derive, the
       // two doors, this pair's readiness and the die the caller rolled. `free` is the measure the
       // chosen road needs left free to travel, so the ground never stands on it, and `prefer` the
       // one it asks to stand on.
-      var chosen = pivotOfPair(a, b, free, prefer);
+      var chosen = pivotOfPair(a, b, free, prefer, noMiracle);
       var kind = chosen.kind;
       var value = { strength: chosen.rowStrength };
       if (kind === "shared-measure") {
@@ -845,35 +944,67 @@
     // distance test stays for a step whose role the walk never stated: with no role in hand the
     // only reading of a culmination the composer ever had was the pair standing far apart, and that
     // reading is kept where it is still the only one there is.
-    function voiceTheCues(hasTravel, hasArrival, world, distance, role) {
-      var culmination = !!world && hasArrival
+    function voiceTheCues(hasTravel, hasArrival, world, distance, role, folds) {
+      // A CROSSING THAT FOLDS THE FRAME INTO A SOLID CARRIES ITS MIRACLE ON THE CUE THAT FOLDS IT,
+      // wherever that cue stands. `world` is the other way a crossing spends the slot — the
+      // arriving work's own space opening — and the two never stand together, which `compose`
+      // settles before this is asked.
+      var culmination = !!(world || folds) && hasArrival
         && (role === "culmination" || distance >= CULMINATION_DISTANCE);
       var voices = {}, any = false, k;
-      if (culmination) voices.pivot = "letter";
+      if (folds === "pivot") voices.pivot = "miracle";
+      else if (culmination) voices.pivot = "letter";
       else if (hasTravel || hasArrival) voices.pivot = "accompaniment";
       else voices.pivot = "letter";
-      if (hasTravel) voices.travel = world ? "miracle" : "letter";
-      if (hasArrival) voices.arrival = "letter";
-      for (k in voices) if (voices[k] === "letter") any = true;
+      if (hasTravel) {
+        voices.travel = (folds === "travel" || world) ? "miracle" : "letter";
+      }
+      if (hasArrival) voices.arrival = folds === "arrival" ? "miracle" : "letter";
+      // A PLAN HAS TO CARRY AT LEAST ONE REAL MOVE, and a miracle is certainly one. This read
+      // «letter» alone, so a crossing whose single move is the fold — a folding pivot with no
+      // travel and no arrival beside it — had its miracle written back down to a letter and spent
+      // nothing for the impossible thing it draws. Shelf 17 counts letters and miracles in separate
+      // columns and its middle row takes no letters at all, so a lone miracle is a lawful plan.
+      for (k in voices) if (voices[k] === "letter" || voices[k] === "miracle") any = true;
       if (!any) voices.pivot = "letter";
+      // A CROSSING THAT FOLDS IS NEVER A QUIET ONE. Shelf 17 gives a quiet link no miracle at all,
+      // so a plan whose single move is the fold sits at a middle even with nothing else beside it —
+      // and the tier row that judges it is the one that takes a miracle.
       var tier = culmination ? "culmination"
-        : (!(hasTravel || hasArrival) ? "quiet" : "middle");
+        : ((!(hasTravel || hasArrival) && !folds) ? "quiet" : "middle");
       return [voices, tier];
     }
 
+    // THE TIER A PLAN DECLARES IS THE TIER ITS VOICES ACTUALLY MAKE. §4.7 calls a disagreement
+    // between the declared tier and the measured one a red, and the way to agree is to declare what
+    // was realised: the tier the shape reached for is tried first, and where its row does not fit
+    // the counts the tiers below it are tried in turn. A crossing that reached for a culmination
+    // and made a middle is a middle, not a refusal — the visitor sees a passage either way, and the
+    // plan says which one it is.
+    //
+    // What this replaces: a hard refusal. It cost 73 ordered pairs of the real collection at a
+    // culmination, every one of them a crossing whose frame folds under a pivot with an arrival
+    // beside it and no travelling move — one letter where the culmination row asks for two, which
+    // is a middle by the row's own reading and was a glide by the code's.
     function tierFor(voices, tier) {
-      var letters = 0, accs = 1, miracles = 0, k, row, i;
+      var letters = 0, accs = 1, miracles = 0, k, i, row;
       for (k in voices) {
         if (voices[k] === "letter") letters += 1;
         else if (voices[k] === "accompaniment") accs += 1;
         else if (voices[k] === "miracle") miracles += 1;
       }
       var counts = { letters: letters, accompaniments: accs, miracles: miracles };
+      function fitsRow(r) {
+        return letters >= r.letters[0] && letters <= r.letters[1]
+          && accs >= r.accompaniments[0] && accs <= r.accompaniments[1]
+          && miracles >= r.miracles[0] && miracles <= r.miracles[1];
+      }
       for (i = 0; i < TIERS.length; i++) if (TIERS[i].tier === tier) row = TIERS[i];
-      if (letters >= row.letters[0] && letters <= row.letters[1]
-          && accs >= row.accompaniments[0] && accs <= row.accompaniments[1]
-          && miracles >= row.miracles[0] && miracles <= row.miracles[1]) {
-        return [row, counts];
+      if (row && fitsRow(row)) return [row, counts];
+      for (i = TIERS.length - 1; i >= 0; i--) {
+        if (TIER_RANK[TIERS[i].tier] < TIER_RANK[tier] && fitsRow(TIERS[i])) {
+          return [TIERS[i], counts];
+        }
       }
       return [null, counts];
     }
@@ -1408,11 +1539,22 @@
       } else if (facesOf(fromW) < BOX_FACES) {
         no("box-fold", "the departing work cuts into " + facesOf(fromW) + " real panels, under the "
            + BOX_FACES + " faces a box needs");
-      } else if (!INSTRUMENT_OF_KIND.panel) {
+      } else if (!(shared.per.regions && shared.per.regions.both)) {
+        no("box-fold", "the two works do not both clear the region measure's own discriminating "
+           + "threshold, so the region division is no ground this pair shares");
+      } else if (!holdable(fromW, toW, "regions")) {
+        // A ROAD THAT CANNOT HOLD ITS OWN GROUND IS NOT A ROAD. The ground it stands on is the
+        // region division, which cuts on panels, and a work with no real panel set of its own has
+        // nothing for the fold to be placed on — the road would run under its own name and fold
+        // nothing at all.
+        no("box-fold", "one of the two works carries no real panel set, so the region division has "
+           + "no faces to fold on this pair");
+      } else if (!instrumentOfKind("panel")) {
         no("box-fold", "the measurements qualify, and the road needs "
            + MISSING_INSTRUMENT.panel);
       } else {
-        yes("box-fold", { ground: "regions", free: null, axis: "far", miracle: true, moves: 3 },
+        yes("box-fold", { ground: "regions", free: null, axis: "far", miracle: true,
+                          mustFold: true, moves: 3 },
             "the departing work reads regions at "
             + pyText(flt(r4(Number(gFrom.score || 0)))) + " over " + facesOf(fromW) + " faces");
       }
@@ -1439,12 +1581,15 @@
     }
 
     // How many real panels the departing work cuts into — the box law's faces, counted off the
-    // work's own element sets rather than assumed.
+    // work's own element sets rather than assumed. PANELS ONLY: a named region is a thing in the
+    // picture and a panel is a piece of the frame, and it is pieces of the frame that become faces
+    // of a solid. Counting named regions here let the road qualify on works the fold's own ground
+    // could never be cast from.
     function facesOf(work) {
       var most = 0, i, s;
       for (i = 0; i < work.sets.length; i++) {
         s = work.sets[i];
-        if ((s.kind === "panel" || s.kind === "region") && s.realCount > most) most = s.realCount;
+        if (s.kind === "panel" && s.realCount > most) most = s.realCount;
       }
       return most;
     }
@@ -1545,6 +1690,24 @@
         return { road: BRIDGE_ROAD, order: [BRIDGE_ROAD],
                  family: familyOf(BRIDGE_ROAD, fromW, toW, floors), notes: found.notes,
                  qualified: [], reach: null, heldFamily: null, heldBy: null };
+      }
+      // A ROAD THAT MUST SPEND THE MIRACLE IS UNREACHABLE WHERE THE ROLE HAS NONE. The other roads
+      // that MAY spend one simply do not, when the reading that would fold the space does not stand;
+      // this one cannot play at all without folding, because the fold IS what it is. Shelf 17 gives
+      // a quiet link no miracle, and this seat gives an entrance and a return none either, so the
+      // road leaves the pool at those three roles — the pool AND the fallback order, so a step that
+      // spends no miracle cannot arrive at it by falling through.
+      var spendsAMiracle = ROLE_BUDGETS[role] && ROLE_BUDGETS[role].miracle;
+      if (!spendsAMiracle) {
+        found.roads = found.roads.filter(function (r) { return !r.mustFold; });
+        pool = pool.filter(function (r) { return !r.mustFold; });
+        if (!pool.length) {
+          return { road: BRIDGE_ROAD, order: [BRIDGE_ROAD],
+                   family: familyOf(BRIDGE_ROAD, fromW, toW, floors), notes: found.notes,
+                   qualified: [], reach: "the step is a " + role + " and every road this pair "
+                     + "qualifies for spends the one miracle shelf 17 does not give it",
+                   heldFamily: null, heldBy: null };
+        }
       }
       wanted = ROLE_ROADS[role];
       if (wanted) {
@@ -1651,7 +1814,7 @@
         });
         if (fracs.length) pivot.bandPeriodFrac = r4(Math.min.apply(null, fracs));
       }
-      var pivotInstr = INSTRUMENT_OF_KIND[kind];
+      var pivotInstr = instrumentOfKind(kind);
       if (pivotInstr === null || pivotInstr === undefined) {
         return [null, "pivot needs " + (MISSING_INSTRUMENT[kind]
                                         || ("an instrument that cuts on " + pyText(kind)))];
@@ -1681,7 +1844,7 @@
         travelDecline = "no measure carries a usable reading on both works";
       } else {
         tkind = KIND_OF_AXIS[axis.axis];
-        travelInstr = INSTRUMENT_OF_KIND[tkind];
+        travelInstr = instrumentOfKind(tkind);
         if (travelInstr === null || travelInstr === undefined) {
           travelInstr = null;
           travelDecline = "the travelling axis needs "
@@ -1689,6 +1852,13 @@
         } else if (travelInstr === pivotInstr) {
           travelInstr = null;
           travelDecline = "the travelling axis cuts on the same instrument as the pivot";
+        } else if (spendsTheMiracle(travelInstr) && !(ROLE_BUDGETS[role] || {}).miracle) {
+          // THE OTHER DOOR THE FOLD COULD COME THROUGH. The ground is gated where it is chosen, and
+          // the travelling axis is gated here: a step whose role carries no miracle cannot fold the
+          // world on its travelling cue either, whichever measure happens to cut on it.
+          travelInstr = null;
+          travelDecline = "the travelling axis cuts on an instrument that folds the world, and the "
+            + "step is a " + role + ", which shelf 17 gives no miracle";
         }
       }
       var cast = castActors(fromW, toW, pivot, axis);
@@ -1727,6 +1897,23 @@
         arrivalLeads = !arrivalLeads;
       }
 
+      // EVERY HANDLE THE CHOSEN INSTRUMENTS PUBLISH HAS TO NAME ITS MEASUREMENT, and the question
+      // is asked here, where it can still be answered with a refusal. His 19:13 word lifted to the
+      // class at 19:21 binds the composer as much as the instrument: a score driving a handle this
+      // file cannot say the provenance of would be a number nobody read reaching the picture. An
+      // instrument that grows a handle before the register names it therefore stands down, with the
+      // handle named, and the visitor lands on the walk's own glide.
+      var unnamedHandle = null;
+      [pivotInstr, travelInstr, arrivalInstr].forEach(function (iid) {
+        if (!iid || unnamedHandle || !MANIFESTS[iid]) return;
+        Object.keys(MANIFESTS[iid].handles).forEach(function (h) {
+          if (MANIFESTS[iid].handles[h].open || HANDLE_SOURCE[h] || unnamedHandle) return;
+          unnamedHandle = "the instrument «" + iid + "» publishes the handle «" + h
+            + "» and no measurement is written for it";
+        });
+      });
+      if (unnamedHandle) return [null, unnamedHandle];
+
       var cam = cameraFlight(pair, axis, locus);
       var mesh = null, why = null, made;
       if (pivotInstr === "gears" || travelInstr === "gears") {
@@ -1751,16 +1938,32 @@
       // a quiet link none, a middle at most one and a culmination exactly one, and shelf 6 lets at
       // most one impossible event stand in any crossing whatever.
       var roleBudget = ROLE_BUDGETS[role] || ROLE_BUDGETS.middle;
+      // THE BOX IS ITSELF THE MIRACLE, AND THERE IS ONLY ONE SLOT. Charter shelf 6: at most one
+      // impossible event per crossing, a culmination carries exactly one, and a folded space, a
+      // shift of what a thing is, or a change of substance CONSUMES the slot and never stacks. A
+      // solid the frame turns into is a folded space by the plainest reading of shelf 8 — the
+      // instruments lane's own manifest says as much by declaring the world level — so a crossing
+      // that folds has spent its miracle, and the polar world of `worldOf` stands down beside it
+      // rather than making a second impossible thing.
+      var folds = pivotInstr === "boxfold" || travelInstr === "boxfold"
+        || arrivalInstr === "boxfold";
       var couldFold = travelInstr ? worldOf(toW, floors, axis) : null;
-      var mayFold = !!(road.miracle && roleBudget.miracle);
+      var mayFold = !!(road.miracle && roleBudget.miracle && !folds);
       var world = mayFold ? couldFold : null;
       var miracleDecline = (couldFold && !mayFold)
-        ? (road.miracle
-           ? ("the step is a " + role + " and shelf 17 spends no miracle there")
-           : ("the " + road.id + " road holds its ground and spends no miracle on a folded space"))
+        ? (folds
+           ? "the frame folds into a solid, which is this crossing's one miracle, so the arriving "
+             + "work's own folded space stands down beside it"
+           : (road.miracle
+              ? ("the step is a " + role + " and shelf 17 spends no miracle there")
+              : ("the " + road.id + " road holds its ground and spends no miracle on a folded "
+                 + "space")))
         : null;
       var distance = axis ? num(axis.delta) : 0.0;
       var voices, tier, letters, accs, k, instrumentOf, stackOrder, placed, capped = [];
+      // WHICH CUE FOLDS THE FRAME, or nothing. It is re-read on every turn of the budget loop
+      // below, because the loop can retire the very cue that folds.
+      var foldsOn = null;
 
       // THE ROLE'S BUDGET IS A BOUND ON WHAT IS EMITTED, not a wish. Shelf 17 counts letters, and a
       // quiet link carries exactly one; a step whose pair offers more moves than its role may spend
@@ -1768,8 +1971,11 @@
       // ground and the arrival are the two the charter names by role, and the plan records every
       // move it gave up so a thin passage can be read back to the reason it is thin.
       for (;;) {
+        foldsOn = pivotInstr === "boxfold" ? "pivot"
+          : (travelInstr === "boxfold" ? "travel"
+             : (arrivalInstr === "boxfold" ? "arrival" : null));
         var voiced = voiceTheCues(travelInstr !== null, arrivalInstr !== null, world, distance,
-                                  role);
+                                  role, foldsOn);
         voices = voiced[0];
         tier = voiced[1];
         if (travelInstr === null) delete voices.travel;
@@ -1848,8 +2054,14 @@
       if (arrivalInstr) roles.arrival = arrivalLeads ? ["disassembly", "assembly"] : ["assembly"];
 
       var register = registerOf(fromW, toW, arrival, world);
-      var intentKey = row.tier === "culmination" ? "culmination"
-        : (world ? "middle-world" : (travelInstr ? "middle-travel" : "quiet"));
+      // WHICH AUTHORED LINE THIS PLAN OPENS WITH. A folding crossing names the solid; a crossing
+      // that opens the arriving work's own space names the world; one that only travels names the
+      // axis; one that only holds names the ground. Every field each template asks for is set for
+      // the shape that chooses it, which is what keeps `fill` from throwing on the product path.
+      var intentKey = foldsOn
+        ? (row.tier === "culmination" ? "culmination-fold" : "middle-fold")
+        : (row.tier === "culmination" ? "culmination"
+           : (world ? "middle-world" : (travelInstr ? "middle-travel" : "quiet")));
       var spec = {
         pivot: pivotInstr, travel: travelInstr, arrival: arrivalInstr,
         voices: voices, roles: roles, tier: row.tier, duration: duration,
@@ -1926,7 +2138,17 @@
         // how much finer the work's own measured repeat is than the cut it was given
         ringMerge: ring ? Number(ring.mergeFactor) || 0 : 0,
         // the strip family the woven instrument cuts on
-        strips: strip && strip.realCount ? Number(strip.count) || 0 : 0
+        strips: strip && strip.realCount ? Number(strip.count) || 0 : 0,
+        // how strongly the work already reads as a corridor, and where its own horizon stands —
+        // the two the folding instrument's perspective and its eye's ride are placed by
+        tunnel: Number((st.polar || {}).tunnel) || 0,
+        horizonY: ((st.horizon || {}).y === null || (st.horizon || {}).y === undefined)
+          ? null : Number(st.horizon.y),
+        // the repeat the work carries ACROSS a crease, as a count over its own frame side
+        gridCount: side > 0 && Number((st.grid || {}).periodPx) > 0
+          ? side / Number(st.grid.periodPx) : 0,
+        // how much of the difference between the work's own columns its region line explains
+        regionScore: Number((st.regions || {}).score) || 0
       };
     }
 
@@ -2202,6 +2424,41 @@
           if (mf.ringMerge > 0 && mt.ringMerge > 0) {
             wanted.tooth = [flt(r4(clamp01(mf.ringMerge - 1))), flt(r4(clamp01(mt.ringMerge - 1)))];
           }
+        } else if (instr === "boxfold") {
+          // WHICH WAY THE SOLID TURNS, off the one recorded banding axis, so the crease crosses the
+          // works' own structure instead of being laid across it.
+          var bx = fromP.ends.banding;
+          if (bx !== undefined && bx !== null) wanted.axis = num(bx[2]) ? 1 : 0;
+          // HOW MANY FINGERS STAND ALONG THE CREASE: the departing work's own measured repeat
+          // across it, its frame side over the grid period. The collection's own count field is
+          // stripped before a record reaches the engine; the period it is derived from is not.
+          if (mf.gridCount > 0) {
+            wanted.fingers = Math.round(Math.min(HANDLE_SPECS.boxfold.fingers[1],
+                                                 Math.max(HANDLE_SPECS.boxfold.fingers[0],
+                                                          mf.gridCount)));
+          }
+          // HOW DEEP THE JOINT BITES, read from the finger count's own published range onto this
+          // handle's and turned over: many fingers bite shallow, few bite deep, so the joint's own
+          // travel holds whatever the count. Two published spans and no third number.
+          if (wanted.fingers !== undefined) {
+            var lo = num(HANDLE_SPECS.boxfold.lead[0]), hi = num(HANDLE_SPECS.boxfold.lead[1]);
+            wanted.lead = flt(r4(lo + hi
+              - betweenSpans("boxfold", "fingers", "lead", num(wanted.fingers))));
+          }
+          // HOW DEEP THE PERSPECTIVE IS, off the departing work's own corridor reading: a picture
+          // that already reads as depth is turned in a deeper box.
+          if (mf.tunnel > 0) wanted.depth = flt(r4(clamp01(mf.tunnel)));
+          // HOW FAR THE EYE RIDES UP THROUGH THE QUARTER, off the departing work's own measured
+          // horizon: the ride starts from where that work already stands. A work whose horizon was
+          // never measured leaves the handle at the module's own rest.
+          if (mf.horizonY !== null) wanted.dip = flt(r4(clamp01(mf.horizonY)));
+          // THE CREASE'S OWN LINE DOES NOT TRAVEL, so the instrument is told so rather than being
+          // let fold on a line nobody measured. A work record carries the region split's COUNT and
+          // its SCORE and no position at all, so `seam` is left at the instrument's own edge and
+          // `seamScore` is handed at nothing — under the module's own floor, which is the reading
+          // that sends the crease back to that edge and says why. The day the position travels,
+          // this is the one place that changes.
+          wanted.seamScore = flt(r4(0.0));
         } else if (instr === "matter") {
           // HOW COARSE THE MATERIAL IS. The instrument publishes its coarse grain in cells across
           // the frame's height, and the work's own measured spectral period says how many cells
@@ -2234,6 +2491,17 @@
           }
         }
         var measured = {}, nodes = {};
+        // THE LAST GUARD, and it should never fire: `compose` above refuses a plan whose
+        // instruments publish a handle this register does not name, by name and before the fill, so
+        // the passage takes the walk's own glide instead of throwing inside `declare`. This stands
+        // because the fill is reachable from the choice core directly and a throw here is a louder
+        // failure than a wrong number.
+        var unnamed = Object.keys(c.tracks).filter(function (h) { return !HANDLE_SOURCE[h]; });
+        if (unnamed.length) {
+          throw new Error("the instrument «" + c.instrument.id + "» publishes the handle «"
+                          + unnamed[0] + "» and no measurement is written for it: every geometric "
+                          + "and temporal parameter names the measurement it reads");
+        }
         Object.keys(c.tracks).sort().forEach(function (h) {
           var nodeName = (c.tracks[h] || {}).node || (c.id + "-" + h);
           var why = HANDLE_SOURCE[h][1];
@@ -2258,8 +2526,15 @@
           }
           var pairv = appliedValue(instr, h, req);
           if (req !== null) measured[h] = pairv[0];
-          nodes[nodeName] = { op: "static", value: pairv[1],
-                              note: noteFor(h, req, pairv[1], why) };
+          // A NODE THE COMPOSER DROVE CARRIES ITS PROVENANCE; A NODE LEFT AT THE INSTRUMENT'S OWN
+          // DEFAULT CARRIES NONE. The note answers «where did this number come from», and for a
+          // handle nobody drove the answer is already published, in the manifest, as the default
+          // itself — so the sentence said only that the score had nothing to say. It also weighed:
+          // a folding cue drives twelve handles and the boilerplate on the rest put 517 of the
+          // collection's scores over the client's own byte fence, where a score is refused WHOLE.
+          nodes[nodeName] = req === null
+            ? { op: "static", value: pairv[1] }
+            : { op: "static", value: pairv[1], note: noteFor(h, req, pairv[1], why) };
         });
         c.measuredHandles = measured;
         c.nodes = nodes;
@@ -2426,12 +2701,15 @@
       var key = a.id + "__" + b.id + "__" + tag;
       var fromW = tag === "ab" ? a : b, toW = tag === "ab" ? b : a;
       var step = ROLE_BUDGETS[role] ? role : "middle";
+      // Whether this step of the walk may spend the one miracle at all — shelf 17's budget, read
+      // once here so the ground, the roads and the voicing all answer to one reading of it.
+      var spendsAMiracle = !!ROLE_BUDGETS[step].miracle;
       var chosen = roadFor(fromW, toW, FLOORS, step, memory || null, seed, key);
       var dir = tag === "ab" ? "a-to-b" : "b-to-a";
       var tried = [], made = null, pair = null, ran = null, i3;
       for (i3 = 0; i3 < chosen.order.length; i3++) {
         ran = chosen.order[i3];
-        pair = pairOf(a, b, dir, seed, ran.free, ran.ground);
+        pair = pairOf(a, b, dir, seed, ran.free, ran.ground, !spendsAMiracle);
         made = compose(key, pair, fromW, toW, FLOORS, ran, step, memory || null);
         if (made[0] !== null) break;
         tried.push({ road: ran.id, why: made[1] });
