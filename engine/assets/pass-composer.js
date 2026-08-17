@@ -1541,7 +1541,8 @@
     //   workRecordB   the arriving work's record. Required, for the same reason.
     //   direction     "a-to-b" or "b-to-a" — the two distinct passages of one edge. Missing reads
     //                 as "a-to-b", which is the core's own rule.
-    //   seed          the die, a number in 0…8 that fixes every random choice. Missing means the
+    //   seed          the die, a number inside the span the meshing instrument publishes for its
+    //                 own seed handle, fixing every random choice. Missing means the
     //                 walk rolled none and the passage runs on 0 — reproducible, which is the
     //                 judging mode of charter shelf 16.
     //   routeRole     the step's function in the walk's dramaturgy: entrance, quiet link, middle,
@@ -1570,6 +1571,10 @@
     // back, and what was applied or refused.
     var ROUTE_ROLES = ["entrance", "quiet link", "middle", "culmination", "return"];
     var SESSION_MEMORY_FIELDS = ["family", "seed", "passIndex"];
+    // The span the die is rolled inside, and the one home of that fact on this side of the line.
+    // It is the meshing instrument's own `seed` handle span, read out of its manifest rather than
+    // written down here, so a copy of it cannot go stale. The walk reads it back off this module.
+    var SEED_SPAN = [MANIFESTS.gears.handles.seed.min, MANIFESTS.gears.handles.seed.max];
 
     function passageFor(request) {
       var req = request || {};
@@ -1593,8 +1598,9 @@
         return no("the passage request names the route role «" + String(role)
                   + "», which is none of " + ROUTE_ROLES.join(", "));
       }
-      if (seed !== seed || seed < 0 || seed > 8) {
-        return no("the passage request's seed " + String(req.seed) + " stands outside 0…8");
+      if (seed !== seed || seed < SEED_SPAN[0] || seed > SEED_SPAN[1]) {
+        return no("the passage request's seed " + String(req.seed) + " stands outside "
+                  + SEED_SPAN[0] + "…" + SEED_SPAN[1]);
       }
       if (memory !== null) {
         if (typeof memory !== "object" || Array.isArray(memory)) {
@@ -1617,6 +1623,7 @@
     }
 
     return { passageFor: passageFor, scoreFor: scoreFor, routeRoles: ROUTE_ROLES.slice(),
+             seedSpan: SEED_SPAN.slice(),
              version: COMPOSER_VERSION, writeJson: writeJson,
              writeJsonTight: writeJsonTight, r4: r4 };
   }
