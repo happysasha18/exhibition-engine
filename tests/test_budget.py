@@ -168,7 +168,31 @@ FENCES = {
     # 2026-08-14, afternoon — the single pack became a file per instrument, and this fence stayed at
     # 24 000 B. The host grew by the loader that reads the site's own record and asks for one file
     # per name, from 21 528 B to 22 503 B, and it still names no instrument.
-    "pass-layer.js": (24_000, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
+    # 2026-08-17, evening — MOVED FROM 24 000 B TO 25 000 B, MEASURED AT 24 027 B, with 973 B under
+    # it (U27 stage 1, the camera lane). What arrived is the camera's second half, and it is all
+    # host: no instrument and no effect name came with it.
+    #   · TWO NEW PLACES ON THE POSE, orbit and tilt, each carried in its own coordinate — the orbit
+    #     in angle, which is the charter's own second case of a straight line in another coordinate
+    #     system — with their own entries in the neutral pose, the capability gate and the applied
+    #     transform, and the host's own lens where a score names no field of view.
+    #   · EACH PLACE ON ITS OWN POINTS. A place is carried through the points that name it rather
+    #     than only where every point names it, which is what lets one flight carry several arcs —
+    #     the dolly rising and falling at the two edges while the tilt holds a plane at an angle
+    #     across a window of its own.
+    #   · THE CAMERA-LED PASSAGE, where the flight itself is the transition: the anchor drops its
+    #     held middle and travels the whole duration, and a cue claiming the world level beside it
+    #     is refused before the command is taken.
+    #   · THE SEATING ON THE FRAME STATE, `fitA` and `fitB`, which the doors lane asked for: the
+    #     instruments read their seating back inside their shaders and could not reach it in script,
+    #     so they bounded it by a worst case and could only over-hold.
+    #   · THE BENCH ENTRIES those four are read through — the flight between the two hangs, the
+    #     transform a pose becomes, the record one voice is handed, the pose distance and the list
+    #     of places. They are diagnostics-only in use and ship in the file all the same, which is
+    #     why they are named here rather than left out of the reckoning.
+    # WHAT A VISITOR PAYS is unchanged in kind: this file is fetched only on a visit that actually
+    # draws, and reduced motion, Save-Data, a device with no WebGL2 and the layer switched off never
+    # ask for it at all.
+    "pass-layer.js": (25_000, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera with its two turning axes and its led flight, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
     # 2026-08-14, afternoon — ONE FENCE PER INSTRUMENT, each at its own measurement plus about a
     # tenth, by the same rule §12 states for the renderer's own file.
     #
