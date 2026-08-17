@@ -202,14 +202,24 @@
       return FEEL_Q[i] + (FEEL_Q[i + 1] - FEEL_Q[i]) * (s - i);
     }
 
+    // HOW FAR PAST THE FIELD'S OWN RANGE THE THRESHOLD TRAVELS (matter.js:312, `reach = 0.5 + 0.10`).
+    // The field runs from 0 to 1 — a plain ladder over the frame at six parts and two grains at four,
+    // each of them between 0 and 1 — so a threshold a tenth below 0 leaves every point of the frame
+    // on work A's side and a tenth above 1 leaves every point on work B's. That tenth is the MARGIN
+    // either door stands on, and it is the number the reading below is held against.
+    var MARGIN = 0.10;
+
     // The numbers of one frame: everything the shader gets beyond the seating of the two works is a
     // pure function of the pose (matter.js:309-329). The threshold travels a tenth past either end
     // of the field and no further — past the field's own range every point stands on one side and
     // the work is whole, which is what makes both doors exact.
-    function values(st) {
+    //
+    // The grain is a parameter here rather than read straight off the pose, because the hold in
+    // `values` below asks this same function for the same pose at a neighbouring cell count. Nothing
+    // else about it moved.
+    function posed(st, grainA) {
       var d = feelOf(clamp(st.mix, 0, 1));
-      var grainA = GRAIN_MIN + (GRAIN_MAX - GRAIN_MIN) * clamp(st.grain, 0, 1);
-      var reach = 0.5 + 0.10;
+      var reach = 0.5 + MARGIN;
       var drift = (st.reduced ? 0 : st.t) * 0.11 * clamp(st.drift, 0, 1);
       return {
         dial: d, grainA: grainA, grainB: grainA * GRAIN_FINE, ladder: LADDER,
@@ -219,6 +229,141 @@
         loosen: st.travel * AMP * clamp(st.loosen, 0, 1) * 4 * d * (1 - d),
         guard: st.shade * smoothstep(0, 0.09, d) * smoothstep(1, 0.91, d),
       };
+    }
+
+    // ---- THE DOOR THE INSTRUMENT READS FOR ITSELF ------------------------------------------------
+    // His 18:00 architecture decision, carried in the U27 brief: the instrument reads its doors at
+    // runtime on the actual buffer, and the report it hands back is the runtime truth; what the
+    // manifest declares is only the claim. The meshing instrument answered that first
+    // (pass-inst-gears.js, THE DOOR THE INSTRUMENT READS FOR ITSELF); this is the same law read in
+    // the material's own units, which are its CELLS.
+    //
+    // WHAT A DOOR ASKS OF THIS INSTRUMENT, and where the buffer enters it. At either door the mask
+    // must be whole — `cov` exactly 1 at the entry door and exactly 0 at the exit — and `cov` is
+    //     clamp(0.5 + (F − tau) / (grad · h)),   h = 1 / uRes.y
+    // so the mask crosses over inside a band of the field HALF THE FIELD'S OWN SLOPE PER BUFFER
+    // POINT wide. Away from a door that band is the front the visitor watches travel. At a door it
+    // must fall entirely outside the frame, and it does exactly while
+    //     0.5 · grad · h  ≤  MARGIN,     i.e.   grad ≤ 2 · MARGIN · bufH.
+    // The threshold's tenth is fixed; the slope is set by the GRAIN, which is cells across the
+    // frame's height; and the buffer's own height is what turns those cells into points. So a grain
+    // that is whole on a tall buffer is a leak on a short one — the same class the meshing
+    // instrument found at its own singular point, in this instrument's own numbers.
+    //
+    // THE SLOPE IS READ AS THE FIELD'S OWN CEILING, and that is said rather than hidden. The field
+    // is `LADDER · uv.x + (1 − LADDER) · (0.62 · n1 + 0.38 · n2)`, so its steepest possible slope is
+    // the ladder's own plus each grain's cell count times the value noise's own steepest slope. That
+    // noise is `a + (b−a)u.x + (c−a)u.y + k·u.x·u.y` on smoothstep coordinates, whose partials are
+    // `((b−a) + k·u.y) · 6f(1−f)` and its mirror: the bracket never leaves [−1, 1] because it is
+    // linear in u and lands on b−a at one end and d−c at the other, and 6f(1−f) tops out at 1.5. So
+    // one cell's slope never passes 1.5·√2, and the ceiling below is exact as a ceiling.
+    //
+    // WHY A CEILING RATHER THAN THE MASK ITSELF. The meshing instrument reads its own mask because
+    // its leak stands at ONE point it can name — the wheel's centre — so a three-point neighbourhood
+    // answers it. This field's steepest cell can stand anywhere on the frame, and reading it exactly
+    // would mean walking the whole buffer twice over at a door instant. The ceiling costs two
+    // multiplications, it can only ever OVER-hold — a door it calls whole is whole beyond argument —
+    // and the hold it triggers costs the picture nothing at a door, where the frame is one whole
+    // work whatever the grain is. What it buys is stated in the refusal itself, in the field's own
+    // units, so a reader can see exactly how far past the margin the slope stood.
+    var NOISE_SLOPE = 1.5 * Math.SQRT2;
+    var DOOR_HOLD = 2;   // how far the hold reaches, in whole cells of the coarse grain
+
+    // The grid the door is read on, and which of the two it is. `drawn` says which one the sentence
+    // below names, since a reader told «a 390 x 200 frame» would look for a device that has none.
+    function doorGridOf(st) {
+      var bw = Math.round(st.bufWidth), bh = Math.round(st.bufHeight);
+      if (bw >= 1 && bh >= 1) return { w: bw, h: bh, drawn: true };
+      return { w: Math.round(st.cssWidth), h: Math.round(st.cssHeight), drawn: false };
+    }
+
+    // The field's own steepest slope anywhere on the frame, in field units per frame height. Every
+    // term has its counterpart in `gF` in FRAG above.
+    function slopeOf(v, aspect) {
+      return v.ladder / Math.max(aspect, 0.05)
+           + (1 - v.ladder) * (0.62 * v.grainA + 0.38 * v.grainB) * NOISE_SLOPE;
+    }
+
+    // THE DOOR, MEASURED. Null everywhere but at a door, since away from the doors a travelling
+    // front is the picture rather than a fault. The door is named by the manifest's own `doors`
+    // block: `mix` at 0 is the entry door, where the frame is the departing work whole, and `mix` at
+    // 1 the exit door, where it is the arriving one.
+    function doorReadOf(v, st) {
+      var want = st.mix === 0 ? 1 : (st.mix === 1 ? 0 : -1);
+      if (want < 0) return null;
+      var g = doorGridOf(st), W = g.w, H = g.h;
+      if (!(W >= 1) || !(H >= 1)) return null;
+      var slope = slopeOf(v, W / Math.max(H, 1));
+      return { grid: g, want: want, slope: slope,
+               // half the mask's own crossover, in the field's own units, on THIS buffer
+               cross: 0.5 * slope / H,
+               cells: v.grainA, cellPx: H / Math.max(v.grainA, 1e-6) };
+    }
+
+    // THE REFUSAL, worded the way the host's own manifest refusals read: what is wrong, in this
+    // instrument's own measured numbers, on the grid it was measured on.
+    function doorWhyNoOf(read) {
+      if (!read || read.cross <= MARGIN) return null;
+      var g = read.grid;
+      return (read.want ? "the entry" : "the exit") + " door leaks: at a grain of "
+           + read.cells.toFixed(2) + " cells across the frame's height — "
+           + read.cellPx.toFixed(2) + " points of a " + g.w + " x " + g.h
+           + (g.drawn ? " buffer" : " frame") + " to a cell — the field's own steepest slope is "
+           + read.slope.toFixed(2) + ", so this instrument's own mask crosses over inside "
+           + read.cross.toFixed(4) + " of the field, past the " + MARGIN
+           + " the threshold stands beyond the field's own range, and the "
+           + (read.want ? "arriving" : "departing")
+           + " work takes the points of the frame nearest that crossing, where "
+           + (read.want ? "the entry" : "the exit") + " door's own law asks for the "
+           + (read.want ? "departing" : "arriving") + " work at every point";
+    }
+
+    // THE NUMBERS OF ONE FRAME, WITH ITS DOOR HELD WHOLE ON THE BUFFER BEING DRAWN. Away from a door
+    // this is `posed` and nothing more: the reading is taken nowhere else and no grain moves. At a
+    // door whose grain crosses the mask over inside the frame on the buffer being drawn, the
+    // instrument steps to a COARSER whole cell count — the only direction that closes it, since the
+    // slope rises with the cell count — and answers with the first pose whose door is whole. What
+    // the score asked for and what was applied are both on the record: `grainA` is the grain drawn,
+    // `grainRequest` is the one handed in, `grainCells` says how many whole cells apart they stand,
+    // and `doorHeld` carries the leak the request would have drawn, in its own words.
+    //
+    // HOW FAR «NEAR» REACHES, and why it is two cells. The material's own unit is the cell, so that
+    // is the unit the distance is counted in. Two cells of a grain that runs from four to
+    // thirty-four is a step of the material nobody watching a door can see, because at a door the
+    // frame is one whole work and no grain of it is on screen; beyond two cells the pose the score
+    // asked for is genuinely a different material and the refusal is the honest answer. A guard
+    // that never refuses proves nothing.
+    function values(st) {
+      var grainA = GRAIN_MIN + (GRAIN_MAX - GRAIN_MIN) * clamp(st.grain, 0, 1);
+      var v = posed(st, grainA);
+      v.grainRequest = grainA;
+      v.grainCells = 0;
+      v.doorHeld = null;
+      var read = doorReadOf(v, st);
+      var no = doorWhyNoOf(read);
+      v.doorGrid = read ? read.grid : null;
+      v.cellPx = read ? read.cellPx : null;
+      v.doorCross = read ? read.cross : null;
+      if (!no) { v.doorWhyNo = null; return v; }
+      var rung = Math.floor(grainA);
+      for (var step = 0; step <= DOOR_HOLD; step++) {
+        var tryA = rung - step;
+        if (tryA < GRAIN_MIN || tryA >= grainA) continue;
+        var w = posed(st, tryA);
+        var wRead = doorReadOf(w, st);
+        if (doorWhyNoOf(wRead)) continue;
+        w.grainRequest = grainA;
+        w.grainCells = grainA - tryA;
+        w.doorHeld = no;
+        w.doorWhyNo = null;
+        w.doorGrid = wRead.grid;
+        w.cellPx = wRead.cellPx;
+        w.doorCross = wRead.cross;
+        return w;
+      }
+      v.doorWhyNo = no + ", and no whole cell stands within " + DOOR_HOLD
+                  + " cells of the grain handed in";
+      return v;
     }
 
     var manifest = {
@@ -246,7 +391,18 @@
         loosen: { min: 0, max: 1, def: 0.6 },
         drift: { min: 0, max: 1, def: 0.45 },
         gather: { min: 0, max: 1, def: 0.3 },
-        grain: { min: 0, max: 1, def: 0.45 },
+        // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
+        // the meshing instrument publishes its own. `heldWholeAtADoor` says what is read (the
+        // field's own steepest slope, held against the tenth the threshold stands past the field's
+        // own range), on which grid (the drawing buffer the host binds, with the CSS frame where it
+        // hands none), how far the hold reaches (two whole cells of the coarse grain) and where the
+        // request the score handed in stays on the record.
+        grain: { min: 0, max: 1, def: 0.45,
+                 applied: { heldWholeAtADoor: { cells: DOOR_HOLD, readOn: "the drawing buffer",
+                                                reads: "grainRequest",
+                                                measures: "the field's own steepest slope against "
+                                                        + "the tenth the threshold stands past the "
+                                                        + "field's own range" } } },
         seed: { min: 0, max: 8, def: 0 },
         shade: { min: 0, max: 1, def: 1 },
         travel: { min: 0, max: 1, def: 1 },
@@ -274,8 +430,11 @@
       // alpha is 1 at every point. That is what keeps door B this instrument's own whole work.
       coverage: { writes: true,
                   how: "1.0 - cov, the share of the arriving work at the travelling threshold" },
+      // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
+      // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, loosen: 0.6, drift: 0.45, gather: 0.3, grain: 0.45,
-                     seed: 0, shade: 1, travel: 1, t: 0, reduced: false },
+                     seed: 0, shade: 1, travel: 1, t: 0, reduced: false,
+                     cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "matter", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
@@ -324,13 +483,33 @@
       start: function () { live = true; },
       // The pose the shader draws. Every number in it comes from a handle a score can drive, and the
       // field's drift reads the second the host hands down, so a seeded run repeats to the pixel.
+      //
+      // A DOOR THIS INSTRUMENT CANNOT KEEP WHOLE IS REFUSED RATHER THAN DRAWN. The door law is the
+      // instrument's own claim (the manifest's coverage line above), so the instrument is what
+      // answers for it: at either door it reads its own field on the buffer the host is about to
+      // bind and, where the grain crosses the mask over inside the frame there and no whole cell
+      // within reach closes it, hands the host the reason with the measured slope in it instead of
+      // drawing a door that is two works at once. The host recovers the transaction on that reason
+      // and the walk's own glide carries the visitor, which is the product's own behaviour with no
+      // renderer.
       frame: function (st) {
         if (!live) return;
         var h = st.handles;
-        st.draw({
+        var pose = {
           mix: h.mix, loosen: h.loosen, drift: h.drift, gather: h.gather, grain: h.grain,
           shade: h.shade, travel: h.travel, seed: h.seed, t: h.clock, reduced: st.reduced,
-        });
+          cssWidth: st.viewport.w, cssHeight: st.viewport.h,
+          // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
+          // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The
+          // host settles it from the device ratio and its own resolution step, so it moves while a
+          // pass plays and each door is read on the grid standing at that door's own instant.
+          bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+        };
+        if (h.mix === 0 || h.mix === 1) {
+          var no = values(pose).doorWhyNo;
+          if (no) { st.fail(st.token, no); return; }
+        }
+        st.draw(pose);
         if (st.progress >= 1 && !st.pinned) st.settle(st.token);
       },
       resize: function () {},
