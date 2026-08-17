@@ -305,7 +305,10 @@ else:
                 return x.what === 'layer' || x.what === 'composer'; });
               return {files: files, layer: r.layer, composer: r.composer.state,
                       passages: r.composer.passages.length,
-                      docks: r.events.filter(function (e) { return e.name === 'dock'; }).length,
+                      // THE LANDING ON THIS ROAD IS THE WALK'S OWN, not the host's. `dock` is the
+                      // host's door and no host runs here at all; what says the visitor arrived is
+                      // the walk's own nav-land, which the glide calls when it reaches the frame.
+                      docks: r.events.filter(function (e) { return e.name === 'nav-land'; }).length,
                       device: r.device,
                       why: why.length ? why[why.length - 1].why : null};
             """
