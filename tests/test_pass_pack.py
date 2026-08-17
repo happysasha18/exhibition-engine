@@ -158,20 +158,36 @@ check("PASS-PACK every file declares its own version in one place, and the build
 # bytes over the matter and weave instruments are — a two-by-two solve per panel, four panels, the
 # sheet's own plane, and the shades and creases each panel carries. It is fetched by the host,
 # after the host, and only on a visit whose own score names it.
+# 2026-08-18 — EVERY FENCE HERE IS RE-MEASURED AND EVERY ONE SITS CLOSE (U27 stage 2). Two things
+# had happened and neither had reached this block: stage 0 put a runtime door reading into all five
+# landed instruments, and stage 1's instruments lane restored the woven ribbon's straight edge as a
+# measured handle and opened the unfold past its own sheet into a parquet. Four fences stood under
+# what their files weighed and one instrument shipped with no fence at all.
+#
+# THE BAND, AND WHY IT IS NARROWER THAN THE TENTH THIS BLOCK USED TO CARRY. These are PLAIN BYTE
+# COUNTS of a comment-stripped generated file, not gzipped figures, so they reproduce exactly — the
+# only thing that moves them across bakes is the length of the site's own namespace, substituted
+# into the one identifier each file joins the host through. The fence is therefore the measurement
+# rounded up to the next hundred, which leaves between 37 and 97 B: room for a namespace a few
+# letters longer, and for nothing else. A tenth of 32 121 B is 3 200 B of slack, and a fence with
+# three kilobytes of slack lets the next three kilobytes arrive unremarked.
+# tests/test_budget.py carries the gzipped fence for each of these files, with the breakdown of
+# what bought the bytes written beside each number.
 FENCES = {
-    "adrift": (20_700, 18_846),
-    "gears": (20_000, 18_190),
-    "matter": (10_500, 9_529),
-    "unfold": (16_600, 15_082),
-    "weave": (13_900, 12_611),
+    "adrift": (24_800, 24_734),
+    "boxfold": (26_400, 26_363),
+    "gears": (18_600, 18_563),
+    "matter": (14_100, 14_003),
+    "unfold": (32_200, 32_121),
+    "weave": (24_800, 24_719),
 }
 for _n in NAMES:
     _fence, _measured = FENCES.get(_n, (0, 0))
     check(f"PASS-PACK the «{_n}» instrument stands under its own {_fence} B fence",
           _fence > 0 and len(BYTES[_n]) < _fence,
-          f"pass-inst-{_n}.js built at {len(BYTES[_n])} B against a fence sized at the "
-          f"{_measured} B this instrument measured plus about a tenth. It is fetched by the host, "
-          f"after the host, and only on a visit whose own score names it")
+          f"pass-inst-{_n}.js built at {len(BYTES[_n])} B against a fence set at the "
+          f"{_measured} B this instrument measured, rounded up to the next hundred. It is fetched "
+          f"by the host, after the host, and only on a visit whose own score names it")
 
 check("PASS-PACK a fence is written for every instrument that ships",
       sorted(FENCES) == NAMES,

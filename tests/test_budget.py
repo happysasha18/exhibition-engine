@@ -124,7 +124,23 @@ FENCES = {
     # THE FENCE SITS JUST ABOVE WHAT WAS MEASURED, the way the 70 000 it replaces stood 285 B over
     # its own 69 715. 91 B of headroom is not room to grow in — it is a gate, and the next feature's
     # worth of bytes reds it and comes here to say what it bought.
-    "exhibition.js": (74_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the passage composer (pass-composer.js) since 2026-08-17 travel separately, and the visit's own seed and its edge memory stay here because the die every crossing is rolled with is made inside declare and the edge record is the site's own", strip_js_comments),
+    #
+    # 2026-08-18 — MOVED FROM 74 000 B TO 74 800 B, MEASURED AT 74 694 B (U27 stage 2), and the fence
+    # did exactly what the paragraph above says it would: it reddened at 74 694 and the bytes came
+    # here to say what they bought. THE WALK NOW STATES WHAT EACH STEP OF THE ROUTE IS FOR. The hang
+    # was already ordered by kinship, so the distance the route crosses at each step is a number the
+    # walk had already measured; charter shelf 15's grammar is read off that curve — the widest step
+    # is the crest, the step leading into it prepares it, a step above both its neighbours is a
+    # motion away, everything else is a home the eye settles in — and two roles that are facts about
+    # the visit rather than about the route's shape outrank it, a return on an edge this visit has
+    # walked and an entrance at its first crossing. The role goes onto the passage request, which is
+    # what bounds the composer: what the walk authors is what the crossing is composed inside.
+    # 785 B gzipped for the whole of it, and the diagnostic surface's own route block is part of
+    # that number rather than left out of the reckoning.
+    # THE DELIVERY QUESTION, ASKED AND ANSWERED. None of it can travel in another file. The curve is
+    # read off `order` and `shown`, which are the walk's own state in this bundle and nowhere else,
+    # and the role is answered inside `declare`, synchronously, where nothing may wait on the wire.
+    "exhibition.js": (74_800,"the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the passage composer (pass-composer.js) since 2026-08-17 travel separately, and the visit's own seed and its edge memory stay here because the die every crossing is rolled with is made inside declare and the edge record is the site's own", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
     # 2026-08-14, morning: the stub became a host with a frame half and one real instrument (the
     # woven one), measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind.
@@ -210,7 +226,12 @@ FENCES = {
     # WHAT A VISITOR PAYS is unchanged in kind: this file is fetched only on a visit that actually
     # draws, and reduced motion, Save-Data, a device with no WebGL2 and the layer switched off never
     # ask for it at all.
-    "pass-layer.js": (24_100, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera with its two turning axes and its led flight, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
+    # 2026-08-18 — MOVED FROM 24 100 B TO 24 200 B, MEASURED AT 24 107 B (U27 stage 2). The camera
+    # lane set 24 100 against its own 24 027 and the merge of the four stage-1 lanes carried 80 B
+    # more into this file: `2131c38`, where a reading is forgotten when the grid it was taken on
+    # moves and the record names the passage's own grid rather than the live canvas. Nothing of
+    # stage 2 is in this file at all. The band is 93 B — see THE BAND, below.
+    "pass-layer.js": (24_200,"the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera with its two turning axes and its led flight, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
     # 2026-08-14, afternoon — ONE FENCE PER INSTRUMENT, each at its own measurement plus about a
     # tenth, by the same rule §12 states for the renderer's own file.
     #
@@ -254,8 +275,35 @@ FENCES = {
     # the instrument holds its own doors on the buffer it draws on (his architecture decision of
     # 18:00). A visit fetches this ONE file for the whole collection where it used to fetch a
     # reader plus a shard per departing work.
-    "pass-composer.js": (20_000, "the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
-    "pass-inst-adrift.js": (6_000, "the adrift instrument, measured at 5 444 B: a dense thing leaves across an empty field and the field itself changes hands along a measured front — its shader, its two silhouettes, its contact shadow, its response curves and its manifest", strip_js_comments),
+    # ------------------------------------------------------------------------------------------
+    # THE BAND, stated once for every gzipped fence this block moves on 2026-08-18 (U27 stage 2).
+    # A gzipped figure is not exactly reproducible: a different version of zlib packs a shade
+    # differently, so a fence set ON the measurement would redden on another machine for no change
+    # at all. The rule applied here, so a later reader can re-derive every number rather than trust
+    # it: THE FENCE IS THE MEASUREMENT ROUNDED UP TO THE NEXT HUNDRED, and where that would leave
+    # under 75 B it takes the hundred above instead. Every band below therefore lies between 73 and
+    # 116 B — room for the compressor and for nothing else. A plain byte count of generated text
+    # reproduces exactly and would take a tighter fence; none of these is one.
+    #
+    # 2026-08-18 — MOVED FROM 20 000 B TO 23 900 B, MEASURED AT 23 784 B (U27 stage 2). Stage 1's
+    # composer lane rewrote what this file decides and the fence was never moved with it: the seven
+    # roads that are the plural sources of a crossing's structure, each stating in its own lines the
+    # readings that qualify a pair for it; the route role, which bounds what is emitted and names the
+    # register the composer reaches for; the visit's memory, answered in three steps so a return
+    # keeps its family or its pivot; the nine handles that gained the measurement they read; and the
+    # camera-led passage. 6 744 gzipped bytes for all of it, on the ONE file a visit fetches for the
+    # whole collection.
+    # IT IS THE ONE FENCE HERE THAT IS EXPECTED TO MOVE AGAIN AT THE NEXT MERGE, and that is the
+    # fence working rather than failing: the composer lane is wiring the box-fold road as this is
+    # written, and whatever it lands comes here to say what it bought.
+    "pass-composer.js": (23_900,"the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
+    # 2026-08-18 — MOVED FROM 6 000 B TO 7 300 B, MEASURED AT 7 222 B (U27 stage 2). The runtime-door
+    # work of stage 0 landed in this file and its fence was never moved with it: the instrument reads
+    # its own doors on the buffer it draws on and reports what it applied or the refusal it named
+    # (his architecture decision of 2026-08-17 18:00), which is the runtime truth the walk writes
+    # onto the passage record. 1 778 gzipped bytes, and only a visit whose own score names this
+    # instrument pays them. Band 78 B.
+    "pass-inst-adrift.js": (7_300,"the adrift instrument, measured at 7 222 B: a dense thing leaves across an empty field and the field itself changes hands along a measured front — its shader, its two silhouettes, its contact shadow, its response curves, its door reading on the buffer it draws on, and its manifest", strip_js_comments),
     # 2026-08-15 — MOVED FROM 5 000 B TO 6 100 B, MEASURED AT 5 551 B. The meshing instrument now
     # reads its own doors: at either door it evaluates its own mask around each wheel's centre — the
     # one place a leak can stand — and refuses a pose whose door is two works at once, with the alpha
@@ -267,16 +315,55 @@ FENCES = {
     # held to the nearest whole size rather than refused, with the composer's request kept beside the
     # size applied. What a visit pays for the whole instrument is 6 026 B gzipped, and only a visit
     # whose own score names it pays them.
-    "pass-inst-gears.js": (6_600, "the meshing instrument, measured at 6 026 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve, the door reading on the buffer it draws on that holds a leaking size whole, and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
+    # 2026-08-18 — TIGHTENED FROM 6 600 B TO 6 200 B, MEASURED AT 6 127 B (U27 stage 2). Nothing
+    # arrived: this is the one instrument fence stage 1 left UNDER its own number, and 473 B of slack
+    # on a 6 KB file is 8 per cent — the share the visit-memory lane's own fence was tightened for on
+    # the judge's ruling, and the share at which a fence stops being a gate and becomes a comment.
+    # Band 73 B.
+    "pass-inst-gears.js": (6_200,"the meshing instrument, measured at 6 127 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve, the door reading on the buffer it draws on that holds a leaking size whole, and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
     # 2026-08-17 — A FENCE FROM DAY ONE for the panels instrument, at the measured 4 754 gzipped
     # bytes plus about a tenth, by the rule §7 states for each instrument. It is the first port
     # whose lab module carried no shader: the module draws with CSS 3D and the compositor projects
     # it, so what this file carries is the inverse of that transform chain — a two-by-two solve per
     # panel across four panels and the sheet's own plane, with each panel's shade and crease. A
     # visit pays these bytes only when its own score names this instrument.
-    "pass-inst-unfold.js": (5_250, "the unfold instrument, measured at 4 754 B: one work folds shut along its own mirrored panels until the single photograph it was cut from stands alone, the two works exchange on that photograph, and the other opens out — its inverted transform chain, its growth law, its response curve and its manifest", strip_js_comments),
-    "pass-inst-matter.js": (3_550, "the matter instrument, measured at 3 221 B: one work loosens into a grain dragged along a seeded field and the other condenses out of it — its shader, its response curve and its manifest", strip_js_comments),
-    "pass-inst-weave.js": (4_500, "the woven instrument, measured at 4 069 B: a band family warping across the frame — its shader, its seating of a work in the frame, its response curve, the turn of the weave and its manifest", strip_js_comments),
+    # 2026-08-18 — MOVED FROM 5 250 B TO 9 600 B, MEASURED AT 9 517 B (U27 stage 2), and this is the
+    # largest move in the block. What arrived is the PROCESS REGISTER the charter names by example:
+    # past the sheet's own rectangle the plane goes on, and what continues is the sheet's own law —
+    # each panel already the mirror of the quarter it closes onto — running off to a real horizon at
+    # the work's own cutting step and the work's own angle, with the world's own light beyond it.
+    # Beside it stand the runtime door reading, the camera's tilt subtracted from the plane's own
+    # pitch so one voice holds the world level, the seating read off the frame state, and the
+    # measured response curve on the one handle whose value is a position. 4 763 gzipped bytes.
+    # IS IT WORTH THEM? The charter's own answer is that this is one of the two registers a crossing
+    # carries — «some transformations simply reveal the making, e.g. an unfold that becomes an
+    # infinite parquet while the 3D camera shows the plane at an angle» — so these bytes are the
+    # register itself and not an ornament on one. Band 83 B.
+    "pass-inst-unfold.js": (9_600,"the unfold instrument, measured at 9 517 B: one work folds shut along its own mirrored panels until the single photograph it was cut from stands alone, the two works exchange on that photograph, and the other opens out — and past the sheet's own edge that same law runs on into a parquet at the work's own cutting step and angle, away to a real horizon; its inverted transform chain, its growth law, its world, its response curve, its door reading and its manifest", strip_js_comments),
+    # 2026-08-18 — MOVED FROM 3 550 B TO 4 700 B, MEASURED AT 4 588 B (U27 stage 2). The runtime door
+    # reading and its report, as on the adrift: 1 367 gzipped bytes on the smallest instrument that
+    # ships, and on the one this collection casts most often. Band 112 B.
+    "pass-inst-matter.js": (4_700,"the matter instrument, measured at 4 588 B: one work loosens into a grain dragged along a seeded field and the other condenses out of it — its shader, its response curve, its door reading on the buffer it draws on, and its manifest", strip_js_comments),
+    # 2026-08-18 — MOVED FROM 4 500 B TO 7 800 B, MEASURED AT 7 722 B (U27 stage 2). Two things
+    # arrived and both are repairs rather than features. The runtime door reading and its report, as
+    # above. And THE STRAIGHT RIBBON, restored: a later copy had rewritten the woven edge wavy with
+    # eleven literals that read nothing off any photograph, and the wave is now a handle resting at
+    # zero, gated on the collection's own texture reading and given its depth by how far a work's own
+    # lines depart from straight. At zero every wave term degenerates to nothing and the pre-wave
+    # frame is what the shader computes — measured at 0.0033 of 255 against the module as it stood
+    # before the regression. 3 653 gzipped bytes for the door reading and for the reference look
+    # coming back. Band 78 B.
+    "pass-inst-weave.js": (7_800, "the woven instrument, measured at 7 722 B: a band family warping across the frame — its shader, its seating of a work in the frame, its response curve, the turn of the weave, the wave that plays only where the work carries one, its door reading on the buffer it draws on, and its manifest", strip_js_comments),
+    # 2026-08-18 — A FENCE FROM DAY ONE for the box instrument, at the measured 8 289 B plus a band
+    # of 111 B (U27 stage 2). It ships and it had no fence, which the pack suite's own «a fence is
+    # written for every instrument that ships» row is there to catch. The frame is one face of a
+    # solid: the box turns a quarter with true perspective while the camera rides up through the turn
+    # and slides sideways, the standing face gives way to the one coming round, and they meet at a
+    # finger joint with a contact shadow along it — the crease placed on the departing work's own
+    # measured region line, which is the first of the charter's five box conditions. A visit pays
+    # these bytes only when its own score names this instrument, and no score does until the composer
+    # names an instrument for the panel cut.
+    "pass-inst-boxfold.js": (8_400, "the box instrument, measured at 8 289 B: one face of a solid turning a quarter under true perspective, creasing on the departing work's own measured region line, with its finger joint, its contact shadow, its per-pixel homography and its manifest", strip_js_comments),
 }
 
 results = []
