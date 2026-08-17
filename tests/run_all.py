@@ -35,6 +35,7 @@ SUITES = [
     "pass_unfold",
     "pass_coverage",
     "pass_composed",
+    "pass_memory",
 ]
 
 
