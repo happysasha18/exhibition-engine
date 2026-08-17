@@ -1078,11 +1078,39 @@ moved and why; the composer emits the artistic request and the bounds live in th
 prebaked door table this replaced was keyed by the pair's own camera pose — pair-scaled — and
 answered for one 1000 x 1000 frame.
 
-**The equality this road was landed on.** Every one of the 6 304 ordered pairs the shipped table
-carries composes through this entry to the byte-identical score the prebaked pack shipped, and every
-one of its 4 254 declines carries the same sentence character for character; 161 of the 6 304 differ
-from the shipped bytes in the meshing travel's two door-instant sizes alone, which is the measured
-cost of the 18:00 decision and nothing else. The conformance rows are `tests/test_pass_composed.py`.
+**The equality this road was landed on, and why it is a record rather than a gate.** Stage 0 moved
+the composer onto the product path and changed nothing about what it composed, so the gate it was
+landed on was byte equality against the road it replaced: every one of the 6 304 ordered pairs the
+shipped table carried composed through this entry to the byte-identical score the prebaked pack
+shipped, and every one of its 4 254 declines carried the same sentence character for character. 161
+of the 6 304 differed from the shipped bytes in the meshing travel's two door-instant sizes alone,
+which is the measured cost of the 18:00 decision and nothing else, and that number stands: the doors
+are the instrument's own reading of the buffer and the composer no longer answers for them.
+
+**What stage 1 changed on purpose, and by how much.** The equality above stopped being the gate the
+moment the composer's derivations became plural on his word of 18:56. Seven roads now stand where one
+did, the step's role in the route bounds what is emitted, the visit's memory of the edge is answered,
+and every geometric and temporal parameter names the measurement it reads under his 19:13 word lifted
+to the class at 19:21. Measured pair by pair against the stage 0 composer, on one and the same die,
+over the 121 per-work records the settings record ships — all 14 520 ordered pairs:
+
+| | pairs |
+| --- | --- |
+| declined before, composes now | 5 378 |
+| composed before, declines now | 0 |
+| declines both ways | 466 |
+| composes both ways, byte-identical | 0 |
+| … differing in the handles alone, the geometry sweep | 6 629 |
+| … differing structurally — a different ground, cue set, travelling axis or length | 2 047 |
+
+So the byte row is retired with the road it guarded, and what stands in its place proves the
+derivation the composer now makes: that each of the seven roads carries real pairs and names the
+reading that qualified each; that the five route roles compose inside charter shelf 17's budget; that
+a return keeps the family the walk itself reads off the plan, or the pivot in its place; that every
+handle the composer drives names its measurement and no handle an instrument declares OPEN is driven
+at all; and that no filled score of the collection crosses the byte or the intent fence. The
+conformance rows are `tests/test_pass_composed.py`, which stands on the real per-work records rather
+than on one worked pair.
 
 ## 5. Driver AST v1 — data only
 

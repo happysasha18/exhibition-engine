@@ -697,13 +697,28 @@ def pass_capabilities():
 
     `scoreBytes` is the whole weight a score may have, measured the way passScoreCheck measures it:
     the length of the score written out as JSON. It is an observed baseline with its evidence, and
-    the evidence stands beside the literal it is read from."""
+    the evidence stands beside the literal it is read from.
+
+    `intentChars` is the length of the ONE field §4.4 calls prose — the authored line a score opens
+    with — and it is published here for the same reason and by the same road, added 2026-08-17 (U27
+    stage 1). A score whose intent runs past it is refused WHOLE, with «intent is no short text», and
+    stage 0 found what an unmeasured prose fence costs: 1 004 of 6 304 composed crossings wrote a
+    line longer than the 400 the client then applied, and every one of them was refused before an
+    instrument saw it. The client's cap was raised to 600 on that finding. The composer that writes
+    the line could not measure it, because the number reached the settings record nowhere; now it
+    does, and the number the composer measures against and the number the client applies are one
+    number rather than two copies. A composer handed no capability falls back to what the client
+    applies today, which is a fallback and not a second home."""
     src = client_asset("exhibition.js").read_text(encoding="utf-8")
     found = re.search(r"PASS_LIMITS\s*=\s*\{[^}]*\bbytes:\s*(\d+)", src)
     if not found:
         raise SystemExit("engine/assets/exhibition.js declares no PASS_LIMITS.bytes — the site has "
                          "no score fence to measure against")
-    return {"scoreBytes": int(found.group(1))}
+    prose = re.search(r"PASS_LIMITS\s*=\s*\{[^}]*\bintent:\s*(\d+)", src)
+    if not prose:
+        raise SystemExit("engine/assets/exhibition.js declares no PASS_LIMITS.intent — the site has "
+                         "no fence on a score's authored line to measure against")
+    return {"scoreBytes": int(found.group(1)), "intentChars": int(prose.group(1))}
 
 
 def client_asset(name):
