@@ -152,6 +152,8 @@
       "}",
     ].join("\n");
 
+    var TAU = Math.PI * 2;
+
     function smoothstep(a, b, x) {
       var t = (x - a) / (b - a);
       t = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -209,9 +211,15 @@
     // The numbers of one frame: everything the shader gets beyond the seating of the two works is a
     // pure function of the pose. The host calls this; so does the lab's own carrier, from the same
     // source — which is why the two roads can be compared frame against frame.
-    function values(st) {
-      var ab = Math.abs(st.bal);
-      var shaped = (st.bal < 0 ? -1 : 1) * smoothstep(0.08, 0.88, ab);
+    //
+    // The balance is a parameter here rather than read straight off the pose, because the hold in
+    // `values` below asks this same function for the same pose at the balance the door's own law
+    // stands at. Nothing else about it moved: at the balance it is handed it answers, number for
+    // number, what it answered before.
+    function posed(st, balAsked) {
+      var bal = balAsked;
+      var ab = Math.abs(bal);
+      var shaped = (bal < 0 ? -1 : 1) * smoothstep(0.08, 0.88, ab);
       var duty = 0.5 + 0.5 * shaped;
       var weave = 1 - smoothstep(0.14, 0.86, ab);
       return {
@@ -219,7 +227,261 @@
         amp: Math.min(AMP * weave * st.press, TRAVEL),
         nV: clamp(st.strips * st.nMul * clamp(st.cssWidth / 1000, 0.5, 1), 3, 64),
         rot: st.reduced ? 0 : rotForTime(st.t, st.axis),
+        // read on the diagnostic surface, bound to no uniform: what the handle came to
+        bal: bal,
       };
+    }
+
+    // ---- THE DOOR THE INSTRUMENT READS FOR ITSELF ------------------------------------------------
+    // His 18:00 architecture decision, carried in the U27 brief: the instrument reads its doors at
+    // runtime on the actual buffer, and the report it hands back is the runtime truth; what the
+    // manifest declares is only the claim. The meshing instrument answered that first
+    // (pass-inst-gears.js, THE DOOR THE INSTRUMENT READS FOR ITSELF); this is the same law read in
+    // the fabric's own units.
+    //
+    // WHAT A DOOR ASKS OF THIS INSTRUMENT. At the entry door the frame is the departing work whole
+    // and at the exit door the arriving one, both matching the hanging picture point for point. Two
+    // numbers carry that here and no others:
+    //   · THE DUTY, a whole 1 at the entry door and a whole 0 at the exit. `sqcov` answers exactly
+    //     1 at a duty of 1 and exactly 0 at a duty of 0 (its own first two lines), so at a whole
+    //     duty both ribbon sets read ONE work at every point and the fabric is that work.
+    //   · THE RIBBONS' TRAVEL, exactly 0. At a whole duty the frame is one work, but a ribbon that
+    //     still slides carries that work off the hang by `amp` of the frame.
+    // Both come from `bal`, and `bal` is an OPEN handle: a score that drives it lands a door at
+    // whatever balance its own track says. The dial's own road cannot miss — the response curve's
+    // dead band puts the balance at 0.88 at either door, which is exactly where the duty's own
+    // smoothstep closes — but a driven balance can, and then the door draws the OTHER photograph at
+    // full strength over the share of every band the duty leaves open. That is the leak this reads.
+    //
+    // WHICH INSTANT IS A DOOR. The manifest's own `doors` block names the handle and the value:
+    // `mix` at 0 is the entry door and `mix` at 1 the exit. So the door is read off `mix` and the
+    // state it is judged on is `bal`, which is exactly the pair the manifest publishes.
+    //
+    // ON WHICH GRID. The DRAWING BUFFER the host binds as `uRes` — the CSS frame times the device
+    // ratio times the host's own resolution step. It is the grid the shader samples on, it is not
+    // known when a plan is serialised, and it moves while a pass plays. It is also the grid the
+    // fabric's own anti-aliasing half-widths are computed on (`wV`, `wH` in FRAG read `uRes`), so a
+    // leak is decided there and nowhere else. The reading falls back to the CSS frame where the
+    // host hands no buffer, and says which of the two it used.
+    //
+    // WHY A SHARE AND NOT A SENTENCE ABOUT DUTY. The share the duty leaves open is a share of EVERY
+    // band, so what it costs on the frame is that share of the frame's own width — and whether any
+    // sample lands inside it is a question about the grid. At a balance of 0.87 the open share is
+    // 0.00036 of a band: 0.28 of a pixel on a 780 wide buffer, where no sample can land, and 1.4
+    // pixels on a 4000 wide one, where several do. So the same balance is a whole door on one
+    // buffer and a leak on the next, which is precisely why this is read at runtime.
+    var DOOR_HOLD = 2;   // how far the hold reaches, in whole bands of the fabric
+    // How far the ribbons may stand off the hang and the door still be the hanging picture: half a
+    // point of the grid the shader samples on, which is the width inside which a sample stays in
+    // the buffer pixel it started in.
+    var DOOR_SLIP = 0.5;
+    // How much of the other work a door may draw and still BE the hanging picture: half a level of
+    // 255, which is under what the frame itself can carry. The charter's own door bar is 6 of 255
+    // over the canvas rect (the tolerance every suite here already uses); half a level is an eighth
+    // of that at one point, so a reading under it cannot be a leak anybody could photograph.
+    var DOOR_SHOW = 0.5 / 255;
+    // How many points of the grid one walk reads along each axis. The open share stands in every
+    // band of the set, so a walk that visits one point in every few finds it as surely as a walk
+    // that visits all of them, and a door instant costs a bounded number of samples whatever the
+    // buffer grows to.
+    var DOOR_WALK = 256;
+
+    // THE BALANCE EITHER DOOR'S OWN LAW STANDS AT. The duty's smoothstep closes at 0.88 of the
+    // balance, which is where the response curve's dead band already puts it, so the hold moves to
+    // the door's own number rather than to one invented here.
+    var BAL_WHOLE = 0.88;
+
+    // The grid the door is read on, and which of the two it is. `drawn` says which one the sentence
+    // below names, since a reader told «a 780 x 1688 frame» would look for a device that has none.
+    function doorGridOf(st) {
+      var bw = Math.round(st.bufWidth), bh = Math.round(st.bufHeight);
+      if (bw >= 1 && bh >= 1) return { w: bw, h: bh, drawn: true };
+      return { w: Math.round(st.cssWidth), h: Math.round(st.cssHeight), drawn: false };
+    }
+
+    // The shader's own `sqcov` at one point, carried across from FRAG above line for line.
+    function sqI(t, d) { return Math.floor(t) * d + Math.min(t - Math.floor(t), d); }
+    function sqcov(x, d, w) {
+      w = Math.max(w, 1e-5);
+      if (d >= 1) return 1;
+      if (d <= 0) return 0;
+      return clamp((sqI(x + w, d) - sqI(x - w, d)) / (2 * w), 0, 1);
+    }
+    function warpV(x, k, ph) { return x + 0.42 * Math.sin(k * TAU * x + ph) / (k * TAU); }
+    function warpD(x, k, ph) { return 1 + 0.42 * Math.cos(k * TAU * x + ph); }
+
+    // ONE RIBBON SET, READ ACROSS THE BUFFER IT IS DRAWN ON. The set's own cell coordinate is
+    // walked at the buffer's own sample points along the axis the cells run across, at three places
+    // along the other axis — where the living edge's own wobble stands lowest, at nothing, and
+    // highest — because that wobble is a phase shift of the cell coordinate and those three phases
+    // bracket every row the set is drawn on. Everything here has its counterpart in FRAG and nothing
+    // is simplified.
+    function setLeak(want, duty, n, ph, kWarp, across, along, edges) {
+      var step = Math.max(1, Math.floor(across / DOOR_WALK));
+      var pts = 0, walked = 0, worst = 0, i, e, x, base, wd, off;
+      for (i = 0; i < across; i += step) {
+        x = (i + 0.5) / across;
+        base = warpV(x, kWarp, ph) * n;
+        wd = n * warpD(x, kWarp, ph) / across;
+        for (e = 0; e < edges.length; e++) {
+          off = Math.abs(sqcov(base + edges[e].v, duty,
+                               0.5 * (wd + Math.abs(edges[e].d) / along)) - want);
+          walked++;
+          if (off >= DOOR_SHOW) { pts++; if (off > worst) worst = off; }
+        }
+      }
+      return { pts: pts, walked: walked, worst: worst };
+    }
+
+    // THE LIVING EDGE at one place along the axis it runs on: its own value and its own slope, both
+    // carried from FRAG. `alive` is nothing at a whole duty, which is why a whole door reads no edge
+    // at all.
+    function edgeAt(u, t, alive, k1, k2, r1, r2, ph2) {
+      var a1 = TAU * (u * k1 + t * r1), a2 = TAU * (u * k2 + t * r2 + ph2);
+      return { v: alive * (0.34 * Math.sin(a1) + 0.17 * Math.sin(a2)),
+               d: alive * TAU * (0.34 * k1 * Math.cos(a1) + 0.17 * k2 * Math.cos(a2)) };
+    }
+
+    // THE DOOR, MEASURED. Null everywhere but at a door, since away from the doors a fabric woven of
+    // both works is the picture rather than a fault. `want` is what each ribbon set's own coverage
+    // must be at every point: 1 at the entry door, where the frame is the departing work whole, and
+    // 0 at the exit door, where it is the arriving one.
+    //
+    // THE CHEAP GATE FIRST, and what it is. A duty short of whole leaves a share of every band open
+    // to the other work, and the anti-aliasing spreads that share across the sample points nearest
+    // the band's own edge — so the deepest the frame can dip is about that share times the number of
+    // buffer points ONE BAND is drawn across. That estimate costs two divisions, it is the same
+    // number the walk below then measures exactly, and under half a level of 255 there is nothing on
+    // the frame to find. So a whole door pays two divisions and a leaking one pays the walk.
+    function doorReadOf(v, st) {
+      var want = st.mix === 0 ? 1 : (st.mix === 1 ? 0 : -1);
+      if (want < 0) return null;
+      var g = doorGridOf(st), W = g.w, H = g.h;
+      if (!(W >= 1) || !(H >= 1)) return null;
+      var aspect = W / Math.max(H, 1);
+      // the two ribbon sets as the shader builds them: the basket's own share, the count each set is
+      // drawn at ON THIS BUFFER, and the duty each is pushed to
+      var av = clamp(2 - 2 * v.rot, 0, 1), ah = clamp(2 * v.rot, 0, 1);
+      var basket = Math.min(av, ah);
+      var nV = Math.max(3, v.nV * (1 - 0.25 * basket));
+      var nH = Math.max(3, nV / Math.max(aspect, 0.05));
+      var push = 2 * basket * v.duty * (1 - v.duty);
+      var dutyV = clamp(v.duty + push, 0, 1), dutyH = clamp(v.duty - push, 0, 1);
+      // the share of every band each set leaves to the other work, what that share costs in whole
+      // bands — the unit the hold below walks in — and how deep it can dip the frame
+      var openV = want ? 1 - dutyV : dutyV, openH = want ? 1 - dutyH : dutyH;
+      // HOW DEEP THAT SHARE CAN DIP THE FRAME. `sqcov` averages its cell over the anti-aliasing
+      // window of half-width w, so where a band's open share falls entirely inside one window the
+      // frame dips by about that share over 2w — and 2w is the band's own count over the buffer's
+      // points across, narrowed by the width warp, whose own floor is 1 − 0.42. Taking that floor
+      // makes this the DEEPEST dip the set can draw, so a reading under half a level of 255 here is
+      // a door no photograph can show a leak on.
+      var dipV = openV * (W / nV) / (1 - 0.42), dipH = openH * (H / nH) / (1 - 0.42);
+      var read = { grid: g, want: want, nV: nV, nH: nH, dutyV: dutyV, dutyH: dutyH,
+                   openV: openV, openH: openH, open: dipV >= dipH ? openV : openH,
+                   bands: Math.max(openV * nV, openH * nH),
+                   travelPx: v.amp * Math.max(W, H),
+                   dip: Math.max(dipV, dipH), pts: 0, walked: 0, worst: 0,
+                   set: dipV >= dipH ? "columns" : "rows" };
+      // THE DECISION IS THE DIP ABOVE; THE WALK BELOW IS THE REPORT. A whole door pays two
+      // divisions and stops here. A door the dip already condemns is then walked, so the refusal
+      // carries a measured depth on the grid rather than an estimate of one — and the walk is
+      // bounded, because the open share stands in EVERY band and one band in a hundred is as
+      // eloquent as all of them.
+      if (read.dip < DOOR_SHOW && read.travelPx < DOOR_SLIP) return read;
+      var alive = smoothstep(0, 0.10, v.duty) * smoothstep(1, 0.90, v.duty);
+      var phV = st.t * 0.31, phH = st.t * 0.24 + 1.7;
+      var rows = [edgeAt(0.5 / H, st.t, alive, 1.7, 3.1, -0.090, 0.062, 1.3),
+                  edgeAt(0.5, st.t, alive, 1.7, 3.1, -0.090, 0.062, 1.3),
+                  edgeAt((H - 0.5) / H, st.t, alive, 1.7, 3.1, -0.090, 0.062, 1.3)];
+      var cols = [edgeAt(0.5 / W, st.t, alive, 1.6, 2.9, 0.081, -0.055, 0.7),
+                  edgeAt(0.5, st.t, alive, 1.6, 2.9, 0.081, -0.055, 0.7),
+                  edgeAt((W - 0.5) / W, st.t, alive, 1.6, 2.9, 0.081, -0.055, 0.7)];
+      var byCol = setLeak(want, dutyV, nV, phV, 2, W, H, rows);
+      var byRow = setLeak(want, dutyH, nH, phH, 3, H, W, cols);
+      read.pts = byCol.pts + byRow.pts;
+      read.walked = byCol.walked + byRow.walked;
+      if (byCol.worst >= byRow.worst) { read.worst = byCol.worst; read.set = "columns"; read.open = openV; }
+      else { read.worst = byRow.worst; read.set = "rows"; read.open = openH; }
+      return read;
+    }
+
+    // THE REFUSAL, worded the way the host's own manifest refusals read: what is wrong, in this
+    // instrument's own measured numbers, on the grid it was measured on.
+    function doorWhyNoOf(read, v) {
+      if (!read) return null;
+      var slid = read.travelPx >= DOOR_SLIP;
+      if (read.dip < DOOR_SHOW && !slid) return null;
+      var g = read.grid, door = read.want ? "the entry" : "the exit";
+      var why = door + " door leaks: at a balance of " + v.bal.toFixed(6) + " the fabric leaves "
+              + read.open.toFixed(6) + " of every band of its "
+              + (read.set === "columns" ? "columns" : "rows") + " to the "
+              + (read.want ? "arriving" : "departing") + " work";
+      if (read.pts) {
+        why += " and draws it at " + read.worst.toFixed(6) + " on " + read.pts + " of the "
+             + read.walked + " points this reading walked across a "
+             + g.w + " x " + g.h + (g.drawn ? " buffer" : " frame");
+      } else {
+        why += " on a " + g.w + " x " + g.h + (g.drawn ? " buffer" : " frame");
+      }
+      if (slid) {
+        why += ", and its ribbons stand " + read.travelPx.toFixed(2)
+             + " points of that grid off the hang";
+      }
+      return why + ", where " + door + " door's own law asks for the "
+           + (read.want ? "departing" : "arriving") + " work at every point";
+    }
+
+    // THE NUMBERS OF ONE FRAME, WITH ITS DOOR HELD WHOLE ON THE BUFFER BEING DRAWN. Away from a door
+    // this is `posed` and nothing more: the reading is taken nowhere else and no balance moves. At a
+    // door whose balance leaks on the buffer being drawn, the instrument moves to the balance the
+    // door's own law stands at — the fabric's own whole band, which is the only place `sqcov`
+    // answers a whole work — and answers with that pose. What the score asked for and what was
+    // applied are both on the record: `bal` is the balance drawn, `balRequest` is the one handed in,
+    // `balBands` says how many whole bands of fabric the two stand apart, and `doorHeld` carries the
+    // leak the request would have drawn, in its own words.
+    //
+    // HOW FAR «NEAR» REACHES, and why it is two bands. The share the duty leaves open is a share of
+    // every band, so the honest unit of the distance between a balance and a whole door is the
+    // number of BANDS that share adds up to. Two bands of a fabric that draws between three and
+    // sixty-four is a hair of the frame — at the twenty-eight bands the handle rests at it is a
+    // balance of 0.80 and closer, which is inside the response curve's own dead band's neighbourhood
+    // and reads as the same door. Beyond it the fabric is genuinely woven of both works, a door
+    // holding a quarter of the other photograph is not a door, and a guard that never refuses proves
+    // nothing.
+    //
+    // WHY THE MOVE COSTS THE PICTURE NOTHING AT THE DOOR ITSELF. At a door the frame is one whole
+    // work by the same law being kept, so no ribbon of either set is on screen to show which balance
+    // drew it; and the travel dies at 0.86 of the balance, below the whole door's own 0.88, so the
+    // held pose carries no slide either.
+    function values(st) {
+      var v = posed(st, st.bal);
+      v.balRequest = st.bal;
+      v.balBands = 0;
+      v.doorHeld = null;
+      var read = doorReadOf(v, st);
+      var no = doorWhyNoOf(read, v);
+      v.doorGrid = read ? read.grid : null;
+      v.bandsDrawn = read ? read.nV : null;
+      v.doorBands = read ? read.bands : null;
+      if (!no) { v.doorWhyNo = null; return v; }
+      if (read.bands <= DOOR_HOLD) {
+        var w = posed(st, read.want ? BAL_WHOLE : -BAL_WHOLE);
+        var wRead = doorReadOf(w, st);
+        if (!doorWhyNoOf(wRead, w)) {
+          w.balRequest = st.bal;
+          w.balBands = read.bands;
+          w.doorHeld = no;
+          w.doorWhyNo = null;
+          w.doorGrid = wRead.grid;
+          w.bandsDrawn = wRead.nV;
+          w.doorBands = wRead.bands;
+          return w;
+        }
+      }
+      v.doorWhyNo = no + ", and no whole band stands within " + DOOR_HOLD
+                  + " bands of the balance handed in";
+      return v;
     }
 
     var manifest = {
@@ -333,7 +595,16 @@
         seed: { min: 0, max: 8, def: 0 },
         nMul: { min: 0.62, max: 1.65, def: 1 },
         press: { min: 1, max: PRESS, def: 1 },
-        bal: { min: -1, max: 1, def: 1, open: true },
+        // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
+        // the meshing instrument publishes its own. `heldWholeAtADoor` says what is read (the share
+        // of every band the fabric leaves to the other work), on which grid (the drawing buffer the
+        // host binds, with the CSS frame where it hands none), how far the hold reaches (two whole
+        // bands of the fabric) and where the request the score handed in stays on the record.
+        bal: { min: -1, max: 1, def: 1, open: true,
+               applied: { heldWholeAtADoor: { bands: DOOR_HOLD, readOn: "the drawing buffer",
+                                              reads: "balRequest",
+                                              measures: "the share of every band the fabric leaves "
+                                                      + "to the other work" } } },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -359,7 +630,10 @@
       coverage: { writes: false,
                   how: "the fabric partitions the frame between its two ribbon sets, so no point "
                      + "of the frame is left unclaimed and the alpha is the constant 1" },
-      neutralPose: { bal: 1, nMul: 1, press: 1, strips: 28, axis: 2, cssWidth: 1000, t: 0, reduced: false },
+      // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
+      // so the frame keys the host reads off it at registration include the door's own record.
+      neutralPose: { mix: 0, bal: 1, nMul: 1, press: 1, strips: 28, axis: 2,
+                     cssWidth: 1000, cssHeight: 1000, t: 0, reduced: false },
       passes: [{
         program: "weave", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
@@ -415,16 +689,35 @@
       // of 3.2 s and 4.9 s read `clock`; the strips' travel reads `clock` and `speed` together
       // (speed × 0.17, the horizontal at 0.86 of it + 0.31 turn); the over/under order reads `seed`.
       // Their rates stay inside the shader and inside rotForTime, where their author put them.
+      //
+      // A DOOR THIS INSTRUMENT CANNOT KEEP WHOLE IS REFUSED RATHER THAN DRAWN. The door law is the
+      // instrument's own claim (the manifest's own `doors` block), so the instrument is what answers
+      // for it: at either door it reads its own fabric on the buffer the host is about to bind and,
+      // where the balance handed in leaves a share of every band to the other work that no whole
+      // band of the hold can close, it hands the host the reason with the measured share in it
+      // instead of drawing a door that is two photographs at once. The host recovers the transaction
+      // on that reason and the walk's own glide carries the visitor, which is the product's own
+      // behaviour with no renderer.
       frame: function (st) {
         if (!live) return;
         var h = st.handles;
         var bal = typeof h.bal === "number" ? h.bal : 1 - 2 * feelOf(clamp(h.mix, 0, 1));
-        st.draw({
-          bal: bal,
+        var pose = {
+          bal: bal, mix: h.mix,
           nMul: h.nMul, press: h.press,
           strips: h.strips, axis: h.axis, speed: h.speed, seed: h.seed,
-          cssWidth: st.viewport.w, t: h.clock, reduced: st.reduced,
-        });
+          cssWidth: st.viewport.w, cssHeight: st.viewport.h, t: h.clock, reduced: st.reduced,
+          // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
+          // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The
+          // host settles it from the device ratio and its own resolution step, so it moves while a
+          // pass plays and each door is read on the grid standing at that door's own instant.
+          bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+        };
+        if (h.mix === 0 || h.mix === 1) {
+          var no = values(pose).doorWhyNo;
+          if (no) { st.fail(st.token, no); return; }
+        }
+        st.draw(pose);
         if (st.progress >= 1 && !st.pinned) st.settle(st.token);
       },
       resize: function () {},
