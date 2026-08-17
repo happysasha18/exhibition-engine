@@ -190,12 +190,22 @@ def breath_at(seconds):
 
 
 # ---------------------------------------------------------------- bake once
-# The site's own `pass` record carries the pair's score. This is the WHOLE delivery road: a site
-# writes it into its own site.json, engine/build.py passes the block through into config.json as
-# DATA and judges nothing in it, and the client reads it at declare time. No engine rebuild, no new
-# asset, no new road — a new score for a pair is a content change.
+# The site's own `pass` record. This is the WHOLE delivery road: a site writes the block into its own
+# site.json, engine/build.py passes it through into config.json as DATA and judges nothing in it, and
+# the client reads the names it knows at declare time. No engine rebuild, no new asset, no new road.
+#
+# `deliveryProbe` is a name the bake has never heard of and the client has no register row for, put
+# here on purpose: it is what makes the row below a proof about the CONTENT rather than about two
+# settings that happen to survive. A block is data, so a member of a shape neither side knows must
+# reach the served file unread and unaltered — that is what lets a score road change without an
+# engine rebuild, and it is the half of the retired row above that did not retire with it. The
+# client passes over a name its register does not carry rather than refusing the block, which is
+# the same law read from the other end.
 build_site.SITE_CONFIG = dict(build_site.SITE_CONFIG)
-build_site.SITE_CONFIG["pass"] = {"visualLayer": "pass", "diagnostics": "on"}
+build_site.SITE_CONFIG["pass"] = {
+    "visualLayer": "pass", "diagnostics": "on",
+    "deliveryProbe": {"schema": 1, "rows": [1, 2.5, "три"], "nested": {"depth": {"here": None}}},
+}
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_passweave_"))
 build_site.OUT = TMP
@@ -320,9 +330,22 @@ check("PASS-WEAVE the capture bench serves the record and the files it names, be
       "bench root carrying the host alone answers its fetch for the site's own record with a 404, "
       "and a root carrying the record without the files it names answers every instrument with one")
 
-check("PASS-WEAVE the score's road into the walk needs no engine rebuild",
-      "function passScoreFor" in (ROOT / "engine" / "client" / "01a-pass.js").read_text(encoding="utf-8"),
-      "the site's pass record carries scores keyed by the pair; the bake passes the block through as data")
+# THE ROW THAT STOOD HERE RETIRED 2026-08-17 (U27 stage 0), with the road it asserted. It read
+# `function passScoreFor` out of engine/client/01a-pass.js and stood for one sentence: the site's
+# pass record carries scores keyed by the pair, the bake passes the block through as data, and so a
+# new score for a pair is a content change rather than an engine rebuild. His word of 19:21 retired
+# the first clause — the collection grows to thousands of works and nothing on the product path may
+# carry a table keyed by the pair — and `passScoreFor` was deleted with the two other score roads.
+#
+# The second clause did not retire, and it is the half this suite owns: the bake judges NOTHING in
+# the block, whatever the block contains, so a road into the walk is still a content change. It
+# moves into the row below, which already read the block back out of the served file and now reads
+# a member the bake has never heard of back out of it too. That is the property under the sentence,
+# stated once, in the one row that measures it.
+#
+# What proves the rest: the walk deriving its passage from the two works' own records is
+# tests/test_pass_composed.py, whose first four rows read the served bundle for the composer's door
+# and for the absence of all three roads that left.
 
 # The delivery road's own row: what a site wrote into site.json is what the served settings file
 # carries, byte for byte, with the bake judging none of it.
@@ -339,11 +362,16 @@ served = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
 _block = served.get("pass") or {}
 _added = sorted(set(_block) - set(build_site.SITE_CONFIG["pass"]))
 _kept = {k: v for k, v in _block.items() if k in build_site.SITE_CONFIG["pass"]}
-check("PASS-WEAVE the site's pass record reaches the served settings file untouched, "
-      "with the bake's own instrument and capability records beside it",
+check("PASS-WEAVE the site's pass record reaches the served settings file untouched, whatever it "
+      "carries, with the bake's own instrument and capability records beside it",
       _kept == build_site.SITE_CONFIG["pass"] and _added == ["capabilities", "instruments"]
-      and all(sorted(e) == ["digest", "src", "version"] for e in _block["instruments"].values()),
-      f"config.json carries {_kept} exactly as site.json wrote it, and the bake added "
+      and all(sorted(e) == ["digest", "src", "version"] for e in _block["instruments"].values())
+      # the member neither side knows, read back whole: a nested record, a float, an integer and a
+      # non-ASCII string all standing where site.json put them
+      and _kept.get("deliveryProbe") == build_site.SITE_CONFIG["pass"]["deliveryProbe"],
+      f"config.json carries {_kept} exactly as site.json wrote it — including «deliveryProbe», a "
+      f"member the bake has never heard of and the client has no register row for, which is what "
+      f"makes a new score road a content change — and the bake added "
       f"{_added} — {sorted(_block.get('instruments') or {})}, each with its address, version and digest")
 
 # ---------------------------------------------------------------- browser rows
