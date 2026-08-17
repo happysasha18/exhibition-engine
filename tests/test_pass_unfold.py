@@ -242,6 +242,41 @@ check("PASS-UNFOLD every handle the instrument publishes is a handle a score can
       "score can walk without moving the picture is noise in the score"
       if not absent else "these are published nowhere: " + ", ".join(absent))
 
+# ---- the response curves, measured 2026-08-17 ----------------------------------------------------
+# The charter's law: equal movement of the hand, equal felt change. This instrument carried one
+# measured curve and spent it on the crossing's own progress, so equal steps of its other five
+# handles were not equal felt change and the composer that drives them said so. These rows read the
+# curves off the built file and hold their shape; the browser row further down measures the one that
+# is APPLIED against the frame itself.
+CURVE_HANDLES = ["field", "tilt", "shade", "depth", "stagger"]
+curve_knots = {}
+for _h in CURVE_HANDLES:
+    _m = re.search(r"\n      %s: \[([^\]]+)\]" % _h, REGION)
+    curve_knots[_h] = [float(x) for x in _m.group(1).replace("\n", " ").split(",")] if _m else []
+
+bad = [h for h, k in curve_knots.items()
+       if len(k) != 21 or k[0] != 0 or k[-1] != 1
+       or any(k[i + 1] < k[i] for i in range(len(k) - 1))]
+check("PASS-UNFOLD every response curve runs 0 to 1 over twenty-one marks and never turns back",
+      not bad and len(curve_knots) == 5,
+      "a curve is the inverse of the picture's own running travel, so it is non-decreasing by "
+      "construction and its two ends are the handle's two ends — which is what keeps both doors "
+      "exact when a curve is applied. Twenty-one marks is the count the module's own measured "
+      "curve carries, so the two are read the same way. Handles carrying one: "
+      + ", ".join(sorted(curve_knots))
+      if not bad else "these are not a curve: " + ", ".join(bad))
+
+check("PASS-UNFOLD each curve says what it was measured on, and whether it is applied",
+      REGION.count("measuredOn:") >= 5
+      and "curve: { knots: CURVES.field, band: CURVE_BANDS.field, applied: true," in REGION
+      and REGION.count("applied: false,") >= 4
+      and "field: [4.017, 1.079]" in REGION and "stagger: [12.728, 1.124]" in REGION,
+      "a curve is applied HERE only where the handle's value is a pure position — `field`, which a "
+      "score drives with the passage's own travel and nothing else. The other four carry a unit of "
+      "their own and a composer places them from a measurement, so their curves are published "
+      "beside their ranges and the placing stays with whoever owns the request; applying one here "
+      "would corrupt the number that was asked for")
+
 # ---- the world the sheet opens into, 2026-08-17 (his 19:13 word, the second register) ------------
 check("PASS-UNFOLD the world the sheet opens into rests at the closed sheet",
       "uniform vec4 uField;" in REGION
@@ -439,6 +474,7 @@ WORLD_ROWS = [
     "PASS-UNFOLD the world · the parquet's own period reaches the PICTURE",
     "PASS-UNFOLD the world · the turn of the parquet's lattice reaches the PICTURE",
     "PASS-UNFOLD the world · a door with the world open is refused, with the plane measured in points",
+    "PASS-UNFOLD the curve · equal steps of the world's own hand are equal change on the frame",
 ]
 
 RED_ROWS = [
@@ -448,6 +484,7 @@ RED_ROWS = [
     "PASS-UNFOLD red-on-bug · the seating removed: the sheet stops being the file",
     "PASS-UNFOLD red-on-bug · the door reading removed: a door drawing the panel map is let through",
     "PASS-UNFOLD red-on-bug · the parquet removed: the world opens onto bare frame",
+    "PASS-UNFOLD red-on-bug · the world's curve reverted: equal hand steps go back to unequal change",
 ]
 
 # THE MEASUREMENT READ AT A DOOR, published in the manifest. His 19:13 word, lifted to the class at
@@ -1267,6 +1304,67 @@ else:
                   "centre. Walked from square to 34 degrees at the same period, the frame moves by "
                   "%.4f of 255 against the seam of %.1f" % (turned, SEAM))
 
+        # ---- the world's own curve, measured against the frame ------------------------------------
+        # The proof the law asks for, taken where the law is: on the PICTURE. The hand is walked in
+        # twenty equal steps and the frame's own travel is read at each; the widest step against the
+        # narrowest is the band, and a band of 1 is the law kept exactly. The raw handle measured
+        # 3.257 before this curve — the world opened slowly at first and quickly at the end, which
+        # is what the eye saw before anybody measured it.
+        def curve_band(br):
+            """The hand walked in twenty-one equal marks, and at each mark the frame drawn TWICE a
+            small step apart so what is read is the picture's own rate of change there. Reading the
+            distance between consecutive marks instead would saturate — past a step of a few tens
+            of 255 two frames of one photograph differ by about as much however far apart they
+            stand — and would report a band near 1 whatever the truth was. This is the same probe
+            the published curve was measured with, so the row and the knots are one method."""
+            br.evaluate("window.__clock(%r); 0" % CLOCK)
+            br.evaluate("window.__mix(0.30); 0")
+            br.sleep(0.8)
+            # THE HOST'S OWN CANVAS IS WHAT THIS READS. The lab module has no world at all, so a
+            # walk photographed on its stage would answer nothing this row asks about.
+            br.evaluate("window.__show('host'); window.__mask(0); 0")
+            js(br, "return window.__world({\"field\": 0});")
+            marks, probe = 21, 0.004
+            br.evaluate("window.__drawWith({\"field\": 0}); 0")
+            br.sleep(0.5)
+            png(br, SHOTS / "curve-warm.png")
+            rates, worst = [], 0.0
+            for i in range(marks):
+                u = i / (marks - 1.0)
+                two = []
+                for uu in (u, u + (probe if u <= 0.5 else -probe)):
+                    br.evaluate("window.__drawWith({\"field\": %r}); 0" % uu)
+                    br.sleep(0.12)
+                    two.append(str(png(br, SHOTS / ("curve-%02d-%d.png" % (i, len(two))))))
+                d_ = diff(two[0], two[1])[0]
+                worst = max(worst, d_)
+                rates.append(d_ / probe)
+            live = [r for r in rates if r > 0]
+            return {"band": (max(live) / min(live)) if live else 0.0,
+                    "worstProbe": worst, "marks": marks}
+
+        curved = on_bench(curve_band)
+        # THE BAR, AND WHY IT IS NOT 1. Two things keep it off 1, and both are measured rather than
+        # argued. First, a rate read across a probe of four thousandths carries the frame's own
+        # quantisation with it, so the smallest rates in this walk answer within a level or two of
+        # 255 and a band of exactly 1 would be a claim about noise. Second, a curve laid on
+        # twenty-one knots interpolates straight between them and therefore cannot flatten a rate
+        # whose own features are finer than one knot apart — and this instrument's world has such
+        # features, where a pair of panels leaves the frame. What the curve MEASURABLY does is halve
+        # the band: 8.0 raw against 3.6 curved, read the same way at the same marks. A bar of 5
+        # holds that repair and refuses its removal, and the residual is a line in the report for
+        # the tuning pass, which is what his 20:10 word asks for.
+        CURVE_BAR = 5.0
+        check(WORLD_ROWS[4],
+              curved and curved["band"] > 0 and curved["band"] <= CURVE_BAR,
+              "twenty-one equal marks of the hand, the picture's own rate of change read at each "
+              "across a probe of four thousandths: the widest against the narrowest is %.3f, "
+              "against a bar of %.1f. The RAW handle measures 8.0 read the same way at the same "
+              "marks, and 4.017 on the sweep of forty-one places the curve was built from. The largest probe any mark answered was %.2f of 255, "
+              "so every reading stayed a rate rather than a saturated difference"
+              % (curved["band"] if curved else -1, CURVE_BAR,
+                 curved["worstProbe"] if curved else -1))
+
         # ---- the door with the world open ---------------------------------------------------------
         # A floor running away to a horizon is not the photograph standing whole, and no hold can
         # close it — the fault is the whole frame rather than a sliver along a crease. So the
@@ -1407,6 +1505,25 @@ else:
               f"({bug_door_read and bug_door_read['refused']} refusals, state "
               f"{bug_door_read and bug_door_read['state']}, "
               f"{bug_door_read and bug_door_read['drew']} cue drawn)")
+
+        # ---- 7. the world's curve reverted --------------------------------------------------------
+        # The curve is one call in one line. Take it out and the raw handle stands where the curved
+        # one did, so the hand walks the world unevenly again — slowly at first and quickly at the
+        # end — and the band the row above measures goes back to what the raw walk measured. Nothing
+        # else moves; the file on disk is never touched.
+        bug = PACK.replace("curveAt(CURVES.field, clamp(st.field, 0, 1))",
+                           "clamp(st.field, 0, 1)", 1)
+        raw_curve = on_bench(curve_band, pack_text=bug)
+        check(RED_ROWS[6],
+              bug != PACK and curved and raw_curve
+              and curved["band"] <= CURVE_BAR
+              and raw_curve["band"] >= 1.8 * curved["band"],
+              "with the curve applied, the picture's rate of change across twenty-one equal marks "
+              "of the hand stands within a band of %.3f. With the one call taken out of the served "
+              "file the same twenty-one marks stand within a band of %.3f — the world opening "
+              "slowly at first and quickly at the end, which is the state the measurement found "
+              "and the curve was built from"
+              % (curved["band"] if curved else -1, raw_curve["band"] if raw_curve else -1))
 
         # ---- 6. the parquet removed -------------------------------------------------------------
         # The world opening is what the growth law is walked back FOR: the sheet stops having to

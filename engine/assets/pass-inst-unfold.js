@@ -459,6 +459,72 @@
     // but at a door — where the reading further down asks what it is worth in POINTS OF THE BUFFER
     // and holds a pair flat that stands under two of them.
     var FLAT_DEG = 0.5;
+    // ---- THE RESPONSE CURVES, MEASURED ON THIS INSTRUMENT'S OWN FRAME ----------------------------
+    // The charter's law: equal movement of the hand, equal felt change. Until 2026-08-17 this
+    // instrument carried one measured curve and spent it on one handle — the crossing's own
+    // progress — so equal steps of every OTHER handle were not equal felt change, and the composer
+    // that drives five of them said so in its own report. These are the curves for the rest.
+    //
+    // HOW THEY WERE MEASURED, AND THE ONE THING THAT HAD TO BE GOT RIGHT. At forty-one places along
+    // the raw handle the frame is drawn twice, four thousandths of the handle's own range apart,
+    // and the distance between those two frames is the picture's RATE of change there. The rate is
+    // then integrated along the handle and the running total inverted against the hand's own
+    // twenty-one equal marks. Reading the distance between consecutive COARSE steps instead — the
+    // obvious method — saturates: past a step of a few tens of 255 two frames of one photograph
+    // differ by about as much however far apart they stand, and every band it measures comes out
+    // near 1 whatever the truth is. The small probe is what keeps the reading a rate. All five were
+    // read at a fold of 0.30 on a 390 x 844 buffer, and the largest probe any of them answered was
+    // 13.7 of 255, well inside the linear reach.
+    //
+    // WHAT THE BAND IS. The widest felt change of one hand step against the narrowest. A band of 1
+    // is the law kept exactly; the module's own raw fold measured 5.19 before its curve.
+    //
+    // WHICH HANDLES CARRY A CURVE, AND WHICH CANNOT. A curve belongs on a handle whose value is a
+    // POSITION on a scale — the hand asks «how far along», and the instrument owes it equal change
+    // per equal step. A handle whose value is a QUANTITY in its own unit — a period, an angle, a
+    // count — carries none, because a curve on it would corrupt the very measurement it carries:
+    // a composer that has measured the work's cutting step and asks for it must get it.
+    //
+    // WHICH ARE APPLIED HERE, AND WHICH ARE PUBLISHED FOR WHOEVER PLACES THE REQUEST. `field` is a
+    // pure position — the score drives it with the passage's own travel and nothing else — so its
+    // curve is applied here, where the module applies its own. The other four carry a unit of their
+    // own as well as a position, and a composer places their requests from a measurement, so their
+    // curves are PUBLISHED on the manifest beside their ranges and the placing stays with whoever
+    // owns the request. Nothing is applied twice and nothing is applied silently.
+    var CURVE_MEASURED_ON = "the drawn frame's own rate of change, read at forty-one places along "
+                          + "the raw handle across a probe of four thousandths of its range, at a "
+                          + "fold of 0.30 on a 390 x 844 buffer";
+    var CURVES = {
+      // band 4.017 before, 1.079 after — the world opens slowly at first and quickly at the end,
+      // which is exactly what the eye saw before this was measured: at half a hand the frame had
+      // barely left the closed sheet.
+      field: [0, 0.0991, 0.1885, 0.2696, 0.3445, 0.4147, 0.4814, 0.5408, 0.5909, 0.6343, 0.6736, 0.7097,
+                0.744, 0.7781, 0.8134, 0.848, 0.8812, 0.9135, 0.9442, 0.9731, 1],
+      // band 1.174 before, 1.014 after
+      tilt: [0, 0.0537, 0.1072, 0.1604, 0.2135, 0.2661, 0.3181, 0.3695, 0.4203, 0.4706, 0.5208, 0.5706,
+               0.62, 0.6688, 0.7173, 0.7654, 0.8133, 0.8606, 0.9073, 0.9536, 1],
+      // band 1.383 before, 1.115 after
+      shade: [0, 0.0499, 0.0981, 0.1495, 0.1995, 0.2497, 0.2989, 0.3498, 0.3997, 0.4497, 0.4999, 0.5499,
+                0.5999, 0.6498, 0.7001, 0.7499, 0.8003, 0.8501, 0.9002, 0.9502, 1],
+      // band 2.546 before, 1.025 after
+      depth: [0, 0.0771, 0.15, 0.2187, 0.2841, 0.346, 0.4048, 0.4605, 0.5137, 0.5646, 0.6132, 0.6596,
+                0.7041, 0.7465, 0.7872, 0.8264, 0.8638, 0.8999, 0.9346, 0.9679, 1],
+      // band 12.728 before, 1.124 after — by far the widest of the five, and the one a hand
+      // feels most: at the low end of the lag the two pairs turn almost together and the frame
+      // barely answers, and at the high end one pair is alone in the frame and every step tells.
+      stagger: [0, 0.0406, 0.0799, 0.1177, 0.1541, 0.1894, 0.2239, 0.2577, 0.2911, 0.3239, 0.3565, 0.3891,
+                  0.4221, 0.4558, 0.4939, 0.5472, 0.604, 0.6643, 0.7305, 0.8124, 1],
+    };
+    var CURVE_BANDS = { field: [4.017, 1.079], tilt: [1.174, 1.014], shade: [1.383, 1.115],
+                        depth: [2.546, 1.025], stagger: [12.728, 1.124] };
+    // One curve read at one place of the hand — the same piecewise walk `feelOf` above takes over
+    // the module's own twenty-one marks, so the two are one method and not two.
+    function curveAt(knots, u) {
+      u = clamp(u, 0, 1);
+      var n = knots.length - 1, x = u * n, i = Math.min(n - 1, Math.floor(x));
+      return mix(knots[i], knots[i + 1], x - i);
+    }
+
     // ---- THE WORLD THE SHEET OPENS INTO, IN SCRIPT ----------------------------------------------
     // HOW FAR THE PLANE TIPS when the world stands whole open. Below about forty degrees a parquet
     // reads as a flat pattern and the whole point of it is lost; past about eighty the far tiles
@@ -511,12 +577,22 @@
       // it tips the plane, it walks the growth law back, and it is what the parquet grows in on.
       // At nothing every one of the three is nothing and the frame is the module's own, arithmetic
       // for arithmetic.
-      var world = typeof st.field === "number" ? clamp(st.field, 0, 1) : 0;
+      // THE HAND ASKS «HOW FAR ALONG», AND THE CURVE ANSWERS WITH THE RAW WORLD THAT FEELS THAT
+      // FAR. Both ends are exact — the curve's first knot is 0 and its last is 1 — so neither door
+      // moves and every row that reads a door reads what it read before.
+      var world = typeof st.field === "number" ? curveAt(CURVES.field, clamp(st.field, 0, 1)) : 0;
       // THE PLANE'S ATTITUDE RIDES THE SHEET'S OWN LEAN and is not a second rotation. `stood`
       // composes rotateZ, then rotateY, then rotateX, and the pitch is a turn about that same last
       // axis — so adding it to the lean's own X angle IS the composition, at no cost in the shader
       // and with the door's own panel-map reading picking it up for free.
-      var pitch = world * PITCH_MAX * DEG;
+      // AND THE CAMERA'S OWN TILT IS TAKEN OFF IT, so the two never turn the same plane twice. The
+      // host's flight tilts the whole scene about the frame's own centre; where it already carries
+      // part of the angle the world asks for, the instrument supplies only the remainder, and where
+      // the flight carries the whole of it the instrument's own pitch is nothing and the plane's
+      // attitude is the camera's alone — one voice on the world level, which is the levels law.
+      // Read defensively: a host that hands no camera tilt leaves the angle wholly the plane's.
+      var camTilt = typeof st.cameraTilt === "number" ? Math.max(0, st.cameraTilt) : 0;
+      var pitch = Math.max(0, world * PITCH_MAX * DEG - camTilt);
       var tl = clamp(st.tilt, 0, 1);
       // Under reduced motion the sway is parked, so the lean stands where it starts and nothing drifts.
       var ty = st.reduced ? 0 : st.t;
@@ -548,6 +624,9 @@
         // period as a share of the sheet, and the turn of its lattice in radians. The shader reads
         // the first, the third and the fourth; the second travels here so what the plane was tipped
         // by stands on the record beside what was drawn by it.
+        // `pitch` is the instrument's OWN remainder; the plane's whole attitude is that plus the
+        // camera's tilt, which is published beside it so a reader never has to add two records.
+        cameraTilt: camTilt, planeTilt: pitch + camTilt,
         field: [world, pitch,
                 typeof st.parquetPeriod === "number"
                   ? clamp(st.parquetPeriod, TILE_MIN, TILE_MAX) : TILE_DEF,
@@ -639,9 +718,16 @@
     // where the growth law has the least to spare; the midpoints of its four edges; and the nine
     // points around its centre, where the panels' own seams cross at a door. Every one of them must
     // be claimed by a panel or by the sheet's own backing.
-    function mapReadOf(v, W, H) {
+    function mapReadOf(v, W, H, fit) {
       var aspect = W / Math.max(H, 1), pt = 1 / H;
-      var SZ = [aspect, 1];                 // the tightest sheet a cover fit can hand
+      // THE SHEET THE SHADER WILL ACTUALLY BUILD. FRAG recovers it from the seating the host
+      // applied (`SZ` reads `fitA`/`fitB`), and since 2026-08-17 the host hands that seating down
+      // on the frame state, so this reading walks the sheet the frame is drawn with instead of the
+      // smallest one a cover fit could hand. Where no seating arrives the tightest sheet stands, as
+      // it did before: it is the case with the least frame to spare, so the reading can only ever
+      // over-hold and never miss a bare point.
+      var SZ = (fit && fit.length >= 2 && fit[0] > 0 && fit[1] > 0)
+        ? [aspect / fit[0], 1 / fit[1]] : [aspect, 1];
       var four = v.four > 0.5;
       var CW = SZ[0] * 0.5, CH = four ? SZ[1] * 0.5 : SZ[1];
       var cY = v.turn[0], sY = v.turn[1], cX = v.turn[2], sX = v.turn[3];
@@ -696,7 +782,8 @@
       }
       // HOW FAR EITHER PAIR STANDS OUT OF THE SHEET'S OWN PLANE, in points of this grid: the far edge
       // of a turned panel, carried by its own sine, read against the buffer's own height.
-      return { walked: reads.length, bare: bare, codes: reads, sheet: [SZ[0] * sc, SZ[1] * sc],
+      return { walked: reads.length, bare: bare, codes: reads, seated: !!(fit && fit.length >= 2),
+               sheet: [SZ[0] * sc, SZ[1] * sc],
                scale: sc, panels: four ? 4 : 2, seamPx: pt * H,
                turnPx: Math.max(sY * CW * H, sX * CH * H),
                // HOW FAR THE PLANE ITSELF STANDS OUT OF THE EYE'S OWN SQUARE, in points of this
@@ -715,7 +802,9 @@
       if (want < 0) return null;
       var g = doorGridOf(st), W = g.w, H = g.h;
       if (!(W >= 1) || !(H >= 1)) return null;
-      var map = mapReadOf(v, W, H);
+      // The seating of the work THIS door stands: A at the entry door and B at the exit, which is
+      // exactly the pair the manifest's own `doors` block names.
+      var map = mapReadOf(v, W, H, want ? st.fitA : st.fitB);
       map.grid = g;
       map.want = want;
       map.mask = v.mask;
@@ -857,10 +946,22 @@
       handles: {
         mix: { min: 0, max: 1, def: 0 },
         clock: { min: 0, max: 14, def: 0 },
-        tilt: { min: 0, max: 1, def: 0.5 },
-        shade: { min: 0, max: 1, def: 1 },
-        depth: { min: 0, max: 1, def: 0.5 },
-        stagger: { min: 0, max: 0.6, def: 0.34 },
+        tilt: { min: 0, max: 1, def: 0.5,
+                 curve: { knots: CURVES.tilt, band: CURVE_BANDS.tilt, applied: false,
+                          measuredOn: CURVE_MEASURED_ON },
+               },
+        shade: { min: 0, max: 1, def: 1,
+                 curve: { knots: CURVES.shade, band: CURVE_BANDS.shade, applied: false,
+                          measuredOn: CURVE_MEASURED_ON },
+               },
+        depth: { min: 0, max: 1, def: 0.5,
+                 curve: { knots: CURVES.depth, band: CURVE_BANDS.depth, applied: false,
+                          measuredOn: CURVE_MEASURED_ON },
+               },
+        stagger: { min: 0, max: 0.6, def: 0.34,
+                 curve: { knots: CURVES.stagger, band: CURVE_BANDS.stagger, applied: false,
+                          measuredOn: CURVE_MEASURED_ON },
+               },
         panels: { min: 0, max: 1, def: 1, kind: "enum", step: 1,
                   names: { "0": "two", "1": "four" } },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
@@ -874,7 +975,9 @@
         // is nothing, the growth law binds, the sheet covers the frame at every point and the
         // parquet draws on no point at all — the module's own frame, arithmetic for arithmetic.
         field: { min: 0, max: 1, def: 0,
-                 unit: "how far the world stands open",
+                 unit: "how far the world stands open, on the curve's own scale",
+                 curve: { knots: CURVES.field, band: CURVE_BANDS.field, applied: true,
+                          measuredOn: CURVE_MEASURED_ON },
                  reads: "the passage's own travel; the score walks it and it carries the plane's "
                       + "attitude, the growth law's release and the parquet's arrival on one "
                       + "envelope, which is lab/PARQUET-WORLD-BRIEF.md's own rule that the eye's "
@@ -925,7 +1028,7 @@
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, tilt: 0.5, shade: 1, depth: 0.5, stagger: 0.34, panels: 1, mask: 0,
-                     field: 0, parquetPeriod: TILE_DEF, parquetTurn: 0,
+                     field: 0, parquetPeriod: TILE_DEF, parquetTurn: 0, cameraTilt: 0,
                      t: 0, reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "unfold", vert: VERT, frag: FRAG, position: "aPos",
@@ -995,6 +1098,13 @@
           // The world, straight to the pose. A score that names none of the three leaves the sheet
           // closed on itself, which is the module's own frame.
           field: h.field, parquetPeriod: h.parquetPeriod, parquetTurn: h.parquetTurn,
+          // THE CAMERA'S OWN TILT AND BOTH WORKS' SEATING, as the host hands them down since
+          // 2026-08-17. The tilt is taken off the plane's attitude so the two do not double; the
+          // seating lets the door's own reading walk the sheet the shader will actually build,
+          // rather than the smallest one a cover fit could hand. Both are read defensively, so a
+          // host that carries neither draws exactly what it drew before.
+          cameraTilt: st.camera && typeof st.camera.tilt === "number" ? st.camera.tilt : 0,
+          fitA: st.fitA, fitB: st.fitB,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
           // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The

@@ -255,6 +255,39 @@ check("PASS-WEAVE the instrument reads its balance, its strip-count breath and i
       "the two constants standing where the module's own eased clock used to run are gone — the one "
       "remaining pair is the manifest's neutral pose, which is a pose and not a channel")
 
+# ---- the response curves, measured 2026-08-17 ----------------------------------------------------
+# The charter's law: equal movement of the hand, equal felt change. This instrument carried one
+# measured curve — `feelOf` — and spent it on the crossing's own progress, so equal steps of its
+# other handles were not equal felt change and the composer that drives them said so in its own
+# report. These rows read the curves off the built file and hold their shape and their measured
+# bands. What the measurement found is worth stating: this fabric's handles were already close to
+# the law, so the curves are published rather than applied and the number is now on the record.
+_CURVE_HANDLES = ["nMul", "press", "speed", "wave"]
+_knots = {}
+for _h in _CURVE_HANDLES:
+    _m = re.search(r"\n      %s: \[([^\]]+)\]" % _h, WEAVE)
+    _knots[_h] = [float(x) for x in _m.group(1).replace("\n", " ").split(",")] if _m else []
+_bad = [h for h, k in _knots.items()
+        if len(k) != 21 or k[0] != 0 or k[-1] != 1
+        or any(k[i + 1] < k[i] for i in range(len(k) - 1))]
+check("PASS-WEAVE every response curve runs 0 to 1 over twenty-one marks and never turns back",
+      not _bad and len(_knots) == 4,
+      "a curve is the inverse of the picture's own running travel, so it is non-decreasing by "
+      "construction and its two ends are the handle's two ends. Twenty-one marks is the count this "
+      "instrument's own measured response curve carries, so the two are read the same way. Handles "
+      "carrying one: " + ", ".join(sorted(_knots))
+      if not _bad else "these are not a curve: " + ", ".join(_bad))
+
+check("PASS-WEAVE no curve is applied here, and the file says why",
+      "applied: false," in WEAVE and WEAVE.count("curve: { knots: CURVES.") == 4
+      and "applied: true" not in WEAVE
+      and "nMul: [1.39, 1.079]" in WEAVE and "speed: [1.538, 1.147]" in WEAVE,
+      "a curve belongs on a handle whose value is a POSITION on a scale, and not one of these four "
+      "is: nMul multiplies a measured band count, speed is a rate, press is a pressure in the "
+      "module's own units and wave is a depth in cells read from the work. A composer places each "
+      "of them from a measurement, so a curve applied here would corrupt the number that was asked "
+      "for. The measured bands run 1.034 to 1.538, where the unfold's own stagger measured 12.728")
+
 # ---- the wave came off the ribbon edge and became the work's own reading, 2026-08-17 ------------
 check("PASS-WEAVE the ribbon's wave is a parameter of the work and rests at the straight edge",
       "uniform vec4 uWave;" in WEAVE

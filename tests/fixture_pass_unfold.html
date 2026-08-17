@@ -148,6 +148,7 @@
                aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
                bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight };
     }
+    var pose_ = pose;
     window.__pose = pose;
     window.__values = function () { return bench.values("unfold", pose()); };
 
@@ -165,6 +166,17 @@
       api.onParam("clock", clockAt);
       api.rawFold(r.fold);
       return r;
+    };
+
+    // ONE POSE WITH ONE HANDLE MOVED, for the response-curve measurement: the pose this page
+    // stands at, with the named handles overwritten and nothing else touched. The curve of a handle
+    // is measured against the PICTURE — how far the drawn frame travels per unit of the raw handle
+    // — so every other number has to hold still while one is walked.
+    window.__drawWith = function (o) {
+      var pose = pose_();
+      Object.keys(o || {}).forEach(function (k) { pose[k] = o[k]; });
+      bench.draw("unfold", pose);
+      return pose;
     };
 
     // ---- the real transaction road ---------------------------------------------------------

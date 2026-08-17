@@ -137,6 +137,24 @@
       return p;
     };
 
+    // ONE POSE WITH ONE HANDLE MOVED. The response curve of a handle is measured against the
+    // PICTURE — how far the drawn frame travels per unit of the raw handle — so the measurement
+    // needs to hold every other number of the pose still and walk one. This is that door: the
+    // module's own pose, with the named handles overwritten and nothing else touched.
+    window.__drawWith = function (o) {
+      var p = api.pose();
+      var pose = {
+        bal: p.bal, nMul: p.nMul, press: p.press, strips: p.strips, axis: p.axis,
+        speed: p.speed, seed: p.seed, cssWidth: p.cssWidth, t: p.t, reduced: p.reduced,
+        wave: WAVE, wavePeriod: WAVE_PERIOD, waveDrift: WAVE_DRIFT,
+        aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+        bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight,
+      };
+      Object.keys(o || {}).forEach(function (k) { pose[k] = o[k]; });
+      bench.draw("weave", pose);
+      return pose;
+    };
+
     // ---- the real transaction road ---------------------------------------------------------
     // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
     // arms and decodes both works off the walk markup above, builds the programme from the

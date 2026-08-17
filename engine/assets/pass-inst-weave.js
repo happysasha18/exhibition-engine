@@ -238,6 +238,55 @@
       return FEEL_D0 + (1 - 2 * FEEL_D0) * f;
     }
 
+    // ---- THE RESPONSE CURVES, MEASURED ON THIS INSTRUMENT'S OWN FRAME ----------------------------
+    // The charter's law: equal movement of the hand, equal felt change. Until 2026-08-17 this
+    // instrument carried one measured curve — `feelOf` above — and spent it on one handle, the
+    // crossing's own progress, so equal steps of every other handle were not equal felt change.
+    // These are the curves for the rest.
+    //
+    // HOW THEY WERE MEASURED. At forty-one places along the raw handle the frame is drawn twice,
+    // four thousandths of the handle's own range apart, and the distance between those two frames
+    // is the picture's RATE of change there. The rate is integrated along the handle and the
+    // running total inverted against the hand's own twenty-one equal marks. Reading the distance
+    // between consecutive COARSE steps instead saturates — past a step of a few tens of 255 two
+    // frames of one photograph differ by about as much however far apart they stand — so the small
+    // probe is what keeps the reading a rate. All four were read at a woven middle on a 390 x 844
+    // buffer.
+    //
+    // WHAT THE MEASUREMENT FOUND, AND IT IS WORTH SAYING PLAINLY: this fabric's handles are close
+    // to the law already. The widest felt change against the narrowest runs from 1.034 to 1.538
+    // across the four, where the unfold's own raw fold measured 5.19 before its curve and its
+    // stagger 12.728 before one of these. So the curves below are published rather than applied,
+    // and what they buy is small and now on the record instead of assumed either way.
+    //
+    // WHY NONE OF THEM IS APPLIED HERE. A curve belongs on a handle whose value is a POSITION on a
+    // scale. Not one of these four is: `nMul` multiplies a measured band count, `speed` is a rate,
+    // `press` is a pressure in the module's own units and `wave` is a depth in cells read from the
+    // work. A composer places each of them from a measurement, so applying a curve here would
+    // corrupt the very number it was asked for. The curves are published beside their ranges and
+    // the placing stays with whoever owns the request.
+    var CURVES = {
+      // band 1.390 before, 1.079 after
+      nMul: [0, 0.046, 0.0889, 0.1312, 0.1763, 0.2253, 0.2731, 0.3204, 0.3694, 0.421, 0.4724, 0.5238,
+               0.5741, 0.6264, 0.6784, 0.7306, 0.7835, 0.8368, 0.8903, 0.9445, 1],
+      // band 1.034 before, 1.006 after
+      press: [0, 0.0499, 0.0998, 0.1495, 0.199, 0.2486, 0.2981, 0.3474, 0.3968, 0.4463, 0.4961, 0.5459,
+                0.5958, 0.6459, 0.6961, 0.7467, 0.7973, 0.848, 0.8987, 0.9495, 1],
+      // band 1.538 before, 1.147 after. The travel this handle moves is PERIODIC — it is a rate,
+      // and at the second the walk was read at it carries about three whole turns of the strips'
+      // own sine — so its curve describes one instant of the clock and not the handle's whole life.
+      speed: [0, 0.0471, 0.1034, 0.1557, 0.1989, 0.2455, 0.3006, 0.3505, 0.3977, 0.4497, 0.5019, 0.5498,
+                0.5959, 0.6468, 0.6957, 0.747, 0.8006, 0.8509, 0.8967, 0.9468, 1],
+      // band 1.367 before, 1.074 after
+      wave: [0, 0.0548, 0.1048, 0.1531, 0.2009, 0.2511, 0.3025, 0.352, 0.4015, 0.4519, 0.5018, 0.5516,
+               0.602, 0.6519, 0.702, 0.7515, 0.801, 0.8508, 0.9004, 0.9507, 1],
+    };
+    var CURVE_BANDS = { nMul: [1.39, 1.079], press: [1.034, 1.006], speed: [1.538, 1.147],
+                        wave: [1.367, 1.074] };
+    var CURVE_MEASURED_ON = "the drawn frame's own rate of change, read at forty-one places along "
+                          + "the raw handle across a probe of four thousandths of its range, at a "
+                          + "woven middle on a 390 x 844 buffer";
+
     // ---- THE WAVE THE WORK ITSELF CARRIES ---------------------------------------------------------
     // His 2026-08-13 11:20 word put a wave on this ribbon edge because frames between 0.35 and 0.50
     // read as flat vertical blinds; his 2026-08-17 19:13 word called that wave a regression and
@@ -684,7 +733,9 @@
                              drawnFloor: 3, basketTakes: 0.25 } },
         axis: { min: 0, max: 2, def: 2, kind: "enum", step: 1, names: AXES,
                 banding: ["vertical", "horizontal"], turns: 2, turnPeriodS: 27 },
-        speed: { min: 0.1, max: 2.5, def: 1 },
+        speed: { min: 0.1, max: 2.5, def: 1,
+                 curve: { knots: CURVES.speed, band: CURVE_BANDS.speed, applied: false,
+                          measuredOn: CURVE_MEASURED_ON } },
         seed: { min: 0, max: 8, def: 0 },
         // THE THREE THAT CARRY THE WAVE, and the reason they are handles rather than numbers in a
         // shader. Until 2026-08-17 the ribbon edge waved on eleven literals that read nothing off
@@ -696,6 +747,8 @@
                 reads: "texture.type at «рябь» as the gate, and 1 - texture.localStraightness as "
                      + "the depth; a work whose texture is not a ripple drives this to 0 and the "
                      + "ribbon edge is a straight line",
+                curve: { knots: CURVES.wave, band: CURVE_BANDS.wave, applied: false,
+                         measuredOn: CURVE_MEASURED_ON },
                 applied: { straightAt: 0, ceiling: WAVE_MAX,
                            shape: { fundamental: WLOW, overtone: WHIGH,
                                     overtoneTimes: WOVER, overtoneDriftTimes: -WBEAT } } },
@@ -708,8 +761,12 @@
                      unit: "cycles a second",
                      reads: "the same texture.spectralPeriodPx, as a share of the wave's own "
                           + "period travelled in a second; nothing while the depth is nothing" },
-        nMul: { min: 0.62, max: 1.65, def: 1 },
-        press: { min: 1, max: PRESS, def: 1 },
+        nMul: { min: 0.62, max: 1.65, def: 1,
+                 curve: { knots: CURVES.nMul, band: CURVE_BANDS.nMul, applied: false,
+                          measuredOn: CURVE_MEASURED_ON } },
+        press: { min: 1, max: PRESS, def: 1,
+                 curve: { knots: CURVES.press, band: CURVE_BANDS.press, applied: false,
+                          measuredOn: CURVE_MEASURED_ON } },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
         // the meshing instrument publishes its own. `heldWholeAtADoor` says what is read (the share
         // of every band the fabric leaves to the other work), on which grid (the drawing buffer the
