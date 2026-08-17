@@ -496,6 +496,17 @@ the row names the handle.
 
 ### 4.4c One template per instrument, one row per ordered pair
 
+**RETIRED 2026-08-17 by his word of 19:21, and §4.4d with it.** Both sections answer one question —
+where does the score for THIS pair come from — and both answer it with a table keyed by the pair.
+That table is quadratic in the collection, and the collection grows to thousands of works, so
+nothing on the product path may carry it. §4.4g below is the road that replaced them. The two
+sections stand unedited underneath because a shipped preview was built on them and a stored address
+can still name one of their scores; nothing in the walk reads either road any more, and the two
+suites that guarded them — `tests/test_pass_reader.py` whole and the PASS-TABLE rows of
+`tests/test_pass_weave.py` — retired in the same commit that deleted the code. `tests/test_pass_composed.py`
+is what proves the road in their place.
+
+
 A score per pair covers nothing on a walk that deals its works afresh each visit. The walk orders
 its ten works by its own arc, so a pair scored ahead of time essentially never comes up; and a
 collection of 121 works holds about fourteen thousand ordered pairs, which one whole score each
@@ -526,6 +537,9 @@ produces none; a bad row is refused and recorded; and the filled score is identi
 field, to the score the per-pair builder wrote for the one pair that has both.
 
 ### 4.4d The delivery pack, and the reader that plays it
+
+**RETIRED 2026-08-17 with §4.4c; see §4.4g.** `pass-reader.js` is deleted, no bake serves it, and no
+site step stages a pack. What follows is the record of the road as it stood.
 
 §4.4c's inline road holds while a site scores by hand. It stops holding the moment a composer scores
 every pair: the composed pack of 2026-08-15 carries 7708 serialised scores, and a settings file
@@ -652,7 +666,8 @@ crossing the pair, the pass index, the seed the roll ran on, the spans it read a
 applied to each bounded slot. The applied values are readable beside the spans they were drawn from,
 so a picture that looks wrong can be read back to the number that made it.
 
-**The conformance rows** stand in `tests/test_pass_reader.py` for the pack road and
+**The conformance rows** stood in `tests/test_pass_reader.py` for the pack road (retired
+2026-08-17 with the road; see §4.4g) and
 `tests/test_pass_weave.py` for the inline one: a bounded pair flipped twice in one visit fills two
 scores that differ in the bounded handles alone, each inside its span; a pinned visit fills the same
 crossing byte-identically twice; a row with no bounds fills byte-identically to the fill that stood
@@ -1006,6 +1021,68 @@ declared.
 direction, and neither direction inherits the other's arriving geometry.
 
 ---
+
+### 4.4g The passage request, and the one entry a passage comes through
+
+Added 2026-08-17 (U27 stage 0) on his word of 19:21 and his architecture decision of 18:00. This is
+the road §4.4c and §4.4d were retired for.
+
+**Nothing pairwise is written down.** The score that plays on an edge is DERIVED, in the browser, at
+the instant the walk casts the pair, from the two works' own records. A record describes ONE work —
+its light, palette, texture, geometric structure, motifs and safe crops, plus its element sets'
+counts and grains — so what the settings record carries is linear in the collection: 121 works weigh
+33 000 B gzipped under `pass.works`, where the per-pair rows they replace weighed 1 862 611 B. The
+collection's own constants travel beside them under `pass.composer`: the instrument manifests, the
+cut-line floors, the discriminating thresholds, the score fence and the provenance sentence.
+
+**The composer travels as its own file**, `pass-composer.js`, fetched once per visit at the walk's
+first landing on a visit whose settings record actually carries the records and whose layer is on.
+This is the division §12 states for the picture, applied for the same reason. Warming stays at the
+LANDING and nothing ever waits on the wire: the passage is derived synchronously inside `declare`, so
+a crossing declared before the composer has arrived glides, with the reason on the diagnostic
+surface — exactly what a pair with no score has always meant.
+
+**The one entry is `passageFor(request)`**, and the request is the whole of what a passage is asked
+for:
+
+| field | what it is | what a missing value means |
+| --- | --- | --- |
+| `workRecordA` | the departing work's own record | a refusal: there is no pair without it |
+| `workRecordB` | the arriving work's record | a refusal, for the same reason |
+| `direction` | `a-to-b` or `b-to-a`, the two distinct passages of one edge | reads as `a-to-b` |
+| `seed` | the die, inside the span the meshing instrument publishes for its own `seed` handle | the walk rolled none; the passage runs on 0, reproducible |
+| `routeRole` | entrance, quiet link, middle, culmination or return (charter shelf 15 maps these onto the harmonic functions) | the walk stated no function; read as a middle |
+| `sessionMemory` | §4.8's return reference `{family, seed, passIndex}`, and nothing wider | nothing has played on this edge yet |
+| `cameraState` | the pose the camera rests in as the passage starts; the flight departs from it | the walk stated no pose; the flight departs from the score's own rest |
+| `buffer` | the canvas as it stands: width, height, dpr, orientation, quality tier | unstated; the instrument reads the one it is drawing on |
+
+A name outside the five route roles, a session memory naming a field outside §4.8's three, and a die
+outside the instrument's span are each a named refusal, so the vocabulary cannot drift and §4.8's
+fence cannot leak. What comes back carries the score, the request as it was read, and `applied` —
+what the instrument applied on the buffer it drew on, or the refusal it named — which the walk writes
+onto the record at the landing, because it cannot be known before the frame is drawn.
+
+**The edge is named in one order whichever way the visitor walks it** — the two ids sorted — and
+`direction` says which way this passage runs, so A to B and B to A are two distinct passages of one
+edge and the site's own edge record of §4.8 has a stable key to hang on.
+
+**The die is the walk's own.** It is made of the visit's own seed (pinned by the `familySeed`
+setting or rolled once), the pass index the declare has already minted, and the edge's key — the
+same three §4.4f's family roll is made of, so there is one idea of a seed and no clock in either.
+Charter shelf 16: a pinned seed reproduces a run exactly, which is the judging mode; the public walk
+rolls a fresh one each time, which is the viewer mode.
+
+**The composer holds no door.** The meshing instrument reads its own mask at both doors on the buffer
+it is drawing on, holds its size whole within the reach its manifest publishes, and publishes what it
+moved and why; the composer emits the artistic request and the bounds live in the manifest. The
+prebaked door table this replaced was keyed by the pair's own camera pose — pair-scaled — and
+answered for one 1000 x 1000 frame.
+
+**The equality this road was landed on.** Every one of the 6 304 ordered pairs the shipped table
+carries composes through this entry to the byte-identical score the prebaked pack shipped, and every
+one of its 4 254 declines carries the same sentence character for character; 161 of the 6 304 differ
+from the shipped bytes in the meshing travel's two door-instant sizes alone, which is the measured
+cost of the 18:00 decision and nothing else. The conformance rows are `tests/test_pass_composed.py`.
 
 ## 5. Driver AST v1 — data only
 
@@ -1454,6 +1531,14 @@ delivery question it forces was answered rather than waved through: the roll is 
 `declare` on BOTH fill roads, and a site scoring by §4.4c's template and table fetches no reader file
 at all, so the roll cannot travel in `pass-reader.js` and cannot exist twice. The reader is handed it.
 The 68 000 B reading below is superseded and kept for its reasoning.
+
+**Re-measured 2026-08-17 on `u27-base` after stage 0's seam**, by running `tests/test_budget.py` in
+the worktree: the fence stands unmoved at 70 000 B. Three roads left the bundle — the settings
+record's own per-pair scores, the pack reader's door with its shard warming, and the
+template-and-table fill — and one arrived: the composer's door, the passage request the walk builds
+per edge, the die it rolls for it, and the applied reading written back at the landing. The visit's
+own seed stays in the bundle for the reason stated above, which is unchanged: the die every crossing
+is rolled with is made inside `declare`.
 
 Fifteen bytes is a live constraint rather than a rounding note. Any bundle-side line added today
 breaks that fence, and a reader who adds one should expect the red. The section's earlier figure —
