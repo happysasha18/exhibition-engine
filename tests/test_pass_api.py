@@ -219,7 +219,13 @@ check("PASS-API no eval, no new Function anywhere the host reads a command",
 #            track. THE COST IT PROXIES, measured beside it: what travels to a phone is the gzipped
 #            file, at 24 027 B under a 24 100 B fence (tests/test_budget.py, which carries the
 #            breakdown line by line).
-LAYER_FENCE = 88400
+# 2026-08-18 — MOVED FROM 88 400 B TO 88 700 B, MEASURED AT 88 597 B (U27 stage 2). Nothing of
+#            stage 2 is in this file; the 344 B are the merge of the four stage-1 lanes, where a
+#            reading is forgotten when the grid it was taken on moves and the record names the
+#            passage's own grid rather than the live canvas. The band is 103 B, which on a plain
+#            byte count of generated text is room for a site whose namespace is a few letters
+#            longer and for nothing else. The gzipped cost this proxies is in tests/test_budget.py.
+LAYER_FENCE = 88700
 check(f"PASS-API the renderer file's fence moves DOWN on the split, measured not guessed (now {LAYER_FENCE} B, was 102 000)",
       len(LAYER_BUILT.encode("utf-8")) < LAYER_FENCE,
       f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the host alone: the state "
@@ -532,9 +538,14 @@ else:
                 br.sleep(0.4)
                 rep = jhost(br)
                 names = [e["name"] for e in rep["events"]]
+                # A DECLINE HAS A REASON AND THE ROW SAYS IT. This row read «declined» for a run
+                # and gave only the event name, which leaves the one thing a reader has to act on
+                # unsaid; the host logs its reason beside the event, so the detail carries it.
+                said = [e for e in rep["events"] if e["name"] in ("declined", "watchdog")]
                 check(BROWSER_ROWS[11],
                       rep.get("duration") in (0, None) and "watchdog" not in names and "docked" in names,
-                      f"duration-field={rep.get('duration')} events={names[-6:]}")
+                      f"duration-field={rep.get('duration')} events={names[-6:]}"
+                      + (f" — {said[-1].get('why') or said[-1]}" if said else ""))
                 cleanup(br)
                 br.evaluate("sessionStorage.setItem('ex-pass', JSON.stringify({diagnostics:'on', visualLayer:'pass'}))")
                 br.reload()
