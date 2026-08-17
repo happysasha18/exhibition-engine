@@ -1422,16 +1422,114 @@
     };
   }
 
+  // ---- THE STEP'S ROLE ON THE ROUTE (charter shelf 15; U27 stage 2) -----------------------------
+  // THE ROUTE IS THE WALK ITSELF. The hang shows `SPREAD` works and unfolds `MAXU` times by
+  // `UNFOLD` — 10, then 5, then 5 on this instance's own settings, which is the route his 18:43 word
+  // names. Nineteen steps at full length, and the walk deals WHICH works stand at them afresh every
+  // visit, so what the walk can author is not the pair at step seven but what step seven has to do
+  // to the person walking it. That is the step's ROLE, and it is what this block derives.
+  //
+  // NOTHING NEW IS MEASURED HERE. The hang is already ordered by kinship: `arcOrder` draws the near
+  // neighbours in first and then widens its steps on purpose — «near neighbours drawn in, widening
+  // steps hold contrast» (02-kinship-orderings.js) — so the DISTANCE the route crosses at each step
+  // is a number the walk has already measured and already built its own shape out of. The gap of an
+  // edge is `dist(vec(a), vec(b))` in the very coordinates the ordering stands on. Reading the
+  // dramaturgy off that curve is reading the walk's own arc rather than laying a second one over it.
+  //
+  // THE GRAMMAR THE CURVE IS READ BY is charter shelf 15's, whose three functions the charter maps
+  // onto tonic, subdominant and dominant: a home the eye settles in, a motion away that prepares, a
+  // tension that demands resolution.
+  //   · the route's WIDEST step is its one crest — the tension — so it is the culmination;
+  //   · the step that leads into the crest PREPARES it, so it is a middle whatever its own gap;
+  //   · a step whose gap stands above both its neighbours is a local widening — a motion away — so
+  //     it is a middle too;
+  //   · every other step is a quiet link, the home the eye settles in.
+  // The dynamics curve of shelf 15 — about 70 parts quiet, 25 middle, 5 culmination — is therefore
+  // an OUTCOME of that reading and not a quota applied to it: one crest per hang is the 5, and the
+  // local widenings of a kinship arc are the 25. The realised proportion is measured by
+  // `tests/test_pass_route.py` over the real hang rather than asserted here.
+  //
+  // TWO ROLES ARE NOT ON THE CURVE, because they are facts about the visit rather than about the
+  // route's shape, and both outrank it:
+  //   · a RETURN is an edge this visit has already walked. §4.8's whole claim is that the way back
+  //     is kin to the way out, and the return reference crosses on exactly those edges, so the role
+  //     and the reference name one and the same step.
+  //   · an ENTRANCE is the visit's first crossing, wherever it falls. The visit window is read the
+  //     way the memory of a visit reads it (`PASS_EDGE.visitWindowSeconds`), so a visitor who
+  //     reloads mid-thought does not open a second entrance, and one who comes back tomorrow does.
+  let passRouteAt = null;
+  function passRouteShape() {
+    let ids = null;
+    // The hung route, read off the walk's own two names. A walk that has not hung yet, an instance
+    // with no kinship vectors, or a hang of one work has no route to read a function off; the role
+    // is then left unsaid and the composer's own default — a middle — stands, which is exactly what
+    // stage 0 composed.
+    try { ids = order.slice(0, shown); } catch (e) { return null; }
+    if (!ids || ids.length < 2) return null;
+    const stamp = ids.join(",");
+    if (passRouteAt && passRouteAt.stamp === stamp) return passRouteAt;
+    const gaps = [];
+    for (let i = 0; i + 1 < ids.length; i++) {
+      let g = NaN;
+      try { g = dist(vec(ids[i]), vec(ids[i + 1])); } catch (e) { g = NaN; }
+      if (!Number.isFinite(g)) return null;
+      gaps.push(g);
+    }
+    let crest = 0;
+    for (let i = 1; i < gaps.length; i++) if (gaps[i] > gaps[crest]) crest = i;
+    const roles = gaps.map((g, i) => {
+      if (i === crest) return "culmination";
+      if (i === crest - 1) return "middle";
+      const before = i > 0 ? gaps[i - 1] : -Infinity;
+      const after = i + 1 < gaps.length ? gaps[i + 1] : -Infinity;
+      return (g > before && g > after) ? "middle" : "quiet link";
+    });
+    passRouteAt = { stamp: stamp, ids: ids, gaps: gaps, roles: roles, crest: crest };
+    return passRouteAt;
+  }
+  // Which step of the route this edge is, whichever way the visitor walks it. A step between two
+  // works that do not stand next to each other in the hang is no step of the route — a restored
+  // place or a pasted link lands that way — and it has no function on the curve.
+  function passRouteEdgeAt(shape, fromId, toId) {
+    if (!shape) return null;
+    for (let i = 0; i + 1 < shape.ids.length; i++) {
+      const a = String(shape.ids[i]), b = String(shape.ids[i + 1]);
+      if ((a === fromId && b === toId) || (a === toId && b === fromId)) return i;
+    }
+    return null;
+  }
+  // Has this visit's thread opened? Read off the walk's own edge store, on the window the memory of
+  // a visit already defines, so there is one idea of what «this visit» means and not two.
+  function passVisitOpened() {
+    const rows = passEdgeAll(), now = passEdgeNow(), keys = Object.keys(rows);
+    for (let i = 0; i < keys.length; i++) {
+      const both = rows[keys[i]], ds = Object.keys(both);
+      for (let j = 0; j < ds.length; j++) {
+        if (now - +both[ds[j]].lastAt <= PASS_EDGE.visitWindowSeconds * 1000) return true;
+      }
+    }
+    return false;
+  }
+  // The step's function, with the two visit facts outranking the curve. Answers null where the walk
+  // can state none, and a null role is left OFF the request rather than sent as one: the composer
+  // fences the field at its five names and answers an absent one with a middle.
+  function passRouteRole(fromId, toId, edge) {
+    if (edge && edge.passes > 0) return "return";
+    if (!passVisitOpened()) return "entrance";
+    const shape = passRouteShape();
+    const at = passRouteEdgeAt(shape, String(fromId), String(toId));
+    return at === null ? null : shape.roles[at];
+  }
+
   // THE PASSAGE REQUEST the walk builds for one edge (§4.7, U27 stage 0). The edge is named in ONE
   // order whichever way the visitor walks it — the two ids sorted — and `direction` says which way
   // this passage runs, so A to B and B to A are two distinct passages of one edge and the site's own
   // edge record has a stable key to hang on (§4.8, stage 1 lane C).
   //
-  // `routeRole` is left unsaid here on purpose: the walk authors no dramaturgy yet and the
-  // composer's own default — a middle — is what reproduces today's score exactly. Stage 2 fills it
-  // at this one place. `sessionMemory` is filled from the walk's own edge record: the return
-  // reference of §4.8 and nothing wider, and nothing at all on an edge that has not played inside
-  // this visit's window.
+  // `routeRole` is the walk's own dramaturgy, derived just above and filled at this one place (U27
+  // stage 2). `sessionMemory` is filled from the walk's own edge record: the return reference of
+  // §4.8 and nothing wider, and nothing at all on an edge that has not played inside this visit's
+  // window.
   function passRequestFor(fromEl, toEl) {
     const from = fromEl && fromEl.dataset ? fromEl.dataset.id : null;
     const to = toEl && toEl.dataset ? toEl.dataset.id : null;
@@ -1456,6 +1554,8 @@
                 orientation: innerWidth >= innerHeight ? "landscape" : "portrait",
                 quality: passGet("qualityTier") },
     };
+    const role = passRouteRole(from, to, edge);
+    if (role) req.routeRole = role;
     if (edge && edge.memory) req.sessionMemory = edge.memory;
     return req;
   }
@@ -2134,6 +2234,20 @@
                   });
                   return out;
                 }()) },
+      // THE ROUTE'S OWN DRAMATURGY (charter shelf 15, U27 stage 2): the works the hang stands at,
+      // the kinship gap the walk crosses at each step, the function that gap gives the step, which
+      // step is the crest, and how the five functions divide the route. A step that looks wrong
+      // reads back to the gap that named it without reading anything else.
+      route: (function () {
+        const shape = passRouteShape();
+        if (!shape) return { steps: 0, works: 0, roles: null, share: null, crest: null };
+        const share = {};
+        shape.roles.forEach((r) => { share[r] = (share[r] || 0) + 1; });
+        return { steps: shape.roles.length, works: shape.ids.length, ids: shape.ids.slice(),
+                 gaps: shape.gaps.map((g) => Math.round(g * 10000) / 10000),
+                 roles: shape.roles.slice(), crest: shape.crest, share: share,
+                 opened: passVisitOpened() };
+      }()),
       // The family roll, on the same surface (§4.4f): the visit's own seed and whether it was
       // pinned, and one row per rolled crossing carrying the pair, the pass index, the seed that
       // pass ran on, the spans it read and the value it applied to each bounded slot. A picture
@@ -2155,6 +2269,11 @@
         // would build for two real elements, so a row can prove the two agree.
         passage: function (req) { return passComposer ? passComposer.passageFor(req) : null; },
         request: passRequestFor, applied: passApply, seed: passSeedFor,
+        // The route's own dramaturgy, handed over the same way and for the same reason: a row that
+        // judges the walk's roles needs the curve they were read off, and the report is a reading
+        // rather than the thing itself. `role` answers for one edge exactly as the request does.
+        route: { shape: passRouteShape, at: passRouteEdgeAt, role: passRouteRole,
+                 opened: passVisitOpened },
         // The passages this visit derived, whole — the plan and the score the report's own rows
         // only summarise. A conformance row that judges a passage needs the very object the walk
         // judged, and the report is a reading rather than the thing itself.
