@@ -256,21 +256,28 @@
                                    elementKind: "band" }
   };
   var PIVOT_KINDS_OF_CUT = { "tonal-and-spectral-bridge": ["band", "scale"] };
-  // WHICH INSTRUMENT CUTS ON WHICH ELEMENT KIND. `panel: "boxfold"` landed 2026-08-17 with the
-  // instruments lane's port of the lab's own box module, and it is the one word that turns the
-  // box-fold road on: a work folding along its own strong directions folds into a box under the
-  // charter's five-condition law of 12.08 23:49.
+  // WHICH INSTRUMENTS CUT ON WHICH ELEMENT KIND — read off the collection's own record, never
+  // written down here. Every instrument the settings record publishes names the cuts it plays in
+  // its own entry, so the map from a kind to the instruments that can cut it is derived in `make`
+  // below and a landing instrument joins the candidates by arriving.
   //
-  // A NAME HERE IS A WISH AND THE MANIFESTS ARE THE FACT. This table says which instrument WOULD
-  // cut on a kind; whether the collection actually ships that instrument is a question only the
-  // manifests the composer was made over can answer, and `instrumentOfKind` below asks them. A
-  // settings record built before an instrument landed therefore reads exactly as it did — the road
-  // that names the instrument stands down and says which one it wanted — instead of composing a
-  // score for a file that will never arrive.
-  var INSTRUMENT_OF_KIND = {
-    strip: "weave", band: "matter", scale: "matter", ring: "gears", wedge: "gears",
-    tile: null, panel: "boxfold", region: null, field: null
-  };
+  // WHAT THIS REPLACES, AND WHY IT WAS A DEFECT. A table here named ONE instrument per kind. The
+  // folding instrument landed on the panel kind and the unfold, which had cut on panels all along,
+  // was silently retired — it travelled to every visitor and could never be chosen. That contradicts
+  // three of his words at once: the arsenal stays full so the options in hand are always plentiful
+  // (18:56); process is a register of its own, and the unfold is the only instrument that shows a
+  // person how a work was made (19:13); and a full route displays the vocabulary's breadth, with one
+  // lovely move standing alone recorded as a failure (19:13). A rule under which a landing
+  // instrument retires an existing one would have done it again at the next arrival, so the rule is
+  // what is repaired rather than the one pair of instruments it happened to catch.
+  //
+  // WHERE SEVERAL CUT ON ONE KIND the choice is made the way the seven roads are chosen: from the
+  // pair's own measurements first — each instrument states what a pair must read for it to be worth
+  // casting — and from the die among whatever qualifies. The two panel instruments are genuinely
+  // different acts and their measurements say so: folding into a solid is an impossible event that
+  // spends the one miracle and claims the world, while opening into a parquet reveals the making and
+  // claims no world at all, so a step whose role spends no miracle reaches the panel kind through
+  // the unfold and through nothing else.
   var MISSING_INSTRUMENT = {
     tile: "an instrument that cuts on tiles, for tile_crossfade",
     panel: "an instrument that cuts on panels, for region_dissolve and object_reveal",
@@ -405,6 +412,17 @@
     field: ["transaction", "the passage's own travel, one envelope for the plane and the parquet"],
     parquetPeriod: ["measured", "structure.ownDevice.stepPx over the work's own frame side"],
     parquetTurn: ["measured", "structure.ownDevice.angleDeg, the angle that step was cut at"],
+    // THE UNFOLD'S OTHER THREE. Its manifest now travels in the composer's own constants — the
+    // settings record carries every instrument the composer CAN cast, not only the ones it casts
+    // today — so the register names them, and the day a kind maps to this instrument a score for it
+    // can be written. `panels` and `stagger` read the work; `tilt` is the plane's own attitude and
+    // reads the same measured angle the parquet turns at.
+    panels: ["measured", "two faces or four, from the departing work's own measured region count, "
+                         + "structure.regions.count"],
+    stagger: ["measured", "the golden-angle stagger of that count, charter shelf 13's stagger "
+                          + "instrument on the sheet's own time axis"],
+    tilt: ["measured", "structure.ownDevice.angleDeg, the angle the work's own step was cut at, "
+                       + "which is the attitude the plane is laid away at"],
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
                           + "between a streak reading and this handle is recorded, so the "
@@ -551,6 +569,18 @@
       HANDLE_SPECS[iid] = specs;
       FILLS_THE_FRAME[iid] = !m.coverage.writes;
     });
+    // KIND → THE INSTRUMENTS THAT CUT IT, derived from the record the composer was made over.
+    // Every published instrument names its own cuts, so a landing one joins the candidates by
+    // arriving and no table here can shadow it. The order is settled so a pinned die reproduces a
+    // choice exactly; which of the candidates plays is decided per pair, below.
+    var CUTS_ON = {};
+    Object.keys(INSTRUMENTS).sort().forEach(function (iid) {
+      if (!MANIFESTS[iid]) return;
+      (INSTRUMENTS[iid].cuts || []).forEach(function (kind) {
+        if (!CUTS_ON[kind]) CUTS_ON[kind] = [];
+        if (CUTS_ON[kind].indexOf(iid) < 0) CUTS_ON[kind].push(iid);
+      });
+    });
     var BANDING = (MANIFESTS.weave.handles.axis.banding) || [];
     var AXIS_OF_BANDING = {};
     BANDING.forEach(function (name, i) { AXIS_OF_BANDING[name] = i; });
@@ -588,9 +618,117 @@
       return !!(m && (m.levels || []).indexOf("WORLD") >= 0);
     }
 
-    function instrumentOfKind(kind) {
-      var name = kind ? INSTRUMENT_OF_KIND[kind] : null;
-      return name && MANIFESTS[name] && INSTRUMENTS[name] ? name : null;
+    // Every instrument this collection publishes that cuts on a kind, in one settled order.
+    function instrumentsOfKind(kind) {
+      return (kind && CUTS_ON[kind]) ? CUTS_ON[kind] : [];
+    }
+
+    // Whether ANY published instrument cuts on a kind at all. `noMiracle` narrows the question to
+    // the instruments a step with no miracle to spend may reach.
+    function instrumentOfKind(kind, noMiracle) {
+      var all = instrumentsOfKind(kind), i;
+      for (i = 0; i < all.length; i++) {
+        if (!noMiracle || !spendsTheMiracle(all[i])) return all[i];
+      }
+      return null;
+    }
+
+    // How legibly a work's own making reads, before a passage may set out to reveal it. Every work
+    // of the collection carries the reading; nothing measures where the line between legible and not
+    // should fall, so this is the plainest meaning of a confidence — likelier right than wrong — and
+    // it stands on the revisit list.
+    var DEVICE_LEGIBLE = 0.5;
+
+    // WHAT A PAIR MUST READ FOR AN INSTRUMENT TO BE WORTH CASTING, where several cut on one kind.
+    // An instrument named here states its own condition in its own terms; one not named asks
+    // nothing and is always a candidate on the kinds it cuts. These are the measurements that make
+    // the two panel instruments two different acts rather than two spellings of one.
+    var INSTRUMENT_ASKS = {
+      // THE FOLD IS AN IMPOSSIBLE EVENT, so the charter's five-condition box law is what qualifies
+      // it: the departing work's own region division has to be strong enough to place a crease on,
+      // over enough real panels to be the walls of a solid. This was stated on the box-fold ROAD
+      // alone, which left every other road free to reach the same ground and fold a work whose
+      // regions read at nothing.
+      boxfold: function (a, b, floors) {
+        // READ OF THE PAIR AND NOT OF ONE END OF IT. A ground is the pair's, and the family read
+        // off it has to be the same one whichever way the visitor walks, so an ask that read the
+        // departing work alone would let a ground be held in one direction and refuse to cast in
+        // the other — 61 ordered pairs declined exactly that way before this was straightened.
+        var best = Math.max(Number(((a.structure || {}).regions || {}).score) || 0,
+                            Number(((b.structure || {}).regions || {}).score) || 0);
+        var faces = Math.max(facesOf(a), facesOf(b));
+        if (best < floors.regions_tight) {
+          return [false, "neither work reads regions over the tight floor of "
+                  + pyText(flt(floors.regions_tight)) + "; the stronger reads "
+                  + pyText(flt(r4(best)))];
+        }
+        if (faces < BOX_FACES) {
+          return [false, "neither work cuts into the " + BOX_FACES + " real panels a box needs; "
+                  + "the finer cuts into " + faces];
+        }
+        return [true, "a work of the pair reads regions at " + pyText(flt(r4(best)))
+                + " over " + faces + " faces"];
+      },
+      // THE PARQUET REVEALS HOW A WORK WAS MADE — his 19:13 word makes that a register of its own —
+      // so what qualifies it is whether the making READS: the work's own device, the step it was cut
+      // at and how confidently that step was recovered. A passage that sets out to show the making
+      // of a work nobody could read the making of would be showing nothing.
+      unfold: function (a, b, floors) {
+        // THE MAKING THIS PASSAGE REVEALS IS THE ONE THAT READS. Of the two works, the parquet
+        // opens on whichever carries its own device most legibly — the fill below reads the same
+        // work — so the ask is of the pair and the ground it gates is direction-free.
+        var da = (a.structure || {}).ownDevice || {}, db = (b.structure || {}).ownDevice || {};
+        var ca = Number(da.confidence) || 0, cb = Number(db.confidence) || 0;
+        var dev = ca >= cb ? da : db, conf = Math.max(ca, cb);
+        var step = Number(dev.stepPx) || 0;
+        if (!(step > 0)) {
+          return [false, "neither work carries a measured step of its own to open on"];
+        }
+        if (conf < DEVICE_LEGIBLE) {
+          return [false, "the clearer of the two devices reads at " + pyText(flt(r4(conf)))
+                  + ", under the " + pyText(flt(DEVICE_LEGIBLE)) + " a making has to read at "
+                  + "before a passage sets out to reveal it"];
+        }
+        return [true, "a work of the pair was cut as " + pyText(dev.kind || "a device")
+                + " at a step of " + pyText(flt(r4(step))) + " px, read at "
+                + pyText(flt(r4(conf)))];
+      }
+    };
+
+    // THE INSTRUMENT THIS PAIR CASTS ON A KIND. Where one cuts on it, that one. Where several do,
+    // the role's budget narrows them, each candidate's own reading of the pair narrows them again,
+    // and the die chooses among whatever is left — the same shape the seven roads are chosen by, so
+    // a pinned seed reproduces the casting exactly and a fresh seed varies it.
+    // Whether SOME instrument could cast this kind for this pair, with no die rolled — the
+    // question a ground has to answer before it is a ground. Direction-free: an instrument whose
+    // reading is of the departing work is asked of both orderings.
+    function castableOnKind(kind, a, b, floors, noMiracle) {
+      var all = instrumentsOfKind(kind), i, ask;
+      for (i = 0; i < all.length; i++) {
+        if (noMiracle && spendsTheMiracle(all[i])) continue;
+        ask = INSTRUMENT_ASKS[all[i]];
+        if (!ask) return true;
+        if (ask(a, b, floors)[0] || ask(b, a, floors)[0]) return true;
+      }
+      return false;
+    }
+
+    function castOnKind(kind, fromW, toW, floors, noMiracle, seed, key, slot) {
+      var all = instrumentsOfKind(kind), pool = [], said = [], i, ask;
+      for (i = 0; i < all.length; i++) {
+        if (noMiracle && spendsTheMiracle(all[i])) {
+          said.push({ instrument: all[i], ok: false,
+                      why: "it spends the one miracle and this step has none to spend" });
+          continue;
+        }
+        ask = INSTRUMENT_ASKS[all[i]];
+        if (!ask) { pool.push(all[i]); said.push({ instrument: all[i], ok: true, why: null }); continue; }
+        var answer = ask(fromW, toW, floors);
+        said.push({ instrument: all[i], ok: answer[0], why: answer[1] });
+        if (answer[0]) pool.push(all[i]);
+      }
+      if (!pool.length) return [null, said];
+      return [pool[dieAmong(seed, key + "|" + kind + "|" + slot, pool.length)], said];
     }
 
     function playable(measure) {
@@ -605,12 +743,14 @@
     function holdable(a, b, measure, noMiracle) {
       var kind = KIND_OF_MEASURE[measure];
       if (!playable(measure)) return false;
-      // A GROUND THAT FOLDS IS A GROUND THAT SPENDS THE MIRACLE, so a step whose role carries none
-      // cannot stand on it. The gate belongs HERE and not on the road alone: once an instrument
-      // that folds cuts on a kind, any road at all can land on that ground by simply holding the
-      // strongest shared measure, and a quiet link would fold the world without ever naming the
-      // road that does it.
-      if (noMiracle && spendsTheMiracle(instrumentOfKind(kind))) return false;
+      // A GROUND IS ONLY A GROUND WHERE SOME INSTRUMENT CAN ACTUALLY CAST IT. The gate belongs
+      // HERE and not on a road alone: once an instrument that folds cuts on a kind, any road can
+      // land on that ground by simply holding the strongest shared measure, and a quiet link would
+      // fold the world without ever naming the road that does it. It asks the same question
+      // `castOnKind` asks at casting time — the role's budget, then each candidate's own reading —
+      // and it asks it of BOTH orderings of the pair, because a ground is the pair's and the family
+      // read off it has to be the same one whichever way the visitor walks.
+      if (!castableOnKind(kind, a, b, FLOORS, noMiracle)) return false;
       var sa = setFor(a, kind), sb = setFor(b, kind);
       return !!(sa && sa.realCount && sb && sb.realCount);
     }
@@ -1814,10 +1954,20 @@
         });
         if (fracs.length) pivot.bandPeriodFrac = r4(Math.min.apply(null, fracs));
       }
-      var pivotInstr = instrumentOfKind(kind);
+      // WHICH INSTRUMENT PLAYS THE GROUND. Several may cut on its kind, so the pair's own readings
+      // and the die decide between them; what each candidate answered stands on the plan.
+      var castPivot = castOnKind(kind, fromW, toW, floors, !(ROLE_BUDGETS[role] || {}).miracle,
+                                 pair.seed, key, "pivot");
+      var pivotInstr = castPivot[0];
+      var castNotes = { pivot: castPivot[1] };
       if (pivotInstr === null || pivotInstr === undefined) {
-        return [null, "pivot needs " + (MISSING_INSTRUMENT[kind]
-                                        || ("an instrument that cuts on " + pyText(kind)))];
+        if (!instrumentsOfKind(kind).length) {
+          return [null, "pivot needs " + (MISSING_INSTRUMENT[kind]
+                                          || ("an instrument that cuts on " + pyText(kind)))];
+        }
+        return [null, "no instrument that cuts on " + pyText(kind) + " can play this pair: "
+                + castPivot[1].map(function (n) { return "«" + n.instrument + "» " + n.why; })
+                  .join("; ")];
       }
       if (kind === "wedge") {
         var refs = [["a", fromW], ["b", toW]];
@@ -1844,7 +1994,10 @@
         travelDecline = "no measure carries a usable reading on both works";
       } else {
         tkind = KIND_OF_AXIS[axis.axis];
-        travelInstr = instrumentOfKind(tkind);
+        var castTravel = castOnKind(tkind, fromW, toW, floors,
+                                    !(ROLE_BUDGETS[role] || {}).miracle, pair.seed, key, "travel");
+        travelInstr = castTravel[0];
+        castNotes.travel = castTravel[1];
         if (travelInstr === null || travelInstr === undefined) {
           travelInstr = null;
           travelDecline = "the travelling axis needs "
@@ -2089,7 +2242,7 @@
         // What the road, the role and the memory did to this derivation, on the plan where the
         // diagnostic surface can read it back. None of it reaches a score.
         road: road.id, roadWhy: road.why, role: role, passIndex: passIndex,
-        capped: capped, miracleDecline: miracleDecline
+        capped: capped, miracleDecline: miracleDecline, castNotes: castNotes
       }, null];
     }
 
@@ -2148,7 +2301,17 @@
         gridCount: side > 0 && Number((st.grid || {}).periodPx) > 0
           ? side / Number(st.grid.periodPx) : 0,
         // how much of the difference between the work's own columns its region line explains
-        regionScore: Number((st.regions || {}).score) || 0
+        regionScore: Number((st.regions || {}).score) || 0,
+        // the work's own device: how many regions it falls into, the step it was cut at and the
+        // angle of that step — what a passage revealing the making has to read
+        regionCount: Number((st.regions || {}).count) || 0,
+        deviceStepPx: Number((st.ownDevice || {}).stepPx) || 0,
+        deviceAngleDeg: Number((st.ownDevice || {}).angleDeg) || 0,
+        gridPeriodPx: Number((st.grid || {}).periodPx) || 0,
+        gridAngleDeg: Number((st.grid || {}).angleDeg) || 0,
+        frameSide: side,
+        // how confidently the work's own device was recovered — how legibly its making reads
+        deviceConfidence: Number((st.ownDevice || {}).confidence) || 0
       };
     }
 
@@ -2459,6 +2622,39 @@
           // that sends the crease back to that edge and says why. The day the position travels,
           // this is the one place that changes.
           wanted.seamScore = flt(r4(0.0));
+        } else if (instr === "unfold") {
+          // THE SHEET OPENS INTO THE WORK'S OWN PARQUET. Every handle here reads the departing
+          // work's own device — the step it was cut at and the angle of that step — because the
+          // whole point of this register is that the passage reveals how the work was made, and a
+          // parquet laid at some other step would be revealing something else.
+          //
+          // TWO FACES OR FOUR, off the work's own measured region count: a work that falls into two
+          // regions opens as two, one that falls into more opens as four.
+          // THE WORK WHOSE MAKING IS REVEALED is the one that reads it most clearly, which is the
+          // very work the ask above weighed. Every handle below reads that one work, so the parquet
+          // a person sees is one work's own and not a blend of two.
+          var made = mf.deviceConfidence >= mt.deviceConfidence ? mf : mt;
+          if (made.regionCount > 0) wanted.panels = made.regionCount > 2 ? 1 : 0;
+          // THE STAGGER is charter shelf 13's golden-angle instrument on the sheet's own time axis,
+          // taken on that same region count, so no two panels of the cascade come round together.
+          if (made.regionCount > 0) {
+            wanted.stagger = flt(r4(Math.min(num(HANDLE_SPECS.unfold.stagger[1]),
+                                             goldenStagger(made.regionCount)
+                                             * num(HANDLE_SPECS.unfold.stagger[1]))));
+          }
+          // THE PLANE'S OWN STEP AND THE ANGLE IT WAS CUT AT. The step is said as a share of the
+          // work's own frame side, which is the unit the handle is published in; where no device
+          // was derived the grid's own period and angle answer, which is the same reading taken a
+          // level out.
+          var stepPx = made.deviceStepPx > 0 ? made.deviceStepPx : made.gridPeriodPx;
+          var angle = made.deviceStepPx > 0 ? made.deviceAngleDeg : made.gridAngleDeg;
+          if (stepPx > 0 && made.frameSide > 0) {
+            wanted.parquetPeriod = flt(r4(clamp01(stepPx / made.frameSide)));
+          }
+          wanted.parquetTurn = flt(r4(clamp01(fractional(Math.abs(angle) / 90.0))));
+          // THE PLANE IS LAID AWAY AT THE SAME MEASURED ANGLE, which is what puts the parquet in
+          // perspective rather than flat to the eye.
+          wanted.tilt = flt(r4(clamp01(fractional(Math.abs(angle) / 90.0))));
         } else if (instr === "matter") {
           // HOW COARSE THE MATERIAL IS. The instrument publishes its coarse grain in cells across
           // the frame's height, and the work's own measured spectral period says how many cells
