@@ -279,6 +279,8 @@
   // How far the camera may come in or pull back on the score's own track, as a natural logarithm:
   // 0.5 bounds the approach at 1.65 times, and it bounds a magnification of the RENDERED canvas,
   // because the host applies the dolly as one transform over the buffer the instrument drew on.
+  // Since 2026-08-17 it is a LIMIT the demand is compressed toward rather than a wall it is cut at;
+  // `cameraFlight` below carries that and the measurement behind it.
   //
   // THE NUMBER IS UNMEASURED AND IT IS ON HIS LIST FOR GATE 1 (U27 stage 1, the camera lane,
   // 2026-08-17 22:2x). It was written when this field held a base-2 logarithm, so it bounded the
@@ -902,12 +904,28 @@
     // field the host exponentiates with base e, so the ratio the camera actually flew was the ratio
     // asked for raised to 1/ln 2 — a request for 1.3 times closer arrived as 1.45 times closer. The
     // two door framings differ by a ratio, and the logarithm of that ratio is what travels.
+    //
+    // THE DEMAND IS COMPRESSED, NEVER CLIPPED (2026-08-17 22:3x, on the judge's word, after this
+    // lane measured the collection and the composer lane measured the saturation). A clamp put
+    // 9 280 of the 14 520 ordered pairs on exactly the same number: three passages in five approached
+    // identically, and the approach — the one thing a person feels most directly — carried no reading
+    // of any pair. That is his 19:13 word about breadth failing in the plainest place there is.
+    //
+    // What the door framings ask for has a median of 2.05 times, a nine-tenths point of 6.44 and a
+    // worst of 86.3: a smooth tail with no knee, so no clamp point is the right one and clamping is
+    // the wrong shape whatever number it carries. `CAP · a / (|a| + CAP)` is the same bound written
+    // as a limit instead of a wall — it keeps the sign, it is monotone, so a pair asking for more
+    // still gets more than a pair asking for less, and it APPROACHES the cap without ever reaching
+    // it. Measured over the same 14 520 pairs: nothing lands on the bound where 9 280 did, distinct
+    // approaches rise from 3 453 to 5 957, and the worst magnification falls to 1.568 times from
+    // 1.649. The bound is not loosened by a hair — it is held more tightly than the clamp held it.
     function cameraFlight(pair, axis, locus) {
       var doors = pair.doorFraming;
       var stepFrom = (doors.from || {}).stepPx, stepTo = (doors.to || {}).stepPx;
-      var dolly = 0.0, panFrom = [0.0, 0.0], panTo = [0.0, 0.0], ca, cb;
+      var dolly = 0.0, panFrom = [0.0, 0.0], panTo = [0.0, 0.0], ca, cb, asked;
       if (stepFrom && stepTo && stepFrom > 0 && stepTo > 0) {
-        dolly = Math.max(-DOLLY_CAP, Math.min(DOLLY_CAP, Math.log(stepTo / stepFrom)));
+        asked = Math.log(stepTo / stepFrom);
+        dolly = DOLLY_CAP * asked / (Math.abs(asked) + DOLLY_CAP);
       }
       if (axis !== null && axis.from.ends.centre !== undefined
           && axis.to.ends.centre !== undefined) {
