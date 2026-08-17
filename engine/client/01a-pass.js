@@ -584,6 +584,17 @@
     Object.keys(rows).forEach((k) => {
       Object.keys(rows[k]).forEach((d) => { all.push({ k: k, d: d, at: +rows[k][d].lastAt }); });
     });
+    // A TRACE OUTSIDE THE VISIT WINDOW IS EVIDENCE FOR A CHECK THAT CAN NO LONGER RUN — the two
+    // refusals judge a pass against the one this visit remembers — so it is dropped on the way to
+    // storage. The record keeps saying what it says; only the numbers nobody will read again go.
+    const now = passEdgeNow();
+    all.forEach((row) => {
+      const r = rows[row.k][row.d];
+      if (r.provenance && r.provenance.trace
+          && now - +r.lastAt > PASS_EDGE.visitWindowSeconds * 1000) {
+        r.provenance.trace = null;
+      }
+    });
     if (all.length > PASS_EDGE.keep) {
       all.sort((x, y) => y.at - x.at);
       all.slice(PASS_EDGE.keep).forEach((row) => {

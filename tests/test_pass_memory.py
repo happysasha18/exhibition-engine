@@ -717,12 +717,13 @@ else:
                                                "var n = 0;"
                                                "Object.keys(o.edges).forEach(function (k) {"
                                                "  n += Object.keys(o.edges[k]).length; });"
-                                               "return {rows: n};")
+                                               "return {rows: n, bytes: s ? s.length : 0};")
                             check(BROWSER_ROWS[12],
                                   after_put["rows"] <= planted["keep"],
                                   f"{planted['planted']} edges were planted against a store that "
                                   f"keeps {planted['keep']}; the browser now holds "
-                                  f"{after_put['rows']} record(s)")
+                                  f"{after_put['rows']} record(s), weighing "
+                                  f"{after_put['bytes']} B")
 
                             # 13 · ?reset forgets the edges walked ------------------------
                             # EX-RESET / INV-35: the museum forgets THIS browser, and forgetting is
