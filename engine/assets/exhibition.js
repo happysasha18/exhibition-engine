@@ -1166,8 +1166,15 @@
       instrument: rep.instrument,
       buffer: rep.census ? rep.census.buffer : null,
       dpr: rep.census ? rep.census.dpr : null,
+      // `handles` is what the HOST resolved and asked each cue for. `applied` is what the INSTRUMENT
+      // published about its own door on the buffer it drew on, through the frame state's
+      // `reportApplied` — the request it was handed, the value it drew, how far apart the two stand,
+      // the leak it was holding against, and the refusal where no whole value stood within reach.
+      // The two travel side by side because the edge is read against both: the plan's intention and
+      // the run-time truth.
       cues: (rep.stack || []).map((v) => ({ id: v.id, instrument: v.instrument,
-                                            handles: v.handles || null })),
+                                            handles: v.handles || null,
+                                            applied: v.applied || null })),
     };
     return row.applied;
   }

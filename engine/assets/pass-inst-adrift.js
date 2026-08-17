@@ -857,9 +857,23 @@
           // pass plays and each door is read on the grid standing at that door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
         };
+        // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
+        // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
+        // decision asks for rather than the grain the score asked for. `applied` is the request less
+        // the whole cells the hold walked back, which is the grain the frame was actually posed on.
         if (h.mix === 0 || h.mix === 1) {
-          var no = values(pose).doorWhyNo;
-          if (no) { st.fail(st.token, no); return; }
+          var v = values(pose);
+          if (st.reportApplied) {
+            st.reportApplied({
+              door: h.mix === 0 ? "in" : "out",
+              buffer: [pose.bufWidth, pose.bufHeight],
+              reads: "grain", request: v.grainRequest,
+              applied: v.grainRequest - v.grainCells,
+              moved: v.grainCells, unit: "cells",
+              held: v.doorHeld, whyNo: v.doorWhyNo,
+            });
+          }
+          if (v.doorWhyNo) { st.fail(st.token, v.doorWhyNo); return; }
         }
         st.draw(pose);
         if (st.progress >= 1 && !st.pinned) st.settle(st.token);
