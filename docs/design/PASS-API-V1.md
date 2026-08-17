@@ -1156,12 +1156,44 @@ the seeded-repeat row honest.
 One continuous voice with its own arc, resting exactly on B.
 
 ```
-{ at, pan:{x,y}, logScale, pitch, yaw, roll, fov, owner:"stage"|"cue:<id>" }
+{ at, pan:{x,y}, logScale, pitch, yaw, roll, orbit, tilt, fov, owner:"stage"|"cue:<id>" }
 ```
 
 Dolly travels in **log space** and is interpolated there; the existing lab engine interpolates raw
 scale on both of its paths, which the charter's own law contradicts, so the lock states log space and
-a check proves it.
+a check proves it. `logScale` is the NATURAL logarithm and no other base, because the applied factor
+is exp of it: a base-2 logarithm written into that field flies the ratio asked for raised to 1/ln 2.
+
+**Orbit and tilt, added 2026-08-17 (U27 stage 1).** The charter's shelf 2 names two cases of a
+nonlinear camera being a straight line in another coordinate system, and until now the record carried
+only one of them. `orbit` is the point of view's azimuth about the subject and `tilt` its elevation,
+both in radians, both carried in their own coordinate. They are a different move from `yaw` and
+`pitch` and the applied transform says which is which: orbit and tilt act before the pan, so they
+turn the scene about the frame's own centre and the pan then carries the turned subject to its place
+— the point of view travels around the work while the work holds its framing — where yaw, pitch and
+roll act after the pan and let the scene swing across the frame. A turn is seen through a projection:
+where a score names no `fov` the host applies its own, since without one an orbit is an affine squash
+rather than a turn. Both axes need the perspective road, so §7's `lean` variant drops them and
+records the fallback, as it does for pitch, yaw and the field of view. Both hangs are flat and
+square-on, so both axes stand at zero at either end of a flight and the rest of §6 is unchanged.
+
+**Each place is carried through the points that name it, added 2026-08-17.** A place used to be
+carried only where EVERY point of the track named a number for it, so one axis could not be given
+timing of its own without giving every other axis a point at the same second — and a flight of
+several arcs could not be written down at all. Each place is now splined through its own points, so
+one unbroken flight can rise and fall its dolly at the two edges while the tilt holds a plane at an
+angle across a window of its own and the orbit sweeps once through the middle. A track that names
+every place at every point reads exactly as it did, which is what every composed score does.
+
+**A camera-led passage, added 2026-08-17.** `camera.lead` declares that the flight itself is the
+transition: the camera's travel through the scene is what carries the visitor from one work to the
+other, and the instruments underneath hold a quiet register. Two things follow. The anchor between
+the two hangs loses its held middle — three points instead of four, the departing hang, the whole
+frame at the halfway second and the arriving hang — so the pose travels the whole duration and never
+stands still, a flight that stopped mid-passage being the passage stopping. And the camera spends the
+WORLD voice of the levels law, so a score that declares `lead` and then gives a cue the world level
+is refused before the command is taken, with the cue named. The two ends are the same two hangs
+either way, so a led passage lands pixel-exactly like any other.
 
 **One authority at a time.** The score names the owner per window. A cue that carries the camera by
 its own device declares `cameraAuthority:"own"`, and the stage's flight holds still across that
@@ -1250,6 +1282,37 @@ buffer is the CSS frame times the device ratio times the live resolution step, s
 after any plan is serialised and it moves while a pass plays. An instrument whose own law depends on
 where a sample lands reads it there: the meshing instrument's doors are read on the buffer, because
 a leak is one sample landing on a singular point and the sample positions come from the buffer.
+
+**The frame state names both works' seating, added 2026-08-17 (U27 stage 1).** It carries `fitA` and
+`fitB`, the instrument's own `fit` answered on the buffer above — the very numbers the draw binds as
+the `fitA`/`fitB` uniform sources. An instrument cover-fits a work into the frame and then pulls in
+by its own framing headroom, so its geometry is a function of that seating; the unfold and the adrift
+both read the seating BACK out of the uniform inside their shaders, and neither could reach it in
+script at all. Both therefore bounded their geometry by the worst seating a cover fit can hand and
+could only over-hold, never hold exactly. Asked for here, on the same buffer, through the same
+function the draw calls, so an instrument's script and its shader work from ONE seating rather than
+from two guesses at it.
+
+**The instrument reports what it applied, added 2026-08-17.** His architecture decision of that day
+at 18:00 makes the instrument's own run-time reading on the actual buffer the truth of a passage: the
+composer emits the artistic request and its bounds, and what was really drawn is known only inside
+the frame. The frame state therefore carries `reportApplied(record)` beside `reportPose(pose)`. An
+instrument calls it at a door instant with its own numbers, and calls it before it refuses, so the
+applied state on the way to a refusal is carried too. A refusal itself keeps its own road —
+`st.fail(st.token, why)` is unchanged and this channel replaces nothing.
+
+The host stores the record as it arrives and reads nothing in it. Each voice's row of the diagnostic
+surface publishes it as `applied`, beside the `handles` the host itself resolved: the run-time truth
+and the plan's intention, readable against each other on one row. The row survives the landing, so a
+walk that asks what happened once the host is idle again still finds it. The walk writes it onto the
+passage record the request came from, which is where a reader of one edge looks.
+
+The five instruments agree on one plain shape, kept in their own files rather than in the host:
+`door` (`"in"` or `"out"`), `buffer` (the two numbers the reading was taken on), `reads` (the handle
+the reading is about), `request` (the value handed in), `applied` (the value drawn), `moved` (how far
+the two stand apart), `unit` (what `moved` is counted in — rungs, bands, cells, degrees), `held` (the
+leak the request would have drawn, in the instrument's own words, or nothing) and `whyNo` (the
+refusal, where no whole value stood within reach). The host would carry any other shape unchanged.
 
 **The pack boundary, added 2026-08-14 13:26 and built at `b212ef3`.** The instruments live in
 `engine/assets/pass-pack.js`; the host lives in `engine/assets/pass-layer.js` and loads the pack by

@@ -190,12 +190,22 @@ def breath_at(seconds):
 
 
 # ---------------------------------------------------------------- bake once
-# The site's own `pass` record carries the pair's score. This is the WHOLE delivery road: a site
-# writes it into its own site.json, engine/build.py passes the block through into config.json as
-# DATA and judges nothing in it, and the client reads it at declare time. No engine rebuild, no new
-# asset, no new road — a new score for a pair is a content change.
+# The site's own `pass` record. This is the WHOLE delivery road: a site writes the block into its own
+# site.json, engine/build.py passes it through into config.json as DATA and judges nothing in it, and
+# the client reads the names it knows at declare time. No engine rebuild, no new asset, no new road.
+#
+# `deliveryProbe` is a name the bake has never heard of and the client has no register row for, put
+# here on purpose: it is what makes the row below a proof about the CONTENT rather than about two
+# settings that happen to survive. A block is data, so a member of a shape neither side knows must
+# reach the served file unread and unaltered — that is what lets a score road change without an
+# engine rebuild, and it is the half of the retired row above that did not retire with it. The
+# client passes over a name its register does not carry rather than refusing the block, which is
+# the same law read from the other end.
 build_site.SITE_CONFIG = dict(build_site.SITE_CONFIG)
-build_site.SITE_CONFIG["pass"] = {"visualLayer": "pass", "diagnostics": "on"}
+build_site.SITE_CONFIG["pass"] = {
+    "visualLayer": "pass", "diagnostics": "on",
+    "deliveryProbe": {"schema": 1, "rows": [1, 2.5, "три"], "nested": {"depth": {"here": None}}},
+}
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_passweave_"))
 build_site.OUT = TMP
@@ -320,9 +330,28 @@ check("PASS-WEAVE the capture bench serves the record and the files it names, be
       "bench root carrying the host alone answers its fetch for the site's own record with a 404, "
       "and a root carrying the record without the files it names answers every instrument with one")
 
-check("PASS-WEAVE the score's road into the walk needs no engine rebuild",
-      "function passScoreFor" in (ROOT / "engine" / "client" / "01a-pass.js").read_text(encoding="utf-8"),
-      "the site's pass record carries scores keyed by the pair; the bake passes the block through as data")
+# THE ROW THAT STOOD HERE RETIRED 2026-08-17 (U27 stage 0), with the road it asserted. It read
+# `function passScoreFor` out of engine/client/01a-pass.js and stood for one sentence: the site's
+# pass record carries scores keyed by the pair, the bake passes the block through as data, and so a
+# new score for a pair is a content change rather than an engine rebuild. His word of 19:21 retired
+# the first clause — the collection grows to thousands of works and nothing on the product path may
+# carry a table keyed by the pair — and `passScoreFor` was deleted with the two other score roads.
+#
+# The second clause did not retire, and it is the half this suite owns: the bake judges NOTHING in
+# the block, whatever the block contains, so a road into the walk is still a content change. It
+# moves into the row below, which already read the block back out of the served file and now reads
+# a member the bake has never heard of back out of it too. That is the property under the sentence,
+# stated once, in the one row that measures it.
+#
+# What proves the rest: the walk deriving its passage from the two works' own records is
+# tests/test_pass_composed.py, whose first four rows read the served bundle for the composer's door
+# and for the absence of all three roads that left.
+# The judge resolved the two lanes' answers to this row on 2026-08-17 21:30. The closing lane
+# repointed it to grep the composed road's own function names; the seam lane retired it and moved
+# the half that still holds into the row below, where it is measured against a member the bake has
+# never heard of. The measured road is the stronger instrument and it is kept; a grep for two
+# function names adds nothing the first four rows of tests/test_pass_composed.py do not already
+# read out of the served bundle.
 
 # The delivery road's own row: what a site wrote into site.json is what the served settings file
 # carries, byte for byte, with the bake judging none of it.
@@ -339,11 +368,16 @@ served = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
 _block = served.get("pass") or {}
 _added = sorted(set(_block) - set(build_site.SITE_CONFIG["pass"]))
 _kept = {k: v for k, v in _block.items() if k in build_site.SITE_CONFIG["pass"]}
-check("PASS-WEAVE the site's pass record reaches the served settings file untouched, "
-      "with the bake's own instrument and capability records beside it",
+check("PASS-WEAVE the site's pass record reaches the served settings file untouched, whatever it "
+      "carries, with the bake's own instrument and capability records beside it",
       _kept == build_site.SITE_CONFIG["pass"] and _added == ["capabilities", "instruments"]
-      and all(sorted(e) == ["digest", "src", "version"] for e in _block["instruments"].values()),
-      f"config.json carries {_kept} exactly as site.json wrote it, and the bake added "
+      and all(sorted(e) == ["digest", "src", "version"] for e in _block["instruments"].values())
+      # the member neither side knows, read back whole: a nested record, a float, an integer and a
+      # non-ASCII string all standing where site.json put them
+      and _kept.get("deliveryProbe") == build_site.SITE_CONFIG["pass"]["deliveryProbe"],
+      f"config.json carries {_kept} exactly as site.json wrote it — including «deliveryProbe», a "
+      f"member the bake has never heard of and the client has no register row for, which is what "
+      f"makes a new score road a content change — and the bake added "
       f"{_added} — {sorted(_block.get('instruments') or {})}, each with its address, version and digest")
 
 # ---------------------------------------------------------------- browser rows
@@ -372,10 +406,12 @@ BROWSER_ROWS = [
     "PASS-WEAVE §4.4b  · the strip-count breath and the press reach the PICTURE, not just the record",
     "PASS-WEAVE the door is read on the DRAWING BUFFER, and the band the door is held at is published",
     "PASS-WEAVE a door no whole band can close is refused on the real road, and the visitor still lands",
+    "PASS-WEAVE what the instrument applied reaches the host's own stack row, field for field",
 ]
 
 RED_ROWS = [
     "PASS-WEAVE red-on-bug · the door reading removed: a door woven of both photographs is drawn",
+    "PASS-WEAVE red-on-bug · the reporting call reverted: the host's stack row carries no reading",
 ]
 
 # THE THREE-BAND ACCEPTANCE. The floors were lowered so that the band family the composed passage
@@ -499,6 +535,33 @@ def ready(br, tries=60):
 
 def js(br, expr):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % expr))
+
+
+def landed_read(brx, bal):
+    """One whole pass at `bal`, landed through the interruption cadence, read as the host's own
+    stack row for the woven voice. The landing is what makes the row readable in one piece: the
+    cadence walks every handle to its nearest door and the host writes those door handles onto the
+    stack row, and the last frame drawn is ON that door — so the reading the instrument published
+    came from exactly the handles standing beside it."""
+    jsx = lambda body: json.loads(              # noqa: E731 — one expression, read twice below
+        brx.evaluate("JSON.stringify((function(){%s})())" % body))
+    brx.evaluate("window.__cancel('applied row'); 0")
+    for _ in range(60):
+        if jsx("return window.__report().state;") == "idle":
+            break
+        brx.sleep(0.05)
+    jsx("return window.__offer(%s, {clock: 0, progress: 0});" % json.dumps(balanced(bal)))
+    brx.sleep(0.8)
+    brx.evaluate("window.__cancel('applied row landing'); 0")
+    for _ in range(80):
+        if jsx("return window.__report().state;") == "idle":
+            break
+        brx.sleep(0.05)
+    r = jsx("var r = window.__report();"
+            "return {state: r.state, buffer: r.census.buffer, stack: r.stack};")
+    rows_ = [s for s in (r["stack"] or []) if s["instrument"] == "weave"]
+    r["row"] = rows_[0] if rows_ else None
+    return r
 
 
 def on_bench(fn, pack_text=None):
@@ -938,6 +1001,52 @@ else:
                          (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
                          leaked["drew"]))
 
+                # ---- WHAT THE INSTRUMENT APPLIED, ON THE HOST'S OWN RECORD -------------------
+                # The two rows above read the instrument's own numbers through the bench and the
+                # host's refusal through the event log. This one reads the channel that carries the
+                # instrument's reading BACK to the host: the frame state's `reportApplied`, called
+                # at every door instant, whose record the host stores untouched on the voice's stack
+                # row (his architecture decision of 2026-08-17 18:00 — the run-time reading on the
+                # actual buffer is the truth of a passage).
+                #
+                # THE RUN IS TAKEN TO ITS LANDING, because that is the instant both halves of the
+                # row are readable at once: the cadence walks every handle to its nearest door and
+                # the host writes those door handles onto the stack row, and the last frame drawn is
+                # ON that door, so the reading the instrument published came from exactly the
+                # handles standing beside it. The instrument's numbers are then recomputed from
+                # those same handles, on the same buffer, through the bench's own `values` — the
+                # pure function the drawing frame calls — and the published reading must be that
+                # recomputation, field for field.
+                landed = landed_read(br, 0.87)
+                bw, bh = (int(x) for x in landed["buffer"].split("x"))
+                a = (landed["row"] or {}).get("applied")
+                h = (landed["row"] or {}).get("handles")
+                own = None
+                if a and h:
+                    own = values_of({"bal": h["bal"], "mix": h["mix"], "nMul": h["nMul"],
+                                     "press": h["press"], "strips": h["strips"], "axis": h["axis"],
+                                     "speed": h["speed"], "seed": h["seed"],
+                                     "cssWidth": VW, "cssHeight": VH, "t": h["clock"],
+                                     "reduced": False, "bufWidth": bw, "bufHeight": bh})
+                check(BROWSER_ROWS[23],
+                      bool(a) and bool(own)
+                      and a["door"] in ("in", "out") and a["buffer"] == [bw, bh]
+                      and a["reads"] == "bal"
+                      and a["request"] == own["balRequest"] and a["applied"] == own["bal"]
+                      and a["moved"] == own["balBands"] and a["held"] == own["doorHeld"]
+                      and a["whyNo"] == own["doorWhyNo"] and a["unit"] == "bands",
+                      "the reading the instrument published at its %s door on the %s buffer: %s. "
+                      "Recomputed from the very handles the host resolved for that frame (%s), the "
+                      "instrument's own `values` answers balRequest %s, bal %s, balBands %s, "
+                      "doorHeld %s, doorWhyNo %s — the published record is that recomputation, "
+                      "field for field."
+                      % ((a or {}).get("door"), landed["buffer"],
+                         json.dumps(a, ensure_ascii=False),
+                         json.dumps(h, ensure_ascii=False)[:200],
+                         (own or {}).get("balRequest"), (own or {}).get("bal"),
+                         (own or {}).get("balBands"), (own or {}).get("doorHeld"),
+                         (own or {}).get("doorWhyNo")))
+
         # ---- the three-band acceptance ------------------------------------------------------
         # THE POSE THE FLOORS WERE LOWERED FOR. Each frame gets its own browser, because the count
         # the instrument draws is scaled by the frame's own width and a phone and a wide frame are
@@ -1094,6 +1203,35 @@ else:
           f"{bug_read and bug_read['drew']} cue drawn), and the frame the visitor gets stands "
           f"{bug_read and bug_read['fromOwnFile']:.4f} of 255 from the departing work's own file "
           f"against the project's seam of {SEAM}: a door woven of both photographs")
+
+    # THE SECOND RED-ON-BUG PROOF: the reporting call reverted. `reportApplied` is the channel the
+    # instrument's own reading travels back to the host on; with it taken out of the served file the
+    # instrument still reads its door, still holds it and still refuses when it must — nothing the
+    # visitor sees moves — and the host's own stack row goes empty, which is exactly the state the
+    # composed road printed as a gap before this lane. One thing differs between the two runs: the
+    # bytes the host was handed. The file on disk is never touched.
+    def applied_one(brx):
+        r = landed_read(brx, 0.87)
+        return {"applied": (r["row"] or {}).get("applied"),
+                "handles": bool((r["row"] or {}).get("handles")),
+                "buffer": r["buffer"], "state": r["state"]}
+
+    base_say = on_bench(applied_one)
+    mute = WEAVE.replace("if (st.reportApplied) {", "if (false) {", 1)
+    mute_say = on_bench(applied_one, pack_text=mute)
+    check(RED_ROWS[1],
+          mute != WEAVE and base_say and mute_say
+          and isinstance(base_say["applied"], dict)
+          and base_say["applied"].get("reads") == "bal"
+          and mute_say["applied"] is None
+          and mute_say["handles"] is True and base_say["handles"] is True,
+          f"with the call in place the host's stack row for the woven voice carries "
+          f"{json.dumps(base_say['applied'], ensure_ascii=False)} on the {base_say['buffer']} "
+          f"buffer; with the call reverted in a copy of the served file the same landing on the "
+          f"{mute_say['buffer']} buffer carries {json.dumps(mute_say['applied'])}, while the "
+          f"handles the HOST resolved stand on both rows ({base_say['handles']} and "
+          f"{mute_say['handles']}) — the reading is the instrument's own to publish, and nothing "
+          f"else on the row moves when it stops")
 
     shutil.rmtree(BENCH, ignore_errors=True)
     shutil.rmtree(SHOTS, ignore_errors=True)

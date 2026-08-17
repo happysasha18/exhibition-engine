@@ -14,6 +14,7 @@
     try { localStorage.removeItem(TEMPO_KEY); } catch (e) {}
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}
     try { sessionStorage.removeItem("@@NS@@-pass"); } catch (e) {}   // the session's seam overrides go too (EX-PASS — forgetting is whole)
+    try { localStorage.removeItem("@@NS@@-pass-edges"); } catch (e) {}  // the edges walked are forgotten with the rest (EX-PASS §4.8 — forgetting is whole)
     try { sessionStorage.removeItem(SPENT_KEY); } catch (e) {}  // the hash re-seeds a FIRST arrival
     try { sessionStorage.removeItem(ORIGIN_KEY); } catch (e) {}  // the remembered channel forgets too (EX-SHARE-ORIGIN)
     try { localStorage.removeItem(VISITOR_KEY); } catch (e) {}   // forgetting is whole (EX-MEMORY)

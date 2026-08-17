@@ -110,7 +110,21 @@ FENCES = {
     # door, the passage request the walk builds per edge, the die it rolls for it, and the applied
     # reading written back at the landing. The family roll of §4.4f stays here, since the die the
     # walk rolls is made of the same visit seed, pass index and pair key.
-    "exhibition.js": (70_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the passage composer (pass-composer.js) since 2026-08-17 travel separately, and the visit's own seed stays here because the die every crossing is rolled with is made inside declare", strip_js_comments),
+    # 2026-08-17, night — THE VISIT'S OWN MEMORY ARRIVED AND THE FENCE MOVES TO 74 000 B, measured
+    # at 73 909 B against 69 715 B the evening before: 4 194 B gzipped, 15 957 B of stripped code.
+    # WHERE THOSE BYTES WENT, so the next reader does not have to guess: the whole of PASS-API-V1
+    # §4.8 on the site's side — the edge record with its store, its pruning and its bounded keep;
+    # the family and the pivot read off a plan; the trace a pass is remembered by; the two refusals,
+    # each with the sentence it is named in; the family drift of charter shelf 16; and the visit
+    # window with its cooldowns.
+    # NONE OF IT CAN TRAVEL IN ANOTHER FILE. §4.8 draws the same fence §4.5 draws for visitor
+    # identity: the record is TLV's own and the engine never sees it, so it cannot move into
+    # pass-composer.js; and it answers inside `declare`, synchronously, where nothing may wait on the
+    # wire, so it cannot be fetched.
+    # THE FENCE SITS JUST ABOVE WHAT WAS MEASURED, the way the 70 000 it replaces stood 285 B over
+    # its own 69 715. 91 B of headroom is not room to grow in — it is a gate, and the next feature's
+    # worth of bytes reds it and comes here to say what it bought.
+    "exhibition.js": (74_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the passage composer (pass-composer.js) since 2026-08-17 travel separately, and the visit's own seed and its edge memory stay here because the die every crossing is rolled with is made inside declare and the edge record is the site's own", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
     # 2026-08-14, morning: the stub became a host with a frame half and one real instrument (the
     # woven one), measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind.
@@ -168,7 +182,35 @@ FENCES = {
     # 2026-08-14, afternoon — the single pack became a file per instrument, and this fence stayed at
     # 24 000 B. The host grew by the loader that reads the site's own record and asks for one file
     # per name, from 21 528 B to 22 503 B, and it still names no instrument.
-    "pass-layer.js": (24_000, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
+    # 2026-08-17, evening — MOVED FROM 24 000 B TO 24 100 B, MEASURED AT 24 027 B, with 73 B under
+    # it (U27 stage 1, the camera lane). THE BAND IS 73 B AND THAT IS THE WHOLE POINT: a fence
+    # carrying a spare kilobyte stops being a gate, because the next kilobyte arrives unremarked and
+    # by then nobody remembers the slack was left on purpose. 73 B is the room a gzip stream needs
+    # for a version of zlib that packs a shade differently, and nothing more; the next thing that
+    # lands here has to say what it is worth. WHAT FILLED THE 638 B between 23 389 and 24 027, and
+    # it is all host — no instrument and no effect name came with it:
+    #   · TWO NEW PLACES ON THE POSE, orbit and tilt, each carried in its own coordinate — the orbit
+    #     in angle, which is the charter's own second case of a straight line in another coordinate
+    #     system — with their own entries in the neutral pose, the capability gate and the applied
+    #     transform, and the host's own lens where a score names no field of view.
+    #   · EACH PLACE ON ITS OWN POINTS. A place is carried through the points that name it rather
+    #     than only where every point names it, which is what lets one flight carry several arcs —
+    #     the dolly rising and falling at the two edges while the tilt holds a plane at an angle
+    #     across a window of its own.
+    #   · THE CAMERA-LED PASSAGE, where the flight itself is the transition: the anchor drops its
+    #     held middle and travels the whole duration, and a cue claiming the world level beside it
+    #     is refused before the command is taken.
+    #   · THE SEATING ON THE FRAME STATE, `fitA` and `fitB`, which the doors lane asked for: the
+    #     instruments read their seating back inside their shaders and could not reach it in script,
+    #     so they bounded it by a worst case and could only over-hold.
+    #   · THE BENCH ENTRIES those four are read through — the flight between the two hangs, the
+    #     transform a pose becomes, the record one voice is handed, the pose distance and the list
+    #     of places. They are diagnostics-only in use and ship in the file all the same, which is
+    #     why they are named here rather than left out of the reckoning.
+    # WHAT A VISITOR PAYS is unchanged in kind: this file is fetched only on a visit that actually
+    # draws, and reduced motion, Save-Data, a device with no WebGL2 and the layer switched off never
+    # ask for it at all.
+    "pass-layer.js": (24_100, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera with its two turning axes and its led flight, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
     # 2026-08-14, afternoon — ONE FENCE PER INSTRUMENT, each at its own measurement plus about a
     # tenth, by the same rule §12 states for the renderer's own file.
     #

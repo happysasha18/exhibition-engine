@@ -823,6 +823,8 @@ BROWSER_ROWS = [
     "EX-COMPOSED a step over two recorded works derives a passage and freezes it onto the command",
     "EX-COMPOSED the passage's own request stands on the diagnostic surface beside the score",
     "EX-COMPOSED the passage plays, and what the instrument applied on its own buffer is written back onto it",
+    "EX-COMPOSED the instrument's own door reading arrives on the passage record, on the buffer it drew on",
+    "EX-COMPOSED two passages on two grids: no reading of one reaches the other's record",
     "EX-COMPOSED a work the record set never heard of keeps the walk's own glide",
     "EX-COMPOSED reduced motion asks for no composer at all, and records why",
 ]
@@ -930,7 +932,7 @@ else:
 
                 # 2 · a step over two recorded works
                 if len(pair) < 2:
-                    for r_ in BROWSER_ROWS[2:6]:
+                    for r_ in BROWSER_ROWS[2:8]:
                         skip(r_, f"this hang shows fewer than two recorded works: {shown[:4]}")
                     pair = None
                 r = None if pair is None else js(br, """
@@ -991,13 +993,9 @@ else:
                 # ratio, and every live cue with the handles the host resolved for it. That is the
                 # applied state at the host's level and this row holds it.
                 #
-                # The instrument's OWN door reading — the meshing one's `sizeRequest`, `sizeRungs`,
-                # `doorHeld` and `doorWhyNo`, computed inside `values()` on the buffer it is drawing
-                # on — reaches no host report today: an instrument hands the host a draw call and a
-                # camera pose (`reportPose`) and nothing else. Carrying it needs a reporting seam on
-                # the instrument boundary, and the lane extending runtime door reading to the other
-                # four instruments is the one that owns that boundary. This row therefore reads what
-                # exists and PRINTS what does not, so the gap is visible rather than assumed closed.
+                # The instrument's OWN door reading travels beside it, on each cue's `applied`, and
+                # the row below is the one that judges it. This row counts it and prints the count,
+                # so a reading that stops arriving is visible here as well as there.
                 if pair:
                     for _ in range(40):
                         if js(br, "return !!window.__exPass.layer();") is True:
@@ -1024,15 +1022,15 @@ else:
                 if pair is None:
                     pass
                 elif not (played and played.get("took")):
-                    skip(BROWSER_ROWS[4],
-                         "no picture layer on this device"
-                         if (played or {}).get("noLayer") else
-                         "the host declined the composed passage on this device: no frame was "
-                         "drawn, so nothing was applied")
+                    for r_ in (BROWSER_ROWS[4], BROWSER_ROWS[5]):
+                        skip(r_,
+                             "no picture layer on this device"
+                             if (played or {}).get("noLayer") else
+                             "the host declined the composed passage on this device: no frame was "
+                             "drawn, so nothing was applied")
                 else:
                     handles = [c for c in (ap or {}).get("cues", []) if c.get("handles")]
-                    gears = [c for c in handles if c["instrument"] == "gears"]
-                    door = [c for c in handles if "sizeRequest" in c["handles"]]
+                    door = [c for c in (ap or {}).get("cues", []) if c.get("applied")]
                     check(BROWSER_ROWS[4],
                           bool(ap) and bool(ap.get("instrument")) and bool(ap.get("buffer"))
                           and bool(handles),
@@ -1042,9 +1040,204 @@ else:
                                          "size": c["handles"].get("size")}
                                         for c in handles], ensure_ascii=False)[:300]
                           + f"; the instrument's own door reading reaches this record for "
-                            f"{len(door)} of them"
-                          + (" — no instrument reports one to the host yet, which is the seam the "
-                             "runtime-doors lane owns" if not door else ""))
+                            f"{len(door)} of them")
+
+                    # 5 · THE INSTRUMENT'S OWN READING, on the record the request came from.
+                    #
+                    # His architecture decision of 2026-08-17 18:00: the instrument reads its doors
+                    # at run time on the ACTUAL buffer, and that reading is the runtime truth. What
+                    # this row judges is that the reading arrived and that it was taken on the
+                    # buffer the frame was really drawn on — not on the CSS frame around it, and not
+                    # on anything the composer could have known when it wrote the request.
+                    #
+                    # The five instruments publish one shape: `door`, `buffer`, `reads`, `request`,
+                    # `applied`, `moved`, `unit`, `held`, `whyNo`. Three laws hold across all five
+                    # and are checked on every reading this passage produced:
+                    #   · it was taken AT A DOOR — `door` reads «in» or «out», never a mid-passage
+                    #     instant, because a door is the only instant the reading is defined at;
+                    #   · it was taken ON THE HOST'S OWN BUFFER — the two numbers agree with the
+                    #     buffer the host reports for the same frame;
+                    #   · a door that had to be MOVED says so — `moved` is non-zero exactly when
+                    #     `held` names the leak the request would have drawn, and both are quiet
+                    #     when the request was whole as it stood.
+                    #
+                    # `whyNo` IS NOT REQUIRED TO BE EMPTY, corrected 2026-08-17. The row first asked
+                    # for that, reasoning that a refusal ends the passage and this passage played.
+                    # It is the wrong bar: the channel is documented to carry the applied state ON
+                    # THE WAY TO a refusal — the instrument reports and then refuses — so a record
+                    # whose reading names a refusal is the channel working, and the walk's own glide
+                    # carried the visitor. Which instrument refuses at a door is a property of the
+                    # buffer this machine happens to draw on, so a bar of «never a refusal» made the
+                    # row a device check. What is asked instead is that a refusal is a sentence when
+                    # it is there at all.
+                    #
+                    # The per-instrument numbers themselves are held in each instrument's own suite,
+                    # where the frame is drawn and photographed; the red-on-bug proof for the
+                    # reporting call is tests/test_pass_weave.py.
+                    def law(c):
+                        a = c["applied"]
+                        buf = a.get("buffer") or []
+                        why = a.get("whyNo")
+                        return (a.get("door") in ("in", "out")
+                                and len(buf) == 2
+                                and f"{buf[0]}x{buf[1]}" == ap.get("buffer")
+                                and isinstance(a.get("reads"), str)
+                                and isinstance(a.get("request"), (int, float))
+                                and isinstance(a.get("applied"), (int, float))
+                                and bool(a.get("moved")) == bool(a.get("held"))
+                                and (why is None or (isinstance(why, str) and why.strip())))
+
+                    broke = [c for c in door if not law(c)]
+                    check(BROWSER_ROWS[5],
+                          bool(door) and not broke,
+                          f"{len(door)} of {len((ap or {}).get('cues', []))} cue(s) published a "
+                          f"reading, taken on the {ap.get('buffer')} buffer the host reports at dpr "
+                          f"{ap.get('dpr')}: "
+                          + json.dumps([{"instrument": c["instrument"], "applied": c["applied"]}
+                                        for c in door], ensure_ascii=False)[:600]
+                          + (f"; readings breaking the shape: "
+                             + json.dumps(broke, ensure_ascii=False)[:300] if broke else ""))
+
+                # 6 · TWO PASSAGES, TWO GRIDS. The defect this row stands against, found on the
+                # merged base of 2026-08-17: a reading published at a door instant stayed on its
+                # voice after the drawing buffer moved under the pass — the resolution ladder
+                # stepping down, or a resize arriving mid-flight. A voice whose window had already
+                # closed never reported again, so its reading rode to the landing and was published
+                # as that passage's applied state on a grid it was never taken on. The judge read it
+                # as a 922 x 648 reading on a record whose host said 768 x 540.
+                #
+                # A ROW THAT ONLY COUNTS READINGS PASSES THAT DEFECT, which is why this one reads the
+                # BUFFER every reading names. The grid is moved inside the first passage, at an
+                # instant AFTER the earliest-closing cue's window has shut, so a stale reading has
+                # somewhere to hide; then a second passage is played on the new grid. Two things are
+                # asked, and each of them reddens on the bug: every reading on a record names that
+                # record's own grid, and no reading on the second record names the first's.
+                #
+                # The repair that makes it hold is in two halves. The host forgets every voice's
+                # reading the instant the drawing buffer changes, so a voice that has not reported
+                # on the grid now standing carries nothing — the shape the matter voice already has
+                # when its window never opens at a door. And the host freezes the grid each run
+                # ended on beside what that run left behind, so a record names its own passage's
+                # grid rather than whatever the canvas has since become.
+                def edge_windows(a, b):
+                    """The cue windows of the passage this pair composes, in the pass's own seconds,
+                    read off a command declared and thrown away. A window bound may be a plain
+                    number or a driver literal, so both shapes are unwrapped."""
+                    got = js(br, """
+                      var A = document.querySelector('.exh-frame[data-id="%s"]');
+                      var B = document.querySelector('.exh-frame[data-id="%s"]');
+                      if (!A || !B) return null;
+                      var cmd = window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
+                                                                 kind:'step', cause:'grid-peek',
+                                                                 velocity:0});
+                      if (!cmd || !cmd.score) return null;
+                      return {cues: cmd.score.cues.map(function (q) { return q.window || null; })};
+                    """ % (a, b))
+                    if not got:
+                        return []
+                    out = []
+                    for w in got["cues"]:
+                        if isinstance(w, list) and len(w) == 2:
+                            out.append([x.get("v") if isinstance(x, dict) else x for x in w])
+                    return out
+
+                def play_edge(a, b, cause, resize_to=None, resize_at=None):
+                    """One whole passage, landed, read as its own record. `resize_to` moves the grid
+                    `resize_at` seconds into the flight — the road a real orientation change takes.
+                    The record is found by the KEY the command's own passage carries, never by
+                    «the last row», because a passage that never drew leaves a row behind too."""
+                    js(br, """
+                      var A = document.querySelector('.exh-frame[data-id="%s"]');
+                      var B = document.querySelector('.exh-frame[data-id="%s"]');
+                      var cmd = window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
+                                                                 kind:'step', cause:'%s',
+                                                                 velocity:0});
+                      if (!cmd) return {nocmd: true};
+                      window.__gridCmd = cmd;
+                      var took = window.__exPass.layer().offer(cmd, {
+                        dock: function(){ window.__exPass.adapter.dock(cmd); },
+                        glide: function(){}, curtain: function(){}, mark: function(){}});
+                      return {took: !!took, scored: !!cmd.score};
+                    """ % (a, b, cause))
+                    if resize_to:
+                        br.sleep(resize_at)
+                        br.set_viewport(resize_to[0], resize_to[1])
+                    for _ in range(90):
+                        if js(br, "return window.__exPass.host.report().state;") == "idle":
+                            break
+                        br.sleep(0.15)
+                    br.sleep(0.4)
+                    return js(br, """
+                      var h = window.__exPass.host.report();
+                      var rows = window.__exPass.report().composer.passages;
+                      var cmd = window.__gridCmd, row = null;
+                      for (var i = rows.length - 1; i >= 0; i--) {
+                        if (cmd && cmd.score && rows[i].key === cmd.score.key) { row = rows[i]; break; }
+                      }
+                      if (!row && rows.length) row = rows[rows.length - 1];
+                      return {applied: row ? (row.applied || null) : null,
+                              // the grid the HOST says this run drew on, frozen with the run
+                              grid: h.drawnOn ? h.drawnOn.buffer : (h.census ? h.census.buffer : null)};
+                    """)
+
+                def readings(rec):
+                    return [c for c in ((rec or {}).get("applied") or {}).get("cues", [])
+                            if c.get("applied")]
+
+                def grid_of(rec):
+                    """The grid this passage drew on: the record's own if it has one, and the host's
+                    frozen reading of the same run otherwise."""
+                    return (((rec or {}).get("applied") or {}).get("buffer")) or (rec or {}).get("grid")
+
+                def names(rs):
+                    return sorted({"%dx%d" % tuple(c["applied"]["buffer"]) for c in rs
+                                   if len(c["applied"].get("buffer") or []) == 2})
+
+                if pair:
+                    wins = edge_windows(pair[0], pair[1])
+                    shuts = sorted(w[1] for w in wins if isinstance(w[1], (int, float)))
+                    # a breath past the first window to close, and still inside the pass: this is
+                    # where a stale reading has somewhere to hide, since the voice whose window has
+                    # just shut will never be handed another frame on the new grid
+                    at = (shuts[0] + 0.3) if shuts else 1.0
+                    # A passage the host declines on this device draws nothing and publishes nothing,
+                    # which gives the row no first grid to carry. It is asked again rather than
+                    # waved through, up to three times.
+                    first = None
+                    for _try in range(3):
+                        first = play_edge(pair[0], pair[1], "grid-one",
+                                          resize_to=(940, 660), resize_at=at)
+                        if readings(first):
+                            break
+                        br.set_viewport(1280, 900)
+                        br.sleep(0.6)
+                    second = play_edge(pair[0], pair[1], "grid-two")
+                    br.set_viewport(1280, 900)
+                    br.sleep(0.6)
+                    one_buf, two_buf = grid_of(first), grid_of(second)
+                    r1, r2 = readings(first), readings(second)
+                    n1, n2 = names(r1), names(r2)
+                    if not (one_buf and two_buf and r2):
+                        skip(BROWSER_ROWS[6],
+                             f"the second passage of this pair drew nothing on this device: "
+                             f"first={one_buf!r} with {len(r1)} reading(s), second={two_buf!r} with "
+                             f"{len(r2)} reading(s)")
+                    elif one_buf == two_buf:
+                        skip(BROWSER_ROWS[6],
+                             f"both passages drew on one grid ({one_buf}), so this device gives the "
+                             f"row nothing to tell apart — the resolution ladder answered the "
+                             f"resize by landing back on the same buffer")
+                    else:
+                        check(BROWSER_ROWS[6],
+                              n1 in ([], [one_buf]) and n2 in ([], [two_buf])
+                              and one_buf not in n2,
+                              f"the first passage drew on {one_buf} with the grid moved "
+                              f"{at:.2f} s in, and its {len(r1)} reading(s) name {n1 or 'nothing'}; "
+                              f"the second drew on {two_buf} and its {len(r2)} reading(s) name "
+                              f"{n2 or 'nothing'}. A voice whose window shut before the grid moved "
+                              f"carries nothing rather than a reading on a buffer that no longer "
+                              f"stands, and the first passage's grid appears nowhere on the "
+                              f"second's record")
 
                 # 5 · a work with no record of its own
                 r = None if (pair is None or unrecorded is None) else js(br, """
@@ -1060,11 +1253,11 @@ else:
                           why: said.length ? said[said.length - 1].why : null};
                 """ % (pair[0], unrecorded) if (pair and unrecorded) else "")
                 if pair and unrecorded is None:
-                    skip(BROWSER_ROWS[5], f"every work of this hang carries a record: {shown[:4]}")
+                    skip(BROWSER_ROWS[7], f"every work of this hang carries a record: {shown[:4]}")
                 elif pair and r.get("absent"):
-                    skip(BROWSER_ROWS[5], f"this hang shows no unrecorded work ({unrecorded})")
+                    skip(BROWSER_ROWS[7], f"this hang shows no unrecorded work ({unrecorded})")
                 elif pair:
-                    check(BROWSER_ROWS[5],
+                    check(BROWSER_ROWS[7],
                           r["score"] is None and "carries no record" in (r["why"] or ""),
                           f"a step to {r['to']} froze {r['score']!r} onto the command; "
                           f"the reason on the surface: {r['why']!r}")
@@ -1081,7 +1274,7 @@ else:
                                   " files: performance.getEntriesByType('resource')"
                                   "  .filter(function(e){return e.name.indexOf('pass-composer.js')>=0;})"
                                   "  .length};")
-                    check(BROWSER_ROWS[6],
+                    check(BROWSER_ROWS[8],
                           red["files"] == 0 and red["why"] == "reduced motion",
                           f"the file was fetched {red['files']} time(s); the reason on the "
                           f"surface: {red['why']!r}")
