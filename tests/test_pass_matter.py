@@ -214,18 +214,43 @@ check("PASS-MATTER the response curve is carried digit for digit out of the lab 
       f"{port_q[1] if len(port_q) > 1 else None}, last held {port_q[-1] if port_q else None} — the "
       f"module's own card asks a port to hand the same mix-to-feel mapping through (matter.md §11.3)")
 
-CONSTANTS = [("GRAIN_MIN = 4", "the coarse grain's near end, in cells across the frame's height"),
-             ("GRAIN_MAX = 34", "and its far end — past forty a cell is smaller than a window bay"),
-             ("GRAIN_FINE = 3.0", "the fine grain rides at three times the coarse one"),
-             ("AMP = 0.07", "how far the picture is dragged at the fullest loosening"),
-             ("LADDER = 0.6", "six parts plain ladder against four parts grain"),
-             ("0.04 + 0.26 * clamp", "the gathering's own range, the band's width"),
-             ("0.5 + 0.10", "the threshold travels a tenth past either end of the field")]
-missing_const = [c for c, _ in CONSTANTS if c not in LABTXT or c not in REGION]
+# Each constant as the LAB module spells it and as the PORT spells it. The two are the same string
+# everywhere but one: the threshold's overtravel is a bare literal in the module and a NAMED constant
+# in the port, because the door reading holds its own crossover against that very number and a number
+# read in two places has to have one home. The row therefore reads both spellings and the port's own
+# `MARGIN = 0.10` beside them, so the tenth cannot drift in either tree without this reddening.
+CONSTANTS = [("GRAIN_MIN = 4", "GRAIN_MIN = 4",
+              "the coarse grain's near end, in cells across the frame's height"),
+             ("GRAIN_MAX = 34", "GRAIN_MAX = 34",
+              "and its far end — past forty a cell is smaller than a window bay"),
+             ("GRAIN_FINE = 3.0", "GRAIN_FINE = 3.0",
+              "the fine grain rides at three times the coarse one"),
+             ("AMP = 0.07", "AMP = 0.07", "how far the picture is dragged at the fullest loosening"),
+             ("LADDER = 0.6", "LADDER = 0.6", "six parts plain ladder against four parts grain"),
+             ("0.04 + 0.26 * clamp", "0.04 + 0.26 * clamp",
+              "the gathering's own range, the band's width"),
+             ("0.5 + 0.10", "var MARGIN = 0.10;",
+              "the threshold travels a tenth past either end of the field, named MARGIN in the "
+              "port because the door reading is held against it")]
+missing_const = ([c for c, _, _ in CONSTANTS if c not in LABTXT]
+                 + [c for _, c, _ in CONSTANTS if c not in REGION]
+                 + ([] if "0.5 + MARGIN" in REGION else ["0.5 + MARGIN"]))
 check("PASS-MATTER every field constant stands at the number the lab module gives it",
       not missing_const,
-      "; ".join("%s — %s" % (c, why) for c, why in CONSTANTS) if not missing_const
+      "; ".join("%s — %s" % (c, why) for c, _, why in CONSTANTS) if not missing_const
       else "these differ: " + ", ".join(missing_const))
+
+# THE MEASUREMENT THE GRAIN IS READ AGAINST AT A DOOR, published in the manifest. His 19:13 word,
+# lifted to the class at 19:21: every geometric parameter names the measurement of the work it reads.
+# The grain's own reading is the field's steepest slope against the tenth the threshold stands past
+# the field's own range, on the drawing buffer — and the handle says so where a composer can read it.
+check("PASS-MATTER the grain handle publishes the measurement its door is read against",
+      'heldWholeAtADoor: { cells: DOOR_HOLD, readOn: "the drawing buffer",' in REGION
+      and 'reads: "grainRequest"' in REGION
+      and "var MARGIN = 0.10;" in REGION
+      and "var DOOR_HOLD = 2;" in REGION,
+      "the handle carries `applied.heldWholeAtADoor` — what is read, on which grid, how far the "
+      "hold reaches and where the request stays on the record — beside its own range")
 
 check("PASS-MATTER the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "gl.uniform1f(U.uTau" not in LAYER
@@ -264,6 +289,8 @@ BROWSER_ROWS = [
     "PASS-MATTER row 9  · one camera authority through a real pass, and the pose rests on the arrival",
     "PASS-MATTER §4.4b  · the gathering, the grain and the loosening reach the PICTURE",
     "PASS-MATTER row 16 · the captures are kept as evidence",
+    "PASS-MATTER the door is read on the DRAWING BUFFER, and the cell the door is held at is published",
+    "PASS-MATTER a door no whole cell can close is refused on the real road, and the visitor still lands",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -669,6 +696,119 @@ else:
                       "; ".join(f"{k} moves the frame by {mn:.4f} of 255 (worst channel {mx})"
                                 for k, (mn, mx) in moved.items())
                       + f"; the seam threshold is {SEAM}")
+
+                # ---- THE GRID THE DOOR IS READ ON --------------------------------------------
+                # The rows above read every door on the frame the suite runs at. The shader samples
+                # on the DRAWING BUFFER — the CSS frame times the device ratio times the host's own
+                # resolution step — and the mask's crossover is HALF THE FIELD'S SLOPE PER BUFFER
+                # POINT wide, so the buffer is the grid that decides a door. This row states one
+                # grain the CSS frame calls whole and a short buffer does not, and asks three things
+                # of the instrument: that it sees what the buffer has, that it steps to the nearest
+                # coarser whole cell whose door is whole THERE, and that the score's own request
+                # stays on the record beside the cell applied.
+                def door_pose(grain, mix=0, buf=None, over=None):
+                    p = {"mix": mix, "loosen": 0.6, "drift": 0.45, "gather": 0.3, "grain": grain,
+                         "shade": 1, "travel": 1, "seed": DIE, "t": 0, "reduced": False,
+                         "cssWidth": VW, "cssHeight": VH}
+                    if buf:
+                        p["bufWidth"], p["bufHeight"] = int(buf[0]), int(buf[1])
+                    p.update(over or {})
+                    return p
+
+                def values_of(p):
+                    return js(br, "return window.__exPass.bench.values('matter', %s);"
+                              % json.dumps(p))
+
+                def per_door_ms(p, n=2000):
+                    return js(br, "var p = %s, b = window.__exPass.bench;"
+                                  "for (var i = 0; i < 400; i++) b.values('matter', p);"
+                                  "var t0 = performance.now();"
+                                  "for (var j = 0; j < %d; j++) b.values('matter', p);"
+                                  "return {ms: (performance.now() - t0) / %d};"
+                                  % (json.dumps(p), n, n))["ms"]
+
+                BUF_W, BUF_H = 390, 250          # a buffer one whole cell short of the grain asked for
+                NO_W, NO_H = 390, 240            # and one no whole cell within reach can close
+                on_css = values_of(door_pose(1.0))
+                on_buf = values_of(door_pose(1.0, buf=(BUF_W, BUF_H)))
+                applied = on_buf["grainA"]
+                on_applied = values_of(door_pose((applied - 4) / 30.0, buf=(BUF_W, BUF_H)))
+                away = values_of(door_pose(1.0, mix=0.5, buf=(NO_W, NO_H)))
+                exitdoor = values_of(door_pose(1.0, mix=1, buf=(BUF_W, BUF_H)))
+                whole_ms = per_door_ms(door_pose(1.0))
+                held_ms = per_door_ms(door_pose(1.0, buf=(BUF_W, BUF_H)))
+                check(BROWSER_ROWS[20],
+                      on_css["doorWhyNo"] is None and on_css["doorHeld"] is None
+                      and on_css["grainCells"] == 0 and on_css["grainA"] == 34
+                      and on_css["doorGrid"] == {"w": VW, "h": VH, "drawn": False}
+                      and on_buf["doorWhyNo"] is None
+                      and ("%d x %d buffer" % (BUF_W, BUF_H)) in (on_buf["doorHeld"] or "")
+                      and on_buf["grainRequest"] == 34 and on_buf["grainCells"] == 1
+                      and applied == 33
+                      and on_buf["doorGrid"] == {"w": BUF_W, "h": BUF_H, "drawn": True}
+                      and on_applied["doorHeld"] is None and on_applied["doorWhyNo"] is None
+                      and away["doorHeld"] is None and away["doorWhyNo"] is None
+                      and away["doorGrid"] is None
+                      and ("%d x %d buffer" % (BUF_W, BUF_H)) in (exitdoor["doorHeld"] or "")
+                      and "the exit door leaks" in (exitdoor["doorHeld"] or ""),
+                      "on the %d x %d CSS frame the grain the score holds says «%s»; on the %d x %d "
+                      "buffer that frame is drawn on it says «%s», steps %g whole cell to %g cells "
+                      "and keeps the request at %g. The applied cell read again on that buffer: "
+                      "«%s». Away from a door it reads nothing at all (grid %s). One door instant "
+                      "costs %.4f ms whole and %.4f ms held, on this machine."
+                      % (VW, VH, on_css["doorHeld"] or "nothing", BUF_W, BUF_H,
+                         on_buf["doorHeld"] or "nothing", on_buf["grainCells"], applied,
+                         on_buf["grainRequest"], on_applied["doorHeld"] or "nothing",
+                         away["doorGrid"], whole_ms, held_ms))
+
+                # ---- THE DOOR REFUSED ON THE REAL TRANSACTION ROAD ---------------------------
+                # The row above reads the instrument's own record. This one puts a real command on
+                # the real road at a real buffer: the frame is taken to one no whole cell within
+                # reach can close, the pass is offered held at its entry door, and the host has to
+                # land the visitor on the instrument's own reason rather than draw a door that is
+                # two works at once. The same frame with the score's own grain draws.
+                def road(gen):
+                    return js(br, "var r = window.__report(); return {state: r.state, "
+                                  "drew: r.drew, buffer: r.census.buffer, "
+                                  "refused: r.events.filter(function(e){ return e.gen === %d "
+                                  "&& e.why && String(e.why).indexOf('door leaks') >= 0; })"
+                                  ".map(function(e){ return e.name + ': ' + e.why; })};" % gen)
+
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                br.set_viewport(NO_W, NO_H)
+                br.sleep(0.8)
+                fine_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % json.dumps(matter_score(grain=0.45)))["gen"]
+                br.sleep(1.0)
+                played = road(fine_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                leak_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % json.dumps(matter_score(grain=1.0)))["gen"]
+                br.sleep(1.1)
+                leaked = road(leak_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                br.set_viewport(VW, VH)
+                br.sleep(0.8)
+                check(BROWSER_ROWS[21],
+                      played["buffer"] == "%dx%d" % (NO_W, NO_H)
+                      and played["state"] == "running" and played["drew"] == 1
+                      and not played["refused"]
+                      and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
+                      and leaked["drew"] == 0
+                      and "the entry door leaks" in leaked["refused"][0]
+                      and ("%d x %d buffer" % (NO_W, NO_H)) in leaked["refused"][0]
+                      and "no whole cell stands within 2 cells" in leaked["refused"][0],
+                      "on a %d x %d buffer the score's own grain draws (%d cue, state %s, refused "
+                      "%s) and the finest grain is refused with «%s», on which the host lands the "
+                      "transaction (state %s, %d cue drawn) and the walk's own glide carries the "
+                      "visitor"
+                      % (NO_W, NO_H, played["drew"], played["state"],
+                         played["refused"] or "nothing",
+                         (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
+                         leaked["drew"]))
 
                 kept = sorted(p.name for p in SHOTS.glob("*.png"))
                 check(BROWSER_ROWS[19],

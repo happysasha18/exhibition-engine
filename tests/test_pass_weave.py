@@ -130,6 +130,21 @@ def scored(pair_a="a", pair_b="b"):
     return s
 
 
+def balanced(bal, pair_a="a", pair_b="b"):
+    """The same score with the OPEN handle driven — the one case in which a door of this instrument
+    can stand at a balance other than the one the response curve puts it at. `bal` is open by
+    declaration (`open: true` in the manifest), so a score that names a track for it wins over the
+    dial, and at a door the fabric then leaves a share of every band to the other work. That is the
+    door this lane's reading is about, and this is the only way a score reaches it."""
+    s = scored(pair_a, pair_b)
+    cue = s["cues"][0]
+    cue["nodes"]["balStatic"] = {"op": "static", "value": bal,
+                                 "note": "the open handle driven flat, so the door stands where "
+                                         "this number puts it rather than where the dial does"}
+    cue["tracks"]["bal"] = {"node": "balStatic"}
+    return s
+
+
 def coupled(pair_a="a", pair_b="b"):
     """ONE NODE FEEDING TWO CHANNELS — the fifth law of the grammar, on the real instrument. The one
     breath above drives the strip count AND the press, so the two cannot disagree; the row reads both
@@ -282,6 +297,20 @@ check("PASS-WEAVE the band count publishes the floor the instrument applies, and
       f"and {_shader and _shader.group(1)}: the number the manifest publishes and the number the "
       "frame draws are one number, at three bands as at six")
 
+# THE MEASUREMENT THE BALANCE IS READ AGAINST AT A DOOR, published in the manifest. His 19:13 word,
+# lifted to the class at 19:21: every geometric parameter names the measurement of the work it reads.
+# The balance's own reading is the share of every band the fabric leaves to the other work, on the
+# drawing buffer — and the handle says so where a composer can read it.
+check("PASS-WEAVE the balance handle publishes the measurement its door is read against",
+      'heldWholeAtADoor: { bands: DOOR_HOLD, readOn: "the drawing buffer",' in WEAVE
+      and 'reads: "balRequest"' in WEAVE
+      and "var BAL_WHOLE = 0.88;" in WEAVE
+      and "var DOOR_HOLD = 2;" in WEAVE
+      and "var DOOR_SHOW = 0.5 / 255;" in WEAVE,
+      "the handle carries `applied.heldWholeAtADoor` — what is read, on which grid, how far the "
+      "hold reaches and where the request stays on the record — beside its own range, and the "
+      "balance the duty's own smoothstep closes at is named once")
+
 check("PASS-WEAVE the capture bench serves the record and the files it names, before the host",
       'shutil.copy2(tmp / "config.json"' in CAPTURE
       and 'tmp.glob("pass-inst-*.js")' in CAPTURE
@@ -340,6 +369,8 @@ BROWSER_ROWS = [
     "PASS-WEAVE row 9  · one camera authority through a real pass, and the pose rests on the arrival",
     "PASS-WEAVE §5     · one node drives two handles of the real instrument, and moves both",
     "PASS-WEAVE §4.4b  · the strip-count breath and the press reach the PICTURE, not just the record",
+    "PASS-WEAVE the door is read on the DRAWING BUFFER, and the band the door is held at is published",
+    "PASS-WEAVE a door no whole band can close is refused on the real road, and the visitor still lands",
 ]
 
 # THE THREE-BAND ACCEPTANCE. The floors were lowered so that the band family the composed passage
@@ -776,6 +807,118 @@ else:
                       f"the strip-count breath at 1.0 against 1.4 moves the frame by {dBreath:.4f} "
                       f"of 255 (worst channel {mxBreath}); the press at 1 against 1.30 moves it by "
                       f"{dPress:.4f} (worst channel {mxPress}); the seam threshold is {SEAM}")
+
+                # ---- THE GRID THE DOOR IS READ ON --------------------------------------------
+                # The door rows above read the doors the DIAL puts the fabric at, where the response
+                # curve's own dead band closes the duty exactly. `bal` is an OPEN handle, so a score
+                # that names a track for it lands a door wherever that track says — and there the
+                # fabric leaves a share of every band to the other work. Whether that share can be
+                # SEEN is a question about the grid: the shader's own anti-aliasing spreads it over
+                # the buffer points nearest each band's edge, so the same balance is a whole door on
+                # one buffer and a leak on the next. This row states one such balance and asks three
+                # things of the instrument: that the CSS frame calls it whole, that the buffer that
+                # frame is drawn on does not, and that the hold moves to the fabric's own whole band
+                # with the score's request kept on the record beside it.
+                def door_pose(bal, mix=0, buf=None):
+                    p = {"mix": mix, "bal": bal, "nMul": 1, "press": 1, "strips": 28, "axis": 0,
+                         "speed": 1, "seed": 0, "cssWidth": VW, "cssHeight": VH,
+                         "t": 0, "reduced": False}
+                    if buf:
+                        p["bufWidth"], p["bufHeight"] = int(buf[0]), int(buf[1])
+                    return p
+
+                def values_of(p):
+                    return js(br, "return window.__exPass.bench.values('weave', %s);"
+                              % json.dumps(p))
+
+                def per_door_ms(p, n=2000):
+                    return js(br, "var p = %s, b = window.__exPass.bench;"
+                                  "for (var i = 0; i < 400; i++) b.values('weave', p);"
+                                  "var t0 = performance.now();"
+                                  "for (var j = 0; j < %d; j++) b.values('weave', p);"
+                                  "return {ms: (performance.now() - t0) / %d};"
+                                  % (json.dumps(p), n, n))["ms"]
+
+                BUF_W, BUF_H = VW * 2, VH * 2   # the buffer a device ratio of 2 draws this frame on
+                EDGE_BAL = 0.87642              # whole on the CSS frame, a leak on that buffer
+                on_css = values_of(door_pose(EDGE_BAL))
+                on_buf = values_of(door_pose(EDGE_BAL, buf=(BUF_W, BUF_H)))
+                on_applied = values_of(door_pose(on_buf["bal"], buf=(BUF_W, BUF_H)))
+                away = values_of(door_pose(0.5, mix=0.5, buf=(BUF_W, BUF_H)))
+                refused = values_of(door_pose(0.5, buf=(BUF_W, BUF_H)))
+                exitdoor = values_of(door_pose(-0.80, mix=1, buf=(BUF_W, BUF_H)))
+                whole_ms = per_door_ms(door_pose(0.88, buf=(BUF_W, BUF_H)))
+                held_ms = per_door_ms(door_pose(EDGE_BAL, buf=(BUF_W, BUF_H)))
+                check(BROWSER_ROWS[21],
+                      on_css["doorWhyNo"] is None and on_css["doorHeld"] is None
+                      and on_css["balBands"] == 0 and on_css["bal"] == EDGE_BAL
+                      and on_css["doorGrid"] == {"w": VW, "h": VH, "drawn": False}
+                      and on_buf["doorWhyNo"] is None
+                      and ("%d x %d buffer" % (BUF_W, BUF_H)) in (on_buf["doorHeld"] or "")
+                      and on_buf["balRequest"] == EDGE_BAL and on_buf["bal"] == 0.88
+                      and on_buf["duty"] == 1.0 and on_buf["amp"] == 0
+                      and on_buf["doorGrid"] == {"w": BUF_W, "h": BUF_H, "drawn": True}
+                      and on_applied["doorHeld"] is None and on_applied["doorWhyNo"] is None
+                      and away["doorHeld"] is None and away["doorWhyNo"] is None
+                      and away["doorGrid"] is None
+                      and refused["doorWhyNo"] is not None
+                      and "no whole band stands within 2 bands" in refused["doorWhyNo"]
+                      and "the exit door leaks" in (exitdoor["doorHeld"] or ""),
+                      "on the %d x %d CSS frame a balance of %s says «%s»; on the %d x %d buffer "
+                      "that frame is drawn on it says «%s» and holds the fabric at its own whole "
+                      "band (%s, duty %s, travel %s), keeping the request at %s. The applied "
+                      "balance read again on that buffer: «%s». Away from a door it reads nothing "
+                      "at all (grid %s); at a balance of 0.5 no whole band is within reach: «%s». "
+                      "One door instant costs %.4f ms whole and %.4f ms held, on this machine."
+                      % (VW, VH, EDGE_BAL, on_css["doorHeld"] or "nothing", BUF_W, BUF_H,
+                         on_buf["doorHeld"] or "nothing", on_buf["bal"], on_buf["duty"],
+                         on_buf["amp"], on_buf["balRequest"],
+                         on_applied["doorHeld"] or "nothing", away["doorGrid"],
+                         refused["doorWhyNo"], whole_ms, held_ms))
+
+                # ---- THE DOOR REFUSED ON THE REAL TRANSACTION ROAD ---------------------------
+                # The row above reads the instrument's own record. This one puts real commands on
+                # the real road: one score drives the open handle to a balance the fabric's own
+                # whole band closes, and it draws; the next drives it to the middle, where the door
+                # is a fabric of both photographs and no band closes it, and the host has to land
+                # the visitor on the instrument's own reason rather than draw it.
+                def road(gen):
+                    return js(br, "var r = window.__report(); return {state: r.state, "
+                                  "drew: r.drew, buffer: r.census.buffer, "
+                                  "refused: r.events.filter(function(e){ return e.gen === %d "
+                                  "&& e.why && String(e.why).indexOf('door leaks') >= 0; })"
+                                  ".map(function(e){ return e.name + ': ' + e.why; })};" % gen)
+
+                br.evaluate("window.__cancel('door road row'); 0")
+                br.sleep(0.6)
+                held_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % json.dumps(balanced(0.87)))["gen"]
+                br.sleep(1.0)
+                played = road(held_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                br.sleep(0.6)
+                leak_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % json.dumps(balanced(0.5)))["gen"]
+                br.sleep(1.1)
+                leaked = road(leak_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                br.sleep(0.6)
+                check(BROWSER_ROWS[22],
+                      played["state"] == "running" and played["drew"] == 1
+                      and not played["refused"]
+                      and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
+                      and leaked["drew"] == 0
+                      and "the entry door leaks" in leaked["refused"][0]
+                      and ("%s buffer" % played["buffer"].replace("x", " x ")) in leaked["refused"][0]
+                      and "no whole band stands within 2 bands" in leaked["refused"][0],
+                      "on the %s buffer the host drew, a balance of 0.87 at the entry door is held "
+                      "and drawn (%d cue, state %s, refused %s); a balance of 0.5 is refused with "
+                      "«%s», on which the host lands the transaction (state %s, %d cue drawn) and "
+                      "the walk's own glide carries the visitor"
+                      % (played["buffer"], played["drew"], played["state"],
+                         played["refused"] or "nothing",
+                         (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
+                         leaked["drew"]))
 
         # ---- the three-band acceptance ------------------------------------------------------
         # THE POSE THE FLOORS WERE LOWERED FOR. Each frame gets its own browser, because the count
