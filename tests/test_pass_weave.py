@@ -30,6 +30,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   never a silent pass.
 """
 import base64
+import hashlib
 import json
 import math
 import os
@@ -373,6 +374,10 @@ BROWSER_ROWS = [
     "PASS-WEAVE a door no whole band can close is refused on the real road, and the visitor still lands",
 ]
 
+RED_ROWS = [
+    "PASS-WEAVE red-on-bug · the door reading removed: a door woven of both photographs is drawn",
+]
+
 # THE THREE-BAND ACCEPTANCE. The floors were lowered so that the band family the composed passage
 # stands on could be REACHED at all; before it, a handle of 3, 4, 5, 6 or 8 all drew six bands. The
 # rows above hold the instrument against the lab module on the poses the carrier check already used,
@@ -466,18 +471,28 @@ def apart(p, work):
     return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
 
 
-def bench_dir():
+def bench_dir(pack_text=None):
     """The bench's own served root: the BUILT pass-layer.js (the real artifact, namespace applied and
     comments stripped), the lab module unchanged, the two photographs, and the page that stands the
-    two roads of one frame side by side."""
+    two roads of one frame side by side.
+
+    A row proving a rule reds hands over a CHANGED instrument file and writes the site's own record
+    with the digest of the bytes actually served, which is what the build does. The source file on
+    disk is never touched, so nothing has to be restored and no working tree can be left changed by
+    a red-on-bug proof. The road is the one the adrift and unfold suites already prove by."""
     d = Path(tempfile.mkdtemp(prefix="synth_weavebench_"))
+    pack = WEAVE if pack_text is None else pack_text
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
     # Each instrument travels as its own file and the host learns every address from the site's own
     # settings record, so the bench root serves that record and the files it names — the same files
     # a visitor is served, unaltered.
-    shutil.copy2(TMP / "config.json", d / "config.json")
     for _inst in sorted(TMP.glob("pass-inst-*.js")):
         shutil.copy2(_inst, d / _inst.name)
+    (d / "pass-inst-weave.js").write_text(pack, encoding="utf-8")
+    record = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+    record["pass"]["instruments"]["weave"]["digest"] = hashlib.sha256(
+        pack.encode("utf-8")).hexdigest()
+    (d / "config.json").write_text(json.dumps(record), encoding="utf-8")
     shutil.copy2(LAB / "effects" / "weave.js", d / "weave.js")
     (d / "photos").mkdir()
     for p in PHOTOS + [w for w in PAIR_WORKS if w.exists()]:
@@ -498,11 +513,27 @@ def js(br, expr):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % expr))
 
 
+def on_bench(fn, pack_text=None):
+    """One reading, taken on a bench of its own: a served root, a fresh browser, and the instrument
+    file this call names. Held apart so a red-on-bug proof and the run it is compared against differ
+    in exactly one thing — the bytes the host was handed."""
+    d = bench_dir(pack_text)
+    try:
+        with serve(d) as base:
+            with Browser(width=VW, height=VH) as br:
+                br.navigate(base + "/index.html")
+                if not ready(br):
+                    return None
+                return fn(br)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 if not chrome_available():
-    for r in BROWSER_ROWS + BAND_ROWS:
+    for r in BROWSER_ROWS + BAND_ROWS + RED_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 elif missing:
-    for r in BROWSER_ROWS + BAND_ROWS:
+    for r in BROWSER_ROWS + BAND_ROWS + RED_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
 else:
     SHOTS = Path(tempfile.mkdtemp(prefix="synth_weaveshots_"))
@@ -1021,6 +1052,60 @@ else:
                       "and the host is handed that pose — so what is compared is two roads of one "
                       "frame at the count the lowered floors exist for"
                       % (fw, fh, dm, SAME, dx))
+
+    # ============================================================================================
+    # THE RED-ON-BUG PROOF. The lane's own rule reverted in the artifact the browser actually loads:
+    # the door test in `doorReadOf` is taken out, so no instant is ever a door and the reading is
+    # never taken — this instrument exactly as it stood before it read its doors at runtime,
+    # declaring both doors whole in its manifest and never checking the frame it drew. The pack
+    # served is changed and the host is re-stamped with the digest of the bytes it is handed, which
+    # is what the build does; the file on disk is never touched, so no working tree can be left
+    # changed by a proof.
+    #
+    # TWO NUMBERS MOVE, and the second is the one that matters. What the HOST is told: with the
+    # reading standing a door at a driven balance of 0.5 is refused and the transaction lands, and
+    # with it removed the same command draws. And what the VISITOR sees: at that balance the fabric
+    # is half one photograph and half the other, so the drawn door stands far outside the project's
+    # own 6-of-255 seam from the departing work's own file — which is what a door that is not read
+    # actually costs.
+    def red_one(br):
+        gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                 % json.dumps(balanced(0.5)))["gen"]
+        br.sleep(1.1)
+        r = js(br, "var r = window.__report(); return {state: r.state, drew: r.drew, "
+                   "buffer: r.census.buffer, refused: r.events.filter(function(e){ "
+                   "return e.gen === %d && e.why "
+                   "&& String(e.why).indexOf('door leaks') >= 0; }).length};" % gen)
+        br.evaluate("window.__show('host'); 0")
+        br.sleep(0.3)
+        shot = png(br, SHOTS / ("red-door-%s.png" % ("bug" if r["refused"] == 0 else "held")))
+        w_ = int(br.evaluate("String(document.querySelector('canvas').width)"))
+        h_ = int(br.evaluate("String(document.querySelector('canvas').height)"))
+        zoom_ = float(br.evaluate("String(window.LAB.branchSource.weave.ZOOM)"))
+        r["fromOwnFile"] = apart(shot, work_in_the_frame(BENCH / "photos" / PHOTOS[0].name,
+                                                        w_, h_, zoom_))[0]
+        br.evaluate("window.__cancel('red one'); 0")
+        return r
+
+    base_read = on_bench(red_one)
+    bug = WEAVE.replace("var want = st.mix === 0 ? 1 : (st.mix === 1 ? 0 : -1);",
+                        "var want = -1;", 1)
+    bug_read = on_bench(red_one, pack_text=bug)
+    check(RED_ROWS[0],
+          bug != WEAVE and base_read and bug_read
+          and base_read["refused"] == 1 and base_read["state"] == "idle"
+          and bug_read["refused"] == 0 and bug_read["state"] == "running"
+          and bug_read["drew"] == 1 and bug_read["fromOwnFile"] > SEAM,
+          f"with a balance of 0.5 driven onto the entry door on the "
+          f"{base_read and base_read['buffer']} buffer, the reading tells the host so "
+          f"({base_read and base_read['refused']} refusal, state "
+          f"{base_read and base_read['state']}) and the walk's own glide carries the visitor. With "
+          f"the door test taken out — no instant is a door, the instrument as it stood before it "
+          f"read its doors at runtime — the same command draws that door instead "
+          f"({bug_read and bug_read['refused']} refusals, state {bug_read and bug_read['state']}, "
+          f"{bug_read and bug_read['drew']} cue drawn), and the frame the visitor gets stands "
+          f"{bug_read and bug_read['fromOwnFile']:.4f} of 255 from the departing work's own file "
+          f"against the project's seam of {SEAM}: a door woven of both photographs")
 
     shutil.rmtree(BENCH, ignore_errors=True)
     shutil.rmtree(SHOTS, ignore_errors=True)
