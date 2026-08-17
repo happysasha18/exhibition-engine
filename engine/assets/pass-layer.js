@@ -181,7 +181,21 @@
       stage.canvas.width = W;
       stage.canvas.height = H;
       stage.gl.viewport(0, 0, W, H);
+      forgetApplied();
     }
+  }
+
+  // A READING IS DEFINED ON THE GRID IT WAS TAKEN ON, and the grid moves under a pass: the
+  // resolution ladder steps down when frames go long, a window resize or an orientation change
+  // arrives mid-flight. The instant the drawing buffer changes, every reading already published
+  // stops describing anything that is on screen. A voice whose window has since closed will never
+  // report again, so its old reading would otherwise ride to the landing and be published as this
+  // passage's applied state on a buffer it was never taken on. It is dropped here instead: a voice
+  // that has not reported on the grid now standing carries NOTHING, which is exactly the shape a
+  // voice that never reported at all already has. Added 2026-08-17 with the staleness repair.
+  function forgetApplied() {
+    if (!cur || !cur.voices) return;
+    for (var i = 0; i < cur.voices.length; i++) cur.voices[i].applied = null;
   }
 
   // The measurement belongs to its own resolution: changing the step forgets the frame times, which
@@ -1595,6 +1609,12 @@
                            applied: v.applied || null };
                 }),
                 live: rec.liveCues || [], drew: rec.drewLastFrame || 0,
+                // THE GRID THIS RUN ENDED ON, frozen with everything else the run left behind. The
+                // census below is the LIVE canvas and stays that way — that is its job — but a
+                // reader asking what one passage applied has to name the passage's own grid, not
+                // whatever the canvas has become since. Without this the record could carry the
+                // readings of one run beside the buffer of a later one.
+                drawnOn: { buffer: W + "x" + H, dpr: dpr },
                 budget: budgetOfScore(rec.cmd.score), grant: rec.grant || null };
     logEvt(landState, rec.cmd.gen, why || null);
     // THE HANDOFF, INSIDE ONE FRAME. The DOM's work is revealed and the canvas released in that
@@ -2282,6 +2302,12 @@
       }) : (lastRun ? lastRun.stack : null),
       live: cur ? cur.liveCues : (lastRun ? lastRun.live : null),
       drew: cur ? cur.drewLastFrame : (lastRun ? lastRun.drew : null),
+      // THE GRID THE STACK ABOVE WAS DRAWN ON. Live while a pass runs; after the landing it is the
+      // grid that run ended on, frozen with the rest of what it left behind. A reading on the stack
+      // and this pair are one passage's facts and must be read together — the census further down
+      // is the live canvas and answers a different question.
+      drawnOn: cur ? { buffer: W + "x" + H, dpr: dpr }
+                   : (lastRun ? lastRun.drawnOn : null),
       // §4.4's tier reckoning, every number it is judged on rather than only its verdict
       budget: cur ? budgetOfScore(cur.cmd.score) : (lastRun ? lastRun.budget : null),
       // §7's grant across the stack: what was asked, what the ladder landed on, and the sum the

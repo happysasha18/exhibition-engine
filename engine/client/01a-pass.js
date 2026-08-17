@@ -1018,10 +1018,17 @@
     let rep = null;
     try { rep = passLayer && passLayer.report ? passLayer.report() : null; } catch (e) {}
     if (!rep) return null;
+    // THE GRID THE PASSAGE'S OWN FRAMES WERE DRAWN ON, which the host freezes with the run rather
+    // than reading off the live canvas. The two part company whenever the buffer moves after the
+    // landing — the resolution ladder steps, the window is resized — and a record naming the live
+    // canvas beside readings taken on the run's own grid would say two different things at once.
+    // The census is kept as the fallback for a host that predates the frozen pair.
+    const drawn = rep.drawnOn || (rep.census ? { buffer: rep.census.buffer, dpr: rep.census.dpr }
+                                             : null);
     row.applied = {
       instrument: rep.instrument,
-      buffer: rep.census ? rep.census.buffer : null,
-      dpr: rep.census ? rep.census.dpr : null,
+      buffer: drawn ? drawn.buffer : null,
+      dpr: drawn ? drawn.dpr : null,
       // `handles` is what the HOST resolved and asked each cue for. `applied` is what the INSTRUMENT
       // published about its own door on the buffer it drew on, through the frame state's
       // `reportApplied` — the request it was handed, the value it drew, how far apart the two stand,
