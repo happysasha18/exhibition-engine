@@ -341,11 +341,38 @@ REPORTS = [
 ]
 
 # ---------------------------------------------------------------- string rows
-check("PASS-COVERAGE the ground fills the frame and the two voices above it publish a mask",
-      PACK.count("gl_FragColor = vec4(col, 1.0)") == 1
-      and PACK.count("gl_FragColor = vec4(col, 1.0 - cov)") == 2,
-      "one instrument writes the constant 1 and two publish `1.0 - cov`, which is the mask each of "
-      "them already builds to decide which work owns a point")
+
+# ---- what each instrument declares, and what its own shader writes -------------------------------
+# 2026-08-17 — READ PER INSTRUMENT, where the two rows below used to count occurrences over the whole
+# pack. The counts were 1 and 2 when three instruments shipped and stayed right through `adrift`,
+# whose alpha is neither literal; `unfold` lands as a second frame-filling ground and the counts stop
+# describing the fleet. What the law actually says is a pairing — an instrument that declares it
+# writes no coverage writes the constant 1, and one that declares it writes coverage writes an alpha
+# its own shader computed — so the rows below read that pairing off each file.
+def _declares(src):
+    m = re.search(r"coverage:\s*\{\s*writes:\s*(true|false)", src)
+    return m.group(1) if m else None
+
+
+def _alpha(src):
+    m = re.search(r"gl_FragColor = vec4\(([^;]+)\);", src)
+    return m.group(1).strip() if m else None
+
+
+FILLS = [n for n in NAMES if _declares(BUILT[n]) == "false"]
+PUBLISHES = [n for n in NAMES if _declares(BUILT[n]) == "true"]
+
+check("PASS-COVERAGE every shader writes the alpha its own manifest declares",
+      bool(FILLS) and bool(PUBLISHES)
+      and len(FILLS) + len(PUBLISHES) == len(NAMES)
+      and all(_alpha(BUILT[n]) == "col, 1.0" for n in FILLS)
+      and all(_alpha(BUILT[n]) and _alpha(BUILT[n]) != "col, 1.0" for n in PUBLISHES),
+      "the declaration and the shader are one statement read twice. Filling the frame and writing "
+      "the constant 1, which is what lets a stack stand on them: "
+      + ", ".join("«%s» writing «%s»" % (n, _alpha(BUILT[n])) for n in FILLS)
+      + ". Publishing an alpha the shader itself computed, so the frame beneath reaches the eye "
+        "where their own matter is absent: "
+      + ", ".join("«%s» writing «%s»" % (n, _alpha(BUILT[n])) for n in PUBLISHES))
 
 check("PASS-COVERAGE the blend is straight source-over, never premultiplied",
       "gl0.blendFunc(gl0.SRC_ALPHA, gl0.ONE_MINUS_SRC_ALPHA)" in LAYER
@@ -356,10 +383,11 @@ check("PASS-COVERAGE the blend is straight source-over, never premultiplied",
       "black across its field")
 
 check("PASS-COVERAGE each instrument declares its own coverage in its manifest",
-      PACK.count("coverage: { writes: false") == 1
-      and PACK.count("coverage: { writes: true") == 2,
-      "§8's own block. The declaration is what a score validator can read, since it cannot read an "
-      "alpha expression")
+      all(_declares(BUILT[n]) in ("true", "false") for n in NAMES)
+      and all(re.search(r"how:", BUILT[n]) for n in NAMES),
+      "§8's own block, carried by every one of the %d instruments that ship: %s. The declaration is "
+      "what a score validator reads, since an alpha expression is beyond it"
+      % (len(NAMES), ", ".join("«%s» writes %s" % (n, _declares(BUILT[n])) for n in NAMES)))
 
 check("PASS-COVERAGE the host imposes no weight of its own, and no uniform carries one",
       not re.search(r"\bblendColor\b|\bCONSTANT_ALPHA\b", LAYER)

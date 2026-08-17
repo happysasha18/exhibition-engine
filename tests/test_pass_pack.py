@@ -152,10 +152,17 @@ check("PASS-PACK every file declares its own version in one place, and the build
 # whose size leaks there is now held to the nearest whole size instead of refused, with the
 # composer's own request kept beside the size applied. tests/test_budget.py carries the same move on
 # the gzipped bytes with its own note.
+# 2026-08-17 — THE PANELS INSTRUMENT ARRIVES WITH ITS OWN FENCE, at the measured 15 082 B plus
+# about a tenth. It is the first port whose lab module held no shader at all: the module draws
+# with CSS 3D and this file carries the inverse of that transform chain, which is what the extra
+# bytes over the matter and weave instruments are — a two-by-two solve per panel, four panels, the
+# sheet's own plane, and the shades and creases each panel carries. It is fetched by the host,
+# after the host, and only on a visit whose own score names it.
 FENCES = {
     "adrift": (20_700, 18_846),
     "gears": (20_000, 18_190),
     "matter": (10_500, 9_529),
+    "unfold": (16_600, 15_082),
     "weave": (13_900, 12_611),
 }
 for _n in NAMES:

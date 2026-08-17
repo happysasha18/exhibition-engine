@@ -425,16 +425,45 @@ check("PASS-STACK the host imposes no opacity of its own on any cue",
       "constant alpha, and no opacity in the host OR in the pack")
 
 # SUPERSEDED 2026-08-14 by the coverage law. This row used to assert the debt — all three shaders
-# writing alpha 1.0, so a stack read as plain occlusion. Coverage landed, so the row now asserts what
-# replaced it: the ground fills the frame and the two voices above it publish their own masks.
+# writing alpha 1.0, so a stack read as plain occlusion. Coverage landed, so the row asserts what
+# replaced it: the instruments that carry a ground fill the frame, and every voice standing over one
+# publishes its own mask.
+#
+# 2026-08-17 — READ PER INSTRUMENT, where the row used to count occurrences over the whole pack. The
+# counts were 1 and 2 when three instruments shipped and stayed right through `adrift`, whose alpha
+# is neither literal; `unfold` lands as a second frame-filling ground and the counts stop describing
+# the fleet. What the law says is a pairing — an instrument that declares it writes no coverage writes
+# the constant 1, and one that declares it writes coverage writes an alpha its own shader computed —
+# so the row reads that pairing off each file.
+BUILT = {p.name[len("pass-inst-"):-len(".js")]: p.read_text(encoding="utf-8")
+         for p in sorted(TMP.glob("pass-inst-*.js"))}
+NAMES = sorted(BUILT)
+
+
+def _declares(src):
+    m = re.search(r"coverage:\s*\{\s*writes:\s*(true|false)", src)
+    return m.group(1) if m else None
+
+
+def _alpha(src):
+    m = re.search(r"gl_FragColor = vec4\(([^;]+)\);", src)
+    return m.group(1).strip() if m else None
+
+
+FILLS = [n for n in NAMES if _declares(BUILT[n]) == "false"]
+PUBLISHES = [n for n in NAMES if _declares(BUILT[n]) == "true"]
+
 check("PASS-STACK the ground fills the frame and the voices above it write coverage",
-      PACK.count("gl_FragColor = vec4(col, 1.0)") == 1
-      and PACK.count("gl_FragColor = vec4(col, 1.0 - cov)") == 2,
-      "the woven instrument has no absence to publish — its two ribbon sets partition the frame and "
-      "both branches of every mix are picture — so it writes alpha 1.0 and carries the ground. "
-      "`matter` and the meshing instrument each publish the mask they already build, 1.0 - cov, the "
-      "share of the arriving work, so the frame beneath them reaches the eye where their own matter "
-      "is absent")
+      bool(FILLS) and bool(PUBLISHES)
+      and len(FILLS) + len(PUBLISHES) == len(NAMES)
+      and all(_alpha(BUILT[n]) == "col, 1.0" for n in FILLS)
+      and all(_alpha(BUILT[n]) and _alpha(BUILT[n]) != "col, 1.0" for n in PUBLISHES),
+      "the declaration and the shader are one statement read twice. Filling the frame and writing "
+      "alpha 1.0, which is what a stack stands on: "
+      + ", ".join("«%s»" % n for n in FILLS)
+      + ". Publishing an alpha the shader itself computed, so the frame beneath reaches the eye "
+        "where their own matter is absent: "
+      + ", ".join("«%s» writing «%s»" % (n, _alpha(BUILT[n])) for n in PUBLISHES))
 
 check("PASS-STACK the draw walks the stack ascending, so the first line is topmost by default",
       "(c.stack === undefined || c.stack === null) ? (n - i)" in LAYER
