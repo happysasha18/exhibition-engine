@@ -68,7 +68,24 @@
       "uniform float uRot;",
       "uniform float uSpeed;",
       "uniform float uSeed;",
+      // THE WAVE THE WORK ITSELF CARRIES: its depth in cells, its own spatial frequency along the
+      // ribbon in cycles across the frame side it runs on, and how fast it travels in cycles a
+      // second. All three are handles a score drives from the photograph's own measured structure,
+      // and all three are nothing for a work that carries no wave.
+      "uniform vec4 uWave;",
       "const float TAU = 6.28318530718;",
+      // THE WAVE'S OWN SHAPE, and the one part of it that is not read from the work. A single sine
+      // is a corrugation and reads as a stock effect; the wave carries an overtone, and the two are
+      // incommensurate so the irregularity never settles into a repeating figure — the rubato law's
+      // third instrument, spent once here and nowhere else on this lattice. Two thirds of the depth
+      // stands in the fundamental and one third in the overtone, the overtone runs at 1.8235 of the
+      // fundamental and drifts at 0.6889 of its rate the other way. These four are the proportions
+      // of the wave lab/effects/weave.js drew at 32a013a, kept as SHAPE while its size, its period
+      // and its speed became the work's own reading.
+      "const float WLOW = 0.66666667;",
+      "const float WHIGH = 0.33333333;",
+      "const float WOVER = 1.82352941;",
+      "const float WBEAT = 0.68888889;",
       "vec2 into(vec2 p, vec4 f){",
       "  return clamp((p - 0.5) * f.xy + 0.5 + f.zw, 0.0008, 0.9992);",
       "}",
@@ -94,19 +111,32 @@
       "  float nH = max(3.0, nV / max(aspect, 0.05));",
       "  float phV = uT * 0.31;",
       "  float phH = uT * 0.24 + 1.7;",
-      "  float alive = smoothstep(0.0, 0.10, uDuty) * smoothstep(1.0, 0.90, uDuty);",
-      "  float aV1 = TAU * (uv.y * 1.7 - uT * 0.090);",
-      "  float aV2 = TAU * (uv.y * 3.1 + uT * 0.062 + 1.3);",
-      "  float edgeV = alive * (0.34 * sin(aV1) + 0.17 * sin(aV2));",
-      "  float dEdgeV = alive * TAU * (0.34 * 1.7 * cos(aV1) + 0.17 * 3.1 * cos(aV2));",
-      "  float aH1 = TAU * (uv.x * 1.6 + uT * 0.081);",
-      "  float aH2 = TAU * (uv.x * 2.9 - uT * 0.055 + 0.7);",
-      "  float edgeH = alive * (0.34 * sin(aH1) + 0.17 * sin(aH2));",
-      "  float dEdgeH = alive * TAU * (0.34 * 1.6 * cos(aH1) + 0.17 * 2.9 * cos(aH2));",
+      // THE RIBBON EDGE, STRAIGHT BY DEFAULT AND WAVED WHERE THE WORK CARRIES A WAVE (his 19:13
+      // word, and the charter's THE INSTRUMENT'S GEOMETRY IS READ FROM THE WORK). `uWave.x` is the
+      // depth of the wave in cells and it is the whole switch: at nothing every term below is
+      // exactly zero, `cV` is `warpV(uv.x) * nV` and `wV` is the plain footprint — the two lines
+      // this instrument drew before 32a013a, recovered by arithmetic rather than by a second code
+      // path, so a work with no measured wave draws the pre-wave frame and not a near neighbour of
+      // it. The frequency and the drift ride the same switch and cost nothing when it is shut.
+      "  float wAmp = uWave.x;",
+      "  float wK = uWave.y;",
+      "  float wR = uWave.z;",
+      "  float alive = wAmp * smoothstep(0.0, 0.10, uDuty) * smoothstep(1.0, 0.90, uDuty);",
+      "  float aV1 = TAU * (uv.y * wK - uT * wR);",
+      "  float aV2 = TAU * (uv.y * wK * WOVER + uT * wR * WBEAT + 1.3);",
+      "  float edgeV = alive * (WLOW * sin(aV1) + WHIGH * sin(aV2));",
+      "  float dEdgeV = alive * TAU * wK * (WLOW * cos(aV1) + WHIGH * WOVER * cos(aV2));",
+      "  float aH1 = TAU * (uv.x * wK + uT * wR);",
+      "  float aH2 = TAU * (uv.x * wK * WOVER - uT * wR * WBEAT + 0.7);",
+      "  float edgeH = alive * (WLOW * sin(aH1) + WHIGH * sin(aH2));",
+      "  float dEdgeH = alive * TAU * wK * (WLOW * cos(aH1) + WHIGH * WOVER * cos(aH2));",
       "  float cV = warpV(uv.x, 2.0, phV) * nV + edgeV;",
       "  float cH = warpV(uv.y, 3.0, phH) * nH + edgeH;",
       "  float iv = floor(cV), fv = fract(cV);",
       "  float ih = floor(cH), fh = fract(cH);",
+      // The wandering edge tilts the cell coordinate across the OTHER axis too, so its own slope
+      // joins the pixel footprint — without it a waved edge sparkles. The term is the wave's own
+      // slope, so at a straight edge it is exactly 0 and the footprint is the pre-wave one.
       "  float wV = 0.5 * (nV * warpD(uv.x, 2.0, phV) / uRes.x + abs(dEdgeV) / uRes.y);",
       "  float wH = 0.5 * (nH * warpD(uv.y, 3.0, phH) / uRes.y + abs(dEdgeH) / uRes.x);",
       "  float ph = uT * uSpeed * 0.17;",
@@ -208,6 +238,108 @@
       return FEEL_D0 + (1 - 2 * FEEL_D0) * f;
     }
 
+    // ---- THE RESPONSE CURVES, MEASURED ON THIS INSTRUMENT'S OWN FRAME ----------------------------
+    // The charter's law: equal movement of the hand, equal felt change. Until 2026-08-17 this
+    // instrument carried one measured curve — `feelOf` above — and spent it on one handle, the
+    // crossing's own progress, so equal steps of every other handle were not equal felt change.
+    // These are the curves for the rest.
+    //
+    // HOW THEY WERE MEASURED. At forty-one places along the raw handle the frame is drawn twice,
+    // four thousandths of the handle's own range apart, and the distance between those two frames
+    // is the picture's RATE of change there. The rate is integrated along the handle and the
+    // running total inverted against the hand's own twenty-one equal marks. Reading the distance
+    // between consecutive COARSE steps instead saturates — past a step of a few tens of 255 two
+    // frames of one photograph differ by about as much however far apart they stand — so the small
+    // probe is what keeps the reading a rate. All four were read at a woven middle on a 390 x 844
+    // buffer.
+    //
+    // WHAT THE MEASUREMENT FOUND, AND IT IS WORTH SAYING PLAINLY: this fabric's handles are close
+    // to the law already. The widest felt change against the narrowest runs from 1.034 to 1.538
+    // across the four, where the unfold's own raw fold measured 5.19 before its curve and its
+    // stagger 12.728 before one of these. So the curves below are published rather than applied,
+    // and what they buy is small and now on the record instead of assumed either way.
+    //
+    // WHY NONE OF THEM IS APPLIED HERE. A curve belongs on a handle whose value is a POSITION on a
+    // scale. Not one of these four is: `nMul` multiplies a measured band count, `speed` is a rate,
+    // `press` is a pressure in the module's own units and `wave` is a depth in cells read from the
+    // work. A composer places each of them from a measurement, so applying a curve here would
+    // corrupt the very number it was asked for. The curves are published beside their ranges and
+    // the placing stays with whoever owns the request.
+    var CURVES = {
+      // band 1.390 before, 1.079 after
+      nMul: [0, 0.046, 0.0889, 0.1312, 0.1763, 0.2253, 0.2731, 0.3204, 0.3694, 0.421, 0.4724, 0.5238,
+               0.5741, 0.6264, 0.6784, 0.7306, 0.7835, 0.8368, 0.8903, 0.9445, 1],
+      // band 1.034 before, 1.006 after
+      press: [0, 0.0499, 0.0998, 0.1495, 0.199, 0.2486, 0.2981, 0.3474, 0.3968, 0.4463, 0.4961, 0.5459,
+                0.5958, 0.6459, 0.6961, 0.7467, 0.7973, 0.848, 0.8987, 0.9495, 1],
+      // band 1.538 before, 1.147 after. The travel this handle moves is PERIODIC — it is a rate,
+      // and at the second the walk was read at it carries about three whole turns of the strips'
+      // own sine — so its curve describes one instant of the clock and not the handle's whole life.
+      speed: [0, 0.0471, 0.1034, 0.1557, 0.1989, 0.2455, 0.3006, 0.3505, 0.3977, 0.4497, 0.5019, 0.5498,
+                0.5959, 0.6468, 0.6957, 0.747, 0.8006, 0.8509, 0.8967, 0.9468, 1],
+      // band 1.367 before, 1.074 after
+      wave: [0, 0.0548, 0.1048, 0.1531, 0.2009, 0.2511, 0.3025, 0.352, 0.4015, 0.4519, 0.5018, 0.5516,
+               0.602, 0.6519, 0.702, 0.7515, 0.801, 0.8508, 0.9004, 0.9507, 1],
+    };
+    var CURVE_BANDS = { nMul: [1.39, 1.079], press: [1.034, 1.006], speed: [1.538, 1.147],
+                        wave: [1.367, 1.074] };
+    var CURVE_MEASURED_ON = "the drawn frame's own rate of change, read at forty-one places along "
+                          + "the raw handle across a probe of four thousandths of its range, at a "
+                          + "woven middle on a 390 x 844 buffer";
+
+    // ---- THE WAVE THE WORK ITSELF CARRIES ---------------------------------------------------------
+    // His 2026-08-13 11:20 word put a wave on this ribbon edge because frames between 0.35 and 0.50
+    // read as flat vertical blinds; his 2026-08-17 19:13 word called that wave a regression and
+    // carried the resolution in the same sentence — a wavy cut plays only where the work itself
+    // carries the wave, and there introducing the wave is the beauty. Both hold at once exactly one
+    // way: THE STRAIGHT RIBBON IS THE DEFAULT and the wave is a parameter the photograph's own
+    // measured structure drives.
+    //
+    // WHAT EACH OF THE THREE READS, which is the class law of his 19:21 word — every geometric and
+    // temporal parameter names the measurement it reads:
+    //   · THE DEPTH, `wave`, in cells. The gate is `texture.type`, the collection's own texture
+    //     vocabulary, at «рябь» — a ripple, which that vocabulary defines as a periodic band in the
+    //     spectrum and which fires on nine of the hundred and twenty-one works
+    //     (lab/step1-tone-texture.py:139, :380). Where it does not fire the work carries no measured
+    //     wave and this handle is 0. Where it does, the depth is scaled from
+    //     `1 - texture.localStraightness` — the agreement of the doubled-angle edge field inside a
+    //     fifteen-point neighbourhood (lab/step1-tone-texture.py:297-305), which is the one measured
+    //     number in this collection that says how far a work's own lines depart from straight.
+    //   · THE PERIOD, `wavePeriod`, as a fraction of the frame side the wave runs along. Read from
+    //     `texture.spectralPeriodPx` over the work's own frame side — the wavelength of the very
+    //     spectral band the ripple gate fires on. That reading saturates at its own lowest bin on
+    //     most of the collection, so a work standing at the ceiling carries no usable wavelength and
+    //     the gate above is what keeps it from reaching this handle at all.
+    //   · THE DRIFT, `waveDrift`, in cycles a second. How far the wave travels along its own ribbon
+    //     in a second, as a share of its own period, so it reads the SAME measurement as the period
+    //     and carries no clock of its own. It is nothing when the depth is nothing.
+    // The wave's DIRECTION is not a fourth handle. The edge undulates along the ribbon's own length,
+    // and which way the ribbons run is already the `axis` handle, which already names its own
+    // measurement (the banding axis cut-lines.json recorded). A wave that ran across the ribbons
+    // instead would be a second lattice on one level, which the levels law does not allow.
+    //
+    // THE CEILING is the depth lab/effects/weave.js drew at 32a013a — 0.34 of a cell in the
+    // fundamental and 0.17 in the overtone, half a cell together. Past half a cell an edge reaches
+    // its neighbour's own middle and the fabric stops reading as ribbons at all.
+    var WAVE_MAX = 0.51;
+    // The period the handle rests at where a score turns the depth up and says nothing about the
+    // period: the one lab/effects/weave.js drew at 32a013a, 1.7 cycles across the frame side, said
+    // here in the unit a measurement arrives in.
+    var WAVE_PERIOD_DEF = 1 / 1.7;
+    var WAVE_PERIOD_MIN = 0.08, WAVE_PERIOD_MAX = 2, WAVE_DRIFT_MAX = 0.5;
+    // The straight edge, said once as a value rather than as an absence, so every road that asks for
+    // a pose without naming the wave gets the same numbers and the pre-wave frame with them.
+    var WAVE_STRAIGHT = [0, 1 / WAVE_PERIOD_DEF, 0, 0];
+    function waveOf(st) {
+      var amp = typeof st.wave === "number" ? clamp(st.wave, 0, WAVE_MAX) : 0;
+      if (!(amp > 0)) return WAVE_STRAIGHT.slice();
+      var per = typeof st.wavePeriod === "number"
+        ? clamp(st.wavePeriod, WAVE_PERIOD_MIN, WAVE_PERIOD_MAX) : WAVE_PERIOD_DEF;
+      var drift = typeof st.waveDrift === "number"
+        ? clamp(st.waveDrift, -WAVE_DRIFT_MAX, WAVE_DRIFT_MAX) : 0;
+      return [amp, 1 / per, drift, 0];
+    }
+
     // The numbers of one frame: everything the shader gets beyond the seating of the two works is a
     // pure function of the pose. The host calls this; so does the lab's own carrier, from the same
     // source — which is why the two roads can be compared frame against frame.
@@ -227,6 +359,7 @@
         amp: Math.min(AMP * weave * st.press, TRAVEL),
         nV: clamp(st.strips * st.nMul * clamp(st.cssWidth / 1000, 0.5, 1), 3, 64),
         rot: st.reduced ? 0 : rotForTime(st.t, st.axis),
+        wave: waveOf(st),
         // read on the diagnostic surface, bound to no uniform: what the handle came to
         bal: bal,
       };
@@ -336,10 +469,14 @@
     // THE LIVING EDGE at one place along the axis it runs on: its own value and its own slope, both
     // carried from FRAG. `alive` is nothing at a whole duty, which is why a whole door reads no edge
     // at all.
-    function edgeAt(u, t, alive, k1, k2, r1, r2, ph2) {
-      var a1 = TAU * (u * k1 + t * r1), a2 = TAU * (u * k2 + t * r2 + ph2);
-      return { v: alive * (0.34 * Math.sin(a1) + 0.17 * Math.sin(a2)),
-               d: alive * TAU * (0.34 * k1 * Math.cos(a1) + 0.17 * k2 * Math.cos(a2)) };
+    // FRAG's own four wave-shape constants, carried here digit for digit so the reading below and
+    // the frame the shader draws cannot drift apart.
+    var WLOW = 0.66666667, WHIGH = 0.33333333, WOVER = 1.82352941, WBEAT = 0.68888889;
+    function edgeAt(u, t, alive, k, r, sg, ph2) {
+      var a1 = TAU * (u * k + sg * t * r);
+      var a2 = TAU * (u * k * WOVER - sg * t * r * WBEAT + ph2);
+      return { v: alive * (WLOW * Math.sin(a1) + WHIGH * Math.sin(a2)),
+               d: alive * TAU * k * (WLOW * Math.cos(a1) + WHIGH * WOVER * Math.cos(a2)) };
     }
 
     // THE DOOR, MEASURED. Null everywhere but at a door, since away from the doors a fabric woven of
@@ -389,14 +526,19 @@
       // bounded, because the open share stands in EVERY band and one band in a hundred is as
       // eloquent as all of them.
       if (read.dip < DOOR_SHOW && read.travelPx < DOOR_SLIP) return read;
-      var alive = smoothstep(0, 0.10, v.duty) * smoothstep(1, 0.90, v.duty);
+      // The living edge on the buffer being drawn, at the wave the WORK asked for. A straight edge
+      // makes every term of this nothing, which is why a work with no wave costs this reading the
+      // same two divisions it cost before the wave existed.
+      var wv = v.wave || WAVE_STRAIGHT;
+      var alive = wv[0] * smoothstep(0, 0.10, v.duty) * smoothstep(1, 0.90, v.duty);
+      var wK = wv[1], wR = wv[2];
       var phV = st.t * 0.31, phH = st.t * 0.24 + 1.7;
-      var rows = [edgeAt(0.5 / H, st.t, alive, 1.7, 3.1, -0.090, 0.062, 1.3),
-                  edgeAt(0.5, st.t, alive, 1.7, 3.1, -0.090, 0.062, 1.3),
-                  edgeAt((H - 0.5) / H, st.t, alive, 1.7, 3.1, -0.090, 0.062, 1.3)];
-      var cols = [edgeAt(0.5 / W, st.t, alive, 1.6, 2.9, 0.081, -0.055, 0.7),
-                  edgeAt(0.5, st.t, alive, 1.6, 2.9, 0.081, -0.055, 0.7),
-                  edgeAt((W - 0.5) / W, st.t, alive, 1.6, 2.9, 0.081, -0.055, 0.7)];
+      var rows = [edgeAt(0.5 / H, st.t, alive, wK, wR, -1, 1.3),
+                  edgeAt(0.5, st.t, alive, wK, wR, -1, 1.3),
+                  edgeAt((H - 0.5) / H, st.t, alive, wK, wR, -1, 1.3)];
+      var cols = [edgeAt(0.5 / W, st.t, alive, wK, wR, 1, 0.7),
+                  edgeAt(0.5, st.t, alive, wK, wR, 1, 0.7),
+                  edgeAt((W - 0.5) / W, st.t, alive, wK, wR, 1, 0.7)];
       var byCol = setLeak(want, dutyV, nV, phV, 2, W, H, rows);
       var byRow = setLeak(want, dutyH, nH, phH, 3, H, W, cols);
       read.pts = byCol.pts + byRow.pts;
@@ -591,10 +733,40 @@
                              drawnFloor: 3, basketTakes: 0.25 } },
         axis: { min: 0, max: 2, def: 2, kind: "enum", step: 1, names: AXES,
                 banding: ["vertical", "horizontal"], turns: 2, turnPeriodS: 27 },
-        speed: { min: 0.1, max: 2.5, def: 1 },
+        speed: { min: 0.1, max: 2.5, def: 1,
+                 curve: { knots: CURVES.speed, band: CURVE_BANDS.speed, applied: false,
+                          measuredOn: CURVE_MEASURED_ON } },
         seed: { min: 0, max: 8, def: 0 },
-        nMul: { min: 0.62, max: 1.65, def: 1 },
-        press: { min: 1, max: PRESS, def: 1 },
+        // THE THREE THAT CARRY THE WAVE, and the reason they are handles rather than numbers in a
+        // shader. Until 2026-08-17 the ribbon edge waved on eleven literals that read nothing off
+        // the photograph, on every work alike; the band count on this same instrument was measured
+        // from the work, which is what the difference looks like. Each of these three now says
+        // which measurement it is driven from, and all three rest at the straight edge — `wave` at
+        // 0 is the whole switch and the other two cost nothing while it is shut.
+        wave: { min: 0, max: WAVE_MAX, def: 0, unit: "cells",
+                reads: "texture.type at «рябь» as the gate, and 1 - texture.localStraightness as "
+                     + "the depth; a work whose texture is not a ripple drives this to 0 and the "
+                     + "ribbon edge is a straight line",
+                curve: { knots: CURVES.wave, band: CURVE_BANDS.wave, applied: false,
+                         measuredOn: CURVE_MEASURED_ON },
+                applied: { straightAt: 0, ceiling: WAVE_MAX,
+                           shape: { fundamental: WLOW, overtone: WHIGH,
+                                    overtoneTimes: WOVER, overtoneDriftTimes: -WBEAT } } },
+        wavePeriod: { min: WAVE_PERIOD_MIN, max: WAVE_PERIOD_MAX, def: WAVE_PERIOD_DEF,
+                      unit: "a fraction of the frame side the wave runs along",
+                      reads: "texture.spectralPeriodPx over the work's own frame side — the "
+                           + "wavelength of the spectral band the ripple gate fires on; the shader "
+                           + "takes its reciprocal" },
+        waveDrift: { min: -WAVE_DRIFT_MAX, max: WAVE_DRIFT_MAX, def: 0,
+                     unit: "cycles a second",
+                     reads: "the same texture.spectralPeriodPx, as a share of the wave's own "
+                          + "period travelled in a second; nothing while the depth is nothing" },
+        nMul: { min: 0.62, max: 1.65, def: 1,
+                 curve: { knots: CURVES.nMul, band: CURVE_BANDS.nMul, applied: false,
+                          measuredOn: CURVE_MEASURED_ON } },
+        press: { min: 1, max: PRESS, def: 1,
+                 curve: { knots: CURVES.press, band: CURVE_BANDS.press, applied: false,
+                          measuredOn: CURVE_MEASURED_ON } },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
         // the meshing instrument publishes its own. `heldWholeAtADoor` says what is read (the share
         // of every band the fabric leaves to the other work), on which grid (the drawing buffer the
@@ -633,6 +805,7 @@
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, bal: 1, nMul: 1, press: 1, strips: 28, axis: 2,
+                     wave: 0, wavePeriod: WAVE_PERIOD_DEF, waveDrift: 0,
                      cssWidth: 1000, cssHeight: 1000, t: 0, reduced: false },
       passes: [{
         program: "weave", vert: VERT, frag: FRAG, position: "aPos",
@@ -647,6 +820,7 @@
           { name: "uDuty", type: "float", source: "frame:duty" },
           { name: "uAmp", type: "float", source: "frame:amp" },
           { name: "uRot", type: "float", source: "frame:rot" },
+          { name: "uWave", type: "vec4", source: "frame:wave" },
           { name: "uSpeed", type: "float", source: "handle:speed" },
           { name: "uSeed", type: "float", source: "handle:seed" },
         ],
@@ -706,6 +880,9 @@
           bal: bal, mix: h.mix,
           nMul: h.nMul, press: h.press,
           strips: h.strips, axis: h.axis, speed: h.speed, seed: h.seed,
+          // The wave the work carries, straight to the pose. A score that names none of the three
+          // leaves the edge straight, which is the pre-wave frame.
+          wave: h.wave, wavePeriod: h.wavePeriod, waveDrift: h.waveDrift,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h, t: h.clock, reduced: st.reduced,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
           // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The

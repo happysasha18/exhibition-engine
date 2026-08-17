@@ -134,11 +134,29 @@
       "uniform vec4 uCrease;",
       // the judges' handle: the panel map as colour
       "uniform float uMask;",
+      // THE WORLD THE SHEET OPENS INTO: how far it has opened, the plane's own attitude to the eye
+      // in radians, the parquet's own period as a share of the sheet, and the turn of its lattice.
+      // Every one of the four is nothing at nothing, which is what makes the door exact.
+      "uniform vec4 uField;",
       // THE ROOM THE LEAN NEEDS, and the room the CORNER needs on top of it (unfold.js:42, :47). Both
       // are the module's own numbers and both are nothing at either door, because nothing leans and
       // nothing turns there.
       "const float EDGE = 1.16;",
       "const float PULL = 1.8;",
+      // HOW FAR THE WORLD'S OWN LIGHT REACHES INTO THE PARQUET at the horizon itself. It is the
+      // port's own number and it belongs to the world rather than to the module, which has no
+      // world. It squares with distance, so the near tiles are the photograph whole and only the
+      // far ones give way to the light.
+      "const float HAZE = 0.78;",
+      // HOW CLOSE THE EYE COMES TO THE PLANE as the world opens, as a share of the viewing distance
+      // the module stands at. It is what puts the HORIZON inside the frame, and without it the
+      // parquet is a flat mirrored pattern with a hint of foreshortening — a wallpaper and not a
+      // floor. The vanishing line of a plane tipped by θ lands at d / tan θ above the frame's own
+      // middle, so at the module's own distance and seventy degrees it stands a fifth of a frame
+      // ABOVE the glass and is never seen; at this share it lands in the frame's upper quarter,
+      // where a floor's horizon belongs. Going to the floor is the eye's own first axis in
+      // lab/PARQUET-WORLD-BRIEF.md, and here it rides the world's one envelope with the rest.
+      "const float NEAR = 0.42;",
       // The sheet's own lean, applied to one vector: rotateZ, then rotateY, then rotateX, which is
       // the order a CSS transform list composes in (unfold.js:383).
       "vec3 stood(vec3 v){",
@@ -163,6 +181,32 @@
       "  uv = vec2(r.x * c2.y - c2.x * r.y, c1.x * r.y - r.x * c1.y) / safe;",
       "  z = a.z + bu.z * uv.x + bv.z * uv.y;",
       "  return abs(det) > 1e-9 && uv.x >= 0.0 && uv.y >= 0.0 && uv.x <= lim.x && uv.y <= lim.y;",
+      "}",
+      // WHERE ONE POINT OF THE FRAME FALLS ON THE PLANE THE SHEET LIES IN, with no edge to the
+      // plane at all. It is `lands` with its two limits taken off — the same two-by-two system,
+      // the same divide — because past the sheet's own rectangle the plane goes on. The one test
+      // that replaces the limits is the HORIZON: a point solves to a place behind the eye's own
+      // vanishing distance as readily as to one in front of it, and only the ones in front are on
+      // the floor. That test is what draws the horizon line, and nothing else in this file does.
+      "bool ground(vec2 s, vec3 a, vec3 bu, vec3 bv, float dd, out vec2 uv, out float z){",
+      "  vec2 c1 = vec2(bu.x + s.x * bu.z / dd, bu.y + s.y * bu.z / dd);",
+      "  vec2 c2 = vec2(bv.x + s.x * bv.z / dd, bv.y + s.y * bv.z / dd);",
+      "  float k = 1.0 - a.z / dd;",
+      "  vec2 r = vec2(s.x * k - a.x, s.y * k - a.y);",
+      "  float det = c1.x * c2.y - c2.x * c1.y;",
+      "  if (abs(det) < 1e-9) { uv = vec2(0.0); z = 0.0; return false; }",
+      "  uv = vec2(r.x * c2.y - c2.x * r.y, c1.x * r.y - r.x * c1.y) / det;",
+      "  z = a.z + bu.z * uv.x + bv.z * uv.y;",
+      "  return dd - z > 1e-4;",
+      "}",
+      // THE PARQUET'S OWN FOLD. Past its own edge the sheet does not stop and it does not repeat:
+      // it MIRRORS, which is the same law the four panels already obey inside the frame — each
+      // panel is the mirror of the quarter the sheet closes onto. So the continuation is that law
+      // carried on without end, and a viewer watching it sees the rule the work was cut by rather
+      // than being told it. One triangle wave per axis is the whole of it.
+      "vec2 folded(vec2 q, vec2 period){",
+      "  vec2 t = mod(q / period, 2.0);",
+      "  return period * (1.0 - abs(t - 1.0));",
       "}",
       // A face reads the file at the sheet's own coordinates, because the sheet IS the file: the
       // module sets the background to the whole file at the sheet's size (unfold.js:151).
@@ -190,8 +234,15 @@
       // THE GROWTH LAW (unfold.js:323-330): what a panel gives up by turning, the sheet takes back by
       // growing, so no margin can open at any point of the travel.
       "  float room = 1.0 + (EDGE - 1.0) * uForm.x + PULL * (1.0 - corner) * rY * rX;",
-      "  float sc = room * max(max(aspect / (2.0 * extX), 1.0 / (2.0 * extY)), 1.0);",
-      "  float d = persp * SZ.x * sc;",
+      // THE GROWTH LAW, AND THE ONE THING THAT RELEASES IT. `grow` is what the sheet has to be
+      // scaled by so that no point of the frame is ever left bare — the module's own repair of
+      // 2026-08-13. It is exactly 1 at either door and above 1 through the fold. As the world opens
+      // the sheet stops having to cover the frame, because the plane it lies in covers it instead,
+      // so `grow` is walked back to 1 by `uField.x`. At nothing this is `room * grow`, character for
+      // character what stood here before, and at either door it is `room` and `grow` both at 1.
+      "  float grow = max(max(aspect / (2.0 * extX), 1.0 / (2.0 * extY)), 1.0);",
+      "  float sc = room * mix(grow, 1.0, uField.x);",
+      "  float d = persp * SZ.x * sc * mix(1.0, NEAR, uField.x);",
       "  vec2 slide = vec2((CW - reachR) * 0.5, four > 0.5 ? (CH - reachB) * 0.5 : 0.0);",
       "  vec2 s = vec2(vUv.x * aspect - aspect * 0.5, vUv.y - 0.5);",
       // the three bases a panel's own two coordinates run along, once the sheet's lean is applied
@@ -261,6 +312,73 @@
       "    float tV = (uSh.x - (CW - pt)) / band;",
       "    col = mix(col, vec3(1.0), clamp(uCrease.z * 0.85 * max(0.0, 1.0 - abs(2.0 * tV - 1.0))",
       "                                   * step(uSh.y, CH), 0.0, 1.0));",
+      "  }",
+      // ---- THE WORLD THE SHEET OPENS INTO ------------------------------------------------------
+      // HIS 19:13 WORD, THE SECOND REGISTER. A crossing may be a spectacular atypical event, or it
+      // may let the viewer glimpse HOW the works were made — never a lesson, simply a
+      // transformation that reveals the making. His own instance is this one: an unfold that
+      // becomes an infinite parquet while the camera shows the plane at an angle.
+      //
+      // WHAT IS DRAWN HERE. The sheet lies in a plane. Where a PANEL stands it is the picture and
+      // nothing below is asked for. Everywhere else the same plane goes on — folded at the
+      // parquet's own period, mirrored the way the four panels are mirrored, receding to the eye's
+      // own horizon — and past the horizon the world's light stands, which is the work's own tone.
+      // So the frame is filled at every point and the alpha stays the constant 1 this instrument
+      // has always published.
+      //
+      // THE SHEET'S OWN BACKING GIVES WAY TO THE PARQUET RATHER THAN STANDING AGAINST IT. Inside
+      // the sheet's own rectangle the backing draws the whole file at the sheet's size, which is
+      // the parquet at a period of one whole sheet and nothing else; at any other period the two
+      // are different pictures and one of them has to win. The parquet wins, WEIGHTED BY THE WORLD,
+      // so at a world of nothing the backing is untouched and every step of the way is continuous.
+      //
+      // HOW IT ENTERS AND LEAVES. Through its own zero and nowhere else. At `uField.x` of nothing
+      // the plane's attitude is nothing, the growth law binds, the sheet covers the frame at every
+      // point and this branch draws on no point at all. As the world opens, the plane tips, the
+      // growth law is walked back, and the parquet grows into exactly the room the tipping opened
+      // — it is never laid over anything and it never appears.
+      //
+      // WHAT IT READS FROM THE WORK. The period is the work's own cutting step and the turn is the
+      // angle that step was cut at, both named at the handles below. So the parquet the viewer
+      // watches run off to the horizon is the work's own device, continued.
+      "  if (uField.x > 0.0 && !got) {",
+      // The world's light: the work's own tone, read at four places rather than one so a single
+      // texel cannot decide the colour of a whole sky.
+      "    vec3 tone = 0.25 * (pane(tex, SZ * 0.3, SZ) + pane(tex, SZ * vec2(0.7, 0.3), SZ)",
+      "                      + pane(tex, SZ * vec2(0.3, 0.7), SZ) + pane(tex, SZ * 0.7, SZ));",
+      "    vec3 wcol = tone; float wcode = 0.0625;",
+      "    vec2 wloc = vec2(0.0);",
+      "    vec2 gq; float gz;",
+      "    if (ground(s, oTL, e0, e1, d, gq, gz)) {",
+      // the parquet's own turn, taken about the sheet's own centre so the lattice pivots where the
+      // work does and not at the frame's corner
+      "      vec2 c0 = gq - SZ * 0.5;",
+      "      float ct = cos(uField.w), stt = sin(uField.w);",
+      "      vec2 rq = vec2(c0.x * ct + c0.y * stt, -c0.x * stt + c0.y * ct) + SZ * 0.5;",
+      "      vec2 P = SZ * max(uField.z, 0.05);",
+      "      vec2 fq = folded(rq, P);",
+      "      wcol = pane(tex, fq, SZ);",
+      // DEPTH, THE ONE THING THAT MAKES A PLANE READ AS A PLANE. What is far takes the world's own
+      // light; without it the parquet is a flat pattern however the plane is tipped.
+      //
+      // AND IT IS READ OFF THE PROJECTION'S OWN DIVISOR, not off `z`. Away from the eye is NEGATIVE
+      // z in this chain — a panel turning away carries `-sin` into its own basis, which is where
+      // that sign was set — so a fade written on `z / d` puts the haze on the NEAREST tiles and
+      // leaves the far ones bare, which is the reading turned inside out. The divisor `1 - z/d` is
+      // 1 in the sheet's own plane and grows without bound toward the vanishing point, so
+      // `1 - 1/k` is 0 at the sheet and 1 at the horizon whichever way the plane is tipped.
+      "      float k = 1.0 - gz / d;",
+      "      float far = clamp(1.0 - 1.0 / max(k, 1.0), 0.0, 1.0);",
+      "      wcol = mix(wcol, tone, HAZE * far * far);",
+      "      wcode = 0.125;",
+      "      wloc = clamp(fq / vec2(CW, CH), 0.0, 1.0);",
+      "    }",
+      // Outside the sheet nothing else drew, so the world is the picture whole. Inside it the
+      // backing drew, and the world takes it over by exactly how far the world stands open.
+      "    float w = hSh ? uField.x : 1.0;",
+      "    col = mix(col, wcol, w);",
+      "    code = mix(code, wcode, w);",
+      "    loc = mix(loc, wloc, w);",
       "  }",
       // THE PANEL MAP, the judges' own frame: which panel stands at this point of the frame and where
       // in it. It is black exactly where no panel stands, so a row reads off the picture whether the
@@ -348,10 +466,90 @@
     // but at a door — where the reading further down asks what it is worth in POINTS OF THE BUFFER
     // and holds a pair flat that stands under two of them.
     var FLAT_DEG = 0.5;
+    // ---- THE RESPONSE CURVES, MEASURED ON THIS INSTRUMENT'S OWN FRAME ----------------------------
+    // The charter's law: equal movement of the hand, equal felt change. Until 2026-08-17 this
+    // instrument carried one measured curve and spent it on one handle — the crossing's own
+    // progress — so equal steps of every OTHER handle were not equal felt change, and the composer
+    // that drives five of them said so in its own report. These are the curves for the rest.
+    //
+    // HOW THEY WERE MEASURED, AND THE ONE THING THAT HAD TO BE GOT RIGHT. At forty-one places along
+    // the raw handle the frame is drawn twice, four thousandths of the handle's own range apart,
+    // and the distance between those two frames is the picture's RATE of change there. The rate is
+    // then integrated along the handle and the running total inverted against the hand's own
+    // twenty-one equal marks. Reading the distance between consecutive COARSE steps instead — the
+    // obvious method — saturates: past a step of a few tens of 255 two frames of one photograph
+    // differ by about as much however far apart they stand, and every band it measures comes out
+    // near 1 whatever the truth is. The small probe is what keeps the reading a rate. All five were
+    // read at a fold of 0.30 on a 390 x 844 buffer, and the largest probe any of them answered was
+    // 13.7 of 255, well inside the linear reach.
+    //
+    // WHAT THE BAND IS. The widest felt change of one hand step against the narrowest. A band of 1
+    // is the law kept exactly; the module's own raw fold measured 5.19 before its curve.
+    //
+    // WHICH HANDLES CARRY A CURVE, AND WHICH CANNOT. A curve belongs on a handle whose value is a
+    // POSITION on a scale — the hand asks «how far along», and the instrument owes it equal change
+    // per equal step. A handle whose value is a QUANTITY in its own unit — a period, an angle, a
+    // count — carries none, because a curve on it would corrupt the very measurement it carries:
+    // a composer that has measured the work's cutting step and asks for it must get it.
+    //
+    // WHICH ARE APPLIED HERE, AND WHICH ARE PUBLISHED FOR WHOEVER PLACES THE REQUEST. `field` is a
+    // pure position — the score drives it with the passage's own travel and nothing else — so its
+    // curve is applied here, where the module applies its own. The other four carry a unit of their
+    // own as well as a position, and a composer places their requests from a measurement, so their
+    // curves are PUBLISHED on the manifest beside their ranges and the placing stays with whoever
+    // owns the request. Nothing is applied twice and nothing is applied silently.
+    var CURVE_MEASURED_ON = "the drawn frame's own rate of change, read at forty-one places along "
+                          + "the raw handle across a probe of four thousandths of its range, at a "
+                          + "fold of 0.30 on a 390 x 844 buffer";
+    var CURVES = {
+      // band 4.017 before, 1.079 after — the world opens slowly at first and quickly at the end,
+      // which is exactly what the eye saw before this was measured: at half a hand the frame had
+      // barely left the closed sheet.
+      field: [0, 0.0991, 0.1885, 0.2696, 0.3445, 0.4147, 0.4814, 0.5408, 0.5909, 0.6343, 0.6736, 0.7097,
+                0.744, 0.7781, 0.8134, 0.848, 0.8812, 0.9135, 0.9442, 0.9731, 1],
+      // band 1.174 before, 1.014 after
+      tilt: [0, 0.0537, 0.1072, 0.1604, 0.2135, 0.2661, 0.3181, 0.3695, 0.4203, 0.4706, 0.5208, 0.5706,
+               0.62, 0.6688, 0.7173, 0.7654, 0.8133, 0.8606, 0.9073, 0.9536, 1],
+      // band 1.383 before, 1.115 after
+      shade: [0, 0.0499, 0.0981, 0.1495, 0.1995, 0.2497, 0.2989, 0.3498, 0.3997, 0.4497, 0.4999, 0.5499,
+                0.5999, 0.6498, 0.7001, 0.7499, 0.8003, 0.8501, 0.9002, 0.9502, 1],
+      // band 2.546 before, 1.025 after
+      depth: [0, 0.0771, 0.15, 0.2187, 0.2841, 0.346, 0.4048, 0.4605, 0.5137, 0.5646, 0.6132, 0.6596,
+                0.7041, 0.7465, 0.7872, 0.8264, 0.8638, 0.8999, 0.9346, 0.9679, 1],
+      // band 12.728 before, 1.124 after — by far the widest of the five, and the one a hand
+      // feels most: at the low end of the lag the two pairs turn almost together and the frame
+      // barely answers, and at the high end one pair is alone in the frame and every step tells.
+      stagger: [0, 0.0406, 0.0799, 0.1177, 0.1541, 0.1894, 0.2239, 0.2577, 0.2911, 0.3239, 0.3565, 0.3891,
+                  0.4221, 0.4558, 0.4939, 0.5472, 0.604, 0.6643, 0.7305, 0.8124, 1],
+    };
+    var CURVE_BANDS = { field: [4.017, 1.079], tilt: [1.174, 1.014], shade: [1.383, 1.115],
+                        depth: [2.546, 1.025], stagger: [12.728, 1.124] };
+    // One curve read at one place of the hand — the same piecewise walk `feelOf` above takes over
+    // the module's own twenty-one marks, so the two are one method and not two.
+    function curveAt(knots, u) {
+      u = clamp(u, 0, 1);
+      var n = knots.length - 1, x = u * n, i = Math.min(n - 1, Math.floor(x));
+      return mix(knots[i], knots[i + 1], x - i);
+    }
+
+    // ---- THE WORLD THE SHEET OPENS INTO, IN SCRIPT ----------------------------------------------
+    // HOW FAR THE PLANE TIPS when the world stands whole open. Below about forty degrees a parquet
+    // reads as a flat pattern and the whole point of it is lost; past about eighty the far tiles
+    // compress under one point of the buffer and the continuation turns to aliasing. Seventy is
+    // inside the window and near its far end, which is where a floor reads as a floor. It is the
+    // port's own number.
+    var PITCH_MAX = 70;
+    // The parquet's own period where a score turns the world up and says nothing about the period:
+    // half the sheet each way, which is the unfold's own quarter — the sheet's four panels
+    // continuing past its edge as themselves.
+    var TILE_DEF = 0.5, TILE_MIN = 0.05, TILE_MAX = 1;
+
     // THE ROOM THE LEAN NEEDS and the room the CORNER needs on top of it — FRAG's own `EDGE` and
     // `PULL` consts (unfold.js:42, :47), carried here so the growth law can be recomputed in script.
     // Both are nothing at either door, because nothing leans and nothing turns there.
     var EDGE_JS = 1.16, PULL_JS = 1.8;
+    // FRAG's own `NEAR`, carried so the door's own reading walks the eye the shader draws from.
+    var NEAR_JS = 0.42;
 
     // The numbers of one frame, at a given flat guard. The guard is a parameter here rather than the
     // constant it was, because the hold in `values` below asks this same function for the same pose
@@ -381,10 +579,36 @@
       // THE LEAN RESTS AT BOTH DOORS (unfold.js:365-370): every term of it is carried by this gate,
       // which stands at nothing at either end of the fold, at any tilt and at any second of the clock.
       var gate = clamp(4 * fold * (1 - fold), 0, 1);
+      // THE WORLD, ON ONE ENVELOPE. lab/PARQUET-WORLD-BRIEF.md settles this: the eye's three axes
+      // ride one envelope so they cannot argue with each other. Here that envelope is one handle —
+      // it tips the plane, it walks the growth law back, and it is what the parquet grows in on.
+      // At nothing every one of the three is nothing and the frame is the module's own, arithmetic
+      // for arithmetic.
+      // THE HAND ASKS «HOW FAR ALONG», AND THE CURVE ANSWERS WITH THE RAW WORLD THAT FEELS THAT
+      // FAR. Both ends are exact — the curve's first knot is 0 and its last is 1 — so neither door
+      // moves and every row that reads a door reads what it read before.
+      var world = typeof st.field === "number" ? curveAt(CURVES.field, clamp(st.field, 0, 1)) : 0;
+      // THE PLANE'S ATTITUDE RIDES THE SHEET'S OWN LEAN and is not a second rotation. `stood`
+      // composes rotateZ, then rotateY, then rotateX, and the pitch is a turn about that same last
+      // axis — so adding it to the lean's own X angle IS the composition, at no cost in the shader
+      // and with the door's own panel-map reading picking it up for free.
+      // AND THE CAMERA'S OWN TILT IS TAKEN OFF IT, so the two never turn the same plane twice. The
+      // host's flight tilts the whole scene about the frame's own centre; where it already carries
+      // part of the angle the world asks for, the instrument supplies only the remainder, and where
+      // the flight carries the whole of it the instrument's own pitch is nothing and the plane's
+      // attitude is the camera's alone — one voice on the world level, which is the levels law.
+      // Read defensively: a host that hands no camera tilt leaves the angle wholly the plane's.
+      var camTilt = typeof st.cameraTilt === "number" ? Math.max(0, st.cameraTilt) : 0;
+      var pitch = Math.max(0, world * PITCH_MAX * DEG - camTilt);
       var tl = clamp(st.tilt, 0, 1);
       // Under reduced motion the sway is parked, so the lean stands where it starts and nothing drifts.
       var ty = st.reduced ? 0 : st.t;
-      var sh = clamp(st.shade, 0, 1);
+      // THE SHADES ARE READ DOWN AS THE WORLD OPENS. The module's own weights — 0.97 and 0.93 at
+      // full turn — describe a sheet standing alone against a dark ground, where a face turned away
+      // goes to black. In a world with a floor and a light of its own, a turned face is SHADED and
+      // never black; left at full it reads as a hole cut in the parquet. So the weight is walked
+      // back with the world and stands at the module's own number wherever the world is shut.
+      var sh = clamp(st.shade, 0, 1) * (1 - 0.55 * world);
       var open = Math.max(fR, fB);
       return {
         turn: [cY, Math.sin(aY * DEG), cX, Math.sin(aX * DEG)],
@@ -393,7 +617,7 @@
                1 - smooth((open - 0.004) / 0.05)],
         // NO POINTER UNDER A SCORE (unfold.js:372-376): the module answers the hand outside it and
         // nothing else, so a scored frame is the same frame on any screen.
-        lean: [gate * (tl * -4 + Math.sin(ty * 0.31) * 1.6) * DEG,
+        lean: [gate * (tl * -4 + Math.sin(ty * 0.31) * 1.6) * DEG + pitch,
                gate * tl * Math.sin(ty * 0.23 + 1.1) * 7 * DEG,
                gate * Math.sin(ty * 0.17 + 2.2) * 1.3 * tl * DEG,
                smooth(Math.max(aY, aX) / MIRROR)],
@@ -403,6 +627,17 @@
                 sh * 0.93 * Math.pow(1 - cX, 0.8), sh * 0.97 * Math.pow(1 - cY * cX, 0.8)],
         crease: [0.5 * Math.sin(aX * DEG) * rX, 0.5 * Math.sin(aX * DEG) * cY * rX,
                  0.5 * Math.sin(aY * DEG) * rY, cross],
+        // THE WORLD: how far it has opened, the plane's own attitude in radians, the parquet's
+        // period as a share of the sheet, and the turn of its lattice in radians. The shader reads
+        // the first, the third and the fourth; the second travels here so what the plane was tipped
+        // by stands on the record beside what was drawn by it.
+        // `pitch` is the instrument's OWN remainder; the plane's whole attitude is that plus the
+        // camera's tilt, which is published beside it so a reader never has to add two records.
+        cameraTilt: camTilt, planeTilt: pitch + camTilt,
+        field: [world, pitch,
+                typeof st.parquetPeriod === "number"
+                  ? clamp(st.parquetPeriod, TILE_MIN, TILE_MAX) : TILE_DEF,
+                (typeof st.parquetTurn === "number" ? st.parquetTurn : 0) * DEG],
         // read on the diagnostic surface, bound to no uniform: what the hand came to
         fold: fold, cross: cross, aY: aY, aX: aX, four: four ? 1 : 0, flatDeg: flatDeg,
         mask: clamp(st.mask, 0, 1),
@@ -490,9 +725,16 @@
     // where the growth law has the least to spare; the midpoints of its four edges; and the nine
     // points around its centre, where the panels' own seams cross at a door. Every one of them must
     // be claimed by a panel or by the sheet's own backing.
-    function mapReadOf(v, W, H) {
+    function mapReadOf(v, W, H, fit) {
       var aspect = W / Math.max(H, 1), pt = 1 / H;
-      var SZ = [aspect, 1];                 // the tightest sheet a cover fit can hand
+      // THE SHEET THE SHADER WILL ACTUALLY BUILD. FRAG recovers it from the seating the host
+      // applied (`SZ` reads `fitA`/`fitB`), and since 2026-08-17 the host hands that seating down
+      // on the frame state, so this reading walks the sheet the frame is drawn with instead of the
+      // smallest one a cover fit could hand. Where no seating arrives the tightest sheet stands, as
+      // it did before: it is the case with the least frame to spare, so the reading can only ever
+      // over-hold and never miss a bare point.
+      var SZ = (fit && fit.length >= 2 && fit[0] > 0 && fit[1] > 0)
+        ? [aspect / fit[0], 1 / fit[1]] : [aspect, 1];
       var four = v.four > 0.5;
       var CW = SZ[0] * 0.5, CH = four ? SZ[1] * 0.5 : SZ[1];
       var cY = v.turn[0], sY = v.turn[1], cX = v.turn[2], sX = v.turn[3];
@@ -504,8 +746,12 @@
       var extX = (CW - reachR) * 0.5 + reachR * corner;
       var extY = (CH - reachB) * 0.5 + reachB * corner;
       var room = 1 + (EDGE_JS - 1) * v.form[0] + PULL_JS * (1 - corner) * rY * rX;
-      var sc = room * Math.max(Math.max(aspect / (2 * extX), 1 / (2 * extY)), 1);
-      var d = persp * SZ[0] * sc;
+      // FRAG's own `grow` and its release by the world, carried here so the reading walks the very
+      // sheet the shader draws. At a world of nothing this is the plain growth law.
+      var world = v.field ? v.field[0] : 0, pitch = v.field ? v.field[1] : 0;
+      var grow = Math.max(Math.max(aspect / (2 * extX), 1 / (2 * extY)), 1);
+      var sc = room * (grow + (1 - grow) * world);
+      var d = persp * SZ[0] * sc * (1 + (NEAR_JS - 1) * world);
       var slide = [(CW - reachR) * 0.5, four ? (CH - reachB) * 0.5 : 0];
       var L = v.lean;
       var e0 = stood(sc, 0, 0, L), e1 = stood(0, sc, 0, L);
@@ -543,9 +789,15 @@
       }
       // HOW FAR EITHER PAIR STANDS OUT OF THE SHEET'S OWN PLANE, in points of this grid: the far edge
       // of a turned panel, carried by its own sine, read against the buffer's own height.
-      return { walked: reads.length, bare: bare, codes: reads, sheet: [SZ[0] * sc, SZ[1] * sc],
+      return { walked: reads.length, bare: bare, codes: reads, seated: !!(fit && fit.length >= 2),
+               sheet: [SZ[0] * sc, SZ[1] * sc],
                scale: sc, panels: four ? 4 : 2, seamPx: pt * H,
-               turnPx: Math.max(sY * CW * H, sX * CH * H) };
+               turnPx: Math.max(sY * CW * H, sX * CH * H),
+               // HOW FAR THE PLANE ITSELF STANDS OUT OF THE EYE'S OWN SQUARE, in points of this
+               // grid: the sheet's own far edge carried by the pitch, read against the buffer's
+               // height. At a door it is exactly 0, and anything a grid can show is a floor going
+               // away rather than the photograph.
+               world: world, worldPx: Math.abs(Math.sin(pitch)) * 0.5 * sc * H };
     }
 
     // THE DOOR, MEASURED. Null everywhere but at a door, since away from the doors a folding sheet
@@ -557,7 +809,9 @@
       if (want < 0) return null;
       var g = doorGridOf(st), W = g.w, H = g.h;
       if (!(W >= 1) || !(H >= 1)) return null;
-      var map = mapReadOf(v, W, H);
+      // The seating of the work THIS door stands: A at the entry door and B at the exit, which is
+      // exactly the pair the manifest's own `doors` block names.
+      var map = mapReadOf(v, W, H, want ? st.fitA : st.fitB);
       map.grid = g;
       map.want = want;
       map.mask = v.mask;
@@ -571,6 +825,17 @@
       var g = read.grid, door = read.want ? "the entry" : "the exit";
       var work = read.want ? "departing" : "arriving";
       var where = " of a " + g.w + " x " + g.h + (g.drawn ? " buffer" : " frame");
+      // THE WORLD IS READ FIRST, BECAUSE IT IS THE CAUSE. A tipped plane opens bare points in the
+      // panel map as a matter of course — that is what the parquet is there to take over — so a
+      // refusal that named the bare points would be naming the symptom and leaving the reader to
+      // find the reason. Where the world stands open at a door, the world is what is wrong.
+      if (read.worldPx >= DOOR_SLIP) {
+        return door + " door leaks: the world stands " + read.world.toFixed(6) + " open and the "
+             + "plane the sheet lies in is tipped " + read.worldPx.toFixed(2) + " points" + where
+             + " out of the eye's own square, so the frame is a floor running away and not the "
+             + work + " work standing whole, where " + door + " door's own law asks for the "
+             + work + " work at every point";
+      }
       if (read.bare) {
         return door + " door leaks: the panel map leaves " + read.bare + " of the " + read.walked
              + " points this reading walked" + where + " with no panel standing on them, where "
@@ -617,9 +882,15 @@
       v.doorGrid = read ? read.grid : null;
       v.panelMap = read ? { walked: read.walked, bare: read.bare, panels: read.panels,
                             sheet: read.sheet, scale: read.scale, seamPx: read.seamPx,
-                            turnPx: read.turnPx } : null;
+                            turnPx: read.turnPx, world: read.world,
+                            worldPx: read.worldPx } : null;
       if (!no) { v.doorWhyNo = null; return v; }
-      if (read.bare === 0 && read.turnPx >= DOOR_SLIP && read.turnPx < DOOR_HOLD) {
+      // The hold answers ONE thing: a pair of panels standing a hair out of the sheet's plane on a
+      // grid tall enough to show it. A world left open is a different fault and nothing here can
+      // close it — the whole frame is a floor, not a sliver along a crease — so it is refused
+      // outright and never held.
+      if (read.worldPx < DOOR_SLIP
+          && read.bare === 0 && read.turnPx >= DOOR_SLIP && read.turnPx < DOOR_HOLD) {
         // the angle whose far edge travels one point of this grid, which is the guard this grid
         // asks for in place of the module's own half degree
         var w = posed(st, Math.max(FLAT_DEG, Math.max(v.aY, v.aX) + 1e-9));
@@ -632,7 +903,7 @@
           w.doorGrid = wRead.grid;
           w.panelMap = { walked: wRead.walked, bare: wRead.bare, panels: wRead.panels,
                          sheet: wRead.sheet, scale: wRead.scale, seamPx: wRead.seamPx,
-                         turnPx: wRead.turnPx };
+                         turnPx: wRead.turnPx, world: wRead.world, worldPx: wRead.worldPx };
           return w;
         }
       }
@@ -659,6 +930,12 @@
       // level all three landed instruments already hold, where the levels law allows a single owner.
       levels: ["CELL", "CELL CONTENT"],
       params: { tilt: [0, 1], shade: [0, 1], depth: [0, 1], stagger: [0, 0.6], panels: [0, 1] },
+      // WHAT THIS INSTRUMENT SHOWS BESIDES A CROSSING (his 19:13 word, the second register). The
+      // sheet opening past its own edges into a parquet that continues without end, on a plane the
+      // eye sees at an angle, is a transformation that reveals HOW the work was made: the period
+      // the parquet repeats at is the work's own cutting step and the turn is the angle that step
+      // was cut at, so what runs off to the horizon is the work's own device carried on.
+      register: "process",
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down; the five below them are the module's declared params; `mask` is the judges' channel,
       // resting where the module has no such thing at all.
@@ -676,10 +953,22 @@
       handles: {
         mix: { min: 0, max: 1, def: 0 },
         clock: { min: 0, max: 14, def: 0 },
-        tilt: { min: 0, max: 1, def: 0.5 },
-        shade: { min: 0, max: 1, def: 1 },
-        depth: { min: 0, max: 1, def: 0.5 },
-        stagger: { min: 0, max: 0.6, def: 0.34 },
+        tilt: { min: 0, max: 1, def: 0.5,
+                 curve: { knots: CURVES.tilt, band: CURVE_BANDS.tilt, applied: false,
+                          measuredOn: CURVE_MEASURED_ON },
+               },
+        shade: { min: 0, max: 1, def: 1,
+                 curve: { knots: CURVES.shade, band: CURVE_BANDS.shade, applied: false,
+                          measuredOn: CURVE_MEASURED_ON },
+               },
+        depth: { min: 0, max: 1, def: 0.5,
+                 curve: { knots: CURVES.depth, band: CURVE_BANDS.depth, applied: false,
+                          measuredOn: CURVE_MEASURED_ON },
+               },
+        stagger: { min: 0, max: 0.6, def: 0.34,
+                 curve: { knots: CURVES.stagger, band: CURVE_BANDS.stagger, applied: false,
+                          measuredOn: CURVE_MEASURED_ON },
+               },
         panels: { min: 0, max: 1, def: 1, kind: "enum", step: 1,
                   names: { "0": "two", "1": "four" } },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
@@ -688,6 +977,30 @@
         // drawing buffer the host binds, with the CSS frame where it hands none), how far the hold
         // reaches (two points of that grid, for a pair standing out of the sheet's plane) and where
         // the guard the module's own constant asks for stays on the record.
+        // THE THREE THAT OPEN THE WORLD, all resting at the closed sheet. `field` is the whole
+        // switch and the other two cost nothing while it is shut: at nothing the plane's attitude
+        // is nothing, the growth law binds, the sheet covers the frame at every point and the
+        // parquet draws on no point at all — the module's own frame, arithmetic for arithmetic.
+        field: { min: 0, max: 1, def: 0,
+                 unit: "how far the world stands open, on the curve's own scale",
+                 curve: { knots: CURVES.field, band: CURVE_BANDS.field, applied: true,
+                          measuredOn: CURVE_MEASURED_ON },
+                 reads: "the passage's own travel; the score walks it and it carries the plane's "
+                      + "attitude, the growth law's release and the parquet's arrival on one "
+                      + "envelope, which is lab/PARQUET-WORLD-BRIEF.md's own rule that the eye's "
+                      + "axes ride one envelope and cannot argue",
+                 applied: { pitchDegreesAtWhole: PITCH_MAX, shutAt: 0 } },
+        parquetPeriod: { min: TILE_MIN, max: TILE_MAX, def: TILE_DEF,
+                         unit: "a fraction of the work's own side",
+                         reads: "structure.ownDevice.stepPx over the work's own frame side — the "
+                              + "step the work was actually cut at, which is what makes the "
+                              + "continuation the work's own device and not a pattern laid over "
+                              + "it; structure.grid.periodPx over the same side where no device "
+                              + "was derived" },
+        parquetTurn: { min: 0, max: 180, def: 0, unit: "degrees",
+                       reads: "structure.ownDevice.angleDeg, the angle that same step was cut at; "
+                            + "structure.grid.angleDeg, the direction the work's own lattice "
+                            + "varies along, where no device was derived" },
         mask: { min: 0, max: 1, def: 0,
                 applied: { readAtADoor: { points: DOOR_HOLD, readOn: "the drawing buffer",
                                           reads: "flatDegRequest",
@@ -715,10 +1028,14 @@
       coverage: { writes: false,
                   how: "the growth law grows the sheet by exactly what each turning panel gives up, so "
                      + "the standing picture covers the frame at every point of the travel and the "
-                     + "alpha is the constant 1" },
+                     + "alpha is the constant 1; where the world opens the growth law is walked back "
+                     + "and the plane the sheet lies in takes over — the parquet up to the eye's own "
+                     + "horizon and the world's light past it — so the frame stays filled by the "
+                     + "same law read one step further out" },
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, tilt: 0.5, shade: 1, depth: 0.5, stagger: 0.34, panels: 1, mask: 0,
+                     field: 0, parquetPeriod: TILE_DEF, parquetTurn: 0, cameraTilt: 0,
                      t: 0, reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "unfold", vert: VERT, frag: FRAG, position: "aPos",
@@ -735,6 +1052,7 @@
           { name: "uShade", type: "vec4", source: "frame:shade" },
           { name: "uCrease", type: "vec4", source: "frame:crease" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uField", type: "vec4", source: "frame:field" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -784,6 +1102,16 @@
         var pose = {
           mix: h.mix, tilt: h.tilt, shade: h.shade, depth: h.depth, stagger: h.stagger,
           panels: h.panels, mask: h.mask, t: h.clock, reduced: st.reduced,
+          // The world, straight to the pose. A score that names none of the three leaves the sheet
+          // closed on itself, which is the module's own frame.
+          field: h.field, parquetPeriod: h.parquetPeriod, parquetTurn: h.parquetTurn,
+          // THE CAMERA'S OWN TILT AND BOTH WORKS' SEATING, as the host hands them down since
+          // 2026-08-17. The tilt is taken off the plane's attitude so the two do not double; the
+          // seating lets the door's own reading walk the sheet the shader will actually build,
+          // rather than the smallest one a cover fit could hand. Both are read defensively, so a
+          // host that carries neither draws exactly what it drew before.
+          cameraTilt: st.camera && typeof st.camera.tilt === "number" ? st.camera.tilt : 0,
+          fitA: st.fitA, fitB: st.fitB,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
           // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The
@@ -803,6 +1131,10 @@
               buffer: [pose.bufWidth, pose.bufHeight],
               reads: "flatDeg", request: v.flatDegRequest, applied: v.flatDeg,
               moved: v.flatDeg - v.flatDegRequest, unit: "degrees",
+              // What the plane itself was doing at this door, in the grid's own points, so a door
+              // held whole says so about the world as well as about the panels.
+              world: v.panelMap ? v.panelMap.world : null,
+              worldPx: v.panelMap ? v.panelMap.worldPx : null,
               held: v.doorHeld, whyNo: v.doorWhyNo,
             });
           }

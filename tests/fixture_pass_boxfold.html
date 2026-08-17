@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>the unfold instrument — the host's frame beside the lab module's</title>
+<title>the box instrument — the host's frame beside the lab module's</title>
 <style>
   html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
   .stage { position:absolute; inset:0; }
@@ -16,18 +16,23 @@
 </head>
 <body>
 <!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
-     by pass-layer.js itself, position:fixed above everything) and the lab module on its own DOM
-     stage. One is visible at a time; the check shows the one it means and photographs it.
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own stage.
+     One is visible at a time; the check shows the one it means and photographs it.
 
-     THE LAB ROAD HERE IS THE BROWSER'S OWN COMPOSITOR. Every instrument ported before this one came
-     from a module that drew with WebGL, so the two roads shared a sampler and a rasteriser. This
-     module draws with CSS 3D, so the lab road is the compositor's projection, its own image
-     downscaling and its own edge antialiasing. The suite states the bar it measures for that and
-     names what the residual is made of. -->
+     BOTH ROADS DRAW WITH WEBGL HERE. The module carries its own context and its own fragment shader,
+     so the two roads run one sampler through one rasteriser and the residual between them is a
+     difference of arithmetic rather than of samplers — which is why the bar this suite holds them to
+     is the project's own and not one of its own making.
+
+     THE LAB MODULE IS SERVED WITH ONE LITERAL CHANGED, and the suite says so in the row that reads
+     it: its crop is set to the port's own. The port grows the box by the room the crease's travel
+     needs, which the module never did, so a comparison at the module's own crop would be a
+     comparison of two differently sized boxes. With the one number levelled, what the two roads
+     compare is the mathematics. The file on disk is never touched. -->
 <div id="moduleStage" class="stage"></div>
 <div id="walk">
-  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
-  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/glassgrid.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/towers.jpg" alt=""></section>
 </div>
 <script>
   window.__errs = [];
@@ -49,7 +54,7 @@
   window.__exPassLayer = function (h) { window.__host = h; };
 </script>
 <script src="pass-layer.js"></script>
-<script src="unfold.js"></script>
+<script src="box.js"></script>
 <script>
 (function () {
   var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
@@ -83,100 +88,92 @@
     bench.pair(imgs[0], imgs[1]);
 
     var def = null;
-    (window.LAB.effects || []).forEach(function (e) { if (e.id === "unfold") def = e; });
-    if (!def) { window.__errs.push("the lab module registered no «unfold» effect"); return; }
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "box") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «box» effect"); return; }
 
     // The one record both roads read. The module keeps its own copy of these inside its closure;
     // this is the same set handed to it at creation and moved through the same onParam, so the pose
     // the host draws is the pose the module drew and never a guess at it.
-    var P = { tilt: 0.5, shade: 1, depth: 0.5, stagger: 0.34, panels: 1 };
-    var hand = 0, clockAt = 0, maskAt = 0, workAt = "a";
+    var P = { axis: 0, depth: 0.9, dip: 0.5, lead: 0.5, fingers: 7 };
+    var hand = 0, maskAt = 0, seedAt = 4.91016;
+    var seamAt = 0.5, seamScoreAt = 0;
     var api = null;
 
-    // THE MODULE TAKES ONE PICTURE. lab/data/module-contract.json records it as `needsTwoWorks:
-    // false`, so the lab road stands one work at a time: the first work over the first half of the
-    // hand and the second over the last half, which is the crossing the port plays. Building it is
-    // how the work is chosen, since the module reads its images once at creation.
-    function build(which) {
+    // THE MODULE MEASURES THE SEAM OFF THE PICTURE; THE INSTRUMENT IS HANDED IT. That is the one
+    // structural difference between the two roads, and it is §1.2's fence: measuring means drawing
+    // the work into a surface of its own and counting, which an instrument may not do. The module
+    // takes the number from a score where one is given (its own `given.seam`), so the bench hands it
+    // the very number the instrument was handed and the two roads stand at ONE crease. The module
+    // reads that number once, at creation, so a change of the crease rebuilds it.
+    //
+    // BELOW THE FLOOR the instrument puts the crease back on the box's own edge, which is the middle
+    // of the frame; handing the module 0.5 is the same instruction in the module's own terms.
+    function build() {
       if (api) { api.destroy(); api = null; }
-      workAt = which;
-      var ctx = { images: [which === "b" ? imgs[1] : imgs[0]], reduced: false,
-                  params: { mode: P.panels >= 0.5 ? "four" : "two", tilt: P.tilt, shade: P.shade,
-                            depth: P.depth, stagger: P.stagger } };
+      var ctx = {
+        images: [imgs[0], imgs[1]], reduced: false,
+        params: { axis: P.axis, depth: P.depth, dip: P.dip, lead: P.lead, faces: 2,
+                  fingers: P.fingers, seed: seedAt,
+                  seam: seamScoreAt >= 0.2 ? seamAt : 0.5 },
+      };
       api = def.create(moduleStage, ctx);
-      api.onParam("clock", clockAt);
+      api.onParam("turn", hand);
       window.__api = api;
     }
-    build("a");
+    build();
 
-    // THE FOLD THE PORT COMPUTED, HANDED TO THE MODULE RAW. The module's own `rawFold` is the seam
-    // its own seat measures the response curve through: it takes the fold behind the hand's own,
-    // which is exactly the number the instrument's `values()` answers with. So the curve is applied
-    // once, on the port's side, and the two roads stand at ONE fold rather than at two readings of
-    // one dial.
-    window.__labFold = function (v) { api.rawFold(+v); };
-    window.__labWork = function (which) { build(which); };
-    window.__labAt = function () { return workAt; };
-
-    window.__mix = function (v) { hand = +v; };
-    window.__clock = function (s) { clockAt = +s; api.onParam("clock", s); };
+    window.__mix = function (v) { hand = +v; api.onParam("turn", hand); };
     window.__param = function (k, v) {
       P[k] = +v;
-      if (k === "panels") { build(workAt); return; }
       api.onParam(k, v);
     };
     window.__mask = function (v) { maskAt = +v; };
-    // THE WORLD THE SHEET OPENS INTO. The lab module has no world at all — it draws one sheet with
-    // CSS 3D and stops at its own edge — so these three reach the instrument and never the module.
-    // They rest at the closed sheet, which is why every row that compares the two roads goes on
-    // comparing them without naming any of the three.
-    var WORLD = { field: 0, parquetPeriod: 0.5, parquetTurn: 0 };
-    window.__world = function (o) {
-      Object.keys(o || {}).forEach(function (k) { WORLD[k] = +o[k]; });
-      return WORLD;
+    window.__seed = function (v) { seedAt = +v; build(); };
+    // The crease, on both roads at once: the place and the gate that decides whether the place is
+    // the work's own line or the box's own edge.
+    window.__crease = function (at, score) {
+      seamAt = +at; seamScoreAt = +score; build();
+      return { seam: seamAt, seamScore: seamScoreAt };
     };
     window.__show = function (which) {
       bench.show(which === "host");
       moduleStage.classList.toggle("hidden", which !== "module");
     };
+    // The two drawing buffers, so a row can say the two roads were sampled on one grid rather than
+    // assume it. The host's canvas is the one it marks aria-hidden; the module's is the one inside
+    // its own stage.
+    window.__buffers = function () {
+      var host = document.querySelector("canvas[aria-hidden]");
+      var mod = moduleStage.querySelector("canvas");
+      return { host: host ? [host.width, host.height] : null,
+               module: mod ? [mod.width, mod.height] : null };
+    };
+    window.__reading = function () { return api.reading(); };
 
     function pose() {
-      return { mix: hand, tilt: P.tilt, shade: P.shade, depth: P.depth, stagger: P.stagger,
-               panels: P.panels, mask: maskAt, t: clockAt, reduced: false,
-               field: WORLD.field, parquetPeriod: WORLD.parquetPeriod,
-               parquetTurn: WORLD.parquetTurn,
+      var host = document.querySelector("canvas[aria-hidden]");
+      return { mix: hand, axis: P.axis, depth: P.depth, dip: P.dip, lead: P.lead,
+               fingers: P.fingers, seam: seamAt, seamScore: seamScoreAt,
+               shade: 1, travel: 1, seed: seedAt, mask: maskAt, reduced: false,
+               cssWidth: innerWidth, cssHeight: innerHeight,
+               bufWidth: host ? host.width : innerWidth,
+               bufHeight: host ? host.height : innerHeight,
                aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
                bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight };
     }
-    var pose_ = pose;
     window.__pose = pose;
-    window.__values = function () { return bench.values("unfold", pose()); };
+    window.__values = function () { return bench.values("boxfold", pose()); };
 
     // THE HOST DRAWS THE SAME POSE, through the same drawPose a running transaction takes.
-    window.__hostDraw = function () { bench.draw("unfold", pose()); return bench.values("unfold", pose()); };
+    window.__hostDraw = function () { bench.draw("boxfold", pose()); return bench.values("boxfold", pose()); };
 
-    // BOTH ROADS AT ONE POSE. The port's own `values()` answers the raw fold behind the dial, and
-    // that number is handed straight to the module; the module is rebuilt on the work whose sheet
-    // the port is standing at that instant.
+    // BOTH ROADS AT ONE POSE. The dial is the raw hand on both sides: the module applies its own
+    // dead bands and its own quarter curve to it, and so does the port, so handing one number to
+    // both is handing them one pose.
     window.__both = function (v) {
       hand = +v;
-      var r = bench.values("unfold", pose());
-      var want = r.cross >= 0.5 ? "b" : "a";
-      if (want !== workAt) build(want);
-      api.onParam("clock", clockAt);
-      api.rawFold(r.fold);
-      return r;
-    };
-
-    // ONE POSE WITH ONE HANDLE MOVED, for the response-curve measurement: the pose this page
-    // stands at, with the named handles overwritten and nothing else touched. The curve of a handle
-    // is measured against the PICTURE — how far the drawn frame travels per unit of the raw handle
-    // — so every other number has to hold still while one is walked.
-    window.__drawWith = function (o) {
-      var pose = pose_();
-      Object.keys(o || {}).forEach(function (k) { pose[k] = o[k]; });
-      bench.draw("unfold", pose);
-      return pose;
+      api.onParam("turn", hand);
+      return bench.values("boxfold", pose());
     };
 
     // ---- the real transaction road ---------------------------------------------------------

@@ -45,6 +45,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
 import base64
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -121,8 +122,9 @@ def _static(v):
 
 
 def unfold_cue(stack=0, levels_own=None, **statics):
-    """The cue, with a track for every one of the eight handles (§4.4b)."""
-    P = {"tilt": 0.5, "shade": 1, "depth": 0.5, "stagger": 0.34, "panels": 1, "mask": 0}
+    """The cue, with a track for every one of the eleven handles (§4.4b)."""
+    P = {"tilt": 0.5, "shade": 1, "depth": 0.5, "stagger": 0.34, "panels": 1, "mask": 0,
+         "field": 0, "parquetPeriod": 0.5, "parquetTurn": 0}
     P.update(statics)
     nodes = {"u-mix": {"source": "progress"}, "u-clock": {"source": "time"}}
     tracks = {"mix": {"node": "u-mix"}, "clock": {"node": "u-clock"}}
@@ -228,15 +230,80 @@ check("PASS-UNFOLD the instrument creates no element, no loop and no listener",
       "listeners and runs its own rAF clock; all of it stayed in the lab"
       if not held else "the instrument's region holds " + ", ".join(held))
 
-HANDLES = ["mix", "clock", "tilt", "shade", "depth", "stagger", "panels", "mask"]
+HANDLES = ["mix", "clock", "tilt", "shade", "depth", "stagger", "panels", "mask",
+           "field", "parquetPeriod", "parquetTurn"]
 absent = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-UNFOLD every handle the instrument publishes is a handle a score can drive",
-      not absent and len(HANDLES) == 8,
-      "§4.4b: eight handles. The dial and the second the host hands down, the module's own five "
-      "declared params, and the judges' channel. The module's `pace` is published by neither, for "
-      "the reason the module itself gives: a handle a score can walk without moving the picture is "
-      "noise in the score"
+      not absent and len(HANDLES) == 11,
+      "§4.4b: eleven handles. The dial and the second the host hands down, the module's own five "
+      "declared params, the judges' channel, and the three that open the world the sheet unfolds "
+      "into — how far it stands open, the parquet's own period and the turn of its lattice. The "
+      "module's `pace` is published by neither, for the reason the module itself gives: a handle a "
+      "score can walk without moving the picture is noise in the score"
       if not absent else "these are published nowhere: " + ", ".join(absent))
+
+# ---- the response curves, measured 2026-08-17 ----------------------------------------------------
+# The charter's law: equal movement of the hand, equal felt change. This instrument carried one
+# measured curve and spent it on the crossing's own progress, so equal steps of its other five
+# handles were not equal felt change and the composer that drives them said so. These rows read the
+# curves off the built file and hold their shape; the browser row further down measures the one that
+# is APPLIED against the frame itself.
+CURVE_HANDLES = ["field", "tilt", "shade", "depth", "stagger"]
+curve_knots = {}
+for _h in CURVE_HANDLES:
+    _m = re.search(r"\n      %s: \[([^\]]+)\]" % _h, REGION)
+    curve_knots[_h] = [float(x) for x in _m.group(1).replace("\n", " ").split(",")] if _m else []
+
+bad = [h for h, k in curve_knots.items()
+       if len(k) != 21 or k[0] != 0 or k[-1] != 1
+       or any(k[i + 1] < k[i] for i in range(len(k) - 1))]
+check("PASS-UNFOLD every response curve runs 0 to 1 over twenty-one marks and never turns back",
+      not bad and len(curve_knots) == 5,
+      "a curve is the inverse of the picture's own running travel, so it is non-decreasing by "
+      "construction and its two ends are the handle's two ends — which is what keeps both doors "
+      "exact when a curve is applied. Twenty-one marks is the count the module's own measured "
+      "curve carries, so the two are read the same way. Handles carrying one: "
+      + ", ".join(sorted(curve_knots))
+      if not bad else "these are not a curve: " + ", ".join(bad))
+
+check("PASS-UNFOLD each curve says what it was measured on, and whether it is applied",
+      REGION.count("measuredOn:") >= 5
+      and "curve: { knots: CURVES.field, band: CURVE_BANDS.field, applied: true," in REGION
+      and REGION.count("applied: false,") >= 4
+      and "field: [4.017, 1.079]" in REGION and "stagger: [12.728, 1.124]" in REGION,
+      "a curve is applied HERE only where the handle's value is a pure position — `field`, which a "
+      "score drives with the passage's own travel and nothing else. The other four carry a unit of "
+      "their own and a composer places them from a measurement, so their curves are published "
+      "beside their ranges and the placing stays with whoever owns the request; applying one here "
+      "would corrupt the number that was asked for")
+
+# ---- the world the sheet opens into, 2026-08-17 (his 19:13 word, the second register) ------------
+check("PASS-UNFOLD the world the sheet opens into rests at the closed sheet",
+      "uniform vec4 uField;" in REGION
+      and "field: { min: 0, max: 1, def: 0," in REGION
+      and "float sc = room * mix(grow, 1.0, uField.x);" in REGION
+      and "if (uField.x > 0.0 && !got) {" in REGION,
+      "the world is one handle and it is the whole switch: at nothing the plane's attitude is "
+      "nothing, the growth law binds exactly as it did, the sheet covers the frame at every point "
+      "and the parquet draws on no point at all — so the module's own frame is what the instrument "
+      "answers, arithmetic for arithmetic, and the two-road rows below go on comparing it")
+
+check("PASS-UNFOLD the parquet continues the sheet's own mirror law and not a repeat of it",
+      "vec2 folded(vec2 q, vec2 period){" in REGION
+      and "return period * (1.0 - abs(t - 1.0));" in REGION
+      and "bool ground(" in REGION and "return dd - z > 1e-4;" in REGION,
+      "each panel is already the mirror of the quarter the sheet closes onto; past the sheet's own "
+      "edge that same law simply goes on, one triangle wave per axis. The horizon is the one test "
+      "that replaces the plane's missing edges, and it is what makes the continuation read as a "
+      "plane going away rather than as a pattern")
+
+check("PASS-UNFOLD the parquet's period and turn each name the measurement they read",
+      "structure.ownDevice.stepPx over the work's own frame side" in REGION
+      and "structure.ownDevice.angleDeg, the angle that same step was cut at" in REGION
+      and 'register: "process"' in REGION,
+      "his 19:13 word's second register: a transformation that lets the viewer glimpse HOW the work "
+      "was made. What runs off to the horizon is the work's own cutting step at the work's own "
+      "angle, so the making is what is on the frame and nothing is explained to anybody")
 
 check("PASS-UNFOLD the lean reads the handed-down second, and no clock or pointer of its own",
       "st.reduced ? 0 : st.t" in REGION and "t: h.clock" in REGION
@@ -338,13 +405,13 @@ check("PASS-UNFOLD the port's own one number is named as its own, and it is the 
 
 check("PASS-UNFOLD the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "uTurn" not in LAYER and "uCrease" not in LAYER,
-      "this instrument declares twelve uniforms, of which five are shared with the woven one. The "
+      "this instrument declares thirteen uniforms, of which five are shared with the woven one. The "
       "host reads the manifest")
 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-UNFOLD the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 12,
+      declared == spelled and len(declared) == 13,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -397,12 +464,27 @@ BROWSER_ROWS = [
     "PASS-UNFOLD a door the judges' channel spoils is refused on the real road, and the visitor still lands",
 ]
 
+# THE WORLD THE SHEET OPENS INTO (his 19:13 word, the second register). Four things have to be true
+# on the frame: the sheet goes on past its own edge as a parquet; the frame stays filled while it
+# does; the parquet's own period and the turn of its lattice — the two numbers read from the work —
+# reach the PICTURE and not only the record; and a door with the world open is refused rather than
+# drawn, because a floor running away is not the photograph standing whole.
+WORLD_ROWS = [
+    "PASS-UNFOLD the world · the sheet opens past its own edge, and no point of the frame is unclaimed",
+    "PASS-UNFOLD the world · the parquet's own period reaches the PICTURE",
+    "PASS-UNFOLD the world · the turn of the parquet's lattice reaches the PICTURE",
+    "PASS-UNFOLD the world · a door with the world open is refused, with the plane measured in points",
+    "PASS-UNFOLD the curve · equal steps of the world's own hand are equal change on the frame",
+]
+
 RED_ROWS = [
     "PASS-UNFOLD red-on-bug · the growth law removed: the frame stops being covered",
     "PASS-UNFOLD red-on-bug · the corner's own foreshortening removed: the bare triangle returns",
     "PASS-UNFOLD red-on-bug · the mirror taken on at once: door 0 stops being the work",
     "PASS-UNFOLD red-on-bug · the seating removed: the sheet stops being the file",
     "PASS-UNFOLD red-on-bug · the door reading removed: a door drawing the panel map is let through",
+    "PASS-UNFOLD red-on-bug · the parquet removed: the world opens onto bare frame",
+    "PASS-UNFOLD red-on-bug · the world's curve reverted: equal hand steps go back to unequal change",
 ]
 
 # THE MEASUREMENT READ AT A DOOR, published in the manifest. His 19:13 word, lifted to the class at
@@ -590,10 +672,10 @@ def panel_map(br, at, tag):
 
 
 if not chrome_available():
-    for r in BROWSER_ROWS + RED_ROWS:
+    for r in BROWSER_ROWS + WORLD_ROWS + RED_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 elif missing:
-    for r in BROWSER_ROWS + RED_ROWS:
+    for r in BROWSER_ROWS + WORLD_ROWS + RED_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
 else:
     shutil.rmtree(SHOTS, ignore_errors=True)
@@ -627,7 +709,7 @@ else:
                     and m["id"] == "unfold" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and sorted(m["params"]) == ["depth", "panels", "shade", "stagger", "tilt"]
-                    and len(m["handles"]) == 8
+                    and len(m["handles"]) == 11
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -636,7 +718,7 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 12
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 13
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -1141,14 +1223,192 @@ else:
         hh = int(br.evaluate("String(document.querySelector('canvas').height)"))
         return apart(hp, work_in_the_frame(PHOTOS[0], w, hh))[0]
 
+    # ================================================================================================
+    # THE WORLD THE SHEET OPENS INTO, READ ON THE FRAME.
+    #
+    # One reading, four questions. The pose is the sheet part-way open — the fold at 0.30, where the
+    # panels have turned and the growth law is doing real work — and the world is then opened on top
+    # of it. What is photographed each time is the PICTURE and the panel map beside it, so a row can
+    # say both what the viewer sees and whether any point of the frame went unclaimed while it
+    # happened.
+    def world_read(br):
+        br.evaluate("window.__clock(%r); 0" % CLOCK)
+        br.evaluate("window.__mix(0.30); 0")
+        br.sleep(0.5)
+        out = {}
+
+        def shot(tag, world):
+            js(br, "return window.__world(%s);" % json.dumps(world))
+            br.sleep(0.25)
+            br.evaluate("window.__mask(0); window.__hostDraw(); 0")
+            br.sleep(0.2)
+            br.evaluate("window.__show('host'); 0")
+            br.sleep(0.3)
+            pic = png(br, SHOTS / ("world-" + tag + ".png"))
+            br.evaluate("window.__mask(1); window.__hostDraw(); 0")
+            br.sleep(0.25)
+            mp = png(br, SHOTS / ("world-" + tag + "-map.png"))
+            br.evaluate("window.__mask(0); window.__hostDraw(); 0")
+            return {"pic": str(pic), "map": str(mp),
+                    "values": js(br, "return window.__values();")}
+
+        out["shut"] = shot("shut", {"field": 0})
+        out["open"] = shot("open", {"field": 1})
+        out["fine"] = shot("fine", {"field": 1, "parquetPeriod": 0.17})
+        out["turn"] = shot("turn", {"field": 1, "parquetPeriod": 0.5, "parquetTurn": 34})
+        js(br, "return window.__world({\"field\": 0, \"parquetPeriod\": 0.5, "
+              "\"parquetTurn\": 0});")
+        out["errs"] = json.loads(br.evaluate("JSON.stringify(window.__errs||[])"))
+        return out
+
     if missing or not chrome_available():
         pass
     else:
+        world = on_bench(world_read)
+        if not world:
+            for r in WORLD_ROWS:
+                skip(r, "the world bench never came up")
+        else:
+            grew, _ = diff(world["shut"]["pic"], world["open"]["pic"])
+            bare_shut = unclaimed(world["shut"]["map"])
+            bare_open = unclaimed(world["open"]["map"])
+            pitch_deg = world["open"]["values"]["field"][1] * 180.0 / math.pi
+            check(WORLD_ROWS[0],
+                  grew > SEAM and bare_shut == 0.0 and bare_open == 0.0
+                  and world["open"]["values"]["field"][0] == 1.0
+                  and pitch_deg > 40.0 and not world["errs"],
+                  "at the same fold, opening the world moves the frame by %.4f of 255 against the "
+                  "project's seam of %.1f: the growth law is walked back, the plane stands %.2f "
+                  "degrees over, and what the sheet gives up is taken by the parquet running off to "
+                  "the eye's own horizon with the world's own light past it. The panel map is "
+                  "unclaimed at %.4f%% of the frame with the world shut and %.4f%% with it whole "
+                  "open — the coverage this instrument declares holds one step further out"
+                  % (grew, SEAM, pitch_deg, bare_shut * 100, bare_open * 100))
+
+            finer, _ = diff(world["open"]["pic"], world["fine"]["pic"])
+            check(WORLD_ROWS[1],
+                  finer > SEAM
+                  and world["fine"]["values"]["field"][2] == 0.17
+                  and world["open"]["values"]["field"][2] == 0.5,
+                  "the parquet's period is the work's own cutting step, and it is what the "
+                  "continuation repeats at. Walked from half the sheet to %.2f of it, the frame "
+                  "moves by %.4f of 255 against the seam of %.1f — the number reaches the picture "
+                  "and not only the record"
+                  % (world["fine"]["values"]["field"][2], finer, SEAM))
+
+            turned, _ = diff(world["open"]["pic"], world["turn"]["pic"])
+            check(WORLD_ROWS[2],
+                  turned > SEAM and abs(world["turn"]["values"]["field"][3]
+                                        - 34.0 * math.pi / 180.0) < 1e-9,
+                  "the turn is the angle that same step was cut at, taken about the sheet's own "
+                  "centre. Walked from square to 34 degrees at the same period, the frame moves by "
+                  "%.4f of 255 against the seam of %.1f" % (turned, SEAM))
+
+        # ---- the world's own curve, measured against the frame ------------------------------------
+        # The proof the law asks for, taken where the law is: on the PICTURE. The hand is walked in
+        # twenty equal steps and the frame's own travel is read at each; the widest step against the
+        # narrowest is the band, and a band of 1 is the law kept exactly. The raw handle measured
+        # 3.257 before this curve — the world opened slowly at first and quickly at the end, which
+        # is what the eye saw before anybody measured it.
+        def curve_band(br):
+            """The hand walked in twenty-one equal marks, and at each mark the frame drawn TWICE a
+            small step apart so what is read is the picture's own rate of change there. Reading the
+            distance between consecutive marks instead would saturate — past a step of a few tens
+            of 255 two frames of one photograph differ by about as much however far apart they
+            stand — and would report a band near 1 whatever the truth was. This is the same probe
+            the published curve was measured with, so the row and the knots are one method."""
+            br.evaluate("window.__clock(%r); 0" % CLOCK)
+            br.evaluate("window.__mix(0.30); 0")
+            br.sleep(0.8)
+            # THE HOST'S OWN CANVAS IS WHAT THIS READS. The lab module has no world at all, so a
+            # walk photographed on its stage would answer nothing this row asks about.
+            br.evaluate("window.__show('host'); window.__mask(0); 0")
+            js(br, "return window.__world({\"field\": 0});")
+            marks, probe = 21, 0.004
+            br.evaluate("window.__drawWith({\"field\": 0}); 0")
+            br.sleep(0.5)
+            png(br, SHOTS / "curve-warm.png")
+            rates, worst = [], 0.0
+            for i in range(marks):
+                u = i / (marks - 1.0)
+                two = []
+                for uu in (u, u + (probe if u <= 0.5 else -probe)):
+                    br.evaluate("window.__drawWith({\"field\": %r}); 0" % uu)
+                    br.sleep(0.12)
+                    two.append(str(png(br, SHOTS / ("curve-%02d-%d.png" % (i, len(two))))))
+                d_ = diff(two[0], two[1])[0]
+                worst = max(worst, d_)
+                rates.append(d_ / probe)
+            live = [r for r in rates if r > 0]
+            return {"band": (max(live) / min(live)) if live else 0.0,
+                    "worstProbe": worst, "marks": marks}
+
+        curved = on_bench(curve_band)
+        # THE BAR, AND WHY IT IS NOT 1. Two things keep it off 1, and both are measured rather than
+        # argued. First, a rate read across a probe of four thousandths carries the frame's own
+        # quantisation with it, so the smallest rates in this walk answer within a level or two of
+        # 255 and a band of exactly 1 would be a claim about noise. Second, a curve laid on
+        # twenty-one knots interpolates straight between them and therefore cannot flatten a rate
+        # whose own features are finer than one knot apart — and this instrument's world has such
+        # features, where a pair of panels leaves the frame. What the curve MEASURABLY does is halve
+        # the band: 8.0 raw against 3.6 curved, read the same way at the same marks. A bar of 5
+        # holds that repair and refuses its removal, and the residual is a line in the report for
+        # the tuning pass, which is what his 20:10 word asks for.
+        CURVE_BAR = 5.0
+        check(WORLD_ROWS[4],
+              curved and curved["band"] > 0 and curved["band"] <= CURVE_BAR,
+              "twenty-one equal marks of the hand, the picture's own rate of change read at each "
+              "across a probe of four thousandths: the widest against the narrowest is %.3f, "
+              "against a bar of %.1f. The RAW handle measures 8.0 read the same way at the same "
+              "marks, and 4.017 on the sweep of forty-one places the curve was built from. The largest probe any mark answered was %.2f of 255, "
+              "so every reading stayed a rate rather than a saturated difference"
+              % (curved["band"] if curved else -1, CURVE_BAR,
+                 curved["worstProbe"] if curved else -1))
+
+        # ---- the door with the world open ---------------------------------------------------------
+        # A floor running away to a horizon is not the photograph standing whole, and no hold can
+        # close it — the fault is the whole frame rather than a sliver along a crease. So the
+        # instrument refuses it on the real road, in the plane's own points of the grid, and the
+        # host lands the transaction on that reason exactly as it does for the judges' channel.
+        def world_door(br):
+            br.evaluate("window.__clock(%r); 0" % CLOCK)
+            br.sleep(0.4)
+            gen = js(br, "return window.__offer(%s, {progress: 0, clock: 0});"
+                     % json.dumps(unfold_score(field=1)))["gen"]
+            br.sleep(1.1)
+            r = js(br, "var rep = window.__report(); return {state: rep.state, drew: rep.drew, "
+                       "buffer: rep.census.buffer, refused: rep.events.filter(function(e){ "
+                       "return e.gen === %d && e.why; }).map(function(e){ return String(e.why); })};"
+                   % gen)
+            br.evaluate("window.__cancel('world door'); 0")
+            idle(br)
+            return r
+
+        shut_door = on_bench(lambda b: (b.evaluate("window.__clock(%r); 0" % CLOCK),
+                                        b.sleep(0.4),
+                                        js(b, "return window.__offer(%s, {progress: 0, clock: 0});"
+                                           % json.dumps(unfold_score())),
+                                        b.sleep(1.1),
+                                        js(b, "var r = window.__report(); "
+                                              "return {state: r.state, drew: r.drew};"))[-1])
+        open_door = on_bench(world_door)
+        leaked = [w for w in ((open_door or {}).get("refused") or [])
+                  if "the world stands" in w]
+        check(WORLD_ROWS[3],
+              shut_door and open_door and shut_door["drew"] >= 1
+              and open_door["drew"] == 0 and open_door["state"] == "idle"
+              and len(leaked) >= 1 and "points" in leaked[0],
+              "with the world shut the entry door draws (%s cue, state %s). With `field` driven to "
+              "1 at that same door the instrument refuses it — «%s» — and the host lands the "
+              "transaction (state %s, %s cue drawn) so the walk's own glide carries the visitor"
+              % (shut_door and shut_door["drew"], shut_door and shut_door["state"],
+                 (leaked or ["nothing refused"])[0], open_door and open_door["state"],
+                 open_door and open_door["drew"]))
+
         # ---- 1. the growth law removed -----------------------------------------------------------
         MID = [0.2, 0.32, 0.68, 0.8]
         base_fill = on_bench(lambda b: worst_unclaimed(b, MID))
-        bug = PACK.replace("float sc = room * max(max(aspect / (2.0 * extX), 1.0 / (2.0 * extY)), 1.0);",
-                           "float sc = room;", 1)
+        bug = PACK.replace("float sc = room * mix(grow, 1.0, uField.x);", "float sc = room;", 1)
         bug_fill = on_bench(lambda b: worst_unclaimed(b, MID), pack_text=bug)
         check(RED_ROWS[0],
               bug != PACK and base_fill is not None and bug_fill is not None
@@ -1245,6 +1505,49 @@ else:
               f"({bug_door_read and bug_door_read['refused']} refusals, state "
               f"{bug_door_read and bug_door_read['state']}, "
               f"{bug_door_read and bug_door_read['drew']} cue drawn)")
+
+        # ---- 7. the world's curve reverted --------------------------------------------------------
+        # The curve is one call in one line. Take it out and the raw handle stands where the curved
+        # one did, so the hand walks the world unevenly again — slowly at first and quickly at the
+        # end — and the band the row above measures goes back to what the raw walk measured. Nothing
+        # else moves; the file on disk is never touched.
+        bug = PACK.replace("curveAt(CURVES.field, clamp(st.field, 0, 1))",
+                           "clamp(st.field, 0, 1)", 1)
+        raw_curve = on_bench(curve_band, pack_text=bug)
+        check(RED_ROWS[6],
+              bug != PACK and curved and raw_curve
+              and curved["band"] <= CURVE_BAR
+              and raw_curve["band"] >= 1.8 * curved["band"],
+              "with the curve applied, the picture's rate of change across twenty-one equal marks "
+              "of the hand stands within a band of %.3f. With the one call taken out of the served "
+              "file the same twenty-one marks stand within a band of %.3f — the world opening "
+              "slowly at first and quickly at the end, which is the state the measurement found "
+              "and the curve was built from"
+              % (curved["band"] if curved else -1, raw_curve["band"] if raw_curve else -1))
+
+        # ---- 6. the parquet removed -------------------------------------------------------------
+        # The world opening is what the growth law is walked back FOR: the sheet stops having to
+        # cover the frame because the plane it lies in covers it instead. Take the parquet out and
+        # the first half of that sentence still happens and the second does not, so the world opens
+        # onto bare frame — the very fault the growth law exists to prevent, one step further out.
+        # Nothing else moves; the file on disk is never touched.
+        bug = PACK.replace("if (uField.x > 0.0 && !got) {",
+                           "if (false && uField.x > 0.0 && !got) {", 1)
+        # READ THE STANDING FRAME FIRST. Both runs photograph to the same names, so the reading of
+        # the run with the parquet standing is taken before the bugged run overwrites those files.
+        base_bare = unclaimed(world["open"]["map"]) if world else None
+        bug_world = on_bench(world_read, pack_text=bug)
+        bug_bare = unclaimed(bug_world["open"]["map"]) if bug_world else None
+        check(RED_ROWS[5],
+              bug != PACK and base_bare is not None and bug_bare is not None
+              and base_bare == 0.0 and bug_bare > 0.02,
+              "with the parquet standing, the world whole open leaves %.4f%% of the frame unclaimed "
+              "— the coverage this instrument declares, held one step past the sheet's own edge. "
+              "With the parquet taken out of the served file and everything else left alone, the "
+              "same pose leaves %.2f%% of the frame bare, which is the cleared buffer showing "
+              "through a picture that told the host it had no absence to publish"
+              % (base_bare * 100, bug_bare * 100))
+
 
 shutil.rmtree(TMP, ignore_errors=True)
 

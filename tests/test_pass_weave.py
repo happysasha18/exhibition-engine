@@ -255,6 +255,63 @@ check("PASS-WEAVE the instrument reads its balance, its strip-count breath and i
       "the two constants standing where the module's own eased clock used to run are gone — the one "
       "remaining pair is the manifest's neutral pose, which is a pose and not a channel")
 
+# ---- the response curves, measured 2026-08-17 ----------------------------------------------------
+# The charter's law: equal movement of the hand, equal felt change. This instrument carried one
+# measured curve — `feelOf` — and spent it on the crossing's own progress, so equal steps of its
+# other handles were not equal felt change and the composer that drives them said so in its own
+# report. These rows read the curves off the built file and hold their shape and their measured
+# bands. What the measurement found is worth stating: this fabric's handles were already close to
+# the law, so the curves are published rather than applied and the number is now on the record.
+_CURVE_HANDLES = ["nMul", "press", "speed", "wave"]
+_knots = {}
+for _h in _CURVE_HANDLES:
+    _m = re.search(r"\n      %s: \[([^\]]+)\]" % _h, WEAVE)
+    _knots[_h] = [float(x) for x in _m.group(1).replace("\n", " ").split(",")] if _m else []
+_bad = [h for h, k in _knots.items()
+        if len(k) != 21 or k[0] != 0 or k[-1] != 1
+        or any(k[i + 1] < k[i] for i in range(len(k) - 1))]
+check("PASS-WEAVE every response curve runs 0 to 1 over twenty-one marks and never turns back",
+      not _bad and len(_knots) == 4,
+      "a curve is the inverse of the picture's own running travel, so it is non-decreasing by "
+      "construction and its two ends are the handle's two ends. Twenty-one marks is the count this "
+      "instrument's own measured response curve carries, so the two are read the same way. Handles "
+      "carrying one: " + ", ".join(sorted(_knots))
+      if not _bad else "these are not a curve: " + ", ".join(_bad))
+
+check("PASS-WEAVE no curve is applied here, and the file says why",
+      "applied: false," in WEAVE and WEAVE.count("curve: { knots: CURVES.") == 4
+      and "applied: true" not in WEAVE
+      and "nMul: [1.39, 1.079]" in WEAVE and "speed: [1.538, 1.147]" in WEAVE,
+      "a curve belongs on a handle whose value is a POSITION on a scale, and not one of these four "
+      "is: nMul multiplies a measured band count, speed is a rate, press is a pressure in the "
+      "module's own units and wave is a depth in cells read from the work. A composer places each "
+      "of them from a measurement, so a curve applied here would corrupt the number that was asked "
+      "for. The measured bands run 1.034 to 1.538, where the unfold's own stagger measured 12.728")
+
+# ---- the wave came off the ribbon edge and became the work's own reading, 2026-08-17 ------------
+check("PASS-WEAVE the ribbon's wave is a parameter of the work and rests at the straight edge",
+      "uniform vec4 uWave;" in WEAVE
+      and "float alive = wAmp * smoothstep(0.0, 0.10, uDuty)" in WEAVE
+      and "wave: { min: 0, max: WAVE_MAX, def: 0" in WEAVE,
+      "the depth of the wave is the whole switch and it rests at 0, so the shader's own arithmetic "
+      "hands back the pre-wave cell coordinate and the pre-wave footprint for a work carrying none")
+
+check("PASS-WEAVE not one number of the wave is a literal of the instrument any more",
+      all(s not in WEAVE for s in
+          ["uv.y * 1.7 - uT * 0.090", "uv.y * 3.1 + uT * 0.062", "uv.x * 1.6 + uT * 0.081",
+           "uv.x * 2.9 - uT * 0.055", "0.34 * sin(aV1)", "0.34 * 1.7 * cos(aV1)"]),
+      "the eleven literals 32a013a put on the edge — two depths, four spatial frequencies, four "
+      "drift rates and two phase offsets — read nothing off the photograph and drew one wave on "
+      "every work alike; his 19:13 word calls that the regression")
+
+check("PASS-WEAVE every wave handle names the measurement it is read from",
+      all(s in WEAVE for s in
+          ["texture.type at \u00ab\u0440\u044f\u0431\u044c\u00bb as the gate",
+           "1 - texture.localStraightness",
+           "texture.spectralPeriodPx over the work's own frame side"]),
+      "the class law of his 19:21 word: every geometric and temporal parameter names the "
+      "measurement it derives from, and the composer's own handle register reads these names")
+
 # ---- the two handles whose published shape misdescribed them, repaired 2026-08-14 ---------------
 # Both rows read the manifest against the very lines it describes, so a number that moves in one
 # place and stands still in the other is red rather than quietly wrong.
@@ -409,9 +466,21 @@ BROWSER_ROWS = [
     "PASS-WEAVE what the instrument applied reaches the host's own stack row, field for field",
 ]
 
+# THE WAVE'S OWN TWO ENDS, READ ON THE FRAME. The straight ribbon is the default and the wave plays
+# only where the work carries one, so the acceptance has to show both ends and show that they are
+# not the same frame. Every row here runs on ONE ribbon set — the ribbon axis driven to «up and
+# down», where `uRot` holds at 0, the basket is nothing and `showV` is 1 at every point — so the
+# frame is the column set alone and the reading is about the wave and about nothing else.
+WAVE_ROWS = [
+    "PASS-WEAVE straight  · a work with no measured wave draws the pre-wave frame",
+    "PASS-WEAVE waved     · a work that carries a wave draws the very wave 32a013a recorded",
+    "PASS-WEAVE the wave is no ornament: the straight fabric and the waved one stand apart",
+]
+
 RED_ROWS = [
     "PASS-WEAVE red-on-bug · the door reading removed: a door woven of both photographs is drawn",
     "PASS-WEAVE red-on-bug · the reporting call reverted: the host's stack row carries no reading",
+    "PASS-WEAVE red-on-bug · the wave forced back to a literal: a work carrying none is drawn waved",
 ]
 
 # THE THREE-BAND ACCEPTANCE. The floors were lowered so that the band family the composed passage
@@ -455,6 +524,87 @@ missing = [str(p) for p in ([SCORE] + PHOTOS + [LAB / "effects" / "weave.js"])
            if not p.exists()]
 
 
+# ---------------------------------------------------------------- the lab copy, straightened
+# THE WAVE THIS LANE TOOK OFF THE RIBBON EDGE, AND WHY THE LAB MODULE IS SERVED STRAIGHTENED HERE.
+#
+# The wave entered lab/effects/weave.js at 32a013a on 2026-08-13 and the engine's copy was born with
+# it (aeb8c7c, 08-14), so the two files hold ONE regression rather than two. Eleven literals — two
+# depths, four spatial frequencies, four drift rates and two phase offsets — drew a wandering ribbon
+# edge on every work alike, reading nothing off the photograph, while the band count on the same
+# instrument was measured from the work. His 2026-08-17 19:13 word calls that a regression and
+# carries the resolution in its own sentence: a wavy cut plays only where the work itself carries
+# the wave. The instrument's answer is a wave that is a PARAMETER of the work and rests at nothing.
+#
+# The lab file in the tlvphotos tree is read-only from here, and the identical edit is the judge's
+# to land. Until it lands, the rows that hold the two roads of one frame against each other would be
+# comparing a straight engine against a waved module and would red for the wrong reason. So this
+# file states the edit as code, applies it to the BYTES IT SERVES, and never touches the file: the
+# straightened module is what the default bench serves, and the file as it stands is what the waved
+# row serves. Both directions assert their own input, so a lab file in neither state reds loudly
+# rather than quietly serving something nobody described.
+LAB_WEAVE = LAB / "effects" / "weave.js"
+
+# The nine lines the wave lives on, and the three the wave changed underneath it. Every one of them
+# is quoted from lab/effects/weave.js as 32a013a left it.
+WAVE_LINES = [
+    "    '  float alive = smoothstep(0.0, 0.10, uDuty) * smoothstep(1.0, 0.90, uDuty);',\n",
+    "    '  float aV1 = TAU * (uv.y * 1.7 - uT * 0.090);',\n",
+    "    '  float aV2 = TAU * (uv.y * 3.1 + uT * 0.062 + 1.3);',\n",
+    "    '  float edgeV = alive * (0.34 * sin(aV1) + 0.17 * sin(aV2));',\n",
+    "    '  float dEdgeV = alive * TAU * (0.34 * 1.7 * cos(aV1) + 0.17 * 3.1 * cos(aV2));',\n",
+    "    '  float aH1 = TAU * (uv.x * 1.6 + uT * 0.081);',\n",
+    "    '  float aH2 = TAU * (uv.x * 2.9 - uT * 0.055 + 0.7);',\n",
+    "    '  float edgeH = alive * (0.34 * sin(aH1) + 0.17 * sin(aH2));',\n",
+    "    '  float dEdgeH = alive * TAU * (0.34 * 1.6 * cos(aH1) + 0.17 * 2.9 * cos(aH2));',\n",
+]
+# The three pairs the wave rewrote: the two cell coordinates and the two footprints. Left is the
+# waved form the module carries today, right is the form the module drew at cfbb62a — the last
+# straight state of the file, which is this lane's reference for what straight means.
+WAVE_PAIRS = [
+    ("    '  float cV = warpV(uv.x, 2.0, phV) * nV + edgeV;',",
+     "    '  float cV = warpV(uv.x, 2.0, phV) * nV;',"),
+    ("    '  float cH = warpV(uv.y, 3.0, phH) * nH + edgeH;',",
+     "    '  float cH = warpV(uv.y, 3.0, phH) * nH;',"),
+    ("    '  float wV = 0.5 * (nV * warpD(uv.x, 2.0, phV) / uRes.x + abs(dEdgeV) / uRes.y);',",
+     "    '  float wV = 0.5 * nV * warpD(uv.x, 2.0, phV) / uRes.x;',"),
+    ("    '  float wH = 0.5 * (nH * warpD(uv.y, 3.0, phH) / uRes.y + abs(dEdgeH) / uRes.x);',",
+     "    '  float wH = 0.5 * nH * warpD(uv.y, 3.0, phH) / uRes.y;',"),
+]
+
+
+def lab_is_waved(text):
+    return all(one in text for one in WAVE_LINES) and all(a in text for a, _ in WAVE_PAIRS)
+
+
+def lab_is_straight(text):
+    return (not any(one in text for one in WAVE_LINES)
+            and all(b in text for _, b in WAVE_PAIRS))
+
+
+def straighten(text):
+    """The lab-side edit, applied to bytes. The nine wave lines go; the two cell coordinates and the
+    two footprints return to the form they carried before 32a013a. Nothing else that commit brought
+    is touched — the over-and-under alternation, the contact shadow on both sides and the per-ribbon
+    content offset answered the flat-blinds complaint on their own merits and stay."""
+    if lab_is_straight(text):
+        return text
+    for one in WAVE_LINES:
+        text = text.replace(one, "", 1)
+    for a, b in WAVE_PAIRS:
+        text = text.replace(a, b, 1)
+    return text
+
+
+# THE WAVE THE MODULE ITSELF DREW, said in the instrument's own three handles. Two thirds of the
+# depth in the fundamental and one third in the overtone makes 0.34 and 0.17; a period of one over
+# 1.7 of the frame side makes the fundamental's 1.7 cycles and the overtone's 1.7 x 1.8235 = 3.1;
+# a drift of 0.090 cycles a second makes the overtone's 0.090 x 0.6889 = 0.062 the other way. So a
+# work measured to carry exactly the wave 32a013a hardcoded asks for these three numbers and the
+# instrument draws that wave — which is what makes the parameter a faithful carrier of it and not a
+# new effect wearing its name.
+MODULE_WAVE = {"wave": 0.51, "wavePeriod": 1.0 / 1.7, "waveDrift": 0.090}
+
+
 def png(br, path):
     d = br._cmd("Page.captureScreenshot", format="png", captureBeyondViewport=False)
     Path(path).write_bytes(base64.b64decode(d["data"]))
@@ -495,7 +645,7 @@ def apart(p, work):
     return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
 
 
-def bench_dir(pack_text=None):
+def bench_dir(pack_text=None, lab_text=None):
     """The bench's own served root: the BUILT pass-layer.js (the real artifact, namespace applied and
     comments stripped), the lab module unchanged, the two photographs, and the page that stands the
     two roads of one frame side by side.
@@ -517,7 +667,11 @@ def bench_dir(pack_text=None):
     record["pass"]["instruments"]["weave"]["digest"] = hashlib.sha256(
         pack.encode("utf-8")).hexdigest()
     (d / "config.json").write_text(json.dumps(record), encoding="utf-8")
-    shutil.copy2(LAB / "effects" / "weave.js", d / "weave.js")
+    # The lab module, in the state this bench means to compare against. The default is the
+    # STRAIGHTENED one, because the engine instrument's own default is the straight ribbon; a bench
+    # that means to compare the waved fabric hands the file as it stands.
+    lab = LAB_WEAVE.read_text(encoding="utf-8") if lab_text is None else lab_text
+    (d / "weave.js").write_text(straighten(lab) if lab_text is None else lab, encoding="utf-8")
     (d / "photos").mkdir()
     for p in PHOTOS + [w for w in PAIR_WORKS if w.exists()]:
         shutil.copy2(p, d / "photos" / p.name)
@@ -564,15 +718,15 @@ def landed_read(brx, bal):
     return r
 
 
-def on_bench(fn, pack_text=None):
+def on_bench(fn, pack_text=None, lab_text=None, query=""):
     """One reading, taken on a bench of its own: a served root, a fresh browser, and the instrument
     file this call names. Held apart so a red-on-bug proof and the run it is compared against differ
     in exactly one thing — the bytes the host was handed."""
-    d = bench_dir(pack_text)
+    d = bench_dir(pack_text, lab_text)
     try:
         with serve(d) as base:
             with Browser(width=VW, height=VH) as br:
-                br.navigate(base + "/index.html")
+                br.navigate(base + "/index.html" + query)
                 if not ready(br):
                     return None
                 return fn(br)
@@ -581,10 +735,10 @@ def on_bench(fn, pack_text=None):
 
 
 if not chrome_available():
-    for r in BROWSER_ROWS + BAND_ROWS + RED_ROWS:
+    for r in BROWSER_ROWS + BAND_ROWS + WAVE_ROWS + RED_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 elif missing:
-    for r in BROWSER_ROWS + BAND_ROWS + RED_ROWS:
+    for r in BROWSER_ROWS + BAND_ROWS + WAVE_ROWS + RED_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
 else:
     SHOTS = Path(tempfile.mkdtemp(prefix="synth_weaveshots_"))
@@ -694,7 +848,7 @@ else:
                   var m = JSON.parse(JSON.stringify(window.__exPass.bench.manifest('weave')));
                   m.gl.preserveDrawingBuffer = true;
                   var ok = window.__exPass.bench.register({name:'weave-preserve', manifest:m,
-                      values:function(){return {duty:0,amp:0,nV:8,rot:0};}, fit:function(){return [1,1,0,0];},
+                      values:function(){return {duty:0,amp:0,nV:8,rot:0,wave:[0,1.7,0,0]};}, fit:function(){return [1,1,0,0];},
                       prepare:function(){return {take:false};}, start:function(){}, frame:function(){}});
                   var evs = window.__host.report().events.filter(function(e){return e.name==='manifest-refused';});
                   return {ok: ok, why: evs.length ? evs[evs.length-1].why : null,
@@ -709,7 +863,7 @@ else:
                   var m = JSON.parse(JSON.stringify(window.__exPass.bench.manifest('weave')));
                   m.passes[0].uniforms.push({name:'uPointer', type:'vec2', source:'pointer'});
                   var ok = window.__exPass.bench.register({name:'weave-pointer', manifest:m,
-                      values:function(){return {duty:0,amp:0,nV:8,rot:0};}, fit:function(){return [1,1,0,0];},
+                      values:function(){return {duty:0,amp:0,nV:8,rot:0,wave:[0,1.7,0,0]};}, fit:function(){return [1,1,0,0];},
                       prepare:function(){return {take:false};}, start:function(){}, frame:function(){}});
                   var evs = window.__host.report().events.filter(function(e){return e.name==='manifest-refused';});
                   return {ok: ok, why: evs.length ? evs[evs.length-1].why : null,
@@ -823,12 +977,14 @@ else:
                         if v.get("off") is None:
                             continue
                         measured.append((v["off"], "%s at %s" % (h, L["at"])))
-                # Eight of the nine handles carry a number at a door; `bal` is the open one this
+                # Eleven of the twelve handles carry a number at a door; `bal` is the open one this
                 # score leaves to the dial, so it has no door value of its own to be measured
-                # against. Five landings therefore owe forty readings, and a row that read none
-                # would be vacuous — so the count is asserted alongside the distance.
+                # against. The count grew from eight to eleven on 2026-08-17, when the ribbon's wave
+                # left the shader's literals and became three handles the work drives. Five landings
+                # therefore owe fifty-five readings, and a row that read none would be vacuous — so
+                # the count is asserted alongside the distance.
                 worst = max(measured) if measured else (255.0, "nothing was measured at all")
-                check(BROWSER_ROWS[16], len(measured) == 40 and worst[0] <= 1e-9,
+                check(BROWSER_ROWS[16], len(measured) == 55 and worst[0] <= 1e-9,
                       f"{len(measured)} handle readings across five landings; the furthest any "
                       f"handle finished from its door was {worst[0]} ({worst[1]}) — the doors are "
                       f"exact, so the bar is 1e-09")
@@ -1151,6 +1307,102 @@ else:
                       % (fw, fh, dm, SAME, dx))
 
     # ============================================================================================
+    # THE WAVE'S TWO ENDS, EACH AGAINST THE LAB MODULE IN THE MATCHING STATE.
+    #
+    # The straight end is the one this lane exists for. A work with no measured wave hands the
+    # instrument nothing on all three wave handles, and the frame it then draws must be the frame
+    # this fabric drew BEFORE 32a013a — not a near neighbour of it. The reference is the lab module
+    # with the identical edit applied to the bytes served: the nine wave lines gone and the two cell
+    # coordinates and two footprints back to the form cfbb62a left them, with everything else that
+    # commit brought — the over-and-under alternation, the contact shadow on both sides, the
+    # per-ribbon content offset — standing exactly as it is.
+    #
+    # The waved end says the parameter is a faithful carrier of the wave and not a new effect
+    # wearing its name. A work measured to carry exactly the ripple 32a013a hardcoded asks for a
+    # depth of 0.51 cells, a period of one over 1.7 of the frame side and a drift of 0.090 cycles a
+    # second; the instrument then draws that wave, and the module as it stands is what it is held
+    # against. Both rows run on the column set alone, where the wave is the only thing that differs.
+    def settled(br, tries=80):
+        """The module eases its own balance, its strip-count breath and its press toward whatever
+        the page just asked for, and it keeps easing after a frame is drawn. The host is handed the
+        pose the module reports at ONE instant, so a pose still on the move makes the two roads two
+        different frames — the breath alone moves this fabric by forty-eight of 255 across its own
+        range. So the page waits until the module's own numbers stop moving, and says how long it
+        waited rather than trusting a sleep."""
+        last, held = None, 0
+        for i in range(tries):
+            now = js(br, "var p = window.__pose(); "
+                         "return [p.bal, p.nMul, p.press, p.t];")
+            if last is not None and all(abs(a - b) < 1e-6 for a, b in zip(now, last)):
+                held += 1
+                if held >= 3:
+                    return i
+            else:
+                held = 0
+            last = now
+            br.sleep(0.1)
+        return -1
+
+    def wave_pair(tag):
+        def one(br):
+            br.evaluate("window.__param('axis', 'up and down'); 0")
+            br.evaluate("window.__clock(%r); 0" % CLOCK)
+            br.evaluate("window.__mix(0.5); 0")
+            br.sleep(0.4)
+            waited = settled(br)
+            br.evaluate("window.__hostDraw(); 0")
+            br.sleep(0.15)
+            br.evaluate("window.__show('host'); 0")
+            br.sleep(0.3)
+            ph = str(png(br, SHOTS / (tag + "-host.png")))
+            br.evaluate("window.__show('module'); 0")
+            br.sleep(0.3)
+            pm = str(png(br, SHOTS / (tag + "-module.png")))
+            return {"host": ph, "module": pm, "waited": waited,
+                    "pose": js(br, "return window.__pose();"),
+                    "errs": json.loads(br.evaluate("JSON.stringify(window.__errs||[])"))}
+        return one
+
+    LAB_SRC = LAB_WEAVE.read_text(encoding="utf-8")
+    WAVE_QUERY = ("?wave=%.6f&wavePeriod=%.10f&waveDrift=%.6f"
+                  % (MODULE_WAVE["wave"], MODULE_WAVE["wavePeriod"], MODULE_WAVE["waveDrift"]))
+
+    straight = on_bench(wave_pair("wave-off"))
+    waved = on_bench(wave_pair("wave-on"), lab_text=LAB_SRC, query=WAVE_QUERY)
+
+    if straight and waved:
+        sm, sx = diff(straight["host"], straight["module"])
+        check(WAVE_ROWS[0],
+              sm <= SAME and not straight["errs"] and straight["waited"] >= 0
+              and (lab_is_waved(LAB_SRC) or lab_is_straight(LAB_SRC)),
+              "the three wave handles left unnamed, which is what a work carrying no measured "
+              "ripple hands the instrument: mean %.4f of 255 against the straightened lab module "
+              "(threshold %.1f), worst channel %d. The lab file as it stands is %s, and the edit "
+              "this row applies to the bytes it serves is the one the report hands the judge for "
+              "the tlvphotos tree" %
+              (sm, SAME, sx, "waved" if lab_is_waved(LAB_SRC) else
+               ("already straightened" if lab_is_straight(LAB_SRC) else
+                "in NEITHER of the two states this file describes")))
+
+        wm, wx = diff(waved["host"], waved["module"])
+        check(WAVE_ROWS[1], wm <= SAME and not waved["errs"] and waved["waited"] >= 0,
+              "a depth of %.2f cells, a period of %.4f of the frame side and a drift of %.3f "
+              "cycles a second: mean %.4f of 255 against the lab module as it stands (threshold "
+              "%.1f), worst channel %d — the parameter draws the recorded wave itself"
+              % (MODULE_WAVE["wave"], MODULE_WAVE["wavePeriod"], MODULE_WAVE["waveDrift"],
+                 wm, SAME, wx))
+
+        am, ax = diff(straight["host"], waved["host"])
+        check(WAVE_ROWS[2], am > SEAM,
+              "the same pose drawn twice, once with the wave handles unnamed and once at the "
+              "work's own ripple: mean %.4f of 255 (must exceed the project's seam of %.1f), "
+              "worst channel %d — a wave that made no difference to the frame would prove nothing"
+              % (am, SEAM, ax))
+    else:
+        for r in WAVE_ROWS:
+            skip(r, "the wave bench never came up")
+
+    # ============================================================================================
     # THE RED-ON-BUG PROOF. The lane's own rule reverted in the artifact the browser actually loads:
     # the door test in `doorReadOf` is taken out, so no instant is ever a door and the reading is
     # never taken — this instrument exactly as it stood before it read its doors at runtime,
@@ -1232,6 +1484,29 @@ else:
           f"handles the HOST resolved stand on both rows ({base_say['handles']} and "
           f"{mute_say['handles']}) — the reading is the instrument's own to publish, and nothing "
           f"else on the row moves when it stops")
+
+    # THE THIRD RED-ON-BUG PROOF: the wave forced back to a literal. The depth handle is the whole
+    # switch, so the regression is restored in one line — the served instrument stops reading the
+    # handle and answers the module's own 0.51 cells whatever the work said. Nothing else moves; the
+    # source file on disk is never touched. With it, the frame a work carrying NO measured ripple
+    # gets is a waved fabric, which is exactly the state his 19:13 word called a regression, and the
+    # straight row above goes red by the number it already measures.
+    lit = WEAVE.replace('var amp = typeof st.wave === "number" ? clamp(st.wave, 0, WAVE_MAX) : 0;',
+                        "var amp = WAVE_MAX;", 1)
+    lit_read = on_bench(wave_pair("wave-red"), pack_text=lit)
+    if straight and lit_read:
+        base_m, _ = diff(straight["host"], straight["module"])
+        lit_m, lit_x = diff(lit_read["host"], lit_read["module"])
+        check(RED_ROWS[2],
+              lit != WEAVE and base_m <= SAME and lit_m > SEAM,
+              "with the handle read, a work carrying no measured ripple draws the pre-wave frame "
+              "(mean %.4f of 255 from the straightened module, threshold %.1f). With the depth "
+              "forced back to the literal 32a013a hardcoded, the same work draws a waved fabric "
+              "and stands %.4f of 255 from that same module (worst channel %d) — the regression, "
+              "restored in one line and caught by the row that guards it"
+              % (base_m, SAME, lit_m, lit_x))
+    else:
+        skip(RED_ROWS[2], "the wave bench never came up")
 
     shutil.rmtree(BENCH, ignore_errors=True)
     shutil.rmtree(SHOTS, ignore_errors=True)
