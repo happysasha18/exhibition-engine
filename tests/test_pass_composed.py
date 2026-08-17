@@ -23,6 +23,14 @@ WHAT IT MEASURES.
   The bake and the bundle. The composer travels as its own file the way the picture layer does, and
   the served bundle names it and names none of the three roads that left.
 
+  WHAT THE STAGE-0 FIXTURE STILL CARRIES, AND WHY NOTHING READS IT. `fixture_pass_composed.json`
+  holds `expected` and `expectedTight` — the exact bytes Python composed for the worked pair on the
+  day stage 0 landed. No row opens them. They are kept as the RECORD of that landing, the same record
+  PASS-API-V1 §4.4g keeps in words, and they are not an expectation any more: the composer's output
+  moved on purpose in stage 1 and moves again whenever a lane changes the composition. Re-basing them
+  would turn a record of where the road was into a claim about where it is. What the fixture is still
+  READ for is its two work records, the collection's constants and the two dice.
+
   The seven roads. tests/fixture_pass_works.json carries the 121 REAL per-work records the settings
   record ships, so every road row below stands on a real pair and names the measurement that
   qualified it. Each road carries a red-on-bug proof: its own qualification is removed in a COPY of
@@ -77,6 +85,15 @@ and which one it is decides what a deliberate change to the composition costs to
   4. NOTHING — a measured reading, printed in a row's detail so a person can read the number. Road
      counts, byte and character maxima, how many pairs decline: every one of them is a reading and
      none of them is a gate. They move whenever the composition moves and that is what they are for.
+
+WHEN THE ANCHORING WAS LAST EXERCISED, and by what. 2026-08-17, the camera lane's soft knee on the
+dolly's demand (base `1bbaf3d`): the approach a score writes changes for a minority of pairs and the
+composition moves with it. Measured here against the composer as it stood before that change, on one
+die, over all 14 520 ordered pairs: 324 of the 14 054 that compose write different bytes and 13 730
+are byte-identical; no ground, no cue set, no travelling axis and no duration moved at all; the
+heaviest score of the collection did not move, so the fence row kept its full headroom. NOT ONE ROW
+HERE NEEDED RE-BASING, which is the anchoring above doing its work rather than luck — every row asks
+the module two questions and compares the answers, so both answers moved together.
 
 NO ROW HERE ASSERTS EXACT COMPOSED BYTES, and that is deliberate. Stage 0 was landed on byte
 equality against the prebaked pack it replaced, which was the right gate for a stage that moved the
@@ -318,8 +335,14 @@ for (const [key, dir] of [[KEY_AB, "a-to-b"], [KEY_BA, "b-to-a"]]) {
               applied: p.applied, request: p.request, brief: brief(p)};
 }
 
-// 2 · every field the request gained, named at its documented default, must read the same bytes as
-//     the four-value call the choice core has always taken.
+// 2 · THE ONE EQUALITY THIS SUITE STILL ASSERTS, and it is worth naming what it is against. Stage 0
+//     was landed on byte equality against the PREBAKED PACK the composer replaced, and that gate was
+//     retired with the road it guarded (PASS-API-V1 §4.4g). What stands here instead is an equality
+//     against THE COMPOSER'S OWN CURRENT OUTPUT: every field the request gained, named at its
+//     documented default, must read exactly what the four-value call the choice core has always
+//     taken reads, on the same run. Both sides move together whenever the composition moves, so this
+//     row re-bases never — and it goes on measuring the only thing it ever measured, which is that
+//     the six added fields default to doing nothing.
 const spelled = composer.passageFor({
   workRecordA: A, workRecordB: B, direction: "a-to-b", seed: fix.seeds[KEY_AB],
   routeRole: "middle", sessionMemory: null, cameraState: null, buffer: null});
@@ -707,7 +730,9 @@ else:
         dd = got["defaults"]
         check(NODE_ROWS[12], dd["spelledSame"] and dd["coreSame"],
               f"the six fields named at their defaults read the same bytes: {dd['spelledSame']}; "
-              f"the choice core's own four-value call reads them too: {dd['coreSame']}")
+              f"the choice core's own four-value call reads them too: {dd['coreSame']}. The equality "
+              f"is against the composer's own output on this same run, never against the prebaked "
+              f"pack stage 0 was landed on — that gate went with the road it guarded")
 
         # --- rows 12-14 · the three fences ---------------------------------------------------------
         f = got["fences"]
