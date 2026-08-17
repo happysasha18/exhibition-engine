@@ -126,6 +126,15 @@
       api.onParam(k, v);
     };
     window.__mask = function (v) { maskAt = +v; };
+    // THE WORLD THE SHEET OPENS INTO. The lab module has no world at all — it draws one sheet with
+    // CSS 3D and stops at its own edge — so these three reach the instrument and never the module.
+    // They rest at the closed sheet, which is why every row that compares the two roads goes on
+    // comparing them without naming any of the three.
+    var WORLD = { field: 0, parquetPeriod: 0.5, parquetTurn: 0 };
+    window.__world = function (o) {
+      Object.keys(o || {}).forEach(function (k) { WORLD[k] = +o[k]; });
+      return WORLD;
+    };
     window.__show = function (which) {
       bench.show(which === "host");
       moduleStage.classList.toggle("hidden", which !== "module");
@@ -134,6 +143,8 @@
     function pose() {
       return { mix: hand, tilt: P.tilt, shade: P.shade, depth: P.depth, stagger: P.stagger,
                panels: P.panels, mask: maskAt, t: clockAt, reduced: false,
+               field: WORLD.field, parquetPeriod: WORLD.parquetPeriod,
+               parquetTurn: WORLD.parquetTurn,
                aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
                bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight };
     }
