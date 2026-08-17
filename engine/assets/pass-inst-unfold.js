@@ -358,10 +358,17 @@
       "      vec2 P = SZ * max(uField.z, 0.05);",
       "      vec2 fq = folded(rq, P);",
       "      wcol = pane(tex, fq, SZ);",
-      // DEPTH, THE ONE THING THAT MAKES A PLANE READ AS A PLANE. What is far stands nearer the
-      // eye's own vanishing distance, and what is far takes the world's light. Without it the
-      // parquet reads as a flat pattern however the plane is tipped.
-      "      float far = clamp(gz / d, 0.0, 1.0);",
+      // DEPTH, THE ONE THING THAT MAKES A PLANE READ AS A PLANE. What is far takes the world's own
+      // light; without it the parquet is a flat pattern however the plane is tipped.
+      //
+      // AND IT IS READ OFF THE PROJECTION'S OWN DIVISOR, not off `z`. Away from the eye is NEGATIVE
+      // z in this chain — a panel turning away carries `-sin` into its own basis, which is where
+      // that sign was set — so a fade written on `z / d` puts the haze on the NEAREST tiles and
+      // leaves the far ones bare, which is the reading turned inside out. The divisor `1 - z/d` is
+      // 1 in the sheet's own plane and grows without bound toward the vanishing point, so
+      // `1 - 1/k` is 0 at the sheet and 1 at the horizon whichever way the plane is tipped.
+      "      float k = 1.0 - gz / d;",
+      "      float far = clamp(1.0 - 1.0 / max(k, 1.0), 0.0, 1.0);",
       "      wcol = mix(wcol, tone, HAZE * far * far);",
       "      wcode = 0.125;",
       "      wloc = clamp(fq / vec2(CW, CH), 0.0, 1.0);",
