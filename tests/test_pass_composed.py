@@ -317,12 +317,16 @@ BROWSER_ROWS = [
     "EX-COMPOSED the walk fetches the composer once, at the landing, and it joins",
     "EX-COMPOSED a step over two recorded works derives a passage and freezes it onto the command",
     "EX-COMPOSED the passage's own request stands on the diagnostic surface beside the score",
+    "EX-COMPOSED the passage plays, and what the instrument applied on its own buffer is written back onto it",
     "EX-COMPOSED a work the record set never heard of keeps the walk's own glide",
     "EX-COMPOSED reduced motion asks for no composer at all, and records why",
 ]
 
 
-def enter(br, base, pass_arg=None):
+def enter(br, base, pass_arg=None, step=False):
+    """A fresh visitor who opens the door and stands in the walk. `step` takes ONE real step, which
+    is the only road that asks for the picture layer's file (engine/client/15-motion.js: the layer
+    is opened where a step declares its command)."""
     br.navigate(base + "/")
     br.clear_storage()
     br.navigate(base + "/" + (("?pass=" + pass_arg) if pass_arg else ""))
@@ -334,6 +338,13 @@ def enter(br, base, pass_arg=None):
             break
         br.sleep(0.2)
     br.sleep(0.4)
+    if step:
+        br.key("ArrowDown")
+        for _ in range(30):
+            if br.evaluate("String(!!(window.__exPass && window.__exPass.layer()))") == "true":
+                break
+            br.sleep(0.2)
+        br.sleep(0.5)
 
 
 def js(br, body):
@@ -390,7 +401,7 @@ else:
                 for r in BROWSER_ROWS[1:]:
                     skip(r, f"the walk hung fewer than three works: {allworks[:4]}")
             else:
-                enter(br, base, "diagnostics:on")
+                enter(br, base, "diagnostics:on", step=True)
                 for _ in range(30):
                     if js(br, "return window.__exPass.report().composer.state;") == "read":
                         break
@@ -398,6 +409,9 @@ else:
                 shown = js(br, "return [].slice.call(document.querySelectorAll('.exh-frame'))"
                                ".map(function(e){return e.dataset.id;});")
                 pair = [w for w in shown if w in recorded][:2]
+                # The walk deals afresh on every entry, so the work with no record of its own is
+                # read off THIS hang rather than remembered from the last one.
+                unrecorded = next((w for w in shown if w not in recorded), None)
                 rep = js(br, "var r = window.__exPass.report();"
                              "return {state: r.composer.state, version: r.composer.version,"
                              " works: r.composer.works, src: r.composer.src,"
@@ -411,7 +425,7 @@ else:
 
                 # 2 · a step over two recorded works
                 if len(pair) < 2:
-                    for r_ in BROWSER_ROWS[2:5]:
+                    for r_ in BROWSER_ROWS[2:6]:
                         skip(r_, f"this hang shows fewer than two recorded works: {shown[:4]}")
                     pair = None
                 r = None if pair is None else js(br, """
@@ -420,6 +434,7 @@ else:
                   var cmd = window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
                                                              kind:'step', cause:'composed',
                                                              velocity:0});
+                  window.__cmd = cmd;
                   var said = window.__exPass.report().refusals.filter(function(x){
                     return x.what === 'score'; });
                   return {got: !!cmd, hasScore: !!(cmd && cmd.score),
@@ -459,8 +474,75 @@ else:
                       and (p["request"]["cameraState"] is None) == (p["hangNow"] is None),
                       f"passage={json.dumps(p, ensure_ascii=False)[:700] if p else None}")
 
-                # 4 · a work with no record of its own
-                r = None if pair is None else js(br, """
+                # 4 · the passage PLAYS, and the applied reading comes back onto it
+                #
+                # His architecture decision of 2026-08-17 18:00: the instrument reads its doors at
+                # run time on the actual buffer, and that reading is the runtime truth. It cannot be
+                # known before the frame is drawn, so the walk writes it onto the passage record at
+                # the landing — beside the request that asked for it.
+                #
+                # WHAT THIS ROW REACHES, AND WHERE IT STOPS. What comes back is what the HOST
+                # publishes: the instrument that took the command, the drawing buffer and its device
+                # ratio, and every live cue with the handles the host resolved for it. That is the
+                # applied state at the host's level and this row holds it.
+                #
+                # The instrument's OWN door reading — the meshing one's `sizeRequest`, `sizeRungs`,
+                # `doorHeld` and `doorWhyNo`, computed inside `values()` on the buffer it is drawing
+                # on — reaches no host report today: an instrument hands the host a draw call and a
+                # camera pose (`reportPose`) and nothing else. Carrying it needs a reporting seam on
+                # the instrument boundary, and the lane extending runtime door reading to the other
+                # four instruments is the one that owns that boundary. This row therefore reads what
+                # exists and PRINTS what does not, so the gap is visible rather than assumed closed.
+                if pair:
+                    for _ in range(40):
+                        if js(br, "return !!window.__exPass.layer();") is True:
+                            break
+                        br.sleep(0.2)
+                played = None if pair is None else js(br, """
+                  if (!window.__exPass.layer()) return {took: false, noLayer: true};
+                  var cmd = window.__cmd;
+                  var took = window.__exPass.layer().offer(cmd, {dock: function(){
+                    window.__exPass.adapter.dock(cmd); },
+                    glide: function(){ window.__glided = true; },
+                    curtain: function(){}, mark: function(){}});
+                  return {took: took};
+                """)
+                if pair and played and played.get("took"):
+                    for _ in range(80):
+                        if js(br, "return window.__exPass.host.report().state;") == "idle":
+                            break
+                        br.sleep(0.15)
+                    br.sleep(0.4)
+                ap = None if pair is None else js(
+                    br, "var rows = window.__exPass.report().composer.passages;"
+                        "return rows.length ? rows[rows.length - 1].applied : null;")
+                if pair is None:
+                    pass
+                elif not (played and played.get("took")):
+                    skip(BROWSER_ROWS[4],
+                         "no picture layer on this device"
+                         if (played or {}).get("noLayer") else
+                         "the host declined the composed passage on this device: no frame was "
+                         "drawn, so nothing was applied")
+                else:
+                    handles = [c for c in (ap or {}).get("cues", []) if c.get("handles")]
+                    gears = [c for c in handles if c["instrument"] == "gears"]
+                    door = [c for c in handles if "sizeRequest" in c["handles"]]
+                    check(BROWSER_ROWS[4],
+                          bool(ap) and bool(ap.get("instrument")) and bool(ap.get("buffer"))
+                          and bool(handles),
+                          f"applied on a {ap['buffer'] if ap else '?'} buffer at dpr "
+                          f"{ap['dpr'] if ap else '?'}, {len(handles)} live cue(s): "
+                          + json.dumps([{"id": c["id"], "instrument": c["instrument"],
+                                         "size": c["handles"].get("size")}
+                                        for c in handles], ensure_ascii=False)[:300]
+                          + f"; the instrument's own door reading reaches this record for "
+                            f"{len(door)} of them"
+                          + (" — no instrument reports one to the host yet, which is the seam the "
+                             "runtime-doors lane owns" if not door else ""))
+
+                # 5 · a work with no record of its own
+                r = None if (pair is None or unrecorded is None) else js(br, """
                   var A = document.querySelector('.exh-frame[data-id="%s"]');
                   var C = document.querySelector('.exh-frame[data-id="%s"]');
                   if (!A || !C) return {absent: true};
@@ -471,16 +553,18 @@ else:
                     return x.what === 'composer' && x.name === 'request'; });
                   return {score: cmd ? cmd.score : 'no command', to: C.dataset.id,
                           why: said.length ? said[said.length - 1].why : null};
-                """ % (pair[0], unrecorded) if pair else "")
-                if pair and r.get("absent"):
-                    skip(BROWSER_ROWS[4], f"this hang shows no unrecorded work ({unrecorded})")
+                """ % (pair[0], unrecorded) if (pair and unrecorded) else "")
+                if pair and unrecorded is None:
+                    skip(BROWSER_ROWS[5], f"every work of this hang carries a record: {shown[:4]}")
+                elif pair and r.get("absent"):
+                    skip(BROWSER_ROWS[5], f"this hang shows no unrecorded work ({unrecorded})")
                 elif pair:
-                    check(BROWSER_ROWS[4],
+                    check(BROWSER_ROWS[5],
                           r["score"] is None and "carries no record" in (r["why"] or ""),
                           f"a step to {r['to']} froze {r['score']!r} onto the command; "
                           f"the reason on the surface: {r['why']!r}")
 
-                # 5 · reduced motion
+                # 6 · reduced motion
                 with Browser(width=1280, height=900) as br2:
                     br2.emulate_media(prefers_reduced_motion="reduce")
                     enter(br2, base, "diagnostics:on")
@@ -492,7 +576,7 @@ else:
                                   " files: performance.getEntriesByType('resource')"
                                   "  .filter(function(e){return e.name.indexOf('pass-composer.js')>=0;})"
                                   "  .length};")
-                    check(BROWSER_ROWS[5],
+                    check(BROWSER_ROWS[6],
                           red["files"] == 0 and red["why"] == "reduced motion",
                           f"the file was fetched {red['files']} time(s); the reason on the "
                           f"surface: {red['why']!r}")
