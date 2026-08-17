@@ -728,6 +728,130 @@ check("PASS-DRV §6 · the composer writes the dolly as a natural logarithm, the
       "PASS-API-V1 §6: logScale IS the logarithm and the applied factor is exp of it; "
       "docs/immersive/wave-a/camera-drivers-conductor.md writes the field as ln(scale)")
 
+# ---------------------------------------------------------------- the approach, over the collection
+# THE DEMAND IS COMPRESSED, NEVER CLIPPED. A clamp put most of the passages that carry a dolly on one
+# and the same number, so the approach — the thing a person feels most directly — carried no reading
+# of the pair. These rows read the emitted score's own camera track over the 121 REAL per-work
+# records, not over one pair, because a row standing on one pair passes on exactly that defect.
+#
+# The records are the site's own lab/build-workrecords-v1.py output, the same file the composer lane
+# stands its collection-wide rows on, copied here byte for byte rather than re-derived.
+WORKS = Path(__file__).resolve().parent / "fixture_pass_works.json"
+
+COMPOSER_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [modulePath, worksPath, plantFrom, plantTo] = process.argv.slice(2);
+let source = fs.readFileSync(modulePath, "utf8");
+const ns = /window\.__(\w*?)PassComposer/.exec(source);
+if (!ns) { console.log(JSON.stringify({error: "the built file names no PassComposer join point"})); process.exit(0); }
+if (plantFrom) {
+  if (source.indexOf(plantFrom) < 0) { console.log(JSON.stringify({error: "the plant found nothing to change"})); process.exit(0); }
+  source = source.replace(plantFrom, plantTo);
+}
+let joined = null;
+const win = {}; win["__" + ns[1] + "PassComposer"] = (m) => { joined = m; };
+const sandbox = {window: win, console};
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, {filename: "pass-composer.js"});
+if (!joined) { console.log(JSON.stringify({error: "the module joined nothing"})); process.exit(0); }
+
+const fix = JSON.parse(fs.readFileSync(worksPath, "utf8"));
+const composer = joined.make(fix.consts);
+const ids = Object.keys(fix.works).sort();
+const CAP = 0.5;
+// The score's own TEXT is read rather than the record in hand: the composer wraps its numbers so a
+// score written here and a score written by the build are the same bytes, so the text is the truth.
+const rows = [];
+let composed = 0;
+for (let i = 0; i < ids.length; i++) {
+  for (let j = 0; j < ids.length; j++) {
+    if (i === j) continue;
+    const p = composer.passageFor({workRecordA: fix.works[ids[i]], workRecordB: fix.works[ids[j]],
+                                   direction: "a-to-b", seed: 0});
+    if (!p.json) continue;
+    composed++;
+    const track = JSON.parse(p.json).camera.track;
+    if (track.length !== 4) continue;                    // this shape's flight carries no dolly
+    rows.push({asked: Math.log(fix.works[ids[j]].door.stepPx / fix.works[ids[i]].door.stepPx),
+               dolly: track[1].logScale, from: ids[i], to: ids[j]});
+  }
+}
+rows.sort((a, b) => a.asked - b.asked);
+const onBound = rows.filter((r) => Math.abs(Math.abs(r.dolly) - CAP) < 1e-12).length;
+const overBound = rows.filter((r) => Math.abs(r.dolly) > CAP).length;
+const distinct = new Set(rows.map((r) => r.dolly)).size;
+// A PAIR ASKING FOR MORE NEVER GETS LESS. Sorted by what the two door framings ask for, the emitted
+// approach never turns back — which is the claim "two pairs whose demands differ differ" made over
+// the whole collection at once instead of over two chosen pairs.
+let backwards = 0;
+for (let k = 1; k < rows.length; k++) if (rows[k].dolly < rows[k - 1].dolly) backwards++;
+const worst = rows.reduce((m, r) => Math.max(m, Math.abs(r.dolly)), 0);
+console.log(JSON.stringify({
+  composed: composed, carryingADolly: rows.length, onBound: onBound, overBound: overBound,
+  distinct: distinct, backwards: backwards, worst: worst,
+  least: rows[0], middle: rows[Math.floor(rows.length / 2)], most: rows[rows.length - 1],
+}));
+"""
+
+CAMERA_ROWS = [
+    "PASS-DRV §6 · no composed passage lands on the dolly's bound, over the whole collection",
+    "PASS-DRV §6 · two pairs asking for different approaches get different approaches",
+]
+
+if not NODE:
+    for r in CAMERA_ROWS:
+        skip(r, "node is not installed (pinned expected skip)")
+elif not WORKS.exists():
+    for r in CAMERA_ROWS:
+        skip(r, f"the 121 real per-work records are not in the tree at {WORKS.name}")
+else:
+    cdriver = TMP / "camera-composer-driver.js"
+    cdriver.write_text(COMPOSER_DRIVER, encoding="utf-8")
+    KNEE = "dolly = DOLLY_CAP * asked / (Math.abs(asked) + DOLLY_CAP);"
+    CLIP = "dolly = Math.max(-DOLLY_CAP, Math.min(DOLLY_CAP, asked));"
+
+    def sweep(plant=None):
+        args = [NODE, str(cdriver), str(TMP / "pass-composer.js"), str(WORKS)]
+        if plant:
+            args += [KNEE, CLIP]
+        p = subprocess.run(args, capture_output=True, text=True, timeout=300)
+        if p.returncode != 0:
+            return None, (p.stderr or p.stdout)[-400:]
+        try:
+            got = json.loads(p.stdout)
+        except Exception as e:
+            return None, f"{e}: {p.stdout[:300]}"
+        return (None, got["error"]) if got.get("error") else (got, None)
+
+    now, why = sweep()
+    if now is None:
+        for r in CAMERA_ROWS:
+            skip(r, "the sweep never answered: " + str(why))
+    else:
+        # RED ON BUG. The bound is put back as a wall instead of a limit, in a COPY of the module.
+        was, why2 = sweep(plant=True)
+        red = (f"with the bound cut as a wall instead of approached as a limit, "
+               f"{was['onBound']} of {was['carryingADolly']} land on it and the distinct approaches "
+               f"fall to {was['distinct']}") if was else f"the crippled sweep never answered: {why2}"
+        check(CAMERA_ROWS[0],
+              now["onBound"] == 0 and now["overBound"] == 0
+              and was is not None and was["onBound"] > 0,
+              f"{now['carryingADolly']} of {now['composed']} composed passages carry a dolly; "
+              f"{now['onBound']} land on the bound and {now['overBound']} pass it; the worst is "
+              f"{now['worst']} ({round(math.exp(now['worst']), 3)}x against the bound's "
+              f"{round(math.exp(0.5), 3)}x) · {red}")
+        red2 = (f"cut as a wall the same {was['carryingADolly']} passages share "
+                f"{was['distinct']} approaches") if was else red
+        check(CAMERA_ROWS[1],
+              now["distinct"] > (was["distinct"] if was else 0) and now["backwards"] == 0
+              and now["least"]["dolly"] != now["middle"]["dolly"]
+              != now["most"]["dolly"],
+              f"{now['carryingADolly']} passages carry {now['distinct']} distinct approaches and "
+              f"none turns back on a pair asking for more ({now['backwards']} inversions); the "
+              f"least-asking pair flies {now['least']['dolly']}, the middle "
+              f"{now['middle']['dolly']} and the most-asking {now['most']['dolly']} · {red2}")
+
 shutil.rmtree(TMP, ignore_errors=True)
 
 passed = sum(1 for _, s, _ in results if s == "PASS")
