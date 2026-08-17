@@ -54,6 +54,37 @@ WHAT IT MEASURES.
 
 WHAT IS NEVER RESTORED FROM GIT. Every red-on-bug proof below runs a COPY of the module in memory
 with one rule changed. The source tree is never written to.
+
+WHAT EVERY ROW HERE IS ANCHORED TO, IN ONE PLACE. A suite that has to be argued with every time the
+work moves is a suite that stops guarding, so each row below stands on one of exactly four things,
+and which one it is decides what a deliberate change to the composition costs to re-base.
+
+  1. THE CLIENT'S OWN PUBLISHED CAPABILITY. The two fences a filled score has to pass — its whole
+     weight and the length of its authored line — are read from the served client's own PASS_LIMITS
+     literal at CLIENT_BYTES and CLIENT_INTENT below, handed to the driver, and never typed twice.
+     These re-base when the CLIENT changes, by themselves, because nothing here holds a copy.
+
+  2. CHARTER LAW. ROLE_BUDGET below is shelf 17's voice budget — letters, miracles and seconds by
+     role — plus the two role numbers this seat named for the walk's own ends. A row standing on it
+     re-bases only when the charter or that seat's word changes, which is the point of it.
+
+  3. THE MODULE'S OWN ANSWERS, COMPARED AGAINST EACH OTHER. Most rows here ask the composer two
+     questions and compare the two answers: a request at its defaults against the four-value call,
+     a pass against the pass before it, a run with a rule planted against the same run without it.
+     These NEVER re-base. A change to the composition moves both answers together and the row goes
+     on measuring the same claim.
+
+  4. NOTHING — a measured reading, printed in a row's detail so a person can read the number. Road
+     counts, byte and character maxima, how many pairs decline: every one of them is a reading and
+     none of them is a gate. They move whenever the composition moves and that is what they are for.
+
+NO ROW HERE ASSERTS EXACT COMPOSED BYTES, and that is deliberate. Stage 0 was landed on byte
+equality against the prebaked pack it replaced, which was the right gate for a stage that moved the
+composer without changing what it composed; stage 1 changes what comes out on purpose, so that gate
+was retired with the road it guarded (PASS-API-V1 §4.4g states both halves). A later change to the
+composition — another lane's, a tuning pass, his own word — therefore re-bases NOTHING in this file.
+The one row it can legitimately redden is the fence row, and a red there is the row working: a score
+over the client's fence is refused whole and the visitor sees a glide.
 """
 import json
 import os
@@ -128,14 +159,17 @@ check("EX-COMPOSED the served bundle carries the composer's door and none of the
 # joins it here, because stage 0 measured what an unpublished prose fence costs — 1 004 of 6 304
 # composed crossings refused whole for a line nobody could measure.
 CFG = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
-CAPS = (CFG.get("pass") or {}).get("capabilities") or {}
+BAKED_CAPS = (CFG.get("pass") or {}).get("capabilities") or {}
 CLIENT_LIMITS = re.search(r"PASS_LIMITS\s*=\s*\{([^}]*)\}", SRC)
 CLIENT_BYTES = int(re.search(r"\bbytes:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
 CLIENT_INTENT = int(re.search(r"\bintent:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
 check("EX-COMPOSED the bake publishes both fences a filled score is measured against",
-      CAPS.get("scoreBytes") == CLIENT_BYTES and CAPS.get("intentChars") == CLIENT_INTENT,
+      BAKED_CAPS.get("scoreBytes") == CLIENT_BYTES
+      and BAKED_CAPS.get("intentChars") == CLIENT_INTENT,
       f"the client applies {CLIENT_BYTES} B and {CLIENT_INTENT} characters; the settings record "
-      f"publishes {CAPS.get('scoreBytes')} and {CAPS.get('intentChars')}")
+      f"publishes {BAKED_CAPS.get('scoreBytes')} and {BAKED_CAPS.get('intentChars')}. The site's own staging "
+      f"step carries both into the composer's constants, where `intentFenceChars` stands beside "
+      f"`scoreFenceBytes` (tlvphotos lab/build-workrecords-v1.py)")
 
 check("EX-COMPOSED nothing on the product path is keyed by a pair",
       "passRequestFor" in JS and "workRecordA" in JS
@@ -220,6 +254,24 @@ if (!joined) { console.log(JSON.stringify({error: "the module joined nothing"}))
 
 const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
 const works = JSON.parse(fs.readFileSync(worksPath, "utf8"));
+// THE TWO FENCES, READ FROM THE CLIENT AND HANDED IN — never typed here. Anchor 1 of the four the
+// docstring names: the number this suite measures against is the number the client applies, parsed
+// out of the served client's own PASS_LIMITS literal on the Python side, so a client that raises a
+// cap re-bases these rows by itself and no copy of either number lives in this file.
+const CAPS = JSON.parse(process.env.CLIENT_CAPS || "{}");
+const INTENT_CAP = CAPS.intent;
+const BYTE_CAP = CAPS.bytes;
+if (!(INTENT_CAP > 0) || !(BYTE_CAP > 0)) {
+  console.log(JSON.stringify({error: "the client published no fences to measure against: "
+                                     + JSON.stringify(CAPS)}));
+  process.exit(0);
+}
+
+// The constants are the shape the site's staging step ships TODAY: the client's prose fence stands
+// in them beside its byte fence, so the composer under test measures against the published number
+// rather than against its own documented fallback. The fixture predates the field; handing it here
+// is the same value by the same road, not a second one.
+fix.consts.intentFenceChars = INTENT_CAP;
 const composer = joined.make(fix.consts);
 const A = fix.works[fix.pair.a], B = fix.works[fix.pair.b];
 const KEY_AB = fix.pair.a + "__" + fix.pair.b + "__ab";
@@ -359,8 +411,6 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
                       "The two band families cross into stripes. ",
                       "The work folds along its own region lines. ",
                       "Along what the two works do not share. "];
-const INTENT_CAP = 600;   // the client's own fence, engine/client/01a-pass.js PASS_LIMITS.intent
-const BYTE_CAP = fix.consts.scoreFenceBytes;
 for (let i = 0; i < ids.length; i++) {
   for (let j = 0; j < ids.length; j++) {
     if (i === j) continue;
@@ -445,7 +495,7 @@ out.roadNotes = roadNotes;
 //     The constants are handed a cap of their own and the longest line the composer writes has to
 //     fall under it — which is the wire the bake's `intentChars` travels, proved without planting.
 const handed = joined.make(Object.assign({}, fix.consts, {intentFenceChars: 300}));
-let handedMax = 0, handedShort = 0, handedN = 0;
+let handedMax = 0, handedShort = 0, handedN = 0, handedRoadKept = 0;
 for (let i = 0; i < ids.length; i++) {
   for (let j = 0; j < ids.length; j++) {
     if (i === j) continue;
@@ -458,10 +508,11 @@ for (let i = 0; i < ids.length; i++) {
     handedN++;
     if (p.score.intent.length > handedMax) handedMax = p.score.intent.length;
     if ((p.plan.intentDropped || []).length) handedShort++;
+    if (ROAD_OPENERS.some((o) => p.score.intent.indexOf(o) === 0)) handedRoadKept++;
   }
 }
 out.handed = {cap: 300, max: handedMax, shortened: handedShort, composed: handedN,
-              own: out.sweep.maxIntent};
+              roadKept: handedRoadKept, own: out.sweep.maxIntent};
 
 // 9 · the three fences of the entry
 const ask = (extra) => {
@@ -484,7 +535,10 @@ DRIVER_PATH.write_text(DRIVER, encoding="utf-8")
 
 
 def node_run(plants=(), sweep=0):
-    env = dict(os.environ, PLANTS=json.dumps(list(plants)), SWEEP=str(sweep))
+    # The client's own two fences travel to the driver rather than being restated inside it, which
+    # is anchor 1 of the four the docstring names.
+    env = dict(os.environ, PLANTS=json.dumps(list(plants)), SWEEP=str(sweep),
+               CLIENT_CAPS=json.dumps({"bytes": CLIENT_BYTES, "intent": CLIENT_INTENT}))
     proc = subprocess.run(["node", str(DRIVER_PATH), str(MODULE), str(FIXTURE), str(WORKS)],
                           capture_output=True, text=True, env=env, timeout=600)
     if proc.returncode != 0:
@@ -725,33 +779,31 @@ else:
                " lo = spec[0], hi = spec[1], dflt = spec[2];"]],
              lambda g: "bal" in g["sweep"]["openDriven"]),
             (NODE_ROWS[26],
-             [["var INTENT_FENCE_CHARS = consts.intentFenceChars || 600;",
-               "var INTENT_FENCE_CHARS = consts.intentFenceChars || 120;"],
-              ["if (line.length > INTENT_FENCE_CHARS && fields.returnPhrase) {", "if (false) {"],
+             [["if (line.length > INTENT_FENCE_CHARS && fields.returnPhrase) {", "if (false) {"],
               ["if (line.length > INTENT_FENCE_CHARS && fields.roadPhrase) {", "if (false) {"]],
-             lambda g: g["sweep"]["roadKept"] > 0),
+             lambda g: g["handed"]["roadKept"] > 0),
         ]
         # The intent fence's own standing row: with the cap planted DOWN and the guard in place,
         # every line the composer writes still fits under it. The red-on-bug above removes the guard
         # under the same pressure and the lines run over.
         # THE FENCE IS MEASURED UNDER PRESSURE, because at the cap the client actually applies no
-        # line of this collection comes near it. With the cap planted down, every line over it gives
-        # up the clauses THIS LANE added — the pass count first, then the road's own opening — and
-        # never a word of the line that stood before the lane. The red-on-bug below removes the
-        # guard under the same pressure and the openings stay.
-        tight = node_run([["var INTENT_FENCE_CHARS = consts.intentFenceChars || 600;",
-                           "var INTENT_FENCE_CHARS = consts.intentFenceChars || 120;"]],
-                         sweep=CORNER)
-        if not tight.get("error"):
-            t = tight["sweep"]
-            check("EX-COMPOSED the intent fence gives up this lane's own clauses before the line "
-                  "is refused whole",
-                  t["roadKept"] == 0 and t["intentShortened"] > 0 and sweep["roadKept"] > 0
-                  and sweep["intentShortened"] == 0,
-                  f"with the cap planted at 120, {t['intentShortened']} of {t['composed']} lines "
-                  f"gave up a clause and {t['roadKept']} kept a road's opening; at the cap the "
-                  f"client applies, {sweep['roadKept']} of {sweep['composed']} lines carry theirs "
-                  f"and {sweep['intentShortened']} give anything up")
+        # line of this collection comes near it. The pressure is applied the way the WIRE applies it
+        # — a smaller cap handed to the composer in its own constants, not a number planted in its
+        # source — because the site now publishes the cap and a plant on the fallback would prove
+        # only that the fallback still exists. Every line over the handed cap then gives up the
+        # clauses THIS LANE added, the pass count first and then the road's own opening, and never a
+        # word of the line that stood before the lane. The red-on-bug below removes the guard under
+        # the same pressure and the openings stay.
+        hd = got["handed"]
+        check("EX-COMPOSED the intent fence gives up this lane's own clauses before the line "
+              "is refused whole",
+              hd["roadKept"] == 0 and hd["shortened"] > 0 and sweep["roadKept"] > 0
+              and sweep["intentShortened"] == 0,
+              f"handed a cap of {hd['cap']} characters in its own constants, {hd['shortened']} of "
+              f"{hd['composed']} lines gave up a clause and {hd['roadKept']} kept a road's opening; "
+              f"at the {sweep['intentCap']} the client applies, {sweep['roadKept']} of "
+              f"{sweep['composed']} lines carry theirs and {sweep['intentShortened']} give anything "
+              f"up")
 
         for name, plants, reddens in PLANTS:
             g = node_run(plants, sweep=CORNER)
