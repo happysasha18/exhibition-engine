@@ -100,6 +100,7 @@ BROWSER_ROWS = [
     "EX-MEMORY a cleared storage walks with a fresh pool, says so, and the visitor still lands",
     "EX-MEMORY a storage that will not open says so, and the visitor still lands",
     "EX-MEMORY the store stays bounded: the youngest records stand and the rest go",
+    "EX-MEMORY ?reset forgets the edges walked, the way it forgets everything else",
 ]
 
 
@@ -722,6 +723,20 @@ else:
                                   f"{planted['planted']} edges were planted against a store that "
                                   f"keeps {planted['keep']}; the browser now holds "
                                   f"{after_put['rows']} record(s)")
+
+                            # 13 · ?reset forgets the edges walked ------------------------
+                            # EX-RESET / INV-35: the museum forgets THIS browser, and forgetting is
+                            # whole. The edges a visitor walked are as much of that as the tongue
+                            # they read in. Reverting the one line that drops this key reddens here.
+                            before_reset = js(br, "return {has: !!localStorage.getItem("
+                                                  "'ex-pass-edges')};")
+                            br.navigate(base + "/?reset")
+                            br.sleep(1.0)
+                            gone = js(br, "return {has: !!localStorage.getItem('ex-pass-edges')};")
+                            check(BROWSER_ROWS[13],
+                                  before_reset["has"] and not gone["has"],
+                                  f"the browser held records before the wipe: "
+                                  f"{before_reset['has']}; it holds them after: {gone['has']}")
 
 import shutil  # noqa: E402
 shutil.rmtree(TMP, ignore_errors=True)
