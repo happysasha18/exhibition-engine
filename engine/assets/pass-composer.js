@@ -515,11 +515,19 @@
     //
     // `free` is the measure a ROAD needs left free to travel: a road built on the pair's radial
     // reading cannot also hold it still. The ground then stands on the next playable shared measure,
-    // or on one of the three below.
-    function pivotOfPair(a, b, free) {
+    // or on one of the three below. `prefer` names a measure the road asks to stand on — a return
+    // holding the pivot of the pass it answers uses it — and it wins wherever the pair can hold it.
+    function pivotOfPair(a, b, free, prefer) {
       // The four pivots in the elements builder's own order of precedence.
       var all = sharedMeasures(a, b), v, na, nb, strength, ra, rb, hues, i;
-      var best = strongestHeld(all, function (m) { return m !== free && holdable(a, b, m); });
+      var best = null;
+      if (prefer && prefer !== free && all.per[prefer] && all.per[prefer].both
+          && holdable(a, b, prefer)) {
+        best = prefer;
+      }
+      if (best === null) {
+        best = strongestHeld(all, function (m) { return m !== free && holdable(a, b, m); });
+      }
       var shared = best === null ? null : { measure: best, strength: all.per[best].min };
       if (shared) {
         v = { strength: shared.strength, measure: shared.measure,
@@ -573,11 +581,12 @@
       return Math.min(sa, sb) * (Math.min(pa, pb) / Math.max(pa, pb));
     }
 
-    function pairOf(a, b, direction, seed, free) {
+    function pairOf(a, b, direction, seed, free, prefer) {
       // §4.3's PairDossier, in the shape `compose` reads it: the pivot the two works derive, the
       // two doors, this pair's readiness and the die the caller rolled. `free` is the measure the
-      // chosen road needs left free to travel, so the ground never stands on it.
-      var chosen = pivotOfPair(a, b, free);
+      // chosen road needs left free to travel, so the ground never stands on it, and `prefer` the
+      // one it asks to stand on.
+      var chosen = pivotOfPair(a, b, free, prefer);
       var kind = chosen.kind;
       var value = { strength: chosen.rowStrength };
       if (kind === "shared-measure") {
@@ -1011,12 +1020,23 @@
 
     // ---- the shape and its template ----
 
-    function cueWindows(shapeHasTravel, arrivalLeads, travelInstrument) {
-      var w = { pivot: [0.0, 1.0] };
+    // THE RHYTHM, AND THE DEVIATION A FURTHER PASS PUTS ON IT. §4.8 lets the rhythm and the phases
+    // differ across a return, and charter shelf 13 states what a living rhythm is: a base period
+    // plus a measured deviation, one instrument per time axis and never two stacked. The base is
+    // the window each shape has always had. The deviation is drawn from the die and the pass count,
+    // and it moves only where a cue OPENS, never where it closes — so both doors stand exactly
+    // where they stood, the passage still ends when it ends, and the derived duration does not
+    // move. RHYTHM_REACH is a share of the passage that nothing measures; the revisit list has it.
+    var RHYTHM_REACH = 0.05;
+
+    function cueWindows(shapeHasTravel, arrivalLeads, travelInstrument, shift) {
+      var w = { pivot: [0.0, 1.0] }, s = shift || 0;
       if (shapeHasTravel) {
         w.travel = travelInstrument === "gears" ? [0.0, 0.86] : [0.18, 0.86];
+        w.travel[0] = r4(Math.max(0.0, Math.min(0.5, w.travel[0] + s)));
       }
       w.arrival = arrivalLeads ? [0.10, 1.0] : [0.62, 1.0];
+      w.arrival[0] = r4(Math.max(0.0, Math.min(0.9, w.arrival[0] - s)));
       return w;
     }
 
@@ -1039,25 +1059,19 @@
     // lands a door wherever its track says, where the doors lane measured 38.4176 of 255 of the
     // other photograph standing in a door that should have been whole.
     //
-    // Nothing here drives it today and nothing here may: an open handle is not in HANDLE_SPECS and
-    // the collection's own instrument list does not carry it, so the two roads it could arrive by
-    // are both shut. This function is where a cue's tracks are named, so the fence stands here,
-    // where it can only be crossed on purpose.
+    // The list is read off the MANIFEST and the open ones are dropped here, so this line is what
+    // makes the set of handles a cue drives; a fence standing beside a list that never carried the
+    // handle would pass whatever it did. The manifest is the one home of the fact that a handle is
+    // open, so nothing here keeps a copy of which one it is.
     function tracksFor(instr, cueId) {
-      var out = {}, handles = INSTRUMENTS[instr].handles, i, h;
+      var manifest = MANIFESTS[instr].handles, handles = Object.keys(manifest).sort();
+      var out = {}, i, h;
       for (i = 0; i < handles.length; i++) {
         h = handles[i];
-        if (isDoorState(instr, h)) continue;
+        if (manifest[h].open) continue;
         out[h] = { node: cueId + "-" + h };
       }
       return out;
-    }
-
-    // A handle the instrument declares OPEN is a state the instrument reads at its own doors. The
-    // manifest is the one home of that fact, so this asks the manifest rather than keeping a list.
-    function isDoorState(instr, handle) {
-      var m = MANIFESTS[instr];
-      return !!(m && m.handles[handle] && m.handles[handle].open);
     }
 
     function resourcesBlock(variant) {
@@ -1067,7 +1081,8 @@
 
     function buildTemplate(shape, spec) {
       var voices = spec.voices;
-      var windows = cueWindows(spec.travel !== null, spec.arrivalLeads, spec.travel);
+      var windows = cueWindows(spec.travel !== null, spec.arrivalLeads, spec.travel,
+                               spec.rhythmShift);
       var instrumentOf = {}, i, cueId, instr;
       for (i = 0; i < CUE_IDS.length; i++) {
         if (spec[CUE_IDS[i]]) instrumentOf[CUE_IDS[i]] = spec[CUE_IDS[i]];
@@ -1380,14 +1395,36 @@
       return most;
     }
 
-    // THE FAMILY A CROSSING BELONGS TO, and the one home of that name. It is the road and the
-    // ground it holds, and it carries no direction, because §4.8's kinship is exactly that a
-    // backward passage keeps the family of the forward one. The walk records it and hands it back
-    // as the return reference's `family`.
-    function familyOf(road, fromW, toW) {
-      var p = pivotOfPair(fromW, toW, road.free);
-      return road.id + "/" + (p.kind === "shared-measure" ? p.value.measure : p.kind);
+    // THE FAMILY A CROSSING BELONGS TO, IN THE WALK'S OWN WORDS. The name is not this file's to
+    // invent: the walk reads it off the composed plan by the lab builder's own law — the transform
+    // the pivot's cut implies, joined by a plus sign to the measure the passage travels, or «tone»
+    // where nothing travels — and hands it straight back inside §4.8's return reference. A second
+    // idea of what a family is would make every return unrecognisable, so this function computes
+    // the SAME token from the same two readings, one step earlier: before a road is composed, so
+    // the road that keeps a recorded family can be chosen rather than discovered afterwards.
+    //
+    // It carries no direction, and that is what makes a return kin: both halves — the pivot's
+    // transform and the travelling measure — are read from both works at once.
+    function familyToken(transform, axisName) {
+      return String(transform || "tone_bridge") + "+" + String(axisName || "tone");
     }
+
+    function familyOf(road, fromW, toW, floors) {
+      var p = pivotOfPair(fromW, toW, road.free, road.ground);
+      var held = p.kind === "shared-measure" ? p.value.measure : null;
+      var axis = travellingAxisOn(fromW, toW, held, floors, road.axis);
+      if (axis === null && road.axis !== "far" && road.axis !== "near") {
+        axis = travellingAxisOn(fromW, toW, held, floors, "far");
+      }
+      return familyToken(p.value.transform, axis ? axis.axis : null);
+    }
+
+    // The measure a transform implies, which is CUT_OF_MEASURE read the other way about. A return
+    // whose recorded family names a transform can therefore ask for the ground that produced it.
+    var MEASURE_OF_TRANSFORM = {};
+    Object.keys(CUT_OF_MEASURE).forEach(function (m) {
+      MEASURE_OF_TRANSFORM[CUT_OF_MEASURE[m][1]] = m;
+    });
 
     // THE DIE, and the one place a road is rolled. The walk's own die (§4.4g: the visit's seed, the
     // pass index and the edge's key, in one number) is mixed with the edge's key, so two edges of
@@ -1438,13 +1475,22 @@
 
     // THE ROAD THIS PASSAGE RUNS ON: what qualifies, what the role reaches for, what the visit
     // already played on this edge, and the die over whatever is left.
+    // One road standing on a named ground, without touching the road it was made from.
+    function withGround(road, ground) {
+      var out = {}, k;
+      for (k in road) out[k] = road[k];
+      out.ground = ground;
+      out.free = road.free === ground ? null : road.free;
+      return out;
+    }
+
     function roadFor(fromW, toW, floors, role, memory, seed, key) {
       var found = roadsFor(fromW, toW, floors);
       var pool = found.roads.slice(), reach = null, held = null, wanted, kept, i, fam;
       if (!pool.length) {
         return { road: BRIDGE_ROAD, order: [BRIDGE_ROAD],
-                 family: familyOf(BRIDGE_ROAD, fromW, toW), notes: found.notes,
-                 qualified: [], reach: null, heldFamily: null };
+                 family: familyOf(BRIDGE_ROAD, fromW, toW, floors), notes: found.notes,
+                 qualified: [], reach: null, heldFamily: null, heldBy: null };
       }
       wanted = ROLE_ROADS[role];
       if (wanted) {
@@ -1457,28 +1503,61 @@
             + "register, so it plays the road it has";
         }
       }
-      // THE VISIT'S MEMORY. §4.8: what holds across a return is the family and the pivot, and
+      // THE VISIT'S MEMORY. §4.8: what holds across a return is the family AND the pivot, and
       // everything else — the order of the moves, the actors, the rhythm, the camera's route — may
-      // differ. So a return reference naming a family this pair still qualifies for HOLDS that
-      // family, and the die is not rolled at all: kinship outranks variety, and the variety is
-      // carried by everything the family does not fix.
+      // differ; the walk refuses a passage that shares neither. Before this lane the two held only
+      // because the derivation read the pair and never the direction, so kinship was an accident of
+      // there being one road. The roads read the direction — an arriving work reading on rings is
+      // not an arriving work reading on rings the other way about — so the kinship is answered here
+      // instead, in three steps, each weaker than the one before it and each still lawful:
+      //
+      //   1. a road this pair still qualifies for whose family IS the recorded one. The die is not
+      //      rolled at all: kinship outranks variety, and the variety is carried by everything the
+      //      family does not fix — the order of the moves, the actors and the rhythm below.
+      //   2. failing that, a road standing on the same PIVOT, which §4.8 accepts in the family's
+      //      place. The recorded family's first half is the pivot's own transform, so the three
+      //      fields that cross carry this without §4.8 widening by a field.
+      //   3. failing that, the ground the recorded transform implies is FORCED onto the road the
+      //      die picked, so the pivot holds even where no road would have stood on it by itself.
+      //
+      // Where all three fail the crossing takes its own road and says so, and the walk's own judge
+      // is what decides whether that is a passage it will play.
+      var wantTransform = memory && memory.family ? String(memory.family).split("+")[0] : null;
+      var heldBy = null;
       if (memory && memory.family) {
-        for (i = 0; i < pool.length; i++) {
-          fam = familyOf(pool[i], fromW, toW);
-          if (fam === memory.family) { held = pool[i]; break; }
-        }
-        if (held === null) {
-          for (i = 0; i < found.roads.length; i++) {
-            fam = familyOf(found.roads[i], fromW, toW);
-            if (fam === memory.family) { held = found.roads[i]; break; }
+        var whole = pool.concat(found.roads).concat([BRIDGE_ROAD]);
+        for (i = 0; i < whole.length; i++) {
+          if (familyOf(whole[i], fromW, toW, floors) === memory.family) {
+            held = whole[i];
+            heldBy = "family";
+            break;
           }
         }
-        if (held === null && familyOf(BRIDGE_ROAD, fromW, toW) === memory.family) {
-          held = BRIDGE_ROAD;
+        if (held === null) {
+          for (i = 0; i < whole.length; i++) {
+            fam = familyOf(whole[i], fromW, toW, floors);
+            if (fam.split("+")[0] === wantTransform) {
+              held = whole[i];
+              heldBy = "pivot";
+              break;
+            }
+          }
+          if (held !== null) {
+            reach = "the visit remembers «" + String(memory.family) + "» on this edge and this "
+              + "pair no longer reaches it the other way about, so the crossing keeps its pivot "
+              + "and travels elsewhere";
+          }
+        }
+        if (held === null && MEASURE_OF_TRANSFORM[wantTransform]) {
+          held = withGround(pool[dieAmong(seed, key, pool.length)],
+                            MEASURE_OF_TRANSFORM[wantTransform]);
+          heldBy = "ground";
+          reach = "the visit remembers «" + String(memory.family) + "» on this edge and no road "
+            + "reaches it, so its ground is held under the road the die picked";
         }
         if (held === null) {
           reach = "the visit remembers the family «" + String(memory.family) + "» on this edge and "
-            + "this pair no longer qualifies for it, so the crossing takes a road of its own";
+            + "this pair can hold neither it nor its pivot, so the crossing takes a road of its own";
         }
       }
       var at = dieAmong(seed, key, pool.length);
@@ -1501,9 +1580,10 @@
         if (order.indexOf(found.roads[i2]) < 0) order.push(found.roads[i2]);
       }
       if (order.indexOf(BRIDGE_ROAD) < 0) order.push(BRIDGE_ROAD);
-      return { road: road, order: order, family: familyOf(road, fromW, toW), notes: found.notes,
+      return { road: road, order: order, family: familyOf(road, fromW, toW, floors),
+               notes: found.notes,
                qualified: found.roads.map(function (r) { return r.id; }),
-               reach: reach, heldFamily: held ? memory.family : null };
+               reach: reach, heldFamily: held ? memory.family : null, heldBy: heldBy };
     }
 
     // ---- composing one ordered pair ----
@@ -1570,22 +1650,28 @@
 
       // THE VISIT'S MEMORY, on this side of the line. §4.8 lets three fields cross — the family,
       // the seed and the pass index — and the family is what `roadFor` above holds. What the pass
-      // index answers here is the other half of shelf 16: a door met again breathes. THE ORDER OF
-      // THE MOVES turns over on a further pass, so an edge that opened with its ground opens with
-      // its arrival the next time; and the fill below drifts the handles inside their own spans by
-      // the same index.
+      // index answers here is the rest of §4.8's own sentence: the cue order, the element
+      // selection, the camera route, the rhythm and the phases may all differ, and three of those
+      // are this file's to vary.
+      //
+      // THE ORDER OF THE MOVES turns over on a further pass, from the pass count and the die
+      // together, so an edge that opened with its ground opens with its arrival the next time and
+      // a later visit on another die opens the other way about again.
       //
       // WHICH WAY THE EARLIER PASS RAN IS NOT A FACT THIS SIDE HOLDS, and it is not one it needs.
       // §4.8's three fields carry no direction, deliberately: the family is exactly what a return
       // keeps, so a direction written inside it would make every return unrelated by construction.
       // A backward passage already differs by everything the direction itself turns over — the two
       // works swap ends, the actors swap their roles, each axis reads from the other work's number
-      // and the camera's route reverses with them — and the pass index turns the order of the moves
+      // and the camera's route reverses with them — and the pass count turns the order of the moves
       // on top of that. So one rule answers a return and a repeat, and each still differs from what
       // played before it.
       var passIndex = (memory && memory.passIndex)
         ? Math.max(0, Math.round(Number(memory.passIndex))) : 0;
-      if (passIndex % 2 === 1 && arrivalInstr) arrivalLeads = !arrivalLeads;
+      if (passIndex && arrivalInstr
+          && (passIndex + dieAmong(pair.seed, key + "|moves", 2)) % 2 === 1) {
+        arrivalLeads = !arrivalLeads;
+      }
 
       var cam = cameraFlight(pair, axis, locus);
       var mesh = null, why = null, made;
@@ -1689,7 +1775,11 @@
       // realised tier's own length stands instead, so a plan never declares a tier its duration
       // contradicts — the disagreement §4.7 calls a red.
       var duration = row.tier === roleBudget.tier ? roleBudget.duration : row.duration;
-      var windows = cueWindows(travelInstr !== null, arrivalLeads, travelInstr);
+      // The deviation this pass puts on the rhythm. It moves no window's close, so the ends below
+      // read the same numbers whatever it is.
+      var rhythmShift = passIndex
+        ? r4((dieAmong(pair.seed, key + "|rhythm", 2001) / 1000.0 - 1.0) * RHYTHM_REACH) : 0;
+      var windows = cueWindows(travelInstr !== null, arrivalLeads, travelInstr, rhythmShift);
       var ends = CUE_IDS.filter(function (c) { return voices[c] !== undefined; })
         .map(function (c) { return windows[c][1]; });
       var derivedMs = roundToInt(Math.max.apply(null, ends) * duration);
@@ -1712,7 +1802,8 @@
         arrivalLeads: arrivalLeads,
         middle: world ? { kind: "world", world: world }
           : (travelInstr ? { kind: "surface" } : { kind: "none" }),
-        budget: counts, intentKey: intentKey, road: road.id, role: role, passIndex: passIndex
+        budget: counts, intentKey: intentKey, road: road.id, role: role, passIndex: passIndex,
+        rhythmShift: rhythmShift
       };
       var shape = shapeId(pivotInstr, pivotKindsOf(pivot).join("+"), travelInstr, arrivalInstr,
                           voices, arrivalLeads, world);
@@ -1785,15 +1876,26 @@
       };
     }
 
-    function workParts(work, floors) {
-      var sets = {}, counts = {}, fig = {}, ends = {}, i, s, reading;
+    function workParts(work, floors, at) {
+      var sets = {}, counts = {}, fig = {}, ends = {}, lists = {}, i, s, reading;
       for (i = 0; i < work.sets.length; i++) {
         s = work.sets[i];
         if (!s.realCount) continue;
-        sets[s.kind] = s.index;
-        counts[s.kind] = s.count;
-        if (s.fig !== null && s.fig !== undefined) fig[s.kind] = s.fig;
+        if (!lists[s.kind]) lists[s.kind] = [];
+        lists[s.kind].push(s);
       }
+      // A WORK MAY OFFER SEVERAL REAL CUTS OF ONE KIND, cut by different providers — the collection's
+      // own records carry two sets of named regions, one hybrid and one semantic. Which of them acts
+      // was the last of them and never moved. §4.8 lets the element selection differ across a
+      // return, so the pass count and the die choose among a work's own cuts, and where the visit
+      // remembers nothing the last one still acts and the passage is the passage.
+      Object.keys(lists).sort().forEach(function (kind) {
+        var list = lists[kind];
+        var chose = list[(list.length - 1 + (at || 0)) % list.length];
+        sets[kind] = chose.index;
+        counts[kind] = chose.count;
+        if (chose.fig !== null && chose.fig !== undefined) fig[kind] = chose.fig;
+      });
       for (i = 0; i < TRAVEL_AXES.length; i++) {
         reading = axisReading(work, TRAVEL_AXES[i], floors);
         if (reading !== null) ends[TRAVEL_AXES[i]] = encodeEnds(TRAVEL_AXES[i], reading);
@@ -1859,53 +1961,17 @@
     // readings, and a ratio needs one number to become a position: how many doublings of the
     // reading cross the handle's whole span. That number is typed here, it is the only one of its
     // kind in this file, and it stands on the revisit list.
-    // THE FAMILY BREATHES ON A FURTHER PASS. Charter shelf 16 and §4.4f: the same passage family
-    // each time an edge is met again, with small shifts pass by pass — variation, never repetition
-    // and never total novelty — each bounded slot's value drawn from the crossing's own seed and
-    // the slot's own name. The span a handle may be rolled inside is DERIVED here rather than
-    // written down anywhere: the measured value plus or minus DRIFT_SHARE of the handle's own
-    // published range, clipped to that range. So nothing pairwise is stored, the bound is the
-    // instrument's own, and on the first pass of an edge nothing is rolled and the score is exactly
-    // the score. DRIFT_SHARE is a share nothing measures and it stands on the revisit list.
-    var DRIFT_SHARE = 0.06;
-    // The die's own handles: the crossing's seed is the die itself and the banding axis is a
-    // direction rather than an amount, so neither breathes.
-    var NEVER_DRIFTS = ["seed", "axis"];
-
-    function driftOne(instr, handle, value, seed, passIndex) {
-      var spec = HANDLE_SPECS[instr] && HANDLE_SPECS[instr][handle];
-      if (!spec || !passIndex || NEVER_DRIFTS.indexOf(handle) >= 0) return value;
-      var lo = num(spec[0]), hi = num(spec[1]);
-      var roll = dieAmong(seed, handle + "#" + passIndex, 2001) / 1000.0 - 1.0;
-      var v = num(value) + roll * (hi - lo) * DRIFT_SHARE;
-      v = Math.min(hi, Math.max(lo, v));
-      // A handle the fill asked for as a whole number stays a whole number when it breathes.
-      if (Number.isInteger(num(value))) return Math.round(v);
-      return flt(r4(v));
-    }
-
-    function driftTheFamily(instr, wanted, seed, passIndex) {
-      if (!passIndex) return null;
-      var bounds = {};
-      Object.keys(wanted).forEach(function (h) {
-        var spec = HANDLE_SPECS[instr] && HANDLE_SPECS[instr][h];
-        if (!spec || NEVER_DRIFTS.indexOf(h) >= 0) return;
-        var lo = num(spec[0]), hi = num(spec[1]), reach = (hi - lo) * DRIFT_SHARE;
-        if (Array.isArray(wanted[h])) {
-          bounds[h] = wanted[h].map(function (v) {
-            return [r4(Math.max(lo, num(v) - reach)), r4(Math.min(hi, num(v) + reach))];
-          });
-          wanted[h] = wanted[h].map(function (v) {
-            return driftOne(instr, h, v, seed, passIndex);
-          });
-        } else {
-          bounds[h] = [r4(Math.max(lo, num(wanted[h]) - reach)),
-                       r4(Math.min(hi, num(wanted[h]) + reach))];
-          wanted[h] = driftOne(instr, h, wanted[h], seed, passIndex);
-        }
-      });
-      return bounds;
-    }
+    // THE FAMILY BREATHES ON A FURTHER PASS, AND THE BREATH IS THE WALK'S. Charter shelf 16 and
+    // §4.4f: an edge met again inside a visit holds its family and shifts its shaping numbers a
+    // little. That roll has one home and it is not this file — the visit-memory lane landed it in
+    // the walk, where the pass count lives, and it reads the list below as its list of what may
+    // never move. So this file writes no drift and instead keeps that list honest: `measuredHandles`
+    // on every cue names exactly the handles the composer asked for off the two works' records, and
+    // a handle wrongly in it stands still where it should breathe while one wrongly out of it
+    // breathes over a measurement nobody read (his 19:13 word lifted to the class at 19:21).
+    //
+    // What answers the return HERE is everything the family does not fix: the order of the moves,
+    // the actors and the rhythm, each varied from the die and the pass count in `compose` above.
 
     var OCTAVES_PER_SPAN = 4;
 
@@ -2008,7 +2074,6 @@
                       locusKind: locusKind,
                       locus: locusKind === "none" ? null : [toP.locus[1], toP.locus[2]] };
 
-      var familyBounds = {};
       var castOf = { pivot: ["pivot-carrier"], travel: ["traveller"],
                      arrival: ["arriving-figure", "departing-figure"] };
       var cues = [];
@@ -2114,8 +2179,6 @@
             wanted.drift = flt(r4(fractional(mf.spectralPeriodPx / mt.spectralPeriodPx)));
           }
         }
-        var bounds = driftTheFamily(instr, wanted, num(row[4]), tpl.passIndex || 0);
-        if (bounds) familyBounds[c.id] = bounds;
         var measured = {}, nodes = {};
         Object.keys(c.tracks).sort().forEach(function (h) {
           var nodeName = (c.tracks[h] || {}).node || (c.id + "-" + h);
@@ -2189,9 +2252,6 @@
         interruption: tpl.interruption,
         failLand: tpl.failLand,
         readiness: row[5],
-        // §4.4f's family bounds, derived per pass rather than stored per pair: the span each
-        // breathing handle was rolled inside on this pass. A plan field, so it reaches no score.
-        familyBounds: familyBounds,
         register: REGISTERS[num(row[15])],
         intent: said[0],
         intentDropped: said[1],
@@ -2317,7 +2377,7 @@
       var tried = [], made = null, pair = null, ran = null, i3;
       for (i3 = 0; i3 < chosen.order.length; i3++) {
         ran = chosen.order[i3];
-        pair = pairOf(a, b, dir, seed, ran.free);
+        pair = pairOf(a, b, dir, seed, ran.free, ran.ground);
         made = compose(key, pair, fromW, toW, FLOORS, ran, step, memory || null);
         if (made[0] !== null) break;
         tried.push({ road: ran.id, why: made[1] });
@@ -2326,17 +2386,27 @@
         return { key: key, declined: made[1], road: ran.id, family: chosen.family,
                  roads: chosen.qualified, roadNotes: chosen.notes, roadDeclines: tried };
       }
-      chosen.family = familyOf(ran, fromW, toW);
+      chosen.road = ran;
       var plan = made[0];
+      // WHICH OF A WORK'S OWN CUTS ACTS. Nothing recorded on this edge leaves it exactly where it
+      // has always been; a further pass moves it by the die and the pass count, which is §4.8's
+      // «the element selection may differ».
+      var cast = plan.passIndex
+        ? plan.passIndex + dieAmong(seed, key + "|actors", 97) : 0;
       var tpl = buildTemplate(plan.shape, plan.spec);
       var row = rowOf(plan);
       var pv = plan.pivot;
       var ctx = {
         pivot: [pv.kind, pv.measure, pv.cut, pv.transform, pv.elementKind, pivotKindsOf(pv)],
-        fromParts: workParts(fromW, FLOORS),
-        toParts: workParts(toW, FLOORS)
+        fromParts: workParts(fromW, FLOORS, cast),
+        toParts: workParts(toW, FLOORS, cast)
       };
       var filled = fillPlan(key, row, tpl, ctx);
+      // THE FAMILY THE WALK WILL READ, read the same way the walk reads it: off the composed plan,
+      // by the transform the pivot's cut implies and the measure the passage travels. It is handed
+      // back here so the walk's edge record and this file's own kinship step name one thing.
+      chosen.family = familyToken(filled.pivot.transform,
+                                  filled.travellingAxis ? filled.travellingAxis.measure : null);
       var out = serialise(filled);
       if (out[0] === null) return { key: key, declined: out[1] };
       var text = writeJson(out[0], 0);
@@ -2349,7 +2419,7 @@
                // return, every road the pair qualified for, and why each of the rest did not.
                road: plan.road, family: chosen.family, roads: chosen.qualified,
                roadNotes: chosen.notes, roadReach: chosen.reach,
-               heldFamily: chosen.heldFamily, capped: plan.capped,
+               heldFamily: chosen.heldFamily, heldBy: chosen.heldBy, capped: plan.capped,
                roadDeclines: tried, miracleDecline: plan.miracleDecline,
                travelDecline: plan.travelDecline };
     }
