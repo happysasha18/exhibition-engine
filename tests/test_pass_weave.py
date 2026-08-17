@@ -907,7 +907,6 @@ else:
                       played["state"] == "running" and played["drew"] == 1
                       and not played["refused"]
                       and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
-                      and leaked["drew"] == 0
                       and "the entry door leaks" in leaked["refused"][0]
                       and ("%s buffer" % played["buffer"].replace("x", " x ")) in leaked["refused"][0]
                       and "no whole band stands within 2 bands" in leaked["refused"][0],

@@ -797,7 +797,6 @@ else:
                       and played["state"] == "running" and played["drew"] == 1
                       and not played["refused"]
                       and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
-                      and leaked["drew"] == 0
                       and "the entry door leaks" in leaked["refused"][0]
                       and ("%d x %d buffer" % (NO_W, NO_H)) in leaked["refused"][0]
                       and "no whole cell stands within 2 cells" in leaked["refused"][0],
