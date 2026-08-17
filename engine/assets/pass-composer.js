@@ -276,6 +276,22 @@
   ];
   var TRANSACTION_MS = 14000;
   var DOOR_HOLD = 0.08;
+  // How far the camera may come in or pull back on the score's own track, as a natural logarithm:
+  // 0.5 bounds the approach at 1.65 times, and it bounds a magnification of the RENDERED canvas,
+  // because the host applies the dolly as one transform over the buffer the instrument drew on.
+  //
+  // THE NUMBER IS UNMEASURED AND IT IS ON HIS LIST FOR GATE 1 (U27 stage 1, the camera lane,
+  // 2026-08-17 22:2x). It was written when this field held a base-2 logarithm, so it bounded the
+  // approach at 1.41 times and now bounds it at 1.65; and the measurement over the 121 works' own
+  // door steps says no number here can be the honest bound. What the door framings ASK for has a
+  // median of 2.05 times, a nine-tenths point of 6.44 and a worst of 86.3 — a smooth tail with no
+  // knee to set a cap at — while what the FRAME can carry is the buffer's own oversampling,
+  // min(dpr, 2) times the resolution step, which is 1.00 times on any dpr-1 frame and falls to 1.00
+  // on a dpr-2 phone at the governor's floor. The bound is therefore a property of the device the
+  // composer cannot see (his architecture decision of 18:00), and the defect the composer lane
+  // measured — 63.9 per cent of ordered pairs landing on one number, so the approach carries no
+  // reading of any pair — belongs to the CLIPPING rather than to this value. The report names the
+  // repair and its numbers; nothing is guessed here in the meantime.
   var DOLLY_CAP = 0.5;
   var SIZE_FLOOR = 0.7;
   var CULMINATION_DISTANCE = 0.5;
