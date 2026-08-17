@@ -474,11 +474,362 @@
   // The span is the composer's own and is READ from it: the choice core fences its seed at 0…8 and
   // the meshing instrument's manifest publishes the same span for its `seed` handle. A copy of it
   // here would be a copy that goes stale.
-  function passSeedFor(key) {
+  // `again` is the number of the die within one crossing. A crossing is offered one die; where the
+  // walk's own memory asks for another — a family still cooling on this edge — the next die is
+  // rolled from the same three numbers with the try mixed in, so the second die is as reproducible
+  // as the first and a pinned run stays pinned. Try 0 is the one die stage 0 rolled, unchanged.
+  function passSeedFor(key, again) {
     const span = (passComposer && passComposer.seedSpan) || [0, 8];
     const lo = +span[0], hi = +span[1];
-    const roll = passMix(passMix(passVisitSeed(), passGen), passText(key)) / 4294967296;
-    return lo + roll * (hi - lo);
+    let h = passMix(passMix(passVisitSeed(), passGen), passText(key));
+    if (again) h = passMix(h, again >>> 0);
+    return lo + (h / 4294967296) * (hi - lo);
+  }
+
+  // ---- THE MEMORY OF A VISIT (§4.8, charter shelf 16) --------------------------------------------
+  // WHAT AN EDGE REMEMBERS. One record per edge and direction, keyed by the two work ids sorted:
+  // the family, the pivot, the die, how many passes have run, when the last one ran, its cooldown
+  // and the plan before it. It is created as an edge first plays and it is the SITE'S OWN — the
+  // engine never sees it. Only the return reference of §4.8 — the family, the seed and the pass
+  // index — crosses into the request, and that fence is a refusal on the composer's side, so
+  // nothing wider can leak through even by accident.
+  //
+  // NOTHING HERE SCALES WITH THE NUMBER OF PAIRS (his 19:21 word). A record is written when an edge
+  // is walked, so the store grows with the visitor's own steps and never with the collection; it is
+  // pruned to the youngest `keep` records and anything past its own cooldown is dropped as it is
+  // read. The lab's `build-edgememory-v1.py` enumerates all 7 260 edges into an 8.5 MB file, which
+  // is exactly the class that word bans; it stays reference material and its data ships nowhere.
+  //
+  // WHAT IT HOLDS ABOUT THE PERSON: nothing. Two work ids, a family token, a pivot, numbers and two
+  // stamps. No visitor identity, no remembered place, no counting wire — the same fence §4.5 draws.
+  const PASS_EDGE_SRC = "@@NS@@-pass-edges";
+  // THE FOUR NUMBERS NO MEASUREMENT GIVES, taken as the lab builder recorded them and each awaiting
+  // the owner's eye (`lab/data/edgememory/defaults.json`): how long after the last pass a return
+  // still counts as the same visit; how long a family stays cooled on an edge; how far a pass may
+  // travel from the recorded one and stay the same family; and how close two traces must sit before
+  // the backward pass reads as the forward one played in reverse. The four beside them — how many
+  // passes the drift opens over, how many dice one crossing may be offered, how many records the
+  // browser keeps and how many handles a trace carries — are this seat's own working values.
+  const PASS_EDGE = {
+    visitWindowSeconds: 1800,
+    cooldownSeconds: 86400,
+    driftSpan: 0.25,
+    driftOpensOver: 3,
+    reversalMean: 0.02,
+    reversalWorst: 0.05,
+    dice: 3,
+    keep: 64,
+    traceHandles: 48,
+  };
+  let passEdgeRows = null, passEdgeStorage = "unread";
+  // The clock is read HERE and nowhere else, and it never reaches a die. A cooldown and a visit
+  // window are wall time by their nature; a roll that read a clock would make a pinned run
+  // irreproducible, which is the very thing §4.4b's determinism row exists to hold.
+  function passEdgeNow() { return Date.now(); }
+  function passEdgeFresh(why) {
+    passEdgeStorage = "fresh";
+    passNote(passRefusals, { what: "memory", name: PASS_EDGE_SRC, why: why });
+  }
+  // The store, read once and held for the visit. A visitor whose storage is closed or cleared walks
+  // with a fresh pool and the surface says which of the two happened.
+  function passEdgeAll() {
+    if (passEdgeRows) return passEdgeRows;
+    passEdgeRows = Object.create(null);
+    let raw = null;
+    try { raw = localStorage.getItem(PASS_EDGE_SRC); }
+    catch (e) {
+      passEdgeStorage = "unavailable";
+      passNote(passRefusals, { what: "memory", name: PASS_EDGE_SRC,
+                               why: "the browser's own storage is closed: a fresh pool this visit" });
+      return passEdgeRows;
+    }
+    if (raw === null || raw === undefined) { passEdgeStorage = "fresh"; return passEdgeRows; }
+    let read = null;
+    try { read = JSON.parse(raw); } catch (e) { read = null; }
+    if (!read || read.v !== 1 || !read.edges || typeof read.edges !== "object") {
+      passEdgeFresh("the stored record is nothing this walk can read: a fresh pool");
+      return passEdgeRows;
+    }
+    const now = passEdgeNow();
+    let dropped = 0;
+    Object.keys(read.edges).forEach((k) => {
+      const both = read.edges[k];
+      if (!both || typeof both !== "object") return;
+      const kept = {};
+      Object.keys(both).forEach((d) => {
+        const r = both[d];
+        // A record past its own cooldown says nothing any more — the family it cooled is free
+        // again — so it is dropped as it is read and the store stays small by construction.
+        if (!r || !Number.isFinite(+r.lastAt) || !r.family) return;
+        if (now - +r.lastAt > PASS_EDGE.cooldownSeconds * 1000) { dropped += 1; return; }
+        kept[d] = r;
+      });
+      if (Object.keys(kept).length) passEdgeRows[k] = kept;
+    });
+    passEdgeStorage = "read";
+    if (dropped) {
+      passNote(passEvents, { at: Math.round(performance.now()), name: "memory-pruned",
+                             gen: passGen, kind: null, cause: null, from: null, to: null,
+                             why: dropped + " record(s) past their cooldown" });
+    }
+    return passEdgeRows;
+  }
+  // Writing back. The youngest `keep` records stand and the rest go, so a browser that walks for
+  // years carries a bounded store; a storage that refuses the write is said once and the visit goes
+  // on without a memory, which is the fresh-pool case.
+  function passEdgePut() {
+    if (passEdgeStorage === "unavailable") return;
+    const rows = passEdgeAll();
+    const all = [];
+    Object.keys(rows).forEach((k) => {
+      Object.keys(rows[k]).forEach((d) => { all.push({ k: k, d: d, at: +rows[k][d].lastAt }); });
+    });
+    // A TRACE OUTSIDE THE VISIT WINDOW IS EVIDENCE FOR A CHECK THAT CAN NO LONGER RUN — the two
+    // refusals judge a pass against the one this visit remembers — so it is dropped on the way to
+    // storage. The record keeps saying what it says; only the numbers nobody will read again go.
+    const now = passEdgeNow();
+    all.forEach((row) => {
+      const r = rows[row.k][row.d];
+      if (r.provenance && r.provenance.trace
+          && now - +r.lastAt > PASS_EDGE.visitWindowSeconds * 1000) {
+        r.provenance.trace = null;
+      }
+    });
+    if (all.length > PASS_EDGE.keep) {
+      all.sort((x, y) => y.at - x.at);
+      all.slice(PASS_EDGE.keep).forEach((row) => {
+        delete rows[row.k][row.d];
+        if (!Object.keys(rows[row.k]).length) delete rows[row.k];
+      });
+    }
+    try { localStorage.setItem(PASS_EDGE_SRC, JSON.stringify({ v: 1, edges: rows })); }
+    catch (e) {
+      passEdgeStorage = "unavailable";
+      passNote(passRefusals, { what: "memory", name: PASS_EDGE_SRC,
+                               why: "the browser's own storage took no record: a fresh pool this "
+                                    + "visit" });
+    }
+  }
+
+  // THE FAMILY, read off the composed plan and never written onto it. The lab builder's own law
+  // (`build-edgememory-v1.py`, family_of_plan): the transform the pivot's cut implies, joined by a
+  // plus sign to the measure the passage travels, or «tone» where nothing travels. Both halves
+  // stand on the plan already, so §4.7 gains no field for this.
+  function passFamilyOf(plan) {
+    if (!plan || !plan.pivot) return null;
+    const t = plan.pivot.transform || plan.pivot.kind || "tone_bridge";
+    const axis = (plan.travellingAxis && plan.travellingAxis.measure)
+      ? plan.travellingAxis.measure : "tone";
+    return t + "+" + axis;
+  }
+  // The pivot as a thing rather than a strength: what the passage holds, without the number the
+  // pair happens to hold it at. Two passes hold the same pivot when these three agree.
+  function passPivotOf(plan) {
+    if (!plan || !plan.pivot) return null;
+    const p = plan.pivot;
+    return { kind: p.kind || null, measure: p.measure === undefined ? null : p.measure,
+             cut: p.cut === undefined ? null : p.cut,
+             transform: p.transform === undefined ? null : p.transform };
+  }
+  function passPivotSame(x, y) {
+    return !!x && !!y && x.kind === y.kind && x.measure === y.measure && x.cut === y.cut;
+  }
+  // A handle's own declared span, read off the instrument's manifest in the collection's constants.
+  // The manifest is the one home of that fact; a copy here would go stale the day an instrument
+  // widens a handle.
+  function passHandleSpan(instrument, handle) {
+    const m = (passComposerConsts() || {}).manifests || {};
+    const h = (m[instrument] && m[instrument].handles) ? m[instrument].handles[handle] : null;
+    if (!h || !Number.isFinite(+h.min) || !Number.isFinite(+h.max)) return null;
+    // `banding` on a handle is the manifest's own word for a handle whose numbers NAME STATES rather
+    // than measure an amount — the weave's `axis` is vertical or horizontal, and a value between
+    // them is neither. Such a handle is no place for a breath.
+    return { lo: +h.min, hi: +h.max,
+             rungs: (h.rungs === undefined || h.rungs === null) ? null : h.rungs,
+             named: !!h.banding };
+  }
+
+  // WHAT A PASS LOOKED LIKE, in the few numbers a reversal can be read off: the cues in the order
+  // they play, each with its instrument, its window as a fraction of the passage, and every handle
+  // it drives with the two ends that handle travels between. A static handle's two ends are the
+  // same number. The doors themselves — `mix` — and the clock are left out: both are the same in
+  // every pass by law, so they would say nothing about whether this pass is that one reversed.
+  function passTraceOf(score) {
+    if (!score || !Array.isArray(score.cues) || !score.cues.length) return null;
+    const ms = Number(score.duration) || 0;
+    if (!(ms > 0)) return null;
+    let room = PASS_EDGE.traceHandles;
+    const cues = score.cues.map((c) => {
+      const w = Array.isArray(c.window) ? c.window : [0, 0];
+      const h = {};
+      Object.keys(c.tracks || {}).sort().forEach((name) => {
+        if (name === "mix" || name === "clock" || room <= 0) return;
+        const node = (c.nodes || {})[((c.tracks[name] || {}).node) || (c.id + "-" + name)];
+        if (!node) return;
+        if (node.op === "static" && Number.isFinite(+node.value)) {
+          h[name] = [+node.value, +node.value];
+        } else if (node.op === "mix" && Number.isFinite(+node.a) && Number.isFinite(+node.b)) {
+          h[name] = [+node.a, +node.b];
+        } else return;
+        room -= 1;
+      });
+      return { id: c.id, i: (c.instrument && c.instrument.id) || null,
+               w: [(+w[0] * 1000) / ms, (+w[1] * 1000) / ms], h: h };
+    });
+    return { ms: ms, cues: cues };
+  }
+  // AN AUTOMATIC REVERSED VIDEO IS REFUSED (§4.8). The backward pass reads as the forward one played
+  // in reverse when the cues run in the opposite order on the same instruments, each window is the
+  // mirror of its own, and every handle travels its two ends the other way about — all of it inside
+  // the reversal tolerance, which is a fraction of the handle's own measured range across the
+  // recorded pass. Anything the recorded pass never drove, or a different instrument in the place,
+  // means these two are simply different passes and there is nothing to refuse.
+  function passMirrorDiff(now, before) {
+    if (!now || !before || !now.cues.length || now.cues.length !== before.cues.length) return null;
+    const diffs = [];
+    for (let i = 0; i < now.cues.length; i++) {
+      const c = now.cues[i], p = before.cues[before.cues.length - 1 - i];
+      if (!p || c.i !== p.i) return null;
+      diffs.push(Math.abs(c.w[0] - (1 - p.w[1])));
+      diffs.push(Math.abs(c.w[1] - (1 - p.w[0])));
+      const names = Object.keys(c.h);
+      if (!names.length) return null;
+      for (let j = 0; j < names.length; j++) {
+        const n = names[j], a = c.h[n], b = p.h[n];
+        if (!b) return null;
+        // The handle's own measured range across the recorded pass, which is what the tolerance is
+        // a fraction of. A handle that stood still has no range of its own, so its declared span
+        // stands in; a handle with neither is read against 1, which is the plainest reading of a
+        // number with no scale.
+        const span = passHandleSpan(c.i, n);
+        let range = Math.abs(b[1] - b[0]);
+        if (!(range > 0)) range = span ? Math.abs(span.hi - span.lo) : 0;
+        if (!(range > 0)) range = 1;
+        diffs.push(Math.abs(a[0] - b[1]) / range);
+        diffs.push(Math.abs(a[1] - b[0]) / range);
+      }
+    }
+    if (!diffs.length) return null;
+    let sum = 0, worst = 0;
+    for (let i = 0; i < diffs.length; i++) { sum += diffs[i]; if (diffs[i] > worst) worst = diffs[i]; }
+    return { mean: sum / diffs.length, worst: worst };
+  }
+  function passWithinReversal(d) {
+    return !!d && d.mean <= PASS_EDGE.reversalMean && d.worst <= PASS_EDGE.reversalWorst;
+  }
+  function passReadsAsReversed(now, before) {
+    const d = passMirrorDiff(now, before);
+    if (!passWithinReversal(d)) return null;
+    // A PASS THAT IS ITS OWN MIRROR SAYS NOTHING ABOUT AUTHORSHIP. Where the recorded pass runs the
+    // same forwards and backwards — one cue over the whole passage with every handle standing still
+    // — every pass on that edge matches its mirror, and refusing on that reading would refuse a
+    // crossing for the shape of the recorded one rather than for being a replay of it. That is a
+    // different complaint from the one §4.8 makes, and it is not made here.
+    if (passWithinReversal(passMirrorDiff(before, before))) return null;
+    return "it reads as the recorded pass played backwards — the cues run in the opposite order "
+           + "on the same instruments and every handle travels its ends the other way about, "
+           + "within " + PASS_EDGE.reversalMean + " mean and " + PASS_EDGE.reversalWorst
+           + " worst of the recorded pass's own range (measured " + d.mean.toFixed(4) + " mean, "
+           + d.worst.toFixed(4) + " worst)";
+  }
+  // THE TWO REFUSALS OF §4.8, both judged HERE, because the record they judge against is the
+  // walk's own and the engine never sees it. A pass that carries a return reference is kin to the
+  // one before it — the same family or the same pivot — and it is not that one run backwards.
+  function passEdgeJudge(passage, before) {
+    if (!before || !passage || !passage.plan || !passage.score) return null;
+    const fam = passFamilyOf(passage.plan), piv = passPivotOf(passage.plan);
+    if (fam !== before.family && !passPivotSame(piv, before.pivot)) {
+      return "it shares neither the family «" + String(before.family) + "» nor the pivot of the "
+             + "pass recorded on this edge: the way back is kin to the way out, never absolutely "
+             + "alien";
+    }
+    return passReadsAsReversed(passTraceOf(passage.score), before.provenance
+                               ? before.provenance.trace : null);
+  }
+
+  // THE DOOR BREATHES ON A REPEATED EDGE (charter shelf 16, §4.4f). A second pass over one edge
+  // inside a visit holds the family and shifts its shaping numbers a little; a third shifts them
+  // further, and by the fourth the drift stands at its whole declared width. The pass count on the
+  // record is what the reach reads, and the roll is §4.4f's own — `passBreath` — so there is one
+  // idea of a family's breath and not two.
+  //
+  // WHAT NEVER DRIFTS. A handle the composer measured off the works (`measuredHandles`) carries the
+  // work's own structure — his 19:13 word lifted to the class at 19:21 — and a drift over it would
+  // overwrite a measurement with a number nobody read. The doors (`mix`) and the clock never drift
+  // either: an effect enters and leaves through its zero whatever the pass. The die is left alone
+  // too, since it already travels as the walk's own roll.
+  function passDriftScore(score, key, passes) {
+    if (!score || !Array.isArray(score.cues) || !(passes > 0)) return null;
+    const reach = PASS_EDGE.driftSpan * Math.min(1, passes / PASS_EDGE.driftOpensOver);
+    if (!(reach > 0)) return null;
+    const spans = {}, homes = [];
+    score.cues.forEach((c) => {
+      const instr = (c.instrument && c.instrument.id) || null;
+      if (!instr) return;
+      Object.keys(c.tracks || {}).sort().forEach((name) => {
+        if (name === "mix" || name === "clock" || name === "seed") return;
+        if (c.measuredHandles && c.measuredHandles[name] !== undefined) return;
+        const span = passHandleSpan(instr, name);
+        if (!span || span.rungs !== null || span.named || !(span.hi > span.lo)) return;
+        const node = (c.nodes || {})[((c.tracks[name] || {}).node) || (c.id + "-" + name)];
+        if (!node || node.op !== "static" || !Number.isFinite(+node.value)) return;
+        const v = +node.value, w = (span.hi - span.lo) * reach;
+        const lo = Math.max(span.lo, v - w), hi = Math.min(span.hi, v + w);
+        if (!(hi > lo)) return;
+        const slot = c.id + "." + name;
+        spans[slot] = [lo, hi];
+        homes.push({ slot: slot, node: node, base: v });
+      });
+    });
+    if (!homes.length) return null;
+    const rolled = passBreath(key + "#" + passes, { spans: spans });
+    if (rolled.why) {
+      passNote(passRefusals, { what: "memory", name: "drift", why: rolled.why });
+      return null;
+    }
+    const moved = {};
+    homes.forEach((h) => {
+      const got = rolled.v[h.slot];
+      if (!Number.isFinite(got)) return;
+      h.node.value = Math.round(got * 10000) / 10000;
+      // The note is what a picture that looks wrong is read back through, so it says the number
+      // moved instead of going on describing the value the composer wrote.
+      if (typeof h.node.note === "string" && h.node.note.indexOf("drifted") !== 0) {
+        h.node.note = "drifted; " + h.node.note;
+      }
+      moved[h.slot] = [h.base, h.node.value];
+    });
+    return { passes: passes, reach: reach, moved: moved };
+  }
+
+  // THE EDGE THIS STEP WALKS, and what the walk's own memory says about it. The key is the two ids
+  // sorted, whichever way the visitor walks, and `direction` says which way this passage runs, so
+  // A to B and B to A are two distinct passages of one edge hanging on one stable key.
+  function passEdgeContext(fromEl, toEl) {
+    const from = fromEl && fromEl.dataset ? fromEl.dataset.id : null;
+    const to = toEl && toEl.dataset ? toEl.dataset.id : null;
+    if (!from || !to) return null;
+    const forward = String(from) <= String(to);
+    const key = String(forward ? from : to) + "__" + String(forward ? to : from);
+    const direction = forward ? "a-to-b" : "b-to-a";
+    const rows = passEdgeAll()[key] || null;
+    const mine = rows ? (rows[direction] || null) : null;
+    const other = rows ? (rows[direction === "a-to-b" ? "b-to-a" : "a-to-b"] || null) : null;
+    let last = mine;
+    if (other && (!last || +other.lastAt > +last.lastAt)) last = other;
+    const now = passEdgeNow();
+    // WITHIN A VISIT the family is held and the door breathes; ACROSS the visit boundary the pool
+    // re-rolls and the family that just played is cooled (charter shelf 16). The boundary between
+    // the two is the visit window, read off the last pass on this edge rather than off the page's
+    // own life, so a visitor who reloads mid-thought keeps their thread.
+    const within = !!last && (now - +last.lastAt) <= PASS_EDGE.visitWindowSeconds * 1000;
+    const passes = within ? ((mine ? mine.passCount : 0) + (other ? other.passCount : 0)) : 0;
+    return {
+      key: key, direction: direction, last: last, within: within, passes: passes,
+      cooled: (last && !within) ? last.family : null,
+      // THE WHOLE OF WHAT CROSSES (§4.8). Three fields, and the composer refuses a fourth.
+      memory: within ? { family: last.family, seed: last.seed, passIndex: last.passCount } : null,
+    };
   }
 
   // THE PASSAGE REQUEST the walk builds for one edge (§4.7, U27 stage 0). The edge is named in ONE
@@ -486,10 +837,11 @@
   // this passage runs, so A to B and B to A are two distinct passages of one edge and the site's own
   // edge record has a stable key to hang on (§4.8, stage 1 lane C).
   //
-  // `routeRole` and `sessionMemory` are left unsaid here on purpose. The walk of stage 0 authors no
-  // dramaturgy and keeps no edge memory, and the composer's own defaults — a middle, and nothing
-  // played on this edge yet — are what reproduces today's score exactly. Stage 1 and stage 2 fill
-  // them at this one place.
+  // `routeRole` is left unsaid here on purpose: the walk authors no dramaturgy yet and the
+  // composer's own default — a middle — is what reproduces today's score exactly. Stage 2 fills it
+  // at this one place. `sessionMemory` is filled from the walk's own edge record: the return
+  // reference of §4.8 and nothing wider, and nothing at all on an edge that has not played inside
+  // this visit's window.
   function passRequestFor(fromEl, toEl) {
     const from = fromEl && fromEl.dataset ? fromEl.dataset.id : null;
     const to = toEl && toEl.dataset ? toEl.dataset.id : null;
@@ -498,7 +850,8 @@
     const forward = String(from) <= String(to);
     const a = works[forward ? from : to], b = works[forward ? to : from];
     if (!a || !b) return null;
-    return {
+    const edge = passEdgeContext(fromEl, toEl);
+    const req = {
       workRecordA: a,
       workRecordB: b,
       direction: forward ? "a-to-b" : "b-to-a",
@@ -513,6 +866,8 @@
                 orientation: innerWidth >= innerHeight ? "landscape" : "portrait",
                 quality: passGet("qualityTier") },
     };
+    if (edge && edge.memory) req.sessionMemory = edge.memory;
+    return req;
   }
 
   // The pair's own passage, derived. This road never waits and never fetches: a composer that has
@@ -539,21 +894,111 @@
                                why: "one of the two works carries no record on this walk" });
       return null;
     }
-    let passage = null;
-    try { passage = passComposer.passageFor(request); } catch (e) { passage = null; }
-    if (!passage) {
-      passNote(passRefusals, { what: "composer", name: "passage", why: "the entry threw" });
-      return null;
+    const edge = passEdgeContext(fromEl, toEl) || { key: "", passes: 0, cooled: null, last: null,
+                                                    within: false };
+    // ONE CROSSING MAY BE OFFERED SEVERAL DICE, and never for the composer's own word. A composer's
+    // refusal is a fact about the pair and no die moves it. What a die can move is the walk's own
+    // two verdicts: a family still cooling on this edge, and the two refusals of §4.8. A cooldown
+    // NEVER EMPTIES A POOL (the lab builder's own law): where the die does not move the family, the
+    // cooled family plays and the surface says it did.
+    let passage = null, refused = null, cooledStood = null, drifted = null;
+    const rolls = [];
+    for (let i = 0; i < PASS_EDGE.dice; i++) {
+      if (i) request.seed = passSeedFor(edge.key, i);
+      let got = null;
+      try { got = passComposer.passageFor(request); } catch (e) { got = null; }
+      if (!got) {
+        passNote(passRefusals, { what: "composer", name: "passage", why: "the entry threw" });
+        return null;
+      }
+      passage = got;
+      if (got.declined) break;
+      const fam = passFamilyOf(got.plan);
+      // THE DOOR BREATHES BEFORE THE PASS IS JUDGED, because the drifted pass is the one that would
+      // play: judging the composer's own numbers and then playing others would leave the two
+      // refusals of §4.8 measuring a pass no one ever sees.
+      drifted = edge.passes > 0 ? passDriftScore(got.score, edge.key, edge.passes) : null;
+      refused = passEdgeJudge(got, edge.within ? edge.last : null);
+      cooledStood = (!refused && edge.cooled && fam === edge.cooled)
+        ? "the family «" + fam + "» played last on this edge and is still cooling" : null;
+      rolls.push({ seed: request.seed, family: fam, why: refused || cooledStood });
+      if (!refused && !cooledStood) break;
+      // A die that was refused is said at once, and not only where the last one is refused too: a
+      // pass that never played because it read as a replay is exactly what a person looking at the
+      // surface is trying to find.
+      passNote(passRefusals, { what: "memory", name: got.key,
+                               why: "die " + (i + 1) + ": " + (refused || cooledStood) });
+      // A second die that lands on the same family says the die does not reach this choice, so a
+      // third would be the same waste again.
+      if (i && rolls[i].family === rolls[i - 1].family) break;
     }
     // ONE RECORD CARRIES THE WHOLE PASSAGE: what was asked, what came back, and — written on later,
     // when the host reports — what the instrument applied on the buffer it drew on or the refusal it
     // named. `applied` is the runtime truth and it cannot be known before the frame is drawn.
+    passage.memory = { crossed: request.sessionMemory || null, edgeKey: edge.key,
+                       passes: edge.passes, cooled: edge.cooled || null,
+                       cooledStood: cooledStood || null, rolls: rolls, refused: refused || null,
+                       drift: drifted };
     passNote(passPassages, passage);
     if (passage.declined) {
       passNote(passRefusals, { what: "passage", name: passage.key, why: passage.declined });
       return null;
     }
+    if (refused) {
+      // A REFUSED PASS PLAYS NOTHING AND THE VISITOR STILL LANDS: the crossing falls through to the
+      // walk's own glide, which is what every refusal on this road has always meant, and the reason
+      // stands on the diagnostic surface in plain words.
+      passNote(passRefusals, { what: "memory", name: passage.key, why: refused });
+      return null;
+    }
+    if (cooledStood) passNote(passRefusals, { what: "memory", name: passage.key, why: cooledStood });
     return passage.score;
+  }
+
+  // THE EDGE REMEMBERS WHAT PLAYED, written at the landing. Nothing is remembered for a passage that
+  // never drew: a jump is not an authored crossing (§4.8 — an authored directed passage is invoked
+  // by a real adjacent walk command and by nothing else), and a step whose picture the host declined
+  // played the walk's own glide, so the edge is still unwalked as far as the memory is concerned.
+  function passEdgeRemember(cmd) {
+    if (!cmd || cmd.kind !== "step" || !cmd.score) return null;
+    let row = null;
+    for (let i = passPassages.length - 1; i >= 0; i--) {
+      if (passPassages[i].score === cmd.score) { row = passPassages[i]; break; }
+    }
+    if (!row || row.declined || !row.plan || !row.memory) return null;
+    if (!row.applied || !row.applied.instrument) return null;
+    const parts = String(row.key).split("__");
+    const edgeKey = row.memory.edgeKey || (parts[0] + "__" + parts[1]);
+    const direction = (row.request && row.request.direction) || "a-to-b";
+    const all = passEdgeAll();
+    const edge = all[edgeKey] || (all[edgeKey] = {});
+    const before = edge[direction] || null;
+    const now = passEdgeNow();
+    // The count runs on inside the visit window and starts again beyond it, so the drift a repeated
+    // edge reads is this run of visits' own count and never a tally from a week ago.
+    const within = !!before && (now - +before.lastAt) <= PASS_EDGE.visitWindowSeconds * 1000;
+    edge[direction] = {
+      edgeKey: edgeKey,
+      direction: direction,
+      family: passFamilyOf(row.plan),
+      pivot: passPivotOf(row.plan),
+      seed: row.request ? row.request.seed : null,
+      passCount: within ? before.passCount + 1 : 1,
+      lastAt: now,
+      cooldown: { seconds: PASS_EDGE.cooldownSeconds,
+                  familyCooledUntil: now + PASS_EDGE.cooldownSeconds * 1000 },
+      // §4.8 names the plan before this one here. Beside it stand this pass's own plan id, so the
+      // next pass has one to name, and the trace the reversal refusal is measured against — the
+      // check's own evidence, which no other record holds and which is dropped with the record the
+      // moment its cooldown runs out.
+      provenance: { planId: row.plan.id || null,
+                    previousScenePlanId: (before && before.provenance)
+                      ? (before.provenance.planId || null) : null,
+                    trace: passTraceOf(row.score) },
+    };
+    passEdgePut();
+    passMark("memory", cmd, edgeKey + " " + direction + " ×" + edge[direction].passCount);
+    return edge[direction];
   }
 
   // WHAT THE INSTRUMENT APPLIED, written back onto the passage that asked for it. The host publishes
@@ -741,7 +1186,9 @@
     // report still carries what the last transaction left behind, so this is the one instant the
     // applied state can be written back onto the passage that asked for it. It reads and decides
     // nothing: a passage that was refused or never derived leaves the row untouched.
-    if (cmd.score) passApply();
+    // THE EDGE RECORD FOLLOWS THE APPLIED READING, in that order: what the instrument applied is
+    // what says a passage actually drew, and only a passage that drew is remembered on its edge.
+    if (cmd.score) { passApply(); passEdgeRemember(cmd); }
     const el = passResolveEl(cmd.to);
     // THE WALK'S REST RECORD FOLLOWS THE DOCK (INV-86). `restingEl` — the section under the eye,
     // the one a turn re-docks to — is written by the in-view watcher's organic intersection alone
@@ -1063,7 +1510,33 @@
                     key: row.key, request: row.request, shape: row.shape || null,
                     bytes: row.bytes === undefined ? null : row.bytes,
                     overTheFence: row.overTheFence === undefined ? null : row.overTheFence,
-                    declined: row.declined || null, applied: row.applied || null })) },
+                    declined: row.declined || null, applied: row.applied || null,
+                    // The family and the pivot this passage stands on, read off its own plan: the
+                    // two facts the edge record hangs on and the two the return is judged by, so a
+                    // crossing that looks unrelated to the one before it reads back to them.
+                    family: passFamilyOf(row.plan), pivot: passPivotOf(row.plan),
+                    memory: row.memory || null })) },
+      // The walk's own memory of this visit (§4.8, charter shelf 16): where the records live, what
+      // the browser's storage said when they were read, the numbers the drift and the cooldowns
+      // run on, and one row per remembered edge. A visitor whose storage is closed or cleared reads
+      // «unavailable» or «fresh» here and walks with a pool that remembers nothing.
+      memory: { src: PASS_EDGE_SRC, storage: passEdgeStorage, numbers: PASS_EDGE,
+                edges: (function () {
+                  const rows = passEdgeRows || {}, out = [];
+                  Object.keys(rows).forEach((k) => {
+                    Object.keys(rows[k]).forEach((d) => {
+                      const r = rows[k][d];
+                      out.push({ edgeKey: r.edgeKey, direction: r.direction, family: r.family,
+                                 pivot: r.pivot, seed: r.seed, passCount: r.passCount,
+                                 lastAt: r.lastAt, cooldown: r.cooldown,
+                                 previousScenePlanId: (r.provenance || {}).previousScenePlanId
+                                   || null,
+                                 traceCues: ((r.provenance || {}).trace || { cues: [] })
+                                   .cues.length });
+                    });
+                  });
+                  return out;
+                }()) },
       // The family roll, on the same surface (§4.4f): the visit's own seed and whether it was
       // pinned, and one row per rolled crossing carrying the pair, the pass index, the seed that
       // pass ran on, the spans it read and the value it applied to each bounded slot. A picture
@@ -1085,6 +1558,17 @@
         // would build for two real elements, so a row can prove the two agree.
         passage: function (req) { return passComposer ? passComposer.passageFor(req) : null; },
         request: passRequestFor, applied: passApply, seed: passSeedFor,
+        // The passages this visit derived, whole — the plan and the score the report's own rows
+        // only summarise. A conformance row that judges a passage needs the very object the walk
+        // judged, and the report is a reading rather than the thing itself.
+        passages: function () { return passPassages; },
+        // The walk's own memory, handed over the same way and for the same reason: a conformance
+        // row reads the edge this step walks, the reference that would cross, and the verdict the
+        // two refusals of §4.8 reach on a passage — without driving a whole visit to reach them.
+        // `remember` is the landing's own call, so a row can play an edge and read the record back.
+        memory: { edge: passEdgeContext, all: passEdgeAll, remember: passEdgeRemember,
+                  judge: passEdgeJudge, trace: passTraceOf, reversed: passReadsAsReversed,
+                  family: passFamilyOf, pivot: passPivotOf, numbers: PASS_EDGE },
         adapter: { declare: declare, dock: dock, glide: glide, interrupt: interrupt,
                    reframe: reframe, curtain: curtain, mark: passMark,
                    hangGeometry: hangGeometry, handoff: handoff, chromeReveal: chromeReveal },
