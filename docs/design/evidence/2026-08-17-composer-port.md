@@ -70,8 +70,8 @@ The numbers, from `lab/data/jscomposer/equality-reading.json`:
 * **4 254** the Python composer declines. JavaScript declines all 4 254, each with the **same
   sentence, character for character**. Differences: 0. Pairs composed on one side and declined on
   the other: 0 both ways.
-* The two worked pairs of `lab/PASSAGE-COMPOSER.md` §2 are also compared as whole text, not only as
-  a digest, and the files match with no difference at all.
+* The two worked pairs of `lab/PASSAGE-COMPOSER.md` §2 are compared as whole text beside their
+  digests, and the files match with no difference at all.
 
 The road the expected side walks is the shipping road, and it is shown to be: filling every row
 from the SHIPPED `lab/data/sceneplans/templates.json` and `table.json` lands on the same 6 304
@@ -104,7 +104,7 @@ to produce. Reading: `lab/data/jscomposer/planted-reading.json`.
 | `rounding` | a measured number is rounded to five places | red | 587 / 6 304 | 2 862 / 4 254 |
 | `tiebreak` | the travelling axis breaks its tie the other way | red | 6 302 / 6 304 | 4 254 / 4 254 |
 | `floatprint` | an integral float loses its trailing zero | red | 0 / 6 304 | 4 254 / 4 254 |
-| `culmination` | a far pair is a culmination at 0.4 instead of 0.5 | red | 6 297 / 6 304 | 4 254 / 4 254 |
+| `culmination` | a far pair is a culmination at 0.4 of the axis | red | 6 297 / 6 304 | 4 254 / 4 254 |
 | `doorhold` | the doors are held for 0.09 of the pass | **green** | 6 304 / 6 304 | 4 254 / 4 254 |
 
 Seven redden. The eighth is green on purpose and it is the reach of this harness said out loud: the
