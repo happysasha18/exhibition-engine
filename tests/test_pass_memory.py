@@ -374,124 +374,59 @@ else:
                           f"{(alien['why'] or '')[:170]!r}")
 
                     # 5 · refusal two · the recorded pass played backwards --------------------
-                    # The trace of a pass that has just been composed is planted onto the record
-                    # REVERSED, and the same pass is composed again after a reload at the same die,
-                    # so the walk meets a pass that is the recorded one run backwards. The die is
-                    # made of the visit's own seed, the pass index and the edge key, so the reload
-                    # is pinned by `familySeed` and the pass index is walked back up to the one the
-                    # trace was read at.
-                    target = js(br, """
-                      var all = window.__exPass.memory.all();
-                      var e = all['%s'];
-                      var d = e['a-to-b'] ? 'a-to-b' : 'b-to-a';
-                      e[d] = window.__kept;
-                      return {seed: null};
-                    """ % EDGE)
-                    # THE DIE THIS ROW HAS TO MEET AGAIN IS ROLLED AT A PASS INDEX, so the probe is
-                    # taken at a HIGH one: a reloaded visit starts its own count at zero and walks
-                    # up, and an index it has already passed can never come round again.
-                    for _ in range(30):
-                        js(br, """
-                          var A = document.querySelector('.exh-frame[data-id="%s"]');
-                          window.__exPass.adapter.declare({fromEl: null, toEl: A, dir: 1, span: 0,
-                            kind: 'jump', cause: 'advance', velocity: 0});
-                          return {done: true};
-                        """ % A)
-                        br.sleep(0.12)
-                    probe = declare(br, B, A, "probe")
-                    probe_dice = (probe.get("memory") or {}).get("rolls") or []
-                    want_seed = probe_dice[0]["seed"] if probe_dice else None
-                    trace = probe["trace"]
-                    if not trace or want_seed is None or len(probe_dice) != 1:
-                        skip(BROWSER_ROWS[5],
-                             "the probe pass carried no trace to reverse"
-                             if (not trace or want_seed is None) else
-                             f"the probe crossing was offered {len(probe_dice)} dice, so its trace "
-                             f"and its first die belong to different passes")
-                    else:
-                        js(br, """
-                          var all = window.__exPass.memory.all();
-                          var e = all['%s'];
-                          var d = e['a-to-b'] ? 'a-to-b' : 'b-to-a';
-                          var t = %s;
-                          var rev = {ms: t.ms, cues: t.cues.slice().reverse().map(function (c) {
-                            var h = {};
-                            Object.keys(c.h).forEach(function (n) { h[n] = [c.h[n][1], c.h[n][0]]; });
-                            return {id: c.id, i: c.i, w: [1 - c.w[1], 1 - c.w[0]], h: h};
-                          })};
-                          e[d].provenance.trace = rev;
-                          e[d].lastAt = Date.now();
-                          localStorage.setItem('ex-pass-edges',
-                                               JSON.stringify({v: 1, edges: all}));
-                          return {planted: rev.cues.length};
-                        """ % (EDGE, json.dumps(trace)))
-                        # The walk deals its works afresh on every entry, so the reloaded visit is
-                        # opened until it hangs both works of this edge again.
-                        again = []
-                        for _ in range(5):
-                            enter(br, base, "diagnostics:on,familySeed:4242", clear=False)
-                            for _ in range(30):
-                                if js(br, "return {s: window.__exPass.report().composer.state};"
-                                      )["s"] == "read":
-                                    break
-                                br.sleep(0.2)
-                            again = same_pair(br, recorded, [A, B])
-                            if len(again) == 2:
-                                break
-                        js(br, STUB)
-                        # THE DIE IS MADE OF THE VISIT'S SEED, THE PASS INDEX AND THE EDGE KEY, so
-                        # the same step declared again after a pinned reload walks back up to the
-                        # same die. The step is declared until the die the trace was read at comes
-                        # round; nothing is landed on the way, so no record moves under the walk.
-                        rev, aligned = None, False
-                        if len(again) == 2:
-                            for _ in range(60):
-                                rev = declare(br, B, A, "reversed")
-                                # The FIRST die of the crossing, which is the one the trace was
-                                # read at; a crossing whose first die is refused rolls another, and
-                                # the request then carries that one instead.
-                                dice = (rev.get("memory") or {}).get("rolls") or []
-                                seed = dice[0]["seed"] if dice else None
-                                if seed is not None and abs(seed - want_seed) < 1e-9:
-                                    aligned = True
-                                    break
-                        if not aligned:
-                            skip(BROWSER_ROWS[5],
-                                 "the reloaded walk hung this edge's two works again but never came "
-                                 "back to the die the trace was read at"
-                                 if len(again) == 2 else
-                                 "five reloaded visits hung another pair of works, so the recorded "
-                                 "pass could not be met again")
-                        else:
-                            read = js(br, """
-                              var all = window.__exPass.memory.all();
-                              var e = all['%s'] || {};
-                              var rec = e['a-to-b'] || e['b-to-a'] || null;
-                              var cmd = window.__cmd;
-                              var t = cmd && cmd.score
-                                ? window.__exPass.memory.trace(cmd.score) : null;
-                              return {verdict: (t && rec)
-                                        ? (window.__exPass.memory.reversed(
-                                             t, rec.provenance.trace) || null) : null,
-                                      seedNow: cmd && cmd.score ? cmd.score.seed : null,
-                                      nowFirst: t ? t.cues[0] : null,
-                                      beforeLast: (rec && rec.provenance.trace)
-                                        ? rec.provenance.trace.cues[
-                                            rec.provenance.trace.cues.length - 1] : null};
-                            """ % EDGE)
-                            # The pass that reads as the recorded one reversed is the one that
-                            # never plays. The walk meets it on the die it was planted for, names
-                            # it, and either finds another die whose pass is no replay or keeps its
-                            # own glide; what it may never do is play the replay.
-                            said = [r for r in (rev["memory"] or {}).get("rolls") or []
-                                    if "played backwards" in (r.get("why") or "")]
-                            check(BROWSER_ROWS[5],
-                                  bool(said) and read["verdict"] is None,
-                                  f"the die {want_seed} composed the recorded pass run backwards "
-                                  f"and was refused: {(said[0]['why'] if said else None)!r}; what "
-                                  f"played instead carries "
-                                  f"{('a score' if rev['hasScore'] else 'no score')} and reads as "
-                                  f"a replay: {read['verdict'] is not None}")
+                    # THE MIRROR IS MADE EXACT BY CONSTRUCTION, and an earlier form of this row was
+                    # not. That form planted the reverse of a trace read at one die and then chased
+                    # that same die again across reloads, so it met a true mirror only where two
+                    # passes composed at different pass indexes happened to agree cue for cue and
+                    # handle for handle. The moment the walk began stating a step's ROLE (U27 stage
+                    # 2) and the engine began choosing between several instruments that cut on one
+                    # kind, they stopped agreeing — and the row went red on a checker nobody had
+                    # touched. A row that cannot reproduce the condition it names guards nothing.
+                    #
+                    # So it composes the very pass it is about to judge, plants THAT pass's own
+                    # trace reversed as the record, and asks the walk's own judge. The candidate is
+                    # then the recorded pass run backwards to the last handle, which is exactly the
+                    # condition §4.8 refuses, and this row can never fail to produce it.
+                    #
+                    # The other half — that a refused pass freezes NO score onto the command and the
+                    # visitor lands on the walk's own glide — travels the same road and is held by
+                    # row 4 above, which drives it end to end.
+                    mirror = js(br, """
+                      var A = document.querySelector('.exh-frame[data-id="%s"]');
+                      var B = document.querySelector('.exh-frame[data-id="%s"]');
+                      var req = (A && B) ? window.__exPass.request(B, A) : null;
+                      var got = req ? window.__exPass.passage(req) : null;
+                      if (!got || !got.score) return {none: true};
+                      var t = window.__exPass.memory.trace(got.score);
+                      if (!t) return {none: true};
+                      var rev = {ms: t.ms, cues: t.cues.slice().reverse().map(function (c) {
+                        var h = {};
+                        Object.keys(c.h).forEach(function (n) { h[n] = [c.h[n][1], c.h[n][0]]; });
+                        return {id: c.id, i: c.i, w: [1 - c.w[1], 1 - c.w[0]], h: h};
+                      })};
+                      var before = {family: window.__exPass.memory.family(got.plan),
+                                    pivot: window.__exPass.memory.pivot(got.plan),
+                                    provenance: {trace: rev}};
+                      return {none: false, cues: t.cues.length,
+                              verdict: window.__exPass.memory.judge(got, before) || null,
+                              kin: window.__exPass.memory.family(got.plan),
+                              // The same pass judged against its OWN trace, unreversed: a pass is
+                              // not a replay of itself, so this must answer nothing.
+                              forward: window.__exPass.memory.judge(
+                                got, {family: window.__exPass.memory.family(got.plan),
+                                      pivot: window.__exPass.memory.pivot(got.plan),
+                                      provenance: {trace: t}}) || null};
+                    """ % (A, B))
+                    check(BROWSER_ROWS[5],
+                          not mirror.get("none")
+                          and "played backwards" in (mirror.get("verdict") or "")
+                          and mirror.get("forward") is None,
+                          f"a pass of {mirror.get('cues')} cue(s) on the family "
+                          f"«{mirror.get('kin')}» met as the record run backwards is refused: "
+                          f"{(mirror.get('verdict') or '')[:180]!r}; the same pass met as the "
+                          f"record run FORWARDS is not refused ({mirror.get('forward')!r})"
+                          if not mirror.get("none")
+                          else "this hang composed no backward pass to reverse")
 
                     # 6 · the drift ------------------------------------------------------------
                     # A fresh visit, so the two passes below are the first and the second of one
@@ -570,15 +505,35 @@ else:
                         """ % EDGE)
                         stale = declare(br, A, B, "across")
                         m = stale["memory"] or {}
+                        # A COOLDOWN RE-ROLLS THE DIE AND NEVER EMPTIES THE POOL — the lab
+                        # builder's own law, and both halves of it are read here. What must hold
+                        # unconditionally: nothing of the earlier pass crosses into the request,
+                        # the family that played is named as cooling, the pass count starts again,
+                        # and the crossing still plays. What holds CONDITIONALLY, and used to be
+                        # asserted as though it were unconditional: another die is offered where the
+                        # first one lands on the cooled family. It does not always land there —
+                        # since the walk began stating a step's role (U27 stage 2) a step beyond the
+                        # visit window is no longer a return, so its road is chosen from the curve's
+                        # own register and usually carries a different family, and no second die is
+                        # needed. The row therefore measures the law and prints which of the two
+                        # branches this run took, instead of reddening on the branch it did not.
+                        rolls = m.get("rolls") or []
+                        cooled_came_up = any(r.get("why") and "still cooling" in r["why"]
+                                             for r in rolls)
                         check(BROWSER_ROWS[8],
                               stale["hasScore"] and stale["request"]["sessionMemory"] is None
                               and m.get("cooled") == old["family"]
-                              and len(m.get("rolls") or []) > 1
-                              and m.get("passes") == 0,
-                              f"nothing crossed; the family «{m.get('cooled')}» is cooling and "
-                              f"{len(m.get('rolls') or [])} dice were offered; the crossing still "
-                              f"plays ({'a score' if stale['hasScore'] else 'no score'}) — a "
-                              f"cooldown never empties a pool")
+                              and m.get("passes") == 0
+                              and (len(rolls) > 1 if cooled_came_up else len(rolls) == 1),
+                              f"nothing crossed; the family «{m.get('cooled')}» is cooling and the "
+                              f"pass count starts again at {m.get('passes')}; the crossing still "
+                              f"plays ({'a score' if stale['hasScore'] else 'no score'}). "
+                              + (f"The first die landed on the cooled family, so another was "
+                                 f"offered — {len(rolls)} in all, and a pool that was never "
+                                 f"emptied" if cooled_came_up else
+                                 f"The first die of {len(rolls)} carried the family "
+                                 f"«{rolls[0].get('family') if rolls else None}», which is not the "
+                                 f"cooled one, so no second die was needed"))
 
                         # 9 · the record survives a reload --------------------------------
                         enter(br, base, "diagnostics:on,familySeed:4242")

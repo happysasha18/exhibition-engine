@@ -180,6 +180,93 @@ BAKED_CAPS = (CFG.get("pass") or {}).get("capabilities") or {}
 CLIENT_LIMITS = re.search(r"PASS_LIMITS\s*=\s*\{([^}]*)\}", SRC)
 CLIENT_BYTES = int(re.search(r"\bbytes:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
 CLIENT_INTENT = int(re.search(r"\bintent:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
+# ---------------------------------------------------------------- every published handle is registered
+# A HANDLE A MANIFEST PUBLISHES AND THIS REGISTER DOES NOT NAME MAKES THE COMPOSER THROW — on every
+# pair that casts that instrument, inside the fill, where the register is read for a row that is not
+# there. The walk catches the throw and the crossing falls to the walk's own glide with nothing on
+# the diagnostic surface but «the entry threw», so the failure is silent to a visitor and nearly
+# silent to a reader.
+#
+# IT HAPPENED ONCE AND IT WAS EXPENSIVE. The instruments lane gave the woven ribbon three handles for
+# the wave that plays only where a work carries one, and this register kept none of the three. Over
+# the 121 real per-work records, 7 735 of 14 520 ordered pairs — 53.3 per cent — could not be
+# composed at all, and the woven ribbon, which is this collection's reference look, never played on
+# any route. Every suite stayed green throughout, because the collection-wide rows stand on a FROZEN
+# copy of the manifests and the frozen copy did not carry the three handles either; the assembly lane
+# found it by casting a route in the real shell.
+#
+# So the two lists are compared against the FILES rather than against a fixture: every instrument
+# that ships, every handle its own manifest publishes that is not declared open, and this register's
+# own rows. An instrument that lands a handle now reddens this row instead of a route.
+def _manifest_handles(text):
+    """Every handle one instrument's manifest publishes, with its own block, by counting braces."""
+    start = text.index("{", text.index("handles: {"))
+    depth, j, end = 0, start, None
+    while j < len(text):
+        if text[j] == "{":
+            depth += 1
+        elif text[j] == "}":
+            depth -= 1
+            if depth == 0:
+                end = j
+                break
+        j += 1
+    body = text[start + 1:end]
+    out, depth, k, name, bstart = {}, 0, 0, None, 0
+    tok = re.compile(r"\s*([A-Za-z][A-Za-z0-9_]*)\s*:\s*\{")
+    while k < len(body):
+        if depth == 0:
+            m = tok.match(body, k)
+            if m:
+                name = m.group(1)
+                k = m.end() - 1
+        c = body[k]
+        if c == "{":
+            depth += 1
+            if depth == 1:
+                bstart = k
+        elif c == "}":
+            depth -= 1
+            if depth == 0 and name:
+                out[name] = body[bstart:k + 1]
+                name = None
+        k += 1
+    return out
+
+
+_STRIP = build_site._engine.strip_js_comments
+_REGISTERED = set(re.findall(
+    r'^\s{4}([A-Za-z][A-Za-z0-9_]*): \["(?:measured|unmeasured|transaction|module-rest)"',
+    MODULE.read_text(encoding="utf-8"), re.M))
+# WHICH INSTRUMENTS THE ROW COVERS: the ones the settings record PUBLISHES, which since 2026-08-18
+# is exactly the set the composer can cast — a kind's candidates are derived from that record and an
+# instrument absent from it can be named by no road. A file that ships without being published can
+# drive nothing and is reported beside the row rather than judged by it; the day the site publishes
+# it, it joins the list here by arriving, which is the same rule the composer itself now follows.
+_PUBLISHED = sorted(json.loads(FIXTURE.read_text(encoding="utf-8"))["consts"]["manifests"])
+_UNREGISTERED, _SEEN, _UNPUBLISHED = {}, {}, []
+for _p in sorted((ROOT / "engine" / "assets").glob("pass-inst-*.js")):
+    _iid = _p.stem[len("pass-inst-"):]
+    if _iid not in _PUBLISHED:
+        _UNPUBLISHED.append(_iid)
+        continue
+    _blocks = _manifest_handles(_STRIP(_p.read_text(encoding="utf-8")))
+    _SEEN[_iid] = len(_blocks)
+    _gaps = sorted(h for h, b in _blocks.items()
+                   if "open: true" not in b and h not in _REGISTERED)
+    if _gaps:
+        _UNREGISTERED[_iid] = _gaps
+
+check("EX-COMPOSED every handle a castable instrument publishes has a row in the register that says "
+      "what it reads — a handle without one makes the composer throw on every pair that casts it",
+      not _UNREGISTERED and bool(_SEEN) and all(n >= 5 for n in _SEEN.values()),
+      "read off the instrument files themselves — %s; the register names %d handles, and %s. "
+      "Shipping but published to no record, so castable by nothing: %s"
+      % (", ".join("%s %d" % (i, n) for i, n in sorted(_SEEN.items())), len(_REGISTERED),
+         ("every one of them is registered" if not _UNREGISTERED
+          else "these are NOT: %s" % _UNREGISTERED),
+         ", ".join(_UNPUBLISHED) or "none"))
+
 check("EX-COMPOSED the bake publishes both fences a filled score is measured against",
       BAKED_CAPS.get("scoreBytes") == CLIENT_BYTES
       and BAKED_CAPS.get("intentChars") == CLIENT_INTENT,
