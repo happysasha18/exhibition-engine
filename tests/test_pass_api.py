@@ -96,6 +96,19 @@ check("PASS-API every exit from running ends in exactly one dock — finish() is
       "function finish(landState, why)" in LAYER_SRC and "rec.docked = true" in LAYER_SRC,
       "settle, fail, cancel and the watchdog must all resolve through the one function that docks")
 
+# The host takes the instrument's own reading and reads NOTHING in it. The five instruments agree on
+# one shape — `door`, `buffer`, `reads`, `request`, `applied`, `moved`, `unit`, `held`, `whyNo` — and
+# that agreement lives in their files. A host that started naming a field of it would be interpreting
+# the reading instead of carrying it, and would be the same defect the "host knows no instrument
+# name" law already fences: every instrument-side name below must be absent from the built host.
+check("PASS-API the host stores the applied reading and names no field of it",
+      "reportApplied" in LAYER_SRC and "v.applied = a" in LAYER_SRC
+      and len(LAYER_BUILT) > 1000
+      and not any(n in LAYER_BUILT for n in
+                  ["sizeRequest", "balRequest", "grainRequest", "flatDegRequest",
+                   "doorWhyNo", "doorHeld", "sizeRungs", "balBands", "grainCells"]),
+      "the channel must be a plain store, so a new instrument shape needs no host change")
+
 check("PASS-API the test instrument is reachable only when diagnostics are on",
       "makeTestInstrument" in LAYER_SRC and "var diag = window.__@@NS@@Pass;" in LAYER_SRC
       and "if (diag) {" in LAYER_SRC,
@@ -209,6 +222,7 @@ BROWSER_ROWS = [
     "PASS-API row 28 · a legal instant transition (duration 0) reads as landed, not hung",
     "PASS-API row 27 · the covered walk is inert and hidden from the accessibility tree while running",
     "PASS-API a double settle is idempotent — the second call changes nothing",
+    "PASS-API §9 · the applied reading's channel stands on every stack row, live and after landing",
 ]
 
 
@@ -533,6 +547,55 @@ else:
                 stale = [e for e in r2["events"] if e["name"] == "stale-settle"]
                 check(BROWSER_ROWS[13], len(docks) == 1 and bool(stale),
                       f"took={r['took']} docks={docks} stale-count={len(stale)}")
+                cleanup(br)
+
+                # 14 · THE CHANNEL THE INSTRUMENT'S OWN READING TRAVELS ON, on the host's surface.
+                #
+                # His architecture decision of 2026-08-17 18:00 makes the instrument's run-time
+                # reading on the actual buffer the truth of a passage, and the frame state carries
+                # `reportApplied` for it beside `reportPose`. What this suite owns is the HOST's
+                # half: the channel is published on every stack row, live and after the landing, and
+                # it reads empty for a voice that published nothing. It is a stack row's own field,
+                # never a fold into the `handles` the host itself resolved — the plan's intention and
+                # the run-time truth stay two readable things.
+                #
+                # WHERE THE RUN-TIME PROOF IS. The diagnostics probe carries no manifest, so the host
+                # never opens a stage for it and never hands it a frame (pass-layer.js: the frame
+                # loop starts only `if (inst.manifest ...)`); a probe transaction can therefore show
+                # the channel but never a real reading on it. A real reading on a real buffer is
+                # measured where a real instrument draws: tests/test_pass_weave.py holds the reading
+                # itself with its red-on-bug proof, and tests/test_pass_composed.py holds its arrival
+                # on the passage record of a composed passage.
+                r = js(br, """
+                  window.__exPass.test.reset();
+                  window.__exPass.test.mode('never');
+                  window.__exPass.host.configure({prepareBudgetMs:120, settleSlackMs:600});
+                  var els = [].slice.call(document.querySelectorAll('.exh-frame, .exh-fin'));
+                  var cmd = window.__exPass.adapter.declare({fromEl: els[0], toEl: els[1],
+                                                             kind:'step', cause:'row-applied'});
+                  var took = cmd && window.__exPass.layer().offer(cmd, {
+                    dock: window.__exPass.adapter.dock, glide: window.__exPass.adapter.glide,
+                    curtain: window.__exPass.adapter.curtain, mark: window.__exPass.adapter.mark});
+                  return {took: !!took, gen: cmd ? cmd.gen : null};
+                """)
+                br.sleep(0.4)
+                live = (jhost(br)["stack"] or [{}])[0]
+                for _ in range(60):
+                    if jhost(br)["state"] == "idle":
+                        break
+                    br.sleep(0.2)
+                landed = jhost(br)
+                after = (landed["stack"] or [{}])[0]
+                check(BROWSER_ROWS[14],
+                      r["took"] and "applied" in live and "applied" in after
+                      and live["applied"] is None and after["applied"] is None
+                      and "handles" in live and "handles" in after
+                      and landed["state"] == "idle"
+                      and "reportApplied" in LAYER_BUILT and "reportPose" in LAYER_BUILT,
+                      f"the running stack row reads {json.dumps(live)}; the landing snapshot reads "
+                      f"{json.dumps(after)} at state {landed['state']}. The probe publishes nothing, "
+                      f"so the channel reads empty on both — and it is a field of its own beside "
+                      f"`handles` rather than a fold into it")
                 cleanup(br)
 
 # ---------------------------------------------------------------- report

@@ -1223,6 +1223,27 @@ after any plan is serialised and it moves while a pass plays. An instrument whos
 where a sample lands reads it there: the meshing instrument's doors are read on the buffer, because
 a leak is one sample landing on a singular point and the sample positions come from the buffer.
 
+**The instrument reports what it applied, added 2026-08-17.** His architecture decision of that day
+at 18:00 makes the instrument's own run-time reading on the actual buffer the truth of a passage: the
+composer emits the artistic request and its bounds, and what was really drawn is known only inside
+the frame. The frame state therefore carries `reportApplied(record)` beside `reportPose(pose)`. An
+instrument calls it at a door instant with its own numbers, and calls it before it refuses, so the
+applied state on the way to a refusal is carried too. A refusal itself keeps its own road —
+`st.fail(st.token, why)` is unchanged and this channel replaces nothing.
+
+The host stores the record as it arrives and reads nothing in it. Each voice's row of the diagnostic
+surface publishes it as `applied`, beside the `handles` the host itself resolved: the run-time truth
+and the plan's intention, readable against each other on one row. The row survives the landing, so a
+walk that asks what happened once the host is idle again still finds it. The walk writes it onto the
+passage record the request came from, which is where a reader of one edge looks.
+
+The five instruments agree on one plain shape, kept in their own files rather than in the host:
+`door` (`"in"` or `"out"`), `buffer` (the two numbers the reading was taken on), `reads` (the handle
+the reading is about), `request` (the value handed in), `applied` (the value drawn), `moved` (how far
+the two stand apart), `unit` (what `moved` is counted in — rungs, bands, cells, degrees), `held` (the
+leak the request would have drawn, in the instrument's own words, or nothing) and `whyNo` (the
+refusal, where no whole value stood within reach). The host would carry any other shape unchanged.
+
 **The pack boundary, added 2026-08-14 13:26 and built at `b212ef3`.** The instruments live in
 `engine/assets/pass-pack.js`; the host lives in `engine/assets/pass-layer.js` and loads the pack by
 address, checking its declared version and a digest of the bytes that arrived, then registers what

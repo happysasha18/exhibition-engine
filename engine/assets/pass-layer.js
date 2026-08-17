@@ -1385,14 +1385,15 @@
     if (!cues.length) {
       if (!probe) return null;
       return [{ cue: null, inst: probe, said: {}, driverState: {}, lastHandles: null,
-                live: true, stack: 0, line: 0 }];
+                applied: null, live: true, stack: 0, line: 0 }];
     }
     var rows = stackOrder(cues), out = [];
     for (var i = 0; i < rows.length; i++) {
       var id = rows[i].cue.instrument && rows[i].cue.instrument.id;
       if (!instruments[id]) { logEvt("no-instrument", cmd.gen, String(id)); return null; }
       out.push({ cue: rows[i].cue, inst: instruments[id], said: {}, driverState: {},
-                 lastHandles: null, live: false, stack: rows[i].stack, line: rows[i].line });
+                 lastHandles: null, applied: null,
+                 live: false, stack: rows[i].stack, line: rows[i].line });
     }
     return out;
   }
@@ -1587,7 +1588,11 @@
                            line: v.line, live: !!v.live,
                            window: v.cue ? (v.cue.window || null) : null,
                            levels: v.cue ? (v.cue.levels || null) : null,
-                           handles: v.lastHandles || null };
+                           handles: v.lastHandles || null,
+                           // THE READING SURVIVES THE LANDING. A walk asks what happened once the
+                           // pass has landed and the host is idle again, so the last thing each
+                           // instrument published has to be readable after its voice is gone.
+                           applied: v.applied || null };
                 }),
                 live: rec.liveCues || [], drew: rec.drewLastFrame || 0,
                 budget: budgetOfScore(rec.cmd.score), grant: rec.grant || null };
@@ -1910,6 +1915,24 @@
       // A cue that carries the camera by its own device reports its pose here, once a frame. The
       // host applies it and holds its own flight still across that window.
       reportPose: function (p) { if (p) rec.ownPose = p; },
+      // WHAT THE INSTRUMENT ITSELF APPLIED, said in the instrument's own numbers. His architecture
+      // decision of 2026-08-17 18:00 makes the instrument's run-time reading on the actual buffer
+      // the truth of a passage; the composer emits only the request. This is the channel that
+      // reading travels back on, and it stands beside `reportPose` because it is the same kind of
+      // thing: a fact only the instrument knows, published once at the instant it is known.
+      //
+      // THE HOST STORES IT AND READS NOTHING IN IT. Whatever record arrives is kept as it came and
+      // published on this voice's row of the diagnostic surface; no field is required, none is
+      // renamed, and no number is judged here. Every instrument in the tree agrees on one plain
+      // shape — `door`, `buffer`, `reads`, `request`, `applied`, `moved`, `unit`, `held`, `whyNo` —
+      // but that agreement is the instruments' own, kept in their files, and this host would carry
+      // any other shape unchanged.
+      //
+      // A REFUSAL KEEPS ITS OWN ROAD. `st.fail(st.token, why)` is still how an instrument refuses,
+      // and nothing here changes it. What this carries is what WAS applied, including the applied
+      // state on the way to a refusal — an instrument reports first and refuses after, so the walk
+      // can read the door that could not be held rather than only the sentence about it.
+      reportApplied: function (a) { if (a && typeof a === "object") v.applied = a; },
       settle: settle, fail: fail,
     };
   }
@@ -2245,12 +2268,17 @@
       // THE STACK, as the host actually walks it: draw order, ascending, the cue nearest the eye
       // last. `live` is what the last frame drew, `drew` how many cues that frame laid down, and
       // `handles` each cue's own numbers — a cue outside its window shows the door it is holding at.
+      // `applied` is the INSTRUMENT'S own reading of its door on the buffer it drew on, exactly as
+      // the instrument published it through `reportApplied`; `handles` beside it is what the HOST
+      // resolved and asked for. The two stand side by side on purpose: the plan's intention and the
+      // run-time truth, readable against each other on one row.
       stack: cur ? cur.voices.map(function (v) {
         return { id: v.cue ? v.cue.id : null, instrument: v.inst.name, stack: v.stack,
                  line: v.line, live: !!v.live,
                  window: v.cue ? (v.cue.window || null) : null,
                  levels: v.cue ? (v.cue.levels || null) : null,
-                 handles: v.lastHandles || null };
+                 handles: v.lastHandles || null,
+                 applied: v.applied || null };
       }) : (lastRun ? lastRun.stack : null),
       live: cur ? cur.liveCues : (lastRun ? lastRun.live : null),
       drew: cur ? cur.drewLastFrame : (lastRun ? lastRun.drew : null),
