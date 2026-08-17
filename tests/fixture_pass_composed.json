@@ -39,6 +39,7 @@
      "WORLD",
      "CELL"
     ],
+    "port": "/Users/sashaabramovich/exhibition-engine-u27-s2/engine/assets/pass-inst-boxfold.js",
     "roles": [
      "disassembly",
      "mystery",
@@ -74,6 +75,7 @@
      "SURFACE",
      "CELL"
     ],
+    "port": "/Users/sashaabramovich/exhibition-engine-u27-s2/engine/assets/pass-inst-gears.js",
     "roles": [
      "disassembly",
      "mystery",
@@ -104,6 +106,39 @@
      "SURFACE",
      "TEXTURE"
     ],
+    "port": "/Users/sashaabramovich/exhibition-engine-u27-s2/engine/assets/pass-inst-matter.js",
+    "roles": [
+     "disassembly",
+     "mystery",
+     "assembly"
+    ]
+   },
+   "unfold": {
+    "api": 1,
+    "coverage": {
+     "writes": false
+    },
+    "cuts": [
+     "panel"
+    ],
+    "handles": [
+     "clock",
+     "depth",
+     "field",
+     "mask",
+     "mix",
+     "panels",
+     "parquetPeriod",
+     "parquetTurn",
+     "shade",
+     "stagger",
+     "tilt"
+    ],
+    "levels": [
+     "CELL",
+     "CELL CONTENT"
+    ],
+    "port": "/Users/sashaabramovich/exhibition-engine-u27-s2/engine/assets/pass-inst-unfold.js",
     "roles": [
      "disassembly",
      "mystery",
@@ -135,6 +170,7 @@
      "SURFACE",
      "CELL"
     ],
+    "port": "/Users/sashaabramovich/exhibition-engine-u27-s2/engine/assets/pass-inst-weave.js",
     "roles": [
      "disassembly",
      "mystery",
@@ -142,6 +178,7 @@
     ]
    }
   },
+  "intentFenceChars": 600,
   "manifests": {
    "boxfold": {
     "api": 1,
@@ -475,6 +512,111 @@
     "levels": [
      "SURFACE",
      "TEXTURE"
+    ],
+    "roles": [
+     "disassembly",
+     "mystery",
+     "assembly"
+    ]
+   },
+   "unfold": {
+    "api": 1,
+    "coverage": {
+     "writes": false
+    },
+    "handles": {
+     "clock": {
+      "banding": null,
+      "def": 0.0,
+      "max": 14.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "depth": {
+      "banding": null,
+      "def": 0.5,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "field": {
+      "banding": null,
+      "def": 0.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "mask": {
+      "banding": null,
+      "def": 0.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "mix": {
+      "banding": null,
+      "def": 0.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "panels": {
+      "banding": null,
+      "def": 1.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "parquetPeriod": {
+      "banding": null,
+      "def": 0.5,
+      "max": 1.0,
+      "min": 0.05,
+      "open": false,
+      "rungs": null
+     },
+     "parquetTurn": {
+      "banding": null,
+      "def": 0.0,
+      "max": 180.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "shade": {
+      "banding": null,
+      "def": 1.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "stagger": {
+      "banding": null,
+      "def": 0.34,
+      "max": 0.6,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "tilt": {
+      "banding": null,
+      "def": 0.5,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     }
+    },
+    "levels": [
+     "CELL",
+     "CELL CONTENT"
     ],
     "roles": [
      "disassembly",
