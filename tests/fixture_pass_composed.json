@@ -13,6 +13,38 @@
    "texture": 0.35
   },
   "instruments": {
+   "boxfold": {
+    "api": 1,
+    "coverage": {
+     "writes": false
+    },
+    "cuts": [
+     "panel"
+    ],
+    "handles": [
+     "axis",
+     "depth",
+     "dip",
+     "fingers",
+     "lead",
+     "mask",
+     "mix",
+     "seam",
+     "seamScore",
+     "seed",
+     "shade",
+     "travel"
+    ],
+    "levels": [
+     "WORLD",
+     "CELL"
+    ],
+    "roles": [
+     "disassembly",
+     "mystery",
+     "assembly"
+    ]
+   },
    "gears": {
     "api": 1,
     "coverage": {
@@ -94,7 +126,10 @@
      "press",
      "seed",
      "speed",
-     "strips"
+     "strips",
+     "wave",
+     "waveDrift",
+     "wavePeriod"
     ],
     "levels": [
      "SURFACE",
@@ -108,6 +143,119 @@
    }
   },
   "manifests": {
+   "boxfold": {
+    "api": 1,
+    "coverage": {
+     "writes": false
+    },
+    "handles": {
+     "axis": {
+      "banding": null,
+      "def": 0.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "depth": {
+      "banding": null,
+      "def": 0.9,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "dip": {
+      "banding": null,
+      "def": 0.5,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "fingers": {
+      "banding": null,
+      "def": 7.0,
+      "max": 14.0,
+      "min": 3.0,
+      "open": false,
+      "rungs": null
+     },
+     "lead": {
+      "banding": null,
+      "def": 0.5,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "mask": {
+      "banding": null,
+      "def": 0.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "mix": {
+      "banding": null,
+      "def": 0.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "seam": {
+      "banding": null,
+      "def": 0.5,
+      "max": 0.75,
+      "min": 0.25,
+      "open": false,
+      "rungs": null
+     },
+     "seamScore": {
+      "banding": null,
+      "def": 0.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "seed": {
+      "banding": null,
+      "def": 0.0,
+      "max": 8.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "shade": {
+      "banding": null,
+      "def": 1.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "travel": {
+      "banding": null,
+      "def": 1.0,
+      "max": 1.0,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     }
+    },
+    "levels": [
+     "WORLD",
+     "CELL"
+    ],
+    "roles": [
+     "disassembly",
+     "mystery",
+     "assembly"
+    ]
+   },
    "gears": {
     "api": 1,
     "coverage": {
@@ -412,6 +560,30 @@
       "def": 28.0,
       "max": 64.0,
       "min": 3.0,
+      "open": false,
+      "rungs": null
+     },
+     "wave": {
+      "banding": null,
+      "def": 0.0,
+      "max": 0.51,
+      "min": 0.0,
+      "open": false,
+      "rungs": null
+     },
+     "waveDrift": {
+      "banding": null,
+      "def": 0.0,
+      "max": 0.5,
+      "min": -0.5,
+      "open": false,
+      "rungs": null
+     },
+     "wavePeriod": {
+      "banding": null,
+      "def": 0.5882352941176471,
+      "max": 2.0,
+      "min": 0.08,
       "open": false,
       "rungs": null
      }
