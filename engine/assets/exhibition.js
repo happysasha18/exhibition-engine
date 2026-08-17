@@ -966,165 +966,193 @@
     return { v: v, seed: seed, at: at, visit: visit, seedOfPass: pass };
   }
 
-  function passFillScore(key) {
-    const p = (((EX && EX.pass) || (cfg && cfg.pass) || {}));
-    const tables = p.scoreTables || {}, templates = p.scoreTemplates || {};
-    const insts = Object.keys(tables);
-    for (let i = 0; i < insts.length; i++) {
-      const tbl = tables[insts[i]] || {}, row = (tbl.rows || {})[key];
-      if (!row || typeof row !== "object") continue;
-      const no = (why) => { passNote(passRefusals, { what: "row", name: key, why: why }); return null; };
-      const tpl = templates[insts[i]] || {}, slots = tpl.slots;
-      let score = null;
-      try { score = JSON.parse(JSON.stringify(tpl.score)); } catch (e) {}
-      if (!score || !slots || typeof slots !== "object") return no("no template for this table's instrument");
-      const stray = Object.keys(row).filter((k) => !slots[k] && k !== "readiness" && k !== "family");
-      if (stray.length) return no("row names «" + stray[0] + "», a slot the template lacks");
-      if (typeof tbl.readinessFloor === "number" && !(row.readiness >= tbl.readinessFloor)) {
-        return no("readiness " + row.readiness + " stands under the floor " + tbl.readinessFloor);
-      }
-      const names = Object.keys(slots);
-      for (let j = 0; j < names.length; j++) {
-        const n = names[j], s = slots[n];
-        const cue = (score.cues || []).filter((c) => c && c.id === s.cue)[0];
-        if (typeof row[n] !== "number" || !Number.isFinite(row[n])) return no("the row's «" + n + "» is no measured number");
-        if (!cue || !cue.nodes || !cue.nodes[s.node]) return no("slot «" + n + "» names a node the template lacks");
-        cue.nodes[s.node].value = row[n];
-        if (s.score) score[s.score] = row[n];
-      }
-      // THE ROW'S OWN FAMILY BOUNDS, applied after every measured number is in place (§4.4f). The
-      // rolled value REPLACES the measured one at that slot, which is what a span centred on the
-      // measurement means; a slot the record does not name keeps the row's number exactly. `family`
-      // is the second row field that fills no slot of its own, beside `readiness`.
-      if (row.family !== undefined) {
-        const b = passBreath(key, row.family);
-        if (b.why) return no(b.why);
-        const bn = Object.keys(b.v);
-        for (let j = 0; j < bn.length; j++) {
-          const s = slots[bn[j]];
-          if (!s) return no("its family bounds name «" + bn[j] + "», a slot the template lacks");
-          const cue = (score.cues || []).filter((c) => c && c.id === s.cue)[0];
-          if (!cue || !cue.nodes || !cue.nodes[s.node]) {
-            return no("its family bounds name «" + bn[j] + "», whose node the template lacks");
-          }
-          cue.nodes[s.node].value = b.v[bn[j]];
-          if (s.score) score[s.score] = b.v[bn[j]];
-        }
-        if (b.seed !== null) score.seed = b.seed;
-      }
-      const ids = key.split("__");
-      score.pair = { a: ids[0], b: ids[1] };
-      return score;
-    }
-    return null;
-  }
-  // ---- the delivery pack (§4.4d) ----------------------------------------------------------------
-  // A SCORE PER PAIR CANNOT TRAVEL IN THE SETTINGS FILE EITHER, once the composer writes one for
-  // every ordered pair: 7708 composed scores are megabytes, and the settings file is parsed at boot
-  // by every visitor. So the site ships them as a PACK of static files — a head, one template per
-  // passage shape, and one row file per DEPARTING work — and its settings record carries the pack's
-  // addresses alone, under `pass.packs`.
+  // ---- the composed road (§4.4d, U27 stage 0) ---------------------------------------------------
+  // WHERE A SCORE COMES FROM. It is DERIVED, here, at the instant the walk casts the pair, from the
+  // two works' own records. His word of 2026-08-17 19:21: the collection grows to thousands of works
+  // and nothing on the product path may scale with the number of pairs. A table of pairs is
+  // quadratic in the collection — 121 works are already 10 558 ordered pairs — while a record per
+  // work is linear, and the whole living collection's records weigh 33 000 B gzipped where the pair
+  // rows they replace weighed 1 862 611 B.
   //
-  // THE READER TRAVELS AS ITS OWN FILE, the way the picture and the instruments do. It is fetched
-  // once, on the first landing of a walk whose settings record actually names a pack and whose
-  // layer is on, and a visit that never reaches that state never asks for it. What stays HERE is
-  // the door: where the reader is asked for, the one synchronous question a declare puts to it, and
-  // the landing that warms the next crossing's shard. That division is the byte fence's own
-  // answer — the bundle carries the contract and the picture travels — and it is the same shape
-  // pass-layer.js already stands on.
-  const PASS_PACK_SRC = "pass-reader.js";
-  let passPack = null, passPackAsked = false, passPackState = "absent", passPackWarm = null;
-  function passPackBlock() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).packs; }
-  // The reader hands over a factory rather than a finished reader, so the bundle stays the one
-  // owner of the settings block and of the diagnostic surface: the reader is handed the addresses
-  // it may fetch and one way to speak, and it reaches nothing else in this file.
-  function passPackSet(part) {
-    passPack = null;
+  // WHAT LEFT WITH THE TABLE. Three roads used to answer for a pair's score, and all three are gone:
+  // `pass.scores` keyed by ordered pair, the delivery pack read through pass-reader.js, and
+  // `pass.scoreTables` filled into `pass.scoreTemplates`. So are the reader file, the shard warming
+  // that fetched a work's outgoing crossings at every landing, and the site steps that staged and
+  // copied the packs. A pair no longer has a score to find; it has one to derive.
+  //
+  // THE COMPOSER TRAVELS AS ITS OWN FILE, the way the picture layer and the instruments do. It is
+  // fetched once, at the walk's first landing on a visit whose settings record actually carries the
+  // records it reads and whose layer is on, and a visit that never reaches that state never asks for
+  // it. Nothing ever waits on it: a crossing declared before it has arrived answers nothing and
+  // falls through to the walk's own glide, exactly as a pair with no score always has. What stays
+  // HERE is the door — where the composer is asked for, the request the walk builds for it, and the
+  // one synchronous question a declare puts to it.
+  const PASS_COMPOSER_SRC = "pass-composer.js";
+  let passComposer = null, passComposerAsked = false, passComposerState = "absent";
+  const passPassages = [];
+  function passWorkRecords() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).works; }
+  function passComposerConsts() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).composer; }
+  // The composer hands over a factory rather than a finished composer, so the bundle stays the one
+  // owner of the settings block: the composer is handed the collection's own constants and reaches
+  // nothing else in this file.
+  function passComposerSet(part) {
+    passComposer = null;
     const mk = part && part.make;
     if (typeof mk !== "function") {
-      passPackState = "refused";
-      passNote(passRefusals, { what: "pack", name: PASS_PACK_SRC, why: "handed over no reader" });
+      passComposerState = "refused";
+      passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC,
+                               why: "handed over no composer" });
       return;
     }
-    try {
-      passPack = mk({
-        packs: passPackBlock(),
-        note: (name, why) => passNote(passRefusals, { what: "pack", name: name, why: why }),
-        // The one roll, handed over rather than copied (§4.4f): the pack road and the inline road
-        // fill from different files and must not grow two ideas of what a family is. The reader
-        // reaches nothing else of this file, exactly as it reaches no settings block of its own.
-        breath: passBreath,
-      }) || null;
-    } catch (e) { passPack = null; }
-    passPackState = passPack ? "read" : "refused";
-    if (passPack && passPackWarm) { try { passPack.warm(passPackWarm); } catch (e) {} }
+    try { passComposer = mk(passComposerConsts()) || null; } catch (e) { passComposer = null; }
+    passComposerState = passComposer ? "read" : "refused";
+    if (!passComposer) {
+      passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC,
+                               why: "the collection's constants made no composer" });
+    }
   }
-  function passPackOpen() {
-    if (passPackAsked) return;
-    const block = passPackBlock();
-    if (!block || typeof block !== "object" || !Object.keys(block).length) return;
+  function passComposerOpen() {
+    if (passComposerAsked) return;
+    const works = passWorkRecords(), consts = passComposerConsts();
+    if (!works || typeof works !== "object" || !Object.keys(works).length) return;
+    if (!consts || typeof consts !== "object" || !Object.keys(consts).length) return;
     if (passGet("visualLayer") !== "pass") return;
-    // THE STAND-DOWN LAW BINDS AN OPTIONAL PREFETCH AS A CLASS (EX-LOAD-3 / INV-73). The reader and
-    // the shards every landing warms are exactly that: a fetch made ahead of a crossing, for a
-    // crossing the layer itself refuses under either request — `passOpen` below reads the same two
-    // and stands the drawing machinery down. Read alone, the pack asked for ten shards a visitor
-    // under Save-Data can never use: 443 844 B on disk and 36 420 B gzipped (U10 §6), which is
-    // MORE gzipped than standing the machinery down saves. So the pack asks the same two questions.
+    // THE STAND-DOWN LAW BINDS THIS FETCH AS A CLASS (EX-LOAD-3 / INV-73), the same way it bound the
+    // pack's. `passOpen` below reads the same two questions and stands the drawing machinery down,
+    // so a visit under either request plays no crossing at all — fetching the file that decides one
+    // would be a fetch for a crossing that can never run.
     const no = REDUCED ? "reduced motion" : dataSaver() ? "save data" : null;
     if (no) {
-      passPackAsked = true;
-      passNote(passRefusals, { what: "pack", name: PASS_PACK_SRC, why: no });
+      passComposerAsked = true;
+      passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC, why: no });
       return;
     }
-    passPackAsked = true;
-    passPackState = "asked";
+    passComposerAsked = true;
+    passComposerState = "asked";
     try {
-      window.__@@NS@@PassReader = passPackSet;
+      window.__@@NS@@PassComposer = passComposerSet;
       const s = document.createElement("script");
-      s.src = PASS_PACK_SRC;
+      s.src = PASS_COMPOSER_SRC;
       s.async = true;
       s.onerror = () => {
-        passPackState = "absent";
-        passNote(passRefusals, { what: "pack", name: PASS_PACK_SRC, why: "load failed" });
+        passComposerState = "absent";
+        passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC, why: "load failed" });
       };
       document.head.appendChild(s);
     } catch (e) {
-      passPackState = "absent";
-      passNote(passRefusals, { what: "pack", name: PASS_PACK_SRC, why: "no door" });
+      passComposerState = "absent";
+      passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC, why: "no door" });
     }
-  }
-  // THE WALK LANDED ON A WORK. The shard holding that work's outgoing crossings is asked for now,
-  // because a crossing is declared the instant the visitor moves and passScoreFor answers inside
-  // that same call — a fetch begun there could never arrive in time. The reader asks once per work;
-  // a landing before the reader itself has arrived is remembered, and warmed the moment it joins.
-  function passWarm(el) {
-    const id = el && el.dataset ? el.dataset.id : null;
-    if (!id) return;
-    passPackOpen();
-    passPackWarm = id;
-    if (passPack) { try { passPack.warm(id); } catch (e) {} }
   }
 
-  // The pair's own score, without an engine rebuild. The site writes `pass.scores`, keyed
-  // "<departing id>__<arriving id>", into its own site.json; the bake carries the whole `pass` block
-  // into config.json as DATA and judges none of it (engine/build.py), so a new score for a pair is a
-  // content change. A pair with a score of its own takes it; a pair with only a row takes the filled
-  // template; a pair with neither keeps the walk's own glide, which is the standing fallback — the
-  // same road a refused score takes.
-  function passScoreFor(fromEl, toEl) {
-    const a = fromEl && fromEl.dataset ? fromEl.dataset.id : null;
-    const b = toEl && toEl.dataset ? toEl.dataset.id : null;
+  // THE DIE THE WALK ROLLS, once per crossing. Charter shelf 16: a pinned seed reproduces a run
+  // exactly, which is the judging mode, and the public walk rolls a fresh one each time, which is
+  // the viewer mode. Both fall out of `passVisitSeed` above with no second idea of what a seed is —
+  // the visit's own seed (pinned by `familySeed` or rolled once), the pass index the declare has
+  // already minted, and the edge's own key. Nothing here reads a clock.
+  //
+  // The span is the composer's own and is READ from it: the choice core fences its seed at 0…8 and
+  // the meshing instrument's manifest publishes the same span for its `seed` handle. A copy of it
+  // here would be a copy that goes stale.
+  function passSeedFor(key) {
+    const span = (passComposer && passComposer.seedSpan) || [0, 8];
+    const lo = +span[0], hi = +span[1];
+    const roll = passMix(passMix(passVisitSeed(), passGen), passText(key)) / 4294967296;
+    return lo + roll * (hi - lo);
+  }
+
+  // THE PASSAGE REQUEST the walk builds for one edge (§4.7, U27 stage 0). The edge is named in ONE
+  // order whichever way the visitor walks it — the two ids sorted — and `direction` says which way
+  // this passage runs, so A to B and B to A are two distinct passages of one edge and the site's own
+  // edge record has a stable key to hang on (§4.8, stage 1 lane C).
+  //
+  // `routeRole` and `sessionMemory` are left unsaid here on purpose. The walk of stage 0 authors no
+  // dramaturgy and keeps no edge memory, and the composer's own defaults — a middle, and nothing
+  // played on this edge yet — are what reproduces today's score exactly. Stage 1 and stage 2 fill
+  // them at this one place.
+  function passRequestFor(fromEl, toEl) {
+    const from = fromEl && fromEl.dataset ? fromEl.dataset.id : null;
+    const to = toEl && toEl.dataset ? toEl.dataset.id : null;
+    if (!from || !to) return null;
+    const works = passWorkRecords() || {};
+    const forward = String(from) <= String(to);
+    const a = works[forward ? from : to], b = works[forward ? to : from];
     if (!a || !b) return null;
-    const key = a + "__" + b;
-    const rec = (((EX && EX.pass) || (cfg && cfg.pass) || {})).scores;
-    if (rec && rec[key]) return rec[key];
-    // The pack, asked for what has ALREADY arrived. This road never waits and never fetches: a
-    // shard that has not landed answers nothing, the reason goes on the diagnostic surface, and the
-    // crossing falls through to the walk's own glide exactly as a pair with no score always has.
-    if (passPack) {
-      try { const s = passPack.scoreFor(key); if (s) return s; } catch (e) {}
+    return {
+      workRecordA: a,
+      workRecordB: b,
+      direction: forward ? "a-to-b" : "b-to-a",
+      seed: passSeedFor(String(forward ? from : to) + "__" + String(forward ? to : from)),
+      // The pose the camera rests in as the passage starts: the departing work's real box in the
+      // hang at this instant, measured off the DOM by the walk's own `hangGeometry`.
+      cameraState: hangGeometry(from),
+      // The buffer as it stands on this device at this moment. The instrument reads the one it is
+      // actually drawing on, which is the truth either way (his architecture decision of 18:00);
+      // this is what the walk can see from outside it.
+      buffer: { width: innerWidth, height: innerHeight, dpr: window.devicePixelRatio || 1,
+                orientation: innerWidth >= innerHeight ? "landscape" : "portrait",
+                quality: passGet("qualityTier") },
+    };
+  }
+
+  // The pair's own passage, derived. This road never waits and never fetches: a composer that has
+  // not arrived answers nothing, the reason goes on the diagnostic surface, and the crossing falls
+  // through to the walk's own glide exactly as a pair with no score always has. A named refusal from
+  // the composer takes the same road, which is what a refusal has always meant here.
+  function passComposeFor(fromEl, toEl) {
+    if (!passComposer) {
+      passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC,
+                               why: "asked for a crossing before it arrived: " + passComposerState });
+      return null;
     }
-    return passFillScore(key);
+    const request = passRequestFor(fromEl, toEl);
+    if (!request) {
+      passNote(passRefusals, { what: "composer", name: "request",
+                               why: "one of the two works carries no record on this walk" });
+      return null;
+    }
+    let passage = null;
+    try { passage = passComposer.passageFor(request); } catch (e) { passage = null; }
+    if (!passage) {
+      passNote(passRefusals, { what: "composer", name: "passage", why: "the entry threw" });
+      return null;
+    }
+    // ONE RECORD CARRIES THE WHOLE PASSAGE: what was asked, what came back, and — written on later,
+    // when the host reports — what the instrument applied on the buffer it drew on or the refusal it
+    // named. `applied` is the runtime truth and it cannot be known before the frame is drawn.
+    passNote(passPassages, passage);
+    if (passage.declined) {
+      passNote(passRefusals, { what: "passage", name: passage.key, why: passage.declined });
+      return null;
+    }
+    return passage.score;
+  }
+
+  // WHAT THE INSTRUMENT APPLIED, written back onto the passage that asked for it. The host publishes
+  // each live cue's own handles on its report, and an instrument that holds a door for itself
+  // publishes what it moved and why there — the meshing one names `sizeRequest`, the size it drew,
+  // how many rungs apart they stand, the leak it was holding against, and the refusal where no whole
+  // size stood within reach. That reading is the runtime truth (his architecture decision of
+  // 2026-08-17 18:00), and it belongs on the passage record beside the request that asked for it.
+  // `key` is optional: without one the passage this walk derived last is the one that just played,
+  // which is what the landing asks about.
+  function passApply(key) {
+    let row = null;
+    for (let i = passPassages.length - 1; i >= 0; i--) {
+      if (key === undefined || passPassages[i].key === key) { row = passPassages[i]; break; }
+    }
+    if (!row || row.declined) return null;
+    let rep = null;
+    try { rep = passLayer && passLayer.report ? passLayer.report() : null; } catch (e) {}
+    if (!rep) return null;
+    row.applied = {
+      instrument: rep.instrument,
+      buffer: rep.census ? rep.census.buffer : null,
+      dpr: rep.census ? rep.census.dpr : null,
+      cues: (rep.stack || []).map((v) => ({ id: v.id, instrument: v.instrument,
+                                            handles: v.handles || null })),
+    };
+    return row.applied;
   }
 
   // Every setting resolves ONCE, at nav-start, and the result is frozen onto the command. A live
@@ -1180,7 +1208,7 @@
     passGen += 1;
     const g = passGen;
     let score = null;
-    const raw = a.score || passScoreFor(a.fromEl, a.toEl);
+    const raw = a.score || passComposeFor(a.fromEl, a.toEl);
     if (raw) {
       const seen = passScoreCheck(raw);
       if (seen.ok) {
@@ -1274,6 +1302,11 @@
       return;
     }
     passDockKeys[key] = true;
+    // THE RUNTIME TRUTH, READ AT THE LANDING. The instrument has finished drawing and the host's
+    // report still carries what the last transaction left behind, so this is the one instant the
+    // applied state can be written back onto the passage that asked for it. It reads and decides
+    // nothing: a passage that was refused or never derived leaves the row untouched.
+    if (cmd.score) passApply();
     const el = passResolveEl(cmd.to);
     // THE WALK'S REST RECORD FOLLOWS THE DOCK (INV-86). `restingEl` — the section under the eye,
     // the one a turn re-docks to — is written by the in-view watcher's organic intersection alone
@@ -1473,7 +1506,12 @@
   // to (PASS-API §10.2: keyed on generation AND destination, never a global that has moved on).
   function passLandGate(el, reason, commit, gen) {
     if (!el) return;
-    passWarm(el);
+    // THE WALK LANDED. The composer is asked for HERE and nowhere else (§4.4d: warming happens at
+    // the landing and nothing ever waits on the wire), because a crossing is declared the instant
+    // the visitor moves and the passage is derived inside that same call — a fetch begun there could
+    // never arrive in time. It is asked for once per visit; every landing after the first returns at
+    // the first line. Nothing per work is fetched: one file decides every crossing of the walk.
+    passComposerOpen();
     const g = gen === undefined ? passGen : gen;
     if (el === passLastEl && g === passLastGen) return;
     if (reason === "observe" && passNav && passNav.to
@@ -1578,10 +1616,19 @@
       limits: PASS_LIMITS,
       drivers: { declared: PASS_DRIVERS.slice(), built: PASS_DRIVERS_BUILT.slice() },
       layer: passState,
-      // The delivery pack, on the same surface: where the reader stands, and what it says about
-      // every pack the settings record names and every shard this visit has asked for.
-      pack: Object.assign({ src: PASS_PACK_SRC, state: passPackState, warm: passPackWarm },
-                          passPack ? passPack.report() : {}),
+      // The passage composer, on the same surface: where its file stands, how many work records the
+      // settings record carries for it to read, and one row per passage this visit has derived —
+      // the key, the request that was made, the shape that came back or the refusal that was named,
+      // and what the instrument applied on the buffer it drew on. A picture that looks wrong reads
+      // back to the request that made it without reading anything else.
+      composer: { src: PASS_COMPOSER_SRC, state: passComposerState,
+                  version: passComposer ? passComposer.version : null,
+                  works: Object.keys(passWorkRecords() || {}).length,
+                  passages: passPassages.map((row) => ({
+                    key: row.key, request: row.request, shape: row.shape || null,
+                    bytes: row.bytes === undefined ? null : row.bytes,
+                    overTheFence: row.overTheFence === undefined ? null : row.overTheFence,
+                    declined: row.declined || null, applied: row.applied || null })) },
       // The family roll, on the same surface (§4.4f): the visit's own seed and whether it was
       // pinned, and one row per rolled crossing carrying the pair, the pass index, the seed that
       // pass ran on, the spans it read and the value it applied to each bounded slot. A picture
@@ -1596,7 +1643,13 @@
   if (passGet("diagnostics") === "on") {
     try {
       window.__@@NS@@Pass = {
-        report: passReport, score: passScoreCheck, fill: passFillScore, version: 1,
+        report: passReport, score: passScoreCheck, version: 1,
+        // `passage` is the ONE entry a passage comes through, handed over so a conformance row can
+        // put a request to it directly and read the score or the named refusal that comes back,
+        // without driving a whole walk to reach it. `request` builds the request the walk itself
+        // would build for two real elements, so a row can prove the two agree.
+        passage: function (req) { return passComposer ? passComposer.passageFor(req) : null; },
+        request: passRequestFor, applied: passApply, seed: passSeedFor,
         adapter: { declare: declare, dock: dock, glide: glide, interrupt: interrupt,
                    reframe: reframe, curtain: curtain, mark: passMark,
                    hangGeometry: hangGeometry, handoff: handoff, chromeReveal: chromeReveal },
