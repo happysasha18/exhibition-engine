@@ -15,10 +15,10 @@
 //
 // WHAT IT IS HANDED. `make(consts)` takes the facts that belong to the collection rather than to
 // one work: the three instrument manifests as their own files publish them, the cut-line floors,
-// the discriminating thresholds the shared measure is read against, the meshing instrument's own
-// door record, the client's score fence and the provenance sentence the record carries. Nothing
-// about an instrument is written down here — the manifest is the instrument's own home for it,
-// and a copy of a number that lives somewhere else is a copy that goes stale.
+// the discriminating thresholds the shared measure is read against, the client's score fence and
+// the provenance sentence the record carries. Nothing about an instrument is written down here —
+// the manifest is the instrument's own home for it, and a copy of a number that lives somewhere
+// else is a copy that goes stale.
 //
 // WHY THE NUMBERS ARE PRINTED BY HAND. The score travels as JSON and the equality this file is
 // held to is BYTE equality against Python's own `json.dumps(score, ensure_ascii=False, indent=1,
@@ -28,8 +28,15 @@
 // way Python's own `round` does, half to even on the exact binary value, and `writeJson` writes
 // the object the way Python writes it.
 //
-// WHAT IT DOES NOT DO. It ships nothing and wires nothing: no walk asks it for a score yet. The
-// unit that lands it into the pass is the next one, and it is gated on this file's equality proof.
+// WHERE IT STANDS ON THE PRODUCT PATH (U27 stage 0, the seam). It travels as its own fetched file
+// the way pass-layer.js and the instruments do, opened once per visit at the walk's first landing,
+// and `passageFor` at the foot of this file is the ONE entry every edge of the walk comes through.
+// The prebaked per-pair score pack it replaces is gone from the walk, with the reader that fetched
+// it and the site steps that staged it.
+//
+// WHAT IT DOES NOT DO. It measures nothing, and it holds no door: the meshing instrument reads its
+// own doors at run time on the buffer it is drawing on, and this file emits the artistic request
+// (his architecture decision of 2026-08-17 18:00).
 (function () {
   var join = window.__@@NS@@PassComposer;
   if (typeof join !== "function") return;
@@ -117,13 +124,6 @@
     if (d > 0.5) return f + 1;
     if (d < 0.5) return f;
     return f % 2 === 0 ? f : f + 1;
-  }
-
-  // Python's `"%.6f" % x`, used for the meshing door's pose name on both sides of the road.
-  function fixed6(x) {
-    var v = Number(num(x));
-    if (Object.is(v, -0)) v = 0;
-    return v.toFixed(6);
   }
 
   // ---------------------------------------------------------------------------------------
@@ -392,7 +392,6 @@
     var INSTRUMENTS = consts.instruments;
     var FLOORS = consts.floors;
     var THRESHOLDS = consts.thresholds;
-    var MESH_DOORS = consts.meshDoors || null;
     var PROVENANCE = consts.provenance;
     var SCORE_FENCE_BYTES = consts.scoreFenceBytes;
 
@@ -778,46 +777,34 @@
                 measuredCounts: [countFrom, countTo] }, null];
     }
 
-    function doorPoseKey(bandPeriod, ratio, centreX, centreY, seed, sizeFrom, sizeTo) {
-      return [bandPeriod, ratio, centreX, centreY, seed, sizeFrom, sizeTo]
-        .map(fixed6).join("|");
-    }
-
-    function holdTheDoors(mesh, cam, seed) {
-      var centreX = r4((num(cam.panFrom[0]) + num(cam.panTo[0])) / 2.0 + 0.5);
-      var centreY = r4((num(cam.panFrom[1]) + num(cam.panTo[1])) / 2.0 + 0.5);
-      var band = mesh.bandPeriod;
-      if (band === null || band === undefined) band = HANDLE_SPECS.gears.bandPeriod[2];
-      var die = r4(Math.min(8.0, Math.max(0.0, seed)));
-      var name = doorPoseKey(band, mesh.ratio, centreX, centreY, die, mesh.sizeFrom, mesh.sizeTo);
-      if (MESH_DOORS === null) {
-        return [null, "the meshing travel has no door reading: lab/data/mesh-doors.json is absent, "
-                + "so no size can be shown to keep this instrument's doors whole. Run "
-                + "node lab/measure-mesh-doors.js against the shipped instrument"];
-      }
-      var rec = (MESH_DOORS.doors || {})[name];
-      if (rec === undefined) {
-        return [null, "the meshing travel has no door reading for its own pose, so no size can be "
-                + "shown to keep this instrument's doors whole. Run "
-                + "node lab/measure-mesh-doors.js against the shipped instrument"];
-      }
-      if (rec.wholeFrom === null || rec.wholeTo === null) {
-        var leak = rec.wholeFrom === null ? rec.doorA.alpha : rec.doorB.alpha;
-        var which = rec.wholeFrom === null ? "entry" : "exit";
-        return [null, "the meshing travel leaks at its " + which + " door at every size the "
-                + "instrument publishes: the other work stands there at an alpha of "
-                + fixed6(leak) + " on a " + pyText(MESH_DOORS.frame.width) + " x "
-                + pyText(MESH_DOORS.frame.height)
-                + " frame, where the door's own law is 0"];
-      }
+    // THE DOOR IS THE INSTRUMENT'S OWN READING, and this composer only asks (his architecture
+    // decision of 2026-08-17 18:00, carried in the charter's Model tail: the instrument reads its
+    // doors at run time on the actual buffer; the composer emits the artistic request and bounds).
+    //
+    // What stood here before: a lookup into lab/data/mesh-doors.json, keyed by a rounded pose, which
+    // answered with the nearest size whose doors that ONE measured frame had shown to be whole. It
+    // was wrong twice over. It was a table with 1 996 rows whose key carries the pair's own camera
+    // pan, so it scaled with the number of pairs (his 19:21 word); and it answered for a 1000 x 1000
+    // frame while the visitor's buffer is whatever the phone in their hand reports.
+    //
+    // What the meshing instrument already does with the request, on the buffer it is drawing on:
+    // engine/assets/pass-inst-gears.js `values` reads its own mask at both doors, and where the
+    // requested size leaks it searches outward over the whole multiplier — the smaller side first,
+    // two rungs of the mesh each way — and draws the first size whose doors are whole. It publishes
+    // `sizeRequest`, the size drawn, `sizeRungs` and `doorHeld`, and where no whole size stands
+    // within reach it refuses the frame in its own sentence (`doorWhyNo`). Its manifest declares
+    // that reach — `size.applied.heldWholeAtADoor` — so the reach has one home and this file keeps
+    // no copy of it.
+    //
+    // So the composer stamps the mesh record with WHO holds the door, and hands the size on as the
+    // request it always was. `doorHeldAt` is a plan field and reaches no field of the score: the
+    // score's own numbers are `sizeFrom`, `sizeTo`, `ratio` and `bandPeriod`, and they carry the
+    // artistic request. The bounds are the handle's published span, which the instrument reads from
+    // its own manifest — a copy of it here would be a copy that goes stale.
+    function askTheDoors(mesh) {
       var out = {};
       Object.keys(mesh).forEach(function (k) { out[k] = mesh[k]; });
-      out.doorRequestedFrom = mesh.sizeFrom;
-      out.doorRequestedTo = mesh.sizeTo;
-      out.doorAlphaAsRequested = [rec.doorA.alpha, rec.doorB.alpha];
-      out.sizeFrom = r4(rec.wholeFrom);
-      out.sizeTo = r4(rec.wholeTo);
-      out.doorMoved = (out.sizeFrom !== mesh.sizeFrom || out.sizeTo !== mesh.sizeTo);
+      out.doorHeldAt = "instrument";
       return [out, null];
     }
 
@@ -1079,7 +1066,7 @@
         mesh = made[0];
         why = made[1];
         if (mesh !== null) {
-          made = holdTheDoors(mesh, cam, pair.seed);
+          made = askTheDoors(mesh);
           mesh = made[0];
           why = made[1];
         }
@@ -1511,7 +1498,7 @@
       }, null];
     }
 
-    // ---- the one call the product makes ----
+    // ---- the choice core: two works, a direction and a die ----
 
     function scoreFor(a, b, direction, seed) {
       // Two works, a direction and a die: the whole crossing, decided here and now.
@@ -1540,7 +1527,97 @@
                shape: plan.shape, plan: filled, version: COMPOSER_VERSION };
     }
 
-    return { scoreFor: scoreFor, version: COMPOSER_VERSION, writeJson: writeJson,
+    // ---- THE ONE ENTRY A PASSAGE COMES THROUGH ----
+    //
+    // Every edge of the walk asks this one question, and `scoreFor` above is its inner core: the
+    // request is read, defaulted and fenced here, and the four values the core has always taken are
+    // handed on unchanged. Byte equality against the shipped score is preserved by construction —
+    // a request carrying only the two records, a direction and a seed reaches `scoreFor` with
+    // exactly those four values.
+    //
+    // THE REQUEST, field by field, with what a missing value means.
+    //   workRecordA   the departing work's own record (§4.4c's per-work half). Required; absent is
+    //                 a refusal, because there is no pair without it.
+    //   workRecordB   the arriving work's record. Required, for the same reason.
+    //   direction     "a-to-b" or "b-to-a" — the two distinct passages of one edge. Missing reads
+    //                 as "a-to-b", which is the core's own rule.
+    //   seed          the die, a number in 0…8 that fixes every random choice. Missing means the
+    //                 walk rolled none and the passage runs on 0 — reproducible, which is the
+    //                 judging mode of charter shelf 16.
+    //   routeRole     the step's function in the walk's dramaturgy: entrance, quiet link, middle,
+    //                 culmination or return (charter shelf 15 maps these onto the harmonic
+    //                 functions — a quiet link and a return are tonic, an entrance and a middle
+    //                 subdominant, a culmination dominant). Missing means the walk stated no
+    //                 function and the passage is read as a middle. Stage 0 records it and derives
+    //                 nothing from it; a name outside the five is a refusal, so the vocabulary
+    //                 cannot drift.
+    //   sessionMemory the return reference of §4.8 — {family, seed, passIndex} naming the pass
+    //                 already played on this edge in this visit, and nothing wider. Missing means
+    //                 nothing has played on this edge yet. A field outside the three is a refusal:
+    //                 §4.8's fence keeps the walk's own edge record on the site's side of the line.
+    //   cameraState   the pose the camera rests in as the passage starts; the flight departs from
+    //                 it. Missing means the walk stated no pose and the flight departs from the
+    //                 score's own rest, which is what every passage does today.
+    //   buffer        the canvas as it stands at this instant: {width, height, dpr, orientation,
+    //                 quality}. Missing means the buffer is unstated; the instrument then reads the
+    //                 one it is drawing on, which is the truth in either case (his 18:00 decision).
+    //
+    // WHAT COMES BACK. On a refusal, {key, declined, request} and no score. On success, everything
+    // `scoreFor` hands back plus `request` — the request as it was read, defaults filled in — and
+    // `applied`, which starts null. `applied` is the instrument's own reading of the buffer it drew
+    // on, and it can only be known after the frame is drawn: the caller writes it onto this record
+    // when the host reports, so one record carries the whole passage — what was asked, what came
+    // back, and what was applied or refused.
+    var ROUTE_ROLES = ["entrance", "quiet link", "middle", "culmination", "return"];
+    var SESSION_MEMORY_FIELDS = ["family", "seed", "passIndex"];
+
+    function passageFor(request) {
+      var req = request || {};
+      var a = req.workRecordA, b = req.workRecordB;
+      var role = req.routeRole === undefined || req.routeRole === null ? "middle" : req.routeRole;
+      var direction = req.direction === "b-to-a" ? "b-to-a" : "a-to-b";
+      var seed = req.seed === undefined || req.seed === null ? 0 : Number(req.seed);
+      var memory = req.sessionMemory === undefined ? null : req.sessionMemory;
+      var key = (a && a.id ? a.id : "?") + "__" + (b && b.id ? b.id : "?")
+                + "__" + (direction === "b-to-a" ? "ba" : "ab");
+      var read = { routeRole: role, direction: direction, seed: seed, sessionMemory: memory,
+                   cameraState: req.cameraState === undefined ? null : req.cameraState,
+                   buffer: req.buffer === undefined ? null : req.buffer };
+      function no(why) {
+        return { key: key, declined: why, score: null, request: read, applied: null,
+                 version: COMPOSER_VERSION };
+      }
+      if (!a || !a.id) return no("the passage request names no departing work record");
+      if (!b || !b.id) return no("the passage request names no arriving work record");
+      if (ROUTE_ROLES.indexOf(role) < 0) {
+        return no("the passage request names the route role «" + String(role)
+                  + "», which is none of " + ROUTE_ROLES.join(", "));
+      }
+      if (seed !== seed || seed < 0 || seed > 8) {
+        return no("the passage request's seed " + String(req.seed) + " stands outside 0…8");
+      }
+      if (memory !== null) {
+        if (typeof memory !== "object" || Array.isArray(memory)) {
+          return no("the passage request's session memory is no record");
+        }
+        var odd = Object.keys(memory).filter(function (f) {
+          return SESSION_MEMORY_FIELDS.indexOf(f) < 0;
+        });
+        if (odd.length) {
+          return no("the passage request's session memory names «" + odd[0] + "», outside the "
+                    + "three fields §4.8 lets cross: " + SESSION_MEMORY_FIELDS.join(", "));
+        }
+      }
+      var made = scoreFor(a, b, direction, seed);
+      made.request = read;
+      made.applied = null;
+      if (made.declined !== undefined) made.score = null;
+      else made.declined = null;
+      return made;
+    }
+
+    return { passageFor: passageFor, scoreFor: scoreFor, routeRoles: ROUTE_ROLES.slice(),
+             version: COMPOSER_VERSION, writeJson: writeJson,
              writeJsonTight: writeJsonTight, r4: r4 };
   }
 

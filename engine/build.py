@@ -949,11 +949,11 @@ def copy_exhibition_assets():
             "digest": hashlib.sha256((OUT / inst_path.name).read_bytes()).hexdigest(),
         }
 
-    # EX-PASS §4.4d: the delivery pack's reader travels the same way — its own file, fetched by the
-    # bundle only on a walk whose settings record actually names a pack. A bake without it simply
-    # serves none, the bundle's fetch answers 404, the refusal lands on the diagnostic surface and
-    # every crossing keeps the walk's own glide.
-    for _name in ("pass-layer.js", "pass-reader.js"):
+    # EX-PASS §4.4d: the passage composer travels the same way — its own file, fetched by the bundle
+    # once per visit at the walk's first landing, on a walk whose settings record actually carries
+    # the per-work records it reads. A bake without it simply serves none, the bundle's fetch answers
+    # 404, the refusal lands on the diagnostic surface and every crossing keeps the walk's own glide.
+    for _name in ("pass-layer.js", "pass-composer.js"):
         _p = client_asset(_name)
         if not _p.exists():
             continue
