@@ -2605,11 +2605,6 @@
                             // stale | fail — set with host.test.mode(name)
     var lastToken = null;
     var lateMs = 30;
-    // What this instrument publishes through `reportApplied` on every frame it is handed, or null
-    // for an instrument that publishes nothing. A row sets it with host.test.applied(record) and
-    // reads the host's own stack row back, so the reporting channel is exercised end to end without
-    // a real instrument, a real score or a GPU — the same reason settle and fail are drivable here.
-    var appliedSay = null;
     var inst = {
       name: "test",
       probe: true,
@@ -2630,10 +2625,7 @@
         if (mode === "fail") { host.fail(lastToken, "test: fail"); return; }
         host.settle(lastToken);
       },
-      frame: function (st) {
-        counts.frame++;
-        if (appliedSay && st && st.reportApplied) st.reportApplied(appliedSay);
-      },
+      frame: function () { counts.frame++; },
       resize: function () { counts.resize++; },
       cancel: function () { counts.cancel++; },
       dispose: function () { counts.dispose++; },
@@ -2646,9 +2638,8 @@
       mode: function (m) { if (m !== undefined) mode = String(m); return mode; },
       lateMs: function (ms) { if (ms !== undefined) lateMs = +ms; return lateMs; },
       lastToken: function () { return lastToken; },
-      applied: function (a) { if (a !== undefined) appliedSay = a; return appliedSay; },
       reset: function () {
-        mode = "decline"; lastToken = null; appliedSay = null;
+        mode = "decline"; lastToken = null;
         Object.keys(counts).forEach(function (k) { counts[k] = 0; });
       },
     };
