@@ -279,6 +279,10 @@
   var TRANSACTION_MS = 14000;
   var DOOR_HOLD = 0.08;
   var DOLLY_CAP = 0.5;
+  // How far across the frame a flight has to travel before it can carry a passage by itself, said
+  // as a share of the frame. Nothing measures it, and it is the one number deciding how many of a
+  // route's quiet links and returns are camera-led — the revisit list carries it.
+  var LEAD_SHARE = 0.1;
   var SIZE_FLOOR = 0.7;
   var CULMINATION_DISTANCE = 0.5;
   var LOCUS_NEAR = 0.1;
@@ -2421,7 +2425,29 @@
                roadNotes: chosen.notes, roadReach: chosen.reach,
                heldFamily: chosen.heldFamily, heldBy: chosen.heldBy, capped: plan.capped,
                roadDeclines: tried, miracleDecline: plan.miracleDecline,
-               travelDecline: plan.travelDecline };
+               travelDecline: plan.travelDecline,
+               // HOW FAR THIS PAIR'S OWN RECORDS SEND THE FLIGHT. The dolly comes from the two
+               // works' measured door steps and the pan from their measured radial centres or the
+               // arriving work's locus, so this is a reading of the pair and not a preference. A
+               // flight that barely moves cannot carry a passage on its own, and the entry reads
+               // this before it asks for a led one.
+               //
+               // WHAT IS READ IS THE PAN AND NOT THE APPROACH, and the reason is measured: the
+               // dolly stands AT its own cap for three quarters of the collection, because the two
+               // works' door steps stand far enough apart that the clamp saturates. A number that
+               // is the same for three pairs in four carries no reading of any pair, so it cannot
+               // decide anything; the pan travels the frame and does differ pair by pair. The
+               // approach is also what every flight makes anyway, since the anchor runs between the
+               // two hangs whether the camera leads or accompanies. `cameraReach` publishes both,
+               // the dolly as a share of its own cap so it survives a change of unit in the camera
+               // flight section, which is another lane's half of this file.
+               cameraReach: [r4(Math.abs(num(plan.camera.logScale)) / DOLLY_CAP),
+                             r4(Math.hypot(
+                               num(plan.camera.panTo[0]) - num(plan.camera.panFrom[0]),
+                               num(plan.camera.panTo[1]) - num(plan.camera.panFrom[1])))],
+               cameraTravels: Math.hypot(
+                 num(plan.camera.panTo[0]) - num(plan.camera.panFrom[0]),
+                 num(plan.camera.panTo[1]) - num(plan.camera.panFrom[1])) >= LEAD_SHARE };
     }
 
     // ---- THE ONE ENTRY A PASSAGE COMES THROUGH ----
@@ -2467,6 +2493,19 @@
     // when the host reports, so one record carries the whole passage — what was asked, what came
     // back, and what was applied or refused.
     var ROUTE_ROLES = ["entrance", "quiet link", "middle", "culmination", "return"];
+    // The two steps of the walk a camera-led passage belongs to, and the one home of that reading.
+    var LED_ROLES = ["quiet link", "return"];
+
+    // Does any cue of this score claim the world level? Under the levels law the world is the
+    // camera's own, so a led flight and a world-level cue are two voices on one level.
+    function claimsTheWorld(score) {
+      var i, levels;
+      for (i = 0; i < (score.cues || []).length; i++) {
+        levels = score.cues[i].levels || [];
+        if (levels.indexOf("WORLD") >= 0) return true;
+      }
+      return false;
+    }
     var SESSION_MEMORY_FIELDS = ["family", "seed", "passIndex"];
     // The span the die is rolled inside, and the one home of that fact on this side of the line.
     // It is the meshing instrument's own `seed` handle span, read out of its manifest rather than
@@ -2512,6 +2551,27 @@
         }
       }
       var made = scoreFor(a, b, direction, seed, role, memory);
+      // THE PASSAGE THE CAMERA LEADS. The camera lane built the capability and asks one field for
+      // it: `camera.lead` says the flight itself is the transition, the anchor gives up its held
+      // middle and the pose travels the whole duration without ever standing still. Choosing it is
+      // a reading of the step's function in the route, which is why it belongs here rather than in
+      // the choice core — the core never sees the role.
+      //
+      // The two homes are the quiet link and the return. Charter shelf 15 makes both TONIC, the
+      // home the eye settles in, and shelf 17 gives a quiet link one move from the vocabulary, at
+      // most one accompanying voice and no miracle — which is exactly the register a led passage
+      // wants underneath it, because the camera is the world voice and a led flight spends it. A
+      // culmination spends its voices elsewhere, and its miracle is the accent.
+      //
+      // Two readings gate it beyond the role. The pair's own records have to give the flight
+      // somewhere to go, since a still flight leads nothing. And under the levels law one voice
+      // holds one level, so a led score may never also give a cue the WORLD level: the host refuses
+      // that combination before the command is taken and names the cue, and this side never emits
+      // it.
+      if (made.score && made.cameraTravels && LED_ROLES.indexOf(role) >= 0
+          && !claimsTheWorld(made.score)) {
+        made.score.camera.lead = true;
+      }
       made.request = read;
       made.applied = null;
       if (made.declined !== undefined) made.score = null;
