@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """PASS-API-V1 — the box instrument on the host's frame.
-Run: python3 tests/test_pass_box.py
+Run: python3 tests/test_pass_boxfold.py
 
 Root: the composer's own census. The box-fold road qualifies on the measurements for 4 670 ordered
 pairs and plays for none of them, because `INSTRUMENT_OF_KIND.panel` in engine/assets/pass-composer.js
@@ -102,7 +102,7 @@ CROP = TURN_ROOM + SEAM_ROOM
 SEAM_AT = 0.599
 SEAM_SCORE = 0.269
 
-SHOTS = ROOT / "tests" / "captures" / "pass-box"
+SHOTS = ROOT / "tests" / "captures" / "pass-boxfold"
 
 results = []
 
@@ -136,7 +136,7 @@ def box_cue(stack=0, levels_own=None, **statics):
         nodes["b-" + k] = _static(v)
         tracks[k] = {"node": "b-" + k}
     return {
-        "id": "box-main", "instrument": {"id": "box", "api": 1},
+        "id": "box-main", "instrument": {"id": "boxfold", "api": 1},
         "voice": "letter", "roles": ["disassembly", "mystery", "assembly"],
         "levels": ["WORLD", "CELL"],
         "levelOwnership": levels_own or {"WORLD": "owns", "CELL": "owns"},
@@ -199,7 +199,7 @@ def box_score(under=False, **statics):
                         "cues": {c["id"]: {"resources": dict(res, variant=v)} for c in cues}}
                     for v in ("lean", "standard", "rich")},
         "provenance": {"source": "lab/effects/box.js's own declared defaults and constants",
-                       "measuredAt": None, "by": "tests/test_pass_box.py"},
+                       "measuredAt": None, "by": "tests/test_pass_boxfold.py"},
     }
 
 
@@ -213,9 +213,9 @@ build_site.build(SITE_URL)
 LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 # THE INSTRUMENT'S OWN BUILT FILE — the real artifact a visitor is served, comments stripped. Since
 # every instrument travels alone, the whole of this file is this instrument and nothing else.
-PACK = (TMP / "pass-inst-box.js").read_text(encoding="utf-8")
+PACK = (TMP / "pass-inst-boxfold.js").read_text(encoding="utf-8")
 REGION = PACK
-SOURCE = ROOT / "engine" / "assets" / "pass-inst-box.js"
+SOURCE = ROOT / "engine" / "assets" / "pass-inst-boxfold.js"
 # The file as it stands in the tree, comments and all: the rows about what this instrument DECLARES
 # read the built artifact, and the rows about what it SAYS read the source it is built from.
 SOURCE_TEXT = SOURCE.read_text(encoding="utf-8")
@@ -226,7 +226,7 @@ LABTXT = MODULE.read_text(encoding="utf-8") if MODULE.exists() else ""
 OWNED = ["createElement", "getContext", "requestAnimationFrame", "addEventListener",
          "performance.now", "Date.now", "new Image", "setTimeout", "setInterval"]
 held = [s for s in OWNED if s in REGION]
-check("PASS-BOX the instrument creates no element, no loop and no listener",
+check("PASS-BOXFOLD the instrument creates no element, no loop and no listener",
       not held,
       "§1.2's fence, read against the instrument's own built file: none of the nine ways of owning "
       "hardware appears there. The module raises its own canvas, takes a WebGL context on it with "
@@ -237,7 +237,7 @@ check("PASS-BOX the instrument creates no element, no loop and no listener",
 HANDLES = ["mix", "axis", "depth", "dip", "lead", "fingers", "seam", "seamScore",
            "shade", "travel", "seed", "mask"]
 absent = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
-check("PASS-BOX every handle the instrument publishes is a handle a score can drive",
+check("PASS-BOXFOLD every handle the instrument publishes is a handle a score can drive",
       not absent and len(HANDLES) == 12,
       "§4.4b: twelve handles. The dial, the module's own five declared params a pair can stand, the "
       "two that carry the crease's place and its gate, the module's two judge channels, the score's "
@@ -245,7 +245,7 @@ check("PASS-BOX every handle the instrument publishes is a handle a score can dr
       "why: a cue carries an ordered pair, so two works are what stand on the faces"
       if not absent else "these are published nowhere: " + ", ".join(absent))
 
-check("PASS-BOX no clock handle is published, and the picture is what settles that",
+check("PASS-BOXFOLD no clock handle is published, and the picture is what settles that",
       "clock: { min" not in REGION and "t += dt" in LABTXT
       and "uniform float uTime" not in REGION and "source: \"seconds\"" not in REGION,
       "the module counts a second of its own up in its own frame loop (`t += dt`) and no uniform "
@@ -295,12 +295,12 @@ CONSTANTS = [
 ]
 missing_const = [p for lab_p, p in ((a, b) for a, b, _ in CONSTANTS)
                  if lab_p not in LABTXT or p not in REGION]
-check("PASS-BOX every constant the picture stands on carries the module's own number",
+check("PASS-BOXFOLD every constant the picture stands on carries the module's own number",
       not missing_const and bool(LABTXT),
       "; ".join("%s — %s" % (p, why) for _, p, why in CONSTANTS) if not missing_const
       else "these differ between the lab module and the port: " + ", ".join(missing_const))
 
-check("PASS-BOX the port's own one number is named as its own, and it is the room the crease needs",
+check("PASS-BOXFOLD the port's own one number is named as its own, and it is the room the crease needs",
       "var SEAM_ROOM = 0.42;" in REGION and "SEAM_ROOM" not in LABTXT
       and "var SEAM_REACH = 0.25;" in REGION
       and "var CROP = BOX_CROP + SEAM_ROOM;" in REGION,
@@ -311,14 +311,14 @@ check("PASS-BOX the port's own one number is named as its own, and it is the roo
       "own search window — cut-lines.py looks for the line in the middle half of the work — which is "
       "what bounds the travel the room has to pay for")
 
-check("PASS-BOX the host binds uniforms by declared name, never by position or a written list",
+check("PASS-BOXFOLD the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "uQuad" not in LAYER and "uInv" not in LAYER,
       "this instrument declares twenty uniforms, of which five are shared with the woven one. The "
       "host reads the manifest")
 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
-check("PASS-BOX the manifest's declared names and the shader's own names are one set",
+check("PASS-BOXFOLD the manifest's declared names and the shader's own names are one set",
       declared == spelled and len(declared) == 20,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
@@ -327,24 +327,24 @@ SUPPLY = ["textureA", "textureB", "fitA", "fitB", "resolution", "seconds"]
 sources = set(re.findall(r'source: "([^"]+)"', REGION))
 outside = [s for s in sources
            if s not in SUPPLY and not s.startswith("frame:") and not s.startswith("handle:")]
-check("PASS-BOX every uniform is sourced from the closed set the host can supply",
+check("PASS-BOXFOLD every uniform is sourced from the closed set the host can supply",
       not outside and len(sources) >= 10,
       "§7's uniform sources are the two source textures, their fits, the resolution, the "
       "transaction's seconds, a value the instrument answers and a handle. This instrument names "
       f"{len(sources)} distinct sources and none outside that set"
       if not outside else "outside the set: " + ", ".join(outside))
 
-check("PASS-BOX the shader carries no version header of its own",
+check("PASS-BOXFOLD the shader carries no version header of its own",
       "#version" not in REGION,
       "so the host's translator stamps the one header this shader needs and no second one arrives")
 
-check("PASS-BOX the manifest leaves the drawing buffer unpreserved, where the module asked for it",
+check("PASS-BOXFOLD the manifest leaves the drawing buffer unpreserved, where the module asked for it",
       "gl: { preserveDrawingBuffer: false }" in REGION
       and "preserveDrawingBuffer: true" in LABTXT,
       "§7 refuses a manifest that asks for the buffer to be preserved, and the module asks for it by "
       "name; this instrument draws every frame the host hands it")
 
-check("PASS-BOX the coverage is declared, and the frame it fills is the reason",
+check("PASS-BOXFOLD the coverage is declared, and the frame it fills is the reason",
       "coverage: { writes: false" in REGION
       and "gl_FragColor = vec4(col, 1.0);" in REGION
       and "opacity" not in REGION and "presence" not in REGION,
@@ -358,7 +358,7 @@ check("PASS-BOX the coverage is declared, and the frame it fills is the reason",
 # geometric parameter names the measurement of the work it reads. For this instrument the crease's
 # own PLACE is that parameter, and it is the half of the charter's boundary test that asks whose
 # structure draws the boundary.
-check("PASS-BOX the crease's own handle publishes the measurement it reads",
+check("PASS-BOXFOLD the crease's own handle publishes the measurement it reads",
       'reads: "structure.regions from lab/cut-lines.py' in REGION
       and "structure.regions.score from the same file, which is the gate" in REGION
       and 'applied: { floor: SEAM_FLOOR }' in REGION
@@ -370,7 +370,7 @@ check("PASS-BOX the crease's own handle publishes the measurement it reads",
       "`fingers`, reading the same measured repeat grid-colour derives its count from. Both halves "
       "of the boundary are the work's, which is the whole of the charter's pardon")
 
-check("PASS-BOX the instrument measures no work for itself, and says why",
+check("PASS-BOXFOLD the instrument measures no work for itself, and says why",
       "may not, because measuring means drawing the work into a surface of its own and counting"
       in SOURCE_TEXT and "seamOf" not in REGION and "getImageData" not in REGION,
       "the module reads the seam off the picture itself, in a scratch surface of its own "
@@ -378,7 +378,7 @@ check("PASS-BOX the instrument measures no work for itself, and says why",
       "and the file names the measurement rather than taking it")
 
 # THE DOOR READING, AND ITS OWN NUMBERS.
-check("PASS-BOX the judges' handle publishes what the door is read against, and that nothing is held",
+check("PASS-BOXFOLD the judges' handle publishes what the door is read against, and that nothing is held",
       'readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",' in SOURCE_TEXT
       and 'reads: "landing"' in SOURCE_TEXT
       and "var DOOR_SLIP = 0.5;" in SOURCE_TEXT
@@ -391,7 +391,7 @@ check("PASS-BOX the judges' handle publishes what the door is read against, and 
       "travelling number rides is a sine at its own zero, so anything the reading finds is a real "
       "fault that no widening closes and the refusal stands alone")
 
-check("PASS-BOX the file names which of the five pardon conditions it answers, and whose the rest are",
+check("PASS-BOXFOLD the file names which of the five pardon conditions it answers, and whose the rest are",
       "THE FIVE-CONDITION PARDON, AND WHICH OF THE FIVE THIS FILE ANSWERS" in SOURCE_TEXT
       and "answers three of them whole, one with the composer, and one with the" in SOURCE_TEXT
       and "THE FACES CARRY LIVE PICTURES RE-READ EVERY DRAWN FRAME — the host's." in SOURCE_TEXT
@@ -404,7 +404,7 @@ check("PASS-BOX the file names which of the five pardon conditions it answers, a
 
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
-check("PASS-BOX the provenance names the file the port was read from, and the file weighs to it",
+check("PASS-BOXFOLD the provenance names the file the port was read from, and the file weighs to it",
       bool(sha) and sha == declared_sha and 'commit: "11e2db4"' in REGION,
       f"the module is tracked, so the commit it was read at is named beside the digest of its bytes, "
       f"and the file still weighs to {sha[:16]}…")
@@ -412,37 +412,37 @@ check("PASS-BOX the provenance names the file the port was read from, and the fi
 # ---------------------------------------------------------------- browser rows
 
 BROWSER_ROWS = [
-    "PASS-BOX §8     · the manifest carries every field the contract names, in its shape",
-    "PASS-BOX §8     · it publishes WORLD and CELL, and the reading is said to be derived",
-    "PASS-BOX row 7  · door 0 stands the departing work, measured against its own file",
-    "PASS-BOX row 7  · door 0 carries no trace of the arriving work",
-    "PASS-BOX row 7  · door 1 stands the arriving work, measured against its own file",
-    "PASS-BOX row 7  · door 1 carries no trace of the departing work",
-    "PASS-BOX the two roads agree at the doors and at six places through the turn",
-    "PASS-BOX §7     · the frame is covered by the two faces at every sampled pose",
-    "PASS-BOX §7     · the ground of a stack, and refused above another cue",
-    "PASS-BOX §7     · both doors stand whole with a coverage-writing voice over them",
-    "PASS-BOX §7     · no empty frame at any sampled instant of the pass",
-    "PASS-BOX §7     · the frame after a change of viewport is drawn afresh",
-    "PASS-BOX row 10 · a seeded run repeats to the pixel",
-    "PASS-BOX row 14 · textures, programmes and framebuffers return to their baseline after ten runs",
-    "PASS-BOX row 15 · the console stays clean",
-    "PASS-BOX row 22 · the census shows granted against declared, and neither overruns",
-    "PASS-BOX §7     · one canvas, one context, two source textures, one pass a frame",
-    "PASS-BOX §7     · a shader already at GLSL ES 3.00 receives no second version header",
-    "PASS-BOX the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
-    "PASS-BOX row 9  · one camera authority through a real pass, and the pose rests on the arrival",
-    "PASS-BOX §4.4b  · the axis, the perspective, the dip, the joint and the shadow reach the PICTURE",
-    "PASS-BOX the charter · the fold stands on the work's region line, and moving it back moves the frame",
-    "PASS-BOX the box is WALKED on the drawing buffer at both doors, and what it read is published",
-    "PASS-BOX a door the judges' channel spoils is refused on the real road, and the visitor still lands",
-    "PASS-BOX row 16 · the captures are kept as evidence",
+    "PASS-BOXFOLD §8     · the manifest carries every field the contract names, in its shape",
+    "PASS-BOXFOLD §8     · it publishes WORLD and CELL, and the reading is said to be derived",
+    "PASS-BOXFOLD row 7  · door 0 stands the departing work, measured against its own file",
+    "PASS-BOXFOLD row 7  · door 0 carries no trace of the arriving work",
+    "PASS-BOXFOLD row 7  · door 1 stands the arriving work, measured against its own file",
+    "PASS-BOXFOLD row 7  · door 1 carries no trace of the departing work",
+    "PASS-BOXFOLD the two roads agree at the doors and at six places through the turn",
+    "PASS-BOXFOLD §7     · the frame is covered by the two faces at every sampled pose",
+    "PASS-BOXFOLD §7     · the ground of a stack, and refused above another cue",
+    "PASS-BOXFOLD §7     · both doors stand whole with a coverage-writing voice over them",
+    "PASS-BOXFOLD §7     · no empty frame at any sampled instant of the pass",
+    "PASS-BOXFOLD §7     · the frame after a change of viewport is drawn afresh",
+    "PASS-BOXFOLD row 10 · a seeded run repeats to the pixel",
+    "PASS-BOXFOLD row 14 · textures, programmes and framebuffers return to their baseline after ten runs",
+    "PASS-BOXFOLD row 15 · the console stays clean",
+    "PASS-BOXFOLD row 22 · the census shows granted against declared, and neither overruns",
+    "PASS-BOXFOLD §7     · one canvas, one context, two source textures, one pass a frame",
+    "PASS-BOXFOLD §7     · a shader already at GLSL ES 3.00 receives no second version header",
+    "PASS-BOXFOLD the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
+    "PASS-BOXFOLD row 9  · one camera authority through a real pass, and the pose rests on the arrival",
+    "PASS-BOXFOLD §4.4b  · the axis, the perspective, the dip, the joint and the shadow reach the PICTURE",
+    "PASS-BOXFOLD the charter · the fold stands on the work's region line, and moving it back moves the frame",
+    "PASS-BOXFOLD the box is WALKED on the drawing buffer at both doors, and what it read is published",
+    "PASS-BOXFOLD a door the judges' channel spoils is refused on the real road, and the visitor still lands",
+    "PASS-BOXFOLD row 16 · the captures are kept as evidence",
 ]
 
 RED_ROWS = [
-    "PASS-BOX red-on-bug · the room the crease's travel needs removed: the frame stops being covered",
-    "PASS-BOX red-on-bug · the landing window removed: the entry door is refused, off its own landing",
-    "PASS-BOX red-on-bug · the contact shadow removed: the two roads part where the crease lies",
+    "PASS-BOXFOLD red-on-bug · the room the crease's travel needs removed: the frame stops being covered",
+    "PASS-BOXFOLD red-on-bug · the landing window removed: the entry door is refused, off its own landing",
+    "PASS-BOXFOLD red-on-bug · the contact shadow removed: the two roads part where the crease lies",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -535,16 +535,16 @@ def bench_dir(pack_text=None):
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
     for _inst in sorted(TMP.glob("pass-inst-*.js")):
         shutil.copy2(_inst, d / _inst.name)
-    (d / "pass-inst-box.js").write_text(pack, encoding="utf-8")
+    (d / "pass-inst-boxfold.js").write_text(pack, encoding="utf-8")
     record = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
-    record["pass"]["instruments"]["box"]["digest"] = hashlib.sha256(
+    record["pass"]["instruments"]["boxfold"]["digest"] = hashlib.sha256(
         pack.encode("utf-8")).hexdigest()
     (d / "config.json").write_text(json.dumps(record), encoding="utf-8")
     (d / "box.js").write_text(LABTXT.replace(LAB_CROP_FROM, LAB_CROP_TO, 1), encoding="utf-8")
     (d / "photos").mkdir()
     for p in PHOTOS:
         shutil.copy2(p, d / "photos" / p.name)
-    shutil.copy2(ROOT / "tests" / "fixture_pass_box.html", d / "index.html")
+    shutil.copy2(ROOT / "tests" / "fixture_pass_boxfold.html", d / "index.html")
     return d
 
 
@@ -640,7 +640,7 @@ else:
                 for r in BROWSER_ROWS:
                     skip(r, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
-            elif not js(br, "return !!window.__exPass.bench.manifest('box');"):
+            elif not js(br, "return !!window.__exPass.bench.manifest('boxfold');"):
                 why = js(br, "var e = window.__host.report().events.filter(function(x){"
                              "return x.name === 'manifest-refused';});"
                              "return e.length ? e[e.length - 1].why : null;")
@@ -651,14 +651,14 @@ else:
                 SCORE_UNDER = json.dumps(box_score(under=True))
 
                 # ---- §8: the manifest, read off the registered instrument -----------------------
-                m = js(br, "return window.__exPass.bench.manifest('box');")
+                m = js(br, "return window.__exPass.bench.manifest('boxfold');")
                 res = m["resources"]
                 need = ["id", "api", "arity", "roles", "params", "handles", "neutrals", "doors",
                         "framings", "drivers", "camera", "gl", "passes", "resources",
                         "capabilities", "decline", "provenance", "readiness", "coverage", "levels"]
                 shape = (
                     all(k in m for k in need)
-                    and m["id"] == "box" and m["api"] == 1 and m["arity"] == 2
+                    and m["id"] == "boxfold" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and sorted(m["params"]) == ["axis", "depth", "dip", "fingers", "lead"]
                     and len(m["handles"]) == 12
@@ -680,7 +680,7 @@ else:
                     and m["provenance"]["labPath"] == "lab/effects/box.js"
                     and m["provenance"]["commit"] == "11e2db4"
                     and m["readiness"] == "production-ready"
-                    and "box" in js(br, "return window.__host.report().registered;"))
+                    and "boxfold" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
                       f"twelve handles, twenty uniforms in one pass, both doors at a cover crop of "
                       f"{m['framings']['0']['coverCrop']} — the room the turn needs plus the room "
@@ -764,13 +764,13 @@ else:
                 # stand lowest; laid over it, this one is refused by name.
                 place = js(br, """
                   var b = window.__exPass.bench;
-                  return {declared: b.coverageOf('box'),
+                  return {declared: b.coverageOf('boxfold'),
                           asGround: b.coverageWhyNo([
-                            {id: 'ground', instrument: {id: 'box', api: 1}, stack: 0},
+                            {id: 'ground', instrument: {id: 'boxfold', api: 1}, stack: 0},
                             {id: 'over', instrument: {id: 'matter', api: 1}, stack: 1}]),
                           asRoof: b.coverageWhyNo([
                             {id: 'floor', instrument: {id: 'weave', api: 1}, stack: 0},
-                            {id: 'ground', instrument: {id: 'box', api: 1}, stack: 1}])};
+                            {id: 'ground', instrument: {id: 'boxfold', api: 1}, stack: 1}])};
                 """)
                 took_stack = js(br, "return window.__offer(%s, {clock: 1.5, progress: 0.3});"
                                 % SCORE_UNDER)
@@ -780,7 +780,7 @@ else:
                 check(BROWSER_ROWS[8],
                       place["declared"] and place["declared"]["writes"] is False
                       and place["asGround"] is None
-                      and isinstance(place["asRoof"], str) and "«box»" in place["asRoof"]
+                      and isinstance(place["asRoof"], str) and "«boxfold»" in place["asRoof"]
                       and took_stack["took"],
                       f"the host reads this instrument's declaration as writes="
                       f"{place['declared']['writes']} and places it by it. Laid lowest with a "
@@ -918,7 +918,7 @@ else:
                 idle(br)
 
                 r = js(br, """
-                  var m = window.__exPass.bench.manifest('box');
+                  var m = window.__exPass.bench.manifest('boxfold');
                   var plain = window.__exPass.bench.es3(m.passes[0].frag, false);
                   var already = window.__exPass.bench.es3('#version 300 es\\n' + m.passes[0].frag, false);
                   var count = function (s) { return s.split('#version').length - 1; };
@@ -1049,7 +1049,7 @@ else:
                     return p
 
                 def values_of(p):
-                    return js(br, "return window.__exPass.bench.values('box', %s);" % json.dumps(p))
+                    return js(br, "return window.__exPass.bench.values('boxfold', %s);" % json.dumps(p))
 
                 grids = [(VW, VH), (VW * 2, VH * 2), (195, 422), (1440, 900), (40, 60)]
                 walked = {}

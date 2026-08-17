@@ -162,10 +162,10 @@
                bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight };
     }
     window.__pose = pose;
-    window.__values = function () { return bench.values("box", pose()); };
+    window.__values = function () { return bench.values("boxfold", pose()); };
 
     // THE HOST DRAWS THE SAME POSE, through the same drawPose a running transaction takes.
-    window.__hostDraw = function () { bench.draw("box", pose()); return bench.values("box", pose()); };
+    window.__hostDraw = function () { bench.draw("boxfold", pose()); return bench.values("boxfold", pose()); };
 
     // BOTH ROADS AT ONE POSE. The dial is the raw hand on both sides: the module applies its own
     // dead bands and its own quarter curve to it, and so does the port, so handing one number to
@@ -173,7 +173,7 @@
     window.__both = function (v) {
       hand = +v;
       api.onParam("turn", hand);
-      return bench.values("box", pose());
+      return bench.values("boxfold", pose());
     };
 
     // ---- the real transaction road ---------------------------------------------------------

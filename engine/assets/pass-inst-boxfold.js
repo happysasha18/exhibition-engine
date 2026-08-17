@@ -1,4 +1,4 @@
-/*!pass-inst-box.js*/
+/*!pass-inst-boxfold.js*/
 // One instrument, travelling as its own file (PASS-API-V1 §7/§8, his word of 2026-08-14 08:39: the
 // engine knows no effect name and loads version-pinned opaque effect files).
 //
@@ -25,8 +25,16 @@
   var INSTRUMENT_VERSION = "1.0.0";
 
   // ================================================================================================
-  // THE BOX INSTRUMENT (§8) — lab/effects/box.js carried across
+  // THE BOX-FOLD INSTRUMENT (§8) — lab/effects/box.js carried across
   // ================================================================================================
+  // WHY IT IS NAMED «boxfold» AND NOT «box». The host's own boundary row forbids the built host from
+  // naming any instrument at all, and it reads that by searching the built bytes for every shipping
+  // instrument's name. `box` is three letters of ordinary English and the host uses it for a local
+  // of its own — the record of uniform sources it binds a pass from (`drawPose` in pass-layer.js) —
+  // so an instrument called `box` makes that row red on a word that has nothing to do with it, and
+  // a row that cannot tell a real leak from an accident guards nothing. `boxfold` is the composer's
+  // own name for the road this instrument answers, and it appears nowhere in the host.
+  //
   // WHAT THE VISITOR SEES. The frame is one face of a box. The box turns a quarter with true
   // perspective while the camera rides up through the turn and slides sideways, and the face that
   // was standing gives way to the face coming round. The two faces meet at a finger joint with a
@@ -810,7 +818,7 @@
     }
 
     var manifest = {
-      id: "box", api: 1, arity: 2,
+      id: "boxfold", api: 1, arity: 2,
       // The frame comes apart into the two faces of one solid, the turn carries the eye from the one
       // to the other, and the arriving face lands whole.
       roles: ["disassembly", "mystery", "assembly"],
@@ -940,7 +948,7 @@
                      seam: 0.5, seamScore: 0, shade: 1, travel: 1, seed: 0, mask: 0,
                      reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
-        program: "box", vert: VERT, frag: FRAG, position: "aPos",
+        program: "boxfold", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
@@ -982,7 +990,7 @@
 
     var live = false;
     return {
-      name: "box",
+      name: "boxfold",
       manifest: manifest,
       values: values,
       fit: fit,
