@@ -110,7 +110,17 @@ FENCES = {
     # door, the passage request the walk builds per edge, the die it rolls for it, and the applied
     # reading written back at the landing. The family roll of §4.4f stays here, since the die the
     # walk rolls is made of the same visit seed, pass index and pair key.
-    "exhibition.js": (70_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the passage composer (pass-composer.js) since 2026-08-17 travel separately, and the visit's own seed stays here because the die every crossing is rolled with is made inside declare", strip_js_comments),
+    # 2026-08-17, night — THE VISIT'S OWN MEMORY ARRIVED AND THE FENCE MOVES TO 80 000 B, measured
+    # at 73 816 B against 69 715 B the evening before: 4 101 B gzipped, 15 957 B of stripped code.
+    # What arrived is the whole of PASS-API-V1 §4.8 on the site's side — the edge record with its
+    # store, its pruning and its bounded keep; the family and the pivot read off a plan; the trace a
+    # pass is remembered by; the two refusals, each with the sentence it is named in; the family
+    # drift of charter shelf 16; and the visit window with its cooldowns. NONE OF IT CAN TRAVEL IN
+    # ANOTHER FILE. §4.8 draws the same fence §4.5 draws for visitor identity: the record is TLV's
+    # own and the engine never sees it, so it cannot move into pass-composer.js; and it answers
+    # inside `declare`, synchronously, where nothing may wait on the wire, so it cannot be fetched.
+    # The headroom is 8 percent, which is the band this fence has always been set in.
+    "exhibition.js": (80_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the passage composer (pass-composer.js) since 2026-08-17 travel separately, and the visit's own seed and its edge memory stay here because the die every crossing is rolled with is made inside declare and the edge record is the site's own", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
     # 2026-08-14, morning: the stub became a host with a frame half and one real instrument (the
     # woven one), measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind.
