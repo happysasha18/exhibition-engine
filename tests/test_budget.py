@@ -293,10 +293,15 @@ FENCES = {
     # keeps its family or its pivot; the nine handles that gained the measurement they read; and the
     # camera-led passage. 6 744 gzipped bytes for all of it, on the ONE file a visit fetches for the
     # whole collection.
-    # IT IS THE ONE FENCE HERE THAT IS EXPECTED TO MOVE AGAIN AT THE NEXT MERGE, and that is the
-    # fence working rather than failing: the composer lane is wiring the box-fold road as this is
-    # written, and whatever it lands comes here to say what it bought.
-    "pass-composer.js": (23_900,"the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
+    # IT WAS EXPECTED TO MOVE AGAIN AT THE NEXT MERGE, and it did, within the hour: 23 900 B became
+    # 25 700 B, MEASURED AT 25 609 B, when the composer lane closed stage 1 with the box-fold road.
+    # 1 825 gzipped bytes bought the road built from how a work is made when it folds along strong
+    # directions — the crease placed on the departing work's own measured region line, the five
+    # conditions of the charter's box law answered, and the one miracle it spends guarded where it
+    # can be reached. What it buys on the route is measured rather than argued: pairs reaching the
+    # culmination tier go from 112 to 571, and 207 ordered pairs of the collection take the box-fold
+    # road at a middle where none could before. Band 91 B.
+    "pass-composer.js": (25_700,"the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
     # 2026-08-18 — MOVED FROM 6 000 B TO 7 300 B, MEASURED AT 7 222 B (U27 stage 2). The runtime-door
     # work of stage 0 landed in this file and its fence was never moved with it: the instrument reads
     # its own doors on the buffer it draws on and reports what it applied or the refusal it named
