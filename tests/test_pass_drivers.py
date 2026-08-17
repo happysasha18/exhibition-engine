@@ -95,6 +95,17 @@ ROWS = [
     "PASS-DRV §6 · a handoff between authorities is continuous within the stated tolerance",
     "PASS-DRV §6 · a handoff that jumps is measured and recorded as a jump",
     "PASS-DRV §4.4b · the woven instrument publishes its two clock-driven handles to the score",
+    "PASS-DRV §6 · orbit and tilt stand on the pose, each carried in its own coordinate",
+    "PASS-DRV §6 · each place is carried through the points that name it, so each travels its own arc",
+    "PASS-DRV §6 · an orbit turns the view about the subject where a yaw turns the camera in place",
+    "PASS-DRV §6 · a turn is seen through a projection even where the score names no field of view",
+    "PASS-DRV §6 · the lean variant drops the two turning axes and keeps the pan and the dolly",
+    "PASS-DRV §6 · a flight whose orbit does not come back to zero does not rest",
+    "PASS-DRV §6 · the two ends of a flight stand exactly on the two hang poses",
+    "PASS-DRV §6 · a camera-led flight never rests through the middle and still lands on the hang",
+    "PASS-DRV §6 · a led score that gives a cue the world level is refused, with the cue named",
+    "PASS-DRV §6 · the dolly's two halves cover the same ratio of approach in the same time",
+    "PASS-DRV §6 · the frame state hands the instrument both works' seating on the buffer it draws on",
 ]
 
 # The numbers below are computed HERE, from the formulae the contract and the lab state, and handed
@@ -390,17 +401,192 @@ out.handles = {
       && man.handles.nMul.max === 1.65 && man.handles.bal.open === true
 };
 
+// ---- THE TWO NEW AXES: ORBIT AND TILT ---------------------------------------------------------
+// Each is a place on the pose and each is carried in ITS OWN coordinate — the orbit in angle, which
+// is the charter's own second case of a straight line in another coordinate system. A track that
+// names the orbit alone carries the orbit and leaves every other place at its neutral, which is what
+// makes the axis usable without rewriting the rest of a flight.
+out.keys = bench.camKeys();
+var orbitOnly = { duration: 4000, camera: { owner: "stage", rests: "b", track: [
+    { at: "a", orbit: 0 }, { at: 2.0, orbit: 0.6 }, { at: "b", orbit: 0 }] },
+  cues: [{ id: "weave-main", window: [0, 4], cameraAuthority: "stage" }] };
+var oMid = bench.camera(orbitOnly, 2.0).pose, oEnd = bench.camera(orbitOnly, 4.0).pose;
+out.orbit = {
+  keys: out.keys,
+  mid: oMid, end: oEnd,
+  ok: out.keys.indexOf("orbit") >= 0 && out.keys.indexOf("tilt") >= 0
+      && near(oMid.orbit, 0.6, 1e-12) && near(oEnd.orbit, 0, 1e-12)
+      && oMid.panX === 0 && oMid.logScale === 0 && oMid.tilt === 0
+};
+
+// ---- EACH PLACE ON ITS OWN POINTS, SO EACH TRAVELS ITS OWN ARC --------------------------------
+// The dolly rises and falls over the two edges while the tilt holds a plane at an angle across a
+// window of its own. Neither axis names a point at the other's seconds. Before 2026-08-17 a place
+// was carried only where EVERY point named a number for it, so this track carried neither.
+var arcs = { duration: 6000, camera: { owner: "stage", rests: "b", track: [
+    { at: "a", logScale: 0, tilt: 0 },
+    { at: 0.8, logScale: 0.35 },
+    { at: 1.2, tilt: 0.33 },
+    { at: 4.6, tilt: 0.33 },
+    { at: 5.2, logScale: 0.35 },
+    { at: "b", logScale: 0, tilt: 0 }] },
+  cues: [{ id: "weave-main", window: [0, 6], cameraAuthority: "stage" }] };
+function arcAt(t) { var p = bench.camera(arcs, t).pose; return { logScale: p.logScale, tilt: p.tilt }; }
+var arcRead = { at0: arcAt(0), at1: arcAt(1.2), at3: arcAt(3.0), at46: arcAt(4.6), at6: arcAt(6.0) };
+out.arcs = {
+  read: arcRead,
+  // the tilt holds its own angle right across its own window while the dolly stands at its own
+  // plateau, and both are back at zero when the arriving work stands
+  ok: near(arcRead.at1.tilt, 0.33, 1e-9) && near(arcRead.at3.tilt, 0.33, 1e-9)
+      && near(arcRead.at46.tilt, 0.33, 1e-9)
+      && near(arcRead.at3.logScale, 0.35, 1e-9)
+      && arcRead.at1.logScale > 0.34 && arcRead.at0.tilt === 0 && arcRead.at0.logScale === 0
+      && near(arcRead.at6.tilt, 0, 1e-9) && near(arcRead.at6.logScale, 0, 1e-9)
+};
+
+// ---- WHAT AN ORBIT DOES TO PIXELS, read off the one place a pose becomes a transform -----------
+// The chain is applied right to left: the orbit stands NEARER THE SCALE than the pan, so it turns
+// the scene about the frame's own centre and the pan then carries the turned subject to its place —
+// the point of view travels around the subject. A yaw stands on the pan's own side of the chain, so
+// it turns the camera where it stands and the scene swings across the frame.
+var orbited = bench.camApplied(pose({ panX: 0.2, orbit: 0.5 }));
+var yawed = bench.camApplied(pose({ panX: 0.2, yaw: 0.5 }));
+out.turn = {
+  orbited: orbited, yawed: yawed,
+  ok: orbited.indexOf("rotateY(28.6479deg)") > orbited.indexOf("translate(20.0000%")
+      && yawed.indexOf("rotateY(28.6479deg)") > yawed.indexOf("translate(20.0000%")
+      && orbited !== yawed
+      && orbited.indexOf("rotateY") > orbited.indexOf("rotate(")
+};
+// The projection: without one an orbit is an affine squash rather than a turn, so the host carries
+// its own lens where the score names no field of view.
+var tilted = bench.camApplied(pose({ tilt: 0.4 }));
+out.projection = {
+  tilted: tilted, flat: bench.camApplied(pose({ panX: 0.2 })),
+  ok: tilted.indexOf("perspective(") === 0 && tilted.indexOf("rotateX(22.9183deg)") > 0
+      && bench.camApplied(pose({ panX: 0.2 })).indexOf("perspective(") < 0
+};
+// The degrade ladder: the two turning axes need the perspective road, so `lean` drops them and says
+// so, exactly as it drops pitch, yaw and the field of view. Pan, dolly and roll are a plain affine
+// and every device carries them.
+var lean = bench.camCaps("lean"), std = bench.camCaps("standard");
+out.caps = { lean: lean, standard: std,
+             ok: lean.orbit === false && lean.tilt === false && lean.panX === true
+                 && lean.logScale === true && lean.roll === true
+                 && std.orbit === true && std.tilt === true };
+
+// ---- A FLIGHT ENDS FLAT ----------------------------------------------------------------------
+// Both hangs are square-on, so an orbit that does not come back to zero leaves the pose off the
+// arriving work's own box — and the rest check reads every place of the pose, so it says so.
+var openOrbit = { duration: 4000, camera: { owner: "stage", rests: "b", track: [
+    { at: "a", orbit: 0 }, { at: "b", orbit: 0.4 }] },
+  cues: [{ id: "weave-main", window: [0, 4], cameraAuthority: "stage" }] };
+out.flat = {
+  offOpen: bench.camOff(bench.camera(openOrbit, 4.0).pose, bench.camNeutral()),
+  offClosed: bench.camOff(bench.camera(orbitOnly, 4.0).pose, bench.camNeutral()),
+  tol: tol.rest
+};
+out.flat.ok = out.flat.offOpen > tol.rest && out.flat.offClosed <= tol.rest;
+
+// ---- THE FLIGHT BETWEEN THE TWO HANGS ---------------------------------------------------------
+// The two boxes are stated in the host's own frame units. What is read is the pose a visitor would
+// be shown at each second, composed the way a frame composes it.
+var GEOM_A = { x: 0.08, y: 0.12, w: 0.30, h: 0.30 };
+var GEOM_B = { x: 0.60, y: 0.30, w: 0.24, h: 0.24 };
+var plainScore = { duration: 6000, camera: { owner: "stage", rests: "b", track: [],
+                                             hang: { rise: 1.0, fall: 1.5 } },
+  cues: [{ id: "weave-main", instrument: { id: "weave" }, window: [0, 6],
+           cameraAuthority: "stage" }] };
+var ledScore = { duration: 6000, camera: { owner: "stage", rests: "b", track: [], lead: true,
+                                           hang: { rise: 1.0, fall: 1.5 } },
+  cues: [{ id: "weave-main", instrument: { id: "weave" }, window: [0, 6],
+           cameraAuthority: "stage" }] };
+var WHEN = [0, 1.0, 1.8, 2.4, 3.0, 3.6, 4.5, 6.0];
+var plainFlight = bench.hangFlight(plainScore, 6000, GEOM_A, GEOM_B, WHEN);
+var ledFlight = bench.hangFlight(ledScore, 6000, GEOM_A, GEOM_B, WHEN);
+function endsOf(f) {
+  return { start: bench.camOff(f.at[0], f.poseA), land: bench.camOff(f.at[f.at.length - 1], f.poseB) };
+}
+out.ends = { plain: endsOf(plainFlight), led: endsOf(ledFlight), tol: tol.rest,
+             poseA: plainFlight.poseA, poseB: plainFlight.poseB };
+out.ends.ok = !!plainFlight.poseA && !!plainFlight.poseB
+              && out.ends.plain.start <= tol.rest && out.ends.plain.land <= tol.rest
+              && out.ends.led.start <= tol.rest && out.ends.led.land <= tol.rest;
+
+// A LED FLIGHT NEVER RESTS. The accompanying flight stands at the whole frame right across its
+// plateau — three consecutive instants read one pose — while the led one is moving at every one of
+// them, and both still arrive on the arriving work's own box.
+function stills(f) {
+  var n = 0, i;
+  for (i = 1; i < f.at.length; i++) if (bench.camOff(f.at[i], f.at[i - 1]) <= tol.rest) n++;
+  return n;
+}
+out.led = { plainStills: stills(plainFlight), ledStills: stills(ledFlight),
+            plainLed: plainFlight.led, ledLed: ledFlight.led };
+out.led.ok = out.led.ledStills === 0 && out.led.plainStills >= 2
+             && ledFlight.led === true && plainFlight.led === false;
+
+// A LED SCORE SPENDS THE WORLD VOICE, and a cue may not spend it a second time.
+var worldClash = bench.scoreWhyNo({ duration: 6000,
+  camera: { owner: "stage", rests: "b", track: [], lead: true },
+  cues: [{ id: "floor", instrument: { id: "weave" }, window: [0, 6], levels: ["WORLD", "SURFACE"] }] });
+var worldFine = bench.scoreWhyNo({ duration: 6000,
+  camera: { owner: "stage", rests: "b", track: [], lead: true },
+  cues: [{ id: "floor", instrument: { id: "weave" }, window: [0, 6], levels: ["SURFACE"] }] });
+out.world = { clash: worldClash, fine: worldFine,
+              ok: !!worldClash && /floor/.test(worldClash) && /world level/.test(worldClash)
+                  && worldFine === null };
+
+// ---- THE APPROACH IS EVEN --------------------------------------------------------------------
+// A flight from one to sixteen times, named at its own two halves. In log space each half covers
+// the SAME ratio — four times and four times — in the same time, which is what equal handle
+// movement giving equal felt change of approach means. A raw-scale road would cover 3 of the 15
+// units in the first half and 12 in the second, three quarters of the whole approach after the
+// half-way mark.
+var even = { duration: 4000, camera: { owner: "stage", rests: "b", track: [
+    pt("a", { logScale: 0 }), pt(2.0, { logScale: Math.log(4) }),
+    pt("b", { logScale: Math.log(16) })] },
+  cues: [{ id: "weave-main", window: [0, 4], cameraAuthority: "stage" }] };
+var e0 = Math.exp(bench.camera(even, 0).pose.logScale);
+var e1 = Math.exp(bench.camera(even, 2.0).pose.logScale);
+var e2 = Math.exp(bench.camera(even, 4.0).pose.logScale);
+out.even = { at0: e0, at2: e1, at4: e2, firstHalf: e1 / e0, secondHalf: e2 / e1,
+             rawWouldBe: [1 + 15 / 2, 16] };
+out.even.ok = near(e1 / e0, 4, 1e-9) && near(e2 / e1, 4, 1e-9);
+
+// ---- THE SEATING THE HOST HANDS EACH INSTRUMENT ----------------------------------------------
+// Read off the very record a running frame builds. Both works are seated on the buffer the host is
+// drawing on, and the answer is the instrument's own `fit` — asked here a second time, directly,
+// so the row compares the record against the function rather than against a copy of its numbers.
+var SRC = { aw: 1600, ah: 900, bw: 900, bh: 1600 };
+var st = bench.frameState("weave", SRC, 1.0);
+var weaveInst = null;
+loaded.forEach(function (i) { if (i.name === "weave") weaveInst = i; });
+var wantA = weaveInst.fit(SRC.aw, SRC.ah, st.viewport.bufferW, st.viewport.bufferH);
+var wantB = weaveInst.fit(SRC.bw, SRC.bh, st.viewport.bufferW, st.viewport.bufferH);
+function sameFit(a, b) {
+  return !!a && !!b && a.length === b.length
+         && a.every(function (v, i) { return near(v, b[i], 1e-12); });
+}
+out.seating = {
+  fitA: st.fitA, fitB: st.fitB, wantA: wantA, wantB: wantB,
+  ok: sameFit(st.fitA, wantA) && sameFit(st.fitB, wantB) && !sameFit(st.fitA, st.fitB)
+};
+
 process.stdout.write(JSON.stringify(out));
 """
 
 
-def run_node():
+def run_node(layer=None, tag="drivers"):
+    """The runner against a built host. `layer` names a COPY of the host with one rule crippled,
+    which is how the red-on-bug proofs below run: the source tree is never written to."""
     ns = re.search(r"window\.__(\w+?)PassLayer", BUILT)
     if not ns:
         return None, "the built file names no PassLayer join point"
-    runner = TMP / "drivers-runner.js"
+    runner = TMP / f"{tag}-runner.js"
     runner.write_text(RUNNER.replace("@@NS@@", ns.group(1)), encoding="utf-8")
-    proc = subprocess.run([NODE, str(runner), str(TMP / "pass-layer.js"), json.dumps(EXPECT)]
+    proc = subprocess.run([NODE, str(runner), str(layer or (TMP / "pass-layer.js")),
+                           json.dumps(EXPECT)]
                           + [str(q) for q in sorted(TMP.glob("pass-inst-*.js"))],
                           capture_output=True, text=True, timeout=120)
     if proc.returncode != 0:
@@ -409,6 +595,16 @@ def run_node():
         return json.loads(proc.stdout), None
     except Exception as e:
         return None, f"{e}: {proc.stdout[:400]}"
+
+
+def cripple(name, was, now):
+    """A copy of the built host with one line put back the way it stood before the repair. Returns
+    the path, or None when the line the proof stands on is no longer there to change."""
+    if BUILT.count(was) != 1:
+        return None
+    path = TMP / f"pass-layer-{name}.js"
+    path.write_text(BUILT.replace(was, now), encoding="utf-8")
+    return path
 
 
 if not NODE:
@@ -451,6 +647,80 @@ else:
               f"a cue reporting a pose 0.5 from the stage's own is measured: "
               f"{out['handoff']['jumped']['handoffs']}")
         check(ROWS[15], out["handles"]["ok"], f"handles={out['handles']['names']}")
+        check(ROWS[16], out["orbit"]["ok"],
+              f"the pose's places are {out['orbit']['keys']}; a track naming the orbit alone reads "
+              f"orbit {out['orbit']['mid']['orbit']} at its own point and leaves pan, dolly and "
+              f"tilt at their neutrals")
+
+        # RED ON BUG. The repair is the per-place point selection; crippling it puts back the rule
+        # that carried a place only where EVERY point named a number for it, which is what stopped
+        # two axes having two arcs on one flight.
+        arc_red = "the crippled copy never ran"
+        crip = cripple("allpoints", "if (!own.length) {", "if (own.length !== pts.length) {")
+        if crip is not None:
+            bad, _ = run_node(crip, "allpoints")
+            if bad is not None:
+                arc_red = (f"crippled back to the all-points rule the same track reads "
+                           f"{bad['arcs']['read']['at3']} at 3.0 s — "
+                           + ("still its own arcs, so the row is vacuous"
+                              if bad["arcs"]["ok"] else "both places at their neutrals"))
+                check(ROWS[17], out["arcs"]["ok"] and not bad["arcs"]["ok"],
+                      f"tilt holds 0.33 across 1.2…4.6 s while the dolly stands at its own plateau: "
+                      f"{out['arcs']['read']} · {arc_red}")
+            else:
+                check(ROWS[17], False, "the crippled copy did not answer: " + str(_))
+        else:
+            check(ROWS[17], False, "the line the red-on-bug proof stands on has moved")
+
+        check(ROWS[18], out["turn"]["ok"],
+              f"orbited «{out['turn']['orbited']}» · yawed «{out['turn']['yawed']}»")
+        check(ROWS[19], out["projection"]["ok"],
+              f"a tilt alone draws «{out['projection']['tilted']}» where a plain pan draws "
+              f"«{out['projection']['flat']}»")
+        check(ROWS[20], out["caps"]["ok"], f"lean={out['caps']['lean']}")
+        check(ROWS[21], out["flat"]["ok"],
+              f"an orbit left open stands {out['flat']['offOpen']} from the arriving pose and one "
+              f"brought back to zero {out['flat']['offClosed']}, against {out['flat']['tol']}")
+        check(ROWS[22], out["ends"]["ok"],
+              f"accompanying flight: {out['ends']['plain']} · led flight: {out['ends']['led']} · "
+              f"tolerance {out['ends']['tol']} — the departing pose is {out['ends']['poseA']}")
+        check(ROWS[23], out["led"]["ok"],
+              f"the accompanying flight stands still at {out['led']['plainStills']} of seven steps "
+              f"and the led one at {out['led']['ledStills']}")
+        check(ROWS[24], out["world"]["ok"],
+              f"why={out['world']['clash']} · the same score without the world level: "
+              f"{out['world']['fine']}")
+        check(ROWS[25], out["even"]["ok"],
+              f"one to sixteen times: the first half covers {out['even']['firstHalf']}x and the "
+              f"second {out['even']['secondHalf']}x; a raw-scale road would stand at "
+              f"{out['even']['rawWouldBe'][0]}x half-way instead of {out['even']['at2']}x")
+
+        # RED ON BUG. The repair is the seating on the frame state; crippling it takes the two
+        # fields back off the record and the row reads what the instruments had to work from.
+        seat_red = "the crippled copy never ran"
+        crip = cripple("noseat", "      fitA: instFit(v.inst, rec.src.aw, rec.src.ah),\n", "")
+        if crip is not None:
+            bad, _ = run_node(crip, "noseat")
+            if bad is not None:
+                seat_red = ("with the seating taken off the record the instrument reads fitA="
+                            + str(bad["seating"].get("fitA")))
+                check(ROWS[26], out["seating"]["ok"] and not bad["seating"]["ok"],
+                      f"fitA={out['seating']['fitA']} fitB={out['seating']['fitB']}, each the "
+                      f"instrument's own answer on the buffer the host reports · {seat_red}")
+            else:
+                check(ROWS[26], False, "the crippled copy did not answer: " + str(_))
+        else:
+            check(ROWS[26], False, "the line the red-on-bug proof stands on has moved")
+
+# ---------------------------------------------------------------- the composer's own dolly
+# THE DOLLY IS A NATURAL LOGARITHM. The score carries `logScale` and the host applies exp of it, so
+# a base-2 logarithm written into that field flies the ratio asked for raised to 1/ln 2. The line
+# stands in the composer's camera flight; this row reddens the moment it goes back to base two.
+COMPOSER = (TMP / "pass-composer.js").read_text(encoding="utf-8")
+check("PASS-DRV §6 · the composer writes the dolly as a natural logarithm, the base the host applies",
+      "Math.log(stepTo / stepFrom)" in COMPOSER and "Math.log2(stepTo" not in COMPOSER,
+      "PASS-API-V1 §6: logScale IS the logarithm and the applied factor is exp of it; "
+      "docs/immersive/wave-a/camera-drivers-conductor.md writes the field as ln(scale)")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

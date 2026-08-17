@@ -370,9 +370,12 @@
     texture: ["score", "detailPx", "spectralPeriodPx"],
     dominant_object: ["score", "x0", "y0", "x1", "y1"]
   };
-  // The three fields §4.4 lets a score's camera carry, and the four a plan carries and a score
-  // never does.
-  var CAMERA_ALLOWED = ["owner", "rests", "track"];
+  // The fields §4.4 lets a score's camera carry, and the four a plan carries and a score never does.
+  // `lead` says the flight itself is the transition: the camera spends the world voice of the levels
+  // law and the instruments underneath hold a quiet register. It is written only where the
+  // derivation asks for a led flight, so a score that does not ask carries the field nowhere and
+  // reads exactly as it did.
+  var CAMERA_ALLOWED = ["owner", "rests", "track", "lead"];
   var PLAN_ONLY_CUE_FIELDS = ["cast", "levelOwnership", "measuredHandles", "returnOf"];
 
   function fill(template, fields) {
@@ -874,12 +877,21 @@
       return best;
     }
 
+    // THE CAMERA'S OWN FLIGHT, derived from the two works' door framings.
+    //
+    // THE DOLLY IS A NATURAL LOGARITHM AND NO OTHER BASE. What the score carries is `logScale`, and
+    // the host applies exp of it (PASS-API-V1 §6, «logScale IS the logarithm ... the applied factor
+    // is exp of it»; the proposed pose record of docs/immersive/wave-a/camera-drivers-conductor.md
+    // writes the field as «ln(scale)»). Until 2026-08-17 this line wrote a base-2 logarithm into a
+    // field the host exponentiates with base e, so the ratio the camera actually flew was the ratio
+    // asked for raised to 1/ln 2 — a request for 1.3 times closer arrived as 1.45 times closer. The
+    // two door framings differ by a ratio, and the logarithm of that ratio is what travels.
     function cameraFlight(pair, axis, locus) {
       var doors = pair.doorFraming;
       var stepFrom = (doors.from || {}).stepPx, stepTo = (doors.to || {}).stepPx;
       var dolly = 0.0, panFrom = [0.0, 0.0], panTo = [0.0, 0.0], ca, cb;
       if (stepFrom && stepTo && stepFrom > 0 && stepTo > 0) {
-        dolly = Math.max(-DOLLY_CAP, Math.min(DOLLY_CAP, Math.log2(stepTo / stepFrom)));
+        dolly = Math.max(-DOLLY_CAP, Math.min(DOLLY_CAP, Math.log(stepTo / stepFrom)));
       }
       if (axis !== null && axis.from.ends.centre !== undefined
           && axis.to.ends.centre !== undefined) {

@@ -750,13 +750,43 @@
   // canvas, and the host then carries that whole canvas through the pose. An instrument that moved
   // the point of view by its own construction would be doubling as a camera, which §6 forbids.
   //
-  // Pan is normalised — a fraction of the frame. Pitch, yaw, roll and the field of view are RADIANS.
-  // Dolly travels in LOG SPACE and is interpolated there: `logScale` IS the logarithm, so a plain
-  // interpolation of it is a geometric interpolation of scale, and the applied factor is exp of it.
-  // The existing lab engine interpolates raw scale on both of its paths, which the charter's own law
-  // contradicts; the lock states log space and a row proves it.
-  var CAM_KEYS = ["panX", "panY", "logScale", "pitch", "yaw", "roll", "fov"];
-  var CAM_NEUTRAL = { panX: 0, panY: 0, logScale: 0, pitch: 0, yaw: 0, roll: 0, fov: null };
+  // Pan is normalised — a fraction of the frame. Pitch, yaw, roll, orbit, tilt and the field of view
+  // are RADIANS.
+  //
+  // EVERY AXIS TRAVELS IN THE COORDINATE ITS OWN LAW IS STRAIGHT IN. The charter's shelf 2 states
+  // the general form — a nonlinear camera is a straight line in another coordinate system, lawful in
+  // its own space and miraculous on screen — and names two cases: a uniform zoom is a walk in
+  // log-space, a polar orbit is a straight line in angle. So the record carries the LOGARITHM of the
+  // dolly and the ANGLE of the orbit, and each is interpolated as it stands: an interpolation of
+  // `logScale` is a geometric interpolation of scale, and the applied factor is exp of it, which is
+  // the natural logarithm and no other base. Equal movement of the handle is then equal felt change
+  // of approach, which is the measured-response law.
+  //
+  // WHAT THE COURSE IS, AND WHY IT IS NOT A STRAIGHT LINE IN TIME. Each axis is carried by the
+  // monotone spline of §5 — his word of 2026-08-11, given after judging speed steps at segment
+  // joints, made that the whole-track course. The charter's «straight line» fixes WHICH COORDINATE
+  // is carried, never whether the carrying eases: an orbit splined in angle never leaves the circle
+  // it travels, and it departs and arrives at rest instead of starting and stopping in one frame.
+  //
+  // ORBIT AND TILT TURN THE POINT OF VIEW ABOUT THE SUBJECT; PITCH, YAW AND ROLL TURN THE CAMERA
+  // WHERE IT STANDS. They are different moves and the transform chain says which is which: orbit and
+  // tilt act BEFORE the pan, so they turn the scene about the frame's own centre and the pan then
+  // carries the turned subject to its place — the point of view travels around the work while the
+  // work holds its framing. Pitch, yaw and roll act after, so the scene swings across the frame.
+  // Both hangs are flat and square-on, so orbit and tilt stand at zero at either end of a flight and
+  // the landing rests exactly as it did.
+  var CAM_KEYS = ["panX", "panY", "logScale", "pitch", "yaw", "roll", "orbit", "tilt", "fov"];
+  var CAM_NEUTRAL = { panX: 0, panY: 0, logScale: 0, pitch: 0, yaw: 0, roll: 0, orbit: 0, tilt: 0,
+                      fov: null };
+  // The two axes a score names only when it uses them. Every other place is part of every flight, so
+  // a track that never names one has lost something and the host says so; a track that names no
+  // orbit is simply a flight that does not orbit, and a sentence about it would be noise on every
+  // passage the collection plays.
+  var CAM_OPTIONAL = { orbit: 1, tilt: 1 };
+  // The field of view a turn is seen through where a score names none. Without a projection an orbit
+  // is an affine squash rather than a turn, so the host carries its own lens: 0.9 rad is 51.6
+  // degrees across the frame's height, which is the ordinary lens a room is photographed with.
+  var CAM_TURN_FOV = 0.9;
   // The pose rests on the arriving work within this much. The check READS THE POSE rather than the
   // picture, so the number is a computation tolerance and not a matter of taste: a spline evaluated
   // at its own last point returns that point, and only floating point stands between.
@@ -818,6 +848,15 @@
   // after the last. A place no point names a number for stands at its neutral, and the fallback is
   // recorded with its reason — `fov` has no identity value, so a track that never names one leaves
   // the field of view unapplied rather than inventing an angle.
+  //
+  // EACH AXIS IS CARRIED THROUGH THE POINTS THAT NAME IT, AND THROUGH NO OTHERS. That is what gives
+  // every axis its own arc on one unbroken flight: the dolly may rise and fall at the two edges
+  // while the orbit sweeps once across the whole middle and the tilt holds a plane at an angle over
+  // a window of its own, each on its own points at its own seconds. Until 2026-08-17 a place was
+  // carried only where EVERY point named a number for it, so one axis could not be given its own
+  // timing without giving every other axis a point at the same second — and a flight of several arcs
+  // could not be written down at all. A track that names every place at every point reads exactly as
+  // it did, which is what every composed score does.
   function camStagePose(score, tSec, durationSec, say) {
     var cam = (score && score.camera) || null;
     var track = cam && cam.track;
@@ -829,16 +868,18 @@
     var pts = track.map(function (p) { return { at: camWhen(p, durationSec), p: p }; });
     pts.sort(function (a, b) { return a.at - b.at; });
     CAM_KEYS.forEach(function (k) {
-      var all = true;
+      var own = [];
       for (var i = 0; i < pts.length; i++) {
-        if (typeof camRead(pts[i].p, k) !== "number") { all = false; break; }
+        if (typeof camRead(pts[i].p, k) === "number") own.push(pts[i]);
       }
-      if (!all) {
-        if (say) say("camera:" + k, "no point names a number for «" + k + "»; it stands at its neutral");
+      if (!own.length) {
+        if (say && !CAM_OPTIONAL[k]) {
+          say("camera:" + k, "no point names a number for «" + k + "»; it stands at its neutral");
+        }
         pose[k] = CAM_NEUTRAL[k];
         return;
       }
-      pose[k] = splineAt(pts, tSec, function (q) { return camRead(q.p, k); });
+      pose[k] = splineAt(own, tSec, function (q) { return camRead(q.p, k); });
     });
     return pose;
   }
@@ -847,26 +888,40 @@
   // device the host runs on carries them. Pitch, yaw and the field of view need the perspective road,
   // and §7's degrade ladder lightens the score FIRST — so the `lean` variant drops those three and
   // records the fallback. Which axes lean drops is a taste call and is named as a question.
+  // Orbit and tilt travel with pitch and yaw: a turn about the subject is seen through a projection,
+  // and without one it is an affine squash rather than a turn.
   function camCaps(variant) {
     var deep = variant !== "lean";
-    return { panX: true, panY: true, logScale: true, roll: true, pitch: deep, yaw: deep, fov: deep };
+    return { panX: true, panY: true, logScale: true, roll: true, pitch: deep, yaw: deep, fov: deep,
+             orbit: deep, tilt: deep };
   }
 
   // The pose, applied. One transform on the host's own canvas, above every pixel the instrument drew.
+  //
+  // THE ORDER OF THE CHAIN IS THE STATEMENT ABOUT WHAT MOVES. A transform list is applied right to
+  // left, so what stands nearest the scale acts on the picture first: the picture is scaled, then
+  // tilted and orbited about the canvas's own centre, then turned by the camera's own pitch, yaw and
+  // roll, and only then panned into its place in the frame. Orbit and tilt therefore turn the SCENE
+  // about the point the pan is holding — the point of view travels around the subject and the
+  // subject keeps its framing — while pitch, yaw and roll turn the camera where it stands and let
+  // the scene swing across the frame.
   function camApply(pose, caps) {
     if (!stage) return;
     if (!pose) { stage.canvas.style.transform = ""; return; }
     var s = Math.exp(caps.logScale ? pose.logScale : 0);
     var deg = 180 / Math.PI;
+    var turn = (caps.orbit && pose.orbit) || (caps.tilt && pose.tilt);
+    var fov = (caps.fov && typeof pose.fov === "number" && pose.fov > 0) ? pose.fov
+            : (turn ? CAM_TURN_FOV : 0);
     var t = "";
-    if (caps.fov && typeof pose.fov === "number" && pose.fov > 0) {
-      t += "perspective(" + (0.5 * Math.max(cssH, 1) / Math.tan(pose.fov / 2)).toFixed(3) + "px) ";
-    }
+    if (fov) t += "perspective(" + (0.5 * Math.max(cssH, 1) / Math.tan(fov / 2)).toFixed(3) + "px) ";
     t += "translate(" + (caps.panX ? pose.panX * 100 : 0).toFixed(4) + "%,"
        + (caps.panY ? pose.panY * 100 : 0).toFixed(4) + "%) ";
     if (caps.pitch && pose.pitch) t += "rotateX(" + (pose.pitch * deg).toFixed(4) + "deg) ";
     if (caps.yaw && pose.yaw) t += "rotateY(" + (pose.yaw * deg).toFixed(4) + "deg) ";
     if (caps.roll && pose.roll) t += "rotate(" + (pose.roll * deg).toFixed(4) + "deg) ";
+    if (caps.orbit && pose.orbit) t += "rotateY(" + (pose.orbit * deg).toFixed(4) + "deg) ";
+    if (caps.tilt && pose.tilt) t += "rotateX(" + (pose.tilt * deg).toFixed(4) + "deg) ";
     t += "scale(" + s.toFixed(6) + ")";
     stage.canvas.style.transformOrigin = "50% 50%";
     stage.canvas.style.transform = t;
@@ -900,10 +955,15 @@
   // The extent is read from the instrument's OWN fit rather than recomputed here. `fit` answers the
   // share of the source the frame shows, so the whole work spans 1/share frames. Asking the
   // instrument keeps the two seatings identical by construction, framing headroom and all.
+  // ONE READING OF THE SEATING, asked of the instrument on the buffer it is drawing on. The draw
+  // binds exactly this as its `fitA`/`fitB` uniforms and the frame state hands exactly this to the
+  // instrument's own script, so the shader's seating and the script's seating are one number.
+  function instFit(inst, iw, ih) {
+    try { return inst.fit(iw, ih, W, H) || null; } catch (e) { return null; }
+  }
   function hangPoseOf(geom, inst, iw, ih) {
     if (!geom || !geom.w || !geom.h || cssW <= 0 || cssH <= 0) return null;
-    var f;
-    try { f = inst.fit(iw, ih, W, H); } catch (e) { return null; }
+    var f = instFit(inst, iw, ih);
     if (!f) return null;
     var shareX = Math.abs(f[0]), shareY = Math.abs(f[1]);
     if (!shareX || !shareY) return null;
@@ -935,21 +995,37 @@
     return { rise: Math.min(rise, half), fall: Math.min(fall, half), dur: dur };
   }
 
+  // A CAMERA-LED PASSAGE: the flight itself is the transition. A score declares it with
+  // `camera.lead`, and it says that the world voice of the levels law is spent on the camera — the
+  // travel of the point of view through the scene is what carries the visitor from one work to the
+  // other, and the instruments underneath hold a quiet register on their own levels.
+  function camLed(score) {
+    return !!(score && score.camera && score.camera.lead);
+  }
+
   // The anchor at one second: one monotone spline per place through four points — the departing
   // hang, the whole frame, the whole frame again, the arriving hang. The two middle points hold the
   // same value, so the spline's own slopes there are zero and the crossing plays at the whole frame
   // without drifting through it.
+  //
+  // A LED FLIGHT HAS NO HELD MIDDLE. Where the camera accompanies, the passage rises to the whole
+  // frame, plays the crossing there and descends: the flight stands still through the middle while
+  // the instruments work. Where the camera LEADS, standing still would be the passage stopping, so
+  // the anchor is three points instead of four — the departing hang, the whole frame at the halfway
+  // second, the arriving hang — and the pose travels the entire duration without ever resting. The
+  // two ends are the same two hangs either way, so the landing rests exactly as it did.
   function anchorPose(rec, tSec) {
     var A = rec.hangPoseA, B = rec.hangPoseB;
     if (!A && !B) return null;
     var e = rec.hangEdge || hangEdges(rec), N = CAM_NEUTRAL;
-    var at = [0, e.rise, e.dur - e.fall, e.dur];
-    var poses = [A || N, N, N, B || N];
+    var led = camLed(rec.cmd && rec.cmd.score);
+    var at = led ? [0, e.dur / 2, e.dur] : [0, e.rise, e.dur - e.fall, e.dur];
+    var poses = led ? [A || N, N, B || N] : [A || N, N, N, B || N];
     var out = {};
     CAM_KEYS.forEach(function (k) {
       if (k === "fov") { out[k] = null; return; }
       var pts = [], i;
-      for (i = 0; i < 4; i++) {
+      for (i = 0; i < at.length; i++) {
         pts.push({ at: at[i], value: typeof poses[i][k] === "number" ? poses[i][k] : 0 });
       }
       out[k] = splineAt(pts, tSec, pointValue);
@@ -1304,6 +1380,21 @@
         }
       }
     }
+    // A LED FLIGHT SPENDS THE WORLD VOICE, AND NOTHING MAY SPEND IT TWICE. The charter's shelf 17
+    // opens its list of voices with the camera and its levels law allows one active voice per
+    // structural level, the world being the camera's own. So a score that declares `camera.lead`
+    // and then gives a cue the world level is asking for two voices on one level, which the law
+    // calls noise, and it is refused before the command is taken. The levels law is otherwise a
+    // build-time reading (see the note above the tier budget); this one case is decidable here
+    // because the declaration and the claim both stand in the score the host was handed.
+    if (camLed(s)) {
+      for (i = 0; i < cues.length; i++) {
+        if ((cues[i].levels || []).indexOf("WORLD") >= 0) {
+          return "the camera leads this passage and cue «" + cues[i].id + "» claims the world level "
+               + "beside it — one voice to a level";
+        }
+      }
+    }
     // ONE INSTRUMENT CARRIES ONE CUE AT A TIME. An instrument is one object on the host's registry
     // with one set of its own state, so two cues naming it across windows that meet would have it
     // playing two parts at once through a single `live` flag and a single pose.
@@ -1581,6 +1672,9 @@
              "the last pose stands " + rec.rest.off.toFixed(6) + " from the " + rec.rest.on + " pose");
     }
     lastRun = { camera: rec.camera || null, rest: rec.rest, handoffs: rec.handoffs,
+                // Whether the flight itself was the transition, so a walk and a row can read what
+                // kind of passage played rather than infer it from the shape of the pose.
+                cameraLed: camLed(rec.cmd.score),
                 cadence: rec.cadence || null, handles: rec.lastHandles || null,
                 hang: hangRow(rec),
                 stack: (rec.voices || []).map(function (v) {
@@ -1906,6 +2000,16 @@
       // sample lands — the meshing one reads its doors there — has to read the buffer, because the
       // step moves under it while a pass plays and no serialised plan can know it. Added 2026-08-16.
       viewport: { w: cssW, h: cssH, dpr: dpr, bufferW: W, bufferH: H },
+      // BOTH WORKS' SEATING ON THIS BUFFER, which only the host can answer. The instrument's own
+      // `fit` cover-fits a work into the frame and pulls in by its own framing headroom, and the
+      // draw binds the result as the `fitA`/`fitB` uniforms — so the shaders of the unfold and the
+      // adrift read the seating BACK out of it (`SZ`, `outOf`) while their scripts could not reach
+      // it at all. Both therefore bounded their geometry by the worst seating a cover fit can hand
+      // and could only over-hold. Asked for here, on the same buffer, through the same function the
+      // draw calls, so the script and the shader work from ONE seating rather than two guesses at
+      // it. Added 2026-08-17 on the doors lane's request.
+      fitA: instFit(v.inst, rec.src.aw, rec.src.ah),
+      fitB: instFit(v.inst, rec.src.bw, rec.src.bh),
       reduced: !!rec.cmd.reduced,
       camera: cam.pose,
       // a pinned run is a bench run: it holds its pose instead of walking to the end door, so a
@@ -2792,7 +2896,54 @@
         return { before: before, after: applied(tSec), end: applied(durationMs / 1000),
                  wants: rec.hangPoseB, carry: rec.carry };
       },
+      // THE FLIGHT BETWEEN THE TWO HANGS, read at stated seconds on stated boxes. The reseat above
+      // answers what a moved destination does; this answers what the undisturbed flight IS — where
+      // its two ends stand against the two hang poses, whether the middle is held or travelling, and
+      // what each axis is doing at each instant. The real anchorPose and the real camStagePose run,
+      // composed the way a frame composes them, so a row reads the pose a visitor would be shown.
+      hangFlight: function (scoreRec, durationMs, geomA, geomB, times) {
+        var rec = {
+          cmd: { score: scoreRec, gen: 0, from: { id: "a" }, to: { id: "b" } },
+          duration: durationMs, said: {}, placed: false,
+          src: { aw: 1000, ah: 1000, bw: 1000, bh: 1000 },
+          inst: instruments[(((scoreRec.cues || [])[0] || {}).instrument || {}).id],
+          hooks: { hangGeometry: function (id) { return id === "a" ? geomA : geomB; } },
+          carry: null, carryFrom: 0, lastSeconds: 0,
+        };
+        rec.hangEdge = hangEdges(rec);
+        readHang(rec);
+        var durSec = durationMs / 1000;
+        return {
+          poseA: rec.hangPoseA, poseB: rec.hangPoseB, edge: rec.hangEdge,
+          led: camLed(scoreRec),
+          at: times.map(function (t) {
+            return camCompose(anchorPose(rec, t),
+                              camStagePose(scoreRec, camStageClock(scoreRec, t), durSec, null),
+                              null, 0);
+          }),
+        };
+      },
+      // THE RECORD ONE VOICE IS HANDED, built by the very function a running frame builds it with,
+      // so a row reads what an instrument actually receives rather than a copy of it made here.
+      frameState: function (id, src, seconds) {
+        var inst = instruments[id];
+        if (!inst) return null;
+        return frameState({ cmd: { gen: 0 }, src: src, said: {} }, { inst: inst },
+                          seconds || 0, 0, {}, { pose: CAM_NEUTRAL }, null, 0);
+      },
       camNeutral: function () { return CAM_NEUTRAL; },
+      camOff: function (a, b) { return camOff(a, b); },
+      camKeys: function () { return CAM_KEYS.slice(); },
+      camApplied: function (pose, caps) {
+        // The transform string the host would set, without a stage to set it on: the one place the
+        // pose becomes pixels, so a row can read WHAT an orbit or a tilt actually does.
+        var held = stage;
+        stage = { canvas: { style: {} } };
+        camApply(pose, caps || camCaps("standard"));
+        var t = stage.canvas.style.transform;
+        stage = held;
+        return t;
+      },
       camCaps: function (variant) { return camCaps(variant); },
       camTolerances: function () { return { rest: CAM_REST_TOL, handoff: CAM_HANDOFF_TOL }; },
       ladder: function (ms, frames) {
