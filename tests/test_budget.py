@@ -197,6 +197,17 @@ FENCES = {
     # roll is handed to it by the walk's bundle — so what landed here is 1 318 B of stripped source,
     # 321 B gzipped, and it is the reading of the row, not the rolling.
     "pass-reader.js": (4_000, "the delivery pack's reader, fetched only by a walk whose settings record names a pack: the digest chain over a pack's own files, the per-shape template pick and the fill, with the shard for a work's outgoing crossings warmed at the landing", strip_js_comments),
+    # 2026-08-17 — THE CHOICE CORE ARRIVES, MEASURED AT 17 040 B GZIPPED, and it is fenced at
+    # 20 000 B. It is the passage composer of the site's own lab/build-sceneplan-v1.py carried into
+    # JavaScript: two per-work records and a seed in, the §4.4 score out. His law of 2026-08-14
+    # 16:14 is why it exists at all — a crossing is decided at show time and the product carries no
+    # table of pairs, so the deciding has to stand where the visit stands. The file is the whole
+    # decision: the pivot, the travelling axis, the actors, the arrival, the voices, the levels
+    # law, the camera flight, the meshing instrument's own door reading, the shape's template and
+    # the fill, plus Python's own number printing so a score written here and a score written by
+    # the build are the same bytes. It is UNWIRED as it lands — no bake copies it and no walk asks
+    # for it — and it is fenced here so its weight is on the record from its first day.
+    "pass-composer.js": (20_000, "the choice core: an ordered pair of works and a seed composed into a §4.4 score at show time, so no table of pairs travels; unwired as it stands, and a visit pays for it only once the walk asks it for a crossing", strip_js_comments),
     "pass-inst-adrift.js": (6_000, "the adrift instrument, measured at 5 444 B: a dense thing leaves across an empty field and the field itself changes hands along a measured front — its shader, its two silhouettes, its contact shadow, its response curves and its manifest", strip_js_comments),
     # 2026-08-15 — MOVED FROM 5 000 B TO 6 100 B, MEASURED AT 5 551 B. The meshing instrument now
     # reads its own doors: at either door it evaluates its own mask around each wheel's centre — the
