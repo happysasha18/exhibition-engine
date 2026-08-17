@@ -30,6 +30,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   never a silent pass.
 """
 import base64
+import hashlib
 import json
 import math
 import os
@@ -127,6 +128,21 @@ def scored(pair_a="a", pair_b="b"):
     cue["tracks"]["axis"] = {"node": "axisStatic"}
     cue["tracks"]["nMul"] = {"node": "nMulDrive"}
     cue["tracks"]["press"] = {"node": "pressStatic"}
+    return s
+
+
+def balanced(bal, pair_a="a", pair_b="b"):
+    """The same score with the OPEN handle driven — the one case in which a door of this instrument
+    can stand at a balance other than the one the response curve puts it at. `bal` is open by
+    declaration (`open: true` in the manifest), so a score that names a track for it wins over the
+    dial, and at a door the fabric then leaves a share of every band to the other work. That is the
+    door this lane's reading is about, and this is the only way a score reaches it."""
+    s = scored(pair_a, pair_b)
+    cue = s["cues"][0]
+    cue["nodes"]["balStatic"] = {"op": "static", "value": bal,
+                                 "note": "the open handle driven flat, so the door stands where "
+                                         "this number puts it rather than where the dial does"}
+    cue["tracks"]["bal"] = {"node": "balStatic"}
     return s
 
 
@@ -282,6 +298,20 @@ check("PASS-WEAVE the band count publishes the floor the instrument applies, and
       f"and {_shader and _shader.group(1)}: the number the manifest publishes and the number the "
       "frame draws are one number, at three bands as at six")
 
+# THE MEASUREMENT THE BALANCE IS READ AGAINST AT A DOOR, published in the manifest. His 19:13 word,
+# lifted to the class at 19:21: every geometric parameter names the measurement of the work it reads.
+# The balance's own reading is the share of every band the fabric leaves to the other work, on the
+# drawing buffer — and the handle says so where a composer can read it.
+check("PASS-WEAVE the balance handle publishes the measurement its door is read against",
+      'heldWholeAtADoor: { bands: DOOR_HOLD, readOn: "the drawing buffer",' in WEAVE
+      and 'reads: "balRequest"' in WEAVE
+      and "var BAL_WHOLE = 0.88;" in WEAVE
+      and "var DOOR_HOLD = 2;" in WEAVE
+      and "var DOOR_SHOW = 0.5 / 255;" in WEAVE,
+      "the handle carries `applied.heldWholeAtADoor` — what is read, on which grid, how far the "
+      "hold reaches and where the request stays on the record — beside its own range, and the "
+      "balance the duty's own smoothstep closes at is named once")
+
 check("PASS-WEAVE the capture bench serves the record and the files it names, before the host",
       'shutil.copy2(tmp / "config.json"' in CAPTURE
       and 'tmp.glob("pass-inst-*.js")' in CAPTURE
@@ -340,6 +370,12 @@ BROWSER_ROWS = [
     "PASS-WEAVE row 9  · one camera authority through a real pass, and the pose rests on the arrival",
     "PASS-WEAVE §5     · one node drives two handles of the real instrument, and moves both",
     "PASS-WEAVE §4.4b  · the strip-count breath and the press reach the PICTURE, not just the record",
+    "PASS-WEAVE the door is read on the DRAWING BUFFER, and the band the door is held at is published",
+    "PASS-WEAVE a door no whole band can close is refused on the real road, and the visitor still lands",
+]
+
+RED_ROWS = [
+    "PASS-WEAVE red-on-bug · the door reading removed: a door woven of both photographs is drawn",
 ]
 
 # THE THREE-BAND ACCEPTANCE. The floors were lowered so that the band family the composed passage
@@ -423,18 +459,28 @@ def apart(p, work):
     return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
 
 
-def bench_dir():
+def bench_dir(pack_text=None):
     """The bench's own served root: the BUILT pass-layer.js (the real artifact, namespace applied and
     comments stripped), the lab module unchanged, the two photographs, and the page that stands the
-    two roads of one frame side by side."""
+    two roads of one frame side by side.
+
+    A row proving a rule reds hands over a CHANGED instrument file and writes the site's own record
+    with the digest of the bytes actually served, which is what the build does. The source file on
+    disk is never touched, so nothing has to be restored and no working tree can be left changed by
+    a red-on-bug proof. The road is the one the adrift and unfold suites already prove by."""
     d = Path(tempfile.mkdtemp(prefix="synth_weavebench_"))
+    pack = WEAVE if pack_text is None else pack_text
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
     # Each instrument travels as its own file and the host learns every address from the site's own
     # settings record, so the bench root serves that record and the files it names — the same files
     # a visitor is served, unaltered.
-    shutil.copy2(TMP / "config.json", d / "config.json")
     for _inst in sorted(TMP.glob("pass-inst-*.js")):
         shutil.copy2(_inst, d / _inst.name)
+    (d / "pass-inst-weave.js").write_text(pack, encoding="utf-8")
+    record = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+    record["pass"]["instruments"]["weave"]["digest"] = hashlib.sha256(
+        pack.encode("utf-8")).hexdigest()
+    (d / "config.json").write_text(json.dumps(record), encoding="utf-8")
     shutil.copy2(LAB / "effects" / "weave.js", d / "weave.js")
     (d / "photos").mkdir()
     for p in PHOTOS + [w for w in PAIR_WORKS if w.exists()]:
@@ -455,11 +501,27 @@ def js(br, expr):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % expr))
 
 
+def on_bench(fn, pack_text=None):
+    """One reading, taken on a bench of its own: a served root, a fresh browser, and the instrument
+    file this call names. Held apart so a red-on-bug proof and the run it is compared against differ
+    in exactly one thing — the bytes the host was handed."""
+    d = bench_dir(pack_text)
+    try:
+        with serve(d) as base:
+            with Browser(width=VW, height=VH) as br:
+                br.navigate(base + "/index.html")
+                if not ready(br):
+                    return None
+                return fn(br)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 if not chrome_available():
-    for r in BROWSER_ROWS + BAND_ROWS:
+    for r in BROWSER_ROWS + BAND_ROWS + RED_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 elif missing:
-    for r in BROWSER_ROWS + BAND_ROWS:
+    for r in BROWSER_ROWS + BAND_ROWS + RED_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
 else:
     SHOTS = Path(tempfile.mkdtemp(prefix="synth_weaveshots_"))
@@ -765,6 +827,117 @@ else:
                       f"of 255 (worst channel {mxBreath}); the press at 1 against 1.30 moves it by "
                       f"{dPress:.4f} (worst channel {mxPress}); the seam threshold is {SEAM}")
 
+                # ---- THE GRID THE DOOR IS READ ON --------------------------------------------
+                # The door rows above read the doors the DIAL puts the fabric at, where the response
+                # curve's own dead band closes the duty exactly. `bal` is an OPEN handle, so a score
+                # that names a track for it lands a door wherever that track says — and there the
+                # fabric leaves a share of every band to the other work. Whether that share can be
+                # SEEN is a question about the grid: the shader's own anti-aliasing spreads it over
+                # the buffer points nearest each band's edge, so the same balance is a whole door on
+                # one buffer and a leak on the next. This row states one such balance and asks three
+                # things of the instrument: that the CSS frame calls it whole, that the buffer that
+                # frame is drawn on does not, and that the hold moves to the fabric's own whole band
+                # with the score's request kept on the record beside it.
+                def door_pose(bal, mix=0, buf=None):
+                    p = {"mix": mix, "bal": bal, "nMul": 1, "press": 1, "strips": 28, "axis": 0,
+                         "speed": 1, "seed": 0, "cssWidth": VW, "cssHeight": VH,
+                         "t": 0, "reduced": False}
+                    if buf:
+                        p["bufWidth"], p["bufHeight"] = int(buf[0]), int(buf[1])
+                    return p
+
+                def values_of(p):
+                    return js(br, "return window.__exPass.bench.values('weave', %s);"
+                              % json.dumps(p))
+
+                def per_door_ms(p, n=2000):
+                    return js(br, "var p = %s, b = window.__exPass.bench;"
+                                  "for (var i = 0; i < 400; i++) b.values('weave', p);"
+                                  "var t0 = performance.now();"
+                                  "for (var j = 0; j < %d; j++) b.values('weave', p);"
+                                  "return {ms: (performance.now() - t0) / %d};"
+                                  % (json.dumps(p), n, n))["ms"]
+
+                BUF_W, BUF_H = VW * 2, VH * 2   # the buffer a device ratio of 2 draws this frame on
+                EDGE_BAL = 0.87642              # whole on the CSS frame, a leak on that buffer
+                on_css = values_of(door_pose(EDGE_BAL))
+                on_buf = values_of(door_pose(EDGE_BAL, buf=(BUF_W, BUF_H)))
+                on_applied = values_of(door_pose(on_buf["bal"], buf=(BUF_W, BUF_H)))
+                away = values_of(door_pose(0.5, mix=0.5, buf=(BUF_W, BUF_H)))
+                refused = values_of(door_pose(0.5, buf=(BUF_W, BUF_H)))
+                exitdoor = values_of(door_pose(-0.80, mix=1, buf=(BUF_W, BUF_H)))
+                whole_ms = per_door_ms(door_pose(0.88, buf=(BUF_W, BUF_H)))
+                held_ms = per_door_ms(door_pose(EDGE_BAL, buf=(BUF_W, BUF_H)))
+                check(BROWSER_ROWS[21],
+                      on_css["doorWhyNo"] is None and on_css["doorHeld"] is None
+                      and on_css["balBands"] == 0 and on_css["bal"] == EDGE_BAL
+                      and on_css["doorGrid"] == {"w": VW, "h": VH, "drawn": False}
+                      and on_buf["doorWhyNo"] is None
+                      and ("%d x %d buffer" % (BUF_W, BUF_H)) in (on_buf["doorHeld"] or "")
+                      and on_buf["balRequest"] == EDGE_BAL and on_buf["bal"] == 0.88
+                      and on_buf["duty"] == 1.0 and on_buf["amp"] == 0
+                      and on_buf["doorGrid"] == {"w": BUF_W, "h": BUF_H, "drawn": True}
+                      and on_applied["doorHeld"] is None and on_applied["doorWhyNo"] is None
+                      and away["doorHeld"] is None and away["doorWhyNo"] is None
+                      and away["doorGrid"] is None
+                      and refused["doorWhyNo"] is not None
+                      and "no whole band stands within 2 bands" in refused["doorWhyNo"]
+                      and "the exit door leaks" in (exitdoor["doorHeld"] or ""),
+                      "on the %d x %d CSS frame a balance of %s says «%s»; on the %d x %d buffer "
+                      "that frame is drawn on it says «%s» and holds the fabric at its own whole "
+                      "band (%s, duty %s, travel %s), keeping the request at %s. The applied "
+                      "balance read again on that buffer: «%s». Away from a door it reads nothing "
+                      "at all (grid %s); at a balance of 0.5 no whole band is within reach: «%s». "
+                      "One door instant costs %.4f ms whole and %.4f ms held, on this machine."
+                      % (VW, VH, EDGE_BAL, on_css["doorHeld"] or "nothing", BUF_W, BUF_H,
+                         on_buf["doorHeld"] or "nothing", on_buf["bal"], on_buf["duty"],
+                         on_buf["amp"], on_buf["balRequest"],
+                         on_applied["doorHeld"] or "nothing", away["doorGrid"],
+                         refused["doorWhyNo"], whole_ms, held_ms))
+
+                # ---- THE DOOR REFUSED ON THE REAL TRANSACTION ROAD ---------------------------
+                # The row above reads the instrument's own record. This one puts real commands on
+                # the real road: one score drives the open handle to a balance the fabric's own
+                # whole band closes, and it draws; the next drives it to the middle, where the door
+                # is a fabric of both photographs and no band closes it, and the host has to land
+                # the visitor on the instrument's own reason rather than draw it.
+                def road(gen):
+                    return js(br, "var r = window.__report(); return {state: r.state, "
+                                  "drew: r.drew, buffer: r.census.buffer, "
+                                  "refused: r.events.filter(function(e){ return e.gen === %d "
+                                  "&& e.why && String(e.why).indexOf('door leaks') >= 0; })"
+                                  ".map(function(e){ return e.name + ': ' + e.why; })};" % gen)
+
+                br.evaluate("window.__cancel('door road row'); 0")
+                br.sleep(0.6)
+                held_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % json.dumps(balanced(0.87)))["gen"]
+                br.sleep(1.0)
+                played = road(held_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                br.sleep(0.6)
+                leak_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % json.dumps(balanced(0.5)))["gen"]
+                br.sleep(1.1)
+                leaked = road(leak_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                br.sleep(0.6)
+                check(BROWSER_ROWS[22],
+                      played["state"] == "running" and played["drew"] == 1
+                      and not played["refused"]
+                      and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
+                      and "the entry door leaks" in leaked["refused"][0]
+                      and ("%s buffer" % played["buffer"].replace("x", " x ")) in leaked["refused"][0]
+                      and "no whole band stands within 2 bands" in leaked["refused"][0],
+                      "on the %s buffer the host drew, a balance of 0.87 at the entry door is held "
+                      "and drawn (%d cue, state %s, refused %s); a balance of 0.5 is refused with "
+                      "«%s», on which the host lands the transaction (state %s, %d cue drawn) and "
+                      "the walk's own glide carries the visitor"
+                      % (played["buffer"], played["drew"], played["state"],
+                         played["refused"] or "nothing",
+                         (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
+                         leaked["drew"]))
+
         # ---- the three-band acceptance ------------------------------------------------------
         # THE POSE THE FLOORS WERE LOWERED FOR. Each frame gets its own browser, because the count
         # the instrument draws is scaled by the frame's own width and a phone and a wide frame are
@@ -867,6 +1040,60 @@ else:
                       "and the host is handed that pose — so what is compared is two roads of one "
                       "frame at the count the lowered floors exist for"
                       % (fw, fh, dm, SAME, dx))
+
+    # ============================================================================================
+    # THE RED-ON-BUG PROOF. The lane's own rule reverted in the artifact the browser actually loads:
+    # the door test in `doorReadOf` is taken out, so no instant is ever a door and the reading is
+    # never taken — this instrument exactly as it stood before it read its doors at runtime,
+    # declaring both doors whole in its manifest and never checking the frame it drew. The pack
+    # served is changed and the host is re-stamped with the digest of the bytes it is handed, which
+    # is what the build does; the file on disk is never touched, so no working tree can be left
+    # changed by a proof.
+    #
+    # TWO NUMBERS MOVE, and the second is the one that matters. What the HOST is told: with the
+    # reading standing a door at a driven balance of 0.5 is refused and the transaction lands, and
+    # with it removed the same command draws. And what the VISITOR sees: at that balance the fabric
+    # is half one photograph and half the other, so the drawn door stands far outside the project's
+    # own 6-of-255 seam from the departing work's own file — which is what a door that is not read
+    # actually costs.
+    def red_one(br):
+        gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                 % json.dumps(balanced(0.5)))["gen"]
+        br.sleep(1.1)
+        r = js(br, "var r = window.__report(); return {state: r.state, drew: r.drew, "
+                   "buffer: r.census.buffer, refused: r.events.filter(function(e){ "
+                   "return e.gen === %d && e.why "
+                   "&& String(e.why).indexOf('door leaks') >= 0; }).length};" % gen)
+        br.evaluate("window.__show('host'); 0")
+        br.sleep(0.3)
+        shot = png(br, SHOTS / ("red-door-%s.png" % ("bug" if r["refused"] == 0 else "held")))
+        w_ = int(br.evaluate("String(document.querySelector('canvas').width)"))
+        h_ = int(br.evaluate("String(document.querySelector('canvas').height)"))
+        zoom_ = float(br.evaluate("String(window.LAB.branchSource.weave.ZOOM)"))
+        r["fromOwnFile"] = apart(shot, work_in_the_frame(BENCH / "photos" / PHOTOS[0].name,
+                                                        w_, h_, zoom_))[0]
+        br.evaluate("window.__cancel('red one'); 0")
+        return r
+
+    base_read = on_bench(red_one)
+    bug = WEAVE.replace("var want = st.mix === 0 ? 1 : (st.mix === 1 ? 0 : -1);",
+                        "var want = -1;", 1)
+    bug_read = on_bench(red_one, pack_text=bug)
+    check(RED_ROWS[0],
+          bug != WEAVE and base_read and bug_read
+          and base_read["refused"] == 1 and base_read["state"] == "idle"
+          and bug_read["refused"] == 0 and bug_read["state"] == "running"
+          and bug_read["drew"] == 1 and bug_read["fromOwnFile"] > SEAM,
+          f"with a balance of 0.5 driven onto the entry door on the "
+          f"{base_read and base_read['buffer']} buffer, the reading tells the host so "
+          f"({base_read and base_read['refused']} refusal, state "
+          f"{base_read and base_read['state']}) and the walk's own glide carries the visitor. With "
+          f"the door test taken out — no instant is a door, the instrument as it stood before it "
+          f"read its doors at runtime — the same command draws that door instead "
+          f"({bug_read and bug_read['refused']} refusals, state {bug_read and bug_read['state']}, "
+          f"{bug_read and bug_read['drew']} cue drawn), and the frame the visitor gets stands "
+          f"{bug_read and bug_read['fromOwnFile']:.4f} of 255 from the departing work's own file "
+          f"against the project's seam of {SEAM}: a door woven of both photographs")
 
     shutil.rmtree(BENCH, ignore_errors=True)
     shutil.rmtree(SHOTS, ignore_errors=True)

@@ -193,6 +193,9 @@ LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 PACK = (TMP / "pass-inst-adrift.js").read_text(encoding="utf-8")
 REGION = PACK
 SOURCE = ROOT / "engine" / "assets" / "pass-inst-adrift.js"
+# The file as it stands in the tree, comments and all: the rows about what this instrument DECLARES
+# read the built artifact, and the rows about what it SAYS read the source it is built from.
+SOURCE_TEXT = SOURCE.read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------- string rows
 
@@ -365,6 +368,8 @@ BROWSER_ROWS = [
     "PASS-ADRIFT §4.4b  · the flight, the horizon, the grain and the shrink reach the PICTURE",
     "PASS-ADRIFT §4.4b  · the pair's own measurements reach the PICTURE",
     "PASS-ADRIFT row 16 · the captures are kept as evidence",
+    "PASS-ADRIFT the door is read on the DRAWING BUFFER: the front's crossover, and the silhouette pair it stands on",
+    "PASS-ADRIFT a door no whole cell can close is refused on the real road, and the visitor still lands",
 ]
 
 RED_ROWS = [
@@ -372,7 +377,23 @@ RED_ROWS = [
     "PASS-ADRIFT red-on-bug · the absence read as a product: the doors stop standing whole in a stack",
     "PASS-ADRIFT red-on-bug · the seating removed: the measured places land where nothing measured them",
     "PASS-ADRIFT red-on-bug · the shut removed: a ghost of the departing thing stands at door 1",
+    "PASS-ADRIFT red-on-bug · the door reading removed: a door the buffer cannot keep whole is drawn",
 ]
+
+# THE MEASUREMENT THE GRAIN IS READ AGAINST AT A DOOR, published in the manifest. His 19:13 word,
+# lifted to the class at 19:21: every geometric parameter names the measurement of the work it reads.
+# The grain's own reading is the handover front's crossover against the margin the front leaves at a
+# door, on the drawing buffer — and the handle says so where a composer can read it. The margin is
+# the shader's own 0.03, so it is named once in script and once in the shader and never twice over.
+check("PASS-ADRIFT the grain handle publishes the measurement its door is read against",
+      'heldWholeAtADoor: { cells: DOOR_HOLD, readOn: "the drawing buffer",' in SOURCE_TEXT
+      and 'reads: "grainRequest"' in SOURCE_TEXT
+      and "var FRONT_MARGIN = 0.03;" in SOURCE_TEXT
+      and "var DOOR_HOLD = 2;" in SOURCE_TEXT
+      and '"  float margin = 0.03 + 0.5 * (grainW + fine);",' in SOURCE_TEXT,
+      "the handle carries `applied.heldWholeAtADoor` — what is read, on which grid, how far the "
+      "hold reaches and where the request stays on the record — beside its own range, and the "
+      "margin the reading is held against is the very 0.03 the shader's own `margin` is built on")
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
 
@@ -915,6 +936,138 @@ else:
                       f"in a stack, the seven sampled instants, the frame after a resize, the two "
                       f"seeded runs and the seven handle runs")
 
+                # ---- THE GRID THE DOOR IS READ ON --------------------------------------------
+                # Every door row above reads its door on the frame this suite runs at. The shader
+                # samples on the DRAWING BUFFER — the CSS frame times the device ratio times the
+                # host's own resolution step, which walks DOWN a ladder as a device struggles — and
+                # the handover front crosses over inside a band HALF THE FIELD'S SLOPE PER BUFFER
+                # POINT wide. Under it the front's own margin at a door is exactly 0.03 whatever the
+                # grain does, so the two numbers are commensurable and the buffer is what decides
+                # which wins. This row reads three things off the instrument's own record: the front
+                # on a buffer that keeps the door, the front on a shorter one where it does not and
+                # the coarser whole cell the instrument holds there, and the SILHOUETTE PAIR, which
+                # stands at its door's own numbers on every grid and is published rather than feared.
+                mh = js(br, "return window.__measured();")["handles"]
+
+                def door_pose(mix=0, buf=None, **over):
+                    p = dict(mh)
+                    p.update({"mix": mix, "seed": DIE, "t": 0, "reduced": False,
+                              "cssWidth": VW, "cssHeight": VH})
+                    p.update(over)
+                    if buf:
+                        p["bufWidth"], p["bufHeight"] = int(buf[0]), int(buf[1])
+                    return p
+
+                def values_of(p):
+                    return js(br, "return window.__exPass.bench.values('adrift', %s);"
+                              % json.dumps(p))
+
+                def per_door_ms(p, n=2000):
+                    return js(br, "var p = %s, b = window.__exPass.bench;"
+                                  "for (var i = 0; i < 400; i++) b.values('adrift', p);"
+                                  "var t0 = performance.now();"
+                                  "for (var j = 0; j < %d; j++) b.values('adrift', p);"
+                                  "return {ms: (performance.now() - t0) / %d};"
+                                  % (json.dumps(p), n, n))["ms"]
+
+                # the finest ground this instrument publishes, with the deepest fingers: the pose
+                # whose front asks most of a grid
+                FINE = {"grain": 1.0, "horizon": 1.0}
+                HELD_BUF = (133, 288)   # one whole cell short of that ground
+                NO_BUF = (116, 252)     # and short of anything within reach
+                on_css = values_of(door_pose(**FINE))
+                on_buf = values_of(door_pose(buf=HELD_BUF, **FINE))
+                applied = on_buf["grain"][0]
+                on_no = values_of(door_pose(buf=NO_BUF, **FINE))
+                away = values_of(door_pose(mix=0.5, buf=NO_BUF, **FINE))
+                exitdoor = values_of(door_pose(mix=1, buf=NO_BUF, **FINE))
+                sil = on_css["doorSilhouette"]
+                sil_out = values_of(door_pose(mix=1))["doorSilhouette"]
+                whole_ms = per_door_ms(door_pose(**FINE))
+                held_ms = per_door_ms(door_pose(buf=HELD_BUF, **FINE))
+                check(BROWSER_ROWS[24],
+                      on_css["doorWhyNo"] is None and on_css["doorHeld"] is None
+                      and on_css["grainCells"] == 0
+                      and on_css["doorGrid"] == {"w": VW, "h": VH, "drawn": False}
+                      and on_buf["doorWhyNo"] is None
+                      and ("%d x %d buffer" % HELD_BUF) in (on_buf["doorHeld"] or "")
+                      and on_buf["grainCells"] == 1 and applied == on_buf["grainRequest"] - 1
+                      and on_no["doorWhyNo"] is not None
+                      and "no whole cell stands within 2 cells" in on_no["doorWhyNo"]
+                      and "the entry door leaks" in on_no["doorWhyNo"]
+                      and "silhouette is punched through this door" in on_no["doorWhyNo"]
+                      and "the exit door leaks" in (exitdoor["doorWhyNo"] or "")
+                      and away["doorWhyNo"] is None and away["doorGrid"] is None
+                      and sil == {"travelled": 0, "scale": 1, "turn": 0, "offThreshold": 0,
+                                  "drag": 0}
+                      and sil_out == {"travelled": 0, "scale": 1, "turn": 0, "offThreshold": 0,
+                                      "drag": 0},
+                      "on the %d x %d CSS frame the finest ground says «%s»; on a %d x %d buffer it "
+                      "says «%s» and steps %g whole cell to %.2f cells, keeping the request at "
+                      "%.2f; on a %d x %d one no whole cell reaches: «%s». Away from a door it "
+                      "reads nothing at all (grid %s). The silhouette pair stands at its door's own "
+                      "numbers on both doors — entry %s, exit %s — which is why the alpha is a "
+                      "whole 1 there and the front is the only thing a buffer can spoil. One door "
+                      "instant costs %.4f ms whole and %.4f ms held, on this machine."
+                      % (VW, VH, on_css["doorHeld"] or "nothing", HELD_BUF[0], HELD_BUF[1],
+                         on_buf["doorHeld"] or "nothing", on_buf["grainCells"], applied,
+                         on_buf["grainRequest"], NO_BUF[0], NO_BUF[1], on_no["doorWhyNo"],
+                         away["doorGrid"], sil, sil_out, whole_ms, held_ms))
+
+                # ---- THE DOOR REFUSED ON THE REAL TRANSACTION ROAD ---------------------------
+                # The row above reads the instrument's own record. This one puts real commands on
+                # the real road at a real buffer: the frame is taken to one no whole cell within
+                # reach can close, the pass is offered held at its entry door, and the host has to
+                # land the visitor on the instrument's own reason rather than punch the arriving
+                # work's silhouette through the door as transparency. The same frame, one step
+                # taller, draws.
+                def road(gen):
+                    return js(br, "var r = window.__report(); return {state: r.state, "
+                                  "drew: r.drew, buffer: r.census.buffer, "
+                                  "refused: r.events.filter(function(e){ return e.gen === %d "
+                                  "&& e.why && String(e.why).indexOf('door leaks') >= 0; })"
+                                  ".map(function(e){ return e.name + ': ' + e.why; })};" % gen)
+
+                FINE_SCORE = json.dumps(adrift_score(mh, grain=1.0, horizon=1.0))
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                br.set_viewport(137, 296)
+                br.sleep(0.9)
+                fine_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % FINE_SCORE)["gen"]
+                br.sleep(1.1)
+                played = road(fine_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                br.set_viewport(NO_BUF[0], NO_BUF[1])
+                br.sleep(0.9)
+                leak_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % FINE_SCORE)["gen"]
+                br.sleep(1.2)
+                leaked = road(leak_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                br.set_viewport(VW, VH)
+                br.sleep(0.9)
+                check(BROWSER_ROWS[25],
+                      played["buffer"] == "137x296"
+                      and played["state"] == "running" and played["drew"] == 1
+                      and not played["refused"]
+                      and leaked["buffer"] == "%dx%d" % NO_BUF
+                      and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
+                      and "the entry door leaks" in leaked["refused"][0]
+                      and ("%d x %d buffer" % NO_BUF) in leaked["refused"][0]
+                      and "no whole cell stands within 2 cells" in leaked["refused"][0],
+                      "on a 137 x 296 buffer the finest ground draws (%d cue, state %s, refused "
+                      "%s); on the %d x %d buffer one step shorter the same score is refused with "
+                      "«%s», on which the host lands the transaction (state %s, %d cue on its last "
+                      "frame — the frames before the resize settled drew the door the taller grid "
+                      "kept whole) and the walk's own glide carries the visitor"
+                      % (played["drew"], played["state"], played["refused"] or "nothing",
+                         NO_BUF[0], NO_BUF[1],
+                         (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
+                         leaked["drew"]))
+
     shutil.rmtree(BENCH, ignore_errors=True)
 
     # ================================================================================================
@@ -1040,6 +1193,46 @@ else:
               f"the departing thing's silhouette reads {base_shut:.4f} of 255 with the shut standing "
               f"and {bug_shut:.4f} of 255 with it removed — a ghost of a thing that left, over the "
               f"whole of the arriving work")
+
+        # ---- 5. the door reading removed ---------------------------------------------------------
+        # The lane's own rule, reverted in the artifact the browser loads: the front's margin is
+        # taken past any crossover a grid can produce, which is exactly the instrument as it stood
+        # before it read its doors at runtime — declaring both doors whole and never checking. The
+        # number that moves is what the HOST is told on a buffer the front cannot keep whole: with
+        # the reading standing the transaction is refused and lands; with it removed the door is
+        # drawn, and nothing anywhere says the alpha it drew was not a whole 1.
+        def red_five(br):
+            mh5 = js(br, "return window.__measured();")["handles"]
+            br.set_viewport(116, 252)
+            br.sleep(0.9)
+            gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                     % json.dumps(adrift_score(mh5, grain=1.0, horizon=1.0)))["gen"]
+            br.sleep(1.2)
+            r = js(br, "var r = window.__report(); return {state: r.state, drew: r.drew, "
+                       "buffer: r.census.buffer, refused: r.events.filter(function(e){ "
+                       "return e.gen === %d && e.why "
+                       "&& String(e.why).indexOf('door leaks') >= 0; }).length};" % gen)
+            br.evaluate("window.__cancel('red five'); 0")
+            return r
+
+        base_door_read = on_bench(red_five)
+        bug = PACK.replace("var FRONT_MARGIN = 0.03;", "var FRONT_MARGIN = 1e9;", 1)
+        bug_door_read = on_bench(red_five, pack_text=bug)
+        check(RED_ROWS[4],
+              bug != PACK and base_door_read and bug_door_read
+              and base_door_read["refused"] == 1 and base_door_read["state"] == "idle"
+              and bug_door_read["refused"] == 0 and bug_door_read["state"] == "running",
+              f"on the {base_door_read and base_door_read['buffer']} buffer this pose's front "
+              f"crosses over inside the frame. With the reading standing the host is told so "
+              f"({base_door_read and base_door_read['refused']} refusal, state "
+              f"{base_door_read and base_door_read['state']}, "
+              f"{base_door_read and base_door_read['drew']} cue drawn) and the walk's own glide "
+              f"carries the visitor. With the front's margin taken past anything a grid can produce "
+              f"— the instrument as it stood before it read its doors at runtime — the same command "
+              f"draws the door instead ({bug_door_read and bug_door_read['refused']} refusals, "
+              f"state {bug_door_read and bug_door_read['state']}, "
+              f"{bug_door_read and bug_door_read['drew']} cue drawn), and nothing anywhere says the "
+              f"alpha it laid down was not a whole 1")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

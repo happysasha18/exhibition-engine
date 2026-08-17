@@ -211,6 +211,9 @@ LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 PACK = (TMP / "pass-inst-unfold.js").read_text(encoding="utf-8")
 REGION = PACK
 SOURCE = ROOT / "engine" / "assets" / "pass-inst-unfold.js"
+# The file as it stands in the tree, comments and all: the rows about what this instrument DECLARES
+# read the built artifact, and the rows about what it SAYS read the source it is built from.
+SOURCE_TEXT = SOURCE.read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------- string rows
 
@@ -390,6 +393,8 @@ BROWSER_ROWS = [
     "PASS-UNFOLD row 9  · one camera authority through a real pass, and the pose rests on the arrival",
     "PASS-UNFOLD §4.4b  · the tilt, the shade, the depth, the stagger and the panel count reach the PICTURE",
     "PASS-UNFOLD row 16 · the captures are kept as evidence",
+    "PASS-UNFOLD the panel map is WALKED on the drawing buffer at both doors, and what it read is published",
+    "PASS-UNFOLD a door the judges' channel spoils is refused on the real road, and the visitor still lands",
 ]
 
 RED_ROWS = [
@@ -397,7 +402,25 @@ RED_ROWS = [
     "PASS-UNFOLD red-on-bug · the corner's own foreshortening removed: the bare triangle returns",
     "PASS-UNFOLD red-on-bug · the mirror taken on at once: door 0 stops being the work",
     "PASS-UNFOLD red-on-bug · the seating removed: the sheet stops being the file",
+    "PASS-UNFOLD red-on-bug · the door reading removed: a door drawing the panel map is let through",
 ]
+
+# THE MEASUREMENT READ AT A DOOR, published in the manifest. His 19:13 word, lifted to the class at
+# 19:21: every geometric parameter names the measurement of the work it reads. This instrument's own
+# door reading is its PANEL MAP, walked at the buffer's own sample points, and the handle that can
+# spoil a door — the judges' channel — is where that is published, beside the flat guard the module's
+# own half degree stands at and the reach the hold has in points of the grid.
+check("PASS-UNFOLD the judges' handle publishes the measurement the door is read against",
+      'readAtADoor: { points: DOOR_HOLD, readOn: "the drawing buffer",' in SOURCE_TEXT
+      and 'reads: "flatDegRequest"' in SOURCE_TEXT
+      and "var FLAT_DEG = 0.5;" in SOURCE_TEXT
+      and "var DOOR_HOLD = 2;" in SOURCE_TEXT
+      and "var DOOR_SHOW = 0.5 / 255;" in SOURCE_TEXT
+      and "if (aY < flatDeg) aY = 0;" in SOURCE_TEXT,
+      "the handle carries `applied.readAtADoor` — what is walked, on which grid, how far the hold "
+      "reaches and where the module's own guard stays on the record — and the guard itself is a "
+      "parameter of the pose, so a door can re-ask it in the grid's own units while the middle of "
+      "a passage keeps the module's half degree")
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
 
@@ -971,6 +994,121 @@ else:
                       f"doors in a stack, the seven sampled instants, the frame after a resize, the "
                       f"two seeded runs and the six handle runs")
 
+                # ---- THE PANEL MAP, WALKED ON THE BUFFER --------------------------------------
+                # The rows above photograph the map and read it as colour. This one asks the
+                # INSTRUMENT what it read for itself at the instant it was about to draw, on the
+                # grid the shader samples on. The growth law's promise — that no point of the frame
+                # is left with no panel standing on it — is a claim about a GRID, and it is now
+                # walked at the buffer's own sample points instead of being declared: the four
+                # corners, where the law has the least to spare, the midpoints of the four edges,
+                # and the nine points where the panels' own seams cross at a door. What comes back
+                # is published, so a later change to the fold, the stagger or the growth law reddens
+                # here whatever the pictures do.
+                def door_pose(mix=0, buf=None, **over):
+                    p = {"mix": mix, "tilt": 0.5, "shade": 1, "depth": 0.5, "stagger": 0.34,
+                         "panels": 1, "mask": 0, "t": 0, "reduced": False,
+                         "cssWidth": VW, "cssHeight": VH}
+                    p.update(over)
+                    if buf:
+                        p["bufWidth"], p["bufHeight"] = int(buf[0]), int(buf[1])
+                    return p
+
+                def values_of(p):
+                    return js(br, "return window.__exPass.bench.values('unfold', %s);"
+                              % json.dumps(p))
+
+                def per_door_ms(p, n=2000):
+                    return js(br, "var p = %s, b = window.__exPass.bench;"
+                                  "for (var i = 0; i < 400; i++) b.values('unfold', p);"
+                                  "var t0 = performance.now();"
+                                  "for (var j = 0; j < %d; j++) b.values('unfold', p);"
+                                  "return {ms: (performance.now() - t0) / %d};"
+                                  % (json.dumps(p), n, n))["ms"]
+
+                grids = [(VW, VH), (VW * 2, VH * 2), (195, 422), (1440, 900), (40, 60)]
+                maps = {}
+                for mixv in (0, 1):
+                    for panels in (1, 0):
+                        for g in grids:
+                            maps[(mixv, panels, g)] = values_of(
+                                door_pose(mix=mixv, panels=panels, buf=g))
+                away = values_of(door_pose(mix=0.5, buf=grids[0]))
+                on_css = values_of(door_pose())
+                worst = [k for k, v in maps.items()
+                         if v["panelMap"] is None or v["panelMap"]["bare"] != 0
+                         or v["panelMap"]["scale"] != 1 or v["panelMap"]["turnPx"] != 0
+                         or v["panelMap"]["seamPx"] != 1
+                         or v["panelMap"]["walked"] != 17
+                         or v["doorWhyNo"] is not None]
+                ms = per_door_ms(door_pose(buf=grids[1]))
+                check(BROWSER_ROWS[25],
+                      not worst and len(maps) == 20
+                      and on_css["doorGrid"] == {"w": VW, "h": VH, "drawn": False}
+                      and maps[(0, 1, grids[0])]["doorGrid"] == {"w": VW, "h": VH, "drawn": True}
+                      and maps[(0, 1, grids[0])]["panelMap"]["panels"] == 4
+                      and maps[(0, 0, grids[0])]["panelMap"]["panels"] == 2
+                      and away["panelMap"] is None and away["doorGrid"] is None,
+                      "%d readings — both doors, both panel counts, five grids from %s to %s — and "
+                      "every one of them walked %d points of the buffer with %d bare, the growth "
+                      "law's own scale at %g, the seam at %g point of the grid and neither pair out "
+                      "of the sheet's plane. Away from a door nothing is read at all (grid %s). One "
+                      "door instant costs %.4f ms on this machine. The panel map at the entry door "
+                      "on %s: %s"
+                      % (len(maps), "%dx%d" % grids[0], "%dx%d" % grids[4],
+                         maps[(0, 1, grids[0])]["panelMap"]["walked"],
+                         maps[(0, 1, grids[0])]["panelMap"]["bare"],
+                         maps[(0, 1, grids[0])]["panelMap"]["scale"],
+                         maps[(0, 1, grids[0])]["panelMap"]["seamPx"],
+                         away["doorGrid"], ms, "%dx%d" % grids[1],
+                         maps[(0, 1, grids[1])]["panelMap"]))
+
+                # ---- THE DOOR REFUSED ON THE REAL TRANSACTION ROAD ---------------------------
+                # The map above comes out whole on every buffer this host can hand and every pose
+                # these handles admit — at a door the fold is exactly 0, the sheet lies flat and the
+                # growth law's scale is exactly 1 — which is the runtime truth this lane was asked
+                # for and not a reason to leave the claim unread. The one door this instrument's own
+                # handles CAN spoil is the judges' channel: `mask` draws the panel map itself as
+                # colour, which is what it is for, and a score that leaves it open at a door hands
+                # the visitor a false-colour map of the panels instead of the photograph. This row
+                # puts that on the real road and asks the host to land the visitor on the reason.
+                def road(gen):
+                    return js(br, "var r = window.__report(); return {state: r.state, "
+                                  "drew: r.drew, buffer: r.census.buffer, "
+                                  "refused: r.events.filter(function(e){ return e.gen === %d "
+                                  "&& e.why && String(e.why).indexOf('door leaks') >= 0; })"
+                                  ".map(function(e){ return e.name + ': ' + e.why; })};" % gen)
+
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                shut_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % json.dumps(unfold_score(mask=0)))["gen"]
+                br.sleep(1.0)
+                played = road(shut_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                open_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                              % json.dumps(unfold_score(mask=1)))["gen"]
+                br.sleep(1.1)
+                leaked = road(open_gen)
+                br.evaluate("window.__cancel('door road row'); 0")
+                idle(br)
+                check(BROWSER_ROWS[26],
+                      played["state"] == "running" and played["drew"] == 1
+                      and not played["refused"]
+                      and len(leaked["refused"]) == 1 and leaked["state"] == "idle"
+                      and leaked["drew"] == 0
+                      and "the entry door leaks" in leaked["refused"][0]
+                      and "the judges' own channel" in leaked["refused"][0]
+                      and ("%s buffer" % played["buffer"].replace("x", " x ")) in leaked["refused"][0],
+                      "on the %s buffer the host drew, the judges' channel shut draws the door (%d "
+                      "cue, state %s, refused %s); left open it is refused with «%s», on which the "
+                      "host lands the transaction (state %s, %d cue drawn) and the walk's own glide "
+                      "carries the visitor"
+                      % (played["buffer"], played["drew"], played["state"],
+                         played["refused"] or "nothing",
+                         (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
+                         leaked["drew"]))
+
     shutil.rmtree(BENCH, ignore_errors=True)
 
     # ================================================================================================
@@ -1069,6 +1207,44 @@ else:
               f"sheet's own width and height from it. With the seating standing, the two roads agree "
               f"at {base_seat:.4f} of 255 through the fold; with the sheet read as the frame instead "
               f"they part at {bug_seat:.4f}, against a bar of {FOLD_SAME}")
+
+        # ---- 5. the door reading removed ---------------------------------------------------------
+        # The lane's own rule, reverted in the artifact the browser loads: the bar under which a
+        # reading cannot be a leak is taken past 1, so nothing the reading finds ever refuses — the
+        # instrument as it stood before it read its doors at runtime, declaring both doors whole and
+        # never checking. The number that moves is what the HOST is told: with the reading standing,
+        # a door drawing the panel map instead of the photograph is refused and the transaction
+        # lands; with it removed the same command draws that map to the visitor.
+        def red_five(br):
+            gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
+                     % json.dumps(unfold_score(mask=1)))["gen"]
+            br.sleep(1.2)
+            r = js(br, "var r = window.__report(); return {state: r.state, drew: r.drew, "
+                       "buffer: r.census.buffer, refused: r.events.filter(function(e){ "
+                       "return e.gen === %d && e.why "
+                       "&& String(e.why).indexOf('door leaks') >= 0; }).length};" % gen)
+            br.evaluate("window.__cancel('red five'); 0")
+            return r
+
+        base_door_read = on_bench(red_five)
+        bug = PACK.replace("var DOOR_SHOW = 0.5 / 255;", "var DOOR_SHOW = 2;", 1)
+        bug_door_read = on_bench(red_five, pack_text=bug)
+        check(RED_ROWS[4],
+              bug != PACK and base_door_read and bug_door_read
+              and base_door_read["refused"] == 1 and base_door_read["state"] == "idle"
+              and base_door_read["drew"] == 0
+              and bug_door_read["refused"] == 0 and bug_door_read["state"] == "running"
+              and bug_door_read["drew"] == 1,
+              f"with the judges' channel open at the entry door on the "
+              f"{base_door_read and base_door_read['buffer']} buffer, the reading tells the host so "
+              f"({base_door_read and base_door_read['refused']} refusal, state "
+              f"{base_door_read and base_door_read['state']}, "
+              f"{base_door_read and base_door_read['drew']} cue drawn) and the walk's own glide "
+              f"carries the visitor. With the bar taken past anything the reading can find, the "
+              f"same command draws the panel map to the visitor instead "
+              f"({bug_door_read and bug_door_read['refused']} refusals, state "
+              f"{bug_door_read and bug_door_read['state']}, "
+              f"{bug_door_read and bug_door_read['drew']} cue drawn)")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
