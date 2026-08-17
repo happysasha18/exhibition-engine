@@ -993,7 +993,12 @@ else:
                     check(BROWSER_ROWS[3],
                       bool(p) and p["key"].startswith(min(pair[0], pair[1]))
                       and p["request"]["direction"] in ("a-to-b", "b-to-a")
-                      and p["request"]["routeRole"] == "middle"
+                      # 2026-08-18 (U27 stage 2): the walk STATES a role now, so this row stops
+                      # asking for the composer's own default and asks for one of the five the
+                      # composer fences on. Which one it is belongs to the route's own dramaturgy
+                      # and is measured by tests/test_pass_route.py; pinning it here would be a
+                      # second home for that fact and would redden on a re-dealt hang.
+                      and p["request"]["routeRole"] in ROLE_BUDGET
                       and p["request"]["sessionMemory"] is None
                       and isinstance(p["request"]["seed"], (int, float))
                       and 0 <= p["request"]["seed"] <= 8
