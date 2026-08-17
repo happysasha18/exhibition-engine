@@ -104,7 +104,13 @@ FENCES = {
     # two ideas of what a family is, and the contract has one. So the reader is HANDED this roll in
     # its environment record (the `breath` entry), the bundle keeps the one implementation, and what
     # crosses the wire for a pack-served walk is the call, not a second copy.
-    "exhibition.js": (70_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the delivery pack's reader (pass-reader.js) since 2026-08-15 travel separately, and the family roll of §4.4f stays here because both fill roads call it inside declare", strip_js_comments),
+    # 2026-08-17, evening — THE COMPOSED ROAD REPLACED THE PACK ROADS, and the fence stays at
+    # 70 000 B. Three roads left the bundle — the settings record's own per-pair scores, the reader's
+    # door with the shard warming, and the template-and-table fill — and one arrived: the composer's
+    # door, the passage request the walk builds per edge, the die it rolls for it, and the applied
+    # reading written back at the landing. The family roll of §4.4f stays here, since the die the
+    # walk rolls is made of the same visit seed, pass index and pair key.
+    "exhibition.js": (70_000, "the walk's own bundle: contract and chrome, comment-stripped as shipped; the picture (pass-layer.js) since 2026-08-13 and the passage composer (pass-composer.js) since 2026-08-17 travel separately, and the visit's own seed stays here because the die every crossing is rolled with is made inside declare", strip_js_comments),
     "exhibition.css": (9_000, "single served stylesheet, comment-stripped as shipped; ~21% over the 2026-07-23 gzip of ~7_415 B", strip_css_comments),
     # 2026-08-14, morning: the stub became a host with a frame half and one real instrument (the
     # woven one), measured at 11 628 B gzipped against the 4 000 B a 167 B stub stood behind.
@@ -184,19 +190,12 @@ FENCES = {
     # None of these files reaches a visit that does not draw: reduced motion, Save-Data, a device
     # with no WebGL2 and the layer switched off never ask for the host, and nothing is asked for
     # before a score names it.
-    # 2026-08-15 — A FENCE FROM DAY ONE, at the measured 3 125 B plus about a tenth, by the same rule
-    # §12 states for the host's own file and §7 for each instrument. This file is the delivery pack's
-    # reader: the fetch, the digest chain (the settings record weighs the pack's manifest, and the
-    # manifest weighs every other file in the pack), the per-shape template pick and the fill. It
-    # reaches only a visit whose settings record actually names a pack and whose layer is on, and it
-    # is asked for once, at the first landing — a visit that never draws never asks for it.
-    # 2026-08-16 — MOVED FROM 3 500 B TO 4 000 B, MEASURED AT 3 522 B, with 478 B under it. The
-    # reader now reads a row's family bounds (§4.4f): a row may carry them as its last entry, the
-    # reader recognises that entry by being a record rather than a number, and it writes the rolled
-    # values at the same slot paths it fills the measured ones at. It mints NO seed of its own — the
-    # roll is handed to it by the walk's bundle — so what landed here is 1 318 B of stripped source,
-    # 321 B gzipped, and it is the reading of the row, not the rolling.
-    "pass-reader.js": (4_000, "the delivery pack's reader, fetched only by a walk whose settings record names a pack: the digest chain over a pack's own files, the per-shape template pick and the fill, with the shard for a work's outgoing crossings warmed at the landing", strip_js_comments),
+    # 2026-08-17 — THE DELIVERY PACK'S READER LEFT, AND ITS 4 000 B FENCE WITH IT (U27 stage 0).
+    # pass-reader.js fetched a pack of prebaked per-pair scores; his word of 19:21 retired the pack
+    # itself — the collection grows to thousands of works and nothing on the product path may scale
+    # with the number of pairs — so the file, its fence and its suite go together. What answers for
+    # a pair now is pass-composer.js below, fenced at 20 000 B: one file for the whole collection
+    # rather than one shard per departing work.
     # 2026-08-17 — THE CHOICE CORE ARRIVES, MEASURED AT 17 040 B GZIPPED, and it is fenced at
     # 20 000 B. It is the passage composer of the site's own lab/build-sceneplan-v1.py carried into
     # JavaScript: two per-work records and a seed in, the §4.4 score out. His law of 2026-08-14
@@ -207,7 +206,13 @@ FENCES = {
     # the fill, plus Python's own number printing so a score written here and a score written by
     # the build are the same bytes. It is UNWIRED as it lands — no bake copies it and no walk asks
     # for it — and it is fenced here so its weight is on the record from its first day.
-    "pass-composer.js": (20_000, "the choice core: an ordered pair of works and a seed composed into a §4.4 score at show time, so no table of pairs travels; unwired as it stands, and a visit pays for it only once the walk asks it for a crossing", strip_js_comments),
+    # 2026-08-17, evening — IT IS WIRED, and the fence holds unmoved (U27 stage 0). The bake carries
+    # it beside pass-layer.js, the walk asks its one entry on every edge, and the prebaked door
+    # lookup left it: what the composer emits for the meshing travel is the artistic request, and
+    # the instrument holds its own doors on the buffer it draws on (his architecture decision of
+    # 18:00). A visit fetches this ONE file for the whole collection where it used to fetch a
+    # reader plus a shard per departing work.
+    "pass-composer.js": (20_000, "the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
     "pass-inst-adrift.js": (6_000, "the adrift instrument, measured at 5 444 B: a dense thing leaves across an empty field and the field itself changes hands along a measured front — its shader, its two silhouettes, its contact shadow, its response curves and its manifest", strip_js_comments),
     # 2026-08-15 — MOVED FROM 5 000 B TO 6 100 B, MEASURED AT 5 551 B. The meshing instrument now
     # reads its own doors: at either door it evaluates its own mask around each wheel's centre — the

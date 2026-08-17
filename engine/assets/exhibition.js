@@ -630,8 +630,16 @@
   // It is a CAPABILITY and not a setting — raising it is this rebuild — and the bake publishes it
   // into the settings record under `pass.capabilities`, so the composer measures a filled score
   // against the number the client actually applies instead of against a copy of it.
+  // 2026-08-17 — `intent` MOVED FROM 400 TO 600 (U27 stage 0), and the move is a defect this unit
+  // found rather than a budget it wanted. The composer writes the passage's intent as a sentence a
+  // person reads — what holds, what travels, from which reading to which, and what the camera does
+  // — and over the whole collection 1 004 of the 6 304 composed crossings write one longer than 400
+  // characters, the longest at 507. Every one of them was refused WHOLE by this checker, with
+  // «intent is no short text», so no composed crossing of that thousand could ever have played on
+  // any road — the prebaked pack's included. 600 is the measured 507 plus about a fifth. The cap
+  // itself stays: an intent is a sentence, not a place to put a payload.
   const PASS_LIMITS = { camera: 64, phases: 3, instruments: 8, curve: 128, text: 200,
-                        intent: 400, bytes: 12288 };
+                        intent: 600, bytes: 12288 };
   const PASS_SCORE_FIELDS = ["schema", "intent", "seed", "pair", "params"];
   // PASS-API §4.4a: two schema versions live at once. Version 2 carries the cue list a host plays;
   // version 1 keeps working, because such an address can already sit in a visitor's session store.
@@ -989,6 +997,7 @@
   // one synchronous question a declare puts to it.
   const PASS_COMPOSER_SRC = "pass-composer.js";
   let passComposer = null, passComposerAsked = false, passComposerState = "absent";
+  let passComposerSaid = null;
   const passPassages = [];
   function passWorkRecords() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).works; }
   function passComposerConsts() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).composer; }
@@ -1101,8 +1110,16 @@
   // the composer takes the same road, which is what a refusal has always meant here.
   function passComposeFor(fromEl, toEl) {
     if (!passComposer) {
-      passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC,
-                               why: "asked for a crossing before it arrived: " + passComposerState });
+      // ONCE PER STATE, never once per crossing. The refusal ring holds 64 rows and a row written
+      // at every step pushes every real refusal off it inside ten steps — the defect U10 §5 read on
+      // the register's own settings row. A composer that has not arrived is one fact about the
+      // visit, so it is said once and said again only when that fact changes.
+      if (passComposerSaid !== passComposerState) {
+        passComposerSaid = passComposerState;
+        passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC,
+                                 why: "asked for a crossing before it arrived: "
+                                      + passComposerState });
+      }
       return null;
     }
     const request = passRequestFor(fromEl, toEl);

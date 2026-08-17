@@ -371,27 +371,15 @@ WALK_ROWS = [
     "PASS-WEAVE a pair with no score of its own keeps the walk's own glide",
 ]
 
-# A score per pair covers nothing on a dealt walk: the walk deals its works afresh each visit, and a
-# 121-work collection holds about fourteen thousand ordered pairs. These rows drive the road that
-# does cover it — one template per instrument, one row of measured numbers per ordered pair, filled
-# at the moment a transition is declared. The lab's own template and table are the material.
-TABLE_ROWS = [
-    "PASS-TABLE the template filled from a pair's row is a score the checker takes",
-    "PASS-TABLE the filled score is the very score the per-pair builder wrote for that pair",
-    "PASS-TABLE a row naming a slot the template lacks is refused whole, and names it",
-    "PASS-TABLE a row whose readiness stands under the table's floor is refused, and says so",
-    "PASS-TABLE a pair with a row reaches the walk with a score, and the instrument takes it",
-    "PASS-TABLE a pair with no row hands back nothing, and the walk's own glide runs",
-    # §4.4f — the family roll on the INLINE road, so the two fill roads behave alike
-    "PASS-TABLE a row carrying family bounds fills the same way twice inside one pass, and "
-    "differently inside its span on the next",
-    "PASS-TABLE a family bound naming a slot the template lacks refuses the row, and names it",
-]
+# THE EIGHT PASS-TABLE ROWS RETIRED WITH THE ROAD THEY GUARDED (U27 stage 0, 2026-08-17). They drove
+# the inline fill road — `pass.scoreTemplates` filled from `pass.scoreTables`, one row of measured
+# numbers per ordered pair — which the no-pair-table law of his 19:21 word retired: a table of pairs
+# is quadratic in the collection and nothing on the product path may scale with it. What replaces
+# them is tests/test_pass_composed.py, where the score for a pair is DERIVED from the two works'
+# own records at the instant the walk casts the pair, and the family roll they proved is now the
+# die the walk rolls per crossing (§4.4f is unchanged and passBreath still holds it).
 
-TEMPLATE = LAB / "data" / "scores" / "template-weave.json"
-TABLE = LAB / "data" / "scores" / "table-weave.json"
-
-missing = [str(p) for p in ([SCORE, TEMPLATE, TABLE] + PHOTOS + [LAB / "effects" / "weave.js"])
+missing = [str(p) for p in ([SCORE] + PHOTOS + [LAB / "effects" / "weave.js"])
            if not p.exists()]
 
 
@@ -884,13 +872,13 @@ else:
     shutil.rmtree(SHOTS, ignore_errors=True)
 
 # ---------------------------------------------------------------- the walk's own road
-# The score arriving at a real visitor, on the baked site: the settings file carries it, declare
-# freezes it onto the command, and the instrument the cue names is the one that takes the command.
+# The score arriving at a real visitor, on the baked site: declare freezes it onto the command, and
+# the instrument the cue names is the one that takes the command.
 if not chrome_available():
-    for r in WALK_ROWS + TABLE_ROWS:
+    for r in WALK_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 elif missing:
-    for r in WALK_ROWS + TABLE_ROWS:
+    for r in WALK_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
 else:
     def enter(br, base):
@@ -924,13 +912,14 @@ else:
                            ".map(function(e){return e.dataset.id;}).slice(0,2);")
             PAIR_KEY = "__".join(WORKS)
 
-            # THE SCORE ARRIVES WITHOUT A REBUILD. Nothing is baked again: the served settings file
-            # is rewritten on disk with a score for the pair this visitor walks over, and the walk is
-            # entered afresh. That is the whole delivery road, and this is its proof.
-            cfg = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
-            cfg["pass"]["scores"] = {PAIR_KEY: scored(WORKS[0], WORKS[1])}
-            (TMP / "config.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2,
-                                                        sort_keys=True) + "\n", encoding="utf-8")
+            # THE SCORE ARRIVES ON THE DECLARE (PASS-API §1.1). Until U27 stage 0 it arrived in the
+            # settings record under `pass.scores`, keyed by ordered pair — a road the no-pair-table
+            # law retired with the delivery pack, because a score per pair in the settings file is
+            # quadratic in the collection. What a walk derives for a real pair now comes out of the
+            # composer, and tests/test_pass_composed.py proves that road; what these rows need is one
+            # FIXED weave score whose numbers they read back off the picture, so the score is handed
+            # to the declare, which is the road §1.1 has always named for a programmatic caller.
+            THE_SCORE = scored(WORKS[0], WORKS[1])
             br.navigate(base + "/")
             br.sleep(0.8)
             armed = enter(br, base) and armed
@@ -938,6 +927,8 @@ else:
                            ".map(function(e){return e.dataset.id;});")
 
             walkable = armed and WORKS[0] in shown and WORKS[1] in shown
+            if walkable:
+                br.evaluate("window.__weaveScore = " + json.dumps(THE_SCORE) + "; 0")
             for r_ in ([] if walkable else WALK_ROWS):
                 skip(r_, f"the walk never registered a host, or re-hung without the pair: "
                          f"armed={armed} pair={WORKS} shown={shown[:4]}")
@@ -947,7 +938,8 @@ else:
                   var A = document.querySelector('.exh-frame[data-id="%s"]');
                   var B = document.querySelector('.exh-frame[data-id="%s"]');
                   var cmd = window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
-                                                             kind:'step', cause:'weave-road', velocity:0});
+                                                             kind:'step', cause:'weave-road', velocity:0,
+                                                             score: window.__weaveScore});
                   window.__wcmd = cmd;
                   return {got: !!cmd, hasScore: !!(cmd && cmd.score),
                           schema: cmd && cmd.score ? cmd.score.schema : null,
@@ -997,10 +989,12 @@ else:
                       and landed["curtains"][-1] is False and "docked" in landed["events"],
                       f"landed={landed}")
 
-                # The SAME two works walked the other way. The key names an ordered pair — A→B is not
-                # B→A, which is the direction the charter's model asks for — so this crossing has no
-                # score of its own: nothing is frozen onto the command, no cue names an instrument, the
-                # host declines the offer outright and the walk's own glide takes it.
+                # THE SAME TWO WORKS WALKED THE OTHER WAY, and this declare hands over no score. A
+                # crossing the walk can find no score for is the standing fallback and always has
+                # been: nothing is frozen onto the command, no cue names an instrument, the host
+                # declines the offer outright and the walk's own glide takes it. A→B and B→A are two
+                # distinct passages of one edge, which is the direction the charter's model asks for
+                # and what the composed road derives per direction.
                 r = js(br, """
                   var A = document.querySelector('.exh-frame[data-id="%s"]');
                   var B = document.querySelector('.exh-frame[data-id="%s"]');
@@ -1016,209 +1010,6 @@ else:
                 check(WALK_ROWS[3],
                       r["score"] is None and r["glide"] is True and r["curtains"] == [],
                       f"score={r['score']} glide={r['glide']} curtains={r['curtains']}")
-
-            # ---- the template and the table ------------------------------------------------
-            # The settings file is rewritten once more, this time with NO score of any pair's own:
-            # only the lab's template, and a table of rows. Everything the visitor gets from here
-            # on is filled at declare time from four numbers.
-            template = json.loads(TEMPLATE.read_text(encoding="utf-8"))
-            table = json.loads(TABLE.read_text(encoding="utf-8"))
-            LAB_KEY = json.loads(SCORE.read_text(encoding="utf-8"))["pairKey"]
-            lab_row = (table.get("rows") or {}).get(LAB_KEY)
-
-            if lab_row is None:
-                for r_ in TABLE_ROWS:
-                    skip(r_, f"the lab table carries no row for its own scored pair {LAB_KEY}")
-            else:
-                # The visitor's own pair borrows the lab pair's numbers — the same measured row,
-                # under the key this walk actually steps over. The two planted rows are the bad
-                # ones: one names a slot the template has never heard of, one stands under the
-                # table's own readiness floor.
-                # The last two rows carry FAMILY BOUNDS (§4.4f): one sound — the cue's own seed may
-                # roll inside a span around its measured value, and the score's seed re-rolls with
-                # it — and one that names a slot the template has never heard of.
-                FAM_SPAN = [round(lab_row["seed"] - 0.4, 4), round(lab_row["seed"] + 0.4, 4)]
-                rows = {LAB_KEY: lab_row, PAIR_KEY: dict(lab_row),
-                        "stray__row": dict(lab_row, tilt=0.5),
-                        "unready__row": dict(lab_row,
-                                             readiness=round(table["readinessFloor"] - 0.01, 4)),
-                        "family__row": dict(lab_row,
-                                            family={"spans": {"seed": FAM_SPAN}, "seed": True}),
-                        "famstray__row": dict(lab_row,
-                                              family={"spans": {"tilt": [0.0, 1.0]}})}
-                cfg = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
-                cfg["pass"].pop("scores", None)
-                cfg["pass"]["scoreTemplates"] = {template["instrument"]: template}
-                cfg["pass"]["scoreTables"] = {template["instrument"]: dict(table, rows=rows)}
-                (TMP / "config.json").write_text(
-                    json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                    encoding="utf-8")
-                br.navigate(base + "/")
-                br.sleep(0.8)
-                armed = enter(br, base)
-                shown = js(br, "return [].slice.call(document.querySelectorAll('.exh-frame'))"
-                               ".map(function(e){return e.dataset.id;});")
-
-                r = js(br, """
-                  var s = window.__exPass.fill('%s');
-                  var chk = window.__exPass.score(s);
-                  return {ok: !!s, read: chk.read || null, why: chk.why || null,
-                          pair: s ? s.pair : null, seed: s ? s.seed : null,
-                          strips: s ? s.cues[0].nodes.stripsStatic.value : null,
-                          axis: s ? s.cues[0].nodes.axisStatic.value : null,
-                          instrument: s ? s.cues[0].instrument.id : null};
-                """ % PAIR_KEY)
-                check(TABLE_ROWS[0],
-                      r["ok"] and r["read"] == 2 and r["instrument"] == "weave"
-                      and r["pair"] == {"a": PAIR_KEY.split("__")[0], "b": PAIR_KEY.split("__")[1]}
-                      and r["seed"] == lab_row["seed"] and r["strips"] == lab_row["strips"]
-                      and r["axis"] == lab_row["axis"],
-                      f"filled={r} row={lab_row}")
-
-                # THE TWO ROADS MEET. The lab pair is the one pair that has both a row and a score
-                # the per-pair builder wrote in full. Filled here, in the product, from four
-                # numbers, it must be that score — every field, to the last node.
-                filled = js(br, "return window.__exPass.fill('%s');" % LAB_KEY)
-                built = score_of()
-                check(TABLE_ROWS[1], filled == built,
-                      "the filled score differs from lab/data/scores/%s.json" % LAB_KEY
-                      if filled != built else "identical, %d B of score from a %d-field row"
-                      % (len(json.dumps(built, separators=(",", ":"))), len(lab_row)))
-
-                r = js(br, """
-                  var s = window.__exPass.fill('stray__row');
-                  var said = window.__exPass.report().refusals.filter(function(x){
-                    return x.what === 'row' && x.name === 'stray__row'; });
-                  return {score: s, why: said.length ? said[said.length - 1].why : null};
-                """)
-                check(TABLE_ROWS[2],
-                      r["score"] is None and "tilt" in (r["why"] or "")
-                      and "slot the template lacks" in (r["why"] or ""),
-                      f"filled={'a whole score' if r['score'] else 'nothing'} why={r['why']!r}")
-
-                r = js(br, """
-                  var s = window.__exPass.fill('unready__row');
-                  var said = window.__exPass.report().refusals.filter(function(x){
-                    return x.what === 'row' && x.name === 'unready__row'; });
-                  return {score: s, why: said.length ? said[said.length - 1].why : null};
-                """)
-                check(TABLE_ROWS[3],
-                      r["score"] is None and "under the floor" in (r["why"] or ""),
-                      f"filled={'a whole score' if r['score'] else 'nothing'} why={r['why']!r}")
-
-                walkable = armed and WORKS[0] in shown and WORKS[1] in shown
-                for r_ in ([] if walkable else TABLE_ROWS[4:]):
-                    skip(r_, f"the walk never registered a host, or re-hung without the pair: "
-                             f"armed={armed} pair={WORKS} shown={shown[:4]}")
-                if walkable:
-                    r = js(br, """
-                      var A = document.querySelector('.exh-frame[data-id="%s"]');
-                      var B = document.querySelector('.exh-frame[data-id="%s"]');
-                      var cmd = window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
-                                                                 kind:'step', cause:'table-road',
-                                                                 velocity:0});
-                      var seen = {curtains: [], docks: 0};
-                      var took = cmd ? window.__exPass.layer().offer(cmd, {
-                        dock: function(){ seen.docks++; },
-                        glide: function(){ seen.glide = true; },
-                        curtain: function(on){ seen.curtains.push(!!on); },
-                        mark: function(){}}) : false;
-                      window.__tseen = seen;
-                      return {hasScore: !!(cmd && cmd.score),
-                              schema: cmd && cmd.score ? cmd.score.schema : null,
-                              seed: cmd && cmd.score ? cmd.score.seed : null,
-                              took: took,
-                              instrument: window.__exPass.host.report().instrument};
-                    """ % (WORKS[0], WORKS[1]))
-                    # the curtain rises after the prepare, not inside the offer call, so it is read
-                    # once the pass has actually run its course. The running instrument is read the
-                    # same way: inside the offer call the host is still awaiting its instrument's
-                    # own file, so it names none yet, and the name is captured here as it passes.
-                    for _ in range(60):
-                        rep = js(br, "return window.__exPass.host.report();")
-                        if rep["instrument"]:
-                            r["instrument"] = rep["instrument"]
-                        if rep["state"] == "idle":
-                            break
-                        br.sleep(0.1)
-                    seen = js(br, "return window.__tseen;")
-                    check(TABLE_ROWS[4],
-                          r["hasScore"] and r["schema"] == 2 and r["seed"] == lab_row["seed"]
-                          and r["took"] is True and seen["curtains"] == [True, False]
-                          and seen["docks"] == 1 and r["instrument"] == "weave",
-                          f"declared={r} seen={seen}")
-
-                    r = js(br, """
-                      var A = document.querySelector('.exh-frame[data-id="%s"]');
-                      var B = document.querySelector('.exh-frame[data-id="%s"]');
-                      var cmd = window.__exPass.adapter.declare({fromEl:B, toEl:A, dir:-1, span:100,
-                                                                 kind:'step', cause:'no-row',
-                                                                 velocity:0});
-                      var seen = {glide:false, curtains:[]};
-                      window.__exPass.layer().offer(cmd, {dock:function(){},
-                        glide:function(){ seen.glide = true; },
-                        curtain:function(on){ seen.curtains.push(!!on); }, mark:function(){}});
-                      return {score: cmd ? cmd.score : 'no command', glide: seen.glide,
-                              curtains: seen.curtains};
-                    """ % (WORKS[0], WORKS[1]))
-                    check(TABLE_ROWS[5],
-                          r["score"] is None and r["glide"] is True and r["curtains"] == [],
-                          f"score={r['score']} glide={r['glide']} curtains={r['curtains']}")
-
-                    # ---- §4.4f, the family roll on the inline road --------------------------
-                    # THE PASS IS THE UNIT, NOT THE CALL. Two fills of one row inside ONE declared
-                    # pass are the same score — a crossing has one score, however often it is
-                    # asked for — and the next declared pass rolls again, inside the span the row
-                    # named and nowhere else. The declare in the middle is what mints that pass.
-                    r = js(br, """
-                      var A = document.querySelector('.exh-frame[data-id="%s"]');
-                      var B = document.querySelector('.exh-frame[data-id="%s"]');
-                      var one = window.__exPass.fill('family__row');
-                      var again = window.__exPass.fill('family__row');
-                      window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
-                                                       kind:'step', cause:'family-next',
-                                                       velocity:0});
-                      var next = window.__exPass.fill('family__row');
-                      var fam = window.__exPass.report().family;
-                      return {one: one, again: again, next: next, family: fam};
-                    """ % (WORKS[0], WORKS[1]))
-                    one, again, nxt = r["one"], r["again"], r["next"]
-
-                    def kin_seed(x, y):
-                        a, b = json.loads(json.dumps(x)), json.loads(json.dumps(y))
-                        for d in (a, b):
-                            d["seed"] = None
-                            d["cues"][0]["nodes"]["seedStatic"]["value"] = None
-                        return a == b
-                    lo, hi = FAM_SPAN
-                    got1 = one and one["cues"][0]["nodes"]["seedStatic"]["value"]
-                    got2 = nxt and nxt["cues"][0]["nodes"]["seedStatic"]["value"]
-                    check(TABLE_ROWS[6],
-                          bool(one and again and nxt) and one == again and got1 != got2
-                          and lo <= got1 <= hi and lo <= got2 <= hi
-                          and one["seed"] == again["seed"] and one["seed"] != nxt["seed"]
-                          and one["seed"] != got1
-                          and kin_seed(one, nxt)
-                          and r["family"]["visit"] and len(r["family"]["rolls"]) >= 3,
-                          "inside one pass the row filled the bounded seed node at %s twice; the "
-                          "next declared pass filled it at %s — both inside %s…%s, and every "
-                          "other field identical. The row also asks for the score's own seed to "
-                          "re-roll, and it stands at %s against %s across the two passes: the "
-                          "re-roll is applied after the slots, so it wins over the score-level "
-                          "field this slot also writes. The roll's record reads %s"
-                          % (got1, got2, lo, hi, one and one["seed"], nxt and nxt["seed"],
-                             json.dumps(r["family"]["rolls"][-1:])[:300]))
-
-                    r = js(br, """
-                      var s = window.__exPass.fill('famstray__row');
-                      var said = window.__exPass.report().refusals.filter(function(x){
-                        return x.what === 'row' && x.name === 'famstray__row'; });
-                      return {score: s, why: said.length ? said[said.length - 1].why : null};
-                    """)
-                    check(TABLE_ROWS[7],
-                          r["score"] is None and "tilt" in (r["why"] or "")
-                          and "slot the template lacks" in (r["why"] or ""),
-                          f"filled={'a whole score' if r['score'] else 'nothing'} why={r['why']!r}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

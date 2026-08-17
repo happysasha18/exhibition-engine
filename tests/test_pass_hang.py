@@ -350,23 +350,24 @@ def rest_at(br, a):
 
 
 def declare_and_offer(br, a, b, cause):
+    # THE SCORE ARRIVES ON THE DECLARE (PASS-API §1.1). Until U27 stage 0 this suite wrote the score
+    # into the settings record under `pass.scores`, keyed by ordered pair — a road the no-pair-table
+    # law of 2026-08-17 19:21 retired along with the delivery pack, because a score per pair in the
+    # settings file is quadratic in the collection. What a walk derives for a real pair now comes
+    # out of the composer; what this suite needs is one FIXED score whose numbers it can read back,
+    # so it hands the score to the declare, which is the road §1.1 has always named for a
+    # programmatic caller.
     return js(br, """
       var A = document.querySelector('.exh-frame[data-id="%s"]');
       var B = document.querySelector('.exh-frame[data-id="%s"]');
       var cmd = window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
-                                                 kind:'step', cause:'%s', velocity:0});
+                                                 kind:'step', cause:'%s', velocity:0,
+                                                 score: window.__hangScore || null});
       window.__cmd = cmd;
       var took = cmd ? window.__exPass.layer().offer(cmd, window.HOOKS()) : false;
       return {got: !!cmd, took: took, gen: cmd ? cmd.gen : null,
               hasScore: !!(cmd && cmd.score)};
     """ % (a, b, cause))
-
-
-def put_score(base_dir, key, s):
-    cfg = json.loads((base_dir / "config.json").read_text(encoding="utf-8"))
-    cfg["pass"]["scores"] = {key: s}
-    (base_dir / "config.json").write_text(
-        json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 if not chrome_available():
@@ -392,11 +393,12 @@ else:
             else:
                 A, B = WORKS[0], WORKS[1]
                 PAIR = A + "__" + B
-                put_score(TMP, PAIR, score())
                 br.navigate(base + "/")
                 br.sleep(0.8)
                 enter(br, base)
                 br.evaluate(HOOKS)
+                # The one score every row below declares with, put on the page once.
+                br.evaluate("window.__hangScore = " + json.dumps(score()) + "; 0")
 
                 # ---- row 51 · the one declared exception carries its own evidence ------------
                 # §1.1 fences the adapter: only the product may call it and the renderer holds no
