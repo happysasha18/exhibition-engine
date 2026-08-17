@@ -54,8 +54,16 @@
       preloadAhead(+x.target.dataset.n);
     }
     if (window.__@@NS@@Seen) window.__@@NS@@Seen(w.id);      // the coat-check report (EX-MEMORY)
-    // the walk tracks its place per frame in view (INV-32c re-carried after the ↗ retired)
-    try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: w.id })); } catch (e) {}
+    // the walk tracks its place per frame in view (INV-32c re-carried after the ↗ retired) — and
+    // ONLY while the walk is the surface the visitor stands on. A face over the walk rests at its
+    // own top (the door writes scrollTo(0,0) as it renders), so the covered document's first frames
+    // cross this watcher's threshold under a scroll the HOUSE wrote, and an unguarded write replaced
+    // the place the visitor left with the walk's first work — gone before any return could restore
+    // it. The marker HOLDS for the length of the stand, the same freeze faceSync already keeps for
+    // the walk's own scroll beneath a standing face (`guardHold`, EX-CHROME/INV-70).
+    if (!faceStands()) {
+      try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: w.id })); } catch (e) {}
+    }
     // a late callback must never re-live the tone ON the door (EX-ACCENT rests at the seams)
     if (!atDoor) ground(w.dom);
     counter.querySelector(".now").textContent = String(+x.target.dataset.n).padStart(2, "0");

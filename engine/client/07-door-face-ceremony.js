@@ -414,6 +414,12 @@
       veil.hidden = true;
       busy = false;
       faceSync();                                      // the walk is bare — the lock lifts (EX-CHROME)
+      // INV-32c: the hand-over writes the place itself, so the walk's memory agrees with the eye
+      // from its first breath — the same write the #w- hand-over makes at its own jump. The
+      // watcher holds its report for the length of a stand, and the whole ceremony is one; the
+      // picked work is where the visitor stands the moment the walk is bare, before they have
+      // moved a frame.
+      try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: pick })); } catch (e) {}
       // the crossing warms its own picked work, so the room opens without a plate; but a
       // cache-evicted or slow-landing first image falls through to THIS ladder now the lock has
       // lifted (EX-DOOR-2e → EX-LOAD-2). And the feet warm forward from the threshold (EX-LOAD-3).
@@ -491,7 +497,17 @@
       // EX-PULSE registry: a browser-Back (or Forward) leave from the WALK to the door counts ONCE,
       // exactly like the exit control — the funnel undercounted history leaves. The exit control uses
       // pushState (never popstate), so control and history never double-count.
-      if (wasWalk) { pulse("walk_exit"); noteExit(); }   // EX-RETURN/INV-78: a Back-leave counts like the exit control
+      if (wasWalk) {
+        pulse("walk_exit"); noteExit();                  // EX-RETURN/INV-78: a Back-leave counts like the exit control
+        // INV-32b: and it remembers the walk's place the same way the exit control does. The spec
+        // holds the two leaves alike — the exit control, the browser's own Back landing on the door
+        // and a returned-door reload all count as the same door render — so the walk this step
+        // returns to must stand where the visitor left it. Measured here, before the door's own
+        // scrollTo(0, 0) below rests it at the top and the reading is gone; the same MEASURED
+        // centered stop doorReturn takes, so Back restores a whole work rather than a sub-frame offset.
+        const stops = frameStops();
+        walkY = stops.length ? stops[nearestStop(stops, scrollY)] : 0;
+      }
       groundRest();
       // EX-DOOR-4 (F2 folded 11:50): a Back landing on the door over a circled, unanswered walk
       // deals FRESH — the history step's "as it stood" (INV-32a) yields on this one point, and the
