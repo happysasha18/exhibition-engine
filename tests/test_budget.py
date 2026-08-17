@@ -301,7 +301,14 @@ FENCES = {
     # can be reached. What it buys on the route is measured rather than argued: pairs reaching the
     # culmination tier go from 112 to 571, and 207 ordered pairs of the collection take the box-fold
     # road at a middle where none could before. Band 91 B.
-    "pass-composer.js": (25_700,"the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
+    # 2026-08-18, later — 25 700 B BECOMES 27 100 B, MEASURED AT 26 988 B, and again the move is a
+    # gate doing its work rather than failing: the composer lane closed stage 1 a second time, with
+    # the rule that where SEVERAL instruments cut on one element kind the pair's own readings and the
+    # die choose between them instead of one instrument holding the kind outright. 1 379 gzipped
+    # bytes, and what they buy is the register the charter names by example: the unfold that opens
+    # past its own sheet into an infinite parquet plays 4 673 times where it played none, and reaches
+    # all five route roles rather than the two that can spend a miracle on a folded box. Band 112 B.
+    "pass-composer.js": (27_100,"the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
     # 2026-08-18 — MOVED FROM 6 000 B TO 7 300 B, MEASURED AT 7 222 B (U27 stage 2). The runtime-door
     # work of stage 0 landed in this file and its fence was never moved with it: the instrument reads
     # its own doors on the buffer it draws on and reports what it applied or the refusal it named
