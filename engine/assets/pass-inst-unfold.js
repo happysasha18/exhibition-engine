@@ -342,7 +342,22 @@
     // The numbers of one frame. Everything the shader gets beyond the seating of the two works is a
     // pure function of the pose; every number in the pose comes from a handle a score can drive, and
     // the lean reads the second the host hands down, so a seeded run repeats to the pixel.
-    function values(st) {
+    // A hair of an angle leaves two panels almost in one plane, which renders with a stray sliver
+    // along the crease. The module holds them exactly flat below half a degree (unfold.js, and the
+    // line in `posed` below), and that half degree is the module's own number, unchanged everywhere
+    // but at a door — where the reading further down asks what it is worth in POINTS OF THE BUFFER
+    // and holds a pair flat that stands under two of them.
+    var FLAT_DEG = 0.5;
+    // THE ROOM THE LEAN NEEDS and the room the CORNER needs on top of it — FRAG's own `EDGE` and
+    // `PULL` consts (unfold.js:42, :47), carried here so the growth law can be recomputed in script.
+    // Both are nothing at either door, because nothing leans and nothing turns there.
+    var EDGE_JS = 1.16, PULL_JS = 1.8;
+
+    // The numbers of one frame, at a given flat guard. The guard is a parameter here rather than the
+    // constant it was, because the hold in `values` below asks this same function for the same pose
+    // at the guard a door's own grid asks for. At the module's own half degree it answers, number
+    // for number, exactly what it answered before.
+    function posed(st, flatDeg) {
       var dial = clamp(st.mix, 0, 1);
       var four = st.panels >= 0.5;
       var lag = clamp(st.stagger, 0, 0.6);
@@ -359,8 +374,8 @@
       // A hair of an angle leaves two panels almost in one plane, which renders with a stray sliver
       // along the crease; hold them exactly flat instead.
       var aY = fR * MAXA, aX = fB * MAXA;
-      if (aY < 0.5) aY = 0;
-      if (aX < 0.5) aX = 0;
+      if (aY < flatDeg) aY = 0;
+      if (aX < flatDeg) aX = 0;
       var cY = Math.cos(aY * DEG), cX = Math.cos(aX * DEG);
       var rY = reachOf(cY), rX = four ? reachOf(cX) : 0;
       // THE LEAN RESTS AT BOTH DOORS (unfold.js:365-370): every term of it is carried by this gate,
@@ -389,8 +404,240 @@
         crease: [0.5 * Math.sin(aX * DEG) * rX, 0.5 * Math.sin(aX * DEG) * cY * rX,
                  0.5 * Math.sin(aY * DEG) * rY, cross],
         // read on the diagnostic surface, bound to no uniform: what the hand came to
-        fold: fold, cross: cross, aY: aY, aX: aX,
+        fold: fold, cross: cross, aY: aY, aX: aX, four: four ? 1 : 0, flatDeg: flatDeg,
+        mask: clamp(st.mask, 0, 1),
       };
+    }
+
+    // ---- THE DOOR THE INSTRUMENT READS FOR ITSELF ------------------------------------------------
+    // His 18:00 architecture decision, carried in the U27 brief: the instrument reads its doors at
+    // runtime on the actual buffer, and the report it hands back is the runtime truth; what the
+    // manifest declares is only the claim. The meshing instrument answered that first
+    // (pass-inst-gears.js, THE DOOR THE INSTRUMENT READS FOR ITSELF); this is the same law read in
+    // this instrument's own unit, which is the PANEL — and the map of them over the frame.
+    //
+    // WHAT A DOOR ASKS OF THIS INSTRUMENT. At either door the frame is one work standing whole, at
+    // the plain cover fit the `framings` block publishes. Three things carry that, and this reads
+    // all three ON THE BUFFER rather than declaring them:
+    //   · THE PANEL MAP COVERS THE FRAME. The growth law grows the sheet by exactly what each
+    //     turning panel gives up, so no point of the frame is ever left with no panel standing on
+    //     it. That is a claim about a GRID — whether a bare point falls between samples or on one —
+    //     and it is now walked at the buffer's own sample points instead of being asserted.
+    //   · THE SHEET LIES FLAT. Every panel's turn is nothing at a door, so the map is the sheet
+    //     itself and the frame is the file. A pair standing a hair out of plane opens a sliver along
+    //     its crease, and how wide that sliver is depends entirely on the buffer: the module's own
+    //     guard holds a pair flat below half a degree, which is nothing on a small frame and three
+    //     points of a tall one.
+    //   · THE JUDGES' CHANNEL IS SHUT. `mask` draws the panel map itself as colour, which is what it
+    //     is for; left open at a door the frame is a false-colour map of the panels and not the
+    //     photograph at all.
+    //
+    // WHAT THIS READING FINDS, SAID PLAINLY. On every buffer the host can hand and every pose these
+    // handles admit, the first two come out whole: at a door `fold` is exactly 0, every panel lies
+    // in the sheet's own plane, the growth law's scale comes out exactly 1 and the map claims every
+    // point walked. That is not a reason to leave the claim unread — it is the runtime truth this
+    // lane was asked for, and it is published as the applied state below, where a suite reads it and
+    // a later change to the fold, the stagger or the growth law reddens against it. The one door
+    // this instrument's own handles can spoil is the third, and it is refused.
+    //
+    // WHERE THE SHEET'S OWN SIZE COMES FROM. The shader recovers it from the seating the host
+    // applied (`SZ` in FRAG reads `fitA`/`fitB`), and the host hands this instrument no seating
+    // (`frameState` carries the viewport and nothing of the fit). The sheet is the file COVER-fitted,
+    // so it is never smaller than the frame: `SZ` is at its smallest `(aspect, 1)`, which is exactly
+    // the case in which the panel map has the least frame to spare. The reading takes that smallest
+    // sheet, so it can only ever over-hold, never miss a bare point.
+    var DOOR_SLIP = 0.5;   // points of the grid: half a point, inside which a sample cannot move
+    var DOOR_HOLD = 2;     // how far the hold reaches, in points of the grid
+    // How much of the panel map may stand in the frame at a door and it still BE the photograph:
+    // half a level of 255, under anything the frame itself can carry. The charter's own door bar is
+    // 6 of 255 over the canvas rect, and half a level is an eighth of that at one point.
+    var DOOR_SHOW = 0.5 / 255;
+
+    // The grid the door is read on, and which of the two it is. `drawn` says which one the sentence
+    // below names, since a reader told «a 780 x 1688 frame» would look for a device that has none.
+    function doorGridOf(st) {
+      var bw = Math.round(st.bufWidth), bh = Math.round(st.bufHeight);
+      if (bw >= 1 && bh >= 1) return { w: bw, h: bh, drawn: true };
+      return { w: Math.round(st.cssWidth), h: Math.round(st.cssHeight), drawn: false };
+    }
+
+    // The sheet's own lean, applied to one vector — FRAG's `stood`, carried across line for line.
+    function stood(x, y, z, L) {
+      var cx = Math.cos(L[0]), sx = Math.sin(L[0]);
+      var cy = Math.cos(L[1]), sy = Math.sin(L[1]);
+      var cz = Math.cos(L[2]), sz = Math.sin(L[2]);
+      var px = x * cz - y * sz, py = x * sz + y * cz, pz = z;
+      var qx = px * cy + pz * sy, qy = py, qz = -px * sy + pz * cy;
+      return [qx, qy * cx - qz * sx, qy * sx + qz * cx];
+    }
+
+    // Where one point of the frame falls on one panel — FRAG's `lands`, carried across line for
+    // line, with the pair (u, v) and the depth it comes back with.
+    function lands(sx, sy, a, bu, bv, d, limx, limy) {
+      var c1x = bu[0] + sx * bu[2] / d, c1y = bu[1] + sy * bu[2] / d;
+      var c2x = bv[0] + sx * bv[2] / d, c2y = bv[1] + sy * bv[2] / d;
+      var k = 1 - a[2] / d;
+      var rx = sx * k - a[0], ry = sy * k - a[1];
+      var det = c1x * c2y - c2x * c1y;
+      var safe = Math.abs(det) < 1e-9 ? 1e-9 : det;
+      var ux = (rx * c2y - c2x * ry) / safe, uy = (c1x * ry - rx * c1y) / safe;
+      return { hit: Math.abs(det) > 1e-9 && ux >= 0 && uy >= 0 && ux <= limx && uy <= limy,
+               u: ux, v: uy, z: a[2] + bu[2] * ux + bv[2] * uy };
+    }
+
+    // THE PANEL MAP, READ ON THE BUFFER THE SHADER WILL SAMPLE ON. The sheet is built exactly as
+    // FRAG builds it and the map is walked at the buffer's own sample points: its four corners,
+    // where the growth law has the least to spare; the midpoints of its four edges; and the nine
+    // points around its centre, where the panels' own seams cross at a door. Every one of them must
+    // be claimed by a panel or by the sheet's own backing.
+    function mapReadOf(v, W, H) {
+      var aspect = W / Math.max(H, 1), pt = 1 / H;
+      var SZ = [aspect, 1];                 // the tightest sheet a cover fit can hand
+      var four = v.four > 0.5;
+      var CW = SZ[0] * 0.5, CH = four ? SZ[1] * 0.5 : SZ[1];
+      var cY = v.turn[0], sY = v.turn[1], cX = v.turn[2], sX = v.turn[3];
+      var rY = v.reach[0], rX = v.reach[1];
+      var reachR = CW * rY, reachB = CH * rX;
+      var persp = v.form[1];
+      var deep = 2 * persp;
+      var corner = deep / (deep + sY + (CH / CW) * sX);
+      var extX = (CW - reachR) * 0.5 + reachR * corner;
+      var extY = (CH - reachB) * 0.5 + reachB * corner;
+      var room = 1 + (EDGE_JS - 1) * v.form[0] + PULL_JS * (1 - corner) * rY * rX;
+      var sc = room * Math.max(Math.max(aspect / (2 * extX), 1 / (2 * extY)), 1);
+      var d = persp * SZ[0] * sc;
+      var slide = [(CW - reachR) * 0.5, four ? (CH - reachB) * 0.5 : 0];
+      var L = v.lean;
+      var e0 = stood(sc, 0, 0, L), e1 = stood(0, sc, 0, L);
+      var eY = stood(cY * sc, 0, -sY, L), eX = stood(0, cX * sc, -sX, L);
+      var eXY = stood(-sX * sY * sc, cX * sc, -sX * cY, L);
+      var mid = [SZ[0] * 0.5, SZ[1] * 0.5];
+      function origin(dx, dy) {
+        return stood((slide[0] + dx - mid[0]) * sc, (slide[1] + dy - mid[1]) * sc, 0, L);
+      }
+      var oTL = origin(0, 0), oTR = origin(CW, 0), oBL = origin(0, CH), oBR = origin(CW, CH);
+      var ey = four ? pt : 0;
+      var reads = [], bare = 0, i, j;
+      function walk(px, py) {
+        var sx = (px / W) * aspect - aspect * 0.5, sy = py / H - 0.5;
+        var got = false, code = 0;
+        var hTL = lands(sx, sy, oTL, e0, e1, d, CW + pt, CH + ey);
+        var hTR = lands(sx, sy, oTR, eY, e1, d, CW, CH + ey);
+        var hBL = lands(sx, sy, oBL, e0, eX, d, CW + pt, CH);
+        var hBR = lands(sx, sy, oBR, eY, eXY, d, CW, CH);
+        var hSh = lands(sx, sy, oTL, e0, e1, d, SZ[0], SZ[1]);
+        if (hTR.hit) { got = true; code = 0.50; }
+        if (hBL.hit && four) { got = true; code = 0.75; }
+        if (hBR.hit && four) { got = true; code = 1.00; }
+        if (hSh.hit) got = true;
+        if (hTL.hit) { got = true; code = 0.25; }
+        if (!got) bare++;
+        reads.push(code);
+      }
+      for (i = 0; i < 2; i++) {
+        for (j = 0; j < 2; j++) { walk(i ? W - 0.5 : 0.5, j ? H - 0.5 : 0.5); }
+      }
+      walk(0.5, H * 0.5); walk(W - 0.5, H * 0.5); walk(W * 0.5, 0.5); walk(W * 0.5, H - 0.5);
+      for (i = -1; i <= 1; i++) {
+        for (j = -1; j <= 1; j++) { walk(W * 0.5 + i, H * 0.5 + j); }
+      }
+      // HOW FAR EITHER PAIR STANDS OUT OF THE SHEET'S OWN PLANE, in points of this grid: the far edge
+      // of a turned panel, carried by its own sine, read against the buffer's own height.
+      return { walked: reads.length, bare: bare, codes: reads, sheet: [SZ[0] * sc, SZ[1] * sc],
+               scale: sc, panels: four ? 4 : 2, seamPx: pt * H,
+               turnPx: Math.max(sY * CW * H, sX * CH * H) };
+    }
+
+    // THE DOOR, MEASURED. Null everywhere but at a door, since away from the doors a folding sheet
+    // is the picture rather than a fault. The door is named by the manifest's own `doors` block:
+    // `mix` at 0 is the entry door, where the frame is the departing work whole, and `mix` at 1 the
+    // exit door, where it is the arriving one.
+    function doorReadOf(v, st) {
+      var want = st.mix === 0 ? 1 : (st.mix === 1 ? 0 : -1);
+      if (want < 0) return null;
+      var g = doorGridOf(st), W = g.w, H = g.h;
+      if (!(W >= 1) || !(H >= 1)) return null;
+      var map = mapReadOf(v, W, H);
+      map.grid = g;
+      map.want = want;
+      map.mask = v.mask;
+      return map;
+    }
+
+    // THE REFUSAL, worded the way the host's own manifest refusals read: what is wrong, in this
+    // instrument's own measured numbers, on the grid it was measured on.
+    function doorWhyNoOf(read) {
+      if (!read) return null;
+      var g = read.grid, door = read.want ? "the entry" : "the exit";
+      var work = read.want ? "departing" : "arriving";
+      var where = " of a " + g.w + " x " + g.h + (g.drawn ? " buffer" : " frame");
+      if (read.bare) {
+        return door + " door leaks: the panel map leaves " + read.bare + " of the " + read.walked
+             + " points this reading walked" + where + " with no panel standing on them, where "
+             + door + " door's own law asks for the " + work + " work at every point";
+      }
+      if (read.turnPx >= DOOR_SLIP) {
+        return door + " door leaks: a pair of panels stands " + read.turnPx.toFixed(2)
+             + " points" + where + " out of the sheet's own plane, so a sliver of the frame is "
+             + "drawn along its crease, where " + door + " door's own law asks for the flat sheet "
+             + "and the " + work + " work at every point";
+      }
+      if (read.mask >= DOOR_SHOW) {
+        return door + " door leaks: the judges' own channel stands at " + read.mask.toFixed(6)
+             + ", so the frame draws the panel map — " + read.panels + " panels over a "
+             + g.w + " x " + g.h + (g.drawn ? " buffer" : " frame")
+             + " — instead of the " + work + " work, where " + door
+             + " door's own law asks for the " + work + " work at every point";
+      }
+      return null;
+    }
+
+    // THE NUMBERS OF ONE FRAME, WITH ITS DOOR READ ON THE BUFFER BEING DRAWN. Away from a door this
+    // is `posed` and nothing more: the reading is taken nowhere else and no guard moves. At a door
+    // it walks its own panel map on the buffer and publishes what it read — how many points it
+    // walked, how many stood bare, the panel count, the sheet's own drawn size, the growth law's
+    // scale, the seam in points of the grid and how far either pair stands out of plane. Where a
+    // pair stands out of plane by less than the hold's own reach, the module's own flat guard is
+    // re-asked in the grid's own units and the pair is held whole flat, with the travel it gave up
+    // on the record; beyond that, and for a judges' channel left open, the refusal stands.
+    //
+    // WHY THE HOLD IS IN POINTS AND NOT IN DEGREES. Half a degree is the module's own number and it
+    // is a number about a SCREEN: on a short frame it is a fraction of a point and on a tall one it
+    // is three of them. At a door the sheet must be flat, so what the guard has to answer is «can
+    // this grid show the turn», which is a question in points. Two points is the reach, for the same
+    // reason the meshing instrument holds two rungs: it closes what a real grid can open, and it
+    // leaves the refusal standing rather than making a guard that never fires.
+    function values(st) {
+      var v = posed(st, FLAT_DEG);
+      v.flatDegRequest = FLAT_DEG;
+      v.turnHeld = null;
+      v.doorHeld = null;
+      var read = doorReadOf(v, st);
+      var no = doorWhyNoOf(read);
+      v.doorGrid = read ? read.grid : null;
+      v.panelMap = read ? { walked: read.walked, bare: read.bare, panels: read.panels,
+                            sheet: read.sheet, scale: read.scale, seamPx: read.seamPx,
+                            turnPx: read.turnPx } : null;
+      if (!no) { v.doorWhyNo = null; return v; }
+      if (read.bare === 0 && read.turnPx >= DOOR_SLIP && read.turnPx < DOOR_HOLD) {
+        // the angle whose far edge travels one point of this grid, which is the guard this grid
+        // asks for in place of the module's own half degree
+        var w = posed(st, Math.max(FLAT_DEG, Math.max(v.aY, v.aX) + 1e-9));
+        var wRead = doorReadOf(w, st);
+        if (!doorWhyNoOf(wRead)) {
+          w.flatDegRequest = FLAT_DEG;
+          w.turnHeld = read.turnPx;
+          w.doorHeld = no;
+          w.doorWhyNo = null;
+          w.doorGrid = wRead.grid;
+          w.panelMap = { walked: wRead.walked, bare: wRead.bare, panels: wRead.panels,
+                         sheet: wRead.sheet, scale: wRead.scale, seamPx: wRead.seamPx,
+                         turnPx: wRead.turnPx };
+          return w;
+        }
+      }
+      v.doorWhyNo = no;
+      return v;
     }
 
     var manifest = {
@@ -435,7 +682,17 @@
         stagger: { min: 0, max: 0.6, def: 0.34 },
         panels: { min: 0, max: 1, def: 1, kind: "enum", step: 1,
                   names: { "0": "two", "1": "four" } },
-        mask: { min: 0, max: 1, def: 0 },
+        // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
+        // the meshing instrument publishes its own. `readAtADoor` says what is read (this
+        // instrument's own panel map, walked at the buffer's own sample points), on which grid (the
+        // drawing buffer the host binds, with the CSS frame where it hands none), how far the hold
+        // reaches (two points of that grid, for a pair standing out of the sheet's plane) and where
+        // the guard the module's own constant asks for stays on the record.
+        mask: { min: 0, max: 1, def: 0,
+                applied: { readAtADoor: { points: DOOR_HOLD, readOn: "the drawing buffer",
+                                          reads: "flatDegRequest",
+                                          measures: "this instrument's own panel map, walked at "
+                                                  + "the buffer's own sample points" } } },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -459,8 +716,10 @@
                   how: "the growth law grows the sheet by exactly what each turning panel gives up, so "
                      + "the standing picture covers the frame at every point of the travel and the "
                      + "alpha is the constant 1" },
+      // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
+      // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, tilt: 0.5, shade: 1, depth: 0.5, stagger: 0.34, panels: 1, mask: 0,
-                     t: 0, reduced: false },
+                     t: 0, reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "unfold", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
@@ -510,13 +769,33 @@
       start: function () { live = true; },
       // The pose the shader draws. The module's breath and its pointer are gone, so every number here
       // comes from a handle a score drives, and the lean's sway reads the second the host hands down.
+      //
+      // A DOOR THIS INSTRUMENT CANNOT KEEP WHOLE IS REFUSED RATHER THAN DRAWN. The door law is the
+      // instrument's own claim (the manifest's coverage line above), so the instrument is what
+      // answers for it: at either door it walks its own panel map on the buffer the host is about to
+      // bind and, where a point of that grid stands bare, where a pair stands out of the sheet's
+      // plane further than the hold reaches, or where the judges' channel is left open, it hands the
+      // host the reason with the measured map in it instead of drawing a door that is not the
+      // photograph. The host recovers the transaction on that reason and the walk's own glide
+      // carries the visitor, which is the product's own behaviour with no renderer.
       frame: function (st) {
         if (!live) return;
         var h = st.handles;
-        st.draw({
+        var pose = {
           mix: h.mix, tilt: h.tilt, shade: h.shade, depth: h.depth, stagger: h.stagger,
           panels: h.panels, mask: h.mask, t: h.clock, reduced: st.reduced,
-        });
+          cssWidth: st.viewport.w, cssHeight: st.viewport.h,
+          // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
+          // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The
+          // host settles it from the device ratio and its own resolution step, so it moves while a
+          // pass plays and each door is read on the grid standing at that door's own instant.
+          bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+        };
+        if (h.mix === 0 || h.mix === 1) {
+          var no = values(pose).doorWhyNo;
+          if (no) { st.fail(st.token, no); return; }
+        }
+        st.draw(pose);
         if (st.progress >= 1 && !st.pinned) st.settle(st.token);
       },
       resize: function () {},
