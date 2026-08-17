@@ -32,6 +32,7 @@ SUITES = [
     "pass_stack",
     "pass_pack",
     "pass_adrift",
+    "pass_unfold",
     "pass_coverage",
     "pass_reader",
 ]

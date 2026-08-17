@@ -210,6 +210,13 @@ FENCES = {
     # size applied. What a visit pays for the whole instrument is 6 026 B gzipped, and only a visit
     # whose own score names it pays them.
     "pass-inst-gears.js": (6_600, "the meshing instrument, measured at 6 026 B: two wheels meshing along the line their rims meet, one work riding each — its shader, its ladder of small whole ratios, its response curve, the door reading on the buffer it draws on that holds a leaking size whole, and its manifest of fifteen handles and nineteen name-bound uniforms", strip_js_comments),
+    # 2026-08-17 — A FENCE FROM DAY ONE for the panels instrument, at the measured 4 754 gzipped
+    # bytes plus about a tenth, by the rule §7 states for each instrument. It is the first port
+    # whose lab module carried no shader: the module draws with CSS 3D and the compositor projects
+    # it, so what this file carries is the inverse of that transform chain — a two-by-two solve per
+    # panel across four panels and the sheet's own plane, with each panel's shade and crease. A
+    # visit pays these bytes only when its own score names this instrument.
+    "pass-inst-unfold.js": (5_250, "the unfold instrument, measured at 4 754 B: one work folds shut along its own mirrored panels until the single photograph it was cut from stands alone, the two works exchange on that photograph, and the other opens out — its inverted transform chain, its growth law, its response curve and its manifest", strip_js_comments),
     "pass-inst-matter.js": (3_550, "the matter instrument, measured at 3 221 B: one work loosens into a grain dragged along a seeded field and the other condenses out of it — its shader, its response curve and its manifest", strip_js_comments),
     "pass-inst-weave.js": (4_500, "the woven instrument, measured at 4 069 B: a band family warping across the frame — its shader, its seating of a work in the frame, its response curve, the turn of the weave and its manifest", strip_js_comments),
 }
