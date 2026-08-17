@@ -198,17 +198,28 @@ check("PASS-API no eval, no new Function anywhere the host reads a command",
 #            and the instrument names themselves out of the score. What arrived is about 3 100 B —
 #            the record reader, the per-name loader with its digest, version and name checks, the
 #            one-at-a-time evaluation queue, and the refusal roads with their reasons.
-#            2026-08-17, evening — MOVED FROM 86 000 B TO 92 000 B, MEASURED AT 88 253 B, with
-#            3 747 B under it (U27 stage 1, the camera lane). The host grew by 2 927 built bytes and
-#            by nothing else: two new places on the pose (orbit and tilt, each carried in its own
-#            coordinate), each place carried through the points that name it so one flight can hold
-#            several arcs, the camera-led passage where the anchor drops its held middle and travels
-#            the whole duration, both works' seating on the frame state, and the bench entries those
-#            four are read through. No instrument and no effect name arrived with them, which is
-#            what this fence exists to track. THE COST IT PROXIES, measured beside it: what travels
-#            to a phone is the gzipped file, at 24 027 B under a 25 000 B fence
-#            (tests/test_budget.py, which carries the breakdown line by line).
-LAYER_FENCE = 92000
+#            2026-08-17, evening — MOVED FROM 86 000 B TO 88 400 B, MEASURED AT 88 253 B, with
+#            147 B under it (U27 stage 1, the camera lane). THE BAND IS 147 B ON PURPOSE. This
+#            number is a byte count of a generated text file with no compression anywhere in it, so
+#            it is exactly reproducible and a fence over it can sit as close as one wants; what it
+#            must not do is carry a spare kilobyte, because then the next kilobyte lands unremarked
+#            and the gate has been switched off without anyone deciding to. 147 B is one added line
+#            of code, which is the smallest thing that should have to state its worth.
+#            WHAT FILLED THE 2 927 BUILT BYTES between 85 326 and 88 253, all of it host:
+#              · the two new places on the pose, orbit and tilt, each carried in its own coordinate,
+#                with their entries in the neutral pose, the capability gate and the applied
+#                transform, and the host's own lens where a score names no field of view;
+#              · each place carried through the points that name it, so one unbroken flight holds
+#                several arcs — the dolly at the two edges, the tilt across the middle;
+#              · the camera-led passage, where the anchor drops its held middle and travels the
+#                whole duration, and a cue claiming the world level beside it is refused;
+#              · both works' seating on the frame state, `fitA` and `fitB`, for the doors lane;
+#              · the bench entries those four are read through.
+#            No instrument and no effect name arrived with them, which is what this fence exists to
+#            track. THE COST IT PROXIES, measured beside it: what travels to a phone is the gzipped
+#            file, at 24 027 B under a 24 100 B fence (tests/test_budget.py, which carries the
+#            breakdown line by line).
+LAYER_FENCE = 88400
 check(f"PASS-API the renderer file's fence moves DOWN on the split, measured not guessed (now {LAYER_FENCE} B, was 102 000)",
       len(LAYER_BUILT.encode("utf-8")) < LAYER_FENCE,
       f"pass-layer.js built at {len(LAYER_BUILT.encode('utf-8'))} B — the host alone: the state "

@@ -168,9 +168,13 @@ FENCES = {
     # 2026-08-14, afternoon — the single pack became a file per instrument, and this fence stayed at
     # 24 000 B. The host grew by the loader that reads the site's own record and asks for one file
     # per name, from 21 528 B to 22 503 B, and it still names no instrument.
-    # 2026-08-17, evening — MOVED FROM 24 000 B TO 25 000 B, MEASURED AT 24 027 B, with 973 B under
-    # it (U27 stage 1, the camera lane). What arrived is the camera's second half, and it is all
-    # host: no instrument and no effect name came with it.
+    # 2026-08-17, evening — MOVED FROM 24 000 B TO 24 100 B, MEASURED AT 24 027 B, with 73 B under
+    # it (U27 stage 1, the camera lane). THE BAND IS 73 B AND THAT IS THE WHOLE POINT: a fence
+    # carrying a spare kilobyte stops being a gate, because the next kilobyte arrives unremarked and
+    # by then nobody remembers the slack was left on purpose. 73 B is the room a gzip stream needs
+    # for a version of zlib that packs a shade differently, and nothing more; the next thing that
+    # lands here has to say what it is worth. WHAT FILLED THE 638 B between 23 389 and 24 027, and
+    # it is all host — no instrument and no effect name came with it:
     #   · TWO NEW PLACES ON THE POSE, orbit and tilt, each carried in its own coordinate — the orbit
     #     in angle, which is the charter's own second case of a straight line in another coordinate
     #     system — with their own entries in the neutral pose, the capability gate and the applied
@@ -192,7 +196,7 @@ FENCES = {
     # WHAT A VISITOR PAYS is unchanged in kind: this file is fetched only on a visit that actually
     # draws, and reduced motion, Save-Data, a device with no WebGL2 and the layer switched off never
     # ask for it at all.
-    "pass-layer.js": (25_000, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera with its two turning axes and its led flight, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
+    "pass-layer.js": (24_100, "the host's own file, fetched only when a walk asks for it: the state machine, the frame half, the driver graph, the camera with its two turning axes and its led flight, the interruption cadence, the return to the hang and the instrument loader — no instrument and no effect name", strip_js_comments),
     # 2026-08-14, afternoon — ONE FENCE PER INSTRUMENT, each at its own measurement plus about a
     # tenth, by the same rule §12 states for the renderer's own file.
     #
