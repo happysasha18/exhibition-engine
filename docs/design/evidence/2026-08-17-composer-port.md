@@ -1,6 +1,6 @@
 # U24 — the choice core runs in the browser, and its scores are the build's own bytes
 
-Run 2026-08-17, 17:24–18:05 local. Engine lane `/Users/sashaabramovich/exhibition-engine-jscomposer`,
+Run 2026-08-17, 17:24–17:54 local. Engine lane `/Users/sashaabramovich/exhibition-engine-jscomposer`,
 a worktree of `/Users/sashaabramovich/exhibition-engine-pass-api-v1`, branch
 `pass-api-v1-jscomposer`, cut from the integration head `3665da0`. Site lane
 `/Users/sashaabramovich/tlvphotos-jscomposer`, branch `immersive-alpha-jscomposer`, cut from
