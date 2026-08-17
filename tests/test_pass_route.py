@@ -234,12 +234,21 @@ def enter(br, base, pass_arg="diagnostics:on,familySeed:4242", clear=True):
             break
         br.sleep(0.2)
     br.sleep(0.4)
-    br.key("ArrowDown")
-    for _ in range(30):
+    # The engine's own file arrives at the walk's LANDING (§4.4d), with no crossing needed. The
+    # PICTURE layer's door opens elsewhere — at the first real step — so one real step is taken
+    # here, and it is the visit's own first crossing. That crossing is what the entrance row reads,
+    # off the passage record the walk keeps, rather than a declare made afterwards: a declare made
+    # afterwards would be the SECOND crossing and would read the curve instead of the opening.
+    for _ in range(40):
         if js(br, "return window.__exPass.report().composer.state;") == "read":
             break
         br.sleep(0.2)
-    br.sleep(0.4)
+    br.key("ArrowDown")
+    for _ in range(30):
+        if br.evaluate("String(!!window.__exPassLayer)") == "true":
+            break
+        br.sleep(0.2)
+    br.sleep(0.6)
     js(br, STUB)
 
 
@@ -247,7 +256,9 @@ def grammar(gaps):
     """Shelf 15's grammar, re-derived here from the gaps the walk publishes. The row compares this
     against the roles the walk published beside them, so both sides move together when the hang
     moves and the row goes on measuring the same claim."""
-    crest = max(range(len(gaps)), key=lambda i: (gaps[i], -i))
+    # The search for the widest step begins AFTER the route's first, which shelf 15 gives to the
+    # entrance; a one-step route keeps its only step.
+    crest = max(range(1 if len(gaps) > 1 else 0, len(gaps)), key=lambda i: (gaps[i], -i))
     out = []
     for i, g in enumerate(gaps):
         if i == crest:
@@ -327,10 +338,15 @@ else:
                      share.get("middle", 0), 100.0 * share.get("middle", 0) / n,
                      share.get("culmination", 0), 100.0 * share.get("culmination", 0) / n))
 
-            # 2 · the role reaches the composer. The first crossing of a visit is an entrance by the
-            # rule above, so the step measured here is the SECOND, where the curve is what answers.
-            first = declare(br, ids[0], ids[1]) if len(ids) > 2 else {"absent": True}
-            js(br, LAND)
+            # 2 · the role reaches the composer. The visit's first crossing is the real step
+            # `enter` took, and it is an entrance by the rule above; the step measured here is the
+            # SECOND, where the curve is what answers.
+            first = js(br, "var rows = window.__exPass.report().composer.passages;"
+                           "var row = rows.length ? rows[0] : null;"
+                           "return {absent: !row,"
+                           " asked: row && row.request ? row.request.routeRole : null,"
+                           " crossed: row && row.request ? (row.request.sessionMemory || null)"
+                           "          : null};")
             second = declare(br, ids[1], ids[2]) if len(ids) > 2 else {"absent": True}
             check(BROWSER_ROWS[2],
                   not second.get("absent") and second.get("asked") == shape["roles"][1]
@@ -354,6 +370,7 @@ else:
             # 5 · a walked-back edge is a return, and the reference crosses on it
             js(br, LAND)
             back = declare(br, ids[2], ids[1], direction=-1) if len(ids) > 2 else {"absent": True}
+            js(br, LAND)
             check(BROWSER_ROWS[5],
                   back.get("asked") == "return" and bool(back.get("crossed"))
                   and sorted((back.get("crossed") or {}).keys()) == ["family", "passIndex", "seed"],
@@ -411,8 +428,6 @@ else:
             if plant("return"):
                 enter(br, base)
                 ids2 = js(br, "return window.__exPass.report().route.ids;")
-                declare(br, ids2[0], ids2[1])
-                js(br, LAND)
                 declare(br, ids2[1], ids2[2])
                 js(br, LAND)
                 planted_back = declare(br, ids2[2], ids2[1], direction=-1)
@@ -427,8 +442,10 @@ else:
             # the entrance rule
             if plant("entrance"):
                 enter(br, base)
-                ids3 = js(br, "return window.__exPass.report().route.ids;")
-                planted_first = declare(br, ids3[0], ids3[1])
+                planted_first = js(br, "var rows = window.__exPass.report().composer.passages;"
+                                       "var row = rows.length ? rows[0] : null;"
+                                       "return {asked: row && row.request"
+                                       "        ? row.request.routeRole : null};")
                 unplant()
                 check(BROWSER_ROWS[11],
                       planted_first.get("asked") != "entrance"

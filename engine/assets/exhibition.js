@@ -1475,8 +1475,15 @@
       if (!Number.isFinite(g)) return null;
       gaps.push(g);
     }
-    let crest = 0;
-    for (let i = 1; i < gaps.length; i++) if (gaps[i] > gaps[crest]) crest = i;
+    // THE WALK'S OPENING IS NOT ITS CREST. Shelf 15 gives the route's first step to the entrance —
+    // the motion away that opens the walk — so the search for the widest step begins after it. A
+    // route whose widest gap happens to be its first would otherwise have its one tension eaten by
+    // its own door and play no culmination at all, and this collection's hang does exactly that:
+    // the walk orders by kinship and leans that order by light, and the leaned order put the widest
+    // step first on the very route this stage cast. Seen on a cast route before it was reasoned
+    // about. A one-step route has nothing to leave out and keeps its only step.
+    let crest = gaps.length > 1 ? 1 : 0;
+    for (let i = crest + 1; i < gaps.length; i++) if (gaps[i] > gaps[crest]) crest = i;
     const roles = gaps.map((g, i) => {
       if (i === crest) return "culmination";
       if (i === crest - 1) return "middle";
@@ -1498,9 +1505,23 @@
     }
     return null;
   }
-  // Has this visit's thread opened? Read off the walk's own edge store, on the window the memory of
-  // a visit already defines, so there is one idea of what «this visit» means and not two.
+  // Has this visit's thread opened? Two readings, and it takes either.
+  //
+  // The walk's own edge store, on the window the memory of a visit already defines, so there is one
+  // idea of what «this visit» means and not two — and so a visitor who reloads mid-thought does not
+  // open a second entrance.
+  //
+  // AND THIS PAGE'S OWN COUNT OF CROSSINGS ASKED FOR. The store is written only for a passage that
+  // actually DREW, which is the right rule for the memory of an edge and the wrong one for the
+  // walk's opening: a step whose picture never arrived is still a step the person took. The first
+  // crossing of every visit is exactly the one that can find the host's file still on the wire, so
+  // reading the store alone made the SECOND crossing an entrance too — and a route whose crest fell
+  // on that second step then spent its one tension on a door, and played no culmination at all. It
+  // was seen on a cast route before it was reasoned about. The opening is a fact about the person's
+  // walk, so it is counted where the walk asks for a passage rather than where a picture lands.
+  let passCrossings = 0;
   function passVisitOpened() {
+    if (passCrossings > 0) return true;
     const rows = passEdgeAll(), now = passEdgeNow(), keys = Object.keys(rows);
     for (let i = 0; i < keys.length; i++) {
       const both = rows[keys[i]], ds = Object.keys(both);
@@ -1584,6 +1605,10 @@
                                why: "one of the two works carries no record on this walk" });
       return null;
     }
+    // THE WALK'S THREAD IS OPEN FROM HERE. Counted at the one road a real crossing comes down, and
+    // not inside the role itself: the diagnostic surface hands `request` over so a row can ask what
+    // the walk WOULD build for two elements, and a question is not a step the person took.
+    passCrossings += 1;
     const edge = passEdgeContext(fromEl, toEl) || { key: "", passes: 0, cooled: null, last: null,
                                                     within: false };
     // ONE CROSSING MAY BE OFFERED SEVERAL DICE, and never for the composer's own word. A composer's
@@ -2090,6 +2115,7 @@
     // the visitor moves and the passage is derived inside that same call — a fetch begun there could
     // never arrive in time. It is asked for once per visit; every landing after the first returns at
     // the first line. Nothing per work is fetched: one file decides every crossing of the walk.
+    passComposerOpen();
     // THE HOST'S OWN FILE IS NOT ASKED FOR HERE, AND THE REASON IS WRITTEN DOWN RATHER THAN LEFT
     // TO BE REDISCOVERED (U27 stage 2). It is asked for at the first DECLARE instead — one line in
     // 15-motion.js — and a fetch begun at a declare cannot arrive in time for the crossing that
