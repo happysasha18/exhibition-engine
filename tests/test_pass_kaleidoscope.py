@@ -506,7 +506,7 @@ BROWSER_ROWS = [
 RED_ROWS = [
     "PASS-KAL red-on-bug · the mirror removed: the picture's own edge smears across the outer rings",
     "PASS-KAL red-on-bug · the crease's retouch removed: the fold's own edges stand hard again",
-    "PASS-KAL red-on-bug · his ceiling on the repeats removed: the frame washes to milk",
+    "PASS-KAL red-on-bug · his ceiling on the repeats removed: a score reaches past what he allowed",
     "PASS-KAL red-on-bug · the finish's gating on the fold removed: the door stops being its own file",
 ]
 
@@ -1169,8 +1169,12 @@ else:
                                    twist=0.55, rings=2, reach=0.5)
             out["crease"] = one_pose(br, 0.5, "red-base-crease", wedges=8, twist=0, rings=1,
                                      reach=0.30)
+            # THE SHIPPED FILE AT THE CEILING, AND ASKED PAST IT. Both have to be the same frame:
+            # the clamp is what his verdict costs a score that asks for more.
             out["milk"] = one_pose(br, 0.5, "red-base-milk", wedges=8, twist=0.55, rings=2,
                                    reach=0.30)
+            out["milk5"] = one_pose(br, 0.5, "red-base-milk5", wedges=8, twist=0.55, rings=5,
+                                    reach=0.30)
             out["door"] = one_pose(br, 0.0, "red-base-door", wedges=8, twist=0.55, rings=1,
                                    reach=0.30)
             return out
@@ -1180,7 +1184,6 @@ else:
             for r in RED_ROWS:
                 check(r, False, "the bench never came up for the red-on-bug baselines")
         else:
-            base_deep_pale = paleness(BASE["milk"])
             _on, _off = crease_hardness(BASE["crease"])
             base_crease = _on / max(_off, 1e-9)
 
@@ -1222,12 +1225,18 @@ else:
             if p is None:
                 check(RED_ROWS[2], False, "the bench never came up")
             else:
-                pale = paleness(p)
-                check(RED_ROWS[2], pale < base_deep_pale,
-                      f"with his ceiling raised to the module's own 5 the frame's own spread falls "
-                      f"to {pale:.2f} of 255 from {base_deep_pale:.2f} at the published ceiling of "
-                      f"2: the mirrored rings average the photograph away, which is «rings>2 washes "
-                      f"to milk» read on the frame")
+                clamped, _ = diff(BASE["milk"], BASE["milk5"])
+                loose, loosex = diff(BASE["milk"], p)
+                check(RED_ROWS[2], clamped == 0.0 and loose > SEAM,
+                      f"the shipped file answers a score asking for five repeats with the two his "
+                      f"verdict allows — the same frame to the pixel ({clamped} of 255) — while with "
+                      f"the ceiling raised to the module's own 5 the same request stands "
+                      f"{loose:.2f} of 255 away (worst channel {loosex}). That is his «rings>2» word "
+                      f"reaching the picture: what a score may ask for is bounded, and the bound is "
+                      f"live rather than declared. WHAT FIVE REPEATS LOOK LIKE on this host is a "
+                      f"reading and not a gate — see the report: with no mip chain bound they alias "
+                      f"rather than wash, the frame's own spread standing "
+                      f"{paleness(p):.2f} of 255 against {paleness(BASE['milk']):.2f} at two")
 
             def probe_gate(br):
                 return one_pose(br, 0.0, "red-gate", wedges=8, twist=0.55, rings=1, reach=0.30)
