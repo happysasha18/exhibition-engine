@@ -362,6 +362,24 @@
   var MOTIF_SEAM = "горизонт-шов";
   var MOTIF_GATE = "ворота";
 
+  // A ROW RECORDS WHAT A HANDLE READS, so one reading is one row and two readings are two rows.
+  //
+  // The plain keys below are shared readings: every instrument that drives that handle reads that
+  // measurement, and one row serves them all. That is the `twist` case — the glass winds by it, the
+  // kaleidoscope leans its fold by it and the corridor shears its spiral by it, three acts of one
+  // reading, and renaming any of them would put a second name on one measurement.
+  //
+  // A key of the shape `instrument.handle` is the OTHER case, and it is a real one: two instruments
+  // publish one name for two different measurements. Before 2026-08-18 this table was keyed by
+  // handle name alone, so the second instrument to publish a name inherited the first one's reading
+  // — the gates port found its own `lead` about to be driven by the folding instrument's finger
+  // count, which is a wrong parameter reaching the picture while every row looks answered, and that
+  // is worse than a handle standing at its rest. `sourceOf` reads the scoped row first and falls
+  // back to the shared one, so a name that means one thing everywhere still costs one row.
+  //
+  // NOTHING IS RENAMED TO FIT THIS TABLE. A module's own handle name is the module's, and bending
+  // it to a table's shape is the invention his 08:47 word strikes; the table takes the instrument's
+  // name instead.
   var HANDLE_SOURCE = {
     mix: ["transaction", "the pass's own progress, door to door"],
     clock: ["transaction", "the second the host hands down"],
@@ -762,6 +780,13 @@
   // reads exactly as it did.
   var CAMERA_ALLOWED = ["owner", "rests", "track", "lead"];
   var PLAN_ONLY_CUE_FIELDS = ["cast", "levelOwnership", "measuredHandles", "returnOf"];
+
+  // THE ONE ROAD TO A HANDLE'S READING. The instrument's own row wins where it has one, and the
+  // shared row answers otherwise — so an instrument that reads what everyone else reads writes no
+  // row at all, and one that reads something else of its own cannot silently inherit another's.
+  function sourceOf(iid, handle) {
+    return HANDLE_SOURCE[iid + "." + handle] || HANDLE_SOURCE[handle];
+  }
 
   function fill(template, fields) {
     return template.replace(/\{([A-Za-z]+)\}/g, function (whole, name) {
@@ -2188,7 +2213,7 @@
       for (i = 0; i < handles.length; i++) {
         h = handles[i];
         if (manifest[h].open) continue;
-        if (!HANDLE_SOURCE[h]) continue;
+        if (!sourceOf(instr, h)) continue;
         out[h] = { node: cueId + "-" + h };
       }
       return out;
@@ -2903,7 +2928,7 @@
       [pivotInstr, travelInstr, arrivalInstr].forEach(function (iid) {
         if (!iid || !MANIFESTS[iid]) return;
         Object.keys(MANIFESTS[iid].handles).forEach(function (h) {
-          if (MANIFESTS[iid].handles[h].open || HANDLE_SOURCE[h]) return;
+          if (MANIFESTS[iid].handles[h].open || sourceOf(iid, h)) return;
           if (!unnamedHandles[iid]) unnamedHandles[iid] = [];
           if (unnamedHandles[iid].indexOf(h) < 0) unnamedHandles[iid].push(h);
         });
@@ -4025,7 +4050,7 @@
         // of by a refusal.
         Object.keys(c.tracks).sort().forEach(function (h) {
           var nodeName = (c.tracks[h] || {}).node || (c.id + "-" + h);
-          var why = HANDLE_SOURCE[h][1];
+          var why = sourceOf(c.instrument.id, h)[1];
           var req = wanted[h] === undefined ? null : wanted[h];
           if (h === "mix") {
             nodes[nodeName] = { op: "mix", a: c.doors["in"].value, b: c.doors.out.value,
