@@ -409,6 +409,22 @@ check("PASS-LENS the file names his own recorded verdict on this effect, and wha
       "mouse-mapping feature parked. A port that did not say so would be passing a gallery effect "
       "off as a crossing instrument")
 
+COMPOSER = (ROOT / "engine" / "assets" / "pass-composer.js").read_text(encoding="utf-8")
+check("PASS-LENS what it cuts on and what a pair must read are declared, and once",
+      'cuts: ["ring", "wedge"]' in REGION
+      and "A LENS IS RADIAL THROUGH AND THROUGH" in SOURCE_TEXT
+      and "lens: function (a, b, floors)" in COMPOSER
+      and "floors.radial_tight" in COMPOSER
+      and "the point the glass would rest on is" in COMPOSER,
+      "a lens is a disc about a middle, an angular fold and a wind about that middle, so the "
+      "element kind it cuts on is the RING — the kind the composer reaches through the `radial` "
+      "measure, whose own cut it names `rings_or_spokes` and `radial_unfold` — and the wedge where "
+      "a pair carries one. What a pair must read is that the stronger of the two works reads radial "
+      "over the collection's own TIGHT floor of 0.55: under it the point this glass rests on is no "
+      "reading of either work, and every geometric parameter here is placed about that point. The "
+      "condition stands in the composer's own `INSTRUMENT_ASKS` beside the two panel instruments', "
+      "and this row holds the two readings against each other so they cannot drift apart")
+
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
 check("PASS-LENS the provenance names the file the port was read from, and the file weighs to it",
@@ -661,7 +677,8 @@ else:
                 res = m["resources"]
                 need = ["id", "api", "arity", "roles", "params", "handles", "neutrals", "doors",
                         "framings", "drivers", "camera", "gl", "passes", "resources",
-                        "capabilities", "decline", "provenance", "readiness", "coverage", "levels"]
+                        "capabilities", "decline", "provenance", "readiness", "coverage", "levels",
+                        "cuts"]
                 shape = (
                     all(k in m for k in need)
                     and m["id"] == "lens" and m["api"] == 1 and m["arity"] == 2
@@ -672,13 +689,15 @@ else:
                     and m["coverage"]["writes"] is False
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and sorted(m["handles"]) == sorted(HANDLES)
+                    and m["cuts"] == ["ring", "wedge"]
                     and all(v["textureSlots"] == 2 and v["programs"] == 1 and v["passes"] == 1
                             and v["textures"] == 0 and v["framebuffers"] == 0
                             for v in res.values()))
                 check(BROWSER_ROWS[0], shape,
                       "the manifest names an ordered pair, two doors on one handle, no crop at "
-                      "either of them, nine handles, no camera of its own and the two source-texture "
-                      "slots the host already holds. Handles: %s" % sorted(m["handles"]))
+                      "either of them, nine handles, the two element kinds it cuts on, no camera of "
+                      "its own and the two source-texture slots the host already holds. Handles: %s"
+                      % sorted(m["handles"]))
 
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE", "CELL"] and "WORLD" not in m["levels"]

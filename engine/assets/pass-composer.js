@@ -423,6 +423,21 @@
                           + "instrument on the sheet's own time axis"],
     tilt: ["measured", "structure.ownDevice.angleDeg, the angle the work's own step was cut at, "
                        + "which is the attitude the plane is laid away at"],
+    // THE GLASS'S OWN FOUR, from the lens port's manifest. Its other five — the dial, the two
+    // centres, the rim's weight and the judges' channel — are rows this register already carried,
+    // and the two centres carry exactly the reading this instrument wants: the midpoint of the two
+    // measured radial centres is the point the two works' own structure turns about, which is where
+    // the glass rests.
+    // A NOTE TRAVELS IN EVERY SCORE, so each of these four is a clause and the reasoning stays up
+    // here where it costs the wire nothing. `fold` chooses among the three glasses by the readings
+    // named: the mirrored wedges where the pair's rotational order reads, the wound glass where its
+    // twirl does, the plain magnification where neither. `wedges` makes the fold repeat as often as
+    // the work itself does. `power` brings a piece of the departing work to the size of the
+    // arriving work's own piece.
+    fold: ["measured", "the pair's own structure.rotational and structure.polar.twirl"],
+    wedges: ["measured", "structure.rotational.n, the work's measured rotational order"],
+    twist: ["measured", "structure.polar.twirl, the work's measured twirl"],
+    power: ["measured", "the ratio of the two works' measured ownDevice.stepPx"],
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
                           + "between a streak reading and this handle is recorded, so the "
@@ -714,6 +729,23 @@
         return [true, "a work of the pair was cut as " + pyText(dev.kind || "a device")
                 + " at a step of " + pyText(flt(r4(step))) + " px, read at "
                 + pyText(flt(r4(conf)))];
+      },
+      // THE GLASS RESTS ON A POINT AND FOLDS ABOUT IT, so what qualifies it is whether that point
+      // is the work's own: its place, its wedge count and its wind are all placed about the pair's
+      // measured radial centre, and under the collection's own tight radial floor that centre is a
+      // made-up point rather than a reading. Read of the PAIR, so the ground it gates is the same
+      // one whichever way the visitor walks. The meshing instrument stands on the same kind and
+      // asks nothing, so this narrows the choice between the two and never the kind itself.
+      lens: function (a, b, floors) {
+        var best = Math.max(Number(((a.structure || {}).radial || {}).score) || 0,
+                            Number(((b.structure || {}).radial || {}).score) || 0);
+        if (best < floors.radial_tight) {
+          return [false, "neither work reads radial over the tight floor of "
+                  + pyText(flt(floors.radial_tight)) + ", so the point the glass would rest on is "
+                  + "no reading of either; the stronger reads " + pyText(flt(r4(best)))];
+        }
+        return [true, "a work of the pair reads radial at " + pyText(flt(r4(best)))
+                + ", so the glass rests on the point its own structure turns about"];
       }
     };
 

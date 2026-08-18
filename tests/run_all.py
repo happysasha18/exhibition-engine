@@ -37,6 +37,7 @@ SUITES = [
     "pass_composed",
     "pass_memory",
     "pass_boxfold",
+    "pass_lens",
     "pass_route",
     "pass_phone",
 ]

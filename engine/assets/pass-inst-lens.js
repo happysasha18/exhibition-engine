@@ -116,6 +116,23 @@
   // breath. Nothing in this picture moves with time; it moves with the hand.
   //
   // ------------------------------------------------------------------------------------------------
+  // WHAT IT CUTS ON, AND WHAT A PAIR MUST READ FOR IT TO BE WORTH CASTING
+  // ------------------------------------------------------------------------------------------------
+  // A LENS IS RADIAL THROUGH AND THROUGH — a disc about a middle, an angular fold, a wind about that
+  // middle, a magnification centred on it — so the element kind it cuts on is the RING, and the
+  // wedge where a pair carries one. The composer already reaches that kind through the `radial`
+  // measure, whose cut it names `rings_or_spokes` and `radial_unfold`; a kaleidoscope IS a radial
+  // unfold. The meshing instrument has stood alone on that kind, which by the composer's own rule
+  // means it plays every ring ground there is; a second instrument on the kind is a CHOICE the pair's
+  // own readings decide, which is what his 18:56 word asks for one level below the roads.
+  //
+  // WHAT A PAIR MUST READ: the stronger of the two works reads radial at or over the collection's
+  // own TIGHT floor. Under it the centre this glass rests on would not be the work's own point but a
+  // made-up one, and every geometric parameter here is placed about that centre. The composer's
+  // `INSTRUMENT_ASKS` is where that condition is stated in the composer's own terms, beside the two
+  // panel instruments' own; it is stated here so the two readings cannot drift apart.
+  //
+  // ------------------------------------------------------------------------------------------------
   // THE COVERAGE: THIS INSTRUMENT FILLS THE FRAME
   // ------------------------------------------------------------------------------------------------
   // §7's coverage law asks every instrument to say where its own matter is absent. Here it is absent
@@ -574,6 +591,10 @@
       // round. So a quiet link and a return can reach this instrument, which is where a route's
       // breadth is won or lost.
       levels: ["SURFACE", "CELL"],
+      // THE ELEMENT KINDS THIS INSTRUMENT CUTS ON, declared here so the wire's own table is read off
+      // the manifest rather than kept as a second copy of it. A lens is radial: a disc about a
+      // middle, an angular fold, a wind about that middle. The condition a pair must meet is above.
+      cuts: ["ring", "wedge"],
       params: { fold: [0, 2], wedges: [WEDGES_LO, WEDGES_HI], twist: [0, 1],
                 power: [POWER_LO, POWER_HI] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial, under the name every instrument
