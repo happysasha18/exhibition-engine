@@ -1013,6 +1013,15 @@
       },
       // THE RIBBONS RUN ALONG A BAND FAMILY, so the weave suits a pair that both works band. The
       // weaker of the two readings is the fit, because a fabric is only as woven as its thinner end.
+      //
+      // THE WEAKER STAYS, AND THE INSTRUMENT'S OWN FILL IS THE REASON (2026-08-18, the choice sweep).
+      // The min was read as a defeat by construction against `livemirror`'s max on the same family;
+      // it is not one here, because this crossing genuinely needs both ends. The strip COUNT travels
+      // from the departing work's family to the arriving one's — `nMul` is the ratio of the two
+      // measured counts and it is written only where both carry one — and the fabric's speed is read
+      // off that same count. The charter's own words for the alternative stand in that branch: a
+      // bridge playing only one work's structure reads as artificial. So a fabric IS only as woven
+      // as its thinner end, and the reading says what the picture does.
       weave: function (a, b) {
         var sa = readingOf(((a.structure || {}).banding || {}).score);
         var sb = readingOf(((b.structure || {}).banding || {}).score);
@@ -1021,6 +1030,17 @@
       },
       // THE MESH TURNS ON RINGS AND WEDGES, so what it suits is a pair that reads radial at both
       // ends — a mesh played on one work's centre alone reads as laid on rather than found.
+      //
+      // THE WEAKER STAYS, AND THE INSTRUMENT'S OWN FILL IS THE REASON (2026-08-18, the choice sweep).
+      // Every geometric handle of this instrument is a PAIR of ends and each end is one work's own
+      // reading: how hard the wheels turn is the two radial scores, how far apart the teeth's own
+      // moments stand is the golden-angle stagger of the two measured ring grains, how far a tooth
+      // stands out of its pitch circle is the two ring merges, and the ratio and the size come off
+      // the two measured ring counts together. A work reading nothing radial stops the mesh dead at
+      // its own end of the crossing, so the pair is as meshed as its weaker end and the reading is
+      // the honest one. It loses to the glass's and the spiral's max on the same number by
+      // construction, and that is what it should do: those two rest on one point and this one turns
+      // on two.
       gears: function (a, b) {
         var sa = readingOf(((a.structure || {}).radial || {}).score);
         var sb = readingOf(((b.structure || {}).radial || {}).score);
@@ -1157,27 +1177,42 @@
         return [Math.min(sa, sb), "the two works read named objects at " + pyText(flt(r4(sa)))
                 + " and " + pyText(flt(r4(sb)))];
       },
-      // THE WEDGE TILES OUTWARD INTO MIRRORED RINGS about the work's own measured centre, so what
-      // it suits is a pair BOTH of whose works read radial: a fold opening a structure only one
-      // work carries is laid on rather than found, which is why the WEAKER reading is the fit here
-      // where the glass's is the stronger. And it suits a pair more where the subtype is rings,
-      // because rings are what open into a rosette and spokes turn instead — a reading of the pair,
-      // taken on both works, so an edge casts the same whichever way the visitor walks it.
+      // THE WEDGE TILES OUTWARD INTO MIRRORED RINGS about ONE measured centre, so what it suits is a
+      // pair that HAS the structure rather than a pair that carries it at both ends — and the fit is
+      // the STRONGER reading, as the glass's and the spiral's are.
+      //
+      // WHAT WENT, AND WHAT THE INSTRUMENT'S OWN FILL SAYS. This read the WEAKER of the two radial
+      // scores, on the sentence «a fold opening a structure only one work carries is laid on rather
+      // than found» — and its own fill contradicts that sentence line for line. The wedge count is
+      // the LARGER of the two measured rotational orders, the ring count the LARGER of the two
+      // device counts, and the centre one point midway between the two: one rosette, taken from
+      // whichever work carries the structure. Only the lean and the sample width travel end to end.
+      // An instrument whose geometry is read off the stronger work cannot be RANKED by the weaker
+      // one; the min against a rival's max on the same number is a loss by construction rather than
+      // by merit, and it is why the fold never once held the top of the reading over 14 520 pairs.
+      //
+      // WHAT ALSO WENT IS A TYPED HALF. The rings-against-spokes reading is the instrument's own —
+      // rings open into a rosette and spokes turn instead, which is the same reading the genre
+      // vocabulary tells the rosette and the spin apart by — but it stood as «× (0.5 + 0.5·rings)»,
+      // a multiplier nobody measured, and it was what put this instrument behind the mesh on every
+      // pair of the collection. His word of 2026-08-18 13:41 strikes an invented number. The
+      // reading survives it whole and reads plainly instead: the fold opens out of the works that
+      // turn on rings, so the strongest RING reading the pair carries is the fit, and a pair whose
+      // two works both turn on spokes gives the rosette nothing — which ranks it last and plays it
+      // anyway.
       //
       // The port declared this on its own manifest as two FLOORS and a direction: both works over
       // the collection's cut-line floor, the ARRIVING work over the tight floor with its subtype on
       // rings. All three go under his words of 09:51 and 09:53 and the reading survives all three.
       kaleidoscope: function (a, b) {
-        var sa = readingOf(((a.structure || {}).radial || {}).score);
-        var sb = readingOf(((b.structure || {}).radial || {}).score);
         function ringly(w) {
           return ((w.structure || {}).radial || {}).subType === "ring" ? 1 : 0;
         }
-        var rings = (ringly(a) + ringly(b)) / 2;
-        return [Math.min(sa, sb) * (0.5 + 0.5 * rings),
-                "the two works read radial at " + pyText(flt(r4(sa))) + " and "
-                + pyText(flt(r4(sb))) + ", and " + (ringly(a) + ringly(b)) + " of the two turn on "
-                + "rings rather than on spokes, which is what opens into a rosette"];
+        var sa = readingOf(((a.structure || {}).radial || {}).score) * ringly(a);
+        var sb = readingOf(((b.structure || {}).radial || {}).score) * ringly(b);
+        return [Math.max(sa, sb), "the two works turn on rings at " + pyText(flt(r4(sa)))
+                + " and " + pyText(flt(r4(sb))) + " — a work turning on spokes reads nothing here, "
+                + "because spokes turn where rings open — and the rosette opens out of the stronger"];
       },
       // THE GLASS RESTS ON A POINT AND FOLDS ABOUT IT, so what it suits is a pair whose point is
       // the works' OWN: its place, its wedge count and its wind are all set about the pair's
