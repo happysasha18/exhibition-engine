@@ -85,6 +85,7 @@
     // so the pose the host draws is the pose the module drew and never a guess at it.
     var P = { periodA: 0.14, periodB: 0.42, phase: 0, contrast: 0.82, lead: 0.6 };
     var J = { shade: 1, travel: 1 };
+    var TILT = 9;                 // the angle the lab module pins (beat.js, BEAT_TILT)
     var hand = 0, clockAt = 0;
     var ctx = { images: imgs, params: { periodA: P.periodA, periodB: P.periodB, phase: P.phase,
                                         contrast: P.contrast, lead: P.lead, seed: 20260813 },
@@ -114,6 +115,11 @@
       bench.draw("beat", {
         mix: hand, periodA: P.periodA, periodB: P.periodB, phase: P.phase,
         contrast: P.contrast, lead: P.lead,
+        // THE ONE HANDLE THE LAB MODULE HAS NO NAME FOR. The module pins the second grating's
+        // angle at nine degrees; the port publishes it, and it rests at that same nine. Handing the
+        // module's own number here is what makes the two roads comparable at all — a tilt the
+        // module cannot be told would be a difference the comparison could never see.
+        beatTilt: TILT,
         shade: J.shade, travel: J.travel, mask: 0, seed: r.seed, t: clockAt, reduced: false,
         cssWidth: innerWidth, cssHeight: innerHeight,
         bufWidth: cv ? cv.width : 0, bufHeight: cv ? cv.height : 0,

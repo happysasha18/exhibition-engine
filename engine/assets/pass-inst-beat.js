@@ -43,9 +43,16 @@
   //
   // WHAT CAME OVER. The shader, character for character but for the three lines named below; the
   // seating of a work in the frame (`coverFit`, here `fit`); the measured response curve (FEEL_Q and
-  // its dead bands of 0.055); the second grating's fixed tilt, the counter-motion's amplitude and
+  // its dead bands of 0.055); the second grating's tilt, the counter-motion's amplitude and
   // the crop that pays for it, the two ends of the period range, and the numbers of one frame
   // (`frameValues`, here `posed`). Not one of those numbers changed.
+  //
+  // ONE OF THEM STOPPED BEING A CONSTANT AND BECAME A HANDLE: the tilt, `beatTilt` below, which
+  // rests at the module's own nine degrees and is read from the angle the two works' own lattices
+  // actually stand apart where a score fills it. His word of 2026-08-17 19:13, lifted to the class
+  // at 19:21 — every geometric parameter derives from the work's own measured structure — and the
+  // third picture here IS the two works' gratings interfering, so the angle they interfere at is
+  // the pair's own fact rather than a number chosen before either photograph was looked at.
   //
   // WHAT STAYED BEHIND. Its own canvas, its own WebGL 1 context, its own frame loop, its resize
   // listener, its accumulated clock and its `seedFrom` fold. The clock is the `clock` handle the host
@@ -201,13 +208,34 @@
     function num(v, d) { var n = Number(v); return n === n ? n : d; }
     function len2(x, y) { return Math.sqrt(x * x + y * y); }
 
-    // THE SECOND GRATING'S ANGLE against the first, in degrees (beat.js:224-230). It is not a taste
-    // number and it is not free: with two collinear gratings of equal period the envelope goes flat
-    // over the whole frame and the picture would flip whole at mid-handle, which is the one thing a
-    // crossing may never do. At nine degrees the difference of the two wave vectors never falls
-    // below 2·sin(4.5°) = 0.157 of a wave vector, so mid-handle the frame still holds about six
-    // lobes across its height at the module's own periods — large, slow, and finite.
+    // THE SECOND GRATING'S ANGLE against the first, in degrees (beat.js:224-230), which the module
+    // pins and this port PUBLISHES AS A HANDLE. The module's own words for why it may never be
+    // zero: with two collinear gratings of equal period the envelope goes flat over the whole frame
+    // and the picture would flip whole at mid-handle, which is the one thing a crossing may never
+    // do. At nine degrees the difference of the two wave vectors never falls below 2·sin(4.5°) =
+    // 0.157 of a wave vector, so mid-handle the frame still holds a few large, slow, finite lobes.
+    //
+    // WHY IT BECOMES A HANDLE, AND THAT THE LAB MODULE HAS NONE IS NOT A REASON TO HOLD BACK. His
+    // word of 2026-08-17 19:13, lifted to the class at 19:21: every geometric parameter derives from
+    // the work's own measured structure. A pinned nine degrees is a relationship between two
+    // photographs' gratings decided before either photograph was looked at. THE ANGLE THE TWO WORKS'
+    // OWN LATTICES ACTUALLY STAND APART is that same relationship, measured — and the third picture
+    // here IS the two works' gratings interfering, so the angle they interfere at should be theirs.
+    // `beatTilt` is the name, because the composer's register already spends `tilt` on another
+    // instrument and two measurements under one name is the collision the register exists to stop.
+    //
+    // THE DEFAULT IS THE MODULE'S OWN NINE, so a score that names no track for it draws exactly the
+    // frame the module drew, to the pixel.
     var BEAT_TILT = 9;
+    // THE TWO ENDS OF THE ANGLE. The ceiling is 90° because a lattice angle is a LINE direction,
+    // defined only up to half a turn, so two grating families never stand more than a right angle
+    // apart — a fill reading the two records folds `|angleA − angleB| mod 180` back under 90 and
+    // lands inside this span by construction. The floor of 1° is mine and is named as mine in the
+    // report: below it the two wave vectors differ by under 2·sin(0.5°) = 0.017 of a wave vector, so
+    // at mid-handle the frame holds well under one lobe and the picture flips whole; it is also what
+    // keeps `kd.x` — the shader's own divisor when it reads which rung a lobe stands on — away from
+    // zero, at −sin(1°)/P_MAX = 0.053 or steeper.
+    var TILT_MIN = 1, TILT_MAX = 90;
 
     // HOW FAR THE CONTENT TRAVELS, in frame heights, and the crop that pays for it (beat.js:232-236).
     // Every sample is the frame coordinate pushed by at most AMP, so the cover-fit is pulled in by
@@ -277,10 +305,11 @@
     function periodsAt(d, pa, pb) { return [pa + (pb - pa) * d, pb + (pa - pb) * d]; }
 
     // THE TWO WAVE VECTORS AT THIS DIAL, and how many lobes stand across the frame (beat.js:372-382).
-    // The first grating lies flat; the second stands aslant by BEAT_TILT, which is what keeps the
-    // difference of the two vectors finite where the two periods cross.
-    function wavesAt(pp, aspect) {
-      var a = BEAT_TILT * Math.PI / 180;
+    // The first grating lies flat; the second stands aslant by the tilt, which is what keeps the
+    // difference of the two vectors finite where the two periods cross. The module read its own
+    // pinned BEAT_TILT here; this reads the angle handed in, which rests at that same nine degrees.
+    function wavesAt(pp, aspect, tiltDeg) {
+      var a = tiltDeg * Math.PI / 180;
       var kAx = 0, kAy = 1 / pp[0];
       var kBx = Math.sin(a) / pp[1], kBy = Math.cos(a) / pp[1];
       var dx = kAx - kBx, dy = kAy - kBy;
@@ -305,7 +334,10 @@
     function posed(st, pa, pb, aspect) {
       var d = feelOf(clamp(num(st.mix, 0), 0, 1));
       var pp = periodsAt(d, pa, pb);
-      var w = wavesAt(pp, aspect);
+      // THE ANGLE THE TWO GRATINGS INTERFERE AT, the pair's own where a score names it and the
+      // module's pinned nine where none does.
+      var tilt = clamp(num(st.beatTilt, BEAT_TILT), TILT_MIN, TILT_MAX);
+      var w = wavesAt(pp, aspect, tilt);
       var spread = clamp(num(st.lead, 0), 0, 1) * 0.9;
       // The threshold's own reach: past the field's range by half the lobes' spread and a hair
       // more, so at a door EVERY lobe stands whole on the same side. This is the number that makes
@@ -331,6 +363,9 @@
       return {
         dial: d, tau: tau, spread: spread,
         kA: w.kA, kB: w.kB, lobes: w.n,
+        // read on the diagnostic surface and bound to no uniform: the angle the two gratings
+        // actually interfered at, so a plan can be read back against the pair it was filled from
+        tilt: tilt,
         periodA: pp[0], periodB: pp[1],
         phase: phases,
         dphase: phases[0] - phases[1],
@@ -497,7 +532,8 @@
       // a rhythm is a scale. Both kinds stand in the composer's own vocabulary: `banding` maps to
       // `strip` and `texture` to `scale` in its `KIND_OF_MEASURE`.
       cuts: ["strip", "scale"],
-      params: { periodA: [0, 1], periodB: [0, 1], phase: [0, 1], contrast: [0, 1], lead: [0, 1] },
+      params: { periodA: [0, 1], periodB: [0, 1], phase: [0, 1], contrast: [0, 1], lead: [0, 1],
+                beatTilt: [TILT_MIN, TILT_MAX] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial — the module's one travelling
       // number, hidden from its declared params so no page grows a slider the score would fight
       // with. `clock` is the second the host hands down. The five below them are the module's own
@@ -516,11 +552,62 @@
       // chose which of the mount's pictures stood as the second work. A cue carries an ORDERED pair
       // and owes a door at each end, so which work stands where is the passage's own question and
       // never a handle. The spiral instrument's port names the same absence for the same reason.
+      //
+      // WHAT STAYS PINNED, AND WHY EACH ONE DOES. The module's every other geometric and temporal
+      // number was swept for a reading of the two works that could honestly set it, and one of them
+      // had one — the tilt, now `beatTilt`. These did not, and a handle nothing can fill is a
+      // handle a score walks without knowing what it is walking:
+      //   · `AMP` = 0.055, how far the content drifts along its own grating. A distance, and no
+      //     reading of a photograph says how far its own content should travel. The `travel`
+      //     channel already scales it end to end, so a score that wants it moved can move it.
+      //   · `ZOOM` = 1 + 2·AMP + 0.03, and it is not free: it is the crop AMP obliges, derived.
+      //   · `P_MIN`/`P_MAX` = 0.025 / 0.33 — not a value but the SPAN the two period handles are
+      //     read onto, which is where the pair's own measured rhythms land. The module sets both by
+      //     the eye: finer than a fortieth of the frame a grating reads as hatching rather than as
+      //     a cut, coarser than a third there are not enough periods left in the frame to beat.
+      //   · `MARGIN` = 0.04 and the smoothstep gates at 0.09 / 0.91 — the door's own construction.
+      //     Moving either would make a door a mixture, which is the one thing it may never be.
+      //   · `FEEL_D0` = 0.055 and the twenty-one knots of `FEEL_Q` — a MEASUREMENT already, of this
+      //     module on the lab's own pair. The honest way to move it is another run of that same
+      //     measurement on another pair, never a score row.
+      //   · 0.9 and 0.25 — the spans the `lead` and `phase` handles are read onto, both derived:
+      //     0.9 is what carries the lobes' moments across the threshold's own range, and a quarter
+      //     of a cycle each way is half a cycle of the DIFFERENCE, which walks the envelope from a
+      //     lobe to the gap between two and no further.
+      //   · 0.035, how fast the two fields drift into each other per second, and 0.32 / 7.0, the
+      //     contact shadow's weight and its reach in pixels. All three are rates and weights of the
+      //     instrument's own hand, and nothing measured of a photograph sets them; `clock` and
+      //     `shade` scale them where a score wants them moved.
       handles: {
         mix: { min: 0, max: 1, def: 0 },
         clock: { min: 0, max: 14, def: 0 },
-        periodA: { min: 0, max: 1, def: 0.14 },
-        periodB: { min: 0, max: 1, def: 0.42 },
+        // THE TWO PERIODS, AND THE SPAN THAT SAYS WHAT THEY MEAN. A range of 0…1 is a place, not a
+        // length, and a fill holding the two works' own measured periods — `spectralPeriodPx` over
+        // `frameSide`, which is already a share of a frame — has nothing to map that share onto
+        // without the span. So the span travels with the handle: `frameHeights` is `[P_MIN, P_MAX]`
+        // BY REFERENCE, the way the meshing instrument publishes its ladder of ratios, so the two
+        // ends have one home and a composer and this file cannot come to hold different numbers for
+        // them. `periodOf` above is the whole of the mapping: P_MIN + (P_MAX − P_MIN) · handle.
+        //
+        // WHICH WORK EACH READS is the module's own construction and not a choice here: the two
+        // periods TRAVEL toward each other and pass, so the first field starts at the departing
+        // work's own rhythm and ends at the arriving work's, and the second does the reverse
+        // (`periodsAt`). Filling them from the two works therefore makes the crossing the two
+        // rhythms passing through one another, which is what the beat is.
+        periodA: { min: 0, max: 1, def: 0.14,
+                   unit: "a position on the span below, in frame heights",
+                   frameHeights: [P_MIN, P_MAX],
+                   reads: { of: "the departing work",
+                            paths: ["texture.spectralPeriodPx", "frameSide"],
+                            how: "the work's own measured period said as a share of its own frame "
+                               + "side, placed on this handle's own span in frame heights" } },
+        periodB: { min: 0, max: 1, def: 0.42,
+                   unit: "a position on the span below, in frame heights",
+                   frameHeights: [P_MIN, P_MAX],
+                   reads: { of: "the arriving work",
+                            paths: ["texture.spectralPeriodPx", "frameSide"],
+                            how: "the work's own measured period said as a share of its own frame "
+                               + "side, placed on this handle's own span in frame heights" } },
         phase: { min: 0, max: 1, def: 0 },
         // THE MEASUREMENT THE PERIODS ARE READ AGAINST AT A DOOR, published beside the range of the
         // handle that sets the field's steepness. `heldWholeAtADoor` says what is read (how far this
@@ -537,6 +624,22 @@
                                                            + "against the margin the threshold "
                                                            + "stands beyond that extreme" } } },
         lead: { min: 0, max: 1, def: 0.6 },
+        // THE ONE HANDLE THIS PORT PUBLISHES THAT THE MODULE HELD AS A CONSTANT, and the
+        // measurement it names, published beside its range the way the meshing instrument publishes
+        // its own. `reads` says which reading of a WORK RECORD sets it and how the two are put
+        // together: the angle between the two works' own lattices, which is `structure.ownDevice.
+        // angleDeg` where a step was recovered and `structure.grid.angleDeg` where none was — the
+        // same order of preference the composer's own `latticeAngleDeg` already reads them in. Two
+        // line directions, so the difference folds back under a right angle and lands inside this
+        // handle's span by construction. `def` is the module's pinned nine, so a score naming no
+        // track for it draws the module's own frame to the pixel.
+        beatTilt: { min: TILT_MIN, max: TILT_MAX, def: BEAT_TILT, unit: "degrees",
+                    reads: { of: "both works", paths: ["structure.ownDevice.angleDeg",
+                                                       "structure.grid.angleDeg"],
+                             how: "the angle between the two works' own measured lattices — "
+                                + "|angleA - angleB| taken modulo half a turn and folded back "
+                                + "under a right angle, since a lattice angle is a line direction "
+                                + "and two grating families never stand further apart than that" } },
         seed: { min: 0, max: 8, def: 0 },
         shade: { min: 0, max: 1, def: 1 },
         travel: { min: 0, max: 1, def: 1 },
@@ -573,8 +676,8 @@
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, periodA: 0.14, periodB: 0.42, phase: 0, contrast: 0.82, lead: 0.6,
-                     seed: 0, shade: 1, travel: 1, mask: 0, t: 0, reduced: false,
-                     cssWidth: 1000, cssHeight: 1000 },
+                     beatTilt: BEAT_TILT, seed: 0, shade: 1, travel: 1, mask: 0, t: 0,
+                     reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "beat", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
@@ -657,7 +760,7 @@
         var h = st.handles;
         var pose = {
           mix: h.mix, periodA: h.periodA, periodB: h.periodB, phase: h.phase,
-          contrast: h.contrast, lead: h.lead,
+          contrast: h.contrast, lead: h.lead, beatTilt: h.beatTilt,
           shade: h.shade, travel: h.travel, seed: h.seed, mask: h.mask,
           t: h.clock, reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,

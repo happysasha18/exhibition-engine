@@ -92,6 +92,9 @@ def skip(name, detail):
 # is either a number the module itself declares or a field the contract requires; nothing is
 # measured in this file and nothing is invented as a measurement.
 DIE = 4.91016            # the die lab/data/scores' own weave score carries, so the suites roll one
+TILT = 9                 # the angle the lab module pins (beat.js, BEAT_TILT) and the handle's rest
+TILT_MIN, TILT_MAX = 1, 90       # the two ends the port publishes that angle between
+P_MIN, P_MAX = 0.025, 0.33       # the module's own period span, in frame heights (beat.js)
 DURATION_MS = 3000
 WITHIN_MS = 500
 
@@ -106,7 +109,7 @@ def beat_score(pair_a="a", pair_b="b", **statics):
     place the module ever read time, and it read its own accumulated frame clock there (beat.js:407).
     """
     P = {"periodA": 0.14, "periodB": 0.42, "phase": 0, "contrast": 0.82, "lead": 0.6,
-         "shade": 1, "travel": 1, "mask": 0, "seed": DIE}
+         "beatTilt": TILT, "shade": 1, "travel": 1, "mask": 0, "seed": DIE}
     P.update(statics)
     nodes = {"mixDrive": {"source": "progress"}, "clockDrive": {"source": "time"}}
     tracks = {"mix": {"node": "mixDrive"}, "clock": {"node": "clockDrive"}}
@@ -179,14 +182,47 @@ check("PASS-BEAT the instrument creates no context, no canvas, no loop and no li
       "and its resize listener all stayed in the lab"
       if not held else "the instrument's region holds " + ", ".join(held))
 
-HANDLES = ["mix", "clock", "periodA", "periodB", "phase", "contrast", "lead", "seed", "shade",
-           "travel", "mask"]
+HANDLES = ["mix", "clock", "periodA", "periodB", "phase", "contrast", "lead", "beatTilt", "seed",
+           "shade", "travel", "mask"]
 check("PASS-BEAT every handle the instrument publishes is a handle a score can drive",
       all(("%s: { min" % h) in REGION for h in HANDLES),
-      "§4.4b: eleven handles — the dial, the second, the module's own five declared params, its die, "
-      "its two judge channels and the fleet's mask. The module's `photo` param does not cross: a "
-      "cue carries an ORDERED pair and owes a door at each end, so which work stands where is the "
-      "passage's question and never a handle")
+      "§4.4b: twelve handles — the dial, the second, the module's own five declared params, the "
+      "tilt the module pinned and this port publishes, its die, its two judge channels and the "
+      "fleet's mask. The module's `photo` param does not cross: a cue carries an ORDERED pair and "
+      "owes a door at each end, so which work stands where is the passage's question and never a "
+      "handle")
+
+# HIS 19:13 WORD, LIFTED TO THE CLASS AT 19:21: every geometric parameter derives from the work's
+# own measured structure. The module pinned the angle its two gratings interfere at; the port
+# publishes it and names, where a composer can read it, which reading of a work record fills it.
+# A RANGE OF 0…1 IS A PLACE AND NOT A LENGTH. The composer holds the two works' own measured
+# periods as spectralPeriodPx / frameSide — already a share of a frame — and cannot map that onto a
+# handle whose range says nothing about what its ends mean. The span travels with the handle, BY
+# REFERENCE to the two constants the mapping itself uses, so this file and a composer cannot come to
+# hold different numbers for the ends. The row reads the reference rather than the digits, which is
+# what makes it a one-home row: retyping 0.025 here would create the second home it exists to stop.
+check("PASS-BEAT the two period handles publish the span in frame heights their values mean",
+      "frameHeights: [P_MIN, P_MAX]," in REGION
+      and REGION.count("frameHeights: [P_MIN, P_MAX],") == 2
+      and 'paths: ["texture.spectralPeriodPx", "frameSide"],' in REGION
+      and REGION.count('paths: ["texture.spectralPeriodPx", "frameSide"],') == 2
+      and 'of: "the departing work"' in REGION and 'of: "the arriving work"' in REGION
+      and "var P_MIN = 0.025, P_MAX = 0.33;" in REGION
+      and "return P_MIN + (P_MAX - P_MIN) * clamp(v, 0, 1);" in REGION,
+      "both handles carry `frameHeights` by reference to the very constants `periodOf` maps "
+      "through, and each names which work it reads and by which paths — so a fill can place a "
+      "measured period on the handle without a number being retyped anywhere")
+
+check("PASS-BEAT the tilt the module pinned is published and names the measurement that fills it",
+      "var TILT_MIN = 1, TILT_MAX = 90;" in REGION
+      and "beatTilt: { min: TILT_MIN, max: TILT_MAX, def: BEAT_TILT" in REGION
+      and 'paths: ["structure.ownDevice.angleDeg",' in REGION
+      and '"structure.grid.angleDeg"]' in REGION
+      and "var BEAT_TILT = 9;" in REGION,
+      "the handle carries `reads` — of which works, by which paths, and how the two are put "
+      "together — beside its own range, and rests at the module's own nine degrees so a score that "
+      "names no track for it draws the module's own frame. The two paths are the order the "
+      "composer's own `latticeAngleDeg` already reads them in")
 
 check("PASS-BEAT the two fields' drift reads the handed-down second and no clock of its own",
       "var drift = (st.reduced ? 0 : num(st.t, 0)) * 0.035;" in REGION
@@ -357,10 +393,11 @@ BROWSER_ROWS = [
     "PASS-BEAT §7     · a shader already at GLSL ES 3.00 receives no second version header",
     "PASS-BEAT the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
     "PASS-BEAT row 9  · one camera authority through a real pass, and the pose rests on the arrival",
-    "PASS-BEAT §4.4b  · the module's five declared params each reach the PICTURE",
+    "PASS-BEAT §4.4b  · the five declared params and the published tilt each reach the PICTURE",
     "PASS-BEAT §4.4b  · the die, the two judge channels and the fleet's mask each reach the PICTURE",
     "PASS-BEAT §4.4b  · the handed-down second moves the two fields, and a pinned second repeats",
     "PASS-BEAT row 16 · the captures are kept as evidence",
+    "PASS-BEAT the span the period handles publish is the span the instrument actually draws through",
     "PASS-BEAT the door is read on the DRAWING BUFFER, and the grating the door is held at is published",
     "PASS-BEAT a door no whole grating can close is refused on the real road, and the visitor still lands",
 ]
@@ -368,6 +405,7 @@ BROWSER_ROWS = [
 RED_ROWS = [
     "PASS-BEAT red-on-bug · the door reading removed: a door the buffer cannot keep whole is drawn",
     "PASS-BEAT red-on-bug · the phase pushed both fields one way: the phase handle stops reaching",
+    "PASS-BEAT red-on-bug · the tilt pinned back to the module's constant: the pair stops setting it",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -525,8 +563,18 @@ else:
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and m["levels"] == ["SURFACE"]
                     and m["cuts"] == ["strip", "scale"]
-                    and sorted(m["params"]) == ["contrast", "lead", "periodA", "periodB", "phase"]
-                    and len(m["handles"]) == 11
+                    and sorted(m["params"]) == ["beatTilt", "contrast", "lead", "periodA",
+                                                "periodB", "phase"]
+                    and len(m["handles"]) == 12
+                    and m["handles"]["beatTilt"]["def"] == TILT
+                    and m["handles"]["beatTilt"]["min"] == TILT_MIN
+                    and m["handles"]["beatTilt"]["max"] == TILT_MAX
+                    and m["handles"]["beatTilt"]["reads"]["paths"] == [
+                        "structure.ownDevice.angleDeg", "structure.grid.angleDeg"]
+                    and m["handles"]["periodA"]["frameHeights"] == [P_MIN, P_MAX]
+                    and m["handles"]["periodB"]["frameHeights"] == [P_MIN, P_MAX]
+                    and m["handles"]["periodA"]["reads"]["of"] == "the departing work"
+                    and m["handles"]["periodB"]["reads"]["of"] == "the arriving work"
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -549,7 +597,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "beat" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"eleven handles, sixteen uniforms in one pass, the crop {zoom} the "
+                      f"twelve handles, sixteen uniforms in one pass, the crop {zoom} the "
                       f"counter-motion's headroom is paid for with, cuts {m.get('cuts')}, resources "
                       f"declared for three tiers with a byte estimate of "
                       f"{res['standard']['bytesEstimate']}, and the lab commit "
@@ -800,7 +848,12 @@ else:
                 # 4.9 — which the mean of the whole frame under-reports. The doors are the handle's
                 # own statement of its range and no number is chosen here.
                 PARAM_DOORS = {"periodA": (0, 1), "periodB": (0, 1), "phase": (0, 1),
-                               "contrast": (0, 1), "lead": (0, 1)}
+                               "contrast": (0, 1), "lead": (0, 1),
+                               # the tilt the module pinned: a right angle apart against nearly
+                               # collinear is the widest this handle reaches, and it is the row
+                               # that says the published angle is wired to the picture rather
+                               # than only declared in the manifest
+                               "beatTilt": (TILT_MIN, TILT_MAX)}
                 moved = {}
                 for k, (lo, hi) in PARAM_DOORS.items():
                     moved[k] = diff(handle_shot(k + "-lo", {k: lo}),
@@ -860,7 +913,7 @@ else:
 
                 def door_pose(pa, pb=None, mix=0, buf=None, over=None):
                     p = {"mix": mix, "periodA": pa, "periodB": pa if pb is None else pb,
-                         "phase": 0, "contrast": 0.0, "lead": 0.6,
+                         "phase": 0, "contrast": 0.0, "lead": 0.6, "beatTilt": TILT,
                          "shade": 1, "travel": 1, "mask": 0, "seed": DIE, "t": 0, "reduced": False,
                          "cssWidth": VW, "cssHeight": VH}
                     if buf:
@@ -880,6 +933,28 @@ else:
                                   "return {ms: (performance.now() - t0) / %d};"
                                   % (json.dumps(p), n, n))["ms"]
 
+                # THE SPAN PUBLISHED AGAINST THE SPAN DRAWN. The manifest row above read the two
+                # ends off the declaration; this asks the instrument's own `values` what it draws at
+                # each end of the handle, so a published span that drifted from `periodOf`'s own
+                # mapping would redden here rather than quietly send a fill's measured period to the
+                # wrong place. Both poses stand at a door and neither is held, so what comes back is
+                # the mapping and nothing else.
+                lo_end = values_of(door_pose(0, 0))
+                hi_end = values_of(door_pose(1, 1))
+                check(BROWSER_ROWS[22],
+                      abs(lo_end["periodA"] - P_MIN) < 1e-12
+                      and abs(lo_end["periodB"] - P_MIN) < 1e-12
+                      and abs(hi_end["periodA"] - P_MAX) < 1e-12
+                      and abs(hi_end["periodB"] - P_MAX) < 1e-12
+                      and lo_end["periodGratings"] == 0 and hi_end["periodGratings"] == 0
+                      and lo_end["doorWhyNo"] is None and hi_end["doorWhyNo"] is None,
+                      f"the handles at 0 draw periods of {lo_end['periodA']} and "
+                      f"{lo_end['periodB']} frame heights and at 1 draw {hi_end['periodA']} and "
+                      f"{hi_end['periodB']}, which is exactly the {P_MIN}…{P_MAX} the two handles "
+                      f"publish as `frameHeights` — so a fill holding a work's own "
+                      f"spectralPeriodPx / frameSide can place it on this handle and know where it "
+                      f"lands. Neither end is held and neither leaks")
+
                 BUF_W, BUF_H = 390, 250          # a buffer one whole grating short of the request
                 NO_W, NO_H = 390, 220            # and one no whole grating within reach can close
                 on_css = values_of(door_pose(FINE))
@@ -889,7 +964,7 @@ else:
                 exitdoor = values_of(door_pose(FINE, mix=1, buf=(BUF_W, BUF_H)))
                 whole_ms = per_door_ms(door_pose(FINE))
                 held_ms = per_door_ms(door_pose(FINE, buf=(BUF_W, BUF_H)))
-                check(BROWSER_ROWS[22],
+                check(BROWSER_ROWS[23],
                       on_css["doorWhyNo"] is None and on_css["doorHeld"] is None
                       and on_css["periodGratings"] == 0
                       and on_css["doorGrid"] == {"w": VW, "h": VH, "drawn": False}
@@ -948,7 +1023,7 @@ else:
                 idle(br)
                 br.set_viewport(VW, VH)
                 br.sleep(0.8)
-                check(BROWSER_ROWS[23],
+                check(BROWSER_ROWS[24],
                       played["buffer"] == "%dx%d" % (NO_W, NO_H)
                       and played["state"] == "running" and played["drew"] == 1
                       and not played["refused"]
@@ -1044,6 +1119,36 @@ else:
           f"own arrangement before its repair — the envelope, which is a function of the DIFFERENCE "
           f"of the two fields, does not move and the same handle moves the frame by "
           f"{bug_ph and bug_ph['mean']:.4f}, under the seam of {SEAM}")
+
+    # THREE. The tilt is pinned back to the module's own constant, which is what the port would be
+    # had it published the handle in its manifest and never wired it — the failure a manifest alone
+    # cannot catch, since the composer would read a declared handle, fill it from the pair's own
+    # lattice angles and drive a number the picture never sees. The row walks the handle between its
+    # own two ends and asks the frame.
+    def red_tilt(br):
+        br.evaluate("window.__show('host'); 0")
+        out = {}
+        for name, tv in (("lo", TILT_MIN), ("hi", TILT_MAX)):
+            js(br, "return window.__offer(%s, {clock: 1.5, progress: 0.5});"
+               % json.dumps(beat_score(beatTilt=tv)))
+            br.sleep(0.7)
+            out[name] = png(br, SHOTS / ("red-tilt-" + name + ".png"))
+            br.evaluate("window.__cancel('red tilt'); 0")
+            idle(br)
+        return {"mean": diff(out["lo"], out["hi"])[0]}
+
+    base_tilt = on_bench(red_tilt)
+    bug3 = REGION.replace("var w = wavesAt(pp, aspect, tilt);",
+                          "var w = wavesAt(pp, aspect, BEAT_TILT);", 1)
+    bug_tilt = on_bench(red_tilt, pack_text=bug3)
+    check(RED_ROWS[2],
+          bug3 != REGION and base_tilt and bug_tilt
+          and base_tilt["mean"] > SEAM and bug_tilt["mean"] == 0.0,
+          f"walked between its two ends the published tilt moves the frame by "
+          f"{base_tilt and base_tilt['mean']:.4f} of 255; pinned back to the module's own nine "
+          f"degrees the same walk moves it by {bug_tilt and bug_tilt['mean']:.4f} — the handle "
+          f"would still stand in the manifest, the composer would still fill it from the two "
+          f"works' lattice angles, and the picture would never see it")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
