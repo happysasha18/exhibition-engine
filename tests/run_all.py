@@ -49,6 +49,17 @@ SUITES = [
     "pass_route",
     "pass_phone",
     "pass_livemirror",
+    # THE ARSENAL LANE, 2026-08-18, on his word of 18:39: every effect the lab holds belongs in the
+    # engine's arsenal, with all its handles. Six instruments carried across from lab/effects/ —
+    # `box` was already here under the name `boxfold`, and three names are held out by dated words
+    # of his (see the lane's report). The two hyphenated names are the file stems exactly: the
+    # identity gate above reads `test_<name>.py` off disk, so the list and the files cannot drift.
+    "pass_beat",
+    "pass_gates",
+    "pass_grid-colour",
+    "pass_strata-light",
+    "pass_tilt",
+    "pass_waterline",
 ]
 
 
