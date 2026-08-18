@@ -395,6 +395,17 @@
     // reading: the third picture is the two works' interference, so what sets how near the two
     // rhythms stand has to be the two rhythms themselves. Each row takes the sentence the handle
     // publishes on the instrument, which is the fact the instrument owns.
+    // THE READY STORY'S OWN FOUR. Its other five — mix, clock, centreX, centreY, turn, mask — were
+    // already named, and `turn` reads the radial score here for the same reason the mesh's does.
+    folds: ["measured", "the order of the pair's own measured turn, structure.rotational.n, read "
+                        + "onto the module's ladder of two, four, eight and sixteen wedges"],
+    foldsScore: ["measured", "structure.rotational.score, the confidence that order reads at, which "
+                             + "carries the window between the module's own four folds and the "
+                             + "pair's own count"],
+    planet: ["measured", "structure.polar.planet, how strongly the pair's works read as a planet, "
+                         + "which places the far end of the arc"],
+    course: ["measured", "structure.ownDevice.stepPx over the work's own frame side where that "
+                         + "device is rings — the step the work was cut at"],
     // THE WATER'S OWN THREE. Every other handle it publishes — mix, clock, seed, shade, travel,
     // mask — was already named.
     swell: ["measured", "texture.scoreFromCutLines, how much of the work reads as grain rather "
@@ -842,6 +853,24 @@
         return [Math.min(bridge.tonal, bridge.spectral),
                 "the two works' tonal grounds stand at " + pyText(flt(r4(bridge.tonal)))
                 + " of each other and their detail scales at " + pyText(flt(r4(bridge.spectral)))];
+      },
+      // THE READY STORY IS A WHOLE PASSAGE IN ONE VOICE: the folds take the departing work apart
+      // about its own measured centre, the rose window and the planet are where neither work is
+      // legible, and the road walked back puts the arriving work together. How far that story
+      // travels is a measurement — a pair that reads nothing polar turns back at the window and one
+      // that reads it goes all the way to the planet — so the polar reading IS the fit, and the
+      // stronger of the two works carries it, because one story is told about one centre.
+      //
+      // The port drafted this as [false, …] below `DEVICE_LEGIBLE` — the composer's own 0.5, which
+      // `always` has since struck out of this file under his 09:53 word. The reading survives the
+      // number: how far the story goes was never a question of admission, and the lane's own
+      // sentence says so.
+      hero: function (a, b) {
+        var pa = readingOf(((a.structure || {}).polar || {}).planet);
+        var pb = readingOf(((b.structure || {}).polar || {}).planet);
+        return [Math.max(pa, pb), "the two works read as a planet at " + pyText(flt(r4(pa)))
+                + " and " + pyText(flt(r4(pb))) + ", and the story travels as far out as the "
+                + "stronger reading carries it"];
       },
       // THE THIRD PICTURE IS MADE OF TWO PALETTES, so what it suits is a pair whose two colours
       // stand APART: where the two works carry nearly one colour the composite is one work slightly

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the fold-window-planet instrument — the host's frame beside the lab module's</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own stage.
+     One is visible at a time; the check shows the one it means and photographs it.
+
+     BOTH ROADS DRAW WITH WEBGL HERE. The module carries its own context and its own fragment shader,
+     so the two roads run one sampler through one rasteriser and the residual between them is a
+     difference of arithmetic rather than of samplers — which is why the bar this suite holds them to
+     is the project's own and not one of its own making.
+
+     THE LAB MODULE IS SERVED WITH FOURTEEN LITERALS LEVELLED, IN THREE GROUPS, and the suite names
+     every one of them in the row that reads it. Five level its TEXTURE ROAD to the one the host
+     uploads on — clamped edges, no mipmap chain, and the chroma tap that chain paid for — which is a
+     fence and not a taste: the host owns every texture in this engine. Six replace the places the
+     module let a visitor's POINTER steer its composition, because a crossing has no hand on it and
+     the port puts the pair's own measured radial centre there instead. Three take out the page's own
+     furniture — the title's shade and the third photograph's content offset — which does not exist
+     inside a crossing. The file on disk is never touched.
+
+     THE MODULE IS FED ONE WORK ON ALL THREE OF ITS TEXTURES. It changes pictures three times along
+     its own story and this instrument changes them once, so a comparison of the two GEOMETRIES is
+     made with the picture held still on the module's side: at the poses before the change both roads
+     read the departing work, at the poses after it both read the arriving one. The change itself is
+     read by its own rows. -->
+<div id="moduleStage" class="stage"></div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/glassgrid.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/towers.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="hero.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  var asked = false, warmed = false;
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var moduleStage = document.getElementById("moduleStage");
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "hero") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «hero» effect"); return; }
+
+    // The one record both roads read. `hand` is the dial the port takes; `dial` is the number the
+    // port's own arc puts on the module's own `story` handle, so the two roads stand at ONE pose
+    // from ONE number and the module applies its own response curve to it exactly as the port does.
+    var P = { centreX: 0.5, centreY: 0.5, folds: 4, foldsScore: 0, planet: 1, turn: 1, course: 0 };
+    var hand = 0, clock = 0, maskAt = 0, labWork = 0;
+    var api = null;
+
+    function build() {
+      if (api) { api.destroy(); api = null; }
+      var one = imgs[labWork];
+      var ctx = {
+        images: [one, one, one], reduced: false,
+        pointer: { x: 0.5, y: 0.5, inside: false, down: false },
+        params: {},
+      };
+      api = def.create(moduleStage, ctx);
+      api.onParam("clock", clock);
+      api.onParam("story", dialOf());
+      window.__api = api;
+    }
+
+    function pose() {
+      var host = document.querySelector("canvas[aria-hidden]");
+      return { mix: hand, clock: clock, centreX: P.centreX, centreY: P.centreY,
+               folds: P.folds, foldsScore: P.foldsScore, planet: P.planet, turn: P.turn,
+               course: P.course, mask: maskAt, reduced: false,
+               cssWidth: innerWidth, cssHeight: innerHeight,
+               bufWidth: host ? host.width : innerWidth,
+               bufHeight: host ? host.height : innerHeight,
+               aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+               bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight };
+    }
+
+    // THE PORT'S OWN ARC, ASKED OF THE PORT. The dial the module is handed is not computed on this
+    // page: it is read out of the instrument's own published pose, so the bench cannot quietly hand
+    // the two roads two different stories.
+    function dialOf() { return bench.values("hero", pose()).dial; }
+
+    window.__pose = pose;
+    window.__values = function () { return bench.values("hero", pose()); };
+    window.__mask = function (v) { maskAt = +v; };
+    window.__labWork = function (which) { labWork = which === "b" ? 1 : 0; build(); };
+    window.__param = function (k, v) { P[k] = +v; };
+    window.__clock = function (v) { clock = +v; api.onParam("clock", clock); api.onParam("story", dialOf()); };
+    window.__mix = function (v) { hand = +v; api.onParam("story", dialOf()); };
+    window.__show = function (which) {
+      bench.show(which === "host");
+      moduleStage.classList.toggle("hidden", which !== "module");
+    };
+    // The two drawing buffers, so a row can say the two roads were sampled on one grid rather than
+    // assume it. The host's canvas is the one it marks aria-hidden; the module's is the one inside
+    // its own stage.
+    window.__buffers = function () {
+      var host = document.querySelector("canvas[aria-hidden]");
+      var mod = moduleStage.querySelector("canvas");
+      return { host: host ? [host.width, host.height] : null,
+               module: mod ? [mod.width, mod.height] : null };
+    };
+
+    // THE HOST DRAWS THE SAME POSE, through the same drawPose a running transaction takes.
+    window.__hostDraw = function () { bench.draw("hero", pose()); return bench.values("hero", pose()); };
+
+    // BOTH ROADS AT ONE POSE.
+    window.__both = function (v) {
+      hand = +v;
+      api.onParam("story", dialOf());
+      return bench.values("hero", pose());
+    };
+
+    build();
+
+    // ---- the real transaction road ---------------------------------------------------------
+    // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
+    // arms and decodes both works off the walk markup above, builds the programme from the
+    // manifest, raises its curtain and runs its own frame loop.
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>
