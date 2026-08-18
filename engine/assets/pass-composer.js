@@ -227,7 +227,7 @@
   var SUBTYPES = ["angular", "ring", "none"];
   var REGISTERS = ["none", "discovery", "provocation", "apparition"];
   var PIVOT_KINDS = ["shared-measure", "shared-rotational-order", "shared-palette-region",
-                     "tonal-and-spectral-bridge"];
+                     "tonal-and-spectral"];
   var MEASURES = ["banding", "grid", "regions", "dominant_object", "texture", "radial",
                   "named_objects"];
   var SHARED_MEASURES = ["banding", "dominant_object", "grid", "named_objects", "radial",
@@ -245,17 +245,33 @@
     regions: "panel", named_objects: "region", texture: "scale", banding: "strip",
     radial: "ring", dominant_object: "panel", grid: "tile"
   };
-  // The three pivots that are not a shared measure carry their cut, transform and element kind on
-  // the pivot's own shape rather than on the pair.
+  // The three pivots that are not a shared measure carry their cut, transform and element kinds on
+  // the pivot's own shape rather than on the pair. `elementKinds` is the whole list, and every
+  // pivot carries one — a table of exceptions stood beside these three rows naming the kinds ONE of
+  // them cut on, and because `compose` read the single `elementKind` and not the table, half of
+  // that pivot's own cut was unreachable by any instrument: nothing refused, nothing errored, and a
+  // whole way of crossing simply never got walked while every suite stayed green. There is no
+  // exception table now; the shape says what it cuts and the casting asks the shape.
   var PIVOT_SHAPES = {
-    "shared-rotational-order": { cut: "wedges", transform: "gear_mesh", elementKind: "wedge" },
+    "shared-rotational-order": { cut: "wedges", transform: "gear_mesh", elementKind: "wedge",
+                                 elementKinds: ["wedge"] },
     "shared-palette-region": { cut: "colour_world", transform: "palette_handover",
-                               elementKind: "band" },
-    "tonal-and-spectral-bridge": { cut: "tonal_zones_and_detail_scales",
-                                   transform: "zone_handover_and_scale_growth",
-                                   elementKind: "band" }
+                               elementKind: "band", elementKinds: ["band"] },
+    // THE TONAL ZONES AND THE DETAIL SCALES. Two decompositions that apply to any two photographs by
+    // construction — the highlights leaving before the shadows, and the arriving work's blurred mass
+    // growing first with its detail growing into it — so this pivot reads on every pair and cuts on
+    // both a band and a scale.
+    //
+    // IT IS NOT A BRIDGE AND IT IS NOT A FALLBACK, on his word of 2026-08-18 10:15: «я не просил
+    // запасную дорогу, логика построена так что дорога всегда сработает». It was reached only after
+    // every other ground had turned a pair away, which is why 83 per cent of compositions landed on
+    // it with one cut and one instrument — they were not choosing it, they were pushed. It is now a
+    // candidate like the rest, ranked on its own reading of the pair, reached by the same code path
+    // as every other, and it wins where it suits the pair better than the others do.
+    "tonal-and-spectral": { cut: "tonal_zones_and_detail_scales",
+                            transform: "zone_handover_and_scale_growth",
+                            elementKind: "band", elementKinds: ["band", "scale"] }
   };
-  var PIVOT_KINDS_OF_CUT = { "tonal-and-spectral-bridge": ["band", "scale"] };
   // WHICH INSTRUMENTS CUT ON WHICH ELEMENT KIND — read off the collection's own record, never
   // written down here. Every instrument the settings record publishes names the cuts it plays in
   // its own entry, so the map from a kind to the instruments that can cut it is derived in `make`
@@ -271,19 +287,20 @@
   // instrument retires an existing one would have done it again at the next arrival, so the rule is
   // what is repaired rather than the one pair of instruments it happened to catch.
   //
-  // WHERE SEVERAL CUT ON ONE KIND the choice is made the way the seven roads are chosen: from the
-  // pair's own measurements first — each instrument states what a pair must read for it to be worth
-  // casting — and from the die among whatever qualifies. The two panel instruments are genuinely
-  // different acts and their measurements say so: folding into a solid is an impossible event that
-  // spends the one miracle and claims the world, while opening into a parquet reveals the making and
-  // claims no world at all, so a step whose role spends no miracle reaches the panel kind through
-  // the unfold and through nothing else.
-  var MISSING_INSTRUMENT = {
-    tile: "an instrument that cuts on tiles, for tile_crossfade",
-    panel: "an instrument that cuts on panels, for region_dissolve and object_reveal",
-    region: "an instrument that cuts on named regions, for object_by_object",
-    field: "an instrument that cuts on the whole frame, which is the degenerate element"
-  };
+  // WHERE SEVERAL CUT ON ONE KIND the choice is made the way the genres are chosen: every published
+  // instrument says how well it suits THIS pair, on its own terms, and the die runs over those
+  // readings. The two panel instruments are genuinely different acts and their readings say so —
+  // folding into a solid is an impossible event that claims the world, while opening into a parquet
+  // reveals the making and claims no world at all.
+  //
+  // NO KIND IS EVER WITHOUT AN INSTRUMENT. A table stood here naming, for four element kinds, the
+  // instrument this collection has not got, and the composer answered a pair whose ground cut on one
+  // of them with «pivot needs an instrument that cuts on tiles» — no crossing at all. His word of
+  // 2026-08-18 09:51 strikes that whole idea out: any two photographs in the world get a crossing,
+  // and a measurement only ranks which genre suits and shapes it once chosen. So a kind no
+  // instrument cuts is not a refusal; the instruments that DO cut it rank first, and where there are
+  // none the best-suited instrument in the collection plays the pair on its own cut and the plan
+  // says which cut it wanted and which it got.
   var KIND_OF_AXIS = { banding: "strip", radial: "ring", regions: "panel", grid: "tile",
                        texture: "scale", dominant_object: "panel" };
   var TIERS = [
@@ -295,7 +312,6 @@
   // The three tiers in order, so a role can be asked whether a realised tier reaches it.
   var TIER_RANK = { quiet: 0, middle: 1, culmination: 2 };
   var TRANSACTION_MS = 14000;
-  var DOOR_HOLD = 0.08;
   // How far the camera may come in or pull back on the score's own track, as a natural logarithm:
   // 0.5 bounds the approach at 1.65 times, and it bounds a magnification of the RENDERED canvas,
   // because the host applies the dolly as one transform over the buffer the instrument drew on.
@@ -315,16 +331,34 @@
   // reading of any pair — belongs to the CLIPPING rather than to this value. The report names the
   // repair and its numbers; nothing is guessed here in the meantime.
   var DOLLY_CAP = 0.5;
-  // How far across the frame a flight has to travel before it can carry a passage by itself, said
-  // as a share of the frame. Nothing measures it, and it is the one number deciding how many of a
-  // route's quiet links and returns are camera-led — the revisit list carries it.
-  var LEAD_SHARE = 0.1;
-  var SIZE_FLOOR = 0.7;
-  var CULMINATION_DISTANCE = 0.5;
-  var LOCUS_NEAR = 0.1;
-  var VOID_SHARE_FLOOR = 0.6;
-  var LADDER_DISTANCE = 0.5;
-  var READY_FLOOR = 0.12;
+  // WHAT LEFT THIS BLOCK ON 2026-08-18, and it is one sweep rather than eight repairs. His word of
+  // 09:57: a number this project computed and gave a name to, with no requirement of his behind it,
+  // goes as well — «убирай тоже как класс». Eight named numbers stood here and every one of them
+  // was this seat's own invention wearing the clothes of a measurement:
+  //
+  //   LEAD_SHARE 0.1          how far a flight had to travel before it could carry a passage. The
+  //                           plan itself already says it: a passage with no travelling and no
+  //                           arriving cue has nothing BUT the camera to be the transition, and
+  //                           that reading needs no number at all.
+  //   SIZE_FLOOR 0.7          the size the meshing picture stopped reading at. That is a fact about
+  //                           the meshing instrument, and the instrument publishes it — its `size`
+  //                           handle's own minimum, read from the manifest at the moment it is
+  //                           needed rather than copied here.
+  //   CULMINATION_DISTANCE .5 how far two axes had to stand apart for a crossing to be a
+  //                           culmination. The step's ROLE says whether it is one; the distance only
+  //                           guessed, and the guess overrode the walk.
+  //   LOCUS_NEAR 0.1          how close a figure had to stand to a locus. The figure carries its own
+  //                           measured box, so the question is whether the locus falls inside it.
+  //   VOID_SHARE_FLOOR 0.6    the open ground an apparition asked for.
+  //   LADDER_DISTANCE 0.5     the tonal gap a provocation asked for. Both are now what they always
+  //   READY_FLOOR 0.12        should have been: readings that RANK the registers against each other.
+  //                           the readiness a pair had to clear before it counted at all — a floor
+  //                           whose only act was to write a real reading down to zero.
+  //   DOOR_HOLD 0.08          the share of a passage held at its doors. It reached no field of any
+  //                           score, so it decided nothing and was carried on the plan for nobody.
+  //
+  // The ten typed floors and the seven discriminating thresholds the collection's record carried
+  // went with them, and `make` below says why.
   var MOTIF_SEAM = "горизонт-шов";
   var MOTIF_GATE = "ворота";
 
@@ -433,8 +467,8 @@
   // naming this adventure and the shelves it draws from, and a generic line fails review by
   // definition. Under the plural-source law the first thing a person needs to know about a crossing
   // is which of the seven roads it took, so the road says so in its own words before the reading
-  // that qualified it. The universal bridge opens with nothing, so a crossing that takes it reads
-  // exactly as it read before the roads existed.
+  // that qualified it. The tonal and spectral genre opens with nothing, because two tonal grounds
+  // handing over is what a crossing already is and a line saying so would say nothing.
   var ROAD_PHRASES = {
     "shared-ground": "Along what the two works share. ",
     "spin": "The radial work turns. ",
@@ -443,7 +477,7 @@
     "stripes": "The two band families cross into stripes. ",
     "box-fold": "The work folds along its own region lines. ",
     "dissimilar-mystery": "Along what the two works do not share. ",
-    "bridge": ""
+    "tonal-and-spectral": ""
   };
   // What a further pass on one edge says for itself: charter shelf 16's family drift, in a clause.
   var RETURN_PHRASE = " Pass {passIndex}: same family, handles breathing.";
@@ -487,7 +521,7 @@
     banding: "vertical band family", grid: "tile grid", radial: "radial family",
     regions: "region division", texture: "grain",
     dominant_object: "figure against its ground", named_objects: "named objects",
-    "tonal-and-spectral-bridge": "tonal zones and detail scales",
+    "tonal-and-spectral": "tonal zones and detail scales",
     "shared-palette-region": "shared palette region",
     "shared-rotational-order": "shared turn"
   };
@@ -540,15 +574,32 @@
   function make(consts) {
     var MANIFESTS = consts.manifests;
     var INSTRUMENTS = consts.instruments;
-    var FLOORS = consts.floors;
-    var THRESHOLDS = consts.thresholds;
+    // THE COLLECTION'S FLOORS AND THRESHOLDS ARE NO LONGER READ, and a settings record may go on
+    // carrying them. `consts.floors` held ten typed numbers — a cut-line floor per measure and a
+    // «tight» floor for three of them — and `consts.thresholds` seven more, each the top quartile
+    // of one measure over one collection. Both were admission tests: a reading under a floor was
+    // struck out of the travelling axes, a measure both works did not clear its threshold on was no
+    // ground, and three of the ten floors stood above what any photograph in the collection could
+    // score, so three families of effect were dead by construction.
+    //
+    // His word of 2026-08-18 09:51 and its sharpening at 09:53: a measurement ranks which genre of
+    // crossing suits a pair and shapes the genre that wins, and it never admits and never rejects.
+    // A quartile of some collection answers neither question — it says how a reading stands among
+    // other photographs, when what is being asked is how these two photographs stand to each other,
+    // and the two numbers are in hand. So the composer reads the pair and nothing else, and it is
+    // now free of the collection it happens to be shown with: any two photographs in the world get
+    // a crossing, including two that belong to no collection at all.
     var PROVENANCE = consts.provenance;
     var SCORE_FENCE_BYTES = consts.scoreFenceBytes;
-    // THE CLIENT'S OWN FENCE ON THE ONE FIELD §4.4 CALLS PROSE. A score whose intent runs past it is
-    // refused WHOLE with «intent is no short text», so an intent nobody measured is a crossing
-    // nobody sees: stage 0 found 1 004 of 6 304 composed crossings standing over the 400 the client
-    // then applied, every one of them refused before an instrument saw it, and raised the client's
-    // cap to 600. The number belongs to the client, and the engine's bake now publishes it out of
+    // THE CLIENT'S OWN FENCE ON THE ONE FIELD §4.4 CALLS PROSE, and since 2026-08-18 it is a
+    // SHAPING rather than a wall. A score whose intent ran past it was refused WHOLE with «intent is
+    // no short text», so an intent nobody measured was a crossing nobody saw: stage 0 found 1 004 of
+    // 6 304 composed crossings standing over the 400 the client then applied. Raising the number to
+    // 600 moved the wall; it did not take it down. `realiseIntent` now FITS the line — it gives up
+    // its own clauses in order and then trims at a word, and the plan records what it gave up — so
+    // no crossing is ever lost to the length of its own sentence.
+    //
+    // The number belongs to the client, and the engine's bake publishes it out of
     // the served client's own `PASS_LIMITS` literal as `pass.capabilities.intentChars`, exactly as
     // it has always published the score's byte fence — so the site's staging step carries it into
     // these constants beside `scoreFenceBytes` and the number this file measures against is the
@@ -585,51 +636,47 @@
     var AXIS_OF_BANDING = {};
     BANDING.forEach(function (name, i) { AXIS_OF_BANDING[name] = i; });
     var RATIO_STEPS = MANIFESTS.gears.handles.ratio.rungs || 0;
+    // THE MESHING PICTURE'S OWN SPAN, read off its manifest at the moment it is needed. A typed 0.7
+    // stood here as the size the picture stopped reading at; that is a fact about the meshing
+    // instrument, and the instrument is the one home of it.
+    var SIZE_MIN = HANDLE_SPECS.gears.size[0];
     var SIZE_MAX = HANDLE_SPECS.gears.size[1];
+
+    // A reading held to the span a number can honestly stand in.
+    function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+    function readingOf(v) {
+      var n = Number(v);
+      return (n === n && isFinite(n)) ? clamp01(n) : 0;
+    }
 
     // ---- the pair, derived from the two works rather than looked up ----
 
-    // WHAT A PAIR SHARES, READ TWO WAYS, AND WHY THE SECOND ONE HAD TO ARRIVE.
+    // HOW STRONGLY A PAIR HOLDS EACH MEASURE — one reading per measure, and no verdict of any kind.
     //
-    // `both` is pair-shared.py's own reading: both works clear the measure's DISCRIMINATING
-    // threshold, which the collection's builder sets at that measure's top quartile. That reading
-    // answers «is this one of the pair's standout measures», and it is the right question for
-    // ranking. It is the wrong question for whether a ground exists, and the numbers say so
-    // plainly: a top quartile is cleared by 31 of the 121 works for EVERY measure by construction,
-    // so both works clear any one measure on about 6 percent of ordered pairs — and 83 percent of
-    // all compositions fell past every shared measure to the universal tonal-and-spectral bridge,
-    // whose cut is a band, whose instrument is the material one. Seven roads, one cut, one
-    // instrument: his 19:13 word about a route's breadth failed at the ground rather than at the
-    // road, and no amount of choosing between roads could have reached it.
+    // The strength is the WEAKER of the two works' readings, which is the plainest honest answer to
+    // «how much of this do the two photographs have between them»: a ground is only as good as the
+    // end that carries it least. Every measure is present in every answer, and every one of them is
+    // a candidate ground for every pair; the strength says which to reach for first.
     //
-    // `usable` is the measure's OWN cut-line floor — the bar that says this reading means something
-    // at all, and the very bar `axisReading` already applies to the TRAVELLING axis. That asymmetry
-    // was the defect in one sentence: a measure good enough to travel on was not good enough to
-    // hold. Measured over the collection, the floor is cleared by both works on 85.6 percent of
-    // pairs for banding, 76.7 for radial and 48.0 for regions — the three cuts that almost never
-    // got chosen — while grid, texture and the dominant object stay rare, which is a fact about
-    // what the works carry rather than a rule this file imposes.
-    function sharedMeasures(a, b) {
-      var held = [], usable = [], per = {}, i, m, sa, sb, floor;
+    // WHAT WENT, AND WHY IT COULD NEVER HAVE BEEN RIGHT. Two verdicts stood beside this reading.
+    // `both` asked whether both works cleared the measure's discriminating threshold — a top
+    // quartile over one collection, which by construction 31 of 121 works clear, so both ends
+    // cleared any one measure on about six ordered pairs in a hundred and 83 per cent of all
+    // compositions fell past every shared measure onto one nominated ground with one cut and one
+    // instrument. `usable` asked whether both cleared the measure's typed cut-line floor. Between
+    // them they turned a ranking question into an admission test, which is the disease his word of
+    // 09:51 names. Both are gone; what is left is the number itself.
+    function groundReadings(a, b) {
+      var per = {}, i, m, sa, sb;
       for (i = 0; i < MEASURES.length; i++) {
         m = MEASURES[i];
-        sa = a.measures[m];
-        sb = b.measures[m];
-        floor = FLOORS[m];
-        per[m] = { min: r4(Math.min(sa, sb)),
-                   both: sa >= THRESHOLDS[m] && sb >= THRESHOLDS[m],
-                   usable: floor !== undefined && floor !== null && sa >= floor && sb >= floor };
-        if (per[m].both) held.push(m);
-        if (per[m].usable) usable.push(m);
+        sa = readingOf((a.measures || {})[m]);
+        sb = readingOf((b.measures || {})[m]);
+        per[m] = { min: r4(Math.min(sa, sb)), a: r4(sa), b: r4(sb) };
       }
-      return { held: held, usable: usable, per: per };
+      return { per: per };
     }
 
-    // A measure whose cut an instrument in this collection can actually play. KIND_OF_MEASURE says
-    // which element kind a measure cuts on and INSTRUMENT_OF_KIND which instrument cuts on that
-    // kind; four kinds have none and MISSING_INSTRUMENT names each of the four.
-    // The instrument that cuts on a kind AND that this collection actually publishes a manifest
-    // for. INSTRUMENT_OF_KIND names the wish; MANIFESTS is the fact.
     // AN INSTRUMENT THAT DECLARES THE WORLD LEVEL SPENDS THE CROSSING'S ONE MIRACLE. Folding the
     // space a work lives in is a world act — shelf 8's folded space, which shelf 6 says consumes
     // the slot and never stacks — and the instrument's own manifest is what declares it, so this
@@ -645,136 +692,182 @@
       return (kind && CUTS_ON[kind]) ? CUTS_ON[kind] : [];
     }
 
-    // Whether ANY published instrument cuts on a kind at all. `noMiracle` narrows the question to
-    // the instruments a step with no miracle to spend may reach.
-    function instrumentOfKind(kind, noMiracle) {
-      var all = instrumentsOfKind(kind), i;
-      for (i = 0; i < all.length; i++) {
-        if (!noMiracle || !spendsTheMiracle(all[i])) return all[i];
-      }
-      return null;
-    }
+    // Every instrument the collection publishes at all, in one settled order.
+    var ALL_INSTRUMENTS = Object.keys(INSTRUMENTS).sort().filter(function (iid) {
+      return !!MANIFESTS[iid];
+    });
 
-    // How legibly a work's own making reads, before a passage may set out to reveal it. Every work
-    // of the collection carries the reading; nothing measures where the line between legible and not
-    // should fall, so this is the plainest meaning of a confidence — likelier right than wrong — and
-    // it stands on the revisit list.
-    var DEVICE_LEGIBLE = 0.5;
-
-    // WHAT A PAIR MUST READ FOR AN INSTRUMENT TO BE WORTH CASTING, where several cut on one kind.
-    // An instrument named here states its own condition in its own terms; one not named asks
-    // nothing and is always a candidate on the kinds it cuts. These are the measurements that make
-    // the two panel instruments two different acts rather than two spellings of one.
-    var INSTRUMENT_ASKS = {
-      // THE FOLD IS AN IMPOSSIBLE EVENT, so the charter's five-condition box law is what qualifies
-      // it: the departing work's own region division has to be strong enough to place a crease on,
-      // over enough real panels to be the walls of a solid. This was stated on the box-fold ROAD
-      // alone, which left every other road free to reach the same ground and fold a work whose
-      // regions read at nothing.
-      boxfold: function (a, b, floors) {
-        // READ OF THE PAIR AND NOT OF ONE END OF IT. A ground is the pair's, and the family read
-        // off it has to be the same one whichever way the visitor walks, so an ask that read the
-        // departing work alone would let a ground be held in one direction and refuse to cast in
-        // the other — 61 ordered pairs declined exactly that way before this was straightened.
-        var best = Math.max(Number(((a.structure || {}).regions || {}).score) || 0,
-                            Number(((b.structure || {}).regions || {}).score) || 0);
+    // ---------------------------------------------------------------------------------------
+    // HOW WELL AN INSTRUMENT SUITS A PAIR — the new shape of an instrument's answer
+    // ---------------------------------------------------------------------------------------
+    //
+    // AN INSTRUMENT NO LONGER ANSWERS WHETHER IT TAKES A PAIR. It answers HOW WELL IT SUITS one, as
+    // a reading between nothing and whole, with a sentence saying what it read. His word of
+    // 2026-08-18 09:53: a measurement ranks which genre of crossing suits a pair and sets the
+    // parameters inside the genre that wins — it never admits and it never rejects.
+    //
+    // THE SHAPE, so a port in flight can be brought to it: `suits(a, b) -> [fit, why]`, where
+    //   fit  a number in 0…1. Nothing means this pair gives the instrument nothing to work with;
+    //        whole means the pair is exactly what the instrument is for. A fit of nothing is still
+    //        playable — it ranks last, and where every fit is nothing the die is even and something
+    //        plays anyway.
+    //   why  one sentence in the instrument's own terms, naming the readings it took. It travels on
+    //        the plan whatever the fit, so a modest crossing explains itself the same way a strong
+    //        one does.
+    // The reading is of the PAIR and carries no direction, so the same instrument suits an edge
+    // equally whichever way the visitor walks it; a return therefore casts as its outward pass did.
+    //
+    // WHAT THIS REPLACES. `INSTRUMENT_ASKS` returned [true|false, why]: the fold demanded a region
+    // score over a typed floor and four faces, the parquet a device confidence over a typed 0.5.
+    // A pair failing either was refused the instrument, and where it was the only one cutting the
+    // ground's kind the whole crossing was refused with it. Both conditions were real readings
+    // wearing an admission test's clothes — they are kept, in full, as the fit itself.
+    var INSTRUMENT_SUITS = {
+      // THE FOLD IS AN IMPOSSIBLE EVENT and it is placed on a work's own region line, so what it
+      // suits is a pair one of whose works falls plainly into panels. The reading is the region
+      // score of the better-divided work, and it is nothing where neither work offers a panel to
+      // fold — which is structural rather than a floor: a solid with one face is no solid.
+      boxfold: function (a, b) {
+        var best = Math.max(readingOf(((a.structure || {}).regions || {}).score),
+                            readingOf(((b.structure || {}).regions || {}).score));
         var faces = Math.max(facesOf(a), facesOf(b));
-        if (best < floors.regions_tight) {
-          return [false, "neither work reads regions over the tight floor of "
-                  + pyText(flt(floors.regions_tight)) + "; the stronger reads "
-                  + pyText(flt(r4(best)))];
+        if (faces < 2) {
+          return [0, "neither work cuts into panels a solid could be built from, so the fold has "
+                  + "nothing to crease; it reads regions at " + pyText(flt(r4(best)))];
         }
-        if (faces < BOX_FACES) {
-          return [false, "neither work cuts into the " + BOX_FACES + " real panels a box needs; "
-                  + "the finer cuts into " + faces];
-        }
-        return [true, "a work of the pair reads regions at " + pyText(flt(r4(best)))
+        return [best, "a work of the pair reads regions at " + pyText(flt(r4(best)))
                 + " over " + faces + " faces"];
       },
       // THE PARQUET REVEALS HOW A WORK WAS MADE — his 19:13 word makes that a register of its own —
-      // so what qualifies it is whether the making READS: the work's own device, the step it was cut
-      // at and how confidently that step was recovered. A passage that sets out to show the making
-      // of a work nobody could read the making of would be showing nothing.
-      unfold: function (a, b, floors) {
-        // THE MAKING THIS PASSAGE REVEALS IS THE ONE THAT READS. Of the two works, the parquet
-        // opens on whichever carries its own device most legibly — the fill below reads the same
-        // work — so the ask is of the pair and the ground it gates is direction-free.
+      // so what it suits is a pair whose making READS: the work's own device, the step it was cut at
+      // and how confidently that step was recovered. The confidence IS the fit, which is what a
+      // confidence is for; where no step was recovered there is nothing to open on.
+      unfold: function (a, b) {
         var da = (a.structure || {}).ownDevice || {}, db = (b.structure || {}).ownDevice || {};
-        var ca = Number(da.confidence) || 0, cb = Number(db.confidence) || 0;
+        var ca = readingOf(da.confidence), cb = readingOf(db.confidence);
         var dev = ca >= cb ? da : db, conf = Math.max(ca, cb);
         var step = Number(dev.stepPx) || 0;
         if (!(step > 0)) {
-          return [false, "neither work carries a measured step of its own to open on"];
+          return [0, "neither work carries a measured step of its own to open on"];
         }
-        if (conf < DEVICE_LEGIBLE) {
-          return [false, "the clearer of the two devices reads at " + pyText(flt(r4(conf)))
-                  + ", under the " + pyText(flt(DEVICE_LEGIBLE)) + " a making has to read at "
-                  + "before a passage sets out to reveal it"];
-        }
-        return [true, "a work of the pair was cut as " + pyText(dev.kind || "a device")
+        return [conf, "a work of the pair was cut as " + pyText(dev.kind || "a device")
                 + " at a step of " + pyText(flt(r4(step))) + " px, read at "
                 + pyText(flt(r4(conf)))];
+      },
+      // THE RIBBONS RUN ALONG A BAND FAMILY, so the weave suits a pair that both works band. The
+      // weaker of the two readings is the fit, because a fabric is only as woven as its thinner end.
+      weave: function (a, b) {
+        var sa = readingOf(((a.structure || {}).banding || {}).score);
+        var sb = readingOf(((b.structure || {}).banding || {}).score);
+        return [Math.min(sa, sb), "the two works read banding at " + pyText(flt(r4(sa)))
+                + " and " + pyText(flt(r4(sb)))];
+      },
+      // THE MESH TURNS ON RINGS AND WEDGES, so what it suits is a pair that reads radial at both
+      // ends — a mesh played on one work's centre alone reads as laid on rather than found.
+      gears: function (a, b) {
+        var sa = readingOf(((a.structure || {}).radial || {}).score);
+        var sb = readingOf(((b.structure || {}).radial || {}).score);
+        return [Math.min(sa, sb), "the two works read radial at " + pyText(flt(r4(sa)))
+                + " and " + pyText(flt(r4(sb)))];
+      },
+      // THE MATERIAL INSTRUMENT HANDS ONE TONAL WORLD AND ONE DETAIL SCALE OVER TO ANOTHER, so it
+      // suits a pair whose two grounds stand close enough for the handover to read as one substance
+      // changing rather than two pictures swapped. Both readings are of the pair by construction,
+      // which is why this instrument suits every pair somewhat and no pair absolutely.
+      matter: function (a, b) {
+        var bridge = tonalSpectral(a, b);
+        return [Math.min(bridge.tonal, bridge.spectral),
+                "the two works' tonal grounds stand at " + pyText(flt(r4(bridge.tonal)))
+                + " of each other and their detail scales at " + pyText(flt(r4(bridge.spectral)))];
+      },
+      // THE DRIFTING INSTRUMENT CUTS ON NAMED REGIONS — the things in the picture rather than the
+      // pieces of the frame — so it suits a pair both of whose works carry named objects. The row
+      // stands whether or not this collection publishes the instrument today: a landing instrument
+      // joins the ranking by arriving, and it arrives with its reading already written.
+      adrift: function (a, b) {
+        var sa = readingOf((a.measures || {}).named_objects);
+        var sb = readingOf((b.measures || {}).named_objects);
+        return [Math.min(sa, sb), "the two works read named objects at " + pyText(flt(r4(sa)))
+                + " and " + pyText(flt(r4(sb)))];
       }
     };
 
-    // THE INSTRUMENT THIS PAIR CASTS ON A KIND. Where one cuts on it, that one. Where several do,
-    // the role's budget narrows them, each candidate's own reading of the pair narrows them again,
-    // and the die chooses among whatever is left — the same shape the seven roads are chosen by, so
-    // a pinned seed reproduces the casting exactly and a fresh seed varies it.
-    // Whether SOME instrument could cast this kind for this pair, with no die rolled — the
-    // question a ground has to answer before it is a ground. Direction-free: an instrument whose
-    // reading is of the departing work is asked of both orderings.
-    function castableOnKind(kind, a, b, floors, noMiracle) {
-      var all = instrumentsOfKind(kind), i, ask;
-      for (i = 0; i < all.length; i++) {
-        if (noMiracle && spendsTheMiracle(all[i])) continue;
-        ask = INSTRUMENT_ASKS[all[i]];
-        if (!ask) return true;
-        if (ask(a, b, floors)[0] || ask(b, a, floors)[0]) return true;
+    // An instrument the register above says nothing about suits every pair the same, and says so.
+    // It is a reading and not a default: an instrument that has published no reading of its own has
+    // none to rank by, which is a fact about the port rather than about the pair.
+    function suitsPair(iid, a, b) {
+      var ask = INSTRUMENT_SUITS[iid];
+      if (!ask) {
+        return [0.5, "«" + iid + "» publishes no reading of a pair, so it suits this one no more "
+                + "and no less than any other"];
       }
-      return false;
+      var answer = ask(a, b);
+      return [clamp01(Number(answer[0]) || 0), answer[1]];
     }
 
-    function castOnKind(kind, fromW, toW, floors, noMiracle, seed, key, slot) {
-      var all = instrumentsOfKind(kind), pool = [], said = [], i, ask;
-      for (i = 0; i < all.length; i++) {
-        if (noMiracle && spendsTheMiracle(all[i])) {
-          said.push({ instrument: all[i], ok: false,
-                      why: "it spends the one miracle and this step has none to spend" });
-          continue;
+    // THE INSTRUMENT THIS PAIR CASTS ON A KIND, and it always casts one.
+    //
+    // Every published instrument is ranked, never filtered. Four orders of preference stand between
+    // them, and each is a preference rather than a gate — a step that runs out of the first order
+    // falls to the second and plays:
+    //
+    //   1  it cuts on this kind, and this step may spend what it spends
+    //   2  it cuts on this kind, but it folds the world where shelf 17 gives no miracle
+    //   3  it cuts on another kind, and this step may spend what it spends
+    //   4  it cuts on another kind and it folds the world
+    //
+    // Inside an order the die runs over the instruments' own readings of the pair, weighted by how
+    // well each suits it — so the best-suited is the likeliest and a pinned seed reproduces the
+    // casting exactly. Order 2 exists because shelf 17's budget is his law and a fold IS a miracle;
+    // a step that reaches it says so on the plan and `tierFor` declares the tier that was actually
+    // realised, which is the honest answer rather than a refusal.
+    // IT IS ASKED OF EVERY KIND THE CUT CARRIES, and that is a repair rather than a widening. The
+    // tonal and spectral pivot cuts on TWO kinds, a band and a scale, and this was asked of
+    // `pivot.elementKind` alone, which is the band. So the scale half never reached an instrument at
+    // all: nothing refused, nothing errored, and a whole way of crossing simply went unwalked while
+    // every suite stayed green. It is why one instrument was carrying about a quarter of every
+    // route's cues — on that ground it was the only one anything could reach.
+    // `avoid` NAMES AN INSTRUMENT ALREADY SPOKEN FOR IN THIS CROSSING, and it stands aside rather
+    // than taking the whole move down with it. One instrument carries one cue at a time — the host's
+    // own law, since an instrument is one object with one pose — and the composer's answer to a
+    // collision was to GIVE THE TRAVELLING MOVE UP: «the travelling axis cuts on the same instrument
+    // as the pivot», and the second voice was gone. With one instrument reachable per kind that
+    // collision was constant, and it is the direct mechanical cause of a passage playing on one
+    // voice: on the route he walked, seventeen of twenty-two ran alone. A lane that landed a second
+    // instrument on the same kinds measured what it costs — the route recovered 1 997 cues it had
+    // been losing, on top of what the new instrument itself plays.
+    //
+    // So a collision CHOOSES. The instrument already spoken for drops to the back of the ranking,
+    // the next-best-suited takes the move, and only where it is the sole instrument in the whole
+    // collection does the move fold into the voice it collided with.
+    function castForKinds(kinds, fromW, toW, noMiracle, seed, key, slot, avoid) {
+      var list = [].concat(kinds || []).filter(function (k) { return !!k; });
+      var cutters = [], said = [], tiers = [[], [], [], [], []], i, j, iid, answer;
+      for (j = 0; j < list.length; j++) {
+        instrumentsOfKind(list[j]).forEach(function (iid2) {
+          if (cutters.indexOf(iid2) < 0) cutters.push(iid2);
+        });
+      }
+      for (i = 0; i < ALL_INSTRUMENTS.length; i++) {
+        iid = ALL_INSTRUMENTS[i];
+        answer = suitsPair(iid, fromW, toW);
+        var cuts = cutters.indexOf(iid) >= 0;
+        var folds = spendsTheMiracle(iid);
+        var order = (iid === avoid) ? 4
+          : ((cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0));
+        said.push({ instrument: iid, fit: r4(answer[0]), cuts: cuts, why: answer[1],
+                    order: order });
+        tiers[order].push({ id: iid, fit: answer[0] });
+      }
+      for (i = 0; i < tiers.length; i++) {
+        if (tiers[i].length) {
+          return [dieWeighted(tiers[i], seed, key + "|" + list.join("+") + "|" + slot), said,
+                  cutters];
         }
-        ask = INSTRUMENT_ASKS[all[i]];
-        if (!ask) { pool.push(all[i]); said.push({ instrument: all[i], ok: true, why: null }); continue; }
-        var answer = ask(fromW, toW, floors);
-        said.push({ instrument: all[i], ok: answer[0], why: answer[1] });
-        if (answer[0]) pool.push(all[i]);
       }
-      if (!pool.length) return [null, said];
-      return [pool[dieAmong(seed, key + "|" + kind + "|" + slot, pool.length)], said];
-    }
-
-    function playable(measure) {
-      return !!instrumentOfKind(KIND_OF_MEASURE[measure]);
-    }
-
-    // A measure this PAIR can actually stand on: an instrument cuts on it, and both works carry
-    // real elements along that cut. A cut one of the two works offers only as the whole frame is a
-    // ground the actors cannot be drawn from — the refusal `castActors` names two steps later — and
-    // a ground a pair cannot hold is not the pair's ground. Both readings come off the works' own
-    // element sets.
-    function holdable(a, b, measure, noMiracle) {
-      var kind = KIND_OF_MEASURE[measure];
-      if (!playable(measure)) return false;
-      // A GROUND IS ONLY A GROUND WHERE SOME INSTRUMENT CAN ACTUALLY CAST IT. The gate belongs
-      // HERE and not on a road alone: once an instrument that folds cuts on a kind, any road can
-      // land on that ground by simply holding the strongest shared measure, and a quiet link would
-      // fold the world without ever naming the road that does it. It asks the same question
-      // `castOnKind` asks at casting time — the role's budget, then each candidate's own reading —
-      // and it asks it of BOTH orderings of the pair, because a ground is the pair's and the family
-      // read off it has to be the same one whichever way the visitor walks.
-      if (!castableOnKind(kind, a, b, FLOORS, noMiracle)) return false;
-      var sa = setFor(a, kind), sb = setFor(b, kind);
-      return !!(sa && sa.realCount && sb && sb.realCount);
+      // A COLLECTION WITH NO INSTRUMENT AT ALL is the one case with nothing to rank, and it is a
+      // fact about the settings record rather than about the pair.
+      return [null, said, cutters];
     }
 
     // The one key both directions of an edge roll the ground on.
@@ -782,127 +875,155 @@
       return a.id < b.id ? (a.id + "__" + b.id) : (b.id + "__" + a.id);
     }
 
-    // The measure the WEAKER work carries most strongly, among those that pass the filter.
-    function strongestHeld(shared, only) {
-      var best = null, i, m;
-      for (i = 0; i < shared.held.length; i++) {
-        m = shared.held[i];
-        if (only && !only(m)) continue;
-        if (best === null || shared.per[m].min > shared.per[best].min) best = m;
+    // THE DIE OVER A RANKING. Each candidate carries a fit, the die lands somewhere in their summed
+    // weight, and the best-suited holds the widest stretch of it. Where every fit is nothing the die
+    // is even — nothing is refused for reading nothing, it is simply no likelier than its rivals.
+    // The list is sorted by name first so a pinned seed reproduces the choice whatever order the
+    // caller built it in.
+    function dieWeighted(list, seed, key) {
+      var pool = list.slice().sort(function (x, y) { return x.id < y.id ? -1 : (x.id > y.id ? 1 : 0); });
+      var total = 0, i;
+      for (i = 0; i < pool.length; i++) total += Math.max(0, Number(pool[i].fit) || 0);
+      if (!(total > 0)) return pool[dieAmong(seed, key, pool.length)].id;
+      var at = dieAmong(seed, key, 1000000) / 1000000 * total, run = 0;
+      for (i = 0; i < pool.length; i++) {
+        run += Math.max(0, Number(pool[i].fit) || 0);
+        if (at < run) return pool[i].id;
       }
-      return best;
+      return pool[pool.length - 1].id;
     }
 
-    // THE GROUND, CHOSEN AMONG EVERY GROUND THIS PAIR CAN HOLD. Where one measure qualifies it is
-    // the ground; where several do, the die chooses, weighted by how strongly the weaker work
-    // carries each — so the strongest shared ground stays the likeliest and a pair with a strong
-    // band and a weak radial stops landing on the same cut as a pair with the reverse. This is the
-    // rule his 18:56 word asks for one level below the roads: the arsenal stays full and the
-    // options in hand are plentiful, and a road that chose a different derivation reaches the eye
-    // as a different passage because it stands on a different cut.
+    // The tonal and spectral closeness of a pair — two readings the two works always carry, so this
+    // answers for every pair in the world, including two records that share no measured structure
+    // at all. A record missing either field reads as the plainest thing it can: the fields' own
+    // neutral, which is what an unmeasured ladder position and a one-pixel detail scale amount to.
+    function tonalSpectral(a, b) {
+      var ta = Number((a.luminance || {}).ladderPosition) || 0;
+      var tb = Number((b.luminance || {}).ladderPosition) || 0;
+      var fa = Number((a.texture || {}).detailPx) || 1, fb = Number((b.texture || {}).detailPx) || 1;
+      var tonal = 1.0 - Math.min(1.0, Math.abs(ta - tb));
+      var spectral = 1.0 - Math.min(1.0, Math.abs(Math.log2(Math.max(fa, 1e-6))
+                                                  - Math.log2(Math.max(fb, 1e-6))) / 4.0);
+      return { tonal: tonal, spectral: spectral, ladder: [ta, tb], detailPx: [fa, fb] };
+    }
+
+    // EVERY GROUND THIS PAIR COULD STAND ON, EACH WITH ITS OWN STRENGTH. Nothing is admitted and
+    // nothing is turned away: the seven shared measures and the three pivots the elements builder
+    // knows beside them are all candidates for every pair, and the strength says which to reach for
+    // first. A candidate reading nothing is still a candidate — it is simply last.
+    //
+    // WHAT WENT. The ground was «the strongest shared measure AN INSTRUMENT CAN PLAY», and a pair
+    // whose strongest shared measure cut on tiles, panels or named regions declined whole with
+    // «pivot needs an instrument that cuts on …». Beneath that stood `holdable`, which asked three
+    // admission questions at once — is the measure playable, can some instrument cast it for this
+    // pair, do both works carry real elements — and `chooseGround`, which drew its pool from the
+    // measures that cleared their typed floor. All four questions are now readings that RANK, and
+    // the instrument's own casting, one step later, always answers with an instrument.
+    function groundCandidates(a, b) {
+      var all = groundReadings(a, b), out = [], i, m;
+      for (i = 0; i < MEASURES.length; i++) {
+        m = MEASURES[i];
+        out.push({ id: m, kind: "shared-measure", measure: m, fit: num(all.per[m].min),
+                   strength: all.per[m].min });
+      }
+      // THE SHARED TURN. Its strength is the weaker rotational reading where the two works turn on
+      // one and the same order and both carry a wedge set to cut; where they do not, the turn is
+      // not something this pair has between them and the reading is nothing. That is structural —
+      // two works of different rotational order share no turn — and not a floor.
+      var na = ((a.structure || {}).rotational || {}).n || 0;
+      var nb = ((b.structure || {}).rotational || {}).n || 0;
+      var turn = (na >= 3 && na === nb && setFor(a, "wedge") !== null && setFor(b, "wedge") !== null)
+        ? Math.min(readingOf(((a.structure || {}).rotational || {}).score),
+                   readingOf(((b.structure || {}).rotational || {}).score))
+        : 0;
+      out.push({ id: "shared-rotational-order", kind: "shared-rotational-order", fit: turn,
+                 order: na, strength: r4(turn) });
+      // THE SHARED PALETTE REGION. Its strength is the share of the departing work's own hues the
+      // arriving work also carries, where both stand on one rung of the ladder. The elements builder
+      // reads no `strength` off this pivot's value, so the ROW's strength stays at nothing exactly
+      // as it always has — what is new is that the share above ranks the pivot instead of a
+      // precedence order deciding it.
+      var ra = (a.palette || {}).rung, rb = (b.palette || {}).rung;
+      var mine = (a.palette || {}).hues || [], theirs = (b.palette || {}).hues || [], hues = [];
+      for (i = 0; i < mine.length; i++) if (theirs.indexOf(mine[i]) >= 0) hues.push(mine[i]);
+      hues.sort();
+      out.push({ id: "shared-palette-region", kind: "shared-palette-region",
+                 fit: (ra === rb && mine.length) ? hues.length / mine.length : 0,
+                 hues: hues, rung: ra, strength: r4(0.0) });
+      // THE TONAL ZONES AND THE DETAIL SCALES. Two decompositions that read on any two photographs
+      // by construction, so this candidate answers for every pair. It is ranked on its own reading
+      // like every other and reached by the same code path — there is no «when nothing else, then
+      // this» left anywhere in this file, on his word of 10:15.
+      var bridge = tonalSpectral(a, b);
+      out.push({ id: "tonal-and-spectral", kind: "tonal-and-spectral",
+                 fit: Math.min(bridge.tonal, bridge.spectral), bridge: bridge,
+                 strength: r4(r4(bridge.tonal) || 0.0) });
+      return out;
+    }
+
+    // THE GROUND A CROSSING STANDS ON, ranked and rolled.
     //
     // THE DIE IS ROLLED ON THE EDGE'S OWN KEY AND NOT ON THE PASSAGE'S, so the two directions of one
     // edge choose the same ground. §4.8's kinship is that a return keeps the family, and the family
     // is read off the pivot's own transform; a ground that changed with the direction would make
     // every return unrelated by construction.
-    function chooseGround(shared, only, seed, groundKey) {
-      var pool = [], weight = 0, i, m;
-      for (i = 0; i < shared.usable.length; i++) {
-        m = shared.usable[i];
-        if (only && !only(m)) continue;
-        pool.push(m);
-        weight += Math.max(num(shared.per[m].min), 0.0001);
-      }
-      if (!pool.length) return null;
-      if (pool.length === 1) return pool[0];
-      pool.sort();
-      var at = dieAmong(seed, groundKey + "|ground", 100000) / 100000 * weight, run = 0;
-      for (i = 0; i < pool.length; i++) {
-        run += Math.max(num(shared.per[pool[i]].min), 0.0001);
-        if (at < run) return pool[i];
-      }
-      return pool[pool.length - 1];
-    }
-
-    // THE GROUND A CROSSING STANDS ON. Every measure both works clear their own discriminating
-    // threshold on is an invariant the pair shares — that is what the threshold means — and the
-    // charter's law is that the pivot is the pair's invariant shared part, held throughout, with
-    // everything outside it travelling. WHICH of the shared measures to hold was read here, before
-    // this lane, as «the strongest», and a pair whose strongest shared measure cuts on tiles,
-    // panels or named regions declined whole with «pivot needs an instrument that cuts on …»:
-    // 2 862 of the 14 520 ordered pairs of the real collection, measured by this lane's sweep. So
-    // the ground is the strongest shared measure AN INSTRUMENT CAN PLAY. Nothing else about the
-    // pivot moves — an unplayable measure is still shared, it is simply not the part this crossing
-    // stands on, and where nothing playable is shared the three grounds below answer in their own
-    // order of precedence, ending at the tonal and spectral bridge that shelf 12 names the lawful
-    // universal bridge for pairs with nothing in common.
     //
-    // `free` is the measure a ROAD needs left free to travel: a road built on the pair's radial
-    // reading cannot also hold it still. The ground then stands on the next playable shared measure,
-    // or on one of the three below. `prefer` names a measure the road asks to stand on — a return
-    // holding the pivot of the pass it answers uses it — and it wins wherever the pair can hold it.
+    // `free` is the measure a GENRE needs left free to travel: a genre built on the pair's radial
+    // reading cannot also hold it still, so that candidate stands down for this one crossing.
+    // `prefer` names a ground the genre asks to stand on — a return holding the pivot of the pass it
+    // answers uses it — and it wins wherever the pair carries it at all.
     function pivotOfPair(a, b, free, prefer, noMiracle, seed, groundKey) {
-      // The four pivots in the elements builder's own order of precedence.
-      var all = sharedMeasures(a, b), v, na, nb, strength, ra, rb, hues, i;
-      var best = null;
-      if (prefer && prefer !== free && all.per[prefer] && all.per[prefer].usable
-          && holdable(a, b, prefer, noMiracle)) {
-        best = prefer;
+      var pool = groundCandidates(a, b), chosen = null, i;
+      var open = pool.filter(function (c) { return c.measure !== free || free === undefined; });
+      if (!open.length) open = pool;
+      if (prefer && prefer !== free) {
+        for (i = 0; i < open.length; i++) {
+          if ((open[i].measure === prefer || open[i].id === prefer) && open[i].fit > 0) {
+            chosen = open[i];
+            break;
+          }
+        }
       }
-      if (best === null) {
-        best = chooseGround(all, function (m) {
-          return m !== free && holdable(a, b, m, noMiracle);
-        }, seed || 0, groundKey || (a.id + "__" + b.id));
+      if (chosen === null) {
+        var at = dieWeighted(open, seed || 0, (groundKey || (a.id + "__" + b.id)) + "|ground");
+        for (i = 0; i < open.length; i++) if (open[i].id === at) chosen = open[i];
       }
-      var shared = best === null ? null : { measure: best, strength: all.per[best].min };
-      if (shared) {
-        v = { strength: shared.strength, measure: shared.measure,
-              cut: CUT_OF_MEASURE[shared.measure][0],
-              transform: CUT_OF_MEASURE[shared.measure][1],
-              elementKind: KIND_OF_MEASURE[shared.measure] };
-        return { kind: "shared-measure", value: v, rowStrength: r4(shared.strength) };
+      if (chosen === null) chosen = open[0];
+      var v;
+      if (chosen.kind === "shared-measure") {
+        v = { strength: chosen.strength, measure: chosen.measure,
+              cut: CUT_OF_MEASURE[chosen.measure][0],
+              transform: CUT_OF_MEASURE[chosen.measure][1],
+              elementKind: KIND_OF_MEASURE[chosen.measure] };
+        return { kind: "shared-measure", value: v, rowStrength: chosen.strength, ranking: open };
       }
-      na = a.structure.rotational.n || 0;
-      nb = b.structure.rotational.n || 0;
-      // The shared turn cuts on wedges, so it is a ground only where both works actually carry a
-      // wedge set — the same reading `compose` makes two steps later, made here where it can still
-      // be answered by standing on the next ground instead of by refusing the pair.
-      if (na >= 3 && na === nb && setFor(a, "wedge") !== null && setFor(b, "wedge") !== null) {
-        strength = r4(Math.min(a.structure.rotational.score || 0,
-                               b.structure.rotational.score || 0));
-        v = { order: na, cut: "wedges", transform: "gear_mesh", elementKind: "wedge",
-              strength: strength };
-        return { kind: "shared-rotational-order", value: v, rowStrength: r4(strength) };
+      if (chosen.kind === "shared-rotational-order") {
+        v = { order: chosen.order, cut: "wedges", transform: "gear_mesh", elementKind: "wedge",
+              strength: chosen.strength };
+        return { kind: "shared-rotational-order", value: v, rowStrength: chosen.strength,
+                 ranking: open };
       }
-      ra = a.palette.rung;
-      rb = b.palette.rung;
-      hues = [];
-      for (i = 0; i < (a.palette.hues || []).length; i++) {
-        if ((b.palette.hues || []).indexOf(a.palette.hues[i]) >= 0) hues.push(a.palette.hues[i]);
+      if (chosen.kind === "shared-palette-region") {
+        v = { rung: chosen.rung, hues: chosen.hues, cut: "colour_world",
+              transform: "palette_handover", elementKind: "band" };
+        return { kind: "shared-palette-region", value: v, rowStrength: chosen.strength,
+                 ranking: open };
       }
-      hues.sort();
-      if (ra === rb && hues.length) {
-        // The palette pivot's own strength stands on the pair's record and never on the pivot's
-        // value, so the row's strength is zero — the elements builder reads `strength` off the
-        // value and finds none. Carried here as it stands there.
-        v = { rung: ra, hues: hues, cut: "colour_world", transform: "palette_handover",
-              elementKind: "band" };
-        return { kind: "shared-palette-region", value: v, rowStrength: r4(0.0) };
-      }
-      var ta = Number(a.luminance.ladderPosition), tb = Number(b.luminance.ladderPosition);
-      var fa = Number(a.texture.detailPx || 1), fb = Number(b.texture.detailPx || 1);
-      var tonal = 1.0 - Math.min(1.0, Math.abs(ta - tb));
-      var spectral = 1.0 - Math.min(1.0, Math.abs(Math.log2(Math.max(fa, 1e-6))
-                                                  - Math.log2(Math.max(fb, 1e-6))) / 4.0);
-      v = { tonalCloseness: r4(tonal), spectralCloseness: r4(spectral), ladder: [ta, tb],
-            detailPx: [fa, fb], cut: "tonal_zones_and_detail_scales",
+      v = { tonalCloseness: r4(chosen.bridge.tonal), spectralCloseness: r4(chosen.bridge.spectral),
+            ladder: chosen.bridge.ladder, detailPx: chosen.bridge.detailPx,
+            cut: "tonal_zones_and_detail_scales",
             transform: "zone_handover_and_scale_growth", elementKind: "band" };
-      return { kind: "tonal-and-spectral-bridge", value: v, rowStrength: r4(r4(tonal) || 0.0) };
+      return { kind: "tonal-and-spectral", value: v, rowStrength: chosen.strength,
+               ranking: open };
     }
 
+    // HOW READY THIS PAIR IS, which is a reading and never a verdict. A typed floor of 0.12 stood
+    // in front of it and wrote any pair under it down to nothing — the only act a floor can perform.
+    // What is left is the arithmetic: the weaker readiness, narrowed by how unevenly the two ends
+    // are prepared. The guard on a zero denominator stays, because it is arithmetic rather than
+    // judgement.
     function pairScore(ra, rb) {
       var sa = ra[0], pa = ra[1], sb = rb[0], pb = rb[1];
-      if (sa < READY_FLOOR || sb < READY_FLOOR) return 0.0;
       if (pa <= 0 || pb <= 0) return 0.0;
       return Math.min(sa, sb) * (Math.min(pa, pb) / Math.max(pa, pb));
     }
@@ -952,53 +1073,69 @@
         cut: v.cut === undefined ? null : v.cut,
         transform: v.transform === undefined ? null : v.transform,
         elementKind: v.elementKind === undefined ? null : v.elementKind,
+        elementKinds: v.elementKinds === undefined ? null : v.elementKinds,
         strength: r4(strength ? strength : 0.0),
         held: true
       };
     }
 
+    // EVERY KIND OF ELEMENT THIS PIVOT'S CUT YIELDS. The pivot's own shape says so; a shared measure
+    // yields the one kind `KIND_OF_MEASURE` names for it.
     function pivotKindsOf(pivot) {
-      return PIVOT_KINDS_OF_CUT[pivot.kind] || [pivot.elementKind];
+      if (pivot.elementKinds && pivot.elementKinds.length) return pivot.elementKinds;
+      return [pivot.elementKind];
     }
 
     // ---- step two, the travelling axis ----
 
-    function axisReading(work, axis, floors) {
-      var st = work.structure, s, ends, t, rr;
+    // WHAT A WORK READS ON ONE AXIS. Every axis the record carries answers, whatever the number:
+    // a reading is a reading, and a low one says the axis travels a little rather than that it may
+    // not travel at all. A typed cut-line floor stood on this line and struck a whole axis out of
+    // the crossing where either work read under it — the same floor whose three tight companions
+    // stood above what any photograph in the collection could score. Only a MISSING field answers
+    // with nothing now, and that is absence rather than judgement.
+    function axisReading(work, axis) {
+      var st = (work || {}).structure || {}, s, ends, t, rr;
       if (axis === "banding") {
+        if (!st.banding) return null;
         s = st.banding.score;
         ends = { periodPx: r4(st.banding.periodPx), axis: st.banding.axis };
       } else if (axis === "radial") {
         rr = st.radial;
+        if (!rr || !rr.centre) return null;
         s = rr.score;
         ends = { centre: [r4(rr.centre[0]), r4(rr.centre[1])], subType: rr.subType };
       } else if (axis === "regions") {
+        if (!st.regions) return null;
         s = st.regions.score;
         ends = { count: st.regions.count };
       } else if (axis === "grid") {
+        if (!st.grid) return null;
         s = st.grid.score;
         ends = { periodPx: r4(st.grid.periodPx), angleDeg: r4(st.grid.angleDeg) };
       } else if (axis === "texture") {
         t = work.texture;
+        if (!t) return null;
         s = t.scoreFromCutLines;
         ends = { detailPx: r4(t.detailPx), spectralPeriodPx: r4(t.spectralPeriodPx) };
       } else if (axis === "dominant_object") {
+        if (!st.dominantObject || !st.dominantObject.bbox) return null;
         s = st.dominantObject.score;
         ends = { box: st.dominantObject.bbox.map(function (x) { return r4(x); }) };
       } else {
         return null;
       }
-      if (s === null || s === undefined || s < floors[axis]) return null;
+      if (s === null || s === undefined) return null;
       return { score: r4(s), ends: ends };
     }
 
-    function travellingAxis(aWork, bWork, pivot, floors) {
+    function travellingAxis(aWork, bWork, pivot) {
       var held = pivot.measure, best = null, i, axis, ra, rb, delta;
       for (i = 0; i < TRAVEL_AXES.length; i++) {
         axis = TRAVEL_AXES[i];
         if (axis === held) continue;
-        ra = axisReading(aWork, axis, floors);
-        rb = axisReading(bWork, axis, floors);
+        ra = axisReading(aWork, axis);
+        rb = axisReading(bWork, axis);
         if (ra === null || rb === null) continue;
         delta = Math.abs(ra.score - rb.score);
         if (best === null || delta > best.delta || (delta === best.delta && axis > best.axis)) {
@@ -1011,33 +1148,65 @@
     // ---- step three, the actors ----
 
     function setFor(work, kind) {
-      var i;
-      for (i = 0; i < work.sets.length; i++) {
-        if (work.sets[i].kind === kind) return work.sets[i];
+      var i, sets = (work || {}).sets || [];
+      for (i = 0; i < sets.length; i++) {
+        if (sets[i].kind === kind) return sets[i];
       }
       return null;
     }
 
+    // A work's own strongest cut, whatever kind it is — the actor a work can always be drawn from.
+    // The set with the most real elements wins; where a work carries none, the widest set it has
+    // stands, and the whole frame is a lawful element (§4.3's degenerate one).
+    function anySetOf(work) {
+      var sets = (work || {}).sets || [], best = null, i;
+      for (i = 0; i < sets.length; i++) {
+        if (best === null
+            || (sets[i].realCount || 0) > (best.realCount || 0)
+            || ((sets[i].realCount || 0) === (best.realCount || 0)
+                && (sets[i].count || 0) > (best.count || 0))) best = sets[i];
+      }
+      return best;
+    }
+
+    // THE ACTORS, AND THERE ARE ALWAYS SOME. Two refusals stood in this function — a work with no
+    // element set on the pivot's own cut, and a work offering only the whole frame along it — and
+    // between them they were the reason `holdable` had to gate a ground before it was chosen. Both
+    // are gone. A work that offers the whole frame along the cut hands over the whole frame, which
+    // is exactly what a crossing between two photographs sharing no measured structure looks like;
+    // a work with no set on the cut at all hands over its own strongest cut instead, and the plan
+    // says which cut was wanted and which was drawn.
     function castActors(fromW, toW, pivot, axis) {
-      var actors = [], kinds = pivotKindsOf(pivot), sides = { a: false, b: false };
-      var pairs = [["a", fromW], ["b", toW]], i, j, ref, work, drawn, anySet, found, tkind, role;
+      var actors = [], kinds = pivotKindsOf(pivot), stood = [];
+      var pairs = [["a", fromW], ["b", toW]], i, j, ref, work, drawn, found, tkind, role;
       for (i = 0; i < pairs.length; i++) {
         ref = pairs[i][0];
         work = pairs[i][1];
         drawn = 0;
-        anySet = false;
         for (j = 0; j < kinds.length; j++) {
           found = setFor(work, kinds[j]);
           if (found === null) continue;
-          anySet = true;
-          if (!found.realCount) continue;
           actors.push({ ref: ref, set: found.index, role: "pivot-carrier", ids: null,
                         count: found.count, measuredGrain: found.measuredGrain,
                         mergeFactor: found.mergeFactor });
           drawn += 1;
+          if (!found.realCount) {
+            stood.push("work " + ref + " offers only the whole frame along the pivot's cut, so the "
+                       + "whole frame is what hands over");
+          }
         }
-        if (!anySet) return [null, "no element set on the pivot's own cut for work " + ref];
-        if (!drawn) return [null, "work " + ref + " offers only the whole frame along the pivot's cut"];
+        if (!drawn) {
+          found = anySetOf(work);
+          if (found !== null) {
+            actors.push({ ref: ref, set: found.index, role: "pivot-carrier", ids: null,
+                          count: found.count, measuredGrain: found.measuredGrain,
+                          mergeFactor: found.mergeFactor });
+            stood.push("work " + ref + " carries no set on the pivot's cut, so its own «"
+                       + found.kind + "» cut stands in");
+          } else {
+            stood.push("work " + ref + " carries no element set at all, so it crosses whole");
+          }
+        }
       }
       if (axis !== null) {
         tkind = KIND_OF_AXIS[axis.axis];
@@ -1067,42 +1236,65 @@
         actors.push({ ref: ref, set: found.index, role: role, ids: [found.fig], count: 1,
                       measuredGrain: null, mergeFactor: null });
       }
-      for (i = 0; i < actors.length; i++) sides[actors[i].ref] = true;
-      if (!sides.a || !sides.b) return [null, "no actor was drawn from one of the two works"];
-      return [actors, null];
+      return [actors, stood.length ? stood.join("; ") : null];
     }
 
     // ---- step four, the arrival ----
 
-    function locusOf(work, floors) {
-      var st = work.structure, mot = work.motifs || {}, measured = mot.measured || [];
-      var rr = st.radial, c, y;
-      if (rr.score !== null && rr.score !== undefined && rr.score >= floors.radial_tight) {
+    // WHERE THE ARRIVING WORK CONDENSES, chosen by ranking the three loci the record can carry
+    // against each other. A typed floor of 0.55 stood in front of the pole and decided the whole
+    // question by itself: over it the arrival was a pole and under it the pole was struck out
+    // however plainly the work turned. Now the pole's strength IS the work's own radial reading, a
+    // measured seam and a measured gate each stand at whatever the record says of them, and the
+    // strongest reading is the locus. Where the record carries none of the three the arrival is
+    // carried by the gesture already running, which is a shape and not a refusal.
+    function locusOf(work) {
+      var st = (work || {}).structure || {}, mot = work.motifs || {}, measured = mot.measured || [];
+      var rr = st.radial || {}, pool = [], c, y, i, best;
+      if (rr.score !== null && rr.score !== undefined && rr.centre) {
         c = mot.radialCentre || rr.centre;
-        return ["pole", [r4(c[0]), r4(c[1])]];
+        pool.push({ kind: "pole", at: [r4(c[0]), r4(c[1])], fit: readingOf(rr.score) });
       }
       if (measured.indexOf(MOTIF_SEAM) >= 0) {
         y = (st.horizon || {}).y;
-        if (y !== null && y !== undefined) return ["horizon-seam", [r4(0.5), r4(y)]];
+        if (y !== null && y !== undefined) {
+          // A MEASURED SEAM IS ITS OWN EVIDENCE. The motif list carries only what was measured, so a
+          // seam standing on it reads whole; the record publishes no strength of its own for it.
+          pool.push({ kind: "horizon-seam", at: [r4(0.5), r4(y)], fit: 1 });
+        }
       }
       if (measured.indexOf(MOTIF_GATE) >= 0 && (mot.gateGap || 0) > 0) {
-        return ["gate", [r4(0.5), r4(0.5)]];
+        pool.push({ kind: "gate", at: [r4(0.5), r4(0.5)], fit: readingOf(mot.gateGap) });
       }
-      return ["none", null];
+      best = null;
+      for (i = 0; i < pool.length; i++) {
+        if (best === null || pool[i].fit > best.fit) best = pool[i];
+      }
+      if (best === null || !(best.fit > 0)) return ["none", null];
+      return [best.kind, best.at];
     }
 
+    // WHETHER THE DEPARTING FIGURE STANDS ON THE LOCUS, asked of the figure's own measured box
+    // rather than of a chosen radius. A typed 0.1 stood here as «near»; the box says where the
+    // figure is, so the honest question is whether the locus falls inside it.
     function figureOnLocus(work, locus) {
       if (locus === null || locus === undefined) return false;
-      var box = work.structure.dominantObject.bbox;
-      var cx = (box[0] + box[2]) / 2.0, cy = (box[1] + box[3]) / 2.0;
-      return Math.hypot(cx - num(locus[0]), cy - num(locus[1])) <= LOCUS_NEAR;
+      var box = (((work || {}).structure || {}).dominantObject || {}).bbox;
+      if (!box) return false;
+      var x = num(locus[0]), y = num(locus[1]);
+      return x >= box[0] && x <= box[2] && y >= box[1] && y <= box[3];
     }
 
-    function worldOf(work, floors, axis) {
+    // THE ARRIVING WORK'S OWN FOLDED SPACE, where the crossing travels along the radial reading and
+    // the arriving work reads on rings. A typed 0.55 gated it and is gone: what stands is the shape
+    // of the thing — rings open into a world and spokes do not — and the polar record's own strongest
+    // reading names which world it is. A record whose polar block says nothing has no world to open,
+    // which is absence rather than a floor.
+    function worldOf(work, axis) {
       if (axis === null || axis.axis !== "radial") return null;
-      var rr = work.structure.radial;
-      if (rr.subType !== "ring" || rr.score < floors.radial_tight) return null;
-      var polar = work.structure.polar || {}, keys = Object.keys(POLAR_WORLD).sort();
+      var rr = ((work || {}).structure || {}).radial || {};
+      if (rr.subType !== "ring") return null;
+      var polar = ((work || {}).structure || {}).polar || {}, keys = Object.keys(POLAR_WORLD).sort();
       var best = null, bestv = null, i, v;
       for (i = 0; i < keys.length; i++) {
         v = polar[keys[i]];
@@ -1116,39 +1308,44 @@
       return POLAR_WORLD[best];
     }
 
+    // THE CROSSING'S REGISTER, ranked rather than gated. Two typed floors decided this — 0.6 of open
+    // ground before an arrival could be an apparition, half the tonal ladder before a crossing could
+    // be a provocation — and a precedence order settled the rest. Both floors are gone: the open
+    // ground the arriving work measures IS how much of an apparition the arrival is, the tonal gap
+    // IS how much of a provocation the crossing is, and the strongest reading names the register.
+    // A crossing that opens a world is a discovery whole, because the world is either there or not.
     function registerOf(fromW, toW, arrival, world) {
-      var voidShare, la, lb;
+      var pool = [], best = null, i, la, lb;
       if (arrival === "CONDENSED") {
-        voidShare = (toW.motifs || {}).voidShare;
-        if (voidShare !== null && voidShare !== undefined && voidShare >= VOID_SHARE_FLOOR) {
-          return "apparition";
-        }
+        pool.push({ name: "apparition", fit: readingOf((toW.motifs || {}).voidShare) });
       }
-      if (world) return "discovery";
+      if (world) pool.push({ name: "discovery", fit: 1 });
       la = (fromW.luminance || {}).ladderPosition;
       lb = (toW.luminance || {}).ladderPosition;
-      if (la !== null && la !== undefined && lb !== null && lb !== undefined
-          && Math.abs(la - lb) >= LADDER_DISTANCE) {
-        return "provocation";
+      if (la !== null && la !== undefined && lb !== null && lb !== undefined) {
+        pool.push({ name: "provocation", fit: clamp01(Math.abs(la - lb)) });
       }
-      return "none";
+      for (i = 0; i < pool.length; i++) {
+        if (best === null || pool[i].fit > best.fit) best = pool[i];
+      }
+      return (best && best.fit > 0) ? best.name : "none";
     }
 
     // ---- the voices, the levels, the tier ----
 
-    // THE STEP'S ROLE NAMES THE TIER; THE DISTANCE ONLY GUESSED IT. A crossing carrying a folded
-    // space and an arrival is a culmination when the WALK says this step is one — that is what
-    // charter shelf 15 means by a step's function, and shelf 17 budgets by that function. The
-    // distance test stays for a step whose role the walk never stated: with no role in hand the
-    // only reading of a culmination the composer ever had was the pair standing far apart, and that
-    // reading is kept where it is still the only one there is.
-    function voiceTheCues(hasTravel, hasArrival, world, distance, role, folds) {
+    // THE STEP'S ROLE NAMES THE TIER, and nothing else does. Charter shelf 15 makes a step's
+    // function the walk's own reading and shelf 17 budgets by that function, so the walk's word is
+    // the answer. A second test stood beside it — the pair's widest axis standing over a typed 0.5 —
+    // and it OVERRODE the walk: a step the route called a middle became a culmination because two
+    // numbers stood far apart. That number was this seat's own invention with no requirement behind
+    // it, and it is gone; a step whose role the walk never stated reads as a middle, which is what
+    // the entry has always defaulted it to.
+    function voiceTheCues(hasTravel, hasArrival, world, role, folds) {
       // A CROSSING THAT FOLDS THE FRAME INTO A SOLID CARRIES ITS MIRACLE ON THE CUE THAT FOLDS IT,
       // wherever that cue stands. `world` is the other way a crossing spends the slot — the
       // arriving work's own space opening — and the two never stand together, which `compose`
       // settles before this is asked.
-      var culmination = !!(world || folds) && hasArrival
-        && (role === "culmination" || distance >= CULMINATION_DISTANCE);
+      var culmination = !!(world || folds) && hasArrival && role === "culmination";
       var voices = {}, any = false, k;
       if (folds === "pivot") voices.pivot = "miracle";
       else if (culmination) voices.pivot = "letter";
@@ -1204,47 +1401,69 @@
           return [TIERS[i], counts];
         }
       }
-      return [null, counts];
+      // NO ROW FITS THE COUNTS, AND THAT IS STILL NOT A REFUSAL. The three rows leave gaps between
+      // them — a plan carrying more accompaniments than any row takes, say — and this answered with
+      // nothing, which the composer turned into «the declared tier and the realised voices
+      // disagree» and the visitor into a plain slide. The honest answer is the row the counts stand
+      // NEAREST, measured as how far each count falls outside the row's own span, and the tier
+      // declared is the one that was realised. §4.7 calls a plan whose declared tier its own voices
+      // contradict a red; naming the nearest row is how the plan stops contradicting itself.
+      var bestRow = TIERS[0], bestMiss = null;
+      for (i = 0; i < TIERS.length; i++) {
+        var r = TIERS[i];
+        var miss = Math.max(0, r.letters[0] - letters) + Math.max(0, letters - r.letters[1])
+          + Math.max(0, r.accompaniments[0] - accs) + Math.max(0, accs - r.accompaniments[1])
+          + Math.max(0, r.miracles[0] - miracles) + Math.max(0, miracles - r.miracles[1]);
+        if (bestMiss === null || miss < bestMiss) { bestMiss = miss; bestRow = r; }
+      }
+      return [bestRow, counts];
     }
 
     // ---- the meshing instrument's own numbers ----
 
+    // THE MESHING TRAVEL, AND IT ALWAYS HAS NUMBERS. Three refusals stood here — a work with no ring
+    // set, a ring count of nothing, and a travel that would run under the size the picture stops
+    // reading at — and each of them cost the visitor the whole crossing. All three are now shapings:
+    // a work with no measured ring count crosses on the count the instrument itself rests at, and a
+    // travel that would run small is lifted onto the instrument's own published minimum, which is
+    // where the pair simply stands further from the eye.
+    //
+    // THE MEASURED THING IS THE RATIO, AND ONLY THE RATIO. The size travels from one end of the
+    // crossing to the other so that the pair's apparent tooth pitch holds while its radius grows
+    // with the ring count — which is why the two ends stand in the ratio of the two works' own
+    // measured ring counts. The two bounds it is fitted between, `SIZE_MIN` and `SIZE_MAX`, are the
+    // meshing instrument's own published span for its `size` handle, read from its manifest.
     function meshingTravel(fromW, toW, pivot) {
-      var ra = setFor(fromW, "ring"), rb = setFor(toW, "ring");
-      if (ra === null || rb === null) {
-        return [null, "the meshing travel needs a measured ring count and one work has no ring set"];
+      var ra = setFor(fromW, "ring"), rb = setFor(toW, "ring"), stood = [];
+      var countFrom = ra ? Number(ra.measuredGrain) || 0 : 0;
+      var countTo = rb ? Number(rb.measuredGrain) || 0 : 0;
+      // WHERE A WORK CARRIES NO RING COUNT the ratio has one end missing, so the mesh rests at the
+      // size the instrument rests at and the travel is even. That is the honest picture of a pair
+      // with nothing radial to measure — a mesh that holds rather than one that grows — and the
+      // plan says so.
+      if (!(countFrom > 0) || !(countTo > 0)) {
+        stood.push("one of the two works carries no measured ring count, so the mesh holds its own "
+                   + "size across the crossing instead of growing with the counts");
+        countFrom = countFrom > 0 ? countFrom : countTo;
+        countTo = countTo > 0 ? countTo : countFrom;
+        if (!(countFrom > 0)) { countFrom = 1; countTo = 1; }
       }
-      var countFrom = ra.measuredGrain, countTo = rb.measuredGrain;
-      if (countFrom <= 0 || countTo <= 0) {
-        return [null, "the meshing travel needs a measured ring count above zero on both works"];
-      }
-      var toRing = toW.structure.radial.subType === "ring";
-      var sizeTo = toRing ? SIZE_FLOOR : 4.5;
+      var toRing = ((toW.structure || {}).radial || {}).subType === "ring";
+      // A RING ARRIVAL PINS THE ARRIVING END ON THE INSTRUMENT'S OWN MINIMUM; a spoke arrival stands
+      // where the instrument's own handle rests, which is the manifest's default rather than a
+      // number chosen here.
+      var sizeTo = toRing ? SIZE_MIN : HANDLE_SPECS.gears.size[2];
       var sizeFrom = sizeTo * (countFrom / countTo);
-      // THE MEASURED THING IS THE RATIO, AND ONLY THE RATIO. The size travels from one end of the
-      // crossing to the other so that the pair's apparent tooth pitch holds while its radius grows
-      // with the ring count — which is why the two ends stand in the ratio of the two works' own
-      // measured ring counts. Where the departing end would fall under the floor, the whole travel
-      // is lifted by the one factor that puts it exactly on the floor: the measured ratio is
-      // untouched and the pair simply stands further from the eye.
-      //
-      // What stood here refused instead. A ring arrival pins the arriving end ON the floor, so
-      // every pair whose departing work carries FEWER rings than its arriving one had nowhere to
-      // go and the meshing travel refused outright — 712 of the 947 ordered pairs the kaleidoscope
-      // road qualifies for over the real collection, measured by this lane's own sweep. The floor
-      // is a floor on what the eye can read, not a reason to refuse a pair.
-      if (sizeFrom > 0 && sizeFrom < SIZE_FLOOR) {
-        var lift = SIZE_FLOOR / sizeFrom;
-        sizeFrom = SIZE_FLOOR;
+      if (sizeFrom > 0 && sizeFrom < SIZE_MIN) {
+        var lift = SIZE_MIN / sizeFrom;
+        sizeFrom = SIZE_MIN;
         sizeTo = sizeTo * lift;
       }
-      if (sizeFrom < SIZE_FLOOR || sizeTo < SIZE_FLOOR) {
-        return [null, "the meshing travel would go under size " + pyText(flt(SIZE_FLOOR))
-                + ", where the band period holds as a number while the picture's apparent "
-                + "period departs from it"];
-      }
+      if (sizeFrom < SIZE_MIN) sizeFrom = SIZE_MIN;
+      if (sizeTo < SIZE_MIN) sizeTo = SIZE_MIN;
       var over = sizeFrom > SIZE_MAX;
       if (over) sizeFrom = SIZE_MAX;
+      if (sizeTo > SIZE_MAX) sizeTo = SIZE_MAX;
       var raw = countTo / (countFrom + countTo);
       var step = roundToInt(raw * (RATIO_STEPS - 1));
       var ratio = r4(step / (RATIO_STEPS - 1));
@@ -1253,7 +1472,7 @@
       var bandPeriod = frac ? r4(Math.min(hi, Math.max(lo, frac))) : null;
       return [{ sizeFrom: r4(sizeFrom), sizeTo: r4(sizeTo), ratio: ratio,
                 bandPeriod: bandPeriod, overMax: over,
-                measuredCounts: [countFrom, countTo] }, null];
+                measuredCounts: [countFrom, countTo] }, stood.length ? stood.join("; ") : null];
     }
 
     // THE DOOR IS THE INSTRUMENT'S OWN READING, and this composer only asks (his architecture
@@ -1409,17 +1628,24 @@
     // the window each shape has always had. The deviation is drawn from the die and the pass count,
     // and it moves only where a cue OPENS, never where it closes — so both doors stand exactly
     // where they stood, the passage still ends when it ends, and the derived duration does not
-    // move. RHYTHM_REACH is a share of the passage that nothing measures; the revisit list has it.
-    var RHYTHM_REACH = 0.05;
-
+    // move.
+    //
+    // HOW WIDE THE DEVIATION IS, and it is no longer a number this file chose. A typed 0.05 stood
+    // here as «a share of the passage that nothing measures». What a window can actually breathe by
+    // is THE ROOM IT HAS — the gap between where it opens and where the cue before it opens — and
+    // `shift` is a share of that room, drawn on the die and read at the moment it is needed. A cue
+    // standing at the very start has no room and does not move; one standing late has room and
+    // breathes in it, and no window can cross the one before it, because the room is what bounds
+    // the move.
     function cueWindows(shapeHasTravel, arrivalLeads, travelInstrument, shift) {
-      var w = { pivot: [0.0, 1.0] }, s = shift || 0;
+      var w = { pivot: [0.0, 1.0] }, s = shift || 0, before = 0.0;
       if (shapeHasTravel) {
         w.travel = travelInstrument === "gears" ? [0.0, 0.86] : [0.18, 0.86];
-        w.travel[0] = r4(Math.max(0.0, Math.min(0.5, w.travel[0] + s)));
+        w.travel[0] = r4(w.travel[0] - s * (w.travel[0] - before));
+        before = num(w.travel[0]);
       }
       w.arrival = arrivalLeads ? [0.10, 1.0] : [0.62, 1.0];
-      w.arrival[0] = r4(Math.max(0.0, Math.min(0.9, w.arrival[0] - s)));
+      w.arrival[0] = r4(w.arrival[0] - s * Math.max(0, w.arrival[0] - before));
       return w;
     }
 
@@ -1446,12 +1672,17 @@
     // makes the set of handles a cue drives; a fence standing beside a list that never carried the
     // handle would pass whatever it did. The manifest is the one home of the fact that a handle is
     // open, so nothing here keeps a copy of which one it is.
+    // A HANDLE THE REGISTER CANNOT NAME A MEASUREMENT FOR IS NOT DRIVEN. His 19:13 word lifted to
+    // the class at 19:21 holds in full: every parameter a score drives names the measurement it
+    // reads, so a handle with no row in `HANDLE_SOURCE` gets no track and the instrument's own
+    // published default stands. What this replaces is a refusal of the WHOLE crossing.
     function tracksFor(instr, cueId) {
       var manifest = MANIFESTS[instr].handles, handles = Object.keys(manifest).sort();
       var out = {}, i, h;
       for (i = 0; i < handles.length; i++) {
         h = handles[i];
         if (manifest[h].open) continue;
+        if (!HANDLE_SOURCE[h]) continue;
         out[h] = { node: cueId + "-" + h };
       }
       return out;
@@ -1530,8 +1761,6 @@
         duration: spec.duration,
         middle: spec.middle,
         budget: spec.budget,
-        heldFraction: flt(r4(2 * DOOR_HOLD)),
-        doorHold: flt(DOOR_HOLD),
         cues: cues,
         camera: { owner: "stage", rests: "b", track: track },
         interruption: { withinMs: 500, resolve: "nearest-door" },
@@ -1544,54 +1773,58 @@
     }
 
     // ---------------------------------------------------------------------------------------
-    // THE ROADS — the plural sources of a crossing's structure
+    // THE GENRES — the plural sources of a crossing's structure, ranked and never gated
     // ---------------------------------------------------------------------------------------
     //
-    // His word of 2026-08-17 18:56, standing in the charter's Model: «the axes that differ most
-    // travel» is ONE lawful derivation among several and never the whole formula. Equally lawful:
-    // a road along what the pair SHARES, the shared measure held while everything outside it
-    // travels; a road built from HOW A WORK IS MADE — a radial work spins or opens into a
-    // kaleidoscope, a symmetric work slides its parts along its own symmetry or becomes stripes, a
-    // work folding along strong directions folds into a box under the five-condition box law; and a
-    // road along the pair's DISSIMILAR axes with the mystery in the middle.
+    // HIS WORD NAMES THEM, AND HIS WORD IS THE BETTER NAME. 2026-08-18 09:53: «замеры просто
+    // помогают ранжировать жанр перехода что больше подойдет и по каким параметрам» — the
+    // measurements rank the GENRE of crossing that suits a pair better than the others, and set the
+    // parameters inside the genre that wins. They never admit and they never reject. This file
+    // called them «roads» until then; the word is his and it stays.
     //
-    // Each road below states, in its own lines, the measurements that QUALIFY a pair for it and the
-    // ones that DISQUALIFY it, and every one of those readings comes off the two works' own records
-    // — nothing pairwise is written down and nothing scales with the number of pairs (his 19:21
-    // word). Where several roads qualify the die chooses among them, so a pinned seed reproduces
-    // the choice exactly and a fresh seed varies it (charter shelf 16). Where none qualifies the
-    // tonal and spectral bridge stands as the last candidate — shelf 12 names it the lawful
-    // universal bridge for pairs with nothing in common — so no pair is left without a road.
+    // HIS WORD OF 2026-08-17 18:56 STANDS UNDER IT: «the axes that differ most travel» is ONE lawful
+    // derivation among several and never the whole formula. Equally lawful: a crossing along what
+    // the pair SHARES, the shared measure held while everything outside it travels; one built from
+    // HOW A WORK IS MADE — a radial work spins or opens into a rosette, a symmetric work slides its
+    // parts along its own symmetry or becomes stripes, a work folding along strong directions folds
+    // into a solid; and one along the pair's DISSIMILAR axes with the mystery in the middle.
     //
-    // A ROAD ANSWERS FIVE QUESTIONS AND NOTHING ELSE, and the machinery below it is unchanged:
-    //   ground   the measure the crossing holds still, or null to let the pair's own precedence say
-    //   free     the measure this road needs left free to travel, so the ground never holds it
+    // WHAT CHANGED ON 2026-08-18, AND IT IS THE WHOLE SHAPE. Each genre used to state the
+    // measurements that QUALIFIED a pair for it and the ones that DISQUALIFIED it, and a pair that
+    // qualified for none fell to one nominated road. Seven of the eight therefore carried an
+    // admission test with a typed number inside it — a tight radial floor, a tight band floor, a
+    // tight region floor, four faces, a similar span of 0.15, a mystery distance of 0.5 — and a
+    // pair that read a hair under one was not merely ranked lower, it was struck out.
+    //
+    // Now EVERY GENRE IS A CANDIDATE FOR EVERY PAIR, and each answers with a FIT — a reading between
+    // nothing and whole, taken off the two works' own records — plus the sentence saying what it
+    // read. The die runs over the fits, so the best-suited is the likeliest, a pinned seed
+    // reproduces the choice (charter shelf 16) and a fresh seed varies it. A fit of nothing means
+    // this pair gives that genre nothing to work with; it is last, and it still plays where nothing
+    // else stands higher. There is no fallback genre and no last candidate — his word of 10:15,
+    // «я не просил запасную дорогу» — because the list is never empty: every genre always answers,
+    // so nothing needs catching.
+    //
+    // A GENRE ANSWERS FIVE QUESTIONS AND NOTHING ELSE, and the machinery below it is unchanged:
+    //   ground   the measure the crossing holds still, or null to let the pair's own ranking say
+    //   free     the measure this genre needs left free to travel, so the ground never holds it
     //   axis     how the travelling axis is picked — a measure name pins it, "near" takes the
     //            closest reading of the two works, "far" the most distant
-    //   miracle  whether this road may spend the crossing's one miracle on a folded space
+    //   miracle  whether this genre may spend the crossing's one miracle on a folded space
     //   moves    how many structural gestures it reaches for, before the role's budget cuts it back
 
-    // How close two readings of one axis stand before the road between them counts as a road along
-    // the pair's SIMILAR axes. Nothing measures this number; it is the working span of a similar
-    // road and it stands on the revisit list.
-    var SIMILAR_DELTA = 0.15;
-    // The faces a box needs before a work can fold into one: four walls read off the departing
-    // work's own region lines, under the five-condition box law of 12.08 23:49.
-    var BOX_FACES = 4;
-
-    // The travelling axis, picked the way a road asks. "far" is the reading this file has always
-    // had — the axes that differ most travel — and it is delegated unchanged so the road that keeps
-    // it composes exactly what stage 0 composed. "near" runs the road along the pair's most similar
+    // The travelling axis, picked the way a genre asks. "far" is the reading this file has always
+    // had — the axes that differ most travel. "near" runs the crossing along the pair's most similar
     // axis; a measure name pins the axis to that measure or answers with nothing.
-    function travellingAxisOn(fromW, toW, held, floors, pick) {
-      if (!pick || pick === "far") return travellingAxis(fromW, toW, { measure: held }, floors);
+    function travellingAxisOn(fromW, toW, held, pick) {
+      if (!pick || pick === "far") return travellingAxis(fromW, toW, { measure: held });
       var best = null, bestRaw = 0, i, axis, ra, rb, delta;
       for (i = 0; i < TRAVEL_AXES.length; i++) {
         axis = TRAVEL_AXES[i];
         if (axis === held) continue;
         if (pick !== "near" && axis !== pick) continue;
-        ra = axisReading(fromW, axis, floors);
-        rb = axisReading(toW, axis, floors);
+        ra = axisReading(fromW, axis);
+        rb = axisReading(toW, axis);
         if (ra === null || rb === null) continue;
         delta = Math.abs(ra.score - rb.score);
         if (best === null || delta < bestRaw || (delta === bestRaw && axis > best.axis)) {
@@ -1602,180 +1835,157 @@
       return best;
     }
 
-    // The road every pair keeps when nothing else qualifies: the pair's own ground, the axes that
-    // differ most travelling, and the tonal and spectral bridge underneath it where the two works
-    // share no measure at all. This is the derivation stage 0 landed, whole.
-    var BRIDGE_ROAD = { id: "bridge", ground: null, free: null, axis: "far", miracle: true,
-                        moves: 2, why: "no road built on the pair's own structure qualifies, so "
-                        + "the crossing runs on the universal bridge" };
-
-    function roadsFor(fromW, toW, floors) {
-      var shared = sharedMeasures(fromW, toW), roads = [], notes = [];
-      function no(id, why) { notes.push({ road: id, ok: false, why: why }); }
-      function yes(id, road, why) {
-        road.id = id;
-        road.why = why;
-        roads.push(road);
-        notes.push({ road: id, ok: true, why: why });
+    // EVERY GENRE THIS PAIR COULD CROSS ON, EACH WITH ITS OWN FIT.
+    //
+    // Nothing is qualified and nothing is disqualified. Each genre reads the two records, answers
+    // with how well it suits them and says what it read; the reading is the ranking, and the ranking
+    // is all a measurement is for. Where a genre used to be struck out — «the strongest radial
+    // reading is under the tight floor», «the closest axis is past the span a similar road runs
+    // inside», «the departing work cuts into 3 real panels, under the 4 a box needs» — the same
+    // sentence now rides a low fit, so a poor fit is still playable and still explains itself.
+    //
+    // A FIT OF NOTHING IS STRUCTURAL, NEVER A FLOOR. Two band families that run the same way give
+    // the crossing nothing to cross, so `stripes` reads nothing for that pair; two that cross give
+    // `symmetry-slide` no one symmetry to slide along, so it reads nothing. That is the pair
+    // answering, not a bar this file set.
+    function genresFor(fromW, toW) {
+      var all = groundReadings(fromW, toW), genres = [], notes = [];
+      function say(id, genre, fit, why) {
+        genre.id = id;
+        genre.fit = clamp01(fit);
+        genre.why = why;
+        genres.push(genre);
+        notes.push({ genre: id, road: id, fit: r4(clamp01(fit)), why: why });
       }
-      var rFrom = fromW.structure.radial || {}, rTo = toW.structure.radial || {};
-      var bFrom = fromW.structure.banding || {}, bTo = toW.structure.banding || {};
-      var gFrom = fromW.structure.regions || {};
+      var rFrom = (fromW.structure || {}).radial || {}, rTo = (toW.structure || {}).radial || {};
+      var bFrom = (fromW.structure || {}).banding || {}, bTo = (toW.structure || {}).banding || {};
+      var gFrom = (fromW.structure || {}).regions || {};
 
-      // 1 · A ROAD ALONG WHAT THE PAIR SHARES. It qualifies on two measurements at once: the two
-      // works clear one and the same discriminating threshold on a measure an instrument can cut
-      // on, which is the ground; and some OTHER axis reads on both works with their two scores
-      // standing close, which is the axis the road runs along. A pair whose every other axis stands
-      // far apart has no similar road to run — that pair's road is a road along its differences.
-      var heldGround = strongestHeld(shared, playable);
-      var nearAxis = heldGround === null ? null
-        : travellingAxisOn(fromW, toW, heldGround, floors, "near");
-      if (heldGround === null) {
-        no("shared-ground", "the two works clear no common measure this collection cuts on");
-      } else if (nearAxis === null) {
-        no("shared-ground", "beside the shared " + heldGround + " no axis reads on both works");
-      } else if (num(nearAxis.delta) > SIMILAR_DELTA) {
-        no("shared-ground", "the closest axis is " + nearAxis.axis + " at " + pyText(nearAxis.delta)
-           + " apart, past the " + pyText(flt(SIMILAR_DELTA)) + " a similar road runs inside");
+      // 1 · ALONG WHAT THE PAIR SHARES. Two readings make it: the strongest ground the pair holds
+      // between them, and how CLOSE their nearest other axis stands, since that axis is what the
+      // crossing runs along. A pair whose every other axis stands far apart suits this genre less —
+      // it does not fail it.
+      var heldGround = null, i, m;
+      for (i = 0; i < MEASURES.length; i++) {
+        m = MEASURES[i];
+        if (heldGround === null || num(all.per[m].min) > num(all.per[heldGround].min)) heldGround = m;
+      }
+      var nearAxis = heldGround === null ? null : travellingAxisOn(fromW, toW, heldGround, "near");
+      if (nearAxis === null) {
+        say("shared-ground", { ground: heldGround, free: null, axis: "near", miracle: false,
+                               moves: 2 }, 0,
+            "beside the shared " + pyText(heldGround) + " no axis reads on both works, so there is "
+            + "no similar axis to run along");
       } else {
-        yes("shared-ground", { ground: heldGround, free: null, axis: "near", miracle: false,
+        var closeness = 1 - clamp01(num(nearAxis.delta));
+        say("shared-ground", { ground: heldGround, free: null, axis: "near", miracle: false,
                                moves: 2 },
-            "both works clear " + heldGround + " at " + pyText(shared.per[heldGround].min)
-            + " and their " + nearAxis.axis + " readings stand only "
+            num(all.per[heldGround].min) * closeness,
+            "the pair holds " + heldGround + " at " + pyText(all.per[heldGround].min)
+            + " and their " + nearAxis.axis + " readings stand "
             + pyText(nearAxis.delta) + " apart");
       }
 
-      // 2 and 3 · A ROAD BUILT FROM HOW A RADIAL WORK IS MADE. The radial reading has to stand on
-      // BOTH works above the cut-line floor, because the bridge computes both structures and a
-      // radial road playing one work's centre alone reads as artificial (the charter's own words);
-      // and at least one of the two has to carry it above the tight floor, which is where the
-      // measure stops being a trace and becomes the work's own device. Which of the two roads it is
-      // the ARRIVING work's own subtype answers: rings open into a kaleidoscope — a folded space,
-      // and that is the crossing's one miracle — while spokes turn, which is a spin and no miracle
-      // at all.
-      var radialAxis = travellingAxisOn(fromW, toW, null, floors, "radial");
-      var radialTop = Math.max(Number(rFrom.score || 0), Number(rTo.score || 0));
-      if (radialAxis === null) {
-        no("spin", "the radial measure fails the cut-line floor on one of the two works");
-        no("kaleidoscope", "the radial measure fails the cut-line floor on one of the two works");
-      } else if (radialTop < floors.radial_tight) {
-        no("spin", "the strongest radial reading of the pair is " + pyText(flt(r4(radialTop)))
-           + ", under the tight floor of " + pyText(flt(floors.radial_tight)));
-        no("kaleidoscope", "the strongest radial reading of the pair is "
-           + pyText(flt(r4(radialTop))) + ", under the tight floor of "
-           + pyText(flt(floors.radial_tight)));
-      } else if (rTo.subType === "ring" && Number(rTo.score || 0) >= floors.radial_tight) {
-        // THE WORK THAT OPENS IS THE ARRIVING ONE, so it is the arriving work's own reading that
-        // has to clear the tight floor. `worldOf` below reads exactly the same two numbers off the
-        // same work, so a pair that qualifies here is a pair whose folded space actually stands —
-        // which is what makes this road the one a culmination reaches for.
-        yes("kaleidoscope", { ground: null, free: "radial", axis: "radial", miracle: true,
-                              moves: 3 },
-            "the arriving work reads radial at " + pyText(flt(r4(Number(rTo.score || 0))))
-            + " on rings, over the tight floor, and both works carry a radial reading, so the "
-            + "rings open");
-        no("spin", "the arriving work's radial reading is on rings, which open rather than turn");
-      } else {
-        yes("spin", { ground: null, free: "radial", axis: "radial", miracle: false, moves: 2 },
-            "the arriving work reads radial at " + pyText(flt(r4(Number(rTo.score || 0))))
-            + " on " + pyText(rTo.subType) + ", so its own turn is what travels");
-        no("kaleidoscope", "the arriving work's radial reading is on "
-           + pyText(rTo.subType) + " rather than on rings, so there is nothing to open");
-      }
+      // 2 and 3 · BUILT FROM HOW A RADIAL WORK IS MADE. The radial reading has to stand on BOTH
+      // works for the genre to suit — the bridge computes both structures and a radial crossing
+      // played on one work's centre alone reads as laid on rather than found — so the fit is the
+      // weaker of the two readings. Which of the two genres it is the ARRIVING work's own subtype
+      // answers: rings open into a rosette, which is a folded space and the crossing's one miracle,
+      // while spokes turn, which is a spin and no miracle at all.
+      var radialAxis = travellingAxisOn(fromW, toW, null, "radial");
+      var radialPair = Math.min(readingOf(rFrom.score), readingOf(rTo.score));
+      var arrivesOnRings = rTo.subType === "ring";
+      var radialFit = radialAxis === null ? 0 : radialPair;
+      say("kaleidoscope", { ground: null, free: "radial", axis: "radial", miracle: true, moves: 3 },
+          arrivesOnRings ? radialFit : 0,
+          arrivesOnRings
+            ? ("the arriving work reads radial at " + pyText(flt(r4(readingOf(rTo.score))))
+               + " on rings and the pair holds radial at " + pyText(flt(r4(radialPair)))
+               + ", so the rings open")
+            : ("the arriving work's radial reading is on " + pyText(rTo.subType)
+               + " rather than on rings, so there is nothing to open"));
+      say("spin", { ground: null, free: "radial", axis: "radial", miracle: false, moves: 2 },
+          arrivesOnRings ? 0 : radialFit,
+          arrivesOnRings
+            ? "the arriving work's radial reading is on rings, which open rather than turn"
+            : ("the arriving work reads radial at " + pyText(flt(r4(readingOf(rTo.score))))
+               + " on " + pyText(rTo.subType) + " and the pair holds radial at "
+               + pyText(flt(r4(radialPair))) + ", so its own turn is what travels"));
 
-      // 4 and 5 · A ROAD BUILT FROM HOW A SYMMETRIC WORK IS MADE. A band family is a translational
-      // symmetry the measure files actually carry, so it is the symmetry this road reads. It has to
-      // stand on both works above the cut-line floor, one of them above the tight floor, and both
-      // periods have to be real numbers of pixels — a band family with no period is a score with
-      // nothing to slide. The two works' own band DIRECTIONS then say which road it is: where they
-      // agree the parts slide along that one symmetry, and where they cross the fabric becomes
-      // stripes.
-      var bandAxis = travellingAxisOn(fromW, toW, null, floors, "banding");
-      var bandTop = Math.max(Number(bFrom.score || 0), Number(bTo.score || 0));
-      if (bandAxis === null) {
-        no("symmetry-slide", "the banding measure fails the cut-line floor on one of the two works");
-        no("stripes", "the banding measure fails the cut-line floor on one of the two works");
-      } else if (bandTop < floors.banding_tight) {
-        no("symmetry-slide", "the strongest band reading of the pair is "
-           + pyText(flt(r4(bandTop))) + ", under the tight floor of "
-           + pyText(flt(floors.banding_tight)));
-        no("stripes", "the strongest band reading of the pair is " + pyText(flt(r4(bandTop)))
-           + ", under the tight floor of " + pyText(flt(floors.banding_tight)));
-      } else if (!(Number(bFrom.periodPx) > 0) || !(Number(bTo.periodPx) > 0)) {
-        no("symmetry-slide", "one of the two band families carries no measured period");
-        no("stripes", "one of the two band families carries no measured period");
-      } else if (bFrom.axis === bTo.axis) {
-        yes("symmetry-slide", { ground: null, free: "banding", axis: "banding", miracle: false,
-                                moves: 2 },
-            "both works band " + pyText(bFrom.axis) + ", at "
-            + pyText(flt(r4(Number(bFrom.periodPx)))) + " and "
-            + pyText(flt(r4(Number(bTo.periodPx)))) + " px, so the parts slide along one symmetry");
-        no("stripes", "the two band families run the same way, so nothing crosses");
-      } else {
-        yes("stripes", { ground: null, free: "banding", axis: "banding", miracle: false,
-                         moves: 2 },
-            "the two band families cross — " + pyText(bFrom.axis) + " against "
-            + pyText(bTo.axis) + " — so the fabric becomes stripes");
-        no("symmetry-slide", "the two band families run different ways, so there is no one "
-           + "symmetry to slide along");
-      }
+      // 4 and 5 · BUILT FROM HOW A SYMMETRIC WORK IS MADE. A band family is a translational symmetry
+      // the measure files actually carry, so it is the symmetry these two read. The fit is the
+      // weaker of the two band readings, and it is nothing where a family carries no period at all —
+      // a band family with no period is a score with nothing to slide. The two works' own band
+      // DIRECTIONS say which of the two genres this pair suits: where they agree the parts slide
+      // along that one symmetry and the fabric has nothing to cross, and where they cross it is the
+      // other way about.
+      var bandAxis = travellingAxisOn(fromW, toW, null, "banding");
+      var bandPair = Math.min(readingOf(bFrom.score), readingOf(bTo.score));
+      var periods = Number(bFrom.periodPx) > 0 && Number(bTo.periodPx) > 0;
+      var bandFit = (bandAxis === null || !periods) ? 0 : bandPair;
+      var sameWay = bFrom.axis === bTo.axis;
+      say("symmetry-slide", { ground: null, free: "banding", axis: "banding", miracle: false,
+                              moves: 2 },
+          sameWay ? bandFit : 0,
+          !periods ? "one of the two band families carries no measured period"
+            : (sameWay
+               ? ("both works band " + pyText(bFrom.axis) + ", at "
+                  + pyText(flt(r4(Number(bFrom.periodPx) || 0))) + " and "
+                  + pyText(flt(r4(Number(bTo.periodPx) || 0)))
+                  + " px, and the pair holds banding at " + pyText(flt(r4(bandPair)))
+                  + ", so the parts slide along one symmetry")
+               : "the two band families run different ways, so there is no one symmetry to slide "
+                 + "along"));
+      say("stripes", { ground: null, free: "banding", axis: "banding", miracle: false, moves: 2 },
+          sameWay ? 0 : bandFit,
+          !periods ? "one of the two band families carries no measured period"
+            : (sameWay ? "the two band families run the same way, so nothing crosses"
+               : ("the two band families cross — " + pyText(bFrom.axis) + " against "
+                  + pyText(bTo.axis) + " — and the pair holds banding at "
+                  + pyText(flt(r4(bandPair))) + ", so the fabric becomes stripes")));
 
-      // 6 · A WORK FOLDING ALONG STRONG DIRECTIONS FOLDS INTO A BOX. The charter's five-condition
-      // box law of 12.08 23:49 pardons the box on measurement rather than on argument, and its
-      // FIRST condition is the one a composer can answer: the crease is placed on the departing
-      // work's own measured region line. So the qualification is the departing work's region
-      // reading above the tight floor and a cut of at least four faces on its own record. The other
-      // four conditions — live pictures on every face, a contact shadow on every edge, true
-      // perspective, an exact landing — belong to an instrument that cuts on panels, and this
-      // collection has none. The road is therefore disqualified by its instrument and not by its
-      // measurements, and it says so: the day such an instrument lands, this road goes live on one
-      // line of INSTRUMENT_OF_KIND.
-      if (!(Number(gFrom.score || 0) >= floors.regions_tight)) {
-        no("box-fold", "the departing work reads regions at "
-           + pyText(flt(r4(Number(gFrom.score || 0)))) + ", under the tight floor of "
-           + pyText(flt(floors.regions_tight)) + ", so there is no measured line to crease on");
-      } else if (facesOf(fromW) < BOX_FACES) {
-        no("box-fold", "the departing work cuts into " + facesOf(fromW) + " real panels, under the "
-           + BOX_FACES + " faces a box needs");
-      } else if (!(shared.per.regions && shared.per.regions.both)) {
-        no("box-fold", "the two works do not both clear the region measure's own discriminating "
-           + "threshold, so the region division is no ground this pair shares");
-      } else if (!holdable(fromW, toW, "regions")) {
-        // A ROAD THAT CANNOT HOLD ITS OWN GROUND IS NOT A ROAD. The ground it stands on is the
-        // region division, which cuts on panels, and a work with no real panel set of its own has
-        // nothing for the fold to be placed on — the road would run under its own name and fold
-        // nothing at all.
-        no("box-fold", "one of the two works carries no real panel set, so the region division has "
-           + "no faces to fold on this pair");
-      } else if (!instrumentOfKind("panel")) {
-        no("box-fold", "the measurements qualify, and the road needs "
-           + MISSING_INSTRUMENT.panel);
-      } else {
-        yes("box-fold", { ground: "regions", free: null, axis: "far", miracle: true,
-                          mustFold: true, moves: 3 },
-            "the departing work reads regions at "
-            + pyText(flt(r4(Number(gFrom.score || 0)))) + " over " + facesOf(fromW) + " faces");
-      }
+      // 6 · A WORK FOLDING ALONG STRONG DIRECTIONS FOLDS INTO A SOLID. The crease is placed on the
+      // departing work's own measured region line, so the fit is that work's region reading. What
+      // used to stand here was a chain of four admission tests — the region reading over a tight
+      // floor, four faces, both works over the discriminating threshold, and a ground the pair could
+      // hold — and one of them refused the genre for want of an instrument that cuts on panels, a
+      // want this collection has not had since the folding instrument landed. A solid with one face
+      // is no solid, so a work that falls into no panel at all reads nothing here; everything else
+      // is a reading.
+      var faces = facesOf(fromW);
+      say("box-fold", { ground: "regions", free: null, axis: "far", miracle: true, mustFold: true,
+                        moves: 3 },
+          faces >= 2 ? readingOf(gFrom.score) : 0,
+          faces >= 2
+            ? ("the departing work reads regions at "
+               + pyText(flt(r4(readingOf(gFrom.score)))) + " over " + faces + " faces")
+            : ("the departing work cuts into " + faces + " panels, so there is nothing to fold "
+               + "into a solid"));
 
-      // 7 · A ROAD ALONG THE PAIR'S DISSIMILAR AXES, WITH THE MYSTERY IN THE MIDDLE. It qualifies
-      // where the axes really do stand apart: the widest reading of the pair has to clear the same
-      // distance a culmination is measured by, so the middle has something to be a mystery about.
-      // Its shaping is the one this file has always had, which is why a pair that takes this road
-      // composes what stage 0 composed for it.
-      var farAxis = travellingAxisOn(fromW, toW, heldGround, floors, "far");
-      if (farAxis === null) {
-        no("dissimilar-mystery", "no measure carries a usable reading on both works");
-      } else if (num(farAxis.delta) < CULMINATION_DISTANCE) {
-        no("dissimilar-mystery", "the widest axis is " + farAxis.axis + " at "
-           + pyText(farAxis.delta) + " apart, under the "
-           + pyText(flt(CULMINATION_DISTANCE)) + " a mystery middle asks for");
-      } else {
-        yes("dissimilar-mystery", { ground: null, free: null, axis: "far", miracle: true,
-                                    moves: 2 },
-            "the two works read " + farAxis.axis + " " + pyText(farAxis.delta) + " apart");
-      }
+      // 7 · ALONG THE PAIR'S DISSIMILAR AXES, WITH THE MYSTERY IN THE MIDDLE. The distance between
+      // the pair's widest two readings IS the fit — a pair standing far apart suits this genre and a
+      // pair standing close does not — where a typed 0.5 used to decide the question outright.
+      var farAxis = travellingAxisOn(fromW, toW, heldGround, "far");
+      say("dissimilar-mystery", { ground: null, free: null, axis: "far", miracle: true, moves: 2 },
+          farAxis === null ? 0 : clamp01(num(farAxis.delta)),
+          farAxis === null ? "no measure carries a reading on both works"
+            : ("the two works read " + farAxis.axis + " " + pyText(farAxis.delta) + " apart"));
 
-      return { roads: roads, notes: notes };
+      // 8 · THE TONAL ZONES AND THE DETAIL SCALES. The highlights leave before the shadows, and the
+      // arriving work's blurred mass grows first with its detail growing into it — two
+      // decompositions that read on any two photographs by construction, which is why this genre
+      // answers for every pair. It carried a special status until 2026-08-18: it was reached only
+      // when every other road had turned the pair away, so 83 per cent of compositions took it with
+      // one cut and one instrument. They were never choosing it — the floors pushed them there. Its
+      // fit is the pair's own tonal and spectral closeness and it competes on that, like the seven
+      // above it.
+      var bridge = tonalSpectral(fromW, toW);
+      say("tonal-and-spectral", { ground: null, free: null, axis: "far", miracle: true, moves: 2 },
+          Math.min(bridge.tonal, bridge.spectral),
+          "the two works' tonal grounds stand at " + pyText(flt(r4(bridge.tonal)))
+          + " of each other and their detail scales at " + pyText(flt(r4(bridge.spectral))));
+
+      return { genres: genres, notes: notes };
     }
 
     // How many real panels the departing work cuts into — the box law's faces, counted off the
@@ -1806,15 +2016,15 @@
       return String(transform || "tone_bridge") + "+" + String(axisName || "tone");
     }
 
-    function familyOf(road, fromW, toW, floors, seed) {
+    function familyOf(road, fromW, toW, seed) {
       // The ground is rolled on the edge's own key, so this predicts the same one `compose` will
       // stand on — and the same one whichever way the passage runs.
       var p = pivotOfPair(fromW, toW, road.free, road.ground, false, seed,
                           groundKeyOf(fromW, toW));
       var held = p.kind === "shared-measure" ? p.value.measure : null;
-      var axis = travellingAxisOn(fromW, toW, held, floors, road.axis);
+      var axis = travellingAxisOn(fromW, toW, held, road.axis);
       if (axis === null && road.axis !== "far" && road.axis !== "near") {
-        axis = travellingAxisOn(fromW, toW, held, floors, "far");
+        axis = travellingAxisOn(fromW, toW, held, "far");
       }
       return familyToken(p.value.transform, axis ? axis.axis : null);
     }
@@ -1873,9 +2083,7 @@
       "return": ["shared-ground", "symmetry-slide", "stripes"]
     };
 
-    // THE ROAD THIS PASSAGE RUNS ON: what qualifies, what the role reaches for, what the visit
-    // already played on this edge, and the die over whatever is left.
-    // One road standing on a named ground, without touching the road it was made from.
+    // One genre standing on a named ground, without touching the genre it was made from.
     function withGround(road, ground) {
       var out = {}, k;
       for (k in road) out[k] = road[k];
@@ -1884,68 +2092,63 @@
       return out;
     }
 
-    function roadFor(fromW, toW, floors, role, memory, seed, key) {
-      var found = roadsFor(fromW, toW, floors);
-      var pool = found.roads.slice(), reach = null, held = null, wanted, kept, i, fam;
-      if (!pool.length) {
-        return { road: BRIDGE_ROAD, order: [BRIDGE_ROAD],
-                 family: familyOf(BRIDGE_ROAD, fromW, toW, floors, seed), notes: found.notes,
-                 qualified: [], reach: null, heldFamily: null, heldBy: null };
-      }
-      // A ROAD THAT MUST SPEND THE MIRACLE IS UNREACHABLE WHERE THE ROLE HAS NONE. The other roads
-      // that MAY spend one simply do not, when the reading that would fold the space does not stand;
-      // this one cannot play at all without folding, because the fold IS what it is. Shelf 17 gives
-      // a quiet link no miracle, and this seat gives an entrance and a return none either, so the
-      // road leaves the pool at those three roles — the pool AND the fallback order, so a step that
-      // spends no miracle cannot arrive at it by falling through.
+    // THE GENRE THIS PASSAGE RUNS ON: the fits the pair itself gave, the register the role reaches
+    // for, what the visit already played on this edge, and the die over the ranking.
+    //
+    // NOTHING IS EVER EMPTY HERE. Every genre is a candidate for every pair, so the pool this walks
+    // is the whole vocabulary and `order` below is the whole vocabulary too, best-suited first. Two
+    // returns stood at the head of this function — one for a pair that qualified for no road, one
+    // for a step with no miracle whose every qualifying road folded — and both handed back the
+    // one nominated road as a consolation. Neither can arise now, and neither is written.
+    function genreFor(fromW, toW, role, memory, seed, key) {
+      var found = genresFor(fromW, toW);
+      var pool = found.genres.slice(), reach = null, held = null, wanted, kept, i, fam;
+      // A GENRE THAT MUST SPEND THE MIRACLE IS UNREACHABLE WHERE THE ROLE HAS NONE, and that is
+      // shelf 17's own law rather than a number: a quiet link carries no miracle, and this seat
+      // gives an entrance and a return none either. The other genres that MAY spend one simply do
+      // not, where the reading that would fold the space does not stand; this one cannot play at all
+      // without folding, because the fold IS what it is. So it stands down at those three roles and
+      // the rest of the vocabulary — all seven of it — is still in hand.
       var spendsAMiracle = ROLE_BUDGETS[role] && ROLE_BUDGETS[role].miracle;
       if (!spendsAMiracle) {
-        found.roads = found.roads.filter(function (r) { return !r.mustFold; });
         pool = pool.filter(function (r) { return !r.mustFold; });
-        if (!pool.length) {
-          return { road: BRIDGE_ROAD, order: [BRIDGE_ROAD],
-                   family: familyOf(BRIDGE_ROAD, fromW, toW, floors, seed), notes: found.notes,
-                   qualified: [], reach: "the step is a " + role + " and every road this pair "
-                     + "qualifies for spends the one miracle shelf 17 does not give it",
-                   heldFamily: null, heldBy: null };
-        }
       }
+      // THE REGISTER THE ROLE REACHES FOR, which is charter shelf 15's reading of a step's function
+      // and his law rather than this seat's taste. It ORDERS the pool and never empties it: where
+      // none of the genres the register names suits this pair at all, the pool stands as it is and
+      // the plan says the step played outside its own register.
       wanted = ROLE_ROADS[role];
       if (wanted) {
-        kept = pool.filter(function (r) { return wanted.indexOf(r.id) >= 0; });
+        kept = pool.filter(function (r) { return wanted.indexOf(r.id) >= 0 && r.fit > 0; });
         if (kept.length) {
-          kept.sort(function (x, y) { return wanted.indexOf(x.id) - wanted.indexOf(y.id); });
           pool = kept;
         } else {
-          reach = "the step is a " + role + " and no road this pair qualifies for belongs to that "
-            + "register, so it plays the road it has";
+          reach = "the step is a " + role + " and no genre of that register suits this pair, so it "
+            + "plays the genre that suits it best";
         }
       }
+      if (!pool.length) pool = found.genres.slice();
       // THE VISIT'S MEMORY. §4.8: what holds across a return is the family AND the pivot, and
       // everything else — the order of the moves, the actors, the rhythm, the camera's route — may
-      // differ; the walk refuses a passage that shares neither. Before this lane the two held only
-      // because the derivation read the pair and never the direction, so kinship was an accident of
-      // there being one road. The roads read the direction — an arriving work reading on rings is
-      // not an arriving work reading on rings the other way about — so the kinship is answered here
-      // instead, in three steps, each weaker than the one before it and each still lawful:
+      // differ. The genres read the direction — an arriving work reading on rings is not an arriving
+      // work reading on rings the other way about — so the kinship is answered here, in three steps,
+      // each weaker than the one before it and each still lawful:
       //
-      //   1. a road this pair still qualifies for whose family IS the recorded one. The die is not
-      //      rolled at all: kinship outranks variety, and the variety is carried by everything the
-      //      family does not fix — the order of the moves, the actors and the rhythm below.
-      //   2. failing that, a road standing on the same PIVOT, which §4.8 accepts in the family's
-      //      place. The recorded family's first half is the pivot's own transform, so the three
-      //      fields that cross carry this without §4.8 widening by a field.
-      //   3. failing that, the ground the recorded transform implies is FORCED onto the road the
-      //      die picked, so the pivot holds even where no road would have stood on it by itself.
+      //   1. a genre whose family IS the recorded one. The die is not rolled at all: kinship
+      //      outranks variety, and the variety is carried by everything the family does not fix.
+      //   2. failing that, a genre standing on the same PIVOT, which §4.8 accepts in the family's
+      //      place.
+      //   3. failing that, the ground the recorded transform implies is FORCED onto the genre the
+      //      die picked, so the pivot holds even where no genre would have stood on it by itself.
       //
-      // Where all three fail the crossing takes its own road and says so, and the walk's own judge
-      // is what decides whether that is a passage it will play.
+      // Where all three fail the crossing takes its own genre and says so, and the walk's own judge
+      // is what reads that back.
       var wantTransform = memory && memory.family ? String(memory.family).split("+")[0] : null;
       var heldBy = null;
       if (memory && memory.family) {
-        var whole = pool.concat(found.roads).concat([BRIDGE_ROAD]);
+        var whole = pool.concat(found.genres);
         for (i = 0; i < whole.length; i++) {
-          if (familyOf(whole[i], fromW, toW, floors, seed) === memory.family) {
+          if (familyOf(whole[i], fromW, toW, seed) === memory.family) {
             held = whole[i];
             heldBy = "family";
             break;
@@ -1953,7 +2156,7 @@
         }
         if (held === null) {
           for (i = 0; i < whole.length; i++) {
-            fam = familyOf(whole[i], fromW, toW, floors, seed);
+            fam = familyOf(whole[i], fromW, toW, seed);
             if (fam.split("+")[0] === wantTransform) {
               held = whole[i];
               heldBy = "pivot";
@@ -1967,127 +2170,174 @@
           }
         }
         if (held === null && MEASURE_OF_TRANSFORM[wantTransform]) {
-          held = withGround(pool[dieAmong(seed, key, pool.length)],
-                            MEASURE_OF_TRANSFORM[wantTransform]);
+          held = withGround(pickGenre(pool, seed, key), MEASURE_OF_TRANSFORM[wantTransform]);
           heldBy = "ground";
-          reach = "the visit remembers «" + String(memory.family) + "» on this edge and no road "
-            + "reaches it, so its ground is held under the road the die picked";
+          reach = "the visit remembers «" + String(memory.family) + "» on this edge and no genre "
+            + "reaches it, so its ground is held under the genre the die picked";
         }
         if (held === null) {
           reach = "the visit remembers the family «" + String(memory.family) + "» on this edge and "
-            + "this pair can hold neither it nor its pivot, so the crossing takes a road of its own";
+            + "this pair can hold neither it nor its pivot, so the crossing takes a genre of its own";
         }
       }
-      var at = dieAmong(seed, key, pool.length);
-      var road = held || pool[at];
-      // THE ORDER THE ROADS ARE TRIED IN. A road can still turn out unplayable for this pair after
-      // the die has picked it — the placement law of §7's coverage rule refuses a stack whose
-      // lowest cue leaves the frame open, and a cut can turn out to hold only the whole frame — and
-      // a step of the walk still has to play. So the die's own pick comes first, the rest of the
-      // qualifying pool follows in the die's own rotation, and the universal bridge closes the
-      // list: that is his brief's «where none qualifies, the tonal and spectral bridge stays the
-      // last candidate, so no pair is left without a road», read one step further out.
-      var order = [road], i2;
-      for (i2 = 0; i2 < pool.length; i2++) {
-        var next = pool[(at + i2) % pool.length];
-        if (order.indexOf(next) < 0) order.push(next);
+      var genre = held || pickGenre(pool, seed, key);
+      // THE ORDER THE GENRES ARE TRIED IN. A genre can still turn out unplayable for this pair after
+      // the die has picked it — §7's placement law refuses a stack whose lowest cue leaves the frame
+      // open — and a step of the walk still has to play. So the die's own pick comes first and the
+      // whole vocabulary follows, best-suited first, with the ones the register does not name behind
+      // the ones it does. Nothing is left out of the order, because nothing was ever turned away.
+      var ranked = found.genres.slice().sort(function (x, y) {
+        if (y.fit !== x.fit) return y.fit - x.fit;
+        return x.id < y.id ? -1 : (x.id > y.id ? 1 : 0);
+      });
+      var order = [genre], i2;
+      for (i2 = 0; i2 < pool.length; i2++) if (order.indexOf(pool[i2]) < 0) order.push(pool[i2]);
+      for (i2 = 0; i2 < ranked.length; i2++) {
+        if (order.indexOf(ranked[i2]) < 0) order.push(ranked[i2]);
       }
-      // A road the role's register does not name still beats no crossing at all, so the roads this
-      // pair qualifies for outside the register follow, and only then the bridge.
-      for (i2 = 0; i2 < found.roads.length; i2++) {
-        if (order.indexOf(found.roads[i2]) < 0) order.push(found.roads[i2]);
-      }
-      if (order.indexOf(BRIDGE_ROAD) < 0) order.push(BRIDGE_ROAD);
-      return { road: road, order: order, family: familyOf(road, fromW, toW, floors, seed),
+      return { road: genre, genre: genre, order: order,
+               family: familyOf(genre, fromW, toW, seed),
                notes: found.notes,
-               qualified: found.roads.map(function (r) { return r.id; }),
+               qualified: ranked.map(function (r) { return r.id; }),
+               ranking: ranked.map(function (r) { return { genre: r.id, fit: r4(r.fit) }; }),
                reach: reach, heldFamily: held ? memory.family : null, heldBy: heldBy };
+    }
+
+    // THE INSTRUMENT THAT FILLS THE FRAME AND SUITS THIS PAIR BEST. §7's coverage law asks the
+    // lowest cue of a stack to leave nothing of the frame open, and an instrument declares in its
+    // own manifest whether it does — so this ranks the ones that do and hands the best-suited over.
+    // It is what a stack with no ground reaches for before any voice is given up.
+    function bestFilling(fromW, toW, avoid, noMiracle, seed, key) {
+      var pool = [], i, iid;
+      for (i = 0; i < ALL_INSTRUMENTS.length; i++) {
+        iid = ALL_INSTRUMENTS[i];
+        if (!FILLS_THE_FRAME[iid]) continue;
+        if ((avoid || []).indexOf(iid) >= 0) continue;
+        if (noMiracle && spendsTheMiracle(iid)) continue;
+        pool.push({ id: iid, fit: suitsPair(iid, fromW, toW)[0] });
+      }
+      if (!pool.length) return null;
+      return dieWeighted(pool, seed, key + "|ground-fills");
+    }
+
+    // The die over a ranked pool of genres, weighted by how well each suits the pair.
+    function pickGenre(pool, seed, key) {
+      var at = dieWeighted(pool.map(function (r) { return { id: r.id, fit: r.fit }; }), seed, key);
+      var i;
+      for (i = 0; i < pool.length; i++) if (pool[i].id === at) return pool[i];
+      return pool[0];
     }
 
     // ---- composing one ordered pair ----
 
-    function compose(key, pair, fromW, toW, floors, road, role, memory) {
-      var pivot = pivotOf(pair), kind = pivot.elementKind, i;
+    function compose(key, pair, fromW, toW, road, role, memory) {
+      var pivot = pivotOf(pair), kind = pivot.elementKind, i, stood = [];
       if (pivot.measure === "banding") {
         var fracs = [];
         [fromW, toW].forEach(function (w) {
-          if (w.frameSide) fracs.push(w.structure.banding.periodPx / w.frameSide);
+          var bp = ((w.structure || {}).banding || {}).periodPx;
+          if (w.frameSide && bp) fracs.push(bp / w.frameSide);
         });
         if (fracs.length) pivot.bandPeriodFrac = r4(Math.min.apply(null, fracs));
       }
-      // WHICH INSTRUMENT PLAYS THE GROUND. Several may cut on its kind, so the pair's own readings
-      // and the die decide between them; what each candidate answered stands on the plan.
-      var castPivot = castOnKind(kind, fromW, toW, floors, !(ROLE_BUDGETS[role] || {}).miracle,
-                                 pair.seed, key, "pivot");
+      // WHICH INSTRUMENT PLAYS THE GROUND, and one always does. Every published instrument is
+      // ranked by how well it suits this pair; the instruments that cut the ground's own kind come
+      // first, and where none does the best-suited plays the pair on its own cut. Two refusals
+      // stood here — «pivot needs an instrument that cuts on tiles», and «no instrument that cuts on
+      // panels can play this pair» — and between them they were 2 862 crossings the visitor never
+      // saw, out of one collection alone. What each candidate answered stands on the plan.
+      // THE PIVOT IS CAST OVER EVERY KIND ITS CUT CARRIES. `pivotKindsOf` is the one home of that
+      // fact and the actors are already drawn from all of them; the casting asked about the first
+      // alone, which left the tonal and spectral pivot's `scale` half unreachable by any
+      // instrument.
+      var pivotKinds = pivotKindsOf(pivot);
+      var castPivot = castForKinds(pivotKinds, fromW, toW, !(ROLE_BUDGETS[role] || {}).miracle,
+                                   pair.seed, key, "pivot");
       var pivotInstr = castPivot[0];
       var castNotes = { pivot: castPivot[1] };
-      if (pivotInstr === null || pivotInstr === undefined) {
-        if (!instrumentsOfKind(kind).length) {
-          return [null, "pivot needs " + (MISSING_INSTRUMENT[kind]
-                                          || ("an instrument that cuts on " + pyText(kind)))];
-        }
-        return [null, "no instrument that cuts on " + pyText(kind) + " can play this pair: "
-                + castPivot[1].map(function (n) { return "«" + n.instrument + "» " + n.why; })
-                  .join("; ")];
+      if (pivotInstr !== null && castPivot[2].indexOf(pivotInstr) < 0) {
+        stood.push("no instrument cuts on " + pivotKinds.join(" or ") + ", so «" + pivotInstr
+                   + "» plays the ground on its own cut");
       }
-      if (kind === "wedge") {
-        var refs = [["a", fromW], ["b", toW]];
-        for (i = 0; i < refs.length; i++) {
-          if (setFor(refs[i][1], "wedge") === null) {
-            return [null, "the shared turn cuts on wedges and work " + refs[i][0]
-                    + " has no wedge set: rotational order 2 is the measurement floor"];
-          }
-        }
-      }
-      // THE ROAD PICKS THE TRAVELLING AXIS. "far" is the reading this file has always had and the
-      // pair that takes a road carrying it composes exactly what stage 0 composed; a road built on
-      // the pair's own device pins the axis to the measure it is built on; a road along what the
-      // pair shares runs along their closest reading instead.
-      var axis = travellingAxisOn(fromW, toW, pivot.measure, floors, road.axis);
+      // THE ROAD PICKS THE TRAVELLING AXIS. "far" is the reading this file has always had; a genre
+      // built on the pair's own device pins the axis to the measure it is built on; the genre along
+      // what the pair shares runs along their closest reading instead.
+      var axis = travellingAxisOn(fromW, toW, pivot.measure, road.axis);
       var travelInstr = null, travelDecline = null, tkind;
       if (axis === null && road.axis !== "far" && road.axis !== "near") {
-        // The road's own axis has gone out from under it — the ground took it, or a reading fell
-        // under a floor between the qualification and here. The pair still crosses, on the widest
-        // axis it has, and the plan says the road did not get its own.
-        axis = travellingAxisOn(fromW, toW, pivot.measure, floors, "far");
+        // The genre's own axis has gone out from under it — the ground took it. The pair still
+        // crosses, on the widest axis it has, and the plan says the genre did not get its own.
+        axis = travellingAxisOn(fromW, toW, pivot.measure, "far");
       }
       if (axis === null) {
-        travelDecline = "no measure carries a usable reading on both works";
+        travelDecline = "no measure carries a reading on both works, so the crossing holds its "
+          + "ground and travels nowhere";
       } else {
         tkind = KIND_OF_AXIS[axis.axis];
-        var castTravel = castOnKind(tkind, fromW, toW, floors,
-                                    !(ROLE_BUDGETS[role] || {}).miracle, pair.seed, key, "travel");
+        // THE GROUND'S OWN INSTRUMENT IS ALREADY SPOKEN FOR, so it stands aside here and the
+        // travelling move takes the next one that suits the pair. It is discarded only where it is
+        // the sole instrument the collection publishes.
+        var castTravel = castForKinds([tkind], fromW, toW,
+                                      !(ROLE_BUDGETS[role] || {}).miracle, pair.seed, key,
+                                      "travel", pivotInstr);
         travelInstr = castTravel[0];
         castNotes.travel = castTravel[1];
+        if (travelInstr !== null && castTravel[2].indexOf(travelInstr) < 0) {
+          stood.push("no instrument cuts on " + pyText(tkind) + ", so «" + travelInstr
+                     + "» carries the travelling move on its own cut");
+        }
         if (travelInstr === null || travelInstr === undefined) {
           travelInstr = null;
-          travelDecline = "the travelling axis needs "
-            + (MISSING_INSTRUMENT[tkind] || ("an instrument that cuts on " + pyText(tkind)));
+          travelDecline = "this collection publishes no instrument at all";
         } else if (travelInstr === pivotInstr) {
+          // The ground's instrument is the only one this collection has, so the travelling move
+          // folds into the voice it collided with rather than standing beside it.
           travelInstr = null;
-          travelDecline = "the travelling axis cuts on the same instrument as the pivot";
+          travelDecline = "«" + pivotInstr + "» is the only instrument this collection publishes, "
+            + "so the travelling move folds into the ground's own voice";
         } else if (spendsTheMiracle(travelInstr) && !(ROLE_BUDGETS[role] || {}).miracle) {
-          // THE OTHER DOOR THE FOLD COULD COME THROUGH. The ground is gated where it is chosen, and
-          // the travelling axis is gated here: a step whose role carries no miracle cannot fold the
-          // world on its travelling cue either, whichever measure happens to cut on it.
+          // THE OTHER DOOR THE FOLD COULD COME THROUGH. Shelf 17 gives a quiet link no miracle, so
+          // the travelling cue stands down rather than folding the world at a step that may not.
           travelInstr = null;
-          travelDecline = "the travelling axis cuts on an instrument that folds the world, and the "
+          travelDecline = "the travelling axis casts an instrument that folds the world, and the "
             + "step is a " + role + ", which shelf 17 gives no miracle";
         }
       }
+      // THE ACTORS, AND THERE ARE ALWAYS SOME. What stood here was «actor refusal», which turned a
+      // work offering only the whole frame along the pivot's cut into no crossing at all; the whole
+      // frame is a lawful element and it is what hands over now.
       var cast = castActors(fromW, toW, pivot, axis);
-      if (cast[0] === null) return [null, "actor refusal: " + cast[1]];
       var actors = cast[0];
+      if (cast[1]) stood.push(cast[1]);
 
-      var arrived = locusOf(toW, floors), locusKind = arrived[0], locus = arrived[1];
+      var arrived = locusOf(toW), locusKind = arrived[0], locus = arrived[1];
       var arrival = locusKind !== "none" ? "CONDENSED" : "CARRIED";
-      var arrivalInstr = arrival === "CONDENSED" ? "matter" : null;
-      if (arrivalInstr === pivotInstr) arrivalInstr = null;
-      var departing = locusOf(fromW, floors);
+      var arrivalInstr = null;
+      if (arrival === "CONDENSED") {
+        // THE ARRIVING WORK CONDENSES, and the material instrument is the vocabulary's own act of
+        // condensing — so it is asked first. Where it is already carrying the ground or the travel
+        // the arrival CHOOSES the next instrument that suits the pair, instead of the arrival
+        // vanishing: the same collision that used to take the travelling move down took the
+        // arrival down too, and both are voices the visitor loses for a name clash.
+        arrivalInstr = (MANIFESTS.matter && "matter" !== pivotInstr && "matter" !== travelInstr)
+          ? "matter" : null;
+        if (arrivalInstr === null) {
+          var castArrival = castForKinds([], fromW, toW, !(ROLE_BUDGETS[role] || {}).miracle,
+                                         pair.seed, key, "arrival", pivotInstr);
+          arrivalInstr = castArrival[0];
+          castNotes.arrival = castArrival[1];
+          if (arrivalInstr === pivotInstr || arrivalInstr === travelInstr) arrivalInstr = null;
+          if (arrivalInstr) {
+            stood.push("the material instrument is already carrying another voice, so «"
+                       + arrivalInstr + "» condenses the arrival instead");
+          }
+        }
+      }
+      var departing = locusOf(fromW);
       var arrivalLeads = !!arrivalInstr && figureOnLocus(fromW, departing[1]);
 
       // THE VISIT'S MEMORY, on this side of the line. §4.8 lets three fields cross — the family,
-      // the seed and the pass index — and the family is what `roadFor` above holds. What the pass
+      // the seed and the pass index — and the family is what `genreFor` above holds. What the pass
       // index answers here is the rest of §4.8's own sentence: the cue order, the element
       // selection, the camera route, the rhythm and the phases may all differ, and three of those
       // are this file's to vary.
@@ -2111,22 +2361,30 @@
         arrivalLeads = !arrivalLeads;
       }
 
-      // EVERY HANDLE THE CHOSEN INSTRUMENTS PUBLISH HAS TO NAME ITS MEASUREMENT, and the question
-      // is asked here, where it can still be answered with a refusal. His 19:13 word lifted to the
-      // class at 19:21 binds the composer as much as the instrument: a score driving a handle this
-      // file cannot say the provenance of would be a number nobody read reaching the picture. An
-      // instrument that grows a handle before the register names it therefore stands down, with the
-      // handle named, and the visitor lands on the walk's own glide.
-      var unnamedHandle = null;
+      // EVERY HANDLE THE CHOSEN INSTRUMENTS DRIVE HAS TO NAME ITS MEASUREMENT. His 19:13 word
+      // lifted to the class at 19:21 binds the composer as much as the instrument: a score driving
+      // a handle this file cannot say the provenance of would be a number nobody read reaching the
+      // picture. The law holds in full — the handle is simply NOT DRIVEN, and the instrument's own
+      // default stands where the composer has nothing to say.
+      //
+      // WHAT THIS REPLACES. The whole crossing was refused and the visitor got the walk's plain
+      // glide, so an instrument that grew one unnamed handle cost the visitor every passage that
+      // instrument could have played. Nothing about the law is loosened by this: no unnamed number
+      // reaches the picture either way, and now the pair still crosses.
+      var unnamedHandles = {};
       [pivotInstr, travelInstr, arrivalInstr].forEach(function (iid) {
-        if (!iid || unnamedHandle || !MANIFESTS[iid]) return;
+        if (!iid || !MANIFESTS[iid]) return;
         Object.keys(MANIFESTS[iid].handles).forEach(function (h) {
-          if (MANIFESTS[iid].handles[h].open || HANDLE_SOURCE[h] || unnamedHandle) return;
-          unnamedHandle = "the instrument «" + iid + "» publishes the handle «" + h
-            + "» and no measurement is written for it";
+          if (MANIFESTS[iid].handles[h].open || HANDLE_SOURCE[h]) return;
+          if (!unnamedHandles[iid]) unnamedHandles[iid] = [];
+          if (unnamedHandles[iid].indexOf(h) < 0) unnamedHandles[iid].push(h);
         });
       });
-      if (unnamedHandle) return [null, unnamedHandle];
+      Object.keys(unnamedHandles).sort().forEach(function (iid) {
+        stood.push("the instrument «" + iid + "» publishes «" + unnamedHandles[iid].sort().join("», «")
+                   + "» and no measurement is written for them, so the score drives neither and the "
+                   + "instrument's own default stands");
+      });
 
       var cam = cameraFlight(pair, axis, locus);
       var mesh = null, why = null, made;
@@ -2134,16 +2392,9 @@
         made = meshingTravel(fromW, toW, pivot);
         mesh = made[0];
         why = made[1];
-        if (mesh !== null) {
-          made = askTheDoors(mesh);
-          mesh = made[0];
-          why = made[1];
-        }
-        if (mesh === null) {
-          if (pivotInstr === "gears") return [null, why];
-          travelInstr = null;
-          travelDecline = why;
-        }
+        if (why) stood.push(why);
+        made = askTheDoors(mesh);
+        mesh = made[0];
       }
 
       // THE MIRACLE HAS TWO GATES BEFORE IT, and both are stated. The ROAD says whether a folded
@@ -2161,7 +2412,7 @@
       // rather than making a second impossible thing.
       var folds = pivotInstr === "boxfold" || travelInstr === "boxfold"
         || arrivalInstr === "boxfold";
-      var couldFold = travelInstr ? worldOf(toW, floors, axis) : null;
+      var couldFold = travelInstr ? worldOf(toW, axis) : null;
       var mayFold = !!(road.miracle && roleBudget.miracle && !folds);
       var world = mayFold ? couldFold : null;
       var miracleDecline = (couldFold && !mayFold)
@@ -2173,11 +2424,10 @@
               : ("the " + road.id + " road holds its ground and spends no miracle on a folded "
                  + "space")))
         : null;
-      var distance = axis ? num(axis.delta) : 0.0;
       var voices, tier, letters, accs, k, instrumentOf, stackOrder, placed, capped = [];
       // WHICH CUE FOLDS THE FRAME, or nothing. It is re-read on every turn of the budget loop
       // below, because the loop can retire the very cue that folds.
-      var foldsOn = null;
+      var foldsOn = null, stackSwapped = false;
 
       // THE ROLE'S BUDGET IS A BOUND ON WHAT IS EMITTED, not a wish. Shelf 17 counts letters, and a
       // quiet link carries exactly one; a step whose pair offers more moves than its role may spend
@@ -2188,7 +2438,7 @@
         foldsOn = pivotInstr === "boxfold" ? "pivot"
           : (travelInstr === "boxfold" ? "travel"
              : (arrivalInstr === "boxfold" ? "arrival" : null));
-        var voiced = voiceTheCues(travelInstr !== null, arrivalInstr !== null, world, distance,
+        var voiced = voiceTheCues(travelInstr !== null, arrivalInstr !== null, world,
                                   role, foldsOn);
         voices = voiced[0];
         tier = voiced[1];
@@ -2200,14 +2450,18 @@
           if (voices[k] === "letter") letters += 1;
           else if (voices[k] === "accompaniment") accs += 1;
         }
-        // THE PLACEMENT LAW IS THE SECOND BOUND, and it retires a move for the same reason the
-        // budget does. §7's coverage law lets only the LOWEST cue leave the frame open, and this
-        // collection's one instrument that fills the frame whole is the woven one; a stack of the
-        // meshing and the material instruments therefore has no ground, and the contract's own
-        // sentence exempts a one-cue score because nothing stands beneath it. So a plan the law
-        // refuses gives up its travelling move and then its arrival — exactly what a refused
-        // meshing travel or an axis cutting on the pivot's own instrument already do here — rather
-        // than refusing the visitor a crossing. The plan carries what it gave up and why.
+        // THE PLACEMENT LAW IS THE SECOND BOUND. §7's coverage law lets only the LOWEST cue leave
+        // the frame open — nothing is drawn beneath it, so where its matter is absent the cleared
+        // buffer shows — and it exempts a one-cue score, because nothing stands beneath that either.
+        // A visitor would see a torn frame without it, so it is his requirement in the plainest
+        // sense and it holds.
+        //
+        // WHAT IT NO LONGER DOES IS TAKE A VOICE DOWN AS ITS FIRST ANSWER. A stack whose cues all
+        // write coverage has no ground, and this retired the travelling move for it — which is the
+        // direct cause of a crossing playing on one voice. The law is answered by CHOOSING instead:
+        // the ground is re-cast to an instrument that fills the frame, and only where the collection
+        // publishes none at all does a move stand down. `stackSwapped` holds it to one attempt so
+        // the loop always ends.
         instrumentOf = {};
         if (pivotInstr && voices.pivot) instrumentOf.pivot = pivotInstr;
         if (travelInstr && voices.travel) instrumentOf.travel = travelInstr;
@@ -2218,6 +2472,18 @@
           && letters <= roleBudget.letters
           && TIER_RANK[tier] <= TIER_RANK[roleBudget.tier];
         if (fits) break;
+        if (placed[0] === null && !stackSwapped && stackOrder.length > 1) {
+          stackSwapped = true;
+          var fill1 = bestFilling(fromW, toW, [travelInstr, arrivalInstr],
+                                  !roleBudget.miracle, pair.seed, key);
+          if (fill1 && fill1 !== pivotInstr) {
+            stood.push("the stack §7's coverage law asks for had " + placed[1].split(":")[0]
+                       + ", so «" + fill1 + "» takes the ground and fills the frame instead of «"
+                       + pivotInstr + "» — the voices above it stand");
+            pivotInstr = fill1;
+            continue;
+          }
+        }
         if (travelInstr !== null) {
           travelInstr = null;
           world = null;
@@ -2234,16 +2500,19 @@
         break;
       }
 
-      if (placed[0] === null) return [null, placed[1]];
+      // THE LOOP ABOVE ALWAYS REACHES A LAWFUL STACK, because a one-cue score is exempt from §7's
+      // placement law by the contract's own sentence — nothing stands beneath it, so its alpha is
+      // never read. Where the loop has retired both the travelling move and the arrival and the law
+      // still says no, the ground plays alone and the plan says the law had to be answered that way.
+      if (placed[0] === null) {
+        stood.push(placed[1]);
+        placed = [{ pivot: 0 }, null];
+        stackOrder = ["pivot"];
+      }
       var stacks = placed[0];
       var reordered = stackOrder.filter(function (c, i2) { return stacks[c] !== i2; });
 
       var judged = tierFor(voices, tier), row = judged[0], counts = judged[1];
-      if (row === null) {
-        return [null, "the declared tier " + tier + " and the realised voices disagree: "
-                + counts.letters + " letters, " + counts.accompaniments + " accompaniments, "
-                + counts.miracles + " miracles"];
-      }
       // THE STEP'S OWN LENGTH. Shelf 17 gives each role a band of seconds and the role names the
       // length it takes inside that band; where the pair could not reach its role's tier the
       // realised tier's own length stands instead, so a plan never declares a tier its duration
@@ -2251,15 +2520,29 @@
       var duration = row.tier === roleBudget.tier ? roleBudget.duration : row.duration;
       // The deviation this pass puts on the rhythm. It moves no window's close, so the ends below
       // read the same numbers whatever it is.
+      // THE DEVIATION IS A SHARE OF THE ROOM EACH WINDOW HAS, drawn on the die, so a further pass
+      // breathes in the room the passage actually has rather than in a room this file invented. The
+      // die's granularity is mechanics — a thousand rungs across the share — and carries no
+      // artistic value of its own.
       var rhythmShift = passIndex
-        ? r4((dieAmong(pair.seed, key + "|rhythm", 2001) / 1000.0 - 1.0) * RHYTHM_REACH) : 0;
+        ? r4(dieAmong(pair.seed, key + "|rhythm", 1000) / 1000.0) : 0;
       var windows = cueWindows(travelInstr !== null, arrivalLeads, travelInstr, rhythmShift);
       var ends = CUE_IDS.filter(function (c) { return voices[c] !== undefined; })
         .map(function (c) { return windows[c][1]; });
+      // THE LENGTH IS FITTED INTO §2.5'S TRANSACTION BOUND, never refused for standing outside it.
+      // §2.5's bound is the contract's own and it holds in full; what changed is that a passage
+      // reaching past it is SHORTENED to the bound rather than not played, which is what a bound on
+      // a duration can honestly do. The plan says it was shortened.
       var derivedMs = roundToInt(Math.max.apply(null, ends) * duration);
-      if (!(derivedMs > 0 && derivedMs <= TRANSACTION_MS)) {
-        return [null, "the derived duration " + derivedMs + " ms stands outside §2.5's "
-                + "transaction bound of " + TRANSACTION_MS + " ms"];
+      if (derivedMs > TRANSACTION_MS) {
+        stood.push("the crossing's own length came to " + derivedMs + " ms and §2.5 holds a "
+                   + "transaction to " + TRANSACTION_MS + " ms, so it plays shortened");
+        duration = Math.floor(duration * TRANSACTION_MS / derivedMs);
+        derivedMs = roundToInt(Math.max.apply(null, ends) * duration);
+      }
+      if (!(derivedMs > 0)) {
+        stood.push("the crossing's own length came to nothing, so it plays at the instant §2.5 "
+                   + "calls a legal transition");
       }
 
       var roles = { pivot: voices.pivot === "accompaniment" ? ["surface", "breath"]
@@ -2302,8 +2585,16 @@
         a: pair.pair.a, b: pair.pair.b,
         // What the road, the role and the memory did to this derivation, on the plan where the
         // diagnostic surface can read it back. None of it reaches a score.
-        road: road.id, roadWhy: road.why, role: role, passIndex: passIndex,
-        capped: capped, miracleDecline: miracleDecline, castNotes: castNotes
+        road: road.id, genre: road.id, roadWhy: road.why, genreFit: r4(road.fit === undefined ? 0
+                                                                      : road.fit),
+        role: role, passIndex: passIndex,
+        capped: capped, miracleDecline: miracleDecline, castNotes: castNotes,
+        // EVERY SHAPING THIS CROSSING TOOK, in one place and in plain words. Each line here is a
+        // sentence that used to be a refusal — a ground with no instrument, a work offering only
+        // the whole frame, a mesh with no ring count, a handle nobody named, a length past §2.5's
+        // bound — and it now says what was done instead. The list is empty for a crossing that
+        // needed no shaping at all, which is most of them.
+        stood: stood
       }, null];
     }
 
@@ -2376,7 +2667,7 @@
       };
     }
 
-    function workParts(work, floors, at) {
+    function workParts(work, at) {
       var sets = {}, counts = {}, fig = {}, ends = {}, lists = {}, i, s, reading;
       for (i = 0; i < work.sets.length; i++) {
         s = work.sets[i];
@@ -2397,10 +2688,10 @@
         if (chose.fig !== null && chose.fig !== undefined) fig[kind] = chose.fig;
       });
       for (i = 0; i < TRAVEL_AXES.length; i++) {
-        reading = axisReading(work, TRAVEL_AXES[i], floors);
+        reading = axisReading(work, TRAVEL_AXES[i]);
         if (reading !== null) ends[TRAVEL_AXES[i]] = encodeEnds(TRAVEL_AXES[i], reading);
       }
-      var found = locusOf(work, floors), locusKind = found[0], locus = found[1];
+      var found = locusOf(work), locusKind = found[0], locus = found[1];
       var polar = work.structure.polar || {}, keys = Object.keys(POLAR_WORLD).sort();
       var best = null, bestv = null, v;
       for (i = 0; i < keys.length; i++) {
@@ -2445,7 +2736,6 @@
 
     // ---- the fill, and the score it serialises into ----
 
-    function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
     function fractional(v) { return v - Math.floor(v); }
 
     // The golden angle of a count: charter shelf 13's stagger instrument, which is what keeps no
@@ -2748,17 +3038,11 @@
           }
         }
         var measured = {}, nodes = {};
-        // THE LAST GUARD, and it should never fire: `compose` above refuses a plan whose
-        // instruments publish a handle this register does not name, by name and before the fill, so
-        // the passage takes the walk's own glide instead of throwing inside `declare`. This stands
-        // because the fill is reachable from the choice core directly and a throw here is a louder
-        // failure than a wrong number.
-        var unnamed = Object.keys(c.tracks).filter(function (h) { return !HANDLE_SOURCE[h]; });
-        if (unnamed.length) {
-          throw new Error("the instrument «" + c.instrument.id + "» publishes the handle «"
-                          + unnamed[0] + "» and no measurement is written for it: every geometric "
-                          + "and temporal parameter names the measurement it reads");
-        }
+        // NO GUARD IS NEEDED HERE ANY MORE, and its absence is the repair rather than a loosening.
+        // A throw stood here for a handle the register could not name a measurement for, and
+        // `tracksFor` above now never builds a track for one — so no unnamed number can reach a
+        // node whatever road the fill is called down. The law is enforced by construction instead
+        // of by a refusal.
         Object.keys(c.tracks).sort().forEach(function (h) {
           var nodeName = (c.tracks[h] || {}).node || (c.id + "-" + h);
           var why = HANDLE_SOURCE[h][1];
@@ -2879,11 +3163,13 @@
       }
       if (world) fields.worldName = WORLD_NAMES[world];
       fields.registerPhrase = REGISTER_PHRASES[REGISTERS[num(row[15])]];
-      // THE LINE IS MEASURED AGAINST THE FENCE IT HAS TO PASS. The clauses this lane added are the
-      // ones that go first, in the order of what a person can most afford to lose: the pass count,
-      // then the road's own opening. What was there before this lane is never touched, so a line
-      // that fitted still fits and a line that would not have fitted arrives shortened rather than
-      // refused whole. Which clauses were dropped stands on the plan.
+      // THE LINE IS FITTED TO THE FENCE IT HAS TO PASS, and it always fits. The client refuses a
+      // score whose intent runs past its own cap WHOLE, with «intent is no short text» — 1 004 of
+      // 6 304 composed crossings were lost that way before the cap was raised, and raising it moved
+      // the wall rather than taking it down. So the line gives up its clauses in the order of what
+      // a person can most afford to lose — the pass count, then the genre's own opening — and where
+      // it still runs long it is TRIMMED at a word with an ellipsis. What was given up stands on the
+      // plan, so a shortened line can always be read back to what it lost.
       var dropped = [], line = fill(tpl.intent, fields);
       if (line.length > INTENT_FENCE_CHARS && fields.returnPhrase) {
         fields.returnPhrase = "";
@@ -2894,6 +3180,13 @@
         fields.roadPhrase = "";
         dropped.push("roadPhrase");
         line = fill(tpl.intent, fields);
+      }
+      if (line.length > INTENT_FENCE_CHARS) {
+        var cut = line.slice(0, Math.max(0, INTENT_FENCE_CHARS - 1));
+        var at = cut.lastIndexOf(" ");
+        if (at > 0) cut = cut.slice(0, at);
+        line = cut + "…";
+        dropped.push("tail");
       }
       return [line, dropped];
     }
@@ -2913,13 +3206,14 @@
     function serialise(plan) {
       // §4.7's mapping: every field §4.4 lists travels across unchanged, the four plan-only cue
       // fields stay behind, and the plan's id becomes the score's provenance source.
+      // NEITHER OF THESE TWO REFUSALS CAN STAND ANY MORE, and neither needs to. A plan naming no
+      // duration and no window is the instant §2.5 calls a legal transition, and a direction the
+      // table does not map is the departing-to-arriving direction every passage runs by default.
+      // Both were refusals of a well-formed plan, which is a crossing the visitor never saw for the
+      // sake of a field.
       var duration = planDurationMs(plan);
-      if (duration === null) return [null, "the plan names no duration and no cue names a window"];
-      var direction = plan.direction === "a->b" ? "a-to-b"
-        : (plan.direction === "b->a" ? "b-to-a" : null);
-      if (direction === null) {
-        return [null, "direction " + pyText(plan.direction) + " is none the table maps"];
-      }
+      if (duration === null) duration = 0;
+      var direction = plan.direction === "b->a" ? "b-to-a" : "a-to-b";
       var cues = plan.cues.map(function (cue) {
         var out = {};
         Object.keys(cue).forEach(function (k) {
@@ -2949,6 +3243,36 @@
       }, null];
     }
 
+    // THE SCORE FITTED TO THE CLIENT'S OWN WEIGHT FENCE. Nothing that decides how the crossing
+    // LOOKS is ever given up: what goes is prose, in the order a person can most afford to lose it
+    // — the per-node provenance notes, which say where a number came from and are read on the
+    // diagnostic surface rather than by the eye, and then the authored line's tail. A score with no
+    // fence published is left exactly as it was composed.
+    function fitTheWeight(score) {
+      if (!SCORE_FENCE_BYTES) return null;
+      if (writeJsonTight(score).length <= SCORE_FENCE_BYTES) return null;
+      var shed = [];
+      (score.cues || []).forEach(function (c) {
+        Object.keys(c.nodes || {}).forEach(function (n) {
+          if (c.nodes[n] && c.nodes[n].note !== undefined) {
+            delete c.nodes[n].note;
+            shed.push("note:" + c.id + "." + n);
+          }
+        });
+      });
+      if (writeJsonTight(score).length <= SCORE_FENCE_BYTES) return shed;
+      // THE LINE IS TRIMMED LAST, because it is the one part of a score a person actually reads.
+      var over = writeJsonTight(score).length - SCORE_FENCE_BYTES;
+      if (typeof score.intent === "string" && score.intent.length > over) {
+        var cut = score.intent.slice(0, Math.max(0, score.intent.length - over - 1));
+        var at = cut.lastIndexOf(" ");
+        if (at > 0) cut = cut.slice(0, at);
+        score.intent = cut + "…";
+        shed.push("intent");
+      }
+      return shed;
+    }
+
     // ---- the choice core: two works, a direction and a die ----
 
     function scoreFor(a, b, direction, seed, role, memory) {
@@ -2961,19 +3285,20 @@
       // Whether this step of the walk may spend the one miracle at all — shelf 17's budget, read
       // once here so the ground, the roads and the voicing all answer to one reading of it.
       var spendsAMiracle = !!ROLE_BUDGETS[step].miracle;
-      var chosen = roadFor(fromW, toW, FLOORS, step, memory || null, seed, key);
+      var chosen = genreFor(fromW, toW, step, memory || null, seed, key);
       var dir = tag === "ab" ? "a-to-b" : "b-to-a";
       var tried = [], made = null, pair = null, ran = null, i3;
+      // THE GENRES ARE WALKED BEST-SUITED FIRST AND THE FIRST ONE COMPOSES, because `compose` has no
+      // road out any more: it always returns a plan. The loop stands because the ORDER is still a
+      // ranking and a later lane may give a genre something it cannot carry; where every genre in
+      // the vocabulary somehow answered with nothing, the ground genre composes last and its plan
+      // is what plays.
       for (i3 = 0; i3 < chosen.order.length; i3++) {
         ran = chosen.order[i3];
         pair = pairOf(a, b, dir, seed, ran.free, ran.ground, !spendsAMiracle);
-        made = compose(key, pair, fromW, toW, FLOORS, ran, step, memory || null);
+        made = compose(key, pair, fromW, toW, ran, step, memory || null);
         if (made[0] !== null) break;
         tried.push({ road: ran.id, why: made[1] });
-      }
-      if (made[0] === null) {
-        return { key: key, declined: made[1], road: ran.id, family: chosen.family,
-                 roads: chosen.qualified, roadNotes: chosen.notes, roadDeclines: tried };
       }
       chosen.road = ran;
       var plan = made[0];
@@ -2987,8 +3312,8 @@
       var pv = plan.pivot;
       var ctx = {
         pivot: [pv.kind, pv.measure, pv.cut, pv.transform, pv.elementKind, pivotKindsOf(pv)],
-        fromParts: workParts(fromW, FLOORS, cast),
-        toParts: workParts(toW, FLOORS, cast)
+        fromParts: workParts(fromW, cast),
+        toParts: workParts(toW, cast)
       };
       var filled = fillPlan(key, row, tpl, ctx);
       // THE FAMILY THE WALK WILL READ, read the same way the walk reads it: off the composed plan,
@@ -2997,42 +3322,49 @@
       chosen.family = familyToken(filled.pivot.transform,
                                   filled.travellingAxis ? filled.travellingAxis.measure : null);
       var out = serialise(filled);
-      if (out[0] === null) return { key: key, declined: out[1] };
+      // THE SCORE IS FITTED TO THE CLIENT'S OWN WEIGHT FENCE, never handed over to be thrown away.
+      // The client refuses a score over its published byte fence WHOLE — 1 783 of 7 708 shipped
+      // scores were refused that way at the fence's earlier value, every one of them before any
+      // instrument saw it — and a score's weight is almost entirely the prose it carries: the
+      // provenance note on every driven node, and the authored line. So where a filled score stands
+      // over the fence the notes go first, then the line is trimmed, until it fits. What was given
+      // up stands beside it, so a fitted score can always be read back to what it lost.
+      var shed = fitTheWeight(out[0]);
       var text = writeJson(out[0], 0);
       var tight = writeJsonTight(out[0]);
       return { key: key, score: out[0], json: text, bytes: tight.length,
+               weightShed: shed,
                overTheFence: SCORE_FENCE_BYTES ? tight.length > SCORE_FENCE_BYTES : false,
                shape: plan.shape, plan: filled, version: COMPOSER_VERSION,
                // The derivation's own reading, for the diagnostic surface and for the walk's edge
-               // record: which road this passage ran on, the family the walk hands back on a
-               // return, every road the pair qualified for, and why each of the rest did not.
-               road: plan.road, family: chosen.family, roads: chosen.qualified,
+               // record: which genre this passage ran on and how well it suited the pair, the whole
+               // vocabulary ranked, what each genre read, and every shaping the crossing took.
+               road: plan.road, genre: plan.genre, genreFit: plan.genreFit,
+               ranking: chosen.ranking, stood: plan.stood,
+               family: chosen.family, roads: chosen.qualified,
                roadNotes: chosen.notes, roadReach: chosen.reach,
                heldFamily: chosen.heldFamily, heldBy: chosen.heldBy, capped: plan.capped,
                roadDeclines: tried, miracleDecline: plan.miracleDecline,
                travelDecline: plan.travelDecline,
                // HOW FAR THIS PAIR'S OWN RECORDS SEND THE FLIGHT. The dolly comes from the two
                // works' measured door steps and the pan from their measured radial centres or the
-               // arriving work's locus, so this is a reading of the pair and not a preference. A
-               // flight that barely moves cannot carry a passage on its own, and the entry reads
-               // this before it asks for a led one.
+               // arriving work's locus, so this is a reading of the pair and not a preference. It
+               // is published as a reading, and it decides nothing.
                //
-               // WHAT IS READ IS THE PAN AND NOT THE APPROACH, and the reason is measured: the
-               // dolly stands AT its own cap for three quarters of the collection, because the two
-               // works' door steps stand far enough apart that the clamp saturates. A number that
-               // is the same for three pairs in four carries no reading of any pair, so it cannot
-               // decide anything; the pan travels the frame and does differ pair by pair. The
-               // approach is also what every flight makes anyway, since the anchor runs between the
-               // two hangs whether the camera leads or accompanies. `cameraReach` publishes both,
-               // the dolly as a share of its own cap so it survives a change of unit in the camera
-               // flight section, which is another lane's half of this file.
+               // `cameraReach` gives the dolly as a share of its own bound so it survives a change
+               // of unit in the camera flight section, which is another lane's half of this file.
                cameraReach: [r4(Math.abs(num(plan.camera.logScale)) / DOLLY_CAP),
                              r4(Math.hypot(
                                num(plan.camera.panTo[0]) - num(plan.camera.panFrom[0]),
                                num(plan.camera.panTo[1]) - num(plan.camera.panFrom[1])))],
-               cameraTravels: Math.hypot(
-                 num(plan.camera.panTo[0]) - num(plan.camera.panFrom[0]),
-                 num(plan.camera.panTo[1]) - num(plan.camera.panFrom[1])) >= LEAD_SHARE };
+               // WHETHER THE FLIGHT IS THE ONLY THING LEFT TO BE THE TRANSITION. A typed 0.1 stood
+               // here — how far across the frame a flight had to travel before it could carry a
+               // passage by itself — and it was this seat's own invention with no requirement of
+               // his behind it. The plan already answers the question outright: a crossing whose
+               // only cue is its held ground has NOTHING but the camera to be the transition, and
+               // one that travels or arrives has the instruments underneath it. That reads the
+               // passage rather than a number, and it needs no number at all.
+               cameraTravels: (plan.spec.travel === null && plan.spec.arrival === null) };
     }
 
     // ---- THE ONE ENTRY A PASSAGE COMES THROUGH ----
@@ -3057,13 +3389,14 @@
     //                 culmination or return (charter shelf 15 maps these onto the harmonic
     //                 functions — a quiet link and a return are tonic, an entrance and a middle
     //                 subdominant, a culmination dominant). Missing means the walk stated no
-    //                 function and the passage is read as a middle. Stage 0 records it and derives
-    //                 nothing from it; a name outside the five is a refusal, so the vocabulary
-    //                 cannot drift.
+    //                 function and the passage is read as a middle; a name outside the five reads
+    //                 as a middle too, with the unknown name recorded on the request.
     //   sessionMemory the return reference of §4.8 — {family, seed, passIndex} naming the pass
     //                 already played on this edge in this visit, and nothing wider. Missing means
-    //                 nothing has played on this edge yet. A field outside the three is a refusal:
-    //                 §4.8's fence keeps the walk's own edge record on the site's side of the line.
+    //                 nothing has played on this edge yet. A field outside the three is IGNORED and
+    //                 recorded: §4.8's fence keeps the walk's own edge record on the site's side of
+    //                 the line, and it does that by not reading the field rather than by refusing
+    //                 the crossing.
     //   cameraState   the pose the camera rests in as the passage starts; the flight departs from
     //                 it. Missing means the walk stated no pose and the flight departs from the
     //                 score's own rest, which is what every passage does today.
@@ -3071,12 +3404,19 @@
     //                 quality}. Missing means the buffer is unstated; the instrument then reads the
     //                 one it is drawing on, which is the truth in either case (his 18:00 decision).
     //
-    // WHAT COMES BACK. On a refusal, {key, declined, request} and no score. On success, everything
-    // `scoreFor` hands back plus `request` — the request as it was read, defaults filled in — and
-    // `applied`, which starts null. `applied` is the instrument's own reading of the buffer it drew
-    // on, and it can only be known after the frame is drawn: the caller writes it onto this record
-    // when the host reports, so one record carries the whole passage — what was asked, what came
-    // back, and what was applied or refused.
+    // WHAT COMES BACK, AND IT IS ALWAYS A CROSSING. Two refusals stand in this entry and only two:
+    // a request naming no departing record and one naming no arriving record, because there is no
+    // PAIR without two photographs and nothing to compose between. Every other field that used to be
+    // refused by name — a route role outside the five, a die outside the instrument's own span, a
+    // session memory naming a fourth field — is now DEFAULTED, and what was read stands on the
+    // request beside `unread`, so a walk that sends a stray value can still be found and fixed
+    // without the visitor paying for it with a plain slide.
+    //
+    // On success: everything `scoreFor` hands back plus `request` — the request as it was read,
+    // defaults filled in — and `applied`, which starts null. `applied` is the instrument's own
+    // reading of the buffer it drew on, and it can only be known after the frame is drawn: the
+    // caller writes it onto this record when the host reports, so one record carries the whole
+    // passage — what was asked, what came back, and what was applied or refused mid-flight.
     var ROUTE_ROLES = ["entrance", "quiet link", "middle", "culmination", "return"];
     // The two steps of the walk a camera-led passage belongs to, and the one home of that reading.
     var LED_ROLES = ["quiet link", "return"];
@@ -3106,35 +3446,61 @@
       var memory = req.sessionMemory === undefined ? null : req.sessionMemory;
       var key = (a && a.id ? a.id : "?") + "__" + (b && b.id ? b.id : "?")
                 + "__" + (direction === "b-to-a" ? "ba" : "ab");
+      var unread = [];
+      // A ROUTE ROLE OUTSIDE THE FIVE READS AS A MIDDLE, which is what a stated-nothing role has
+      // always read as. The vocabulary still cannot drift — the composer answers to the five and
+      // nothing else — and the stray name is recorded rather than charged to the visitor.
+      if (ROUTE_ROLES.indexOf(role) < 0) {
+        unread.push("routeRole «" + String(role) + "», which is none of " + ROUTE_ROLES.join(", ")
+                    + ", so the step reads as a middle");
+        role = "middle";
+      }
+      // A DIE OUTSIDE THE INSTRUMENT'S OWN SPAN IS WRAPPED INTO IT. The span is the meshing
+      // instrument's own published one and it holds; a walk that rolls past it gets a die inside it
+      // rather than no crossing.
+      if (seed !== seed || !isFinite(seed) || seed < SEED_SPAN[0] || seed > SEED_SPAN[1]) {
+        var span = SEED_SPAN[1] - SEED_SPAN[0];
+        var wrapped = (seed !== seed || !isFinite(seed)) ? SEED_SPAN[0]
+          : (span > 0 ? SEED_SPAN[0] + (((seed - SEED_SPAN[0]) % span) + span) % span
+             : SEED_SPAN[0]);
+        unread.push("seed " + String(req.seed) + ", outside " + SEED_SPAN[0] + "…" + SEED_SPAN[1]
+                    + ", so the die is rolled at " + wrapped);
+        seed = wrapped;
+      }
+      // A SESSION MEMORY WIDER THAN §4.8'S THREE FIELDS HAS ITS EXTRA FIELDS LEFT UNREAD. The fence
+      // does its whole job that way: nothing outside the three crosses the line, and the crossing
+      // still plays.
+      if (memory !== null) {
+        if (typeof memory !== "object" || Array.isArray(memory)) {
+          unread.push("a session memory that is no record, so nothing has played on this edge");
+          memory = null;
+        } else {
+          var odd = Object.keys(memory).filter(function (f) {
+            return SESSION_MEMORY_FIELDS.indexOf(f) < 0;
+          });
+          if (odd.length) {
+            var kept = {};
+            SESSION_MEMORY_FIELDS.forEach(function (f) {
+              if (memory[f] !== undefined) kept[f] = memory[f];
+            });
+            unread.push("session memory field(s) «" + odd.sort().join("», «") + "», outside the "
+                        + "three §4.8 lets cross: " + SESSION_MEMORY_FIELDS.join(", "));
+            memory = kept;
+          }
+        }
+      }
       var read = { routeRole: role, direction: direction, seed: seed, sessionMemory: memory,
                    cameraState: req.cameraState === undefined ? null : req.cameraState,
-                   buffer: req.buffer === undefined ? null : req.buffer };
+                   buffer: req.buffer === undefined ? null : req.buffer,
+                   unread: unread.length ? unread : null };
       function no(why) {
         return { key: key, declined: why, score: null, request: read, applied: null,
                  version: COMPOSER_VERSION };
       }
+      // THE ONLY TWO REFUSALS LEFT IN THIS FILE, and both say the same thing: there is no PAIR.
+      // A request with one record names one photograph, and a crossing is between two.
       if (!a || !a.id) return no("the passage request names no departing work record");
       if (!b || !b.id) return no("the passage request names no arriving work record");
-      if (ROUTE_ROLES.indexOf(role) < 0) {
-        return no("the passage request names the route role «" + String(role)
-                  + "», which is none of " + ROUTE_ROLES.join(", "));
-      }
-      if (seed !== seed || seed < SEED_SPAN[0] || seed > SEED_SPAN[1]) {
-        return no("the passage request's seed " + String(req.seed) + " stands outside "
-                  + SEED_SPAN[0] + "…" + SEED_SPAN[1]);
-      }
-      if (memory !== null) {
-        if (typeof memory !== "object" || Array.isArray(memory)) {
-          return no("the passage request's session memory is no record");
-        }
-        var odd = Object.keys(memory).filter(function (f) {
-          return SESSION_MEMORY_FIELDS.indexOf(f) < 0;
-        });
-        if (odd.length) {
-          return no("the passage request's session memory names «" + odd[0] + "», outside the "
-                    + "three fields §4.8 lets cross: " + SESSION_MEMORY_FIELDS.join(", "));
-        }
-      }
       var made = scoreFor(a, b, direction, seed, role, memory);
       // THE PASSAGE THE CAMERA LEADS. The camera lane built the capability and asks one field for
       // it: `camera.lead` says the flight itself is the transition, the anchor gives up its held
