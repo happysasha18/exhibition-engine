@@ -3182,6 +3182,16 @@
         carriesSeam: (mot.measured || []).indexOf(MOTIF_SEAM) >= 0 ? 1 : 0,
         // how strongly the work reads as radial, and how many rings its own cut measured
         radialScore: Number((st.radial || {}).score) || 0,
+        // THE POINT THE WORK'S OWN STRUCTURE TURNS ABOUT, in the same order of preference `locusOf`
+        // reads it: the motif's own measured centre first and the radial reading's second. Five
+        // instruments publish a handle that says it reads this, and until now the fill answered
+        // them from the camera's own pan — which is the TRAVELLING AXIS'S two ends and equals the
+        // radial centre only where that axis is radial. Every work of the collection carries this
+        // one, so it answers for every pair and it answers with what the handles ask for.
+        radialCx: Number(((work.motifs || {}).radialCentre
+                          || (st.radial || {}).centre || [0.5, 0.5])[0]) || 0.5,
+        radialCy: Number(((work.motifs || {}).radialCentre
+                          || (st.radial || {}).centre || [0.5, 0.5])[1]) || 0.5,
         ringGrain: ring ? Number(ring.measuredGrain) || 0 : 0,
         // how much finer the work's own measured repeat is than the cut it was given
         ringMerge: ring ? Number(ring.mergeFactor) || 0 : 0,
@@ -3434,6 +3444,26 @@
 
       var castOf = { pivot: ["pivot-carrier"], travel: ["traveller"],
                      arrival: ["arriving-figure", "departing-figure"] };
+      // THE POINT SEVEN INSTRUMENTS FOLD, REST AND TURN ABOUT — one road for one register row. The
+      // row says «the midpoint of the two measured radial centres» and this is that midpoint,
+      // taken from the two works' own records. It carries no direction, so an edge places its
+      // centre in the same place whichever way the visitor walks it.
+      //
+      // WHAT IT REPLACES, AND WHY THAT WAS A STATIC PARAMETER IN DISGUISE. Four branches answered
+      // this row from the CAMERA'S own pan — `row[6..9]`, which is the travelling axis's two ends
+      // less a half. That equals the radial centre only where the travelling axis is radial; where
+      // the axis carries no centre at all the pan is the origin and the row handed back exactly
+      // 0.5 and 0.5, which is the module's own default, with a note claiming a measurement. Every
+      // work of this collection carries a radial centre and the collection holds 45 distinct ones,
+      // so the reading was there the whole time. The guard those branches carried — «either pan is
+      // not negative» — dropped the centre for any pair whose two ends both sit left of the middle,
+      // which no rule asks for. Both go.
+      function centreOfThePair(wantedInto) {
+        var cx = (fromP.measured.radialCx + toP.measured.radialCx) / 2;
+        var cy = (fromP.measured.radialCy + toP.measured.radialCy) / 2;
+        wantedInto.centreX = flt(r4(clamp01(cx)));
+        wantedInto.centreY = flt(r4(clamp01(cy)));
+      }
       var cues = [];
       tpl.cues.forEach(function (cue) {
         var c = copy(cue);
@@ -3480,11 +3510,13 @@
         } else if (instr === "gears") {
           if (num(row[11]) >= 0) {
             wanted.ratio = row[13];
-            wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
-            wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
             wanted.size = [row[11], row[12]];
             if (num(row[14]) >= 0) wanted.bandPeriod = row[14];
           }
+          // WHERE THE WHEELS TURN: the midpoint of the two works' own measured radial centres. It
+          // is a fact about the pair rather than about the mesh, so it stands outside the mesh's
+          // own guard — a pair whose mesh was not derived still turns about its own centre.
+          centreOfThePair(wanted);
           // HOW HARD THE WHEELS TURN, read off how strongly each work reads as radial. A work whose
           // rings and spokes are its own device drives the mesh; one that barely reads radial
           // barely turns, and the rate travels from the one to the other with the crossing.
@@ -3574,6 +3606,17 @@
           // THE PLANE IS LAID AWAY AT THE SAME MEASURED ANGLE, which is what puts the parquet in
           // perspective rather than flat to the eye.
           wanted.tilt = flt(r4(clamp01(fractional(Math.abs(angle) / 90.0))));
+          // HOW DEEP A ROOM THE SHEET OPENS INTO, and it is the one handle here that reads BOTH
+          // works. The five above read one work by design — the making being revealed is one work's
+          // — and that is why this branch, which has stood since the unfold landed, still played
+          // nearly the same parquet on every pair: the collection's own device readings cluster, so
+          // one work's step and angle land on the same few values. The room the sheet opens into is
+          // not part of the making being revealed; it is the passage's own depth, and both works
+          // stand in it. So it travels, at each work's own corridor reading — the same measurement
+          // the box's perspective and the mirror floor's room already take.
+          if (mf.tunnel > 0 && mt.tunnel > 0) {
+            wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
+          }
         } else if (instr === "matter") {
           // HOW COARSE THE MATERIAL IS. The instrument publishes its coarse grain in cells across
           // the frame's height, and the work's own measured spectral period says how many cells
@@ -3673,10 +3716,7 @@
             wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
           }
           // WHERE THE CORRIDOR FALLS AWAY TO: the midpoint of the two measured radial centres.
-          if (num(row[6]) >= 0 || num(row[8]) >= 0) {
-            wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
-            wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
-          }
+          centreOfThePair(wanted);
         } else if (instr === "kaleidoscope") {
           // THE FOLD'S FOUR MEASURED HANDLES. The lane asked for no fill branch, but without one
           // the fold stands at the module's own eight wedges, one ring and its own lean for every
@@ -3708,10 +3748,7 @@
                             flt(r4(clamp01(mt.deviceStepPx / mt.frameSide)))];
           }
           // WHERE THE FOLD TURNS: the midpoint of the two works' own measured radial centres.
-          if (num(row[6]) >= 0 || num(row[8]) >= 0) {
-            wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
-            wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
-          }
+          centreOfThePair(wanted);
         } else if (instr === "parquet") {
           // THE MIRROR FLOOR'S THREE MEASURED HANDLES. The lane asked for no fill branch, but
           // without one `tiles` and `lattice` rest at the module's own floor for every pair alike,
@@ -3772,10 +3809,7 @@
           }
           // WHERE THE GLASS RESTS: the midpoint of the two works' own measured radial centres, the
           // same point the meshing instrument's own centre reads.
-          if (num(row[6]) >= 0 || num(row[8]) >= 0) {
-            wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
-            wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
-          }
+          centreOfThePair(wanted);
         } else if (instr === "liquid") {
           // THE WATER'S THREE HANDLES. Without this branch all three rest at the module's own
           // water — correct water, but the SAME water for every pair, which is the sameness the
@@ -3844,6 +3878,96 @@
             wanted.regionPeriod = flt(r4(clamp01(mt.latticePx / mt.frameSide)));
             wanted.regionTurn = flt(r4(Math.abs(mt.latticeAngleDeg) % 180.0));
           }
+        } else if (instr === "droste") {
+          // THE SPIRAL'S FIVE. Without this branch the dive stood at the module's own four copies,
+          // its own wind and its own speed for every pair alike — 7 222 cues of the collection, and
+          // not one of them different from the next. Every row below is the sentence the handle
+          // itself publishes.
+          //
+          // HOW MANY COPIES STAND INSIDE ONE FALL OF FORTY, off the two works' own measured ring
+          // counts: a work of few rings dives in few large copies and one of many in many small
+          // ones, which is the module's own sentence. The counts are positioned about the module's
+          // own four by their RATIO rather than handed straight, and the reason is measured on this
+          // collection: 99 of the 121 works read more than six rings, so a count handed straight
+          // would land 82 works in a hundred on the handle's own ceiling — the same floor for five
+          // works in six, which is the sameness this branch exists to close. What no file records
+          // is how many rings one copy is worth; what both records carry is which of the two works
+          // has more of them.
+          if (mf.ringGrain > 0 && mt.ringGrain > 0) {
+            wanted.size = acrossTheSpan("droste", "size", mf.ringGrain, mt.ringGrain);
+          }
+          // HOW HARD THE PICTURE WINDS INTO ITS THROAT, at each work's own measured radial score —
+          // the same reading and the same reasoning the mesh's own turn takes.
+          if (mf.radialScore > 0 || mt.radialScore > 0) {
+            wanted.turn = [flt(r4(clamp01(mf.radialScore))), flt(r4(clamp01(mt.radialScore)))];
+          }
+          // HOW FAST THE DIVE FALLS, read off the copy count against the instrument's own default
+          // count, so one copy passes the eye in the same time whatever the pair. It is the road the
+          // fabric's own speed already travels, on the same register row.
+          if (wanted.size) {
+            wanted.speed = flt(r4(betweenSpans("droste", "size", "speed", num(wanted.size[0]))));
+          }
+          // WHERE THE THROAT STANDS: the midpoint of the two works' own measured radial centres.
+          centreOfThePair(wanted);
+        } else if (instr === "hero") {
+          // THE READY STORY'S SEVEN. Without this branch the whole story — how many mirrors the
+          // window opens, how far out the arc travels, how hard it turns and where its courses
+          // stand — was the module's own for every pair alike, on 7 790 cues of the collection.
+          //
+          // HOW MANY OF THE FOUR MIRRORS THE WINDOW OPENS, and HOW CONFIDENTLY that order reads.
+          // Both are read on the ONE work whose turn reads most confidently, because they are one
+          // measurement in two halves: an order and the confidence that order carries. Reading the
+          // count off one work and its confidence off the other would make the window travel
+          // between a count and a confidence that never belonged together. The count lands on the
+          // module's own ladder of two, four, eight and sixteen wedges.
+          var turned = mf.rotationalScore >= mt.rotationalScore ? mf : mt;
+          if (turned.rotationalN > 0) {
+            wanted.folds = Math.max(1, Math.min(4, Math.round(Math.log(turned.rotationalN)
+                                                              / Math.LN2)));
+            wanted.foldsScore = flt(r4(clamp01(turned.rotationalScore)));
+          }
+          // HOW FAR OUT ALONG THE STORY THE ARC TRAVELS, at the stronger of the two polar readings.
+          // One story is told about one centre and it goes as far as the pair carries it, which is
+          // the same sentence this instrument's own reading of a pair is written on.
+          if (mf.planet > 0 || mt.planet > 0) {
+            wanted.planet = flt(r4(clamp01(Math.max(mf.planet, mt.planet))));
+          }
+          // HOW FAR THE WINDOW TURNS AS IT OPENS, at each work's own measured radial score.
+          if (mf.radialScore > 0 || mt.radialScore > 0) {
+            wanted.turn = [flt(r4(clamp01(mf.radialScore))), flt(r4(clamp01(mt.radialScore)))];
+          }
+          // WHERE THE COURSES STAND, at each work's own ring step as a fraction of its own frame
+          // side. A work cut some other way lends nothing here and the module's own courses stand.
+          var courseFrom = (mf.deviceKind === "rings" && mf.frameSide > 0)
+            ? mf.deviceStepPx / mf.frameSide : 0;
+          var courseTo = (mt.deviceKind === "rings" && mt.frameSide > 0)
+            ? mt.deviceStepPx / mt.frameSide : 0;
+          if (courseFrom > 0 && courseTo > 0) {
+            wanted.course = [flt(r4(courseFrom)), flt(r4(courseTo))];
+          }
+          // WHERE THE FOLDS TURN: the midpoint of the two works' own measured radial centres.
+          centreOfThePair(wanted);
+        } else if (instr === "livemirror") {
+          // THE MIRROR'S THREE, AND THE ONE IT WILL NOT TAKE. Without this branch the fold stood at
+          // the module's own both-folds-at-once, dead centre of the frame, on 11 373 cues of the
+          // collection — the largest single block of identical crossings the sweep found.
+          //
+          // WHICH WAY THE PICTURE FOLDS ONTO ITSELF, off the one recorded banding axis. This
+          // instrument's own manifest asks for the fold line to lie ALONG the works' own structure,
+          // where the box asks for its crease to CROSS it — one measurement, two senses, which is
+          // what the register row says in as many words — so this reads the same number the other
+          // way about.
+          var mx = fromP.ends.banding;
+          if (mx !== undefined && mx !== null) wanted.axis = num(mx[2]) ? 0 : 1;
+          // WHERE THE FOLD STANDS: the midpoint of the two works' own measured radial centres, which
+          // is the line his standing verdict on this effect asks the fold to land on.
+          centreOfThePair(wanted);
+          // THE MIRROR'S OWN LIFE IS NOT DRIVEN, AND THAT IS HIS VERDICT RATHER THAN A GAP. `drift`
+          // publishes a measurement it would read — the fractional part of the two works' spectral
+          // periods in ratio — and the instrument's own manifest answers it: the handle rests at
+          // nothing because a wandering fold line does not land on the work's own structural line.
+          // A reading may not overrule his verdict on the effect, so the reading is named here and
+          // the handle stays where the instrument rests it.
         } else if (instr === "adrift") {
           // THE DRIFTING INSTRUMENT'S NINE, AND THEY NAME A WORK EACH. Every other branch of this
           // fill hands a pair of ends the passage travels between; this instrument holds two things

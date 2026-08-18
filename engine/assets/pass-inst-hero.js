@@ -938,7 +938,21 @@
               buffer: [pose.bufWidth, pose.bufHeight],
               reads: "landing", request: 0,
               applied: v.fieldMap ? v.fieldMap.offPx : null,
-              moved: v.fieldMap ? v.fieldMap.offPx : null,
+              // WHAT MOVED, BY THIS INSTRUMENT'S OWN READING OF WHAT A MOVE IS. `applied` is the
+              // travel the grid shows at whatever size it comes out; `moved` is whether a sample
+              // actually went anywhere, and this instrument already publishes the answer to that —
+              // `DOOR_SLIP`, half a point of the grid, «inside which a sample cannot move». It is
+              // the same number the refusal above stands on and the same one the manifest publishes
+              // as `readAtADoor.points`, so nothing new is decided here.
+              //
+              // IT CAME UP THE DAY THE STORY'S HANDLES STARTED READING THE PAIR. With `planet` at
+              // the module's own whole the landing subtracted two expressions that are the same
+              // expression, and the residue was exactly nothing; with `planet` at a measured 0.7755
+              // the same subtraction leaves 2.7e-14 points of a 922-point buffer. That is
+              // floating-point dust, not a landing that leaks, and reporting it as a move made this
+              // instrument contradict its own published law.
+              moved: v.fieldMap
+                ? (v.fieldMap.offPx >= DOOR_SLIP ? v.fieldMap.offPx : 0) : null,
               unit: "points of the drawing buffer",
               // and the gate every colour this instrument adds rides, so a door held whole says so
               // about the light as well as about the geometry
