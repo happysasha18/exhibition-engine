@@ -632,10 +632,20 @@
                             restsAt: "both doors, where the crossing dial is nothing" } },
         crest: { min: 0, max: 1, def: FEEL_C_U0,
                  unit: "how far apart the crests of the swell stand",
-                 reads: "texture.spectralPeriodPx over the work's own frame side — the wavelength of "
-                      + "the strongest band in the work's own spectrum, which is the repeat the "
-                      + "water is asked to stand at. The same measurement the woven instrument's "
-                      + "`wavePeriod` reads, so one number serves both",
+                 // READ AS A POSITION AND NOT AS AN EQUALITY, and the reason is a measurement. The
+                 // module's three waves stand 1.17, 1.28 and 1.46 frame sides long, so its crests
+                 // are WIDER than the frame — the module's own «each is a little wider than the
+                 // frame». A work's strongest spectral band is an order finer than that (170.7
+                 // points over a 1440-point side, on 78 of the 121 works), so a handle that made
+                 // the crests equal to it would crowd them elevenfold, far past this handle's own
+                 // reach of two. What the handle takes is therefore where the work's own period
+                 // stands INSIDE the collection's own spread of that measurement, mapped onto this
+                 // handle's own published range: a work whose repeat is finer than the collection's
+                 // middle crowds the crests, one coarser lets them out.
+                 reads: "texture.spectralPeriodPx over the work's own frame side, read as a "
+                      + "position on this handle's own range against the collection's own spread "
+                      + "of that period. The same measurement the woven instrument's `wavePeriod` "
+                      + "reads, so one number serves both",
                  applied: { hinge: FEEL_C_U0, reach: SPREAD_REACH,
                             curve: "a two-piece logarithm hinged at the module's own spacing, "
                                  + "liquid.js:391-410, band 2.58 to 1.31",
@@ -646,10 +656,15 @@
                                                         + "the height's own ceiling" } } },
         refract: { min: 0, max: 1, def: 0.45,
                    unit: "how far red and blue land apart at the bend",
-                   reads: "texture.detailPx over the work's own frame side — the finest detail the "
-                        + "work carries. The split is what would smear that detail first, and the "
-                        + "module holds it to a hair of 0.0032 of the frame, which is about two of "
-                        + "this collection's own detail scales",
+                   // ALSO A POSITION. The module holds the split to a hair of 0.0032 of the frame
+                   // and the collection's own finest detail runs about 2 points of a 1440-point
+                   // side, which is 0.0014 — the same order, but the two are not one number and
+                   // saying they were would be a scale nobody measured. What the handle takes is
+                   // where the work's own detail stands inside the collection's spread: a work of
+                   // fine detail splits least, because the split is what smears it first.
+                   reads: "texture.detailPx over the work's own frame side, read as a position on "
+                        + "this handle's own range against the collection's own spread of that "
+                        + "detail — the split is what would smear the work's finest detail first",
                    applied: { hairAtWhole: 0.0032,
                               restsAt: "both doors, where the crossing dial is nothing" } },
         seed: { min: 0, max: SEED_SPAN, def: 0,
