@@ -1285,6 +1285,145 @@
                 + pyText(flt(r4(ca))) + " and " + pyText(flt(r4(cb)))
                 + " once the sphere's and the log-spiral's share of the same depth is taken off, "
                 + "and the eye travels into the stronger"];
+      },
+      // ---- THE ARSENAL LANE, 2026-08-18, on his word of 18:39 ----------------------------------
+      // Six instruments carried across from lab/effects/, each ranking the pair on exactly the
+      // measurements its own manifest's `suits.reads` names. Every one of them is a READING and
+      // none of them can turn a pair away: his words of 09:51, 09:53 and 10:15 — any two
+      // photographs in the world get a crossing, and a measurement only ranks which genre suits.
+      // Where a reading comes out at nothing the sentence says what the pair will get instead.
+
+      // THE THIRD PICTURE IS THE TWO WORKS' INTERFERENCE (charter shelf 10), so what this suits is
+      // a pair whose own measured rhythms stand near one another: two nearly equal periods beat
+      // into large slow lobes, and that envelope is the only structure here big enough to read as
+      // a shape. The periods are said as counts across each work's own frame, which is the unit
+      // that makes two differently-sized files comparable at all.
+      beat: function (a, b) {
+        function cellsOf(w) {
+          var p = Number(((w || {}).texture || {}).spectralPeriodPx) || 0;
+          var side = Number((w || {}).frameSide) || 0;
+          return (p > 0 && side > 0) ? side / p : 0;
+        }
+        var ca = cellsOf(a), cb = cellsOf(b);
+        if (!(ca > 0) || !(cb > 0)) {
+          return [0, "one of the works carries no measured rhythm of its own, so the two gratings "
+                  + "stand at the module's own periods and the handover reads fine and fast"];
+        }
+        var near = Math.min(ca, cb) / Math.max(ca, cb);
+        return [near, "the two works' own rhythms read as " + pyText(flt(r4(ca))) + " and "
+                + pyText(flt(r4(cb))) + " cells across their own frames, so their periods stand at "
+                + pyText(flt(r4(near))) + " of each other — the nearer they stand the coarser and "
+                + "slower the lobes the frame changes hands in"];
+      },
+      // THE DEPARTING WORK'S OWN SLOT IS WHAT PARTS, and the collection measures the motif
+      // directly: lab/step1-motifs.py read ворота on 30 of the 121 works and every work's record
+      // carries its own `motifs.gateGap`. The fit is that reading. Where a work carries no gate the
+      // fit is nothing and the slot stands in the middle of the frame at the motif's own band
+      // width, which is the module's own answer for a source with no gate — a plainer crossing,
+      // never a refused one.
+      gates: function (a, b) {
+        function gapOf(w) {
+          var mot = (w || {}).motifs || {};
+          var named = (mot.measured || []).indexOf(MOTIF_GATE) >= 0;
+          var gap = readingOf(mot.gateGap);
+          return named ? Math.max(gap, 0) : gap;
+        }
+        var ga = gapOf(a), gb = gapOf(b);
+        var best = Math.max(ga, gb);
+        if (!(best > 0)) {
+          return [0, "neither work carries a measured gate, so the leaves part on the frame's own "
+                  + "middle at the motif's own band width"];
+        }
+        return [best, "a work of the pair reads its own gate at " + pyText(flt(r4(best)))
+                + " — the emptiness between two masses the second work comes through"];
+      },
+      // THE CUT STANDS AT ONE WORK'S OWN STRUCTURE AT THE NEAR DOOR AND AT THE OTHER'S AT THE FAR
+      // ONE, so what it suits is a pair by how plainly EACH work publishes a lattice to be cut
+      // along. The confidence its own device was recovered at is what that plainness is, and the
+      // weaker of the two is the fit, because a bridge is only as good as the end that carries it
+      // least. A pair with no measured structure still crosses, on the module's own fallback count.
+      "grid-colour": function (a, b) {
+        function latticeOf(w) {
+          var st = (w || {}).structure || {}, dev = st.ownDevice || {}, grid = st.grid || {};
+          if (Number(dev.stepPx) > 0) return readingOf(dev.confidence);
+          if (Number(grid.periodPx) > 0) return readingOf(grid.score);
+          return 0;
+        }
+        var la = latticeOf(a), lb = latticeOf(b);
+        var fit = Math.min(la, lb);
+        if (!(fit > 0)) {
+          return [0, "a work of the pair publishes no lattice of its own, so the cut falls to the "
+                  + "module's own count and reads as a grid laid over the photograph rather than "
+                  + "found in it"];
+        }
+        return [fit, "the two works wear their own lattices at " + pyText(flt(r4(la))) + " and "
+                + pyText(flt(r4(lb))) + ", so the cut leaves one work's own structure and arrives "
+                + "at the other's"];
+      },
+      // EVERY PHOTOGRAPH HAS A TONE TO PART AT, which is charter shelf 12's own sentence about the
+      // tonal decomposition: it applies to ANY pair by construction. So this suits every pair
+      // somewhat and the reading only ranks how strongly — the further apart the two works stand,
+      // the more the parting reads as one tonal world giving way to another rather than as one
+      // picture sliding over itself.
+      //
+      // WHAT THIS READING IS NOT. `luminance.ladderPosition` is where the work stands on the
+      // collection's own COLOURFULNESS ladder, not on a tonal one, and the judge seat's standing
+      // correction of 2026-08-18 forbids naming it as a tonal source. It is honest here for what
+      // it is — the distance between two works on one published ladder — and the instrument's own
+      // threshold handles are NOT driven from it. The gap that leaves is in the lane's report.
+      "strata-light": function (a, b) {
+        var pa = readingOf((a.luminance || {}).ladderPosition);
+        var pb = readingOf((b.luminance || {}).ladderPosition);
+        var apart = Math.abs(pa - pb);
+        return [apart, "the two works stand at " + pyText(flt(r4(pa))) + " and "
+                + pyText(flt(r4(pb))) + " on the collection's own ladder, "
+                + pyText(flt(r4(apart))) + " apart — and either way each parts at a level of its "
+                + "own, since every photograph has one"];
+      },
+      // THE WHOLE FRAME IS LAID DOWN AS ONE PLANE GOING AWAY, so what it suits is a pair with
+      // depth to be revealed. The weaker of the two corridor readings is the fit, because a lean
+      // built on a depth only one work carries is laid on rather than found; a measured horizon on
+      // both works raises it, since that is the line the plane turns about. A pair reading no depth
+      // at all still crosses on it, as a flat ground lying down and coming upright again.
+      tilt: function (a, b) {
+        var da = readingOf(((a.structure || {}).polar || {}).tunnel);
+        var db = readingOf(((b.structure || {}).polar || {}).tunnel);
+        var deep = Math.min(da, db);
+        function hasLine(w) {
+          var y = ((w.structure || {}).horizon || {}).y;
+          return (y !== null && y !== undefined) ? 1 : 0;
+        }
+        var lines = hasLine(a) + hasLine(b);
+        var fit = clamp01(deep * (0.5 + 0.25 * lines));
+        return [fit, "the two works read as depth at " + pyText(flt(r4(da))) + " and "
+                + pyText(flt(r4(db))) + ", and " + (lines === 2 ? "both stand" : lines === 1
+                  ? "one stands" : "neither stands")
+                + " a measured horizon of their own for the plane to turn about"];
+      },
+      // IT PARTS THE FRAME AT A LINE EACH WORK MEASURED FOR ITSELF and travels the crossing through
+      // it, so what it suits is a pair whose works plainly carry their own waterline. The record
+      // publishes the seam's PRESENCE and no strength of its own for it — the same reading
+      // `locusOf` takes — so the motif list is the evidence, and a measured horizon on each work is
+      // where the line leaves from and lands. Weaker of the two, because the line has to do both.
+      // A pair carrying no seam at all is a fit of nothing rather than a refusal: the line stands
+      // where the frame's own middle is and the crossing plays there.
+      waterline: function (a, b) {
+        function seamOf(w) {
+          var mot = (w || {}).motifs || {};
+          var named = (mot.measured || []).indexOf(MOTIF_SEAM) >= 0 ? 1 : 0;
+          var y = ((w.structure || {}).horizon || {}).y;
+          var placed = (y !== null && y !== undefined) ? 1 : 0;
+          return named ? (placed ? 1 : 0.5) : (placed ? 0.25 : 0);
+        }
+        var sa = seamOf(a), sb = seamOf(b);
+        var fit = Math.min(sa, sb);
+        if (!(fit > 0)) {
+          return [0, "neither work carries a measured waterline, so the line stands where the "
+                  + "frame's own middle is and the crossing travels through that"];
+        }
+        return [fit, "the two works carry their own waterline at " + pyText(flt(r4(sa))) + " and "
+                + pyText(flt(r4(sb))) + " — the line leaves one measured seam and lands on the "
+                + "other"];
       }
     };
 
