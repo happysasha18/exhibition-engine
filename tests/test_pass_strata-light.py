@@ -481,7 +481,13 @@ else:
                 shape = (
                     m["id"] == "strata-light" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
-                    and m["levels"] == ["CELL"] and m["cuts"] == ["band"]
+                    # LIGHT-COLOUR joined CELL on 2026-08-18 (pass-inst-strata-light.js:403):
+                    # shelf 17's levels law, once the colour and light voices are actually driven
+                    # (pass-composer.js's "strata-light" branch of `fillPlan`) rather than resting
+                    # unmeasured at every pair, gives that level one active voice and this manifest
+                    # has to say it occupies it or the composer's own level-ownership resolution
+                    # would never see a second cue that also claims it.
+                    and m["levels"] == ["CELL", "LIGHT-COLOUR"] and m["cuts"] == ["band"]
                     and m["params"] == {}
                     and len(m["handles"]) == 19
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())

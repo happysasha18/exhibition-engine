@@ -917,24 +917,43 @@
                      + "`measuredParts` — that gap is named in this port's report rather than "
                      + "answered here with a number nobody measured" },
         colourPeriod: { min: 0, max: 4, def: 0, unit: "the colour voice's own breath, in handle units",
-                        reads: "nothing bears on it; a voice's period is the score's own" },
+                        reads: "the departing work's own colour.sat, carried through BEAT_DIAL and "
+                             + "spread the way the assembler carries its own layer-A colour voice — "
+                             + "lab/step4-assembler.js:1966-2010, ported into pass-composer.js — but "
+                             + "ONLY WHERE THIS CUE OWNS LIGHT-COLOUR. Shelf 17's levels law gives "
+                             + "that level one active voice, and where a passage's other cue owns it "
+                             + "instead this handle is left unset and rests at its own 0 above" },
         colourPhase: { min: 0, max: 1, def: 0, unit: "the head start the score gives that breath",
-                       reads: "nothing bears on it" },
+                       reads: "this voice's own place among this instrument's two voices, i/2 — the "
+                            + "same index-over-count rule the assembler stands its own four voices a "
+                            + "quarter turn apart by, read at this instrument's own voice count. Same "
+                            + "LIGHT-COLOUR ownership gate as colourPeriod above" },
         colourAmp: { min: 0, max: 1, def: 0, unit: "how far that breath carries the palette",
                      applied: { restsAt: "both doors",
                                 why: "the window 4u(1 − u) holds a voice to nothing at either end" },
-                     reads: "nothing in `measuredParts` bears on it; the nearest reading the record "
-                          + "carries is luminance.ladderPosition, which is a tone and not a hue" },
+                     reads: "the departing work's own colour.sat, VOICE_SHARE of it — the same "
+                          + "quarter-of-the-work's-own-measure law the assembler's amplitude uses "
+                          + "(step4-assembler.js:91), carried across with its own admission that the "
+                          + "quarter is a number of taste rather than a measurement. Same "
+                          + "LIGHT-COLOUR ownership gate as colourPeriod above" },
         lightPeriod: { min: 0, max: 4, def: 0, unit: "the light voice's own breath, in handle units",
-                       reads: "nothing bears on it" },
+                       reads: "the departing work's own colour.contrast, carried through BEAT_DIAL "
+                            + "and spread; the same reason as colourPeriod, including its LIGHT-COLOUR "
+                            + "ownership gate" },
         lightPhase: { min: 0, max: 1, def: 0, unit: "the head start the score gives it",
-                      reads: "nothing bears on it" },
+                      reads: "this voice's own place among this instrument's two voices, i/2. Same "
+                           + "LIGHT-COLOUR ownership gate as colourPeriod above" },
         lightAmp: { min: 0, max: 1, def: 0,
                     unit: "how far the standing frame is written lighter and darker",
                     applied: { restsAt: "both doors", scaledBy: "shade" },
-                    reads: "luminance.ladderPosition of the two works, read as the distance between "
-                         + "them: two works standing far apart on their own tonal ladder are what "
-                         + "gives a light voice something to say between them" },
+                    reads: "the departing work's own colour.contrast, VOICE_SHARE of it. This handle "
+                         + "used to claim luminance.ladderPosition, read as the distance between the "
+                         + "two works — but that field is not a tone at all: it is computed as half "
+                         + "chroma and half hue spread (lab/step1-tone-texture.py:236-238), the "
+                         + "collection's own COLOURFULNESS ladder, and a light voice has no business "
+                         + "reading a colour number. colour.contrast is the (p95 − p5) tonal spread "
+                         + "recipes.py:526-585 already measures, which is what a light voice needs. "
+                         + "Same LIGHT-COLOUR ownership gate as colourPeriod above" },
         arrival: { min: 0, max: 1, def: 0, kind: "enum", step: 1,
                    rungs: ["none named — the plain reverse", "carried"],
                    unit: "which of the charter's arrival modes brings the arriving work",

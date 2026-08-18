@@ -395,12 +395,25 @@
       // The departing work comes apart into its two strata, the middle holds a frame neither work
       // has closed, and the arriving work's strata gather into it.
       roles: ["disassembly", "mystery", "assembly"],
-      // READ OFF THE MODULE'S OWN PUBLISHED ROW rather than derived: `lab/data/module-contract.json`
-      // gives this module `level: "CELL"`, and the charter's vocabulary table carries no row for it
-      // at all, so there is no second reading to weigh against it. The two accompanying voices move
-      // light and colour, which is another shelf; the published row says CELL and CELL is what is
-      // declared.
-      levels: ["CELL"],
+      // CELL IS READ OFF THE MODULE'S OWN PUBLISHED ROW: `lab/data/module-contract.json` gives this
+      // module `level: "CELL"`, and until the colour-and-light lane that was the whole of it — the
+      // two accompanying voices carried no reading and so never actually moved anything, and a level
+      // nothing moves on is not a level the instrument occupies.
+      //
+      // LIGHT-COLOUR IS ADDED because that stopped being true. Shelf 11: "Colour is an accompaniment
+      // voice and counts in the budget." Shelf 17's levels law: "one active voice per structural
+      // level ... LIGHT-COLOUR its own slot." Once the colour and light voices are driven off the
+      // two works' own colour readings (pass-composer.js, the "strata-light" branch of `fillPlan`)
+      // they act on LIGHT-COLOUR exactly the way grid-colour's own palette-and-light voices do
+      // (pass-inst-grid-colour.js:806-816, which already carries this second level for the same
+      // reason) — so a cue this instrument owns must be allowed to own LIGHT-COLOUR too, or the
+      // composer's own level-ownership resolution (`ownTheLevels`) would never see that a second cue
+      // could be singing there and two voices could land on one level silently, which is exactly what
+      // the levels law forbids. `lab/data/module-contract.json` still carries only CELL — that file
+      // is the module's own render-time contract and nothing in this lane touches it — so this is a
+      // point where the engine's declared level set now says more than the lab's upstream row, and
+      // the gap is named here rather than hidden.
+      levels: ["CELL", "LIGHT-COLOUR"],
       // WHAT THIS INSTRUMENT CUTS ON. A stratum is a TONAL ZONE of the work — everything at or above
       // a level of its own light, and everything below it — which is the band kind. It is the very
       // decomposition the composer's own tonal-and-spectral pivot cuts on, and that pivot reads on
@@ -423,8 +436,26 @@
       //     The module holds one number for both (`MASK_CELLS = 128`); a pair is two photographs
       //     with two materials, so it is published per work and rests at the module's own number.
       //   · the six voice fields, twice — `colourPeriod/Phase/Amp` and `lightPeriod/Phase/Amp` for
-      //     each work. They rest at nothing, which is the module's own rest: a voice the score names
-      //     no period or no amplitude for is silent.
+      //     each work. THEY NO LONGER REST AT NOTHING. The composer's `fillPlan` (its
+      //     "strata-light" branch, HANDLE_SOURCE below carries the same twelve rows as "measured")
+      //     drives all twelve off the two works' own colour readings, porting the derivation
+      //     lab/step4-assembler.js:1966-2010 already worked out: A takes the departing work's own
+      //     colour.sat and colour.contrast, B the arriving work's, each turned into a period through
+      //     BEAT_DIAL and `spread` (step4-assembler.js:60-66, :1613-1636, ported into
+      //     pass-composer.js as `voiceSpread`/`voicesAligned`), a phase a quarter turn from its
+      //     neighbours (`i / 4`), and an amplitude VOICE_SHARE of the work's own measure
+      //     (step4-assembler.js:91 — VOICE_SHARE is itself the assembler's own admitted number of
+      //     taste, carried across as that admission rather than re-derived as a measurement).
+      //     WHAT STAYS IN THE LAB: the assembler's own audibility loop that follows this first pass —
+      //     `voiceMove`, `VOICE_TARGET` — renders a layer off-screen and measures how far it actually
+      //     moved real pixels, muting a voice a work cannot sing loud enough to clear the visible
+      //     threshold. The composer derives a crossing at the instant a visit casts it and cannot
+      //     render a probe frame to measure against, so every voice here plays at its first-pass
+      //     amplitude, unmuted, and that refinement is not ported.
+      //     ALL TWELVE ARE DRIVEN ONLY WHERE THIS CUE OWNS LIGHT-COLOUR (shelf 17's levels law, the
+      //     manifest's own `levels` entry above): a cue that merely accompanies another cue on that
+      //     level leaves every one of the twelve unset and each rests at the manifest's own 0, which
+      //     is the module's silence and not a second mechanism.
       //   · `mask` — the judges' channel, resting where the module has no such thing at all: at 0
       //     the picture, at 1 the two works' own coverage as colour.
       //

@@ -340,6 +340,12 @@ NODE_ROWS = [
     "reading of it",
     "EX-COMPOSED waterline's tideCells is driven off the record's own grain, not left at its "
     "manifest default",
+    "EX-COMPOSED grid-colour's six colour-and-light voice handles are driven off the departing "
+    "work's own colour reading on the cue that owns LIGHT-COLOUR, not left resting at 0",
+    "EX-COMPOSED strata-light's twelve colour-and-light voice handles are driven off the two "
+    "works' own colour readings on the cue that owns LIGHT-COLOUR, not left resting at 0",
+    "EX-COMPOSED a cue that only accompanies another on LIGHT-COLOUR leaves all its colour-and-light "
+    "voice handles at their manifest rest of 0, shelf 17's levels law holding",
 ]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
@@ -565,6 +571,58 @@ let ledAtTonic = 0, ledElsewhere = 0, ledWithWorldCue = 0, tonic = 0;
 // collects every `waterline` cue's own driven `tideCells`, so the row below can prove it moves off
 // the manifest's own 0.5 default instead of resting there on every pair.
 let adriftSeams = [], tideCellsSeen = [];
+// CHANGE C: the eighteen colour-and-light voice handles ported from lab/step4-assembler.js:1966-2010
+// — grid-colour's six (one set, the module carries both works inside itself) and strata-light's
+// twelve (two sets, A the departing work's own reading and B the arriving work's). Before this
+// change every one of the eighteen rested at its manifest default of 0 for every pair; these
+// collect every value the sweep actually sees so the rows below can prove they now differ across
+// pairs instead of standing still.
+const GC_VOICE_HANDLES = ["colourPeriod", "colourPhase", "colourAmp",
+                          "lightPeriod", "lightPhase", "lightAmp"];
+const SL_VOICE_HANDLES = ["colourPeriodA", "colourPhaseA", "colourAmpA",
+                          "lightPeriodA", "lightPhaseA", "lightAmpA",
+                          "colourPeriodB", "colourPhaseB", "colourAmpB",
+                          "lightPeriodB", "lightPhaseB", "lightAmpB"];
+// Bucketed by shelf 17's levels law (his correction of 2026-08-18, folded into this lane): a cue
+// that OWNS LIGHT-COLOUR is where the eighteen handles must be driven and differ across pairs; a
+// cue that only ACCOMPANIES another cue on that level must leave all of them at the manifest's own
+// rest of 0, so the "owns" and "accompanies" collections are kept apart rather than merged.
+const gridColourVoicesOwns = {}, strataLightVoicesOwns = {};
+const gridColourVoicesAccompanies = {}, strataLightVoicesAccompanies = {};
+for (const h of GC_VOICE_HANDLES) {
+  gridColourVoicesOwns[h] = []; gridColourVoicesAccompanies[h] = [];
+}
+for (const h of SL_VOICE_HANDLES) {
+  strataLightVoicesOwns[h] = []; strataLightVoicesAccompanies[h] = [];
+}
+// Reads one cue's own eighteen-handle slice, bucketed by shelf 17's own levels law rather than by
+// the "requested" note the loop above filters on — an ACCOMPANYING cue's handles are never
+// requested at all (`fillPlan` leaves them unset), so reading `node.value` directly here, per cue,
+// is what lets the silent case be proven rather than merely absent. `cue.levelOwnership` is the
+// composer's own resolution (`ownTheLevels`, threaded onto every cue in `buildTemplate` before
+// `fillPlan` ever runs), read here exactly as it stands rather than re-derived.
+//
+// CALLED AT EVERY ROUTE ROLE, not only the sweep's own default-role request: strata-light plays
+// PIVOT far more often than not, and `ownTheLevels` deprioritises the pivot cue on every level but
+// SURFACE — a pivot cue loses LIGHT-COLOUR to any other cue of the same passage that also declares
+// it, on every road, at every role. Sampled at one role alone (the sweep's own default) this
+// instrument was found to win LIGHT-COLOUR zero times in 26 sightings over 192 pairs; sampled at
+// all five roles the same 192 pairs give it many more chances to be cast ALONE on its level, which
+// is the only way a pivot cue wins it.
+function collectVoiceHandles(cue) {
+  if (cue.instrument.id !== "grid-colour" && cue.instrument.id !== "strata-light") return;
+  const owns = !!(cue.levelOwnership && cue.levelOwnership["LIGHT-COLOUR"] === "owns");
+  const handles = cue.instrument.id === "grid-colour" ? GC_VOICE_HANDLES : SL_VOICE_HANDLES;
+  const ownsBucket = cue.instrument.id === "grid-colour" ? gridColourVoicesOwns
+                                                         : strataLightVoicesOwns;
+  const accBucket = cue.instrument.id === "grid-colour" ? gridColourVoicesAccompanies
+                                                        : strataLightVoicesAccompanies;
+  const bucket = owns ? ownsBucket : accBucket;
+  for (const h of handles) {
+    const node = cue.nodes[cue.id + "-" + h];
+    if (node) bucket[h].push(toNum(node.value));
+  }
+}
 // THE FOLD, counted per role. A crossing that folds the frame into a solid spends the one miracle
 // shelf 6 allows, so it may not stand at a role shelf 17 gives none, may not stand beside a second
 // impossible thing, and may not claim the world level beside a camera-led flight.
@@ -625,6 +683,11 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
       if (r === "middle" && bf && bf.ok) boxQualified++;
       if (!q.score) continue;
       roleN[r]++;
+      // CHANGE C, at every role: see `collectVoiceHandles`'s own note on why one role's sample
+      // undercounts a pivot instrument's chances to own LIGHT-COLOUR. Read off `q.plan.cues`, not
+      // `q.score.cues`, for the same reason the note above `p.plan.cues` gives — the wire-fitting
+      // step sheds provenance and `levelOwnership` survives only on the plan's own copy.
+      for (const cue of q.plan.cues) collectVoiceHandles(cue);
       const cues = q.score.cues;
       for (const x of cues) chosen[x.instrument.id] = (chosen[x.instrument.id] || 0) + 1;
       if (cues.some((x) => x.instrument.id === "boxfold")) folded[r]++;
@@ -700,6 +763,7 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
           tideCellsSeen.push(toNum(node.value));
         }
       }
+      collectVoiceHandles(cue);
       // no cue may name a handle the instrument declares OPEN: that state is the instrument's own
       // door reading (his 18:00 decision)
       const manifest = fix.consts.manifests[cue.instrument.id];
@@ -719,7 +783,9 @@ out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
              ledAtTonic, ledElsewhere, ledWithWorldCue, tonic,
              folded, worldCue, ledAndWorld, twoMiracles, roleThrew, roleN, boxQualified,
              foldUnspent, chosen, cast: Object.keys(consts.instruments).sort(),
-             adriftSeams, tideCellsSeen};
+             adriftSeams, tideCellsSeen,
+             gridColourVoicesOwns, strataLightVoicesOwns,
+             gridColourVoicesAccompanies, strataLightVoicesAccompanies};
 
 // 7 · the road every pair is measured against, and the one road no instrument can play
 const roadNotes = {};
@@ -1231,6 +1297,87 @@ else:
               bool(tc) and bool(tcOffDefault) and len(set(tc)) > 1,
               f"{len(tc)} waterline tideCells readings over the sweep, {len(tcOffDefault)} off the "
               f"manifest's own 0.5 default; distinct values seen: {sorted(set(tc))[:12]}")
+
+        # --- row 8d · CHANGE C: grid-colour's six voice handles are driven where it OWNS ------------
+        #     LIGHT-COLOUR, not left at 0
+        # Before this change nothing ever wrote `wanted.colourPeriod` et al. for this instrument, so
+        # `appliedValue` resolved every one of the six to the manifest's own 0 default on every pair.
+        # The fix reads the departing work's own colour.sat and colour.contrast (PART 2, step 4 of
+        # the colour-and-light lane) — but ONLY on the cue the composer's own `ownTheLevels` marks
+        # as owning LIGHT-COLOUR (shelf 17's levels law: one active voice per level). This row reads
+        # the "owns" bucket only; the sibling row below reads the "accompanies" bucket and proves the
+        # opposite half of the same law.
+        #
+        # PERIOD AND AMPLITUDE READ A MEASUREMENT AND SO MUST DIFFER ACROSS PAIRS: each is the
+        # departing work's own colour.sat or colour.contrast carried through BEAT_DIAL/VOICE_SHARE,
+        # and Part 1's own sweep found 111 and 107 distinct readings of those two measures over the
+        # 121 works, so a period or an amplitude landing on one value across the whole spot-check
+        # would itself be the defect.
+        #
+        # PHASE DOES NOT, AND THAT IS THE LAB'S OWN LAW RATHER THAN A GAP IN THE PORT. A voice's phase
+        # is its own fixed place among this instrument's voices (`i / N`, step4-assembler.js:2000),
+        # never the work's own measure — the lab's own code sets `s.phase = i / 4` with no per-pair
+        # term in it either. So this row proves phase is DRIVEN (present in the collection at all,
+        # which an undriven handle could not be) and CORRECT (holds exactly its own structural
+        # constant, 0 for colour and 1/2 for light), not that it varies, because the law it ports
+        # says it must not.
+        gcVoices = sweep["gridColourVoicesOwns"]
+        GC_VARIES = ["colourPeriod", "colourAmp", "lightPeriod", "lightAmp"]
+        GC_PHASE_CONST = {"colourPhase": 0.0, "lightPhase": 0.5}
+        gcDistinct = {h: sorted(set(vs)) for h, vs in gcVoices.items()}
+        gcVariesOk = all(bool(gcVoices[h]) and any(abs(v) > 1e-9 for v in gcVoices[h])
+                         and len(gcDistinct[h]) > 1 for h in GC_VARIES)
+        gcPhaseOk = all(bool(gcVoices[h]) and gcDistinct[h] == [c]
+                        for h, c in GC_PHASE_CONST.items())
+        check(NODE_ROWS[37], gcVariesOk and gcPhaseOk,
+              "on cues that OWN LIGHT-COLOUR: "
+              + "; ".join(f"{h}: {len(vs)} readings, {len(gcDistinct[h])} distinct "
+                          f"({gcDistinct[h][:6]})" for h, vs in gcVoices.items()))
+
+        # --- row 8e · CHANGE C: strata-light's twelve voice handles are driven where it OWNS --------
+        #     LIGHT-COLOUR, not left at 0
+        # The same proof as above, over the twelve handles this instrument publishes twice — A off
+        # the departing work's own colour.sat/colour.brightness/colour.contrast, B off the arriving
+        # work's — ported from lab/step4-assembler.js:1966-2010 into the "strata-light" branch of
+        # `fillPlan`, again read only from the "owns" bucket. The four phase handles hold the
+        # assembler's own quarter-turn constants exactly: 0, 1/4, 2/4, 3/4 for colourPhaseA,
+        # lightPhaseA, colourPhaseB, lightPhaseB in that order.
+        slVoices = sweep["strataLightVoicesOwns"]
+        SL_VARIES = ["colourPeriodA", "colourAmpA", "lightPeriodA", "lightAmpA",
+                    "colourPeriodB", "colourAmpB", "lightPeriodB", "lightAmpB"]
+        SL_PHASE_CONST = {"colourPhaseA": 0.0, "lightPhaseA": 0.25,
+                          "colourPhaseB": 0.5, "lightPhaseB": 0.75}
+        slDistinct = {h: sorted(set(vs)) for h, vs in slVoices.items()}
+        slVariesOk = all(bool(slVoices[h]) and any(abs(v) > 1e-9 for v in slVoices[h])
+                         and len(slDistinct[h]) > 1 for h in SL_VARIES)
+        slPhaseOk = all(bool(slVoices[h]) and slDistinct[h] == [c]
+                        for h, c in SL_PHASE_CONST.items())
+        check(NODE_ROWS[38], slVariesOk and slPhaseOk,
+              "on cues that OWN LIGHT-COLOUR: "
+              + "; ".join(f"{h}: {len(vs)} readings, {len(slDistinct[h])} distinct "
+                          f"({slDistinct[h][:6]})" for h, vs in slVoices.items()))
+
+        # --- row 8f · CHANGE C: a cue that only ACCOMPANIES on LIGHT-COLOUR stays silent there ------
+        # Shelf 17's levels law names both halves: one active voice per level, so the cue that does
+        # NOT own LIGHT-COLOUR must not sing there either. `fillPlan` never writes `wanted.*` for any
+        # of the eighteen handles on such a cue, so `appliedValue` resolves every one of them to the
+        # manifest's own 0 — this row proves that resolution actually happens across the sweep,
+        # reading the "accompanies" bucket the driver keeps apart from the "owns" one above. An empty
+        # bucket would mean no accompanying cue was ever cast in this spot-check and the row would
+        # have nothing to prove; a non-empty bucket holding anything but 0 would mean the levels law
+        # was not honoured.
+        accAll = {}
+        for prefix, bucket in (("grid-colour.", sweep["gridColourVoicesAccompanies"]),
+                               ("strata-light.", sweep["strataLightVoicesAccompanies"])):
+            for h, vs in bucket.items():
+                accAll[prefix + h] = vs
+        accCounts = {k: len(vs) for k, vs in accAll.items()}
+        accOffZero = {k: [v for v in vs if abs(v) > 1e-9] for k, vs in accAll.items()}
+        anyAccompanying = any(accCounts.values())
+        allSilent = all(not off for off in accOffZero.values())
+        check(NODE_ROWS[39], anyAccompanying and allSilent,
+              f"accompanying-cue readings seen: {accCounts}; any off 0: "
+              f"{ {k: v for k, v in accOffZero.items() if v} }")
 
         # --- row 9 · the two fences a filled score has to pass -----------------------------------
         # THE FENCES ARE NO LONGER WALLS, AND THAT IS WHY THIS ROW MATTERS MORE THAN IT DID. The

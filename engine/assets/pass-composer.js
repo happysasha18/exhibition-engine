@@ -765,13 +765,24 @@
     countBeatOut: ["unmeasured", "the same at the far door"],
     angleBeatIn: ["unmeasured", "the stretch the angle travels over; the same reason"],
     angleBeatOut: ["unmeasured", "the same at the far door"],
-    colourPeriod: ["unmeasured", "the period of the accompanying colour voice. A voice's own period "
-                                 + "is the score's word; nothing in a work record bears on it"],
-    colourPhase: ["unmeasured", "that voice's head start"],
-    colourAmp: ["unmeasured", "that voice's loudness"],
-    lightPeriod: ["unmeasured", "the period of the accompanying light voice; the same reason"],
-    lightPhase: ["unmeasured", "that voice's head start"],
-    lightAmp: ["unmeasured", "that voice's loudness"],
+    // THE SIX ROWS BELOW ARE READ ONLY WHERE THIS CUE OWNS LIGHT-COLOUR. Shelf 17's levels law
+    // gives that level one active voice; where another cue of the same passage owns it instead this
+    // one only accompanies, and `fillPlan`'s "grid-colour" branch leaves every one of the six unset
+    // in that case, which is the manifest's own rest of 0 rather than a second silence typed here.
+    colourPeriod: ["measured", "the departing work's own colour.sat, carried through BEAT_DIAL and "
+                               + "spread — lab/step4-assembler.js:1966-2010, ported — read only "
+                               + "where this cue owns LIGHT-COLOUR"],
+    colourPhase: ["measured", "the voice's own place among this instrument's two, i/2 — the same "
+                              + "index-over-count rule the assembler stands its own four voices a "
+                              + "quarter turn apart by; the same LIGHT-COLOUR ownership gate"],
+    colourAmp: ["measured", "the departing work's own colour.sat, VOICE_SHARE of it; the same "
+                            + "LIGHT-COLOUR ownership gate"],
+    lightPeriod: ["measured", "the departing work's own colour.contrast, carried through BEAT_DIAL "
+                              + "and spread; the same LIGHT-COLOUR ownership gate"],
+    lightPhase: ["measured", "the voice's own place among this instrument's two, i/2; the same "
+                             + "LIGHT-COLOUR ownership gate"],
+    lightAmp: ["measured", "the departing work's own colour.contrast, VOICE_SHARE of it; the same "
+                           + "LIGHT-COLOUR ownership gate"],
 
     // ---- the parting-by-light instrument ----
     cellsA: ["measured", "the departing work's own grain said as cells across its frame — "
@@ -790,19 +801,30 @@
     levelA: ["unmeasured", "the level of tone the departing work parts at. A work record carries no "
                            + "reading of tone at all; the instrument measures its own picture"],
     levelB: ["unmeasured", "the same of the arriving work"],
-    colourPeriodA: ["unmeasured", "the departing work's colour voice period; a voice's period is the "
-                                  + "score's word"],
-    colourPeriodB: ["unmeasured", "the same of the arriving work"],
-    colourPhaseA: ["unmeasured", "that voice's head start"],
-    colourPhaseB: ["unmeasured", "the same of the arriving work"],
-    colourAmpA: ["unmeasured", "that voice's loudness"],
-    colourAmpB: ["unmeasured", "the same of the arriving work"],
-    lightPeriodA: ["unmeasured", "the departing work's light voice period; the same reason"],
-    lightPeriodB: ["unmeasured", "the same of the arriving work"],
-    lightPhaseA: ["unmeasured", "that voice's head start"],
-    lightPhaseB: ["unmeasured", "the same of the arriving work"],
-    lightAmpA: ["unmeasured", "that voice's loudness"],
-    lightAmpB: ["unmeasured", "the same of the arriving work"],
+    // THE TWELVE ROWS BELOW ARE READ ONLY WHERE THIS CUE OWNS LIGHT-COLOUR. Shelf 17's levels law
+    // gives that level one active voice; where another cue of the same passage owns it instead this
+    // one only accompanies, and `fillPlan`'s "strata-light" branch leaves every one of the twelve
+    // unset in that case, which is the manifest's own rest of 0 rather than a second silence typed
+    // here.
+    colourPeriodA: ["measured", "the departing work's own colour.sat and colour.brightness, carried "
+                                + "through BEAT_DIAL and spread — lab/step4-assembler.js:1966-2010, "
+                                + "ported — read only where this cue owns LIGHT-COLOUR"],
+    colourPeriodB: ["measured", "the same of the arriving work"],
+    colourPhaseA: ["measured", "this voice's own place among the instrument's four, i/4 — "
+                               + "step4-assembler.js:2000; the same LIGHT-COLOUR ownership gate"],
+    colourPhaseB: ["measured", "the same rule at the arriving work's own slot"],
+    colourAmpA: ["measured", "the departing work's own colour.sat, VOICE_SHARE of it; the same "
+                             + "LIGHT-COLOUR ownership gate"],
+    colourAmpB: ["measured", "the arriving work's own colour.sat, VOICE_SHARE of it"],
+    lightPeriodA: ["measured", "the departing work's own colour.sat and colour.contrast, carried "
+                               + "through BEAT_DIAL and spread; the same reason and the same "
+                               + "LIGHT-COLOUR ownership gate"],
+    lightPeriodB: ["measured", "the same of the arriving work"],
+    lightPhaseA: ["measured", "this voice's own place among the instrument's four, i/4; the same "
+                              + "LIGHT-COLOUR ownership gate"],
+    lightPhaseB: ["measured", "the same rule at the arriving work's own slot"],
+    lightAmpA: ["measured", "the departing work's own colour.contrast, VOICE_SHARE of it"],
+    lightAmpB: ["measured", "the arriving work's own colour.contrast, VOICE_SHARE of it"],
 
     // ---- the leaning instrument ----
     // TWO SCOPED ROWS AND THE REASON IN ONE LINE EACH. `tilt` above is the sheet's plane attitude
@@ -3594,6 +3616,18 @@
         // distance is taken between. It stood only inside `tonalSpectral`, where the whole pair is
         // in hand; the fill has one work at a time, so the reading belongs here beside the others.
         ladderPosition: Number((work.luminance || {}).ladderPosition) || 0,
+        // THE THREE COLOUR READINGS THE EIGHTEEN VOICE HANDLES ARE DRIVEN FROM — saturation,
+        // brightness and tonal contrast, each read straight off the work's own pixels by
+        // lab/analyze/recipes.py:526-585 colour_stats() and carried into this record's own
+        // `colour` object by lab/build-workrecords-v1.py. Before U27's colour-and-light lane these
+        // three were measured and thrown away: the record carried no colour reading at all, and
+        // the eighteen handles below rested at their manifest default of 0 for every pair. The
+        // derivation that turns them into a period, a phase and a loudness per voice is
+        // lab/step4-assembler.js:1966-2010, ported into `fillPlan`'s "grid-colour" and
+        // "strata-light" branches below.
+        sat: Number((work.colour || {}).sat) || 0,
+        brightness: Number((work.colour || {}).brightness) || 0,
+        contrast: Number((work.colour || {}).contrast) || 0,
         // THE LATTICE THE WORK CARRIES, in one place and in one order of preference: the step the
         // work was actually cut at, falling back to the repeat its own grid was measured at. Three
         // handles of the interfering instrument read exactly this pair of numbers.
@@ -3680,6 +3714,78 @@
     // measured by nothing, because it is a number rather than a reading.
     var GOLDEN = 0.6180339887;
     function goldenStagger(count) { return fractional(count * GOLDEN); }
+
+    // SHELF 17'S LEVELS LAW, applied to the colour and light voices: "one active voice per
+    // structural level ... LIGHT-COLOUR its own slot. Two voices on one level read as noise." The
+    // composer already resolves who owns which level, per cue, before `fillPlan` runs
+    // (`buildTemplate`'s call to `ownTheLevels`, stored on `cue.levelOwnership`); a cue that only
+    // ACCOMPANIES another on LIGHT-COLOUR must not sing there too, so the colour and light voices are
+    // driven only for the cue this reads "owns" on. Where it is not owned the eighteen handles are
+    // left unset and rest at the manifest's own 0 — the module's own silence, and no second
+    // mechanism is built to produce it.
+    function singsLightColour(cue) {
+      return !!(cue.levelOwnership && cue.levelOwnership["LIGHT-COLOUR"] === "owns");
+    }
+
+    // ---- the accompanying colour-and-light voices (lab/step4-assembler.js:1966-2010) ----
+    //
+    // THE EIGHTEEN VOICE HANDLES — grid-colour's six and strata-light's twelve — are what the lab
+    // calls the accompanying voices: a colour voice and a light voice, singing the collection's own
+    // saturation, brightness and contrast as a period, a phase and a loudness. The lab solved this
+    // derivation once, on the assembler that composes a passage ahead of time; this ports its FIRST
+    // pass only into the composer, which derives a passage at the instant two works meet and reads
+    // it from the two works' own records rather than from a rendered probe. What is NOT ported is
+    // named below, at the branches that use these helpers.
+    //
+    // BEAT_DIAL — the tempo one layer's own handle moves at, measured in the same units the layer's
+    // period is published in. lab/step4-assembler.js:60-66: LEN = 6.0s, OVERLAP = LEN*2/3 = 4.0s,
+    // LAYER = (LEN + OVERLAP)/2 = 5.0s, BEAT = LEN − LAYER = 1.0s, and BEAT_DIAL = BEAT / LAYER =
+    // 0.2 — the same beat, measured in one layer's own handle travel rather than in seconds.
+    var BEAT_DIAL = 0.2;
+
+    // VOICE_SHARE — how much of a work's own measure becomes a voice's loudness. Carried from
+    // lab/step4-assembler.js:91, where its own comment names it plainly: "ЧЕТВЕРТЬ ЗДЕСЬ — ЧИСЛО
+    // ВКУСА, поднято в отчёте" — a quarter is a number of taste, raised in a report rather than
+    // measured. It is carried here as that same admitted number, not re-derived as if it were one.
+    var VOICE_SHARE = 0.25;
+
+    // RATIOS and RATIO_BAND — the small-integer ratios an accompanying voice's period must not sit
+    // near, and the band around each. lab/step4-assembler.js:84-85 (RATIOS, RATIO_BAND = 0.05),
+    // serving the plan's own «Правила времени»: accompanying voices carry incommensurable periods
+    // so they never repeat together exactly.
+    var VOICE_RATIOS = [1 / 1, 1 / 2, 1 / 3, 1 / 4, 1 / 5, 2 / 3, 2 / 5, 3 / 4, 3 / 5, 4 / 5];
+    var VOICE_RATIO_BAND = 0.05;
+
+    // aligned(p, q) — whether two periods sit within the band of one of the small-integer ratios
+    // above, measured in the log so the answer does not depend on which of the two is divided by
+    // which. Ported unchanged from lab/step4-assembler.js:1613-1620 (`aligned`).
+    function voicesAligned(p, q) {
+      var r = Math.log(p / q), band = Math.log(1 + VOICE_RATIO_BAND), i, v;
+      for (i = 0; i < VOICE_RATIOS.length; i++) {
+        v = Math.log(VOICE_RATIOS[i]);
+        if (Math.abs(r - v) <= band || Math.abs(r + v) <= band) return VOICE_RATIOS[i];
+      }
+      return 0;
+    }
+
+    // spread(base) — nudges each of a set of periods up by one percent, as many times as it takes,
+    // until it no longer sits in a small-integer ratio with any period already placed before it.
+    // Ported unchanged from lab/step4-assembler.js:1622-1636 (`spread`).
+    function voiceSpread(base) {
+      var out = [], i, j, v, steps, hit;
+      for (i = 0; i < base.length; i++) {
+        v = base[i]; steps = 0;
+        for (;;) {
+          hit = 0;
+          for (j = 0; j < i; j++) if (voicesAligned(v, out[j].value)) { hit = 1; break; }
+          if (!hit || steps > 200) break;
+          v *= 1.01;
+          steps++;
+        }
+        out.push({ value: v, steps: steps });
+      }
+      return out;
+    }
 
     // ONE SCALE, STATED ONCE, FROM A MEASURED RATIO TO A SHARE OF A HANDLE'S OWN SPAN. A handle
     // publishes a floor, a ceiling and a default; a work publishes a reading. What no file in this
@@ -4501,6 +4607,50 @@
           // COLOURFULNESS ladder, which is what `luminance.ladderPosition` publishes: two works
           // whose colour worlds stand far apart give the herald something to announce.
           wanted.lead = flt(r4(clamp01(Math.abs(mf.ladderPosition - mt.ladderPosition))));
+          // THE COLOUR AND LIGHT VOICES — six handles, one set, because this instrument carries
+          // BOTH works inside itself and publishes one set of voice fields rather than a pair the
+          // way strata-light does (its own manifest, pass-inst-grid-colour.js:919-937). Driven from
+          // the DEPARTING work's own readings: this voice is written onto the frame as it stands at
+          // the passage's opening, and at that opening the frame IS the departing work's palette —
+          // saturation for the colour voice, contrast for the light voice, the same pairing
+          // lab/step4-assembler.js:1966-2010 gives each voice at its own layer A.
+          //
+          // The period offsets (2 for colour, 3 for light) and the amplitude law (VOICE_SHARE times
+          // the work's own measure) are the assembler's layer-A slot exactly (its `seeds[0]` and
+          // `seeds[1]`, step4-assembler.js:1973-1976). The phase law is the same rule at this
+          // instrument's own scale: the assembler stands its four voices (two works × two voices) a
+          // quarter turn apart, `i / 4`; this instrument carries only the two voices of ONE work, so
+          // the same `i / N` rule with N = 2 stands them half a turn apart instead of a quarter —
+          // not a new number, the same index-over-count law read at this instrument's own voice
+          // count.
+          //
+          // SUNG ONLY WHERE THIS CUE OWNS LIGHT-COLOUR (shelf 17's levels law, `singsLightColour`
+          // above). Where another cue of this same passage owns that level instead, this cue only
+          // ACCOMPANIES it there and every one of the six handles is left unset — the manifest's own
+          // rest of 0, not a second silence invented here.
+          if (singsLightColour(cue)) {
+            var gcBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.contrast)];
+            var gcPeriods = voiceSpread(gcBase);
+            wanted.colourPeriod = flt(r4(Math.min(num(HANDLE_SPECS["grid-colour"].colourPeriod[1]),
+                                                   Math.max(num(HANDLE_SPECS["grid-colour"]
+                                                                .colourPeriod[0]),
+                                                            gcPeriods[0].value))));
+            wanted.colourPhase = flt(0);
+            wanted.colourAmp = flt(r4(clamp01(VOICE_SHARE * mf.sat)));
+            wanted.lightPeriod = flt(r4(Math.min(num(HANDLE_SPECS["grid-colour"].lightPeriod[1]),
+                                                 Math.max(num(HANDLE_SPECS["grid-colour"]
+                                                              .lightPeriod[0]),
+                                                          gcPeriods[1].value))));
+            wanted.lightPhase = flt(0.5);
+            wanted.lightAmp = flt(r4(clamp01(VOICE_SHARE * mf.contrast)));
+          }
+          // WHAT STAYS IN THE LAB. The assembler follows this first pass with an audibility loop
+          // (`voiceMove`, `VOICE_TARGET`) that RENDERS the voice's layer off-screen and measures how
+          // far it actually moved a real frame's pixels, muting a voice a work cannot sing loud
+          // enough to clear the visible threshold. The composer derives a crossing at the instant a
+          // visit casts it and cannot render a probe frame to measure against, so that refinement is
+          // not ported: every voice here plays at its first-pass amplitude, unmuted, when it plays
+          // at all.
         } else if (instr === "strata-light") {
           // THE GRID EACH STRATUM IS CUT ON, off each work's own measured grain: a work made of
           // coarse masses parts into few large areas and a fine-grained one into many small ones.
@@ -4524,6 +4674,58 @@
           // here would put a colour number where a tone number belongs. The instrument measures its
           // own picture at build the way the module does, which is the module's own answer, and the
           // lane's report names the column a record would need.
+          //
+          // THE TWELVE COLOUR AND LIGHT VOICES, ported from lab/step4-assembler.js:1966-2010. This
+          // instrument plays its module twice, once per work (pass-inst-strata-light.js:424-427):
+          // layer A takes the DEPARTING work's own readings and layer B the ARRIVING work's, which
+          // is `mf` and `mt` here exactly as every other reading in this branch already uses them.
+          // Each work sings two voices, colour on its own saturation and light on its own contrast,
+          // as the assembler's four seeds do (step4-assembler.js:1972-1981): `seeds[0]` colour/A on
+          // sat, `seeds[1]` light/A on contrast, `seeds[2]` colour/B on sat, `seeds[3]` light/B on
+          // contrast.
+          //
+          // PERIOD. Each seed's own measure sets a base period at BEAT_DIAL times (an index offset
+          // of 2..5 plus that seed's own reading), and `voiceSpread` (the ported `spread`) nudges
+          // each one off any small-integer ratio with an earlier one so the four voices never repeat
+          // together — step4-assembler.js:1970-1971. The period offsets for the colour and light
+          // voices use each work's saturation and brightness respectively (mirroring the assembler's
+          // own `base` array exactly); the AMPLITUDE below uses saturation and contrast instead,
+          // because that is the pairing the assembler's own `seeds[].measure` uses, and the two
+          // arrays are not the same on purpose in the ported code either.
+          //
+          // SUNG ONLY WHERE THIS CUE OWNS LIGHT-COLOUR (shelf 17's levels law, `singsLightColour`
+          // above). Where another cue of this same passage owns that level instead, this cue only
+          // ACCOMPANIES it there and every one of the twelve handles is left unset — the manifest's
+          // own rest of 0, not a second silence invented here.
+          if (singsLightColour(cue)) {
+            var slBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.brightness),
+                          BEAT_DIAL * (4 + mt.sat), BEAT_DIAL * (5 + mt.contrast)];
+            var slPeriods = voiceSpread(slBase);
+            var slClamp = function (handle, v) {
+              return flt(r4(Math.min(num(HANDLE_SPECS["strata-light"][handle][1]),
+                                     Math.max(num(HANDLE_SPECS["strata-light"][handle][0]), v))));
+            };
+            // PHASE. The four voices stand a quarter turn apart, `i / 4` — step4-assembler.js:2000.
+            wanted.colourPeriodA = slClamp("colourPeriodA", slPeriods[0].value);
+            wanted.colourPhaseA = flt(0 / 4);
+            wanted.colourAmpA = flt(r4(clamp01(VOICE_SHARE * mf.sat)));
+            wanted.lightPeriodA = slClamp("lightPeriodA", slPeriods[1].value);
+            wanted.lightPhaseA = flt(1 / 4);
+            wanted.lightAmpA = flt(r4(clamp01(VOICE_SHARE * mf.contrast)));
+            wanted.colourPeriodB = slClamp("colourPeriodB", slPeriods[2].value);
+            wanted.colourPhaseB = flt(2 / 4);
+            wanted.colourAmpB = flt(r4(clamp01(VOICE_SHARE * mt.sat)));
+            wanted.lightPeriodB = slClamp("lightPeriodB", slPeriods[3].value);
+            wanted.lightPhaseB = flt(3 / 4);
+            wanted.lightAmpB = flt(r4(clamp01(VOICE_SHARE * mt.contrast)));
+          }
+          // WHAT STAYS IN THE LAB. The assembler follows this first pass with an audibility loop
+          // (`voiceMove`, `VOICE_TARGET`) that RENDERS each layer off-screen and measures how far it
+          // actually moved a real frame's pixels, muting a voice a work cannot sing loud enough to
+          // clear the visible threshold. The composer derives a crossing at the instant a visit
+          // casts it and cannot render a probe frame to measure against, so that refinement is not
+          // ported: every voice here plays at its first-pass amplitude, unmuted, when it plays at
+          // all.
         } else if (instr === "tilt") {
           // HOW FAR THE PLANE LIES DOWN, off each work's own corridor reading: a picture that
           // already reads as depth is laid down further, and the lean travels from the departing
