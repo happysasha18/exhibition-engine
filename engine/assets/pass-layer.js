@@ -109,6 +109,10 @@
     gl.bindTexture(gl.TEXTURE_2D, tx);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // The sharpest copy, which is what every instrument written before the chain existed reads and
+    // what its own conformance rows are measured against. An instrument that DECLARES it reads the
+    // chain gets the filter that walks it, for the length of its own draw and no longer — see
+    // `drawPose` below and §8's `gl.readsChain`.
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     return tx;
@@ -393,14 +397,33 @@
       fitA: inst.fit(src.aw, src.ah, W, H),
       fitB: inst.fit(src.bw, src.bh, W, H),
     };
+    // WHICH READING OF THE PICTURE THIS INSTRUMENT GETS. The two source textures carry a chain of
+    // smaller copies, uploaded with them, so an instrument can read the picture COARSELY — which is
+    // how anything belonging to distance is drawn: softness behind a near edge, haze that grows
+    // with depth, colour parting at a far edge. Without the chain a coarser reading silently
+    // returns the sharpest copy and the frame comes out flat.
+    //
+    // BUT THE FILTER IS THE INSTRUMENT'S OWN CHOICE, and that is not tidiness. Walking the chain
+    // also changes what an instrument reading the picture at no named level gets under minification,
+    // and every instrument here is measured frame against frame with a lab module that has no chain
+    // at all. Setting the filter for everyone moved two of those readings past their threshold —
+    // measured, both suites green before and one row red after. So an instrument declares
+    // `gl.readsChain` and gets the walking filter for the length of its own draw; every other
+    // instrument reads exactly the copy it always read. The wrap stays clamped throughout: the
+    // instruments here carry their own clamp against the travel pushing a sample off the picture,
+    // and a repeating wrap would turn that backstop into a wrapped edge.
+    var chain = !!(inst.manifest.gl && inst.manifest.gl.readsChain);
+    var minf = chain ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR;
     inst.manifest.passes.forEach(function (pass) {
       var p = programFor(pass);
       gl.useProgram(p.prog);
       gl.bindVertexArray(stage.vao);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, stage.texA);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minf);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, stage.texB);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minf);
       pass.uniforms.forEach(function (u) {
         var loc = p.U[u.name];
         if (loc !== null && loc !== undefined) bindUniform(gl, loc, u, box);
@@ -436,12 +459,16 @@
     var gl = stage.gl;
     gl.bindTexture(gl.TEXTURE_2D, stage.texA);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, src.a);
+    gl.generateMipmap(gl.TEXTURE_2D);
     gl.bindTexture(gl.TEXTURE_2D, stage.texB);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, src.b);
+    gl.generateMipmap(gl.TEXTURE_2D);
     census.uploads++;
     // sized from real dimensions, three bytes a point at RGB/UNSIGNED_BYTE — the size of a thing,
-    // which an object count misses entirely (§7)
-    census.bytes = (src.aw * src.ah + src.bw * src.bh) * 3;
+    // which an object count misses entirely (§7). The chain of smaller copies is counted with them:
+    // each level is a quarter of the one above it, so the whole chain weighs a third more than the
+    // picture alone, and the census says so rather than reporting the level a reader can see.
+    census.bytes = Math.round((src.aw * src.ah + src.bw * src.bh) * 3 * 4 / 3);
   }
 
   // ---- context loss and restoration (§7) ---------------------------------------------------------

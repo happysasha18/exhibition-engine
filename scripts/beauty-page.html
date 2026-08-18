@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>@@TITLE@@</title>
+<style>
+  html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+  body { -webkit-user-select:none; user-select:none; }
+  /* THE PICTURE STANDING WHOLE, before the crossing opens and after it lands. The host's canvas
+     covers it while the pass runs, so nothing ever cuts to black.
+     IT IS SEATED THE WAY THE DOOR SEATS IT. The instrument cover-fits a work and then pulls in by
+     the headroom its ribbons' travel needs — 1 + 2·0.10·1.30 + 0.03 = 1.29, the module's own ZOOM —
+     so a plain cover-fit here would show MORE of the picture than the door does and the frame would
+     pop by 29 % every time the curtain rose or fell. The scale below is that same number.
+     TWO OF THEM, so the return to the first work at the end of a loop is a dissolve rather than a
+     cut. The dissolve belongs to the LOOP, not to the crossing: the passage itself carries no
+     opacity anywhere, and the score cannot express one. */
+  .still { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+           background:#000; transform:scale(1.29); transform-origin:50% 50%;
+           transition:opacity .6s ease; }
+  #stillB { opacity:0; }
+  /* The walk's own markup, as the host reads it: it arms and decodes both works by finding
+     .exh-frame[data-id] in the document. Off-screen, so the frame carries the crossing alone. */
+  #walk { position:fixed; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+  /* One quiet control. It is invisible until the hand moves, and it fades again. */
+  #bar { position:fixed; left:0; right:0; bottom:22px; display:flex; justify-content:center;
+         gap:10px; opacity:0; transition:opacity .5s ease; pointer-events:none; z-index:9; }
+  #bar.on { opacity:.55; pointer-events:auto; }
+  #bar button { font:500 12px/1 -apple-system, system-ui, sans-serif; letter-spacing:.09em;
+                color:#fff; background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.32);
+                border-radius:999px; padding:9px 15px; cursor:pointer; backdrop-filter:blur(6px);
+                -webkit-backdrop-filter:blur(6px); }
+  #bar button[aria-pressed="true"] { background:rgba(255,255,255,.9); color:#000;
+                                     border-color:rgba(255,255,255,.9); }
+</style>
+</head>
+<body>
+<img id="stillA" class="still" src="@@IMG_A@@" alt="">
+<img id="stillB" class="still" src="@@IMG_B@@" alt="">
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="@@IMG_A@@" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="@@IMG_B@@" alt=""></section>
+</div>
+<div id="bar">
+  <button id="again">AGAIN</button>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+
+  // THE PAGE ANSWERS THE HOST'S OWN TWO FETCHES. The host reads its record and every instrument
+  // file over the network; here both live in the page, so a file opened by a double-click runs the
+  // real host, weighs the real digests and registers the real instruments. Nothing is stubbed —
+  // only the transport is local.
+  (function () {
+    var RECORD = /*@@RECORD@@*/null;
+    var FILES = /*@@FILES@@*/null;
+    var enc = new TextEncoder();
+    var real = window.fetch ? window.fetch.bind(window) : null;
+    window.fetch = function (url, opts) {
+      var u = String(url);
+      if (u === "config.json") {
+        return Promise.resolve({ ok: true, status: 200,
+          json: function () { return Promise.resolve(RECORD); } });
+      }
+      if (Object.prototype.hasOwnProperty.call(FILES, u)) {
+        var buf = enc.encode(FILES[u]);
+        return Promise.resolve({ ok: true, status: 200,
+          arrayBuffer: function () { return Promise.resolve(buf.buffer.slice(0)); } });
+      }
+      return real ? real(url, opts)
+                  : Promise.reject(new Error("this page serves only its own two files"));
+    };
+  })();
+</script>
+<script>/*@@LAYER@@*/</script>
+<script>
+(function () {
+  var SCORE = /*@@SCORE@@*/null;
+  var stillB = document.getElementById("stillB");
+  var A = document.getElementById("imgA"), B = document.getElementById("imgB");
+  // The two works stand whole at the ends, briefly. The arriving work is held longer: it is where
+  // the passage lands, and a landing wants a beat of silence after it (the cadence of shelf 4).
+  var HOLD_A = 900, HOLD_B = 1800, DISSOLVE = 600;
+  function show(work) { stillB.style.opacity = work === "b" ? "1" : "0"; }
+
+  // THERE IS NO SLOW CONTROL, AND THE REASON IS THE RENDERER'S OWN. Two roads to a slow pass were
+  // built and both are closed by laws that exist for good reasons elsewhere. Pinning the clock and
+  // walking the pins forward at any rate draws every frame exactly as it plays at full speed, but a
+  // transaction carries a watchdog at its duration plus at most two seconds of slack, so a pinned
+  // walk over an eight-second score is cut off at ten however slowly it is driven. Stretching the
+  // score instead runs into the tier budget: past eight seconds a passage falls in the culmination
+  // band, and a culmination is refused unless it carries two to three letters and exactly one
+  // miracle — the host's own words are «the tier budget: a culmination carries 2 to 3 letters and
+  // this score carries 1». This passage carries one letter by design. So a slow reading of a
+  // crossing is not something a score can ask for today: it is a property of the VIEWER and wants a
+  // viewing mode in the host rather than a longer score. Recorded in the lane's report.
+  var gen = 1000, timer = null, stopped = false;
+  //
+  // A pass this page CANCELLED on purpose is not a pass that landed. `abandoned` carries the last
+  // generation the page walked away from, and its hooks then answer for nothing: the host still
+  // runs its interruption cadence and still docks, as it must, and the loop simply does not read
+  // that dock as a landing and start waiting on top of the restart the control already asked for.
+  var abandoned = 0;
+  function hooksFor(myGen) {
+    return {
+      dock: function (c) { if (c && c.gen !== myGen) return; if (myGen > abandoned) land(); },
+      glide: function (c) { if (c && c.gen !== myGen) return; if (myGen > abandoned) land(); },
+      curtain: function () {},
+      mark: function () {},
+    };
+  }
+
+  function play() {
+    if (stopped) return;
+    show("a");
+    window.__host.configure({
+      prepareBudgetMs: 400, loadBudgetMs: 2000, settleSlackMs: 2000,
+      clockPin: null, progressPin: null,
+    });
+    var cmd = {
+      gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+      kind: "step", cause: "beauty", dir: 1, span: 100, velocity: 0,
+      reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+      viewport: { w: innerWidth, h: innerHeight },
+      params: { flightMs: { base: SCORE.duration }, qualityTier: { base: "rich" } },
+      score: SCORE,
+    };
+    if (window.__host.offer(cmd, hooksFor(cmd.gen)) !== true) land();
+  }
+
+  function land() {
+    show("b");
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      show("a");
+      timer = setTimeout(play, DISSOLVE + HOLD_A);
+    }, HOLD_B);
+  }
+
+  function again() {
+    stopped = false;
+    abandoned = gen;
+    clearTimeout(timer);
+    try { window.__host.cancel("again"); } catch (e) {}
+    setTimeout(play, 80);
+  }
+
+  // ---- the two quiet controls ------------------------------------------------------------
+  var bar = document.getElementById("bar"), fade = null;
+  function wake() {
+    bar.classList.add("on");
+    clearTimeout(fade);
+    fade = setTimeout(function () { bar.classList.remove("on"); }, 2600);
+  }
+  addEventListener("pointermove", wake, { passive: true });
+  addEventListener("touchstart", wake, { passive: true });
+  addEventListener("keydown", wake);
+  document.getElementById("again").addEventListener("click", function () { again(); wake(); });
+
+  // ---- start once the host and both pictures are in hand ---------------------------------
+  var left = 2;
+  [A, B].forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) boot(); return; }
+    im.onload = function () { if (!--left) boot(); };
+  });
+  var asked = false, warmed = false;
+  function boot() {
+    if (!window.__exPass.bench || !window.__host) { setTimeout(boot, 20); return; }
+    if (!warmed) {
+      if (!asked) {
+        asked = true;
+        window.__exPass.bench.load(window.__host.report().record.names,
+                                   function () { warmed = true; });
+      }
+      setTimeout(boot, 20);
+      return;
+    }
+    window.__ready = true;
+    // The bench road the capture rig uses: one instant of the pass, held.
+    window.__at = function (score, seconds, dur) {
+      var p = dur > 0 ? Math.max(0, Math.min(1, seconds / dur)) : 1;
+      stopped = true;
+      clearTimeout(timer);
+      window.__host.configure({ prepareBudgetMs: 400, loadBudgetMs: 2000, settleSlackMs: 4000,
+                                fixedScale: true, clockPin: seconds, progressPin: p });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "capture", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: SCORE.duration }, qualityTier: { base: "rich" } },
+        score: SCORE,
+      };
+      return { took: window.__host.offer(cmd, { dock: function () {}, glide: function () {},
+                                                curtain: function () {}, mark: function () {} }) === true };
+    };
+    window.__cancel = function (w) { window.__host.cancel(w || "capture"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__score = SCORE;
+    setTimeout(play, HOLD_A);
+  }
+})();
+</script>
+</body>
+</html>

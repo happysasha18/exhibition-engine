@@ -73,7 +73,19 @@
       // second. All three are handles a score drives from the photograph's own measured structure,
       // and all three are nothing for a work that carries no wave.
       "uniform vec4 uWave;",
+      // HOW FAR UNDER A DIPPING RIBBON LIES, read as a coarser copy of the picture rather than only
+      // as a darker one. Depth was drawn here as shade alone, so in a basket the ribbon passing
+      // UNDER a crossing one came out exactly as sharp as the one on top — and two equally sharp
+      // pieces side by side read as tiles laid next to each other rather than as cloth, which is
+      // the one stretch of this instrument a photographed round called blocky. A thing further from
+      // the eye is also softer, so the dip now carries a level of the picture's own chain as well.
+      // At nothing the level is exactly 0 at every point and the frame is the one drawn before.
+      "uniform float uDepth;",
       "const float TAU = 6.28318530718;",
+      // How many levels of the picture's own chain a full dip reads down by. Two levels is a
+      // quarter of the resolution, which at this instrument's band widths is the softness of a
+      // thing one ribbon's thickness further away rather than a blur.
+      "const float DEPTH_LOD = 2.0;",
       // THE WAVE'S OWN SHAPE, and the one part of it that is not read from the work. A single sine
       // is a corrugation and reads as a stock effect; the wave carries an overtone, and the two are
       // incommensurate so the irregularity never settles into a repeating figure — the rubato law's
@@ -91,6 +103,11 @@
       "}",
       "vec3 texA(vec2 p){ return texture2D(uA, into(p, uFitA)).rgb; }",
       "vec3 texB(vec2 p){ return texture2D(uB, into(p, uFitB)).rgb; }",
+      // The same two readings, at a named level of the picture's own chain. The host uploads that
+      // chain and filters between its levels, so a fractional level is a real reading and not a
+      // step. Level 0 is the sharpest copy, which is what `texA`/`texB` above always answer.
+      "vec3 texAd(vec2 p, float l){ return textureLod(uA, into(p, uFitA), l).rgb; }",
+      "vec3 texBd(vec2 p, float l){ return textureLod(uB, into(p, uFitB), l).rgb; }",
       "float sqI(float t, float d){ return floor(t) * d + min(fract(t), d); }",
       "float sqcov(float x, float d, float w){",
       "  w = max(w, 1e-5);",
@@ -134,6 +151,13 @@
       "  float cH = warpV(uv.y, 3.0, phH) * nH + edgeH;",
       "  float iv = floor(cV), fv = fract(cV);",
       "  float ih = floor(cH), fh = fract(cH);",
+      // WHERE A RIBBON DIPS UNDER THE CROSSING ONE. These two numbers were read at the end of this
+      // shader and used for shade alone; they are read here instead, so the same measured dip can
+      // carry the level the picture is read at as well as the darkness it is drawn with. Nothing
+      // about either number changed — the terms below are the ones that stood at the end.
+      "  float fbv = fract(cV * 0.5), fbh = fract(cH * 0.5);",
+      "  float diveV = 1.0 - smoothstep(0.0, 0.16, min(fbh, 1.0 - fbh));",
+      "  float diveH = 1.0 - smoothstep(0.0, 0.16, min(fbv, 1.0 - fbv));",
       // The wandering edge tilts the cell coordinate across the OTHER axis too, so its own slope
       // joins the pixel footprint — without it a waved edge sparkles. The term is the wave's own
       // slope, so at a straight edge it is exactly 0 and the footprint is the pre-wave one.
@@ -147,15 +171,22 @@
       "  float dutyH = clamp(uDuty - push, 0.0, 1.0);",
       "  float guardV = smoothstep(0.0, 0.12, dutyV) * smoothstep(1.0, 0.88, dutyV);",
       "  float guardH = smoothstep(0.0, 0.12, dutyH) * smoothstep(1.0, 0.88, dutyH);",
+      // The level each set is read at: its own dip, gated by the same two things the shade is
+      // gated by — the basket, since a ribbon can only pass under another where two sets exist, and
+      // the door gate, so a whole work standing at either door is read at its sharpest copy. The
+      // reach is DEPTH_LOD levels of the chain at a full dip, and `uDepth` at nothing shuts it.
+      "  float depthGate = uDepth * basket * smoothstep(0.0, 0.22, uDuty) * smoothstep(1.0, 0.78, uDuty);",
+      "  float lodV = DEPTH_LOD * depthGate * diveV;",
+      "  float lodH = DEPTH_LOD * depthGate * diveH;",
       "  float covV = sqcov(cV, dutyV, wV);",
-      "  vec3 colV = mix(texB(uv + vec2(0.0, -offV)), texA(uv + vec2(0.0, offV)), covV);",
+      "  vec3 colV = mix(texBd(uv + vec2(0.0, -offV), lodV), texAd(uv + vec2(0.0, offV), lodV), covV);",
       "  float swV = max(4.0 * wV, min(0.12, 0.35 * min(dutyV, 1.0 - dutyV)));",
       "  float parV = step(0.5, mod(iv, 2.0));",
       "  float onBv = exp(-max(fv - dutyV, 0.0) / swV) * (1.0 - covV);",
       "  float onAv = exp(-max(dutyV - fv, 0.0) / swV) * covV;",
       "  colV *= 1.0 - 0.34 * guardV * mix(onBv, onAv, parV);",
       "  float covH = sqcov(cH, dutyH, wH);",
-      "  vec3 colH = mix(texB(uv + vec2(-offH, 0.0)), texA(uv + vec2(offH, 0.0)), covH);",
+      "  vec3 colH = mix(texBd(uv + vec2(-offH, 0.0), lodH), texAd(uv + vec2(offH, 0.0), lodH), covH);",
       "  float swH = max(4.0 * wH, min(0.12, 0.35 * min(dutyH, 1.0 - dutyH)));",
       "  float parH = step(0.5, mod(ih, 2.0));",
       "  float onBh = exp(-max(fh - dutyH, 0.0) / swH) * (1.0 - covH);",
@@ -170,11 +201,8 @@
       "                  hash21(vec2(bv, bh) + uSeed), 0.4);",
       "  float showV = step(ord * 0.996 + 0.002, choose);",
       "  vec3 col = mix(colH, colV, showV);",
-      "  float fbv = fract(cV * 0.5), fbh = fract(cH * 0.5);",
       "  float grooveV = 1.0 - smoothstep(0.0, 0.05, min(fv, 1.0 - fv));",
       "  float grooveH = 1.0 - smoothstep(0.0, 0.05, min(fh, 1.0 - fh));",
-      "  float diveV = 1.0 - smoothstep(0.0, 0.16, min(fbh, 1.0 - fbh));",
-      "  float diveH = 1.0 - smoothstep(0.0, 0.16, min(fbv, 1.0 - fbv));",
       "  float shade = mix(0.55 * diveH + 0.30 * grooveH, 0.55 * diveV + 0.30 * grooveV, showV);",
       "  float shadeGate = smoothstep(0.0, 0.22, uDuty) * smoothstep(1.0, 0.78, uDuty);",
       "  col *= 1.0 - basket * shadeGate * min(shade, 0.62);",
@@ -358,7 +386,15 @@
         duty: duty,
         amp: Math.min(AMP * weave * st.press, TRAVEL),
         nV: clamp(st.strips * st.nMul * clamp(st.cssWidth / 1000, 0.5, 1), 3, 64),
-        rot: st.reduced ? 0 : rotForTime(st.t, st.axis),
+        // WHERE THE FABRIC'S GRAIN STANDS. A score that names `turn` places it directly, so the
+        // grain can travel from the departing work's own band direction to the arriving work's
+        // across a passage. A score that names none leaves the axis handle and its 27 s clock
+        // exactly as they stood, which is what every earlier score and every conformance row reads.
+        rot: st.reduced ? 0
+           : (typeof st.turn === "number" ? clamp(st.turn, 0, 1) : rotForTime(st.t, st.axis)),
+        // How far under a dipping ribbon reads. Nothing where no score names it, which is the frame
+        // this instrument drew before the picture's chain of smaller copies existed.
+        depth: typeof st.depth === "number" ? clamp(st.depth, 0, 1) : 0,
         wave: waveOf(st),
         // read on the diagnostic surface, bound to no uniform: what the handle came to
         bal: bal,
@@ -733,6 +769,37 @@
                              drawnFloor: 3, basketTakes: 0.25 } },
         axis: { min: 0, max: 2, def: 2, kind: "enum", step: 1, names: AXES,
                 banding: ["vertical", "horizontal"], turns: 2, turnPeriodS: 27 },
+        // WHERE THE GRAIN STANDS, AS A PLACE RATHER THAN AS A CLOCK. `axis` names three states and
+        // only the third moves, on a 27 s walk nothing measured — which is what the entry above says
+        // in its own words. A pair whose two band families CROSS has a passage written into it: the
+        // fabric can enter standing on the departing work's own lines and leave standing on the
+        // arriving work's. That is a place travelling between two measurements, and it needs a
+        // continuous handle to travel on. 0 is the vertical band family, 1 the horizontal — the same
+        // pair `axis.banding` publishes and the same pair `uRot` has always carried.
+        //
+        // It is OPEN, like `bal`: a score naming no track for it leaves `axis` and its clock exactly
+        // as they stood, so every score written before this handle existed draws the frame it always
+        // drew. Nothing falls back, so nothing is recorded as a fallback.
+        turn: { min: 0, max: 1, def: 0, open: true,
+                reads: "structure.banding.axis of each work — 0 where the family stands vertical "
+                     + "and 1 where it lies horizontal; a passage between two crossing families "
+                     + "travels this handle from the departing work's reading to the arriving "
+                     + "work's, and a pair sharing one direction holds it still",
+                applied: { verticalAt: 0, horizontalAt: 1, basketAt: 0.5,
+                           whenAbsent: "the axis handle and its own 27 s turn" } },
+        // HOW FAR UNDER A DIPPING RIBBON LIES. Depth was drawn as shade alone and a ribbon passing
+        // under a crossing one came out as sharp as the one on top, so a basket read as tiles laid
+        // side by side rather than as cloth. The dip now also carries a level of the picture's own
+        // chain of smaller copies, which the host uploads. It rests at nothing, so a score naming
+        // no track for it draws the frame this instrument has always drawn, and it can only reach
+        // the frame where two ribbon sets exist — a single-direction weave has nothing to pass
+        // under, and both doors stand at the sharpest copy by the same gate the shade uses.
+        depth: { min: 0, max: 1, def: 0,
+                 reads: "nothing of the work: it is a property of the FABRIC, the same class as the "
+                      + "ribbon edge's own two waves and the contact shadow's own reach, and it is "
+                      + "the material speaking rather than the photograph",
+                 applied: { levelsAtAFullDip: 2, sharpAt: 0, needsBasket: true,
+                            gate: "the same door gate the shade is held by" } },
         speed: { min: 0.1, max: 2.5, def: 1,
                  curve: { knots: CURVES.speed, band: CURVE_BANDS.speed, applied: false,
                           measuredOn: CURVE_MEASURED_ON } },
@@ -788,7 +855,10 @@
                 "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
                 "ramp", "slew", "oscillate", "node"],
       camera: { needs: "none", authority: "stage" },
-      gl: { preserveDrawingBuffer: false },
+      // THIS INSTRUMENT READS THE PICTURE AT A NAMED LEVEL of its chain of smaller copies, so the
+      // host hands it the filter that walks the chain for the length of its own draw. Every
+      // instrument that declares nothing here reads the sharpest copy exactly as it always did.
+      gl: { preserveDrawingBuffer: false, readsChain: true },
       // THE COVERAGE LAW (§7), and this instrument's answer to it: it has no absence to publish.
       // Its two ribbon sets partition the frame — `showV` is 0 or 1 at every point and
       // `col = mix(colH, colV, showV)` takes one set or the other — and inside each set `covV`
@@ -804,7 +874,7 @@
                      + "of the frame is left unclaimed and the alpha is the constant 1" },
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
-      neutralPose: { mix: 0, bal: 1, nMul: 1, press: 1, strips: 28, axis: 2,
+      neutralPose: { mix: 0, bal: 1, nMul: 1, press: 1, strips: 28, axis: 2, depth: 0,
                      wave: 0, wavePeriod: WAVE_PERIOD_DEF, waveDrift: 0,
                      cssWidth: 1000, cssHeight: 1000, t: 0, reduced: false },
       passes: [{
@@ -821,6 +891,7 @@
           { name: "uAmp", type: "float", source: "frame:amp" },
           { name: "uRot", type: "float", source: "frame:rot" },
           { name: "uWave", type: "vec4", source: "frame:wave" },
+          { name: "uDepth", type: "float", source: "frame:depth" },
           { name: "uSpeed", type: "float", source: "handle:speed" },
           { name: "uSeed", type: "float", source: "handle:seed" },
         ],
@@ -879,7 +950,8 @@
         var pose = {
           bal: bal, mix: h.mix,
           nMul: h.nMul, press: h.press,
-          strips: h.strips, axis: h.axis, speed: h.speed, seed: h.seed,
+          strips: h.strips, axis: h.axis, speed: h.speed, seed: h.seed, turn: h.turn,
+          depth: h.depth,
           // The wave the work carries, straight to the pose. A score that names none of the three
           // leaves the edge straight, which is the pre-wave frame.
           wave: h.wave, wavePeriod: h.wavePeriod, waveDrift: h.waveDrift,
