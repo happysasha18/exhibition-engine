@@ -308,7 +308,24 @@ FENCES = {
     # bytes, and what they buy is the register the charter names by example: the unfold that opens
     # past its own sheet into an infinite parquet plays 4 673 times where it played none, and reaches
     # all five route roles rather than the two that can spend a miracle on a folded box. Band 112 B.
-    "pass-composer.js": (27_100,"the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
+    # 2026-08-18, U27 stage 2 — 27 100 B BECOMES 27 300 B, MEASURED AT 27 275 B. The fence did its
+    # work rather than failed: the ground repair landed and the fence was not moved with it, so the
+    # file measured 175 B over its own number. 287 gzipped bytes arrived, and they are two things.
+    # First, THE GROUND A CROSSING STANDS ON IS READ AT EACH MEASURE'S OWN FLOOR rather than at the
+    # whole collection's top quartile: a pair qualifies for a road when its own readings clear the
+    # floor that measure sets, so a work that is quiet on one measure is no longer disqualified by
+    # works that are loud on another. Second, THE ROLL AMONG THE LAWFUL GROUNDS IS WEIGHTED — where
+    # several grounds qualify, the die is weighted by how strongly each one reads and is rolled on
+    # the edge's own key, so both directions of an edge stand on one ground. What the two buy is
+    # measured rather than argued: the commonest instrument's share of a route falls from 65 % to
+    # 28.6 %, the distinct passage shapes on one route go from 6 to 10, and the steps that decline
+    # over all 121 routes fall from 90 to 3. Band 25 B, and it is NARROWER THAN THE 75 B THIS BLOCK
+    # ASKS FOR ABOVE — the judge's instruction of this pass names 27 300 B outright, so the number
+    # is the judge's and the shortfall is a line under Numbers to revisit rather than a silent
+    # rounding up to 27 400 B. The band exists at all for one reason, stated once above: a gzipped
+    # figure is not exactly reproducible, because a different version of the compressor packs a
+    # shade differently, and a fence set ON the measurement would redden for no change at all.
+    "pass-composer.js": (27_300,"the choice core, and the one entry every edge of the walk comes through: two per-work records and the walk's own die composed into a §4.4 score at the instant the pair is cast, so no table of pairs travels; fetched once at the walk's first landing", strip_js_comments),
     # 2026-08-18 — MOVED FROM 6 000 B TO 7 300 B, MEASURED AT 7 222 B (U27 stage 2). The runtime-door
     # work of stage 0 landed in this file and its fence was never moved with it: the instrument reads
     # its own doors on the buffer it draws on and reports what it applied or the refusal it named
