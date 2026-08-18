@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the droste instrument — the host's frame beside the lab module's</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own stage.
+     One is visible at a time; the check shows the one it means and photographs it.
+
+     BOTH ROADS DRAW WITH WEBGL2 AND ONE FRAGMENT SHADER EACH, so the residual between them is a
+     difference of arithmetic rather than of samplers — which is why the bar this suite holds them to
+     is the project's own and not one of its own making.
+
+     THE LAB MODULE IS SERVED WITH ITS SAMPLER LEVELLED TO THE HOST'S, and the suite says so in the
+     rows that read it. The host uploads one plain RGB texture per work, filtered linearly, with no
+     mip chain and no anisotropy — one texture serving every instrument — while the module uploads
+     its own sRGB texture, builds a mip chain over it and asks for anisotropy. Four literals of the
+     served copy are changed so both roads sample one way: the internal format, the minifying filter,
+     the anisotropy, and the two reads, which are wrapped so the module undoes the file's own
+     transfer in the shader where its sampler used to undo it for free. Not one line of the map or
+     the finish is touched, and the file on disk is never written to. -->
+<div id="moduleStage" class="stage"></div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/glass-drum.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/round-tower.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="droste.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  var asked = false, warmed = false;
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    // EACH INSTRUMENT TRAVELS AS ITS OWN FILE, and a visit fetches only the ones its own score
+    // names. This page draws poses as well as commands, so it asks for every instrument the site's
+    // record names — by the same road an offer takes — and waits for the answer.
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var moduleStage = document.getElementById("moduleStage");
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "droste") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «droste» effect"); return; }
+
+    // The one record both roads read. The module keeps its own copy inside its closure; this is the
+    // same object handed to it at creation, so a change here is a change on both roads at once.
+    // The module states its own two curves out of 100 and this engine's handles run 0 to 1, so the
+    // two lines below are one number said twice.
+    var P = { size: 4, turn: 0.32, speed: 0.45, centreX: 0.5, centreY: 0.5, shade: 1 };
+    var hand = 0, clock = 0, maskAt = 0;
+    var params = { twist: P.turn * 100, speed: P.speed * 100, copies: P.size, picture: "first" };
+    var api = def.create(moduleStage, {
+      images: [imgs[0], imgs[1]], reduced: false, params: params,
+    });
+    window.__api = api;
+    api.onParam("clock", 0);
+    api.onParam("spiral", 0);
+    api.onParam("centre", 0.5);
+
+    function pose(over) {
+      var host = document.querySelector("canvas[aria-hidden]");
+      var p = { mix: hand, clock: clock, size: P.size, turn: P.turn, speed: P.speed,
+                centreX: P.centreX, centreY: P.centreY, shade: P.shade, mask: maskAt,
+                reduced: false,
+                cssWidth: innerWidth, cssHeight: innerHeight,
+                bufWidth: host ? host.width : innerWidth,
+                bufHeight: host ? host.height : innerHeight,
+                aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+                bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight };
+      if (over) { for (var k in over) p[k] = over[k]; }
+      return p;
+    }
+    window.__pose = pose;
+    window.__values = function (over) { return bench.values("droste", pose(over)); };
+
+    // THE HOST DRAWS THE SAME POSE, through the same drawPose a running transaction takes.
+    window.__hostDraw = function (over) {
+      bench.draw("droste", pose(over));
+      return bench.values("droste", pose(over));
+    };
+
+    // BOTH ROADS AT ONE POSE. The module has no doors and no passage of its own, so what it is
+    // handed is what the port DERIVED from the dial: the wind the port computed, the very second the
+    // port used, and the port's own across-frame throat. Everything else — the dive, the turn, the
+    // wander and the bend — the module computes from that second by the same closed form the port
+    // does, which is the point of the comparison.
+    window.__both = function (v, t) {
+      hand = +v;
+      if (t !== undefined && t !== null) clock = +t;
+      var got = bench.values("droste", pose());
+      api.onParam("clock", clock);
+      api.onParam("spiral", got.wind);
+      api.onParam("centre", P.centreX);
+      return got;
+    };
+    window.__param = function (k, val) {
+      P[k] = +val;
+      if (k === "size") { params.copies = P.size; api.onParam("copies", P.size); }
+      if (k === "turn") { params.twist = P.turn * 100; api.onParam("twist", params.twist); }
+      if (k === "speed") { params.speed = P.speed * 100; api.onParam("speed", params.speed); }
+      if (k === "centreX") { api.onParam("centre", P.centreX); }
+      return P[k];
+    };
+    // WHICH WORK THE MODULE DIVES INTO. The port draws both and chooses per point; the module draws
+    // one, so a row comparing the two roads names which one the frame is standing on.
+    window.__work = function (which) {
+      params.picture = which === "b" ? "second" : "first";
+      api.onParam("picture", params.picture);
+      return params.picture;
+    };
+    window.__mask = function (v) { maskAt = +v; };
+    window.__show = function (which) {
+      bench.show(which === "host");
+      moduleStage.classList.toggle("hidden", which !== "module");
+    };
+    // The two drawing buffers, so a row can say the two roads were sampled on one grid rather than
+    // assume it.
+    window.__buffers = function () {
+      var host = document.querySelector("canvas[aria-hidden]");
+      var mod = moduleStage.querySelector("canvas");
+      return { host: host ? [host.width, host.height] : null,
+               module: mod ? [mod.width, mod.height] : null };
+    };
+
+    // ---- the real transaction road ---------------------------------------------------------
+    // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
+    // arms and decodes both works off the walk markup above, builds the programme from the
+    // manifest, raises its curtain and runs its own frame loop.
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>
