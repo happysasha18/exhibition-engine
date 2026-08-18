@@ -847,7 +847,7 @@ else:
                   var m = JSON.parse(JSON.stringify(window.__exPass.bench.manifest('weave')));
                   m.gl.preserveDrawingBuffer = true;
                   var ok = window.__exPass.bench.register({name:'weave-preserve', manifest:m,
-                      values:function(){return {duty:0,amp:0,nV:8,rot:0,wave:[0,1.7,0,0]};}, fit:function(){return [1,1,0,0];},
+                      values:function(){return {duty:0,amp:0,nV:8,rot:0,wave:[0,1.7,0,0],depth:0};}, fit:function(){return [1,1,0,0];},
                       prepare:function(){return {take:false};}, start:function(){}, frame:function(){}});
                   var evs = window.__host.report().events.filter(function(e){return e.name==='manifest-refused';});
                   return {ok: ok, why: evs.length ? evs[evs.length-1].why : null,
@@ -858,11 +858,17 @@ else:
                       and "weave-preserve" not in r["registered"],
                       f"registered={r['ok']} why={r['why']}")
 
+                # THE STAND-IN ANSWERS THE FRAME KEYS THE INSTRUMENT ANSWERS. The host judges a
+                # uniform's source against the keys this `values` returns, so a stand-in listing
+                # fewer keys than the real instrument refuses the manifest for the WRONG uniform and
+                # the row stops proving what it names. `depth` joined the frame values on
+                # 2026-08-18 and is added to both stand-ins here for that reason; the assertions
+                # themselves are untouched and still require the reason to name `uPointer`.
                 r = js(br, """
                   var m = JSON.parse(JSON.stringify(window.__exPass.bench.manifest('weave')));
                   m.passes[0].uniforms.push({name:'uPointer', type:'vec2', source:'pointer'});
                   var ok = window.__exPass.bench.register({name:'weave-pointer', manifest:m,
-                      values:function(){return {duty:0,amp:0,nV:8,rot:0,wave:[0,1.7,0,0]};}, fit:function(){return [1,1,0,0];},
+                      values:function(){return {duty:0,amp:0,nV:8,rot:0,wave:[0,1.7,0,0],depth:0};}, fit:function(){return [1,1,0,0];},
                       prepare:function(){return {take:false};}, start:function(){}, frame:function(){}});
                   var evs = window.__host.report().events.filter(function(e){return e.name==='manifest-refused';});
                   return {ok: ok, why: evs.length ? evs[evs.length-1].why : null,

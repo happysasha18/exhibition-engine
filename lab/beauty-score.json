@@ -1,0 +1,362 @@
+{
+ "schema": 2,
+ "duration": 8000,
+ "direction": "a-to-b",
+ "failLand": "arrive",
+ "seed": 3.4142,
+ "pair": {
+  "a": "17862145765313792",
+  "b": "18061740532199044"
+ },
+ "intent": "Two mirrored readings of one city, each cut by its own device into twelve pieces — the rotor's family lying flat, the wings' standing upright. The cloth holds the twelve and turns a quarter: it enters on the rotor's own horizontal lines, weaves the two works through each other, and leaves standing on the wings' vertical ones.",
+ "interruption": {
+  "withinMs": 500,
+  "resolve": "nearest-door"
+ },
+ "camera": {
+  "owner": "stage",
+  "rests": "b",
+  "track": [
+   {
+    "at": "a",
+    "pan": {
+     "x": 0,
+     "y": 0
+    },
+    "logScale": 0,
+    "pitch": 0,
+    "yaw": 0,
+    "roll": 0,
+    "fov": null,
+    "owner": "stage"
+   },
+   {
+    "at": 1.68,
+    "pan": {
+     "x": 0.0371,
+     "y": 0.0371
+    },
+    "logScale": 0.0879,
+    "owner": "stage"
+   },
+   {
+    "at": 3.36,
+    "pan": {
+     "x": 0.0825,
+     "y": 0.0825
+    },
+    "logScale": 0.2056,
+    "owner": "stage"
+   },
+   {
+    "at": 5.6,
+    "logScale": 0.2426,
+    "owner": "stage"
+   },
+   {
+    "at": "b",
+    "pan": {
+     "x": 0,
+     "y": 0
+    },
+    "logScale": 0,
+    "pitch": 0,
+    "yaw": 0,
+    "roll": 0,
+    "fov": null,
+    "owner": "stage"
+   }
+  ]
+ },
+ "cues": [
+  {
+   "id": "fabric",
+   "instrument": {
+    "api": 1,
+    "id": "weave"
+   },
+   "voice": "letter",
+   "roles": [
+    "disassembly",
+    "mystery",
+    "assembly"
+   ],
+   "levels": [
+    "SURFACE",
+    "CELL"
+   ],
+   "levelOwnership": {
+    "SURFACE": "owns",
+    "CELL": "owns"
+   },
+   "window": [
+    0.0,
+    8.0
+   ],
+   "works": [
+    "a",
+    "b"
+   ],
+   "stack": 0,
+   "cameraAuthority": "stage",
+   "doors": {
+    "in": {
+     "handle": "mix",
+     "value": 0,
+     "measured": true
+    },
+    "out": {
+     "handle": "mix",
+     "value": 1,
+     "measured": true
+    }
+   },
+   "nodes": {
+    "dial": {
+     "op": "segment",
+     "in": {
+      "source": "cueProgress"
+     },
+     "points": [
+      {
+       "at": 0.0,
+       "value": 0.0
+      },
+      {
+       "at": 0.13,
+       "value": 0.05,
+       "shape": "smooth"
+      },
+      {
+       "at": 0.4,
+       "value": 0.36,
+       "shape": "smooth"
+      },
+      {
+       "at": 0.55,
+       "value": 0.52,
+       "shape": "smooth"
+      },
+      {
+       "at": 0.75,
+       "value": 0.72,
+       "shape": "smooth"
+      },
+      {
+       "at": 0.9,
+       "value": 0.9,
+       "shape": "smooth"
+      },
+      {
+       "at": 1.0,
+       "value": 1.0,
+       "shape": "smooth"
+      }
+     ],
+     "note": "the dial's own course: it lingers where both works are alive"
+    },
+    "grain": {
+     "op": "segment",
+     "in": {
+      "source": "cueProgress"
+     },
+     "points": [
+      {
+       "at": 0.0,
+       "value": 1.0
+      },
+      {
+       "at": 0.58,
+       "value": 1.0,
+       "shape": "smooth"
+      },
+      {
+       "at": 0.72,
+       "value": 0.5,
+       "shape": "smooth"
+      },
+      {
+       "at": 0.86,
+       "value": 0.0,
+       "shape": "smooth"
+      },
+      {
+       "at": 1.0,
+       "value": 0.0,
+       "shape": "smooth"
+      }
+     ],
+     "note": "structure.banding.axis: A «horizontal» = 1 at 0.7347, B «vertical» = 0 at 0.6504"
+    },
+    "clock": {
+     "source": "time"
+    },
+    "breath": {
+     "op": "oscillate",
+     "shape": "sin",
+     "rate": 0.021,
+     "phase": 1.1,
+     "in": {
+      "source": "time"
+     }
+    },
+    "breadth": {
+     "op": "add",
+     "in": [
+      {
+       "op": "static",
+       "value": 1
+      },
+      {
+       "op": "multiply",
+       "in": [
+        {
+         "op": "static",
+         "value": 0.22
+        },
+        {
+         "node": "breath"
+        }
+       ]
+      }
+     ],
+     "note": "the strip-count breath at the module's own 0.021 Hz"
+    },
+    "strips": {
+     "op": "static",
+     "value": 24.0,
+     "note": "sets[ring].count: A's own device grain 72.1480 merged by 6.0123 and B's 66.3762 merged by 5.5313 both land on 12.0000 rings, and a cut across a centre that stands inside the frame meets each ring twice, so the cloth carries 24.0000 ribbons and holds them from door to door"
+    },
+    "axis": {
+     "op": "static",
+     "value": 1.0,
+     "note": "unread while «turn» is driven; it stands where the departing work's own family stands, so a road that ever drops the turn keeps A's line"
+    },
+    "speed": {
+     "op": "static",
+     "value": 1.0,
+     "note": "the module's own resting rate"
+    },
+    "seed": {
+     "op": "static",
+     "value": 3.4142,
+     "note": "the score's own die"
+    },
+    "press": {
+     "op": "static",
+     "value": 1.0,
+     "note": "no hand is on this passage"
+    },
+    "depth": {
+     "op": "static",
+     "value": 0.55,
+     "note": "the fabric's own: a ribbon passing under a crossing one is further from the eye, so it is read two levels down the picture's own chain as well as drawn darker"
+    },
+    "wave": {
+     "op": "static",
+     "value": 0.51,
+     "note": "lab/effects/weave.js:87 — 0.34 + 0.17, the module's own edge"
+    },
+    "wavePeriod": {
+     "op": "static",
+     "value": 0.5882,
+     "note": "lab/effects/weave.js:85 — 1.7 cycles along the ribbon"
+    },
+    "waveDrift": {
+     "op": "static",
+     "value": 0.09,
+     "note": "lab/effects/weave.js:85 — 0.090 of a cycle a second"
+    }
+   },
+   "tracks": {
+    "mix": {
+     "node": "dial"
+    },
+    "turn": {
+     "node": "grain"
+    },
+    "clock": {
+     "node": "clock"
+    },
+    "nMul": {
+     "node": "breadth"
+    },
+    "strips": {
+     "node": "strips"
+    },
+    "axis": {
+     "node": "axis"
+    },
+    "speed": {
+     "node": "speed"
+    },
+    "seed": {
+     "node": "seed"
+    },
+    "press": {
+     "node": "press"
+    },
+    "depth": {
+     "node": "depth"
+    },
+    "wave": {
+     "node": "wave"
+    },
+    "wavePeriod": {
+     "node": "wavePeriod"
+    },
+    "waveDrift": {
+     "node": "waveDrift"
+    }
+   },
+   "resources": {
+    "lean": {
+     "bytesEstimate": 0,
+     "framebuffers": 0,
+     "passes": 1,
+     "pingPong": 0,
+     "programs": 1,
+     "textureSlots": 2,
+     "textures": 0,
+     "variant": "lean"
+    },
+    "standard": {
+     "bytesEstimate": 0,
+     "framebuffers": 0,
+     "passes": 1,
+     "pingPong": 0,
+     "programs": 1,
+     "textureSlots": 2,
+     "textures": 0,
+     "variant": "standard"
+    },
+    "rich": {
+     "bytesEstimate": 0,
+     "framebuffers": 0,
+     "passes": 1,
+     "pingPong": 0,
+     "programs": 1,
+     "textureSlots": 2,
+     "textures": 0,
+     "variant": "rich"
+    }
+   }
+  }
+ ],
+ "quality": {
+  "lean": {
+   "renderScale": 1.0
+  },
+  "standard": {
+   "renderScale": 1.0
+  },
+  "rich": {
+   "renderScale": 1.0
+  }
+ },
+ "provenance": {
+  "source": "beauty-lane/17862145765313792__18061740532199044__ab",
+  "measuredAt": "2026-08-18",
+  "by": "the beauty lane, by hand"
+ }
+}
