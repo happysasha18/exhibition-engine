@@ -445,9 +445,29 @@ def _declares(src):
     return m.group(1) if m else None
 
 
-def _alpha(src):
+# THE LAW IS ABOUT THE ALPHA, so the alpha is what is read: the LAST component of the write, not
+# the whole argument list. Reading the list whole held only while every colour expression was the
+# bare word `col`; `livemirror` writes its half-level dither into the colour and fills the frame
+# lawfully with an alpha of exactly 1, and the row went red on the COLOUR while the alpha it judges
+# was right. The split is at the last comma outside any bracket.
+def _write(src):
     m = re.search(r"gl_FragColor = vec4\(([^;]+)\);", src)
     return m.group(1).strip() if m else None
+
+
+def _alpha(src):
+    whole = _write(src)
+    if whole is None:
+        return None
+    depth, cut = 0, -1
+    for i, ch in enumerate(whole):
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            cut = i
+    return whole[cut + 1:].strip() if cut >= 0 else whole
 
 
 FILLS = [n for n in NAMES if _declares(BUILT[n]) == "false"]
@@ -456,14 +476,15 @@ PUBLISHES = [n for n in NAMES if _declares(BUILT[n]) == "true"]
 check("PASS-STACK the ground fills the frame and the voices above it write coverage",
       bool(FILLS) and bool(PUBLISHES)
       and len(FILLS) + len(PUBLISHES) == len(NAMES)
-      and all(_alpha(BUILT[n]) == "col, 1.0" for n in FILLS)
-      and all(_alpha(BUILT[n]) and _alpha(BUILT[n]) != "col, 1.0" for n in PUBLISHES),
+      and all(_alpha(BUILT[n]) == "1.0" for n in FILLS)
+      and all(_alpha(BUILT[n]) and _alpha(BUILT[n]) != "1.0" for n in PUBLISHES),
       "the declaration and the shader are one statement read twice. Filling the frame and writing "
       "alpha 1.0, which is what a stack stands on: "
       + ", ".join("«%s»" % n for n in FILLS)
       + ". Publishing an alpha the shader itself computed, so the frame beneath reaches the eye "
         "where their own matter is absent: "
-      + ", ".join("«%s» writing «%s»" % (n, _alpha(BUILT[n])) for n in PUBLISHES))
+      + ", ".join("«%s» writing an alpha of «%s» in «%s»"
+                  % (n, _alpha(BUILT[n]), _write(BUILT[n])) for n in PUBLISHES))
 
 check("PASS-STACK the draw walks the stack ascending, so the first line is topmost by default",
       "(c.stack === undefined || c.stack === null) ? (n - i)" in LAYER
@@ -485,7 +506,8 @@ BROWSER_ROWS = [
     "PASS-STACK row 2  · a one-cue score draws what the arrangement at HEAD drew, to the pixel",
     "PASS-STACK row 3  · draw order follows `stack`, and the line order where no `stack` is named",
     "PASS-STACK row 4  · the levels law is enforced where the plan is authored",
-    "PASS-STACK row 5  · the tier budget holds, with the camera counted as an accompaniment",
+    "PASS-STACK row 5  · the tier budget is reckoned and recorded and refuses nothing, with the "
+    "camera counted as an accompaniment",
     "PASS-STACK row 6  · the summed declaration meets the variant budget, and the census matches",
     "PASS-STACK row 7  · one canvas and one context across a three-cue pass",
     "PASS-STACK row 8  · two cues claiming the camera over meeting windows red, with both named",
@@ -729,20 +751,31 @@ else:
                 nocam = json.dumps(passage(two_acc, camera=False))
                 nocam_b = js(br, "return window.__budget(%s);" % nocam)
                 nocam_no = js(br, "return window.__whyNo(%s);" % nocam)
+                # THE TIER BUDGET IS RECKONED AND RECORDED AND IT REFUSES NOTHING (2026-08-18,
+                # his word of 09:51). It refused a whole crossing until that morning, and a second
+                # reckoning at the host could only disagree with the composer's first — a
+                # well-formed score with every instrument ready, refused for a count. So the row
+                # holds both halves of what now stands: the reckoning still counts exactly as it
+                # did, and the score still plays. The camera term is proved the same way it always
+                # was, by taking the camera track away and watching the count fall.
                 check(BROWSER_ROWS[5],
                       b["tier"] == "middle" and b["letters"] == 1 and b["accompaniments"] == 2
                       and b["miracles"] == 1 and b["camera"] is True and b["held"] == 0.0
-                      and three_ok is None
-                      and over_b["accompaniments"] == 3 and isinstance(over_no, str)
-                      and nocam_b["accompaniments"] == 2 and nocam_no is None,
+                      and b["why"] is None and three_ok is None
+                      and over_b["accompaniments"] == 3 and isinstance(over_b["why"], str)
+                      and over_no is None
+                      and nocam_b["accompaniments"] == 2 and nocam_b["why"] is None
+                      and nocam_no is None,
                       "the composed passage reads middle at %.1f s: %d letter, %d accompaniments "
                       "(the camera among them), %d miracle, held %.3f of a %.3f ceiling — and it "
-                      "passes. Make the travelling cue a second accompaniment and the count goes "
-                      "2→3 against a middle's ceiling of 2, refused with «%s». Take the camera "
-                      "track away from that same score and the count falls 3→2 and it passes — "
-                      "which is the whole of what the camera term does."
+                      "plays. Make the travelling cue a second accompaniment and the count goes "
+                      "2→3 against a middle's ceiling of 2: the reckoning records «%s» and the "
+                      "score is NOT refused for it — the crossing plays and the count stands on the "
+                      "diagnostic surface where a person can read it. Take the camera track away "
+                      "from that same score and the count falls 3→2 and the reckoning has nothing "
+                      "to record — which is the whole of what the camera term does."
                       % (b["seconds"], b["letters"], b["accompaniments"], b["miracles"],
-                         b["held"], b["heldMax"], over_no))
+                         b["held"], b["heldMax"], over_b["why"]))
 
                 # ---- row 6: the summed declaration and the census ----------------------------
                 g_std = js(br, "return window.__grant(%s, 'standard');" % SCORE)

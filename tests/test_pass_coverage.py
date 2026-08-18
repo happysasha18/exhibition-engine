@@ -354,9 +354,29 @@ def _declares(src):
     return m.group(1) if m else None
 
 
-def _alpha(src):
+# THE LAW IS ABOUT THE ALPHA, so the alpha is what is read: the LAST component of the write, not
+# the whole argument list. Reading the list whole held only while every colour expression was the
+# bare word `col`; `livemirror` writes its half-level dither into the colour — `col + (n - 0.5) /
+# 255.0, 1.0` — and fills the frame lawfully with an alpha of exactly 1, and the row went red on the
+# COLOUR while the alpha it judges was right. The split is at the last comma outside any bracket.
+def _write(src):
     m = re.search(r"gl_FragColor = vec4\(([^;]+)\);", src)
     return m.group(1).strip() if m else None
+
+
+def _alpha(src):
+    whole = _write(src)
+    if whole is None:
+        return None
+    depth, cut = 0, -1
+    for i, ch in enumerate(whole):
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            cut = i
+    return whole[cut + 1:].strip() if cut >= 0 else whole
 
 
 FILLS = [n for n in NAMES if _declares(BUILT[n]) == "false"]
@@ -365,14 +385,16 @@ PUBLISHES = [n for n in NAMES if _declares(BUILT[n]) == "true"]
 check("PASS-COVERAGE every shader writes the alpha its own manifest declares",
       bool(FILLS) and bool(PUBLISHES)
       and len(FILLS) + len(PUBLISHES) == len(NAMES)
-      and all(_alpha(BUILT[n]) == "col, 1.0" for n in FILLS)
-      and all(_alpha(BUILT[n]) and _alpha(BUILT[n]) != "col, 1.0" for n in PUBLISHES),
+      and all(_alpha(BUILT[n]) == "1.0" for n in FILLS)
+      and all(_alpha(BUILT[n]) and _alpha(BUILT[n]) != "1.0" for n in PUBLISHES),
       "the declaration and the shader are one statement read twice. Filling the frame and writing "
       "the constant 1, which is what lets a stack stand on them: "
-      + ", ".join("«%s» writing «%s»" % (n, _alpha(BUILT[n])) for n in FILLS)
+      + ", ".join("«%s» writing an alpha of «%s» in «%s»"
+                  % (n, _alpha(BUILT[n]), _write(BUILT[n])) for n in FILLS)
       + ". Publishing an alpha the shader itself computed, so the frame beneath reaches the eye "
         "where their own matter is absent: "
-      + ", ".join("«%s» writing «%s»" % (n, _alpha(BUILT[n])) for n in PUBLISHES))
+      + ", ".join("«%s» writing an alpha of «%s» in «%s»"
+                  % (n, _alpha(BUILT[n]), _write(BUILT[n])) for n in PUBLISHES))
 
 check("PASS-COVERAGE the blend is straight source-over, never premultiplied",
       "gl0.blendFunc(gl0.SRC_ALPHA, gl0.ONE_MINUS_SRC_ALPHA)" in LAYER
