@@ -2383,7 +2383,8 @@
         // two refusals of §4.8 reach on a passage — without driving a whole visit to reach them.
         // `remember` is the landing's own call, so a row can play an edge and read the record back.
         memory: { edge: passEdgeContext, all: passEdgeAll, remember: passEdgeRemember,
-                  judge: passEdgeJudge, trace: passTraceOf, reversed: passReadsAsReversed,
+                  judge: passEdgeJudge, trace: passTraceOf,
+                  mirrorDistance: passMirrorDistance,
                   family: passFamilyOf, pivot: passPivotOf, numbers: PASS_EDGE },
         adapter: { declare: declare, dock: dock, glide: glide, interrupt: interrupt,
                    reframe: reframe, curtain: curtain, mark: passMark,
