@@ -388,6 +388,9 @@
     travel: ["module-rest", "a judge channel the module rests at 1"],
     glint: ["module-rest", "a judge channel the mirror rests at its own 0.62, the brightness of "
                            + "the fold line"],
+    curl: ["measured", "each work's own reading as a little world, structure.polar.planet — a "
+                       + "picture that already turns about a centre closes the whole way and one "
+                       + "that barely does is left a bowed band"],
     // THE GEOMETRY-FROM-THE-WORK SWEEP, 2026-08-17 (U27 stage 1, lane A). His 19:13 word lifted to
     // the class at 19:21: every geometric and temporal parameter derives from the work's own
     // measured structure and names the measurement it reads. Nine handles that stood here as
@@ -797,6 +800,38 @@
         return [Math.min(bridge.tonal, bridge.spectral),
                 "the two works' tonal grounds stand at " + pyText(flt(r4(bridge.tonal)))
                 + " of each other and their detail scales at " + pyText(flt(r4(bridge.spectral)))];
+      },
+      // THE PICTURE CURLS INTO A LITTLE WORLD, and a world needs a horizon: the foot goes to the
+      // centre, the sky becomes the ring and the light the whole stage stands in. A flat pattern
+      // with no horizon curls into a disc of texture instead, which is a lesser thing. So the
+      // reading is the world reading itself — how much of a sphere or a corridor the work already
+      // is — held back where it reads more as a log-spiral (that is the spiral's world, not this
+      // one) and held back again where no horizon was measured. ONE work is enough, because one
+      // world is what the crossing curls into.
+      //
+      // The port wrote its ask as a pure function on the instrument that DECLINED the pair unless
+      // one work answered all three questions, over a borrowed `WORLD_FLOOR = 0.20` its own report
+      // says nobody measured for the polar readings. His words of 2026-08-18 08:47 and 09:53 strike
+      // the floor and the decline together, and every one of the three questions survives as what
+      // it always was: a reading that ranks. The two that were gates become MULTIPLIERS on the
+      // world reading, so a pair with no horizon ranks the world below its rivals and still crosses.
+      planet: function (a, b) {
+        function worldOf(w) {
+          var p = (w.structure || {}).polar || {};
+          var world = Math.max(readingOf(p.planet), readingOf(p.tunnel));
+          var twirl = readingOf(p.twirl);
+          // the log-spiral's share of the same family, taken off rather than tested against: a work
+          // reading equally as both is half a world here, and one reading only as a spiral is none.
+          var mine = (world + twirl) > 0 ? world / (world + twirl) : 0;
+          var hz = ((w.structure || {}).horizon || {}).y;
+          var hasHorizon = (hz !== null && hz !== undefined);
+          return world * mine * (hasHorizon ? 1 : 0.5);
+        }
+        var wa = worldOf(a), wb = worldOf(b);
+        return [Math.max(wa, wb), "the two works read as little worlds of their own at "
+                + pyText(flt(r4(wa))) + " and " + pyText(flt(r4(wb)))
+                + " once the log-spiral's share of the same reading and a missing horizon are "
+                + "taken off, and the crossing curls into the stronger"];
       },
       // THE MIRROR NEEDS A LINE TO FOLD ON, and the picture has to put that line where it is. It
       // cuts on panels — the fold partitions the frame into two or four mirrored ones — and the
@@ -2714,6 +2749,10 @@
         // how strongly the work already reads as a corridor, and where its own horizon stands —
         // the two the folding instrument's perspective and its eye's ride are placed by
         tunnel: Number((st.polar || {}).tunnel) || 0,
+        // HOW MUCH OF A LITTLE WORLD THE WORK ALREADY IS. The same polar family as `tunnel` above
+        // and the reading the world-curling instrument is placed by: a picture that already turns
+        // about a centre closes the whole way, one that barely does is left a bowed band.
+        planet: Number((st.polar || {}).planet) || 0,
         horizonY: ((st.horizon || {}).y === null || (st.horizon || {}).y === undefined)
           ? null : Number(st.horizon.y),
         // the repeat the work carries ACROSS a crease, as a count over its own frame side
@@ -3102,6 +3141,45 @@
           // fractional part is a deviation that never comes back into step.
           if (mf.spectralPeriodPx > 0 && mt.spectralPeriodPx > 0) {
             wanted.drift = flt(r4(fractional(mf.spectralPeriodPx / mt.spectralPeriodPx)));
+          }
+        } else if (instr === "planet") {
+          // THE FIVE HANDLES THE WORLD IS PLACED BY. Without this branch every one of them stands
+          // at the instrument's own rest — `curl` at 0.82, which is his own taste-approved state of
+          // 2026-08-08 11:39 — and not one measurement of either work reaches the picture. Each
+          // reading below is a share already, and every handle here is a share of its own range, so
+          // no scale stands between the measurement and the handle.
+          //
+          // HOW FAR THE STRIP IS BENT WHEN THE WORLD STANDS OPEN, off each work's own reading as a
+          // little world: a picture that already turns about a centre closes the whole way and one
+          // that barely does is left a bowed band. It travels from the departing work's reading to
+          // the arriving one's, so the world the visitor leaves is not the world they arrive in.
+          if (mf.planet > 0 || mt.planet > 0) {
+            wanted.curl = [flt(r4(clamp01(mf.planet))), flt(r4(clamp01(mt.planet)))];
+          }
+          // WHICH OF THE TWO WORLDS — a sphere, or the same one turned inside out — off each work's
+          // own corridor reading. The same measurement the folding instrument's perspective is
+          // placed by, read here as the world's own inversion.
+          if (mf.tunnel > 0 || mt.tunnel > 0) {
+            wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
+          }
+          // WHERE THE HORIZON STANDS — how much sky is pulled toward the centre — off each work's
+          // own measured horizon. A work with no measured horizon has nothing to say here and the
+          // other work's reading stands alone rather than a number being invented for it.
+          if (mf.horizonY !== null || mt.horizonY !== null) {
+            var hf = mf.horizonY === null ? mt.horizonY : mf.horizonY;
+            var ht = mt.horizonY === null ? mf.horizonY : mt.horizonY;
+            wanted.dip = [flt(r4(clamp01(hf))), flt(r4(clamp01(ht)))];
+          }
+          // HOW FAR THE WORLD IS TURNED, off how strongly each work reads as radial — the same
+          // measurement, and the same sense, the meshing instrument's own turn is driven by.
+          if (mf.radialScore > 0 || mt.radialScore > 0) {
+            wanted.turn = [flt(r4(clamp01(mf.radialScore))), flt(r4(clamp01(mt.radialScore)))];
+          }
+          // HOW MANY ROWS ARE USED AND HOW HARD THE HORIZON IS PULLED, off the share of the frame
+          // each work's own measured dominant object holds — the same reading, in the same unit,
+          // the material instrument's gather is driven by.
+          if (mf.figureShare > 0 || mt.figureShare > 0) {
+            wanted.gather = [flt(r4(clamp01(mf.figureShare))), flt(r4(clamp01(mt.figureShare)))];
           }
         }
         var measured = {}, nodes = {};

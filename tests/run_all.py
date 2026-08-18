@@ -38,6 +38,7 @@ SUITES = [
     "pass_memory",
     "pass_boxfold",
     "pass_droste",
+    "pass_planet",
     "pass_route",
     "pass_phone",
     "pass_livemirror",
