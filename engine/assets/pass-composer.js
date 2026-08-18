@@ -589,18 +589,40 @@
 
     // ---- the pair, derived from the two works rather than looked up ----
 
+    // WHAT A PAIR SHARES, READ TWO WAYS, AND WHY THE SECOND ONE HAD TO ARRIVE.
+    //
+    // `both` is pair-shared.py's own reading: both works clear the measure's DISCRIMINATING
+    // threshold, which the collection's builder sets at that measure's top quartile. That reading
+    // answers «is this one of the pair's standout measures», and it is the right question for
+    // ranking. It is the wrong question for whether a ground exists, and the numbers say so
+    // plainly: a top quartile is cleared by 31 of the 121 works for EVERY measure by construction,
+    // so both works clear any one measure on about 6 percent of ordered pairs — and 83 percent of
+    // all compositions fell past every shared measure to the universal tonal-and-spectral bridge,
+    // whose cut is a band, whose instrument is the material one. Seven roads, one cut, one
+    // instrument: his 19:13 word about a route's breadth failed at the ground rather than at the
+    // road, and no amount of choosing between roads could have reached it.
+    //
+    // `usable` is the measure's OWN cut-line floor — the bar that says this reading means something
+    // at all, and the very bar `axisReading` already applies to the TRAVELLING axis. That asymmetry
+    // was the defect in one sentence: a measure good enough to travel on was not good enough to
+    // hold. Measured over the collection, the floor is cleared by both works on 85.6 percent of
+    // pairs for banding, 76.7 for radial and 48.0 for regions — the three cuts that almost never
+    // got chosen — while grid, texture and the dominant object stay rare, which is a fact about
+    // what the works carry rather than a rule this file imposes.
     function sharedMeasures(a, b) {
-      // pair-shared.py's own reading: the measures both works clear their discriminating
-      // threshold on, each carried at the strength the WEAKER work holds it at.
-      var held = [], per = {}, i, m, sa, sb;
+      var held = [], usable = [], per = {}, i, m, sa, sb, floor;
       for (i = 0; i < MEASURES.length; i++) {
         m = MEASURES[i];
         sa = a.measures[m];
         sb = b.measures[m];
-        per[m] = { min: r4(Math.min(sa, sb)), both: sa >= THRESHOLDS[m] && sb >= THRESHOLDS[m] };
+        floor = FLOORS[m];
+        per[m] = { min: r4(Math.min(sa, sb)),
+                   both: sa >= THRESHOLDS[m] && sb >= THRESHOLDS[m],
+                   usable: floor !== undefined && floor !== null && sa >= floor && sb >= floor };
         if (per[m].both) held.push(m);
+        if (per[m].usable) usable.push(m);
       }
-      return { held: held, per: per };
+      return { held: held, usable: usable, per: per };
     }
 
     // A measure whose cut an instrument in this collection can actually play. KIND_OF_MEASURE says
@@ -755,6 +777,11 @@
       return !!(sa && sa.realCount && sb && sb.realCount);
     }
 
+    // The one key both directions of an edge roll the ground on.
+    function groundKeyOf(a, b) {
+      return a.id < b.id ? (a.id + "__" + b.id) : (b.id + "__" + a.id);
+    }
+
     // The measure the WEAKER work carries most strongly, among those that pass the filter.
     function strongestHeld(shared, only) {
       var best = null, i, m;
@@ -764,6 +791,37 @@
         if (best === null || shared.per[m].min > shared.per[best].min) best = m;
       }
       return best;
+    }
+
+    // THE GROUND, CHOSEN AMONG EVERY GROUND THIS PAIR CAN HOLD. Where one measure qualifies it is
+    // the ground; where several do, the die chooses, weighted by how strongly the weaker work
+    // carries each — so the strongest shared ground stays the likeliest and a pair with a strong
+    // band and a weak radial stops landing on the same cut as a pair with the reverse. This is the
+    // rule his 18:56 word asks for one level below the roads: the arsenal stays full and the
+    // options in hand are plentiful, and a road that chose a different derivation reaches the eye
+    // as a different passage because it stands on a different cut.
+    //
+    // THE DIE IS ROLLED ON THE EDGE'S OWN KEY AND NOT ON THE PASSAGE'S, so the two directions of one
+    // edge choose the same ground. §4.8's kinship is that a return keeps the family, and the family
+    // is read off the pivot's own transform; a ground that changed with the direction would make
+    // every return unrelated by construction.
+    function chooseGround(shared, only, seed, groundKey) {
+      var pool = [], weight = 0, i, m;
+      for (i = 0; i < shared.usable.length; i++) {
+        m = shared.usable[i];
+        if (only && !only(m)) continue;
+        pool.push(m);
+        weight += Math.max(num(shared.per[m].min), 0.0001);
+      }
+      if (!pool.length) return null;
+      if (pool.length === 1) return pool[0];
+      pool.sort();
+      var at = dieAmong(seed, groundKey + "|ground", 100000) / 100000 * weight, run = 0;
+      for (i = 0; i < pool.length; i++) {
+        run += Math.max(num(shared.per[pool[i]].min), 0.0001);
+        if (at < run) return pool[i];
+      }
+      return pool[pool.length - 1];
     }
 
     // THE GROUND A CROSSING STANDS ON. Every measure both works clear their own discriminating
@@ -783,18 +841,18 @@
     // reading cannot also hold it still. The ground then stands on the next playable shared measure,
     // or on one of the three below. `prefer` names a measure the road asks to stand on — a return
     // holding the pivot of the pass it answers uses it — and it wins wherever the pair can hold it.
-    function pivotOfPair(a, b, free, prefer, noMiracle) {
+    function pivotOfPair(a, b, free, prefer, noMiracle, seed, groundKey) {
       // The four pivots in the elements builder's own order of precedence.
       var all = sharedMeasures(a, b), v, na, nb, strength, ra, rb, hues, i;
       var best = null;
-      if (prefer && prefer !== free && all.per[prefer] && all.per[prefer].both
+      if (prefer && prefer !== free && all.per[prefer] && all.per[prefer].usable
           && holdable(a, b, prefer, noMiracle)) {
         best = prefer;
       }
       if (best === null) {
-        best = strongestHeld(all, function (m) {
+        best = chooseGround(all, function (m) {
           return m !== free && holdable(a, b, m, noMiracle);
-        });
+        }, seed || 0, groundKey || (a.id + "__" + b.id));
       }
       var shared = best === null ? null : { measure: best, strength: all.per[best].min };
       if (shared) {
@@ -854,7 +912,7 @@
       // two doors, this pair's readiness and the die the caller rolled. `free` is the measure the
       // chosen road needs left free to travel, so the ground never stands on it, and `prefer` the
       // one it asks to stand on.
-      var chosen = pivotOfPair(a, b, free, prefer, noMiracle);
+      var chosen = pivotOfPair(a, b, free, prefer, noMiracle, seed, groundKeyOf(a, b));
       var kind = chosen.kind;
       var value = { strength: chosen.rowStrength };
       if (kind === "shared-measure") {
@@ -1748,8 +1806,11 @@
       return String(transform || "tone_bridge") + "+" + String(axisName || "tone");
     }
 
-    function familyOf(road, fromW, toW, floors) {
-      var p = pivotOfPair(fromW, toW, road.free, road.ground);
+    function familyOf(road, fromW, toW, floors, seed) {
+      // The ground is rolled on the edge's own key, so this predicts the same one `compose` will
+      // stand on — and the same one whichever way the passage runs.
+      var p = pivotOfPair(fromW, toW, road.free, road.ground, false, seed,
+                          groundKeyOf(fromW, toW));
       var held = p.kind === "shared-measure" ? p.value.measure : null;
       var axis = travellingAxisOn(fromW, toW, held, floors, road.axis);
       if (axis === null && road.axis !== "far" && road.axis !== "near") {
@@ -1828,7 +1889,7 @@
       var pool = found.roads.slice(), reach = null, held = null, wanted, kept, i, fam;
       if (!pool.length) {
         return { road: BRIDGE_ROAD, order: [BRIDGE_ROAD],
-                 family: familyOf(BRIDGE_ROAD, fromW, toW, floors), notes: found.notes,
+                 family: familyOf(BRIDGE_ROAD, fromW, toW, floors, seed), notes: found.notes,
                  qualified: [], reach: null, heldFamily: null, heldBy: null };
       }
       // A ROAD THAT MUST SPEND THE MIRACLE IS UNREACHABLE WHERE THE ROLE HAS NONE. The other roads
@@ -1843,7 +1904,7 @@
         pool = pool.filter(function (r) { return !r.mustFold; });
         if (!pool.length) {
           return { road: BRIDGE_ROAD, order: [BRIDGE_ROAD],
-                   family: familyOf(BRIDGE_ROAD, fromW, toW, floors), notes: found.notes,
+                   family: familyOf(BRIDGE_ROAD, fromW, toW, floors, seed), notes: found.notes,
                    qualified: [], reach: "the step is a " + role + " and every road this pair "
                      + "qualifies for spends the one miracle shelf 17 does not give it",
                    heldFamily: null, heldBy: null };
@@ -1884,7 +1945,7 @@
       if (memory && memory.family) {
         var whole = pool.concat(found.roads).concat([BRIDGE_ROAD]);
         for (i = 0; i < whole.length; i++) {
-          if (familyOf(whole[i], fromW, toW, floors) === memory.family) {
+          if (familyOf(whole[i], fromW, toW, floors, seed) === memory.family) {
             held = whole[i];
             heldBy = "family";
             break;
@@ -1892,7 +1953,7 @@
         }
         if (held === null) {
           for (i = 0; i < whole.length; i++) {
-            fam = familyOf(whole[i], fromW, toW, floors);
+            fam = familyOf(whole[i], fromW, toW, floors, seed);
             if (fam.split("+")[0] === wantTransform) {
               held = whole[i];
               heldBy = "pivot";
@@ -1937,7 +1998,7 @@
         if (order.indexOf(found.roads[i2]) < 0) order.push(found.roads[i2]);
       }
       if (order.indexOf(BRIDGE_ROAD) < 0) order.push(BRIDGE_ROAD);
-      return { road: road, order: order, family: familyOf(road, fromW, toW, floors),
+      return { road: road, order: order, family: familyOf(road, fromW, toW, floors, seed),
                notes: found.notes,
                qualified: found.roads.map(function (r) { return r.id; }),
                reach: reach, heldFamily: held ? memory.family : null, heldBy: heldBy };
