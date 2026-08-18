@@ -106,11 +106,14 @@
   // pattern is built by — so the only place a point of the frame can fail to land on it is BEYOND
   // THE HORIZON. The horizon of a plane tipped by θ and seen from a distance D stands at D·cot θ
   // above the frame's own middle, in half-frame units; the frame's top edge is at 1. This floor's
-  // deepest lean is 30 degrees and the eye stands 3 half-frames back — both the module's own numbers
-  // — so the horizon stands at 5.196 and the frame's top edge at 1, five times inside it. There is
-  // no sky in this picture and there never can be while the lean stays under atan(D) = 71.6 degrees.
-  // The alpha is the constant 1, said as a decision; the door's own reading walks the buffer's
-  // sample points and refuses a door where any of them stands off the floor.
+  // deepest lean is 30 degrees, the module's own, and the eye's distance is the module's own rule
+  // rather than a number — 3 half-frames on a frame no taller than it is wide, coming in as the
+  // frame narrows — with a guard under it that holds the eye no closer than tan 30 times the room
+  // the horizon is given. So the horizon stands at least a quarter of a frame clear of the top edge
+  // whatever shape the frame is: on a 390 x 844 phone it stands at 2.40 against a top edge at 1, and
+  // on a square frame at 5.196. There is no sky in this picture and there cannot be. The alpha is
+  // the constant 1, said as a decision; the door's own reading walks the buffer's sample points and
+  // refuses a door where any of them stands off the floor.
   function parquetInstrument() {
     var VERT = [
       "attribute vec2 aPos;",
@@ -269,8 +272,13 @@
       // it at the floor's deepest — one number for the floor, so the crop travels with the lean and
       // the two cannot disagree (parquet.js:105, :603).
       "  float crop = uArr.z;",
-      "  vec3 under = texture2D(uB, into((mir - 0.5) * crop + 0.5, uFitB)).rgb;",
-      "  vec3 sheet = texture2D(uA, into((mirS - 0.5) * crop + 0.5, uFitA)).rgb;",
+      // A TILE'S OWN SECOND COORDINATE RUNS UP THE FLOOR AND AN IMAGE'S ROWS RUN DOWN IT, so it is
+      // turned over here — once, at the one place a picture is read — or the whole floor stands on
+      // its head. The mirror above is counted in the tile's own coordinate and is untouched by it.
+      "  vec2 tex = vec2(mir.x, 1.0 - mir.y);",
+      "  vec2 texS = vec2(mirS.x, 1.0 - mirS.y);",
+      "  vec3 under = texture2D(uB, into((tex - 0.5) * crop + 0.5, uFitB)).rgb;",
+      "  vec3 sheet = texture2D(uA, into((texS - 0.5) * crop + 0.5, uFitA)).rgb;",
       // WHY THIS IS NOT A CROSSFADE. What uncovers the arriving work is the GEOMETRY of the sheet
       // turning up on its hinge — at half its swing the sheet has already given up a third of its
       // tile — and the frame is covered at every moment by one work or the other. The sheet's own
@@ -310,7 +318,7 @@
       // the floor kept its promise, and it carries no coverage of its own because what it is for is
       // to be read as colour.
       "  float code = on ? (onSheet > 0.5 ? 0.5 : 1.0) : 0.0;",
-      "  vec2 lc = onSheet > 0.5 ? mirS : mir;",
+      "  vec2 lc = onSheet > 0.5 ? texS : tex;",
       "  vec3 judge = vec3(code, clamp(lc.x, 0.0, 1.0), clamp(lc.y, 0.0, 1.0));",
       "  col = mix(col, judge, uMask);",
       // THE COVERAGE: the alpha is the constant 1, and it is a decision rather than a default. The
@@ -333,13 +341,24 @@
     var BASE_X = 11, LEAN = 19;
     var PITCH_MAX = BASE_X + LEAN;                 // 30 degrees
 
-    /* HOW FAR BACK THE EYE STANDS OVER THE FLOOR, in half-frames. The module writes it as
-       `max(720, min(W, H) * 1.5)` in pixels (parquet.js:359), which on a frame whose shorter side is
-       its height is 1.5 frame heights — three half-frames — and that is the number here. It is also
-       the whole of the coverage proof: the horizon of a plane tipped by θ stands at D·cot θ above
-       the frame's middle, so at this distance and this lean it stands at 5.196 half-frames and the
-       frame's own top edge at 1. */
-    var EYE_D = 3.0;
+    /* HOW FAR BACK THE EYE STANDS OVER THE FLOOR, in half-frames — and this one is a RULE and not a
+       number, because the module's own is. It writes `max(720, min(W, H) * 1.5)` in pixels
+       (parquet.js:359), which read in half-frames is 3 on a frame no taller than it is wide and
+       3 · aspect on a taller one: the eye comes IN as the frame narrows, which is what keeps a phone
+       frame a room rather than a wallpaper. That rule is carried; the module's own floor of 720
+       pixels is not, because a pixel count means one thing on a mount the module sizes itself and
+       another on a drawing buffer the host scales by the device ratio, so it would be a number read
+       off the wrong thing.
+
+       AND THE PORT'S OWN GUARD IN ITS PLACE. The coverage below is a proof, and the proof needs the
+       horizon to stand clear of the frame's own top edge: the horizon of a plane tipped by θ stands
+       at D·cot θ above the frame's middle, and the top edge stands at 1. So the eye is held no
+       closer than tan θ times the room the horizon is given, which puts the horizon a quarter of a
+       frame clear at the deepest lean this instrument reaches whatever shape the frame is. On a
+       390 x 844 phone the rule answers 1.386 and the guard 0.722, so the rule stands and the horizon
+       is 2.40 half-frames above a top edge at 1. */
+    var EYE_D_LONG = 3.0;
+    var HORIZON_ROOM = 1.25;
 
     /* WHAT A TILE SHOWS OF THE PICTURE at the floor's deepest: the central 80 per cent of it
        (parquet.js:105). At the dry door the crop opens to the whole picture, so the door is the file
@@ -469,20 +488,25 @@
       // THE TILE'S OWN TWO SIDES, in plane units. It takes THE FRAME'S OWN SHAPE — the port's one
       // repair — so that at the dry door one tile is the frame exactly and the door is the file.
       var px = 2 * aspect / n, py = 2 / n;
+      // THE EYE'S OWN DISTANCE, from the frame's own shape and from the guard the coverage proof
+      // needs. Both are stated where the two constants above are declared.
+      var eye = Math.max(EYE_D_LONG * Math.min(aspect, 1),
+                         Math.tan(PITCH_MAX * DEG) * HORIZON_ROOM);
       // the lattice's own turn, and the floor's own slow turn across the passage on top of it. Both
       // ride the opening, so at either door the lattice stands square and neither can move a door.
       var lat = ((typeof st.lattice === "number" ? st.lattice : 0)
                  + (typeof st.spin === "number" ? st.spin : SPIN_DEF) * dial) * open * DEG;
       var arrive = arriveAt(dial);
       return {
-        pose: [open, Math.cos(pitch), Math.sin(pitch), EYE_D],
+        pose: [open, Math.cos(pitch), Math.sin(pitch), eye],
         lat: [zoom, px, py, lat],
         arr: [arrive, typeof st.seed === "number" ? st.seed : 0,
               1 / (1 + (1 / CROP - 1) * open),
               clamp(typeof st.shade === "number" ? st.shade : 1, 0, 1)],
         // read on the diagnostic surface, bound to no uniform: what the hand came to
         open: open, pitchDeg: PITCH_MAX * open, tiles: n, zoom: zoom, arrive: arrive,
-        aspect: aspect, grid: grid, mask: clamp(st.mask, 0, 1),
+        aspect: aspect, eye: eye, horizon: eye / Math.max(Math.tan(pitch), 1e-9),
+        grid: grid, mask: clamp(st.mask, 0, 1),
       };
     }
 
@@ -737,8 +761,13 @@
                  reads: "the work's own frame side over structure.grid.periodPx — the count of the "
                       + "work's own measured lattice across it, which is what makes the floor the "
                       + "work's own device repeated and not a pattern laid over it; the same count "
-                      + "off structure.ownDevice.stepPx where the work carries a derived device, "
-                      + "which for this collection is the stronger of the two readings",
+                      + "off structure.ownDevice.stepPx where the work carries no grid period. THE "
+                      + "GRID IS NAMED FIRST AND THE DEVICE SECOND, which is the other way round "
+                      + "from the unfold's parquet, and the reason is measured on this collection: "
+                      + "the grid period spreads the 121 works over all five counts (6 at three, 79 "
+                      + "at five, 17 at seven, 6 at nine, 13 at eleven) while the device step "
+                      + "saturates at the range's own top on 100 of them, so a floor laid from the "
+                      + "device would be the same floor for five works in six",
                  applied: { oddOnly: true,
                             why: "the middle tile is what the dry door stands on, so the count has "
                                + "to leave one, which is the module's own oddClamp" } },
@@ -752,8 +781,10 @@
                       + "own deepest" },
         lattice: { min: 0, max: 180, def: 0, unit: "degrees",
                    reads: "structure.grid.angleDeg — the direction the work's own lattice varies "
-                        + "along, which is the angle the step was cut at; "
-                        + "structure.ownDevice.angleDeg where the work carries a derived device" },
+                        + "along, which is the angle the step was cut at, and which stands off "
+                        + "square on 91 of this collection's 121 works; "
+                        + "structure.ownDevice.angleDeg where the work carries no grid angle, "
+                        + "which is nothing on 117 of the 121 and is named second for that reason" },
         spin: { min: 0, max: SPIN_MAX, def: SPIN_DEF, unit: "degrees across the whole passage",
                 reads: "nothing in this tree bears on it. The module turns its floor on a clock at "
                      + "the taste-approved vista preset's own rate, and this engine hands an "
@@ -804,12 +835,13 @@
       coverage: { writes: false,
                   how: "the floor has no edges — past its own tile the mirror carries on, one "
                      + "triangle wave per axis — so the only place a point of the frame can miss it "
-                     + "is beyond the horizon, and the horizon of a plane tipped by this floor's "
-                     + "own deepest lean of 30 degrees, seen from the module's own distance of 3 "
-                     + "half-frames, stands 5.196 half-frames above the frame's middle against a "
-                     + "top edge at 1. The alpha is the constant 1; at a door the floor's own "
-                     + "reading walks the buffer's sample points and refuses a door where any of "
-                     + "them stands off the floor" },
+                     + "is beyond the horizon. The horizon of a plane tipped by this floor's own "
+                     + "deepest lean of 30 degrees stands at the eye's distance times cot 30 above "
+                     + "the frame's middle, and the eye is held no closer than tan 30 times the "
+                     + "room the horizon is given, so it stands a quarter of a frame clear of a top "
+                     + "edge at 1 whatever shape the frame is. The alpha is the constant 1; at a "
+                     + "door the floor's own reading walks the buffer's sample points and refuses a "
+                     + "door where any of them stands off the floor" },
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, tiles: TILES_DEF, depth: 1, lattice: 0, spin: SPIN_DEF,

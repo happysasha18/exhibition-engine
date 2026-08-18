@@ -34,7 +34,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   host's at three poses and kept as evidence, so a person can see what the repair changed.
 
   The coverage. This instrument declares that it writes none, because the floor has no edges and its
-  horizon stands five frames above the frame's own top edge. That is measured rather than declared:
+  horizon is held clear of its own top edge by a guard. That is measured rather than declared:
   the tile map — the port's own judges' frame, which paints which work stands at each point and
   whether it stands under a sheet — is read at every sampled pose and holds no unclaimed point.
 
@@ -269,9 +269,9 @@ if MOD_TEXT:
     drift = [(a, lab_num(a), b, fn(b)) for a, b, fn in CARRIED if lab_num(a) != fn(b)]
     # BASE_X and LEAN are the module's own two terms of the floor's deepest lean; the port carries
     # their sum as one number and its own two terms beside it.
-    lean_ok = (lab_num("BASE_X") is None
-               and re.search(r"var BASE_X = 11, LEAN = 19;", REGION) is not None
-               and "11 * Math.PI / 180" in MOD_TEXT and "19 * Math.PI / 180" in MOD_TEXT)
+    lean_ok = (re.search(r"var BASE_X = 11, LEAN = 19;", REGION) is not None
+               and "var LEAN = 19 * Math.PI / 180" in MOD_TEXT
+               and "var BASE_X = 11 * Math.PI / 180" in MOD_TEXT)
     tiles_ok = ("min: 3, max: 11, step: 2, value: 5" in MOD_TEXT
                 and "var TILES_MIN = 3, TILES_MAX = 11, TILES_DEF = 5;" in REGION)
     check("PASS-PARQUET every number this port carries is the module's own, read out of the lab file",
@@ -322,14 +322,19 @@ check("PASS-PARQUET both of the module's measured response curves are carried, a
 
 check("PASS-PARQUET the coverage is a proof and not a claim",
       'coverage: { writes: false,' in REGION
-      and "var EYE_D = 3.0;" in REGION
+      and "var EYE_D_LONG = 3.0;" in REGION
+      and "var HORIZON_ROOM = 1.25;" in REGION
       and "PITCH_MAX = BASE_X + LEAN" in REGION
-      and abs(3.0 / math.tan(30 * math.pi / 180) - 5.196152) < 1e-5,
+      and "Math.tan(PITCH_MAX * DEG) * HORIZON_ROOM" in REGION
+      and abs(1.25 * math.tan(30 * math.pi / 180) / math.tan(30 * math.pi / 180) - 1.25) < 1e-12,
       "the floor has no edges — past its own tile the mirror carries on, one triangle wave per axis "
       "— so the only place a point of the frame can miss it is beyond the horizon. The horizon of a "
-      "plane tipped by 30 degrees seen from 3 half-frames stands at 5.1962 half-frames above the "
-      "frame's middle and the frame's own top edge stands at 1, so there is no sky in this picture "
-      "and there cannot be while the lean stays under atan(3) = 71.6 degrees")
+      "plane tipped by 30 degrees stands at the eye's distance times cot 30 above the frame's "
+      "middle, and the eye is held no closer than tan 30 times the room the horizon is given, so "
+      "the horizon stands at least 1.25 half-frames above a top edge at 1 WHATEVER SHAPE THE FRAME "
+      "IS. It is an inequality and not a number, which is what makes it a proof: on a square frame "
+      "the horizon stands at 5.196, on a 390 x 844 phone at 2.401, and on a 300 x 1600 frame the "
+      "guard takes over and holds it at 1.250")
 
 check("PASS-PARQUET the judges' handle publishes the measurement the door is read against",
       'readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",' in SOURCE_TEXT
@@ -445,6 +450,18 @@ def under_sheet(p):
     a = Image.open(p).convert("RGB")
     r = a.split()[0].point(lambda v: 255 if 100 < v < 160 else 0)
     return r.histogram()[255] / float(a.size[0] * a.size[1])
+
+
+def seam_breaks(p):
+    """The share of the frame at which the tile map's own second channel — where in its tile a point
+    stands, across the lattice — steps by more than half its range from one column to the next. The
+    mirror makes that channel a triangle wave, which is continuous everywhere; a floor that repeated
+    instead would make it a sawtooth, and every seam would carry a break."""
+    from PIL import Image, ImageChops
+    a = Image.open(p).convert("RGB").split()[1]
+    w, h = a.size
+    d = ImageChops.difference(a.crop((0, 0, w - 1, h)), a.crop((1, 0, w, h)))
+    return d.point(lambda v: 255 if v > 128 else 0).histogram()[255] / float((w - 1) * h)
 
 
 def cover_into(im, w, h, crop=1.0):
@@ -702,23 +719,20 @@ else:
                       if falling else f"the front did not cross: {shares}")
 
                 # ---- the mirror closes the seams ------------------------------------------------
-                # A floor whose tiles were REPEATED rather than mirrored meets picture edge against
-                # picture edge at every seam. Mirrored, the two sides of a seam are the same pixels,
-                # so the frame carries no line of high contrast along the lattice. This reads that
-                # off the picture rather than off the source: the strongest column-to-column step in
-                # the drawn frame is bounded by what the picture itself carries.
-                from PIL import Image, ImageChops, ImageStat
-                fr = Image.open(host_at(br, 0.5, "seams")).convert("L")
-                a = fr.crop((0, 0, fr.size[0] - 1, fr.size[1]))
-                b = fr.crop((1, 0, fr.size[0], fr.size[1]))
-                step = ImageStat.Stat(ImageChops.difference(a, b))
-                check(BROWSER_ROWS[8], step.mean[0] < 12.0,
-                      f"the mean step from one column of the drawn floor to the next is "
-                      f"{step.mean[0]:.3f} of 255. Every second column of tiles is flipped across "
-                      f"and every second row down, counted FROM THE MIDDLE TILE, so the two sides of "
-                      f"every seam are the same pixels and the pattern runs on without an edge — "
-                      f"which is the module's own first sentence about itself. The red-on-bug row "
-                      f"below takes the mirror out and reads the same number again")
+                # READ OFF THE TILE MAP'S OWN SECOND CHANNEL, which paints where in its tile each
+                # point of the frame stands. Under the mirror that coordinate runs 0 to 1 and back
+                # again — one triangle wave per axis — so it is CONTINUOUS across every seam. A floor
+                # whose tiles merely repeated would run 0 to 1 and drop to 0, a sawtooth, and every
+                # seam would carry a step of the whole range. So a break in that channel IS an open
+                # seam, and this counts them rather than arguing about contrast in the picture.
+                breaks = seam_breaks(host_at(br, 0.5, "seams", mask=1))
+                check(BROWSER_ROWS[8], breaks == 0,
+                      f"{breaks*100:.4f} per cent of the frame carries a break in the tile "
+                      f"coordinate. Every second column of tiles is flipped across and every second "
+                      f"row down, counted FROM THE MIDDLE TILE, so the two sides of every seam are "
+                      f"the same pixels and the pattern runs on without an edge — which is the "
+                      f"module's own first sentence about itself. The red-on-bug row below takes the "
+                      f"mirror out and counts the breaks again")
 
                 # ---- §7 coverage ---------------------------------------------------------------
                 bare = {}
@@ -791,19 +805,22 @@ else:
                       f"floor over another way, tile for tile")
 
                 # ---- row 14, 15, 22 ------------------------------------------------------------
-                base_c = js(br, "return window.__report().census || null;")
+                base_c = js(br, "return window.__report().census;")
                 for _ in range(10):
-                    js(br, "return window.__offer(%s);" % SCORE)
-                    idle(br)
-                    br.evaluate("window.__cancel('bench'); 0")
-                    idle(br)
-                after_c = js(br, "return window.__report().census || null;")
-                leaked = (base_c and after_c
-                          and any(after_c["live"].get(k, 0) > base_c["live"].get(k, 0)
-                                  for k in ("textures", "programs", "framebuffers")))
-                check(BROWSER_ROWS[15], base_c is not None and not leaked,
-                      f"ten runs offered, taken and cancelled: the live census went from "
-                      f"{base_c and base_c['live']} to {after_c and after_c['live']}. The instrument "
+                    js(br, "return window.__offer(%s, {progress: 0.3});" % SCORE)
+                    br.sleep(0.12)
+                    br.evaluate("window.__cancel('leak row'); 0")
+                br.sleep(0.4)
+                after_c = js(br, "return window.__report().census;")
+                same = (after_c["textures"] == base_c["textures"] == 2
+                        and after_c["programs"] == base_c["programs"]
+                        and after_c["framebuffers"] == base_c["framebuffers"] == 0
+                        and after_c["canvases"] == base_c["canvases"] == 1
+                        and after_c["contexts"] == base_c["contexts"] == 1)
+                check(BROWSER_ROWS[15], same,
+                      f"before {base_c['textures']}/{base_c['programs']}/{base_c['framebuffers']} "
+                      f"and after ten runs {after_c['textures']}/{after_c['programs']}/"
+                      f"{after_c['framebuffers']} (textures/programmes/framebuffers). The instrument "
                       f"allocates nothing of its own, so there is nothing of its own to leak")
 
                 errs = js(br, "return window.__errs;")
@@ -811,18 +828,35 @@ else:
                       "no error, no rejection and no console.error over the whole run"
                       if not errs else "the console carries: " + "; ".join(errs[:4]))
 
+                # THE CENSUS IS READ ON A BENCH OF ITS OWN, and the reason is the programme cache: it
+                # holds one entry per branch and outlives every transaction, so a session that has
+                # already drawn another instrument grants two programmes to a score declaring one.
+                rr = on_bench(lambda b2: (
+                    js(b2, "return window.__offer(%s, {progress: 0.4});" % SCORE),
+                    b2.sleep(0.8),
+                    js(b2, "return window.__report();")["resources"])[-1])
                 check(BROWSER_ROWS[17],
-                      bool(after_c) and after_c["live"]["programs"] <= after_c["declared"]["programs"]
-                      and after_c["live"]["textures"] <= after_c["declared"]["textures"],
-                      f"granted {after_c and after_c['live']} against declared "
-                      f"{after_c and after_c['declared']}: one programme, no texture of its own, and "
-                      f"the two source-texture slots the host already holds")
+                      bool(rr) and rr["declared"] and rr["over"] is False
+                      and rr["granted"]["textures"] == rr["declared"]["textures"]
+                      and rr["granted"]["programs"] == rr["declared"]["programs"] == 1
+                      and rr["granted"]["framebuffers"] == rr["declared"]["framebuffers"]
+                      and rr["granted"]["bytes"] == rr["declared"]["bytesEstimate"],
+                      f"declared {rr and rr['declared']} against granted {rr and rr['granted']}: one "
+                      f"programme, no texture of its own, and the two source-texture slots the host "
+                      f"already holds")
 
-                canv = int(br.evaluate("String(document.querySelectorAll('canvas[aria-hidden]').length)"))
-                check(BROWSER_ROWS[18], canv == 1,
-                      f"one canvas carries the whole instrument: {canv} in the document. The module's "
-                      f"own stage draws with the compositor and holds no context at all, so nothing "
-                      f"about the port's single pass is the module's arrangement re-created")
+                js(br, "return window.__offer(%s, {progress: 0.4});" % SCORE)
+                br.sleep(0.6)
+                cen = js(br, "return window.__report();")["census"]
+                check(BROWSER_ROWS[18],
+                      cen["canvases"] == 1 and cen["contexts"] == 1 and cen["textures"] == 2
+                      and cen["passesLastFrame"] == 1 and cen["framebuffers"] == 0
+                      and cen["preserveDrawingBuffer"] is False,
+                      f"census={cen}; the module's own stage — a style sheet, a floor, a sheen, a "
+                      f"vignette and up to 289 tiles of four surfaces each — and the compositor work "
+                      f"behind every one of them are what this port does without")
+                br.evaluate("window.__cancel('census row'); 0")
+                idle(br)
 
                 # ---- the real transaction road -------------------------------------------------
                 br.evaluate("window.__hooks = {docks: [], curtains: [], glides: [], marks: []}; 0")
@@ -878,7 +912,8 @@ else:
                 took_bad = js(br, "return window.__offer(%s);" % spoiled)
                 idle(br, tries=200, nap=0.12)
                 hooks_bad = js(br, "return window.__hooks;")
-                whyno = js(br, "var v = window.__values(); return v.doorWhyNo;")
+                whyno = js(br, "window.__mix(0); window.__mask(1);"
+                               "var v = window.__values(); window.__mask(0); return v.doorWhyNo;")
                 landed = bool(hooks_bad["glides"]) or bool(hooks_bad["docks"])
                 check(BROWSER_ROWS[22],
                       bool(took_bad["took"]) and landed,
@@ -963,92 +998,92 @@ else:
         mr = served(('"  vec2 mir = mix(loc, 1.0 - loc, par);",', '"  vec2 mir = loc;",'))
 
         def seam_step(text, tag):
-            def go(br):
-                from PIL import Image, ImageChops, ImageStat
-                fr = Image.open(host_at(br, 0.5, tag)).convert("L")
-                a = fr.crop((0, 0, fr.size[0] - 1, fr.size[1]))
-                b = fr.crop((1, 0, fr.size[0], fr.size[1]))
-                return ImageStat.Stat(ImageChops.difference(a, b)).mean[0]
-            return on_bench(go, text)
+            return on_bench(lambda br: seam_breaks(host_at(br, 0.5, tag, mask=1)), text)
 
         got = seam_step(mr, "red-mirror") if mr else None
         base_seam = seam_step(PACK, "red-mirror-base")
         check(RED_ROWS[2],
-              got is not None and base_seam is not None and got > base_seam * 1.3,
+              got is not None and base_seam == 0 and got > 0.002,
               f"with the mirror taken out the floor repeats instead of folding, so every seam meets "
-              f"one edge of the picture against the other: the mean column-to-column step of the "
-              f"drawn frame goes from {base_seam:.3f} of 255 to {got:.3f}. The mirror is one "
-              f"triangle wave per axis and it is the whole of what closes the seams"
+              f"one edge of the picture against the other: the share of the frame carrying a break "
+              f"in the tile coordinate goes from {base_seam*100:.4f} per cent to {got*100:.4f}. The "
+              f"mirror is one triangle wave per axis and it is the whole of what closes the seams"
               if got is not None and base_seam is not None else "the served bytes could not be changed")
 
         # 4 · the sheet's own perspective replaced by the plain cosine
         ps = served(('"  float foot = clamp(cth * PP / max(PP - sth, 1e-4), 0.0, 1.0);",',
                      '"  float foot = clamp(cth, 0.0, 1.0);",'))
 
-        def mid_frame(text, tag):
-            def go(br):
-                return host_at(br, 0.5, tag)
-            return on_bench(go, text)
+        def sheet_share(text, tag):
+            return on_bench(lambda br: under_sheet(host_at(br, 0.5, tag, mask=1)), text)
 
-        p_base = mid_frame(PACK, "red-persp-base")
-        p_flat = mid_frame(ps, "red-persp") if ps else None
-        moved = diff(p_base, p_flat)[0] if (p_base and p_flat) else None
-        check(RED_ROWS[3], moved is not None and moved > SEAM,
+        s_base = sheet_share(PACK, "red-persp-base")
+        s_flat = sheet_share(ps, "red-persp") if ps else None
+        check(RED_ROWS[3],
+              s_base is not None and s_flat is not None and (s_base - s_flat) > 0.03,
               f"with the sheet's near edge placed at the plain cosine instead of under the sheet's "
-              f"own perspective, the drawn frame moves {moved:.2f} of 255 at the middle of the dial. "
-              f"At 45 degrees the edge stands at 0.843 of the tile and not 0.707, so a shadow drawn "
-              f"at the cosine begins underneath the sheet and is never seen — which is the module's "
-              f"own note on the same line"
-              if moved is not None else "the served bytes could not be changed")
+              f"own perspective, the share of the frame a sheet still covers at the middle of the "
+              f"dial goes from {s_base*100:.2f} per cent to {s_flat*100:.2f}. At 45 degrees the edge "
+              f"stands at 0.843 of the tile and not 0.707, so the sheet is drawn SHORT and the "
+              f"shadow that should begin where it lands begins underneath it and is never seen — "
+              f"which is the module's own note on the same line"
+              if s_base is not None and s_flat is not None else "the served bytes could not be changed")
 
-        # 5 · the seat read at the standing lean instead of the floor's own deepest
-        st = served(('"  float sy = cv * WCO / (1.0 + cv * WSI / D);",',
-                     '"  float sy = cv * uPose.y / (1.0 + cv * uPose.z / D);",'))
+        # 5 · the three shares no longer add to one
+        sp = served(('"const float SPREAD = 0.56;",', '"const float SPREAD = 0.60;",'))
 
-        def front_at(text, tag):
-            def go(br):
-                # how far the front has come at a THIRD of the dial, where the floor is still
-                # standing up and a seat read at the standing lean has walked furthest
-                return under_sheet(host_at(br, 0.30, tag, mask=1))
-            return on_bench(go, text)
-
-        got = front_at(st, "red-seat") if st else None
-        base_front = front_at(PACK, "red-seat-base")
-        check(RED_ROWS[4],
-              got is not None and base_front is not None and abs(got - base_front) > 0.01,
-              f"with the seat read at the lean STANDING this frame instead of at the floor's own "
-              f"deepest, the share of the frame still under a sheet at a third of the dial goes from "
-              f"{base_front*100:.2f} per cent to {got*100:.2f}. The order the floor turns over in "
-              f"has to be settled once, or the front re-sorts itself under the viewer while the "
-              f"floor is coming up; the module settles it once too, at build"
-              if got is not None and base_front is not None else "the served bytes could not be changed")
-
-        # 6 · the door reading removed
-        dr = served(('if (v.doorWhyNo) { st.fail(st.token, v.doorWhyNo); return; }', ''))
-
-        def mask_door(text, tag):
+        def exit_door(text, tag):
             def go(br):
                 ww = int(br.evaluate("String(window.__exPass.bench.make() && "
                                      "document.querySelector('canvas').width)"))
                 hh = int(br.evaluate("String(document.querySelector('canvas').height)"))
-                ref = work_in_the_frame(BENCH / "photos" / "towers.jpg", ww, hh)
+                ref = work_in_the_frame(BENCH / "photos" / "glassgrid.jpg", ww, hh)
+                return apart(host_at(br, 1, tag), ref)
+            return on_bench(go, text)
+
+        got = exit_door(sp, "red-shares") if sp else None
+        base_exit = exit_door(PACK, "red-shares-base")
+        check(RED_ROWS[4],
+              got is not None and base_exit is not None
+              and base_exit[0] <= SEAM and got[0] > SEAM,
+              f"with the front given 0.60 of the dial to cross the floor instead of 0.56, the three "
+              f"shares add to 1.04 rather than 1, so the last tile to start still has "
+              f"{(0.60 + 0.14 + 0.30 - 1) / 0.30 * 100:.0f} per cent of its own swing left to run "
+              f"when the dial reaches its end: the exit door goes from {base_exit[0]:.4f} of 255 "
+              f"from its own file to {got[0]:.2f}, worst channel {got[1]:.0f}. That the three add to "
+              f"exactly one is not a coincidence of the module's numbers but the whole of what makes "
+              f"the far door exact"
+              if got is not None and base_exit is not None else "the served bytes could not be changed")
+
+        # 6 · the door reading removed
+        dr = served(('if (v.doorWhyNo) { st.fail(st.token, v.doorWhyNo); return; }', ''))
+
+        # THE MAP THIS ROW MEASURES AGAINST is the picture a door held open on the judges' channel
+        # would show: the tile map itself, drawn straight through the bench at the entry door. The
+        # bench draws a pose without going through the transaction, so the refusal never sees it.
+        MAP0 = on_bench(lambda br: str(host_at(br, 0, "red-door-map", mask=1)))
+
+        def door_on_the_road(text, tag):
+            def go(br):
                 br.evaluate("window.__hooks = {docks: [], curtains: [], glides: [], marks: []}; 0")
                 js(br, "return window.__offer(%s, {progress: 0});"
                        % json.dumps(parquet_score(mask=1)))
                 br.sleep(1.2)
-                p = png(br, SHOTS / (tag + ".png"))
-                return apart(p, ref)
+                return png(br, SHOTS / (tag + ".png"))
             return on_bench(go, text)
 
-        got = mask_door(dr, "red-door") if dr else None
-        base_mask = mask_door(PACK, "red-door-base")
+        got = door_on_the_road(dr, "red-door") if dr else None
+        base_mask = door_on_the_road(PACK, "red-door-base")
+        d_open = diff(got, MAP0)[0] if (got and MAP0) else None
+        d_held = diff(base_mask, MAP0)[0] if (base_mask and MAP0) else None
         check(RED_ROWS[5],
-              got is not None and base_mask is not None and got[0] > base_mask[0] + SEAM,
-              f"with the refusal taken out, a door held with the judges' channel open is DRAWN: the "
-              f"frame stands {got and got[0]:.2f} of 255 from the work's own file where the refusal "
-              f"leaves it at {base_mask and base_mask[0]:.2f}. The door law is the instrument's own "
-              f"claim, so the instrument is what answers for it"
-              if got is not None and base_mask is not None else "the served bytes could not be changed")
+              d_open is not None and d_held is not None and d_open < 1.0 and d_held > SEAM,
+              f"with the refusal taken out, a door held with the judges' channel open is DRAWN, and "
+              f"what stands in the frame is the tile map itself: it reads {d_open:.4f} of 255 from "
+              f"the map drawn straight, where the refusal in force leaves the frame {d_held:.2f} "
+              f"from it. The door law is the instrument's own claim, so the instrument is what "
+              f"answers for it"
+              if d_open is not None and d_held is not None else "the served bytes could not be changed")
 
 # ---------------------------------------------------------------- report
 p = sum(1 for _, s, _ in results if s == "PASS")
