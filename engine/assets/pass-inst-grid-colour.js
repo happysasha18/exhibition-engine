@@ -211,8 +211,16 @@
       "  float spanU = spn.x, spanV = spn.y, R = spn.z, rMax = spn.w;",
       "  float diag = length(uRes);",
       // the picture standing in the frame: cover-fitted, which is exactly the seating the host
-      // applied and binds as `fit`, read back out of it
-      "  vec2 half2 = 0.5 * vec2(uRes.x / max(fit.x, 1e-4), uRes.y / max(fit.y, 1e-4));",
+      // applied and binds as `fit`, read back out of it. `pic` is how far it reaches, and the AREAS
+      // the module reads a piece's share of the stagger from are measured on it.
+      "  vec2 pic = 0.5 * vec2(uRes.x / max(fit.x, 1e-4), uRes.y / max(fit.y, 1e-4));",
+      // WHAT A PIECE ACTUALLY CARRIES, and it is the frame rather than the picture. The module
+      // builds its picture and its grey twin on canvases THE SIZE OF THE FRAME (grid-colour.js
+      // build: `base = canvasOf(W, H)`), so a cover fit's overflow is cut away at build and a piece
+      // carries the frame's own rectangle of the work and nothing outside it. A strip that has
+      // travelled therefore leaves bare frame behind it from its first point of travel, which is
+      // this cut's whole reading — what leaves the eye leaves the frame.
+      "  vec2 half2 = 0.5 * uRes;",
 
       // ---- STRIPES: strips stacked across the picture, each walking its own line ------------------
       "  if (kind < 0.5) {",
@@ -354,11 +362,10 @@
       "  for (int i = 0; i < BANDS; i++) {",
       "    vec3 pc = i == 0 ? p0 : (i == 1 ? p1 : (i == 2 ? p2 : (i == 3 ? p3 : p4)));",
       "    float ar = i == 0 ? ar0 : (i == 1 ? ar1 : (i == 2 ? ar2 : (i == 3 ? ar3 : ar4)));",
-      "    if (ar <= 0.0) continue;",
       "    float h = hueOf(pc);",
       "    vec2 W2 = vec2(cos(h * 6.28318530718), sin(h * 6.28318530718));",
       // the one reach of this module, read along this band's own line (grid-colour.js bandsBuild)
-      "    float reach = diag + (abs(2.0 * half2.x * W2.y) + abs(2.0 * half2.y * W2.x)) * 0.5;",
+      "    float reach = diag + (abs(2.0 * pic.x * W2.y) + abs(2.0 * pic.y * W2.x)) * 0.5;",
       "    float off = reach * localAt(dial, ar, arMax, stag) * sgn;",
       "    vec2 qq = p - off * W2;",
       "    if (abs(qq.x) > half2.x || abs(qq.y) > half2.y) continue;",
@@ -562,28 +569,38 @@
         step: kind === "rings" ? radius / n : spanU / n,
         spanU: spanU, spanV: spanV, radius: radius,
         reach: kind === "rings" ? radius : diag + spanV / 2,
-        // HOW MUCH FRAME A PIECE OF THIS CUT HAS TO CROSS to be wholly out of it: the frame's own
-        // reach along the piece's line plus the picture's own reach along it. Read against the
-        // line's own reach it is the share of the raw dial the last piece needs.
+        // HOW FAR THE FRAME REACHES ALONG THE LINE A PIECE TRAVELS, from its own middle. What a
+        // piece carries is the frame's own rectangle of the work, so twice this is the whole
+        // distance the last piece has to cross, and read against the line's own reach it is the
+        // share of the raw dial that piece needs.
         frameV: (W * Math.abs(sa) + H * Math.abs(ca)) / 2
       };
     }
 
     /* THE DIAL AT WHICH THE LAST PIECE OF THIS LAYER CLEARS THE FRAME — the number the module's own
-       header asks a port to derive rather than carry. It is read per kind, on this frame, with the
-       stagger inside it:
-         · a strip and a tile travel one line, so the worst point of the picture is its own far edge
-           along that line and the share of the reach it needs is (frame + picture) / reach;
+       header asks a port to derive rather than carry. What a piece carries is the FRAME's own
+       rectangle of the work, because the module builds its picture on a canvas the size of the
+       frame, so the distance a piece has to cross is the frame's own reach along its line and
+       nothing more. It is read per kind, on this frame, with the stagger inside it:
+         · a strip and a tile travel one line, so the far point of what they carry is the frame's own
+           far edge along that line and the share of the line's reach they need is 2·frame / reach;
          · a ring leaving through the pole is AT the pole at dial 1 and no earlier, so a ring cut
            spends the whole dial whatever else is true of it;
          · a colour band's line is its own hue, which only the picture knows, so the share is taken
            over every direction a hue could name — the worst of them, walked finely — and the answer
            holds for whichever five colours the work turns out to carry.
        The stagger is on top: the largest piece waits its whole share before it starts, so the dial it
-       finishes on is that share plus what is left of the dial times what the travel needs. */
+       finishes on is that share plus what is left of the dial times what the travel needs.
+
+       AND THIS NUMBER CANNOT EXCEED THE WHOLE DIAL, which is a proof rather than a hope: the frame's
+       own reach along any direction is (W·|cos| + H·|sin|), which is at most the frame's diagonal,
+       and every line's reach in this module is the diagonal plus a term that is never negative. So
+       the far door is reachable at every count, every angle, every stagger and every shape of frame,
+       and the clearance the door reading publishes below is never negative. It is published because
+       it is the number the far door is made of, not because it is expected to bite. */
     var LIVE_WALK = 180;          // how finely the band directions are walked, in steps of a turn
     function needOf(L, stagger) {
-      var s = clamp(stagger, 0, 0.9), t, i, th, c, si, hv, pic, reach, r;
+      var s = clamp(stagger, 0, 0.9), t, i, th, c, si, hv, reach, r;
       if (L.kind === "rings") t = 1;
       else if (L.kind === "bands") {
         t = 0;
@@ -591,12 +608,11 @@
           th = Math.PI * i / LIVE_WALK;
           c = Math.abs(Math.cos(th)); si = Math.abs(Math.sin(th));
           hv = (L.frameW * c + L.frameH * si) / 2;
-          pic = (L.dw * c + L.dh * si) / 2;
           reach = L.diag + (L.dw * si + L.dh * c) / 2;
-          r = (hv + pic) / Math.max(reach, 1e-6);
+          r = 2 * hv / Math.max(reach, 1e-6);
           if (r > t) t = r;
         }
-      } else t = (L.frameV + L.spanV / 2) / Math.max(L.reach, 1e-6);
+      } else t = 2 * L.frameV / Math.max(L.reach, 1e-6);
       return { travel: t, live: Math.min(1, s + (1 - s) * t) };
     }
 
@@ -711,19 +727,21 @@
     //     place and the pieces together are the picture cover-fitted, which is the door.
     //   · THE OTHER LAYER IS WHOLLY OUT. Its dial stands at the far end of its own curve, and the
     //     curve's far end is derived on this frame so that the last piece has exactly cleared it.
-    //     Where the line itself is too short to carry a piece out — a picture whose cover-fit
-    //     overflow is larger than the frame's own diagonal can happen at an extreme mismatch of
-    //     shapes — no dial closes it, and the door is refused with the points still standing.
+    //     The clearance is published in points of the buffer, and the proof beside `needOf` says why
+    //     it is never negative — the frame's own reach along any line is at most the frame's
+    //     diagonal, and every line's reach here is that diagonal and more. So this reads a number
+    //     the far door is MADE of rather than a guard waiting to bite, and it is on the record where
+    //     a change to the reach or to the derivation would show up in it.
     //   · THE COLOUR AND THE LIGHT REST. The palette is full on the standing layer and the light
     //     voice is nothing, both by the window at the handle's own ends; read rather than trusted.
     //   · THE JUDGES' CHANNEL IS SHUT. `mask` draws the cut map itself as colour, which is what it is
     //     for; left open at a door the frame is a false-colour map of the cut and not the photograph.
+    //     This is the one of the four a score can actually spoil, and it is the refusal that fires.
     //
     // AND THERE IS NOTHING HERE TO HOLD. The meshing instrument holds a leaking size whole because a
-    // neighbouring size draws a whole door; here a short line is short at every count and every
-    // angle a score could ask for by the same geometry, so anything this reading finds is a real
-    // fault no widening closes. `held` is therefore always nothing, and it says so rather than
-    // carrying a guard that could never fire.
+    // neighbouring size draws a whole door; here every fault this reading can find is the same fault
+    // at every count and every angle a score could ask for, so no widening closes one. `held` is
+    // therefore always nothing, and it says so rather than carrying a guard that could never fire.
     var DOOR_SHOW = 0.5 / 255;   // how much of the cut map may stand at a door and it still BE the
                                  // photograph: half a level of 255, an eighth of the charter's own
                                  // door bar of 6 of 255 at one point

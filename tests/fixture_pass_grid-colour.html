@@ -27,7 +27,6 @@
 <div id="walk">
   <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
   <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
-  <section class="exh-frame" data-id="w"><img id="imgW" src="photos/wide.png" alt=""></section>
 </div>
 <script>
   window.__errs = [];
@@ -52,8 +51,7 @@
 <script src="grid-colour.js"></script>
 <script>
 (function () {
-  var imgs = [document.getElementById("imgA"), document.getElementById("imgB"),
-              document.getElementById("imgW")];
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
   var left = imgs.length;
   imgs.forEach(function (im) {
     if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
