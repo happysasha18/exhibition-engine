@@ -423,6 +423,16 @@
                           + "instrument on the sheet's own time axis"],
     tilt: ["measured", "structure.ownDevice.angleDeg, the angle the work's own step was cut at, "
                        + "which is the attitude the plane is laid away at"],
+    // THE CORRIDOR'S OWN THREE, from the instrument that answers the `corridor` world this file has
+    // named since stage 0 and had no instrument for. The other seven handles it publishes are
+    // already named above: `mix` and `clock` are the transaction's, `seed` is the pair's die, `mask`
+    // the judges' channel, `depth` reads the very corridor reading its row already cites, and
+    // `centreX`/`centreY` read the same two radial centres they always did.
+    ribs: ["measured", "the departing work's own measured ring repeat, structure.ownDevice.count "
+                       + "where it was cut as rings"],
+    spokes: ["measured", "the departing work's own measured turn, structure.rotational.n, and its "
+                         + "ring count where that turn reads under its floor"],
+    twist: ["measured", "the departing work's own measured twirl, structure.polar.twirl"],
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
                           + "between a streak reading and this handle is recorded, so the "
@@ -714,6 +724,43 @@
         return [true, "a work of the pair was cut as " + pyText(dev.kind || "a device")
                 + " at a step of " + pyText(flt(r4(step))) + " px, read at "
                 + pyText(flt(r4(conf)))];
+      },
+      // THE CORRIDOR IS A WORLD A PHOTOGRAPH ALREADY HAS OR HAS NOT. Two instruments now cut on
+      // rings — the meshing one and this — and they are different acts: a mesh turns the rings
+      // against each other on the surface, while the corridor takes the eye INTO the picture's own
+      // depth. So what qualifies the corridor is whether that depth is there to be entered, and the
+      // collection measures it directly.
+      //
+      // The two readings are the composer's own, not invented for the ask. `worldOf` above already
+      // decides WHICH polar world a passage names by taking the strongest of the three readings a
+      // work carries, and the corridor is one of the three; and the radial floor is the collection's
+      // own `floors.radial`, the bar every radial reading in this file is already held to. A
+      // photograph whose depth reads as a sphere should become a planet and not a corridor, and one
+      // with no radial reading at all has no centre for a corridor to fall toward.
+      tunnel: function (a, b, floors) {
+        // READ OF THE PAIR AND NOT OF ONE END OF IT, for the reason the fold's own ask gives: a
+        // ground is the pair's, and the family read off it has to be the same one whichever way the
+        // visitor walks.
+        var best = null, bestv = -1, i, refs = [a, b];
+        for (i = 0; i < refs.length; i++) {
+          var pol = ((refs[i].structure || {}).polar) || {};
+          var keys = Object.keys(POLAR_WORLD).sort(), j, top = null, topv = null;
+          for (j = 0; j < keys.length; j++) {
+            var val = pol[keys[j]];
+            if (val === null || val === undefined) continue;
+            if (topv === null || val > topv) { top = keys[j]; topv = val; }
+          }
+          if (top === "tunnel" && topv > bestv
+              && (Number(((refs[i].structure || {}).radial || {}).score) || 0) >= floors.radial) {
+            best = refs[i]; bestv = topv;
+          }
+        }
+        if (best === null) {
+          return [false, "neither work reads the corridor as its own strongest depth over the "
+                  + "radial floor of " + pyText(flt(floors.radial))];
+        }
+        return [true, "a work of the pair reads the corridor as its strongest depth, at "
+                + pyText(flt(r4(bestv)))];
       }
     };
 
