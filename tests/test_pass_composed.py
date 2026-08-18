@@ -333,9 +333,13 @@ NODE_ROWS = [
     "EX-COMPOSED red-on-bug · the fold stops counting as the miracle: a folding crossing spends "
     "none",
     "EX-COMPOSED red-on-bug · one instrument per kind restored: an instrument travels unchosen",
-    "EX-COMPOSED red-on-bug · the ground gated on the top quartile again: a route plays fewer "
-    "distinct shapes",
+    "EX-COMPOSED red-on-bug · the ground gated on the top quartile again: fewer pairs reach their "
+    "own shared ground",
     "EX-COMPOSED the line gives up its own clauses and then its tail, and is never lost",
+    "EX-COMPOSED adrift's seamA/seamB carry the record's own seam strength, not a whole-or-nothing "
+    "reading of it",
+    "EX-COMPOSED waterline's tideCells is driven off the record's own grain, not left at its "
+    "manifest default",
 ]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
@@ -406,6 +410,11 @@ function digest(text) {
   for (let i = 0; i < text.length; i++) { h = ((h * 33) ^ text.charCodeAt(i)) >>> 0; }
   return h.toString(16);
 }
+// A NODE'S VALUE MAY BE THE MODULE'S OWN FLT WRAPPER ({v: <number>}) rather than a bare number —
+// pass-composer.js prints a non-integer through it so the score keeps four decimal places on the
+// wire. This file runs outside that module's own closure and so keeps no copy of its `num()`; this
+// is the same unwrap, typed once, for the two raw node values CHANGE A and CHANGE B read below.
+function toNum(v) { return (v && typeof v === "object" && "v" in v) ? v.v : v; }
 function budget(p) {
   const voices = p.plan.cues.map((c) => c.voice);
   return {letters: voices.filter((v) => v === "letter").length,
@@ -550,6 +559,12 @@ let composed = 0, declined = 0, maxBytes = 0, maxIntent = 0, overByte = 0, overI
 let drivenUnmeasured = [], openDriven = [], drivenNoteMissing = [];
 let intentShortened = 0, roadKept = 0, boxReasons = {};
 let ledAtTonic = 0, ledElsewhere = 0, ledWithWorldCue = 0, tonic = 0;
+// CHANGE A/B PROOF ROWS. `adriftSeams` pairs each `adrift` cue's own driven `seamA`/`seamB` against
+// the two works' own recorded `structure.horizon.seam`, so the row below can prove the handle now
+// carries the record's own strength rather than the old whole-or-nothing reading. `tideCellsSeen`
+// collects every `waterline` cue's own driven `tideCells`, so the row below can prove it moves off
+// the manifest's own 0.5 default instead of resting there on every pair.
+let adriftSeams = [], tideCellsSeen = [];
 // THE FOLD, counted per role. A crossing that folds the frame into a solid spends the one miracle
 // shelf 6 allows, so it may not stand at a role shelf 17 gives none, may not stand beside a second
 // impossible thing, and may not claim the world level beside a camera-led flight.
@@ -643,7 +658,20 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
     // every node the composer DROVE carries its own note: it opens with «requested» and closes with
     // the measurement it read. A driven handle whose note names no measurement is the defect the
     // geometry sweep closes.
-    for (const cue of p.score.cues) {
+    //
+    // THIS READS `p.plan.cues`, THE COMPOSER'S OWN FILLED PLAN, AND NOT `p.score.cues`, THE SERIALISED
+    // AND WEIGHT-FITTED WIRE FORM. `fitTheWeight` (pass-composer.js) sheds every node's own note —
+    // ALL of them, on the whole score, in one pass — whenever the serialised score stands over the
+    // client's byte fence, which is the very fitting the byte-fence row above proves works. That
+    // fitting is real and correct and has nothing to do with what this row asks: whether the
+    // composer NAMED a measurement for a handle it drove, which is a fact about the plan the composer
+    // built, not about how much of its own provenance prose survived being fitted onto the wire. On
+    // the twenty-two-instrument field a folding score (waterline+tilt+matter, say) crosses that fence
+    // often enough that reading `score.cues` here left every note-bearing row starved regardless of
+    // which instrument was cast — `plan` and `score` hold separate deep copies of the same cues
+    // (`serialise`'s own `copy()`), so `plan.cues[*].nodes[*].note` carries what the composer wrote
+    // whether or not the wire form later lost it.
+    for (const cue of p.plan.cues) {
       for (const name of Object.keys(cue.nodes)) {
         const node = cue.nodes[name];
         const note = String(node.note || "");
@@ -655,6 +683,22 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
           if (drivenUnmeasured.indexOf(handle) < 0) drivenUnmeasured.push(handle);
         }
         if (!note) drivenNoteMissing.push(handle);
+        // CHANGE A: the drifting instrument's own seamA/seamB, read against the two works' own
+        // recorded structure.horizon.seam — proves the handle carries the record's own strength.
+        if (cue.instrument.id === "adrift" && (handle === "seamA" || handle === "seamB")) {
+          // `seamA` reads the DEPARTING work, `seamB` the arriving one, and which of wa/wb departs
+          // flips with direction (fromW = direction === "b-to-a" ? b : a, pass-composer.js:1898) —
+          // the same flip the composer itself takes, so this must take it too or a b-to-a pair
+          // would compare seamA against the wrong work's own record.
+          const fromWork = dir === "b-to-a" ? wb : wa, toWork = dir === "b-to-a" ? wa : wb;
+          const rec = handle === "seamA" ? fromWork : toWork;
+          adriftSeams.push({ handle, applied: toNum(node.value),
+                             recordSeam: toNum((rec.structure.horizon || {}).seam) });
+        }
+        // CHANGE B: the waterline instrument's own tideCells — proves it moves off its 0.5 default.
+        if (cue.instrument.id === "waterline" && handle === "tideCells") {
+          tideCellsSeen.push(toNum(node.value));
+        }
       }
       // no cue may name a handle the instrument declares OPEN: that state is the instrument's own
       // door reading (his 18:00 decision)
@@ -674,7 +718,8 @@ out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
              intentShortened, roadKept, boxReasons,
              ledAtTonic, ledElsewhere, ledWithWorldCue, tonic,
              folded, worldCue, ledAndWorld, twoMiracles, roleThrew, roleN, boxQualified,
-             foldUnspent, chosen, cast: Object.keys(consts.instruments).sort()};
+             foldUnspent, chosen, cast: Object.keys(consts.instruments).sort(),
+             adriftSeams, tideCellsSeen};
 
 // 7 · the road every pair is measured against, and the one road no instrument can play
 const roadNotes = {};
@@ -1154,6 +1199,39 @@ else:
               f"{sweep['openDriven']} — the woven balance is the one at stake, and at a door that "
               f"state is the instrument's own reading of the buffer (his 18:00 decision)")
 
+        # --- row 8b · CHANGE A: adrift's seamA/seamB read the record's own seam strength ---------
+        # Before this change the drifting instrument's seamA/seamB were driven off `carriesSeam`,
+        # a 0-or-1 reading of whether a work's motif list carries the waterline motif at all. The
+        # fix reads `structure.horizon.seam` — lab/step1-motifs.py:347-360's own score — instead, so
+        # this row asks two things of the sweep: every applied value equals the record's own seam
+        # (proving the wire, not a stand-in), and the values seen are not confined to {0, 1} (proving
+        # the strength survived rather than being read back down to presence-or-absence).
+        seams = sweep["adriftSeams"]
+        seamMismatch = [s for s in seams
+                         if abs(s["applied"] - (s["recordSeam"] or 0)) > 0.0002]
+        seamValues = sorted(set(s["applied"] for s in seams))
+        onlyBinary = seamValues and all(v in (0, 1) for v in seamValues)
+        check(NODE_ROWS[35],
+              bool(seams) and not seamMismatch and not onlyBinary,
+              f"{len(seams)} adrift seamA/seamB readings over the sweep, {len(seamMismatch)} off "
+              f"the record's own structure.horizon.seam by more than 0.0002; distinct values seen: "
+              f"{seamValues[:12]}" + (" …" if len(seamValues) > 12 else ""))
+
+        # --- row 8c · CHANGE B: waterline's tideCells is driven off the record's own grain -------
+        # Before this change nothing ever wrote `wanted.tideCells`, so `appliedValue` resolved it to
+        # the manifest's own 0.5 default on every pair — HANDLE_SOURCE's own row for it named a
+        # measurement the composer never read. The fix positions the departing work's own grain
+        # (said as cells across its frame) against the arriving work's, the same uncalibrated-ratio
+        # idiom `grain`/`squeeze` already take on this exact reading. This row asks the sweep for at
+        # least one value off the 0.5 default and more than one distinct value, so a fix that always
+        # lands on one new constant cannot pass it either.
+        tc = sweep["tideCellsSeen"]
+        tcOffDefault = [v for v in tc if abs(v - 0.5) > 1e-9]
+        check(NODE_ROWS[36],
+              bool(tc) and bool(tcOffDefault) and len(set(tc)) > 1,
+              f"{len(tc)} waterline tideCells readings over the sweep, {len(tcOffDefault)} off the "
+              f"manifest's own 0.5 default; distinct values seen: {sorted(set(tc))[:12]}")
+
         # --- row 9 · the two fences a filled score has to pass -----------------------------------
         # THE FENCES ARE NO LONGER WALLS, AND THAT IS WHY THIS ROW MATTERS MORE THAN IT DID. The
         # client refused a score over either fence WHOLE, so a score standing over one was a
@@ -1291,6 +1369,20 @@ else:
             # open handle to the fill — the collection's own instrument list leaves it out — so the
             # plant that makes the row honest is the one that DOES hand it over: a cue's tracks named
             # off the manifest itself, with the open reading removed.
+            #
+            # THE ROW USED TO NAME «bal», THE WOVEN INSTRUMENT'S OWN OPEN HANDLE, BECAUSE ON A
+            # SEVENTEEN-INSTRUMENT FIELD THE CORNER THE PLANTS WALK — `CORNER`, 24 pairs, the same 24
+            # every run — always cast weave at least once. It no longer does: with twenty-two
+            # instruments sharing the corner's own cuts, weave loses the die often enough that this
+            # exact corner casts it zero times, so «bal» never gets the chance the plant opens for it.
+            # THAT IS A FACT ABOUT WHICH INSTRUMENT THE CORNER HAPPENS TO CAST, and pinning the row to
+            # one instrument's own handle is exactly the «lucky pair» this suite's law forbids —
+            # weave was never the point; the fence being open to WHATEVER declares an open handle is.
+            # `gates` and `gears` both publish `dial` as open and both are cast in this corner every
+            # run, so the plant already opens a door the corner can walk through; the row now asks
+            # the general question the fence's own law states — is ANY handle an instrument declares
+            # open ever driven — rather than the name of the one instrument that happened to answer
+            # it on the field this row was written against.
             (NODE_ROWS[28],
              [["        if (manifest[h].open) continue;", ""],
               # The register gained an instrument-scoped key on 2026-08-18, so both reads below go
@@ -1303,7 +1395,7 @@ else:
                "var m0 = MANIFESTS[instr].handles[handle];"
                " var spec = HANDLE_SPECS[instr][handle] || [m0.min, m0.max, m0[\"def\"]],"
                " lo = spec[0], hi = spec[1], dflt = spec[2];"]],
-             lambda g: "bal" in g["sweep"]["openDriven"]),
+             lambda g: bool(g["sweep"]["openDriven"])),
             # THE LINE IS FITTED RATHER THAN REFUSED. With every step of the fitting removed, a line
             # handed a small cap runs over it — which under the client's own reading is a crossing
             # refused WHOLE, and the reason 1 004 composed crossings were never seen.
@@ -1358,21 +1450,31 @@ else:
             # Both works clearing a measure's top quartile happens on about 6 per cent of pairs for
             # every measure by construction, so nearly everything fell through to one ground with one
             # cut and one instrument, and that instrument carried the route.
-            # THE READING IS RE-ANCHORED, AND THE MEASUREMENT SAYS WHY. This row read the gate's
-            # harm off `topShareMean` — the share of a route its commonest instrument carries —
-            # because when it was written a cut had ONE instrument on it, so narrowing the grounds
-            # narrowed the instruments with them. On a field of fifteen a cut has several, so
-            # restoring the gate now moves that share the other way (35.0% to 31.5%, measured at the
-            # merge) while the harm itself is unchanged and plain in the ROUTE'S OWN VARIETY: the
-            # gate strikes grounds out, so a cast route plays fewer distinct shapes — 18.4 on
-            # average against 16.4 with the gate back. The row reads that instead, which is what the
-            # gate actually costs a visitor.
+            # THE READING WAS RE-ANCHORED ONCE ALREADY, AND THE FIELD HAS MOVED PAST IT AGAIN. This
+            # row first read the gate's harm off `topShareMean`, then off the route's own distinct-
+            # shape count once a field of fifteen instruments put several instruments on one cut —
+            # both readings sit one hop downstream of what the mutation itself does, and both are
+            # exactly as far as the instrument roster can carry them. On the field of twenty-two the
+            # five new instruments (beat, gates, grid-colour, strata-light, tilt) sit across enough
+            # cuts that a pair pushed off its shared ground no longer plays a narrower route — measured
+            # at the merge, the route's own `shapesMean` ROSE from 17.4 to 18.6 with the gate back,
+            # the opposite of what it did on the smaller fields. Chasing the shape count a third time
+            # would be reading whichever way the instrument roster happens to lean this month, not
+            # the gate.
+            # THE ROW READS THE GATE'S OWN MECHANISM INSTEAD, which no instrument roster can turn
+            # around: `groundReadings` is exactly what the gate zeroes, and `groundReadings` is what
+            # decides whether a pair reaches the «shared-ground» road at all — the road IS the gate's
+            # own target, not a downstream consequence of it. Gating out everything short of a
+            # measure's own top quartile starves that road directly: measured over the same sweep the
+            # standing rows walk, 44 of 190 pairs land on shared-ground with the gate out and 9 of 190
+            # with it back in. That is the gate's own cost, read where the gate itself acts.
             (NODE_ROWS[33],
              [["        per[m] = { min: r4(Math.min(sa, sb)), a: r4(sa), b: r4(sb) };",
                "        var th = (consts.thresholds || {})[m];"
                " per[m] = { min: r4((th !== undefined && (sa < th || sb < th)) ? 0 : Math.min(sa, sb)),"
                " a: r4(sa), b: r4(sb) };"]],
-             lambda g: g["route"]["shapesMean"] < got["route"]["shapesMean"]),
+             lambda g: g["sweep"]["roads"].get("shared-ground", 0)
+             < got["sweep"]["roads"].get("shared-ground", 0)),
             # THE FOLD IS COUNTED WHEREVER THE FOLDING CUE STANDS, so the plant has to take the
             # reading away at all three slots. It named the PIVOT alone, and it went red only while
             # the folding instrument could reach no slot but the ground: since the arrival is cast

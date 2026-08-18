@@ -650,11 +650,12 @@
                              + "own measured open ground holds, which is how far a thing may "
                              + "travel before it stands on architecture instead of on emptiness"],
     voidShareB: ["measured", "motifs.voidShare of the arriving work, read the same way"],
-    // The record publishes the seam's PRESENCE and no strength of its own for it — `locusOf` above
-    // says so in as many words and reads a measured seam as whole evidence — so this is whole where
-    // the work's own motif list carries the measured waterline and nothing where it does not.
-    seamA: ["measured", "whether the departing work's own motif list carries the measured "
-                        + "waterline, which is the only reading the record publishes of it"],
+    // The record now publishes the seam's own STRENGTH, lab/step1-motifs.py:347-360's score of how
+    // far the two sides of a work's best-fit seam differ in light and in busy-ness, carried beside
+    // the line itself as structure.horizon.seam (lab/build-workrecords-v1.py:121). `locusOf` above
+    // still ranks a measured seam as whole evidence when it ranks the three loci — that is a
+    // routing decision off the motif list and reads no strength — so this row and that one differ.
+    seamA: ["measured", "the departing work's own measured seam strength, structure.horizon.seam"],
     seamB: ["measured", "the same of the arriving work"],
     horizon: ["measured", "how much of each work reads as grain rather than as line, "
                           + "texture.scoreFromCutLines — the weaker of the two, because the front "
@@ -847,7 +848,11 @@
                          + "travels, through the two rows above; this is the module's own offset "
                          + "from it and reads no photograph"],
     tideCells: ["measured", "the departing work's own grain said as cells across its frame, which "
-                            + "is how finely the tide's own front is broken"],
+                            + "is how finely the tide's own front is broken. Nothing in this tree "
+                            + "records how many cells one step of this handle is worth, so that "
+                            + "count is positioned about the handle's default by its ratio to the "
+                            + "arriving work's own count — the same idiom `grain` takes on this "
+                            + "very reading"],
     comb: ["module-rest", "a judge channel the module rests at 1, the swell's comb through the "
                           + "reflection"],
     raw: ["module-rest", "a judge channel the module rests shut: the walk with its response curve "
@@ -3514,10 +3519,6 @@
         // taken from, read for its place rather than for its size.
         figureCx: r4((num(box[0]) + num(box[2])) / 2),
         figureCy: r4((num(box[1]) + num(box[3])) / 2),
-        // WHETHER THE WORK CARRIES A WATERLINE OF ITS OWN. The motif list carries only what was
-        // measured, so a seam standing on it reads whole and the record publishes no strength of
-        // its own for it — the same reading `locusOf` takes when it ranks the three loci.
-        carriesSeam: (mot.measured || []).indexOf(MOTIF_SEAM) >= 0 ? 1 : 0,
         // HOW PLAINLY THE WORK CARRIES A GATE — two masses with emptiness between them. The record
         // publishes this one as a NUMBER rather than only as a name on the motif list, which the
         // seam is not: `motifs.gateGap` is lab/step1-motifs.py's own measure, one minus the busy-ness
@@ -3563,6 +3564,13 @@
         rotationalScore: Number((st.rotational || {}).score) || 0,
         horizonY: ((st.horizon || {}).y === null || (st.horizon || {}).y === undefined)
           ? null : Number(st.horizon.y),
+        // HOW STRONGLY THE WORK CARRIES A WATERLINE OF ITS OWN, off the record's own measured
+        // strength rather than only its presence on the motif list. lab/step1-motifs.py:347-360
+        // scores the seam it best fits by how far the two sides differ in light and in busy-ness,
+        // and lab/build-workrecords-v1.py:121 carries that score beside the line itself as
+        // `structure.horizon.seam`. `locusOf` still ranks a measured seam as whole evidence when it
+        // ranks the three loci — that is a routing decision and reads the motif list, not this.
+        seamStrength: Number((st.horizon || {}).seam) || 0,
         // the repeat the work carries ACROSS a crease, as a count over its own frame side
         gridCount: side > 0 && Number((st.grid || {}).periodPx) > 0
           ? side / Number(st.grid.periodPx) : 0,
@@ -4347,12 +4355,13 @@
           // the smaller of the two, so a pair with one crowded work keeps both things near home.
           if (mf.voidShare > 0) wanted.voidShareA = flt(r4(clamp01(mf.voidShare)));
           if (mt.voidShare > 0) wanted.voidShareB = flt(r4(clamp01(mt.voidShare)));
-          // WHETHER EACH WORK CARRIES A WATERLINE OF ITS OWN, which is how far the handover front
-          // leans off the line the two things travel on. The motif list carries what was measured
-          // and no strength beside it, so this is whole where the seam stands on it and nothing
-          // where it does not — the same reading the arrival's own locus is ranked by.
-          wanted.seamA = flt(r4(mf.carriesSeam));
-          wanted.seamB = flt(r4(mt.carriesSeam));
+          // HOW STRONGLY EACH WORK CARRIES A WATERLINE OF ITS OWN, which is how far the handover
+          // front leans off the line the two things travel on. lab/step1-motifs.py:347-360 scores
+          // this directly and lab/build-workrecords-v1.py:121 carries it beside the line as
+          // `structure.horizon.seam`, so this reads the work's own measured strength rather than
+          // only whether a seam was recognised.
+          wanted.seamA = flt(r4(clamp01(mf.seamStrength)));
+          wanted.seamB = flt(r4(clamp01(mt.seamStrength)));
           // HOW DEEPLY THE TWO GROUNDS INTERLOCK AT THE FRONT — a clean waterline at one end of the
           // handle and a band of fingers at the other. The front is where the two grounds MEET, so
           // the weaker of the two texture readings rules it: either work that reads as line rather
@@ -4572,6 +4581,17 @@
             wanted.order = flt(r4(Math.min(num(HANDLE_SPECS.waterline.order[1]),
                                            Math.max(num(HANDLE_SPECS.waterline.order[0]),
                                                     goldenStagger(mf.grainCells)))));
+          }
+          // HOW FINELY THE TIDE'S OWN FRONT IS BROKEN, off the departing work's own grain said as
+          // cells across its frame — the register's own row for `tideCells`. No file in this tree
+          // records how many cells one step of this handle is worth, so the departing work's count
+          // is positioned about the handle's own default by its ratio to the arriving work's own
+          // count, the same uncalibrated-ratio idiom `grain` and `squeeze` already take on this
+          // exact reading elsewhere in this file — read here for the departing side of that ratio,
+          // which is `tideCells`'s own row.
+          if (mf.grainCells > 0 && mt.grainCells > 0) {
+            wanted.tideCells = acrossTheSpan("waterline", "tideCells",
+                                              mf.grainCells, mt.grainCells)[0];
           }
         }
         var measured = {}, nodes = {};

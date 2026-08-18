@@ -700,8 +700,10 @@
       //     empties the silhouette exactly and no fade is needed to make a thing go.
       //   · `voidShareA` — `void_share`, how much of the frame is empty ground, which is how far a
       //     thing may travel before it stands on architecture instead of on emptiness.
-      //   · `seamA` — `seam_horizon`, how strongly the work carries a waterline of its own, which is
-      //     how far the handover front leans off the object line.
+      //   · `seamA` — `structure.horizon.seam`, how strongly the work carries a waterline of its
+      //     own — lab/step1-motifs.py:347-360's own score of how far the two sides of its best-fit
+      //     seam differ in light and in busy-ness — which is how far the handover front leans off
+      //     the object line.
       // THEIR DEFAULTS ARE THE MODULE'S OWN NAIVE READING (adrift.js:608) — the centre of the frame
       // and a fixed share, which is the reading the motif exists to replace and which the module
       // records as `blind`. The ground colour, the threshold and the maximum have no naive value in
