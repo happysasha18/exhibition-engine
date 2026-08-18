@@ -112,6 +112,15 @@
     var GUARD_IN = 0.10;    // and the shadows to come up
     var DEP_LO = 0.75, DEP_HI = 2.25;   // the mirror's scale: crowded folds to one long fold
 
+    // HOW FAR THE TIDE'S OWN PATCH SIZE TRAVELS, in octaves either side of the module's own count.
+    // The two counts above are what the die is rolled on and the module took both itself; the
+    // `tideCells` handle carries them together, so the 19-to-8 proportion the module chose and the
+    // 2.7 the fine roll rides at are held at every setting and the handle's own middle lands on
+    // exactly 19.0 and 8.0. One octave either way is the register's own unit for a reading no file
+    // in this tree calibrates — the same unit `acrossTheSpan` positions the material instrument's
+    // grain by — so the span is the module's number and the register's unit and no third choice.
+    var CELL_SPAN = 1.0;
+
     // HOW FAR APART THE PATCHES' OWN MOMENTS ARE SET at the far end of the `order` handle, and how
     // far past the field's own range the travelling threshold reaches (waterline.js:463-467). Both
     // are the module's, said here as named constants because the door reading below is held against
@@ -147,6 +156,12 @@
       "uniform float uDep;",       // the mirror's scale
       "uniform float uSway;",      // the surface's own waver
       "uniform float uComb;",      // and how hard it combs what lies under it
+      // THE ONE LINE OF THE SHADER THE PORT ADDED, and it is said rather than buried. The module
+      // substitutes its two cell counts into the source as literals; here they arrive as a uniform,
+      // because a cell across the frame's height is exactly what the works' own records measure and
+      // a count nobody can set is a static parameter. The two lines that read it are the two that
+      // spelled the literals, and nothing else about the die moved.
+      "uniform vec2 uCells;",      // the tide line's own patches, across the frame and down the ladder
       "uniform float uTime;",      // seconds
       "uniform float uOff;",       // counter-motion, frame heights
       "uniform float uGuardE;",    // the arrival edge's shadow gate: nothing at either door
@@ -225,8 +240,8 @@
       // TWO SCALES, because one is a comb. A single cell size gives the tide one wavelength and
       // the eye reads a repeating sawtooth; a coarse roll with a finer one inside it reads as a
       // shore. The two are one die: both hashes take the same seed.
-      "  float r1 = hash21(vec2(floor(wx * CELLS_X_C), floor(wq * CELLS_Q_C)) + uSeed);",
-      "  float r2 = hash21(vec2(floor(wx * CELLS_X_C * 2.7), floor(wq * CELLS_Q_C * 2.7)) + uSeed + 11.3);",
+      "  float r1 = hash21(vec2(floor(wx * uCells.x), floor(wq * uCells.y)) + uSeed);",
+      "  float r2 = hash21(vec2(floor(wx * uCells.x * 2.7), floor(wq * uCells.y * 2.7)) + uSeed + 11.3);",
       "  float ord = mix(q, 0.62 * r1 + 0.38 * r2, DIE_W_C);",
       "  float qe = q + uSpread * (ord - 0.5);",
 
@@ -295,8 +310,6 @@
     ].join("\n")
       .replace(/SWAY_C/g, SWAY.toFixed(4))
       .replace(/RIP_C/g, RIP.toFixed(4))
-      .replace(/CELLS_X_C/g, CELLS_X.toFixed(1))
-      .replace(/CELLS_Q_C/g, CELLS_Q.toFixed(1))
       .replace(/DIE_W_C/g, DIE_W.toFixed(3))
       .replace(/SHADE_FRONT_C/g, SHADE_FRONT.toFixed(3))
       .replace(/SHADE_REACH_C/g, SHADE_REACH.toFixed(1))
@@ -489,6 +502,10 @@
       // and the two shadows' gate, widest in the middle and nothing at either door
       var guard = clamp(st.shade, 0, 1)
                 * smoothstep(0, GUARD_IN, d) * smoothstep(1, 1 - GUARD_IN, d);
+      // THE TIDE'S OWN PATCH SIZE, both counts carried together so the module's own proportion
+      // stands at every setting. The handle's middle is exactly 1, so the frame the module draws is
+      // the frame this draws at the middle, to the digit.
+      var cell = Math.pow(2, (2 * clamp(st.tideCells, 0, 1) - 1) * CELL_SPAN);
       var v = {
         dial: d,
         line: ln.L, lineA: ln.la, lineB: ln.lb, way: ln.w,
@@ -499,8 +516,12 @@
         swell: swell,
         comb: swell * clamp(st.comb, 0, 1),
         open: open,
-        // The counter-motion is widest in the middle and nothing at either door.
-        off: AMP * 4 * d * (1 - d) * clamp(st.travel, 0, 1),
+        cells: [CELLS_X * cell, CELLS_Q * cell],
+        // THE COUNTER-MOTION, widest in the middle and nothing at either door. AMP is how far it
+        // reaches at its widest and stays pinned, because the cover crop is derived from it; what
+        // travels is the SHARE of that reach the pair asks for, which is the `settle` handle. The
+        // judges' `travel` channel stands beside it and rests at 1, the way the fleet holds it.
+        off: AMP * 4 * d * (1 - d) * clamp(st.travel, 0, 1) * clamp(st.settle, 0, 1),
         guardE: guard * clamp(st.shadeEdge, 0, 1),
         guardL: guard * clamp(st.shadeLine, 0, 1),
         // THE MODULE'S OWN CLOCK, WHICH IS THE HOST'S. Every motion of the water is a pure function
@@ -539,7 +560,41 @@
       // one horizontal boundary sweeping the frame while each band changes hands on its own
       // schedule. No other element kind is cut here: no tile, no wedge, no ring, no region.
       cuts: ["band"],
-      params: { line: [0, 1], depth: [0, 1], swell: [0, 1], lead: [0, 1], order: [0, 1] },
+      params: { line: [0, 1], depth: [0, 1], swell: [0, 1], lead: [0, 1], order: [0, 1],
+                settle: [0, 1], tideCells: [0, 1] },
+      // THE TWO THE PORT PUBLISHES THAT THE MODULE HELD AS CONSTANTS, and why each is a handle. His
+      // 15:13 word of 2026-08-18 bans a static transition, and his 19:13 word lifted to the class at
+      // 19:21 makes the derivation the law: a geometric or temporal number the works' own records
+      // could set is a parameter, not a constant. Both below stand at exactly the module's own
+      // number at their own default, so the frame the module draws is the frame this draws.
+      //   · `settle` — THE SHARE OF THE COUNTER-MOTION the pair asks for. The module carries the
+      //     counter-motion at AMP alone (waterline.js:481), and the only handle over it is the
+      //     judges' `travel`, which rests at 1 — so before this the departing work settled and the
+      //     arriving one rose by one and the same distance for every pair in the world. AMP itself
+      //     stays pinned and is named below, because the cover crop is DERIVED from it and a crop
+      //     that moved with the pose could not be published once in `framings`.
+      //   · `tideCells` — THE TIDE'S OWN PATCH SIZE, the module's CELLS_X and CELLS_Q carried
+      //     together in octaves about its own 19 and 8. A cell across the frame's height is exactly
+      //     what a work's own spectral period measures, so this is the one number here whose unit
+      //     matches a record's without anything standing between them.
+      //
+      // WHAT STAYS PINNED, AND WHY EACH DOES — so the sweep is on the record rather than only its
+      // findings. AMP 0.055 and RIP 0.020 are the two the crop is derived from; RIP and SWAY 0.005
+      // already reach the picture through a MEASURED handle, since the shader scales both by `uSway`
+      // and `uComb`, which are the `swell` handle. DIE_W 0.40 is how much of the handover is the die
+      // rather than the ladder, and the die's own spread is already the `order` handle. SHADE_FRONT
+      // 0.30, SHADE_LINE 0.26 and their reaches of 6 and 10 points, and DARK_BASE 0.05, DARK_DEEP
+      // 0.16 and HAZE 0.12, are how deep a contact shadow bites and how the water darkens with
+      // depth: nothing in a work's record measures a lighting fact, and reading them off the tonal
+      // ladder would be an invented mapping rather than a derivation. LINE_LIFT 0.15 bounds a handle
+      // that reads nothing by design. LINE_HOLD 0.22, OPEN_IN 0.12 and GUARD_IN 0.10 are shares of
+      // the DIAL — the passage's own schedule, which is the transaction's and no photograph's, the
+      // same tag the register already gives a floor's turn and an arrival's choice. DEP_LO/DEP_HI,
+      // SPREAD_MAX and CELL_SPAN are the published spans of handles that ARE measured. MARGIN 0.05
+      // and BASE_OUT 1.04 are the door's own construction. The swell's wave numbers are the water's
+      // own carrier rather than the picture's, and the module's whole claim is that ONE surface
+      // combs both works — driving its wavelength from a photograph would say the water is made of
+      // that photograph, which the module does not claim and this port will not add.
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down; the five below them are the module's declared params; `seed` is its die; and
       // `shade`, `shadeEdge`, `shadeLine`, `travel`, `comb` and `raw` are the six channels the module
@@ -586,6 +641,14 @@
         swell: { min: 0, max: 1, def: 0.45 },
         lead: { min: 0, max: 1, def: 0.62 },
         order: { min: 0, max: 1, def: 0.2 },
+        // The two the port publishes; the block above this `handles` map says why each is one.
+        // `settle` rests at 1, which is the whole of the counter-motion the module carries, and
+        // `tideCells` at its own middle, which is exactly the module's 19 and 8.
+        settle: { min: 0, max: 1, def: 1 },
+        tideCells: { min: 0, max: 1, def: 0.5,
+                     applied: { octavesEitherSide: CELL_SPAN, aboutCells: [CELLS_X, CELLS_Q],
+                                measures: "a cell across the frame's height, which is the unit a "
+                                        + "work's own measured spectral period is read in" } },
         seed: { min: 0, max: 8, def: 0 },
         shade: { min: 0, max: 1, def: 1 },
         shadeEdge: { min: 0, max: 1, def: 1 },
@@ -630,6 +693,7 @@
       // so the frame keys the host reads off it at registration include the door's own record. The
       // two seatings rest at a square work in a square frame, which is what `fit` returns for one.
       neutralPose: { mix: 0, line: 0.5, depth: 0.3, swell: 0.45, lead: 0.62, order: 0.2,
+                     settle: 1, tideCells: 0.5,
                      seed: 0, shade: 1, shadeEdge: 1, shadeLine: 1, travel: 1, comb: 1, raw: 0,
                      seamA: 0.5, seamB: 0.5, t: 0, reduced: false,
                      cssWidth: 1000, cssHeight: 1000, fitAy: 1 / ZOOM, fitBy: 1 / ZOOM },
@@ -649,6 +713,7 @@
           { name: "uDep", type: "float", source: "frame:dep" },
           { name: "uSway", type: "float", source: "frame:swell" },
           { name: "uComb", type: "float", source: "frame:comb" },
+          { name: "uCells", type: "vec2", source: "frame:cells" },
           { name: "uTime", type: "float", source: "frame:time" },
           { name: "uOff", type: "float", source: "frame:off" },
           { name: "uGuardE", type: "float", source: "frame:guardE" },
@@ -716,6 +781,7 @@
         var h = st.handles;
         var pose = {
           mix: h.mix, line: h.line, depth: h.depth, swell: h.swell, lead: h.lead, order: h.order,
+          settle: h.settle, tideCells: h.tideCells,
           shade: h.shade, shadeEdge: h.shadeEdge, shadeLine: h.shadeLine,
           travel: h.travel, comb: h.comb, raw: h.raw,
           seamA: h.seamA, seamB: h.seamB, seed: h.seed,

@@ -99,7 +99,11 @@
     // measured seams go in the same way — the module reads them at creation and the port takes
     // them as handles, which is the whole of the difference between the two roads.
     var P = { line: 0.5, depth: 0.3, swell: 0.45, lead: 0.62, order: 0.2 };
-    var C = { shade: 1, shadeEdge: 1, shadeLine: 1, travel: 1, comb: 1, raw: 0 };
+    // The six judges' channels the module carries, and the two handles the port publishes that the
+    // module holds as constants. `settle` at 1 and `tideCells` at its own middle are those very
+    // constants, so the module needs no counterpart for either and is never asked for one.
+    var C = { shade: 1, shadeEdge: 1, shadeLine: 1, travel: 1, comb: 1, raw: 0,
+              settle: 1, tideCells: 0.5 };
     var hand = 0, clockAt = 0;
     var ctx = { images: imgs, reduced: false,
                 params: { line: P.line, depth: P.depth, swell: P.swell, lead: P.lead,
@@ -145,6 +149,10 @@
         mix: hand, line: P.line, depth: P.depth, swell: P.swell, lead: P.lead, order: P.order,
         shade: C.shade, shadeEdge: C.shadeEdge, shadeLine: C.shadeLine,
         travel: C.travel, comb: C.comb, raw: C.raw,
+        // The two the port publishes and the lab module holds as constants. At these two values
+        // they ARE the module's constants — the whole of the counter-motion, and its own 19 and 8
+        // patches — so the two roads below compare like for like.
+        settle: C.settle, tideCells: C.tideCells,
         seamA: SEAM.a.y, seamB: SEAM.b.y,
         seed: r.seed, t: clockAt, reduced: false,
         fitAy: seatY(imgs[0]), fitBy: seatY(imgs[1]),
@@ -161,6 +169,10 @@
         mix: hand, line: P.line, depth: P.depth, swell: P.swell, lead: P.lead, order: P.order,
         shade: C.shade, shadeEdge: C.shadeEdge, shadeLine: C.shadeLine,
         travel: C.travel, comb: C.comb, raw: C.raw,
+        // The two the port publishes and the lab module holds as constants. At these two values
+        // they ARE the module's constants — the whole of the counter-motion, and its own 19 and 8
+        // patches — so the two roads below compare like for like.
+        settle: C.settle, tideCells: C.tideCells,
         seamA: SEAM.a.y, seamB: SEAM.b.y, seed: 0, t: clockAt, reduced: false,
         cssWidth: innerWidth, cssHeight: innerHeight,
         fitAy: seatY(imgs[0]), fitBy: seatY(imgs[1]),

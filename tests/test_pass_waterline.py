@@ -120,6 +120,9 @@ DURATION_MS = 3000
 WITHIN_MS = 500
 
 HANDLE_DEFAULTS = {"line": 0.5, "depth": 0.3, "swell": 0.45, "lead": 0.62, "order": 0.2,
+                   # the two the port publishes that the module holds as constants; at these two
+                   # values they ARE those constants
+                   "settle": 1, "tideCells": 0.5,
                    "shade": 1, "shadeEdge": 1, "shadeLine": 1, "travel": 1, "comb": 1, "raw": 0,
                    "seamA": SEAM_A, "seamB": SEAM_B, "seed": DIE}
 
@@ -207,16 +210,37 @@ check("PASS-WATERLINE the instrument creates no context, no canvas, no loop and 
       "and its resize listener all stayed in the lab"
       if not held else "the instrument's region holds " + ", ".join(held))
 
-HANDLES = ["mix", "clock", "line", "depth", "swell", "lead", "order", "seed", "shade",
-           "shadeEdge", "shadeLine", "travel", "comb", "raw", "seamA", "seamB"]
+HANDLES = ["mix", "clock", "line", "depth", "swell", "lead", "order", "settle", "tideCells",
+           "seed", "shade", "shadeEdge", "shadeLine", "travel", "comb", "raw", "seamA", "seamB"]
 missing_h = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-WATERLINE every handle the module carries is a handle a score can drive",
       not missing_h,
-      "§4.4b: sixteen handles — the dial, the clock, the module's five declared params, its die, "
-      "its six judges' channels and the two works' own measured mirror lines. The module's `photo` "
-      "handle is the one that could not cross: the host owns which two works stand in the pair and "
-      "hands the instrument two textures rather than a list to choose from"
+      "§4.4b: eighteen handles — the dial, the clock, the module's five declared params, the two "
+      "the port publishes that the module held as constants, its die, its six judges' channels and "
+      "the two works' own measured mirror lines. The module's `photo` handle is the one that could "
+      "not cross: the host owns which two works stand in the pair and hands the instrument two "
+      "textures rather than a list to choose from"
       if not missing_h else "these are not published: " + ", ".join(missing_h))
+
+# THE PINNED NUMBERS THE PORT LIFTED, and the ones it left pinned with a reason. His 15:13 word
+# bans a static transition and his 19:13/19:21 words make the derivation the law, so a number the
+# works' own records could set is a parameter. Both handles below stand at exactly the module's own
+# constant at their own default, which is what keeps the two roads comparable at all.
+check("PASS-WATERLINE the two constants a record can set are handles, and stand at the module's "
+      "own number at their default",
+      "settle: { min: 0, max: 1, def: 1 }" in REGION
+      and "tideCells: { min: 0, max: 1, def: 0.5," in REGION
+      and "var CELL_SPAN = 1.0;" in REGION
+      and "cells: [CELLS_X * cell, CELLS_Q * cell]" in REGION
+      and "clamp(st.travel, 0, 1) * clamp(st.settle, 0, 1)" in REGION
+      and 'name: "uCells", type: "vec2", source: "frame:cells"' in REGION,
+      "the counter-motion reached the picture at AMP alone with only a judges' channel over it, so "
+      "every pair in the world settled by the same distance — `settle` carries the share of it the "
+      "pair asks for, and AMP stays pinned because the cover crop is derived from it. The tide's "
+      "two patch counts were literals substituted into the shader — `tideCells` carries them "
+      "together in octaves about the module's own 19 and 8, which is the one number here whose "
+      "unit matches a record's exactly. RIP and SWAY are already scaled by the MEASURED `swell` "
+      "handle through uSway and uComb, so neither was static and neither moved")
 
 check("PASS-WATERLINE the water reads the handed-down second and no clock of its own",
       "time: st.reduced ? 0 : (Number(st.t) || 0)" in REGION and "t: h.clock" in REGION,
@@ -310,10 +334,12 @@ check("PASS-WATERLINE the host binds uniforms by declared name, never by positio
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-WATERLINE the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 18,
-      f"{len(declared)} declared, {len(spelled)} spelled; the module's own `uAspect` is the one "
+      declared == spelled and len(declared) == 19,
+      f"{len(declared)} declared, {len(spelled)} spelled. The module's own `uAspect` is the one "
       f"uniform that did not come over — the host owns the buffer and already binds its size, so "
-      f"the aspect is derived from `uRes` inside the shader; "
+      f"the aspect is derived from `uRes` inside the shader — and `uCells` is the one the port "
+      f"added, because the module substitutes its two cell counts into the source as literals and "
+      f"a count a record can set may not be a literal; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
 check("PASS-WATERLINE the manifest publishes what it cuts on and what it reads of a pair, and "
@@ -349,7 +375,7 @@ BROWSER_ROWS = [
     "PASS-WATERLINE §7     · a shader already at GLSL ES 3.00 receives no second version header",
     "PASS-WATERLINE the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
     "PASS-WATERLINE row 9  · one camera authority through a real pass, and the pose rests on the arrival",
-    "PASS-WATERLINE §4.4b  · every one of the fourteen driven handles reaches the PICTURE",
+    "PASS-WATERLINE §4.4b  · every one of the sixteen driven handles reaches the PICTURE",
     "PASS-WATERLINE row 16 · the captures are kept as evidence",
     "PASS-WATERLINE the waterline stands on the departing work's own measured seam, ON THE PICTURE",
     "PASS-WATERLINE the line crosses the frame's centre at the mark where the works change places",
@@ -539,8 +565,11 @@ else:
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and m["levels"] == ["WORLD", "SURFACE"]
                     and m["cuts"] == ["band"]
-                    and sorted(m["params"]) == ["depth", "lead", "line", "order", "swell"]
-                    and len(m["handles"]) == 16
+                    and sorted(m["params"]) == ["depth", "lead", "line", "order", "settle",
+                                                "swell", "tideCells"]
+                    and len(m["handles"]) == 18
+                    and m["handles"]["settle"]["def"] == 1
+                    and m["handles"]["tideCells"]["def"] == 0.5
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -550,7 +579,7 @@ else:
                     and abs(zoom - ZOOM) < 1e-12
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["coverage"]["writes"] is False
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 18
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 19
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -562,7 +591,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "waterline" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"sixteen handles, eighteen uniforms in one pass, the crop {zoom} the "
+                      f"eighteen handles, nineteen uniforms in one pass, the crop {zoom} the "
                       f"counter-motion and the swell are paid for with, the cut «band», the two "
                       f"levels WORLD and SURFACE read off the module's own header, an alpha of a "
                       f"constant 1 (coverage.writes={m['coverage']['writes']}), resources for three "
@@ -691,9 +720,15 @@ else:
                       f"declared={r['declared']} granted={r['granted']}")
 
                 # ---- the two manifest refusals ---------------------------------------------------
+                # THE STAND-IN `values` THESE TWO ROWS REGISTER WITH, and it has to answer EVERY
+                # `frame:` name the manifest declares. The host learns which frame keys exist by
+                # taking the keys of one call on the neutral pose (pass-layer.js:320-321) and walks
+                # the uniforms in declared order, so a stub missing one key is refused at THAT name
+                # and the row's own name is never reached — the second row below would then pass on
+                # a refusal about the wrong uniform, which is a row proving nothing.
                 NEUTRAL = ("{dial:0,line:1.04,lineA:0.5,lineB:0.5,way:0,tau:-0.05,lead:0.62,"
                            "spread:0.154,dep:1.2,swell:0.45,comb:0.45,open:0,off:0,guardE:0,"
-                           "guardL:0,time:0}")
+                           "guardL:0,time:0,cells:[19,8]}")
                 r = js(br, """
                   var m = JSON.parse(JSON.stringify(window.__exPass.bench.manifest('waterline')));
                   m.gl.preserveDrawingBuffer = true;
@@ -796,6 +831,7 @@ else:
                 MOVES = (("line", {"line": 1.0}), ("depth", {"depth": 1.0}),
                          ("swell", {"swell": 1.0}), ("lead", {"lead": 0.0}),
                          ("order", {"order": 1.0}), ("travel", {"travel": 0.0}),
+                         ("settle", {"settle": 0.0}), ("tideCells", {"tideCells": 1.0}),
                          ("shade", {"shade": 0.0}), ("shadeEdge", {"shadeEdge": 0.0}),
                          ("shadeLine", {"shadeLine": 0.0}), ("comb", {"comb": 0.0}),
                          ("raw", {"raw": 1.0}), ("seamA", {"seamA": 0.85}),
@@ -968,7 +1004,7 @@ else:
                       len(kept) >= 30 and all((SHOTS / k).stat().st_size > 1000 for k in kept),
                       f"{len(kept)} captures under {SHOTS.relative_to(ROOT)}: the five poses on both "
                       f"roads, the seven sampled instants, the frame after a resize, the two seeded "
-                      f"runs, the fifteen handle runs and the two frames the waterline is found "
+                      f"runs, the seventeen handle runs and the two frames the waterline is found "
                       f"between")
 
     shutil.rmtree(BENCH, ignore_errors=True)
