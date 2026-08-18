@@ -286,12 +286,18 @@ check("PASS-DROSTE the module's own single picture becomes an ordered pair, and 
       "ring travels one way and completes — so nothing is retraced and both doors are exact by "
       "construction rather than by tolerance")
 
-check("PASS-DROSTE the shader already speaks GLSL ES 3.00, and it carries its own header",
-      REGION.count("#version 300 es") == 2 and "textureGrad" in REGION,
-      "the module's own map takes exact derivatives of the read position so the sampler picks a "
-      "sane footprint across the ring where the pattern wraps, which is `textureGrad` and therefore "
-      "the second version of the language. Both of this instrument's shaders carry their own header "
-      "and the host's translator hands a source that has one through untouched")
+check("PASS-DROSTE the shader is written in the one dialect the fleet is written in",
+      REGION.count("#version") == 0 and "textureGrad" in REGION
+      and "gl_FragColor = vec4(col, 1.0);" in REGION
+      and "attribute vec2 aPos;" in REGION
+      and "#version 300 es" in LABTXT,
+      "the module carries its own «#version 300 es» header and the host hands a source that has one "
+      "through untouched, so keeping it would have compiled — but the fleet's own rows read these "
+      "files as one fleet in one dialect, and an instrument speaking a second one makes every such "
+      "row answer for a difference that means nothing. The header is left to the host's own "
+      "translator. `textureGrad` — the module's exact derivatives of the read position, so the "
+      "sampler picks a sane footprint across the ring where the pattern wraps — needs the second "
+      "version of the language and survives the stamping unchanged")
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
 
@@ -726,7 +732,7 @@ else:
                       place["declared"] and place["declared"]["writes"] is False
                       and place["asGround"] is None
                       and isinstance(place["asRoof"], str) and "«droste»" in place["asRoof"]
-                      and "outColor = vec4(clamp(srgb, 0.0, 1.0), 1.0);" in REGION,
+                      and "gl_FragColor = vec4(col, 1.0);" in REGION,
                       f"the alpha is the constant 1 in the served bytes and the declaration says "
                       f"so, so the host places it by that: lowest of a stack with a "
                       f"coverage-writing voice above, the placement is lawful; laid over a floor "

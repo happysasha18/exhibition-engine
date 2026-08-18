@@ -123,14 +123,20 @@
   // instrument for.
   function drosteInstrument() {
     var VERT = [
-      "#version 300 es",
-      "in vec2 aPos;",
+      "attribute vec2 aPos;",
       "void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }",
     ].join("\n");
 
     // ----------------------------------------------------------------------------------------------
-    // THE SHADER, AND THE FOUR THINGS THAT ARE NOT THE MODULE'S OWN LINES
+    // THE SHADER, AND THE FIVE THINGS THAT ARE NOT THE MODULE'S OWN LINES
     // ----------------------------------------------------------------------------------------------
+    //   · IT IS WRITTEN IN THE LANGUAGE EVERY OTHER INSTRUMENT HERE IS WRITTEN IN, and the host
+    //     stamps the version onto it (`toES3` in pass-layer.js). The module carries its own
+    //     `#version 300 es` header, and a source that already has one is handed through untouched,
+    //     so keeping it would have compiled too — but the fleet's own rows read these files as one
+    //     fleet, in one dialect, and an instrument that speaks a second one makes every such row
+    //     answer for a difference that means nothing. `textureGrad` needs the second version of the
+    //     language and survives the stamping unchanged, so nothing of the map is given up for it.
     //   · THE TWO WORKS. Each of the module's two reads is taken from both sources and chosen
     //     between by the handover ring. Four fetches where the module took two; not one line of the
     //     map changed.
@@ -147,7 +153,6 @@
     //     work at the very middle where the radius runs to nothing. The geometry itself reads the
     //     unfloored radius, exactly as the module does.
     var FRAG = [
-      "#version 300 es",
       "precision highp float;",
       "uniform sampler2D uA;",             // the work the visitor is leaving
       "uniform sampler2D uB;",             // the work arriving
@@ -165,7 +170,6 @@
       "uniform vec2 uRing;",               // x front, y band
       // The judges' channel: which work each point carries, as colour.
       "uniform float uMask;",
-      "out vec4 outColor;",
 
       // The file's own transfer, undone. The module got this from its sRGB texture; here it is
       // written out, and it is the exact inverse of the encode the flat door finishes with.
@@ -287,7 +291,8 @@
       // THE COVERAGE: the alpha is the constant 1, and it is a decision. The map is defined at every
       // point of the frame, so this instrument has no absence to publish and stands as the ground a
       // stack is laid on.
-      "  outColor = vec4(clamp(srgb, 0.0, 1.0), 1.0);",
+      "  col = clamp(srgb, 0.0, 1.0);",
+      "  gl_FragColor = vec4(col, 1.0);",
       "}",
     ].join("\n");
 
