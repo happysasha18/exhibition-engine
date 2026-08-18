@@ -586,6 +586,23 @@
     rings: ["measured", "structure.ownDevice.count where the work's own device is rings"],
     reach: ["measured", "structure.ownDevice.stepPx over the work's own frame side"],
     power: ["measured", "the ratio of the two works' measured ownDevice.stepPx"],
+    // THE CORRIDOR'S OWN TWO, from the instrument that answers the `corridor` world this file has
+    // named since stage 0 and had no instrument for. Its other eight are already named: `mix` and
+    // `clock` are the transaction's, `seed` is the pair's die, `mask` the judges' channel, `depth`
+    // reads the very corridor reading its row already cites, `centreX`/`centreY` the same two
+    // radial centres they always did, and `twist` is the row widened above, which the corridor
+    // shears its spiral by.
+    //
+    // BOTH ROWS ARE OF THE PAIR AND NOT OF ONE END OF IT. The lane wrote «the DEPARTING work's own
+    // measured ring repeat» and «the DEPARTING work's own measured turn». A reading that names one
+    // end of an edge casts that edge one way and something else the other way back, which is the
+    // thing `always` repaired across this whole file: the reading is of the PAIR and carries no
+    // direction, so a return casts as its outward pass did. `spokes` also read «and its ring count
+    // where that turn reads under its floor» — a floor with no number left behind it in this file,
+    // struck under his 08:47 word; where the turn is not recorded the handle is simply not driven.
+    ribs: ["measured", "each work's own measured ring repeat, structure.ownDevice.count where it "
+                       + "was cut as rings"],
+    spokes: ["measured", "each work's own measured turn, structure.rotational.n"],
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
                           + "between a streak reading and this handle is recorded, so the "
@@ -1071,6 +1088,32 @@
         return [Math.max(sa, sb), "the two works read radial at " + pyText(flt(r4(sa))) + " and "
                 + pyText(flt(r4(sb))) + ", and the glass rests on the point the stronger one's own "
                 + "structure turns about"];
+      },
+      // THE CORRIDOR TAKES THE EYE INTO THE PICTURE'S OWN DEPTH, which is a different act from the
+      // mesh turning rings against each other on the surface — two instruments cut on rings and
+      // this is what tells them apart. So what it suits is a pair whose depth is there to be
+      // entered, and the collection measures that directly: how strongly each work reads as a
+      // corridor, and how much of that work's own depth reading the corridor IS rather than the
+      // sphere or the log-spiral, since a photograph whose depth reads as a sphere should become a
+      // planet instead. Both are of the pair, read on both works, with no direction on either.
+      //
+      // The port drafted this as [false, …] where neither work read the corridor as its strongest
+      // depth over `floors.radial` — an admission test on two counts, and it would not have run
+      // either: `suitsPair` hands an instrument two work records and no floors. His words of 09:51
+      // and 09:53 strike the refusal; both readings survive, the second as the share it always was.
+      tunnel: function (a, b) {
+        function corridorOf(w) {
+          var p = (w.structure || {}).polar || {};
+          var mine = readingOf(p.tunnel);
+          var whole = mine + readingOf(p.planet) + readingOf(p.twirl);
+          var share = whole > 0 ? mine / whole : 0;
+          return mine * share;
+        }
+        var ca = corridorOf(a), cb = corridorOf(b);
+        return [Math.max(ca, cb), "the two works read as a corridor of their own at "
+                + pyText(flt(r4(ca))) + " and " + pyText(flt(r4(cb)))
+                + " once the sphere's and the log-spiral's share of the same depth is taken off, "
+                + "and the eye travels into the stronger"];
       }
     };
 
@@ -3404,6 +3447,40 @@
           // the material instrument's gather is driven by.
           if (mf.figureShare > 0 || mt.figureShare > 0) {
             wanted.gather = [flt(r4(clamp01(mf.figureShare))), flt(r4(clamp01(mt.figureShare)))];
+          }
+        } else if (instr === "tunnel") {
+          // THE CORRIDOR'S FIVE MEASURED HANDLES. The lane asked for no fill branch, and without one
+          // the corridor stands at the module's own ten spokes, its own rib spacing and its own
+          // shear for every pair alike.
+          //
+          // HOW CLOSE THE RIBS STAND ALONG THE CORRIDOR, at each work's own measured ring repeat
+          // where it was cut as rings, positioned by the ratio of the two rather than by an equality
+          // — a ring count is a count of rings across a frame and the handle is a share of its own
+          // range, and no file in this tree records how many ribs one step of the handle is worth.
+          var ribsFrom = mf.deviceKind === "rings" ? mf.deviceCount : 0;
+          var ribsTo = mt.deviceKind === "rings" ? mt.deviceCount : 0;
+          if (ribsFrom > 0 && ribsTo > 0) {
+            wanted.ribs = acrossTheSpan("tunnel", "ribs", ribsFrom, ribsTo);
+          }
+          // HOW MANY SPOKES RUN DOWN IT, at the work's own measured turn. Where the collection
+          // records no rotational order the handle is not driven and the module's own ten stand.
+          if (mf.rotationalN > 0 || mt.rotationalN > 0) {
+            wanted.spokes = Math.round(Math.max(mf.rotationalN, mt.rotationalN));
+          }
+          // HOW HARD THE SPIRAL SHEARS, at each work's own measured twirl — the same reading the
+          // glass winds by and the fold leans by.
+          if (mf.twirl > 0 || mt.twirl > 0) {
+            wanted.twist = [flt(r4(clamp01(mf.twirl))), flt(r4(clamp01(mt.twirl)))];
+          }
+          // HOW FAR THE EYE TRAVELS IN, at each work's own corridor reading — the very measurement
+          // this handle's register row already cites.
+          if (mf.tunnel > 0 || mt.tunnel > 0) {
+            wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
+          }
+          // WHERE THE CORRIDOR FALLS AWAY TO: the midpoint of the two measured radial centres.
+          if (num(row[6]) >= 0 || num(row[8]) >= 0) {
+            wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
+            wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
           }
         } else if (instr === "kaleidoscope") {
           // THE FOLD'S FOUR MEASURED HANDLES. The lane asked for no fill branch, but without one
