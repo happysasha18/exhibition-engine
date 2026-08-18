@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the interfering instrument — the host's frame beside the lab module's</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own canvas.
+     One is visible at a time; the check shows the one it means and photographs it. -->
+<div id="moduleStage" class="stage"></div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="beat.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  var asked = false, warmed = false;
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled. So the bench is waited
+    // for rather than assumed, which is what a real visitor's walk does too.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    // EACH INSTRUMENT TRAVELS AS ITS OWN FILE, and a visit fetches only the ones its own score
+    // names. This page draws poses as well as commands, and a bench measures one instrument against
+    // another as often as it measures one alone, so it asks for every instrument the site's record
+    // names — by the same road an offer takes — and waits for the answer before it draws anything.
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var moduleStage = document.getElementById("moduleStage");
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "beat") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «beat» effect"); return; }
+
+    // The one record both roads read. The module keeps its own copy of these five inside its
+    // closure; this is the same set handed to it at creation and moved through the same onParam,
+    // so the pose the host draws is the pose the module drew and never a guess at it.
+    var P = { periodA: 0.14, periodB: 0.42, phase: 0, contrast: 0.82, lead: 0.6 };
+    var J = { shade: 1, travel: 1 };
+    var hand = 0, clockAt = 0;
+    var ctx = { images: imgs, params: { periodA: P.periodA, periodB: P.periodB, phase: P.phase,
+                                        contrast: P.contrast, lead: P.lead, seed: 20260813 },
+                reduced: false };
+    var api = def.create(moduleStage, ctx);
+    window.__api = api;
+
+    window.__mix = function (v) { hand = +v; api.onParam("mix", v); };
+    window.__clock = function (s) { clockAt = +s; api.onParam("clock", s); };
+    window.__param = function (k, v) {
+      if (k === "shade" || k === "travel") { J[k] = +v; } else { P[k] = +v; }
+      api.onParam(k, v);
+    };
+    window.__reading = function () { return api.reading(); };
+    window.__show = function (which) {
+      bench.show(which === "host");
+      moduleStage.classList.toggle("hidden", which !== "module");
+    };
+
+    // THE HOST DRAWS THE SAME POSE. The die is taken from the module through its own reading(),
+    // since the module rolls it once at creation from the number it was handed; everything else is
+    // the record above, which both roads were driven by. The judges' mask channel rests at 0, which
+    // is where `mix(col, vec3(cov), 0.0)` is `col` exactly, so the two roads compare the picture.
+    window.__hostDraw = function () {
+      var r = api.reading();
+      var cv = document.querySelector("canvas");
+      bench.draw("beat", {
+        mix: hand, periodA: P.periodA, periodB: P.periodB, phase: P.phase,
+        contrast: P.contrast, lead: P.lead,
+        shade: J.shade, travel: J.travel, mask: 0, seed: r.seed, t: clockAt, reduced: false,
+        cssWidth: innerWidth, cssHeight: innerHeight,
+        bufWidth: cv ? cv.width : 0, bufHeight: cv ? cv.height : 0,
+        aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+        bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight,
+      });
+      return r;
+    };
+
+    // ---- the real transaction road ---------------------------------------------------------
+    // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
+    // arms and decodes both works off the walk markup above, builds the programme from the
+    // manifest, raises its curtain and runs its own frame loop.
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>
