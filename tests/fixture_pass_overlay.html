@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the overlay instrument — the host's frame beside the lab module's</title>
+<style>
+  /* THE PAGE'S OWN GROUND IS THE HOST'S CANVAS BACKGROUND, and that is a decision. This instrument
+     writes coverage: where its region does not stand it paints nothing, and what shows through is
+     whatever lies under. The host's canvas clears to #08080a; the module's canvas is transparent and
+     shows the page. Standing the page on the same colour makes the two roads composite onto one
+     ground, so a difference between them is a difference of picture and never of backdrop. */
+  html, body { margin:0; height:100%; background:#08080a; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own stage.
+     One is visible at a time; the check shows the one it means and photographs it.
+
+     BOTH ROADS DRAW WITH WEBGL HERE. The module carries its own context and its own fragment shader,
+     so the two roads run one sampler through one rasteriser and the residual between them is a
+     difference of arithmetic rather than of samplers — which is why the bar this suite holds them to
+     is the project's own and not one of its own making.
+
+     THE LAB MODULE IS SERVED EXACTLY AS IT STANDS ON DISK. Nothing in it is changed, because the
+     three things the port decided differently are all readable from outside it: the seating is level
+     wherever the frame is square or wide and both works are square, which is the frame this
+     comparison is taken on; the mirror is the same law written twice; and the flattest level is only
+     read where the exposure is short of whole, which the two-roads poses never are. Where the port
+     and the module genuinely part, the suite says so in the row that reads it and measures the
+     parting rather than levelling it away. -->
+<div id="moduleStage" class="stage"></div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/cluster.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="overlay.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  // The six rules in the order the instrument publishes them, so an index on one road is the name on
+  // the other. The module takes the name; the instrument takes the index its own manifest declares.
+  var BLENDS = ["screen", "difference", "exclusion", "multiply", "hard light", "light difference"];
+
+  var asked = false, warmed = false;
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled. So the bench is waited
+    // for rather than assumed, which is what a real visitor's walk does too.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    // EACH INSTRUMENT TRAVELS AS ITS OWN FILE, and a visit fetches only the ones its own score
+    // names. This page draws poses as well as commands, and a bench measures one instrument against
+    // another as often as it measures one alone, so it asks for every instrument the site's record
+    // names — by the same road an offer takes — and waits for the answer before it draws anything.
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var moduleStage = document.getElementById("moduleStage");
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "overlay") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «overlay» effect"); return; }
+
+    // The one record both roads read. The module keeps its own copy of these inside its closure;
+    // this is the same set handed to it at creation and moved through the same onParam, so the pose
+    // the host draws is the pose the module drew and never a guess at it. The five port-only
+    // handles below carry the works' own lattices, which the module has no counterpart for: at the
+    // numbers written here the port's two fields are the module's own, arithmetic for arithmetic.
+    var P = { mix: 0, presence: 1, scale: 1, blend: 0, arrival: 0 };
+    var Q = { turn: 0, mixPeriod: 1 / 3.7, mixTurn: 0, regionPeriod: 1 / 7.3, regionTurn: 0 };
+    var maskAt = 0, clockAt = 0, exposureAt = 1;
+    var api = null;
+
+    function build() {
+      if (api) { api.destroy(); api = null; }
+      var ctx = {
+        images: [imgs[0], imgs[1]], reduced: false,
+        params: { mix: P.mix, presence: P.presence, scale: P.scale,
+                  blend: BLENDS[P.blend | 0], arrival: P.arrival >= 0.5 ? "interfered" : "" },
+      };
+      api = def.create(moduleStage, ctx);
+      // THE DIAL AND THE SECOND ARE HELD FROM OUTSIDE ON BOTH ROADS. With its dial pinned the module
+      // takes neither the pointer nor its own hunt (overlay.js:527-535, :557), which is exactly what
+      // the port does without at all — so the two roads answer the same handles and nothing else.
+      api.onParam("exposure", exposureAt);
+      api.onParam("clock", clockAt);
+      window.__api = api;
+    }
+    build();
+
+    // ---- one pose, handed to both roads --------------------------------------------------------
+    window.__both = function (v) {
+      P.mix = +v;
+      api.onParam("mix", P.mix);
+      return bench.values("overlay", pose());
+    };
+    window.__param = function (k, v) {
+      P[k] = +v;
+      if (k === "blend") api.onParam("blend", BLENDS[P.blend | 0]);
+      else if (k === "arrival") api.onParam("arrival", P.arrival >= 0.5 ? "interfered" : "");
+      else api.onParam(k, P[k]);
+      return bench.values("overlay", pose());
+    };
+    // THE FIVE HANDLES THE MODULE HAS NO COUNTERPART FOR. Each carries a measurement of one of the
+    // two works, and the module wrote a constant where the port reads one; at the numbers `Q` starts
+    // from, the port draws the module's own field.
+    window.__port = function (k, v) { Q[k] = +v; return bench.values("overlay", pose()); };
+    window.__dial = function (v) { exposureAt = +v; api.onParam("exposure", exposureAt); };
+    window.__clock = function (v) { clockAt = +v; api.onParam("clock", clockAt); };
+    window.__mask = function (v) { maskAt = +v; };
+
+    window.__show = function (which) {
+      bench.show(which === "host");
+      moduleStage.classList.toggle("hidden", which !== "module");
+    };
+    // The two drawing buffers, so a row can say the two roads were sampled on one grid rather than
+    // assume it. The host's canvas is the one it marks aria-hidden; the module's is the one inside
+    // its own stage.
+    window.__buffers = function () {
+      var host = document.querySelector("canvas[aria-hidden]");
+      var mod = moduleStage.querySelector("canvas");
+      return { host: host ? [host.width, host.height] : null,
+               module: mod ? [mod.width, mod.height] : null };
+    };
+
+    function pose() {
+      var host = document.querySelector("canvas[aria-hidden]");
+      return { mix: P.mix, exposure: exposureAt, presence: P.presence, blend: P.blend,
+               scale: P.scale, arrival: P.arrival, turn: Q.turn,
+               mixPeriod: Q.mixPeriod, mixTurn: Q.mixTurn,
+               regionPeriod: Q.regionPeriod, regionTurn: Q.regionTurn,
+               mask: maskAt, t: clockAt, reduced: false,
+               cssWidth: innerWidth, cssHeight: innerHeight,
+               bufWidth: host ? host.width : innerWidth,
+               bufHeight: host ? host.height : innerHeight,
+               // the two works' own sides: the bench draw reads its sources off the pose, and the
+               // seating this instrument asks the host for is computed from exactly these
+               aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+               bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight };
+    }
+    window.__pose = pose;
+    window.__values = function (over) { return bench.values("overlay", over || pose()); };
+
+    // THE HOST DRAWS THE SAME POSE, through the same drawPose a running transaction takes.
+    window.__hostDraw = function () {
+      bench.draw("overlay", pose());
+      return bench.values("overlay", pose());
+    };
+
+    // ---- the real transaction road ---------------------------------------------------------
+    // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
+    // arms and decodes both works off the walk markup above, builds the programme from the
+    // manifest, raises its curtain and runs its own frame loop.
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>

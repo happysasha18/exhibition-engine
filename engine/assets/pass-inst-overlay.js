@@ -439,8 +439,12 @@
       // THE DIAL, IN TWO STAGES, AND THE COLOUR LEADS (overlay.js:127-128). The first stage carries
       // the arriving work's colour and is full by the middle; the second brings its shapes in over
       // the rest. Both rise the whole way, so the dial never returns.
-      var exposure = unit(num(st.exposure, 1));
-      var dom = unit(num(st.mix, 0));
+      // THE TWO CURVES THE MANIFEST SAYS ARE APPLIED, APPLIED HERE. Both are the module's own,
+      // digit for digit, and both fix their own ends by construction — feelMix answers 0 at 0 and 1
+      // at 1, feelExposure answers 1 at whole — so neither door moves and what the curve buys is
+      // equal felt change per equal step of the hand in between.
+      var exposure = feelExposure(unit(num(st.exposure, 1)));
+      var dom = feelMix(unit(num(st.mix, 0)));
       var wet = smooth(clamp(exposure * 2, 0, 1));
       var sw = smooth(clamp(exposure * 2 - 1, 0, 1));
       // ONE ENVELOPE ON EVERY AXIS OF THIS FRAME. A composite is in the frame only where two things
