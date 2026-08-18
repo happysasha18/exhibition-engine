@@ -400,7 +400,8 @@ RED_ROWS = [
     "PASS-PARQUET red-on-bug · the mirror removed: the floor repeats and its seams open",
     "PASS-PARQUET red-on-bug · the sheet's own perspective replaced by the plain cosine: the shadow "
     "goes under the sheet",
-    "PASS-PARQUET red-on-bug · the seat read at the standing lean: the front's own order walks",
+    "PASS-PARQUET red-on-bug · the envelope no longer returns to nothing: the exit door is a floor "
+    "running away, and refused",
     "PASS-PARQUET red-on-bug · the door reading removed: a door drawing the tile map is let through",
 ]
 
@@ -1029,8 +1030,9 @@ else:
               f"which is the module's own note on the same line"
               if s_base is not None and s_flat is not None else "the served bytes could not be changed")
 
-        # 5 · the three shares no longer add to one
-        sp = served(('"const float SPREAD = 0.56;",', '"const float SPREAD = 0.60;",'))
+        # 5 · the envelope no longer returns to nothing at the far end of the dial
+        ev = served(("return feel(clamp((u <= 0.5 ? u : 1 - u) / RISE, 0, 1));",
+                     "return feel(clamp(u / RISE, 0, 1));"))
 
         def exit_door(text, tag):
             def go(br):
@@ -1038,21 +1040,24 @@ else:
                                      "document.querySelector('canvas').width)"))
                 hh = int(br.evaluate("String(document.querySelector('canvas').height)"))
                 ref = work_in_the_frame(BENCH / "photos" / "glassgrid.jpg", ww, hh)
-                return apart(host_at(br, 1, tag), ref)
+                d = apart(host_at(br, 1, tag), ref)
+                v = js(br, "window.__mix(1); return window.__values();")
+                return [d[0], d[1], v["floorMap"]["offPx"], v["floorMap"]["open"], v["doorWhyNo"]]
             return on_bench(go, text)
 
-        got = exit_door(sp, "red-shares") if sp else None
-        base_exit = exit_door(PACK, "red-shares-base")
+        got = exit_door(ev, "red-envelope") if ev else None
+        base_exit = exit_door(PACK, "red-envelope-base")
         check(RED_ROWS[4],
               got is not None and base_exit is not None
-              and base_exit[0] <= SEAM and got[0] > SEAM,
-              f"with the front given 0.60 of the dial to cross the floor instead of 0.56, the three "
-              f"shares add to 1.04 rather than 1, so the last tile to start still has "
-              f"{(0.60 + 0.14 + 0.30 - 1) / 0.30 * 100:.0f} per cent of its own swing left to run "
-              f"when the dial reaches its end: the exit door goes from {base_exit[0]:.4f} of 255 "
-              f"from its own file to {got[0]:.2f}, worst channel {got[1]:.0f}. That the three add to "
-              f"exactly one is not a coincidence of the module's numbers but the whole of what makes "
-              f"the far door exact"
+              and base_exit[0] <= SEAM and base_exit[4] is None
+              and got[0] > SEAM and got[4] is not None,
+              f"with the envelope left rising instead of turning back at the middle of the dial, the "
+              f"floor stands {got[3]:.4f} open at the exit door where it stood {base_exit[3]:.4f}: "
+              f"the tile standing at the frame is {got[2]:.2f} points of the buffer from its own "
+              f"landing against {base_exit[2]:.4f}, the frame goes from {base_exit[0]:.4f} of 255 "
+              f"from its own file to {got[0]:.2f}, and the instrument REFUSES its own door — "
+              f"«{str(got[4])[:130]}…». That the envelope is nothing at both ends is the whole of "
+              f"what makes both doors exact by construction rather than by a score's discipline"
               if got is not None and base_exit is not None else "the served bytes could not be changed")
 
         # 6 · the door reading removed
