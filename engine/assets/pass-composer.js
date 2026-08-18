@@ -531,6 +531,21 @@
                           + "instrument on the sheet's own time axis"],
     tilt: ["measured", "structure.ownDevice.angleDeg, the angle the work's own step was cut at, "
                        + "which is the attitude the plane is laid away at"],
+    // THE GLASS'S OWN FOUR, from the lens port's manifest. Its other five — the dial, the two
+    // centres, the rim's weight and the judges' channel — are rows this register already carried,
+    // and the two centres carry exactly the reading this instrument wants: the midpoint of the two
+    // measured radial centres is the point the two works' own structure turns about, which is where
+    // the glass rests.
+    // A NOTE TRAVELS IN EVERY SCORE, so each of these four is a clause and the reasoning stays up
+    // here where it costs the wire nothing. `fold` chooses among the three glasses by the readings
+    // named: the mirrored wedges where the pair's rotational order reads, the wound glass where its
+    // twirl does, the plain magnification where neither. `wedges` makes the fold repeat as often as
+    // the work itself does. `power` brings a piece of the departing work to the size of the
+    // arriving work's own piece.
+    fold: ["measured", "the pair's own structure.rotational and structure.polar.twirl"],
+    wedges: ["measured", "structure.rotational.n, the work's measured rotational order"],
+    twist: ["measured", "structure.polar.twirl, the work's measured twirl"],
+    power: ["measured", "the ratio of the two works' measured ownDevice.stepPx"],
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
                           + "between a streak reading and this handle is recorded, so the "
@@ -973,6 +988,27 @@
         var sb = readingOf((b.measures || {}).named_objects);
         return [Math.min(sa, sb), "the two works read named objects at " + pyText(flt(r4(sa)))
                 + " and " + pyText(flt(r4(sb)))];
+      },
+      // THE GLASS RESTS ON A POINT AND FOLDS ABOUT IT, so what it suits is a pair whose point is
+      // the works' OWN: its place, its wedge count and its wind are all set about the pair's
+      // measured radial centre, and where neither work reads radial that centre is a made-up point
+      // rather than a reading. The reading is of the PAIR and carries no direction, so the glass
+      // suits an edge the same whichever way the visitor walks it.
+      //
+      // The port drafted this as [false, …] below the collection's own tight radial floor, and the
+      // draft would not have run at all: `suitsPair` hands an instrument two work records and
+      // nothing else, so the floors it read would have been undefined and every pair casting the
+      // glass would have thrown. The collection's floors are not read by this file in any case —
+      // struck all ten under his 09:51 word, because a quartile of some collection answers how a
+      // reading stands among other photographs when what is asked is how these two stand to each
+      // other. So the reading itself is the fit: the stronger radial score, because one glass rests
+      // on one point.
+      lens: function (a, b) {
+        var sa = readingOf(((a.structure || {}).radial || {}).score);
+        var sb = readingOf(((b.structure || {}).radial || {}).score);
+        return [Math.max(sa, sb), "the two works read radial at " + pyText(flt(r4(sa))) + " and "
+                + pyText(flt(r4(sb))) + ", and the glass rests on the point the stronger one's own "
+                + "structure turns about"];
       }
     };
 
@@ -2858,6 +2894,12 @@
         // and the reading the world-curling instrument is placed by: a picture that already turns
         // about a centre closes the whole way, one that barely does is left a bowed band.
         planet: Number((st.polar || {}).planet) || 0,
+        // HOW MUCH THE WORK WINDS, and the order and confidence of its own turn. The three the
+        // glass chooses between its own three glasses by, and the two the ready story's window is
+        // cut at. All three are in the record the engine already receives.
+        twirl: Number((st.polar || {}).twirl) || 0,
+        rotationalN: Number((st.rotational || {}).n) || 0,
+        rotationalScore: Number((st.rotational || {}).score) || 0,
         horizonY: ((st.horizon || {}).y === null || (st.horizon || {}).y === undefined)
           ? null : Number(st.horizon.y),
         // the repeat the work carries ACROSS a crease, as a count over its own frame side
@@ -3296,6 +3338,39 @@
           // the material instrument's gather is driven by.
           if (mf.figureShare > 0 || mt.figureShare > 0) {
             wanted.gather = [flt(r4(clamp01(mf.figureShare))), flt(r4(clamp01(mt.figureShare)))];
+          }
+        } else if (instr === "lens") {
+          // THE FOUR GLASS HANDLES. Without this branch all four stand at the module's own rests —
+          // the kaleidoscope, six wedges, full twist, a power of two — for every pair alike.
+          //
+          // WHICH OF THE THREE GLASSES THE PAIR IS SEEN THROUGH, and it is a RANKING between two
+          // readings rather than a pair of floors: the mirrored wedges where the pair's own turn
+          // reads loudest, the wound glass where its twirl does, and the plain magnification only
+          // where neither reading stands at all — which is a fact about the pair and not a bar it
+          // failed to clear.
+          var rot = Math.max(mf.rotationalScore, mt.rotationalScore);
+          var wind = Math.max(mf.twirl, mt.twirl);
+          wanted.fold = (rot <= 0 && wind <= 0) ? 2 : (rot >= wind ? 0 : 1);
+          // HOW OFTEN THE FOLD REPEATS, at the work's own measured rotational order, so the disc
+          // folds as many times as the work itself turns.
+          if (mf.rotationalN > 0 || mt.rotationalN > 0) {
+            wanted.wedges = Math.round(Math.max(mf.rotationalN, mt.rotationalN));
+          }
+          // HOW FAR THE GLASS WINDS, at the work's own measured twirl, travelling from the
+          // departing work's reading to the arriving one's.
+          if (mf.twirl > 0 || mt.twirl > 0) {
+            wanted.twist = [flt(r4(clamp01(mf.twirl))), flt(r4(clamp01(mt.twirl)))];
+          }
+          // HOW HARD THE GLASS MAGNIFIES, at the ratio of the two works' own cutting steps — which
+          // is what brings a piece of the departing work to the size of the arriving work's own.
+          if (mf.deviceStepPx > 0 && mt.deviceStepPx > 0) {
+            wanted.power = flt(r4(mt.deviceStepPx / mf.deviceStepPx));
+          }
+          // WHERE THE GLASS RESTS: the midpoint of the two works' own measured radial centres, the
+          // same point the meshing instrument's own centre reads.
+          if (num(row[6]) >= 0 || num(row[8]) >= 0) {
+            wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
+            wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
           }
         } else if (instr === "liquid") {
           // THE WATER'S THREE HANDLES. Without this branch all three rest at the module's own

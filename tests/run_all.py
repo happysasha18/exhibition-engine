@@ -42,6 +42,7 @@ SUITES = [
     "pass_overlay",
     "pass_liquid",
     "pass_hero",
+    "pass_lens",
     "pass_route",
     "pass_phone",
     "pass_livemirror",
