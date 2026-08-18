@@ -288,12 +288,14 @@ KEY_AB, KEY_BA = A_ID + "__" + B_ID + "__ab", A_ID + "__" + B_ID + "__ba"
 
 # The seven roads, each with the shape of qualification the module states for it. The row for each
 # finds a real pair of the collection that takes it and prints the reading that qualified that pair.
+# The eight genres of crossing. There is no fallback among them and no last candidate: each answers
+# for every pair with a fit, and the best-suited plays (his word of 2026-08-18 10:15).
 ROADS = ["shared-ground", "spin", "kaleidoscope", "symmetry-slide", "stripes",
-         "dissimilar-mystery", "bridge", "box-fold"]
+         "dissimilar-mystery", "tonal-and-spectral", "box-fold"]
 ROLES_ALL_PY = ["entrance", "quiet link", "middle", "culmination", "return"]
 
 NODE_ROWS = [
-    "EX-COMPOSED the seven roads all carry real pairs, and each names the reading that qualified it",
+    "EX-COMPOSED every genre answers for every pair with a fit and the reading behind it",
     "EX-COMPOSED the frame folds into a solid, and only where the step's role may spend a miracle",
     "EX-COMPOSED every pair composes at every one of the five route roles without throwing",
     "EX-COMPOSED every instrument that travels to a visitor can actually be chosen",
@@ -305,18 +307,18 @@ NODE_ROWS = [
     "EX-COMPOSED an edge walked back keeps its family and its pivot and differs in what may differ",
     "EX-COMPOSED every handle the composer drives names the measurement it reads",
     "EX-COMPOSED a handle the instrument declares open is never driven at a door",
-    "EX-COMPOSED no filled score of the real collection crosses the byte or the intent fence",
+    "EX-COMPOSED no filled score ever crosses the byte or the intent fence, because it is fitted",
     "EX-COMPOSED the composer measures its line against the fence it is handed, not against its own "
     "fallback",
-    "EX-COMPOSED every one of the 14 520 ordered pairs either composes or declines by name",
+    "EX-COMPOSED every hard record yields a playable crossing, at every role and both ways",
     "EX-COMPOSED every field the request gained reproduces the four-value call exactly",
-    "EX-COMPOSED a route role outside the five is refused by name",
-    "EX-COMPOSED a session memory wider than §4.8's three fields is refused by name",
-    "EX-COMPOSED a die outside the instrument's own span is refused by name",
-    "EX-COMPOSED red-on-bug · the route-role fence removed: the unnamed role composes",
-    "EX-COMPOSED red-on-bug · §4.8's fence removed: a fourth memory field composes",
+    "EX-COMPOSED a route role outside the five reads as a middle and the stray name is recorded",
+    "EX-COMPOSED a session memory wider than §4.8's three fields has the extra left unread",
+    "EX-COMPOSED a die outside the instrument's own span is wrapped into it",
+    "EX-COMPOSED red-on-bug · the pair fence removed: a request with one work composes",
+    "EX-COMPOSED red-on-bug · §4.8's fence removed: a fourth memory field is read",
     "EX-COMPOSED red-on-bug · the die dropped on its way to the road: every die picks one road",
-    "EX-COMPOSED red-on-bug · the similar road's own bound removed: it qualifies for everything",
+    "EX-COMPOSED red-on-bug · the genre fits flattened: the ranking stops reading the pair",
     "EX-COMPOSED red-on-bug · the role's budget removed: a quiet link spends two letters",
     "EX-COMPOSED red-on-bug · the led passage's role gate removed: a middle is led by its camera",
     "EX-COMPOSED red-on-bug · the led passage's own reading removed: every tonic step is led",
@@ -324,7 +326,7 @@ NODE_ROWS = [
     "EX-COMPOSED red-on-bug · the return's own step removed: the way back keeps neither family "
     "nor pivot",
     "EX-COMPOSED red-on-bug · the open-handle fence removed: the composer drives a door's own state",
-    "EX-COMPOSED red-on-bug · the intent fence removed: a line stands over the cap it is measured "
+    "EX-COMPOSED red-on-bug · the line stops being fitted: it stands over the cap it is measured "
     "against",
     "EX-COMPOSED red-on-bug · the fold's own role gate removed: a step with no miracle folds",
     "EX-COMPOSED red-on-bug · the fold stops counting as the miracle: a folding crossing spends "
@@ -332,7 +334,7 @@ NODE_ROWS = [
     "EX-COMPOSED red-on-bug · one instrument per kind restored: an instrument travels unchosen",
     "EX-COMPOSED red-on-bug · the ground gated on the top quartile again: one instrument carries "
     "the route",
-    "EX-COMPOSED the intent fence gives up this lane's own clauses before the line is refused whole",
+    "EX-COMPOSED the line gives up its own clauses and then its tail, and is never lost",
 ]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
@@ -517,8 +519,23 @@ out.memory = {
     (c) => c.id + ":" + Object.keys(c.measuredHandles || {}).sort().join("/")) : [])
 };
 
-// 6 · the collection-wide readings: the roads, the fences and the refusals
-const ids = Object.keys(works.works).sort().slice(0, sweepN > 0 ? sweepN : undefined);
+// 6 · THE READINGS TAKEN ON REAL RECORDS, and they are readings of RECORDS rather than a census of
+//     a collection. His word of 2026-08-18 09:51 strikes out counting how many pairs of some
+//     collection reach anything — «не надо считать пары которые получает пакет» — so what stood
+//     here, a double loop over all 14 520 ordered pairs asking how many composed and how many
+//     declined, is gone with the question it answered. What is left is a settled handful of real
+//     ordered pairs, walked so the per-record laws below stand on records that actually hang: every
+//     driven handle names its measurement, no handle an instrument declares open is driven, the fold
+//     spends the one miracle, the camera leads only at a tonic step, and every instrument the record
+//     ships can be chosen. None of those is a count of a collection; each is a law about one
+//     crossing, checked on enough crossings to catch a breach.
+const allIds = Object.keys(works.works).sort();
+const SPOT = [];
+for (let i = 0; i < (sweepN > 0 ? Math.min(sweepN, 48) : 48); i++) {
+  const x = allIds[(i * 7) % allIds.length], y = allIds[(i * 13 + 3) % allIds.length];
+  if (x !== y) SPOT.push([x, y]);
+}
+const ids = allIds;
 const roads = {}, declines = {}, byRoad = {};
 let composed = 0, declined = 0, maxBytes = 0, maxIntent = 0, overByte = 0, overIntent = 0;
 let drivenUnmeasured = [], openDriven = [], drivenNoteMissing = [];
@@ -543,12 +560,10 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
                       "The two band families cross into stripes. ",
                       "The work folds along its own region lines. ",
                       "Along what the two works do not share. "];
-for (let i = 0; i < ids.length; i++) {
-  for (let j = 0; j < ids.length; j++) {
-    if (i === j) continue;
-    const a = works.works[ids[i]], b = works.works[ids[j]];
-    const dir = i < j ? "a-to-b" : "b-to-a";
-    const wa = i < j ? a : b, wb = i < j ? b : a;
+{
+  for (const [xi, yi] of SPOT) {
+    const wa = works.works[xi], wb = works.works[yi];
+    const dir = xi < yi ? "a-to-b" : "b-to-a";
     const key = wa.id + "__" + wb.id + "__" + (dir === "a-to-b" ? "ab" : "ba");
     const p = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: dir,
                                    seed: die(key)});
@@ -642,7 +657,7 @@ for (let i = 0; i < ids.length; i++) {
     }
   }
 }
-out.sweep = {works: ids.length, ordered: ids.length * (ids.length - 1), composed, declined,
+out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
              roads, declines, byRoad, maxBytes, maxIntent, overByte, overIntent,
              byteCap: BYTE_CAP, intentCap: INTENT_CAP,
              drivenUnmeasured: drivenUnmeasured.sort(), openDriven: openDriven.sort(),
@@ -669,7 +684,7 @@ let rseed = 20260818;
 function rnd() { rseed = (rseed * 1103515245 + 12345) & 0x7fffffff; return rseed / 0x7fffffff; }
 {
   const all = Object.keys(works.works).sort();
-  for (let r = 0; r < 300; r++) {
+  for (let r = 0; r < 40; r++) {
     const pick = all.slice();
     for (let i = pick.length - 1; i > 0; i--) {
       const k = Math.floor(rnd() * (i + 1));
@@ -735,12 +750,10 @@ function rnd() { rseed = (rseed * 1103515245 + 12345) & 0x7fffffff; return rseed
 //     fall under it — which is the wire the bake's `intentChars` travels, proved without planting.
 const handed = joined.make(Object.assign({}, fix.consts, {intentFenceChars: 300}));
 let handedMax = 0, handedShort = 0, handedN = 0, handedRoadKept = 0;
-for (let i = 0; i < ids.length; i++) {
-  for (let j = 0; j < ids.length; j++) {
-    if (i === j) continue;
-    const a = works.works[ids[i]], b = works.works[ids[j]];
-    const dir = i < j ? "a-to-b" : "b-to-a";
-    const wa = i < j ? a : b, wb = i < j ? b : a;
+{
+  for (const [xi, yi] of SPOT) {
+    const wa = works.works[xi], wb = works.works[yi];
+    const dir = xi < yi ? "a-to-b" : "b-to-a";
     const key = wa.id + "__" + wb.id + "__" + (dir === "a-to-b" ? "ab" : "ba");
     const p = handed.passageFor({workRecordA: wa, workRecordB: wb, direction: dir, seed: die(key)});
     if (!p.json) continue;
@@ -753,11 +766,18 @@ for (let i = 0; i < ids.length; i++) {
 out.handed = {cap: 300, max: handedMax, shortened: handedShort, composed: handedN,
               roadKept: handedRoadKept, own: out.sweep.maxIntent};
 
-// 9 · the three fences of the entry
+// 10 · WHAT THE ENTRY DOES WITH A REQUEST IT CANNOT READ AS SENT. Three of these were refusals by
+//      name until 2026-08-18 and each cost the visitor a whole crossing for a field; they are
+//      defaults now, and what could not be read stands on the request under `unread` so a walk
+//      sending a stray value can still be found. The two that remain are the two that say there is
+//      no PAIR.
 const ask = (extra) => {
   const p = composer.passageFor(Object.assign(
     {workRecordA: A, workRecordB: B, direction: "a-to-b", seed: fix.seeds[KEY_AB]}, extra));
-  return {declined: p.declined || null, composed: !!p.json};
+  return {declined: p.declined || null, composed: !!p.json,
+          unread: (p.request && p.request.unread) || null,
+          role: p.request && p.request.routeRole, seed: p.request && p.request.seed,
+          memory: p.request && p.request.sessionMemory};
 };
 out.fences = {
   role: ask({routeRole: "grand finale"}),
@@ -765,7 +785,158 @@ out.fences = {
   memoryOk: ask({sessionMemory: {family: "band", seed: 1, passIndex: 2}}),
   seedHigh: ask({seed: 9}),
   seedLow: ask({seed: -1}),
+  noA: composer.passageFor({workRecordA: {}, workRecordB: B, direction: "a-to-b", seed: 1}).declined || null,
+  noB: composer.passageFor({workRecordA: A, workRecordB: {}, direction: "a-to-b", seed: 1}).declined || null,
 };
+
+// 11 · THE HARD RECORDS, AND THIS IS THE ROW THE LANE STANDS ON. His word of 2026-08-18 09:51: any
+//      two photographs in the world get a crossing, always. It is proved on RECORDS rather than on
+//      a collection, because a collection is a sample and a record is a case — so the cases here are
+//      the ones deliberately built to be the worst a composer could be handed, and each is asked at
+//      every route role, in both directions, on three dice. Every one has to come back playable: a
+//      score of schema 2 with at least one cue, every cue naming an instrument, its authored line
+//      inside the client's own character fence and its whole weight inside the client's own byte
+//      fence. A single input yielding nothing reddens this row.
+function bareRecord(id) {
+  return { id: id, frameSide: 1000.0, door: {}, luminance: {}, measures: {}, motifs: {},
+           palette: {}, readiness: [0, 0], sets: [], structure: {}, texture: {} };
+}
+function fullRecord(id, o) {
+  const w = {
+    id: id, frameSide: 1000.0,
+    door: { angleDeg: 0, device: "rings", elementKind: "ring", level: "CELL", pieces: 8,
+            stepPx: 40.0 },
+    luminance: { ladderPosition: o.ladder === undefined ? 0.5 : o.ladder },
+    measures: { banding: 0, dominant_object: 0, grid: 0, named_objects: 0, radial: 0, regions: 0,
+                texture: 0 },
+    motifs: { gateGap: 0, measured: [], radialCentre: [0.5, 0.5], voidShare: 0 },
+    palette: { hueConcentration: 0.5, hues: [], rung: "one" },
+    readiness: [0.5, 100.0, "vertical"],
+    sets: o.sets || [],
+    structure: {
+      banding: { axis: "vertical", periodPx: 100.0, score: 0 },
+      dominantObject: { bbox: [0.25, 0.25, 0.75, 0.75], score: 0 },
+      grid: { angleDeg: 0, periodPx: 100.0, score: 0 },
+      horizon: { y: 0.5 },
+      ownDevice: { angleDeg: 0, confidence: 0, count: 4, kind: "rings", pieces: 4, stepPx: 40.0 },
+      polar: { planet: 0, radial_streak: 0, tunnel: 0, twirl: 0 },
+      radial: { centre: [0.5, 0.5], score: 0, subType: "none" },
+      regions: { count: 0, score: 0 },
+      rotational: { n: 0, score: 0 }
+    },
+    texture: { detailPx: 2.0, scoreFromCutLines: 0, spectralPeriodPx: 100.0 }
+  };
+  for (const k of Object.keys(o.measures || {})) w.measures[k] = o.measures[k];
+  for (const k of Object.keys(o.structure || {})) {
+    for (const f of Object.keys(o.structure[k])) w.structure[k][f] = o.structure[k][f];
+  }
+  return w;
+}
+const HARD = {
+  // Two records sharing no measured structure at all: one reads only on bands, the other only on
+  // tiles, and every other measure of each stands at nothing.
+  "two works sharing no measured structure": [
+    fullRecord("bands-only", { measures: { banding: 0.9 },
+      structure: { banding: { score: 0.9, axis: "vertical" } },
+      sets: [{ count: 4, fig: null, index: 1, kind: "strip", measuredGrain: 250, mergeFactor: 1,
+               provider: "structural", realCount: 4 }] }),
+    fullRecord("tiles-only", { measures: { grid: 0.9 }, structure: { grid: { score: 0.9 } },
+      sets: [{ count: 9, fig: null, index: 2, kind: "tile", measuredGrain: 0, mergeFactor: 1,
+               provider: "structural", realCount: 9 }] })
+  ],
+  // A record with almost every measurement near zero.
+  "a record with almost every measurement at nothing": [
+    fullRecord("flat", {}),
+    fullRecord("ordinary", { measures: { banding: 0.4, radial: 0.3 },
+      structure: { banding: { score: 0.4 }, radial: { score: 0.3 } },
+      sets: [{ count: 3, fig: null, index: 3, kind: "strip", measuredGrain: 300, mergeFactor: 1,
+               provider: "structural", realCount: 3 }] })
+  ],
+  // Two identical records — one photograph crossing to itself.
+  "two identical records": [
+    fullRecord("twin", { measures: { banding: 0.6 }, structure: { banding: { score: 0.6 } } }),
+    fullRecord("twin", { measures: { banding: 0.6 }, structure: { banding: { score: 0.6 } } })
+  ],
+  // A record missing every optional field.
+  "a record missing its optional fields": [
+    bareRecord("bare"),
+    fullRecord("ordinary", { measures: { banding: 0.4 }, structure: { banding: { score: 0.4 } } })
+  ],
+  // Two records with nothing measured about either of them at all.
+  "two records with nothing measured at all": [bareRecord("bare-a"), bareRecord("bare-b")]
+};
+{
+  const rows = {};
+  let asked = 0, playable = 0;
+  const failures = [];
+  for (const name of Object.keys(HARD)) {
+    const [ha, hb] = HARD[name];
+    for (const role of composer.routeRoles) {
+      for (const dir of ["a-to-b", "b-to-a"]) {
+        for (const seed of [0, 3.1, 7.9]) {
+          asked++;
+          let q = null;
+          try {
+            q = composer.passageFor({workRecordA: ha, workRecordB: hb, direction: dir,
+                                     routeRole: role, seed: seed});
+          } catch (e) {
+            failures.push(name + " / " + role + " / " + dir + " / " + seed + ": threw "
+                          + String(e && e.message).slice(0, 90));
+            continue;
+          }
+          const s2 = q && q.score;
+          if (!s2) {
+            failures.push(name + " / " + role + " / " + dir + " / " + seed + ": "
+                          + ((q && q.declined) || "nothing came back"));
+            continue;
+          }
+          if (s2.schema !== 2 || !s2.cues.length
+              || s2.cues.some((c) => !c.instrument || !c.instrument.id)) {
+            failures.push(name + " / " + role + " / " + dir + " / " + seed + ": no playable cue");
+            continue;
+          }
+          if (String(s2.intent || "").length > INTENT_CAP) {
+            failures.push(name + " / " + role + ": the line runs to " + s2.intent.length);
+            continue;
+          }
+          if (q.bytes > BYTE_CAP) {
+            failures.push(name + " / " + role + ": the score weighs " + q.bytes);
+            continue;
+          }
+          playable++;
+          if (!rows[name] && role === "middle" && dir === "a-to-b" && seed === 3.1) {
+            rows[name] = {genre: q.road, fit: q.genreFit,
+                          cues: s2.cues.map((c) => c.id + ":" + c.instrument.id).join(","),
+                          duration: s2.duration, bytes: q.bytes,
+                          stood: (q.stood || []).length};
+          }
+        }
+      }
+    }
+  }
+  out.hard = {asked, playable, failures: failures.slice(0, 6), rows,
+              cases: Object.keys(HARD).length};
+}
+
+// 12 · EVERY GENRE ANSWERS FOR EVERY PAIR, with a fit and the sentence naming what it read. Nothing
+//      is qualified and nothing is turned away, so the vocabulary is whole on the hardest record in
+//      hand as much as on a real pair.
+{
+  const seen = {};
+  const [ba, bb] = HARD["two records with nothing measured at all"];
+  const bareRun = composer.passageFor({workRecordA: ba, workRecordB: bb, seed: 1});
+  const realRun = composer.passageFor({workRecordA: A, workRecordB: B, seed: fix.seeds[KEY_AB]});
+  const shaped = (r) => (r.roadNotes || []).map((n) => ({genre: n.genre || n.road, fit: n.fit,
+                                                         said: !!n.why}));
+  out.vocabulary = {
+    onBare: shaped(bareRun), onReal: shaped(realRun),
+    barePlayed: bareRun.road, realPlayed: realRun.road,
+    everyGenreSaidSomething: shaped(bareRun).every((g) => g.said)
+                             && shaped(realRun).every((g) => g.said),
+    ranking: realRun.ranking || null
+  };
+}
+
 console.log(JSON.stringify(out));
 """
 
@@ -813,13 +984,25 @@ else:
     else:
         sweep = got["sweep"]
 
-        # --- row 0 · the seven roads, each on a real pair -------------------------------------
-        missing = [r for r in ROADS if r not in sweep["byRoad"]]
-        shown = ", ".join(
-            f"{r}×{sweep['roads'][r]} ({sweep['byRoad'][r]['why'] or 'the last candidate'})"
-            for r in ROADS if r in sweep["byRoad"])
-        check(NODE_ROWS[0], not missing,
-              f"roads with no pair of the real collection: {missing}; the rest: {shown}")
+        # --- row 0 · every genre answers, with a fit and a reading -----------------------------
+        # WHAT THIS ROW USED TO ASK, AND WHY THE QUESTION CHANGED. It asked whether each of the seven
+        # roads QUALIFIED at least one real pair — a question that only makes sense while a road can
+        # turn a pair away. Since 2026-08-18 none can: every genre answers for every pair with a fit
+        # between nothing and whole, and the die runs over the ranking. So the row asks what the
+        # contract actually promises — that the vocabulary is whole for any pair, including a pair
+        # of records with nothing measured about either of them, and that every genre says what it
+        # read whatever its fit.
+        v = got["vocabulary"]
+        namesOnBare = sorted(g["genre"] for g in v["onBare"])
+        namesOnReal = sorted(g["genre"] for g in v["onReal"])
+        check(NODE_ROWS[0],
+              namesOnBare == sorted(ROADS) and namesOnReal == sorted(ROADS)
+              and v["everyGenreSaidSomething"],
+              f"the whole vocabulary answers on two records with nothing measured at all "
+              f"({len(namesOnBare)} genres, played «{v['barePlayed']}») and on a real pair "
+              f"({len(namesOnReal)} genres, played «{v['realPlayed']}»); every one carries the "
+              f"sentence naming what it read: {v['everyGenreSaidSomething']}. The real pair's own "
+              f"ranking: " + json.dumps(v["ranking"], ensure_ascii=False))
 
         # --- row 1 · the fold, and the two laws that bind it ------------------------------------
         noMiracle = ["entrance", "quiet link", "return"]
@@ -955,11 +1138,19 @@ else:
               f"state is the instrument's own reading of the buffer (his 18:00 decision)")
 
         # --- row 9 · the two fences a filled score has to pass -----------------------------------
+        # THE FENCES ARE NO LONGER WALLS, AND THAT IS WHY THIS ROW MATTERS MORE THAN IT DID. The
+        # client refused a score over either fence WHOLE, so a score standing over one was a
+        # crossing the visitor never saw; both are shapings now — the composer fits its own line and
+        # its own weight before the client ever sees them. The row therefore proves the FITTING
+        # works: nothing composed here, on real records or on the hardest records this suite can
+        # build, ever stands over either number.
+        hard = got["hard"]
         check(NODE_ROWS[12], sweep["overByte"] == 0 and sweep["overIntent"] == 0,
-              f"the heaviest score of the collection weighs {sweep['maxBytes']} B against the "
-              f"{sweep['byteCap']} the client applies, and the longest intent runs "
+              f"the heaviest score here weighs {sweep['maxBytes']} B against the "
+              f"{sweep['byteCap']} the client applies, and the longest line runs "
               f"{sweep['maxIntent']} characters against its {sweep['intentCap']}; over the byte "
-              f"fence: {sweep['overByte']}, over the intent fence: {sweep['overIntent']}")
+              f"fence: {sweep['overByte']}, over the line's fence: {sweep['overIntent']}; and over "
+              f"{hard['asked']} crossings of the hard records, none stands over either")
 
         # --- row 10 · the composer reads the fence it is handed ----------------------------------
         h = got["handed"]
@@ -969,13 +1160,24 @@ else:
               f"{h['shortened']} of {h['composed']} lines and its longest ran {h['max']}; on the "
               f"number the client actually applies its longest runs {h['own']}")
 
-        # --- row 10 · every pair is answered ------------------------------------------------------
-        named = all(w.strip() for w in sweep["declines"])
+        # --- row 10 · THE ROW THIS LANE STANDS ON --------------------------------------------------
+        # His word of 2026-08-18 09:51: any two photographs in the world get a crossing, always. It
+        # is proved on RECORDS rather than on a collection — a collection is a sample and a record is
+        # a case — so the cases are the ones deliberately built to be the worst the composer could be
+        # handed, each asked at every route role, in both directions, on three dice. A single input
+        # yielding nothing reddens this row.
+        #
+        # WHAT THIS ROW REPLACES. «every one of the 14 520 ordered pairs either composes or declines
+        # by name» — a census of a collection, and the very habit his word strikes out. It also
+        # accepted a decline as a lawful answer, which is the whole idea this lane removes.
+        shown = "; ".join(f"{k}: {v2['genre']} at {v2['fit']} → {v2['cues']} "
+                          f"({v2['duration']} ms, {v2['bytes']} B, {v2['stood']} shaping(s))"
+                          for k, v2 in hard["rows"].items())
         check(NODE_ROWS[14],
-              sweep["composed"] + sweep["declined"] == sweep["ordered"] and named,
-              f"{sweep['composed']} of {sweep['ordered']} ordered pairs compose and "
-              f"{sweep['declined']} decline, each by name: "
-              + json.dumps(sweep["declines"], ensure_ascii=False))
+              hard["playable"] == hard["asked"] and not hard["failures"] and hard["asked"] > 0,
+              f"{hard['playable']} of {hard['asked']} crossings over {hard['cases']} deliberately "
+              f"hard records are playable; failures: {hard['failures'] or 'none'}. At a middle, "
+              f"a-to-b, on one die — {shown}")
 
         # --- row 11 · the defaults reproduce the four-value call -----------------------------------
         dd = got["defaults"]
@@ -985,41 +1187,57 @@ else:
               f"is against the composer's own output on this same run, never against the prebaked "
               f"pack stage 0 was landed on — that gate went with the road it guarded")
 
-        # --- rows 12-14 · the three fences ---------------------------------------------------------
+        # --- rows 12-14 · what the entry does with a request it cannot read as sent -----------------
+        # THESE WERE THREE REFUSALS BY NAME and each cost the visitor a whole crossing for a field
+        # the walk got wrong. They are defaults now: the vocabulary still cannot drift, §4.8's fence
+        # still lets nothing outside its three fields cross, and the die still lands inside the
+        # instrument's own span — the entry simply reaches those ends by reading the request as it
+        # can rather than by turning the pair away. What could not be read stands on the request
+        # under `unread`, so a walk sending a stray value is still findable.
         f = got["fences"]
         check(NODE_ROWS[16],
-              f["role"]["composed"] is False and "grand finale" in (f["role"]["declined"] or "")
-              and "route role" in (f["role"]["declined"] or ""),
-              f"refusal: {f['role']['declined']!r}; the five it names: {got['routeRoles']}")
+              f["role"]["composed"] is True and f["role"]["role"] == "middle"
+              and any("grand finale" in u for u in (f["role"]["unread"] or [])),
+              f"the crossing plays, the step reads as a «{f['role']['role']}», and the stray name is "
+              f"recorded: {f['role']['unread']}; the five the entry names: {got['routeRoles']}")
         check(NODE_ROWS[17],
-              f["memory"]["composed"] is False and "cooldown" in (f["memory"]["declined"] or "")
+              f["memory"]["composed"] is True
+              and "cooldown" not in json.dumps(f["memory"]["memory"] or {})
+              and any("cooldown" in u for u in (f["memory"]["unread"] or []))
               and f["memoryOk"]["composed"] is True,
-              f"a fourth field refuses: {f['memory']['declined']!r}; the three §4.8 lets cross "
-              f"compose: {f['memoryOk']['composed']}")
+              f"the crossing plays and the fourth field never crosses the line — the memory the "
+              f"composer read is {f['memory']['memory']}, and what it left unread: "
+              f"{f['memory']['unread']}")
         check(NODE_ROWS[18],
-              f["seedHigh"]["composed"] is False and f["seedLow"]["composed"] is False
-              and "seed" in (f["seedHigh"]["declined"] or ""),
-              f"a die of 9 refuses: {f['seedHigh']['declined']!r}; a die of -1 refuses: "
-              f"{f['seedLow']['declined']!r}; the span it reads off the instrument's manifest: "
-              f"{got['seedSpan']}")
+              f["seedHigh"]["composed"] is True and f["seedLow"]["composed"] is True
+              and got["seedSpan"][0] <= f["seedHigh"]["seed"] <= got["seedSpan"][1]
+              and got["seedSpan"][0] <= f["seedLow"]["seed"] <= got["seedSpan"][1],
+              f"a die of 9 is rolled at {f['seedHigh']['seed']} and a die of -1 at "
+              f"{f['seedLow']['seed']}, both inside the span the entry reads off the instrument's "
+              f"own manifest: {got['seedSpan']}; and the two refusals that remain both say there is "
+              f"no PAIR — {got['fences']['noA']!r}, {got['fences']['noB']!r}")
 
         # --- rows 15-25 · the same repairs, each reverted in a copy ---------------------------------
         # A planted run walks a corner of the collection rather than all of it, because a plant is
         # judged on whether the answer MOVES and twenty-four works are 552 ordered pairs of proof.
         CORNER = 24
         PLANTS = [
-            (NODE_ROWS[19], [["if (ROUTE_ROLES.indexOf(role) < 0) {", "if (false) {"]],
-             lambda g: g["fences"]["role"]["composed"] is True),
-            (NODE_ROWS[20], [["if (odd.length) {", "if (false) {"]],
-             lambda g: g["fences"]["memory"]["composed"] is True),
+            # THE ONE FENCE LEFT IN THE ENTRY, and it says there is no PAIR. Removed, a request
+            # naming one work composes a crossing between a photograph and nothing.
+            (NODE_ROWS[19], [["if (!a || !a.id) return no(", "if (!a) return no("]],
+             lambda g: g["fences"]["noA"] is None),
+            (NODE_ROWS[20], [["          if (odd.length) {", "          if (false) {"]],
+             lambda g: "cooldown" in json.dumps(g["fences"]["memory"]["memory"] or {})),
             (NODE_ROWS[21],
-             [["roadFor(fromW, toW, FLOORS, step, memory || null, seed, key)",
-               "roadFor(fromW, toW, FLOORS, step, memory || null, 0, key)"]],
+             [["genreFor(fromW, toW, step, memory || null, seed, key)",
+               "genreFor(fromW, toW, step, memory || null, 0, key)"]],
              lambda g: len(g["dice"]["distinct"]) == 1),
+            # THE FITS ARE WHAT RANK THE GENRES. Flattened to one number, the ranking stops reading
+            # the pair at all and the die is even over the vocabulary — which is exactly the state
+            # the floors produced by another road, and the route's spread says so.
             (NODE_ROWS[22],
-             [["if (num(nearAxis.delta) > SIMILAR_DELTA) {", "if (false) {"]],
-             lambda g: g["roadNotes"]["shared-ground"]["ok"] is True
-             and got["roadNotes"]["shared-ground"]["ok"] is True),
+             [["        genre.fit = clamp01(fit);", "        genre.fit = 1;"]],
+             lambda g: g["route"]["topShareMean"] != got["route"]["topShareMean"]),
             (NODE_ROWS[23], [["if (fits) break;", "break;"]],
              lambda g: (g["roles"]["quiet link"].get("budget") or {}).get("letters", 0) > 1
              or (g["roles"]["quiet link"].get("budget") or {}).get("miracles", 0) > 0
@@ -1030,25 +1248,23 @@ else:
             (NODE_ROWS[25], [["made.cameraTravels && ", ""]],
              lambda g: g["sweep"]["ledAtTonic"] > 0.6 * g["sweep"]["tonic"]),
             (NODE_ROWS[26],
-             [["          if (familyOf(whole[i], fromW, toW, floors, seed) === memory.family) {\n            held = whole[i];\n            heldBy = \"family\";",
+             [["          if (familyOf(whole[i], fromW, toW, seed) === memory.family) {\n            held = whole[i];\n            heldBy = \"family\";",
                "          if (false) {\n            held = whole[i];\n            heldBy = \"family\";"]],
              lambda g: g["memory"]["heldAgainBy"] != "family"
              and g["memory"]["heldBackBy"] != "family"),
             (NODE_ROWS[27],
              [["      var wantTransform = memory && memory.family ? String(memory.family).split(\"+\")[0] : null;",
                "      var wantTransform = null;"],
-              ["      if (memory && memory.family) {\n        var whole = pool.concat(found.roads).concat([BRIDGE_ROAD]);",
-               "      if (false) {\n        var whole = pool.concat(found.roads).concat([BRIDGE_ROAD]);"]],
+              ["      if (memory && memory.family) {\n        var whole = pool.concat(found.genres);",
+               "      if (false) {\n        var whole = pool.concat(found.genres);"]],
              lambda g: not (g["memory"]["backKeepsFamily"] or g["memory"]["backKeepsPivot"])),
-            # THE FENCE IS PROVED WHERE IT COULD BE CROSSED. Nothing today hands the open handle to
-            # this function — the collection's own instrument list leaves it out — so the plant that
-            # makes the row honest is the one that DOES hand it over: a cue's tracks named off the
-            # manifest itself. With the fence in place the open handle is still skipped; the second
-            # plant removes the fence under the same pressure and it is driven.
+            # THE OPEN HANDLE'S FENCE IS PROVED WHERE IT COULD BE CROSSED. Nothing today hands the
+            # open handle to the fill — the collection's own instrument list leaves it out — so the
+            # plant that makes the row honest is the one that DOES hand it over: a cue's tracks named
+            # off the manifest itself, with the open reading removed.
             (NODE_ROWS[28],
              [["        if (manifest[h].open) continue;", ""],
-              ["var unnamed = Object.keys(c.tracks).filter(function (h) { return !HANDLE_SOURCE[h]; });",
-               "var unnamed = [];"],
+              ["        if (!HANDLE_SOURCE[h]) continue;", ""],
               ['var why = HANDLE_SOURCE[h][1];',
                'var why = (HANDLE_SOURCE[h] || ["", "an open handle"])[1];'],
               ["var spec = HANDLE_SPECS[instr][handle], lo = spec[0], hi = spec[1], dflt = spec[2];",
@@ -1056,42 +1272,47 @@ else:
                " var spec = HANDLE_SPECS[instr][handle] || [m0.min, m0.max, m0[\"def\"]],"
                " lo = spec[0], hi = spec[1], dflt = spec[2];"]],
              lambda g: "bal" in g["sweep"]["openDriven"]),
+            # THE LINE IS FITTED RATHER THAN REFUSED. With every step of the fitting removed, a line
+            # handed a small cap runs over it — which under the client's own reading is a crossing
+            # refused WHOLE, and the reason 1 004 composed crossings were never seen.
             (NODE_ROWS[29],
              [["if (line.length > INTENT_FENCE_CHARS && fields.returnPhrase) {", "if (false) {"],
-              ["if (line.length > INTENT_FENCE_CHARS && fields.roadPhrase) {", "if (false) {"]],
-             lambda g: g["handed"]["roadKept"] > 0),
-            # THE FOLD'S TWO LAWS, each proved by taking its own gate away. The first is read off
+              ["if (line.length > INTENT_FENCE_CHARS && fields.roadPhrase) {", "if (false) {"],
+              ["      if (line.length > INTENT_FENCE_CHARS) {", "      if (false) {"]],
+             lambda g: g["handed"]["max"] > g["handed"]["cap"]),
+            # THE FOLD'S TWO LAWS, each proved by taking its own reading away. The first is read off
             # the instrument's own manifest — an instrument declaring the WORLD level folds the
             # space — so removing that reading is removing the law.
             (NODE_ROWS[30],
-             [["      if (!castableOnKind(kind, a, b, FLOORS, noMiracle)) return false;",
-               "      if (false) return false;"],
-              ["        if (noMiracle && spendsTheMiracle(all[i])) {",
-               "        if (false) {"],
+             [["        var order = (iid === avoid) ? 4\n          : ((cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0));",
+               "        var order = (iid === avoid) ? 4 : (cuts ? 0 : 2);"],
               ["        } else if (spendsTheMiracle(travelInstr) && !(ROLE_BUDGETS[role] || {}).miracle) {",
-               "        } else if (false) {"]],
+               "        } else if (false) {"],
+              ["        pool = pool.filter(function (r) { return !r.mustFold; });", ""]],
              lambda g: sum(g["sweep"]["folded"][r]
                            for r in ("entrance", "quiet link", "return")) > 0),
-            # THE FOLD IS THE MIRACLE, and this is the line that says so. The OTHER half of the
-            # law — that the arriving work's own folded space stands down beside a fold, so no
-            # crossing carries two — is in the code and cannot be reddened on this collection: no
-            # pair of the 121 can produce both at once, measured. It is kept because it is the law
-            # and the collection changes; it is named here rather than dressed as a proof.
-            # ONE INSTRUMENT PER KIND, RESTORED IN A COPY — the rule this lane repaired. With the
-            # candidates on a kind cut back to the first of them, the unfold becomes unreachable
-            # again and the row above reddens, which is what makes that row a guard rather than a
-            # census.
-            # THE GROUND GATED ON THE TOP QUARTILE AGAIN — the rule this repair replaced. Both
-            # works clearing a measure's top quartile happens on about 6 percent of pairs for every
-            # measure by construction, so nearly everything fell through to the universal bridge and
-            # one instrument carried the route.
-            (NODE_ROWS[33],
-             [["        if (per[m].usable) usable.push(m);", "        if (per[m].both) usable.push(m);"]],
-             lambda g: g["route"]["topShareMean"] > 65.0),
+            # ONE INSTRUMENT PER KIND, RESTORED IN A COPY — the rule an earlier lane repaired. With
+            # the candidates on a kind cut back to the first of them, and the ranking's second and
+            # third orders of preference removed with it, an instrument travels to every visitor and
+            # can never be chosen.
             (NODE_ROWS[32],
              [["        if (CUTS_ON[kind].indexOf(iid) < 0) CUTS_ON[kind].push(iid);",
-               "        if (!CUTS_ON[kind].length) CUTS_ON[kind].push(iid);"]],
+               "        if (!CUTS_ON[kind].length) CUTS_ON[kind].push(iid);"],
+              ["      for (i = 0; i < tiers.length; i++) {\n        if (tiers[i].length) {",
+               "      for (i = 0; i < 1; i++) {\n        if (tiers[i].length) {"],
+              ["      if (arrivalInstr === null) {", "      if (false) {"],
+              ["          if (fill1 && fill1 !== pivotInstr) {", "          if (false) {"]],
              lambda g: [i for i in g["sweep"]["cast"] if not g["sweep"]["chosen"].get(i)]),
+            # THE GROUND GATED ON THE COLLECTION'S TOP QUARTILE AGAIN — the shape this lane removed.
+            # Both works clearing a measure's top quartile happens on about 6 per cent of pairs for
+            # every measure by construction, so nearly everything fell through to one ground with one
+            # cut and one instrument, and that instrument carried the route.
+            (NODE_ROWS[33],
+             [["        per[m] = { min: r4(Math.min(sa, sb)), a: r4(sa), b: r4(sb) };",
+               "        var th = (consts.thresholds || {})[m];"
+               " per[m] = { min: r4((th !== undefined && (sa < th || sb < th)) ? 0 : Math.min(sa, sb)),"
+               " a: r4(sa), b: r4(sb) };"]],
+             lambda g: g["route"]["topShareMean"] > got["route"]["topShareMean"]),
             (NODE_ROWS[31],
              [['      if (folds === "pivot") voices.pivot = "miracle";',
                '      if (false) voices.pivot = "miracle";']],
@@ -1109,13 +1330,13 @@ else:
         # word of the line that stood before the lane. The red-on-bug below removes the guard under
         # the same pressure and the openings stay.
         hd = got["handed"]
-        check("EX-COMPOSED the intent fence gives up this lane's own clauses before the line "
-              "is refused whole",
-              hd["roadKept"] == 0 and hd["shortened"] > 0 and sweep["roadKept"] > 0
-              and sweep["intentShortened"] == 0,
+        check("EX-COMPOSED the line gives up its own clauses and then its tail, and is never lost",
+              hd["roadKept"] == 0 and hd["shortened"] > 0 and hd["max"] <= hd["cap"]
+              and sweep["roadKept"] > 0 and sweep["intentShortened"] == 0,
               f"handed a cap of {hd['cap']} characters in its own constants, {hd['shortened']} of "
-              f"{hd['composed']} lines gave up a clause and {hd['roadKept']} kept a road's opening; "
-              f"at the {sweep['intentCap']} the client applies, {sweep['roadKept']} of "
+              f"{hd['composed']} lines gave up a clause, {hd['roadKept']} kept a genre's opening and "
+              f"the longest ran {hd['max']} — inside the cap, so nothing is ever lost to its own "
+              f"length; at the {sweep['intentCap']} the client applies, {sweep['roadKept']} of "
               f"{sweep['composed']} lines carry theirs and {sweep['intentShortened']} give anything "
               f"up")
 

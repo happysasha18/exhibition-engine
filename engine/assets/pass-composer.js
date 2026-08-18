@@ -1702,16 +1702,25 @@
         if (spec[CUE_IDS[i]]) instrumentOf[CUE_IDS[i]] = spec[CUE_IDS[i]];
       }
       var order = CUE_IDS.filter(function (c) { return instrumentOf[c] !== undefined; });
-      var placed = placeTheStack(order, instrumentOf);
-      if (placed[0] === null) {
-        throw new Error("a shape reached the template builder that the placement law refuses: "
-                        + shape + " — " + placed[1]);
+      var placed = placeTheStack(order, instrumentOf), gaveUp = [];
+      // A STACK §7's PLACEMENT LAW WILL NOT TAKE GIVES UP ITS TOPMOST VOICE, and it never throws.
+      // This threw — «a shape reached the template builder that the placement law refuses» — and a
+      // throw on this road takes the whole visit's picture layer down, which is the one failure
+      // worse than a plain slide. `compose` already answers the law before it gets here, so this
+      // fires for a plan built by some other road; it fits the plan rather than dropping it, and a
+      // one-cue stack is exempt by the contract's own sentence, so the loop always ends.
+      while (placed[0] === null && order.length > 1) {
+        gaveUp.push(order[order.length - 1]);
+        delete instrumentOf[order[order.length - 1]];
+        order = order.slice(0, -1);
+        placed = placeTheStack(order, instrumentOf);
       }
+      if (placed[0] === null) placed = [{ pivot: 0 }, null];
       var stacks = placed[0], cues = [];
       for (i = 0; i < CUE_IDS.length; i++) {
         cueId = CUE_IDS[i];
         instr = spec[cueId];
-        if (!instr) continue;
+        if (!instr || gaveUp.indexOf(cueId) >= 0) continue;
         cues.push({
           id: cueId,
           instrument: { api: INSTRUMENTS[instr].api, id: instr },
@@ -1994,9 +2003,9 @@
     // of a solid. Counting named regions here let the road qualify on works the fold's own ground
     // could never be cast from.
     function facesOf(work) {
-      var most = 0, i, s;
-      for (i = 0; i < work.sets.length; i++) {
-        s = work.sets[i];
+      var most = 0, i, s, sets = (work || {}).sets || [];
+      for (i = 0; i < sets.length; i++) {
+        s = sets[i];
         if (s.kind === "panel" && s.realCount > most) most = s.realCount;
       }
       return most;

@@ -1111,20 +1111,25 @@
   // WHAT IT HOLDS ABOUT THE PERSON: nothing. Two work ids, a family token, a pivot, numbers and two
   // stamps. No visitor identity, no remembered place, no counting wire — the same fence §4.5 draws.
   const PASS_EDGE_SRC = "@@NS@@-pass-edges";
-  // THE FOUR NUMBERS NO MEASUREMENT GIVES, taken as the lab builder recorded them and each awaiting
-  // the owner's eye (`lab/data/edgememory/defaults.json`): how long after the last pass a return
-  // still counts as the same visit; how long a family stays cooled on an edge; how far a pass may
-  // travel from the recorded one and stay the same family; and how close two traces must sit before
-  // the backward pass reads as the forward one played in reverse. The four beside them — how many
-  // passes the drift opens over, how many dice one crossing may be offered, how many records the
-  // browser keeps and how many handles a trace carries — are this seat's own working values.
+  // THE NUMBERS OF THE EDGE MEMORY, and what is left of them after 2026-08-18.
+  //
+  // TWO WENT, and they were the pair that turned a reading into a verdict: how close two traces had
+  // to sit before the backward pass READ AS the forward one played in reverse — a mean of 0.02 and
+  // a worst of 0.05, neither measured, neither with a requirement of his behind it. The distance
+  // itself is what the ranking wanted all along, and `passMirrorDistance` hands it over now.
+  //
+  // WHAT REMAINS, and whose each is. `visitWindowSeconds` and `cooldownSeconds` are the lab
+  // builder's own (`lab/data/edgememory/defaults.json`), both awaiting the owner's eye: how long
+  // after the last pass a return still counts as the same visit, and how long a record is kept. They
+  // decide no crossing — the family-cooling READING is «did this family play last here», which needs
+  // no duration — and are named as waiting rather than removed. `driftSpan` and `driftOpensOver`
+  // shape §4.4f's own breath, which is charter shelf 16's; `dice`, `keep` and `traceHandles` are
+  // working values of this seat with nothing artistic resting on them.
   const PASS_EDGE = {
     visitWindowSeconds: 1800,
     cooldownSeconds: 86400,
     driftSpan: 0.25,
     driftOpensOver: 3,
-    reversalMean: 0.02,
-    reversalWorst: 0.05,
     dice: 3,
     keep: 64,
     traceHandles: 48,
@@ -1322,45 +1327,60 @@
     for (let i = 0; i < diffs.length; i++) { sum += diffs[i]; if (diffs[i] > worst) worst = diffs[i]; }
     return { mean: sum / diffs.length, worst: worst };
   }
-  function passWithinReversal(d) {
-    return !!d && d.mean <= PASS_EDGE.reversalMean && d.worst <= PASS_EDGE.reversalWorst;
-  }
-  function passReadsAsReversed(now, before) {
+  // HOW FAR THIS PASS STANDS FROM THE RECORDED ONE PLAYED BACKWARDS — a distance, not a verdict.
+  //
+  // Two numbers stood here, a mean of 0.02 and a worst of 0.05, and they turned this distance into
+  // a yes or a no: under both, the pass «read as a replay» and was refused, which cost the visitor
+  // the whole crossing. Neither number was measured and neither had a requirement of his behind it,
+  // so both are gone (his word of 2026-08-18 09:57). What is left is the distance itself, which is
+  // all the ranking ever needed: of the dice this edge is offered, the one standing FURTHEST from
+  // the recorded pass's mirror is the one that plays.
+  //
+  // A PASS THAT IS ITS OWN MIRROR SAYS NOTHING ABOUT AUTHORSHIP. Where the recorded pass runs the
+  // same forwards and backwards — one cue over the whole passage with every handle standing still —
+  // every pass on that edge matches its mirror, and reading that as a replay would be reading the
+  // shape of the recorded one rather than this one. The reading answers with nothing there.
+  function passMirrorDistance(now, before) {
     const d = passMirrorDiff(now, before);
-    if (!passWithinReversal(d)) return null;
-    // A PASS THAT IS ITS OWN MIRROR SAYS NOTHING ABOUT AUTHORSHIP. Where the recorded pass runs the
-    // same forwards and backwards — one cue over the whole passage with every handle standing still
-    // — every pass on that edge matches its mirror, and refusing on that reading would refuse a
-    // crossing for the shape of the recorded one rather than for being a replay of it. That is a
-    // different complaint from the one §4.8 makes, and it is not made here.
-    if (passWithinReversal(passMirrorDiff(before, before))) return null;
-    return "it reads as the recorded pass played backwards — the cues run in the opposite order "
-           + "on the same instruments and every handle travels its ends the other way about, "
-           + "within " + PASS_EDGE.reversalMean + " mean and " + PASS_EDGE.reversalWorst
-           + " worst of the recorded pass's own range (measured " + d.mean.toFixed(4) + " mean, "
-           + d.worst.toFixed(4) + " worst)";
+    if (!d) return null;
+    const self = passMirrorDiff(before, before);
+    if (self && self.mean <= d.mean) return null;
+    return d.mean;
   }
-  // THE TWO READINGS OF §4.8, both taken HERE, because the record they read against is the walk's
-  // own and the engine never sees it. A pass that carries a return reference is kin to the one
-  // before it — the same family or the same pivot — and it is not that one run backwards.
+  // §4.8'S TWO READINGS OF A PASS, both taken HERE, because the record they read against is the
+  // walk's own and the engine never sees it. A pass that carries a return reference is kin to the
+  // one before it — the same family or the same pivot — and it is not that one run backwards.
   //
   // THEY WERE REFUSALS UNTIL 2026-08-18, and a refusal here cost the visitor the whole crossing:
   // the passage played nothing and the walk's plain glide ran instead. His word of 09:51 strikes
   // that out — any two photographs get a crossing — so both readings now RANK the dice this edge is
-  // offered. A die whose pass reads as a replay is the worst of the three and the other two are
-  // preferred; where every die reads that way, the least-alike still plays and the reason stands on
-  // the diagnostic surface. Nothing about the law is loosened: a replay is still named a replay, and
-  // it is still the last thing this walk will show.
+  // offered. Kinship is a plain fact and needs no number: a roll that shares neither the family nor
+  // the pivot ranks below one that shares either. The mirror is a DISTANCE: of the rolls left, the
+  // one standing furthest from the recorded pass's mirror plays. Nothing is refused, and nothing
+  // about the law is loosened — a replay is still the last thing this walk will show.
+  //
+  // What comes back is {kin, distance, why}: `kin` says whether §4.8's first reading holds, and
+  // `distance` is how far this roll stands from the recorded pass's mirror, with nothing where the
+  // reading does not apply.
   function passEdgeJudge(passage, before) {
-    if (!before || !passage || !passage.plan || !passage.score) return null;
-    const fam = passFamilyOf(passage.plan), piv = passPivotOf(passage.plan);
-    if (fam !== before.family && !passPivotSame(piv, before.pivot)) {
-      return "it shares neither the family «" + String(before.family) + "» nor the pivot of the "
-             + "pass recorded on this edge: the way back is kin to the way out, never absolutely "
-             + "alien";
+    if (!before || !passage || !passage.plan || !passage.score) {
+      return { kin: true, distance: null, why: null };
     }
-    return passReadsAsReversed(passTraceOf(passage.score), before.provenance
-                               ? before.provenance.trace : null);
+    const fam = passFamilyOf(passage.plan), piv = passPivotOf(passage.plan);
+    const kin = fam === before.family || passPivotSame(piv, before.pivot);
+    const distance = passMirrorDistance(passTraceOf(passage.score),
+                                        before.provenance ? before.provenance.trace : null);
+    let why = null;
+    if (!kin) {
+      why = "it shares neither the family «" + String(before.family) + "» nor the pivot of the "
+          + "pass recorded on this edge: the way back is kin to the way out, never absolutely "
+          + "alien";
+    } else if (distance !== null) {
+      why = "it stands " + distance.toFixed(4) + " of the recorded pass's own range from that "
+          + "pass played backwards — the cues run in the opposite order on the same instruments "
+          + "and every handle travels its ends the other way about";
+    }
+    return { kin: kin, distance: distance, why: why };
   }
 
   // THE DOOR BREATHES ON A REPEATED EDGE (charter shelf 16, §4.4f). A second pass over one edge
@@ -1650,7 +1670,7 @@
     // asked for — with what was read about it recorded. Before 2026-08-18 a run of three refused
     // rolls ended in the walk's plain glide, which is the visitor paying for a reading about
     // repetition with the whole crossing.
-    let best = null, bestWhy = null, bestDrift = null, bestCooled = null;
+    let best = null, bestScore = -1, bestWhy = null, bestDrift = null, bestCooled = null;
     for (let i = 0; i < PASS_EDGE.dice; i++) {
       if (i) request.seed = passSeedFor(edge.key, i);
       let got = null;
@@ -1666,19 +1686,23 @@
       // play: reading the composer's own numbers and then playing others would leave §4.8's two
       // readings measuring a pass no one ever sees.
       drifted = edge.passes > 0 ? passDriftScore(got.score, edge.key, edge.passes) : null;
-      refused = passEdgeJudge(got, edge.within ? edge.last : null);
-      cooledStood = (!refused && edge.cooled && fam === edge.cooled)
+      const read = passEdgeJudge(got, edge.within ? edge.last : null);
+      refused = read.why;
+      cooledStood = (edge.cooled && fam === edge.cooled)
         ? "the family «" + fam + "» played last on this edge and is still cooling" : null;
       rolls.push({ seed: request.seed, family: fam, why: refused || cooledStood });
-      // THE FIRST ROLL IS KEPT AS THE ONE THAT PLAYS unless a later one reads cleaner. The walk's
-      // own die asked for it, so it is what plays where every roll reads the same.
-      if (best === null) { best = got; bestWhy = refused || cooledStood; bestDrift = drifted;
-                           bestCooled = cooledStood; }
-      if (!refused && !cooledStood) {
-        best = got; bestWhy = null; bestDrift = drifted; bestCooled = null;
-        break;
+      // THE ROLL IS SCORED RATHER THAN JUDGED, on three readings and no thresholds: kinship, whether
+      // the family is the one still cooling on this edge, and how far the pass stands from the
+      // recorded one's mirror. The best-scoring roll plays, and one always does.
+      const score = (read.kin ? 2 : 0) + (cooledStood ? 0 : 1)
+                  + (read.distance === null ? 1 : Math.min(1, read.distance * 10));
+      if (best === null || score > bestScore) {
+        best = got; bestScore = score; bestWhy = refused; bestDrift = drifted;
+        bestCooled = cooledStood;
       }
-      // A die that read as a replay is said at once, and not only where the last one does too: a
+      // A roll that reads clean on all three is as good as a roll gets, so the walk stops asking.
+      if (read.kin && !cooledStood && read.distance === null) break;
+      // A roll that read as a replay is said at once, and not only where the last one does too: a
       // pass that was passed over because it read that way is exactly what a person looking at the
       // surface is trying to find.
       passNote(passRefusals, { what: "memory", name: got.key,
