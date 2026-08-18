@@ -284,6 +284,65 @@
     var SLOT_AT_MIN = 0.02, SLOT_AT_MAX = 0.98;
     var SEATED_MIN = 0.06, SEATED_MAX = 0.94;
 
+    // ================================================================================================
+    // THE PINNED NUMBERS, SWEPT — his 15:13 word on static parameters, and his 19:13 and 19:21 words
+    // making the derivation the law: a number a work record could have set is a parameter and belongs
+    // on a handle; a number no measurement can reach stays pinned and is NAMED rather than left to
+    // look like a decision nobody made. This is that sweep, written down so it is not redone.
+    //
+    // WHAT WAS CONVERTED: nothing, and the reason is that this port's central decision converted it
+    // all already. Exactly three numbers of this instrument are things a record could honestly
+    // speak about — WHERE the departing work's slot stands, HOW WIDE it is, and WHICH AXIS it runs
+    // on — and all three are published handles (`slotPlace`, `slotHalf`, `slotAxis`), resting at the
+    // module's own naive reading. There is no fourth, and the rest of this note says why for each.
+    //
+    // WHAT IS A RANGE RATHER THAN A PINNED NUMBER, so it is not on the list at all:
+    //   · `MOTIF_BAND` reaches the picture at ONE place — `slotHalf`'s published default. A default
+    //     is what stands where nothing was measured, which is its whole job; a record cannot set it
+    //     because the case it answers is the record saying nothing.
+    //   · `SLOT_AT_MIN`/`SLOT_AT_MAX` are the declared min and max of `slotPlace`, and `SLOT_MIN`/
+    //     `SLOT_MAX` the declared min and max of `slotHalf`. A published range is what a record sets
+    //     a value INSIDE of.
+    //
+    // WHAT IS PINNED, WHAT IT DOES, AND WHY NO MEASUREMENT REACHES IT:
+    //   · SEATED_MIN / SEATED_MAX (0.06, 0.94) — a SECOND clamp, on the slot's place AFTER the host's
+    //     fit has carried it from the file into the frame. It is the one pinned number here most able
+    //     to move a picture the record asked for: the fit magnifies distance from the middle, so a
+    //     slot standing well off centre in the file can seat outside the frame, and this is what keeps
+    //     a leaf from having no width at all. No reading says how near an edge a slot may stand.
+    //   · SLOT_MAX (0.30) — the same shape, on the WIDTH after the fit. A wide slot seated at a tight
+    //     fit is capped here, and the teeth then begin to bite earlier than the work's own gate says.
+    //     CONSIDERED AND REJECTED: driving it from the departing work's `voidShare`. Void share is how
+    //     much of the WHOLE FRAME is open ground; a slot width is the extent of ONE BAND of it, and
+    //     the module's own header is explicit that the two readings come apart — the collection's gate
+    //     measure divided by the denser flank «and 24 works that carry no gate at all did exactly
+    //     that» (gates.js:32-39), which is the confusion the `facing` term was added to fix. Using
+    //     void share here would re-make it.
+    //   · SLOT_MIN (0.02) as that same second clamp CANNOT BIND, and is carried anyway. The seating
+    //     scale is a cover fit divided by ZOOM, so it is always below 1 and the fit can only WIDEN a
+    //     seated slot; the handle's own floor is already 0.02. It is kept because it is the module's
+    //     own line (gates.js:519) and diverging from the module to delete a line that decides nothing
+    //     buys nothing — but it decides nothing, and that is said here rather than left to be found.
+    //   · PRESS_MAX (0.12) and DRIFT_MAX (0.03) — the full scale of the squeeze and of the drift, in
+    //     frame units, and what ZOOM is derived from, so neither can move without moving the crop both
+    //     doors are framed by. `press` is the published handle over the first. No reading in a work
+    //     record is a displacement in frame units.
+    //   · The 0.02 in `reach` — how far past the frame's edge a leaf must travel to clear it. The exit
+    //     door's exactness rests on it being above zero (see the door reading below). No measurement.
+    //   · `smoothstep(1, 0.85, d)` on the bite, and 1.8 on the swing — where the teeth close as the
+    //     dial ends, and the swing handle's full scale in warp units. Both are shapes in DIAL space,
+    //     which is the passage's own axis and not either photograph's.
+    //   · The 9 in the drift's `sin(TAU · t / 9)` — the only temporal number in this file, the drift's
+    //     period in seconds. The whole `measuredParts` vocabulary is spatial — pixels, shares, counts,
+    //     angles — and carries no period in seconds for anything to read.
+    //   · In the shader, carried character for character: 0.34 the contact shadow's depth (the `shade`
+    //     handle is published over it), 14.0 its reach in points, and the 0.4 of «six parts the
+    //     tooth's own place along the slot, four parts the score's die». That last is the fleet's own
+    //     shared law carried from weave (gates.js:71-76) rather than a per-pair number, and it lives
+    //     in the shader, so publishing it would both add a uniform and end the character-for-character
+    //     carry that this port's own row proves.
+    // ================================================================================================
+
     // THE RESPONSE CURVE, MEASURED AND NOT NAMED, carried over digit for digit (gates.js:543-546).
     // How far the picture moves per unit of the raw handle was measured with the curve taken out of
     // the module, that rate integrated, and this is the inverse of the integral at twenty-one evenly
@@ -557,6 +616,26 @@
       //     seats it through the fit the host applied, exactly as the module seats its own.
       //   · `slotHalf` — half the slot's own width, on the same share of the file. It decides how
       //     long the two leaves part along a straight edge before the jamb breaks into teeth.
+      //
+      // THE COLUMN A RECORD WOULD HAVE TO PUBLISH FOR THESE THREE TO BE DRIVEN, named exactly and
+      // NOT filled in here. A work record today carries `motifs.gateGap` — how PLAINLY the gate reads
+      // — and beside it, in the lab's own table, `motifs.measures.gate_centre_busy` and
+      // `motifs.measures.gate_flank_busy`. Every one of those is a STRENGTH. Not one of them says
+      // where the slot stands or how wide it is, because the collection's own measure pins the band
+      // at 0.42 to 0.58 of the frame for every work and never lets it move. So three fields are
+      // missing, and these are their paths:
+      //     motifs.gateAxis    — which axis the slot stands on   (lab: motifs.measures.gate_axis)
+      //     motifs.gatePlace   — where it stands along that axis, as a share of the FILE's own side
+      //                                                          (lab: motifs.measures.gate_place)
+      //     motifs.gateHalf    — half its own width, on that same share
+      //                                                          (lab: motifs.measures.gate_half)
+      // and `measuredParts()` would carry them through as `gateAxis`, `gatePlace` and `gateHalf`,
+      // which is the vocabulary the fill's own table speaks.
+      //
+      // THE MEASUREMENT ITSELF IS NOT INVENTED HERE, and it does not need to be: the lab module
+      // ALREADY SOLVES all three. `slotOn` returns a `place` and a `half` per axis and `gateOf`
+      // picks the better axis (gates.js:376-409). What is missing is only that nothing writes that
+      // reading into a work record, so the engine has never been able to see it.
       //
       // THE TWO THAT TAKE A NUMBER OTHER THAN THE ONE THEY ARE HANDED, published beside their ranges
       // by the same rule the meshing instrument's ladder is published by.

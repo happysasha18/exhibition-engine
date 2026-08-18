@@ -87,7 +87,7 @@ WITHIN_MS = 500
 
 DEFAULTS = {"jamb": 0.55, "teeth": 9, "swing": 0.35, "press": 0.65, "lead": 0.5,
             "slotAxis": 1, "slotPlace": 0.5, "slotHalf": 0.08,
-            "shade": 1, "travel": 1, "seed": DIE}
+            "shade": 1, "travel": 1, "mask": 0, "seed": DIE}
 
 
 def gates_score(**statics):
@@ -179,13 +179,14 @@ check("PASS-GATES the instrument creates no context, no canvas, no loop, no list
       if not held else "the instrument's region holds " + ", ".join(held))
 
 HANDLES = ["mix", "clock", "dial", "jamb", "teeth", "swing", "press", "lead",
-           "slotAxis", "slotPlace", "slotHalf", "seed", "shade", "travel"]
+           "slotAxis", "slotPlace", "slotHalf", "seed", "shade", "travel", "mask"]
 absent = [h for h in HANDLES if ("%s: {" % h) not in REGION]
 check("PASS-GATES every handle the instrument publishes is a handle a score can drive",
       not absent,
-      "§4.4b: fourteen handles — the module's five declared params, its one travelling number, the "
+      "§4.4b: fifteen handles — the module's five declared params, its one travelling number, the "
       "second the host hands down, its die, two of its three judge channels, the open dial its third "
-      "judge channel became, and the three that carry the departing work's own measured gate"
+      "judge channel became, the three that carry the departing work's own measured gate, and the "
+      "fleet's own `mask`, which is the one handle here the module has no counterpart for"
       if not absent else "these are published nowhere: " + ", ".join(absent))
 
 check("PASS-GATES the arriving work's drift reads the handed-down second and no clock of its own",
@@ -235,18 +236,29 @@ def frag_lines(txt):
     return out
 
 
+# THE TWO LINES THE FLEET'S JUDGES' CHANNEL ADDS, and the only two in the shader that are not the
+# lab module's. The row below takes them out and holds the remainder against the module character for
+# character, so a third added line — or one of the module's own quietly rewritten — reddens it.
+FLEET_MASK = ["uniform float uMask;",
+              "  col = mix(col, vec3(covL, covR, 0.0), uMask);"]
 lab_frag = frag_lines(LABTXT)
 port_frag = frag_lines(SOURCE_TEXT)
-frag_same = bool(lab_frag) and lab_frag == port_frag
-check("PASS-GATES the shader is the lab module's own, line for line and character for character",
+port_own = [line for line in port_frag if line not in FLEET_MASK]
+frag_same = (bool(lab_frag) and lab_frag == port_own
+             and all(a in port_frag for a in FLEET_MASK)
+             and len(port_frag) == len(lab_frag) + 2)
+check("PASS-GATES the shader is the lab module's own, character for character, but for the two lines "
+      "the fleet's judges' channel adds",
       frag_same,
-      f"{len(port_frag)} lines, none of them rewritten. Every other port in this farm had to redo one "
-      f"line — the frame's aspect, which a lab module computes from its own drawing buffer and an "
+      f"{len(port_own)} of the module's own lines, none of them rewritten, and exactly two added: "
+      f"«{FLEET_MASK[0]}» and «{FLEET_MASK[1]}». Every other port in this farm had to redo one line "
+      f"besides — the frame's aspect, which a lab module computes from its own drawing buffer and an "
       f"instrument has to derive from the size the host binds. This shader never reads an aspect: it "
-      f"works in the frame's own uv from end to end, so not one character of it moved"
+      f"works in the frame's own uv from end to end, so not one character of the module's own moved"
       if frag_same else
-      f"lab {len(lab_frag)} lines, port {len(port_frag)}; first difference at "
-      f"{next((i for i, (a, b) in enumerate(zip(lab_frag, port_frag)) if a != b), 'the length')}")
+      f"lab {len(lab_frag)} lines, port {len(port_frag)} of which {len(port_own)} are not the fleet's "
+      f"two; first difference at "
+      f"{next((i for i, (a, b) in enumerate(zip(lab_frag, port_own)) if a != b), 'the length')}")
 
 
 def numbers(text, pattern):
@@ -313,13 +325,13 @@ check("PASS-GATES the three slot handles publish where their measurement is seat
 check("PASS-GATES the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "gl.uniform1f(U.uSlot" not in LAYER
       and "gl.uniform2f(U.uOpen" not in LAYER,
-      "the host reads the manifest; not one of this instrument's fifteen uniform names is written "
+      "the host reads the manifest; not one of this instrument's sixteen uniform names is written "
       "into it")
 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-GATES the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 15,
+      declared == spelled and len(declared) == 16,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -357,6 +369,8 @@ BROWSER_ROWS = [
     "PASS-GATES §4.4b  · the departing work's own measured gate reaches the PICTURE",
     "PASS-GATES the doors are read on the DRAWING BUFFER, and both stand whole on every grid asked",
     "PASS-GATES row 16 · the captures are kept as evidence",
+    "PASS-GATES §4.4b  · the fleet's judges' channel draws this instrument's own cut, and rests at nothing",
+    "PASS-GATES the pinned numbers of the sweep are live, and bind at the numbers they are named at",
 ]
 
 RED_ROWS = [
@@ -408,6 +422,13 @@ def work_in_the_frame(src, w, h, zoom):
     sh /= zoom
     x0, y0 = (iw - sw) / 2.0, (ih - sh) / 2.0
     return im.resize((w, h), Image.BILINEAR, box=(x0, y0, x0 + sw, y0 + sh))
+
+
+def channels(p):
+    """Each channel's lowest and highest value over a capture — how a frame that is a CUT MAP is told
+    from a frame that is the photographs."""
+    from PIL import Image, ImageStat
+    return ImageStat.Stat(Image.open(p).convert("RGB")).extrema
 
 
 def apart(p, work):
@@ -515,7 +536,7 @@ else:
                     m["id"] == "gates" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and sorted(m["params"]) == ["jamb", "lead", "press", "swing", "teeth"]
-                    and len(m["handles"]) == 14
+                    and len(m["handles"]) == 15
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["handles"]["dial"].get("open") is True
                     and m["neutrals"] == {"a": 0, "b": 1}
@@ -528,7 +549,7 @@ else:
                     and m["cuts"] == ["panel"]
                     and m["coverage"]["writes"] is False
                     and sorted(m["suits"]["reads"]) == ["motifs.gateGap", "motifs.measured"]
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 15
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 16
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -539,7 +560,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "gates" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"fourteen handles of which one is open, fifteen uniforms in one pass, the crop "
+                      f"fifteen handles of which one is open, sixteen uniforms in one pass, the crop "
                       f"{zoom} the squeeze and the drift are paid for with, a cut on {m['cuts']}, an "
                       f"alpha that is the constant 1 (coverage.writes={m['coverage']['writes']}, so a "
                       f"cue of this instrument may stand at the bottom of a stack), and a `suits` "
@@ -831,6 +852,30 @@ else:
                         "two leaves part along a straight edge before the jamb breaks into teeth, and "
                         "its axis turns a gate that opens sideways into one that parts up and down")
 
+                # ---- THE FLEET'S JUDGES' CHANNEL -------------------------------------------------
+                # Two things are asked of it, and the first matters more than the second. It has to
+                # REST AT NOTHING: a score that never names the channel must draw the module's own
+                # frame to the bit, because this is the one handle the lab module has no counterpart
+                # for and every two-road comparison above would be worthless if it moved the picture
+                # on its own. And standing, it has to draw THE CUT — the two leaves and the opening
+                # between them — rather than a tinted photograph, which is what the blue channel
+                # answers: the cut map writes none at all, and the photographs cannot help it.
+                off_shot = drew("mask-off", {"mask": 0})
+                on_shot = drew("mask-on", {"mask": 1})
+                rests = diff(base_shot, off_shot)
+                moved_mask = diff(base_shot, on_shot)
+                ch = channels(on_shot)
+                check(BROWSER_ROWS[23],
+                      rests == (0.0, 0) and moved_mask[1] > SEAM
+                      and ch[2][1] == 0 and ch[0][1] == 255 and ch[1][1] == 255,
+                      f"resting at nothing it moves the frame by {rests[0]} at {rests[1]}, so the "
+                      f"module's own picture is drawn to the bit. Standing, it moves the frame by "
+                      f"{moved_mask[0]:.4f} of 255 on the mean and {moved_mask[1]} at its strongest "
+                      f"point, and the frame it draws runs red to {ch[0][1]} where the leaf opening "
+                      f"toward the low end of the gate's axis stands, green to {ch[1][1]} where the "
+                      f"other one stands, and blue to {ch[2][1]} — no blue anywhere, which is what "
+                      f"says this frame is the cut and not the photographs")
+
                 # ---- THE DOORS, READ ON THE DRAWING BUFFER ---------------------------------------
                 # The rows above read the doors as PICTURES on the frame the suite runs at. This row
                 # reads the instrument's own reading of them, on the grid the shader samples on and on
@@ -865,12 +910,51 @@ else:
                         f"the buffer can show rather than an estimate of it, so no threshold of this "
                         f"instrument's own choosing stands anywhere in the reading")
 
+                # ---- THE PINNED NUMBERS OF THE SWEEP, MEASURED -----------------------------------
+                # His 15:13 word on static parameters and his 19:13/19:21 words making the derivation
+                # the law: a number a record could set belongs on a handle, and a number no
+                # measurement reaches stays pinned and is NAMED. The instrument carries that sweep as
+                # a block; this row is what keeps the block from becoming prose. It drives the two
+                # clamps the sweep calls its live ones and reads back that each binds at exactly the
+                # number it is named at — so either number moving in the file reddens this.
+                #
+                # The two are SECOND clamps, applied after the host's fit has carried the slot from
+                # the file into the frame. The bench pair seats the departing work at about 0.36 along
+                # the gate's axis, so the fit magnifies distance from the middle: a slot at 0.30 of the
+                # FILE wants to stand at −0.05 of the frame and a slot at 0.70 wants 1.05, both outside
+                # it, and a width of 0.30 of the file wants 0.82 of the frame.
+                def slot_of(over):
+                    return js(br, "return window.__values(%s);" % json.dumps(over))
+
+                low = slot_of({"slotPlace": 0.30})
+                high = slot_of({"slotPlace": 0.70})
+                wide = slot_of({"slotHalf": 0.30})
+                thin = slot_of({"slotHalf": 0.02})
+                k = low["seating"]
+                floor_dead = abs(thin["half"] - 0.02 / k) < 1e-9 and thin["half"] > 0.02
+                check(BROWSER_ROWS[24],
+                      low["slot"] == 0.06 and high["slot"] == 0.94 and wide["half"] == 0.30
+                      and floor_dead,
+                      f"seated at {k:.4f} along the gate's axis: a slot at 0.30 of the file wants "
+                      f"{(0.30 - 0.5) / k + 0.5:.4f} of the frame and is held at {low['slot']}; one at "
+                      f"0.70 wants {(0.70 - 0.5) / k + 0.5:.4f} and is held at {high['slot']}; a width "
+                      f"of 0.30 of the file wants {0.30 / k:.4f} and is held at {wide['half']}. AND THE "
+                      f"THIRD CLAMP CANNOT BIND, which the sweep says out loud rather than leaving to "
+                      f"be found: the seating scale is a cover fit divided by ZOOM, so it is always "
+                      f"below 1 and can only WIDEN a seated slot — the thinnest width the handle "
+                      f"allows, 0.02, seats to {thin['half']:.4f} and never meets its own floor. It is "
+                      f"kept because it is the lab module's own line (gates.js:519) and it decides "
+                      f"nothing"
+                      + (f"; a record could set none of the three — no reading says how near an edge a "
+                         f"slot may stand or how wide it may be, and driving the width from voidShare "
+                         f"would re-make the confusion the module's own `facing` term was added to fix"))
+
                 kept = sorted(p.name for p in SHOTS.glob("*.png"))
                 check(BROWSER_ROWS[22],
                       len(kept) >= 20 and all((SHOTS / k).stat().st_size > 1000 for k in kept),
                       f"{len(kept)} captures under {SHOTS.relative_to(ROOT)}: the five poses on both "
                       f"roads, the seven sampled instants, the frame after a resize, the two seeded "
-                      f"runs and the nine handle runs")
+                      f"runs and the twelve handle runs")
 
     shutil.rmtree(BENCH, ignore_errors=True)
 
