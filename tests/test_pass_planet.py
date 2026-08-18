@@ -327,16 +327,21 @@ check("PASS-PLANET every constant the picture stands on carries the module's own
       "; ".join("%s — %s" % (p, why) for _, p, why in CONSTANTS) if not missing_const
       else "these differ between the lab module and the port: " + ", ".join(missing_const))
 
-check("PASS-PLANET the port's own numbers are named as its own, and there are three",
+# THE THIRD NUMBER IS GONE. `WORLD_FLOOR = 0.20` was how strongly a work had to read as a world
+# before the crossing was «worth playing on it», and its own comment named where it came from: the
+# collection's radial floor, borrowed because the polar readings publish none. Those ten floors
+# were struck from the composer the same morning under his word of 2026-08-18 09:51, so the
+# borrowed number had nothing left to be borrowed from — and a number nobody measured goes (08:47).
+# The row holds it OUT of the file and holds the two that remain in.
+check("PASS-PLANET the port's own numbers are named as its own, and there are two",
       "var POLE_FROM = 0.25, POLE_TO = 0.75;" in REGION
       and "var CUT_ROOM = 0.02;" in REGION
-      and "var WORLD_FLOOR = 0.20;" in REGION
-      and "POLE_FROM" not in LABTXT and "CUT_ROOM" not in LABTXT and "WORLD_FLOOR" not in LABTXT,
-      "the module curls ONE photograph and has no crossing to shape, so three numbers are this "
+      and "var WORLD_FLOOR = 0.20;" not in REGION
+      and "POLE_FROM" not in LABTXT and "CUT_ROOM" not in LABTXT,
+      "the module curls ONE photograph and has no crossing to shape, so two numbers are this "
       "port's: where the arriving work rises — the middle half of the pass, which is the walk's own "
-      "three phases, whose default in the client's register is [0.25, 0.5, 0.25]; how far past the "
-      "picture's own rows the cut travels, so no row is left half blended at a door; and how "
-      "strongly a work must read as a world before this crossing is worth playing on it")
+      "three phases, whose default in the client's register is [0.25, 0.5, 0.25]; and how far past "
+      "the picture's own rows the cut travels, so no row is left half blended at a door")
 
 # THE ONE DERIVATION THIS PORT MAKES, CHECKED AS ARITHMETIC. The module chose a crop and a gamma per
 # photograph by hand and said why: how much of the frame the building fills. The instrument reads
@@ -439,14 +444,18 @@ check("PASS-PLANET every geometric handle publishes the measurement of the photo
       "crop reads the share of the frame its figure holds, which is the reading the module's own "
       "table of three photographs stands on")
 
-check("PASS-PLANET the instrument measures no work for itself, and answers for the pair it is handed",
-      "asks: asks," in SOURCE_TEXT and "asks: { reads:" in SOURCE_TEXT
+check("PASS-PLANET the instrument measures no work for itself, and READS the pair it is handed",
+      "suits: suitsPair," in SOURCE_TEXT and "suits: { reads:" in SOURCE_TEXT
+      # the struck floor is NAMED in a comment where it stood, which is how a strike is recorded;
+      # what the row holds out is the constant itself and the branch that read it
+      and "asks: asks," not in SOURCE_TEXT and "var WORLD_FLOOR" not in SOURCE_TEXT
+      and "p.best < WORLD_FLOOR" not in SOURCE_TEXT
       and "getImageData" not in REGION and "drawImage" not in REGION,
       "his word of 2026-08-18 09:01 — «просто пара приходит и ты смотришь какими инструментами ее "
-      "вести». The instrument names the fields it reads and answers, for two work records, whether "
-      "this crossing is worth playing on it and why in the works' own numbers. It reads no picture: "
-      "measuring means drawing a work into a surface of its own and counting, and §1.2's fence "
-      "leaves every surface to the host")
+      "вести» — and his 09:53: a measurement ranks and never admits. The instrument names the "
+      "fields it reads and answers, for two work records, a fit between nothing and whole with the "
+      "reason in the works' own numbers. It reads no picture: measuring means drawing a work into a "
+      "surface of its own and counting, and §1.2's fence leaves every surface to the host")
 
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
@@ -474,7 +483,7 @@ check("PASS-PLANET the two readings of this module's level are both recorded, an
 NODE_ROWS = [
     "PASS-PLANET node   · both doors are exact by construction, on five grids",
     "PASS-PLANET node   · a door with the judges' channel open is refused, in the instrument's own numbers",
-    "PASS-PLANET node   · a pair that reads as a world is taken, and one that does not is declined by name",
+    "PASS-PLANET node   · every pair is read and ranked, and no pair is turned away",
 ]
 
 DRIVER = r"""
@@ -516,12 +525,12 @@ const world = {
   noHorizon: {structure: {polar: {planet: 0.8100, tunnel: 0.2000, twirl: 0.1000}}},
 };
 const asked = {
-  bothWorlds: I.asks(world.radial, world.radial),
-  oneWorld: I.asks(world.banded, world.radial),
-  neither: I.asks(world.banded, world.banded),
-  spiral: I.asks(world.spiral, world.spiral),
-  noHorizon: I.asks(world.noHorizon, world.noHorizon),
-  declared: I.manifest.asks,
+  bothWorlds: I.suits(world.radial, world.radial),
+  oneWorld: I.suits(world.banded, world.radial),
+  neither: I.suits(world.banded, world.banded),
+  spiral: I.suits(world.spiral, world.spiral),
+  noHorizon: I.suits(world.noHorizon, world.noHorizon),
+  declared: I.manifest.suits,
 };
 console.log(JSON.stringify({doors: doors, away: {map: away.cutMap, grid: away.doorGrid},
                             open: open.doorWhyNo, openOut: openOut.doorWhyNo, asked: asked,
@@ -577,19 +586,27 @@ else:
               f"measured on: «{got['open']}»")
 
         a = got["asked"]
+        # NOTHING IS DECLINED AND EVERYTHING IS RANKED (his 2026-08-18 09:51 and 09:53). Every one
+        # of the three clauses the ask used to refuse on is still read, and each now only moves the
+        # pair DOWN the ranking: a pair of bands, a pair reading as a log-spiral and a pair with no
+        # measured horizon all read lower than a pair that is a world, and all four are playable.
+        fits = {k: a[k][0] for k in ("bothWorlds", "oneWorld", "neither", "spiral", "noHorizon")}
         check(NODE_ROWS[2],
-              a["bothWorlds"][0] is True and a["oneWorld"][0] is True
-              and a["neither"][0] is False and a["spiral"][0] is False
-              and a["noHorizon"][0] is False
-              and a["declared"]["floor"] == 0.2
+              all(isinstance(v, (int, float)) and 0 <= v <= 1 for v in fits.values())
+              and fits["bothWorlds"] > fits["neither"]
+              and fits["bothWorlds"] > fits["spiral"]
+              and fits["bothWorlds"] > fits["noHorizon"]
+              and a["oneWorld"][0] == a["bothWorlds"][0]
+              and "floor" not in a["declared"]
               and "structure.polar.planet" in a["declared"]["reads"],
-              f"a pair whose departing work reads a sphere at 0.6733 with a measured horizon is "
-              f"taken — «{a['bothWorlds'][1]}». A pair where only the ARRIVING work reads that way "
-              f"is taken too, because a ground is the pair's — «{a['oneWorld'][1]}». A pair of works "
-              f"that read as bands and not as worlds is declined — «{a['neither'][1]}». So is a pair "
-              f"reading as a log-spiral, which is another instrument's world — «{a['spiral'][1]}» — "
-              f"and so is one with no measured horizon, which has no ground and sky to become a "
-              f"world — «{a['noHorizon'][1]}»")
+              f"every pair reads a fit between nothing and whole and not one is turned away: a pair "
+              f"whose work reads a sphere with a measured horizon reads {fits['bothWorlds']:.4f} — "
+              f"«{a['bothWorlds'][1]}». A pair where only the ARRIVING work reads that way reads the "
+              f"same {fits['oneWorld']:.4f}, because a ground is the pair's and the reading carries "
+              f"no direction. A pair of works reading as bands reads {fits['neither']:.4f}; a pair "
+              f"reading as a log-spiral, which is another instrument's world, reads "
+              f"{fits['spiral']:.4f}; a pair with no measured horizon reads {fits['noHorizon']:.4f} "
+              f"— every one of them lower, every one of them still playable")
 
 # ---------------------------------------------------------------- browser rows
 
@@ -883,7 +900,7 @@ else:
                 need = ["id", "api", "arity", "roles", "params", "handles", "neutrals", "doors",
                         "framings", "drivers", "camera", "gl", "passes", "resources",
                         "capabilities", "decline", "provenance", "readiness", "coverage", "levels",
-                        "asks"]
+                        "suits"]
                 shape = (
                     all(k in m for k in need)
                     and m["id"] == "planet" and m["api"] == 1 and m["arity"] == 2
@@ -906,7 +923,7 @@ else:
                             for v in res)
                     and m["capabilities"] == ["webgl2"] and m["decline"]
                     and m["coverage"]["writes"] is False and m["coverage"]["how"]
-                    and m["asks"]["floor"] == 0.2 and m["asks"]["says"]
+                    and "floor" not in m["suits"] and m["suits"]["how"]
                     and m["provenance"]["labPath"] == "lab/effects/planet.js"
                     and m["provenance"]["commit"] == "4952bfe"
                     and m["readiness"] == "production-ready"
@@ -917,8 +934,8 @@ else:
                       f"exactly that, «the flat end is the plain cover-fit of the same texture "
                       f"unit, so both doors frame the picture alike» — levels {m['levels']}, "
                       f"resources declared for three tiers, a coverage block reading "
-                      f"«{m['coverage']['how'][:90]}…» and an `asks` block naming "
-                      f"{m['asks']['reads']}")
+                      f"«{m['coverage']['how'][:90]}…» and a `suits` block naming "
+                      f"{m['suits']['reads']} and carrying no floor")
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas[aria-hidden]').width)"))

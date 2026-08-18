@@ -401,14 +401,20 @@
        of the buffer ever spans. */
     var CUT_ROOM = 0.02;
 
-    /* HOW STRONGLY A WORK MUST READ AS ONE OF THE TWO WORLDS THIS INSTRUMENT CAN DRAW before the
-       crossing is worth playing on it. The record measures four polar readings for every work —
-       planet, tunnel, twirl and radial_streak (structure.polar) — and this instrument draws the
-       first two: a sphere, and the same sphere turned inside out into a corridor. The floor is the
-       collection's own radial floor, the bar the composer already applies to a radial reading
-       before it counts as a cut at all; the polar readings carry no published floor of their own,
-       which is a line in the report rather than a number invented here. */
-    var WORLD_FLOOR = 0.20;
+    /* THE FLOOR THAT STOOD HERE IS GONE (2026-08-18, at the merge). `WORLD_FLOOR = 0.20` was how
+       strongly a work had to read as one of the two worlds this instrument draws before the
+       crossing was «worth playing on it», and its own comment said where it came from: the
+       collection's radial floor, borrowed because the polar readings carry no published floor of
+       their own. The collection's ten floors were struck from the composer the same morning under
+       his word of 09:51 — a quartile of some collection says how a reading stands among other
+       photographs when what is asked is how these two stand to each other — so the borrowed number
+       has nothing left to be borrowed from, and a number nobody measured goes with it (08:47).
+
+       Nothing about the reading is lost. Every clause the ask made is a ranking in the composer's
+       own `INSTRUMENT_SUITS.planet`, which is where both work records are in hand: the world
+       reading itself, times the share of that reading which is NOT the log-spiral's, halved where
+       no horizon was measured. A pair with no world ranks the curl below its rivals and still
+       crosses. */
 
     function feel(u) {
       return (Math.exp(FEEL_K * u) - 1) / (Math.exp(FEEL_K) - 1);
@@ -757,19 +763,24 @@
     // records, and it is published on the instrument so the composer can ask it at the instant a
     // visitor steps.
     //
-    // WHAT IT ASKS, AND WHY EACH CLAUSE IS THERE.
-    //   · ONE OF THE TWO WORKS READS AS A WORLD THIS INSTRUMENT CAN DRAW. The record measures four
+    // WHAT IT READS OF A WORK, AND WHY EACH READING IS THERE. This answered a QUESTION until
+    // 2026-08-18 — three clauses, each of which could decline a pair — and every one of the three
+    // is kept, as the reading it always was. The arithmetic that ranks them lives in the composer's
+    // `INSTRUMENT_SUITS`, the one place holding both records; what stands here is the reading of
+    // one work, which is the fact this instrument owns.
+    //   · HOW MUCH OF A WORLD THIS INSTRUMENT CAN DRAW THE WORK ALREADY IS. The record measures four
     //     polar readings per work; this instrument draws two of them — the sphere and the corridor
     //     — and the log-spiral is another instrument's world. So the stronger of `polar.planet` and
-    //     `polar.tunnel` has to clear the floor AND beat `polar.twirl`, or the work is asking for a
-    //     different world than the one this makes.
-    //   · THAT WORK CARRIES A MEASURED HORIZON. The curl only becomes a WORLD where the picture
-    //     divides into ground and sky: the foot of the frame goes to the centre and the sky becomes
-    //     the ring around it and the light the whole stage stands in. A picture with no such
-    //     division curls into a disc of pattern, which is a different and lesser thing.
+    //     `polar.tunnel` is the reading, and the log-spiral's share of the same family is taken off
+    //     it rather than tested against it: a work reading equally as both is half a world here.
+    //   · WHETHER THE WORK CARRIES A MEASURED HORIZON. The curl only becomes a WORLD where the
+    //     picture divides into ground and sky: the foot of the frame goes to the centre and the sky
+    //     becomes the ring around it and the light the whole stage stands in. A picture with no such
+    //     division curls into a disc of pattern, which is a different and lesser thing — so it ranks
+    //     lower, and it is not turned away.
     //   · READ OF THE PAIR AND NOT OF ONE END OF IT. A ground is the pair's, and the family read off
-    //     it has to be the same one whichever way the visitor walks, so the question is asked of
-    //     both works and the better answer wins.
+    //     it has to be the same one whichever way the visitor walks, so both works are read and the
+    //     stronger reading carries the crossing.
     function polarOf(w) {
       var s = (w && w.structure) || {};
       var p = s.polar || {};
@@ -780,29 +791,28 @@
                shape: corridor > sphere ? "a corridor" : "a sphere",
                horizon: (y === null || y === undefined) ? null : num(y, null) };
     }
-    function asksOfOne(w) {
+    // HOW MUCH OF A LITTLE WORLD ONE WORK IS, between nothing and whole. Three readings, none of
+    // them a bar: the world reading, the share of it that is not the log-spiral's, and whether a
+    // horizon was measured. A work answering nothing to all three reads 0, which is playable — it
+    // simply ranks last.
+    function worldOfOne(w) {
       var p = polarOf(w);
-      if (p.best < WORLD_FLOOR) {
-        return [false, "reads " + p.best.toFixed(4) + " as a world, under the floor of "
-                + WORLD_FLOOR.toFixed(2)];
-      }
-      if (p.spiral > p.best) {
-        return [false, "reads a log-spiral at " + p.spiral.toFixed(4) + " over its sphere and "
-                + "corridor at " + p.best.toFixed(4) + ", so it is asking for another world"];
-      }
-      if (p.horizon === null || !(p.horizon > 0) || !(p.horizon < 1)) {
-        return [false, "carries no measured horizon, so it has no ground and sky to become a world "
-                + "and its own ring of light"];
-      }
-      return [true, "reads " + p.shape + " at " + p.best.toFixed(4) + " with a measured horizon at "
-              + p.horizon.toFixed(4)];
+      var whole = p.best + p.spiral;
+      var mine = whole > 0 ? p.best / whole : 0;
+      var hasHorizon = !(p.horizon === null || !(p.horizon > 0) || !(p.horizon < 1));
+      var fit = p.best * mine * (hasHorizon ? 1 : 0.5);
+      return [fit, "reads " + p.shape + " at " + p.best.toFixed(4) + ", a log-spiral at "
+              + p.spiral.toFixed(4) + ", and "
+              + (hasHorizon ? "carries a measured horizon at " + p.horizon.toFixed(4)
+                            : "carries no measured horizon, so it has no ground and sky to become "
+                              + "a world and its own ring of light")];
     }
-    function asks(a, b) {
-      var ra = asksOfOne(a), rb = asksOfOne(b);
-      if (ra[0]) return [true, "the departing work " + ra[1]];
-      if (rb[0]) return [true, "the arriving work " + rb[1]];
-      return [false, "neither work of this pair reads as a world worth curling — the departing one "
-              + ra[1] + "; the arriving one " + rb[1]];
+    // WHAT THE PAIR READS, with no direction on it and no pair turned away. The stronger of the two
+    // works carries the crossing, because one world is what it curls into.
+    function suitsPair(a, b) {
+      var ra = worldOfOne(a), rb = worldOfOne(b);
+      var best = ra[0] >= rb[0] ? ra : rb;
+      return [best[0], "the better-suited work of the pair " + best[1]];
     }
 
     var manifest = {
@@ -924,14 +934,13 @@
       // WHAT A PAIR MUST READ, published beside the handles so a reader finds it where the rest of
       // the contract is. The function itself is on the instrument, so the answer is the
       // instrument's own rather than a copy of it kept somewhere else.
-      asks: { reads: ["structure.polar.planet", "structure.polar.tunnel", "structure.polar.twirl",
-                      "structure.horizon.y"],
-              floor: WORLD_FLOOR,
-              of: "either work of the pair",
-              says: "one of the two works reads as a sphere or as a corridor over the floor, reads "
-                  + "that more strongly than it reads as a log-spiral, and carries a measured "
-                  + "horizon — a real division into ground and sky, which is what the curl turns "
-                  + "into a world with its own ring of light" },
+      suits: { reads: ["structure.polar.planet", "structure.polar.tunnel", "structure.polar.twirl",
+                       "structure.horizon.y"],
+               how: "it suits a pair the better one of whose works already is a little world — a "
+                  + "sphere or a corridor rather than a log-spiral, which is another instrument's "
+                  + "world, and one carrying a measured horizon, since a real division into ground "
+                  + "and sky is what the curl turns into a world with its own ring of light. A work "
+                  + "with none of that reads nothing here, which still plays and simply ranks last" },
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, clock: 0, curl: 0.82, depth: 0, dip: 0.5, turn: 0.5, gather: FIG_HI,
@@ -965,8 +974,10 @@
                    rich: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
                            passes: 1, bytesEstimate: 0, variant: "rich" } },
       capabilities: ["webgl2"],
-      decline: ["one work only", "a source that never decoded",
-                "a pair where neither work reads as a world worth curling"],
+      // THE TWO DECLINES LEFT BOTH SAY THERE IS NO PAIR. A third stood here — "a pair where
+      // neither work reads as a world worth curling" — and it went with the floor it named,
+      // 2026-08-18: a reading is never grounds for refusing a visitor a crossing (his 09:51).
+      decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/planet.js", commit: "4952bfe",
                     sha256: "0782a8bc4b7cb35e11cc35966f33695a601789eb1aee8f3a2ea19e205384eb3e" },
       readiness: "production-ready",
@@ -979,10 +990,10 @@
       values: values,
       fit: fit,
       feel: feelOf,
-      // WHAT A PAIR MUST READ, as a function rather than as a sentence. A composer holding two work
-      // records asks this and gets back whether the crossing is worth playing here and the reason
-      // in the works' own numbers.
-      asks: asks,
+      // WHAT A PAIR READS, as a function rather than as a sentence. A composer holding two work
+      // records asks this and gets back a fit between nothing and whole with the reason in the
+      // works' own numbers — never a yes or a no. A fit of nothing is playable and ranks last.
+      suits: suitsPair,
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the planet instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };
