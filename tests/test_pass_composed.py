@@ -1293,9 +1293,12 @@ else:
             # off the manifest itself, with the open reading removed.
             (NODE_ROWS[28],
              [["        if (manifest[h].open) continue;", ""],
-              ["        if (!HANDLE_SOURCE[h]) continue;", ""],
-              ['var why = HANDLE_SOURCE[h][1];',
-               'var why = (HANDLE_SOURCE[h] || ["", "an open handle"])[1];'],
+              # The register gained an instrument-scoped key on 2026-08-18, so both reads below go
+              # through `sourceOf` now. The plant follows the line rather than the name it used to
+              # have: a plant that stops matching stops proving, and this row's claim is unchanged.
+              ["        if (!sourceOf(instr, h)) continue;", ""],
+              ['var why = sourceOf(c.instrument.id, h)[1];',
+               'var why = (sourceOf(c.instrument.id, h) || ["", "an open handle"])[1];'],
               ["var spec = HANDLE_SPECS[instr][handle], lo = spec[0], hi = spec[1], dflt = spec[2];",
                "var m0 = MANIFESTS[instr].handles[handle];"
                " var spec = HANDLE_SPECS[instr][handle] || [m0.min, m0.max, m0[\"def\"]],"
