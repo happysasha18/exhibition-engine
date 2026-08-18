@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the waterline instrument — the host's frame beside the lab module's</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own canvas.
+     One is visible at a time; the check shows the one it means and photographs it. -->
+<div id="moduleStage" class="stage"></div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="waterline.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  /* THE TWO WORKS' OWN MEASURED MIRROR LINES, taken by the project's own measuring script — the
+     `measure()` of lab/step1-motifs.py, run on these two files. Neither photograph appears in
+     lab/data/work-axes.json, whose 121 works are the constructed set, so the numbers were measured
+     rather than looked up, and by the same code that wrote that file. `seam_y` is the place down
+     the FILE where the strongest horizontal line stands across which both lightness and busy-ness
+     flip; `seam_horizon` beside it is how strongly that line reads, and it is what ranks a pair
+     rather than what places the waterline.
+
+     THE PAIR IS AN HONEST ONE RATHER THAN A FLATTERING ONE. The second work's seam reads at 0.0016
+     — the motif does not fire on it at all — so what stands here is exactly the case the register
+     has to carry: a pair one of whose works measures a waterline and the other barely does, and the
+     crossing plays on it all the same. */
+  var SEAM = { a: { y: 0.2988, horizon: 0.0882 }, b: { y: 0.5703, horizon: 0.0016 } };
+
+  var asked = false, warmed = false;
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled. So the bench is waited
+    // for rather than assumed, which is what a real visitor's walk does too.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    // EACH INSTRUMENT TRAVELS AS ITS OWN FILE, and a visit fetches only the ones its own score
+    // names. This page draws poses as well as commands, so it asks for every instrument the site's
+    // record names — by the same road an offer takes — and waits for the answer before it draws.
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var moduleStage = document.getElementById("moduleStage");
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "waterline") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «waterline» effect"); return; }
+
+    // The one record both roads read. The module keeps its own copy of these five inside its
+    // closure; this is the same set handed to it at creation and moved through the same onParam,
+    // so the pose the host draws is the pose the module drew and never a guess at it. The two
+    // measured seams go in the same way — the module reads them at creation and the port takes
+    // them as handles, which is the whole of the difference between the two roads.
+    var P = { line: 0.5, depth: 0.3, swell: 0.45, lead: 0.62, order: 0.2 };
+    var C = { shade: 1, shadeEdge: 1, shadeLine: 1, travel: 1, comb: 1, raw: 0 };
+    var hand = 0, clockAt = 0;
+    var ctx = { images: imgs, reduced: false,
+                params: { line: P.line, depth: P.depth, swell: P.swell, lead: P.lead,
+                          order: P.order, seed: 20260813,
+                          seamA: SEAM.a.y, seamB: SEAM.b.y } };
+    var api = def.create(moduleStage, ctx);
+    window.__api = api;
+
+    window.__measured = function () { return { seam: SEAM, reading: api.reading() }; };
+
+    window.__mix = function (v) { hand = +v; api.onParam("mix", v); };
+    window.__clock = function (s) { clockAt = +s; api.onParam("clock", s); };
+    window.__param = function (k, v) {
+      if (P[k] !== undefined) P[k] = +v; else C[k] = +v;
+      api.onParam(k, v);
+    };
+    window.__reading = function () { return api.reading(); };
+    window.__show = function (which) {
+      bench.show(which === "host");
+      moduleStage.classList.toggle("hidden", which !== "module");
+    };
+
+    /* WHERE EACH WORK IS SEATED IN THE FRAME. On the real transaction road the host answers this —
+       `frame()` reads `st.fitA`/`st.fitB`, the very seating the draw binds — but a BENCH pose is
+       drawn straight from the pose it is handed, so this page has to hand the same two numbers. It
+       takes them from the manifest's own published crop and the two files' own sides, which are the
+       only two facts `fit` is built from, so the bench and the road stand on one seating. */
+    function seatY(im) {
+      var m = bench.manifest("waterline");
+      var zoom = m.framings["0"].coverCrop;
+      var cv = document.querySelector("canvas");
+      var fa = cv.width / Math.max(cv.height, 1);
+      var ia = im.naturalWidth / Math.max(im.naturalHeight, 1);
+      return (ia > fa ? 1 : ia / fa) / zoom;
+    }
+
+    // THE HOST DRAWS THE SAME POSE. The die is taken from the module through its own reading(),
+    // since the module rolls it once at creation from the number it was handed; everything else is
+    // the record above, which both roads were driven by.
+    window.__hostDraw = function () {
+      var r = api.reading();
+      bench.draw("waterline", {
+        mix: hand, line: P.line, depth: P.depth, swell: P.swell, lead: P.lead, order: P.order,
+        shade: C.shade, shadeEdge: C.shadeEdge, shadeLine: C.shadeLine,
+        travel: C.travel, comb: C.comb, raw: C.raw,
+        seamA: SEAM.a.y, seamB: SEAM.b.y,
+        seed: r.seed, t: clockAt, reduced: false,
+        fitAy: seatY(imgs[0]), fitBy: seatY(imgs[1]),
+        aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+        bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight,
+      });
+      return r;
+    };
+
+    // The instrument's own numbers for a pose, read without drawing it, with the seating filled in
+    // the way the bench draw fills it. A row that wants a different seating hands its own.
+    window.__values = function (over) {
+      var pose = {
+        mix: hand, line: P.line, depth: P.depth, swell: P.swell, lead: P.lead, order: P.order,
+        shade: C.shade, shadeEdge: C.shadeEdge, shadeLine: C.shadeLine,
+        travel: C.travel, comb: C.comb, raw: C.raw,
+        seamA: SEAM.a.y, seamB: SEAM.b.y, seed: 0, t: clockAt, reduced: false,
+        cssWidth: innerWidth, cssHeight: innerHeight,
+        fitAy: seatY(imgs[0]), fitBy: seatY(imgs[1]),
+      };
+      Object.keys(over || {}).forEach(function (k) { pose[k] = over[k]; });
+      return { pose: pose, values: bench.values("waterline", pose) };
+    };
+
+    // The buffer the host is drawing on, which is the grid every door reading is taken on.
+    window.__buffer = function () {
+      var cv = document.querySelector("canvas");
+      return { w: cv.width, h: cv.height };
+    };
+
+    // ---- the real transaction road ---------------------------------------------------------
+    // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
+    // arms and decodes both works off the walk markup above, builds the programme from the
+    // manifest, raises its curtain and runs its own frame loop.
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>
