@@ -958,6 +958,59 @@
                 + " at a step of " + pyText(flt(r4(step))) + " px, read at "
                 + pyText(flt(r4(conf)))];
       },
+      // THE WATER IS ONE SHEET CARRYING TWO PICTURES, and the sheet is its own. All three handles
+      // the composer drives on it read one family: how much of a work reads as grain rather than as
+      // line (the swell), its own spectral period (where the crests stand) and its finest detail
+      // (how far the water bends the light). So the fit is that family read on the pair.
+      //
+      // THE STRONGER END CARRIES IT, and the instrument's own construction is why. The swell TRAVELS
+      // from the departing work's reading to the arriving one's — the water deepens or shallows
+      // across the crossing — so the pair needs grain for the water to work with rather than grain
+      // at both ends: a straight architecture under a swell the other work sets is the crossing,
+      // not a failure of it. Its port says the same in its own words: water asks nothing of a pair
+      // beyond that it have a ground at all, every photograph can be under water.
+      //
+      // WHAT STOOD HERE WAS NOTHING AT ALL. This instrument published no row, so `suitsPair` below
+      // answered for it with its typed 0.5 on all 14 520 pairs — 5.1 per cent of the collection's
+      // cues chosen by a constant that never looked at either photograph, and ranked above the
+      // measured readings of `overlay`, `tunnel` and `weave` everywhere, permanently, on no
+      // evidence. His word of 2026-08-18 15:13 names that class: no static transitions.
+      liquid: function (a, b) {
+        var sa = readingOf((a.measures || {}).texture);
+        var sb = readingOf((b.measures || {}).texture);
+        return [Math.max(sa, sb), "the two works read as grain rather than as line at "
+                + pyText(flt(r4(sa))) + " and " + pyText(flt(r4(sb)))
+                + ", and the swell travels out to the deeper of the two"];
+      },
+      // THE FLOOR IS TWO ROOMS AND THE CROSSING IS THE HANDOVER BETWEEN THEM. Both works are laid on
+      // one mirrored floor tile for tile and the room changes hands as each sheet turns up, so what
+      // the pair gives this instrument is TWO tile counts — and where they are the same count the
+      // floor turns over into itself and there is nothing to watch. The count is the one the
+      // instrument's own `tiles` handle is published in, taken the way its fill already takes it:
+      // the work's own frame side over `structure.grid.periodPx`, and over
+      // `structure.ownDevice.stepPx` where no grid period was derived. The port's own report chose
+      // that order on a measurement of this collection — the grid period spreads the 121 works over
+      // all five counts while the device step saturates at the range's top on 100 of them, «so a
+      // floor laid from the device would be the same floor for five works in six» — which is this
+      // same law read one level down, at the parameter rather than at the choice.
+      //
+      // The distance is said across the handle's OWN published span, so nothing here invents a
+      // scale. This instrument published no row either, and carried the same typed 0.5.
+      parquet: function (a, b) {
+        function floorOf(w) {
+          var st = w.structure || {}, side = Number(w.frameSide) || 0;
+          var step = Number((st.grid || {}).periodPx) || Number((st.ownDevice || {}).stepPx) || 0;
+          var lo = num(HANDLE_SPECS.parquet.tiles[0]), hi = num(HANDLE_SPECS.parquet.tiles[1]);
+          if (!(side > 0 && step > 0)) return num(HANDLE_SPECS.parquet.tiles[2]);
+          return Math.min(hi, Math.max(lo, side / step));
+        }
+        var fa = floorOf(a), fb = floorOf(b);
+        var span = num(HANDLE_SPECS.parquet.tiles[1]) - num(HANDLE_SPECS.parquet.tiles[0]);
+        return [span > 0 ? Math.abs(fa - fb) / span : 0,
+                "the two works cut their own floors into " + pyText(flt(r4(fa))) + " and "
+                + pyText(flt(r4(fb))) + " tiles across, and the room changes hands by the "
+                + "distance between them"];
+      },
       // THE RIBBONS RUN ALONG A BAND FAMILY, so the weave suits a pair that both works band. The
       // weaker of the two readings is the fit, because a fabric is only as woven as its thinner end.
       weave: function (a, b) {

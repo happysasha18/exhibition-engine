@@ -530,9 +530,17 @@ out.memory = {
 //     spends the one miracle, the camera leads only at a tonic step, and every instrument the record
 //     ships can be chosen. None of those is a count of a collection; each is a law about one
 //     crossing, checked on enough crossings to catch a breach.
+// HOW MANY CROSSINGS «ENOUGH» IS, and it is a measurement rather than a habit. The handful stood at
+// 48 while the record published five instruments; on a field of sixteen, whose rarest plays about
+// two cues in a hundred, 48 ordered pairs miss it about as often as they catch it — this suite read
+// ««liquid» can never be chosen» off a spot of 48 while the same module casts it 2 948 times over
+// the whole collection. Swept at 96, 144, 192, 240 and 363 pairs every one of the sixteen is cast;
+// 192 is taken, which puts the rarest at 37 casts rather than at the edge of its own noise. The
+// planted runs below still walk a corner of 24 — a plant that reddens needs one breach, not a
+// margin.
 const allIds = Object.keys(works.works).sort();
 const SPOT = [];
-for (let i = 0; i < (sweepN > 0 ? Math.min(sweepN, 48) : 48); i++) {
+for (let i = 0; i < (sweepN > 0 ? Math.min(sweepN, 192) : 192); i++) {
   const x = allIds[(i * 7) % allIds.length], y = allIds[(i * 13 + 3) % allIds.length];
   if (x !== y) SPOT.push([x, y]);
 }
