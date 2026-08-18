@@ -475,8 +475,11 @@
       // a work record, and `suits.how` says in one sentence what a whole fit and a fit of nothing
       // mean for this instrument. A fit of nothing is never a refusal — it ranks last and plays
       // where nothing ranks higher.
-      suits: { reads: ["luminance.ladderPosition", "texture.detailPx"],
-               how: "it hands one tonal world and one detail scale over to another, so it suits a "
+      suits: { reads: ["luminance.level", "texture.detailPx"],
+               how: "it hands one tonal world and one detail scale over to another — substance "
+                  + "reads through light, so `luminance.level` (the judge seat's standing "
+                  + "correction of 2026-08-18/19, the median of each work's own luminance) is the "
+                  + "genuine tone, where `palette.colourfulness` stood here before — so it suits a "
                   + "pair whose grounds and detail scales stand close enough for the handover to "
                   + "read as one substance changing rather than two pictures swapped; both readings "
                   + "are of the pair by construction, which is why it suits every pair somewhat and "

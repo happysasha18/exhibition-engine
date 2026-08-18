@@ -346,6 +346,10 @@ NODE_ROWS = [
     "works' own colour readings on the cue that owns LIGHT-COLOUR, not left resting at 0",
     "EX-COMPOSED a cue that only accompanies another on LIGHT-COLOUR leaves all its colour-and-light "
     "voice handles at their manifest rest of 0, shelf 17's levels law holding",
+    "EX-COMPOSED strata-light's levelA/levelB are driven off the two works' own luminance.level, "
+    "not left resting at their manifest default of 0.5",
+    "EX-COMPOSED gates' slotPlace/slotHalf/slotAxis are driven off the departing work's own "
+    "measured slot, not left resting at the module's own naive middle",
 ]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
@@ -571,6 +575,21 @@ let ledAtTonic = 0, ledElsewhere = 0, ledWithWorldCue = 0, tonic = 0;
 // collects every `waterline` cue's own driven `tideCells`, so the row below can prove it moves off
 // the manifest's own 0.5 default instead of resting there on every pair.
 let adriftSeams = [], tideCellsSeen = [];
+// PART 1 OF THE GATE-SLOT LANE: gates' own slotPlace/slotHalf/slotAxis, off the departing work's
+// own measured motifs.gatePlace/gateHalf/gateAxis (lab/step1-motifs.py's slot_on(), ported from
+// the archived lab/effects/gates.js). Before this change none of the three was ever written by
+// `fillPlan`, so `appliedValue` resolved every one to the manifest's own naive middle — slotAxis
+// upright, slotPlace and slotHalf at the motif's own fixed band. Collected the same way
+// `adriftSeams` proves seamA/seamB above: applied value paired against the record's own field, so
+// the row below can prove both that the wire carries the record's own reading and that the reading
+// differs across pairs.
+let gateSlots = [];
+// CHANGE D: strata-light's own levelA/levelB, off each work's own `luminance.level` (the median
+// luminance lab/analyze/recipes.py:551-613 colour_stats() ports from `measure(image)`,
+// lab/effects/strata-light.js:108-113). Before this change nothing ever wrote `wanted.levelA`/
+// `wanted.levelB`, so both rested at the manifest's own 0.5 default on every pair; these collect
+// every value the sweep actually sees so the row below can prove they now differ across pairs.
+let levelASeen = [], levelBSeen = [];
 // CHANGE C: the eighteen colour-and-light voice handles ported from lab/step4-assembler.js:1966-2010
 // — grid-colour's six (one set, the module carries both works inside itself) and strata-light's
 // twelve (two sets, A the departing work's own reading and B the arriving work's). Before this
@@ -762,6 +781,25 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
         if (cue.instrument.id === "waterline" && handle === "tideCells") {
           tideCellsSeen.push(toNum(node.value));
         }
+        // CHANGE D: strata-light's own levelA/levelB — proves each moves off its 0.5 default.
+        if (cue.instrument.id === "strata-light" && handle === "levelA") {
+          levelASeen.push(toNum(node.value));
+        }
+        if (cue.instrument.id === "strata-light" && handle === "levelB") {
+          levelBSeen.push(toNum(node.value));
+        }
+        // GATE-SLOT LANE PART 1: gates' slotPlace/slotHalf/slotAxis all read the DEPARTING work
+        // only (pass-inst-gates.js: "the departing work's own slot is what parts"), so the record
+        // compared against is `fromWork` under the same b-to-a flip `adriftSeams` above takes.
+        if (cue.instrument.id === "gates"
+            && (handle === "slotPlace" || handle === "slotHalf" || handle === "slotAxis")) {
+          var gFromWork = dir === "b-to-a" ? wb : wa;
+          var gMot = gFromWork.motifs || {};
+          var gRecord = handle === "slotPlace" ? gMot.gatePlace
+            : handle === "slotHalf" ? gMot.gateHalf
+            : (gMot.gateAxis === "vertical" ? 1 : (gMot.gateAxis === "horizontal" ? 0 : null));
+          gateSlots.push({ handle: handle, applied: toNum(node.value), record: gRecord });
+        }
       }
       collectVoiceHandles(cue);
       // no cue may name a handle the instrument declares OPEN: that state is the instrument's own
@@ -783,7 +821,7 @@ out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
              ledAtTonic, ledElsewhere, ledWithWorldCue, tonic,
              folded, worldCue, ledAndWorld, twoMiracles, roleThrew, roleN, boxQualified,
              foldUnspent, chosen, cast: Object.keys(consts.instruments).sort(),
-             adriftSeams, tideCellsSeen,
+             adriftSeams, tideCellsSeen, levelASeen, levelBSeen, gateSlots,
              gridColourVoicesOwns, strataLightVoicesOwns,
              gridColourVoicesAccompanies, strataLightVoicesAccompanies};
 
@@ -934,11 +972,15 @@ function fullRecord(id, o) {
     id: id, frameSide: 1000.0,
     door: { angleDeg: 0, device: "rings", elementKind: "ring", level: "CELL", pieces: 8,
             stepPx: 40.0 },
-    luminance: { ladderPosition: o.ladder === undefined ? 0.5 : o.ladder },
+    luminance: {},
     measures: { banding: 0, dominant_object: 0, grid: 0, named_objects: 0, radial: 0, regions: 0,
                 texture: 0 },
     motifs: { gateGap: 0, measured: [], radialCentre: [0.5, 0.5], voidShare: 0 },
-    palette: { hueConcentration: 0.5, hues: [], rung: "one" },
+    // `colourfulness`, renamed from `luminance.ladderPosition` (the judge seat's standing
+    // correction of 2026-08-18/19): `o.ladder` keeps its own name, unused by any caller in this
+    // file, its default of 0.5 unchanged.
+    palette: { hueConcentration: 0.5, hues: [], rung: "one",
+               colourfulness: o.ladder === undefined ? 0.5 : o.ladder },
     readiness: [0.5, 100.0, "vertical"],
     sets: o.sets || [],
     structure: {
@@ -1379,6 +1421,58 @@ else:
               f"accompanying-cue readings seen: {accCounts}; any off 0: "
               f"{ {k: v for k, v in accOffZero.items() if v} }")
 
+        # --- row 8g · CHANGE D: strata-light's levelA/levelB are driven off luminance.level -------
+        # Before this change nothing ever wrote `wanted.levelA`/`wanted.levelB`, so `appliedValue`
+        # resolved both to the manifest's own 0.5 default on every pair. The fix reads each work's
+        # own `luminance.level` — the median luminance lab/analyze/recipes.py:551-613 colour_stats()
+        # ports from `measure(image)`, lab/effects/strata-light.js:108-113 — A the departing work's,
+        # B the arriving work's. Unlike the eighteen voice handles above, level is not gated by
+        # LIGHT-COLOUR ownership (it drives the CELL-level cut, not the accompaniment voice), so it
+        # is driven on every strata-light cue and the row asks for at least one value off the 0.5
+        # default and more than one distinct value over the sweep.
+        levelASeen = sweep["levelASeen"]
+        levelBSeen = sweep["levelBSeen"]
+        levelAOffDefault = [v for v in levelASeen if abs(v - 0.5) > 1e-9]
+        levelBOffDefault = [v for v in levelBSeen if abs(v - 0.5) > 1e-9]
+        check(NODE_ROWS[40],
+              bool(levelASeen) and bool(levelBSeen)
+              and bool(levelAOffDefault) and bool(levelBOffDefault)
+              and len(set(levelASeen)) > 1 and len(set(levelBSeen)) > 1,
+              f"{len(levelASeen)} levelA readings ({len(set(levelASeen))} distinct), "
+              f"{len(levelBSeen)} levelB readings ({len(set(levelBSeen))} distinct); "
+              f"levelA sample {sorted(set(levelASeen))[:8]}, "
+              f"levelB sample {sorted(set(levelBSeen))[:8]}")
+
+        # --- row 8h · GATE-SLOT LANE PART 1: gates' slotPlace/slotHalf/slotAxis read the -----------
+        #     departing work's own measured slot
+        # Before this change none of the three was ever written by `fillPlan`'s "gates" branch, so
+        # `appliedValue` resolved every one to the manifest's own naive middle: slotAxis upright
+        # (1), slotPlace and slotHalf at half the motif's own fixed band — the exact reading
+        # pass-inst-gates.js:604-638 spent thirty-odd lines explaining was missing from the record.
+        # lab/step1-motifs.py's rewrite of 2026-08-19 (slot_on()/gateOf(), ported from the archived
+        # lab/effects/gates.js) publishes `motifs.gatePlace`/`gateHalf`/`gateAxis` on every work, and
+        # this row asks the sweep for three things at once: every applied value matches the
+        # departing work's own record (within the four-decimal rounding both sides already carry),
+        # slotPlace and slotHalf each take more than one distinct value (proving the reading is the
+        # slot's own place and width rather than one number reused), and slotAxis takes both 0 and 1
+        # (proving the sweep actually reaches works of each axis, 69 vertical and 52 horizontal over
+        # the full collection per lab/step1-motifs.py's own count).
+        gs = sweep["gateSlots"]
+        def gsFor(h):
+            return [r for r in gs if r["handle"] == h]
+        gsMismatch = [r for r in gs if r["record"] is not None
+                      and abs(r["applied"] - r["record"]) > 0.0002]
+        placeSeen = sorted(set(r["applied"] for r in gsFor("slotPlace")))
+        halfSeen = sorted(set(r["applied"] for r in gsFor("slotHalf")))
+        axisSeen = sorted(set(r["applied"] for r in gsFor("slotAxis")))
+        check(NODE_ROWS[41],
+              bool(gs) and not gsMismatch
+              and len(placeSeen) > 1 and len(halfSeen) > 1 and axisSeen == [0, 1],
+              f"{len(gs)} gate slot readings over the sweep, {len(gsMismatch)} off the departing "
+              f"work's own record by more than 0.0002; slotPlace {len(placeSeen)} distinct "
+              f"{placeSeen[:8]}, slotHalf {len(halfSeen)} distinct {halfSeen[:8]}, slotAxis seen "
+              f"{axisSeen}")
+
         # --- row 9 · the two fences a filled score has to pass -----------------------------------
         # THE FENCES ARE NO LONGER WALLS, AND THAT IS WHY THIS ROW MATTERS MORE THAN IT DID. The
         # client refused a score over either fence WHOLE, so a score standing over one was a
@@ -1478,9 +1572,21 @@ else:
             # THE FITS ARE WHAT RANK THE GENRES. Flattened to one number, the ranking stops reading
             # the pair at all and the die is even over the vocabulary — which is exactly the state
             # the floors produced by another road, and the route's spread says so.
+            #
+            # MOVED OFF `topShareMean` TO THE FULL `spread` DICT (PART 2 OF THE COLOUR-AND-LIGHT
+            # LANE, 2026-08-19). `tonalSpectral()` now reads `luminance.level` — a field that ties
+            # far more often across the collection than `palette.colourfulness` did — so the
+            # tonal-and-spectral genre reaches fit 1 on more pairs of this route's own 40-route
+            # sample, and `topShareMean` (rounded to one decimal place over 40 routes) landed on the
+            # same 28.5 whether the fit is flattened or not: a coincidence of the rounding on this
+            # one pinned sample, not evidence the plant stopped moving anything. The full per-
+            # instrument `spread` the same run already carries moves on nearly every one of its
+            # twenty-two keys (matter 9.3 → 10.2, gates 7.6 → 7.1, grid-colour 12.4 → 12.8, and on),
+            # so the observation is here instead: the ground truly moved and the row now reads it
+            # where it actually shows.
             (NODE_ROWS[22],
              [["        genre.fit = clamp01(fit);", "        genre.fit = 1;"]],
-             lambda g: g["route"]["topShareMean"] != got["route"]["topShareMean"]),
+             lambda g: g["route"]["spread"] != got["route"]["spread"]),
             (NODE_ROWS[23], [["if (fits) break;", "break;"]],
              lambda g: (g["roles"]["quiet link"].get("budget") or {}).get("letters", 0) > 1
              or (g["roles"]["quiet link"].get("budget") or {}).get("miracles", 0) > 0
@@ -1506,12 +1612,23 @@ else:
                "          if (false) {\n            held = whole[i];\n            heldBy = \"family\";"]],
              lambda g: g["memory"]["heldAgainBy"] != "family"
              and g["memory"]["heldBackBy"] != "family"),
+            # MOVED OFF THE OUTCOME (`backKeepsFamily`/`backKeepsPivot`) TO THE MECHANISM
+            # (`heldBackBy`/`heldAgainBy`), PART 2 OF THE COLOUR-AND-LIGHT LANE, 2026-08-19.
+            # `tonalSpectral()` now reads `luminance.level`, whose fit is symmetric in the two works
+            # and ties at 1 far more often than `palette.colourfulness`'s did — so on this pair the
+            # tonal-and-spectral ground is now the strongest candidate independently in BOTH
+            # directions, and the walk back can land on the SAME ground by nothing but that shared
+            # strength even with the retry loop cut out, which left `backKeepsPivot` True on a
+            # planted run and the row unable to move. `heldBackBy`/`heldAgainBy` are the retry
+            # loop's own flag — set only when it actively matched a recorded family or pivot — so
+            # they read whether the MECHANISM fired rather than whether the outcome happens to
+            # resemble it, which is the real effect this plant removes.
             (NODE_ROWS[27],
              [["      var wantTransform = memory && memory.family ? String(memory.family).split(\"+\")[0] : null;",
                "      var wantTransform = null;"],
               ["      if (memory && memory.family) {\n        var whole = pool.concat(found.genres);",
                "      if (false) {\n        var whole = pool.concat(found.genres);"]],
-             lambda g: not (g["memory"]["backKeepsFamily"] or g["memory"]["backKeepsPivot"])),
+             lambda g: g["memory"]["heldBackBy"] is None and g["memory"]["heldAgainBy"] is None),
             # THE OPEN HANDLE'S FENCE IS PROVED WHERE IT COULD BE CROSSED. Nothing today hands the
             # open handle to the fill — the collection's own instrument list leaves it out — so the
             # plant that makes the row honest is the one that DOES hand it over: a cue's tracks named

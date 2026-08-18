@@ -276,13 +276,16 @@ if re.search(r"\bfloor\b(?!\s*\()", REGION):
     found_floor.append("floor")
 check("PASS-STRATA the cut and the fit are published, and the fit only ranks",
       'cuts: ["band"]' in REGION
-      and 'suits: { reads: ["luminance.ladderPosition"]' in REGION
+      and 'suits: { reads: ["luminance.level"]' in REGION
       and "how:" in REGION and not found_floor
       and 'decline: ["one work only", "a source that never decoded"]' in REGION,
       "it cuts on the tonal zones — the band kind, which is what the composer's own "
       "tonal-and-spectral pivot cuts on — and it reads how far apart the two works stand on their "
-      "own tonal ladder; the two things it declines are a half pair and a picture that never "
-      "decoded, and no reading anywhere in the file can make a pair not qualify"
+      "own measured tone, `luminance.level` (the judge seat's standing correction of "
+      "2026-08-18/19, moved off `palette.colourfulness` which reads the collection's own "
+      "colourfulness ladder and never was a tone); the two things it declines are a half pair and "
+      "a picture that never decoded, and no reading anywhere in the file can make a pair not "
+      "qualify"
       if not found_floor else "the file carries a floor: " + ", ".join(found_floor))
 
 # ---------------------------------------------------------------- browser rows
@@ -505,7 +508,7 @@ else:
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
                             for v in res)
                     and m["capabilities"] == ["webgl2"] and m["decline"]
-                    and m["suits"]["reads"] == ["luminance.ladderPosition"] and m["suits"]["how"]
+                    and m["suits"]["reads"] == ["luminance.level"] and m["suits"]["how"]
                     and m["provenance"]["labPath"] == "lab/effects/strata-light.js"
                     and m["provenance"]["commit"] == "468f491"
                     and m["readiness"] == "production-ready"
@@ -513,7 +516,7 @@ else:
                 check(BROWSER_ROWS[0], shape,
                       f"nineteen handles, eleven uniforms in one pass, the plain cover fit "
                       f"{m['framings']['0']} the module's own framing names, the band cut, the "
-                      f"tonal-ladder fit, resources declared for three tiers, and the lab commit "
+                      f"tonal fit, resources declared for three tiers, and the lab commit "
                       f"{m['provenance']['commit']}; the module declares no slider-facing param at "
                       f"all and the manifest carries that empty list rather than filling it")
 

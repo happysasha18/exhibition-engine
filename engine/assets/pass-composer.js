@@ -721,16 +721,20 @@
     swing: ["measured", "the share of the frame the departing work's own open ground holds, "
                         + "motifs.voidShare — a work with room around its masses lets them travel "
                         + "wide"],
-    slotAxis: ["measured", "the banding axis cut-lines.json recorded for the departing work: a work "
-                           + "banded across the frame carries its emptiness as an upright slot and "
-                           + "the leaves open sideways, one banded down it parts up and down"],
-    slotPlace: ["unmeasured", "where the work's gate stands along that axis. The record publishes "
-                              + "how plainly a gate reads and nowhere where it is, so the slot "
-                              + "opens on the frame's own middle. A record would have to carry the "
-                              + "motif's own band centre — the place lab/step1-motifs.py already "
-                              + "solves for and discards"],
-    slotHalf: ["unmeasured", "half the work's own slot width, on the same share of the file. "
-                             + "Missing for the same reason and closed by the same column"],
+    slotAxis: ["measured", "the departing work's own measured gate axis, motifs.gateAxis: lab/"
+                          + "step1-motifs.py sweeps both the column and the row profile of the "
+                          + "work's own busy field and keeps whichever scores better, so a work "
+                          + "whose slot stands upright opens sideways and one whose slot lies "
+                          + "across parts up and down"],
+    slotPlace: ["measured", "where the departing work's own slot stands along its own axis, "
+                            + "motifs.gatePlace — lab/step1-motifs.py's slot_on() sweeps the band "
+                            + "centre across the middle half of the frame and keeps the "
+                            + "best-scoring place, so the record now carries where the gate is "
+                            + "rather than only how plainly it reads"],
+    slotHalf: ["measured", "half the departing work's own slot width, motifs.gateHalf — the same "
+                           + "slot_on() grows the band outward from its own best centre while the "
+                           + "profile stays quiet, so the width is the slot's own rather than the "
+                           + "motif's fixed band"],
     "gates.press": ["unmeasured", "how hard the two leaves press their teeth together. It is a "
                                   + "property of the joint rather than of either photograph"],
     "gates.lead": ["unmeasured", "how far apart the two leaves' own departures stand"],
@@ -756,10 +760,12 @@
                                         + "readings and two rows"],
     "grid-colour.lead": ["measured", "how far ahead of its own shapes the arriving palette comes — "
                                      + "charter shelf 11's colour herald — read as the distance "
-                                     + "between the two works on luminance.ladderPosition, which is "
-                                     + "the collection's own COLOURFULNESS ladder and so is the "
-                                     + "right reading for a colour handle and the wrong one for a "
-                                     + "tonal threshold"],
+                                     + "between the two works on palette.colourfulness. `lead` is "
+                                     + "about how early the arriving work's PALETTE is full, so the "
+                                     + "collection's own colourfulness ladder is the right family "
+                                     + "for it, unlike the five tonal sites the judge seat's "
+                                     + "standing correction of 2026-08-18/19 moved onto "
+                                     + "luminance.level instead"],
     countBeatIn: ["unmeasured", "the stretch of the passage the count travels over. Where in a "
                                 + "passage a structure moves is the score's shape, not the pair's"],
     countBeatOut: ["unmeasured", "the same at the far door"],
@@ -790,17 +796,16 @@
                          + "coarse masses parts into few large areas and a fine-grained one into "
                          + "many small ones"],
     cellsB: ["measured", "the arriving work's own grain, read the same way"],
-    // THE ONE REAL GAP OF THIS INSTRUMENT, and it is stated rather than filled. The level a work
-    // parts at is a level of TONE, and no reading of a work's tone travels in a record:
-    // `luminance.ladderPosition` is the collection's own COLOURFULNESS ladder (the judge seat's
-    // standing correction of 2026-08-18), so naming it here would put a colour number where a tone
-    // number belongs. The instrument measures its own picture at build, which is the module's own
-    // answer. A record would close it by publishing the work's own median luminance as a share of
-    // its range — the number `measure(image)` in lab/effects/strata-light.js already solves and
-    // discards.
-    levelA: ["unmeasured", "the level of tone the departing work parts at. A work record carries no "
-                           + "reading of tone at all; the instrument measures its own picture"],
-    levelB: ["unmeasured", "the same of the arriving work"],
+    // THE GAP ABOVE IS CLOSED. The level a work parts at is a level of TONE, and `luminance.level`
+    // now carries exactly that — the work's own median luminance on a 128-cell grid,
+    // lab/analyze/recipes.py:551-613 colour_stats()'s python port of `measure(image)` in
+    // lab/effects/strata-light.js:108-113, the number that module solves and, unread, discards. It
+    // is not `palette.colourfulness` (the judge seat's standing correction of 2026-08-18/19): that
+    // field is the collection's own COLOURFULNESS ladder, half chroma and half hue spread, and would
+    // put a colour number where this tone number belongs.
+    levelA: ["measured", "the departing work's own `luminance.level` — its median luminance, a port "
+                        + "of `measure(image)` in lab/effects/strata-light.js:108-113"],
+    levelB: ["measured", "the same of the arriving work"],
     // THE TWELVE ROWS BELOW ARE READ ONLY WHERE THIS CUE OWNS LIGHT-COLOUR. Shelf 17's levels law
     // gives that level one active voice; where another cue of the same passage owns it instead this
     // one only accompanies, and `fillPlan`'s "strata-light" branch leaves every one of the twelve
@@ -1303,9 +1308,10 @@
       },
       // THE THIRD PICTURE IS MADE OF TWO PALETTES, so what it suits is a pair whose two colours
       // stand APART: where the two works carry nearly one colour the composite is one work slightly
-      // veiled and there is nothing to watch. The colour distance is already in this file — the
-      // tonal bridge is a closeness of the works' own measured ladder positions, and the distance
-      // is its complement — so the measurement the lane said it was waiting on was here all along.
+      // veiled and there is nothing to watch. The tonal bridge already in this file — a closeness
+      // of the works' own measured tone, `luminance.level` since the judge seat's standing
+      // correction of 2026-08-18/19 — stands in for the colour distance the lane said it was
+      // waiting on, and the distance is its complement.
       //
       // The second half is charter shelf 10's: the third picture is the two works' INTERFERENCE, so
       // a pair carrying a measured lattice at one end at least has something to beat against, and
@@ -1567,17 +1573,20 @@
       // the more the parting reads as one tonal world giving way to another rather than as one
       // picture sliding over itself.
       //
-      // WHAT THIS READING IS NOT. `luminance.ladderPosition` is where the work stands on the
-      // collection's own COLOURFULNESS ladder, not on a tonal one, and the judge seat's standing
-      // correction of 2026-08-18 forbids naming it as a tonal source. It is honest here for what
-      // it is — the distance between two works on one published ladder — and the instrument's own
-      // threshold handles are NOT driven from it. The gap that leaves is in the lane's report.
+      // THE READING, off `luminance.level` — the median of each work's own luminance
+      // (lab/analyze/recipes.py:551-613 colour_stats(), carried through build-workrecords-v1.py's
+      // record) — the same field the instrument's own threshold handles (`levelA`/`levelB`) are
+      // already driven from. `palette.colourfulness` stood here until tonight: it is where a work
+      // sits on the collection's own colourfulness ladder, half chroma and half hue spread, and the
+      // judge seat's standing correction of 2026-08-18/19 named it as the wrong family for a tonal
+      // threshold. `luminance.level` is the genuine tone, so the fit and the handles now read the
+      // same field.
       "strata-light": function (a, b) {
-        var pa = readingOf((a.luminance || {}).ladderPosition);
-        var pb = readingOf((b.luminance || {}).ladderPosition);
+        var pa = readingOf((a.luminance || {}).level);
+        var pb = readingOf((b.luminance || {}).level);
         var apart = Math.abs(pa - pb);
         return [apart, "the two works stand at " + pyText(flt(r4(pa))) + " and "
-                + pyText(flt(r4(pb))) + " on the collection's own ladder, "
+                + pyText(flt(r4(pb))) + " on their own measured tone, "
                 + pyText(flt(r4(apart))) + " apart — and either way each parts at a level of its "
                 + "own, since every photograph has one"];
       },
@@ -1758,7 +1767,7 @@
     // The tonal and spectral closeness of a pair — two readings the two works always carry, so this
     // answers for every pair in the world, including two records that share no measured structure
     // at all. A record missing either field reads as the plainest thing it can: the fields' own
-    // neutral, which is what an unmeasured ladder position and a one-pixel detail scale amount to.
+    // neutral, which is what an unmeasured level and a one-pixel detail scale amount to.
     // THE LATTICE A WORK CARRIES, in the one unit the reading is already in: the step the work was
     // actually cut at, falling back to the repeat its own grid was measured at where no device was
     // recovered. `measuredParts` carries the same order of preference for the fill, which has one
@@ -1769,8 +1778,14 @@
     }
 
     function tonalSpectral(a, b) {
-      var ta = Number((a.luminance || {}).ladderPosition) || 0;
-      var tb = Number((b.luminance || {}).ladderPosition) || 0;
+      // THE TONE, off `luminance.level` — the median of each work's own luminance
+      // (lab/analyze/recipes.py:551-613 colour_stats(), carried through build-workrecords-v1.py's
+      // record), rather than `palette.colourfulness` — half chroma_p90, half hue_entropy, which
+      // this pivot read before tonight's rename exposed it as a colourfulness reading and not a
+      // tone. Charter shelf 12 defines the tonal decomposition as luminance zones, so its tonal
+      // half must read a tone, and `luminance.level` is the genuine one the record now carries.
+      var ta = Number((a.luminance || {}).level) || 0;
+      var tb = Number((b.luminance || {}).level) || 0;
       var fa = Number((a.texture || {}).detailPx) || 1, fb = Number((b.texture || {}).detailPx) || 1;
       var tonal = 1.0 - Math.min(1.0, Math.abs(ta - tb));
       var spectral = 1.0 - Math.min(1.0, Math.abs(Math.log2(Math.max(fa, 1e-6))
@@ -2185,14 +2200,18 @@
     // ground the arriving work measures IS how much of an apparition the arrival is, the tonal gap
     // IS how much of a provocation the crossing is, and the strongest reading names the register.
     // A crossing that opens a world is a discovery whole, because the world is either there or not.
+    // THE TONAL GAP reads `luminance.level` — the median of each work's own luminance — rather than
+    // `palette.colourfulness`, which stood here before the judge seat's standing correction of
+    // 2026-08-18/19 gave the record a genuine tone to read: "half the tonal ladder" above is that
+    // reading's own name for itself, and it names a tone now rather than a colourfulness.
     function registerOf(fromW, toW, arrival, world) {
       var pool = [], best = null, i, la, lb;
       if (arrival === "CONDENSED") {
         pool.push({ name: "apparition", fit: readingOf((toW.motifs || {}).voidShare) });
       }
       if (world) pool.push({ name: "discovery", fit: 1 });
-      la = (fromW.luminance || {}).ladderPosition;
-      lb = (toW.luminance || {}).ladderPosition;
+      la = (fromW.luminance || {}).level;
+      lb = (toW.luminance || {}).level;
       if (la !== null && la !== undefined && lb !== null && lb !== undefined) {
         pool.push({ name: "provocation", fit: clamp01(Math.abs(la - lb)) });
       }
@@ -3554,6 +3573,17 @@
         // record would have to publish; inventing one here would be a number nobody measured.
         carriesGate: (mot.measured || []).indexOf(MOTIF_GATE) >= 0 ? 1 : 0,
         gateGap: Number(mot.gateGap) || 0,
+        // WHERE THE DEPARTING WORK'S OWN SLOT STANDS, HOW WIDE IT IS AND WHICH WAY IT OPENS — the
+        // three readings pass-inst-gates.js:604-638 named as missing until tonight. lab/step1-
+        // motifs.py's slot_on() (ported from the archived lab/effects/gates.js, git show 9c3d139)
+        // sweeps both axes of the work's own busy profile, keeps the better-scoring one and grows
+        // the slot outward from its own best centre; lab/build-workrecords-v1.py carries the result
+        // as `motifs.gatePlace`/`gateHalf`/`gateAxis` beside `gateGap`. `gateAxis` is folded to the
+        // same 0/1 the banding branch of `encodeEnds` two screens up already uses: the axis that
+        // opens sideways (a vertical band) is 1, the axis that parts up and down is 0.
+        gatePlace: Number(mot.gatePlace) || 0,
+        gateHalf: Number(mot.gateHalf) || 0,
+        gateAxis: mot.gateAxis === "vertical" ? 1 : (mot.gateAxis === "horizontal" ? 0 : null),
         // how strongly the work reads as radial, and how many rings its own cut measured
         radialScore: Number((st.radial || {}).score) || 0,
         // THE POINT THE WORK'S OWN STRUCTURE TURNS ABOUT, in the same order of preference `locusOf`
@@ -3612,10 +3642,19 @@
         frameSide: side,
         // how confidently the work's own device was recovered — how legibly its making reads
         deviceConfidence: Number((st.ownDevice || {}).confidence) || 0,
-        // WHERE THE WORK STANDS ON ITS OWN TONAL LADDER, which is the reading the pair's colour
+        // WHERE THE WORK STANDS ON THE COLLECTION'S OWN COLOURFULNESS LADDER — half chroma_p90, half
+        // hue_entropy (lab/step1-tone-texture.py:236-238) — which is the reading the pair's colour
         // distance is taken between. It stood only inside `tonalSpectral`, where the whole pair is
         // in hand; the fill has one work at a time, so the reading belongs here beside the others.
-        ladderPosition: Number((work.luminance || {}).ladderPosition) || 0,
+        // RENAMED FROM `ladderPosition`/`luminance.ladderPosition` (the judge seat's standing
+        // correction of 2026-08-18/19): the field never was a tone, and now reads `palette
+        // .colourfulness`.
+        colourfulness: Number((work.palette || {}).colourfulness) || 0,
+        // THE TONE a work parts at, off `luminance.level` (lab/build-workrecords-v1.py, itself
+        // lab/analyze/recipes.py:551-613 colour_stats()'s median luminance, a port of `measure(image)`
+        // in lab/effects/strata-light.js:108-113): the reading the "strata-light" branch below drives
+        // `levelA`/`levelB` from, one work at a time exactly as `colourfulness` above.
+        level: Number((work.luminance || {}).level) || 0,
         // THE THREE COLOUR READINGS THE EIGHTEEN VOICE HANDLES ARE DRIVEN FROM — saturation,
         // brightness and tonal contrast, each read straight off the work's own pixels by
         // lab/analyze/recipes.py:526-585 colour_stats() and carried into this record's own
@@ -4312,10 +4351,10 @@
           //
           // HOW FAR THE COMPOSITE REACHES AND HOW MUCH OF THE FRAME IT STANDS ON, both off the one
           // reading that decides whether this crossing is worth watching: the two works' own colour
-          // distance, taken between their measured ladder positions. Two palettes standing apart
+          // distance, taken between their measured colourfulness. Two palettes standing apart
           // make a third colour world; two standing close make one work slightly veiled, and the
           // composite reaches exactly as far as there is a third colour to reach for.
-          var apartHere = Math.min(1, Math.abs(mf.ladderPosition - mt.ladderPosition));
+          var apartHere = Math.min(1, Math.abs(mf.colourfulness - mt.colourfulness));
           if (apartHere > 0) {
             wanted.exposure = flt(r4(clamp01(apartHere)));
             wanted.presence = flt(r4(clamp01(apartHere)));
@@ -4550,11 +4589,24 @@
                                                Math.max(num(HANDLE_SPECS.gates.teeth[0]),
                                                         mf.gridCount)));
           }
-          // WHICH WAY THE SLOT STANDS, off the departing work's own recorded banding axis: a work
-          // banded across the frame carries its emptiness as an upright slot and the leaves open
-          // sideways, and a work banded down it parts up and down.
-          var gx = fromP.ends.banding;
-          if (gx !== undefined && gx !== null) wanted.slotAxis = num(gx[2]) ? 0 : 1;
+          // WHICH WAY THE SLOT STANDS, off the gate's OWN measured axis, motifs.gateAxis — the
+          // slot's own reading rather than the banding axis this branch stood in for it before
+          // tonight's port gave the record a reading of the gate itself. `measuredParts` already
+          // folds it to the 0/1 this handle expects.
+          if (mf.gateAxis !== null && mf.gateAxis !== undefined) wanted.slotAxis = mf.gateAxis;
+          // WHERE THE SLOT STANDS AND HOW WIDE IT IS, off the departing work's own measured place
+          // and half-width — lab/step1-motifs.py's slot_on(), swept and grown per work rather than
+          // read at the collection-wide band the module used to pin every work to.
+          if (mf.gatePlace > 0) {
+            wanted.slotPlace = flt(r4(Math.min(num(HANDLE_SPECS.gates.slotPlace[1]),
+                                               Math.max(num(HANDLE_SPECS.gates.slotPlace[0]),
+                                                        mf.gatePlace))));
+          }
+          if (mf.gateHalf > 0) {
+            wanted.slotHalf = flt(r4(Math.min(num(HANDLE_SPECS.gates.slotHalf[1]),
+                                              Math.max(num(HANDLE_SPECS.gates.slotHalf[0]),
+                                                       mf.gateHalf))));
+          }
           // HOW FAR THE LEAVES SWING AS THEY GO, off the share of the frame the departing work's own
           // open ground holds: a work with room around its masses lets them travel wide.
           if (mf.voidShare > 0) wanted.swing = flt(r4(clamp01(mf.voidShare)));
@@ -4604,9 +4656,9 @@
           }
           // HOW FAR AHEAD OF ITS OWN SHAPES THE ARRIVING PALETTE COMES — charter shelf 11's colour
           // herald. The reading is the distance between the two works on the collection's own
-          // COLOURFULNESS ladder, which is what `luminance.ladderPosition` publishes: two works
+          // COLOURFULNESS ladder, which is what `palette.colourfulness` publishes: two works
           // whose colour worlds stand far apart give the herald something to announce.
-          wanted.lead = flt(r4(clamp01(Math.abs(mf.ladderPosition - mt.ladderPosition))));
+          wanted.lead = flt(r4(clamp01(Math.abs(mf.colourfulness - mt.colourfulness))));
           // THE COLOUR AND LIGHT VOICES — six handles, one set, because this instrument carries
           // BOTH works inside itself and publishes one set of voice fields rather than a pair the
           // way strata-light does (its own manifest, pass-inst-grid-colour.js:919-937). Driven from
@@ -4667,13 +4719,21 @@
                                                 Math.max(num(HANDLE_SPECS["strata-light"].cellsB[0]),
                                                          mt.grainCells)));
           }
-          // `levelA` AND `levelB` ARE NOT DRIVEN, AND THAT IS THE HONEST ANSWER RATHER THAN A GAP
-          // LEFT BY OVERSIGHT. They are the level of TONE each work parts at, and no reading of a
-          // work's tone travels in a record: `luminance.ladderPosition` is the collection's own
-          // COLOURFULNESS ladder — the judge seat's standing correction of 2026-08-18 — so naming it
-          // here would put a colour number where a tone number belongs. The instrument measures its
-          // own picture at build the way the module does, which is the module's own answer, and the
-          // lane's report names the column a record would need.
+          // `levelA` AND `levelB` — THE LEVEL EACH WORK PARTS AT, off each work's own median
+          // luminance: `luminance.level` (lab/build-workrecords-v1.py), lab/analyze/recipes.py:
+          // 551-613 colour_stats()'s python port of `measure(image)` in
+          // lab/effects/strata-light.js:108-113 — the number that module solves at build time and,
+          // unread, discards. Read PER WORK exactly as `cellsA`/`cellsB` above: A the DEPARTING
+          // work's own level, B the ARRIVING work's. This is NOT `palette.colourfulness` (the judge
+          // seat's standing correction of 2026-08-18/19): that field is the collection's own
+          // COLOURFULNESS ladder, half chroma and half hue spread, and would put a colour number
+          // where this tone number belongs.
+          wanted.levelA = flt(r4(Math.min(num(HANDLE_SPECS["strata-light"].levelA[1]),
+                                          Math.max(num(HANDLE_SPECS["strata-light"].levelA[0]),
+                                                   mf.level))));
+          wanted.levelB = flt(r4(Math.min(num(HANDLE_SPECS["strata-light"].levelB[1]),
+                                          Math.max(num(HANDLE_SPECS["strata-light"].levelB[0]),
+                                                   mt.level))));
           //
           // THE TWELVE COLOUR AND LIGHT VOICES, ported from lab/step4-assembler.js:1966-2010. This
           // instrument plays its module twice, once per work (pass-inst-strata-light.js:424-427):

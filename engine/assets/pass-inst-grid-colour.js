@@ -947,13 +947,15 @@
                     unit: "how far the standing frame is written lighter and darker",
                     applied: { restsAt: "both doors", scaledBy: "shade" },
                     reads: "the departing work's own colour.contrast, VOICE_SHARE of it. This handle "
-                         + "used to claim luminance.ladderPosition, read as the distance between the "
-                         + "two works — but that field is not a tone at all: it is computed as half "
-                         + "chroma and half hue spread (lab/step1-tone-texture.py:236-238), the "
-                         + "collection's own COLOURFULNESS ladder, and a light voice has no business "
-                         + "reading a colour number. colour.contrast is the (p95 − p5) tonal spread "
-                         + "recipes.py:526-585 already measures, which is what a light voice needs. "
-                         + "Same LIGHT-COLOUR ownership gate as colourPeriod above" },
+                         + "used to claim luminance.ladderPosition (renamed palette.colourfulness, "
+                         + "the judge seat's standing correction of 2026-08-18/19), read as the "
+                         + "distance between the two works — but that field is not a tone at all: it "
+                         + "is computed as half chroma and half hue spread "
+                         + "(lab/step1-tone-texture.py:236-238), the collection's own COLOURFULNESS "
+                         + "ladder, and a light voice has no business reading a colour number. "
+                         + "colour.contrast is the (p95 − p5) tonal spread recipes.py:526-585 "
+                         + "already measures, which is what a light voice needs. Same LIGHT-COLOUR "
+                         + "ownership gate as colourPeriod above" },
         arrival: { min: 0, max: 1, def: 0, kind: "enum", step: 1,
                    rungs: ["none named — the plain reverse", "carried"],
                    unit: "which of the charter's arrival modes brings the arriving work",

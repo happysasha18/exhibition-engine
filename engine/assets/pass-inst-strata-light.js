@@ -430,8 +430,12 @@
       //
       //   · `levelA`/`levelB` — THE LEVEL EACH WORK PARTS AT, on its own luminance. The module
       //     publishes it through `measure(image)` at build time and measures its own picture where a
-      //     score names none; this file may not read a picture, so it arrives as a handle and rests
-      //     at the module's OWN answer for a picture it cannot read, 0.5.
+      //     score names none; this file may not read a picture, so it arrives as a handle instead.
+      //     IT NO LONGER RESTS AT NOTHING. The composer's `fillPlan` ("strata-light" branch,
+      //     HANDLE_SOURCE below carries both rows as "measured") drives it off the two works' own
+      //     `luminance.level` — lab/analyze/recipes.py:551-613 colour_stats()'s python port of this
+      //     module's own `measure(image)` — A the departing work's, B the arriving work's, exactly
+      //     the number the module would have solved for itself where a score names none.
       //   · `cellsA`/`cellsB` — THE MASK GRID each work is read on, cells across its own long side.
       //     The module holds one number for both (`MASK_CELLS = 128`); a pair is two photographs
       //     with two materials, so it is published per work and rests at the module's own number.
@@ -566,13 +570,13 @@
       // the composer, which is the one place holding both records; what stands here is the
       // instrument's own statement of WHAT IT READS, which is the fact this file owns. A fit of
       // nothing is never a refusal — it ranks last and plays where nothing ranks higher.
-      suits: { reads: ["luminance.ladderPosition"],
-               how: "each work parts at a level of its own tone, so it suits a pair the further "
-                  + "apart the two works stand on their own tonal ladder — the parting then reads "
-                  + "as one tonal world giving way to another rather than as one picture sliding "
-                  + "over itself — and the reading is the distance between the two ladder "
-                  + "positions; every photograph has a tone to part at, which is why this suits "
-                  + "every pair somewhat and the reading only ranks how strongly" },
+      suits: { reads: ["luminance.level"],
+               how: "each work parts at a level of its own light, so what would suit it best is a "
+                  + "pair standing far apart in TONE. `luminance.level` (the judge seat's standing "
+                  + "correction of 2026-08-18/19) is that genuine reading, the median of each "
+                  + "work's own luminance, and this fit now ranks a pair by the distance between "
+                  + "their two levels — the very decomposition the composer's own tonal-and-"
+                  + "spectral pivot cuts on" },
       readiness: "production-ready",
     };
 

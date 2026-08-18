@@ -617,25 +617,18 @@
       //   · `slotHalf` — half the slot's own width, on the same share of the file. It decides how
       //     long the two leaves part along a straight edge before the jamb breaks into teeth.
       //
-      // THE COLUMN A RECORD WOULD HAVE TO PUBLISH FOR THESE THREE TO BE DRIVEN, named exactly and
-      // NOT filled in here. A work record today carries `motifs.gateGap` — how PLAINLY the gate reads
-      // — and beside it, in the lab's own table, `motifs.measures.gate_centre_busy` and
-      // `motifs.measures.gate_flank_busy`. Every one of those is a STRENGTH. Not one of them says
-      // where the slot stands or how wide it is, because the collection's own measure pins the band
-      // at 0.42 to 0.58 of the frame for every work and never lets it move. So three fields are
-      // missing, and these are their paths:
-      //     motifs.gateAxis    — which axis the slot stands on   (lab: motifs.measures.gate_axis)
+      // THE COLUMN A RECORD PUBLISHES FOR THESE THREE, since lab/step1-motifs.py's rewrite of
+      // 2026-08-19 that ported `slotOn`/`gateOf` (gates.js:376-409) into the collection's own
+      // measure and deleted the fixed 0.42-to-0.58 band this note used to name. A work record now
+      // carries all three beside `motifs.gateGap`:
+      //     motifs.gateAxis    — which axis the slot stands on   (lab: motifs.gate_axis)
       //     motifs.gatePlace   — where it stands along that axis, as a share of the FILE's own side
-      //                                                          (lab: motifs.measures.gate_place)
+      //                                                          (lab: motifs.gate_place)
       //     motifs.gateHalf    — half its own width, on that same share
-      //                                                          (lab: motifs.measures.gate_half)
-      // and `measuredParts()` would carry them through as `gateAxis`, `gatePlace` and `gateHalf`,
-      // which is the vocabulary the fill's own table speaks.
-      //
-      // THE MEASUREMENT ITSELF IS NOT INVENTED HERE, and it does not need to be: the lab module
-      // ALREADY SOLVES all three. `slotOn` returns a `place` and a `half` per axis and `gateOf`
-      // picks the better axis (gates.js:376-409). What is missing is only that nothing writes that
-      // reading into a work record, so the engine has never been able to see it.
+      //                                                          (lab: motifs.gate_half)
+      // and `measuredParts()` in pass-composer.js carries them through as `gateAxis`, `gatePlace`
+      // and `gateHalf`, which the fill's own "gates" branch there drives `slotAxis`, `slotPlace`
+      // and `slotHalf` from — the vocabulary this file's own handles speak.
       //
       // THE TWO THAT TAKE A NUMBER OTHER THAN THE ONE THEY ARE HANDED, published beside their ranges
       // by the same rule the meshing instrument's ladder is published by.
