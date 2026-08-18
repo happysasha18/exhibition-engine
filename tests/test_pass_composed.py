@@ -315,7 +315,7 @@ NODE_ROWS = [
     "EX-COMPOSED a route role outside the five reads as a middle and the stray name is recorded",
     "EX-COMPOSED a session memory wider than §4.8's three fields has the extra left unread",
     "EX-COMPOSED a die outside the instrument's own span is wrapped into it",
-    "EX-COMPOSED red-on-bug · the pair fence removed: a request with one work composes",
+    "EX-COMPOSED red-on-bug · the pair fence removed: a request with one work is no longer refused",
     "EX-COMPOSED red-on-bug · §4.8's fence removed: a fourth memory field is read",
     "EX-COMPOSED red-on-bug · the die dropped on its way to the road: every die picks one road",
     "EX-COMPOSED red-on-bug · the genre fits flattened: the ranking stops reading the pair",
@@ -779,14 +779,22 @@ const ask = (extra) => {
           role: p.request && p.request.routeRole, seed: p.request && p.request.seed,
           memory: p.request && p.request.sessionMemory};
 };
+// A half-pair is asked through its own reader, because the fence that catches it is the ONE fence
+// left in the entry and what stands behind that fence is arithmetic over two records. With the
+// fence in place the answer is the refusal's own sentence; with it planted away the request reaches
+// the pair arithmetic and dies there, and the reader carries that back rather than losing the run.
+const refusalFor = (req) => {
+  try { return composer.passageFor(req).declined || null; }
+  catch (e) { return "threw inside the pair arithmetic: " + ((e && e.message) || String(e)); }
+};
 out.fences = {
   role: ask({routeRole: "grand finale"}),
   memory: ask({sessionMemory: {family: "band", seed: 1, passIndex: 2, cooldown: 9}}),
   memoryOk: ask({sessionMemory: {family: "band", seed: 1, passIndex: 2}}),
   seedHigh: ask({seed: 9}),
   seedLow: ask({seed: -1}),
-  noA: composer.passageFor({workRecordA: {}, workRecordB: B, direction: "a-to-b", seed: 1}).declined || null,
-  noB: composer.passageFor({workRecordA: A, workRecordB: {}, direction: "a-to-b", seed: 1}).declined || null,
+  noA: refusalFor({workRecordA: {}, workRecordB: B, direction: "a-to-b", seed: 1}),
+  noB: refusalFor({workRecordA: A, workRecordB: {}, direction: "a-to-b", seed: 1}),
 };
 
 // 11 · THE HARD RECORDS, AND THIS IS THE ROW THE LANE STANDS ON. His word of 2026-08-18 09:51: any
@@ -1223,9 +1231,10 @@ else:
         CORNER = 24
         PLANTS = [
             # THE ONE FENCE LEFT IN THE ENTRY, and it says there is no PAIR. Removed, a request
-            # naming one work composes a crossing between a photograph and nothing.
+            # naming one work no longer meets a refusal: it walks into the pair arithmetic, which
+            # reads two records and is handed one, and the answer moves off the refusal's sentence.
             (NODE_ROWS[19], [["if (!a || !a.id) return no(", "if (!a) return no("]],
-             lambda g: g["fences"]["noA"] is None),
+             lambda g: g["fences"]["noA"] != got["fences"]["noA"]),
             (NODE_ROWS[20], [["          if (odd.length) {", "          if (false) {"]],
              lambda g: "cooldown" in json.dumps(g["fences"]["memory"]["memory"] or {})),
             (NODE_ROWS[21],

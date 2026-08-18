@@ -76,12 +76,21 @@ check("EX-MEMORY the walk carries the edge record, and the lab's pair-scaled bak
       "the memory of a visit is built in the browser; the lab file that enumerates every pair is "
       "reference material and its data ships nowhere")
 
-check("EX-MEMORY the four numbers no measurement gives stand in one place, at the values the lab "
-      "recorded",
+# The list was five numbers until 2026-08-18. Two of them — `reversalMean: 0.02` and
+# `reversalWorst: 0.05` — turned the reversal reading into a yes or a no, and neither was ever
+# measured. His word of 09:51 (any two photographs get a crossing) and of 08:47 (a number nobody
+# measured goes) struck them, and what stands in their place is the distance itself: of the dice
+# this edge is offered, the roll standing FURTHEST from the recorded pass's mirror plays. So this
+# row now holds the three that remain in one record AND holds the two struck ones out of the file.
+check("EX-MEMORY the numbers no measurement gives stand in one place, and the two struck ones are "
+      "gone from the file",
       all(s in SRC for s in ("visitWindowSeconds: 1800", "cooldownSeconds: 86400",
-                             "driftSpan: 0.25", "reversalMean: 0.02", "reversalWorst: 0.05")),
-      "a later pass tunes the whole list at once, so the list is one record and not five constants "
-      "spread through the file")
+                             "driftSpan: 0.25"))
+      and "reversalMean" not in SRC and "reversalWorst" not in SRC
+      and "function passMirrorDistance" in SRC,
+      "a later pass tunes the whole list at once, so the list is one record and not constants "
+      "spread through the file; and the reversal carries no number of its own — "
+      "`passMirrorDistance` hands the distance over and the ranking reads it")
 
 # ---------------------------------------------------------------- the walk, in a browser
 
@@ -90,8 +99,10 @@ BROWSER_ROWS = [
     "EX-MEMORY the record holds §4.8's own names and nothing about the person",
     "EX-MEMORY walking back hands the composer the return reference and nothing wider",
     "EX-MEMORY the backward passage is kin to the forward one and is not it played backwards",
-    "EX-MEMORY refusal · a backward plan sharing neither the family nor the pivot never plays",
-    "EX-MEMORY refusal · a pass that reads as the recorded one reversed never plays",
+    "EX-MEMORY ranking · a backward plan sharing neither the family nor the pivot ranks below its "
+    "kin, and the crossing still plays",
+    "EX-MEMORY ranking · a pass that reads as the recorded one reversed stands at no distance and "
+    "ranks last of the dice",
     "EX-MEMORY a repeated edge inside a visit drifts: the family holds and the door breathes",
     "EX-MEMORY red-on-bug · the drift never touches a measured handle, a door or the clock",
     "EX-MEMORY across the visit boundary nothing crosses, the family is cooled and a second die is "
@@ -102,6 +113,19 @@ BROWSER_ROWS = [
     "EX-MEMORY the store stays bounded: the youngest records stand and the rest go",
     "EX-MEMORY ?reset forgets the edges walked, the way it forgets everything else",
 ]
+
+
+# §4.8'S JUDGE HANDS BACK A READING AND NEVER A YES OR A NO (2026-08-18). It answers
+# {kin, distance, why}: `kin` is the plain fact of shared family or shared pivot, `distance` is how
+# far this roll stands from the recorded pass's mirror with nothing where no reading applies, and
+# `why` is the sentence that reaches the diagnostic surface. Every row below reads the reading
+# through these two, so a row is never written against the shape of a refusal that is gone.
+def _dist(v):
+    return v.get("distance") if isinstance(v, dict) else None
+
+
+def _why(v):
+    return (v.get("why") or "") if isinstance(v, dict) else ""
 
 
 def js(br, body):
@@ -339,19 +363,26 @@ else:
                               wasPivot: before ? before.pivot : null};
                     """ % (EDGE, EDGE, EDGE))
                     check(BROWSER_ROWS[3],
-                          back["hasScore"] and judged["verdict"] is None
+                          back["hasScore"] and _why(judged["verdict"]) == ""
+                          and _dist(judged["verdict"]) is None
                           and (judged["family"] == judged["was"]
                                or judged["pivot"] == judged["wasPivot"])
                           and back["json"] != first["json"],
                           f"the way back holds the family «{judged['family']}» against the recorded "
                           f"«{judged['was']}» and plays a different score "
                           f"({len(back['json'] or '')} B against {len(first['json'] or '')} B); the "
-                          f"walk's own verdict on it: {judged['verdict']!r}")
+                          f"walk's own reading of it carries no sentence and no distance: "
+                          f"{judged['verdict']!r}")
 
-                    # 4 · refusal one · neither the family nor the pivot ----------------------
-                    # The record is replaced by one no passage on this edge can be kin to. The walk
-                    # must freeze no score onto the command and name why, so the visitor lands on
-                    # the walk's own glide. Reverting the kinship check reddens this row.
+                    # 4 · reading one · neither the family nor the pivot ----------------------
+                    # The record is replaced by one no passage on this edge can be kin to. This was
+                    # a refusal until 2026-08-18 and cost the visitor the whole crossing; his word
+                    # of 09:51 — any two photographs in the world get a crossing, always — struck
+                    # that out. So the walk now ROLLS: it asks for more than one die, ranks each on
+                    # kinship, and plays the best of them, and the reading stands on the diagnostic
+                    # surface in plain words whatever plays. The row holds three things: a score is
+                    # frozen onto the command, the walk spent more than one die looking for a kin
+                    # roll, and the reason is said rather than swallowed.
                     js(br, """
                       var all = window.__exPass.memory.all();
                       var e = all['%s'];
@@ -365,15 +396,25 @@ else:
                     """ % EDGE)
                     alien = declare(br, B, A, "alien")
                     check(BROWSER_ROWS[4],
-                          alien["got"] and alien["hasScore"] is False
-                          and "shares neither the family" in (alien["why"] or "")
-                          and alien["memory"]["refused"] is not None
-                          and len(alien["memory"]["rolls"]) > 1,
+                          alien["got"] and alien["hasScore"] is True
+                          and len(alien["memory"]["rolls"]) > 1
+                          and any("shares neither the family" in (r.get("why") or "")
+                                  for r in alien["memory"]["rolls"]),
                           f"the command carries {('a score' if alien['hasScore'] else 'no score')} "
-                          f"after {len(alien['memory']['rolls'])} dice; the reason on the surface: "
-                          f"{(alien['why'] or '')[:170]!r}")
+                          f"after {len(alien['memory']['rolls'])} dice, and the alien record is "
+                          f"named on the surface rather than charged to the visitor: "
+                          f"{[(r.get('why') or '')[:90] for r in alien['memory']['rolls']]!r}")
 
-                    # 5 · refusal two · the recorded pass played backwards --------------------
+                    # 5 · reading two · the recorded pass played backwards --------------------
+                    # THIS WAS A REFUSAL UNTIL 2026-08-18 AND IS A RANKING NOW. His word of 09:51:
+                    # any two photographs in the world get a crossing, always — so a pass that reads
+                    # as the recorded one played backwards is no longer refused the crossing. It is
+                    # measured: `judge` hands back a DISTANCE, and of the three dice this edge is
+                    # offered the roll standing FURTHEST from the recorded pass's mirror plays. A
+                    # mirror stands at a distance of about nothing, which is the shortest distance
+                    # there is, so it ranks last — and a pass with no reading to take answers with
+                    # no distance at all, which the walk's own scoring reads as the whole point.
+                    # The row proves both readings on one pass, in the numbers the walk itself uses.
                     # THE MIRROR IS MADE EXACT BY CONSTRUCTION, and an earlier form of this row was
                     # not. That form planted the reverse of a trace read at one die and then chased
                     # that same die again across reloads, so it met a true mirror only where two
@@ -386,7 +427,7 @@ else:
                     # So it composes the very pass it is about to judge, plants THAT pass's own
                     # trace reversed as the record, and asks the walk's own judge. The candidate is
                     # then the recorded pass run backwards to the last handle, which is exactly the
-                    # condition §4.8 refuses.
+                    # condition §4.8 ranks lowest.
                     #
                     # WHY A ONE-CUE PASS LIES OUTSIDE THIS ROW'S REACH, and this is the second half
                     # the earlier form did not have (U27 stage 2, 2026-08-18). Making the mirror was
@@ -394,16 +435,17 @@ else:
                     # ALREADY its own mirror it is not. The charter's voice budget gives a quiet
                     # link exactly one move from the vocabulary, and a single cue spanning the whole
                     # passage with every handle standing at one value reads the same forwards and
-                    # backwards — reversing it returns it unchanged. §4.8 refuses a replay because a
-                    # replay says the way back was not authored; a pass identical to its own reverse
-                    # makes no claim about authorship either way, so the walk DECLINES TO REFUSE it,
-                    # by a clause written on purpose in `passReadsAsReversed` with its reason above
-                    # it. That is the product behaving as designed, and a row standing its refusal
-                    # on such a pass is asking the walk to answer a question it never asks.
+                    # backwards — reversing it returns it unchanged. §4.8 ranks a replay last
+                    # because a replay says the way back was not authored; a pass identical to its
+                    # own reverse makes no claim about authorship either way, so the walk TAKES NO
+                    # READING there, by the clause in `passMirrorDistance` that compares the record
+                    # against its own mirror first and answers with nothing where the record is
+                    # already its own. That is the product behaving as designed, and a row standing
+                    # its reading on such a pass is asking the walk a question it never asks.
                     #
                     # So the row goes and FINDS an asymmetric pass — more than one cue, where a
                     # reversal is a real claim — walking the ordered pairs this hang shows at every
-                    # role the walk can state a step to be, and stands the refusal there. It also
+                    # role the walk can state a step to be, and stands the reading there. It also
                     # keeps a one-cue pass it met on the way and shows, measured rather than argued,
                     # that the walk answers nothing on it: that is the reach of this row stated in
                     # its own numbers. Where the whole hang offers no pass of more than one cue the
@@ -472,11 +514,11 @@ else:
                               tried: tried.length,
                               kin: window.__exPass.memory.family(many.got.plan),
                               verdict: judgeAgainst(many.got, rev(many.t)),
-                              // The same pass judged against its OWN trace, unreversed: a pass is
-                              // not a replay of itself, so this must answer nothing.
+                              // The same pass read against its OWN trace, unreversed: a pass is not
+                              // a replay of itself, so no distance applies and the reading is empty.
                               forward: judgeAgainst(many.got, many.t),
                               // AND THE ROW'S OWN REACH, measured: a one-cue pass is its own mirror,
-                              // so the walk declines to refuse it and this row could not stand there
+                              // so the walk takes no reading on it and this row could not stand there
                               oneCue: one ? one.t.cues.length : null,
                               oneCueRole: one ? one.role : null,
                               oneCueVerdict: one ? judgeAgainst(one.got, rev(one.t)) : null};
@@ -485,31 +527,47 @@ else:
                         skip(BROWSER_ROWS[5],
                              f"every one of the {mirror.get('tried')} passes this hang composes "
                              f"carries a single cue (widest {mirror.get('widest')}), and a one-cue "
-                             f"pass whose handles stand still IS its own mirror — the walk declines "
-                             f"to refuse such a record on purpose, answering "
-                             f"{mirror.get('oneCueVerdict')!r}, so there is no reversal here to "
-                             f"refuse and nothing this row could prove")
+                             f"pass whose handles stand still IS its own mirror — the walk takes no "
+                             f"reading on such a record on purpose, answering a distance of "
+                             f"{_dist(mirror.get('oneCueVerdict'))!r}, so there is no reversal here "
+                             f"to rank and nothing this row could prove")
                     else:
                         # the reach is only stated where a one-cue pass was actually met on the way;
                         # where the first pass composed already carried several cues there is no
                         # such measurement to report, and the row says nothing it did not measure
                         reach = (
                             f" The row's reach, measured on the way: the one-cue pass at the role "
-                            f"«{mirror.get('oneCueRole')}» is its own mirror and the walk answers "
-                            f"{mirror.get('oneCueVerdict')!r} on it, which is why the refusal is "
-                            f"stood on a pass of more than one cue."
+                            f"«{mirror.get('oneCueRole')}» is its own mirror and the walk answers a "
+                            f"distance of {_dist(mirror.get('oneCueVerdict'))!r} on it, which is "
+                            f"why the reading is stood on a pass of more than one cue."
                             if mirror.get("oneCue") else
                             " No one-cue pass was met on the way: the first pass this hang composed "
                             "already carried several cues, so the reversal is a real claim on it.")
+                        # WHAT THE WALK ITSELF DOES WITH THESE TWO NUMBERS, restated here in the
+                        # walk's own arithmetic (`01a-pass.js`, the roll's score): a roll whose
+                        # reading carries no distance is worth a whole point on the mirror reading,
+                        # and a roll standing d away is worth min(1, d * 10). A mirror stands at
+                        # about nothing, so it scores about nothing and every roll that is not a
+                        # mirror outranks it. That is the rule the refusal was replaced by, and the
+                        # row proves it on the two readings it took rather than by argument.
+                        d_back = _dist(mirror.get("verdict"))
+                        d_fwd = _dist(mirror.get("forward"))
+                        mirror_rank = 0.0 if d_back is None else min(1.0, d_back * 10)
+                        forward_rank = 1.0 if d_fwd is None else min(1.0, d_fwd * 10)
                         check(BROWSER_ROWS[5],
                               mirror.get("cues", 0) > 1
-                              and "played backwards" in (mirror.get("verdict") or "")
-                              and mirror.get("forward") is None,
+                              and d_back is not None and d_back < 0.05
+                              and "played backwards" in _why(mirror.get("verdict"))
+                              and d_fwd is None
+                              and mirror_rank < forward_rank,
                               f"a pass of {mirror.get('cues')} cues at the role "
                               f"«{mirror.get('role')}» on the family «{mirror.get('kin')}», met as "
-                              f"the record run backwards, is refused: "
-                              f"{(mirror.get('verdict') or '')[:180]!r}; the same pass met as the "
-                              f"record run FORWARDS is not refused ({mirror.get('forward')!r})."
+                              f"the record run backwards, stands {d_back!r} of the recorded pass's "
+                              f"own range from it and is ranked at {mirror_rank:.4f} of the mirror "
+                              f"reading's whole point: {_why(mirror.get('verdict'))[:180]!r}. The "
+                              f"same pass met as the record run FORWARDS carries no distance at all "
+                              f"({d_fwd!r}) and ranks at {forward_rank:.4f}, so the mirror is the "
+                              f"last roll this walk will play and is never the refused one."
                               + reach
                               + f" {mirror.get('tried')} pass(es) composed to find one.")
 
