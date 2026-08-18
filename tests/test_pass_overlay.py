@@ -281,9 +281,11 @@ OWN = [
      "everything the turn and the scale breath carry past the frame"),
     ("vec3 flatOf(sampler2D tex, vec4 fit){",
      "THE ARRIVING WORK'S FLATTEST LEVEL IS READ AT A LATTICE. The module reads the last step of "
-     "its own mipmap chain; the host builds none, so the same quantity is read at twenty-five "
-     "places, each row shifted by the golden fraction so the lattice cannot fall into step with a "
-     "work that carries a lattice of its own"),
+     "its own mipmap chain, which is the exact mean of the file; the host builds none, so the "
+     "same quantity is read at forty-nine places, each row shifted by the golden fraction so the "
+     "lattice cannot fall into step with a work that carries a lattice of its own — measured "
+     "against that exact mean over the collection's twenty-six photographs at 5.02 of 255 mean "
+     "and 14.36 worst"),
 ]
 own_missing = [s for s, _ in OWN if s not in REGION]
 check("PASS-OVERLAY the three things the port decided for itself are named as the port's own",

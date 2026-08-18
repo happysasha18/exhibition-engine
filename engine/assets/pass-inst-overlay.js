@@ -71,7 +71,7 @@
   //    own unit square — the same law the unfold's parquet is continued by.
   // 3. THE FLATTEST LEVEL OF THE ARRIVING WORK. The module reads the last step of its own mipmap
   //    chain, which is that work's colour with every form averaged out of it. The host builds no
-  //    mipmap chain, so the port reads the work at a lattice of twenty-five places instead. It is
+  //    mipmap chain, so the port reads the work at a lattice of forty-nine places instead. It is
   //    the same quantity read at fewer points, and how far the two stand apart is measured and
   //    published rather than assumed — see NUMBERS TO REVISIT in the report.
   //
@@ -146,19 +146,23 @@
       "}",
 
       // THE ARRIVING WORK AT ITS FLATTEST — its colour with every form averaged out of it. The
-      // module reads the last step of its own mipmap chain; the host builds none, so this reads the
-      // work at a lattice of twenty-five places, each row shifted by the golden fraction so the
-      // lattice cannot fall into step with a work that carries a lattice of its own.
+      // module reads the last step of its own mipmap chain, which is the exact mean of the file;
+      // the host builds no mipmap chain, so this reads the same quantity at a lattice of forty-nine
+      // places, each row shifted by the golden fraction so the lattice cannot fall into step with a
+      // work that carries a lattice of its own. Measured against the exact mean over the
+      // collection's twenty-six photographs: 5.02 of 255 mean, 3.46 median, 14.36 worst — against
+      // 9.50 mean and 40.76 worst at a lattice of twenty-five. The taps are asked for only where
+      // the dial has not finished, so a frame at whole exposure pays nothing for them.
       "vec3 flatOf(sampler2D tex, vec4 fit){",
       "  vec3 acc = vec3(0.0);",
-      "  for (int j = 0; j < 5; j++) {",
-      "    float v = (float(j) + 0.5) / 5.0;",
-      "    for (int i = 0; i < 5; i++) {",
-      "      float u = fract((float(i) + 0.5) / 5.0 + float(j) * 0.6180339887);",
+      "  for (int j = 0; j < 7; j++) {",
+      "    float v = (float(j) + 0.5) / 7.0;",
+      "    for (int i = 0; i < 7; i++) {",
+      "      float u = fract((float(i) + 0.5) / 7.0 + float(j) * 0.6180339887);",
       "      acc += pane(tex, vec2(u, v), fit);",
       "    }",
       "  }",
-      "  return acc / 25.0;",
+      "  return acc / 49.0;",
       "}",
 
       // SIX RULES, AND THE SIXTH WAS ADDED 13.08 FOR A MEASURED REASON. A crossing's middle wants
