@@ -386,47 +386,132 @@ else:
                     # So it composes the very pass it is about to judge, plants THAT pass's own
                     # trace reversed as the record, and asks the walk's own judge. The candidate is
                     # then the recorded pass run backwards to the last handle, which is exactly the
-                    # condition §4.8 refuses, and this row can never fail to produce it.
+                    # condition §4.8 refuses.
+                    #
+                    # WHY A ONE-CUE PASS LIES OUTSIDE THIS ROW'S REACH, and this is the second half
+                    # the earlier form did not have (U27 stage 2, 2026-08-18). Making the mirror was
+                    # never enough: the mirror also has to be DETECTABLE, and on a pass that is
+                    # ALREADY its own mirror it is not. The charter's voice budget gives a quiet
+                    # link exactly one move from the vocabulary, and a single cue spanning the whole
+                    # passage with every handle standing at one value reads the same forwards and
+                    # backwards — reversing it returns it unchanged. §4.8 refuses a replay because a
+                    # replay says the way back was not authored; a pass identical to its own reverse
+                    # makes no claim about authorship either way, so the walk DECLINES TO REFUSE it,
+                    # by a clause written on purpose in `passReadsAsReversed` with its reason above
+                    # it. That is the product behaving as designed, and a row standing its refusal
+                    # on such a pass is asking the walk to answer a question it never asks.
+                    #
+                    # So the row goes and FINDS an asymmetric pass — more than one cue, where a
+                    # reversal is a real claim — walking the ordered pairs this hang shows at every
+                    # role the walk can state a step to be, and stands the refusal there. It also
+                    # keeps a one-cue pass it met on the way and shows, measured rather than argued,
+                    # that the walk answers nothing on it: that is the reach of this row stated in
+                    # its own numbers. Where the whole hang offers no pass of more than one cue the
+                    # row SKIPS and says so — a condition it cannot produce is a condition it cannot
+                    # guard, and a green line there would be a lie.
+                    #
+                    # The record row 4 replaced with an alien one is put back first, so the composer
+                    # reads this edge's real memory rather than the plant left standing above.
                     #
                     # The other half — that a refused pass freezes NO score onto the command and the
                     # visitor lands on the walk's own glide — travels the same road and is held by
                     # row 4 above, which drives it end to end.
                     mirror = js(br, """
-                      var A = document.querySelector('.exh-frame[data-id="%s"]');
-                      var B = document.querySelector('.exh-frame[data-id="%s"]');
-                      var req = (A && B) ? window.__exPass.request(B, A) : null;
-                      var got = req ? window.__exPass.passage(req) : null;
-                      if (!got || !got.score) return {none: true};
-                      var t = window.__exPass.memory.trace(got.score);
-                      if (!t) return {none: true};
-                      var rev = {ms: t.ms, cues: t.cues.slice().reverse().map(function (c) {
-                        var h = {};
-                        Object.keys(c.h).forEach(function (n) { h[n] = [c.h[n][1], c.h[n][0]]; });
-                        return {id: c.id, i: c.i, w: [1 - c.w[1], 1 - c.w[0]], h: h};
-                      })};
-                      var before = {family: window.__exPass.memory.family(got.plan),
-                                    pivot: window.__exPass.memory.pivot(got.plan),
-                                    provenance: {trace: rev}};
-                      return {none: false, cues: t.cues.length,
-                              verdict: window.__exPass.memory.judge(got, before) || null,
-                              kin: window.__exPass.memory.family(got.plan),
+                      var all = window.__exPass.memory.all();
+                      var e = all['%s'];
+                      if (e && window.__kept) {
+                        var d = e['a-to-b'] ? 'a-to-b' : 'b-to-a';
+                        e[d] = JSON.parse(JSON.stringify(window.__kept));
+                      }
+                      function rev(t) {
+                        return {ms: t.ms, cues: t.cues.slice().reverse().map(function (c) {
+                          var h = {};
+                          Object.keys(c.h).forEach(function (n) { h[n] = [c.h[n][1], c.h[n][0]]; });
+                          return {id: c.id, i: c.i, w: [1 - c.w[1], 1 - c.w[0]], h: h};
+                        })};
+                      }
+                      function judgeAgainst(got, trace) {
+                        return window.__exPass.memory.judge(got, {
+                          family: window.__exPass.memory.family(got.plan),
+                          pivot: window.__exPass.memory.pivot(got.plan),
+                          provenance: {trace: trace}}) || null;
+                      }
+                      var ids = [].slice.call(document.querySelectorAll('.exh-frame'))
+                                  .map(function (el) { return el.dataset.id; });
+                      var roles = ['culmination', 'middle', 'entrance', 'return', 'quiet link'];
+                      var tried = [], many = null, one = null;
+                      for (var i = 0; i < ids.length && !many; i++) {
+                        for (var j = 0; j < ids.length && !many; j++) {
+                          if (i === j) continue;
+                          var A = document.querySelector('.exh-frame[data-id="' + ids[i] + '"]');
+                          var B = document.querySelector('.exh-frame[data-id="' + ids[j] + '"]');
+                          var req = (A && B) ? window.__exPass.request(A, B) : null;
+                          if (!req) continue;
+                          for (var k = 0; k < roles.length && !many; k++) {
+                            req.routeRole = roles[k];
+                            var got = window.__exPass.passage(req);
+                            if (!got || !got.score) continue;
+                            var t = window.__exPass.memory.trace(got.score);
+                            if (!t || !t.cues.length) continue;
+                            tried.push({role: roles[k], cues: t.cues.length});
+                            var cand = {role: roles[k], from: ids[i], to: ids[j], got: got, t: t};
+                            if (t.cues.length > 1) many = cand;
+                            else if (!one) one = cand;
+                          }
+                        }
+                      }
+                      if (!many) {
+                        return {none: true, tried: tried.length,
+                                widest: tried.reduce(function (m, r) {
+                                  return Math.max(m, r.cues); }, 0),
+                                // what the walk answers on the one-cue pass this hang does offer,
+                                // which is the reason the row cannot stand here
+                                oneCueVerdict: one ? judgeAgainst(one.got, rev(one.t)) : null};
+                      }
+                      return {none: false, cues: many.t.cues.length, role: many.role,
+                              tried: tried.length,
+                              kin: window.__exPass.memory.family(many.got.plan),
+                              verdict: judgeAgainst(many.got, rev(many.t)),
                               // The same pass judged against its OWN trace, unreversed: a pass is
                               // not a replay of itself, so this must answer nothing.
-                              forward: window.__exPass.memory.judge(
-                                got, {family: window.__exPass.memory.family(got.plan),
-                                      pivot: window.__exPass.memory.pivot(got.plan),
-                                      provenance: {trace: t}}) || null};
-                    """ % (A, B))
-                    check(BROWSER_ROWS[5],
-                          not mirror.get("none")
-                          and "played backwards" in (mirror.get("verdict") or "")
-                          and mirror.get("forward") is None,
-                          f"a pass of {mirror.get('cues')} cue(s) on the family "
-                          f"«{mirror.get('kin')}» met as the record run backwards is refused: "
-                          f"{(mirror.get('verdict') or '')[:180]!r}; the same pass met as the "
-                          f"record run FORWARDS is not refused ({mirror.get('forward')!r})"
-                          if not mirror.get("none")
-                          else "this hang composed no backward pass to reverse")
+                              forward: judgeAgainst(many.got, many.t),
+                              // AND THE ROW'S OWN REACH, measured: a one-cue pass is its own mirror,
+                              // so the walk declines to refuse it and this row could not stand there
+                              oneCue: one ? one.t.cues.length : null,
+                              oneCueRole: one ? one.role : null,
+                              oneCueVerdict: one ? judgeAgainst(one.got, rev(one.t)) : null};
+                    """ % EDGE)
+                    if mirror.get("none"):
+                        skip(BROWSER_ROWS[5],
+                             f"every one of the {mirror.get('tried')} passes this hang composes "
+                             f"carries a single cue (widest {mirror.get('widest')}), and a one-cue "
+                             f"pass whose handles stand still IS its own mirror — the walk declines "
+                             f"to refuse such a record on purpose, answering "
+                             f"{mirror.get('oneCueVerdict')!r}, so there is no reversal here to "
+                             f"refuse and nothing this row could prove")
+                    else:
+                        # the reach is only stated where a one-cue pass was actually met on the way;
+                        # where the first pass composed already carried several cues there is no
+                        # such measurement to report, and the row says nothing it did not measure
+                        reach = (
+                            f" The row's reach, measured on the way: the one-cue pass at the role "
+                            f"«{mirror.get('oneCueRole')}» is its own mirror and the walk answers "
+                            f"{mirror.get('oneCueVerdict')!r} on it, which is why the refusal is "
+                            f"stood on a pass of more than one cue."
+                            if mirror.get("oneCue") else
+                            " No one-cue pass was met on the way: the first pass this hang composed "
+                            "already carried several cues, so the reversal is a real claim on it.")
+                        check(BROWSER_ROWS[5],
+                              mirror.get("cues", 0) > 1
+                              and "played backwards" in (mirror.get("verdict") or "")
+                              and mirror.get("forward") is None,
+                              f"a pass of {mirror.get('cues')} cues at the role "
+                              f"«{mirror.get('role')}» on the family «{mirror.get('kin')}», met as "
+                              f"the record run backwards, is refused: "
+                              f"{(mirror.get('verdict') or '')[:180]!r}; the same pass met as the "
+                              f"record run FORWARDS is not refused ({mirror.get('forward')!r})."
+                              + reach
+                              + f" {mirror.get('tried')} pass(es) composed to find one.")
 
                     # 6 · the drift ------------------------------------------------------------
                     # A fresh visit, so the two passes below are the first and the second of one
