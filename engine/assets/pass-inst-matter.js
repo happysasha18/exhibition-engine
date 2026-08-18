@@ -465,6 +465,22 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/matter.js", commit: "e0f1b91" },
+      // HOW WELL THIS INSTRUMENT SUITS A PAIR (2026-08-18, his word of 09:51 and its sharpening at
+      // 09:53). An instrument no longer answers WHETHER it takes a pair — it answers how well it
+      // suits one, so a poor fit is still playable and still explains itself. The arithmetic runs in
+      // the composer, which is the one place holding both records; what stands here is the
+      // instrument's own statement of WHAT IT READS, which is the fact this file owns.
+      //
+      // THE SHAPE, for the ports in flight: `suits.reads` names the measurements, by their path in
+      // a work record, and `suits.how` says in one sentence what a whole fit and a fit of nothing
+      // mean for this instrument. A fit of nothing is never a refusal — it ranks last and plays
+      // where nothing ranks higher.
+      suits: { reads: ["luminance.ladderPosition", "texture.detailPx"],
+               how: "it hands one tonal world and one detail scale over to another, so it suits a "
+                  + "pair whose grounds and detail scales stand close enough for the handover to "
+                  + "read as one substance changing rather than two pictures swapped; both readings "
+                  + "are of the pair by construction, which is why it suits every pair somewhat and "
+                  + "no pair absolutely" },
       readiness: "production-ready",
     };
 

@@ -670,6 +670,20 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/gears.js", commit: "e0f1b91" },
+      // HOW WELL THIS INSTRUMENT SUITS A PAIR (2026-08-18, his word of 09:51 and its sharpening at
+      // 09:53). An instrument no longer answers WHETHER it takes a pair — it answers how well it
+      // suits one, so a poor fit is still playable and still explains itself. The arithmetic runs in
+      // the composer, which is the one place holding both records; what stands here is the
+      // instrument's own statement of WHAT IT READS, which is the fact this file owns.
+      //
+      // THE SHAPE, for the ports in flight: `suits.reads` names the measurements, by their path in
+      // a work record, and `suits.how` says in one sentence what a whole fit and a fit of nothing
+      // mean for this instrument. A fit of nothing is never a refusal — it ranks last and plays
+      // where nothing ranks higher.
+      suits: { reads: ["structure.radial.score"],
+               how: "the mesh turns on rings and wedges, so it suits a pair that reads radial at "
+                  + "BOTH ends — a mesh played on one work's centre alone reads as laid on rather "
+                  + "than found — and the weaker of the two readings is the fit" },
       readiness: "production-ready",
     };
 

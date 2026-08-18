@@ -1069,6 +1069,20 @@
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/unfold.js", commit: "4c7dfe4",
                     sha256: "28688b86686a12b57c9fbc4dd9775350d77f9906681b1f4aff57e20dd6f71408" },
+      // HOW WELL THIS INSTRUMENT SUITS A PAIR (2026-08-18, his word of 09:51 and its sharpening at
+      // 09:53). An instrument no longer answers WHETHER it takes a pair — it answers how well it
+      // suits one, so a poor fit is still playable and still explains itself. The arithmetic runs in
+      // the composer, which is the one place holding both records; what stands here is the
+      // instrument's own statement of WHAT IT READS, which is the fact this file owns.
+      //
+      // THE SHAPE, for the ports in flight: `suits.reads` names the measurements, by their path in
+      // a work record, and `suits.how` says in one sentence what a whole fit and a fit of nothing
+      // mean for this instrument. A fit of nothing is never a refusal — it ranks last and plays
+      // where nothing ranks higher.
+      suits: { reads: ["structure.ownDevice.confidence", "structure.ownDevice.stepPx"],
+               how: "it reveals how a work was made, so the fit is how legibly the making READS — "
+                  + "the clearer of the two works' device confidences, which is what a confidence "
+                  + "is for; it is nothing where neither work carries a measured step to open on" },
       readiness: "production-ready",
     };
 

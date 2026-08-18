@@ -985,6 +985,21 @@
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/box.js", commit: "11e2db4",
                     sha256: "8d57315003f0bbc1e5c430b15db9504bd62c167c1a6c875defc2d57df6b8f8c4" },
+      // HOW WELL THIS INSTRUMENT SUITS A PAIR (2026-08-18, his word of 09:51 and its sharpening at
+      // 09:53). An instrument no longer answers WHETHER it takes a pair — it answers how well it
+      // suits one, so a poor fit is still playable and still explains itself. The arithmetic runs in
+      // the composer, which is the one place holding both records; what stands here is the
+      // instrument's own statement of WHAT IT READS, which is the fact this file owns.
+      //
+      // THE SHAPE, for the ports in flight: `suits.reads` names the measurements, by their path in
+      // a work record, and `suits.how` says in one sentence what a whole fit and a fit of nothing
+      // mean for this instrument. A fit of nothing is never a refusal — it ranks last and plays
+      // where nothing ranks higher.
+      suits: { reads: ["structure.regions.score", "the panel element sets"],
+               how: "the crease is placed on a work's own measured region line, so the fit is the "
+                  + "region reading of the better-divided work; it is nothing where neither work "
+                  + "falls into panels a solid could be built from, since a solid with one face is "
+                  + "no solid" },
       readiness: "production-ready",
     };
 

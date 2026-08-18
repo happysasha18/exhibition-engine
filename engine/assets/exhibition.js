@@ -851,20 +851,36 @@
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, why: "no record" };
     let bytes = 0;
     try { bytes = JSON.stringify(raw).length; } catch (e) { return { ok: false, why: "does not write out" }; }
-    // The refusal names the size it MEASURED beside the fence it applied. A score refused for its
-    // weight is refused for a number, and a reason that gives only the fence leaves the one thing
-    // its author has to act on unsaid.
-    if (bytes > PASS_LIMITS.bytes) {
-      return { ok: false, why: "weighs " + bytes + " bytes, over the " + PASS_LIMITS.bytes
-                             + " a score may weigh" };
-    }
+    // THE WEIGHT IS A READING AND NO LONGER A WALL (2026-08-18, his word of 09:51). A score over
+    // this number was refused WHOLE and the visitor took the walk's plain glide — 1 783 of the
+    // 7 708 shipped scores at the fence's earlier value, every one of them before an instrument
+    // saw it. A crossing is not worse for weighing more; a heavy score costs a little parse time
+    // and nothing else, so the number is now a reading the diagnostic surface carries and the
+    // passage plays. The composer fits its own scores to it before they ever arrive here, so the
+    // reading stands at nothing on the product path.
+    const overWeight = bytes > PASS_LIMITS.bytes
+      ? "weighs " + bytes + " bytes, over the " + PASS_LIMITS.bytes + " a score is composed to fit"
+      : null;
     const v = raw.schema;
     if (v !== 1 && v !== 2) return { ok: false, why: "names no schema 1 or 2" };
     const stray = Object.keys(raw).filter(
       (k) => (v === 2 ? PASS_SCORE_FIELDS2 : PASS_SCORE_FIELDS).indexOf(k) < 0);
     if (stray.length) return { ok: false, why: "unknown field «" + stray[0] + "»" };
-    if (raw.intent !== undefined && (typeof raw.intent !== "string" || raw.intent.length > PASS_LIMITS.intent)) {
-      return { ok: false, why: "intent is no short text" };
+    // THE AUTHORED LINE IS TRIMMED, NEVER THE REASON A CROSSING IS LOST. «intent is no short text»
+    // refused the whole score, and over one collection 1 004 of 6 304 composed crossings were lost
+    // to it — no instrument ever saw them. A line running long is a line running long: it is cut to
+    // the length this client reads and the passage plays. A line that is no string at all is a
+    // different thing and is simply not carried.
+    let overLine = null;
+    if (raw.intent !== undefined) {
+      if (typeof raw.intent !== "string") {
+        overLine = "the authored line is no text, so the crossing carries none";
+        delete raw.intent;
+      } else if (raw.intent.length > PASS_LIMITS.intent) {
+        overLine = "the authored line ran to " + raw.intent.length + " characters and is trimmed to "
+                 + PASS_LIMITS.intent;
+        raw.intent = raw.intent.slice(0, PASS_LIMITS.intent - 1) + "…";
+      }
     }
     if (raw.seed !== undefined && !Number.isFinite(Number(raw.seed))) return { ok: false, why: "seed is no number" };
     const p = raw.params;
@@ -875,7 +891,9 @@
       const shut = Object.keys(p).filter((k) => (PASS_REG[k].order || PASS_ORDER).indexOf("score") < 0);
       if (shut.length) return { ok: false, why: "«" + shut[0] + "» is closed to a score" };
     }
-    return { ok: true, score: raw, read: v };
+    // WHAT WAS READ ABOUT THE SCORE'S SIZE travels with it rather than deciding anything.
+    const noted = [overWeight, overLine].filter(Boolean);
+    return { ok: true, score: raw, read: v, noted: noted.length ? noted : null };
   }
 
   // A SCORE PER PAIR CANNOT COVER A DEALT WALK. The walk deals its works afresh each visit and
@@ -1322,9 +1340,17 @@
            + " worst of the recorded pass's own range (measured " + d.mean.toFixed(4) + " mean, "
            + d.worst.toFixed(4) + " worst)";
   }
-  // THE TWO REFUSALS OF §4.8, both judged HERE, because the record they judge against is the
-  // walk's own and the engine never sees it. A pass that carries a return reference is kin to the
-  // one before it — the same family or the same pivot — and it is not that one run backwards.
+  // THE TWO READINGS OF §4.8, both taken HERE, because the record they read against is the walk's
+  // own and the engine never sees it. A pass that carries a return reference is kin to the one
+  // before it — the same family or the same pivot — and it is not that one run backwards.
+  //
+  // THEY WERE REFUSALS UNTIL 2026-08-18, and a refusal here cost the visitor the whole crossing:
+  // the passage played nothing and the walk's plain glide ran instead. His word of 09:51 strikes
+  // that out — any two photographs get a crossing — so both readings now RANK the dice this edge is
+  // offered. A die whose pass reads as a replay is the worst of the three and the other two are
+  // preferred; where every die reads that way, the least-alike still plays and the reason stands on
+  // the diagnostic surface. Nothing about the law is loosened: a replay is still named a replay, and
+  // it is still the last thing this walk will show.
   function passEdgeJudge(passage, before) {
     if (!before || !passage || !passage.plan || !passage.score) return null;
     const fam = passFamilyOf(passage.plan), piv = passPivotOf(passage.plan);
@@ -1618,6 +1644,13 @@
     // cooled family plays and the surface says it did.
     let passage = null, refused = null, cooledStood = null, drifted = null;
     const rolls = [];
+    // THE BEST DIE OF THE THREE IS KEPT, and one of them always plays. Each roll is read against
+    // §4.8's two readings and against the family still cooling on this edge; a roll that reads clean
+    // is taken at once, and where none does the FIRST roll stands — it is the one the walk's own die
+    // asked for — with what was read about it recorded. Before 2026-08-18 a run of three refused
+    // rolls ended in the walk's plain glide, which is the visitor paying for a reading about
+    // repetition with the whole crossing.
+    let best = null, bestWhy = null, bestDrift = null, bestCooled = null;
     for (let i = 0; i < PASS_EDGE.dice; i++) {
       if (i) request.seed = passSeedFor(edge.key, i);
       let got = null;
@@ -1629,17 +1662,24 @@
       passage = got;
       if (got.declined) break;
       const fam = passFamilyOf(got.plan);
-      // THE DOOR BREATHES BEFORE THE PASS IS JUDGED, because the drifted pass is the one that would
-      // play: judging the composer's own numbers and then playing others would leave the two
-      // refusals of §4.8 measuring a pass no one ever sees.
+      // THE DOOR BREATHES BEFORE THE PASS IS READ, because the drifted pass is the one that would
+      // play: reading the composer's own numbers and then playing others would leave §4.8's two
+      // readings measuring a pass no one ever sees.
       drifted = edge.passes > 0 ? passDriftScore(got.score, edge.key, edge.passes) : null;
       refused = passEdgeJudge(got, edge.within ? edge.last : null);
       cooledStood = (!refused && edge.cooled && fam === edge.cooled)
         ? "the family «" + fam + "» played last on this edge and is still cooling" : null;
       rolls.push({ seed: request.seed, family: fam, why: refused || cooledStood });
-      if (!refused && !cooledStood) break;
-      // A die that was refused is said at once, and not only where the last one is refused too: a
-      // pass that never played because it read as a replay is exactly what a person looking at the
+      // THE FIRST ROLL IS KEPT AS THE ONE THAT PLAYS unless a later one reads cleaner. The walk's
+      // own die asked for it, so it is what plays where every roll reads the same.
+      if (best === null) { best = got; bestWhy = refused || cooledStood; bestDrift = drifted;
+                           bestCooled = cooledStood; }
+      if (!refused && !cooledStood) {
+        best = got; bestWhy = null; bestDrift = drifted; bestCooled = null;
+        break;
+      }
+      // A die that read as a replay is said at once, and not only where the last one does too: a
+      // pass that was passed over because it read that way is exactly what a person looking at the
       // surface is trying to find.
       passNote(passRefusals, { what: "memory", name: got.key,
                                why: "die " + (i + 1) + ": " + (refused || cooledStood) });
@@ -1647,6 +1687,8 @@
       // third would be the same waste again.
       if (i && rolls[i].family === rolls[i - 1].family) break;
     }
+    if (best !== null) { passage = best; refused = bestWhy; drifted = bestDrift;
+                         cooledStood = bestCooled; }
     // ONE RECORD CARRIES THE WHOLE PASSAGE: what was asked, what came back, and — written on later,
     // when the host reports — what the instrument applied on the buffer it drew on or the refusal it
     // named. `applied` is the runtime truth and it cannot be known before the frame is drawn.
@@ -1656,16 +1698,16 @@
                        drift: drifted };
     passNote(passPassages, passage);
     if (passage.declined) {
+      // THE ONE ROAD LEFT TO THE GLIDE FROM HERE, and it means one of the two works carries no
+      // record at all — there is no PAIR, so there is nothing to compose between. Every other
+      // decline the composer used to make is gone.
       passNote(passRefusals, { what: "passage", name: passage.key, why: passage.declined });
       return null;
     }
-    if (refused) {
-      // A REFUSED PASS PLAYS NOTHING AND THE VISITOR STILL LANDS: the crossing falls through to the
-      // walk's own glide, which is what every refusal on this road has always meant, and the reason
-      // stands on the diagnostic surface in plain words.
-      passNote(passRefusals, { what: "memory", name: passage.key, why: refused });
-      return null;
-    }
+    // A PASS THAT READ AS A REPLAY STILL PLAYS, and the reading stands on the diagnostic surface in
+    // plain words. It used to play nothing and the visitor took the walk's plain glide, which is a
+    // reading about repetition charged to the person as a whole missing crossing.
+    if (refused) passNote(passRefusals, { what: "memory", name: passage.key, why: refused });
     if (cooledStood) passNote(passRefusals, { what: "memory", name: passage.key, why: cooledStood });
     return passage.score;
   }

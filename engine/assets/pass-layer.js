@@ -1425,10 +1425,14 @@
     }
     var cov = coverageWhyNo(cues);
     if (cov) return cov;
-    // The levels law is checked over the authored plan at build time and not here; see the note
-    // above budgetOfScore for where it lives and why it moved.
-    var bud = budgetOfScore(s);
-    if (bud.why) return "the tier budget: " + bud.why;
+    // THE TIER BUDGET IS RECKONED AND RECORDED, AND IT REFUSES NOTHING (2026-08-18, his word of
+    // 09:51). Shelf 17's budget is a law about how a passage is COMPOSED, and the composer answers
+    // to it: it counts letters and miracles as it builds, gives up moves it cannot spend, and
+    // DECLARES the tier its voices actually realised. A second reckoning here could only disagree
+    // with the first, and its disagreement cost the visitor the whole crossing — a well-formed
+    // score, every instrument ready, refused for a count. The reckoning stands on the diagnostic
+    // surface where a person can read it; what a frame cannot recover from is what this function
+    // still refuses, and a voice count is not that.
     return null;
   }
 
@@ -1630,11 +1634,36 @@
                  lowered: name !== want };
       }
     }
+    // THE PLAN IS LIGHTENED BEFORE IT IS GIVEN UP, which is his own recorded ladder rather than a
+    // loosening of it: a weak device first gets a LIGHTER PLAN WITH FEWER VOICES, and only under
+    // that does the plain grammar play. This answered with nothing the moment a stack overran the
+    // leanest budget, and the visitor took the walk's plain glide with every instrument in the
+    // collection ready to draw. So the topmost voice stands down and the ladder is walked again;
+    // a single voice that still overruns is where §7's own floor stands and the plain grammar
+    // plays, which is the one case this returns nothing for.
+    if (voices.length > 1) {
+      var lighter = stackOrder(voices).slice(0, -1).map(function (r) { return r; });
+      var kept = [];
+      for (var k = 0; k < voices.length; k++) {
+        for (var n2 = 0; n2 < lighter.length; n2++) {
+          if (lighter[n2].cue === voices[k].cue) { kept.push(voices[k]); break; }
+        }
+      }
+      if (kept.length && kept.length < voices.length) {
+        var again = grantVariant(kept, want);
+        if (again.variant) {
+          again.lightened = (again.lightened || 0) + (voices.length - kept.length);
+          again.voices = kept;
+          return again;
+        }
+      }
+    }
     var last = tried[tried.length - 1], floor = VARIANTS[0];
     return { variant: null, sum: peakDeclared(voices, floor), budget: BUDGET[floor], tried: tried,
              lowered: false,
              why: "the stack asks for " + last.asked + " " + last.over + " at «" + floor
-                + "», which grants " + last.grants };
+                + "», which grants " + last.grants + ", and lightening the plan does not reach it "
+                + "either — §7's own floor, below which the plain grammar plays" };
   }
 
   // The census against the declaration (§7). The cues declared textures, framebuffers and a byte
@@ -2157,6 +2186,17 @@
     var asked = variantOf(cmd);
     var got = grantVariant(voices, asked);
     var variant = got.variant || asked;
+    // THE LIGHTENED PLAN IS WHAT PLAYS, where the ladder had to shed a voice to fit the device.
+    // His own recorded ladder puts a lighter plan with fewer voices above the plain grammar, so the
+    // voices the grant kept are the ones the rest of this record is built from.
+    if (got.voices && got.voices.length && got.voices.length < voices.length) {
+      voices = got.voices;
+      if (primary && voices.indexOf(primary) < 0) primary = voices[0];
+      cue = primary && primary.cue ? primary.cue : cue;
+      inst = primary && primary.inst ? primary.inst : inst;
+      logEvt("plan-lightened", cmd.gen, got.lightened + " voice(s) stood down so the device can "
+                                        + "carry the rest");
+    }
     var rec = { cmd: cmd, hooks: hooks, inst: inst, cue: cue, variant: variant, state: "offered",
                 voices: voices, primary: primary, grant: got, liveCues: [], drewLastFrame: 0,
                 docked: false, watchdogT: null, duration: duration, raf: 0, t0: 0, src: null,

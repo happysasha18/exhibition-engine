@@ -809,6 +809,20 @@
       // stands in its place, and a row re-weighs the file against it.
       provenance: { labPath: "lab/effects/adrift.js", commit: null,
                     sha256: "3d72fbdfee393ccf20813c2655d8b14316c35bdb5bd3d20ee89da85aec35020e" },
+      // HOW WELL THIS INSTRUMENT SUITS A PAIR (2026-08-18, his word of 09:51 and its sharpening at
+      // 09:53). An instrument no longer answers WHETHER it takes a pair — it answers how well it
+      // suits one, so a poor fit is still playable and still explains itself. The arithmetic runs in
+      // the composer, which is the one place holding both records; what stands here is the
+      // instrument's own statement of WHAT IT READS, which is the fact this file owns.
+      //
+      // THE SHAPE, for the ports in flight: `suits.reads` names the measurements, by their path in
+      // a work record, and `suits.how` says in one sentence what a whole fit and a fit of nothing
+      // mean for this instrument. A fit of nothing is never a refusal — it ranks last and plays
+      // where nothing ranks higher.
+      suits: { reads: ["measures.named_objects"],
+               how: "it cuts on the things IN the picture, so it suits a pair both of whose works "
+                  + "carry named objects; the weaker of the two readings is the fit, and it is "
+                  + "nothing where one work names nothing" },
       readiness: "production-ready",
     };
 
