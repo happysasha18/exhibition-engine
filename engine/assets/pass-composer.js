@@ -2635,16 +2635,25 @@
           return levels[cues[i].id][lv] === "owns";
         });
       }
+      // THE WITNESS CAMERA'S OWN FLIGHT (charter shelf 2). THE TWO ENDS STAY HONEST — the
+      // departing work stands at "a" and the arriving one rests at "b", each at the plain neutral
+      // pose, pan and logScale at zero and pitch, yaw and roll at zero — and NOTHING BELOW EVER
+      // TOUCHES THEM. Between them the flight now gets an outbound pose and an inbound pose on
+      // EVERY pair, not only where the meshing instrument happens to play: until 2026-08-19 this
+      // middle was built only where `spec.travel === "gears"`, so on every pair that did not carry
+      // the gears instrument — most of the collection — the camera's own four points wrote the
+      // same all-zero pose four times, which reads on screen as no camera at all. `fillPlan` below
+      // fills BOTH middle points' every place — pan, logScale, pitch, yaw and roll — off the two
+      // works' own measured record, so the placeholders here are only the shape of the two points;
+      // what they carry is written once the two works' own record is in hand.
       var track = [{ at: "a", pan: { x: 0, y: 0 }, logScale: 0, pitch: 0, yaw: 0, roll: 0,
                      fov: null, owner: "stage" }];
-      if (spec.travel === "gears") {
-        track.push({ at: "@atFrom", pan: { x: "@panFromX", y: "@panFromY" },
-                     logScale: "@logScale", pitch: 0, yaw: 0, roll: 0, fov: null,
-                     owner: "stage" });
-        track.push({ at: "@atTo", pan: { x: "@panToX", y: "@panToY" },
-                     logScale: "@logScale", pitch: 0, yaw: 0, roll: 0, fov: null,
-                     owner: "stage" });
-      }
+      track.push({ at: "@atFrom", pan: { x: "@panFromX", y: "@panFromY" },
+                   logScale: "@logScale", pitch: "@pitchFrom", yaw: "@yaw", roll: "@roll",
+                   fov: null, owner: "stage" });
+      track.push({ at: "@atTo", pan: { x: "@panToX", y: "@panToY" },
+                   logScale: "@logScale", pitch: "@pitchTo", yaw: "@yaw", roll: "@roll",
+                   fov: null, owner: "stage" });
       track.push({ at: "b", pan: { x: 0, y: 0 }, logScale: 0, pitch: 0, yaw: 0, roll: 0,
                    fov: null, owner: "stage" });
       var quality = {};
@@ -3968,6 +3977,30 @@
         wantedInto.centreX = flt(r4(clamp01(cx)));
         wantedInto.centreY = flt(r4(clamp01(cy)));
       }
+      // THE CAMERA'S OWN CENTRE OF A SINGLE WORK — `structure.radial.centre` (measuredParts()'s
+      // `radialCx`/`radialCy`) where the work reads as radial at all (`radialScore > 0`), else the
+      // centre of `structure.dominantObject.bbox` (measuredParts()'s `figureCx`/`figureCy`) where
+      // that box is a real reading (`figureShare > 0`, since an absent box collapses to [0,0,0,0]
+      // and a figureShare of exactly zero). Neither present answers null, which the caller below
+      // reads as "this point contributes nothing to pan" rather than the frame's own middle.
+      function camOwnCentre(m) {
+        if (m.radialScore > 0) return [m.radialCx, m.radialCy];
+        if (m.figureShare > 0) return [m.figureCx, m.figureCy];
+        return null;
+      }
+      // PAN AT ONE MIDDLE POINT — the offset of one work's own centre from the frame's own middle,
+      // (0.5, 0.5), scaled by `reach` alone (grammar law 5): the centre reading gives the
+      // DIRECTION, `reach` alone gives how far the camera actually leans toward it.
+      function camAxisPan(m, reach) {
+        var c = camOwnCentre(m);
+        return c ? [(c[0] - 0.5) * reach, (c[1] - 0.5) * reach] : [0, 0];
+      }
+      // PITCH AT ONE MIDDLE POINT — one work's own measured horizon, `structure.horizon.y`
+      // (measuredParts()'s `horizonY`, null where the work carries none), offset from the frame's
+      // own middle and scaled by `reach` and the one shared bound every axis answers to.
+      function camAxisPitch(m, reach, camBound) {
+        return m.horizonY === null ? 0 : (m.horizonY - 0.5) * reach * camBound;
+      }
       var cues = [];
       tpl.cues.forEach(function (cue) {
         var c = copy(cue);
@@ -4905,14 +4938,121 @@
       if (camera.track.length === 4) {
         var travel = null;
         cues.forEach(function (c) { if (c.id === "travel") travel = c; });
+        // WHERE THE TWO MIDDLE POINTS STAND IN TIME. Shelf 5's conjuror law puts the content swap
+        // at the plan's motion peak, and the travelling cue's own window is the composer's own
+        // reading of where that peak sits — so the outbound and inbound poses land at the
+        // travelling cue's own open and close. Where the plan travels on no cue of its own (a
+        // ground-only passage) there is no motion peak the composer can name, and the two points
+        // fall back to the passage's own first and third quarter, exactly as the pre-existing
+        // gears-only flight always has — a fraction of the DURATION rather than of any measured
+        // reading, carried over unchanged rather than invented tonight.
         var span = travel ? travel.window
           : [flt(r4(duration / 4000.0)), flt(r4(3 * duration / 4000.0))];
         camera.track[1].at = span[0];
-        camera.track[1].pan = { x: row[6], y: row[7] };
-        camera.track[1].logScale = row[10];
         camera.track[2].at = span[1];
-        camera.track[2].pan = { x: row[8], y: row[9] };
-        camera.track[2].logScale = row[10];
+
+        // THE FLIGHT ITSELF (charter shelf 2, grammar law 5). `cmf`/`cmt` are the two works' own
+        // measured record — `measuredParts()` above, the same one every cue's handles already read
+        // off `fromP.measured`/`toP.measured` — so every axis below reads a number already in the
+        // record and nothing this file invents at the pair.
+        var cmf = fromP.measured, cmt = toP.measured;
+
+        // ONE ENVELOPE COUPLES EVERY AXIS. Grammar law 5: "properties that belong to one gesture
+        // hang on one scalar, so they cannot disagree." `reach` is that one scalar — how far apart
+        // this pair's own works stand — and every axis below takes its MAGNITUDE from `reach`
+        // alone; each axis's own reading below contributes only its DIRECTION and its SHAPE across
+        // the two middle points, never a second say in how far the flight travels. `reach` is not
+        // a new distance: it is the same |A-B| apartness the grid-colour instrument's own `lead`
+        // handle already reads off this pair (this file, the grid-colour branch a few screens
+        // above), taken here on the two works' own TONE rather than on their colour spread.
+        //
+        // WHY TONE AND NOT COLOURFULNESS, decided at the judge seat 2026-08-19 02:20. The first
+        // build of this flight reused `lead`'s reading whole, colour spread and all. A camera is
+        // the WORLD voice of shelf 17 and it flies through LIGHT, so how far apart two works stand
+        // in their own light is the apartness a flight answers to; how far apart they stand in the
+        // spread of their hues is the palette's business and drives the palette's own handles.
+        // `luminance.level` is the median of a work's own luminance, measured for the first time
+        // tonight (lab/analyze/recipes.py, a port of lab/effects/strata-light.js:108-113), which is
+        // why this reading could not have been taken before today.
+        //
+        // WHAT THIS REACH STILL DOES NOT READ, named rather than quietly missing: the passage's own
+        // ROLE. Shelf 17 gives a culmination three accompaniments and a quiet link one, so a
+        // culmination's camera ought to fly further than a quiet link's, and today it does not —
+        // the tier reaches this flight nowhere. That waits on the same restructuring the colour
+        // voice waits on, where the role's budget and the voices that spend it finally meet.
+        var reach = clamp01(Math.abs(cmf.level - cmt.level));
+        // THE ONE BOUND EVERY AXIS SHARES. `DOLLY_CAP` above already bounds the dolly's own
+        // logarithm at 0.5 (1.65 times); sharing that one number across pitch, yaw and roll, read
+        // as radians, and across pan, read as a frame fraction — where 0.5 is already the natural
+        // distance from the frame's own centre to its edge — is what keeps the bound ONE number
+        // the whole flight answers to rather than five this file would otherwise have to invent.
+        var camBound = DOLLY_CAP;
+
+        // PAN — toward the pivot's own centre. `structure.radial.centre` where the work has one
+        // (measuredParts()'s own `radialScore` says whether it does), otherwise the centre of
+        // `structure.dominantObject.bbox` (measuredParts()'s own `figureShare` says whether that
+        // box is real rather than the record's [0,0,0,0] absence). A work with neither contributes
+        // nothing to pan at its own point, which is the honest answer and not a gap filled with
+        // the frame's own middle.
+        var panFrom = camAxisPan(cmf, reach), panTo = camAxisPan(cmt, reach);
+        camera.track[1].pan = { x: flt(r4(panFrom[0])), y: flt(r4(panFrom[1])) };
+        camera.track[2].pan = { x: flt(r4(panTo[0])), y: flt(r4(panTo[1])) };
+
+        // LOGSCALE — the two works' own grain, `texture.spectralPeriodPx` over the frame side
+        // (measuredParts()'s own `grainCells`). Shelf 2 names a uniform zoom a straight line in
+        // log-space, which is why this axis carries the LOGARITHM and not a linear scale. Standing
+        // BACK is the one move that lets a coarse pattern — the work of the pair with the FEWER
+        // cells across its own frame — read at all; standing IN only crops it further, so the sign
+        // is not a choice between the two works but the one direction that serves either. The
+        // reading holds through both middle points, exactly as the pre-existing gears-only flight
+        // already held its own dolly at one value across its own two points.
+        var logScale = 0;
+        if (cmf.grainCells > 0 && cmt.grainCells > 0) logScale = -reach * camBound;
+        camera.track[1].logScale = flt(r4(logScale));
+        camera.track[2].logScale = flt(r4(logScale));
+
+        // ROLL — the two works' own lattice angles, `structure.ownDevice.angleDeg` falling back to
+        // `structure.grid.angleDeg` (measuredParts()'s own `latticeAngleDeg`). The camera's horizon
+        // rolls toward the SIGNED difference between the two works' own lattices, the same fold
+        // the beat instrument's own `beatTilt` already takes (this file, the beat branch: the raw
+        // difference of the two `latticeAngleDeg` readings, folded back under a right angle because
+        // a lattice angle is a line direction and two grating families never stand further apart
+        // than that) — only its SIGN says which way the horizon leans, its span already spent by
+        // `reach`. One pair fact, so it holds through both middle points exactly as logScale does.
+        var roll = 0;
+        if (cmf.latticePx > 0 && cmt.latticePx > 0) {
+          var rollDelta = (cmt.latticeAngleDeg - cmf.latticeAngleDeg) % 180;
+          if (rollDelta > 90) rollDelta -= 180;
+          if (rollDelta < -90) rollDelta += 180;
+          if (rollDelta !== 0) roll = reach * camBound * (rollDelta > 0 ? 1 : -1);
+        }
+        camera.track[1].roll = flt(r4(roll));
+        camera.track[2].roll = flt(r4(roll));
+
+        // YAW — the departing work's own gate, `motifs.gateAxis` and `motifs.gatePlace`
+        // (measuredParts()'s own `gateAxis`/`gatePlace`). The camera turns toward the slot the
+        // work actually has — `gateAxis` says whether it has one at all, read the same way the
+        // gates instrument's own `slotAxis` handle already reads it a few screens above — and
+        // turns further the further that slot stands off the frame's own middle: `gatePlace` runs
+        // 0.2508 to 0.7517 across the collection, so `gatePlace - 0.5` is already signed off the
+        // frame's own centre. One work's own fact, so it too holds through both middle points.
+        var yaw = 0;
+        if (cmf.gateAxis !== null && cmf.gateAxis !== undefined && cmf.gatePlace > 0) {
+          var gateOff = cmf.gatePlace - 0.5;
+          if (gateOff !== 0) yaw = reach * camBound * (gateOff > 0 ? 1 : -1);
+        }
+        camera.track[1].yaw = flt(r4(yaw));
+        camera.track[2].yaw = flt(r4(yaw));
+
+        // PITCH — the two works' own measured horizons, `structure.horizon.y`
+        // (measuredParts()'s own `horizonY`, null where a work carries none). The eye level
+        // travels from the departing work's own seam to the arriving work's, which is why — unlike
+        // roll, yaw and logScale, each one pair fact held through the middle — pitch differs at
+        // the two middle points exactly as pan does. A work with no horizon contributes nothing to
+        // pitch AT ITS OWN POINT, which is measuredParts()'s own null read honestly rather than
+        // defaulted to the frame's own middle.
+        camera.track[1].pitch = flt(r4(camAxisPitch(cmf, reach, camBound)));
+        camera.track[2].pitch = flt(r4(camAxisPitch(cmt, reach, camBound)));
       }
 
       var world = null;

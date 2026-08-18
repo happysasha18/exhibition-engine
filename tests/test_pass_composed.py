@@ -180,6 +180,15 @@ BAKED_CAPS = (CFG.get("pass") or {}).get("capabilities") or {}
 CLIENT_LIMITS = re.search(r"PASS_LIMITS\s*=\s*\{([^}]*)\}", SRC)
 CLIENT_BYTES = int(re.search(r"\bbytes:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
 CLIENT_INTENT = int(re.search(r"\bintent:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
+# THE CLIENT'S OWN CAP ON A CAMERA TRACK'S POINTS (engine/client/01a-pass.js's PASS_LIMITS.camera),
+# read the same road as CLIENT_BYTES/CLIENT_INTENT above rather than retyped: the witness camera's
+# flight below has to stand under the same published number the client itself enforces.
+CLIENT_CAMERA_POINTS = int(re.search(r"\bcamera:\s*(\d+)", CLIENT_LIMITS.group(1)).group(1))
+# THE ONE BOUND THE WITNESS CAMERA'S FIVE AXES SHARE (pass-composer.js's own `DOLLY_CAP`), read out
+# of the composer's source rather than retyped, so a change to that number re-bases this suite by
+# itself instead of leaving a second copy to drift.
+COMPOSER_SRC = MODULE.read_text(encoding="utf-8")
+DOLLY_CAP_VALUE = float(re.search(r"\bDOLLY_CAP\s*=\s*([\d.]+)\s*;", COMPOSER_SRC).group(1))
 # ---------------------------------------------------------------- every published handle is registered
 # A HANDLE A MANIFEST PUBLISHES AND THIS REGISTER DOES NOT NAME MAKES THE COMPOSER THROW — on every
 # pair that casts that instrument, inside the fill, where the register is read for a row that is not
@@ -350,6 +359,13 @@ NODE_ROWS = [
     "not left resting at their manifest default of 0.5",
     "EX-COMPOSED gates' slotPlace/slotHalf/slotAxis are driven off the departing work's own "
     "measured slot, not left resting at the module's own naive middle",
+    "EX-COMPOSED the witness camera's middle carries a non-neutral pose that differs pair to pair, "
+    "and the camera block survives the score's own wire-fitting",
+    "EX-COMPOSED each camera axis, where it is non-zero, matches the record reading it claims to "
+    "read",
+    "EX-COMPOSED the camera's two ends stand at the plain neutral pose on every pair, whatever the "
+    "middle does",
+    "EX-COMPOSED the camera track never exceeds the client's own published camera-point fence",
 ]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
@@ -389,8 +405,19 @@ const works = JSON.parse(fs.readFileSync(worksPath, "utf8"));
 const CAPS = JSON.parse(process.env.CLIENT_CAPS || "{}");
 const INTENT_CAP = CAPS.intent;
 const BYTE_CAP = CAPS.bytes;
+// engine/client/01a-pass.js's own PASS_LIMITS.camera — the client's own cap on a camera track's
+// points — and pass-composer.js's own DOLLY_CAP, the one bound the witness camera's five axes
+// share. Both travel in from Python exactly as BYTE_CAP/INTENT_CAP do, read out of the served
+// client and the composer's own source rather than retyped here.
+const CAMERA_POINT_CAP = CAPS.cameraPoints;
+const DOLLY_CAP = CAPS.dollyCap;
 if (!(INTENT_CAP > 0) || !(BYTE_CAP > 0)) {
   console.log(JSON.stringify({error: "the client published no fences to measure against: "
+                                     + JSON.stringify(CAPS)}));
+  process.exit(0);
+}
+if (!(CAMERA_POINT_CAP > 0) || !(DOLLY_CAP > 0)) {
+  console.log(JSON.stringify({error: "the camera's own two bounds did not travel in: "
                                      + JSON.stringify(CAPS)}));
   process.exit(0);
 }
@@ -425,6 +452,92 @@ function digest(text) {
 // wire. This file runs outside that module's own closure and so keeps no copy of its `num()`; this
 // is the same unwrap, typed once, for the two raw node values CHANGE A and CHANGE B read below.
 function toNum(v) { return (v && typeof v === "object" && "v" in v) ? v.v : v; }
+
+// THE WITNESS CAMERA'S OWN FLIGHT, RE-DERIVED HERE FROM THE RAW RECORD — independently of
+// pass-composer.js's own `measuredParts()`/`camAxisPan`/`camAxisPitch` and the camera block inside
+// `fillPlan`, so the row below is a real check of what the composer wrote rather than the composer
+// checking its own arithmetic against itself. Every reading mirrors measuredParts() (pass-
+// composer.js) field for field: grainCells, latticePx/latticeAngleDeg, gateAxis/gatePlace,
+// horizonY, radialScore/radialCx/radialCy, figureShare/figureCx/figureCy, colourfulness.
+function camGrainCells(w) {
+  var side = Number(w.frameSide) || 0;
+  var spectral = Number((w.texture || {}).spectralPeriodPx) || 0;
+  return spectral > 0 && side > 0 ? side / spectral : 0;
+}
+function camLattice(w) {
+  var st = w.structure || {};
+  var stepPx = Number((st.ownDevice || {}).stepPx) || 0;
+  var gridPx = Number((st.grid || {}).periodPx) || 0;
+  var angle = stepPx > 0 ? (Number((st.ownDevice || {}).angleDeg) || 0)
+                         : (Number((st.grid || {}).angleDeg) || 0);
+  return {latticePx: stepPx || gridPx, latticeAngleDeg: angle};
+}
+function camGate(w) {
+  var mot = w.motifs || {};
+  var axis = mot.gateAxis === "vertical" ? 1 : (mot.gateAxis === "horizontal" ? 0 : null);
+  return {gateAxis: axis, gatePlace: Number(mot.gatePlace) || 0};
+}
+function camHorizon(w) {
+  var y = ((w.structure || {}).horizon || {}).y;
+  return (y === null || y === undefined) ? null : Number(y);
+}
+function camOwnCentre(w) {
+  var st = w.structure || {};
+  var radialScore = Number((st.radial || {}).score) || 0;
+  if (radialScore > 0) {
+    var rc = (w.motifs || {}).radialCentre || (st.radial || {}).centre || [0.5, 0.5];
+    return [Number(rc[0]) || 0.5, Number(rc[1]) || 0.5];
+  }
+  var box = (st.dominantObject || {}).bbox || [0, 0, 0, 0];
+  var figureShare = Math.max(0, box[2] - box[0]) * Math.max(0, box[3] - box[1]);
+  if (figureShare > 0) return [(Number(box[0]) + Number(box[2])) / 2,
+                                (Number(box[1]) + Number(box[3])) / 2];
+  return null;
+}
+function camLevel(w) { return Number((w.luminance || {}).level) || 0; }
+// ONE ENVELOPE (grammar law 5): the pair's own reach, taken on the two works' own TONE —
+// `luminance.level`, the median of a work's own luminance — because a camera is shelf 17's WORLD
+// voice and flies through light, so how far apart two works stand in their own light is the
+// apartness a flight answers to. The judge seat settled this 2026-08-19 02:20, against the first
+// build's colour-spread reading; pass-composer.js's own camera block carries the same note.
+function camReach(fromW, toW) {
+  var v = Math.abs(camLevel(fromW) - camLevel(toW));
+  return v < 0 ? 0 : (v > 1 ? 1 : v);
+}
+// THE FIVE AXES, EXPECTED. Mirrors pass-composer.js's `fillPlan` camera block: pan and pitch differ
+// at the outbound and inbound points (an arc), logScale, roll and yaw hold one pair fact across
+// both (a plateau) — the shapes named in the code's own comments there.
+function camExpected(fromW, toW) {
+  var reach = camReach(fromW, toW);
+  var cFrom = camOwnCentre(fromW), cTo = camOwnCentre(toW);
+  var panFrom = cFrom ? [(cFrom[0] - 0.5) * reach, (cFrom[1] - 0.5) * reach] : [0, 0];
+  var panTo = cTo ? [(cTo[0] - 0.5) * reach, (cTo[1] - 0.5) * reach] : [0, 0];
+  var gcFrom = camGrainCells(fromW), gcTo = camGrainCells(toW);
+  var logScale = (gcFrom > 0 && gcTo > 0) ? -reach * DOLLY_CAP : 0;
+  var latFrom = camLattice(fromW), latTo = camLattice(toW);
+  var roll = 0;
+  if (latFrom.latticePx > 0 && latTo.latticePx > 0) {
+    var d = (latTo.latticeAngleDeg - latFrom.latticeAngleDeg) % 180;
+    if (d > 90) d -= 180;
+    if (d < -90) d += 180;
+    if (d !== 0) roll = reach * DOLLY_CAP * (d > 0 ? 1 : -1);
+  }
+  var gate = camGate(fromW), yaw = 0;
+  if (gate.gateAxis !== null && gate.gatePlace > 0) {
+    var off = gate.gatePlace - 0.5;
+    if (off !== 0) yaw = reach * DOLLY_CAP * (off > 0 ? 1 : -1);
+  }
+  var hFrom = camHorizon(fromW), hTo = camHorizon(toW);
+  var pitchFrom = hFrom === null ? 0 : (hFrom - 0.5) * reach * DOLLY_CAP;
+  var pitchTo = hTo === null ? 0 : (hTo - 0.5) * reach * DOLLY_CAP;
+  return {reach: reach, panFrom: panFrom, panTo: panTo, logScale: logScale, roll: roll, yaw: yaw,
+          pitchFrom: pitchFrom, pitchTo: pitchTo};
+}
+function camNeutral(pt) {
+  return !!pt && (!pt.pan || (toNum(pt.pan.x) === 0 && toNum(pt.pan.y) === 0))
+    && toNum(pt.logScale) === 0 && toNum(pt.pitch) === 0 && toNum(pt.yaw) === 0
+    && toNum(pt.roll) === 0;
+}
 function budget(p) {
   const voices = p.plan.cues.map((c) => c.voice);
   return {letters: voices.filter((v) => v === "letter").length,
@@ -569,6 +682,19 @@ let composed = 0, declined = 0, maxBytes = 0, maxIntent = 0, overByte = 0, overI
 let drivenUnmeasured = [], openDriven = [], drivenNoteMissing = [];
 let intentShortened = 0, roadKept = 0, boxReasons = {};
 let ledAtTonic = 0, ledElsewhere = 0, ledWithWorldCue = 0, tonic = 0;
+// THE WITNESS CAMERA'S OWN FLIGHT (charter shelf 2), swept over the same real pairs every other
+// row here stands on. `camChecked` counts every composed pair the axis check actually ran on;
+// `camMismatches` keeps the first few disagreements between the composer's own written track and
+// `camExpected()`'s independent re-derivation, so a red row shows what actually differs rather
+// than only that something did; `camAllZeroCount` counts pairs whose whole middle came out at the
+// neutral pose — a static camera again — which is the number his brief asks to be told rather than
+// silently fixed; `camEndsBad` counts a pair whose "a" or "b" point was touched at all;
+// `camFitMismatch` counts a pair whose score (post wire-fitting) carries a different track than its
+// plan (pre-fitting); `camMaxTrackLen` is the longest track any composed pair wrote, measured
+// against the client's own published camera-point fence.
+let camChecked = 0, camMismatches = [], camAllZeroCount = 0, camEndsBad = 0, camFitMismatch = 0,
+    camMaxTrackLen = 0;
+const camDistinctTracks = new Set();
 // CHANGE A/B PROOF ROWS. `adriftSeams` pairs each `adrift` cue's own driven `seamA`/`seamB` against
 // the two works' own recorded `structure.horizon.seam`, so the row below can prove the handle now
 // carries the record's own strength rather than the old whole-or-nothing reading. `tideCellsSeen`
@@ -675,6 +801,41 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
     }
     composed++;
     roads[p.road] = (roads[p.road] || 0) + 1;
+    // THE WITNESS CAMERA'S OWN FLIGHT, CHECKED ON THIS PAIR. `fromWork`/`toWork` take the same
+    // b-to-a flip `adriftSeams` above takes, because the composer's own `fromW`/`toW` do.
+    {
+      const fromWork = dir === "b-to-a" ? wb : wa, toWork = dir === "b-to-a" ? wa : wb;
+      const track = (p.plan.camera || {}).track || [];
+      if (track.length > camMaxTrackLen) camMaxTrackLen = track.length;
+      if (track.length === 4) {
+        camChecked++;
+        if (!camNeutral(track[0]) || !camNeutral(track[3])) camEndsBad++;
+        const exp = camExpected(fromWork, toWork);
+        const got1 = track[1], got2 = track[2];
+        const close = (a, b) => Math.abs(toNum(a) - b) < 0.0006;
+        const ok = close(got1.pan.x, exp.panFrom[0]) && close(got1.pan.y, exp.panFrom[1])
+          && close(got2.pan.x, exp.panTo[0]) && close(got2.pan.y, exp.panTo[1])
+          && close(got1.logScale, exp.logScale) && close(got2.logScale, exp.logScale)
+          && close(got1.roll, exp.roll) && close(got2.roll, exp.roll)
+          && close(got1.yaw, exp.yaw) && close(got2.yaw, exp.yaw)
+          && close(got1.pitch, exp.pitchFrom) && close(got2.pitch, exp.pitchTo);
+        if (!ok && camMismatches.length < 5) {
+          camMismatches.push({key, expected: exp,
+                              got: {p1: {pan: {x: toNum(got1.pan.x), y: toNum(got1.pan.y)},
+                                         logScale: toNum(got1.logScale), roll: toNum(got1.roll),
+                                         yaw: toNum(got1.yaw), pitch: toNum(got1.pitch)},
+                                    p2: {pan: {x: toNum(got2.pan.x), y: toNum(got2.pan.y)},
+                                         logScale: toNum(got2.logScale), roll: toNum(got2.roll),
+                                         yaw: toNum(got2.yaw), pitch: toNum(got2.pitch)}}});
+        }
+        if (camNeutral(got1) && camNeutral(got2)) camAllZeroCount++;
+        camDistinctTracks.add(JSON.stringify([got1, got2]));
+        if (p.score && p.score.camera
+            && JSON.stringify(p.score.camera.track) !== JSON.stringify(p.plan.camera.track)) {
+          camFitMismatch++;
+        }
+      }
+    }
     if ((p.plan.intentDropped || []).length) intentShortened++;
     if (ROAD_OPENERS.some((o) => p.score.intent.indexOf(o) === 0)) roadKept++;
     for (const n of p.roadNotes) {
@@ -824,6 +985,10 @@ out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
              adriftSeams, tideCellsSeen, levelASeen, levelBSeen, gateSlots,
              gridColourVoicesOwns, strataLightVoicesOwns,
              gridColourVoicesAccompanies, strataLightVoicesAccompanies};
+out.camera = {checked: camChecked, mismatches: camMismatches, allZero: camAllZeroCount,
+              endsBad: camEndsBad, fitMismatch: camFitMismatch, maxTrackLen: camMaxTrackLen,
+              trackPointCap: CAMERA_POINT_CAP, distinctTracks: camDistinctTracks.size,
+              dollyCap: DOLLY_CAP};
 
 // 7 · the road every pair is measured against, and the one road no instrument can play
 const roadNotes = {};
@@ -1118,7 +1283,9 @@ def node_run(plants=(), sweep=0):
     # The client's own two fences travel to the driver rather than being restated inside it, which
     # is anchor 1 of the four the docstring names.
     env = dict(os.environ, PLANTS=json.dumps(list(plants)), SWEEP=str(sweep),
-               CLIENT_CAPS=json.dumps({"bytes": CLIENT_BYTES, "intent": CLIENT_INTENT}))
+               CLIENT_CAPS=json.dumps({"bytes": CLIENT_BYTES, "intent": CLIENT_INTENT,
+                                       "cameraPoints": CLIENT_CAMERA_POINTS,
+                                       "dollyCap": DOLLY_CAP_VALUE}))
     proc = subprocess.run(["node", str(DRIVER_PATH), str(MODULE), str(FIXTURE), str(WORKS)],
                           capture_output=True, text=True, env=env, timeout=600)
     if proc.returncode != 0:
@@ -1472,6 +1639,49 @@ else:
               f"work's own record by more than 0.0002; slotPlace {len(placeSeen)} distinct "
               f"{placeSeen[:8]}, slotHalf {len(halfSeen)} distinct {halfSeen[:8]}, slotAxis seen "
               f"{axisSeen}")
+
+        # --- row 8i · THE WITNESS CAMERA'S OWN FLIGHT (charter shelf 2) -----------------------------
+        # Until 2026-08-19 every camera track on every pair that did not carry the gears instrument
+        # wrote the same four all-zero points — pan, logScale, pitch, yaw and roll all at nothing —
+        # which reads on screen as no camera at all, exactly the defect his 2026-08-12 report named
+        # and that stood unfixed because the earlier proof was words rather than pixels. These four
+        # rows are the words; the headless render three-pairs-before/three-pairs-after proof this
+        # unit's own report carries is the pixels.
+        cam = got["camera"]
+        # row A · the middle is non-neutral, differs pair to pair, and survives the wire-fitting
+        # step. `fitTheWeight` (pass-composer.js) sheds every driven node's own provenance note
+        # whenever a filled score stands over the client's byte fence; it never touches `camera`,
+        # and this row is what proves that rather than assuming it.
+        check(NODE_ROWS[42],
+              cam["checked"] > 0 and cam["allZero"] < cam["checked"] and cam["distinctTracks"] > 1
+              and cam["fitMismatch"] == 0,
+              f"of {cam['checked']} composed pairs checked, {cam['allZero']} land on a fully "
+              f"static middle (every axis at nothing on both points) and {cam['checked'] - cam['allZero']} "
+              f"do not; {cam['distinctTracks']} distinct middles seen over the sample; a score's "
+              f"own camera block differs from its plan's on {cam['fitMismatch']} of them, which "
+              f"would mean the wire-fitting step touched it")
+        # row B · each axis, where non-zero, matches the record reading it claims to read — checked
+        # by re-deriving the same five axes independently in this driver (camExpected(), mirroring
+        # pass-composer.js's own fillPlan camera block) rather than trusting the composer's own
+        # arithmetic against itself.
+        check(NODE_ROWS[43],
+              cam["checked"] > 0 and not cam["mismatches"],
+              f"{cam['checked']} pairs checked against an independent re-derivation of the same "
+              f"five readings; disagreements: "
+              + (json.dumps(cam["mismatches"][:2], ensure_ascii=False) if cam["mismatches"]
+                 else "none"))
+        # row C · the two ends stay honest on every pair — shelf 2's "resting exactly when B
+        # stands", never touched by the middle's own derivation.
+        check(NODE_ROWS[44],
+              cam["checked"] > 0 and cam["endsBad"] == 0,
+              f"of {cam['checked']} composed pairs, {cam['endsBad']} carry a non-neutral «a» or "
+              f"«b» point")
+        # row D · the track never exceeds the client's own published camera-point fence
+        # (engine/client/01a-pass.js's PASS_LIMITS.camera, read once at CLIENT_CAMERA_POINTS above).
+        check(NODE_ROWS[45],
+              cam["checked"] > 0 and cam["maxTrackLen"] <= cam["trackPointCap"],
+              f"the longest camera track composed here carries {cam['maxTrackLen']} points against "
+              f"the client's own fence of {cam['trackPointCap']}")
 
         # --- row 9 · the two fences a filled score has to pass -----------------------------------
         # THE FENCES ARE NO LONGER WALLS, AND THAT IS WHY THIS ROW MATTERS MORE THAN IT DID. The
@@ -2050,6 +2260,23 @@ else:
                     # The per-instrument numbers themselves are held in each instrument's own suite,
                     # where the frame is drawn and photographed; the red-on-bug proof for the
                     # reporting call is tests/test_pass_weave.py.
+                    # A READING MAY HAVE TWO ENDS, corrected 2026-08-19 at the judge seat. This row
+                    # asked for a plain number and went red on every run where an instrument that
+                    # plays its module ONCE PER WORK happened to be cast — `beat` publishes its
+                    # period as `[periodA, periodB]`, `strata-light` its voices the same way, and
+                    # both are the instrument reporting honestly rather than a broken shape. Which
+                    # instrument wins a cast is a property of the pair and the die, so the row read
+                    # as an intermittent red that moved with the roster: it fired far more often
+                    # once the arsenal went from 17 castable instruments to 22 on 2026-08-18. What
+                    # the row is for — the door is named, the reading was taken on the buffer the
+                    # host reports, a refusal is a sentence — is untouched by accepting both forms.
+                    def reading(v):
+                        if isinstance(v, (int, float)) and not isinstance(v, bool):
+                            return True
+                        return (isinstance(v, list) and bool(v)
+                                and all(isinstance(x, (int, float)) and not isinstance(x, bool)
+                                        for x in v))
+
                     def law(c):
                         a = c["applied"]
                         buf = a.get("buffer") or []
@@ -2058,8 +2285,8 @@ else:
                                 and len(buf) == 2
                                 and f"{buf[0]}x{buf[1]}" == ap.get("buffer")
                                 and isinstance(a.get("reads"), str)
-                                and isinstance(a.get("request"), (int, float))
-                                and isinstance(a.get("applied"), (int, float))
+                                and reading(a.get("request"))
+                                and reading(a.get("applied"))
                                 and bool(a.get("moved")) == bool(a.get("held"))
                                 and (why is None or (isinstance(why, str) and why.strip())))
 
