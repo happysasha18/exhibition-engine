@@ -222,6 +222,83 @@
        is only the stop the module puts on a degenerate plane, carried over unchanged. */
     var ZOOM_CAP = 4;
 
+    // ==============================================================================================
+    // WHAT STAYS PINNED, AND WHY EACH ONE DOES
+    // ==============================================================================================
+    // His 19:13 word lifted to the class at 19:21: every geometric and temporal parameter derives
+    // from the work's own measured structure and NAMES the measurement it reads — and a parameter
+    // that can name no measurement is a FINDING written down, never a constant quietly typed. His
+    // 15:13 word is the other half: a constant a record could have set is a static transition. So
+    // every number this file still pins is listed here with the reason it is not a handle. A row of
+    // the suite reads this list against the file's own declarations and reds on a constant that
+    // appears without a reason, so this block is a fence rather than a note.
+    //
+    // ONE CONSTANT OF THE MODULE'S BECAME A HANDLE, and it is the only one that could: COLS, the
+    // nine columns the front breaks into. It is a COUNT OF DIVISIONS ACROSS THE FRAME, and the works
+    // carry exactly that measurement — see the `columns` handle.
+    //
+    // TILT_MAX 35°, THE LEAN AT ITS FULLEST. The module's own reason is a reading of the
+    // photographs: past about thirty-five degrees the far rows of THESE photographs — dense window
+    // grids — stop resolving and the picture reads as a smear. So the reading behind it is real and
+    // it is the pair's own repeat, `texture.spectralPeriodPx` over `structure.frameSide`. It stays
+    // pinned for two reasons that hold together:
+    //   · THE MODULE MEASURED ONE POINT OF THIS AXIS AND NO SECOND ONE. Thirty-five degrees on dense
+    //     window grids is the whole of the evidence. A ceiling handle needs a RANGE, and every
+    //     number above thirty-five would be one nobody measured — the class his 08:47 word strikes.
+    //     A ceiling handle bounded AT thirty-five is `tilt` under a second name, since the drawn
+    //     angle is their product; the meshing instrument could publish its own size because its
+    //     module named BOTH ends of that axis, and this one names a ceiling and no floor.
+    //   · THE READING ALREADY REACHES THE PICTURE. How hard the far rows crowd is set by the camera
+    //     as much as by the angle, and `squeeze` is the handle whose whole act is that crowding. The
+    //     pair's own repeat is spent there, where it travels over a range the module DID name at
+    //     both ends. Spending one measurement on two handles of one instrument would be two knobs on
+    //     one product, which is noise in a score.
+    //
+    // CAM_FAR 9.0 AND CAM_NEAR 2.6, THE CAMERA'S TWO STANDS. These are the `squeeze` handle's own
+    // range, published on it under `applied`, and a range is not a parameter — the position inside
+    // it is, and the pair's own repeat sets that. Both ends are the module's, described by it in
+    // pure geometry: far is nearly a shear, near is a strong one over depth.
+    //
+    // AMP 0.05, THE COUNTER-MOTION'S FULLEST PUSH. The far end of the `travel` channel's range, and
+    // the counter-motion itself is the module's LAW rather than a quantity — one work travels toward
+    // the far edge and the other toward the eye, inside the one plane. A photograph sets neither.
+    //
+    // CROP 1.12, THE STANDING CROP. Derived from AMP, and it is the DOOR's own framing: the manifest
+    // publishes it in `framings` and the host cover-fits both works by it. A door's frame that
+    // travelled per pair would stop the doors being the source cover-fit, which is the one thing
+    // both doors are. Pinned by the door law rather than by taste.
+    //
+    // MARGIN 0.03, THE FRONT'S OWN OVERTRAVEL. The door law's own slack — the number the runtime
+    // door reading is held against — and not a parameter of the picture at all.
+    //
+    // ZOOM_CAP 4, THE STOP ON A DEGENERATE PLANE. It decides nothing at the lean this instrument
+    // holds: the push-in peaks at about 1.13 at mid-passage on the module's own pose. Carried
+    // unchanged rather than dropped, because a stop that never fires is still the module's.
+    //
+    // THE SPREAD'S 0.8, the far end of the `lead` handle's range. `lead` is this instrument's ONE
+    // HONEST GAP — no measurement in a work record says how ragged a handover should be — so its
+    // range is pinned with it and the handle says `reads: null` rather than naming a number nobody
+    // measured.
+    //
+    // THE CONTACT SHADOW'S 0.34, ITS DECAY OVER 6 FOOTPRINTS, AND ITS WINDOW 0.09 / 0.91. Nothing in
+    // a work record measures how dark or how wide a contact shadow should be. A reading exists in
+    // spirit — a shadow ought to sit near the finest detail the picture carries — but NO SCALE
+    // between any recorded reading and this weight was ever measured, which is exactly the case the
+    // composer's register states for the meshing instrument's `flank`: the instrument's own default
+    // stands and the gap is named. `shade` scales the whole of it and rests where the module rests it.
+    //
+    // THE DIE'S OWN 0.4 in `ord = mix(ladder, hash11, 0.4)` — six parts a ladder across the plane,
+    // four parts the score's die. That split is the ORDER LAW itself (the woven study's fifth
+    // property, half deterministic and half seeded), not a quantity a photograph sets.
+    //
+    // THE RESPONSE CURVE — FEEL_D0 0.05, FEEL_C 0.4, FEEL_K1 −0.9, FEEL_K2 1.5. Temporal, and
+    // measured on the module's own felt change rather than on any pair. Carried digit for digit.
+    //
+    // COLS_MIN 1 AND COLS_MAX 24 are the PORT'S OWN, and they are the only numbers in this file
+    // nobody measured. One column is a straight front; twenty-four on a phone frame is a column
+    // about sixteen points wide, past which the raggedness reads as noise on the edge rather than as
+    // columns. Named here and in the port's report so the seat can move them on evidence.
+
     // cover-fit a work into the frame, then pull in by the counter-motion's headroom. The host hands
     // the source's own dimensions, so the instrument never touches an image object.
     function fit(iw, ih, w, h) {
@@ -530,7 +607,10 @@
                    applied: { halfHeightsAtNothing: CAM_FAR, halfHeightsAtWhole: CAM_NEAR },
                    reads: "texture.spectralPeriodPx over structure.frameSide — the pair's own repeat "
                         + "said as cells across the frame's height, which is what decides how far "
-                        + "the far rows may crowd before they stop resolving into anything" },
+                        + "the far rows may crowd before they stop resolving into anything. This is "
+                        + "the handle the reading behind the module's own thirty-five-degree ceiling "
+                        + "is spent on, because the crowding is this handle's whole act and the "
+                        + "module named both ends of this axis and only one end of that one" },
         // HOW BROKEN THE FRONT IS. Nothing is one straight row travelling forward; whole spreads the
         // columns' own moments over four fifths of the plane.
         lead: { min: 0, max: 1, def: 0.4,

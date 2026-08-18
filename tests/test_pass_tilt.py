@@ -253,6 +253,45 @@ check("PASS-TILT every constant stands at the number the lab module gives it",
       "; ".join("%s — %s" % (c, why) for c, _, why in CONSTANTS) if not missing_const
       else "these differ: " + ", ".join(missing_const))
 
+# THE PINNED-NUMBER SWEEP. His 19:13 word lifted to the class at 19:21 — every geometric and temporal
+# parameter derives from the work's own measured structure and names the measurement it reads — with
+# his 15:13 word as the other half: a constant a record could have set is a static transition. So the
+# instrument owes, for every number it still pins, the reason it is not a handle.
+#
+# THIS ROW IS NOT ANCHORED ON A COMMENT'S EXISTENCE, which would pass vacuously. It reads the
+# instrument's own DECLARATIONS — every named constant the built artifact actually carries — and
+# holds that set against the list the file reasons about, so a number typed into the file tomorrow
+# without a reason reds this. Beside it, the four pinned numbers that bound a handle's own range are
+# read where a COMPOSER can see them: on the handle's `applied` block and in `framings`, not in prose.
+PINNED = {"TILT_MAX", "CAM_FAR", "CAM_NEAR", "AMP", "CROP", "COLS", "COLS_MIN", "COLS_MAX",
+          "MARGIN", "ZOOM_CAP", "FEEL_D0", "FEEL_C", "FEEL_K1", "FEEL_K2"}
+declared_const = set(re.findall(r"\b([A-Z][A-Z0-9_]{2,})\s*=\s*[-\d(]", REGION))
+PINNED_BLOCK = (SOURCE_TEXT.split("WHAT STAYS PINNED, AND WHY EACH ONE DOES")[-1]
+                .split("function fit(")[0])
+unreasoned = sorted(n for n in declared_const if not re.search(r"\b%s\b" % n, PINNED_BLOCK))
+published = ("degreesAtMidPassageWhenWhole: TILT_MAX" in REGION
+             and "halfHeightsAtNothing: CAM_FAR, halfHeightsAtWhole: CAM_NEAR" in REGION
+             and "frameUnitsAtMidPassage: AMP" in REGION
+             and 'framings: { "0": { coverCrop: CROP }, "1": { coverCrop: CROP } }' in REGION
+             and "columns: { min: COLS_MIN, max: COLS_MAX, def: COLS" in REGION)
+check("PASS-TILT every number the instrument still pins carries the reason it is not a handle",
+      declared_const == PINNED and not unreasoned and published,
+      "fourteen named constants stand in the built artifact and every one of them is reasoned about "
+      "by name. ONE of the module's constants became a handle — COLS, the nine columns the front "
+      "breaks into, which is a count of divisions across the frame and the one thing here a work "
+      "record measures. The rest are a handle's own published RANGE (CAM_FAR/CAM_NEAR on `squeeze`, "
+      "AMP on `travel`, and CROP in `framings`, each read here where a composer sees it rather than "
+      "in prose), the door law's own slack (MARGIN), a stop that never fires (ZOOM_CAP), the "
+      "response curve measured on the module rather than on a pair (the four FEEL numbers), or the "
+      "port's own two (COLS_MIN/COLS_MAX). TILT_MAX stays pinned because the module measured ONE "
+      "point of that axis and no second one, so a ceiling handle would need a number nobody "
+      "measured and a ceiling bounded at the measured point is `tilt` under a second name — and the "
+      "reading behind it, the pair's own repeat, already reaches the picture through `squeeze`"
+      if declared_const == PINNED and not unreasoned and published
+      else "constants declared but never reasoned about: %s; declared set %s against the reasoned "
+           "set %s; published on the handles: %s"
+           % (unreasoned, sorted(declared_const), sorted(PINNED), published))
+
 # THE MATRIX THE HOST CANNOT BIND, AND THE ROWS IT TRAVELS AS. §7's type vocabulary has no matrix, so
 # the module's one mat3 uniform is carried as its three rows and the shader rebuilds it. The row reads
 # the rebuild itself, because the footprint two lines below it names elements OF THAT MATRIX and a
