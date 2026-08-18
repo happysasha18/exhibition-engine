@@ -662,6 +662,21 @@
       // TEXTURE is not claimed. The grain here shapes the front's own boundary and its fingers; the
       // picture's own material is the works' film grain, which this instrument does not touch.
       levels: ["SURFACE", "CELL CONTENT"],
+      // WHAT THIS INSTRUMENT CUTS ON, and it owed this line. The site's own settings build places an
+      // instrument by its cut, prefers the manifest to any table it keeps, and names an instrument
+      // that declares none as UNPLACED: «no cut reading published anywhere; the instrument owes a
+      // `cuts:` line». Without it this file shipped, its suite ran and its reading stood in the
+      // composer's own register while `consts.instruments` and `consts.manifests` named fifteen
+      // instruments and not this one — so `ALL_INSTRUMENTS` filtered it out and no pair in the
+      // world could cast it. It was landed and dead, and it was dead for one missing line.
+      //
+      // The kind is READ rather than chosen, off two facts already published. This instrument's own
+      // `suits` block below reads `measures.named_objects` and says it cuts on the things IN the
+      // picture; the composer's `KIND_OF_MEASURE` maps `named_objects` to `region`. So `region` is
+      // the cut, and it is a kind no other published instrument cuts on at all — the composer's own
+      // note for it reads «a named region is a thing in the picture», which is what this instrument
+      // carries whole across an emptiness.
+      cuts: ["region"],
       params: { flight: [0, 1], horizon: [0, 1], grain: [0, 1], shrink: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down; the four below them are the module's declared params; `seed` is its die; `shade`,

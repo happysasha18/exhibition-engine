@@ -606,7 +606,65 @@
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
                           + "between a streak reading and this handle is recorded, so the "
-                          + "instrument's own default stands and the gap is named"]
+                          + "instrument's own default stands and the gap is named"],
+    // THE DRIFTING INSTRUMENT'S OWN TWENTY-ONE, and it is the first instrument whose handles name a
+    // WORK EACH: its two things travel one out of the frame and one into it, so where each stands,
+    // how much emptiness each has and whether each carries a waterline are read per work and not
+    // per pair. `A` is the departing work and `B` the arriving one throughout, which is the
+    // module's own naming. Its other seven — the dial, the clock, the die, the ground's grain and
+    // the three judges' channels — are rows this register already carried.
+    //
+    // SIX OF THE TWENTY-ONE NAME NO MEASUREMENT, and each says exactly what is missing rather than
+    // resting quietly. Four are densities the module solves off a work's own PIXELS at build time —
+    // the threshold at which the silhouette's area equals the measured figure share, and the density
+    // nothing in the work reaches — and a work record carries the object's measured box and no
+    // density reading at all. The other two are the module's own shares of a distance and a size
+    // that the pair already sets through the handles beside them.
+    homeAx: ["measured", "the centre of the departing work's own measured object box, "
+                         + "structure.dominantObject.bbox, as a share of its frame"],
+    homeAy: ["measured", "the centre of the departing work's own measured object box, "
+                         + "structure.dominantObject.bbox, as a share of its frame"],
+    homeBx: ["measured", "the centre of the arriving work's own measured object box, "
+                         + "structure.dominantObject.bbox, as a share of its frame"],
+    homeBy: ["measured", "the centre of the arriving work's own measured object box, "
+                         + "structure.dominantObject.bbox, as a share of its frame"],
+    voidShareA: ["measured", "motifs.voidShare of the departing work, the share of its frame its "
+                             + "own measured open ground holds, which is how far a thing may "
+                             + "travel before it stands on architecture instead of on emptiness"],
+    voidShareB: ["measured", "motifs.voidShare of the arriving work, read the same way"],
+    // The record publishes the seam's PRESENCE and no strength of its own for it — `locusOf` above
+    // says so in as many words and reads a measured seam as whole evidence — so this is whole where
+    // the work's own motif list carries the measured waterline and nothing where it does not.
+    seamA: ["measured", "whether the departing work's own motif list carries the measured "
+                        + "waterline, which is the only reading the record publishes of it"],
+    seamB: ["measured", "the same of the arriving work"],
+    horizon: ["measured", "how much of each work reads as grain rather than as line, "
+                          + "texture.scoreFromCutLines — the weaker of the two, because the front "
+                          + "is where the two grounds meet and either straight end rules it "
+                          + "straight"],
+    flight: ["unmeasured", "the module's own share of a distance the pair already sets: the reach "
+                           + "is the smaller of the two works' measured open grounds, which reach "
+                           + "the picture through voidShareA and voidShareB, so driving this too "
+                           + "would count one measurement twice"],
+    shrink: ["unmeasured", "how much size a thing gives up as it goes. Nothing in a work record "
+                           + "bears on it: the record carries where the thing stands and how much "
+                           + "emptiness is round it, and both already reach the picture"],
+    thrA: ["unmeasured", "the density the departing work's silhouette is cut at, solved off that "
+                         + "work's own pixels so its mask's area equals the measured figure share; "
+                         + "a work record carries the object's box and no density reading"],
+    thrB: ["unmeasured", "the same of the arriving work"],
+    maxA: ["unmeasured", "the density nothing in the departing work reaches, read off its pixels "
+                         + "at build; no density reading travels in a work record"],
+    maxB: ["unmeasured", "the same of the arriving work"],
+    voidAr: ["unmeasured", "the departing work's own ground colour, the mean outside its measured "
+                           + "box, in three channels; the record carries its palette by name and "
+                           + "rung and no channel value"],
+    voidAg: ["unmeasured", "the same, the departing work's green channel"],
+    voidAb: ["unmeasured", "the same, the departing work's blue channel"],
+    voidBr: ["unmeasured", "the arriving work's own ground colour, red channel; no channel value "
+                           + "travels in a work record"],
+    voidBg: ["unmeasured", "the same, the arriving work's green channel"],
+    voidBb: ["unmeasured", "the same, the arriving work's blue channel"]
   };
 
   // THE ROAD OPENS THE AUTHORED LINE. §4.7: the intent is the one written line a plan opens with,
@@ -3024,6 +3082,16 @@
         voidShare: Number(mot.voidShare) || 0,
         // the share of the frame the work's dominant object holds, off its own measured box
         figureShare: Math.max(0, (box[2] - box[0])) * Math.max(0, (box[3] - box[1])),
+        // WHERE THAT OBJECT STANDS IN THE FRAME — the centre of the same measured box, as a share
+        // of the frame's own sides. It is where the drifting instrument seats each work's thing
+        // before it carries it across the emptiness, and it is the same box the share above is
+        // taken from, read for its place rather than for its size.
+        figureCx: r4((num(box[0]) + num(box[2])) / 2),
+        figureCy: r4((num(box[1]) + num(box[3])) / 2),
+        // WHETHER THE WORK CARRIES A WATERLINE OF ITS OWN. The motif list carries only what was
+        // measured, so a seam standing on it reads whole and the record publishes no strength of
+        // its own for it — the same reading `locusOf` takes when it ranks the three loci.
+        carriesSeam: (mot.measured || []).indexOf(MOTIF_SEAM) >= 0 ? 1 : 0,
         // how strongly the work reads as radial, and how many rings its own cut measured
         radialScore: Number((st.radial || {}).score) || 0,
         ringGrain: ring ? Number(ring.measuredGrain) || 0 : 0,
@@ -3687,6 +3755,54 @@
           if (mt.latticePx > 0 && mt.frameSide > 0) {
             wanted.regionPeriod = flt(r4(clamp01(mt.latticePx / mt.frameSide)));
             wanted.regionTurn = flt(r4(Math.abs(mt.latticeAngleDeg) % 180.0));
+          }
+        } else if (instr === "adrift") {
+          // THE DRIFTING INSTRUMENT'S NINE, AND THEY NAME A WORK EACH. Every other branch of this
+          // fill hands a pair of ends the passage travels between; this instrument holds two things
+          // at once — one leaving the frame and one arriving in it — so where each stands, how much
+          // emptiness each has and whether each carries a waterline are read on ITS OWN work and
+          // handed as two numbers rather than as one journey.
+          //
+          // Without this branch the instrument would land and play the SAME crossing on every pair:
+          // the two things would sit at the centre of the frame, cross three quarters of it and
+          // hand over on the same front whichever two photographs met. That is the sameness his
+          // word of 2026-08-18 15:13 names, and it is the reason a branch lands beside the record.
+          //
+          // WHERE EACH WORK'S THING STANDS, off the centre of its own measured object box. The
+          // reading is already a share of the frame and the handle is published in shares of the
+          // frame, so nothing stands between them.
+          if (mf.figureShare > 0) {
+            wanted.homeAx = flt(r4(clamp01(mf.figureCx)));
+            wanted.homeAy = flt(r4(clamp01(mf.figureCy)));
+          }
+          if (mt.figureShare > 0) {
+            wanted.homeBx = flt(r4(clamp01(mt.figureCx)));
+            wanted.homeBy = flt(r4(clamp01(mt.figureCy)));
+          }
+          // HOW FAR EACH THING MAY TRAVEL BEFORE IT STANDS ON ARCHITECTURE INSTEAD OF ON EMPTINESS,
+          // off the share of the frame each work's own measured open ground holds. The module takes
+          // the smaller of the two, so a pair with one crowded work keeps both things near home.
+          if (mf.voidShare > 0) wanted.voidShareA = flt(r4(clamp01(mf.voidShare)));
+          if (mt.voidShare > 0) wanted.voidShareB = flt(r4(clamp01(mt.voidShare)));
+          // WHETHER EACH WORK CARRIES A WATERLINE OF ITS OWN, which is how far the handover front
+          // leans off the line the two things travel on. The motif list carries what was measured
+          // and no strength beside it, so this is whole where the seam stands on it and nothing
+          // where it does not — the same reading the arrival's own locus is ranked by.
+          wanted.seamA = flt(r4(mf.carriesSeam));
+          wanted.seamB = flt(r4(mt.carriesSeam));
+          // HOW DEEPLY THE TWO GROUNDS INTERLOCK AT THE FRONT — a clean waterline at one end of the
+          // handle and a band of fingers at the other. The front is where the two grounds MEET, so
+          // the weaker of the two texture readings rules it: either work that reads as line rather
+          // than as grain hands over on a line.
+          if (mf.textureScore > 0 && mt.textureScore > 0) {
+            wanted.horizon = flt(r4(clamp01(Math.min(mf.textureScore, mt.textureScore))));
+          }
+          // HOW COARSE THE GROUND'S OWN GRAIN IS, on the road the material instrument's grain
+          // already travels: the two works' measured spectral periods in cells across the frame's
+          // height, positioned about the handle's own default by their ratio, because no file in
+          // this tree records how many cells one step of the handle is worth.
+          if (mf.grainCells > 0 && mt.grainCells > 0) {
+            wanted.grain = acrossTheSpan("adrift", "grain", mf.grainCells, mt.grainCells);
           }
         }
         var measured = {}, nodes = {};
