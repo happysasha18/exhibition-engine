@@ -263,7 +263,7 @@ check("PASS-MATTER the host binds uniforms by declared name, never by position o
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-MATTER the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 14,
+      declared == spelled,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 

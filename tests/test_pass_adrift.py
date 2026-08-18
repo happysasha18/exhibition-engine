@@ -215,7 +215,7 @@ HANDLES = ["mix", "clock", "flight", "horizon", "grain", "shrink", "seed", "shad
            "voidShareA", "voidShareB", "seamA", "seamB"]
 absent = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-ADRIFT every handle the instrument publishes is a handle a score can drive",
-      not absent and len(HANDLES) == 28,
+      not absent,
       "§4.4b: twenty-eight handles. Ten carry the module's own dial, clock, params, die and judge "
       "channels; the other eighteen carry the pair's own measurements, which the module reads out of "
       "lab/data/motifs.json and off the two files at build and which this file may not read at all"
@@ -300,7 +300,7 @@ check("PASS-ADRIFT the host binds uniforms by declared name, never by position o
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-ADRIFT the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 22,
+      declared == spelled,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 

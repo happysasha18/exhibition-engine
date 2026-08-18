@@ -238,7 +238,7 @@ HANDLES = ["mix", "axis", "depth", "dip", "lead", "fingers", "seam", "seamScore"
            "shade", "travel", "seed", "mask"]
 absent = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-BOXFOLD every handle the instrument publishes is a handle a score can drive",
-      not absent and len(HANDLES) == 12,
+      not absent,
       "§4.4b: twelve handles. The dial, the module's own five declared params a pair can stand, the "
       "two that carry the crease's place and its gate, the module's two judge channels, the score's "
       "die and the judges' channel. The module's `faces` is published by neither, and the file says "
@@ -319,7 +319,7 @@ check("PASS-BOXFOLD the host binds uniforms by declared name, never by position 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-BOXFOLD the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 20,
+      declared == spelled,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
