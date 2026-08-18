@@ -395,6 +395,14 @@
     // reading: the third picture is the two works' interference, so what sets how near the two
     // rhythms stand has to be the two rhythms themselves. Each row takes the sentence the handle
     // publishes on the instrument, which is the fact the instrument owns.
+    // THE WATER'S OWN THREE. Every other handle it publishes — mix, clock, seed, shade, travel,
+    // mask — was already named.
+    swell: ["measured", "texture.scoreFromCutLines, how much of the work reads as grain rather "
+                        + "than as line"],
+    crest: ["measured", "texture.spectralPeriodPx over the work's own frame side, read as a "
+                        + "position on the handle's own range"],
+    refract: ["measured", "texture.detailPx over the work's own frame side, read as a position on "
+                          + "the handle's own range"],
     exposure: ["measured", "how far the composite reaches, positioned by the two works' own colour "
                            + "distance: two palettes standing apart make a third colour world "
                            + "worth reaching for, two standing close make one work slightly "
@@ -2798,6 +2806,11 @@
         // the material instrument's coarse grain is published in
         grainCells: spectral > 0 && side > 0 ? side / spectral : 0,
         spectralPeriodPx: spectral,
+        // HOW MUCH OF THE WORK READS AS GRAIN RATHER THAN AS LINE, and the finest detail it carries.
+        // Both are in the trimmed record the engine already receives and neither was read here until
+        // the water arrived; they are the two readings its swell and its refraction are placed by.
+        textureScore: Number(tex.scoreFromCutLines) || 0,
+        detailPx: Number(tex.detailPx) || 0,
         // the share of the frame the work's measured open ground holds
         voidShare: Number(mot.voidShare) || 0,
         // the share of the frame the work's dominant object holds, off its own measured box
@@ -3254,6 +3267,34 @@
           // the material instrument's gather is driven by.
           if (mf.figureShare > 0 || mt.figureShare > 0) {
             wanted.gather = [flt(r4(clamp01(mf.figureShare))), flt(r4(clamp01(mt.figureShare)))];
+          }
+        } else if (instr === "liquid") {
+          // THE WATER'S THREE HANDLES. Without this branch all three rest at the module's own
+          // water — correct water, but the SAME water for every pair, which is the sameness the
+          // whole port exists to close.
+          //
+          // HOW DEEP THE SWELL RUNS, off how much of each work reads as grain rather than as line.
+          // A work that IS texture takes the deep swell; one of straight architecture takes the
+          // shallow one. Both readings are shares already and the handle is a share of its own
+          // range, so it is a share against a share with nothing between them.
+          if (mf.textureScore > 0 || mt.textureScore > 0) {
+            wanted.swell = [flt(r4(clamp01(mf.textureScore))), flt(r4(clamp01(mt.textureScore)))];
+          }
+          // HOW CLOSE THE CRESTS STAND, and HOW FAR THE WATER BENDS THE LIGHT. Both are read as a
+          // POSITION on the handle's own range and never as an equality, and the reason is measured:
+          // the module's three waves stand about one and a quarter frame sides long, while a work's
+          // strongest spectral band is an order finer, so equality would crowd the crests elevenfold
+          // past the handle's own reach. `acrossTheSpan` positions the two works about the handle's
+          // own default by the RATIO of their readings, which is the same road the material
+          // instrument's grain already travels and invents no scale of its own.
+          if (mf.spectralPeriodPx > 0 && mt.spectralPeriodPx > 0
+              && mf.frameSide > 0 && mt.frameSide > 0) {
+            wanted.crest = acrossTheSpan("liquid", "crest", mf.spectralPeriodPx / mf.frameSide,
+                                         mt.spectralPeriodPx / mt.frameSide);
+          }
+          if (mf.detailPx > 0 && mt.detailPx > 0 && mf.frameSide > 0 && mt.frameSide > 0) {
+            wanted.refract = acrossTheSpan("liquid", "refract", mf.detailPx / mf.frameSide,
+                                           mt.detailPx / mt.frameSide);
           }
         } else if (instr === "overlay") {
           // THE SEVEN HANDLES THE THIRD PICTURE IS PLACED BY. Two of the instrument's nine read
