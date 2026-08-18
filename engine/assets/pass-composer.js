@@ -567,8 +567,24 @@
     // the work itself does. `power` brings a piece of the departing work to the size of the
     // arriving work's own piece.
     fold: ["measured", "the pair's own structure.rotational and structure.polar.twirl"],
-    wedges: ["measured", "structure.rotational.n, the work's measured rotational order"],
-    twist: ["measured", "structure.polar.twirl, the work's measured twirl"],
+    // WIDENED 2026-08-18 at the merge, for the fold: the glass folds its disc into as many mirrored
+    // wedges as the work turns, and the kaleidoscope tiles its wedge outward the same number of
+    // times. One measurement, two acts, one row. Where the record carries no rotational order the
+    // handle is simply not driven and the module's own count stands, which is the register working.
+    wedges: ["measured", "structure.rotational.n, the work's measured rotational order — how many "
+                         + "mirrored wedges the disc folds into, and how often the fold repeats"],
+    // THREE INSTRUMENTS DRIVE `twist` AND ALL THREE READ ONE MEASUREMENT, so one row serves them,
+    // the same way `axis` serves the ribbons, the crease and the fold line. The glass winds by it,
+    // the kaleidoscope LEANS its fold by it, and the corridor SHEARS its spiral by it — three acts
+    // of one reading of how strongly a work's own making reads as a twirl. Nothing is renamed:
+    // renaming one would be a second name for one measurement, which is the thing this register
+    // exists to prevent.
+    twist: ["measured", "structure.polar.twirl, how strongly the work's own making reads as a "
+                        + "twirl — the glass's wind, the fold's lean and the corridor's shear"],
+    // THE KALEIDOSCOPE'S OTHER TWO. Its `mix`, `clock`, `centreX`, `centreY`, `shade` and `mask`
+    // already had rows, and `wedges` and `twist` are the two widened above.
+    rings: ["measured", "structure.ownDevice.count where the work's own device is rings"],
+    reach: ["measured", "structure.ownDevice.stepPx over the work's own frame side"],
     power: ["measured", "the ratio of the two works' measured ownDevice.stepPx"],
     flank: ["unmeasured", "how upright a tooth's flank stands. The work's own radial streak is "
                           + "measured in the polar block and reads on exactly this, but no scale "
@@ -1012,6 +1028,28 @@
         var sb = readingOf((b.measures || {}).named_objects);
         return [Math.min(sa, sb), "the two works read named objects at " + pyText(flt(r4(sa)))
                 + " and " + pyText(flt(r4(sb)))];
+      },
+      // THE WEDGE TILES OUTWARD INTO MIRRORED RINGS about the work's own measured centre, so what
+      // it suits is a pair BOTH of whose works read radial: a fold opening a structure only one
+      // work carries is laid on rather than found, which is why the WEAKER reading is the fit here
+      // where the glass's is the stronger. And it suits a pair more where the subtype is rings,
+      // because rings are what open into a rosette and spokes turn instead — a reading of the pair,
+      // taken on both works, so an edge casts the same whichever way the visitor walks it.
+      //
+      // The port declared this on its own manifest as two FLOORS and a direction: both works over
+      // the collection's cut-line floor, the ARRIVING work over the tight floor with its subtype on
+      // rings. All three go under his words of 09:51 and 09:53 and the reading survives all three.
+      kaleidoscope: function (a, b) {
+        var sa = readingOf(((a.structure || {}).radial || {}).score);
+        var sb = readingOf(((b.structure || {}).radial || {}).score);
+        function ringly(w) {
+          return ((w.structure || {}).radial || {}).subType === "ring" ? 1 : 0;
+        }
+        var rings = (ringly(a) + ringly(b)) / 2;
+        return [Math.min(sa, sb) * (0.5 + 0.5 * rings),
+                "the two works read radial at " + pyText(flt(r4(sa))) + " and "
+                + pyText(flt(r4(sb))) + ", and " + (ringly(a) + ringly(b)) + " of the two turn on "
+                + "rings rather than on spokes, which is what opens into a rosette"];
       },
       // THE GLASS RESTS ON A POINT AND FOLDS ABOUT IT, so what it suits is a pair whose point is
       // the works' OWN: its place, its wedge count and its wind are all set about the pair's
@@ -2935,6 +2973,10 @@
         // angle of that step — what a passage revealing the making has to read
         regionCount: Number((st.regions || {}).count) || 0,
         deviceStepPx: Number((st.ownDevice || {}).stepPx) || 0,
+        // WHAT THE WORK'S OWN DEVICE IS AND HOW MANY TIMES IT REPEATS — the radial repeat the fold
+        // tiles outward at, where that device is rings.
+        deviceKind: String((st.ownDevice || {}).kind || ""),
+        deviceCount: Number((st.ownDevice || {}).count) || 0,
         deviceAngleDeg: Number((st.ownDevice || {}).angleDeg) || 0,
         gridPeriodPx: Number((st.grid || {}).periodPx) || 0,
         gridAngleDeg: Number((st.grid || {}).angleDeg) || 0,
@@ -3362,6 +3404,41 @@
           // the material instrument's gather is driven by.
           if (mf.figureShare > 0 || mt.figureShare > 0) {
             wanted.gather = [flt(r4(clamp01(mf.figureShare))), flt(r4(clamp01(mt.figureShare)))];
+          }
+        } else if (instr === "kaleidoscope") {
+          // THE FOLD'S FOUR MEASURED HANDLES. The lane asked for no fill branch, but without one
+          // the fold stands at the module's own eight wedges, one ring and its own lean for every
+          // pair alike, and its own report names what each handle reads.
+          //
+          // HOW MANY WEDGES THE FOLD TILES INTO, at the work's own measured rotational order. THE
+          // COLLECTION CARRIES THAT ORDER FOR 3 WORKS IN 121, and where it carries none the handle
+          // is simply not driven: the module's own eight stand, which is the vista preset his taste
+          // approved on 2026-08-08. That is a gap in the measurement named as a gap, not a number
+          // invented to cover it.
+          if (mf.rotationalN > 0 || mt.rotationalN > 0) {
+            wanted.wedges = Math.round(Math.max(mf.rotationalN, mt.rotationalN));
+          }
+          // HOW FAR THE FOLD LEANS, at each work's own measured twirl — the same reading the glass
+          // winds by and the corridor shears by, travelling from one work's to the other's.
+          if (mf.twirl > 0 || mt.twirl > 0) {
+            wanted.twist = [flt(r4(clamp01(mf.twirl))), flt(r4(clamp01(mt.twirl)))];
+          }
+          // HOW OFTEN THE FOLD REPEATS OUTWARD, at the work's own device count where that device is
+          // rings. A work cut some other way lends nothing here and the module's own count stands.
+          var ringsFrom = mf.deviceKind === "rings" ? mf.deviceCount : 0;
+          var ringsTo = mt.deviceKind === "rings" ? mt.deviceCount : 0;
+          if (ringsFrom > 0 || ringsTo > 0) {
+            wanted.rings = Math.round(Math.max(ringsFrom, ringsTo));
+          }
+          // HOW WIDE THE SAMPLE STANDS, at the work's own cutting step over its own frame side.
+          if (mf.deviceStepPx > 0 && mf.frameSide > 0 && mt.deviceStepPx > 0 && mt.frameSide > 0) {
+            wanted.reach = [flt(r4(clamp01(mf.deviceStepPx / mf.frameSide))),
+                            flt(r4(clamp01(mt.deviceStepPx / mt.frameSide)))];
+          }
+          // WHERE THE FOLD TURNS: the midpoint of the two works' own measured radial centres.
+          if (num(row[6]) >= 0 || num(row[8]) >= 0) {
+            wanted.centreX = flt(r4((num(row[6]) + num(row[8])) / 2.0 + 0.5));
+            wanted.centreY = flt(r4((num(row[7]) + num(row[9])) / 2.0 + 0.5));
           }
         } else if (instr === "parquet") {
           // THE MIRROR FLOOR'S THREE MEASURED HANDLES. The lane asked for no fill branch, but

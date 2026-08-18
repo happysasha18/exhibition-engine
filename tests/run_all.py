@@ -44,6 +44,7 @@ SUITES = [
     "pass_hero",
     "pass_lens",
     "pass_parquet",
+    "pass_kaleidoscope",
     "pass_route",
     "pass_phone",
     "pass_livemirror",
