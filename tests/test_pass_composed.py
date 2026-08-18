@@ -328,12 +328,13 @@ NODE_ROWS = [
     "EX-COMPOSED red-on-bug · the open-handle fence removed: the composer drives a door's own state",
     "EX-COMPOSED red-on-bug · the line stops being fitted: it stands over the cap it is measured "
     "against",
-    "EX-COMPOSED red-on-bug · the fold's own role gate removed: a step with no miracle folds",
+    "EX-COMPOSED red-on-bug · all four of the miracle's own gates removed: a step with no miracle "
+    "folds the world",
     "EX-COMPOSED red-on-bug · the fold stops counting as the miracle: a folding crossing spends "
     "none",
     "EX-COMPOSED red-on-bug · one instrument per kind restored: an instrument travels unchosen",
-    "EX-COMPOSED red-on-bug · the ground gated on the top quartile again: one instrument carries "
-    "the route",
+    "EX-COMPOSED red-on-bug · the ground gated on the top quartile again: a route plays fewer "
+    "distinct shapes",
     "EX-COMPOSED the line gives up its own clauses and then its tail, and is never lost",
 ]
 
@@ -1292,13 +1293,26 @@ else:
             # THE FOLD'S TWO LAWS, each proved by taking its own reading away. The first is read off
             # the instrument's own manifest — an instrument declaring the WORLD level folds the
             # space — so removing that reading is removing the law.
+            # THE PLANT WAS INCOMPLETE AND THE ROW WENT GREEN ON THREE GUARDS WHILE A FOURTH HELD.
+            # Shelf 17's law is kept in FOUR places, not three: the tier `castForKinds` gives a
+            # folding instrument, the travelling voice's own check, the genre pool's filter, and
+            # `bestFilling`'s `continue`. With three removed the fourth held alone and the answer
+            # did not move at all, at any corner size up to the whole collection — measured at the
+            # merge on a field of fifteen instruments, where the earlier field of five let the first
+            # three carry it. A plant that leaves a guard standing proves the guard it left.
+            #
+            # AND THE READING IS WIDENED FROM ONE INSTRUMENT TO THE LAW. `folded` counts the folding
+            # instrument alone; the law is about spending the crossing's one miracle, and three
+            # instruments now publish the WORLD level. So the row reads both — a fold at a
+            # no-miracle role, and any WORLD cue at one — and either moving reddens the plant.
             (NODE_ROWS[30],
              [["        var order = (iid === avoid) ? 4\n          : ((cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0));",
                "        var order = (iid === avoid) ? 4 : (cuts ? 0 : 2);"],
               ["        } else if (spendsTheMiracle(travelInstr) && !(ROLE_BUDGETS[role] || {}).miracle) {",
                "        } else if (false) {"],
-              ["        pool = pool.filter(function (r) { return !r.mustFold; });", ""]],
-             lambda g: sum(g["sweep"]["folded"][r]
+              ["        pool = pool.filter(function (r) { return !r.mustFold; });", ""],
+              ["        if (noMiracle && spendsTheMiracle(iid)) continue;", ""]],
+             lambda g: sum(g["sweep"]["folded"][r] + g["sweep"]["worldCue"][r]
                            for r in ("entrance", "quiet link", "return")) > 0),
             # ONE INSTRUMENT PER KIND, RESTORED IN A COPY — the rule an earlier lane repaired. With
             # the candidates on a kind cut back to the first of them, and the ranking's second and
@@ -1316,12 +1330,21 @@ else:
             # Both works clearing a measure's top quartile happens on about 6 per cent of pairs for
             # every measure by construction, so nearly everything fell through to one ground with one
             # cut and one instrument, and that instrument carried the route.
+            # THE READING IS RE-ANCHORED, AND THE MEASUREMENT SAYS WHY. This row read the gate's
+            # harm off `topShareMean` — the share of a route its commonest instrument carries —
+            # because when it was written a cut had ONE instrument on it, so narrowing the grounds
+            # narrowed the instruments with them. On a field of fifteen a cut has several, so
+            # restoring the gate now moves that share the other way (35.0% to 31.5%, measured at the
+            # merge) while the harm itself is unchanged and plain in the ROUTE'S OWN VARIETY: the
+            # gate strikes grounds out, so a cast route plays fewer distinct shapes — 18.4 on
+            # average against 16.4 with the gate back. The row reads that instead, which is what the
+            # gate actually costs a visitor.
             (NODE_ROWS[33],
              [["        per[m] = { min: r4(Math.min(sa, sb)), a: r4(sa), b: r4(sb) };",
                "        var th = (consts.thresholds || {})[m];"
                " per[m] = { min: r4((th !== undefined && (sa < th || sb < th)) ? 0 : Math.min(sa, sb)),"
                " a: r4(sa), b: r4(sb) };"]],
-             lambda g: g["route"]["topShareMean"] > got["route"]["topShareMean"]),
+             lambda g: g["route"]["shapesMean"] < got["route"]["shapesMean"]),
             (NODE_ROWS[31],
              [['      if (folds === "pivot") voices.pivot = "miracle";',
                '      if (false) voices.pivot = "miracle";']],
