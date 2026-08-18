@@ -39,6 +39,7 @@ SUITES = [
     "pass_boxfold",
     "pass_droste",
     "pass_planet",
+    "pass_overlay",
     "pass_route",
     "pass_phone",
     "pass_livemirror",

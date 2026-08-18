@@ -391,6 +391,40 @@
     curl: ["measured", "each work's own reading as a little world, structure.polar.planet — a "
                        + "picture that already turns about a centre closes the whole way and one "
                        + "that barely does is left a bowed band"],
+    // THE INTERFERING INSTRUMENT'S NINE, and the four lattice rows are charter shelf 10's own
+    // reading: the third picture is the two works' interference, so what sets how near the two
+    // rhythms stand has to be the two rhythms themselves. Each row takes the sentence the handle
+    // publishes on the instrument, which is the fact the instrument owns.
+    exposure: ["measured", "how far the composite reaches, positioned by the two works' own colour "
+                           + "distance: two palettes standing apart make a third colour world "
+                           + "worth reaching for, two standing close make one work slightly "
+                           + "veiled"],
+    presence: ["measured", "the share of the frame the composite stands on, read off the same "
+                           + "colour distance the exposure is placed by"],
+    // TWO HANDLES THAT READ NOTHING OF EITHER PHOTOGRAPH AND SAY SO. They are not «uncalibrated»
+    // and they are not unmeasured: there is no measurement to take, because the choice is his and a
+    // score's. They stand under the same tag as the passage's own travel envelope — what the
+    // transaction itself supplies — and the class law holds, because a handle naming a score's word
+    // is a handle naming what it reads.
+    blend: ["transaction", "nothing of either photograph: the six rules the two works meet under are his "
+                    + "own approved list of 2026-08-08 11:39 and the choice between them is a "
+                    + "score's word"],
+    arrival: ["transaction", "nothing of either photograph: charter shelf 7 names the interfered arrival "
+                      + "and a score names it, so this is a plan's word"],
+    scale: ["measured", "the ratio of the two works' own cutting steps — structure.ownDevice.stepPx "
+                        + "of the arriving work over the departing one's, with "
+                        + "structure.grid.periodPx where no device was derived"],
+    mixPeriod: ["measured", "structure.ownDevice.stepPx over the departing work's own frame side, "
+                            + "so the field deciding which places lean to which work leans along "
+                            + "that work's own structure; structure.grid.periodPx where no device "
+                            + "was derived"],
+    mixTurn: ["measured", "structure.ownDevice.angleDeg of the departing work, the angle that same "
+                          + "step was cut at; structure.grid.angleDeg where no device was derived"],
+    regionPeriod: ["measured", "structure.ownDevice.stepPx over the ARRIVING work's own frame side, "
+                               + "so the exposure's region grows along the structure of the work it "
+                               + "is resolving into; structure.grid.periodPx where none"],
+    regionTurn: ["measured", "structure.ownDevice.angleDeg of the arriving work; "
+                             + "structure.grid.angleDeg where no device was derived"],
     // THE GEOMETRY-FROM-THE-WORK SWEEP, 2026-08-17 (U27 stage 1, lane A). His 19:13 word lifted to
     // the class at 19:21: every geometric and temporal parameter derives from the work's own
     // measured structure and names the measurement it reads. Nine handles that stood here as
@@ -801,6 +835,26 @@
                 "the two works' tonal grounds stand at " + pyText(flt(r4(bridge.tonal)))
                 + " of each other and their detail scales at " + pyText(flt(r4(bridge.spectral)))];
       },
+      // THE THIRD PICTURE IS MADE OF TWO PALETTES, so what it suits is a pair whose two colours
+      // stand APART: where the two works carry nearly one colour the composite is one work slightly
+      // veiled and there is nothing to watch. The colour distance is already in this file — the
+      // tonal bridge is a closeness of the works' own measured ladder positions, and the distance
+      // is its complement — so the measurement the lane said it was waiting on was here all along.
+      //
+      // The second half is charter shelf 10's: the third picture is the two works' INTERFERENCE, so
+      // a pair carrying a measured lattice at one end at least has something to beat against, and
+      // a pair carrying two beats hardest. The lane drafted this half as a floor on a measured step;
+      // it is a ranking here, so a pair with no lattice anywhere still crosses and simply ranks
+      // below one that has both.
+      overlay: function (a, b) {
+        var apart = 1 - tonalSpectral(a, b).tonal;
+        var la = latticeOf(a) > 0 ? 1 : 0, lb = latticeOf(b) > 0 ? 1 : 0;
+        var beat = (la + lb) / 2;
+        return [apart * (0.5 + 0.5 * beat),
+                "the two works' colour worlds stand " + pyText(flt(r4(apart)))
+                + " apart, and " + (la + lb) + " of the two carry a measured lattice for the "
+                + "third picture to beat against"];
+      },
       // THE PICTURE CURLS INTO A LITTLE WORLD, and a world needs a horizon: the foot goes to the
       // centre, the sky becomes the ring and the light the whole stage stands in. A flat pattern
       // with no horizon curls into a disc of texture instead, which is a lesser thing. So the
@@ -990,6 +1044,15 @@
     // answers for every pair in the world, including two records that share no measured structure
     // at all. A record missing either field reads as the plainest thing it can: the fields' own
     // neutral, which is what an unmeasured ladder position and a one-pixel detail scale amount to.
+    // THE LATTICE A WORK CARRIES, in the one unit the reading is already in: the step the work was
+    // actually cut at, falling back to the repeat its own grid was measured at where no device was
+    // recovered. `measuredParts` carries the same order of preference for the fill, which has one
+    // work at a time; this one answers where the whole pair is in hand.
+    function latticeOf(w) {
+      var st = w.structure || {};
+      return Number((st.ownDevice || {}).stepPx) || Number((st.grid || {}).periodPx) || 0;
+    }
+
     function tonalSpectral(a, b) {
       var ta = Number((a.luminance || {}).ladderPosition) || 0;
       var tb = Number((b.luminance || {}).ladderPosition) || 0;
@@ -2769,7 +2832,18 @@
         gridAngleDeg: Number((st.grid || {}).angleDeg) || 0,
         frameSide: side,
         // how confidently the work's own device was recovered — how legibly its making reads
-        deviceConfidence: Number((st.ownDevice || {}).confidence) || 0
+        deviceConfidence: Number((st.ownDevice || {}).confidence) || 0,
+        // WHERE THE WORK STANDS ON ITS OWN TONAL LADDER, which is the reading the pair's colour
+        // distance is taken between. It stood only inside `tonalSpectral`, where the whole pair is
+        // in hand; the fill has one work at a time, so the reading belongs here beside the others.
+        ladderPosition: Number((work.luminance || {}).ladderPosition) || 0,
+        // THE LATTICE THE WORK CARRIES, in one place and in one order of preference: the step the
+        // work was actually cut at, falling back to the repeat its own grid was measured at. Three
+        // handles of the interfering instrument read exactly this pair of numbers.
+        latticePx: Number((st.ownDevice || {}).stepPx) || Number((st.grid || {}).periodPx) || 0,
+        latticeAngleDeg: Number((st.ownDevice || {}).stepPx) > 0
+          ? Number((st.ownDevice || {}).angleDeg) || 0
+          : Number((st.grid || {}).angleDeg) || 0
       };
     }
 
@@ -3180,6 +3254,46 @@
           // the material instrument's gather is driven by.
           if (mf.figureShare > 0 || mt.figureShare > 0) {
             wanted.gather = [flt(r4(clamp01(mf.figureShare))), flt(r4(clamp01(mt.figureShare)))];
+          }
+        } else if (instr === "overlay") {
+          // THE SEVEN HANDLES THE THIRD PICTURE IS PLACED BY. Two of the instrument's nine read
+          // nothing of either photograph and say so — `blend` names the rule the two works meet
+          // under, which is his own approved list, and `arrival` names charter shelf 7's interfered
+          // arrival — so both stay at the instrument's own rest and their nodes carry no note, which
+          // is the honest answer to «where did this number come from».
+          //
+          // HOW FAR THE COMPOSITE REACHES AND HOW MUCH OF THE FRAME IT STANDS ON, both off the one
+          // reading that decides whether this crossing is worth watching: the two works' own colour
+          // distance, taken between their measured ladder positions. Two palettes standing apart
+          // make a third colour world; two standing close make one work slightly veiled, and the
+          // composite reaches exactly as far as there is a third colour to reach for.
+          var apartHere = Math.min(1, Math.abs(mf.ladderPosition - mt.ladderPosition));
+          if (apartHere > 0) {
+            wanted.exposure = flt(r4(clamp01(apartHere)));
+            wanted.presence = flt(r4(clamp01(apartHere)));
+          }
+          // CHARTER SHELF 10, IN THE TWO RHYTHMS THEMSELVES. The third picture is the two works'
+          // interference, so how large the arriving work stands against the departing one is the
+          // RATIO of their own cutting steps, and how far it is turned is the ANGLE between their
+          // two lattices. Near-matched rhythms at a small angle are what yield the slow large beats.
+          if (mf.latticePx > 0 && mt.latticePx > 0) {
+            wanted.scale = flt(r4(mt.latticePx / mf.latticePx));
+            wanted.turn = flt(r4(Math.abs(mt.latticeAngleDeg - mf.latticeAngleDeg) % 180.0));
+          }
+          // WHERE THE MIX FIELD LEANS, along the DEPARTING work's own structure: the step that work
+          // was cut at, said as a fraction of its own frame side, and the angle that step was cut
+          // at. So the field deciding which places of the frame belong to which work leans along
+          // the work the visitor is leaving rather than across it.
+          if (mf.latticePx > 0 && mf.frameSide > 0) {
+            wanted.mixPeriod = flt(r4(clamp01(mf.latticePx / mf.frameSide)));
+            wanted.mixTurn = flt(r4(Math.abs(mf.latticeAngleDeg) % 180.0));
+          }
+          // WHERE THE EXPOSURE'S REGION GROWS, along the ARRIVING work's own structure by the same
+          // two readings — which is what makes the arrival that work's own rather than a shape laid
+          // over it.
+          if (mt.latticePx > 0 && mt.frameSide > 0) {
+            wanted.regionPeriod = flt(r4(clamp01(mt.latticePx / mt.frameSide)));
+            wanted.regionTurn = flt(r4(Math.abs(mt.latticeAngleDeg) % 180.0));
           }
         }
         var measured = {}, nodes = {};
