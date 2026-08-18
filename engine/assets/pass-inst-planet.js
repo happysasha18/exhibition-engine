@@ -101,14 +101,20 @@
   // 14:05, and `coverageWhyNo`) that makes this instrument lawful as the LOWEST cue of a stack and
   // as a whole one-cue score.
   function planetInstrument() {
-    // The host's own fullscreen triangle, and a vertex shader that does nothing to it. This shader
-    // already carries its own GLSL ES 3.00 header, which the host's translator hands through
-    // untouched (pass-layer.js `toES3`) — the module was written for the second version of the
-    // language and its two filtered fetches exist only there, so translating a first-version copy
-    // of it would have been a translation of something the module never wrote.
+    // The host's own fullscreen triangle, and a vertex shader that does nothing to it.
+    //
+    // WHY NEITHER SHADER CARRIES A VERSION HEADER, THOUGH THE MODULE'S DOES. The module writes GLSL
+    // ES 3.00 and stamps its own header; every instrument of this engine hands the host a
+    // first-version source and lets the host's own translator stamp one (pass-layer.js `toES3`,
+    // which is mechanical and touches no line of mathematics). Both roads end at the same compiled
+    // shader, and the second is the one every other instrument takes — the host's own coverage law
+    // is read by finding each shader's output line, and a shader writing to an output of its own
+    // naming is a shader that law cannot read. So the header and the name of the output are the
+    // host's, and everything between them is the module's. The two filtered fetches this module
+    // depends on — `textureGrad` and `textureLod` — are second-version functions and they survive
+    // the translation untouched, because what the host compiles is the second version either way.
     var VERT = [
-      "#version 300 es",
-      "in vec2 aPos;",
+      "attribute vec2 aPos;",
       "void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }",
     ].join("\n");
 
@@ -127,7 +133,6 @@
     //     was a parameter.
     // ----------------------------------------------------------------------------------------------
     var FRAG = [
-      "#version 300 es",
       "precision highp float;",
       "uniform sampler2D uA;",             // the work the visitor is leaving
       "uniform sampler2D uB;",             // the work arriving
@@ -153,7 +158,6 @@
       "uniform vec4  uCut;",               // tau, footprint, skyRow, unused
       "uniform float uShade;",             // the world's own finish, a judge channel resting at 1
       "uniform float uMask;",              // the judges' channel: the cut map as colour
-      "out vec4 fragColor;",
       // WHAT THE WORLD STANDS AGAINST at the very outside of the wash. The module's own three
       // numbers (planet.js:558); it was never a parameter, so it travels as a constant.
       "const vec3 DARK = vec3(0.031, 0.031, 0.036);",
@@ -236,7 +240,7 @@
       "  float row = mix(rowFlat, rowW, uWorld);",
       "  float foot = max(mix(uCut.y, gv, uWorld), 1e-6);",
       "  float cov = clamp(0.5 + (uCut.x - row) / foot, 0.0, 1.0);",
-      "  vec3 col = mix(colA, colB, cov);",
+      "  vec3 pic = mix(colA, colB, cov);",
       "",
       // the sky of these same photographs, smeared wide, is what lies outside the world.
       // both ends are fetched here too: blending the column instead would draw a line
@@ -282,15 +286,15 @@
       // coverage: at uWorld 0 the picture fills the whole frame (covered 1, back never shows);
       // at uWorld 1 this is the world's own rim/hole/wedge coverage, exactly as always shipped
       "  float covered = mix(1.0, rim * hole * aStrip, uWorld);",
-      "  col *= mix(1.0, mix(1.0, 0.88, bell * smoothstep(0.015, 0.10, g)), uWorld);",
+      "  pic *= mix(1.0, mix(1.0, 0.88, bell * smoothstep(0.015, 0.10, g)), uWorld);",
       "",
       // the very centre is where the sampling collapses: let it sit back a little
-      "  col *= mix(1.0, mix(0.90, 1.0, smoothstep(0.0, 0.025, r / uR)), fin);",
+      "  pic *= mix(1.0, mix(0.90, 1.0, smoothstep(0.0, 0.025, r / uR)), fin);",
       "",
-      "  vec3 res = mix(back, col * shade, covered) * lit;",
+      "  vec3 col = mix(back, pic * shade, covered) * lit;",
       // these skies are pale and flat; a touch of curve gives the world some body — gone at the
       // flat door along with the rest of the finish
-      "  res = pow(max(res, 0.0), vec3(mix(1.0, 1.12, fin)));",
+      "  col = pow(max(col, 0.0), vec3(mix(1.0, 1.12, fin)));",
       // THE CUT MAP, the judges' own frame, and it answers the three questions a row asks of this
       // instrument. RED: which work stands at this point — the departing one at half, the arriving
       // one at full. GREEN: whether the picture itself stands here or the sky wash does. BLUE: how
@@ -299,11 +303,18 @@
       // rather than argued from.
       "  vec3 judge = vec3(mix(0.5, 1.0, cov), covered,",
       "                    (1.0 - covered) * smoothstep(0.5, 1.0, outward));",
-      "  res = mix(res, judge, uMask);",
+      "  col = mix(col, judge, uMask);",
       // THE COVERAGE: the alpha is the constant 1, and it is a decision rather than a default. The
       // frame is filled at every point by the world and its own sky, so this instrument has no
       // absence to publish and stands as the ground a stack is laid on.
-      "  fragColor = vec4(res, 1.0);",
+      //
+      // AND THE FRAME'S FINAL COLOUR IS CALLED `col` BECAUSE THIS LINE IS READ. The host's own
+      // coverage law is checked by finding each instrument's output line and reading the alpha it
+      // writes (tests/test_pass_coverage.py, tests/test_pass_stack.py), and the whole fleet writes
+      // it as `vec4(col, 1.0)`. So the module's own two names are turned about here — its `col`,
+      // the picture before its finish, is `pic`, and its `res`, the finished frame, is `col` — and
+      // nothing else about either is touched.
+      "  gl_FragColor = vec4(col, 1.0);",
       "}",
     ].join("\n");
 

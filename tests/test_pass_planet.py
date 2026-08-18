@@ -317,7 +317,7 @@ CONSTANTS = [
     ("gl.uniform3f(U.uBg, 0.031, 0.031, 0.036);", "vec3 DARK = vec3(0.031, 0.031, 0.036);",
      "what the very outside of the wash settles to"),
     ("res = pow(max(res, 0.0), vec3(mix(1.0, 1.12, uWorld)));",
-     "res = pow(max(res, 0.0), vec3(mix(1.0, 1.12, fin)));",
+     "col = pow(max(col, 0.0), vec3(mix(1.0, 1.12, fin)));",
      "the closing curve, which gives these pale flat skies some body"),
 ]
 missing_const = [p for lab_p, p in ((a, b) for a, b, _ in CONSTANTS)
@@ -387,13 +387,17 @@ check("PASS-PLANET every uniform is sourced from the closed set the host can sup
       f"{len(sources)} distinct sources and none outside that set"
       if not outside else "outside the set: " + ", ".join(outside))
 
-check("PASS-PLANET the shader carries its own GLSL ES 3.00 header, because the module's does",
-      REGION.count("#version 300 es") == 2 and "#version 300 es" in LABTXT
-      and "textureGrad" in REGION and "textureLod" in REGION,
-      "the module was written for the second version of the language and its two filtered fetches "
-      "exist only there, so a first-version copy of it would have been a translation of something "
-      "the module never wrote. The host's own translator hands a source that already carries a "
-      "header through untouched, and the browser row below reads that")
+check("PASS-PLANET the shader carries no version header of its own, though the module's does",
+      "#version" not in REGION and "#version 300 es" in LABTXT
+      and "textureGrad" in REGION and "textureLod" in REGION
+      and "gl_FragColor = vec4(col, 1.0);" in REGION,
+      "the module writes the second version of the language and stamps its own header; every "
+      "instrument of this engine hands the host a first-version source and lets the host's own "
+      "translator stamp one, which is mechanical and touches no line of mathematics. Both roads end "
+      "at the same compiled shader, and the second is the one the fleet takes — the host's own "
+      "coverage law is read by finding each shader's output line, and a shader writing to an output "
+      "of its own naming is a shader that law cannot read. The two filtered fetches this module "
+      "depends on are second-version functions and they survive the translation untouched")
 
 check("PASS-PLANET the manifest leaves the drawing buffer unpreserved",
       "gl: { preserveDrawingBuffer: false }" in REGION,
@@ -402,7 +406,7 @@ check("PASS-PLANET the manifest leaves the drawing buffer unpreserved",
 
 check("PASS-PLANET the coverage is declared, and the frame it fills is the reason",
       "coverage: { writes: false" in REGION
-      and "fragColor = vec4(res, 1.0);" in REGION
+      and "gl_FragColor = vec4(col, 1.0);" in REGION
       and "opacity" not in REGION and "presence" not in REGION,
       "§8's coverage block and §7's law: the alpha is the constant 1, said as a decision. Outside "
       "the world's own rim the frame is not empty — it carries the sky of the work that owns the "
@@ -1176,18 +1180,23 @@ else:
 
                 r = js(br, """
                   var m = window.__exPass.bench.manifest('planet');
-                  var already = window.__exPass.bench.es3(m.passes[0].frag, false);
-                  var plain = window.__exPass.bench.es3('precision highp float;\\nvoid main(){}', false);
+                  var plain = window.__exPass.bench.es3(m.passes[0].frag, false);
+                  var already = window.__exPass.bench.es3('#version 300 es\\n' + m.passes[0].frag, false);
                   var count = function (s) { return s.split('#version').length - 1; };
-                  return {source: count(m.passes[0].frag), untouched: count(already),
-                          stamped: count(plain), head: already.slice(0, 15)};
+                  return {source: count(m.passes[0].frag), stamped: count(plain),
+                          untouched: count(already), head: plain.slice(0, 15),
+                          out: plain.indexOf('out vec4 oColour;') >= 0,
+                          grad: plain.indexOf('textureGrad') >= 0};
                 """)
                 check(BROWSER_ROWS[18],
-                      r["source"] == 1 and r["untouched"] == 1 and r["stamped"] == 1
-                      and r["head"].startswith("#version 300 es"),
-                      f"this shader carries {r['source']} header of its own and the translator "
-                      f"leaves it with {r['untouched']}, while a source carrying none is stamped "
-                      f"with {r['stamped']}. A second header would be a build-time red")
+                      r["source"] == 0 and r["stamped"] == 1 and r["untouched"] == 1
+                      and r["head"].startswith("#version 300 es") and r["out"] and r["grad"],
+                      f"the shader carries {r['source']} headers, the translator leaves it with "
+                      f"{r['stamped']} and declares the output the host's coverage law reads "
+                      f"({r['out']}), and a source that already carries a header comes back with "
+                      f"{r['untouched']}. The module's own two filtered fetches survive the "
+                      f"translation untouched ({r['grad']}), because what is compiled is the second "
+                      f"version of the language either way")
 
                 # ---- curtain up, one pass drawn, exactly one dock --------------------------------
                 br.evaluate("window.__cancel('before the whole pass'); 0")
