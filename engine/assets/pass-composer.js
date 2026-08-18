@@ -682,7 +682,181 @@
     voidBr: ["unmeasured", "the arriving work's own ground colour, red channel; no channel value "
                            + "travels in a work record"],
     voidBg: ["unmeasured", "the same, the arriving work's green channel"],
-    voidBb: ["unmeasured", "the same, the arriving work's blue channel"]
+    voidBb: ["unmeasured", "the same, the arriving work's blue channel"],
+
+    // ==== THE ARSENAL LANE, 2026-08-18, on his word of 18:39 ====================================
+    // Six instruments carried across from lab/effects/. Their shared handles — `mix`, `clock`,
+    // `seed`, `shade`, `travel`, `mask` — read what the rows above already name and join them.
+    // What follows is what they read of their own, and the scoped keys are the names that turned
+    // out to be TWO readings once six more instruments published handles.
+
+    // ---- the interfering instrument ----
+    periodA: ["measured", "the departing work's own measured period, texture.spectralPeriodPx over "
+                          + "its own frame side, placed on the span in frame heights the handle "
+                          + "itself publishes — the instrument is the one home of that span"],
+    periodB: ["measured", "the arriving work's own measured period, read the same way"],
+    contrast: ["measured", "how near the two works' own rhythms stand, the smaller count over the "
+                           + "larger: two nearly equal periods make lobes worth handing the frame "
+                           + "over in and the slow envelope owns the cut, two far apart make no "
+                           + "envelope worth the name and the raw sum is the honester picture"],
+    beatTilt: ["measured", "the angle the two works' own measured lattices stand apart — "
+                           + "structure.ownDevice.angleDeg, or structure.grid.angleDeg where no "
+                           + "step was recovered — folded back under a right angle, since a lattice "
+                           + "angle is a line direction. The module pinned nine degrees; the third "
+                           + "picture IS the two gratings interfering, so the angle is the pair's"],
+    phase: ["unmeasured", "where in its own cycle each grating starts. Nothing in a work record "
+                          + "bears on it: a record carries a period and an angle and no phase"],
+    "beat.lead": ["unmeasured", "how far apart the lobes' own moments are set. It is charter shelf "
+                                + "13's stagger on this instrument's own time axis, and the count "
+                                + "it would be taken on is already spent on the two periods, so "
+                                + "driving it would count one measurement twice"],
+
+    // ---- the gate instrument ----
+    jamb: ["measured", "the departing work's own measured gate, motifs.gateGap — one minus the "
+                       + "busy-ness of the middle band over the denser flank, which is how plainly "
+                       + "a hole stands between two masses"],
+    teeth: ["measured", "the departing work's own repeat across the slot: its frame side over "
+                        + "structure.grid.periodPx, a whole count, because a tooth is one"],
+    swing: ["measured", "the share of the frame the departing work's own open ground holds, "
+                        + "motifs.voidShare — a work with room around its masses lets them travel "
+                        + "wide"],
+    slotAxis: ["measured", "the banding axis cut-lines.json recorded for the departing work: a work "
+                           + "banded across the frame carries its emptiness as an upright slot and "
+                           + "the leaves open sideways, one banded down it parts up and down"],
+    slotPlace: ["unmeasured", "where the work's gate stands along that axis. The record publishes "
+                              + "how plainly a gate reads and nowhere where it is, so the slot "
+                              + "opens on the frame's own middle. A record would have to carry the "
+                              + "motif's own band centre — the place lab/step1-motifs.py already "
+                              + "solves for and discards"],
+    slotHalf: ["unmeasured", "half the work's own slot width, on the same share of the file. "
+                             + "Missing for the same reason and closed by the same column"],
+    "gates.press": ["unmeasured", "how hard the two leaves press their teeth together. It is a "
+                                  + "property of the joint rather than of either photograph"],
+    "gates.lead": ["unmeasured", "how far apart the two leaves' own departures stand"],
+
+    // ---- the grid-and-colour instrument ----
+    countFrom: ["measured", "the departing work's own frame side over the step it was cut at, "
+                            + "structure.ownDevice.stepPx, with structure.grid.periodPx where no "
+                            + "device was derived — the count of its own lattice across the frame"],
+    countTo: ["measured", "the arriving work's own count, read the same way, so the cut leaves one "
+                          + "work's structure and arrives at the other's"],
+    angleFrom: ["measured", "structure.ownDevice.angleDeg of the departing work, said as a position "
+                            + "on a quarter turn; structure.grid.angleDeg where none"],
+    angleTo: ["measured", "the same of the arriving work"],
+    kindA: ["measured", "structure.ownDevice.kind of the departing work: rings are cut into rings, "
+                        + "a grid into tiles, a banded work into strips, and a work whose device was "
+                        + "never recovered is cut by its own colour, the one kind needing no lattice"],
+    kindB: ["measured", "the same of the arriving work"],
+    "grid-colour.stagger": ["measured", "the golden-angle stagger of the count the frame is actually "
+                                        + "cut into, charter shelf 13's stagger instrument, so no "
+                                        + "two pieces of the cascade leave together. The sheet's own "
+                                        + "`stagger` takes the same shelf on its region count; this "
+                                        + "one takes it on the lattice count, so the two are two "
+                                        + "readings and two rows"],
+    "grid-colour.lead": ["measured", "how far ahead of its own shapes the arriving palette comes — "
+                                     + "charter shelf 11's colour herald — read as the distance "
+                                     + "between the two works on luminance.ladderPosition, which is "
+                                     + "the collection's own COLOURFULNESS ladder and so is the "
+                                     + "right reading for a colour handle and the wrong one for a "
+                                     + "tonal threshold"],
+    countBeatIn: ["unmeasured", "the stretch of the passage the count travels over. Where in a "
+                                + "passage a structure moves is the score's shape, not the pair's"],
+    countBeatOut: ["unmeasured", "the same at the far door"],
+    angleBeatIn: ["unmeasured", "the stretch the angle travels over; the same reason"],
+    angleBeatOut: ["unmeasured", "the same at the far door"],
+    colourPeriod: ["unmeasured", "the period of the accompanying colour voice. A voice's own period "
+                                 + "is the score's word; nothing in a work record bears on it"],
+    colourPhase: ["unmeasured", "that voice's head start"],
+    colourAmp: ["unmeasured", "that voice's loudness"],
+    lightPeriod: ["unmeasured", "the period of the accompanying light voice; the same reason"],
+    lightPhase: ["unmeasured", "that voice's head start"],
+    lightAmp: ["unmeasured", "that voice's loudness"],
+
+    // ---- the parting-by-light instrument ----
+    cellsA: ["measured", "the departing work's own grain said as cells across its frame — "
+                         + "texture.spectralPeriodPx over frameSide, turned over — so a work made of "
+                         + "coarse masses parts into few large areas and a fine-grained one into "
+                         + "many small ones"],
+    cellsB: ["measured", "the arriving work's own grain, read the same way"],
+    // THE ONE REAL GAP OF THIS INSTRUMENT, and it is stated rather than filled. The level a work
+    // parts at is a level of TONE, and no reading of a work's tone travels in a record:
+    // `luminance.ladderPosition` is the collection's own COLOURFULNESS ladder (the judge seat's
+    // standing correction of 2026-08-18), so naming it here would put a colour number where a tone
+    // number belongs. The instrument measures its own picture at build, which is the module's own
+    // answer. A record would close it by publishing the work's own median luminance as a share of
+    // its range — the number `measure(image)` in lab/effects/strata-light.js already solves and
+    // discards.
+    levelA: ["unmeasured", "the level of tone the departing work parts at. A work record carries no "
+                           + "reading of tone at all; the instrument measures its own picture"],
+    levelB: ["unmeasured", "the same of the arriving work"],
+    colourPeriodA: ["unmeasured", "the departing work's colour voice period; a voice's period is the "
+                                  + "score's word"],
+    colourPeriodB: ["unmeasured", "the same of the arriving work"],
+    colourPhaseA: ["unmeasured", "that voice's head start"],
+    colourPhaseB: ["unmeasured", "the same of the arriving work"],
+    colourAmpA: ["unmeasured", "that voice's loudness"],
+    colourAmpB: ["unmeasured", "the same of the arriving work"],
+    lightPeriodA: ["unmeasured", "the departing work's light voice period; the same reason"],
+    lightPeriodB: ["unmeasured", "the same of the arriving work"],
+    lightPhaseA: ["unmeasured", "that voice's head start"],
+    lightPhaseB: ["unmeasured", "the same of the arriving work"],
+    lightAmpA: ["unmeasured", "that voice's loudness"],
+    lightAmpB: ["unmeasured", "the same of the arriving work"],
+
+    // ---- the leaning instrument ----
+    // TWO SCOPED ROWS AND THE REASON IN ONE LINE EACH. `tilt` above is the sheet's plane attitude
+    // and reads a lattice ANGLE; this instrument's `tilt` is how far the plane lies into depth and
+    // reads a corridor. `horizon` above is the drifting instrument's front straightness and reads a
+    // texture score; this instrument's `horizon` is the line the plane turns about. Two names, four
+    // readings, and no module is renamed to fit the table.
+    "tilt.tilt": ["measured", "each work's own corridor reading, structure.polar.tunnel — a picture "
+                              + "that already reads as depth is laid down further, and the lean "
+                              + "travels from the departing work's reading to the arriving one's"],
+    "tilt.horizon": ["measured", "each work's own measured horizon, structure.horizon.y, so the "
+                                 + "plane's axis stands where the photograph already puts its own"],
+    squeeze: ["measured", "the pair's own repeat said as cells across the frame's height, "
+                          + "positioned about the handle's default by the two readings' ratio: a "
+                          + "fine-grained picture stops resolving sooner as the far rows close up, "
+                          + "so the camera stands further back for it"],
+    columns: ["measured", "the band family each work's own structure was cut into — the same "
+                          + "measured strip count the fabric's ribbons are cut on — which is how "
+                          + "many columns the handover front is broken into"],
+    "tilt.lead": ["unmeasured", "how far apart the front's own columns stand in their departures"],
+
+    // ---- the waterline instrument ----
+    // TWO SCOPED ROWS AGAIN, and the port spotted this one itself: the drifting instrument's
+    // `seamA`/`seamB` carry `seam_horizon`, how STRONGLY a work reads a waterline, and these carry
+    // `seam_y`, WHERE that line sits. Two numbers of one measure, two readings, two rows.
+    // Its `depth` and its `swell` are the OTHER case and write no row at all: they read exactly
+    // what `depth` and `swell` above already name, so they join those rows as the glass, the fold
+    // and the corridor join `twist`.
+    "waterline.seamA": ["measured", "the departing work's own measured horizon, structure.horizon.y "
+                                    + "— where its mirror seam stands down its own frame, which is "
+                                    + "the line the crossing leaves from"],
+    "waterline.seamB": ["measured", "the arriving work's own measured horizon, which is the line the "
+                                    + "crossing lands on"],
+    "waterline.order": ["measured", "the golden-angle stagger of the departing work's own grain "
+                                    + "count, charter shelf 13's stagger instrument, so no two "
+                                    + "stretches of the tide arrive together. The mesh's own "
+                                    + "`order` takes the same shelf on a ring count, so the two are "
+                                    + "two readings and two rows"],
+    "waterline.lead": ["unmeasured", "how far ahead of the sky the water hands over. The prophecy is "
+                                     + "the instrument's own act rather than a fact about either "
+                                     + "photograph"],
+    line: ["unmeasured", "the lift of the waterline off the seam it is derived from. The seam itself "
+                         + "travels, through the two rows above; this is the module's own offset "
+                         + "from it and reads no photograph"],
+    tideCells: ["measured", "the departing work's own grain said as cells across its frame, which "
+                            + "is how finely the tide's own front is broken"],
+    comb: ["module-rest", "a judge channel the module rests at 1, the swell's comb through the "
+                          + "reflection"],
+    raw: ["module-rest", "a judge channel the module rests shut: the walk with its response curve "
+                         + "taken out"],
+    settle: ["module-rest", "a judge channel the module rests at its own value"],
+    shadeEdge: ["module-rest", "a judge channel the module rests at 1: the arriving work's own "
+                               + "front shadow, kept apart from the waterline's so a spoiling of "
+                               + "one cannot pass on the other"],
+    shadeLine: ["module-rest", "a judge channel the module rests at 1: the waterline's own shadow"]
   };
 
   // THE ROAD OPENS THE AUTHORED LINE. §4.7: the intent is the one written line a plan opens with,
@@ -3344,6 +3518,19 @@
         // measured, so a seam standing on it reads whole and the record publishes no strength of
         // its own for it — the same reading `locusOf` takes when it ranks the three loci.
         carriesSeam: (mot.measured || []).indexOf(MOTIF_SEAM) >= 0 ? 1 : 0,
+        // HOW PLAINLY THE WORK CARRIES A GATE — two masses with emptiness between them. The record
+        // publishes this one as a NUMBER rather than only as a name on the motif list, which the
+        // seam is not: `motifs.gateGap` is lab/step1-motifs.py's own measure, one minus the busy-ness
+        // of the middle band over the busy-ness of the denser flank, and it stands on every work.
+        // Both are read, because the list says the motif was recognised and the number says how
+        // strongly.
+        //
+        // WHAT IS STILL MISSING, AND IT IS NOT FILLED HERE. The record says how plainly a gate reads
+        // and NOWHERE says where that gate stands or how wide it is, so the gate instrument's slot
+        // opens in the middle of the frame on every pair. The lane's report names the column a work
+        // record would have to publish; inventing one here would be a number nobody measured.
+        carriesGate: (mot.measured || []).indexOf(MOTIF_GATE) >= 0 ? 1 : 0,
+        gateGap: Number(mot.gateGap) || 0,
         // how strongly the work reads as radial, and how many rings its own cut measured
         radialScore: Number((st.radial || {}).score) || 0,
         // THE POINT THE WORK'S OWN STRUCTURE TURNS ABOUT, in the same order of preference `locusOf`
@@ -4179,6 +4366,212 @@
           // this tree records how many cells one step of the handle is worth.
           if (mf.grainCells > 0 && mt.grainCells > 0) {
             wanted.grain = acrossTheSpan("adrift", "grain", mf.grainCells, mt.grainCells);
+          }
+        // ---- THE ARSENAL LANE, 2026-08-18 --------------------------------------------------
+        // Six branches, one per instrument carried across today, and every one of them exists for
+        // his shout of 15:13: НИКАКИХ СТАТИЧЕСКИХ ПЕРЕХОДОВ. An instrument that lands with a `cuts`
+        // line and no branch here is cast for real pairs and plays ONE identical crossing on every
+        // one of them, because `tracksFor` builds a track for each handle and `appliedValue` fills
+        // an unasked track with the manifest default. Three instruments stood in exactly that state
+        // this morning. Measured before these branches: of the parameters each of the six drives,
+        // beat moved 1 of 7 between two pairs of four different works, waterline 1 of 11, and gates,
+        // grid-colour, strata-light and tilt moved NOTHING at all.
+        } else if (instr === "beat") {
+          // THE TWO GRATINGS ARE THE TWO WORKS' OWN RHYTHMS. Each work's measured spectral period,
+          // said as a share of its own frame side, is exactly the unit the two period handles are
+          // published in — the instrument carries the span in frame heights on the handle itself,
+          // so the reading is placed on it without a scale invented here. A record built before
+          // that span travelled falls back to the ratio road the material instrument's grain takes.
+          var beatSpan = ((MANIFESTS.beat.handles.periodA || {}).frameHeights) || null;
+          function beatPlace(cells) {
+            var share = cells > 0 ? 1 / cells : 0;      // cells across the frame -> frame heights
+            if (!(share > 0)) return null;
+            var lo = num(beatSpan[0]), hi = num(beatSpan[1]);
+            return flt(r4(clamp01(hi > lo ? (share - lo) / (hi - lo) : 0)));
+          }
+          if (beatSpan && mf.grainCells > 0) wanted.periodA = beatPlace(mf.grainCells);
+          if (beatSpan && mt.grainCells > 0) wanted.periodB = beatPlace(mt.grainCells);
+          if (!beatSpan && mf.grainCells > 0 && mt.grainCells > 0) {
+            var beatPair = acrossTheSpan("beat", "periodA", mf.grainCells, mt.grainCells);
+            wanted.periodA = beatPair[0];
+            wanted.periodB = beatPair[1];
+          }
+          // THE ANGLE THE TWO GRATINGS INTERFERE AT, which the module pinned at nine degrees and
+          // this port publishes. The third picture IS the two works' gratings interfering, so the
+          // angle between them is the pair's own fact: the difference of the two measured lattice
+          // angles, folded back under a right angle because a lattice angle is a line direction and
+          // two grating families never stand further apart than that. The handle's own range in
+          // degrees is what the reading is held to, so nothing here needs a number of its own.
+          if (mf.latticePx > 0 && mt.latticePx > 0) {
+            var apart = Math.abs(mf.latticeAngleDeg - mt.latticeAngleDeg) % 180;
+            if (apart > 90) apart = 180 - apart;
+            wanted.beatTilt = flt(r4(Math.min(num(HANDLE_SPECS.beat.beatTilt[1]),
+                                              Math.max(num(HANDLE_SPECS.beat.beatTilt[0]),
+                                                       apart))));
+          }
+          // HOW MUCH OF THE CUT THE SLOW ENVELOPE OWNS, read off how near the two rhythms stand.
+          // Two nearly equal periods make lobes worth handing the frame over in and the envelope
+          // should own the cut; two far-apart periods make no envelope worth the name, and the raw
+          // sum is the honester picture. It is the same reading the instrument's own `suits` takes.
+          if (mf.grainCells > 0 && mt.grainCells > 0) {
+            var nearBeat = Math.min(mf.grainCells, mt.grainCells)
+                         / Math.max(mf.grainCells, mt.grainCells);
+            wanted.contrast = flt(r4(clamp01(nearBeat)));
+          }
+        } else if (instr === "gates") {
+          // HOW WIDE THE JAMB BITES, off the departing work's own measured gate. `motifs.gateGap` is
+          // the collection's own measure — one minus the busy-ness of the middle band over the
+          // busy-ness of the denser flank — so a work with a plain hole between two masses opens on
+          // a wide jamb and one that barely reads a gate opens on a narrow one.
+          if (mf.gateGap > 0) {
+            wanted.jamb = flt(r4(Math.min(num(HANDLE_SPECS.gates.jamb[1]),
+                                          Math.max(num(HANDLE_SPECS.gates.jamb[0]), mf.gateGap))));
+          }
+          // HOW MANY TEETH THE JAMB BREAKS INTO, off the departing work's own repeat across the
+          // slot: its frame side over the grid period, which is the same count the folding
+          // instrument's fingers are read from. A whole count, because a tooth is one.
+          if (mf.gridCount > 0) {
+            wanted.teeth = Math.round(Math.min(num(HANDLE_SPECS.gates.teeth[1]),
+                                               Math.max(num(HANDLE_SPECS.gates.teeth[0]),
+                                                        mf.gridCount)));
+          }
+          // WHICH WAY THE SLOT STANDS, off the departing work's own recorded banding axis: a work
+          // banded across the frame carries its emptiness as an upright slot and the leaves open
+          // sideways, and a work banded down it parts up and down.
+          var gx = fromP.ends.banding;
+          if (gx !== undefined && gx !== null) wanted.slotAxis = num(gx[2]) ? 0 : 1;
+          // HOW FAR THE LEAVES SWING AS THEY GO, off the share of the frame the departing work's own
+          // open ground holds: a work with room around its masses lets them travel wide.
+          if (mf.voidShare > 0) wanted.swing = flt(r4(clamp01(mf.voidShare)));
+        } else if (instr === "grid-colour") {
+          // THE CUT STANDS AT ONE WORK'S OWN STRUCTURE AND ARRIVES AT THE OTHER'S — the module's
+          // whole claim, and the four handles below are what makes it true of a PAIR rather than of
+          // one work twice. Every one reads the work's own device first and its measured grid where
+          // no device was recovered, which is the order `measuredParts` already prefers them in.
+          function gcStep(m) { return m.deviceStepPx > 0 ? m.deviceStepPx : m.gridPeriodPx; }
+          function gcAngle(m) { return m.deviceStepPx > 0 ? m.deviceAngleDeg : m.gridAngleDeg; }
+          var stepF = gcStep(mf), stepT = gcStep(mt);
+          if (stepF > 0 && mf.frameSide > 0) {
+            wanted.countFrom = Math.round(Math.min(num(HANDLE_SPECS["grid-colour"].countFrom[1]),
+                                                   Math.max(num(HANDLE_SPECS["grid-colour"]
+                                                                .countFrom[0]),
+                                                            mf.frameSide / stepF)));
+          }
+          if (stepT > 0 && mt.frameSide > 0) {
+            wanted.countTo = Math.round(Math.min(num(HANDLE_SPECS["grid-colour"].countTo[1]),
+                                                 Math.max(num(HANDLE_SPECS["grid-colour"]
+                                                              .countTo[0]),
+                                                          mt.frameSide / stepT)));
+          }
+          // THE ANGLE EACH WORK'S OWN STEP WAS CUT AT, said as a position on a quarter turn the way
+          // the sheet's own parquet turn is, so the cut leans the way the photograph leans.
+          wanted.angleFrom = flt(r4(clamp01(fractional(Math.abs(gcAngle(mf)) / 90.0))));
+          wanted.angleTo = flt(r4(clamp01(fractional(Math.abs(gcAngle(mt)) / 90.0))));
+          // WHICH KIND OF CUT EACH WORK FALLS INTO, off the work's own measured device: a work cut
+          // as rings is cut into rings here, one cut as a grid into tiles, one banded into strips,
+          // and a work whose device was never recovered is cut by its own colour instead, which is
+          // the one kind that needs no lattice at all.
+          function gcKind(m) {
+            if (m.deviceKind === "rings") return 1;
+            if (m.deviceKind === "grid" || m.deviceKind === "tiles") return 2;
+            if (m.deviceStepPx > 0 || m.gridPeriodPx > 0) return 0;
+            return 3;
+          }
+          wanted.kindA = gcKind(mf);
+          wanted.kindB = gcKind(mt);
+          // HOW FAR APART THE PIECES' OWN DEPARTURES STAND — charter shelf 13's golden-angle stagger
+          // on the count the frame is actually cut into, so no two pieces of the cascade leave
+          // together.
+          if (stepF > 0 && mf.frameSide > 0) {
+            wanted.stagger = flt(r4(Math.min(num(HANDLE_SPECS["grid-colour"].stagger[1]),
+                                             goldenStagger(mf.frameSide / stepF)
+                                             * num(HANDLE_SPECS["grid-colour"].stagger[1]))));
+          }
+          // HOW FAR AHEAD OF ITS OWN SHAPES THE ARRIVING PALETTE COMES — charter shelf 11's colour
+          // herald. The reading is the distance between the two works on the collection's own
+          // COLOURFULNESS ladder, which is what `luminance.ladderPosition` publishes: two works
+          // whose colour worlds stand far apart give the herald something to announce.
+          wanted.lead = flt(r4(clamp01(Math.abs(mf.ladderPosition - mt.ladderPosition))));
+        } else if (instr === "strata-light") {
+          // THE GRID EACH STRATUM IS CUT ON, off each work's own measured grain: a work made of
+          // coarse masses parts into few large areas and a fine-grained one into many small ones.
+          // It is read PER WORK rather than as a journey, because the two works part at the same
+          // instant on their own sides of the passage — the departing one opening, the arriving one
+          // closing — which is the same shape the drifting instrument's handles take.
+          if (mf.grainCells > 0) {
+            wanted.cellsA = Math.round(Math.min(num(HANDLE_SPECS["strata-light"].cellsA[1]),
+                                                Math.max(num(HANDLE_SPECS["strata-light"].cellsA[0]),
+                                                         mf.grainCells)));
+          }
+          if (mt.grainCells > 0) {
+            wanted.cellsB = Math.round(Math.min(num(HANDLE_SPECS["strata-light"].cellsB[1]),
+                                                Math.max(num(HANDLE_SPECS["strata-light"].cellsB[0]),
+                                                         mt.grainCells)));
+          }
+          // `levelA` AND `levelB` ARE NOT DRIVEN, AND THAT IS THE HONEST ANSWER RATHER THAN A GAP
+          // LEFT BY OVERSIGHT. They are the level of TONE each work parts at, and no reading of a
+          // work's tone travels in a record: `luminance.ladderPosition` is the collection's own
+          // COLOURFULNESS ladder — the judge seat's standing correction of 2026-08-18 — so naming it
+          // here would put a colour number where a tone number belongs. The instrument measures its
+          // own picture at build the way the module does, which is the module's own answer, and the
+          // lane's report names the column a record would need.
+        } else if (instr === "tilt") {
+          // HOW FAR THE PLANE LIES DOWN, off each work's own corridor reading: a picture that
+          // already reads as depth is laid down further, and the lean travels from the departing
+          // work's own reading to the arriving one's. It is the same measurement the box's
+          // perspective and the mirror floor's room take, read here as the plane's own attitude.
+          if (mf.tunnel > 0 || mt.tunnel > 0) {
+            wanted.tilt = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
+          }
+          // THE LINE THE PLANE TURNS ABOUT, off each work's own measured horizon, so the plane's
+          // axis stands where the photograph already puts its own. A work that carries none leaves
+          // the handle at the module's own rest.
+          if (mf.horizonY !== null || mt.horizonY !== null) {
+            var hf = mf.horizonY === null ? mt.horizonY : mf.horizonY;
+            var ht = mt.horizonY === null ? mf.horizonY : mt.horizonY;
+            wanted.horizon = [flt(r4(clamp01(hf))), flt(r4(clamp01(ht)))];
+          }
+          // HOW HARD THE FAR ROWS MAY CROWD, off the pair's own repeat said as cells across the
+          // frame's height: a fine-grained picture stops resolving sooner as the rows close up, so
+          // the camera stands further back for it. The two readings' ratio positions the handle
+          // about its own default, the road the material instrument's grain already travels.
+          if (mf.grainCells > 0 && mt.grainCells > 0) {
+            wanted.squeeze = acrossTheSpan("tilt", "squeeze", mf.grainCells, mt.grainCells);
+          }
+          // HOW MANY COLUMNS THE FRONT IS BROKEN INTO, off the band family each work's own structure
+          // was cut into — the same measured strip count the fabric's ribbons are cut on.
+          if (mf.strips > 0) {
+            wanted.columns = Math.round(Math.min(num(HANDLE_SPECS.tilt.columns[1]),
+                                                 Math.max(num(HANDLE_SPECS.tilt.columns[0]),
+                                                          mf.strips)));
+          }
+        } else if (instr === "waterline") {
+          // THE TWO LINES THE CROSSING TRAVELS BETWEEN — each work's own measured horizon, which is
+          // where its mirror seam stands down its own frame. This is the instrument's whole claim:
+          // the line leaves one work's own seam and lands on the other's, and the instant it crosses
+          // the frame's middle is the instant the two works change places. A work carrying no
+          // measured line leaves its handle at the module's own fallback, the frame's own middle,
+          // which is the module's own answer for a source with no seam.
+          if (mf.horizonY !== null) wanted.seamA = flt(r4(clamp01(mf.horizonY)));
+          if (mt.horizonY !== null) wanted.seamB = flt(r4(clamp01(mt.horizonY)));
+          // HOW DEEP THE REFLECTION RUNS, off each work's own corridor reading — the same
+          // measurement the box's perspective and the leaning plane's attitude take, read here as
+          // how far down the water the mirrored mass reaches.
+          if (mf.tunnel > 0 || mt.tunnel > 0) {
+            wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
+          }
+          // HOW MUCH THE WATER SWELLS, off how much of each work reads as grain rather than as
+          // line: a picture made of texture makes a lively surface and one made of straight edges
+          // makes a still one. The same reading the water instrument's own swell takes.
+          if (mf.textureScore > 0 || mt.textureScore > 0) {
+            wanted.swell = [flt(r4(clamp01(mf.textureScore))), flt(r4(clamp01(mt.textureScore)))];
+          }
+          // HOW RAGGED THE TIDE COMES IN — charter shelf 13's golden-angle stagger again, taken on
+          // the departing work's own grain count, so no two stretches of the front arrive together.
+          if (mf.grainCells > 0) {
+            wanted.order = flt(r4(Math.min(num(HANDLE_SPECS.waterline.order[1]),
+                                           Math.max(num(HANDLE_SPECS.waterline.order[0]),
+                                                    goldenStagger(mf.grainCells)))));
           }
         }
         var measured = {}, nodes = {};
