@@ -371,8 +371,14 @@
     // for the folding one it is which way the solid turns — the crease upright or lying flat. Both
     // derive from the one recorded banding axis, so the crease crosses the works' own structure
     // rather than being laid across it, and one row serves both because one measurement does.
-    axis: ["measured", "the banding axis cut-lines.json recorded — which way the ribbons run, and "
-                       + "which way the solid turns so its crease crosses that"],
+    // WIDENED AGAIN 2026-08-18 for the mirror: one measurement, three senses. For the woven
+    // instrument it is which way the ribbons run, for the folding one which way the solid turns so
+    // its crease CROSSES that structure, and for the mirroring one which way the picture folds onto
+    // itself — where the fold lies ALONG the structure rather than across it. Three acts, one
+    // recorded axis, so one row and not three names.
+    axis: ["measured", "the banding axis cut-lines.json recorded — which way the ribbons run, "
+                       + "which way the solid turns so its crease crosses that, and which way the "
+                       + "picture folds onto itself so the fold line lies along it"],
     size: ["measured", "the two works' measured ring counts"],
     ratio: ["measured", "the two works' measured ring counts, on seven steps"],
     bandPeriod: ["measured", "the pivot's own period as a fraction of frame height"],
@@ -380,6 +386,8 @@
     centreY: ["measured", "the midpoint of the two measured radial centres"],
     shade: ["module-rest", "a judge channel the module rests at 1"],
     travel: ["module-rest", "a judge channel the module rests at 1"],
+    glint: ["module-rest", "a judge channel the mirror rests at its own 0.62, the brightness of "
+                           + "the fold line"],
     // THE GEOMETRY-FROM-THE-WORK SWEEP, 2026-08-17 (U27 stage 1, lane A). His 19:13 word lifted to
     // the class at 19:21: every geometric and temporal parameter derives from the work's own
     // measured structure and names the measurement it reads. Nine handles that stood here as
@@ -789,6 +797,29 @@
         return [Math.min(bridge.tonal, bridge.spectral),
                 "the two works' tonal grounds stand at " + pyText(flt(r4(bridge.tonal)))
                 + " of each other and their detail scales at " + pyText(flt(r4(bridge.spectral)))];
+      },
+      // THE MIRROR NEEDS A LINE TO FOLD ON, and the picture has to put that line where it is. It
+      // cuts on panels — the fold partitions the frame into two or four mirrored ones — and the
+      // fold lies ALONG the work's own structure rather than across it. So what it suits is a pair
+      // carrying a line at all, and a line is whichever of the three readings speaks loudest: the
+      // radial, the banding or the region score. ONE work is enough, because one fold has one line.
+      //
+      // The port drafted this as `[false, …]` where the strongest of those three readings fell
+      // under the weakest of their three floors, and said in the same breath that on this
+      // collection the ask declines nothing — which is what an admission test looks like when it
+      // has nothing to admit. His word of 2026-08-18 09:53 keeps the reading and strikes both the
+      // floor and the refusal: the strongest line the pair carries is the fit.
+      livemirror: function (a, b) {
+        function lineOf(w) {
+          var s = w.structure || {};
+          return Math.max(readingOf((s.radial || {}).score),
+                          readingOf((s.banding || {}).score),
+                          readingOf((s.regions || {}).score));
+        }
+        var la = lineOf(a), lb = lineOf(b);
+        return [Math.max(la, lb), "the strongest line the two works carry — the loudest of each "
+                + "one's radial, banding and region readings — stands at " + pyText(flt(r4(la)))
+                + " and " + pyText(flt(r4(lb))) + ", and the fold lands along the stronger"];
       },
       // THE SPIRAL HAS A THROAT, AND THE THROAT STANDS WHERE THE PHOTOGRAPH PUTS IT. The copies are
       // annuli about a work's own measured radial centre: rings become the copies and spokes become

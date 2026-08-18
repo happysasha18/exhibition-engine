@@ -40,6 +40,7 @@ SUITES = [
     "pass_droste",
     "pass_route",
     "pass_phone",
+    "pass_livemirror",
 ]
 
 
