@@ -1132,14 +1132,18 @@
 
     // THE INSTRUMENT THIS PAIR CASTS ON A KIND, and it always casts one.
     //
-    // Every published instrument is ranked, never filtered. Four orders of preference stand between
-    // them, and each is a preference rather than a gate — a step that runs out of the first order
-    // falls to the second and plays:
+    // Every published instrument is ranked, never filtered. Three questions stand between them and
+    // each is a preference rather than a gate — a step that runs out of the first order falls to
+    // the next and plays. The questions, in the order they are asked: can this voice be SEEN where
+    // it is going (§7's coverage law, and only where this voice stands above a ground), does it cut
+    // on this kind, and may this step spend what it spends. So the orders read:
     //
-    //   1  it cuts on this kind, and this step may spend what it spends
-    //   2  it cuts on this kind, but it folds the world where shelf 17 gives no miracle
-    //   3  it cuts on another kind, and this step may spend what it spends
-    //   4  it cuts on another kind and it folds the world
+    //   1  it can be seen here, it cuts on this kind, and this step may spend what it spends
+    //   2  it can be seen here and cuts on this kind, but it folds where shelf 17 gives no miracle
+    //   3  it can be seen here, cuts on another kind, and this step may spend what it spends
+    //   4  it can be seen here, cuts on another kind, and it folds the world
+    //   5-8  the same four again for an instrument that would fill a frame already whole
+    //   9  it is already spoken for by another voice of this same crossing
     //
     // Inside an order the die runs over the instruments' own readings of the pair, weighted by how
     // well each suits it — so the best-suited is the likeliest and a pinned seed reproduces the
@@ -1165,9 +1169,30 @@
     // So a collision CHOOSES. The instrument already spoken for drops to the back of the ranking,
     // the next-best-suited takes the move, and only where it is the sole instrument in the whole
     // collection does the move fold into the voice it collided with.
-    function castForKinds(kinds, fromW, toW, noMiracle, seed, key, slot, avoid) {
+    //
+    // `avoid` TAKES A LIST AND NOT ONE NAME, since 2026-08-18. It named one instrument, which was
+    // enough while only the travelling move called with it; the arrival has TWO voices already
+    // spoken for beside it — the ground's and the travelling one's — and could name only the first,
+    // so it cast against the second and then threw its own voice away rather than choosing again.
+    // One list serves both callers because the fact is the same fact: these instruments are taken.
+    //
+    // `standsAbove` SAYS THIS VOICE WILL BE DRAWN OVER A GROUND THAT IS ALREADY WHOLE, and §7's
+    // coverage law is what it reads. Only one cue of a stack may fill the frame — everything under
+    // a second whole cue is drawn and never seen, which is what `placeTheStack` calls «two grounds»
+    // — and each instrument's own manifest declares whether it fills one. Three of the fifteen do
+    // not, so a stack of three voices needs two of those three, and a cast blind to the law drew a
+    // second whole cue about two times in three and the composer then RETIRED the voice for it.
+    // That is why the arrival was handed to a name: «matter» is one of the three, so naming it
+    // answered the law by accident on every pair, and 26.7 per cent of the collection's cues rested
+    // on the accident. The law is a preference here rather than a gate, in the same shape as the
+    // other two: an instrument that fills the frame ranks after every one that does not, and where
+    // the collection publishes nothing else it still plays and the loop's own answer stands.
+    function castForKinds(kinds, fromW, toW, noMiracle, seed, key, slot, avoid, standsAbove) {
       var list = [].concat(kinds || []).filter(function (k) { return !!k; });
-      var cutters = [], said = [], tiers = [[], [], [], [], []], i, j, iid, answer;
+      var taken = [].concat(avoid === undefined || avoid === null ? [] : avoid)
+        .filter(function (t) { return !!t; });
+      var cutters = [], said = [], tiers = [[], [], [], [], [], [], [], [], []],
+          i, j, iid, answer;
       for (j = 0; j < list.length; j++) {
         instrumentsOfKind(list[j]).forEach(function (iid2) {
           if (cutters.indexOf(iid2) < 0) cutters.push(iid2);
@@ -1178,8 +1203,9 @@
         answer = suitsPair(iid, fromW, toW);
         var cuts = cutters.indexOf(iid) >= 0;
         var folds = spendsTheMiracle(iid);
-        var order = (iid === avoid) ? 4
-          : ((cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0));
+        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);
+        var order = (taken.indexOf(iid) >= 0) ? 8
+          : ((standsAbove && FILLS_THE_FRAME[iid]) ? base + 4 : base);
         said.push({ instrument: iid, fit: r4(answer[0]), cuts: cuts, why: answer[1],
                     order: order });
         tiers[order].push({ id: iid, fit: answer[0] });
@@ -2622,7 +2648,7 @@
         // the sole instrument the collection publishes.
         var castTravel = castForKinds([tkind], fromW, toW,
                                       !(ROLE_BUDGETS[role] || {}).miracle, pair.seed, key,
-                                      "travel", pivotInstr);
+                                      "travel", [pivotInstr]);
         travelInstr = castTravel[0];
         castNotes.travel = castTravel[1];
         if (travelInstr !== null && castTravel[2].indexOf(travelInstr) < 0) {
@@ -2657,23 +2683,36 @@
       var arrival = locusKind !== "none" ? "CONDENSED" : "CARRIED";
       var arrivalInstr = null;
       if (arrival === "CONDENSED") {
-        // THE ARRIVING WORK CONDENSES, and the material instrument is the vocabulary's own act of
-        // condensing — so it is asked first. Where it is already carrying the ground or the travel
-        // the arrival CHOOSES the next instrument that suits the pair, instead of the arrival
-        // vanishing: the same collision that used to take the travelling move down took the
-        // arrival down too, and both are voices the visitor loses for a name clash.
-        arrivalInstr = (MANIFESTS.matter && "matter" !== pivotInstr && "matter" !== travelInstr)
-          ? "matter" : null;
-        if (arrivalInstr === null) {
-          var castArrival = castForKinds([], fromW, toW, !(ROLE_BUDGETS[role] || {}).miracle,
-                                         pair.seed, key, "arrival", pivotInstr);
-          arrivalInstr = castArrival[0];
-          castNotes.arrival = castArrival[1];
-          if (arrivalInstr === pivotInstr || arrivalInstr === travelInstr) arrivalInstr = null;
-          if (arrivalInstr) {
-            stood.push("the material instrument is already carrying another voice, so «"
-                       + arrivalInstr + "» condenses the arrival instead");
-          }
+        // THE ARRIVING WORK CONDENSES, AND THE INSTRUMENT THAT CONDENSES IT IS CAST like every
+        // other voice: the whole collection is ranked on its own reading of this pair, the two
+        // instruments already spoken for stand aside, and the die runs over what is left.
+        //
+        // WHAT WENT, AND WHY THE TWO WENT TOGETHER. The line here handed the slot to «matter» BY
+        // NAME whenever «matter» was free — no fit consulted, no die rolled — and that is the class
+        // his word of 2026-08-18 13:41 strikes: a special case where the general rule already
+        // covers the ground. Under it the material instrument took 31.4 per cent of every cue the
+        // collection composes while it led the pair's own reading on a sixth of pairs and took the
+        // ground cue on a twenty-fifth of passages. Beneath the name stood the second fault: the
+        // fallback DROPPED the arrival whenever the cast collided with the ground or the travel,
+        // rather than choosing the next-best — the same collision the travelling move was repaired
+        // for at `castForKinds` above and the arrival never was. Each hid the other, and the
+        // measurement says so: striking the name alone loses 26.7 per cent of all the collection's
+        // cues into the drop, and repairing the drop alone leaves the name deciding.
+        //
+        // So the name goes and the collision CHOOSES, on one call. Only where every instrument the
+        // collection publishes is already spoken for does the arrival fold into the voice it
+        // collided with, which is the same sentence the travelling move stands under.
+        var castArrival = castForKinds([], fromW, toW, !(ROLE_BUDGETS[role] || {}).miracle,
+                                       pair.seed, key, "arrival", [pivotInstr, travelInstr],
+                                       FILLS_THE_FRAME[pivotInstr]
+                                       || FILLS_THE_FRAME[travelInstr]);
+        arrivalInstr = castArrival[0];
+        castNotes.arrival = castArrival[1];
+        if (arrivalInstr !== null
+            && (arrivalInstr === pivotInstr || arrivalInstr === travelInstr)) {
+          stood.push("«" + arrivalInstr + "» is the only instrument this collection publishes, so "
+                     + "the arrival folds into the voice it collided with");
+          arrivalInstr = null;
         }
       }
       var departing = locusOf(fromW);

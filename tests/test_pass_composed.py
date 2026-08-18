@@ -1253,7 +1253,18 @@ else:
              or (g["roles"]["quiet link"].get("budget") or {}).get("miracles", 0) > 0
              or g["roles"]["quiet link"].get("duration", 0) > 4000),
             # A LED PASSAGE IS A READING OF TWO THINGS, and each is proved by taking it away.
-            (NODE_ROWS[24], [["LED_ROLES.indexOf(role) >= 0", "true"]],
+            # THE ROLE'S HALF NEEDS A PASSAGE THAT COULD BE LED, and since the arrival stopped being
+            # dropped on a collision no middle of this collection runs on its ground alone — the one
+            # shape a camera can carry — so removing the role gate moved nothing and the row proved
+            # nothing. The two plants beneath it make that shape again, and they make it honestly:
+            # a crossing with no travelling move and no arriving one, which is exactly what the
+            # reading beside the role gate answers. With the role gate in place such a middle is
+            # still not led; with it removed it is, and that is the gate.
+            (NODE_ROWS[24], [["LED_ROLES.indexOf(role) >= 0", "true"],
+                             ["      if (arrival === \"CONDENSED\") {", "      if (false) {"],
+                             ["      var axis = travellingAxisOn(fromW, toW, pivot.measure, "
+                              "road.axis);",
+                              "      var axis = null;"]],
              lambda g: g["sweep"]["ledElsewhere"] > 0),
             (NODE_ROWS[25], [["made.cameraTravels && ", ""]],
              lambda g: g["sweep"]["ledAtTonic"] > 0.6 * g["sweep"]["tonic"]),
@@ -1306,8 +1317,8 @@ else:
             # instruments now publish the WORLD level. So the row reads both — a fold at a
             # no-miracle role, and any WORLD cue at one — and either moving reddens the plant.
             (NODE_ROWS[30],
-             [["        var order = (iid === avoid) ? 4\n          : ((cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0));",
-               "        var order = (iid === avoid) ? 4 : (cuts ? 0 : 2);"],
+             [["        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);",
+               "        var base = (cuts ? 0 : 2);"],
               ["        } else if (spendsTheMiracle(travelInstr) && !(ROLE_BUDGETS[role] || {}).miracle) {",
                "        } else if (false) {"],
               ["        pool = pool.filter(function (r) { return !r.mustFold; });", ""],
@@ -1323,7 +1334,13 @@ else:
                "        if (!CUTS_ON[kind].length) CUTS_ON[kind].push(iid);"],
               ["      for (i = 0; i < tiers.length; i++) {\n        if (tiers[i].length) {",
                "      for (i = 0; i < 1; i++) {\n        if (tiers[i].length) {"],
-              ["      if (arrivalInstr === null) {", "      if (false) {"],
+              # THE ARRIVAL HANDED TO A NAME AGAIN, which is the state this lane removed: the slot
+              # went to «matter» whenever «matter» was free, with no fit read and no die rolled, and
+              # every other instrument reached the arrival only through a fallback that then dropped
+              # the voice on a collision. Restoring it here is what makes the row's own sentence
+              # true again — an instrument travels to every visitor and can never be chosen.
+              ["        arrivalInstr = castArrival[0];",
+               "        arrivalInstr = MANIFESTS.matter ? \"matter\" : castArrival[0];"],
               ["          if (fill1 && fill1 !== pivotInstr) {", "          if (false) {"]],
              lambda g: [i for i in g["sweep"]["cast"] if not g["sweep"]["chosen"].get(i)]),
             # THE GROUND GATED ON THE COLLECTION'S TOP QUARTILE AGAIN — the shape this lane removed.
@@ -1345,9 +1362,19 @@ else:
                " per[m] = { min: r4((th !== undefined && (sa < th || sb < th)) ? 0 : Math.min(sa, sb)),"
                " a: r4(sa), b: r4(sb) };"]],
              lambda g: g["route"]["shapesMean"] < got["route"]["shapesMean"]),
+            # THE FOLD IS COUNTED WHEREVER THE FOLDING CUE STANDS, so the plant has to take the
+            # reading away at all three slots. It named the PIVOT alone, and it went red only while
+            # the folding instrument could reach no slot but the ground: since the arrival is cast
+            # like every other voice, a folding cue at the arrival kept its miracle through the
+            # second line and the plant proved the line it left standing. A plant that leaves a
+            # guard standing proves the guard it left.
             (NODE_ROWS[31],
              [['      if (folds === "pivot") voices.pivot = "miracle";',
-               '      if (false) voices.pivot = "miracle";']],
+               '      if (false) voices.pivot = "miracle";'],
+              ['        voices.travel = (folds === "travel" || world) ? "miracle" : "letter";',
+               '        voices.travel = "letter";'],
+              ['      if (hasArrival) voices.arrival = folds === "arrival" ? "miracle" : "letter";',
+               '      if (hasArrival) voices.arrival = "letter";']],
              lambda g: sum(g["sweep"]["foldUnspent"][r] for r in g["sweep"]["foldUnspent"]) > 0),
         ]
         # The intent fence's own standing row: with the cap planted DOWN and the guard in place,
