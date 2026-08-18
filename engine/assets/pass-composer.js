@@ -393,14 +393,24 @@
     loosen: ["measured", "the share of the frame each work's own measured open ground holds"],
     nMul: ["measured", "the ratio of the two works' measured strip counts, so the fabric's count "
                        + "travels from the departing family to the arriving one"],
-    speed: ["measured", "the strip count against the instrument's own default count, so one strip "
-                        + "crosses one strip's width in the same time whatever the pair"],
+    // WIDENED 2026-08-18 for the spiral: one row serves both because one construction does. For the
+    // woven instrument the count is of strips and for the spiralling one of copies, and in both the
+    // reading is the same — the count this pair asks for against the count the instrument rests at,
+    // so one unit of the pattern passes the eye in the same time whatever the pair.
+    speed: ["measured", "the pattern's own count — strips for the fabric, copies for the spiral — "
+                        + "against the instrument's own default count, so one unit of the pattern "
+                        + "crosses its own width in the same time whatever the pair"],
     drift: ["measured", "the fractional part of the two works' measured spectral periods in "
                         + "ratio, charter shelf 13's incommensurate-period instrument"],
     tooth: ["measured", "how much finer each work's measured ring repeat is than the cut it was "
                         + "given, which is the relief a tooth stands in"],
+    // WIDENED 2026-08-18 for the spiral, on the same one measurement: for the meshing instrument the
+    // radial score drives how hard the mesh turns, for the spiralling one how hard the picture winds
+    // into its throat per e-fold. A work whose rings are its own device turns and winds hard; one
+    // that barely reads radial barely does either.
     turn: ["measured", "each work's own measured radial score, so a work whose rings are its own "
-                       + "device drives the mesh and one that barely reads radial barely turns"],
+                       + "device drives the turn — the mesh's rotation and the spiral's wind — and "
+                       + "one that barely reads radial barely turns and barely winds"],
     press: ["unmeasured", "the hand's own pressure, which no build-time file measures"],
     // THE FOLDING INSTRUMENT'S OWN SEVEN, checked against the class law here rather than carried
     // over as they were handed. His 19:13 word lifted to the class at 19:21: a handle that cannot
@@ -779,6 +789,23 @@
         return [Math.min(bridge.tonal, bridge.spectral),
                 "the two works' tonal grounds stand at " + pyText(flt(r4(bridge.tonal)))
                 + " of each other and their detail scales at " + pyText(flt(r4(bridge.spectral)))];
+      },
+      // THE SPIRAL HAS A THROAT, AND THE THROAT STANDS WHERE THE PHOTOGRAPH PUTS IT. The copies are
+      // annuli about a work's own measured radial centre: rings become the copies and spokes become
+      // the spiral once the shear turns them, so what it suits is a pair one of whose works reads
+      // radial. ONE work is enough and that is structural — a spiral has one throat and falls into
+      // one centre, so the STRONGER of the two readings is the fit rather than the weaker.
+      //
+      // The port drafted this as a floor on `radial_tight`, returning [false, …] for every pair
+      // under it and refusing the whole crossing where nothing else cut the ground's kind. His word
+      // of 2026-08-18 09:53 keeps the reading and strikes the refusal: the reading was always the
+      // useful half, and a pair with nothing radial simply ranks the spiral below its rivals.
+      droste: function (a, b) {
+        var sa = readingOf(((a.structure || {}).radial || {}).score);
+        var sb = readingOf(((b.structure || {}).radial || {}).score);
+        return [Math.max(sa, sb), "the two works read radial at " + pyText(flt(r4(sa)))
+                + " and " + pyText(flt(r4(sb))) + ", and the dive falls into the stronger "
+                + "one's own centre"];
       },
       // THE DRIFTING INSTRUMENT CUTS ON NAMED REGIONS — the things in the picture rather than the
       // pieces of the frame — so it suits a pair both of whose works carry named objects. The row
