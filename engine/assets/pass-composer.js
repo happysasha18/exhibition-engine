@@ -395,6 +395,25 @@
     // reading: the third picture is the two works' interference, so what sets how near the two
     // rhythms stand has to be the two rhythms themselves. Each row takes the sentence the handle
     // publishes on the instrument, which is the fact the instrument owns.
+    // THE MIRROR FLOOR'S OWN THREE, and its `depth` is the row widened above. `mix`, `seed`,
+    // `shade` and `mask` already carried rows of the shapes the other instruments use.
+    tiles: ["measured", "the work's own frame side over structure.grid.periodPx, the count of its "
+                        + "own measured lattice across it; the same off structure.ownDevice.stepPx "
+                        + "where no grid period was derived. The grid is named FIRST here and the "
+                        + "device second, the other way round from the unfold's parquet, and the "
+                        + "reason is measured: the grid period spreads the collection over all five "
+                        + "counts while the device step saturates at the range's own top on five "
+                        + "works in six, so a floor laid from the device would be one floor"],
+    lattice: ["measured", "structure.grid.angleDeg, the direction the work's own lattice varies "
+                          + "along; structure.ownDevice.angleDeg where no grid angle was derived"],
+    // THE FLOOR'S OWN SLOW TURN, which reads no photograph and says so. It is not «unmeasured» —
+    // there is nothing to measure. The module turns its floor on a clock at the vista preset's own
+    // taste-approved rate of 2026-08-08, and this engine hands an instrument no clock, so the rate
+    // is carried at the engine's own pass duration and rides the dial. That is the passage's own
+    // travel, the same tag the plane and the parquet's envelope already stand under.
+    spin: ["transaction", "the passage's own travel: the module's own floor turn at the vista "
+                          + "preset's approved rate, carried at this engine's pass duration "
+                          + "because an instrument is handed no clock"],
     // THE READY STORY'S OWN FOUR. Its other five — mix, clock, centreX, centreY, turn, mask — were
     // already named, and `turn` reads the radial score here for the same reason the mesh's does.
     folds: ["measured", "the order of the pair's own measured turn, structure.rotational.n, read "
@@ -493,7 +512,12 @@
     // collection's scores over the client's own byte fence — where a score is refused WHOLE, which
     // is the same lesson the intent cap taught one section down. The reasoning lives in this
     // comment, where it costs a reader nothing and the wire nothing at all.
-    depth: ["measured", "the departing work's own corridor reading, structure.polar.tunnel"],
+    // WIDENED 2026-08-18 for the mirror floor: one measurement, two senses. For the folding
+    // instrument it is how far the perspective runs, for the floor how deep a room the passage
+    // stands in — and how much a work reads as a corridor answers both. The port declared this
+    // «unmeasured»; it is not, and the reading was already here.
+    depth: ["measured", "each work's own corridor reading, structure.polar.tunnel — how far the "
+                        + "perspective runs, and how deep a room the floor stands in"],
     dip: ["measured", "the departing work's own measured horizon, structure.horizon.y"],
     lead: ["measured", "the finger count, read off its own range onto this one and turned over"],
     fingers: ["measured", "the departing work's repeat across the crease: its frame side over "
@@ -3338,6 +3362,37 @@
           // the material instrument's gather is driven by.
           if (mf.figureShare > 0 || mt.figureShare > 0) {
             wanted.gather = [flt(r4(clamp01(mf.figureShare))), flt(r4(clamp01(mt.figureShare)))];
+          }
+        } else if (instr === "parquet") {
+          // THE MIRROR FLOOR'S THREE MEASURED HANDLES. The lane asked for no fill branch, but
+          // without one `tiles` and `lattice` rest at the module's own floor for every pair alike,
+          // which is the sameness the whole port exists to close, and its own report names exactly
+          // what each reads.
+          //
+          // HOW MANY TILES ACROSS THE FLOOR, at the count of the work's own measured lattice —
+          // the frame side over the grid's period. THE GRID IS READ FIRST HERE AND THE DEVICE
+          // SECOND, the other way round from the unfold's parquet, and the reason is measured on
+          // this collection: the grid period spreads the works over all five counts while the
+          // device step saturates at the range's own top on five works in six, so a floor laid from
+          // the device would be one floor.
+          var tilesFrom = mf.gridCount > 0 ? mf.gridCount
+            : (mf.deviceStepPx > 0 && mf.frameSide > 0 ? mf.frameSide / mf.deviceStepPx : 0);
+          var tilesTo = mt.gridCount > 0 ? mt.gridCount
+            : (mt.deviceStepPx > 0 && mt.frameSide > 0 ? mt.frameSide / mt.deviceStepPx : 0);
+          if (tilesFrom > 0 || tilesTo > 0) {
+            wanted.tiles = [flt(r4(tilesFrom || tilesTo)), flt(r4(tilesTo || tilesFrom))];
+          }
+          // WHICH WAY THE FLOOR'S OWN LATTICE RUNS, at the angle the work's step was cut at — the
+          // grid's angle first for the same measured reason, the device's where there is none.
+          var latFrom = mf.gridAngleDeg || mf.deviceAngleDeg;
+          var latTo = mt.gridAngleDeg || mt.deviceAngleDeg;
+          if (latFrom || latTo) {
+            wanted.lattice = [flt(r4(Math.abs(latFrom) % 180.0)), flt(r4(Math.abs(latTo) % 180.0))];
+          }
+          // HOW DEEP A ROOM THE PASSAGE STANDS IN, at each work's own corridor reading — the same
+          // measurement the folding instrument's perspective is placed by.
+          if (mf.tunnel > 0 || mt.tunnel > 0) {
+            wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
           }
         } else if (instr === "lens") {
           // THE FOUR GLASS HANDLES. Without this branch all four stand at the module's own rests —
