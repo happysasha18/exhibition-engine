@@ -225,6 +225,15 @@
   var CUE_IDS = ["pivot", "travel", "arrival"];
   var TRAVEL_AXES = ["banding", "dominant_object", "grid", "radial", "regions", "texture"];
   var LOCUS_KINDS = ["none", "pole", "horizon-seam", "gate"];
+  // THE LEVELS A CUE MAY STAND ON WITHOUT OWNING THEM, because on those levels this composer
+  // actually holds a non-owner's handles at the instrument's own rest instead of merely saying it
+  // does. Today that is one level and one gate: `singsLightColour` writes the eighteen colour and
+  // light handles only where the cue owns LIGHT-COLOUR, so a cue accompanying there is genuinely
+  // silent on it. Every other level carries no such gate — a cue that does not own CELL still
+  // writes every CELL-driving handle it has — so on those levels two voices really do collide, and
+  // `castForKinds` bars the second one outright. A level belongs on this list the day a gate of its
+  // own exists, and adding it here without that gate is how the law becomes a sentence again.
+  var PINNED_LEVELS = ["LIGHT-COLOUR"];
   var WORLDS = ["sphere", "corridor", "log-spiral"];
   var POLAR_WORLD = { planet: "sphere", tunnel: "corridor", twirl: "log-spiral" };
   var SUBTYPES = ["angular", "ring", "none"];
@@ -1945,19 +1954,63 @@
         // of this. Where every candidate is excluded the slot retires exactly as it does when the
         // collection casts nothing for it — the same road already walked below for "no instrument at
         // all".
+        // 2026-08-19 EVENING: THE EXEMPTION IS NARROWED TO WHERE ITS PROMISE IS KEPT. The paragraph
+        // above rests its whole case on one sentence — "every other cue placed on it keeps its
+        // handles for that level pinned to manifest rest, so the two never actually collide at the
+        // handle a viewer would see move". THAT PINNING EXISTS ON ONE LEVEL. It is
+        // `singsLightColour`, which is why the eighteen colour and light handles of `grid-colour`,
+        // `strata-light` and `strata-scale` are written only where the cue owns LIGHT-COLOUR. On
+        // every other level nothing pins anything: a cue that does not own CELL still writes every
+        // CELL-driving handle it has and still draws its pattern, so two patterns land in one
+        // passage and shelf 18's ban — pattern stacked on pattern — is broken in the plain sense a
+        // person sees on the screen. The charter audit of this morning measured exactly that and
+        // named the collisions by instrument.
+        //
+        // SO THE TEST BELOW ASKS TWO THINGS RATHER THAN ONE. A candidate is excluded when every
+        // level it declares is already claimed across the window it would be live — the reading
+        // that stood here since this morning, unchanged — AND when it would stand beside another
+        // VOICE on an occupied level that carries no pinning gate. A level joins `PINNED_LEVELS`
+        // the day a gate of its own exists and not before.
+        //
+        // THE GROUND IS NOT ANOTHER VOICE FOR THE SECOND TEST, and its own record says so
+        // (`pivotClashRecord`'s `ground: true`). It holds the whole passage by construction, so
+        // counting it as a competitor excludes every instrument sharing a level with it at every
+        // slot — the very defect the afternoon's own record measured and repaired, which left
+        // `adrift` and `gears` uncastable. The FIRST test still counts it: a candidate with nothing
+        // free to say, the ground included, is excluded exactly as it was this morning.
+        //
+        // WHAT THIS STILL DOES NOT CLOSE. The collisions that remain are between the GROUND and a
+        // voice above it, because the ground holds its levels from the first frame to the last.
+        // Two roads close them and neither is a line here: shelf 3's enfilade, where the ground
+        // hands the floor over before the passage ends, or a declaration per handle of which
+        // structural level that handle drives, in each instrument's own manifest — the one thing
+        // that would let a non-owner rest on the level it lost while going on playing the level it
+        // owns, which is all `singsLightColour` is.
+        //
+        // ONE FALSE DIAGNOSIS ON THE WAY, so it is not repeated. This law was withdrawn once
+        // tonight for reddening `test_pass_composed.py`'s row about the gates instrument's own
+        // slot. The cause was elsewhere entirely: the `clamp` wrapper the cue-course layer
+        // introduced had taken a node's provenance note one level down, and that row skips any
+        // node whose note does not open with «requested». With the note back on the outermost node
+        // the row reads its full sweep again, with this law standing.
         if (clash.length) {
-          var overlapLevels = [];
+          var overlapLevels = [], voiceLevels = [];
           clash.forEach(function (rec) {
             if (num(win[0]) < num(rec.window[1]) && num(rec.window[0]) < num(win[1])) {
               (rec.levels || []).forEach(function (lv) {
                 if (overlapLevels.indexOf(lv) < 0) overlapLevels.push(lv);
+                if (!rec.ground && voiceLevels.indexOf(lv) < 0) voiceLevels.push(lv);
               });
             }
           });
           var myLevels = MANIFESTS[iid].levels || [];
-          if (myLevels.length && myLevels.every(function (lv) {
-                return overlapLevels.indexOf(lv) >= 0;
-              })) {
+          var everyLevelTaken = myLevels.length && myLevels.every(function (lv) {
+            return overlapLevels.indexOf(lv) >= 0;
+          });
+          var standsUnpinned = myLevels.some(function (lv) {
+            return voiceLevels.indexOf(lv) >= 0 && PINNED_LEVELS.indexOf(lv) < 0;
+          });
+          if (everyLevelTaken || standsUnpinned) {
             sawClash = true;
             continue;
           }
@@ -3491,7 +3544,15 @@
       // candidates by this same list, widened by whatever it itself goes on to claim. Pivot's own
       // window is `[0, 1]` always, so it is recorded beside its levels rather than assumed.
       var pivotLevels = pivotInstr ? (MANIFESTS[pivotInstr].levels || []) : [];
-      var pivotClashRecord = { levels: pivotLevels, window: [0, 1] };
+      // `ground: true` says which record this is, and `castForKinds` reads it. The ground is the
+      // floor the passage stands on rather than a voice competing for a level: its window is the
+      // whole passage by construction, so a levels test that treats it as a competitor is not
+      // strict — it is unsatisfiable, and it was measured to be exactly that on 2026-08-19, when it
+      // left `adrift` and `gears` uncastable at every slot on almost every pair because the ground
+      // holds SURFACE from the first frame to the last. The day the ground can hand the floor over
+      // before the passage ends — shelf 3's enfilade — this mark stops being needed and the ground
+      // joins the contest like any voice.
+      var pivotClashRecord = { levels: pivotLevels, window: [0, 1], ground: true };
       // THE RETURN-PASS SHIFT, READ ONCE HERE (2026-08-19) so the windows composed below and the
       // levels-law exclusion they inform can both know the ONE nonzero value this edge will ever
       // draw. `dieAmong` is deterministic on `(seed, key)` alone — `key` carries no pass index — so
@@ -5500,6 +5561,83 @@
         var levelSum = mf.level + mt.level;
         var midShare = levelSum > 0 ? clamp01(mf.level / levelSum) : 0.5;
 
+        // ---- THE CUE'S OWN COURSE: one gesture, one node, and a room that can be HELD ----
+        //
+        // WHAT STOOD HERE BEFORE AND WHY IT WAS NOT ENOUGH. Every driven handle authored its own
+        // shape and its own middle, so a cue driving twelve handles carried twelve separate
+        // journeys that happened to start and finish together and were free to disagree everywhere
+        // between. Grammar law 5 asks for the opposite in as many words — properties that belong to
+        // one gesture hang on one scalar so they cannot disagree — and the client has been able to
+        // draw it from the start: a node declared by name stands wherever a node is expected
+        // (`pass-layer.js`'s own note above `evalNode`, "one node therefore feeds several
+        // channels"), so ONE course with twelve readers is a shape this road already reads.
+        //
+        // THE COURSE IS NORMALISED. Nought is the departing work's own reading of a handle and one
+        // is the arriving work's, whichever way round those two numbers happen to run. Each handle
+        // maps that single journey onto its own two measured ends, so the direction, the span and
+        // the provenance all stay the handle's own and only the SHAPE is shared.
+        //
+        // THE ROOM, AND THE ROOM HELD (charter shelf 3, the enfilade: the middle is a room of its
+        // own, belonging to neither work; shelf 13's rubato, the deviation that travels). `reach` —
+        // the pair's own tone apartness, already read above — carries the course past one in the
+        // direction of travel, which is the room itself, AND says how long the room is held: the
+        // hold takes `reach` of the shorter leg, so two works standing far apart in tone stand
+        // still in the middle for longer and two standing close barely pause. Its bound is the
+        // shorter leg, so both legs keep a real journey however far apart the works stand.
+        //
+        // WHY A HELD PAIR OF POINTS IS A DWELL HERE AND NOT A STEP. The monotone spline this road
+        // draws sets BOTH tangents of a flat segment to zero (`pass-layer.js`'s `splineSlopes`:
+        // `if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; }`), so the course arrives at the room with no
+        // speed left and leaves it the same way — the movement is continuous in value and in speed
+        // across the whole passage, which is what makes the hold read as the picture standing still
+        // rather than as the picture being stopped.
+        //
+        // NOT ONE NUMBER HERE IS THIS BRANCH'S OWN: `reach` and `midShare` are the two the door and
+        // the witness camera already read off this same pair, and the hold's bound is the shorter
+        // leg itself. Where the pair's own record carries no tone apartness at all there is no
+        // honest room and no honest hold, and every handle keeps the two-point shaped travel below
+        // — his word of 2026-08-19, "if the records genuinely cannot supply a middle, leave it".
+        //
+        // THE WEIGHT FENCE NEEDS NOTHING NEW. `fitTheWeight`'s last rung sheds a spline to a
+        // two-point `mix` over its own first and last points; the course's own first and last
+        // points are nought and one, so a shed course becomes a plain eased nought-to-one and every
+        // reader goes on mapping it onto its own ends. The shape is what is lost, which is the rung
+        // it was always meant to be, and the coupling and the measured ends both survive it.
+        var courseName = c.id + "-course";
+        var courseWanted = reach > 0 && mf.level > 0 && mt.level > 0;
+        var courseTop = flt(r4(1 + reach));
+        var courseLeg = Math.min(midShare, 1 - midShare);
+        var holdFrom = r4(midShare - reach * courseLeg / 2);
+        var holdTo = r4(midShare + reach * courseLeg / 2);
+        var courseHolds = holdTo > holdFrom;
+        var courseWritten = false;
+        // Written on first use, so a cue whose handles all stand still never carries a course
+        // nobody reads.
+        function courseRead() {
+          if (!courseWritten) {
+            nodes[courseName] = {
+              op: "spline",
+              points: courseHolds
+                ? [{ at: 0, value: 0 }, { at: flt(holdFrom), value: courseTop },
+                   { at: flt(holdTo), value: courseTop }, { at: 1, value: 1 }]
+                : [{ at: 0, value: 0 }, { at: flt(r4(midShare)), value: courseTop },
+                   { at: 1, value: 1 }],
+              in: { source: "cueProgress" },
+              note: "the cue's one course, shared by every handle it drives: the room stands at "
+                  + pyText(courseTop) + " of the travel, where the two works' own tone stands "
+                  + pyText(flt(r4(reach))) + " apart, placed at " + pyText(flt(r4(midShare)))
+                  + " by which of them reads brighter"
+                  + (courseHolds
+                     ? ", and is held from " + pyText(flt(holdFrom)) + " to " + pyText(flt(holdTo))
+                       + " of the passage"
+                     : ", and passes through without a hold, the two works standing too close in "
+                       + "tone for the shorter leg to spare one"),
+            };
+            courseWritten = true;
+          }
+          return { node: courseName };
+        }
+
         // NO GUARD IS NEEDED HERE ANY MORE, and its absence is the repair rather than a loosening.
         // A throw stood here for a handle the register could not name a measurement for, and
         // `tracksFor` above now never builds a track for one — so no unnamed number can reach a
@@ -5561,19 +5699,42 @@
             // two points — his word 2026-08-19: "if the records genuinely cannot supply a
             // middle... leave it".
             var spanV = Math.abs(endBn - endAn);
-            if (reach > 0 && mf.level > 0 && mt.level > 0 && spanV > 0) {
-              var loV = Math.min(endAn, endBn), hiV = Math.max(endAn, endBn);
-              // THE ROOM'S OWN VALUE stands OUTSIDE the straight run between the two works' own
-              // readings — belonging to neither of them — overshot in the direction of travel by
-              // `reach`: two works standing far apart in tone license a showier room; two standing
-              // close keep it a subtler one.
-              var overshoot = endBn >= endAn ? hiV + reach * spanV : loV - reach * spanV;
-              var midVal = appliedValue(instr, h, r4(overshoot))[1];
-              nodes[nodeName] = { op: "spline",
-                                  points: [{ at: 0, value: endA },
-                                           { at: flt(r4(midShare)), value: midVal },
-                                           { at: 1, value: endB }],
-                                  in: { source: "cueProgress" }, note: noteText };
+            if (courseWanted && spanV > 0) {
+              // THE HANDLE RIDES THE CUE'S OWN COURSE, mapped onto its own two measured ends. The
+              // room's value is unchanged from the three-point spline this replaced: a course of
+              // `1 + reach` read through the map lands at `endA + (endB - endA) * (1 + reach)`,
+              // which for a rising handle is the higher end overshot by `reach` of its own span and
+              // for a falling one the lower end undershot by the same — the identical number, now
+              // arrived at once for the whole cue instead of once per handle.
+              //
+              // THE HANDLE'S OWN PUBLISHED RANGE STILL ANSWERS. Where the room carries the reading
+              // past what the instrument publishes, the node is wrapped in the client's own `clamp`
+              // rather than left to be clipped silently at the frame: `appliedValue` did that
+              // clamping for the three-point spline's middle point, and the same two numbers do it
+              // here, so a course shared by twelve handles cannot push any one of them past its own
+              // manifest. Where the room stays inside the range no wrapper is written, and the node
+              // is the map alone.
+              //
+              // THE NOTE STAYS ON THE OUTERMOST NODE, and that is not a detail. A node the composer
+              // drove carries its provenance — where the number came from — and everything that
+              // reads provenance reads it off the node the handle's own track names: the
+              // diagnostic surface, and `test_pass_composed.py`'s own sweep, which walks a cue's
+              // nodes and skips any whose note does not open with «requested». Writing the note on
+              // the map and then wrapping the map in a clamp hid it one level down, and the sweep
+              // went quietly blind to exactly the handles whose room overshoots their own range —
+              // ten of the gates instrument's own slot readings vanished from a green row that way
+              // before this line was written.
+              var span = HANDLE_SPECS[instr][h];
+              var roomV = endAn + (endBn - endAn) * num(courseTop);
+              var ride = { op: "map", in: courseRead(), from: [0, 1], to: [endA, endB] };
+              if (roomV < num(span[0]) || roomV > num(span[1])) {
+                nodes[nodeName] = { op: "clamp", in: ride,
+                                    min: appliedValue(instr, h, span[0])[1],
+                                    max: appliedValue(instr, h, span[1])[1], note: noteText };
+              } else {
+                ride.note = noteText;
+                nodes[nodeName] = ride;
+              }
             } else {
               nodes[nodeName] = { op: "mix", a: endA, b: endB,
                                   t: { op: "curve", name: travelShape, in: { source: "cueProgress" } },

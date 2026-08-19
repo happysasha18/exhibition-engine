@@ -499,6 +499,14 @@ function startValue(node) {
   if (node.op === "spline" && Array.isArray(node.points) && node.points.length) {
     return node.points[0].value;
   }
+  // 2026-08-19, THE CUE'S OWN COURSE. A travelling handle no longer carries its own shape: it maps
+  // the cue's one shared course, which runs from nought to one, onto its own two measured ends —
+  // so the value it starts at is the first of those ends, `to[0]`, exactly as `a` is for a `mix`
+  // and the first point is for a `spline`. Where the course would carry the handle past what its
+  // manifest publishes the map stands inside a `clamp`, and the clamp is transparent to this
+  // question: the same reading, one node deeper.
+  if (node.op === "clamp") return startValue(node["in"]);
+  if (node.op === "map" && Array.isArray(node.to) && node.to.length) return node.to[0];
   return node.value;
 }
 
@@ -849,7 +857,7 @@ function collectVoiceHandles(cue) {
   const bucket = owns ? ownsBucket : accBucket;
   for (const h of handles) {
     const node = cue.nodes[cue.id + "-" + h];
-    if (node) bucket[h].push(toNum(node.value));
+    if (node) bucket[h].push(toNum(startValue(node)));
   }
 }
 // THE FOLD, counted per role. A crossing that folds the frame into a solid spends the one miracle
@@ -1035,19 +1043,19 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
           // would compare seamA against the wrong work's own record.
           const fromWork = dir === "b-to-a" ? wb : wa, toWork = dir === "b-to-a" ? wa : wb;
           const rec = handle === "seamA" ? fromWork : toWork;
-          adriftSeams.push({ handle, applied: toNum(node.value),
+          adriftSeams.push({ handle, applied: toNum(startValue(node)),
                              recordSeam: toNum((rec.structure.horizon || {}).seam) });
         }
         // CHANGE B: the waterline instrument's own tideCells — proves it moves off its 0.5 default.
         if (cue.instrument.id === "waterline" && handle === "tideCells") {
-          tideCellsSeen.push(toNum(node.value));
+          tideCellsSeen.push(toNum(startValue(node)));
         }
         // CHANGE D: strata-light's own levelA/levelB — proves each moves off its 0.5 default.
         if (cue.instrument.id === "strata-light" && handle === "levelA") {
-          levelASeen.push(toNum(node.value));
+          levelASeen.push(toNum(startValue(node)));
         }
         if (cue.instrument.id === "strata-light" && handle === "levelB") {
-          levelBSeen.push(toNum(node.value));
+          levelBSeen.push(toNum(startValue(node)));
         }
         // GATE-SLOT LANE PART 1: gates' slotPlace/slotHalf/slotAxis all read the DEPARTING work
         // only (pass-inst-gates.js: "the departing work's own slot is what parts"), so the record
