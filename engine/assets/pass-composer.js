@@ -888,7 +888,84 @@
     shadeEdge: ["module-rest", "a judge channel the module rests at 1: the arriving work's own "
                                + "front shadow, kept apart from the waterline's so a spoiling of "
                                + "one cannot pass on the other"],
-    shadeLine: ["module-rest", "a judge channel the module rests at 1: the waterline's own shadow"]
+    shadeLine: ["module-rest", "a judge channel the module rests at 1: the waterline's own shadow"],
+
+    // ---- the darkroom instrument (studio) ----
+    // SIX ARE MEASURED, EACH NAMED IN pass-inst-studio.js's OWN HANDLES BLOCK AND FILLED BY THE
+    // "studio" BRANCH OF `fillPlan` BELOW; the rest are the module's own eight-way choice of
+    // instrument — which operation a visitor's own hand would have switched on, how far a zoom or a
+    // fold or a hue turn should stand — and no reading in a work record answers a choice, so each
+    // rests at the number the port names as the module's own (studio.js's own opening pose and its
+    // own declared defaults) and says so rather than hiding it, exactly as gates' own `jamb`/
+    // `teeth`/`swing` do for the same reason.
+    "studio.panX": ["measured", "the midpoint of the two works' own measured radial centres, "
+                                + "structure.radial.centre — the same reading hero's centreX and "
+                                + "livemirror's fold both read, here spent on the crop's own pan"],
+    "studio.panY": ["measured", "the midpoint of the two works' own measured radial centres, "
+                                + "structure.radial.centre — the same reading hero's centreY and "
+                                + "livemirror's fold both read, here spent on the crop's own pan"],
+    "studio.foldX": ["measured", "the midpoint of the two works' own measured radial centres, "
+                                 + "structure.radial.centre — the same reading livemirror's own fold "
+                                 + "reads, here spent on the mirror operation's own fold line"],
+    "studio.foldY": ["measured", "the midpoint of the two works' own measured radial centres, "
+                                 + "structure.radial.centre — the same reading livemirror's own fold "
+                                 + "reads, here spent on the mirror operation's own fold line"],
+    "studio.kalN": ["measured", "structure.rotational.n, the pair's own measured rotational order, "
+                                + "snapped onto the kaleidoscope operation's own count — the same "
+                                + "reading kaleidoscope's own wedges handle reads"],
+    "studio.tileN": ["measured", "the work's own frame side over structure.grid.periodPx, the count "
+                                 + "of its own measured lattice across it — the same reading "
+                                 + "parquet's own tiles handle reads, here spent on the tile "
+                                 + "operation's own repeat count"],
+    "studio.polarSpread": ["measured", "structure.polar.planet, how strongly the pair reads as a "
+                                       + "little world — the same reading hero's own planet handle "
+                                       + "reads, placed on the handle's own span the higher end down: "
+                                       + "the stronger the reading the narrower the spread stands, "
+                                       + "which is what the shader's own division by spread makes the "
+                                       + "planet operation read as a world the sooner"],
+    "studio.twirlAmt": ["unmeasured", "how far the twirl operation turns. structure.polar.twirl reads "
+                                      + "how strongly the pair's own making already winds, but that "
+                                      + "reading carries no SIGN — this handle's own span runs "
+                                      + "negative to positive, either direction the same amount of "
+                                      + "turn, and no measurement says which way a visitor's hand "
+                                      + "would have gone — so it rests at the module's own default "
+                                      + "rather than at a sign this file would have to choose"],
+    "studio.cropOn": ["module-rest", "the module's own opening pose (studio.js, \"open on something "
+                                     + "worth looking at\"): the zoom operation stands on"],
+    "studio.zoom": ["module-rest", "the module's own opening pose's own zoom, 1.15 — no reading says "
+                                   + "how far a visitor's own hand would have pulled it in"],
+    "studio.twirlOn": ["module-rest", "the module's own opening pose: the twirl operation stands off "
+                                      + "until a score switches it on"],
+    "studio.polarOn": ["module-rest", "the module's own opening pose: the planet operation stands on"],
+    "studio.polarFlip": ["module-rest", "the module's own declared default: ground in rather than "
+                                        + "sky in — no reading says which way a visitor would flip it"],
+    "studio.mirrorOn": ["module-rest", "the module's own opening pose: the mirror operation stands on"],
+    "studio.mirrorMode": ["module-rest", "the module's own opening pose's own mode, left-right — no "
+                                         + "reading says which of the mirror's three modes a visitor "
+                                         + "would have chosen"],
+    "studio.kalOn": ["module-rest", "the module's own declared default: the kaleidoscope operation "
+                                    + "stands off until a score switches it on"],
+    "studio.kalRot": ["module-rest", "the module's own rest of nothing turned — the kaleidoscope's "
+                                     + "own drift off the handed second carries the operation's "
+                                     + "breath instead, exactly as the module's own pointer-free rest "
+                                     + "does"],
+    "studio.ringOn": ["module-rest", "the module's own declared default: the endless zoom stands off "
+                                     + "until a score switches it on"],
+    "studio.ringTwist": ["module-rest", "the module's own declared default, 0.35 — no reading says "
+                                        + "how far a visitor's own hand would have turned it"],
+    "studio.ringSize": ["module-rest", "the module's own declared default, \"some\" — no reading says "
+                                       + "which of the endless zoom's three ring sizes a visitor "
+                                       + "would have chosen"],
+    "studio.tileOn": ["module-rest", "the module's own declared default: the tile operation stands "
+                                     + "off until a score switches it on"],
+    "studio.colOn": ["module-rest", "the module's own declared default: the colour operation stands "
+                                    + "off until a score switches it on"],
+    "studio.hue": ["module-rest", "the module's own declared default of no turn at all — no reading "
+                                  + "says which way round the wheel a visitor's own hand would have "
+                                  + "turned it"],
+    "studio.colLook": ["module-rest", "the module's own declared default, \"rich\" — no reading says "
+                                      + "which of the colour operation's three looks a visitor would "
+                                      + "have chosen"]
   };
 
   // THE ROAD OPENS THE AUTHORED LINE. §4.7: the intent is the one written line a plan opens with,
@@ -1634,6 +1711,29 @@
         return [fit, "the two works carry their own waterline at " + pyText(flt(r4(sa))) + " and "
                 + pyText(flt(r4(sb))) + " — the line leaves one measured seam and lands on the "
                 + "other"];
+      },
+      // THE CHAIN'S OWN EIGHT OPERATIONS READ BEST ON A PAIR WHOSE STRUCTURE ALREADY CARRIES THEIR
+      // OWN VOCABULARY — a rotational order for the kaleidoscope, a little-world reading for the
+      // planet fold, a measured lattice for the tile, a radial centre for the fold and the pan — the
+      // same four readings pass-inst-studio.js's own `suits.reads` names. The fit is the mean of how
+      // much of that vocabulary the STRONGER of the two works carries per reading, so a pair strong
+      // in only one of the four still ranks above a pair strong in none, and a pair with none of it
+      // still plays at the module's own opening pose (his word of 09:51 and 09:53: ranking only,
+      // never a floor).
+      studio: function (a, b) {
+        var rot = Math.max(readingOf(((a.structure || {}).rotational || {}).score),
+                           readingOf(((b.structure || {}).rotational || {}).score));
+        var world = Math.max(readingOf(((a.structure || {}).polar || {}).planet),
+                             readingOf(((b.structure || {}).polar || {}).planet));
+        var grid = (latticeOf(a) > 0 || latticeOf(b) > 0) ? 1 : 0;
+        var rad = Math.max(readingOf(((a.structure || {}).radial || {}).score),
+                           readingOf(((b.structure || {}).radial || {}).score));
+        var fit = clamp01((rot + world + grid + rad) / 4);
+        return [fit, "the pair reads rotational order at " + pyText(flt(r4(rot)))
+                + ", a little world at " + pyText(flt(r4(world))) + ", a measured lattice "
+                + (grid ? "on a work of the pair" : "on neither work") + " and a radial centre at "
+                + pyText(flt(r4(rad))) + " — the vocabulary the kaleidoscope, the planet, the tile "
+                + "and the fold each turn on"];
       }
     };
 
@@ -4888,6 +4988,55 @@
             wanted.tideCells = acrossTheSpan("waterline", "tideCells",
                                               mf.grainCells, mt.grainCells)[0];
           }
+        } else if (instr === "studio") {
+          // THE DARKROOM'S SIX. Without this branch every one of them stood at the module's own
+          // number for every pair alike, which is the sameness his word of 2026-08-18 15:13 names.
+          //
+          // HOW MANY WEDGES THE KALEIDOSCOPE OPENS TO, at the pair's own measured rotational order —
+          // the same reading kaleidoscope's own `wedges` handle reads (pass-composer.js's own
+          // "kaleidoscope" branch above), placed on this handle's own count.
+          if (mf.rotationalN > 0 || mt.rotationalN > 0) {
+            wanted.kalN = Math.round(Math.max(mf.rotationalN, mt.rotationalN));
+          }
+          // HOW MANY TILES THE TILE OPERATION REPEATS ACROSS, at the count of the pair's own
+          // measured lattice — the same construction parquet's own `tiles` handle reads (the grid
+          // read first, the device second, for the same measured reason parquet's own branch names).
+          var tilesFrom = mf.gridCount > 0 ? mf.gridCount
+            : (mf.deviceStepPx > 0 && mf.frameSide > 0 ? mf.frameSide / mf.deviceStepPx : 0);
+          var tilesTo = mt.gridCount > 0 ? mt.gridCount
+            : (mt.deviceStepPx > 0 && mt.frameSide > 0 ? mt.frameSide / mt.deviceStepPx : 0);
+          if (tilesFrom > 0 || tilesTo > 0) {
+            wanted.tileN = Math.round(Math.max(tilesFrom, tilesTo));
+          }
+          // HOW WIDE THE PLANET OPERATION OPENS, at the stronger of the two works' own little-world
+          // reading — the same reading hero's own `planet` handle reads — placed on THIS handle's
+          // own span the OPPOSITE end down from how hero places it: hero's arc travels FURTHER OUT
+          // the stronger the reading, and studio's own `spread` runs the other way in the shader's
+          // own arithmetic (`stPolar`'s `v = r / spread`), so a NARROWER spread is what a stronger
+          // reading asks for — the operation reads as a world the sooner.
+          var world = Math.max(readingOf(mf.planet), readingOf(mt.planet));
+          if (mf.planet > 0 || mt.planet > 0) {
+            var spreadSpec = HANDLE_SPECS.studio.polarSpread;
+            wanted.polarSpread = flt(r4(num(spreadSpec[1])
+                                        - clamp01(world) * (num(spreadSpec[1]) - num(spreadSpec[0]))));
+          }
+          // WHERE THE CROP'S OWN PAN AND THE MIRROR'S OWN FOLD LINE STAND: the midpoint of the two
+          // works' own measured radial centres, offset from the frame's own middle exactly as hero's
+          // own `cenx`/`ceny` and livemirror's own fold line are placed (`centreOfThePair` above
+          // gives the raw centre; the offset from 0.5 is this branch's own, the same subtraction
+          // hero's `cxF`/`cyF` and livemirror's own fold each already take of it).
+          centreOfThePair(wanted);
+          var cx = num(wanted.centreX), cy = num(wanted.centreY);
+          var panSpec = HANDLE_SPECS.studio.panX, foldSpec = HANDLE_SPECS.studio.foldX;
+          wanted.panX = flt(r4(Math.min(num(panSpec[1]), Math.max(num(panSpec[0]), cx - 0.5))));
+          wanted.panY = flt(r4(Math.min(num(panSpec[1]), Math.max(num(panSpec[0]), 0.5 - cy))));
+          wanted.foldX = flt(r4(Math.min(num(foldSpec[1]), Math.max(num(foldSpec[0]), cx - 0.5))));
+          wanted.foldY = flt(r4(Math.min(num(foldSpec[1]), Math.max(num(foldSpec[0]), 0.5 - cy))));
+          // `centreX`/`centreY` themselves are not this instrument's own handles — `panX`/`panY` and
+          // `foldX`/`foldY` above are — so they are cleared rather than left to be written as a
+          // track this manifest never declared.
+          delete wanted.centreX;
+          delete wanted.centreY;
         }
         var measured = {}, nodes = {};
         // NO GUARD IS NEEDED HERE ANY MORE, and its absence is the repair rather than a loosening.

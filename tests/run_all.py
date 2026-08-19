@@ -60,6 +60,11 @@ SUITES = [
     "pass_strata-light",
     "pass_tilt",
     "pass_waterline",
+    # THE OWNER'S WORD OF 2026-08-18 23:21 — every instrument the lab holds but the shards belongs
+    # in the arsenal. `studio`, the darkroom chain, is the one of the two named modules this lane
+    # could carry; `strata-scale` stopped on a wall this lane's own report names (no measurement in
+    # this architecture reaches its own threshold or its per-stratum centre of gravity).
+    "pass_studio",
 ]
 
 
