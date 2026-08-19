@@ -109,7 +109,10 @@ import re
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
@@ -189,6 +192,35 @@ CLIENT_CAMERA_POINTS = int(re.search(r"\bcamera:\s*(\d+)", CLIENT_LIMITS.group(1
 # itself instead of leaving a second copy to drift.
 COMPOSER_SRC = MODULE.read_text(encoding="utf-8")
 DOLLY_CAP_VALUE = float(re.search(r"\bDOLLY_CAP\s*=\s*([\d.]+)\s*;", COMPOSER_SRC).group(1))
+
+# ---------------------------------------------------------------- EX-PASS-RECORDS: no per-work record
+# rides the first file a visitor's browser ever parses (2026-08-19). `works` left the settings
+# record's `pass` block for the reason engine/build.py's own EX-PASS-RECORDS comment states: his word
+# of 13:36, «какой размер по устройству?? почему это должно зависеть от числа работ?» — the block
+# config.json carries at the very first parse must never grow with the collection. The claim is read
+# STRUCTURALLY, off what each key left sizes against, never by counting the fixture's own works (WORKS
+# above holds 121 of them and never enters this check): `capabilities` is exactly the client's OWN two
+# published fences (CLIENT_INTENT, CLIENT_BYTES, already read off the bundle above), and `instruments`
+# is keyed one entry per instrument FILE this tree actually ships — a roster the engine's own arsenal
+# bounds, not the collection.
+INSTRUMENT_ROSTER = sorted(
+    p.stem[len("pass-inst-"):]
+    for p in (ROOT / "engine" / "assets").glob("pass-inst-*.js")
+)
+PASS_BLOCK = CFG.get("pass") or {}
+check("EX-COMPOSED the block a visitor's browser parses first carries no per-work record: «works» "
+      "is gone, and every key left sizes off the instrument roster this tree ships or the client's "
+      "own published fences — never off how many works the collection holds",
+      "works" not in PASS_BLOCK
+      and set(PASS_BLOCK.get("capabilities", {}).keys()) == {"intentChars", "scoreBytes"}
+      and PASS_BLOCK["capabilities"]["intentChars"] == CLIENT_INTENT
+      and PASS_BLOCK["capabilities"]["scoreBytes"] == CLIENT_BYTES
+      and sorted(PASS_BLOCK.get("instruments", {}).keys()) == INSTRUMENT_ROSTER,
+      f"pass block ships the keys {sorted(PASS_BLOCK.keys())}; capabilities="
+      f"{PASS_BLOCK.get('capabilities')} against the client's own {CLIENT_INTENT}/{CLIENT_BYTES}; "
+      f"{len(PASS_BLOCK.get('instruments') or {})} instrument record(s) against the "
+      f"{len(INSTRUMENT_ROSTER)} the tree ships")
+
 # ---------------------------------------------------------------- every published handle is registered
 # A HANDLE A MANIFEST PUBLISHES AND THIS REGISTER DOES NOT NAME MAKES THE COMPOSER THROW — on every
 # pair that casts that instrument, inside the fill, where the register is read for a row that is not
@@ -2076,6 +2108,13 @@ BROWSER_ROWS = [
     "EX-COMPOSED two passages on two grids: no reading of one reaches the other's record",
     "EX-COMPOSED a work the record set never heard of keeps the walk's own glide",
     "EX-COMPOSED reduced motion asks for no composer at all, and records why",
+    # EX-PASS-RECORDS (2026-08-19): the four rows below hold the wave contract itself — what
+    # config.json's pass.records route is asked, in what shape, and when it is asked for nothing.
+    "EX-COMPOSED the door's own spread asks the route once, for exactly its own ids, and an unfold "
+    "asks once more, for exactly the ids it appends — no id asked twice, no wave of one id alone",
+    "EX-COMPOSED the route's own cap refuses a wave that asks past it",
+    "EX-COMPOSED a wave that never lands leaves the walk on its own glide, not a throw",
+    "EX-COMPOSED a visit standing still asks the route for nothing at all",
 ]
 
 
@@ -2085,6 +2124,13 @@ def enter(br, base, pass_arg=None, step=False):
     is opened where a step declares its command)."""
     br.navigate(base + "/")
     br.clear_storage()
+    # WHERE THIS VISIT'S OWN WAVES BEGIN (2026-08-19). A record map belongs to one page load: the
+    # client holds it in memory and a fresh load starts with nothing, so the first navigate above —
+    # the one that exists only to have somewhere to clear storage from — legitimately asks the route
+    # for the spread it hangs, and so does the real one below. Both are right, and a row that reads
+    # the log from before the pair would see one spread asked twice and call the walk wasteful. The
+    # mark is taken here, between them, so a row reads only the load it is actually about.
+    RECORDS_MARK[0] = len(RECORDS_LOG)
     br.navigate(base + "/" + (("?pass=" + pass_arg) if pass_arg else ""))
     br.sleep(0.8)
     br.click(".exd-window", settle=1.4)
@@ -2107,11 +2153,56 @@ def js(br, body):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % body))
 
 
+# ---------------------------------------------------------------- EX-PASS-RECORDS: the route itself
+#
+# `config.json`'s `pass` block no longer carries `works` (2026-08-19): it carries `records: {route,
+# cap}` instead, and the full id → record map travels as a static asset no browser fetches — read
+# instead by a Cloudflare Worker at `GET /api/pass/records?ids=a,b,c` (engine/assets/worker.js's
+# `passRecordsRoute`). This suite serves the SAME contract locally through the harness's `answer`
+# hook (tests/headless_harness.py's `serve`), so the walk asks a real route over the wire exactly as
+# it does in production, and every wave this suite drives is proof of the wire and not of a config
+# key the client no longer reads.
+#
+# THE STORE IS MUTABLE AND MODULE-LEVEL because `answer` is bound into `serve(...)` once, before any
+# work's id is known, while `put_records` is called AFTER the server is already up (some rows only
+# learn which ids the walk hung by reading the DOM). Mutating the same dict in place — never
+# reassigning it — is what lets a hook captured early see records written late.
+RECORDS_ROUTE = "/api/pass/records"
+RECORDS_CAP = 20   # spread_size 10 + max_unfolds 2 × unfold_step 5 — the built-in defaults (build.py)
+RECORDS_STORE = {}           # id -> record, exactly the shape pass-workrecords.json ships
+RECORDS_LOG = []              # one entry per GET this run answered: the `ids` list it was asked for
+RECORDS_MARK = [0]            # where the CURRENT page load's own waves begin in that log (see enter)
+FAIL_WAVE = {"on": False}    # armed by the "wave that never lands" row; answers the NEXT GET with 500
+
+
+def records_answer(raw_path):
+    """The harness's `answer` hook for this suite: answers `GET /api/pass/records?ids=...` the way
+    `engine/assets/worker.js`'s `passRecordsRoute` does — a request over `RECORDS_CAP` ids, or with
+    none at all, is refused with 400; an id `RECORDS_STORE` does not carry is simply left out of the
+    answer, never a per-id error. Every ids list asked is appended to `RECORDS_LOG` before either
+    outcome, so a row can read off this log what the walk actually asked for and when, rather than
+    inferring it from the client's own report."""
+    if not raw_path.startswith(RECORDS_ROUTE):
+        return None
+    ids = [i for i in parse_qs(urlparse(raw_path).query).get("ids", [""])[0].split(",") if i]
+    RECORDS_LOG.append(ids)
+    if FAIL_WAVE["on"]:
+        FAIL_WAVE["on"] = False    # fires once — the very next wave this hook sees, and no other
+        return (500, "text/plain", "induced failure (EX-COMPOSED wave-fails row, 2026-08-19)")
+    if not ids or len(ids) > RECORDS_CAP:
+        return (400, "text/plain", "bad request")
+    out = {i: RECORDS_STORE[i] for i in ids if i in RECORDS_STORE}
+    return (200, "application/json", json.dumps({"records": out}))
+
+
 def put_records(base_dir, ids):
     """The settings record as the site writes it for the composed road: the collection's own
-    constants and one record per work on the walk, keyed by the id the walk hangs the work under.
-    The fixture's two records are re-keyed onto the works this bake actually hangs — what the
-    composer reads out of a record is measurement, and the id is only its name."""
+    constants and `pass.records`, the route + cap a visitor's browser actually reads (2026-08-19 —
+    `works` left this block; see the EX-PASS-RECORDS row above). The full id → record map this call
+    builds is handed to `RECORDS_STORE` — the harness's `answer` hook — rather than to config.json, so
+    the route this suite serves answers exactly as the Worker does. The fixture's two records are
+    re-keyed onto the works this bake actually hangs — what the composer reads out of a record is
+    measurement, and the id is only its name."""
     cfg = json.loads((base_dir / "config.json").read_text(encoding="utf-8"))
     fix = json.loads(FIXTURE.read_text(encoding="utf-8"))
     src = [fix["works"][fix["pair"]["a"]], fix["works"][fix["pair"]["b"]]]
@@ -2120,8 +2211,9 @@ def put_records(base_dir, ids):
         rec = json.loads(json.dumps(src[i % 2]))
         rec["id"] = wid
         works[wid] = rec
+    RECORDS_STORE.update(works)
     cfg["pass"] = dict(cfg.get("pass") or {}, visualLayer="pass", composer=fix["consts"],
-                       works=works)
+                       records={"route": RECORDS_ROUTE, "cap": RECORDS_CAP})
     (base_dir / "config.json").write_text(
         json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return works
@@ -2131,7 +2223,7 @@ if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
-    with serve(TMP) as base:
+    with serve(TMP, answer=records_answer) as base:
         with Browser(width=1280, height=900) as br:
             # 0 · the layer stands off: nothing is asked for
             enter(br, base, "diagnostics:on")
@@ -2157,7 +2249,14 @@ else:
                 for r in BROWSER_ROWS[1:]:
                     skip(r, f"the walk hung fewer than three works: {allworks[:4]}")
             else:
+                # THE WAVE LOG IS THE WHOLE RUN'S, AND THIS ROW IS ONE VISIT'S (2026-08-19). The
+                # harness hook appends every request any visit of this file ever makes, and rows
+                # above this one have already walked the site more than once, so the log carries
+                # their waves too. The mark is taken before this visit's own entry, and everything
+                # the wave row reads is sliced from it — a row that counted the whole log would read
+                # a green run as a walk asking three times for one spread.
                 enter(br, base, "diagnostics:on", step=True)
+                records_at_entry = RECORDS_MARK[0]
                 for _ in range(30):
                     if js(br, "return window.__exPass.report().composer.state;") == "read":
                         break
@@ -2178,6 +2277,60 @@ else:
                       rep["state"] == "read" and rep["files"] == 1 and rep["version"] is not None,
                       f"the composer reads {rep['state']} at version {rep['version']}, fetched "
                       f"{rep['files']} time(s) from {rep['src']}, over {rep['works']} work records")
+
+                # 9 · EX-PASS-RECORDS: the wave contract, read off the harness's own log of what it
+                # was asked (RECORDS_LOG) rather than off the client's own report — a defect that
+                # asked the route rightly but reported wrongly must still redden here. `shown` above
+                # is the door's own spread, already landed by the `enter(..., step=True)` just above;
+                # clicking «ещё 5» appends the next UNFOLD ids and should ask the route exactly once
+                # more, for exactly those, and no id already asked should be asked again.
+                for _ in range(20):
+                    if len(RECORDS_LOG) > records_at_entry:
+                        break
+                    br.sleep(0.2)
+                mine = RECORDS_LOG[records_at_entry:]
+                wave1 = list(mine[-1]) if mine else []
+                before_unfold = set(shown)
+                br.click("#ex-unfold", settle=0.8)
+                grown = shown
+                for _ in range(20):
+                    grown = js(br, "return [].slice.call(document.querySelectorAll('.exh-frame'))"
+                                   ".map(function(e){return e.dataset.id;});")
+                    mine = RECORDS_LOG[records_at_entry:]
+                    if len(mine) > 1 and len(grown) > len(shown):
+                        break
+                    br.sleep(0.2)
+                mine = RECORDS_LOG[records_at_entry:]
+                wave2 = list(mine[-1]) if len(mine) > 1 else []
+                added = set(grown) - before_unfold
+                RECORDS_LOG_MINE = mine
+                check(BROWSER_ROWS[9],
+                      len(RECORDS_LOG_MINE) == 2
+                      and sorted(wave1) == sorted(shown) and len(wave1) > 1
+                      and sorted(wave2) == sorted(added) and len(wave2) > 1
+                      and not (set(wave1) & set(wave2)),
+                      f"the route's own log carries {len(RECORDS_LOG_MINE)} request(s) for this "
+                      f"visit {[len(w) for w in RECORDS_LOG_MINE]} = {RECORDS_LOG_MINE}: "
+                      f"the first asked "
+                      f"{len(wave1)} id(s) against the door's spread of {len(shown)}, the second "
+                      f"(after «ещё 5») asked {len(wave2)} id(s) against {len(added)} newly "
+                      f"appended, sharing {len(set(wave1) & set(wave2))} id(s) between them")
+
+                # 10 · the route's own cap. A request the client would never build by itself (the
+                # client trims a wave to the wire's own cap before it ever asks), aimed straight at
+                # the route with urllib rather than through the browser, so this row proves the
+                # SERVER'S OWN fence and not merely that the client stays under it.
+                over_cap = ["cap-probe-%d" % i for i in range(RECORDS_CAP + 5)]
+                try:
+                    with urllib.request.urlopen(
+                            base + RECORDS_ROUTE + "?ids=" + ",".join(over_cap), timeout=5) as resp:
+                        cap_status = resp.status
+                except urllib.error.HTTPError as e:
+                    cap_status = e.code
+                check(BROWSER_ROWS[10],
+                      cap_status == 400,
+                      f"a request for {len(over_cap)} ids over the route's own cap of {RECORDS_CAP} "
+                      f"answered {cap_status}")
 
                 # 2 · a step over two recorded works
                 if len(pair) < 2:
@@ -2282,6 +2435,20 @@ else:
                              if (played or {}).get("noLayer") else
                              "the host declined the composed passage on this device: no frame was "
                              "drawn, so nothing was applied")
+                elif ap is None:
+                    # A ROW READS A RECORD OR IT REDS — IT NEVER RAISES (2026-08-19). The host took
+                    # the passage and the composer's own register then carried no passage at all, so
+                    # there is nothing to read a door reading off. Until today this state reached the
+                    # rows below as a bare `None` and took the whole file down with an attribute
+                    # error before a single result was flushed, which turns one red row into no run
+                    # at all. It reds here instead, and it carries the diagnostic surface with it so
+                    # the reason is in the failure rather than in a second run.
+                    said = js(br, "return JSON.stringify(window.__exPass.report().refusals || []);")
+                    for r_ in (BROWSER_ROWS[4], BROWSER_ROWS[5]):
+                        check(r_, False,
+                              "the host took the passage and the composer's own register carried no "
+                              "passage, so no applied record exists to read; the refusal ring says "
+                              + str(said)[:600])
                 else:
                     handles = [c for c in (ap or {}).get("cues", []) if c.get("handles")]
                     door = [c for c in (ap or {}).get("cues", []) if c.get("applied")]
@@ -2534,12 +2701,21 @@ else:
                           f"the reason on the surface: {r['why']!r}")
 
                 # 6 · reduced motion
+                records_before_stillness = len(RECORDS_LOG)
                 with Browser(width=1280, height=900) as br2:
                     br2.emulate_media(prefers_reduced_motion="reduce")
                     enter(br2, base, "diagnostics:on")
+                    # THE REASON IS READ OFF WHICHEVER CHANNEL STOOD THE VISIT DOWN (2026-08-19).
+                    # Until the records moved off the settings block, a still visit still held every
+                    # record, so a step reached the composer's own open and the sentence «reduced
+                    # motion» was written there. A still visit now asks the route for nothing at all,
+                    # so the composer is never reached and the sentence is written by the wave's own
+                    # stand-down instead. The row asks the same question it always asked — is the
+                    # reason on the surface, and is the file unfetched — and reads the whole ring for
+                    # it rather than one channel of it.
                     red = js(br2, "var r = window.__exPass.report();"
                                   "var said = r.refusals.filter(function(x){"
-                                  "  return x.what === 'composer'; });"
+                                  "  return x.why === 'reduced motion'; });"
                                   "return {state: r.composer.state,"
                                   " why: said.length ? said[said.length-1].why : null,"
                                   " files: performance.getEntriesByType('resource')"
@@ -2549,6 +2725,59 @@ else:
                           red["files"] == 0 and red["why"] == "reduced motion",
                           f"the file was fetched {red['files']} time(s); the reason on the "
                           f"surface: {red['why']!r}")
+
+                    # 12 · EX-PASS-RECORDS: stillness carries no wave either. `passRecordsAskFor`
+                    # reads the SAME stand-down gate `passOpen` does (engine/client/01a-pass.js,
+                    # 2026-08-19 comment on the gate), so this is the same visit row 8 above already
+                    # drove — the added claim is over the route's own log rather than the composer's
+                    # resource entries.
+                    check(BROWSER_ROWS[12],
+                          len(RECORDS_LOG) == records_before_stillness,
+                          f"the route's own log carried {records_before_stillness} request(s) "
+                          f"before this visit and {len(RECORDS_LOG)} after — a visit standing still "
+                          f"asks the route for nothing, the same as it asks the composer for nothing")
+
+                # 11 · EX-PASS-RECORDS: a wave that never lands. FAIL_WAVE arms the harness's
+                # `answer` hook (records_answer, above) to answer the NEXT `/api/pass/records` GET
+                # with 500 — a real request the client's own fetch really receives and really has to
+                # handle, the same road `passRecordsAskFor`'s own `.catch()` was written for (its
+                # comment: "the wave for N id(s) did not land"). A fresh visit's very first wave is
+                # the door's own spread, so arming it just before a fresh `enter()` sabotages exactly
+                # that request. What the row asks: the refusal is said in plain words, the visitor
+                # still lands, and a crossing over the now-unrecorded pair still freezes no score
+                # onto the command — the walk's own glide, not a thrown error breaking the visit.
+                FAIL_WAVE["on"] = True
+                with Browser(width=1280, height=900) as br3:
+                    enter(br3, base, "diagnostics:on")
+                    said = []
+                    for _ in range(30):
+                        said = js(br3, "return window.__exPass.report().refusals.filter("
+                                       "function(x){return x.what === 'records' "
+                                       "&& x.name === 'wave';});")
+                        if said:
+                            break
+                        br3.sleep(0.2)
+                    landed = js(br3, "return [].slice.call(document.querySelectorAll('.exh-frame'))"
+                                     ".map(function(e){return e.dataset.id;});")
+                    fell = None if len(landed) < 2 else js(br3, """
+                      var A = document.querySelector('.exh-frame[data-id="%s"]');
+                      var B = document.querySelector('.exh-frame[data-id="%s"]');
+                      var cmd = window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
+                                                                 kind:'step', cause:'wave-fails',
+                                                                 velocity:0});
+                      return {score: cmd ? cmd.score : 'no command'};
+                    """ % (landed[0], landed[1]))
+                    why = said[-1]["why"] if said else None
+                    if len(landed) < 2:
+                        skip(BROWSER_ROWS[11],
+                             f"this hang shows fewer than two works: {landed[:4]}")
+                    else:
+                        check(BROWSER_ROWS[11],
+                              bool(said) and "did not land" in (why or "") and fell is not None
+                              and fell.get("score") is None,
+                              f"the induced failure was noted: {why!r}; a step declared straight "
+                              f"after it froze {fell.get('score') if fell else '?'!r} onto the "
+                              f"command — the walk's own glide, not a throw that broke the visit")
 
 import shutil  # noqa: E402
 shutil.rmtree(TMP, ignore_errors=True)

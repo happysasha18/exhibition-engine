@@ -45,6 +45,7 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
@@ -95,6 +96,31 @@ def js(br, body):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % body))
 
 
+# EX-PASS-RECORDS (2026-08-19): `pass.works` left config.json — the site now carries `pass.records`
+# (a route + a cap) and the id → record map is answered over that route instead, the way a Cloudflare
+# Worker answers it in production (engine/assets/worker.js's `passRecordsRoute`). This suite serves
+# the same contract locally through the harness's `answer` hook (tests/headless_harness.py's `serve`,
+# threaded through by tests/headless.py) — RECORDS_STORE is filled by `put_records` below and read by
+# `records_answer`, a MUTABLE dict shared by both so a hook bound into `serve(...)` before any id is
+# known still sees records `put_records` writes afterward.
+RECORDS_ROUTE = "/api/pass/records"
+RECORDS_CAP = 20   # spread_size 10 + max_unfolds 2 × unfold_step 5 — the built-in defaults (build.py)
+RECORDS_STORE = {}
+
+
+def records_answer(raw_path):
+    """The harness's `answer` hook for this suite: answers `GET /api/pass/records?ids=...` the way
+    the Worker does — over-cap or empty is refused with 400, an id `RECORDS_STORE` does not carry is
+    simply left out of the answer."""
+    if not raw_path.startswith(RECORDS_ROUTE):
+        return None
+    ids = [i for i in parse_qs(urlparse(raw_path).query).get("ids", [""])[0].split(",") if i]
+    if not ids or len(ids) > RECORDS_CAP:
+        return (400, "text/plain", "bad request")
+    out = {i: RECORDS_STORE[i] for i in ids if i in RECORDS_STORE}
+    return (200, "application/json", json.dumps({"records": out}))
+
+
 def put_records(base_dir, ids):
     cfg = json.loads((base_dir / "config.json").read_text(encoding="utf-8"))
     fix = json.loads(FIXTURE.read_text(encoding="utf-8"))
@@ -104,8 +130,9 @@ def put_records(base_dir, ids):
         rec = json.loads(json.dumps(src[i % 2]))
         rec["id"] = wid
         works[wid] = rec
+    RECORDS_STORE.update(works)
     cfg["pass"] = dict(cfg.get("pass") or {}, visualLayer="pass", composer=fix["consts"],
-                       works=works)
+                       records={"route": RECORDS_ROUTE, "cap": RECORDS_CAP})
     (base_dir / "config.json").write_text(
         json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return works
@@ -171,7 +198,7 @@ if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
-    with serve(TMP) as base:
+    with serve(TMP, answer=records_answer) as base:
         with Browser(width=VW, height=VH) as br:
             enter(br, base)
             everyone = [w["id"] for w in json.loads(

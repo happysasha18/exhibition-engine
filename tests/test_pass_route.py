@@ -53,6 +53,7 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
@@ -142,6 +143,31 @@ def js(br, body):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % body))
 
 
+# EX-PASS-RECORDS (2026-08-19): `pass.works` left config.json — the site now carries `pass.records`
+# (a route + a cap) and the id → record map is answered over that route instead, the way a Cloudflare
+# Worker answers it in production (engine/assets/worker.js's `passRecordsRoute`). This suite serves
+# the same contract locally through the harness's `answer` hook (tests/headless_harness.py's `serve`,
+# threaded through by tests/headless.py) — RECORDS_STORE is filled by `put_records` below and read by
+# `records_answer`, a MUTABLE dict shared by both so a hook bound into `serve(...)` before any id is
+# known still sees records `put_records` writes afterward.
+RECORDS_ROUTE = "/api/pass/records"
+RECORDS_CAP = 20   # spread_size 10 + max_unfolds 2 × unfold_step 5 — the built-in defaults (build.py)
+RECORDS_STORE = {}
+
+
+def records_answer(raw_path):
+    """The harness's `answer` hook for this suite: answers `GET /api/pass/records?ids=...` the way
+    the Worker does — over-cap or empty is refused with 400, an id `RECORDS_STORE` does not carry is
+    simply left out of the answer."""
+    if not raw_path.startswith(RECORDS_ROUTE):
+        return None
+    ids = [i for i in parse_qs(urlparse(raw_path).query).get("ids", [""])[0].split(",") if i]
+    if not ids or len(ids) > RECORDS_CAP:
+        return (400, "text/plain", "bad request")
+    out = {i: RECORDS_STORE[i] for i in ids if i in RECORDS_STORE}
+    return (200, "application/json", json.dumps({"records": out}))
+
+
 def put_records(base_dir, ids):
     """The settings record as the site writes it for the composed road. The fixture's two records
     are re-keyed onto the works this bake hangs — what the composer reads is measurement, and the id
@@ -154,8 +180,9 @@ def put_records(base_dir, ids):
         rec = json.loads(json.dumps(src[i % 2]))
         rec["id"] = wid
         works[wid] = rec
+    RECORDS_STORE.update(works)
     cfg["pass"] = dict(cfg.get("pass") or {}, visualLayer="pass", composer=fix["consts"],
-                       works=works)
+                       records={"route": RECORDS_ROUTE, "cap": RECORDS_CAP})
     (base_dir / "config.json").write_text(
         json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return works
@@ -239,8 +266,29 @@ def enter(br, base, pass_arg="diagnostics:on,familySeed:4242", clear=True):
     # here, and it is the visit's own first crossing. That crossing is what the entrance row reads,
     # off the passage record the walk keeps, rather than a declare made afterwards: a declare made
     # afterwards would be the SECOND crossing and would read the curve instead of the opening.
-    for _ in range(40):
-        if js(br, "return window.__exPass.report().composer.state;") == "read":
+    # AND THE RECORDS THE STEP WILL NEED (2026-08-19). Since they arrive with the selection rather
+    # than inside the settings block, «the composer has landed» no longer means «a crossing can be
+    # composed»: the wave is a request of its own and can still be in flight. A step taken before it
+    # lands plays the walk's own glide and composes nothing, which for this suite would silently move
+    # the visit's opening onto the NEXT step.
+    #
+    # THE TWO FACTS ARE WAITED ON TOGETHER, NOT ONE NESTED INSIDE THE OTHER (2026-08-19, same-day
+    # fix). The composer's own script and the first record wave are two independent async arrivals
+    # with no order between them — nothing in the client ever makes one wait on the other. The first
+    # shape of this wait nested the records check inside the composer-state check, so a composer
+    # slow to arrive (this suite's own Chrome under load, a cold fetch) let the OUTER loop exhaust
+    # its budget and fall through in silence: ArrowDown then fired with `passComposer` still null,
+    # `passComposeFor` refused before ever building a request, and the visit's real first crossing
+    # composed nothing — the entrance role this file's rows read off `composer.passages[0]` was
+    # never written, and every row downstream that assumed it was read a later crossing as if it
+    # were the first. Reading both facts on every tick, until both hold, closes that gap: a slow
+    # composer is waited out rather than raced past. The budget (150 ticks, 30s) is generous against
+    # this suite's own launch of a fresh Chrome for every row: a script fetch racing page-load work
+    # under a loaded machine is exactly the case this wait exists for.
+    for _ in range(150):
+        got = js(br, "var r = window.__exPass.report();"
+                     "return {st: r.composer.state, held: r.records.held};")
+        if got.get("st") == "read" and (got.get("held") or 0) > 1:
             break
         br.sleep(0.2)
     br.key("ArrowDown")
@@ -304,7 +352,7 @@ if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
-    with serve(TMP) as base:
+    with serve(TMP, answer=records_answer) as base:
         with Browser(width=1280, height=900) as br:
             # EVERY WORK OF THE CATALOGUE IS GIVEN A RECORD, not only the ten this entry hung: the
             # walk deals its works afresh on every entry, so a record set built from one hang would

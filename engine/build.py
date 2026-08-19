@@ -684,6 +684,22 @@ def copy_gallery(display_max=None, mark_text=None):
             shutil.copytree(src / "assets", dst / "assets", dirs_exist_ok=True)
 
 
+def _clamp_int(x, dflt, lo, hi):
+    """The same clamp the client applies to a feel-knob (clampInt in engine/client/01-knobs-lang-
+    history.js), read back here so a number derived from a knob — the walk's own records cap, below
+    — never drifts from what the walk itself will actually deal (2026-08-19). A knob absent or not a
+    number falls back to `dflt`; a knob present is clamped into [lo, hi], exactly as the client
+    clamps the SAME config value at read time."""
+    try:
+        n = int(x)
+    except (TypeError, ValueError):
+        try:
+            n = int(float(x))
+        except (TypeError, ValueError):
+            return dflt
+    return max(lo, min(hi, n))
+
+
 def pass_capabilities():
     """EX-PASS §4.4d — THE CLIENT'S OWN LIMITS, PUBLISHED SO THE COMPOSER CAN MEASURE AGAINST THEM.
 
@@ -1471,6 +1487,47 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # exactly as it did before the seam.
     if isinstance(site_config.get("pass"), dict) and site_config["pass"]:
         config["pass"] = dict(site_config["pass"])
+    # EX-PASS-RECORDS (2026-08-19): `works` LEAVES config.json. Until today the site's `pass` block
+    # carried `works` straight through — one record per work of the whole collection — so the very
+    # first file a visitor's browser parses grew with the collection: his word of 2026-08-19 13:36,
+    # «какой размер по устройству?? почему это должно зависеть от числа работ?». The records still
+    # exist and the passage composer still reads them, but they now travel as a STATIC ASSET beside
+    # the other baked files — pass-workrecords.json — fetched by no browser on the walk. Only the
+    # Worker reads it, answering a selection's own ids at /api/pass/records. What config.json keeps
+    # in `works`'s place is `records`: the route, and a constant — the walk's own ceiling on how many
+    # ids one answer may ever carry, never a count that follows the collection.
+    if isinstance(config.get("pass"), dict) and "works" in config["pass"]:
+        block = config["pass"]
+        records = block.pop("works")
+        if not isinstance(records, dict):
+            raise SystemExit("site.json's pass.works is not an id → record map — the bake "
+                             "has nothing to key a lookup by")
+        records_text = json.dumps(records, ensure_ascii=False, indent=0, sort_keys=True) + "\n"
+        records_bytes = records_text.encode("utf-8")
+        write(OUT / "pass-workrecords.json", records_text)
+        # THE WALK'S OWN CEILING, DERIVED RATHER THAN TYPED TWICE. The door deals `spread_size`
+        # works, and the visitor may add `unfold_step` more, up to `max_unfolds` times (his 13:39
+        # word the same day, and the shape engine/client/01-knobs-lang-history.js:77-79 already
+        # clamps this exact way — SPREAD, UNFOLD, MAXU). `cap` is read off the SAME config knobs by
+        # the SAME bounds and defaults, never a second number typed here: a site that raises
+        # spread_size or max_unfolds moves the route's own ceiling with it, in one place,
+        # automatically. Where a site names none of them, the built-in defaults give 10 + 2*5 = 20.
+        _ex = config.get("exhibition") or {}
+        _spread = _clamp_int(_ex.get("spread_size"), 10, 3, 12)
+        _unfold = _clamp_int(_ex.get("unfold_step"), 5, 1, 12)
+        _maxu = _clamp_int(_ex.get("max_unfolds"), 2, 0, 5)
+        # THE STAMP IS WHAT MAKES A LONG CACHE SAFE (2026-08-19). The route's answer may be held for
+        # a day — the map behind it only changes when the site is rebuilt — and that is exactly the
+        # hole: a visitor who returns the day after a rebake would be handed yesterday's measurements
+        # for today's photographs, and a crossing composed off a stale reading is wrong in a way
+        # nothing on the page shows. So the address carries the map's own digest: the same selection
+        # asks at the same address for as long as the records stand, and the instant they change the
+        # address changes with them. The Worker reads only `ids`, so the stamp costs it nothing.
+        block["records"] = {
+            "route": "/api/pass/records",
+            "cap": _spread + _maxu * _unfold,
+            "stamp": hashlib.sha256(records_bytes).hexdigest()[:12],
+        }
     # THE SITE NAMES WHAT EXISTS (§7). Beside everything the site wrote, the `pass` block carries the
     # instrument record: one entry per instrument, keyed by its own name, with the address it is
     # served at, the version it declares and the digest its served bytes weigh to. The host reads the

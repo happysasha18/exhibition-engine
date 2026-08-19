@@ -42,6 +42,7 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
@@ -132,6 +133,59 @@ def js(br, body):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % body))
 
 
+# BOTH THE COMPOSER'S OWN SCRIPT AND THE FIRST RECORD WAVE, TOGETHER (2026-08-19). Before today
+# `pass.works` sat in `config.json` itself, so every record was already in hand the instant the page
+# loaded, and a wait on the composer's own state was the whole of what a real step needed. Now a
+# record wave is a request of its own (EX-PASS-RECORDS), landing on its own clock beside the
+# composer's fetch, with no order between the two. A step or a declare taken before the wave lands
+# composes nothing — the walk's own glide plays — and every row below that reads a passage, a family
+# or a distance off a real crossing was reading a glide instead, at whatever generation and seed the
+# walk happened to be on when the wave finally did land. `enter()` and every wait below it read both
+# facts together, on every tick, until both hold or the budget (150 ticks, 30s — generous against
+# this suite's own fresh Chrome launch under a loaded machine) runs out.
+def wait_ready(br, budget=150):
+    for _ in range(budget):
+        got = js(br, "if (!window.__exPass) return {st: null, held: 0};"
+                     "var r = window.__exPass.report();"
+                     "return {st: r.composer.state, held: r.records.held,"
+                     " waves: r.records.waves, inflight: r.records.inflight};")
+        # HELD ALONE IS NOT READY (2026-08-19, after this suite came back 14/2 and then 16/0 on two
+        # runs of the same tree). A first wave can hold every id it asked for while a second is still
+        # on the wire, so a wait on the count alone lets a row read the walk mid-answer — which is
+        # exactly the intermittent this suite showed. Ready is: the composer has landed, at least one
+        # wave has been sent, and no wave is still in flight.
+        if (got.get("st") == "read" and (got.get("waves") or 0) > 0
+                and (got.get("inflight") or 0) == 0 and (got.get("held") or 0) > 1):
+            return True
+        br.sleep(0.2)
+    return False
+
+
+# EX-PASS-RECORDS (2026-08-19): `pass.works` left config.json — the site now carries `pass.records`
+# (a route + a cap) and the id → record map is answered over that route instead, the way a Cloudflare
+# Worker answers it in production (engine/assets/worker.js's `passRecordsRoute`). This suite serves
+# the same contract locally through the harness's `answer` hook (tests/headless_harness.py's `serve`,
+# threaded through by tests/headless.py) — RECORDS_STORE is filled by `put_records` below and read by
+# `records_answer`, a MUTABLE dict shared by both so a hook bound into `serve(...)` before any id is
+# known still sees records `put_records` writes afterward.
+RECORDS_ROUTE = "/api/pass/records"
+RECORDS_CAP = 20   # spread_size 10 + max_unfolds 2 × unfold_step 5 — the built-in defaults (build.py)
+RECORDS_STORE = {}
+
+
+def records_answer(raw_path):
+    """The harness's `answer` hook for this suite: answers `GET /api/pass/records?ids=...` the way
+    the Worker does — over-cap or empty is refused with 400, an id `RECORDS_STORE` does not carry is
+    simply left out of the answer."""
+    if not raw_path.startswith(RECORDS_ROUTE):
+        return None
+    ids = [i for i in parse_qs(urlparse(raw_path).query).get("ids", [""])[0].split(",") if i]
+    if not ids or len(ids) > RECORDS_CAP:
+        return (400, "text/plain", "bad request")
+    out = {i: RECORDS_STORE[i] for i in ids if i in RECORDS_STORE}
+    return (200, "application/json", json.dumps({"records": out}))
+
+
 def put_records(base_dir, ids):
     """The settings record as the site writes it for the composed road: the collection's own
     constants and one record per work on the walk. The fixture's two records are re-keyed onto the
@@ -144,8 +198,9 @@ def put_records(base_dir, ids):
         rec = json.loads(json.dumps(src[i % 2]))
         rec["id"] = wid
         works[wid] = rec
+    RECORDS_STORE.update(works)
     cfg["pass"] = dict(cfg.get("pass") or {}, visualLayer="pass", composer=fix["consts"],
-                       works=works)
+                       records={"route": RECORDS_ROUTE, "cap": RECORDS_CAP})
     (base_dir / "config.json").write_text(
         json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return works
@@ -210,8 +265,26 @@ def declare(br, a, b, cause):
     return got
 
 
-def land(br):
-    return js(br, LAND)
+def land(br, edge=None):
+    """Dock the standing command, and — where the caller names the edge — wait until the walk has
+    actually WRITTEN that edge's record before handing back.
+
+    The record is what a second pass over the same edge reads: without it the walk has no memory of
+    the first pass and rolls a fresh family, which is the row's own red. Docking starts the passage;
+    the record is written where it lands, one clock later. Until 2026-08-19 the wait between the two
+    was whatever the next statement happened to cost, and this suite came back green twice and red
+    once over the same tree because of it. The row now waits for the fact it depends on."""
+    got = js(br, LAND)
+    if edge:
+        for _ in range(40):
+            rows = js(br, "return (window.__exPass.report().memory.edges || [])"
+                          ".map(function(r){return r.edgeKey;});")
+            if edge in (rows or []):
+                break
+            br.sleep(0.2)
+        got = js(br, "var r = window.__exPass.report();"
+                     "return {no: false, storage: r.memory.storage, edges: r.memory.edges};")
+    return got
 
 
 def enter(br, base, pass_arg=None, step=True, clear=True):
@@ -236,6 +309,11 @@ def enter(br, base, pass_arg=None, step=True, clear=True):
         br.sleep(0.2)
     br.sleep(0.4)
     if step:
+        # THE STEP WAITS ON THE COMPOSER AND THE RECORD WAVE TOGETHER, THE SAME AS THE STEP IT
+        # STANDS IN FOR (2026-08-19). Pressing ArrowDown before either has landed composes nothing —
+        # the walk's own glide plays — and every generation this visit spends afterward is one
+        # generation off from what a reader downstream expects to find at that step.
+        wait_ready(br)
         br.key("ArrowDown")
         for _ in range(30):
             if br.evaluate("String(!!(window.__exPass && window.__exPass.layer()))") == "true":
@@ -286,7 +364,7 @@ if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
-    with serve(TMP) as base:
+    with serve(TMP, answer=records_answer) as base:
         with Browser(width=1280, height=900) as br:
             enter(br, base, "diagnostics:on,familySeed:4242")
             allworks = js(br, "return {ids: [].slice.call(document.querySelectorAll('.exh-frame'))"
@@ -297,10 +375,7 @@ else:
                     skip(r, f"the walk hung fewer than three works: {allworks[:4]}")
             else:
                 enter(br, base, "diagnostics:on,familySeed:4242")
-                for _ in range(30):
-                    if js(br, "return {s: window.__exPass.report().composer.state};")["s"] == "read":
-                        break
-                    br.sleep(0.2)
+                wait_ready(br)
                 pair, shown = shown_pair(br, recorded)
                 stub = js(br, STUB)
                 if len(pair) < 2 or stub.get("no"):
@@ -575,11 +650,7 @@ else:
                     # A fresh visit, so the two passes below are the first and the second of one
                     # edge inside one visit window.
                     enter(br, base, "diagnostics:on,familySeed:4242")
-                    for _ in range(30):
-                        if js(br, "return {s: window.__exPass.report().composer.state};"
-                              )["s"] == "read":
-                            break
-                        br.sleep(0.2)
+                    wait_ready(br)
                     pair2, _ = shown_pair(br, recorded)
                     js(br, STUB)
                     if len(pair2) < 2:
@@ -589,7 +660,7 @@ else:
                         A, B = pair2[0], pair2[1]
                         EDGE = "__".join(sorted([A, B]))
                         one = declare(br, A, B, "drift-one")
-                        land(br)
+                        land(br, EDGE)
                         two = declare(br, A, B, "drift-two")
                         drift = (two["memory"] or {}).get("drift")
                         check(BROWSER_ROWS[6],
@@ -680,11 +751,7 @@ else:
 
                         # 9 · the record survives a reload --------------------------------
                         enter(br, base, "diagnostics:on,familySeed:4242")
-                        for _ in range(30):
-                            if js(br, "return {s: window.__exPass.report().composer.state};"
-                                  )["s"] == "read":
-                                break
-                            br.sleep(0.2)
+                        wait_ready(br)
                         pair3, _ = shown_pair(br, recorded)
                         js(br, STUB)
                         if len(pair3) < 2:
@@ -696,11 +763,7 @@ else:
                             declare(br, A, B, "before-reload")
                             land(br)
                             enter(br, base, "diagnostics:on,familySeed:4242", clear=False)
-                            for _ in range(30):
-                                if js(br, "return {s: window.__exPass.report().composer.state};"
-                                      )["s"] == "read":
-                                    break
-                                br.sleep(0.2)
+                            wait_ready(br)
                             after = same_pair(br, recorded, [A, B])
                             js(br, STUB)
                             if len(after) != 2:
@@ -723,11 +786,7 @@ else:
 
                             # 10 · a cleared storage ---------------------------------------
                             enter(br, base, "diagnostics:on,familySeed:4242")
-                            for _ in range(30):
-                                if js(br, "return {s: window.__exPass.report().composer.state};"
-                                      )["s"] == "read":
-                                    break
-                                br.sleep(0.2)
+                            wait_ready(br)
                             pair4, _ = shown_pair(br, recorded)
                             js(br, STUB)
                             if len(pair4) < 2:
@@ -763,13 +822,14 @@ else:
                                             ".contains('ex-walk'))") == "true":
                                         break
                                     br2.sleep(0.2)
+                                # THE WAIT COMES BEFORE THE KEY HERE TOO (2026-08-19), the same fix
+                                # as `enter()`'s own step above: a key pressed before the composer
+                                # and the record wave are both in hand composes nothing, and this
+                                # row is precisely about the crossing still composing (`hasScore`)
+                                # despite the closed storage, so the composer has to be given the
+                                # chance to actually run first.
+                                wait_ready(br2)
                                 br2.key("ArrowDown")
-                                for _ in range(30):
-                                    if js(br2, "return {s: window.__exPass ? "
-                                               "window.__exPass.report().composer.state : null};"
-                                          )["s"] == "read":
-                                        break
-                                    br2.sleep(0.2)
                                 pair5, _ = shown_pair(br2, recorded)
                                 if len(pair5) < 2:
                                     skip(BROWSER_ROWS[11], "this hang shows fewer than two "

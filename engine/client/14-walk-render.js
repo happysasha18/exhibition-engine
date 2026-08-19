@@ -18,6 +18,12 @@
   }
 
   function appendFrames(slice, startN) {
+    // EX-PASS RECORD WAVE (2026-08-19): this call IS the wave — the first SPREAD a door's pick
+    // assembles, or the UNFOLD ids one unfold appends — so the ask for their work records fires
+    // right here, the instant the selection is known and before anything is drawn. It never waits:
+    // `passRecordsAskFor` fires the request and returns at once, and the frames below render on the
+    // walk's own clock whether or not the records have landed by the time a crossing wants them.
+    passRecordsAskFor(slice);
     document.getElementById("exh-fin")?.remove();
     const html = slice.map((id, i) => frameHTML(id, startN + i)).join("");
     stage.insertAdjacentHTML("beforeend", html);

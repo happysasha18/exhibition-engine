@@ -123,6 +123,7 @@ export default {
     if (url.pathname === "/api/story") return story(req, env);
     if (url.pathname === "/api/quiz") return quiz(req, env);
     if (url.pathname === "/api/geo") return geo(req);
+    if (url.pathname === "/api/pass/records") return passRecordsRoute(req, env, url);
     if (url.pathname !== "/api/i18n") return new Response("not found", { status: 404 });
     const lang = (url.searchParams.get("lang") || "").toLowerCase();
     const v = url.searchParams.get("v") || "";
@@ -185,6 +186,65 @@ function geo(req) {
   return new Response(JSON.stringify({ c: cc }), {
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
+}
+
+// EX-PASS-RECORDS (2026-08-19): the per-work records the passage composer reads. Until today they
+// rode inside config.json's `pass` block as `works` — one entry per work of the whole collection —
+// so the very first file a visit loads grew with the collection: his word of 2026-08-19 13:36,
+// «какой размер по устройству?? почему это должно зависеть от числа работ?». The bake now writes
+// them to pass-workrecords.json, a static asset beside the other baked files, fetched by no browser
+// on the walk — only this route reads it, through env.ASSETS, the SAME binding the i18n route already
+// reads i18n_source.json through. Parsed once per isolate and held here in module scope, so every
+// request after the first one this isolate serves costs no re-read; a cold start (a fresh isolate)
+// pays for one read, same as the i18n route's own source fetch does. A failed read is never cached —
+// only a SUCCESSFUL one is kept — so a transient asset-fetch failure costs the one request it
+// happens on, not the isolate's whole life.
+let PASS_RECORDS = null;       // id → record, once loaded
+let PASS_RECORDS_CAP = null;   // this walk's own ceiling — config.json's pass.records.cap
+async function loadPassRecords(env, url) {
+  if (PASS_RECORDS && PASS_RECORDS_CAP !== null) return true;
+  const [recRes, cfgRes] = await Promise.all([
+    env.ASSETS.fetch(new URL("/pass-workrecords.json", url.origin)),
+    env.ASSETS.fetch(new URL("/config.json", url.origin)),
+  ]);
+  if (!recRes.ok || !cfgRes.ok) return false;
+  const cfg = await cfgRes.json();
+  const cap = ((cfg.pass || {}).records || {}).cap;
+  if (!Number.isFinite(cap) || cap <= 0) return false;   // no cap baked ⇒ the route has nothing to refuse against
+  PASS_RECORDS = await recRes.json();
+  PASS_RECORDS_CAP = cap;
+  return true;
+}
+
+// EX-PASS-RECORDS (2026-08-19): GET ?ids=a,b,c → {"records":{id: record, ...}}. THE CAP IS THE
+// WHOLE POINT of this route: it exists so a work's own record can travel WITHOUT the settings file
+// growing with the collection, and a request past the cap asks for exactly what this route was
+// built to make impossible — the collection itself — so it is refused outright, with the cap named
+// and the reason given, never served partially. An id the map does not hold is a different case
+// entirely (a stale id, a typo, a work that left the gallery) and is simply left out of the answer;
+// the client already falls back to the walk's own glide when a record is missing (INV-19), so a
+// thin answer degrades exactly the way an absent one already does. Shaped ids only (ID_RE, the same
+// grammar the story and quiz routes already hold every work id to) — an id past that shape is
+// dropped rather than refused, the same graceful read as a missing one.
+async function passRecordsRoute(req, env, url) {
+  if (req.method !== "GET") return new Response("method not allowed", { status: 405 });
+  if (!(await loadPassRecords(env, url))) return new Response("no records", { status: 404 });
+  const asked = Array.from(new Set(
+    (url.searchParams.get("ids") || "").split(",").map((s) => s.trim()).filter((x) => ID_RE.test(x))
+  ));
+  if (!asked.length) return new Response("bad request", { status: 400 });
+  if (asked.length > PASS_RECORDS_CAP) {
+    return new Response(
+      "too many ids: this walk's own cap is " + PASS_RECORDS_CAP + " (the door's own spread plus " +
+      "every «more» the walk can ever add) — a request past it asks for the whole collection, and " +
+      "this route exists to make exactly that impossible", { status: 400 });
+  }
+  // sorted so the same SELECTION always builds the same answer, key order included
+  const records = {};
+  for (const id of asked.sort()) {
+    if (Object.prototype.hasOwnProperty.call(PASS_RECORDS, id)) records[id] = PASS_RECORDS[id];
+  }
+  return json(JSON.stringify({ records: records }));
 }
 
 // EX-MEMORY (INV-43): the coat-check record — seen-work ids under a random token, nothing else.

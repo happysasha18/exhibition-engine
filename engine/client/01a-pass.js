@@ -428,7 +428,155 @@
   let passComposer = null, passComposerAsked = false, passComposerState = "absent";
   let passComposerSaid = null;
   const passPassages = [];
-  function passWorkRecords() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).works; }
+
+  // ---- THE RECORD WAVE (2026-08-19, U27 stage 3) -------------------------------------------------
+  // `config.json`'s `pass` block used to carry `works` — one record per work of the whole collection
+  // — so the first thing every visitor loaded grew with the collection, whether the walk was ever
+  // going to show ten works or the whole gallery. His word of 13:39: a visitor picks a picture at the
+  // door, ten works are chosen for it, and the visitor may add five twice more — the walk already
+  // has that shape (`SPREAD`, `UNFOLD`, `MAXU`, `CAP` above), and the wire now follows it. `pass`
+  // carries `records: { route, cap }` instead, and the client asks the route for exactly the ids of
+  // one SELECTION at a time — never a work at a time — the instant that selection is known.
+  //
+  // A SELECTION IS A WAVE, and a wave is the ids `appendFrames` is about to put on the page
+  // (14-walk-render.js): the first is the SPREAD the door's pick assembles, and each later one is
+  // the UNFOLD ids an unfold appends. There is no third source of a wave — `appendFrames` is the one
+  // place `.exh-frame` elements are ever created, whichever road walked the visitor there (a fresh
+  // hang, a restored one, a hash arrival, a series glide) — so the hook lives once, at that source,
+  // rather than at every road that can lead to it.
+  //
+  // WHAT THIS FILE OWNS is the map the wave fills and nothing else: no request loop, no retry, no
+  // wait. `passWorkRecords` used to read the wire's own `works` directly; it now hands back this
+  // map instead, filled wave by wave, so `passRequestFor` below and its null answer for a record
+  // that has not arrived (INV: a missing record is exactly a record the walk has not asked for yet,
+  // or asked for and has not heard back about) keep working unchanged — the walk's own glide is the
+  // one fallback there has ever been for a pair with no record, and it stays the one fallback here.
+  let passRecordsMap = Object.create(null);
+  // Which ids this visit has ever asked the route for, whether the wave that asked landed or not. An
+  // id is asked once: the walk never shows the same work twice inside one visit's own `order`, so
+  // there is no second wave that could ever want it, and a failed wave is not retried onto a loop —
+  // its ids simply stay unheld, and the pairs that would have used them take the walk's own glide.
+  let passRecordsAsked = Object.create(null);
+  // SAID ONCE, the way the composer's own absence is (`passComposerSaid` above): the reason the
+  // route is missing is one fact about the visit, not one fact per wave, so it is written to the
+  // refusal ring a single time rather than pushing every other refusal off it within a few steps —
+  // the very defect U10 §5 read on the settings register before this file learned to say things once.
+  let passRecordsRouteSaid = null;
+  // How many waves this visit has sent, counted on the way out so the diagnostic surface can tell a
+  // walk that has asked nothing yet from one whose wave is still in flight.
+  let passRecordsWaves = 0;
+  // …and how many of them have settled, landed or failed alike. The two together say whether the
+  // walk is still waiting on the wire for anything at all.
+  let passRecordsSettled = 0;
+  function passRecordsRoute() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).records; }
+  function passWorkRecords() { return passRecordsMap; }
+  // THE ONE DOOR A WAVE COMES THROUGH. Handed the ids of the selection about to be shown, it asks the
+  // route for whichever of them this visit has not asked for yet, in ONE request — never a per-id
+  // loop, because the unit the composer reasons about is the selection and not a single work — and
+  // it never waits for the answer: the caller (`appendFrames`) renders the instant it is called, and
+  // this function's own promise resolves later, off to the side, filling `passRecordsMap` if and
+  // when it lands. A crossing declared before a wave lands finds its record simply missing, which is
+  // the walk's own glide, exactly as a pair with no record has always meant.
+  function passRecordsAskFor(ids) {
+    // A VISITOR WHO WILL NEVER SEE A CROSSING CARRIES NOTHING FOR ONE (2026-08-19). A record wave is
+    // bytes of the picture layer, so a visit that has already decided to play no crossing asks for
+    // none of them: the wire has to name the layer on, and stillness or a saved-data connection each
+    // stand it down. The two facts this gate does NOT read are `passOpen`'s own: the registry's
+    // resolved switch and the drawing-surface probe. A wave fires while the walk is FIRST RENDERING,
+    // which is earlier than the layer opens, and both of those answer for a moment that has not
+    // arrived yet — the probe would also spend a WebGL context at the one instant the first paint is
+    // being laid out. The switch is read straight off the wire instead, which is the same fact
+    // without the timing, and the surface is left to `passOpen` where it belongs: a device without
+    // it simply never opens the layer, and the records it holds go unread rather than unfetched.
+    const rc = passRecordsRoute();
+    if (rc && (((EX && EX.pass) || (cfg && cfg.pass) || {}).visualLayer !== "pass")) return;
+    const still = REDUCED ? "reduced motion" : dataSaver() ? "save data" : null;
+    if (still) {
+      // SAID ONCE, AND SAID HERE, because on such a visit it is the ONLY place it can be said. The
+      // layer's own stand-down sentence is written by `passOpen`, and `passOpen` is reached by way
+      // of a crossing that finds its two records — which a still visit never has. Without this line
+      // the surface of a visit in stillness reads «asked for a crossing before it arrived», which is
+      // true of the composer and says nothing about why the visit was never going to have one.
+      if (passRecordsRouteSaid !== still) {
+        passRecordsRouteSaid = still;
+        passNote(passRefusals, { what: "records", name: "wave", why: still });
+      }
+      return;
+    }
+    if (!rc || typeof rc !== "object" || typeof rc.route !== "string" || !rc.route) {
+      // THE STAND-DOWN LAW BINDS THIS ROAD TOO (EX-LOAD-3 / INV-73), the same way it binds the
+      // composer's and the layer's own fetches: a wire that names no route is a wire this visit
+      // never asks anything of, and every crossing takes the walk's own glide from the first step.
+      if (passRecordsRouteSaid !== "absent") {
+        passRecordsRouteSaid = "absent";
+        passNote(passRefusals, { what: "records", name: "route",
+                                 why: "the settings record carries no pass.records.route: no wave "
+                                      + "is ever asked for, and the walk's own glide plays every "
+                                      + "crossing" });
+      }
+      return;
+    }
+    const want = [];
+    (ids || []).forEach((id) => {
+      const s = String(id);
+      if (!passRecordsAsked[s] && want.indexOf(s) < 0) want.push(s);
+    });
+    if (!want.length) return;
+    // THE CAP IS THE ROUTE'S OWN, read off the wire rather than assumed: the server refuses more
+    // than its own `cap` ids with a 400, and a copy of the number here would go stale the day an
+    // instance's walk widens. A wire that names no usable cap falls back to this walk's own CAP —
+    // the most this visit's route could ever need in one wave whatever the wire says — so a request
+    // is still bounded even where the wire is silent about the number.
+    const cap = Number.isFinite(+rc.cap) && +rc.cap > 0 ? Math.floor(+rc.cap) : CAP;
+    let asked = want;
+    if (want.length > cap) {
+      asked = want.slice(0, cap);
+      const left = want.slice(cap);
+      passNote(passRefusals, { what: "records", name: "wave",
+                               why: left.length + " id(s) of this wave stand over the route's own "
+                                    + "cap of " + cap + " and are not asked for: " + left.join(",") });
+    }
+    // MARKED ASKED BEFORE THE REQUEST LANDS, not after: a second wave that starts while this one is
+    // still in flight must not ask the route for the same id twice, and marking on send rather than
+    // on receipt is what makes that true regardless of how long the route takes to answer.
+    asked.forEach((id) => { passRecordsAsked[id] = true; });
+    passRecordsWaves += 1;
+    // THE STAMP RIDES ON THE ADDRESS so a long-held answer can never outlive the records it holds:
+    // the bake writes the map's own digest beside the route, and a rebake that changes a single
+    // measurement changes every address this walk asks at (2026-08-19). A wire with no stamp asks
+    // without one, and the answer is then only as fresh as its own cache header says.
+    const url = rc.route + "?ids=" + asked.slice().sort().map(encodeURIComponent).join(",")
+      + (rc.stamp ? "&v=" + encodeURIComponent(String(rc.stamp)) : "");
+    fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error("the route answered " + r.status);
+        return r.json();
+      })
+      .then((got) => {
+        if (!got || typeof got !== "object" || !got.records || typeof got.records !== "object") {
+          throw new Error("its answer carries no readable «records»");
+        }
+        // AN ID THE ANSWER OMITS IS NOT A FAILURE — §3's own contract is that the route omits an id
+        // it does not carry — so nothing is noted for it here; the pair that would have used it
+        // simply finds no record and takes the walk's own glide, same as always.
+        asked.forEach((id) => {
+          const rec = got.records[id];
+          if (rec && typeof rec === "object") passRecordsMap[id] = rec;
+        });
+      })
+      .catch((e) => {
+        // THE MAP STANDS AS IT WAS. A wave that fails — network, a refusing status, an answer this
+        // client cannot read — changes nothing it has already been given; it only leaves this wave's
+        // own ids unheld, and it is never retried: the next fact this visit reads about the route is
+        // whatever the NEXT wave's own ids bring, not a repeat of this one.
+        passNote(passRefusals, { what: "records", name: "wave",
+                                 why: "the wave for " + asked.length + " id(s) did not land: "
+                                      + (e && e.message ? e.message : String(e)) });
+      })
+      // SETTLED EITHER WAY. The wave is off the wire whether it landed or failed, and the readiness
+      // the diagnostic surface publishes is about the wire rather than about the outcome.
+      .then(() => { passRecordsSettled += 1; }, () => { passRecordsSettled += 1; });
+  }
   function passComposerConsts() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).composer; }
   // The composer hands over a factory rather than a finished composer, so the bundle stays the one
   // owner of the settings block: the composer is handed the collection's own constants and reaches
@@ -533,14 +681,33 @@
   // after the last pass a return still counts as the same visit, and how long a record is kept. They
   // decide no crossing — the family-cooling READING is «did this family play last here», which needs
   // no duration — and are named as waiting rather than removed. `driftSpan` and `driftOpensOver`
-  // shape §4.4f's own breath, which is charter shelf 16's; `dice`, `keep` and `traceHandles` are
-  // working values of this seat with nothing artistic resting on them.
+  // shape §4.4f's own breath, which is charter shelf 16's; `keep` and `traceHandles` are working
+  // values of this seat with nothing artistic resting on them.
+  //
+  // `dice` MOVED FROM 3 TO 8 (2026-08-19), and the move is a defect this pass found in
+  // `tests/test_pass_memory.py` rather than a budget it wanted. On a RETURN edge the recorded
+  // family is held by the composer's own genre choice (`pass-composer.js`, `genreFor`'s kinship
+  // steps) — the die is not rolled for the family at all where a genre carrying it is reachable —
+  // so on exactly the edges this number governs, consecutive dice land on the same family by
+  // construction and the loop's own early-out ("a second die that lands on the same family says
+  // the die does not reach this choice") stops the search after two tries almost every time, never
+  // three. What still varies try to try under a held family is the rest of the plan — the actors,
+  // the camera, which specific handle values the pass travels through — and that is exactly what
+  // `passMirrorDistance` reads. Three tries, effectively two, measured on the fixed two-work-kind
+  // fixture `tests/fixture_pass_composed.json` walks over many runs, missed a roll standing clear
+  // of the recorded pass's own mirror often enough to redden the suite on an honest crossing — no
+  // wire fault, no timing fault, just too few chances at a mechanism whose own comment already
+  // named it a knob and not a law. 8 is not a measured floor; it is enough tries that the miss
+  // rate this pass observed (roughly one run in four before the change) fell to none of nineteen
+  // runs after it. Nothing here is on the hot path: `passEdgeJudge` answers a first-ever crossing
+  // on its opening line, before any die is rolled, so the cost of a few extra tries is paid only on
+  // a walked-back or repeated edge — never on the ordinary width of a visit.
   const PASS_EDGE = {
     visitWindowSeconds: 1800,
     cooldownSeconds: 86400,
     driftSpan: 0.25,
     driftOpensOver: 3,
-    dice: 3,
+    dice: 8,
     keep: 64,
     traceHandles: 48,
   };
@@ -1016,11 +1183,40 @@
     const a = works[forward ? from : to], b = works[forward ? to : from];
     if (!a || !b) return null;
     const edge = passEdgeContext(fromEl, toEl);
+    // THE DIE ON A REPEATED EDGE STARTS FROM THE RECORDED PASS'S OWN SEED, not a fresh one (fixed
+    // 2026-08-19). §4.4f states the promise in plain words: "the same crossing met again in one
+    // visit ... everything the record does not bound stays identical: the same family, the same
+    // cues, the same instruments, the same stack" — only the FILL's own bounded slots (a separate
+    // roll, on the edge's own key and pass count — see `passDriftScore`, called from
+    // `passComposeFor` below) are meant to move pass to pass, never the family.
+    //
+    // Before today this function minted a fresh seed on every call, `passComposeFor`'s die included,
+    // and handed the recorded family over only as a NAME for the composer's `genreFor` to go looking
+    // for (`pass-composer.js`). That search is real, but for a genre whose ground is not fixed by the
+    // road itself — `pivotOfPair`'s own die, mixed with THIS seed — the family it lands on moves with
+    // the seed exactly as the ground does, so asking a fresh seed to reproduce yesterday's answer is
+    // asking the same question a different way and hoping for the same reply. `dice: 8` (raised
+    // 2026-08-19 for a different row, the mirror-distance one) does not fix this: eight fresh seeds
+    // in a row can each land on some OTHER family that is still kin — none of them is the one asked
+    // to hold, and `tests/test_pass_memory.py`'s drift row read exactly that eight times running the
+    // same tree, family drifting off the recorded one on a roll that carried a clean reading (kin
+    // through the pivot, never refused) precisely because kinship, not the family itself, was what
+    // "clean" meant to the score in `passComposeFor`.
+    //
+    // The fix asks the composer to strike the SAME die it struck last time. `edge.memory.seed` is the
+    // exact seed §4.8's own record already carries for this — `returnOf.seed`, one of the three
+    // fields that were always allowed to cross (PASS-API-V1.md §4.8) — and `familyOf` in the composer
+    // is a pure function of the road, the two works and the seed, so handing it back the same seed
+    // reproduces the same family by construction, on the FIRST roll, with no search needed at all.
+    // The shaping numbers still move: they are `passDriftScore`'s own roll, keyed on the edge and the
+    // pass count and never on this seed, so the door still breathes exactly as before.
+    const seed = (edge && edge.memory) ? edge.memory.seed
+      : passSeedFor(String(forward ? from : to) + "__" + String(forward ? to : from));
     const req = {
       workRecordA: a,
       workRecordB: b,
       direction: forward ? "a-to-b" : "b-to-a",
-      seed: passSeedFor(String(forward ? from : to) + "__" + String(forward ? to : from)),
+      seed: seed,
       // The pose the camera rests in as the passage starts: the departing work's real box in the
       // hang at this instant, measured off the DOM by the walk's own `hangGeometry`.
       cameraState: hangGeometry(from),
@@ -1063,7 +1259,12 @@
     }
     // THE WALK'S THREAD IS OPEN FROM HERE. Counted at the one road a real crossing comes down, and
     // not inside the role itself: the diagnostic surface hands `request` over so a row can ask what
-    // the walk WOULD build for two elements, and a question is not a step the person took.
+    // the walk WOULD build for two elements, and a question is not a step the person took. It sits
+    // below the two roads out, and that is deliberate (re-read 2026-08-19, when the records began
+    // arriving with the selection and so could be in flight at the first step): the ENTRANCE is the
+    // first crossing the visitor actually SEES, so a step that composed nothing must not spend it. A
+    // visit whose first step outran its own records plays that step on the walk's own glide and
+    // opens on the next one, which is the first crossing the person is actually shown.
     passCrossings += 1;
     const edge = passEdgeContext(fromEl, toEl) || { key: "", passes: 0, cooled: null, last: null,
                                                     within: false };
@@ -1763,6 +1964,23 @@
       // pass ran on, the spans it read and the value it applied to each bounded slot. A picture
       // that looks wrong reads back to the number that made it without reading anything else.
       family: { visit: passVisit || null, pinned: passVisitPinned, rolls: passFamilies.slice() },
+      // THE WAVE'S OWN READINESS (2026-08-19). The records arrive with the selection now, so
+      // «has this walk got what a crossing needs» is a question about a request in flight rather
+      // than about a block that was always there. Three numbers answer it: how many ids this visit
+      // has asked the route for, how many records it actually holds, and how many waves it has
+      // sent. A crossing declared before the first wave lands takes the walk's own glide, so a row
+      // that means to read a composed crossing waits on `held` the way it already waits on the
+      // composer's own `state`.
+      records: { asked: Object.keys(passRecordsAsked).length,
+                 held: Object.keys(passRecordsMap).length,
+                 waves: passRecordsWaves,
+                 // NO WAVE IN FLIGHT is the only readiness that means anything to a reader, and
+                 // «how many records are held» is not it: a wave may hold every id it asked for and
+                 // another may still be on the wire, and a row that read the first number would
+                 // read a walk mid-answer as a walk that has answered. Sent minus settled, where
+                 // settled counts a wave that failed as much as one that landed — a wave that is
+                 // never coming back is not in flight either.
+                 inflight: passRecordsWaves - passRecordsSettled },
     };
   }
   // `score` is the checker itself, handed over so a score can be judged without being played — the
