@@ -831,6 +831,29 @@
     lightAmpA: ["measured", "the departing work's own colour.contrast, VOICE_SHARE of it"],
     lightAmpB: ["measured", "the arriving work's own colour.contrast, VOICE_SHARE of it"],
 
+    // ---- the parting-by-scale instrument ----
+    // THE MODULE'S OWN SINGLE SHARED HANDLE (strata-scale.js:450-506) — one number for the whole
+    // pair, since the detail/masses handover is a property of the departure itself and not of
+    // either work — and it reads nothing of either photograph: no measurement decides how the dial
+    // is shared between the two strata, so it stands at pass-inst-strata-scale.js's own resting
+    // value, the one that reproduces the module's own rest of DETAIL_SHARE exactly.
+    handover: ["module-rest", "the module's own single shared handle; nothing of either photograph "
+                              + "decides how the dial's own travel is shared between the two strata, "
+                              + "so it rests at the value that reproduces the module's own "
+                              + "DETAIL_SHARE exactly"],
+    // EACH STRATUM'S OWN MEASURED CENTRE OF GRAVITY, off `texture.reliefCentreMassX`/
+    // `reliefCentreDetailX` — lab/analyze/recipes.py's own port of the centre-of-gravity reading in
+    // lab/effects/strata-scale.js's own `cut()` (strata-scale.js:279-287), threaded through
+    // build-elements-v1.py and build-workrecords-v1.py exactly as `luminance.level` already is for
+    // strata-light. Read PER WORK exactly as `levelA`/`levelB` above: A the departing work's own
+    // pair of centres, B the arriving work's.
+    massCentreXA: ["measured", "the departing work's own texture.reliefCentreMassX — the mass "
+                               + "stratum's own measured centre of gravity"],
+    massCentreXB: ["measured", "the same of the arriving work"],
+    detailCentreXA: ["measured", "the departing work's own texture.reliefCentreDetailX — the "
+                                 + "detail stratum's own measured centre of gravity"],
+    detailCentreXB: ["measured", "the same of the arriving work"],
+
     // ---- the leaning instrument ----
     // TWO SCOPED ROWS AND THE REASON IN ONE LINE EACH. `tilt` above is the sheet's plane attitude
     // and reads a lattice ANGLE; this instrument's `tilt` is how far the plane lies into depth and
@@ -1666,6 +1689,21 @@
                 + pyText(flt(r4(pb))) + " on their own measured tone, "
                 + pyText(flt(r4(apart))) + " apart — and either way each parts at a level of its "
                 + "own, since every photograph has one"];
+      },
+      // EVERY PHOTOGRAPH HAS BOTH A MASS SCALE AND A DETAIL SCALE OF ITS OWN, the same
+      // by-construction reading `strata-light`'s own fit above takes on tone: this suits every pair
+      // somewhat and only ranks how strongly, by how far apart the two works stand on how much of
+      // their own luminance the mass scale loses — `texture.reliefEdge`, lab/analyze/recipes.py's
+      // own port of `measure(image)` in lab/effects/strata-scale.js:138-141, the same field this
+      // instrument's own manifest names in its `suits.reads`.
+      "strata-scale": function (a, b) {
+        var ea = readingOf((a.texture || {}).reliefEdge);
+        var eb = readingOf((b.texture || {}).reliefEdge);
+        var apart = Math.abs(ea - eb);
+        return [apart, "the two works lose " + pyText(flt(r4(ea))) + " and " + pyText(flt(r4(eb)))
+                + " of their own luminance to the mass scale, " + pyText(flt(r4(apart)))
+                + " apart — and either way each parts into its own masses and its own detail, "
+                + "since every photograph carries both"];
       },
       // THE WHOLE FRAME IS LAID DOWN AS ONE PLANE GOING AWAY, so what it suits is a pair with
       // depth to be revealed. The weaker of the two corridor readings is the fit, because a lean
@@ -3782,7 +3820,16 @@
         latticePx: Number((st.ownDevice || {}).stepPx) || Number((st.grid || {}).periodPx) || 0,
         latticeAngleDeg: Number((st.ownDevice || {}).stepPx) > 0
           ? Number((st.ownDevice || {}).angleDeg) || 0
-          : Number((st.grid || {}).angleDeg) || 0
+          : Number((st.grid || {}).angleDeg) || 0,
+        // THE SCALE A WORK PARTS AT, off `texture.reliefEdge`/`reliefCentreMassX`/
+        // `reliefCentreDetailX` (lab/build-workrecords-v1.py, itself lab/analyze/recipes.py's own
+        // `strata_scale_measure()`, a port of `measure(image)` and of the centre-of-gravity reading
+        // in `cut()` — lab/effects/strata-scale.js:138-141 and :279-287): the reading the
+        // "strata-scale" branch below drives `massCentreXA`/`massCentreXB`/`detailCentreXA`/
+        // `detailCentreXB` from, one work at a time exactly as `level` above drives strata-light's.
+        reliefEdge: Number((tex || {}).reliefEdge) || 0,
+        reliefCentreMassX: Number((tex || {}).reliefCentreMassX) || 0.5,
+        reliefCentreDetailX: Number((tex || {}).reliefCentreDetailX) || 0.5
       };
     }
 
@@ -4919,6 +4966,61 @@
           // casts it and cannot render a probe frame to measure against, so that refinement is not
           // ported: every voice here plays at its first-pass amplitude, unmuted, when it plays at
           // all.
+        } else if (instr === "strata-scale") {
+          // THE TWO STRATA'S OWN CENTRES OF GRAVITY, off each work's own measured reading —
+          // lab/analyze/recipes.py's own port of strata-scale.js:279-287 (`cut()`'s own
+          // `sum`/`cnt`/`centre`), carried through as `texture.reliefCentreMassX`/
+          // `reliefCentreDetailX`. Read PER WORK exactly as strata-light's `levelA`/`levelB`: A the
+          // departing work's own pair of centres, B the arriving work's.
+          wanted.massCentreXA = flt(r4(clamp01(mf.reliefCentreMassX)));
+          wanted.detailCentreXA = flt(r4(clamp01(mf.reliefCentreDetailX)));
+          wanted.massCentreXB = flt(r4(clamp01(mt.reliefCentreMassX)));
+          wanted.detailCentreXB = flt(r4(clamp01(mt.reliefCentreDetailX)));
+          //
+          // THE TWELVE COLOUR AND LIGHT VOICES, the same derivation strata-light's own branch above
+          // ports (lab/step4-assembler.js:1966-2010), read here for this instrument's own sibling in
+          // the same family: layer A takes the DEPARTING work's own readings and layer B the
+          // ARRIVING work's, colour on each work's own saturation and light on its own contrast —
+          // the same pairing strata-light's branch above uses.
+          //
+          // SUNG ONLY WHERE THIS CUE OWNS LIGHT-COLOUR (shelf 17's levels law, `singsLightColour`
+          // above). Where another cue of this same passage owns that level instead, this cue only
+          // ACCOMPANIES it there and every one of the twelve handles is left unset — the manifest's
+          // own rest of 0, not a second silence invented here.
+          if (singsLightColour(cue)) {
+            var ssBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.brightness),
+                          BEAT_DIAL * (4 + mt.sat), BEAT_DIAL * (5 + mt.contrast)];
+            var ssPeriods = voiceSpread(ssBase);
+            var ssClamp = function (handle, v) {
+              return flt(r4(Math.min(num(HANDLE_SPECS["strata-scale"][handle][1]),
+                                     Math.max(num(HANDLE_SPECS["strata-scale"][handle][0]), v))));
+            };
+            // PHASE. The four voices stand a quarter turn apart, `i / 4` — step4-assembler.js:2000,
+            // the same rule strata-light's own branch stands its four voices by.
+            wanted.colourPeriodA = ssClamp("colourPeriodA", ssPeriods[0].value);
+            wanted.colourPhaseA = flt(0 / 4);
+            wanted.colourAmpA = flt(r4(clamp01(VOICE_SHARE * mf.sat)));
+            wanted.lightPeriodA = ssClamp("lightPeriodA", ssPeriods[1].value);
+            wanted.lightPhaseA = flt(1 / 4);
+            wanted.lightAmpA = flt(r4(clamp01(VOICE_SHARE * mf.contrast)));
+            wanted.colourPeriodB = ssClamp("colourPeriodB", ssPeriods[2].value);
+            wanted.colourPhaseB = flt(2 / 4);
+            wanted.colourAmpB = flt(r4(clamp01(VOICE_SHARE * mt.sat)));
+            wanted.lightPeriodB = ssClamp("lightPeriodB", ssPeriods[3].value);
+            wanted.lightPhaseB = flt(3 / 4);
+            wanted.lightAmpB = flt(r4(clamp01(VOICE_SHARE * mt.contrast)));
+          }
+          // WHAT STAYS IN THE LAB. Same as strata-light's own branch above: the assembler's own
+          // audibility loop (`voiceMove`, `VOICE_TARGET`) is not ported, so every voice here plays
+          // at its first-pass amplitude, unmuted, when it plays at all.
+          //
+          // `handover` IS NOT DRIVEN HERE, and that is a fact about the module rather than a gap:
+          // no reading in a work record says how a visitor's own hand would have shared the dial's
+          // own travel between the detail and the masses — that is the module's own free number,
+          // "a handle a score can drive" (strata-scale.js:450-506) rather than a measurement of
+          // either photograph — so it rests at the manifest's own default honestly, the same way
+          // studio's own eight-operation switches rest at the module's opening pose where no
+          // reading answers them (his law of 2026-08-18 15:13).
         } else if (instr === "tilt") {
           // HOW FAR THE PLANE LIES DOWN, off each work's own corridor reading: a picture that
           // already reads as depth is laid down further, and the lean travels from the departing

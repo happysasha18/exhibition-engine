@@ -61,10 +61,13 @@ SUITES = [
     "pass_tilt",
     "pass_waterline",
     # THE OWNER'S WORD OF 2026-08-18 23:21 — every instrument the lab holds but the shards belongs
-    # in the arsenal. `studio`, the darkroom chain, is the one of the two named modules this lane
-    # could carry; `strata-scale` stopped on a wall this lane's own report names (no measurement in
-    # this architecture reaches its own threshold or its per-stratum centre of gravity).
+    # in the arsenal. `studio`, the darkroom chain, was the first of the two named modules this lane
+    # carried. `strata-scale` was reported stopped on a wall — that report was wrong: its threshold
+    # and its per-stratum centre of gravity are reductions over ONE photograph, exactly the per-work
+    # fact `luminance.level` already ported for `strata-light`, and lab/analyze/recipes.py now
+    # solves both at build time (`strata_scale_measure()`) the same way.
     "pass_studio",
+    "pass_strata-scale",
 ]
 
 
