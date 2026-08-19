@@ -28,6 +28,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -388,11 +389,86 @@ check("PASS-OVERLAY the provenance weighs to the file it was carried from",
       "sha256 %s — the module as it stands in the read-only tree, weighed here rather than trusted"
       % LABSHA[:16])
 
+# ---------------------------------------------------------------- the composed-passage mechanism
+#
+# SHELF 17'S LAW BINDS A COMPOSED PASSAGE, NOT THE REGISTRY (lab/CROSSING-BRIEF.md:394-400): "one
+# active voice per structural level ... Two voices on one level read as noise." The registry may
+# legitimately carry several instruments that CAN claim LIGHT-COLOUR — grid-colour, strata-light,
+# strata-scale and studio all do today, beside this one — and that is not the noise the law names;
+# the noise is two of them singing on the level in ONE composed passage at once. So the proof below
+# does not read the registry for exclusivity (no row of the charter ever asked for that); it builds
+# the passage the law actually judges and reads what the composer's own mechanism assigned it.
+#
+# `ownTheLevels`, engine/assets/pass-composer.js's own function, is what a real passage is built
+# through: every cue a passage carries goes in, and for every level exactly one comes out marked
+# "owns" while the rest are marked "accompanies:<owner>". It is extracted here VERBATIM — its own
+# text, not a restatement of it — so a change to the mechanism moves this row rather than leaving it
+# proving something the shipped file no longer does.
+COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
+COMPOSER_TEXT = COMPOSER.read_text(encoding="utf-8") if COMPOSER.exists() else ""
+
+
+def _extract(src, start, end):
+    i = src.index(start)
+    j = src.index(end, i)
+    return src[i:j]
+
+
+try:
+    _FLT_SRC = _extract(COMPOSER_TEXT, "  function Flt(v) { this.v = v; }",
+                        "\n\n  // A number as Python prints it")
+    _LEVELS_SRC = _extract(COMPOSER_TEXT, "    function ownTheLevels(cues, pivotCueId) {",
+                           "\n\n    // THE CAMERA'S OWN FLIGHT,")
+    _LEVELS_EXTRACT_ERROR = None
+except ValueError as exc:
+    _FLT_SRC = _LEVELS_SRC = ""
+    _LEVELS_EXTRACT_ERROR = str(exc)
+
+LEVELS_DRIVER = """
+"use strict";
+%s
+%s
+const cues = JSON.parse(process.argv[2]);
+const pivot = process.argv[3];
+console.log(JSON.stringify(ownTheLevels(cues, pivot)));
+""" % (_FLT_SRC, _LEVELS_SRC)
+
+
+def own_the_levels(cues, pivot="pivot"):
+    """Composes `cues` into one passage the way a real one is built — one call, the cue list a
+    passage carries — and returns what engine/assets/pass-composer.js's own `ownTheLevels` assigned
+    each of them per level: "owns" for the one voice the law leaves active, "accompanies:<owner>"
+    for the rest. `pivot` is the id of the passage's own pivot cue, the one field the function reads
+    beside the cues themselves."""
+    if _LEVELS_EXTRACT_ERROR:
+        return {"error": "the composer's own text moved under the row's markers: "
+                          + _LEVELS_EXTRACT_ERROR}
+    d = Path(tempfile.mkdtemp(prefix="synth_ovlevels_"))
+    try:
+        driver = d / "levels-driver.js"
+        driver.write_text(LEVELS_DRIVER, encoding="utf-8")
+        proc = subprocess.run(["node", str(driver), json.dumps(cues), pivot],
+                              capture_output=True, text=True, timeout=60)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-400:]}
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def node_available():
+    try:
+        return subprocess.run(["node", "--version"], capture_output=True).returncode == 0
+    except Exception:
+        return False
+
+
 # ---------------------------------------------------------------- browser rows
 
 BROWSER_ROWS = [
     "PASS-OVERLAY §8     · the manifest declares what the host binds, and the host registers it",
-    "PASS-OVERLAY the charter · the level claimed is LIGHT-COLOUR, and it is the only voice on it",
+    "PASS-OVERLAY the charter · the level claimed is LIGHT-COLOUR, one active voice in a composed "
+    "passage",
     "PASS-OVERLAY row 7  · both doors are their own work, cover-fitted, and neither is the other work",
     "PASS-OVERLAY the two roads of one frame agree at six places through the dominance travel",
     "PASS-OVERLAY the region is READ on the drawing buffer at both doors, and what it read is published",
@@ -663,15 +739,36 @@ else:
                                 "window.__host.report().registered.forEach(function (n) {"
                                 "  o[n] = (b.manifest(n) || {}).levels || null; });"
                                 "return o;")
-                mine = [n for n, lv in others.items() if lv and "LIGHT-COLOUR" in lv]
+                mine = sorted(n for n, lv in others.items() if lv and "LIGHT-COLOUR" in lv)
+                # THE COMPOSED-PASSAGE PROOF (see the block above BROWSER_ROWS). The registry today
+                # lets several instruments claim LIGHT-COLOUR, and shelf 17's law is never about that
+                # count — it is about how many of them a composed passage lets sing on the level at
+                # once. So one cue per claimant, in one passage, overlapping windows, goes through the
+                # composer's own `ownTheLevels`, and this row reads what it assigned.
+                if not node_available():
+                    levels_out, levels_ok = {"error": "node is not installed"}, False
+                else:
+                    lc_cues = [{"id": n, "levels": others[n], "window": [0, 3]} for n in mine]
+                    levels_out = own_the_levels(lc_cues, pivot=mine[0] if mine else "pivot")
+                    lc_owners = [n for n in mine
+                                if (levels_out.get(n) or {}).get("LIGHT-COLOUR") == "owns"]
+                    levels_ok = (not levels_out.get("error") and len(lc_owners) == 1
+                                and all((levels_out.get(n) or {}).get("LIGHT-COLOUR")
+                                        == "accompanies:" + lc_owners[0]
+                                        for n in mine if n != lc_owners[0]))
                 check(BROWSER_ROWS[1],
-                      m["levels"] == ["LIGHT-COLOUR"] and mine == ["overlay"],
+                      m["levels"] == ["LIGHT-COLOUR"] and "overlay" in mine and len(mine) >= 2
+                      and levels_ok,
                       f"lab/data/module-contract.json records this module's level as LIGHT-COLOUR "
                       f"and the vocabulary table of lab/CROSSING-BRIEF.md carries the same word "
                       f"beside his standing verdict, so the reading is carried rather than "
-                      f"re-decided. The charter's levels law allows one voice per level, and of the "
-                      f"instruments registered here — {json.dumps(others, sort_keys=True)} — this is "
-                      f"the only one that claims it")
+                      f"re-decided. The registry today lets {len(mine)} instruments claim it — "
+                      f"{mine} — and the charter's own words bind a COMPOSED PASSAGE rather than the "
+                      f"registry (shelf 17: 'one active voice per structural level ... in a composed "
+                      f"passage'): composing one cue from each of them into a single passage, "
+                      f"pass-composer.js's own `ownTheLevels` reads {json.dumps(levels_out, sort_keys=True)} "
+                      f"— one owner and every other claimant marked as accompanying it, which is the "
+                      f"law the registry count was never a test of")
 
                 # ---- row 7: both doors are their own work, cover-fitted -------------------------
                 bufs = js(br, "return window.__buffers();")

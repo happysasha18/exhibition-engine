@@ -82,8 +82,21 @@ SOURCE = {n: (ROOT / "engine" / "assets" / RECORD[n]["src"]) for n in NAMES}
 # downloads — so it judges code and cannot be tripped either way by prose that merely names an
 # instrument. The emptiness guard keeps it from passing on nothing.
 # ================================================================================================
+# THE HOST'S OWN CAMERA VOCABULARY. panX, pitch, yaw, roll, orbit, tilt, fov and their kin are the
+# host's own camera pose axes — read here straight out of the built artifact, the same way NAMES is,
+# rather than hard-coded — and every instrument's camera authority draws on this one closed set,
+# whatever kind of picture that instrument makes. This vocabulary precedes the instrument catalogue
+# and stands apart from it entirely, so an instrument may share an English word with one of these
+# axes — «tilt» ships today as both a camera axis and an instrument name — without the host having
+# learned that instrument's name: the axis was CAM_KEYS[6] before any instrument was called that.
+_cam_keys_m = re.search(r"CAM_KEYS = \[([^\]]*)\]", LAYER)
+CAM_VOCAB = set(re.findall(r'"([^"]+)"', _cam_keys_m.group(1))) if _cam_keys_m else set()
+
+
 def host_names(text):
-    return sorted(set(re.findall("|".join(NAMES), text))) if NAMES else []
+    if not NAMES:
+        return []
+    return sorted(set(re.findall("|".join(NAMES), text)) - CAM_VOCAB)
 
 
 check("PASS-PACK the host knows no instrument name — the built host names none of them",

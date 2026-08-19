@@ -453,6 +453,23 @@ function digest(text) {
 // is the same unwrap, typed once, for the two raw node values CHANGE A and CHANGE B read below.
 function toNum(v) { return (v && typeof v === "object" && "v" in v) ? v.v : v; }
 
+// A TRAVELLING HANDLE'S NODE CARRIES NO TOP-LEVEL `.value` — pass-composer.js's node loop (tonight's
+// shaped doors and the middle spline) resolves any handle whose `wanted[h]` is a two-point array to
+// an `{op:"mix", a, b, ...}` or `{op:"spline", points:[...], ...}` node, exactly the shape every
+// other travelling handle in this file already takes; only a handle left at one fixed reading stays
+// `{op:"static", value, ...}`. `slotPlace`/`slotHalf` travel from the departing work's own reading
+// to the arriving one (the gate's slot moves with the passage), so reading `node.value` on them
+// finds nothing — the departing work's own reading is `node.a` (mix) or `node.points[0].value`
+// (spline), the value the door of the journey opens on.
+function startValue(node) {
+  if (!node) return undefined;
+  if (node.op === "mix") return node.a;
+  if (node.op === "spline" && Array.isArray(node.points) && node.points.length) {
+    return node.points[0].value;
+  }
+  return node.value;
+}
+
 // THE WITNESS CAMERA'S OWN FLIGHT, RE-DERIVED HERE FROM THE RAW RECORD — independently of
 // pass-composer.js's own `measuredParts()`/`camAxisPan`/`camAxisPitch` and the camera block inside
 // `fillPlan`, so the row below is a real check of what the composer wrote rather than the composer
@@ -526,24 +543,47 @@ function camExpected(fromW, toW) {
     var grainShare = Math.abs(grainAsked) / (Math.abs(grainAsked) + DOLLY_CAP);
     logScale = -reach * DOLLY_CAP * grainShare;
   }
+  // THE PALINDROME BAN (charter shelf 18, 2026-08-19): roll and yaw no longer hold one plateau
+  // value at both middle points. pass-composer.js:5680-5750 now GRADES each by the magnitude of
+  // its own reading (roll by |lattice angle gap|/90, yaw by |gate offset|/0.5, the identical shape
+  // this row's own logScale grading above already takes) and then picks exactly ONE of roll/yaw/
+  // pitch — whichever reads the largest SHARE of its own ceiling — to carry the excursion; the
+  // other two are written zero at both points, and the winning axis's own OUTBOUND reading is the
+  // full graded magnitude while its INBOUND reading is graded down by a further fraction specific
+  // to that axis (pass-composer.js:5786-5799): roll by the two works' own lattice-scale ratio
+  // (min/max of latticePx), yaw by the ARRIVING work's own gate place. Which of the three axes wins
+  // a tie is the composer's own die, salted by the cue's key — not reproduced here, since that is a
+  // routing choice, not an arithmetic claim; this function hands back the raw graded magnitude and
+  // both fractions, and the row below reads which axis the composer actually carried off the real
+  // output before checking that axis's own two points against the formula.
   var latFrom = camLattice(fromW), latTo = camLattice(toW);
-  var roll = 0;
+  var rollRaw = 0;
   if (latFrom.latticePx > 0 && latTo.latticePx > 0) {
     var d = (latTo.latticeAngleDeg - latFrom.latticeAngleDeg) % 180;
     if (d > 90) d -= 180;
     if (d < -90) d += 180;
-    if (d !== 0) roll = reach * DOLLY_CAP * (d > 0 ? 1 : -1);
+    if (d !== 0) rollRaw = reach * DOLLY_CAP * (d > 0 ? 1 : -1) * (Math.abs(d) / 90);
   }
-  var gate = camGate(fromW), yaw = 0;
+  var rollFraction = 1;
+  if (latFrom.latticePx > 0 && latTo.latticePx > 0) {
+    rollFraction = Math.min(latFrom.latticePx, latTo.latticePx)
+      / Math.max(latFrom.latticePx, latTo.latticePx);
+  }
+  var gate = camGate(fromW), yawRaw = 0;
   if (gate.gateAxis !== null && gate.gatePlace > 0) {
     var off = gate.gatePlace - 0.5;
-    if (off !== 0) yaw = reach * DOLLY_CAP * (off > 0 ? 1 : -1);
+    if (off !== 0) yawRaw = reach * DOLLY_CAP * (off > 0 ? 1 : -1) * (Math.abs(off) / 0.5);
   }
+  var gateTo = camGate(toW);
+  var yawFraction = Math.min(1, Math.max(0, gateTo.gatePlace));
   var hFrom = camHorizon(fromW), hTo = camHorizon(toW);
   var pitchFrom = hFrom === null ? 0 : (hFrom - 0.5) * reach * DOLLY_CAP;
   var pitchTo = hTo === null ? 0 : (hTo - 0.5) * reach * DOLLY_CAP;
-  return {reach: reach, panFrom: panFrom, panTo: panTo, logScale: logScale, roll: roll, yaw: yaw,
-          pitchFrom: pitchFrom, pitchTo: pitchTo};
+  var levelFrom = camLevel(fromW), levelTo = camLevel(toW), levelSum = levelFrom + levelTo;
+  var pitchInTied = pitchFrom * (levelSum > 0 ? levelFrom / levelSum : 0.5);
+  return {reach: reach, panFrom: panFrom, panTo: panTo, logScale: logScale,
+          rollRaw: rollRaw, rollFraction: rollFraction, yawRaw: yawRaw, yawFraction: yawFraction,
+          pitchFrom: pitchFrom, pitchTo: pitchTo, pitchInTied: pitchInTied};
 }
 function camNeutral(pt) {
   return !!pt && (!pt.pan || (toNum(pt.pan.x) === 0 && toNum(pt.pan.y) === 0))
@@ -825,12 +865,28 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
         const exp = camExpected(fromWork, toWork);
         const got1 = track[1], got2 = track[2];
         const close = (a, b) => Math.abs(toNum(a) - b) < 0.0006;
-        const ok = close(got1.pan.x, exp.panFrom[0]) && close(got1.pan.y, exp.panFrom[1])
+        const nz = (v) => Math.abs(toNum(v)) > 1e-9;
+        // WHICH AXIS THE COMPOSER ACTUALLY CARRIED, read off its own output — the palindrome ban's
+        // tie-break is the composer's own die and is not reproduced here (see the note above
+        // camExpected). At most one of roll/yaw/pitch may be non-zero at either point; that
+        // invariant is asserted directly rather than assumed.
+        const carried = (nz(got1.roll) || nz(got2.roll)) ? "roll"
+          : (nz(got1.yaw) || nz(got2.yaw)) ? "yaw"
+          : (nz(got1.pitch) || nz(got2.pitch)) ? "pitch" : "none";
+        const singleExcursion = ["roll", "yaw", "pitch"].filter((ax) =>
+          nz(got1[ax]) || nz(got2[ax])).length <= 1;
+        const expRoll = carried === "roll" ? [exp.rollRaw, exp.rollRaw * exp.rollFraction] : [0, 0];
+        const expYaw = carried === "yaw" ? [exp.yawRaw, exp.yawRaw * exp.yawFraction] : [0, 0];
+        const pitchTied = exp.pitchFrom === exp.pitchTo && exp.pitchFrom !== 0;
+        const expPitch = carried === "pitch"
+          ? [exp.pitchFrom, pitchTied ? exp.pitchInTied : exp.pitchTo] : [0, 0];
+        const ok = singleExcursion
+          && close(got1.pan.x, exp.panFrom[0]) && close(got1.pan.y, exp.panFrom[1])
           && close(got2.pan.x, exp.panTo[0]) && close(got2.pan.y, exp.panTo[1])
           && close(got1.logScale, exp.logScale) && close(got2.logScale, exp.logScale)
-          && close(got1.roll, exp.roll) && close(got2.roll, exp.roll)
-          && close(got1.yaw, exp.yaw) && close(got2.yaw, exp.yaw)
-          && close(got1.pitch, exp.pitchFrom) && close(got2.pitch, exp.pitchTo);
+          && close(got1.roll, expRoll[0]) && close(got2.roll, expRoll[1])
+          && close(got1.yaw, expYaw[0]) && close(got2.yaw, expYaw[1])
+          && close(got1.pitch, expPitch[0]) && close(got2.pitch, expPitch[1]);
         if (!ok && camMismatches.length < 5) {
           camMismatches.push({key, expected: exp,
                               got: {p1: {pan: {x: toNum(got1.pan.x), y: toNum(got1.pan.y)},
@@ -971,7 +1027,7 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
           var gRecord = handle === "slotPlace" ? gMot.gatePlace
             : handle === "slotHalf" ? gMot.gateHalf
             : (gMot.gateAxis === "vertical" ? 1 : (gMot.gateAxis === "horizontal" ? 0 : null));
-          gateSlots.push({ handle: handle, applied: toNum(node.value), record: gRecord });
+          gateSlots.push({ handle: handle, applied: toNum(startValue(node)), record: gRecord });
         }
       }
       collectVoiceHandles(cue);
