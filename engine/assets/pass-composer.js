@@ -1895,11 +1895,15 @@
     // single instant — `a1 < b2 && a2 < b1` — so a cue that closes exactly where the next one opens
     // is a HANDOFF, not a clash, which is the release polyphony asks for: a voice can enter over
     // another's, leave before the passage ends, and hand a level over rather than being barred from
-    // it. Pivot's own window is untouched by any of this ([0, 1] always), so pivot's own levels
-    // still exclude every other candidate outright, exactly as before — the change only ever widens
-    // what travel and arrival may share between themselves.
+    // it. Pivot's own window is untouched by any of this ([0, 1] always), so pivot's own levels are
+    // always folded into the overlap union the exclusion below builds — but since 2026-08-19 (the
+    // ownership repair, see the note above the exclusion) carrying pivot's window alone no longer
+    // excludes a candidate outright: what excludes it now is having NO level left outside that
+    // union, so a candidate whose levels are a strict superset of pivot's still keeps the levels
+    // pivot leaves free, and the change widens what every voice — travel, arrival, and anything
+    // standing beside pivot itself — may share with what came before it.
     function castForKinds(kinds, fromW, toW, noMiracle, seed, key, slot, avoid, standsAbove,
-                          mustFill, clashRecords, candidateWindow) {
+                          mustFill, clashRecords, candidateWindow, mustFold) {
       var list = [].concat(kinds || []).filter(function (k) { return !!k; });
       var taken = [].concat(avoid === undefined || avoid === null ? [] : avoid)
         .filter(function (t) { return !!t; });
@@ -1914,27 +1918,68 @@
       }
       for (i = 0; i < ALL_INSTRUMENTS.length; i++) {
         iid = ALL_INSTRUMENTS[i];
-        // THE LEVELS LAW EXCLUDES OUTRIGHT, rather than ranking last, and only where the
-        // already-placed cue it would share a level with is actually live alongside this
-        // candidate's own window — see the note above. A candidate `avoid` names may still play as
-        // the whole crossing's only voice, folded into a collision — the "one instrument carries one
-        // cue" law leaves it that road. The levels law has no such road: two ACTIVE voices on one
-        // level is shelf 17's noise whatever else the plan carries, so this slot is never handed the
-        // instrument at all where that would happen, and where every candidate clashes the slot
-        // retires exactly as it does when the collection casts nothing for it — the same road
-        // already walked below for "no instrument at all".
-        if (clash.length && clash.some(function (rec) {
-              return (rec.levels || []).some(function (lv) {
-                       return (MANIFESTS[iid].levels || []).indexOf(lv) >= 0;
-                     })
-                  && num(win[0]) < num(rec.window[1]) && num(rec.window[0]) < num(win[1]);
-            })) {
-          sawClash = true;
-          continue;
+        // THE LEVELS LAW EXCLUDES OUTRIGHT ONLY WHERE THE CANDIDATE WOULD OWN NOTHING AT ALL
+        // (2026-08-19, the ownership repair). Until today this test dropped a candidate the moment
+        // it shared ANY level with ANY already-placed, time-overlapping voice, which is stricter
+        // than what shelf 17 actually asks: shelf 17 bars two ACTIVE voices from claiming the SAME
+        // level, not a voice from standing beside another on a level it does not itself drive. A
+        // voice standing beside another on one level, with a level of its own left free by
+        // everything already placed, is lawful — the level-ownership pass (`ownTheLevels`, below,
+        // around this file's own record of it) is exactly the mechanism that settles who drives a
+        // shared level AFTER the cast: the owner gets that level's full range of motion, and every
+        // other cue placed on it keeps its handles for that level pinned to manifest rest, so the
+        // two never actually collide at the handle a viewer would see move. What the law still
+        // forbids outright is a candidate with NOTHING free to say for the window it would be
+        // live: every level it declares already claimed by voices already placed, for the whole
+        // stretch it would be live. So the test below unions the `levels` of every clash record
+        // whose window overlaps the candidate's own window — the overlap test itself,
+        // `num(win[0]) < num(rec.window[1]) && num(rec.window[0]) < num(win[1])`, is unchanged from
+        // the polyphony wave above — and only excludes the candidate when EVERY level in
+        // `MANIFESTS[iid].levels` sits inside that union. A candidate with even one level free of
+        // the union stays in the ranking, and if chosen, owns that free level once `ownTheLevels`
+        // runs. An instrument that declares no levels at all was never touched by this law before
+        // today and still is not: an empty `levels` list would vacuously satisfy "every level is
+        // covered," so the check requires at least one declared level before it can exclude. A
+        // candidate `avoid` names may still play as the whole crossing's only voice, folded into a
+        // collision — the "one instrument carries one cue" law leaves it that road, untouched by any
+        // of this. Where every candidate is excluded the slot retires exactly as it does when the
+        // collection casts nothing for it — the same road already walked below for "no instrument at
+        // all".
+        if (clash.length) {
+          var overlapLevels = [];
+          clash.forEach(function (rec) {
+            if (num(win[0]) < num(rec.window[1]) && num(rec.window[0]) < num(win[1])) {
+              (rec.levels || []).forEach(function (lv) {
+                if (overlapLevels.indexOf(lv) < 0) overlapLevels.push(lv);
+              });
+            }
+          });
+          var myLevels = MANIFESTS[iid].levels || [];
+          if (myLevels.length && myLevels.every(function (lv) {
+                return overlapLevels.indexOf(lv) >= 0;
+              })) {
+            sawClash = true;
+            continue;
+          }
         }
         answer = suitsPair(iid, fromW, toW);
         var cuts = cutters.indexOf(iid) >= 0;
         var folds = spendsTheMiracle(iid);
+        // A ROAD THAT IS ITSELF THE FOLD CASTS AN INSTRUMENT THAT FOLDS (2026-08-19). `genreFor`'s
+        // own note says it plainly: the box-fold road «cannot play at all without folding, because
+        // the fold IS what it is», and shelf 6 says the folded space consumes the crossing's one
+        // impossible event. Until today nothing carried that from the road to the cast — the road
+        // declared `mustFold` and the ground was then ranked over every instrument cutting the
+        // road's own kind, so the road could be picked and the frame never fold. It went unseen
+        // because the levels law, in its stricter form, walled the other candidates out of that
+        // ranking and left the folding one standing by default; the moment the law was read as it
+        // is written, the fold started losing a contest it should never have been entered in.
+        // WHAT QUALIFIES IS READ OFF THE MANIFEST rather than off a name: an instrument that
+        // declares the world level folds the space a work lives in (`spendsTheMiracle`, above), and
+        // one that cuts the road's own ground kind is the one this road is built around. Where the
+        // pair carries no such instrument the caller casts again without this bound and records
+        // that the road played unfolded, so a thin passage still plays and still says why.
+        if (mustFold && !(folds && cuts)) continue;
         var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);
         var order = (taken.indexOf(iid) >= 0) ? 8
           : ((mustFill && !FILLS_THE_FRAME[iid]) ? 8
@@ -3422,8 +3467,19 @@
       // pass — before it reads a single argument, so the pivot is the one cue every plan can ever
       // promise is live throughout, and §7's coverage law can only hold if whichever cue promises
       // that also fills the frame. See the note over `castForKinds` for the bound in full.
+      // THE ROAD THAT IS THE FOLD BINDS THE GROUND (2026-08-19). `road.mustFold` already keeps the
+      // box-fold road off every role whose budget carries no miracle (`genreFor`); this carries the
+      // same declaration into the cast, so the road that promises the frame folds into a solid casts
+      // the instrument that folds it. See the note in `castForKinds` for what qualifies.
       var castPivot = castForKinds(pivotKinds, fromW, toW, !(ROLE_BUDGETS[role] || {}).miracle,
-                                   pair.seed, key, "pivot", null, false, true, null, [0, 1]);
+                                   pair.seed, key, "pivot", null, false, true, null, [0, 1],
+                                   !!road.mustFold);
+      if (road.mustFold && castPivot[0] === null) {
+        castPivot = castForKinds(pivotKinds, fromW, toW, !(ROLE_BUDGETS[role] || {}).miracle,
+                                 pair.seed, key, "pivot", null, false, true, null, [0, 1], false);
+        stood.push("the " + road.id + " road is the fold itself and no instrument that folds cuts "
+                   + pivotKinds.join(" or ") + " for this pair, so the ground plays unfolded");
+      }
       var pivotInstr = castPivot[0];
       var castNotes = { pivot: castPivot[1] };
       if (pivotInstr !== null && castPivot[2].indexOf(pivotInstr) < 0) {
