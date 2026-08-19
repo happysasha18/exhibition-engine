@@ -513,7 +513,19 @@ function camExpected(fromW, toW) {
   var panFrom = cFrom ? [(cFrom[0] - 0.5) * reach, (cFrom[1] - 0.5) * reach] : [0, 0];
   var panTo = cTo ? [(cTo[0] - 0.5) * reach, (cTo[1] - 0.5) * reach] : [0, 0];
   var gcFrom = camGrainCells(fromW), gcTo = camGrainCells(toW);
-  var logScale = (gcFrom > 0 && gcTo > 0) ? -reach * DOLLY_CAP : 0;
+  // THE GATE BECOME THE SIGNAL (2026-08-19, this file's own note beside pass-composer.js's own).
+  // Until then this line read `-reach * DOLLY_CAP` whenever both works carried grain, the gate
+  // deciding whether the dolly moved and `reach` alone deciding how far — so two pairs whose own
+  // grains stood a hair apart and two whose grains stood worlds apart flew the same distance the
+  // instant both cleared the gate. `grainAsked` is the gap between the two works' own `grainCells`,
+  // taken as a signed ratio; `grainShare` spends it against the shared bound with the same shape
+  // this row already gives roll and yaw, `CAP · a / (|a| + CAP)`, a limit and never a wall.
+  var logScale = 0;
+  if (gcFrom > 0 && gcTo > 0) {
+    var grainAsked = Math.log(gcFrom / gcTo);
+    var grainShare = Math.abs(grainAsked) / (Math.abs(grainAsked) + DOLLY_CAP);
+    logScale = -reach * DOLLY_CAP * grainShare;
+  }
   var latFrom = camLattice(fromW), latTo = camLattice(toW);
   var roll = 0;
   if (latFrom.latticePx > 0 && latTo.latticePx > 0) {

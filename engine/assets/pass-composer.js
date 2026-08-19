@@ -5257,8 +5257,40 @@
         // is not a choice between the two works but the one direction that serves either. The
         // reading holds through both middle points, exactly as the pre-existing gears-only flight
         // already held its own dolly at one value across its own two points.
+        //
+        // HOW FAR BACK, and until 2026-08-19 this line answered with the envelope's own full reach
+        // whenever both works carried grain — the gate decided whether the dolly moved at all, and
+        // `reach` alone decided how far, so two pairs whose grains stood a hair apart and two whose
+        // grains stood worlds apart flew the same distance the instant both cleared the gate. That
+        // is not what the paragraph above claims: standing back is what lets the COARSER work's
+        // grain read, so how much further back is owed is a question the GAP between the two
+        // grains has to answer, not a question the envelope alone can. `grainAsked` is that gap,
+        // the two `grainCells` taken as a signed ratio the same way `cameraFlight`'s own dolly once
+        // took the two doors' `stepPx` a few screens above; `grainShare` spends it against the
+        // shared bound with the identical shape that line already established — `CAP · a / (|a| +
+        // CAP)`, a limit and never a wall, reusing `camBound` itself rather than a second number —
+        // so a pair whose grains stand worlds apart asks for nearly everything the envelope owns,
+        // one whose grains stand close asks for almost none of it, and the rise between the two is
+        // monotone with no pair ever clipped at the wall the gate used to leave every gated pair
+        // standing against.
+        //
+        // `DOLLY_CAP` NO LONGER BINDS THIS AXIS ALONE, and that is worth naming because the axis was
+        // built around that one bound (the comment above `DOLLY_CAP`'s own declaration). `logScale`
+        // is now `reach * camBound * grainShare`, the product of TWO independent readings each
+        // already short of its own ceiling before multiplication — `reach` (the pair's own tone
+        // apartness, `clamp01`, never quite 1 for a real pair) and `grainShare` (this line's own
+        // limit, never quite 1 either) — so their product falls short of `camBound` by more than
+        // either factor alone does, and reaching `camBound` would need a THIRD reading pushing
+        // `reach` itself toward 1 (the passage's own role, shelf 17's tier, still unread by `reach`
+        // above) rather than anything this line could change. The construction that IS still a live
+        // ceiling, the one a wall-vs-limit row now has to watch, is `grainShare` itself — measured
+        // over the real 121-work collection in tests/test_pass_drivers.py's own §6 rows.
         var logScale = 0;
-        if (cmf.grainCells > 0 && cmt.grainCells > 0) logScale = -reach * camBound;
+        if (cmf.grainCells > 0 && cmt.grainCells > 0) {
+          var grainAsked = Math.log(cmf.grainCells / cmt.grainCells);
+          var grainShare = Math.abs(grainAsked) / (Math.abs(grainAsked) + camBound);
+          logScale = -reach * camBound * grainShare;
+        }
         camera.track[1].logScale = flt(r4(logScale));
         camera.track[2].logScale = flt(r4(logScale));
 

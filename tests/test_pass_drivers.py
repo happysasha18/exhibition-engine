@@ -738,6 +738,20 @@ check("PASS-DRV §6 · the composer writes the dolly as a natural logarithm, the
 # stands its collection-wide rows on, copied here byte for byte rather than re-derived.
 WORKS = Path(__file__).resolve().parent / "fixture_pass_works.json"
 
+# THE MECHANISM MOVED, AND THIS DRIVER MOVES WITH IT. Until 2026-08-19 `fillPlan` read the dolly
+# off `row[10]` — `cameraFlight`'s own door-framing ratio, `Math.log(stepTo / stepFrom)` against the
+# two works' own `door.stepPx` — so a sweep sorted by that same door ratio was a sweep sorted by the
+# dolly's own one input. The camera-flight rewrite gave the dolly a different source: the two works'
+# own TONE sets how far the flight reaches (`reach`, shared with pitch, yaw and roll) and their own
+# GRAIN now sets what share of that reach the dolly spends (fixed below, this file's own §6 note).
+# `door.stepPx` answers neither question — it is a third, unrelated measurement of a work's own
+# ring or cell device — so sorting by it and expecting the dolly never to turn back stopped testing
+# the mechanism the day the mechanism changed; the row would have needed 14520 real photographs
+# whose door spacing happened to track their tone-and-grain apartness, which no real collection
+# owes it. What the row can still honestly ask, and now does: does the shipped dolly equal what the
+# two works' own tone and grain say it should, exactly, over the whole collection, and does that
+# reading carry more distinct approaches than the same collection would if the grain's own share
+# were cut to a wall instead of approached as a limit.
 COMPOSER_DRIVER = r"""
 "use strict";
 const fs = require("fs"), vm = require("vm");
@@ -760,6 +774,16 @@ const fix = JSON.parse(fs.readFileSync(worksPath, "utf8"));
 const composer = joined.make(fix.consts);
 const ids = Object.keys(fix.works).sort();
 const CAP = 0.5;
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+// The same two readings `measuredParts()` publishes as `grainCells` and the grid-colour branch's
+// own `lead` reads as tone apartness — recomputed here off the raw work record rather than off the
+// composer's own internals, so this stays an independent check of what the score carries.
+function grainCells(w) {
+  const spectral = (w.texture || {}).spectralPeriodPx || 0, side = w.frameSide || 0;
+  return spectral > 0 && side > 0 ? side / spectral : 0;
+}
+function level(w) { return (w.luminance || {}).level; }
+function r4(x) { return Math.round(x * 10000) / 10000; }
 // The score's own TEXT is read rather than the record in hand: the composer wraps its numbers so a
 // score written here and a score written by the build are the same bytes, so the text is the truth.
 const rows = [];
@@ -767,35 +791,59 @@ let composed = 0;
 for (let i = 0; i < ids.length; i++) {
   for (let j = 0; j < ids.length; j++) {
     if (i === j) continue;
-    const p = composer.passageFor({workRecordA: fix.works[ids[i]], workRecordB: fix.works[ids[j]],
-                                   direction: "a-to-b", seed: 0});
+    const wf = fix.works[ids[i]], wt = fix.works[ids[j]];
+    const p = composer.passageFor({workRecordA: wf, workRecordB: wt, direction: "a-to-b", seed: 0});
     if (!p.json) continue;
     composed++;
     const track = JSON.parse(p.json).camera.track;
     if (track.length !== 4) continue;                    // this shape's flight carries no dolly
-    rows.push({asked: Math.log(fix.works[ids[j]].door.stepPx / fix.works[ids[i]].door.stepPx),
-               dolly: track[1].logScale, from: ids[i], to: ids[j]});
+    const gf = grainCells(wf), gt = grainCells(wt);
+    const reach = clamp01(Math.abs(level(wf) - level(wt)));
+    let grainAsked = 0, share = 0, expected = 0;
+    if (gf > 0 && gt > 0) {
+      grainAsked = Math.log(gf / gt);
+      share = Math.abs(grainAsked) / (Math.abs(grainAsked) + CAP);
+      expected = -reach * CAP * share;
+    }
+    // `atCeilingBound` IS THE SHARE'S OWN CEILING, READ OFF WHAT THE COMPOSER ACTUALLY SHIPPED
+    // rather than off this driver's own recomputation of `share` — the recomputation above always
+    // takes the knee's shape, planted or not, so a row testing the PLANTED wall against it would be
+    // comparing the wall to itself and reading green regardless. `reach * CAP` is the dolly a share
+    // of exactly 1 would produce; the shipped `dolly` reaching that number, whatever formula shipped
+    // it, IS the share landing on its own ceiling.
+    rows.push({asked: Math.abs(grainAsked), share: share,
+               dolly: track[1].logScale, expected: r4(expected),
+               atCeilingBound: r4(reach * CAP),
+               reach: reach, from: ids[i], to: ids[j]});
   }
 }
 rows.sort((a, b) => a.asked - b.asked);
-const onBound = rows.filter((r) => Math.abs(Math.abs(r.dolly) - CAP) < 1e-12).length;
-const overBound = rows.filter((r) => Math.abs(r.dolly) > CAP).length;
+// THE GRAIN'S OWN SHARE IS WHERE A LIMIT IS ACTUALLY APPROACHED. `DOLLY_CAP` bounded the OLD
+// door-based dolly directly (`asked`, unbounded, ran to 86.3x); today's dolly is `reach * CAP *
+// share`, two independent factors each already short of their own ceiling, and their product
+// never nears `CAP` at all — measured elsewhere in this file. The construction that DOES rise
+// toward a ceiling and never land on it is `share` itself, `CAP · a / (|a| + CAP)`, so that is
+// what a wall-vs-limit row has to watch now, read off the SHIPPED dolly: a pair whose own
+// `reach * CAP` (the dolly a share of exactly 1 would produce) equals the dolly actually shipped
+// is a pair whose share landed on the ceiling, whatever shipped it.
+const atCeiling = rows.filter((r) => r.reach > 0 && Math.abs(r.dolly) === r.atCeilingBound).length;
 const distinct = new Set(rows.map((r) => r.dolly)).size;
-// A PAIR ASKING FOR MORE NEVER GETS LESS. Sorted by what the two door framings ask for, the emitted
-// approach never turns back — which is the claim "two pairs whose demands differ differ" made over
-// the whole collection at once instead of over two chosen pairs.
-let backwards = 0;
-for (let k = 1; k < rows.length; k++) if (rows[k].dolly < rows[k - 1].dolly) backwards++;
+// THE SHIPPED DOLLY IS EXACTLY THE TWO WORKS' OWN TONE AND GRAIN, and never the gate this branch
+// used to be: a pair mismatched against `expected` here is a pair whose dolly answers to something
+// this driver's own independent recomputation cannot name off the record.
+const mismatched = rows.filter((r) => Math.abs(r.dolly - r.expected) > 1e-9).length;
 const worst = rows.reduce((m, r) => Math.max(m, Math.abs(r.dolly)), 0);
+const worstShare = rows.reduce((m, r) => Math.max(m, r.share), 0);
+const worstReach = rows.reduce((m, r) => Math.max(m, r.reach), 0);
 console.log(JSON.stringify({
-  composed: composed, carryingADolly: rows.length, onBound: onBound, overBound: overBound,
-  distinct: distinct, backwards: backwards, worst: worst,
-  least: rows[0], middle: rows[Math.floor(rows.length / 2)], most: rows[rows.length - 1],
+  composed: composed, carryingADolly: rows.length, atCeiling: atCeiling,
+  distinct: distinct, mismatched: mismatched, worst: worst, worstShare: worstShare,
+  worstReach: worstReach, least: rows[0], most: rows[rows.length - 1],
 }));
 """
 
 CAMERA_ROWS = [
-    "PASS-DRV §6 · no composed passage lands on the dolly's bound, over the whole collection",
+    "PASS-DRV §6 · the grain's own share approaches its own ceiling and never lands on it, over the whole collection",
     "PASS-DRV §6 · two pairs asking for different approaches get different approaches",
 ]
 
@@ -808,8 +856,16 @@ elif not WORKS.exists():
 else:
     cdriver = TMP / "camera-composer-driver.js"
     cdriver.write_text(COMPOSER_DRIVER, encoding="utf-8")
-    KNEE = "dolly = DOLLY_CAP * asked / (Math.abs(asked) + DOLLY_CAP);"
-    CLIP = "dolly = Math.max(-DOLLY_CAP, Math.min(DOLLY_CAP, asked));"
+    # THE PLANT MOVED TOO. Until 2026-08-19 the KNEE below was `cameraFlight`'s own door-ratio line
+    # and cutting it to a wall changed a shipped score, because that line was what `row[10]` carried
+    # into `camera.track[1].logScale`. `cameraFlight` still stands, still reads `pair.doorFraming`,
+    # and no longer reaches a single byte of a shipped score — fillPlan's own camera block above
+    # writes `logScale` itself now. A plant standing on the old line proved nothing: `was` and `now`
+    # read the same live formula regardless of what the dead line said, which is why the bound-check
+    # below could not tell a wall from a limit the day the mechanism changed under it. The plant now
+    # stands on the line that actually decides the dolly's share, this file's own §6 note above.
+    KNEE = "var grainShare = Math.abs(grainAsked) / (Math.abs(grainAsked) + camBound);"
+    CLIP = "var grainShare = Math.min(1, Math.abs(grainAsked) / camBound);"
 
     def sweep(plant=None):
         args = [NODE, str(cdriver), str(TMP / "pass-composer.js"), str(WORKS)]
@@ -829,28 +885,44 @@ else:
         for r in CAMERA_ROWS:
             skip(r, "the sweep never answered: " + str(why))
     else:
-        # RED ON BUG. The bound is put back as a wall instead of a limit, in a COPY of the module.
+        # RED ON BUG, aimed at the live line now. Cutting the grain's own share to a wall instead of
+        # a limit collapses many distinct gaps onto the same clipped share, so the collection's own
+        # distinct count and its own pile-up at the ceiling are the two numbers this plant can move.
         was, why2 = sweep(plant=True)
-        red = (f"with the bound cut as a wall instead of approached as a limit, "
-               f"{was['onBound']} of {was['carryingADolly']} land on it and the distinct approaches "
-               f"fall to {was['distinct']}") if was else f"the crippled sweep never answered: {why2}"
+        red = (f"with the grain's own share cut to a wall instead of approached as a limit, "
+               f"{was['atCeiling']} of {was['carryingADolly']} land exactly on the share's own "
+               f"ceiling and the distinct approaches fall to {was['distinct']}"
+               ) if was else f"the crippled sweep never answered: {why2}"
+        # WHAT THIS ROW USED TO WATCH, AND WHY IT STOPPED SEEING IT. Until 2026-08-19 the dolly WAS
+        # its own asked ratio run straight through `DOLLY_CAP`'s own knee, so `DOLLY_CAP` was the one
+        # ceiling in the whole computation and a passage landing on it was the wall-vs-limit question
+        # in full. Today's dolly is `reach * DOLLY_CAP * share`, two independent factors — `reach`
+        # (tone apartness, `clamp01`, its own worst `worstReach` below) and `share` (the grain gap,
+        # this row's own construction) — each already short of 1 before they are multiplied, so their
+        # product falls short of `DOLLY_CAP` by more than either factor alone does, and `DOLLY_CAP`
+        # stopped being the binding constraint on this axis the day the second factor joined it
+        # (measured: worst product {now['worst']} against the bound 0.5, `worstReach` below). The
+        # limit that IS still live is `share`'s own — `CAP · a / (|a| + CAP)` — and this row now
+        # watches that construction directly: does any pair's grain gap read as the share's own
+        # ceiling, 1.0 at the same four-decimal rounding the composer writes a score with.
         check(CAMERA_ROWS[0],
-              now["onBound"] == 0 and now["overBound"] == 0
-              and was is not None and was["onBound"] > 0,
+              now["atCeiling"] == 0
+              and was is not None and was["atCeiling"] > 0,
               f"{now['carryingADolly']} of {now['composed']} composed passages carry a dolly; "
-              f"{now['onBound']} land on the bound and {now['overBound']} pass it; the worst is "
-              f"{now['worst']} ({round(math.exp(now['worst']), 3)}x against the bound's "
-              f"{round(math.exp(0.5), 3)}x) · {red}")
-        red2 = (f"cut as a wall the same {was['carryingADolly']} passages share "
-                f"{was['distinct']} approaches") if was else red
+              f"the grain share's own worst reading is {now['worstShare']} of the 1.0 ceiling it "
+              f"approaches and {now['atCeiling']} pairs land on it; the dolly this share feeds "
+              f"never nears `DOLLY_CAP` either — worst {now['worst']} of 0.5, on a `reach` (tone "
+              f"apartness) whose own worst is {now['worstReach']} of the 1.0 `clamp01` allows, so "
+              f"the product of two limits falls further short than either alone · {red}")
         check(CAMERA_ROWS[1],
-              now["distinct"] > (was["distinct"] if was else 0) and now["backwards"] == 0
-              and now["least"]["dolly"] != now["middle"]["dolly"]
-              != now["most"]["dolly"],
+              now["mismatched"] == 0
+              and now["distinct"] > (was["distinct"] if was else 0)
+              and now["least"]["dolly"] != now["most"]["dolly"],
               f"{now['carryingADolly']} passages carry {now['distinct']} distinct approaches and "
-              f"none turns back on a pair asking for more ({now['backwards']} inversions); the "
-              f"least-asking pair flies {now['least']['dolly']}, the middle "
-              f"{now['middle']['dolly']} and the most-asking {now['most']['dolly']} · {red2}")
+              f"every one of them is exactly `-reach · CAP · share` off the two works' own tone and "
+              f"grain, with {now['mismatched']} mismatched against that formula; the least-asking "
+              f"pair flies {now['least']['dolly']} and the most-asking {now['most']['dolly']} · "
+              f"{red}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
