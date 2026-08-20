@@ -185,10 +185,10 @@ def wait_host(br, tries=30):
 
 
 def arm_host(br, base):
-    """A fresh visitor with diagnostics + the picture setting on, who has taken one real step — the
-    step is what makes the client fetch pass-layer.js (passOpen only runs inside stepFrame). Every
-    row after this one drives the host directly, on real elements, without needing a real gesture."""
+    """Open a fresh diagnostic host, stepping only for pre-preload compatibility."""
     enter(br, base, "diagnostics:on,visualLayer:pass")
+    if wait_host(br, tries=10):
+        return True
     br.key("ArrowDown")
     return wait_host(br)
 
@@ -204,16 +204,19 @@ def room(br):
 
 
 def reload_and_prime(br):
-    """After a reload the page is fresh — pass-layer.js, the host and the test instrument all get
-    re-created from nothing, so `window.__exPass.host`/`.test` do not exist until the client's own
-    passOpen() asks for the file again (only stepFrame calls it). One default-mode step (declines,
-    lands like any ordinary glide) re-arms the surface; a row then sets its OWN mode and takes the
-    step it actually means to test."""
+    """Wait for the fresh host without spending a navigation step.
+
+    The first-room preload now asks for pass-layer.js while the hang is rendered. Older builds only
+    asked on the first step, so keep that step solely as a compatibility fallback. Spending it when
+    preload already succeeded can leave a real passage in flight underneath the diagnostic row and
+    makes a legal zero-duration test look like a decline from the previous transaction.
+    """
     ready(br)
     br.sleep(0.4)
     room(br)
-    br.key("ArrowDown")
-    wait_host(br)
+    if not wait_host(br, tries=10):
+        br.key("ArrowDown")
+        wait_host(br)
 
 
 def cleanup(br):

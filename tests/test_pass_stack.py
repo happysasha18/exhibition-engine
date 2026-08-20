@@ -351,7 +351,8 @@ LAYER = (TMP / "pass-layer.js").read_text(encoding="utf-8")
 # about the shaders reads PACK, which is every instrument file this bake wrote.
 PACK = "\n".join(p.read_text(encoding="utf-8") for p in sorted(TMP.glob("pass-inst-*.js")))
 
-# THE ARRANGEMENT AS IT STANDS AT HEAD, rebuilt from git and put through the very same steps the
+# THE ARRANGEMENT BEFORE THE LATEST CARRIER CHANGE, rebuilt from git and put through the very same
+# steps the
 # build puts the source through, so what row 2 compares is two builds and never a build against a
 # source. Every part of that arrangement is reconstructed — the host, the picture it draws with, and
 # the bench page that drives it — because a host of one arrangement driven by the other's page draws
@@ -365,16 +366,26 @@ PACK = "\n".join(p.read_text(encoding="utf-8") for p in sorted(TMP.glob("pass-in
 # of the bytes this bench actually serves.
 HEAD_WHY = ""
 
+# A test committed with the carrier cannot use literal HEAD as its "before": once the commit lands,
+# HEAD already contains the new carrier and the comparison becomes new-vs-new.  Follow the latest
+# commit that touched the host and use its first parent.  This keeps the proof meaningful after
+# cherry-picks and merge commits, while an uncommitted follow-up still compares against the last
+# committed carrier boundary.
+CARRIER_COMMIT = subprocess.run(
+    ["git", "rev-list", "-1", "HEAD", "--", "engine/assets/pass-layer.js"],
+    cwd=str(ROOT), capture_output=True, check=True, text=True).stdout.strip()
+CARRIER_BEFORE = CARRIER_COMMIT + "^"
+
 
 def head_text(path):
-    return subprocess.run(["git", "show", "HEAD:" + path], cwd=str(ROOT),
+    return subprocess.run(["git", "show", CARRIER_BEFORE + ":" + path], cwd=str(ROOT),
                           capture_output=True, check=True).stdout.decode("utf-8")
 
 
 def head_built():
     """The files HEAD's arrangement serves: {served name: text}, with the host under 'pass-layer.js'
     and the site's record under 'config.json' when that arrangement reads one."""
-    names = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", "engine/assets/"],
+    names = subprocess.run(["git", "ls-tree", "--name-only", CARRIER_BEFORE, "engine/assets/"],
                            cwd=str(ROOT), capture_output=True, check=True).stdout.decode("utf-8")
     names = [n.split("/")[-1] for n in names.split("\n") if n.strip()]
     built = lambda src: _engine.strip_js_comments(_engine.apply_namespace(src, _engine._NAMESPACE))

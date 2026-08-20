@@ -1089,6 +1089,12 @@
     if (h > cssH) { h = cssH; w = h * a; }
     return { x: (cssW - w) / 2, y: (cssH - h) / 2, w: w, h: h };
   }
+  function coverCss(iw, ih) {
+    var a = Math.max(1, Number(iw)) / Math.max(1, Number(ih));
+    var w = cssW, h = w / a;
+    if (h < cssH) { h = cssH; w = h * a; }
+    return { x: (cssW - w) / 2, y: (cssH - h) / 2, w: w, h: h };
+  }
 
   function hangPoseOf(geom, inst, iw, ih) {
     if (!geom || !geom.w || !geom.h || cssW <= 0 || cssH <= 0) return null;
@@ -1127,10 +1133,13 @@
 
   // One geometric plane carries the picture for the entire passage. Its aspect travels smoothly
   // between the two source aspects; it is never replaced by a DOM clone. At each endpoint its fit
-  // is exactly the whole source, while the instrument's own headroom joins continuously after the
-  // threshold. Coordinates are drawing-buffer coordinates because gl.viewport's origin is below.
+  // is exactly the whole source. In the living middle the same plane grows beyond the hang until it
+  // covers the viewport: the work breaks out of its rectangle and becomes the room, rather than a
+  // smaller rectangular card travelling over black. Cropping is allowed only in that constructed
+  // middle and is spent back to zero before the arriving door. Coordinates are drawing-buffer
+  // coordinates because gl.viewport's origin is below.
   function planeAt(rec, seconds, progress) {
-    var ca = containCss(rec.src.aw, rec.src.ah), cb = containCss(rec.src.bw, rec.src.bh);
+    var ca = coverCss(rec.src.aw, rec.src.ah), cb = coverCss(rec.src.bw, rec.src.bh);
     var e = rec.hangEdge || hangEdges(rec), door = 0, box;
     function lerpBox(a, b, q) {
       a = a || b; b = b || a;
