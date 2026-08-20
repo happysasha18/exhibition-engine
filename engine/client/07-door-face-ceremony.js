@@ -328,6 +328,9 @@
     const g = ++cerGen;
     const ok = () => g === cerGen;
     pick = w.id;
+    // The picked entrance is also the passage route's starting condition.  It resets only the
+    // visit die; edge-memory remains intact for related returns inside the browser session.
+    passBeginAtDoor();
     order = assembleOrder(pick);
     recomputeQuizChoice();   // INV-66: the new arc = the new eligible set for the one quiz chip
     shown = SPREAD;                                    // a fresh arc = a fresh budget (INV-30/31)
@@ -544,4 +547,3 @@
       tellStory();                                     // a return is a natural beat — any owed portion re-asks (EX-STORY)
     }
   });
-

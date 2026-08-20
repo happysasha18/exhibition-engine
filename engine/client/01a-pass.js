@@ -347,12 +347,29 @@
   // determinism row exists to hold.
   const passFamilies = [];
   let passVisit = 0, passVisitPinned = false;
+  // The entrance is part of a visit's artistic situation.  A different door deals a different
+  // route, so it must also give the passage die a different starting point; otherwise two doors
+  // can accidentally repeat the same family/phase decisions merely because their first edge has
+  // the same ids.  `pick` is the product's chosen door work, never a new input or an identity.
+  // The value is read only when a visit first needs a crossing and then held, which preserves the
+  // seeded repeatability and the edge-memory law for the rest of that route.
+  function passDoorSalt() {
+    try { return pick ? passText(pick) : 0; } catch (e) { return 0; }
+  }
+  function passBeginAtDoor() {
+    // A fresh door starts a fresh route.  It does not erase edge memory: returning through the
+    // browser's history can still find its related passage, while the new route receives its own
+    // die when it first crosses.
+    passVisit = 0;
+    passVisitPinned = false;
+  }
   function passVisitSeed() {
     if (!passVisit) {
       // Read ONCE, at the first crossing that breathes, and held for the visit: a seed that
       // re-resolved per crossing would let a mid-visit change split one visit into two families.
       const pin = passGet("familySeed") >>> 0;
-      passVisit = pin || ((Math.random() * 4294967296) >>> 0) || 1;
+      const rolled = ((Math.random() * 4294967296) >>> 0) || 1;
+      passVisit = pin || passMix(rolled, passDoorSalt()) || 1;
       passVisitPinned = !!pin;
     }
     return passVisit;
