@@ -210,7 +210,12 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    itself (never the full-viewport section), shown only for the keyboard (:focus-visible). */
 .exh-frame:focus{ outline:none; }
 .exh-frame:focus-visible{ outline:none; }
-.exh-frame:focus-visible img.work{ outline:2px solid var(--accent,#c9a86a); outline-offset:4px; }
+/* Safari can classify a tap on a tabindex frame as :focus-visible.  The prelude records the real
+   input origin before that focus is assigned, so only an actual keyboard journey receives this
+   useful halo; a finger never leaves the photograph looking selected. */
+html[data-ex-input="keyboard"] .exh-frame:focus-visible img.work{
+  outline:2px solid var(--accent,#c9a86a); outline-offset:4px;
+}
 
 /* the quiet share affordance — ONE link-glyph FLOATING over the walk (2026-07-09: the player
    and the link are chrome ABOVE the room, they never ride a frame or drift with a scroll).

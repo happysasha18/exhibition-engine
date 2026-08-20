@@ -85,7 +85,7 @@
   var STEPS = [1.0, 0.85, 0.72, 0.60, 0.50];
   var DPR_CAP = 2, P95_DROP = 33, P95_RAISE = 22, WIN_DROP = 45, WIN_RAISE = 120, KEEP = 240;
 
-  var stage = null;          // {canvas, gl, vao, quad, texA, texB, programs}
+  var stage = null;          // {canvas, door, gl, vao, quad, texA, texB, programs}
   var stepIx = 0, W = 1, H = 1, cssW = 1, cssH = 1, dpr = 1;
   var times = [], changes = 0, sinceChange = 0, lastAt = 0;
   // The census (§7). `stage` counts what the host holds for everyone; `grant` counts what was created
@@ -127,6 +127,18 @@
     canvas.style.cssText = "position:fixed;inset:0;width:100%;height:100%;display:block;" +
       "z-index:2147483000;background:#08080a;pointer-events:none;visibility:hidden;";
     document.body.appendChild(canvas);
+    // The canvas is a full-frame instrument surface.  A hung photograph is not: it is an entire
+    // source inside its own measured rectangle.  The doorway image carries that whole source for
+    // the first and last beats, before the scene deliberately moves into its centre.  Without it,
+    // scaling a cover-fitted canvas makes the central crop appear to leave the wall by itself.
+    // It is a clone of an already-decoded work, never a third texture or a second render surface.
+    var door = document.createElement("img");
+    door.setAttribute("aria-hidden", "true");
+    door.alt = "";
+    door.decoding = "async";
+    door.style.cssText = "position:fixed;display:block;box-sizing:border-box;z-index:2147483001;" +
+      "pointer-events:none;visibility:hidden;opacity:0;transform-origin:50% 50%;will-change:transform,opacity;";
+    document.body.appendChild(door);
     census.canvases++;
     var gl = canvas.getContext("webgl2", {
       antialias: false, alpha: false, depth: false, stencil: false,
@@ -140,7 +152,8 @@
     census.contexts++;
     canvas.addEventListener("webglcontextlost", onContextLost, false);
     canvas.addEventListener("webglcontextrestored", onContextRestored, false);
-    stage = { canvas: canvas, gl: gl, vao: null, quad: null, texA: null, texB: null, programs: {} };
+    stage = { canvas: canvas, door: door, doorKey: null,
+              gl: gl, vao: null, quad: null, texA: null, texB: null, programs: {} };
     stageBuild();
     return stage;
   }
@@ -169,7 +182,16 @@
   }
 
   function stageShow(on) {
-    if (stage) stage.canvas.style.visibility = on ? "visible" : "hidden";
+    if (!stage) return;
+    stage.canvas.style.visibility = on ? "visible" : "hidden";
+    if (!on) doorHide();
+  }
+
+  function doorHide() {
+    if (!stage || !stage.door) return;
+    stage.door.style.visibility = "hidden";
+    stage.door.style.opacity = "0";
+    stage.door.style.transform = "";
   }
 
   function stageResize() {
@@ -1034,6 +1056,56 @@
     if (!isFinite(rise) || rise < 0) rise = dur * HANG_SHARE;
     if (!isFinite(fall) || fall < 0) fall = dur * HANG_SHARE;
     return { rise: Math.min(rise, half), fall: Math.min(fall, half), dur: dur };
+  }
+
+  function doorEase(u) { return CURVES.smooth(u <= 0 ? 0 : u >= 1 ? 1 : u); }
+
+  // The real threshold between two different kinds of framing.  On the wall the visitor sees the
+  // whole work, contained inside its own aspect box.  In the immersive scene an instrument may
+  // intentionally cover-fit and enter the work's centre.  The two cannot be made identical by
+  // scaling the one fullscreen canvas: that makes a central crop masquerade as the hanging work.
+  //
+  // This small DOM bridge preserves the truthful first and final image while the camera makes that
+  // change of scale visible.  It expands the actual complete photograph until the viewport itself
+  // crops it; only then does the instrument's cover-fit take over.  The return is the inverse.
+  // It has no clock and no event road of its own: the transaction's frame loop is its sole owner.
+  function doorBridge(rec, seconds) {
+    if (!stage || !stage.door || !rec || !rec.hangEdge || !rec.src) return;
+    var e = rec.hangEdge, geom = null, im = null, u = 0, opening = false;
+    if (e.rise > 0 && seconds <= e.rise) {
+      geom = rec.hangA; im = rec.src.a; u = seconds / e.rise; opening = true;
+    } else if (e.fall > 0 && seconds >= e.dur - e.fall) {
+      geom = rec.hangB; im = rec.src.b; u = (seconds - (e.dur - e.fall)) / e.fall;
+    } else {
+      doorHide(); return;
+    }
+    if (!geom || !geom.w || !geom.h || !im) { doorHide(); return; }
+    u = u <= 0 ? 0 : u >= 1 ? 1 : u;
+    var d = stage.door;
+    var key = im.currentSrc || im.src || "";
+    if (key && stage.doorKey !== key) {
+      stage.doorKey = key;
+      d.src = key;
+    }
+    // At scale 1 the cloned image occupies precisely the DOM box.  At `cover` it is the ordinary
+    // photographic camera move into the full viewport; the canvas can take over underneath without
+    // presenting a little full-screen rectangle or a cropped first frame.
+    var cover = Math.max(cssW / geom.w, cssH / geom.h);
+    var q = doorEase(u);
+    var scale = opening ? (1 + (cover - 1) * q) : (cover + (1 - cover) * q);
+    // The hand changes owner only near the immersive end of the outgoing door and near the scene
+    // end of the incoming one.  The narrow blend hides the deliberately different framings while
+    // keeping the whole photograph legible for the substantial part of both doors.
+    var alpha = opening
+      ? (u < 0.78 ? 1 : 1 - doorEase((u - 0.78) / 0.22))
+      : (u < 0.22 ? doorEase(u / 0.22) : 1);
+    d.style.left = geom.x.toFixed(3) + "px";
+    d.style.top = geom.y.toFixed(3) + "px";
+    d.style.width = geom.w.toFixed(3) + "px";
+    d.style.height = geom.h.toFixed(3) + "px";
+    d.style.opacity = alpha.toFixed(4);
+    d.style.transform = "scale(" + scale.toFixed(6) + ")";
+    d.style.visibility = "visible";
   }
 
   // A CAMERA-LED PASSAGE: the flight itself is the transition. A score declares it with
@@ -2061,6 +2133,7 @@
     rec.liveCues = live;
     rec.drewLastFrame = drew;
     camApply(cam.pose, rec.caps);
+    doorBridge(rec, seconds);
     if (hold) rec.lastHandles = hold;
   }
 
