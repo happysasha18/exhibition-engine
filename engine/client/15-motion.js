@@ -540,7 +540,7 @@
       const fromX = tX, toX = tLastX, toY = tLast;
       tY = tX = null;
       if (!tMoved || Math.abs(net) < SWIPE_MIN) return;
-      stepFrame(net > 0 ? 1 : -1, Math.abs(net), {
+      stepFrame(net > 0 ? 1 : -1, 0, {
         kind: "touch", x: toX, y: toY,
         energy: Math.min(1, Math.hypot(toX - fromX, net) / Math.max(innerWidth, innerHeight) * 3)
       });                                              // exactly one framed transition, force ignored (phase 1)
