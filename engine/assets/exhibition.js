@@ -937,12 +937,23 @@
   // determinism row exists to hold.
   const passFamilies = [];
   let passVisit = 0, passVisitPinned = false;
+  // The chosen entrance is part of this route's artistic situation.  Hold one door-specific die
+  // for the route so different doors can vary families and phases without sacrificing repeatable
+  // returns within that route.
+  function passDoorSalt() {
+    try { return pick ? passText(pick) : 0; } catch (e) { return 0; }
+  }
+  function passBeginAtDoor() {
+    passVisit = 0;
+    passVisitPinned = false;
+  }
   function passVisitSeed() {
     if (!passVisit) {
       // Read ONCE, at the first crossing that breathes, and held for the visit: a seed that
       // re-resolved per crossing would let a mid-visit change split one visit into two families.
       const pin = passGet("familySeed") >>> 0;
-      passVisit = pin || ((Math.random() * 4294967296) >>> 0) || 1;
+      const rolled = ((Math.random() * 4294967296) >>> 0) || 1;
+      passVisit = pin || passMix(rolled, passDoorSalt()) || 1;
       passVisitPinned = !!pin;
     }
     return passVisit;
@@ -3777,6 +3788,7 @@
     const g = ++cerGen;
     const ok = () => g === cerGen;
     pick = w.id;
+    passBeginAtDoor();
     order = assembleOrder(pick);
     recomputeQuizChoice();   // INV-66: the new arc = the new eligible set for the one quiz chip
     shown = SPREAD;                                    // a fresh arc = a fresh budget (INV-30/31)
@@ -5970,11 +5982,9 @@
   }
 
   function appendFrames(slice, startN) {
-    // EX-PASS RECORD WAVE (2026-08-19): this call IS the wave — the first SPREAD a door's pick
-    // assembles, or the UNFOLD ids one unfold appends — so the ask for their work records fires
-    // right here, the instant the selection is known and before anything is drawn. It never waits:
-    // `passRecordsAskFor` fires the request and returns at once, and the frames below render on the
-    // walk's own clock whether or not the records have landed by the time a crossing wants them.
+    // Start the collection-wide composer and the selection's records together.  Waiting for the
+    // first landing made the first visitor gesture a guaranteed plain glide.
+    passComposerOpen();
     passRecordsAskFor(slice);
     document.getElementById("exh-fin")?.remove();
     const html = slice.map((id, i) => frameHTML(id, startN + i)).join("");
