@@ -85,7 +85,7 @@
   var STEPS = [1.0, 0.85, 0.72, 0.60, 0.50];
   var DPR_CAP = 2, P95_DROP = 33, P95_RAISE = 22, WIN_DROP = 45, WIN_RAISE = 120, KEEP = 240;
 
-  var stage = null;          // {canvas, door, gl, vao, quad, texA, texB, programs}
+  var stage = null;          // {canvas, gl, vao, quad, texA, texB, sceneTex, programs}
   var stepIx = 0, W = 1, H = 1, cssW = 1, cssH = 1, dpr = 1;
   var times = [], changes = 0, sinceChange = 0, lastAt = 0;
   // The census (§7). `stage` counts what the host holds for everyone; `grant` counts what was created
@@ -124,21 +124,9 @@
     if (stage) return stage;
     var canvas = document.createElement("canvas");
     canvas.setAttribute("aria-hidden", "true");
-    canvas.style.cssText = "position:fixed;inset:0;width:100%;height:100%;display:block;" +
+    canvas.style.cssText = "position:fixed;left:0;top:0;width:100%;height:100%;display:block;" +
       "z-index:2147483000;background:#08080a;pointer-events:none;visibility:hidden;";
     document.body.appendChild(canvas);
-    // The canvas is a full-frame instrument surface.  A hung photograph is not: it is an entire
-    // source inside its own measured rectangle.  The doorway image carries that whole source for
-    // the first and last beats, before the scene deliberately moves into its centre.  Without it,
-    // scaling a cover-fitted canvas makes the central crop appear to leave the wall by itself.
-    // It is a clone of an already-decoded work, never a third texture or a second render surface.
-    var door = document.createElement("img");
-    door.setAttribute("aria-hidden", "true");
-    door.alt = "";
-    door.decoding = "async";
-    door.style.cssText = "position:fixed;display:block;box-sizing:border-box;z-index:2147483001;" +
-      "pointer-events:none;visibility:hidden;opacity:0;transform-origin:50% 50%;will-change:transform,opacity;";
-    document.body.appendChild(door);
     census.canvases++;
     var gl = canvas.getContext("webgl2", {
       antialias: false, alpha: false, depth: false, stencil: false,
@@ -152,8 +140,8 @@
     census.contexts++;
     canvas.addEventListener("webglcontextlost", onContextLost, false);
     canvas.addEventListener("webglcontextrestored", onContextRestored, false);
-    stage = { canvas: canvas, door: door, doorKey: null,
-              gl: gl, vao: null, quad: null, texA: null, texB: null, programs: {} };
+    stage = { canvas: canvas, gl: gl, vao: null, quad: null,
+              texA: null, texB: null, sceneTex: null, sceneW: 0, sceneH: 0, programs: {} };
     stageBuild();
     return stage;
   }
@@ -184,14 +172,11 @@
   function stageShow(on) {
     if (!stage) return;
     stage.canvas.style.visibility = on ? "visible" : "hidden";
-    if (!on) doorHide();
-  }
-
-  function doorHide() {
-    if (!stage || !stage.door) return;
-    stage.door.style.visibility = "hidden";
-    stage.door.style.opacity = "0";
-    stage.door.style.transform = "";
+    if (!on) {
+      stage.canvas.style.transform = "";
+      stage.canvas.style.left = "0"; stage.canvas.style.top = "0";
+      stage.canvas.style.width = "100%"; stage.canvas.style.height = "100%";
+    }
   }
 
   function stageResize() {
@@ -207,6 +192,7 @@
       stage.canvas.width = W;
       stage.canvas.height = H;
       stage.gl.viewport(0, 0, W, H);
+      stage.sceneW = stage.sceneH = 0;
       forgetApplied();
     }
   }
@@ -294,9 +280,10 @@
 
   // Programmes live by branch name and outlive every transaction: a second pass over the same branch
   // takes the built programme, so a walk never pays for a shader build twice.
-  function programFor(pass) {
+  function programFor(pass, inst) {
     var P = stage.programs;
-    if (P[pass.program]) return P[pass.program];
+    var key = pass.program;
+    if (P[key]) return P[key];
     var gl = stage.gl;
     var vs = compile(gl, gl.VERTEX_SHADER, toES3(pass.vert, true), pass.program + " vertex");
     var fs = compile(gl, gl.FRAGMENT_SHADER, toES3(pass.frag, false), pass.program + " fragment");
@@ -316,12 +303,17 @@
     // declares — never by position and never from a list written into the host.
     var U = {};
     pass.uniforms.forEach(function (u) { U[u.name] = gl.getUniformLocation(p, u.name); });
-    P[pass.program] = { prog: p, U: U };
-    return P[pass.program];
+    P[key] = { prog: p, U: U };
+    return P[key];
   }
 
   // ---- what the host can supply, and the refusal of anything else (§7) ---------------------------
-  var SUPPLY = { textureA: 1, textureB: 1, fitA: 1, fitB: 1, resolution: 1, seconds: 1 };
+  // `sceneTexture` is the carrier left by the voice immediately below this one. Existing
+  // instruments need not name it; instruments that do can treat the preceding construction as
+  // matter instead of starting again from either original file. `sceneAvailable` is zero for the
+  // ground voice and one thereafter. This is a host capability, never a per-instrument surface.
+  var SUPPLY = { textureA: 1, textureB: 1, sceneTexture: 1, sceneAvailable: 1,
+                 fitA: 1, fitB: 1, resolution: 1, seconds: 1 };
   var UTYPE = { sampler2D: 1, float: 1, vec2: 1, vec4: 1 };
   function supplySeen(source, provides) {
     if (SUPPLY[source]) return true;
@@ -362,9 +354,11 @@
     var v;
     if (u.source === "textureA") v = 0;
     else if (u.source === "textureB") v = 1;
+    else if (u.source === "sceneTexture") v = 2;
+    else if (u.source === "sceneAvailable") v = box.sceneAvailable ? 1 : 0;
     else if (u.source === "fitA") v = box.fitA;
     else if (u.source === "fitB") v = box.fitB;
-    else if (u.source === "resolution") v = [W, H];
+    else if (u.source === "resolution") v = box.resolution || [W, H];
     else if (u.source === "seconds") v = box.seconds;
     else if (u.source.indexOf("frame:") === 0) v = box.frame[u.source.slice(6)];
     else v = box.handles[u.source.slice(7)];
@@ -400,7 +394,32 @@
   // context in exactly the state the stage was built in. That is why the LOWEST cue of a stack must
   // be an instrument that fills the frame — its gaps would show the cleared buffer, there being
   // nothing drawn beneath it — which `coverageWhyNo` refuses at validation.
-  function drawPose(inst, pose, src, over) {
+  function ensureSceneTexture() {
+    if (!stage) return null;
+    var gl = stage.gl;
+    if (!stage.sceneTex) stage.sceneTex = makeTex(gl);
+    if (stage.sceneW !== W || stage.sceneH !== H) {
+      gl.bindTexture(gl.TEXTURE_2D, stage.sceneTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      stage.sceneW = W; stage.sceneH = H;
+    }
+    return stage.sceneTex;
+  }
+
+  // Snapshot the composed canvas without preserving its drawing buffer and without allocating a
+  // second canvas or context. One reusable texture is the whole carrier. A later voice can name it
+  // in its manifest; source-over voices that predate the carrier keep composing into the same
+  // framebuffer exactly as before.
+  function carryScene() {
+    var tx = ensureSceneTexture();
+    if (!tx) return;
+    var gl = stage.gl;
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, tx);
+    gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, W, H);
+  }
+
+  function drawPose(inst, pose, src, over, plane) {
     if (!stage) return;
     stageResize();
     var gl0 = stage.gl;
@@ -412,12 +431,26 @@
       census.passesLastFrame = 0;
     }
     var gl = stage.gl;
+    var px = plane || { x: 0, y: 0, w: W, h: H, door: 0 };
+    var pw = Math.max(1, Math.round(px.w)), ph = Math.max(1, Math.round(px.h));
+    gl.viewport(Math.round(px.x), Math.round(px.y), pw, ph);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(Math.round(px.x), Math.round(px.y), pw, ph);
+    // The work itself is the carrier. At either door it is sampled whole; the instrument's own
+    // travel headroom grows in continuously once the plane has left the wall.
+    var ownA = inst.fit(src.aw, src.ah, pw, ph), ownB = inst.fit(src.bw, src.bh, pw, ph);
+    var q = Math.max(0, Math.min(1, 1 - (Number(px.door) || 0)));
+    function seated(f) {
+      return [1 + (((f && f[0]) || 1) - 1) * q,
+              1 + (((f && f[1]) || 1) - 1) * q,
+              ((f && f[2]) || 0) * q, ((f && f[3]) || 0) * q];
+    }
     var box = {
       frame: inst.values(pose),
       handles: pose,
       seconds: pose.t,
-      fitA: inst.fit(src.aw, src.ah, W, H),
-      fitB: inst.fit(src.bw, src.bh, W, H),
+      fitA: seated(ownA), fitB: seated(ownB),
+      resolution: [pw, ph], sceneAvailable: !!over,
     };
     // WHICH READING OF THE PICTURE THIS INSTRUMENT GETS. The two source textures carry a chain of
     // smaller copies, uploaded with them, so an instrument can read the picture COARSELY — which is
@@ -437,7 +470,7 @@
     var chain = !!(inst.manifest.gl && inst.manifest.gl.readsChain);
     var minf = chain ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR;
     inst.manifest.passes.forEach(function (pass) {
-      var p = programFor(pass);
+      var p = programFor(pass, inst);
       gl.useProgram(p.prog);
       gl.bindVertexArray(stage.vao);
       gl.activeTexture(gl.TEXTURE0);
@@ -446,6 +479,10 @@
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, stage.texB);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minf);
+      if (over && stage.sceneTex) {
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, stage.sceneTex);
+      }
       pass.uniforms.forEach(function (u) {
         var loc = p.U[u.name];
         if (loc !== null && loc !== undefined) bindUniform(gl, loc, u, box);
@@ -453,6 +490,17 @@
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       census.passesLastFrame++;
     });
+    gl.disable(gl.SCISSOR_TEST);
+    gl.viewport(0, 0, W, H);
+  }
+
+  function instrumentReadsScene(inst) {
+    var passes = inst && inst.manifest && inst.manifest.passes || [];
+    for (var i = 0; i < passes.length; i++) {
+      var us = passes[i].uniforms || [];
+      for (var j = 0; j < us.length; j++) if (us[j].source === "sceneTexture") return true;
+    }
+    return false;
   }
 
   // ---- the sources: the host arms and decodes both works before takeover (§4.1/§10.1) ------------
@@ -497,7 +545,10 @@
   function onContextLost(e) {
     if (e && e.preventDefault) e.preventDefault();
     logEvt("context-lost", cur ? cur.cmd.gen : null, null);
-    if (stage) { stage.programs = {}; stage.texA = stage.texB = stage.vao = stage.quad = null; }
+    if (stage) {
+      stage.programs = {}; stage.texA = stage.texB = stage.sceneTex = stage.vao = stage.quad = null;
+      stage.sceneW = stage.sceneH = 0;
+    }
     stageShow(false);
     Object.keys(instruments).forEach(function (k) {
       try { if (instruments[k].contextLost) instruments[k].contextLost(); } catch (err) {}
@@ -688,11 +739,19 @@
       case "velocity": return okv(ctx.velocity);
       case "capability": return okv(ctx.capability);
       case "noise": return okv(noiseOf(spec.seed, spec.stream));
-      // DECLARED AND FALLING BACK TO ITS BASE (§5/§11). One normalised host signal arrives on a
-      // later branch; instruments attach no listeners of their own, so until it does there is
-      // nothing honest to answer with, and the fallback is recorded with this reason.
-      case "pointer":
-        return nov("the source «pointer» is declared and one normalised host signal arrives later");
+      case "pointer": {
+        // The product owns listeners and gesture arbitration. The renderer reads one normalised
+        // snapshot from the command, never the DOM. A node may name x/y, delta, energy or active;
+        // the default is energy, the useful scalar accompaniment for a score with one spare voice.
+        var p = ctx.pointer;
+        if (!p) return nov("the source «pointer» has no normalised host signal on this command");
+        var ch = spec.channel || "energy";
+        if (ch === "x" || ch === "y" || ch === "dx" || ch === "dy" || ch === "energy") {
+          return okv(Number(p[ch]) || 0);
+        }
+        if (ch === "active") return okv(p.active ? 1 : 0);
+        return nov("the source «pointer» names the unknown channel «" + ch + "»");
+      }
       default:
         return nov("names the source «" + spec.source + "», which the host does not carry");
     }
@@ -1024,14 +1083,20 @@
   function instFit(inst, iw, ih) {
     try { return inst.fit(iw, ih, W, H) || null; } catch (e) { return null; }
   }
+  function containCss(iw, ih) {
+    var a = Math.max(1, Number(iw)) / Math.max(1, Number(ih));
+    var w = cssW, h = w / a;
+    if (h > cssH) { h = cssH; w = h * a; }
+    return { x: (cssW - w) / 2, y: (cssH - h) / 2, w: w, h: h };
+  }
+
   function hangPoseOf(geom, inst, iw, ih) {
     if (!geom || !geom.w || !geom.h || cssW <= 0 || cssH <= 0) return null;
-    var f = instFit(inst, iw, ih);
-    if (!f) return null;
-    var shareX = Math.abs(f[0]), shareY = Math.abs(f[1]);
-    if (!shareX || !shareY) return null;
-    var ew = cssW / shareX, eh = cssH / shareY;     // the work's whole extent, in frame points
-    var k = geom.w / ew;
+    // The camera seats the WHOLE source plane, independent of whichever instrument happens to sing
+    // first. Deriving this from an instrument's cover crop made the work's centre leave the wall
+    // while its edges stayed behind. Both rectangles here contain the same whole photograph.
+    var full = containCss(iw, ih);
+    var k = geom.w / full.w;
     if (!isFinite(k) || k <= 0) return null;
     return {
       panX: (geom.x + geom.w / 2 - cssW / 2) / cssW,
@@ -1040,7 +1105,7 @@
       // What the two readings of one scale disagree by. Both roads keep the work's aspect, so this
       // stands at zero; it is written down rather than asserted, because a layout that began to crop
       // would show up here as a number instead of as a soft edge nobody can name.
-      aspectOff: +Math.abs(geom.h / eh - k).toFixed(9),
+      aspectOff: +Math.abs(geom.h / full.h - k).toFixed(9),
     };
   }
 
@@ -1060,52 +1125,40 @@
 
   function doorEase(u) { return CURVES.smooth(u <= 0 ? 0 : u >= 1 ? 1 : u); }
 
-  // The real threshold between two different kinds of framing.  On the wall the visitor sees the
-  // whole work, contained inside its own aspect box.  In the immersive scene an instrument may
-  // intentionally cover-fit and enter the work's centre.  The two cannot be made identical by
-  // scaling the one fullscreen canvas: that makes a central crop masquerade as the hanging work.
-  //
-  // This small DOM bridge preserves the truthful first and final image while the camera makes that
-  // change of scale visible.  It expands the actual complete photograph until the viewport itself
-  // crops it; only then does the instrument's cover-fit take over.  The return is the inverse.
-  // It has no clock and no event road of its own: the transaction's frame loop is its sole owner.
-  function doorBridge(rec, seconds) {
-    if (!stage || !stage.door || !rec || !rec.hangEdge || !rec.src) return;
-    var e = rec.hangEdge, geom = null, im = null, u = 0, opening = false;
+  // One geometric plane carries the picture for the entire passage. Its aspect travels smoothly
+  // between the two source aspects; it is never replaced by a DOM clone. At each endpoint its fit
+  // is exactly the whole source, while the instrument's own headroom joins continuously after the
+  // threshold. Coordinates are drawing-buffer coordinates because gl.viewport's origin is below.
+  function planeAt(rec, seconds, progress) {
+    var ca = containCss(rec.src.aw, rec.src.ah), cb = containCss(rec.src.bw, rec.src.bh);
+    var e = rec.hangEdge || hangEdges(rec), door = 0, box;
+    function lerpBox(a, b, q) {
+      a = a || b; b = b || a;
+      return { x: a.x + (b.x - a.x) * q, y: a.y + (b.y - a.y) * q,
+               w: a.w + (b.w - a.w) * q, h: a.h + (b.h - a.h) * q };
+    }
     if (e.rise > 0 && seconds <= e.rise) {
-      geom = rec.hangA; im = rec.src.a; u = seconds / e.rise; opening = true;
+      var qo = doorEase(seconds / e.rise);
+      box = lerpBox(rec.hangA, ca, qo); door = 1 - qo;
     } else if (e.fall > 0 && seconds >= e.dur - e.fall) {
-      geom = rec.hangB; im = rec.src.b; u = (seconds - (e.dur - e.fall)) / e.fall;
+      var qi = doorEase((seconds - (e.dur - e.fall)) / e.fall);
+      box = lerpBox(cb, rec.hangB, qi); door = qi;
     } else {
-      doorHide(); return;
+      var middle = Math.max(1e-6, e.dur - e.rise - e.fall);
+      box = lerpBox(ca, cb, doorEase((seconds - e.rise) / middle));
     }
-    if (!geom || !geom.w || !geom.h || !im) { doorHide(); return; }
-    u = u <= 0 ? 0 : u >= 1 ? 1 : u;
-    var d = stage.door;
-    var key = im.currentSrc || im.src || "";
-    if (key && stage.doorKey !== key) {
-      stage.doorKey = key;
-      d.src = key;
-    }
-    // At scale 1 the cloned image occupies precisely the DOM box.  At `cover` it is the ordinary
-    // photographic camera move into the full viewport; the canvas can take over underneath without
-    // presenting a little full-screen rectangle or a cropped first frame.
-    var cover = Math.max(cssW / geom.w, cssH / geom.h);
-    var q = doorEase(u);
-    var scale = opening ? (1 + (cover - 1) * q) : (cover + (1 - cover) * q);
-    // The hand changes owner only near the immersive end of the outgoing door and near the scene
-    // end of the incoming one.  The narrow blend hides the deliberately different framings while
-    // keeping the whole photograph legible for the substantial part of both doors.
-    var alpha = opening
-      ? (u < 0.78 ? 1 : 1 - doorEase((u - 0.78) / 0.22))
-      : (u < 0.22 ? doorEase(u / 0.22) : 1);
-    d.style.left = geom.x.toFixed(3) + "px";
-    d.style.top = geom.y.toFixed(3) + "px";
-    d.style.width = geom.w.toFixed(3) + "px";
-    d.style.height = geom.h.toFixed(3) + "px";
-    d.style.opacity = alpha.toFixed(4);
-    d.style.transform = "scale(" + scale.toFixed(6) + ")";
-    d.style.visibility = "visible";
+    if (!box) box = lerpBox(ca, cb, doorEase(progress));
+    return { x: 0, y: 0, w: W, h: H, door: door,
+             cssX: box.x, cssY: box.y, cssW: box.w, cssH: box.h };
+  }
+
+  function planeApply(plane) {
+    if (!stage || !plane) return;
+    var c = stage.canvas;
+    c.style.left = plane.cssX.toFixed(3) + "px";
+    c.style.top = plane.cssY.toFixed(3) + "px";
+    c.style.width = plane.cssW.toFixed(3) + "px";
+    c.style.height = plane.cssH.toFixed(3) + "px";
   }
 
   // A CAMERA-LED PASSAGE: the flight itself is the transition. A score declares it with
@@ -1277,7 +1330,11 @@
       rec.camOwner = owner;
     }
     rec.lastPose = pose;
-    return { owner: owner, pose: pose, stage: stagePose };
+    // `art` excludes the hang anchor. The source plane itself now travels through the exact measured
+    // DOM rectangles; applying the anchor as a CSS transform as well would move it twice. The
+    // score's witness-camera accompaniment remains continuous on top of that physical carrier.
+    return { owner: owner, pose: pose, stage: stagePose,
+             art: owner === "stage" ? track : (rec.ownPose || track) };
   }
 
   // ================================================================================================
@@ -1915,6 +1972,7 @@
       velocity: Number(rec.cmd.velocity) || 0,
       // The capability, as one number a curve can read: the three named tiers in their own order.
       capability: rec.variant === "rich" ? 1 : rec.variant === "lean" ? 0 : 0.5,
+      pointer: rec.cmd && rec.cmd.interaction && rec.cmd.interaction.pointer,
       dt: dt || 0,
       state: v.driverState,
     };
@@ -2096,6 +2154,16 @@
   function playFrame(rec, seconds, progress, dt, hold) {
     var cam = camPoseAt(rec, seconds);
     rec.camera = cam;
+    var gl = stage && stage.gl;
+    if (gl) {
+      gl.disable(gl.SCISSOR_TEST);
+      gl.viewport(0, 0, W, H);
+      gl.disable(gl.BLEND);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    var plane = planeAt(rec, seconds, progress);
+    planeApply(plane);
     // A CUE'S WINDOW IS WRITTEN IN THE PASS'S OWN SECONDS, and the pass's own seconds run from zero
     // to its duration. A second outside that span is judged AT THE NEAREST END OF IT, because that
     // is where the transaction actually stands: a frame landing at 3.01 s of a 3 s pass is the pass
@@ -2126,20 +2194,19 @@
       var handles = (hold && v === rec.primary) ? hold
                   : (hold ? doorHandles(rec, v, (rec.cadence && rec.cadence.door) || "out")
                           : handlesOf(rec, v, progress, seconds, dt));
-      v.inst.frame(frameState(rec, v, seconds, progress, handles, cam, hold, drew));
+      v.inst.frame(frameState(rec, v, seconds, progress, handles, cam, hold, drew, plane));
       if (v.drawnThisFrame) { drew++; v.drawnThisFrame = false; }
       if (hold) v.lastHandles = handles;
     }
     rec.liveCues = live;
     rec.drewLastFrame = drew;
-    camApply(cam.pose, rec.caps);
-    doorBridge(rec, seconds);
+    camApply(cam.art, rec.caps);
     if (hold) rec.lastHandles = hold;
   }
 
   // The record one voice receives. Held apart from the loop above so the closure over `v` and `drew`
   // is made once per voice per frame rather than captured by accident from a shared variable.
-  function frameState(rec, v, seconds, progress, handles, cam, hold, drew) {
+  function frameState(rec, v, seconds, progress, handles, cam, hold, drew, plane) {
     return {
       token: rec.cmd.gen, t: seconds, progress: progress,
       handles: handles,
@@ -2164,7 +2231,11 @@
       // a pinned run is a bench run: it holds its pose instead of walking to the end door, so a
       // conformance row can photograph one instant twice and compare it to itself
       pinned: pinProgress !== null || !!hold,
-      draw: function (pose) { v.drawnThisFrame = true; drawPose(v.inst, pose, rec.src, drew > 0); },
+      draw: function (pose) {
+        v.drawnThisFrame = true;
+        drawPose(v.inst, pose, rec.src, drew > 0, plane);
+        if (rec.needsScene) carryScene();
+      },
       // A cue that carries the camera by its own device reports its pose here, once a frame. The
       // host applies it and holds its own flight still across that window.
       reportPose: function (p) { if (p) rec.ownPose = p; },
@@ -2299,6 +2370,8 @@
     }
     var rec = { cmd: cmd, hooks: hooks, inst: inst, cue: cue, variant: variant, state: "offered",
                 voices: voices, primary: primary, grant: got, liveCues: [], drewLastFrame: 0,
+                needsScene: voices.length > 1
+                  && voices.some(function (vv) { return instrumentReadsScene(vv.inst); }),
                 docked: false, watchdogT: null, duration: duration, raf: 0, t0: 0, src: null,
                 said: {}, driverState: {}, lastHandles: null, lastNow: 0,
                 lastSeconds: 0, lastProgress: 0,
@@ -2343,7 +2416,7 @@
           // EVERY instrument the score names gets its programmes built before takeover, so no cue
           // pays for a shader build on the frame its window opens.
           instrumentsOf(voices).forEach(function (x) {
-            x.manifest.passes.forEach(function (pass) { programFor(pass); });
+            x.manifest.passes.forEach(function (pass) { programFor(pass, x); });
           });
         } catch (e) {
           logEvt("stage-threw", cmd.gen, String((e && e.message) || e));
@@ -2943,7 +3016,7 @@
       draw: function (id, pose) {
         var inst = instruments[id];
         if (!inst || !stage) return false;
-        inst.manifest.passes.forEach(function (pass) { programFor(pass); });
+        inst.manifest.passes.forEach(function (pass) { programFor(pass, inst); });
         drawPose(inst, pose, { aw: pose.aw, ah: pose.ah, bw: pose.bw, bh: pose.bh });
         return true;
       },
