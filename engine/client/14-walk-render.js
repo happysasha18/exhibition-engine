@@ -18,11 +18,13 @@
   }
 
   function appendFrames(slice, startN) {
-    // EX-PASS RECORD WAVE (2026-08-19): this call IS the wave — the first SPREAD a door's pick
-    // assembles, or the UNFOLD ids one unfold appends — so the ask for their work records fires
-    // right here, the instant the selection is known and before anything is drawn. It never waits:
-    // `passRecordsAskFor` fires the request and returns at once, and the frames below render on the
-    // walk's own clock whether or not the records have landed by the time a crossing wants them.
+    // The first selection is known here, before its first photograph is even drawn.  Start BOTH
+    // pieces of the crossing vocabulary now: the record wave and the collection-wide composer.
+    // Opening the composer only after the first landing made the first gesture of every visit a
+    // guaranteed plain glide, however fast the network and however rich the pair.  The composer
+    // needs its fixed constants, not a record already in the map; the two records arrive in parallel
+    // while the visitor is choosing whether to move on.
+    passComposerOpen();
     passRecordsAskFor(slice);
     document.getElementById("exh-fin")?.remove();
     const html = slice.map((id, i) => frameHTML(id, startN + i)).join("");
@@ -77,4 +79,3 @@
     fin.querySelector("#ex-return")?.addEventListener("click", doorReturn);
     counter.querySelector(".tot").textContent = String(shown).padStart(2, "0");
   }
-

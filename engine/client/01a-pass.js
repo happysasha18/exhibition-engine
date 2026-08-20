@@ -599,8 +599,7 @@
   }
   function passComposerOpen() {
     if (passComposerAsked) return;
-    const works = passWorkRecords(), consts = passComposerConsts();
-    if (!works || typeof works !== "object" || !Object.keys(works).length) return;
+    const consts = passComposerConsts();
     if (!consts || typeof consts !== "object" || !Object.keys(consts).length) return;
     if (passGet("visualLayer") !== "pass") return;
     // THE STAND-DOWN LAW BINDS THIS FETCH AS A CLASS (EX-LOAD-3 / INV-73), the same way it bound the
