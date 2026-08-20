@@ -26,6 +26,7 @@
     // while the visitor is choosing whether to move on.
     passComposerOpen();
     passRecordsAskFor(slice);
+    passOpen();
     document.getElementById("exh-fin")?.remove();
     const html = slice.map((id, i) => frameHTML(id, startN + i)).join("");
     stage.insertAdjacentHTML("beforeend", html);

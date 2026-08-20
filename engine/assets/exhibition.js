@@ -74,9 +74,19 @@
   // comment already stated (a pointer open forces no focus): the opener alone did not carry it,
   // since the quiz and the series room capture activeElement as opener under any modality.
   let _kbModality = false;
-  addEventListener("keydown", () => { _kbModality = true; }, { capture: true, passive: true });
+  // WebKit may report a touched `tabindex` element as :focus-visible.  The browser pseudo-class
+  // remains useful for keyboard navigation, but it cannot by itself preserve the distinction the
+  // gallery needs: a finger must never leave a decorative ring around a photograph.  Keep the
+  // input origin on the document root as well as in the modal helper, so CSS can require both
+  // facts for the work's own halo.  Pointerdown runs before the element receives focus.
+  function exInputModality(kind) {
+    _kbModality = kind === "keyboard";
+    document.documentElement.setAttribute("data-ex-input", kind);
+  }
+  exInputModality("pointer");
+  addEventListener("keydown", () => { exInputModality("keyboard"); }, { capture: true, passive: true });
   ["pointerdown", "mousedown", "touchstart"].forEach((e) =>
-    addEventListener(e, () => { _kbModality = false; }, { capture: true, passive: true }));
+    addEventListener(e, () => { exInputModality("pointer"); }, { capture: true, passive: true }));
   // EX-CHROME touch-press (his 2026-07-23). 1.11.1 gated every control's engaged FILL to hover:hover
   // so a finger tap leaves no sticky tint — correct, but it left a tap with NO feedback at all. This
   // gives a coarse pointer the response a mouse gets from hover: a press lights the control's OWN
@@ -411,7 +421,6 @@
   // (a beacon may be lost for the fastest bounces; the read's own caption owns that honesty).
   addEventListener("visibilitychange", () => { if (document.hidden) layDoorReady(); });
   addEventListener("pagehide", layDoorReady);
-
 /*!01-knobs-lang-history.js*/
   // ---- EX-RESET (INV-35): the ?reset address — the museum forgets THIS browser --
   // One wipe, named keys only, BEFORE anything restores; the param strips itself via
@@ -896,25 +905,10 @@
     return { ok: true, score: raw, read: v, noted: noted.length ? noted : null };
   }
 
-  // A SCORE PER PAIR CANNOT COVER A DEALT WALK. The walk deals its works afresh each visit and
-  // orders them by its own arc, so a pair scored ahead of time essentially never comes up; and a
-  // collection of 121 works holds about fourteen thousand ordered pairs, which one whole score each
-  // would make ~50 MB of settings file. So a site may carry, beside `pass.scores`:
-  //   pass.scoreTemplates[<instrument>]  one score with its per-pair numbers left empty and its
-  //                                      slots named — cue, roles, levels, window, doors, camera,
-  //                                      quality, interruption and driver graph, all of it the same
-  //                                      whatever two works are in hand;
-  //   pass.scoreTables[<instrument>]     one row per ordered pair, carrying ONLY that pair's
-  //                                      measured numbers.
-  // Filling a template's named slots from a row is a data operation: nothing is measured in the
-  // browser, so the law that measuring and casting happen at build time keeps its full force. A pair
-  // with no row hands back nothing and the walk's own glide runs, exactly as a pair with no score of
-  // its own always has; a row the template cannot take is refused WHOLE and says why, the same way a
-  // score naming an unknown field is.
-  // `readiness` is the one row field that fills no slot: it is the pair's own measured readiness,
-  // and the row is refused outright when it stands under the table's floor — the same floor the
-  // build-time walk applies, carried in the table so the refusal needs no measurement here. The
-  // score is built on a COPY of the template, so a row refused halfway leaves nothing behind.
+  // NO SCORE PER PAIR TRAVELS WITH THE PRODUCT. The walk deals its works afresh each visit, and a
+  // quadratic pair pack could neither cover that living route nor grow with the collection. The
+  // runtime road below hands two per-work records to one composer; the pair, direction, entrance,
+  // route role, visit seed, capability and edge memory meet only at the instant of the crossing.
   // ---- family breath (§4.4f) ---------------------------------------------------------------------
   // A ROW MAY SAY WHAT MAY BREATHE. Filling a row's measured numbers exactly means a pair flipped
   // twice inside one visit plays one score byte for byte — the defect the site's own U9 measurement
@@ -922,12 +916,8 @@
   // pass by pass, so a row may carry a family-bounds record naming, per SLOT it already fills, the
   // closed span the fill may roll that slot inside, and whether the score's own seed re-rolls.
   //
-  // THE ROLL LIVES HERE, AND BOTH ROADS CALL IT. The inline road below fills from a template and a
-  // table; the pack's reader fills from a shape's template and a shard's row in its own file. One
-  // roll serves both — the reader is handed this function in its environment record — so the two
-  // roads cannot drift into two ideas of what a family is. This function knows nothing about slot
-  // paths or slot names: it is given the spans keyed however that road keys its slots and hands back
-  // the rolled values under the same keys, and each road writes them through its own fill.
+  // THE ROLL LIVES HERE. It knows nothing about score paths or handle names: it is given the spans
+  // keyed by the runtime composer and hands back rolled values under those same keys.
   //
   // THE SEED IS THE VISIT, THE PASS INDEX AND THE PAIR. The pass index is the generation `declare`
   // has already minted for the crossing being declared, so a pair flipped twice in one visit rolls
@@ -937,15 +927,25 @@
   // determinism row exists to hold.
   const passFamilies = [];
   let passVisit = 0, passVisitPinned = false;
-  // The chosen entrance is part of this route's artistic situation.  Hold one door-specific die
-  // for the route so different doors can vary families and phases without sacrificing repeatable
-  // returns within that route.
+  // The entrance is part of a visit's artistic situation.  A different door deals a different
+  // route, so it must also give the passage die a different starting point; otherwise two doors
+  // can accidentally repeat the same family/phase decisions merely because their first edge has
+  // the same ids.  `pick` is the product's chosen door work, never a new input or an identity.
+  // The value is read only when a visit first needs a crossing and then held, which preserves the
+  // seeded repeatability and the edge-memory law for the rest of that route.
   function passDoorSalt() {
     try { return pick ? passText(pick) : 0; } catch (e) { return 0; }
   }
   function passBeginAtDoor() {
+    // A fresh door starts a fresh route.  It does not erase edge memory: returning through the
+    // browser's history can still find its related passage, while the new route receives its own
+    // die when it first crosses.
     passVisit = 0;
     passVisitPinned = false;
+    passRoutePlayed = [];
+    passRouteFamilyCount = Object.create(null);
+    passRouteInstrumentCount = Object.create(null);
+    passRouteWorldSeen = false;
   }
   function passVisitSeed() {
     if (!passVisit) {
@@ -1200,8 +1200,7 @@
   }
   function passComposerOpen() {
     if (passComposerAsked) return;
-    const works = passWorkRecords(), consts = passComposerConsts();
-    if (!works || typeof works !== "object" || !Object.keys(works).length) return;
+    const consts = passComposerConsts();
     if (!consts || typeof consts !== "object" || !Object.keys(consts).length) return;
     if (passGet("visualLayer") !== "pass") return;
     // THE STAND-DOWN LAW BINDS THIS FETCH AS A CLASS (EX-LOAD-3 / INV-73), the same way it bound the
@@ -1413,6 +1412,19 @@
       ? plan.travellingAxis.measure : "tone";
     return t + "+" + axis;
   }
+  // The ground is the stack's primary voice: it is the one full-frame instrument the viewer meets
+  // before the other voices write over it.  Read it from the emitted cue list, never from a table.
+  function passPrimaryOf(passage) {
+    const cues = passage && passage.score && Array.isArray(passage.score.cues)
+      ? passage.score.cues.slice() : [];
+    cues.sort((a, b) => (+a.stack || 0) - (+b.stack || 0));
+    const i = cues[0] && cues[0].instrument;
+    return i && i.id ? String(i.id) : null;
+  }
+  let passRoutePlayed = [];
+  let passRouteFamilyCount = Object.create(null);
+  let passRouteInstrumentCount = Object.create(null);
+  let passRouteWorldSeen = false;
   // The pivot as a thing rather than a strength: what the passage holds, without the number the
   // pair happens to hold it at. Two passes hold the same pivot when these three agree.
   function passPivotOf(plan) {
@@ -1883,6 +1895,7 @@
     // rolls ended in the walk's plain glide, which is the visitor paying for a reading about
     // repetition with the whole crossing.
     let best = null, bestScore = -1, bestWhy = null, bestDrift = null, bestCooled = null;
+    const routeLast = passRoutePlayed.length ? passRoutePlayed[passRoutePlayed.length - 1] : null;
     for (let i = 0; i < PASS_EDGE.dice; i++) {
       if (i) request.seed = passSeedFor(edge.key, i);
       let got = null;
@@ -1894,6 +1907,9 @@
       passage = got;
       if (got.declined) break;
       const fam = passFamilyOf(got.plan);
+      const primary = passPrimaryOf(got);
+      const worldAccent = primary === "parquet" || !!(got.score && got.score.camera
+                                                       && got.score.camera.lead);
       // THE DOOR BREATHES BEFORE THE PASS IS READ, because the drifted pass is the one that would
       // play: reading the composer's own numbers and then playing others would leave §4.8's two
       // readings measuring a pass no one ever sees.
@@ -1902,18 +1918,33 @@
       refused = read.why;
       cooledStood = (edge.cooled && fam === edge.cooled)
         ? "the family «" + fam + "» played last on this edge and is still cooling" : null;
-      rolls.push({ seed: request.seed, family: fam, why: refused || cooledStood });
+      const repeatsFamily = !!routeLast && routeLast.family === fam;
+      const repeatsPrimary = !!routeLast && routeLast.instrument === primary;
+      rolls.push({ seed: request.seed, family: fam, instrument: primary,
+                   repeatsPrevious: repeatsFamily || repeatsPrimary,
+                   why: refused || cooledStood });
       // THE ROLL IS SCORED RATHER THAN JUDGED, on three readings and no thresholds: kinship, whether
       // the family is the one still cooling on this edge, and how far the pass stands from the
       // recorded one's mirror. The best-scoring roll plays, and one always does.
       const score = (read.kin ? 2 : 0) + (cooledStood ? 0 : 1)
-                  + (read.distance === null ? 1 : Math.min(1, read.distance * 10));
+                  + (read.distance === null ? 1 : Math.min(1, read.distance * 10))
+                  // Route variety is a preference over lawful passages, never a quota and never a
+                  // reason to lose a crossing.  An unseen family/ground and a clean handoff rank
+                  // first when the pair affords them; if every die repeats, the best repeat plays.
+                  + (repeatsFamily ? 0 : 3) + (repeatsPrimary ? 0 : 3)
+                  + (passRouteFamilyCount[fam] ? 0 : 2)
+                  + (passRouteInstrumentCount[primary] ? 0 : 2)
+                  // A route should open at least one spatial sentence when the pair itself casts
+                  // one: a measured parquet ground or a camera-led tonic.  This is a preference
+                  // among passages the composer already justified, never an invented effect.
+                  + (!passRouteWorldSeen && worldAccent ? 3 : 0);
       if (best === null || score > bestScore) {
         best = got; bestScore = score; bestWhy = refused; bestDrift = drifted;
         bestCooled = cooledStood;
       }
       // A roll that reads clean on all three is as good as a roll gets, so the walk stops asking.
-      if (read.kin && !cooledStood && read.distance === null) break;
+      if (read.kin && !cooledStood && read.distance === null
+          && !repeatsFamily && !repeatsPrimary) break;
       // A roll that read as a replay is said at once, and not only where the last one does too: a
       // pass that was passed over because it read that way is exactly what a person looking at the
       // surface is trying to find.
@@ -1989,6 +2020,18 @@
                       ? (before.provenance.planId || null) : null,
                     trace: passTraceOf(row.score) },
     };
+    const family = passFamilyOf(row.plan);
+    const instrument = row.applied.instrument || passPrimaryOf(row);
+    passRoutePlayed.push({ edgeKey: edgeKey, direction: direction, family: family,
+                           instrument: instrument, role: (row.request || {}).routeRole || null,
+                           stack: (row.applied.cues || []).map((c) => c.instrument),
+                           world: instrument === "parquet" || !!(row.score && row.score.camera
+                                                                  && row.score.camera.lead) });
+    passRouteFamilyCount[family] = (passRouteFamilyCount[family] || 0) + 1;
+    passRouteInstrumentCount[instrument] = (passRouteInstrumentCount[instrument] || 0) + 1;
+    if (instrument === "parquet" || (row.score && row.score.camera && row.score.camera.lead)) {
+      passRouteWorldSeen = true;
+    }
     passEdgePut();
     passMark("memory", cmd, edgeKey + " " + direction + " ×" + edge[direction].passCount);
     return edge[direction];
@@ -2049,6 +2092,88 @@
   let passNav = null;
   let passPending = null;
   let passLastEl = null, passLastGen = -1;
+
+  // ---- the visitor's hand, one normalised host signal -----------------------------------------
+  // Instruments never attach input listeners.  The product observes the pointer passively while a
+  // passage owns the screen and publishes one mutable, normalised record on the frozen command.
+  // Reading without preventing/capturing is important: the walk's wheel/touch/key pagers remain the
+  // sole owners of navigation, while a drawing voice may still answer a hover, tap or drag.
+  const passInteraction = {
+    active: false, gen: 0,
+    pointer: { x: 0, y: 0, dx: 0, dy: 0, energy: 0, down: false,
+               kind: "none", taps: 0, revision: 0 }
+  };
+  let passInteractionId = null;
+  let passInteractionDownX = 0, passInteractionDownY = 0, passInteractionSpring = null;
+  function passNormX(x) { return Math.max(-1, Math.min(1, ((+x || 0) / Math.max(1, innerWidth)) * 2 - 1)); }
+  function passNormY(y) { return Math.max(-1, Math.min(1, ((+y || 0) / Math.max(1, innerHeight)) * 2 - 1)); }
+  function passInteractionWrite(x, y, kind, down, impulse) {
+    const p = passInteraction.pointer, nx = passNormX(x), ny = passNormY(y);
+    const dx = nx - p.x, dy = ny - p.y;
+    p.x = nx; p.y = ny; p.dx = dx; p.dy = dy; p.down = !!down;
+    p.kind = kind || p.kind || "pointer";
+    p.energy = Math.max(p.energy * 0.72,
+      Math.min(1, Math.sqrt(dx * dx + dy * dy) * 3 + (+impulse || 0)));
+    p.revision += 1;
+  }
+  function passInteractionRest() {
+    if (passInteractionSpring !== null) cancelAnimationFrame(passInteractionSpring);
+    const step = () => {
+      passInteractionSpring = null;
+      if (!passInteraction.active || passInteraction.pointer.down) return;
+      const p = passInteraction.pointer;
+      p.x *= 0.84; p.y *= 0.84; p.dx *= 0.7; p.dy *= 0.7; p.energy *= 0.82;
+      if (Math.abs(p.x) < 0.002) p.x = 0;
+      if (Math.abs(p.y) < 0.002) p.y = 0;
+      if (p.energy < 0.002) p.energy = 0;
+      p.revision += 1;
+      if (p.x || p.y || p.energy) passInteractionSpring = requestAnimationFrame(step);
+    };
+    passInteractionSpring = requestAnimationFrame(step);
+  }
+  function passInteractionBegin(gen, seed) {
+    if (passInteractionSpring !== null) cancelAnimationFrame(passInteractionSpring);
+    passInteractionSpring = null; passInteraction.active = true; passInteraction.gen = gen;
+    passInteractionId = null;
+    const p = passInteraction.pointer;
+    p.x = p.y = p.dx = p.dy = p.energy = 0; p.down = false;
+    p.kind = (seed && seed.kind) || "none"; p.revision += 1;
+    if (seed && Number.isFinite(+seed.x) && Number.isFinite(+seed.y)) {
+      passInteractionWrite(seed.x, seed.y, seed.kind, false, seed.energy);
+      passInteractionRest();
+    }
+    return passInteraction;
+  }
+  function passInteractionEnd(gen) {
+    if (gen !== undefined && passInteraction.gen !== gen) return;
+    passInteraction.active = false; passInteractionId = null;
+    if (passInteractionSpring !== null) cancelAnimationFrame(passInteractionSpring);
+    passInteractionSpring = null;
+    const p = passInteraction.pointer;
+    p.x = p.y = p.dx = p.dy = p.energy = 0; p.down = false; p.kind = "none";
+    p.revision += 1;
+  }
+  addEventListener("pointerdown", (e) => {
+    if (!passInteraction.active || passInteractionId !== null) return;
+    passInteractionId = e.pointerId; passInteractionDownX = e.clientX;
+    passInteractionDownY = e.clientY;
+    passInteractionWrite(e.clientX, e.clientY, e.pointerType, true, 0.08);
+  }, { capture: true, passive: true });
+  addEventListener("pointermove", (e) => {
+    if (!passInteraction.active || (passInteractionId !== null && e.pointerId !== passInteractionId)) return;
+    const down = passInteractionId === e.pointerId;
+    passInteractionWrite(e.clientX, e.clientY, e.pointerType, down, 0);
+  }, { capture: true, passive: true });
+  function passInteractionLift(e) {
+    if (!passInteraction.active || passInteractionId !== e.pointerId) return;
+    const p = passInteraction.pointer;
+    const travel = Math.hypot(e.clientX - passInteractionDownX, e.clientY - passInteractionDownY);
+    passInteractionWrite(e.clientX, e.clientY, e.pointerType, false, travel < 12 ? 0.55 : 0.14);
+    if (travel < 12) p.taps += 1;
+    passInteractionId = null; passInteractionRest();
+  }
+  addEventListener("pointerup", passInteractionLift, { capture: true, passive: true });
+  addEventListener("pointercancel", passInteractionLift, { capture: true, passive: true });
   function passWhere(el) {
     if (!el) return null;
     // PASS-API §1.1: the door is a destination like any other. It carries no dataset.id of its own
@@ -2077,6 +2202,7 @@
   function passEnd(name, why) {
     if (!passNav) return;
     const cmd = passNav; passNav = null;
+    passInteractionEnd(cmd.gen);
     passFlush();
     passMark(name, cmd, why);
   }
@@ -2103,6 +2229,7 @@
         }
       } else passNote(passRefusals, { what: "score", name: raw.intent || "unnamed", why: seen.why });
     }
+    const interaction = passInteractionBegin(g, a.interaction || null);
     const cmd = Object.freeze({
       gen: g,
       from: passWhere(a.fromEl), to: passWhere(a.toEl),
@@ -2120,6 +2247,9 @@
       // The score travels frozen ON the command, so the host reads the cue, the duration and the
       // fail policy of THIS transaction and never a live value that moved under it mid-flight.
       score: score,
+      // Live by design: the command is frozen, the one host-owned signal inside it breathes while
+      // this transaction owns the frame.  A renderer reads it; it never writes navigation.
+      interaction: interaction,
       signal: Object.freeze({ get aborted() { return g !== passGen; } }),
     });
     passNav = cmd;
@@ -2161,6 +2291,10 @@
     const cmd = declare({ fromEl: fromEl || null, toEl: toEl || null, dir: 1, span: 0,
                           kind: "jump", cause: cause, velocity: 0 });
     if (cmd) passLandNow();
+    // A jump lands synchronously; it cannot race a renderer after this line.  Release the
+    // same-frame input lock with the landing so an asynchronously prewarmed host becoming ready in
+    // that frame cannot make the visitor's first real gesture look like a duplicate declaration.
+    passFrameUnlock();
     return cmd;
   }
 
@@ -2182,6 +2316,7 @@
       return;
     }
     passDockKeys[key] = true;
+    passInteractionEnd(cmd.gen);
     // THE RUNTIME TRUTH, READ AT THE LANDING. The instrument has finished drawing and the host's
     // report still carries what the last transaction left behind, so this is the one instant the
     // applied state can be written back onto the passage that asked for it. It reads and decides
@@ -2558,7 +2693,7 @@
         return { steps: shape.roles.length, works: shape.ids.length, ids: shape.ids.slice(),
                  gaps: shape.gaps.map((g) => Math.round(g * 10000) / 10000),
                  roles: shape.roles.slice(), crest: shape.crest, share: share,
-                 opened: passVisitOpened() };
+                 opened: passVisitOpened(), played: passRoutePlayed.slice() };
       }()),
       // The family roll, on the same surface (§4.4f): the visit's own seed and whether it was
       // pinned, and one row per rolled crossing carrying the pair, the pass index, the seed that
@@ -3788,6 +3923,8 @@
     const g = ++cerGen;
     const ok = () => g === cerGen;
     pick = w.id;
+    // The picked entrance is also the passage route's starting condition.  It resets only the
+    // visit die; edge-memory remains intact for related returns inside the browser session.
     passBeginAtDoor();
     order = assembleOrder(pick);
     recomputeQuizChoice();   // INV-66: the new arc = the new eligible set for the one quiz chip
@@ -4005,7 +4142,6 @@
       tellStory();                                     // a return is a natural beat — any owed portion re-asks (EX-STORY)
     }
   });
-
 /*!08-plaque-caption-io.js*/
   // ---- THE GALLERY (room.html's museum hang — the norm) ----------------------
   const counter = document.createElement("div");
@@ -5982,10 +6118,15 @@
   }
 
   function appendFrames(slice, startN) {
-    // Start the collection-wide composer and the selection's records together.  Waiting for the
-    // first landing made the first visitor gesture a guaranteed plain glide.
+    // The first selection is known here, before its first photograph is even drawn.  Start BOTH
+    // pieces of the crossing vocabulary now: the record wave and the collection-wide composer.
+    // Opening the composer only after the first landing made the first gesture of every visit a
+    // guaranteed plain glide, however fast the network and however rich the pair.  The composer
+    // needs its fixed constants, not a record already in the map; the two records arrive in parallel
+    // while the visitor is choosing whether to move on.
     passComposerOpen();
     passRecordsAskFor(slice);
+    passOpen();
     document.getElementById("exh-fin")?.remove();
     const html = slice.map((id, i) => frameHTML(id, startN + i)).join("");
     stage.insertAdjacentHTML("beforeend", html);
@@ -6039,7 +6180,6 @@
     fin.querySelector("#ex-return")?.addEventListener("click", doorReturn);
     counter.querySelector(".tot").textContent = String(shown).padStart(2, "0");
   }
-
 /*!15-motion.js*/
   // ---- EX-GLIDE (INV-39): one input → one centered frame (the paginated walk) ----------
   // The decided motion model (supersedes the old free-inertia settle): every input — an arrow
@@ -6194,7 +6334,7 @@
   }
   // one step = advance exactly ONE frame from where the walk is — or from where a running
   // transition is headed, so a second input CHAINS to the next frame, never re-rounds backward.
-  function stepFrame(dir, velocity) {
+  function stepFrame(dir, velocity, interaction) {
     travelDir = dir < 0 ? -1 : 1;                        // the feet declare a direction (EX-LOAD-3)
     const els = stage.querySelectorAll(".exh-frame, .exh-fin");
     const stops = Array.prototype.map.call(els, frameCenter);
@@ -6227,7 +6367,7 @@
     const cmd = (k === cur) ? null : declare({
       fromEl: els[cur], toEl: els[k], dir: dir,
       span: Math.abs(stops[k] - stops[cur]),
-      kind: "step", cause: "step", velocity: velocity,
+      kind: "step", cause: "step", velocity: velocity, interaction: interaction || null,
     });
     if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
     if (cmd && passVisualTakes(cmd) && passOffer(cmd)) return;   // transitions; the layer's file is asked for once
@@ -6453,7 +6593,12 @@
       // re-acceleration out of the crested tail (never sooner than the human double-swipe floor)
       // re-arms. A non-stepping event still feeds the ONE glide's SPEED: a rising peak re-times
       // the running glide to the same goal (force→speed, unchanged).
-      if (step) { wheelPeak = mag; stepFrame(step, mag); return; }
+      if (step) {
+        wheelPeak = mag;
+        stepFrame(step, mag, { kind: "wheel", x: e.clientX, y: e.clientY,
+                               energy: Math.min(1, mag / Math.max(1, VEL_SHARP)) });
+        return;
+      }
       if (mag > wheelPeak) {
         wheelPeak = mag;
         if (gliding && glideGoal != null) glideToFrame(glideGoal, wheelPeak, "retime");
@@ -6475,7 +6620,7 @@
     if (e.key === " " && e.shiftKey) dir = -1;         // shift+space pages back, as everywhere
     e.preventDefault();                                // the native jump never fights the glide
     if (e.repeat) return;                              // a held key = one frame per press
-    stepFrame(dir);
+    stepFrame(dir, 0, { kind: "key", x: innerWidth / 2, y: innerHeight / 2, energy: 0.12 });
   }, { passive: false });
 
   // EX-CHROME: while a face stands, rest the browser's own scroll keys behind it (the walk's step
@@ -6500,15 +6645,16 @@
   // here). Overlays (side room, quiz/gift card) and the door keep native scroll — see the guards.
   if (HAS_TOUCH) {
     try { window.@@NS_UPPER@@Motion.touchPager = true; } catch (e) {}
-    let tY = null, tLast = 0, tMoved = false;
+    let tY = null, tX = null, tLast = 0, tLastX = 0, tMoved = false;
     const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
     const NATIVE_TOUCH = "#ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound, .ex-share";
     addEventListener("touchstart", (e) => {
       if (!walkOwnsInput() || e.touches.length !== 1
           || (e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
-        tY = null; return;                             // door / overlays / chrome controls / multi-touch keep native touch
+        tY = tX = null; return;                        // door / overlays / chrome controls / multi-touch keep native touch
       }
       tY = tLast = e.touches[0].clientY;
+      tX = tLastX = e.touches[0].clientX;
       tMoved = false;
     }, { passive: true });
     // EX-CHROME: does some part of the face under the finger truly take this drag's axis?
@@ -6561,23 +6707,28 @@
         // kill). Only when the walk truly owns the input and the finger is not on chrome/an overlay.
         if (e.touches.length === 1 && walkOwnsInput()
             && !(e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
-          tY = tLast = e.touches[0].clientY; tMoved = false;
+          tY = tLast = e.touches[0].clientY;
+          tX = tLastX = e.touches[0].clientX; tMoved = false;
         } else return;
       }
       tLast = e.touches[0].clientY;
+      tLastX = e.touches[0].clientX;
       if (Math.abs(tLast - tY) > 6) tMoved = true;
       e.preventDefault();                              // the walk is paginated — no native scroll, no fly-through
     }, { passive: false });
-    addEventListener("touchcancel", () => { tY = null; });   // a system-cancelled touch leaves no stale drag
+    addEventListener("touchcancel", () => { tY = tX = null; });   // a system-cancelled touch leaves no stale drag
     addEventListener("touchend", () => {
       if (tY == null) return;
       const net = tY - tLast;                          // finger travels UP (net>0) = advance forward
-      tY = null;
+      const fromX = tX, toX = tLastX, toY = tLast;
+      tY = tX = null;
       if (!tMoved || Math.abs(net) < SWIPE_MIN) return;
-      stepFrame(net > 0 ? 1 : -1);                     // exactly one framed transition, force ignored (phase 1)
+      stepFrame(net > 0 ? 1 : -1, Math.abs(net), {
+        kind: "touch", x: toX, y: toY,
+        energy: Math.min(1, Math.hypot(toX - fromX, net) / Math.max(innerWidth, innerHeight) * 3)
+      });                                              // exactly one framed transition, force ignored (phase 1)
     }, { passive: true });
   }
-
 /*!16-renderhang-series.js*/
   function renderHang() {
     tlog("hang");
@@ -6614,11 +6765,26 @@
   let laneTouchOff = null;          // the CURRENT dress's own lane touchstart handler (INV-88) —
                                      // removed at the top of every dressSide so it never piles up
                                      // across reopens of the reused #exs-stage
+  function seriesOfWork(id) {
+    const sid = id == null ? null : String(id);
+    if (!sid) return -1;
+    for (let i = 0; i < SERIES.length; i++) {
+      if ((SERIES[i].members || []).some((m) => String(m) === sid)) return i;
+    }
+    return -1;
+  }
   function openSide(idx, laystep) {
-    const S = SERIES[idx];
-    if (!S || sideOpen || busy) return;
+    if (sideOpen || busy) return;
+    const opener = document.activeElement;
+    const crossing = passRunning();
     interrupt("series");   // EX-PASS §10.3: the series room stands in front of the walk
-    sideOpener = document.activeElement;               // N7-A11Y (B1): remember the opener (the series chip) before the crossing
+    // Cancellation docks one of the command's two real works synchronously.  Bind the surface to
+    // THAT landed owner, never to the stale chip that happened to be under the pointer when the
+    // crossing began.  If the landed work has no side room, the walk simply remains on it.
+    if (crossing) idx = seriesOfWork(focusedId);
+    const S = SERIES[idx];
+    if (!S) return;
+    sideOpener = opener;                                // N7-A11Y (B1): remember the opener (the series chip) before the crossing
     sideOpen = true;
     faceSync();                                        // the room is a face — arm the rest + guard (EX-CHROME)
     // the room opens THROUGH THE SAME BLACK the door crosses (his 09:53 word: «такой же
@@ -6846,7 +7012,6 @@
   // "resize" — without these the lifted print stays off-centre after a phone turn.
   addEventListener("orientationchange", sideReCentre);
   if (window.visualViewport) visualViewport.addEventListener("resize", sideReCentre);
-
 /*!17-place-hash-boot.js*/
   // ---- the walk TRACKS its place (INV-32c — the law outlived the ↗, its first carrier):
   // the io callback above writes the per-tab marker per frame in view; any return within
