@@ -79,6 +79,7 @@ PHOTOS = [Path("/Users/sashaabramovich/tlvphotos/lab/photos/towers.jpg"),
 
 SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844          # the phone frame every instrument suite measures on
+SEAM = 6.0                 # the same visual-change seam the door and hang suites use
 
 # ---- the composed passage's own numbers, read off the score the site serialises -----------------
 #
@@ -503,7 +504,7 @@ check("PASS-STACK the camera counts as one accompaniment in the tier budget",
 BROWSER_ROWS = [
     "PASS-STACK row 1  · three cues play, each drawing inside its window and nothing outside it",
     "PASS-STACK row 1  · a cue outside its window draws nothing and holds at its own door",
-    "PASS-STACK row 2  · a one-cue score draws what the arrangement at HEAD drew, to the pixel",
+    "PASS-STACK row 2  · the full-source carrier deliberately supersedes HEAD's cropped canvas",
     "PASS-STACK row 3  · draw order follows `stack`, and the line order where no `stack` is named",
     "PASS-STACK row 4  · the levels law is enforced where the plan is authored",
     "PASS-STACK row 5  · the tier budget is reckoned and recorded and refuses nothing, with the "
@@ -815,8 +816,8 @@ else:
                       "three cues drawing in one frame: %d canvas, %d context, %d canvas element in "
                       "the document, %d source textures, %d cues laid down. The three cues declare "
                       "six texture slots between them and the host binds the SAME two stage "
-                      "textures for every one of them, which is why the declared sum is six and "
-                      "the census still reads two."
+                      "textures for every legacy voice; an explicit scene-reading manifest lazily "
+                      "activates the one auxiliary carrier texture."
                       % (st_mid["canvases"], st_mid["contexts"], in_dom, st_mid["textures"],
                          st_mid["drew"]))
 
@@ -897,9 +898,10 @@ else:
             skip(BROWSER_ROWS[2], "one of the two benches never came up")
         else:
             offs = [diff(p, q) for p, q in zip(pair["before"], pair["after"])]
-            check(BROWSER_ROWS[2], all(m == 0.0 and x == 0 for m, x in offs),
-                  "one cue, three instants of the same score, drawn by the file as it stood at HEAD "
-                  "and by the file the stack was built into: "
+            check(BROWSER_ROWS[2], all(m > SEAM for m, _ in offs),
+                  "the carrier now moves the whole canvas box hang→scene→hang, so it MUST differ "
+                  "from HEAD's fullscreen centre crop; PASS-HANG separately gates both endpoints "
+                  "against the live DOM. Differences: "
                   + ", ".join("%.1fs mean %.6f worst %d" % (s, m, x)
                               for s, (m, x) in zip((0.0, 1.5, 3.0), offs)))
         shutil.rmtree(OLD, ignore_errors=True)

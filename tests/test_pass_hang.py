@@ -170,9 +170,22 @@ check("PASS-HANG the geometry carries the layout's own crop, fit, radius and tra
                                 "crop: 1", "orientation:"]),
       "a layout that began to crop or to transform must say so here rather than blur the seam")
 
-check("PASS-HANG the host seats the frame from the instrument's OWN fit",
-      "function hangPoseOf(" in LAYER and "inst.fit(iw, ih, W, H)" in LAYER,
-      "recomputing the seating here would let the two roads drift by the framing headroom")
+check("PASS-HANG one canvas plane carries the whole source between the two measured boxes",
+      all(s in LAYER for s in ["function planeAt(", "rec.hangA", "rec.hangB",
+                               "function planeApply(", "c.style.left", "c.style.width"]),
+      "the carrier itself travels hang A → scene → hang B; an instrument's centre crop cannot "
+      "masquerade as the work leaving the wall")
+
+check("PASS-HANG the door is not a cloned DOM image and no opacity bridge exists",
+      'document.createElement("img")' not in LAYER and "function doorBridge(" not in LAYER
+      and ".style.opacity" not in LAYER,
+      "the exact instrument door stays on the same WebGL carrier from first pixel to last")
+
+check("PASS-HANG the carrier publishes the preceding scene and the normalised host pointer",
+      all(s in LAYER for s in ["sceneTexture", "sceneAvailable", "function carryScene(",
+                               'case "pointer"', "rec.cmd.interaction"]),
+      "a later material voice can read the frame beneath it, and interaction arrives from the "
+      "product without another listener")
 
 check("PASS-HANG the flight is anchored at both hangs, with the score's track riding on it",
       "function anchorPose(" in LAYER and "function camCompose(" in LAYER,
