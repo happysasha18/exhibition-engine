@@ -33,11 +33,26 @@
   let laneTouchOff = null;          // the CURRENT dress's own lane touchstart handler (INV-88) —
                                      // removed at the top of every dressSide so it never piles up
                                      // across reopens of the reused #exs-stage
+  function seriesOfWork(id) {
+    const sid = id == null ? null : String(id);
+    if (!sid) return -1;
+    for (let i = 0; i < SERIES.length; i++) {
+      if ((SERIES[i].members || []).some((m) => String(m) === sid)) return i;
+    }
+    return -1;
+  }
   function openSide(idx, laystep) {
-    const S = SERIES[idx];
-    if (!S || sideOpen || busy) return;
+    if (sideOpen || busy) return;
+    const opener = document.activeElement;
+    const crossing = passRunning();
     interrupt("series");   // EX-PASS §10.3: the series room stands in front of the walk
-    sideOpener = document.activeElement;               // N7-A11Y (B1): remember the opener (the series chip) before the crossing
+    // Cancellation docks one of the command's two real works synchronously.  Bind the surface to
+    // THAT landed owner, never to the stale chip that happened to be under the pointer when the
+    // crossing began.  If the landed work has no side room, the walk simply remains on it.
+    if (crossing) idx = seriesOfWork(focusedId);
+    const S = SERIES[idx];
+    if (!S) return;
+    sideOpener = opener;                                // N7-A11Y (B1): remember the opener (the series chip) before the crossing
     sideOpen = true;
     faceSync();                                        // the room is a face — arm the rest + guard (EX-CHROME)
     // the room opens THROUGH THE SAME BLACK the door crosses (his 09:53 word: «такой же
@@ -265,4 +280,3 @@
   // "resize" — without these the lifted print stays off-centre after a phone turn.
   addEventListener("orientationchange", sideReCentre);
   if (window.visualViewport) visualViewport.addEventListener("resize", sideReCentre);
-

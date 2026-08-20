@@ -151,7 +151,7 @@
   }
   // one step = advance exactly ONE frame from where the walk is — or from where a running
   // transition is headed, so a second input CHAINS to the next frame, never re-rounds backward.
-  function stepFrame(dir, velocity) {
+  function stepFrame(dir, velocity, interaction) {
     travelDir = dir < 0 ? -1 : 1;                        // the feet declare a direction (EX-LOAD-3)
     const els = stage.querySelectorAll(".exh-frame, .exh-fin");
     const stops = Array.prototype.map.call(els, frameCenter);
@@ -184,7 +184,7 @@
     const cmd = (k === cur) ? null : declare({
       fromEl: els[cur], toEl: els[k], dir: dir,
       span: Math.abs(stops[k] - stops[cur]),
-      kind: "step", cause: "step", velocity: velocity,
+      kind: "step", cause: "step", velocity: velocity, interaction: interaction || null,
     });
     if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
     if (cmd && passVisualTakes(cmd) && passOffer(cmd)) return;   // transitions; the layer's file is asked for once
@@ -410,7 +410,12 @@
       // re-acceleration out of the crested tail (never sooner than the human double-swipe floor)
       // re-arms. A non-stepping event still feeds the ONE glide's SPEED: a rising peak re-times
       // the running glide to the same goal (force→speed, unchanged).
-      if (step) { wheelPeak = mag; stepFrame(step, mag); return; }
+      if (step) {
+        wheelPeak = mag;
+        stepFrame(step, mag, { kind: "wheel", x: e.clientX, y: e.clientY,
+                               energy: Math.min(1, mag / Math.max(1, VEL_SHARP)) });
+        return;
+      }
       if (mag > wheelPeak) {
         wheelPeak = mag;
         if (gliding && glideGoal != null) glideToFrame(glideGoal, wheelPeak, "retime");
@@ -432,7 +437,7 @@
     if (e.key === " " && e.shiftKey) dir = -1;         // shift+space pages back, as everywhere
     e.preventDefault();                                // the native jump never fights the glide
     if (e.repeat) return;                              // a held key = one frame per press
-    stepFrame(dir);
+    stepFrame(dir, 0, { kind: "key", x: innerWidth / 2, y: innerHeight / 2, energy: 0.12 });
   }, { passive: false });
 
   // EX-CHROME: while a face stands, rest the browser's own scroll keys behind it (the walk's step
@@ -457,15 +462,16 @@
   // here). Overlays (side room, quiz/gift card) and the door keep native scroll — see the guards.
   if (HAS_TOUCH) {
     try { window.@@NS_UPPER@@Motion.touchPager = true; } catch (e) {}
-    let tY = null, tLast = 0, tMoved = false;
+    let tY = null, tX = null, tLast = 0, tLastX = 0, tMoved = false;
     const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
     const NATIVE_TOUCH = "#ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound, .ex-share";
     addEventListener("touchstart", (e) => {
       if (!walkOwnsInput() || e.touches.length !== 1
           || (e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
-        tY = null; return;                             // door / overlays / chrome controls / multi-touch keep native touch
+        tY = tX = null; return;                        // door / overlays / chrome controls / multi-touch keep native touch
       }
       tY = tLast = e.touches[0].clientY;
+      tX = tLastX = e.touches[0].clientX;
       tMoved = false;
     }, { passive: true });
     // EX-CHROME: does some part of the face under the finger truly take this drag's axis?
@@ -518,20 +524,25 @@
         // kill). Only when the walk truly owns the input and the finger is not on chrome/an overlay.
         if (e.touches.length === 1 && walkOwnsInput()
             && !(e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
-          tY = tLast = e.touches[0].clientY; tMoved = false;
+          tY = tLast = e.touches[0].clientY;
+          tX = tLastX = e.touches[0].clientX; tMoved = false;
         } else return;
       }
       tLast = e.touches[0].clientY;
+      tLastX = e.touches[0].clientX;
       if (Math.abs(tLast - tY) > 6) tMoved = true;
       e.preventDefault();                              // the walk is paginated — no native scroll, no fly-through
     }, { passive: false });
-    addEventListener("touchcancel", () => { tY = null; });   // a system-cancelled touch leaves no stale drag
+    addEventListener("touchcancel", () => { tY = tX = null; });   // a system-cancelled touch leaves no stale drag
     addEventListener("touchend", () => {
       if (tY == null) return;
       const net = tY - tLast;                          // finger travels UP (net>0) = advance forward
-      tY = null;
+      const fromX = tX, toX = tLastX, toY = tLast;
+      tY = tX = null;
       if (!tMoved || Math.abs(net) < SWIPE_MIN) return;
-      stepFrame(net > 0 ? 1 : -1);                     // exactly one framed transition, force ignored (phase 1)
+      stepFrame(net > 0 ? 1 : -1, Math.abs(net), {
+        kind: "touch", x: toX, y: toY,
+        energy: Math.min(1, Math.hypot(toX - fromX, net) / Math.max(innerWidth, innerHeight) * 3)
+      });                                              // exactly one framed transition, force ignored (phase 1)
     }, { passive: true });
   }
-
