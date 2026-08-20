@@ -2466,6 +2466,10 @@
           fail(cmd.gen, "frame threw");
           return;
         }
+        // A first frame may refuse the transaction itself (for example when the entry-door proof
+        // sees a camera pose that cannot keep A whole). `fail` has already handed the DOM back and
+        // hidden this canvas; never make that released canvas visible again underneath the landing.
+        if (cur !== rec || rec.docked) return;
         stageShow(true);
         runFrame(rec, performance.now());
       }
