@@ -38,13 +38,6 @@
   // ---- the three ranges of contract §2.5 — a legal value must read differently from a hang -------
   var DURATION_MIN = 0, DURATION_MAX = 14000;
   var PREPARE_MIN = 0, PREPARE_MAX = 400;
-  // HOW LONG A COMMAND WAITS FOR THE INSTRUMENT FILES ITS OWN SCORE NAMES, and why it is its own
-  // number rather than the prepare budget's. The prepare budget bounds an instrument that is
-  // already in hand; this bounds a file crossing the network, which is a different thing and fails
-  // for different reasons. It is short on purpose: the walk's own glide is what runs when the wait
-  // runs out, and a visitor whose network is slow should meet that glide a quarter of a second late
-  // rather than watch a still frame while a file arrives.
-  var LOAD_MIN = 0, LOAD_MAX = 4000;
   var SLACK_MIN = 0, SLACK_MAX = 2000;
   function clampNum(n, lo, hi) {
     n = Number(n);
@@ -68,7 +61,6 @@
   var lastRun = null;        // what the last transaction left behind for the diagnostic surface:
                              // the camera's rest, its handoffs and the cadence it landed through
   var prepareBudgetMs = 120; // within PREPARE_MIN…PREPARE_MAX; overridable for testing (host.configure)
-  var loadBudgetMs = 250;    // within LOAD_MIN…LOAD_MAX; overridable for testing (host.configure)
   var settleSlackMs = 300;   // within SLACK_MIN…SLACK_MAX
   // The two pins are a TESTING seam, set only through host.configure: with a pinned clock and a
   // pinned progress the frame loop stops reading the wall clock, so a seeded run can be compared
@@ -2299,38 +2291,51 @@
   // offer(cmd, hooks) — the ONE bridge the bundle calls. Returns true the moment the host has taken
   // responsibility for landing this command, whether by eventually taking over or by calling the
   // glide hook itself on decline; it never means a renderer is now drawing.
-  // THE COMMAND WAITS FOR ITS OWN INSTRUMENTS, AND FOR NO LONGER THAN THE PREPARE BUDGET. Every
-  // instrument a score names is fetched at the address the site's record gives its name, and a
-  // command whose instruments are all in hand goes on at once, by the road below, unchanged. A
-  // command still waiting on a file waits inside the same budget every other pre-takeover failure
-  // is bounded by: the files land and the pass runs, or the budget runs out and the walk's own
-  // glide lands the transition. Nothing is on the screen yet either way — the curtain goes up after
-  // prepare — so a wait costs the visitor a delayed glide at worst, never a stalled picture.
+  // THE COMMAND WAITS FOR ITS OWN INSTRUMENTS, HOWEVER LONG THAT TAKES. Every instrument a score
+  // names is fetched at the address the site's record gives its name, and a command whose
+  // instruments are all in hand goes on at once, by the road below, unchanged. A command still
+  // waiting on a file waits until `whenNamedLoaded` calls back, which it always does — on real
+  // success or on any definitive failure (bad status, digest mismatch, refused registration,
+  // network error all flow through the same landing). Nothing is on the screen yet either way — the
+  // curtain goes up after prepare — so there is no still frame to protect against; there is only the
+  // glide that runs on genuine failure, which the callback below still triggers exactly as before.
+  //
+  // ONE CONNECTION `whenNamedLoaded` CANNOT RING BACK FROM: dead air — a request that neither lands
+  // nor fails, ever, because the network never answers at all (fetch has no floor of its own for
+  // this). DEAD_AIR_MS below is not a second load budget brought back under another name: every
+  // number that second-guessed a normal load is gone, on purpose, and this is not one of them. It
+  // sits in "this connection is broken" territory, not "this connection is slow" territory, and it
+  // exists only so a visit stuck behind a dead socket eventually reads as broken instead of pulsing
+  // forever. It is not offered through host.configure — nothing legitimate ever needs to move it.
+  var DEAD_AIR_MS = 25000;
   var offeredGen = 0;
   var awaiting = null;      // the command held while its files cross the network, and its own gen
   function offer(cmd, hooks) {
     offeredGen = cmd && cmd.gen;
     var waiting = warmFor(cmd);
     if (!waiting) return offerNow(cmd, hooks);
-    var budget = clampNum(loadBudgetMs, LOAD_MIN, LOAD_MAX);
-    var answered = false;
     // A HELD COMMAND IS NOT AN IDLE HOST, and the diagnostic surface says so: `state` reads
     // «awaiting» for as long as the files are in the air. A surface that read «idle» here would
     // tell a reader the transaction had finished when it had not begun.
     awaiting = { gen: cmd.gen, names: waiting };
     logEvt("instruments-awaited", cmd.gen, waiting + " of the score's instruments");
+    var rung = false;
     function release() { if (awaiting && awaiting.gen === cmd.gen) awaiting = null; }
-    var timer = setTimeout(function () {
-      if (answered) return;
-      answered = true;
+    var deadAir = setTimeout(function () {
+      if (rung) return;
+      rung = true;
       release();
-      logEvt("instruments-timeout", cmd.gen, "over " + budget + "ms");
+      // Not a decline, not a refusal — the request itself never came back, which is its own reason
+      // and reads differently on the surface from every other road through this file.
+      logEvt("instruments-dead-air", cmd.gen, "no answer after " + DEAD_AIR_MS
+             + "ms — the load request itself never resolved");
+      if (cmd.gen !== offeredGen) return;
       try { hooks.glide(cmd); } catch (e) {}
-    }, budget);
+    }, DEAD_AIR_MS);
     whenNamedLoaded(cmd, function () {
-      if (answered) return;
-      answered = true;
-      clearTimeout(timer);
+      if (rung) return;
+      rung = true;
+      clearTimeout(deadAir);
       release();
       // A newer declare has superseded this one, and the newer command owns its own landing. Running
       // a glide for the command that was superseded would move the walk twice.
@@ -2585,7 +2590,6 @@
   function configure(opts) {
     if (!opts) return;
     if (opts.prepareBudgetMs !== undefined) prepareBudgetMs = clampNum(opts.prepareBudgetMs, PREPARE_MIN, PREPARE_MAX);
-    if (opts.loadBudgetMs !== undefined) loadBudgetMs = clampNum(opts.loadBudgetMs, LOAD_MIN, LOAD_MAX);
     if (opts.settleSlackMs !== undefined) settleSlackMs = clampNum(opts.settleSlackMs, SLACK_MIN, SLACK_MAX);
     if (opts.clockPin !== undefined) pinClock = opts.clockPin === null ? null : Number(opts.clockPin);
     if (opts.progressPin !== undefined) pinProgress = opts.progressPin === null ? null : Number(opts.progressPin);
@@ -2599,7 +2603,7 @@
       gen: cur ? cur.cmd.gen : null,
       duration: cur ? cur.duration : null,
       variant: cur ? cur.variant : null,
-      prepareBudgetMs: prepareBudgetMs, settleSlackMs: settleSlackMs, loadBudgetMs: loadBudgetMs,
+      prepareBudgetMs: prepareBudgetMs, settleSlackMs: settleSlackMs,
       events: log.slice(),
       instrument: cur ? cur.inst.name : null,
       registered: Object.keys(instruments),
