@@ -332,6 +332,16 @@
     // visit die; edge-memory remains intact for related returns inside the browser session.
     passBeginAtDoor();
     order = assembleOrder(pick);
+    // PREWARM (loading pulse head start, 2026-08-21 audit): the dealt hand is known the instant the
+    // door is picked, well before the ceremony's own timers render the hang — `appendFrames` below
+    // asks for these same three at that later instant, guarded to run once per visit either way, so
+    // starting them here costs nothing extra and spends the veil's own ~1.18*TEMPO seconds (the
+    // loading pulse a visitor watches) on the composer script, the first records wave and the
+    // drawing layer's own file, instead of starting all three only once the hang is already on
+    // screen — the head start the visitor's first gesture was always racing against.
+    passComposerOpen();
+    passRecordsAskFor(order.slice(0, SPREAD));
+    passOpen();
     recomputeQuizChoice();   // INV-66: the new arc = the new eligible set for the one quiz chip
     shown = SPREAD;                                    // a fresh arc = a fresh budget (INV-30/31)
     storyReset();                                      // …and a fresh story — no portion leaks across picks (EX-STORY)

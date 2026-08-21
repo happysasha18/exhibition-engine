@@ -565,6 +565,7 @@
           const rec = got.records[id];
           if (rec && typeof rec === "object") passRecordsMap[id] = rec;
         });
+        passPrewarmAhead();   // this wave may be exactly what an earlier prewarm attempt was missing
       })
       .catch((e) => {
         // THE MAP STANDS AS IT WAS. A wave that fails — network, a refusing status, an answer this
@@ -597,6 +598,8 @@
     if (!passComposer) {
       passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC,
                                why: "the collection's constants made no composer" });
+    } else {
+      passPrewarmAhead();   // the composer was the missing half of every request built so far
     }
   }
   function passComposerOpen() {
@@ -1247,6 +1250,68 @@
     return req;
   }
 
+  // PREWARM (2026-08-21, U27 audit): a head start for the layer's own instLoad race, never a cache a
+  // real declare reads from. `passComposeFor` below still strikes its own dice, fresh, at the actual
+  // gesture — this only asks the drawing layer for the file(s) a candidate passage on the NEXT one or
+  // two edges would want, on the real records, the real route role and the real seed
+  // (`passRequestFor` builds the exact request a real declare would), so the file is already on the
+  // registry by the time a real gesture asks `offer` to wait on it. A wrong guess costs nothing more
+  // than an unread file sitting in the layer's own cache (`prewarmInstruments`'s own dedup); nothing
+  // here is stored per pair and nothing survives past the instrument name it asked for.
+  //
+  // THE ONE NUMBER THIS MECHANISM OWNS: how many steps ahead it looks. His brief's own words —
+  // "the current/next 2-3 steps" — name a span, not a fixed count; the upper edge of that span is
+  // what both the records ask and the compose-ahead loop below read, so a widened or narrowed span
+  // moves in one place and the two never drift apart the way two separately-guessed numbers would.
+  const PASS_PREWARM_STEPS = 3;
+  const passPrewarmed = Object.create(null);
+  function passPrewarmEdge(fromId, toId) {
+    if (!passComposer || !passLayer || typeof passLayer.prewarmInstruments !== "function") return;
+    const fromEl = passResolveEl({ id: fromId }), toEl = passResolveEl({ id: toId });
+    if (!fromEl || !toEl) return;
+    const request = passRequestFor(fromEl, toEl);
+    if (!request) return;                       // one of the two carries no record yet — retried by
+                                                 // the next trigger (a records wave settling, a dock)
+    let got = null;
+    try { got = passComposer.passageFor(request); } catch (e) { got = null; }
+    if (!got || got.declined) return;
+    const cues = (got.score && Array.isArray(got.score.cues)) ? got.score.cues : [];
+    const names = [];
+    cues.forEach((c) => {
+      const id = c && c.instrument && c.instrument.id ? String(c.instrument.id) : null;
+      if (id && !passPrewarmed[id]) { passPrewarmed[id] = true; names.push(id); }
+    });
+    if (names.length) passLayer.prewarmInstruments(names);
+  }
+  // Looks two edges ahead of wherever the visitor stands right now — the door's own pick before the
+  // first step, the last-docked work after — reading them off `order`, the door's whole dealt hand,
+  // already in memory from the moment the door was picked (no fetch of its own). Also widens the
+  // records wave that far ahead, across an unfold boundary the visual walk has not reached yet: a
+  // wave already in flight for an id costs nothing extra to ask again (`passRecordsAskFor`'s own
+  // dedup). Self-healing rather than a single shot: called again whenever a records wave settles or
+  // the composer arrives (either may have been what a request was missing) and at every dock (the
+  // window slides forward with the visitor).
+  //
+  // CALLED FROM `dock` (the transaction's own landing) AMONG OTHER PLACES, so this function must
+  // never throw: a guess about what comes next can never be allowed to break the bookkeeping of the
+  // passage that is actually landing. Every road out is wrapped for exactly that reason — a failed
+  // guess is silently nothing, never a broken dock.
+  function passPrewarmAhead() {
+    try {
+      const ids = (typeof order !== "undefined" && Array.isArray(order)) ? order : null;
+      if (!ids || ids.length < 2) return;
+      const here = (typeof restingEl !== "undefined" && restingEl && restingEl.dataset)
+        ? ids.indexOf(restingEl.dataset.id) : -1;
+      const from = here >= 0 ? here : 0;
+      // Records for exactly the ids the loop below can name — PASS_PREWARM_STEPS edges need
+      // PASS_PREWARM_STEPS+1 endpoints — never a wider ask than the edges that follow can use.
+      passRecordsAskFor(ids.slice(from, Math.min(from + PASS_PREWARM_STEPS + 1, ids.length)));
+      for (let k = from; k < Math.min(from + PASS_PREWARM_STEPS, ids.length - 1); k++) {
+        passPrewarmEdge(ids[k], ids[k + 1]);
+      }
+    } catch (e) {}
+  }
+
   // The pair's own passage, derived. This road never waits and never fetches: a composer that has
   // not arrived answers nothing, the reason goes on the diagnostic surface, and the crossing falls
   // through to the walk's own glide exactly as a pair with no score always has. A named refusal from
@@ -1739,6 +1804,7 @@
     if (el && el.dataset && document.body.contains(el)) restingEl = el;
     if (el) passLandGate(el, "dock", landOn, cmd.gen);
     passMark("dock", cmd, cmd.to.id === "door" ? "door" : null);
+    passPrewarmAhead();   // the window of "the next couple of steps" slides forward with the visitor
     // The chrome comes back HERE and nowhere else, so it can only ever follow the arrival. The
     // curtain has already dropped and the canvas has already been released (the host calls
     // handoff(cmd) before dock — §2.2 settle/fail), so this is the first instant the walk owns its

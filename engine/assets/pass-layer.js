@@ -2675,6 +2675,7 @@
     offer: offer, resize: resize, cancel: cancel,
     contextLost: contextLost, contextRestored: contextRestored,
     settle: settle, fail: fail, register: register, configure: configure, report: report,
+    prewarmInstruments: prewarmInstruments,
   };
 
   // ================================================================================================
@@ -2922,6 +2923,19 @@
       if (id && out.indexOf(String(id)) < 0) out.push(String(id));
     }
     return out;
+  }
+
+  // PREWARM (2026-08-21): asked for by NO command, only by a caller that believes a real command is
+  // coming — the bundle's own head-start layer, never a stored table of what usually plays. The same
+  // dedup `warmFor` already leans on (`instLoad` refuses to ask twice, and a name once refused stays
+  // refused for the visit) is what makes an over-eager guess free: a name this prewarm asked for that
+  // the real command never ends up naming just sits on the registry unused, and a name it guessed
+  // right about is the wait `offer` would otherwise have spent, already gone.
+  function prewarmInstruments(names) {
+    var i;
+    for (i = 0; i < (names || []).length; i++) {
+      if (names[i] && !instruments[String(names[i])] && !files[String(names[i])]) instLoad(String(names[i]));
+    }
   }
 
   // WHAT A COMMAND NAMES AND THIS HOST DOES NOT HOLD IS ASKED FOR HERE, and the count of what is
