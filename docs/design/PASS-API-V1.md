@@ -1053,12 +1053,15 @@ for:
 | `seed` | the die, inside the span the meshing instrument publishes for its own `seed` handle | the walk rolled none; the passage runs on 0, reproducible |
 | `routeRole` | entrance, quiet link, middle, culmination or return (charter shelf 15 maps these onto the harmonic functions) | the walk stated no function; read as a middle |
 | `sessionMemory` | §4.8's return reference `{family, seed, passIndex}`, and nothing wider | nothing has played on this edge yet |
+| `walkMemory` | the letters the walk has already played ELSEWHERE, most recent first — a plain list of names, the genre each passage ran on and the instruments its stack carried (charter shelf 16's letter cooldowns) | the walk has played nothing yet, and every letter carries its whole weight |
 | `cameraState` | the pose the camera rests in as the passage starts; the flight departs from it | the walk stated no pose; the flight departs from the score's own rest |
 | `buffer` | the canvas as it stands: width, height, dpr, orientation, quality tier | unstated; the instrument reads the one it is drawing on |
 
 A name outside the five route roles, a session memory naming a field outside §4.8's three, and a die
 outside the instrument's span are each a named refusal, so the vocabulary cannot drift and §4.8's
-fence cannot leak. What comes back carries the score, the request as it was read, and `applied` —
+fence cannot leak. A walk memory that is no list, or one carrying an entry that names no letter, is
+left unread the same way and recorded beside the rest. What comes back carries the score, the request
+as it was read, and `applied` —
 what the instrument applied on the buffer it drew on, or the refusal it named — which the walk writes
 onto the record at the landing, because it cannot be known before the frame is drawn.
 

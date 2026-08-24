@@ -242,8 +242,10 @@
                      "tonal-and-spectral"];
   var MEASURES = ["banding", "grid", "regions", "dominant_object", "texture", "radial",
                   "named_objects"];
-  var SHARED_MEASURES = ["banding", "dominant_object", "grid", "named_objects", "radial",
-                         "regions", "texture"];
+  // `SHARED_MEASURES` stood beside `MEASURES` here until 2026-08-24 — the same seven names in
+  // another order, read by nothing in this file or in any file of either tree. A second list of one
+  // fact is a list that can go stale against the first, and this one already had: nothing would have
+  // said so.
   var CUT_OF_MEASURE = {
     regions: ["regions", "region_dissolve"],
     named_objects: ["named_boxes", "object_by_object"],
@@ -2043,7 +2045,7 @@
       }
       for (i = 0; i < tiers.length; i++) {
         if (tiers[i].length) {
-          return [dieWeighted(tiers[i], seed, key + "|" + list.join("+") + "|" + slot), said,
+          return [dieWeighted(tiers[i], seed, key + "|" + list.join("+") + "|" + slot, 1), said,
                   cutters, false];
         }
       }
@@ -2059,19 +2061,66 @@
       return a.id < b.id ? (a.id + "__" + b.id) : (b.id + "__" + a.id);
     }
 
+    // THE LETTERS THIS WALK HAS ALREADY PLAYED, most recent first. Charter shelf 16 writes the dice
+    // in order — base weights (structure fit) → LETTER COOLDOWNS → the day's weather → viewer memory
+    // → roll — and this is that second step, which had nothing behind it until now: the composer
+    // answered every edge of a walk as though it were the first one, so a letter that suits a whole
+    // collection well carried step after step of one route. His 2026-08-17 19:13 word names the
+    // failure from the other end («обидно» — one lovely move standing alone on a route) and his
+    // 2026-08-24 word watching the live route names what it looks like: the effects repeat.
+    //
+    // THE READING IS THE WALK'S AND IT IS HANDED IN, never accumulated here. The walk already knows
+    // what it played, in the client's own `passRoutePlayed`; the composer knowing it too would be a
+    // second record of one fact, and a worse one — the walk composes a passage or two AHEAD of the
+    // visitor to warm the instruments, and a ledger kept in here would count those speculative asks
+    // as things the person saw. So this holds only what the current request said, set once per
+    // passage, and `passageFor` with the same request answers the same way it always did.
+    //
+    // NOTHING HERE SCALES WITH THE COLLECTION. The list names letters, never pairs — the vocabulary
+    // is fixed however many works hang — which is his 19:21 word about the product path.
+    var walkPlayed = [];
+    // WHAT ONE COOLING IS WORTH. The letter played on the passage just gone is the most cooled and
+    // the one played longest ago is barely cooled at all, in even steps between: a letter at place k
+    // of n keeps (k + 1) / (n + 1) of its own weight. NOTHING IS EVER ZERO, which is shelf 9's law
+    // («a measurement ranks the genres», never gates) and the lab's own — a cooldown never empties a
+    // pool. The strength of the cooling is therefore not a number this file invents: it is exactly
+    // how much the walk chose to remember, which is the walk's own dramaturgy and one of the three
+    // sources his 2026-08-19 11:58 word allows.
+    function coolOf(id) {
+      var at = walkPlayed.indexOf(id);
+      return at < 0 ? 1 : (at + 1) / (walkPlayed.length + 1);
+    }
     // THE DIE OVER A RANKING. Each candidate carries a fit, the die lands somewhere in their summed
     // weight, and the best-suited holds the widest stretch of it. Where every fit is nothing the die
     // is even — nothing is refused for reading nothing, it is simply no likelier than its rivals.
     // The list is sorted by name first so a pinned seed reproduces the choice whatever order the
     // caller built it in.
-    function dieWeighted(list, seed, key) {
+    //
+    // THE COOLDOWN MULTIPLIES THE FIT AND NEVER REPLACES IT: the pair's own reading still ranks the
+    // pool and still holds the widest stretch of the weight where it is far ahead — what the cooling
+    // does is narrow that stretch for a letter this walk has just played, so a near-rival takes the
+    // die more often. A letter no walk has played keeps its whole weight.
+    //
+    // IT COOLS LETTERS AND NOTHING ELSE, and the caller says which pool is which. Shelf 16's own
+    // words are «letter cooldowns»: a genre and an instrument are letters of the vocabulary and a
+    // person sees them repeat, while the GROUND a pair stands on is the pair's own structure and
+    // not a letter at all. Two reasons hold them apart and both are law rather than tidiness. §4.8
+    // says a return holds the family AND the pivot, so cooling the ground would make the walk unable
+    // to keep the very thing it came back for. And one name — «tonal-and-spectral» — is both a genre
+    // and a ground, so a pool told to cool indiscriminately would cool a pair's ground because a
+    // passage elsewhere on the route happened to run on the genre that shares its name. The default
+    // is not to cool, so a call site added later cannot cool a ground by forgetting to say so.
+    function dieWeighted(list, seed, key, letters) {
       var pool = list.slice().sort(function (x, y) { return x.id < y.id ? -1 : (x.id > y.id ? 1 : 0); });
-      var total = 0, i;
-      for (i = 0; i < pool.length; i++) total += Math.max(0, Number(pool[i].fit) || 0);
+      var total = 0, i, w = [];
+      for (i = 0; i < pool.length; i++) {
+        w.push(Math.max(0, Number(pool[i].fit) || 0) * (letters ? coolOf(pool[i].id) : 1));
+        total += w[i];
+      }
       if (!(total > 0)) return pool[dieAmong(seed, key, pool.length)].id;
       var at = dieAmong(seed, key, 1000000) / 1000000 * total, run = 0;
       for (i = 0; i < pool.length; i++) {
-        run += Math.max(0, Number(pool[i].fit) || 0);
+        run += w[i];
         if (at < run) return pool[i].id;
       }
       return pool[pool.length - 1].id;
@@ -3482,12 +3531,12 @@
         pool.push({ id: iid, fit: suitsPair(iid, fromW, toW)[0] });
       }
       if (!pool.length) return null;
-      return dieWeighted(pool, seed, key + "|ground-fills");
+      return dieWeighted(pool, seed, key + "|ground-fills", 1);
     }
 
     // The die over a ranked pool of genres, weighted by how well each suits the pair.
     function pickGenre(pool, seed, key) {
-      var at = dieWeighted(pool.map(function (r) { return { id: r.id, fit: r.fit }; }), seed, key);
+      var at = dieWeighted(pool.map(function (r) { return { id: r.id, fit: r.fit }; }), seed, key, 1);
       var i;
       for (i = 0; i < pool.length; i++) if (pool[i].id === at) return pool[i];
       return pool[0];
@@ -4287,6 +4336,76 @@
     // ВКУСА, поднято в отчёте" — a quarter is a number of taste, raised in a report rather than
     // measured. It is carried here as that same admitted number, not re-derived as if it were one.
     var VOICE_SHARE = 0.25;
+
+    // WHEN A VOICE IS SEEN, AND IT IS THE LAB'S OWN MEASUREMENT — the second pass of
+    // lab/step4-assembler.js, ported here 2026-08-24 on his word watching the live route (the colour
+    // does not visibly read during a crossing). The first pass alone stood here until now: amplitude
+    // = VOICE_SHARE of the work's own measure, written and never checked. The lab does not stop
+    // there. lab/step4-assembler.js:102-105 carries a MEASURED threshold — VISIBLE = 5/255, with
+    // VOICE_TARGET the nearest distinguishable step above it, 6 of 255 — and beside it the reading
+    // that set it: «замер 12.08 на паре «по цвету» — контраст второй работы 0,083, размах 0,0208,
+    // вершина голоса 0,0187, то есть 4,77 из 255 при пороге 5». Its law follows in the same breath:
+    // «Заявленный и неслышный голос — пустое утверждение разбора» — a declared and unseeable voice is
+    // an empty claim, so the analysis does not declare one.
+    //
+    // WHAT WAS NOT PORTED WITH IT, AND WHY IT CAN BE NOW. The lab reaches the voice's own peak by
+    // RENDERING the layer off-screen twice, with the voice and without, because it cannot predict
+    // where the crest of the curve falls («Предсказать движение пикселей по числам голоса нельзя»).
+    // The composer derives a passage at the instant two works meet and can render nothing — which is
+    // why the note below this block said the loop stays in the lab. But the curve is written down:
+    // lab/effects/grid-colour.js:343 drives every one of these voices as
+    // `amp · sin(2π(u/period + phase)) · 4u(1−u)`, and the composer WRITES the period and the phase
+    // itself, two lines above wherever it writes the amplitude. So the crest is closed-form in
+    // numbers already in hand, and the lab's own arithmetic checks out against its own record: at
+    // amplitude 0,0208 the peak it measured was 0,0187, which is 0,899 of the amplitude — a crest of
+    // the sine caught well inside the 4u(1−u) window, exactly what this returns.
+    var VOICE_SEEN = 6 / 255;
+    function voicePeak(period, phase) {
+      if (!(period > 0)) return 0;
+      var best = 0, i, u, v;
+      // Walked rather than solved: the crest of a sine inside a parabolic window has no closed root,
+      // and the walk is over a curve the composer already knows every number of. A thousand steps
+      // resolve the crest to four decimal places, which is the precision a score is written at.
+      for (i = 0; i <= 1000; i++) {
+        u = i / 1000;
+        v = Math.abs(Math.sin(2 * Math.PI * (u / period + (phase || 0)))) * 4 * u * (1 - u);
+        if (v > best) best = v;
+      }
+      return best;
+    }
+    // THE LOUDNESS A VOICE ACTUALLY SINGS AT, by the lab's own three-part law
+    // (lab/step4-assembler.js:2015-2031): a quarter of the work's own measure where that is already
+    // seen; raised to the least amplitude that IS seen where it is not; and never past the work's own
+    // measure, which is the ceiling — a voice cannot be louder than the thing it is a voice of.
+    // Where even the ceiling cannot be seen the voice does not sing and `null` says so, and the
+    // caller leaves its handles unwritten exactly as the lab's own mute does. That is not a crossing
+    // refused: shelf 17's budget shapes a passage that is already playing, and a passage whose colour
+    // voice stays silent still plays every other voice it has.
+    function voiceLoudness(measure, period, phase) {
+      var peak = voicePeak(period, phase);
+      if (!(measure > 0) || !(peak > 0)) return null;
+      // THE AMPLITUDE HAS TO CLEAR THE THRESHOLD AFTER IT IS WRITTEN DOWN, not before. A score keeps
+      // four decimal places, so the least loudness that is seen is rounded UP to that place: rounded
+      // to nearest, a voice raised to exactly the threshold lands a hundredth of a step under it on
+      // the wire and is declared unseeable by its own law.
+      var want = Math.ceil(VOICE_SEEN / peak * 10000) / 10000;
+      if (want > measure) return null;
+      var quarter = VOICE_SHARE * measure, v = quarter > want ? quarter : want;
+      if (r4(v) < want) v = want;
+      return clamp01(v);
+    }
+    // ONE VOICE, WRITTEN OR LEFT SILENT — the one home of that decision, so a voice cannot be muted
+    // by one instrument's branch and declared by another's. The three instruments that carry these
+    // voices all publish the same three handles per voice, `<stem>Period<tail>` and its phase and its
+    // amplitude, so one shape serves all three.
+    function sayVoice(wanted, stem, tail, measure, period, phase) {
+      var amp = voiceLoudness(measure, period, phase);
+      if (amp === null) return false;
+      wanted[stem + "Period" + tail] = flt(r4(period));
+      wanted[stem + "Phase" + tail] = flt(r4(phase));
+      wanted[stem + "Amp" + tail] = flt(r4(amp));
+      return true;
+    }
 
     // RATIOS and RATIO_BAND — the small-integer ratios an accompanying voice's period must not sit
     // near, and the band around each. lab/step4-assembler.js:84-85 (RATIOS, RATIO_BAND = 0.05),
@@ -5258,18 +5377,20 @@
           if (singsLightColour(cue)) {
             var gcBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.contrast)];
             var gcPeriods = voiceSpread(gcBase);
-            wanted.colourPeriod = flt(r4(Math.min(num(HANDLE_SPECS["grid-colour"].colourPeriod[1]),
-                                                   Math.max(num(HANDLE_SPECS["grid-colour"]
-                                                                .colourPeriod[0]),
-                                                            gcPeriods[0].value))));
-            wanted.colourPhase = flt(0);
-            wanted.colourAmp = flt(r4(clamp01(VOICE_SHARE * mf.sat)));
-            wanted.lightPeriod = flt(r4(Math.min(num(HANDLE_SPECS["grid-colour"].lightPeriod[1]),
-                                                 Math.max(num(HANDLE_SPECS["grid-colour"]
-                                                              .lightPeriod[0]),
-                                                          gcPeriods[1].value))));
-            wanted.lightPhase = flt(0.5);
-            wanted.lightAmp = flt(r4(clamp01(VOICE_SHARE * mf.contrast)));
+            // The period is settled first, because the loudness is read against the crest the period
+            // and the phase put the voice's own curve at — `voiceLoudness` above, the lab's own
+            // second pass. A voice the work cannot sing loudly enough to be seen leaves all three of
+            // its handles unwritten, resting at the manifest's own 0, which is the lab's own mute.
+            var gcColourPeriod = r4(Math.min(num(HANDLE_SPECS["grid-colour"].colourPeriod[1]),
+                                             Math.max(num(HANDLE_SPECS["grid-colour"]
+                                                          .colourPeriod[0]),
+                                                      gcPeriods[0].value)));
+            var gcLightPeriod = r4(Math.min(num(HANDLE_SPECS["grid-colour"].lightPeriod[1]),
+                                            Math.max(num(HANDLE_SPECS["grid-colour"]
+                                                         .lightPeriod[0]),
+                                                     gcPeriods[1].value)));
+            sayVoice(wanted, "colour", "", mf.sat, gcColourPeriod, 0);
+            sayVoice(wanted, "light", "", mf.contrast, gcLightPeriod, 0.5);
           }
           // WHAT STAYS IN THE LAB. The assembler follows this first pass with an audibility loop
           // (`voiceMove`, `VOICE_TARGET`) that RENDERS the voice's layer off-screen and measures how
@@ -5337,30 +5458,21 @@
                           BEAT_DIAL * (4 + mt.sat), BEAT_DIAL * (5 + mt.contrast)];
             var slPeriods = voiceSpread(slBase);
             var slClamp = function (handle, v) {
-              return flt(r4(Math.min(num(HANDLE_SPECS["strata-light"][handle][1]),
-                                     Math.max(num(HANDLE_SPECS["strata-light"][handle][0]), v))));
+              return r4(Math.min(num(HANDLE_SPECS["strata-light"][handle][1]),
+                                 Math.max(num(HANDLE_SPECS["strata-light"][handle][0]), v)));
             };
             // PHASE. The four voices stand a quarter turn apart, `i / 4` — step4-assembler.js:2000.
-            wanted.colourPeriodA = slClamp("colourPeriodA", slPeriods[0].value);
-            wanted.colourPhaseA = flt(0 / 4);
-            wanted.colourAmpA = flt(r4(clamp01(VOICE_SHARE * mf.sat)));
-            wanted.lightPeriodA = slClamp("lightPeriodA", slPeriods[1].value);
-            wanted.lightPhaseA = flt(1 / 4);
-            wanted.lightAmpA = flt(r4(clamp01(VOICE_SHARE * mf.contrast)));
-            wanted.colourPeriodB = slClamp("colourPeriodB", slPeriods[2].value);
-            wanted.colourPhaseB = flt(2 / 4);
-            wanted.colourAmpB = flt(r4(clamp01(VOICE_SHARE * mt.sat)));
-            wanted.lightPeriodB = slClamp("lightPeriodB", slPeriods[3].value);
-            wanted.lightPhaseB = flt(3 / 4);
-            wanted.lightAmpB = flt(r4(clamp01(VOICE_SHARE * mt.contrast)));
+            // Each is written only where the work whose measure it sings can be seen singing it —
+            // `sayVoice` above, the lab's own second pass.
+            sayVoice(wanted, "colour", "A", mf.sat,
+                     slClamp("colourPeriodA", slPeriods[0].value), 0 / 4);
+            sayVoice(wanted, "light", "A", mf.contrast,
+                     slClamp("lightPeriodA", slPeriods[1].value), 1 / 4);
+            sayVoice(wanted, "colour", "B", mt.sat,
+                     slClamp("colourPeriodB", slPeriods[2].value), 2 / 4);
+            sayVoice(wanted, "light", "B", mt.contrast,
+                     slClamp("lightPeriodB", slPeriods[3].value), 3 / 4);
           }
-          // WHAT STAYS IN THE LAB. The assembler follows this first pass with an audibility loop
-          // (`voiceMove`, `VOICE_TARGET`) that RENDERS each layer off-screen and measures how far it
-          // actually moved a real frame's pixels, muting a voice a work cannot sing loud enough to
-          // clear the visible threshold. The composer derives a crossing at the instant a visit
-          // casts it and cannot render a probe frame to measure against, so that refinement is not
-          // ported: every voice here plays at its first-pass amplitude, unmuted, when it plays at
-          // all.
         } else if (instr === "strata-scale") {
           // THE TWO STRATA'S OWN CENTRES OF GRAVITY, off each work's own measured reading —
           // lab/analyze/recipes.py's own port of strata-scale.js:279-287 (`cut()`'s own
@@ -5387,27 +5499,21 @@
                           BEAT_DIAL * (4 + mt.sat), BEAT_DIAL * (5 + mt.contrast)];
             var ssPeriods = voiceSpread(ssBase);
             var ssClamp = function (handle, v) {
-              return flt(r4(Math.min(num(HANDLE_SPECS["strata-scale"][handle][1]),
-                                     Math.max(num(HANDLE_SPECS["strata-scale"][handle][0]), v))));
+              return r4(Math.min(num(HANDLE_SPECS["strata-scale"][handle][1]),
+                                 Math.max(num(HANDLE_SPECS["strata-scale"][handle][0]), v)));
             };
             // PHASE. The four voices stand a quarter turn apart, `i / 4` — step4-assembler.js:2000,
-            // the same rule strata-light's own branch stands its four voices by.
-            wanted.colourPeriodA = ssClamp("colourPeriodA", ssPeriods[0].value);
-            wanted.colourPhaseA = flt(0 / 4);
-            wanted.colourAmpA = flt(r4(clamp01(VOICE_SHARE * mf.sat)));
-            wanted.lightPeriodA = ssClamp("lightPeriodA", ssPeriods[1].value);
-            wanted.lightPhaseA = flt(1 / 4);
-            wanted.lightAmpA = flt(r4(clamp01(VOICE_SHARE * mf.contrast)));
-            wanted.colourPeriodB = ssClamp("colourPeriodB", ssPeriods[2].value);
-            wanted.colourPhaseB = flt(2 / 4);
-            wanted.colourAmpB = flt(r4(clamp01(VOICE_SHARE * mt.sat)));
-            wanted.lightPeriodB = ssClamp("lightPeriodB", ssPeriods[3].value);
-            wanted.lightPhaseB = flt(3 / 4);
-            wanted.lightAmpB = flt(r4(clamp01(VOICE_SHARE * mt.contrast)));
+            // the same rule strata-light's own branch stands its four voices by, and each is written
+            // only where it can be seen — `sayVoice` above.
+            sayVoice(wanted, "colour", "A", mf.sat,
+                     ssClamp("colourPeriodA", ssPeriods[0].value), 0 / 4);
+            sayVoice(wanted, "light", "A", mf.contrast,
+                     ssClamp("lightPeriodA", ssPeriods[1].value), 1 / 4);
+            sayVoice(wanted, "colour", "B", mt.sat,
+                     ssClamp("colourPeriodB", ssPeriods[2].value), 2 / 4);
+            sayVoice(wanted, "light", "B", mt.contrast,
+                     ssClamp("lightPeriodB", ssPeriods[3].value), 3 / 4);
           }
-          // WHAT STAYS IN THE LAB. Same as strata-light's own branch above: the assembler's own
-          // audibility loop (`voiceMove`, `VOICE_TARGET`) is not ported, so every voice here plays
-          // at its first-pass amplitude, unmuted, when it plays at all.
           //
           // `handover` IS NOT DRIVEN HERE, and that is a fact about the module rather than a gap:
           // no reading in a work record says how a visitor's own hand would have shared the dial's
@@ -5984,6 +6090,57 @@
         var camAxis = camTied.length === 1 ? camTied[0]
           : camTied[dieAmong(num(row[4]), key + "|camAxis", camTied.length)];
 
+        // (i·b) AND THE AXIS THAT CARRIES IT HAS TO BE SEEN CARRYING IT — his word of 2026-08-24,
+        // watching the live route: the camera's movement does not visibly read during a crossing.
+        // Nothing above this comment is wrong. Every axis reads its own record correctly and the
+        // contest between them is honest. What was missing is that the amplitude is a PRODUCT of
+        // independent readings, each already well short of its own ceiling — the pair's own tone
+        // apartness in `reach`, and the axis's own graded magnitude — so the excursion collapses
+        // toward nothing however strongly the pair calls for it. Over the collection's own records
+        // the carrying axis spent a median of nine per cent of its own ceiling, which at this bound
+        // is under three degrees across a whole passage. The note above `reach` names the same gap
+        // from the other side: shelf 17 gives a culmination more accompaniment than a quiet link and
+        // the tier reaches this flight nowhere.
+        //
+        // SHELF 17'S BUDGET BECOMES A LEVEL AND NOT ONLY A COUNT, which is the half of it that was
+        // never built. A voice that is counted against the budget and cannot be seen is a voice the
+        // budget is spending on nothing — the same emptiness the lab names for the colour voices
+        // («Заявленный и неслышный голос — пустое утверждение разбора») said of the camera.
+        //
+        // WHAT THE FLOOR IS READ FROM, and it is the two works and no number of this file's. A
+        // camera excursion reads when the frame's own edge travels by at least ONE element of the
+        // pair's finer measured grain: below that the pose has moved by less than the smaller
+        // picture's own smallest feature, and there is nothing on screen to read the motion against.
+        // The grain is `latticePx` — the step the work was actually cut at, the same reading roll's
+        // own sign is folded from — as a share of that work's own frame side. The FINER of the two
+        // sets the floor, because the finer grain is what registers the smallest motion; the coarser
+        // would ask for a turn the pair never called for. A rotation of θ about the frame's centre
+        // carries a point at the edge — half a frame out, which is the unit `camBound` is already
+        // stated in — through θ · 0.5, so one element of grain asks θ ≥ 2 · grainFrac, and as a share
+        // of the axis's own ceiling that is 2 · grainFrac / camBound.
+        //
+        // SHELF 9'S LAW HOLDS INSIDE IT. The readings still RANK — which axis carries is the contest
+        // above, untouched, and how far above the floor it flies is still the pair's own reading —
+        // because the floor takes the bottom of the span and the reading spends what is left:
+        // `floor + (1 − floor) · share`, which is monotone in the reading and can never pass 1. So no
+        // pair is refused, no crossing is declined, and no axis leaves its own published ceiling; the
+        // floor only guarantees that the voice the passage chose can be seen at all.
+        var camGrainA = cmf.frameSide > 0 && cmf.latticePx > 0 ? cmf.latticePx / cmf.frameSide : 0;
+        var camGrainB = cmt.frameSide > 0 && cmt.latticePx > 0 ? cmt.latticePx / cmt.frameSide : 0;
+        var camFloor = (camGrainA > 0 && camGrainB > 0)
+          ? clamp01(2 * Math.min(camGrainA, camGrainB) / camBound) : 0;
+        // The lift is applied to the carrying axis's own magnitude, so every shape below — the
+        // outbound-to-inbound fraction of condition (ii), the arc pitch already travels, the signs
+        // each axis read off its own record — is carried through untouched and only scaled.
+        var camLift = 1;
+        if (camFloor > 0 && camMaxShare > 0) {
+          camLift = (camFloor + (1 - camFloor) * camMaxShare) / camMaxShare;
+        }
+        roll *= camLift;
+        yaw *= camLift;
+        pitchFrom *= camLift;
+        pitchTo *= camLift;
+
         // (ii) NOT A MIRROR. Roll and yaw are each ONE pair fact and land the identical value at
         // both middle points by construction, so the outbound pose and the return pose of either
         // one, if left alone, are exactly each other's reflection — the mirror the ban names. The
@@ -6237,9 +6394,17 @@
 
     // ---- the choice core: two works, a direction and a die ----
 
-    function scoreFor(a, b, direction, seed, role, memory) {
+    function scoreFor(a, b, direction, seed, role, memory, played) {
       // Two works, a direction, the step's role, what the visit already played here and a die: the
       // whole crossing, decided here and now.
+      //
+      // AND WHAT THE WALK HAS ALREADY PLAYED ELSEWHERE. `played` is the letters of the passages
+      // behind this one, most recent first (charter shelf 16's cooldowns, `coolOf` above). It is set
+      // for the length of this one composition and read by every die struck inside it — the genre,
+      // the ground, the instrument cast — so the whole choice answers to one reading of the walk
+      // rather than to several. It is derived wholly from the request, so a request composed twice
+      // still answers twice the same.
+      walkPlayed = Array.isArray(played) ? played : [];
       var tag = direction === "b-to-a" ? "ba" : "ab";
       var key = a.id + "__" + b.id + "__" + tag;
       var fromW = tag === "ab" ? a : b, toW = tag === "ab" ? b : a;
@@ -6451,7 +6616,37 @@
           }
         }
       }
+      // WHAT THE WALK HAS PLAYED SO FAR, most recent letter first — charter shelf 16's letter
+      // cooldowns, read here and handed to the choice core. It is a plain list of NAMES: the genres
+      // and the instruments the passages behind this one carried, which is what a person actually
+      // sees repeat. A list is all it is; there is no second field to invent, and nothing in it
+      // scales with the collection.
+      //
+      // A LIST OF ANYTHING BUT NAMES IS LEFT UNREAD rather than refused, exactly as every other
+      // field of this entry is now: the crossing still plays. There is no length fence, and that is
+      // deliberate — the list is bounded by the walk's own length, which is the walk's business, and
+      // a number invented here to bound it a second time would be one of the numbers his 09:57 word
+      // strikes as a class.
+      var played = [];
+      if (req.walkMemory !== undefined && req.walkMemory !== null) {
+        if (!Array.isArray(req.walkMemory)) {
+          unread.push("a walk memory that is no list, so the walk has played nothing yet");
+        } else {
+          var strayLetters = 0, wm;
+          for (wm = 0; wm < req.walkMemory.length; wm++) {
+            if (typeof req.walkMemory[wm] === "string" && req.walkMemory[wm]) {
+              played.push(req.walkMemory[wm]);
+            } else {
+              strayLetters += 1;
+            }
+          }
+          if (strayLetters) {
+            unread.push(strayLetters + " walk-memory entr(y/ies) naming no letter");
+          }
+        }
+      }
       var read = { routeRole: role, direction: direction, seed: seed, sessionMemory: memory,
+                   walkMemory: played.length ? played : null,
                    cameraState: req.cameraState === undefined ? null : req.cameraState,
                    buffer: req.buffer === undefined ? null : req.buffer,
                    unread: unread.length ? unread : null };
@@ -6463,7 +6658,7 @@
       // A request with one record names one photograph, and a crossing is between two.
       if (!a || !a.id) return no("the passage request names no departing work record");
       if (!b || !b.id) return no("the passage request names no arriving work record");
-      var made = scoreFor(a, b, direction, seed, role, memory);
+      var made = scoreFor(a, b, direction, seed, role, memory, played);
       // THE PASSAGE THE CAMERA LEADS. The camera lane built the capability and asks one field for
       // it: `camera.lead` says the flight itself is the transition, the anchor gives up its held
       // middle and the pose travels the whole duration without ever standing still. Choosing it is

@@ -1247,7 +1247,33 @@
     const role = passRouteRole(from, to, edge);
     if (role) req.routeRole = role;
     if (edge && edge.memory) req.sessionMemory = edge.memory;
+    // WHAT THE WALK HAS ALREADY PLAYED, most recent letter first — charter shelf 16's letter
+    // cooldowns, which the composer strikes INSIDE its dice (`coolOf` in pass-composer.js). The walk
+    // is the one that knows: `passRoutePlayed` is written at the DOCK, when a passage has actually
+    // landed in front of the person, so the passages this file composes a step or two AHEAD to warm
+    // the instruments never reach it — a guess about what might come next must not cool a letter
+    // nobody saw.
+    //
+    // The reading crosses as a plain list of NAMES and nothing else: the genre the passage ran on
+    // and the instruments its stack carried, which is what a person actually sees repeat. Nothing in
+    // it scales with the number of works or pairs (his 19:21 word), and nothing about the person
+    // travels in it.
+    req.walkMemory = passWalkMemory();
     return req;
+  }
+
+  // The letters of the passages behind this one, most recent first, flattened out of the walk's own
+  // route record. One home for that reading, so the request the prewarm builds and the request a
+  // real declare builds carry the same list by construction.
+  function passWalkMemory() {
+    const out = [];
+    for (let i = passRoutePlayed.length - 1; i >= 0; i--) {
+      const step = passRoutePlayed[i];
+      if (!step) continue;
+      if (step.genre) out.push(step.genre);
+      (step.stack || []).forEach((id) => { if (id) out.push(id); });
+    }
+    return out;
   }
 
   // PREWARM (2026-08-21, U27 audit): a head start for the layer's own instLoad race, never a cache a
@@ -1490,6 +1516,11 @@
     const instrument = row.applied.instrument || passPrimaryOf(row);
     passRoutePlayed.push({ edgeKey: edgeKey, direction: direction, family: family,
                            instrument: instrument, role: (row.request || {}).routeRole || null,
+                           // The genre this passage ran on, beside the instruments it cast. A family
+                           // token is not a letter — it names the pivot's transform and the measure
+                           // that travelled — so the genre is what the composer's own cooldown can
+                           // find in this list, and it is recorded here rather than re-derived.
+                           genre: row.genre || null,
                            stack: (row.applied.cues || []).map((c) => c.instrument),
                            world: instrument === "parquet" || !!(row.score && row.score.camera
                                                                   && row.score.camera.lead) });

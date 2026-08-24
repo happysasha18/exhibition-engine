@@ -398,6 +398,14 @@ NODE_ROWS = [
     "EX-COMPOSED the camera's two ends stand at the plain neutral pose on every pair, whatever the "
     "middle does",
     "EX-COMPOSED the camera track never exceeds the client's own published camera-point fence",
+    "EX-COMPOSED the letters a walk has already played cool in the die, so a route handed its own "
+    "memory spreads wider than the same route composed blind — and never loses a crossing for it",
+    "EX-COMPOSED the camera axis that carries the passage clears the level the pair's own grain "
+    "sets, so the flight reads against the pictures rather than against nothing",
+    "EX-COMPOSED a colour or light voice that is driven at all is loud enough to be seen, by the "
+    "lab's own measured threshold, and one that cannot be is not declared",
+    "EX-COMPOSED a walk memory the entry cannot read as sent is read as far as it can be and "
+    "recorded, never a reason to lose the crossing",
 ]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
@@ -621,9 +629,71 @@ function camExpected(fromW, toW) {
   var pitchTo = hTo === null ? 0 : (hTo - 0.5) * reach * DOLLY_CAP;
   var levelFrom = camLevel(fromW), levelTo = camLevel(toW), levelSum = levelFrom + levelTo;
   var pitchInTied = pitchFrom * (levelSum > 0 ? levelFrom / levelSum : 0.5);
+  // THE VOICE LEVEL (2026-08-24, this file's own note beside pass-composer.js's own). The three
+  // magnitudes above are exactly as they always were; what is new is that the axis which WINS the
+  // contest between them is then lifted so its share of its own ceiling clears the level the pair's
+  // own grain sets — `camVoiceFloor` above. The lift is `(floor + (1 − floor)·share) / share`, so
+  // the reading still spends the whole span above the floor, the shape of every axis is carried
+  // through untouched, and nothing passes its own ceiling. Re-derived here from the raw record, as
+  // every other line of this function is.
+  var eRollShare = Math.abs(rollRaw) / DOLLY_CAP;
+  var eYawShare = Math.abs(yawRaw) / DOLLY_CAP;
+  var ePitchShare = Math.max(Math.abs(pitchFrom), Math.abs(pitchTo)) / (0.5 * DOLLY_CAP);
+  var eMaxShare = Math.max(eRollShare, eYawShare, ePitchShare);
+  var eFloor = camVoiceFloor(fromW, toW);
+  var eLift = (eFloor > 0 && eMaxShare > 0)
+    ? (eFloor + (1 - eFloor) * eMaxShare) / eMaxShare : 1;
+  rollRaw *= eLift; yawRaw *= eLift;
+  pitchFrom *= eLift; pitchTo *= eLift; pitchInTied *= eLift;
   return {reach: reach, panFrom: panFrom, panTo: panTo, logScale: logScale,
           rollRaw: rollRaw, rollFraction: rollFraction, yawRaw: yawRaw, yawFraction: yawFraction,
-          pitchFrom: pitchFrom, pitchTo: pitchTo, pitchInTied: pitchInTied};
+          pitchFrom: pitchFrom, pitchTo: pitchTo, pitchInTied: pitchInTied,
+          voiceFloor: eFloor, voiceLift: eLift};
+}
+// THE LEVEL THE CARRYING AXIS HAS TO CLEAR (charter shelf 2 with shelf 17's voice budget, and his
+// 2026-08-24 word watching the live route: the camera does not visibly read during a crossing).
+// Re-derived here from the raw record, independently of the composer, exactly as camExpected() is.
+//
+// A camera excursion reads when the frame's own edge travels by at least ONE element of the pair's
+// finer measured grain — below that the pose has moved by less than the picture's own smallest
+// feature and there is nothing on screen to read the motion against. The grain is `ownDevice.stepPx`
+// falling back to `grid.periodPx`, the same `latticePx` the composer's own roll axis already reads,
+// taken as a share of the work's own frame side; the FINER of the two is what registers the smallest
+// motion, so the pair's floor is the smaller of the two. A rotation of θ about the frame's centre
+// carries a point at the edge — half a frame out, which is the same 0.5 the composer's own camBound
+// is stated in — through θ·0.5, so one element of grain asks θ ≥ 2·grainFrac, and as a share of the
+// axis's own ceiling that is 2·grainFrac/DOLLY_CAP. Nothing here is a number of taste: every term is
+// a reading off the two records or a bound already published in the composer.
+function camGrainFrac(w) {
+  var side = Number(w.frameSide) || 0;
+  var px = camLattice(w).latticePx;
+  return side > 0 && px > 0 ? px / side : 0;
+}
+function camVoiceFloor(fromW, toW) {
+  var a = camGrainFrac(fromW), b = camGrainFrac(toW);
+  if (!(a > 0) || !(b > 0)) return 0;
+  var f = 2 * Math.min(a, b) / DOLLY_CAP;
+  return f > 1 ? 1 : f;
+}
+// THE VOICE'S OWN PEAK, and the threshold it has to clear — both the LAB's, not this file's.
+// lab/step4-assembler.js:343 (grid-colour.js's `voiceAt`) drives every colour and light voice as
+// `amp · sin(2π(u/period + phase)) · 4u(1−u)`, and lab/step4-assembler.js:102-105 carries the
+// measured threshold beside it: VISIBLE = 5/255 with VOICE_TARGET = 6 of 255, the nearest
+// distinguishable step above it. The lab's own record of 12.08 names the reading that set it —
+// contrast 0,083, amplitude 0,0208, voice peak 0,0187, «то есть 4,77 из 255 при пороге 5» — and its
+// own law: «Заявленный и неслышный голос — пустое утверждение разбора». The lab reached the peak by
+// RENDERING the layer off-screen twice; the shape above is closed-form in the two numbers the
+// composer itself writes, so the same reading needs no probe here.
+var VOICE_TARGET_255 = 6;
+function voicePeakShare(period, phase) {
+  if (!(period > 0)) return 0;
+  var best = 0, i, u, v;
+  for (i = 0; i <= 2000; i++) {
+    u = i / 2000;
+    v = Math.abs(Math.sin(2 * Math.PI * (u / period + (phase || 0)))) * 4 * u * (1 - u);
+    if (v > best) best = v;
+  }
+  return best;
 }
 function camNeutral(pt) {
   return !!pt && (!pt.pan || (toNum(pt.pan.x) === 0 && toNum(pt.pan.y) === 0))
@@ -787,6 +857,17 @@ let ledAtTonic = 0, ledElsewhere = 0, ledWithWorldCue = 0, tonic = 0;
 let camChecked = 0, camMismatches = [], camAllZeroCount = 0, camEndsBad = 0, camFitMismatch = 0,
     camMaxTrackLen = 0;
 const camDistinctTracks = new Set();
+// THE VOICE LEVEL, swept over the same pairs. `camVoiceUnder` counts every composed pair whose
+// carrying axis spends LESS of its own ceiling than the pair's own grain asks for — a flight the
+// pictures cannot register — and `camVoiceWorst` keeps the widest few gaps so a red shows how far
+// short rather than only that something is. `camVoiceShares` is the whole distribution, printed
+// beside the row because his word was about what the flight LOOKS like, not about a count.
+let camVoiceUnder = 0, camVoiceChecked = 0, camVoiceWorst = [];
+const camVoiceShares = [];
+// THE COLOUR AND LIGHT VOICES, swept the same way: every driven amp paired with the period and the
+// phase the composer wrote beside it, so this file can compute the voice's own peak the way the
+// lab's law does and count the ones that are declared but cannot be seen.
+let voiceSilentDeclared = 0, voiceChecked = 0, voiceWorst = [];
 // CHANGE A/B PROOF ROWS. `adriftSeams` pairs each `adrift` cue's own driven `seamA`/`seamB` against
 // the two works' own recorded `structure.horizon.seam`, so the row below can prove the handle now
 // carries the record's own strength rather than the old whole-or-nothing reading. `tideCellsSeen`
@@ -858,6 +939,32 @@ function collectVoiceHandles(cue) {
   for (const h of handles) {
     const node = cue.nodes[cue.id + "-" + h];
     if (node) bucket[h].push(toNum(startValue(node)));
+  }
+  // IS A DECLARED VOICE ACTUALLY SEEN. Each amp is read beside the period and the phase written on
+  // the same cue, which is everything the lab's own peak needs; a voice driven at nothing is not
+  // declared at all and is passed over here, exactly as the lab's own mute leaves the three handles
+  // unwritten rather than writing a zero.
+  if (!owns) return;
+  for (const h of handles) {
+    if (h.indexOf("Amp") < 0) continue;
+    const stem = h.slice(0, h.indexOf("Amp")), tail = h.slice(h.indexOf("Amp") + 3);
+    const ampN = cue.nodes[cue.id + "-" + h];
+    const perN = cue.nodes[cue.id + "-" + stem + "Period" + tail];
+    const phaN = cue.nodes[cue.id + "-" + stem + "Phase" + tail];
+    if (!ampN || !perN) continue;
+    const amp = toNum(startValue(ampN));
+    if (!(amp > 0)) continue;
+    const seen = amp * voicePeakShare(toNum(startValue(perN)),
+                                      phaN ? toNum(startValue(phaN)) : 0) * 255;
+    voiceChecked++;
+    if (seen < VOICE_TARGET_255) {
+      voiceSilentDeclared++;
+      if (voiceWorst.length < 5) {
+        voiceWorst.push({instrument: cue.instrument.id, handle: h,
+                         amp: Math.round(amp * 10000) / 10000,
+                         seen: Math.round(seen * 100) / 100});
+      }
+    }
   }
 }
 // THE FOLD, counted per role. A crossing that folds the frame into a solid spends the one miracle
@@ -938,6 +1045,28 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
         }
         if (camNeutral(got1) && camNeutral(got2)) camAllZeroCount++;
         camDistinctTracks.add(JSON.stringify([got1, got2]));
+        // THE CARRYING AXIS'S OWN LEVEL, against the level the pair's own grain sets. The share is
+        // taken against each axis's own ceiling, which is the composer's own comparison unit for
+        // the three (roll and yaw reach DOLLY_CAP, pitch half of it) and the only one in which the
+        // three are comparable at all.
+        if (carried !== "none") {
+          const ceiling = carried === "pitch" ? 0.5 * DOLLY_CAP : DOLLY_CAP;
+          const worn = Math.max(Math.abs(toNum(got1[carried])), Math.abs(toNum(got2[carried])));
+          const share = ceiling > 0 ? worn / ceiling : 0;
+          const floorAsked = camVoiceFloor(fromWork, toWork);
+          camVoiceChecked++;
+          camVoiceShares.push(Math.round(share * 10000) / 10000);
+          // The written value is rounded to four places, which on the tighter of the two ceilings
+          // is worth two ten-thousandths of a share; the reading is allowed that much and no more.
+          if (share + 5e-4 < floorAsked) {
+            camVoiceUnder++;
+            if (camVoiceWorst.length < 5) {
+              camVoiceWorst.push({key, axis: carried,
+                                  share: Math.round(share * 10000) / 10000,
+                                  asked: Math.round(floorAsked * 10000) / 10000});
+            }
+          }
+        }
         if (p.score && p.score.camera
             && JSON.stringify(p.score.camera.track) !== JSON.stringify(p.plan.camera.track)) {
           camFitMismatch++;
@@ -1096,7 +1225,11 @@ out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
 out.camera = {checked: camChecked, mismatches: camMismatches, allZero: camAllZeroCount,
               endsBad: camEndsBad, fitMismatch: camFitMismatch, maxTrackLen: camMaxTrackLen,
               trackPointCap: CAMERA_POINT_CAP, distinctTracks: camDistinctTracks.size,
-              dollyCap: DOLLY_CAP};
+              dollyCap: DOLLY_CAP,
+              voiceChecked: camVoiceChecked, voiceUnder: camVoiceUnder, voiceWorst: camVoiceWorst,
+              voiceShares: camVoiceShares.sort((p, q) => p - q)};
+out.voices = {checked: voiceChecked, silentDeclared: voiceSilentDeclared, worst: voiceWorst,
+              target255: VOICE_TARGET_255};
 
 // 7 · the road every pair is measured against, and the one road no instrument can play
 const roadNotes = {};
@@ -1136,29 +1269,41 @@ function rnd() { rseed = (rseed * 1103515245 + 12345) & 0x7fffffff; return rseed
     ROUTES.push({ hang, roles });
   }
 }
-{
-  let shapesSum = 0, shapesMax = 0, shareSum = 0, shareMax = 0, casted = 0, stepsRun = 0;
+// THE SAME ROUTES, WALKED TWICE. Once BLIND — every step asked in isolation, which is every reading
+// this section ever took — and once with the route's own memory: at each step the walk hands back the
+// letters it has already played, most recent first, exactly as `passRoutePlayed` in the client does.
+// Charter shelf 16 puts the letter cooldowns INSIDE the dice, between the base weights and the roll,
+// and his 19:13 word about a route's breadth is what they serve. The two readings stand side by side
+// so the row below can measure the cooldown's own effect rather than a fence's.
+function walkRoutes(withMemory) {
+  let shapesSum = 0, shapesMax = 0, shareSum = 0, shareMax = 0, casted = 0, stepsRun = 0, lost = 0;
   const spread = {};
   for (const R of ROUTES) {
     const seen = new Set(), per = {};
     let n = 0;
+    const played = [];
     for (let i = 0; i + 1 < R.hang.length; i++) {
       const x = R.hang[i], y = R.hang[i + 1], fwd = x <= y;
       const A = works.works[fwd ? x : y], B = works.works[fwd ? y : x];
       const key = A.id + "__" + B.id + "__" + (fwd ? "ab" : "ba");
       stepsRun++;
+      const req = { workRecordA: A, workRecordB: B,
+                    direction: fwd ? "a-to-b" : "b-to-a",
+                    seed: die(key), routeRole: R.roles[i] };
+      if (withMemory) req.walkMemory = played.slice();
       let p = null;
       try {
-        p = composer.passageFor({ workRecordA: A, workRecordB: B,
-                                  direction: fwd ? "a-to-b" : "b-to-a",
-                                  seed: die(key), routeRole: R.roles[i] });
+        p = composer.passageFor(req);
       } catch (e) { continue; }
-      if (!p.score) continue;
+      if (!p.score) { lost++; continue; }
       casted++; n++; seen.add(p.shape);
+      const step = [p.genre];
       for (const cue of p.score.cues) {
         per[cue.instrument.id] = (per[cue.instrument.id] || 0) + 1;
         spread[cue.instrument.id] = (spread[cue.instrument.id] || 0) + 1;
+        step.push(cue.instrument.id);
       }
+      played.unshift.apply(played, step);
     }
     shapesSum += seen.size;
     if (seen.size > shapesMax) shapesMax = seen.size;
@@ -1170,11 +1315,14 @@ function rnd() { rseed = (rseed * 1103515245 + 12345) & 0x7fffffff; return rseed
   const tot = Object.keys(spread).map((k) => spread[k]).reduce((a, b) => a + b, 0) || 1;
   const share = {};
   for (const k of Object.keys(spread).sort()) share[k] = Math.round(1000 * spread[k] / tot) / 10;
-  out.route = { routes: ROUTES.length, steps: stepsRun, composed: casted,
-                shapesMean: Math.round(10 * shapesSum / ROUTES.length) / 10, shapesMax,
-                topShareMean: Math.round(1000 * shareSum / ROUTES.length) / 10,
-                topShareWorst: Math.round(1000 * shareMax) / 10, spread: share };
+  return { routes: ROUTES.length, steps: stepsRun, composed: casted, lost: lost,
+           shapesMean: Math.round(10 * shapesSum / ROUTES.length) / 10, shapesMax,
+           topShareMean: Math.round(1000 * shareSum / ROUTES.length) / 10,
+           topShareWorst: Math.round(1000 * shareMax) / 10, spread: share,
+           letters: Object.keys(spread).length };
 }
+out.route = walkRoutes(false);
+out.routeRemembered = walkRoutes(true);
 
 // 9 · the composer measures its line against the number it is HANDED, not against its fallback.
 //     The constants are handed a cap of their own and the longest line the composer writes has to
@@ -1208,7 +1356,8 @@ const ask = (extra) => {
   return {declined: p.declined || null, composed: !!p.json,
           unread: (p.request && p.request.unread) || null,
           role: p.request && p.request.routeRole, seed: p.request && p.request.seed,
-          memory: p.request && p.request.sessionMemory};
+          memory: p.request && p.request.sessionMemory,
+          walk: (p.request && p.request.walkMemory) || null};
 };
 // A half-pair is asked through its own reader, because the fence that catches it is the ONE fence
 // left in the entry and what stands behind that fence is arithmetic over two records. With the
@@ -1224,6 +1373,9 @@ out.fences = {
   memoryOk: ask({sessionMemory: {family: "band", seed: 1, passIndex: 2}}),
   seedHigh: ask({seed: 9}),
   seedLow: ask({seed: -1}),
+  walkNotAList: ask({walkMemory: "unfold"}),
+  walkStray: ask({walkMemory: ["unfold", 7, null, "weave"]}),
+  walkOk: ask({walkMemory: ["unfold", "weave"]}),
   noA: refusalFor({workRecordA: {}, workRecordB: B, direction: "a-to-b", seed: 1}),
   noB: refusalFor({workRecordA: A, workRecordB: {}, direction: "a-to-b", seed: 1}),
 };
@@ -1638,13 +1790,33 @@ else:
         # which an undriven handle could not be) and CORRECT (holds exactly its own structural
         # constant, 0 for colour and 1/2 for light), not that it varies, because the law it ports
         # says it must not.
+        # AMENDED 2026-08-24, when the lab's own audibility pass landed in the composer. A voice the
+        # work cannot sing loudly enough to be seen is not declared at all, and the lab's own words
+        # are the reason: «Заявленный и неслышный голос — пустое утверждение разбора». Its three
+        # handles are then left unwritten and rest at the manifest's own 0, phase included — so a
+        # phase reading of 0 where the constant is not 0 is a MUTED voice rather than a wrong one.
+        # The row reads that distinction instead of forbidding it, and in doing so proves something
+        # the old form could not: that a mute is whole. A voice never goes silent by halves — where
+        # the phase rests, its own amplitude rests beside it.
+        def phaseHolds(bucket, handle, const, ampHandle):
+            vs, amps = bucket[handle], bucket[ampHandle]
+            if not vs or len(vs) != len(amps):
+                return False
+            sung = 0
+            for v, a in zip(vs, amps):
+                if abs(v - const) <= 1e-9:
+                    sung += 1
+                elif not (abs(v) <= 1e-9 and abs(a) <= 1e-9):
+                    return False
+            return sung > 0
+
         gcVoices = sweep["gridColourVoicesOwns"]
         GC_VARIES = ["colourPeriod", "colourAmp", "lightPeriod", "lightAmp"]
         GC_PHASE_CONST = {"colourPhase": 0.0, "lightPhase": 0.5}
         gcDistinct = {h: sorted(set(vs)) for h, vs in gcVoices.items()}
         gcVariesOk = all(bool(gcVoices[h]) and any(abs(v) > 1e-9 for v in gcVoices[h])
                          and len(gcDistinct[h]) > 1 for h in GC_VARIES)
-        gcPhaseOk = all(bool(gcVoices[h]) and gcDistinct[h] == [c]
+        gcPhaseOk = all(phaseHolds(gcVoices, h, c, h.replace("Phase", "Amp"))
                         for h, c in GC_PHASE_CONST.items())
         check(NODE_ROWS[37], gcVariesOk and gcPhaseOk,
               "on cues that OWN LIGHT-COLOUR: "
@@ -1667,7 +1839,9 @@ else:
         slDistinct = {h: sorted(set(vs)) for h, vs in slVoices.items()}
         slVariesOk = all(bool(slVoices[h]) and any(abs(v) > 1e-9 for v in slVoices[h])
                          and len(slDistinct[h]) > 1 for h in SL_VARIES)
-        slPhaseOk = all(bool(slVoices[h]) and slDistinct[h] == [c]
+        # Read the same way row 8d's phases are, and for the same reason: a muted voice rests all
+        # three of its handles together, so a phase at 0 must have its own amplitude at 0 beside it.
+        slPhaseOk = all(phaseHolds(slVoices, h, c, h.replace("Phase", "Amp"))
                         for h, c in SL_PHASE_CONST.items())
         check(NODE_ROWS[38], slVariesOk and slPhaseOk,
               "on cues that OWN LIGHT-COLOUR: "
@@ -1791,6 +1965,72 @@ else:
               f"the longest camera track composed here carries {cam['maxTrackLen']} points against "
               f"the client's own fence of {cam['trackPointCap']}")
 
+        # --- row 8j · THE LETTERS THE WALK HAS ALREADY PLAYED (charter shelf 16's dice pipeline,
+        # his 2026-08-17 19:13 word about a route's breadth, and his 2026-08-24 word watching the
+        # live route: the effects repeat noticeably across crossings) --------------------------------
+        # Shelf 16 orders the dice: base weights (structure fit) → LETTER COOLDOWNS → the day's
+        # weather → viewer memory → roll. The cooldown was the one step of that order with nothing
+        # behind it: the composer answered every step of a walk as though it were the first, so a
+        # letter that suited a collection well carried step after step of one route. The walk has
+        # always known what it played — `passRoutePlayed` in the client — and the reading simply
+        # never crossed the line.
+        #
+        # THE ROW IS THE LAW, NOT A FENCE. Two walks of the same 40 routes on the same dice, one
+        # blind and one handed its own memory at every step; the remembered walk has to spread
+        # WIDER. A fence would drift with the collection; this reads the mechanism itself, and it
+        # reds the moment the cooldown stops being applied whatever the collection does. Beside it
+        # stands shelf 9's own law and the lab's: a cooldown RANKS and never gates, so not one step
+        # of the remembered walk may lose its crossing.
+        rt0, rt1 = got["route"], got["routeRemembered"]
+        check(NODE_ROWS[46],
+              rt1["topShareMean"] < rt0["topShareMean"] and rt1["lost"] == 0
+              and rt1["composed"] == rt0["composed"] and rt1["letters"] >= rt0["letters"],
+              f"over {rt0['routes']} cast routes of 21 steps: blind, the commonest instrument "
+              f"carries {rt0['topShareMean']}% of a route on average over {rt0['letters']} letters; "
+              f"handed the route's own memory it carries {rt1['topShareMean']}% over "
+              f"{rt1['letters']} letters, with {rt1['lost']} steps losing their crossing to the "
+              f"cooldown (a cooldown never empties a pool); remembered spread "
+              + json.dumps(rt1["spread"], ensure_ascii=False))
+
+        # --- row 8k · THE LEVEL THE CARRYING AXIS CLEARS (charter shelf 2 with shelf 17) ----------
+        # His 2026-08-24 word watching the live route: the camera's movement does not visibly read
+        # during a crossing. It is not a bug in the derivation — every axis reads its own record
+        # correctly — it is that the amplitude is a PRODUCT of independent readings each already
+        # short of its own ceiling, so the excursion collapses toward nothing however strongly the
+        # pair calls for it. The composer's own note above `reach` names the same gap from the other
+        # side: the tier reaches this flight nowhere.
+        #
+        # The repair is shelf 17's voice budget made into a LEVEL rather than a count, and shelf 9's
+        # law holds inside it: the readings still rank — which axis carries, and how far above the
+        # floor it flies — and the floor only guarantees that the voice which was chosen can be seen.
+        # Nothing is refused: a floor on an amplitude cannot decline a crossing.
+        low = cam["voiceShares"]
+        med = low[len(low) // 2] if low else 0
+        check(NODE_ROWS[47],
+              cam["voiceChecked"] > 0 and cam["voiceUnder"] == 0,
+              f"of {cam['voiceChecked']} composed pairs whose flight carries a rotational axis, "
+              f"{cam['voiceUnder']} spend less of that axis's own ceiling than the pair's own grain "
+              f"asks for; the share worn runs {low[0] if low else 0}…{low[-1] if low else 0} with a "
+              f"median of {med}; the widest shortfalls were "
+              + (json.dumps(cam["voiceWorst"], ensure_ascii=False) if cam["voiceWorst"] else "none"))
+
+        # --- row 8l · A DECLARED VOICE IS A SEEN VOICE (charter shelf 11 with shelf 17) -----------
+        # The eighteen colour-and-light handles were ported from lab/step4-assembler.js in first-pass
+        # form: amplitude = a quarter of the departing work's own reading. What was left in the lab
+        # was the pass AFTER it — the audibility loop that measures whether the voice moves a real
+        # frame at all and raises it until it does, muting the voice a work cannot sing loudly
+        # enough. The lab's own law for it: «Заявленный и неслышный голос — пустое утверждение
+        # разбора». The lab needed a rendered probe; the peak of `amp·sin(2π(u/period+phase))·4u(1−u)`
+        # is closed-form in the two numbers the composer already writes, so the same reading is taken
+        # here without one.
+        vo = got["voices"]
+        check(NODE_ROWS[48],
+              vo["checked"] > 0 and vo["silentDeclared"] == 0,
+              f"of {vo['checked']} colour and light voices driven over the sweep, "
+              f"{vo['silentDeclared']} peak below the lab's own {vo['target255']} of 255 — declared "
+              f"and unseeable; the quietest were "
+              + (json.dumps(vo["worst"], ensure_ascii=False) if vo["worst"] else "none"))
+
         # --- row 9 · the two fences a filled score has to pass -----------------------------------
         # THE FENCES ARE NO LONGER WALLS, AND THAT IS WHY THIS ROW MATTERS MORE THAN IT DID. The
         # client refused a score over either fence WHOLE, so a score standing over one was a
@@ -1870,6 +2110,22 @@ else:
               f"{f['seedLow']['seed']}, both inside the span the entry reads off the instrument's "
               f"own manifest: {got['seedSpan']}; and the two refusals that remain both say there is "
               f"no PAIR — {got['fences']['noA']!r}, {got['fences']['noB']!r}")
+        # The walk memory joins the entry on the same terms as the rest: read where it can be, left
+        # unread and recorded where it cannot, and never a reason to lose the crossing.
+        check(NODE_ROWS[49],
+              f["walkNotAList"]["composed"] is True and f["walkNotAList"]["walk"] is None
+              and any("no list" in u for u in (f["walkNotAList"]["unread"] or []))
+              and f["walkStray"]["composed"] is True
+              and f["walkStray"]["walk"] == ["unfold", "weave"]
+              and any("naming no letter" in u for u in (f["walkStray"]["unread"] or []))
+              and f["walkOk"]["composed"] is True
+              and f["walkOk"]["walk"] == ["unfold", "weave"]
+              and f["walkOk"]["unread"] is None,
+              f"a walk memory that is no list reads as nothing played and says so "
+              f"({f['walkNotAList']['unread']}); a list carrying two entries that name no letter "
+              f"keeps the two that do ({f['walkStray']['walk']}) and records the rest "
+              f"({f['walkStray']['unread']}); a plain list of letters crosses whole with nothing "
+              f"unread")
 
         # --- rows 15-25 · the same repairs, each reverted in a copy ---------------------------------
         # A planted run walks a corner of the collection rather than all of it, because a plant is
