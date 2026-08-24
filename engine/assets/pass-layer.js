@@ -909,10 +909,16 @@
   // the handoff frame. Normalised pan and radians share one bar.
   var CAM_HANDOFF_TOL = 1e-3;
 
+  // `pass-composer.js` boxes every composed float in its own `Flt` wrapper (a plain object whose
+  // `valueOf` returns the number, so ordinary arithmetic and `Number(...)` already see through it —
+  // the same coercion `evalOp`'s "static" case leans on at `Number(spec.value)`). `typeof` does not
+  // see through it, though, and this is the one camera reader every axis funnels through, so it
+  // unwraps a boxed value here, once, rather than asking every caller to know the box exists.
   function camRead(p, key) {
-    if (key === "panX") return p.pan ? p.pan.x : undefined;
-    if (key === "panY") return p.pan ? p.pan.y : undefined;
-    return p[key];
+    var v = key === "panX" ? (p.pan ? p.pan.x : undefined)
+          : key === "panY" ? (p.pan ? p.pan.y : undefined)
+          : p[key];
+    return (v && typeof v === "object" && typeof v.valueOf === "function") ? Number(v) : v;
   }
   // A track point stands at a second, or at one of the two doors the pass runs between: "a" is the
   // departing work at zero and "b" is the arriving work at the pass's own last second.
@@ -1024,7 +1030,11 @@
     if (!pose) { stage.canvas.style.transform = ""; return; }
     var s = Math.exp(caps.logScale ? pose.logScale : 0);
     var deg = 180 / Math.PI;
-    var turn = (caps.orbit && pose.orbit) || (caps.tilt && pose.tilt);
+    // Pitch and yaw need the same lens orbit and tilt already fall back to: without a perspective
+    // projection a rotateX/rotateY is a near-invisible cosine squash rather than a real 3D tilt (a
+    // 6° yaw is a ~0.5% squash), and no camera track template ever names `fov` explicitly.
+    var turn = (caps.orbit && pose.orbit) || (caps.tilt && pose.tilt)
+            || (caps.pitch && pose.pitch) || (caps.yaw && pose.yaw);
     var fov = (caps.fov && typeof pose.fov === "number" && pose.fov > 0) ? pose.fov
             : (turn ? CAM_TURN_FOV : 0);
     var t = "";
@@ -1366,6 +1376,20 @@
     return (s && s.cues && s.cues.length) ? s.cues : [];
   }
 
+  // A COPY OF THE COMMAND WITH A REPLACED SCORE. Neither the funnel's last-resort cast nor the
+  // stack-shed below is allowed to mutate the command a caller still holds a reference to (the walk,
+  // the diagnostic surface, a superseding declare all read the same object) — so a rescue always
+  // works on a fresh object carrying the same `gen`, `from`, `to` and every other field untouched,
+  // with only `score` replaced.
+  function mergeScore(cmd, scorePatch) {
+    var s = (cmd && cmd.score) || {}, ns = {}, nc = {}, k;
+    for (k in s) if (Object.prototype.hasOwnProperty.call(s, k)) ns[k] = s[k];
+    for (k in scorePatch) if (Object.prototype.hasOwnProperty.call(scorePatch, k)) ns[k] = scorePatch[k];
+    for (k in cmd) if (Object.prototype.hasOwnProperty.call(cmd, k)) nc[k] = cmd[k];
+    nc.score = ns;
+    return nc;
+  }
+
   // ---- the stack (§4.4's `stack`) -----------------------------------------------------------------
   // THE SCORE'S OWN ORDER IS THE STACK UNLESS THE SCORE SAYS OTHERWISE. Where no cue names a
   // `stack`, the first line stands topmost, so the first cue takes the highest number and the last
@@ -1593,6 +1617,29 @@
     return null;
   }
 
+  // A SCORE'S REFUSAL IS A PROPERTY OF THE STACK, NOT OF ANY ONE VOICE (2026-08-24). All five
+  // reasons `scoreWhyNo` names — a cycle inside a cue, two cues racing for the camera, two cues
+  // naming one instrument across a shared instant, and the two placements of the coverage law — are
+  // read off the STACK the score declares, and every one of them can be answered by playing a
+  // smaller stack instead of playing none at all. This walks the same ladder `grantVariant` already
+  // walks for a device that cannot carry the full stack: stand the topmost voice down and ask
+  // `scoreWhyNo` again, repeating until it answers null or nothing is left to shed. A refusal that
+  // survives down to one cue is a defect INSIDE that cue's own node table (its own graph cycles on
+  // itself), which is not a stack property at all and is left for the funnel's last-resort cast.
+  function scoreShed(cmd) {
+    var s = cmd && cmd.score, cues = s && s.cues;
+    if (!cues || cues.length < 2) return null;
+    cues = cues.slice();
+    while (cues.length > 1) {
+      var order = stackOrder(cues);
+      var topmost = order[order.length - 1].cue;
+      cues = cues.filter(function (c) { return c !== topmost; });
+      var trial = mergeScore(cmd, { cues: cues });
+      if (!scoreWhyNo(trial)) return trial;
+    }
+    return null;
+  }
+
   // THE COVERAGE PLACEMENT RULE (§7's coverage law, §8's `coverage` block).
   //
   // A stack is drawn ASCENDING, so the lowest cue is laid down first onto the cleared buffer and the
@@ -1644,8 +1691,11 @@
 
   // THE VOICES OF THE STACK, in draw order, each carrying the instrument its own cue names. A
   // command with no score at all reaches only the diagnostics probe, which is what a command with no
-  // score has always meant. ONE unknown instrument refuses the whole score: a stack missing a voice
-  // is not the passage the score names, and playing it short would be a picture nobody wrote.
+  // score has always meant. AN UNKNOWN INSTRUMENT SHEDS ITS OWN VOICE RATHER THAN REFUSING THE WHOLE
+  // SCORE (2026-08-24): the registry not carrying one name is a property of that one cue, exactly
+  // like a device that cannot carry a voice's cost, and the stack plays short a voice instead of not
+  // at all. Only when EVERY cue's instrument is unknown — nothing left to shed down to — does this
+  // give the command up, which is the funnel's own cue to cast the last resort.
   function voicesFor(cmd) {
     var cues = cuesOf(cmd);
     if (!cues.length) {
@@ -1656,11 +1706,12 @@
     var rows = stackOrder(cues), out = [];
     for (var i = 0; i < rows.length; i++) {
       var id = rows[i].cue.instrument && rows[i].cue.instrument.id;
-      if (!instruments[id]) { logEvt("no-instrument", cmd.gen, String(id)); return null; }
+      if (!instruments[id]) { logEvt("no-instrument", cmd.gen, String(id)); continue; }
       out.push({ cue: rows[i].cue, inst: instruments[id], said: {}, driverState: {},
                  lastHandles: null, applied: null,
                  live: false, stack: rows[i].stack, line: rows[i].line });
     }
+    if (!out.length) return null;
     return out;
   }
   // The instruments of a stack, each named once, in draw order — what `prepare`, the programme
@@ -1935,10 +1986,37 @@
     finish("recovered", why || "fail");
   }
 
+  // THE FUNNEL'S LAST DOOR (2026-08-24). Both entries into `offerNow` and its refused-score branch
+  // already cast the last resort before a command ever reaches here — this is the one road that did
+  // not: every voice's own `prepare` declined, threw, or rejected (`resolveVoices` gave up with
+  // `kept.length === 0`), or even the `lean` tier could not fit what the stack — already shed to one
+  // voice, where `grantVariant` gets that far — still asks for. Neither is a property of the SCORE
+  // the way `scoreWhyNo`'s reasons are; both are properties of what actually ran just now, which is
+  // exactly what the last resort exists to answer for.
+  //
+  // ONE ATTEMPT ONLY (`__lastResortTried`, set by `mergeLastResort` above). A command that has
+  // already been through a rescue reaches this function again only if the RESCUED command itself
+  // declined — and the built-in instrument's own `prepare` never declines, so that can only be the
+  // rare real-instrument rescue failing on its own account. Trying a second cast on the same command
+  // would ask the same question of the same DOM images and, most likely, cast the same instrument
+  // again — a loop this guard closes rather than one that runs and happens not to recur.
   function declineCurrent(rec, why) {
     if (cur !== rec) return;
-    logEvt("declined", rec.cmd.gen, why);
     cur = null;
+    if (!rec.cmd.__lastResortTried) {
+      var cast = lastResortCast(rec.cmd);
+      if (cast) {
+        var rescued = mergeLastResort(rec.cmd, cast);
+        logEvt("declined", rec.cmd.gen, why + " — casting the last resort");
+        if (offerNow(rescued, rec.hooks)) return;
+      }
+    }
+    logEvt("declined", rec.cmd.gen, why);
+    // ON THE LIVE ROUTE, NO DIAGNOSTICS KEY NEEDED (2026-08-24): `performance.mark` costs nothing and
+    // is written unconditionally, the same road `passMark`/`finish`'s own "host-docked" mark already
+    // stands on — so a crossing that fell through reads back to its own reason on the timeline by
+    // anyone, without turning diagnostics on first.
+    try { rec.hooks.mark("host-declined", rec.cmd, why); } catch (e) {}
     try { rec.hooks.glide(rec.cmd); } catch (e) {}
   }
 
@@ -2262,6 +2340,209 @@
     };
   }
 
+  // ================================================================================================
+  // THE LAST RESORT (2026-08-24, the charter's own word: for any pair of pictures a way to play the
+  // crossing must be found — nothing prepared in advance, nothing that could have existed before the
+  // two pictures were known). SHIPS INSIDE THIS FILE, registered unconditionally, the moment the
+  // site's record has settled either way (§7's boundary comment above still holds: no SITE instrument
+  // NAME is written here — this one belongs to the host's own machinery, the same shelf the
+  // diagnostics-only test instrument stands on, except this one is registered for real use). Its job
+  // is narrow: give `offerNow` something playable when the score names an instrument the registry
+  // does not carry, or names no instrument at all, so a cold visit whose baked instrument list has
+  // not landed yet — or never lands — still crosses.
+  function fitCoverSpan(iw, ih, pw, ph) {
+    iw = Math.max(1, Number(iw) || 1); ih = Math.max(1, Number(ih) || 1);
+    pw = Math.max(1, Number(pw) || 1); ph = Math.max(1, Number(ph) || 1);
+    var boxAsp = pw / ph, imgAsp = iw / ih;
+    return imgAsp > boxAsp ? [imgAsp / boxAsp, 1, 0, 0] : [1, boxAsp / imgAsp, 0, 0];
+  }
+  var LAST_RESORT_NAME = "@host/last-resort";
+  function makeLastResortInstrument() {
+    var VERT = "attribute vec2 aPos;\nvarying vec2 vUV;\n"
+             + "void main(){ vUV = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }\n";
+    // A REAL WIPE, NOT A CROSSFADE (charter shelf 18 forbids a "no bridge derives" fallback road): a
+    // moving edge between two sharp images, never a blend of both. The handle's own span carries
+    // padding past 0…1 (see MANIFEST below) so the frame reads as purely A at the door and purely B
+    // at the far door, with no partial mix visible at either rest.
+    var FRAG = "precision mediump float;\nvarying vec2 vUV;\n"
+             + "uniform sampler2D uTexA;\nuniform sampler2D uTexB;\n"
+             + "uniform vec4 uFitA;\nuniform vec4 uFitB;\nuniform float uReveal;\n"
+             + "vec2 coverUV(vec2 uv, vec4 fit) {\n"
+             + "  vec2 c = uv - 0.5;\n"
+             + "  c.x /= max(fit.x, 0.0001);\n"
+             + "  c.y /= max(fit.y, 0.0001);\n"
+             + "  return c + 0.5;\n"
+             + "}\n"
+             + "void main() {\n"
+             + "  vec2 uvA = clamp(coverUV(vUV, uFitA), 0.0, 1.0);\n"
+             + "  vec2 uvB = clamp(coverUV(vUV, uFitB), 0.0, 1.0);\n"
+             + "  vec3 a = texture2D(uTexA, uvA).rgb;\n"
+             + "  vec3 b = texture2D(uTexB, uvB).rgb;\n"
+             + "  float w = smoothstep(uReveal - 0.08, uReveal + 0.08, vUV.x);\n"
+             + "  gl_FragColor = vec4(mix(b, a, w), 1.0);\n"
+             + "}\n";
+    var MANIFEST = {
+      neutralPose: { reveal: -0.15, t: 0 },
+      handles: { reveal: { min: -0.15, max: 1.15, def: -0.15 } },
+      coverage: { writes: false },
+      resources: {
+        lean:     { textures: 2, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1, passes: 1, bytesEstimate: 4194304 },
+        standard: { textures: 2, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1, passes: 1, bytesEstimate: 4194304 },
+        rich:     { textures: 2, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1, passes: 1, bytesEstimate: 4194304 },
+      },
+      passes: [{
+        program: "host-last-resort-wipe",
+        position: "aPos",
+        vert: VERT, frag: FRAG,
+        uniforms: [
+          { name: "uTexA", type: "sampler2D", source: "textureA" },
+          { name: "uTexB", type: "sampler2D", source: "textureB" },
+          { name: "uFitA", type: "vec4", source: "fitA" },
+          { name: "uFitB", type: "vec4", source: "fitB" },
+          { name: "uReveal", type: "float", source: "handle:reveal" },
+        ],
+      }],
+    };
+    var settledTok = null;
+    return {
+      name: LAST_RESORT_NAME,
+      manifest: MANIFEST,
+      fit: fitCoverSpan,
+      values: function () { return {}; },
+      prepare: function () { settledTok = null; return { take: true }; },
+      start: function (token) { settledTok = token; },
+      frame: function (state) {
+        var pose = {}, h = state.handles || {}, k;
+        for (k in h) if (Object.prototype.hasOwnProperty.call(h, k)) pose[k] = h[k];
+        pose.t = state.t;
+        state.draw(pose);
+        if (state.progress >= 1 && settledTok !== null) {
+          var t = settledTok; settledTok = null; state.settle(t);
+        }
+      },
+      resize: function () {},
+      cancel: function () {},
+      dispose: function () {},
+      contextLost: function () {},
+      contextRestored: function () {},
+    };
+  }
+
+  // WHICH INSTRUMENT THE LAST RESORT CASTS. A real, already-registered drawing instrument (never the
+  // diagnostics probe, never this built-in) is preferred ONLY where it is PROVABLY playable alone —
+  // its own declared `lean` cost fits under the leanest budget by itself, the same arithmetic
+  // `grantVariant` judges every score by — so a warm visit casts with the site's own instrument
+  // where doing so cannot itself reopen a resources-decline the funnel exists to close. Anything
+  // else, including a cold visit with nothing loaded yet, falls back to the built-in above, whose
+  // declared cost is set to clear that same floor by construction.
+  function lastResortCastInstrument() {
+    var keys = Object.keys(instruments), i, cand, d;
+    for (i = 0; i < keys.length; i++) {
+      cand = instruments[keys[i]];
+      if (!cand || !cand.manifest || cand.probe || cand.name === LAST_RESORT_NAME) continue;
+      d = (cand.manifest.resources || {}).lean;
+      if (d && !overBudget(d, BUDGET.lean)) return cand;
+    }
+    return instruments[LAST_RESORT_NAME] || null;
+  }
+
+  // A PLAYABLE SCORE BUILT FROM WHAT THE HOST ALREADY HOLDS, NOTHING LOOKED UP. One cue, one
+  // instrument, no track the score had to author in advance: every handle the instrument declares is
+  // driven across its own [min, max] span by `progress`, through the evaluator already in this file,
+  // so the motion comes from whichever instrument's own manifest is on the registry right now —
+  // nothing baked, nothing pair-specific. A one-cue score is exempt from the coverage law and cannot
+  // be refused by the tier budget (`coverageWhyNo`, `grantVariant`'s floor), so nothing downstream of
+  // this can decline it again except a genuinely absent WebGL2 context or a picture truly missing
+  // from the DOM.
+  // THE FLEET'S JUDGES' CHANNEL, BY NAME. `mask` is how every instrument in the registry (droste,
+  // strata-light, waterline, parquet, studio, gates, liquid, unfold, grid-colour, livemirror,
+  // kaleidoscope and the rest) names the channel a door-refusal is read against — pass-inst-gates.js
+  // calls it "the fleet's judges' channel, published by thirteen instruments". It rests at its own
+  // declared `def` (0 on every instrument that carries it) at both doors; sweeping it end to end is
+  // exactly Bug 1's door-refusal class, so the rescue leaves it alone the same way it already leaves
+  // an `open` handle alone.
+  var LAST_RESORT_REST_HANDLES = { mask: 1 };
+
+  // A COARSE READING OF THE TWO ACTUAL PICTURES, taken fresh at the instant of the cast — never
+  // prepared ahead of the visit, per shelf 21 of the crossing charter ("could this value have
+  // existed before the two pictures in front of it were known? If yes, it is banned"). A rescue is
+  // a poorer instrument, not one blind to which two pictures it was cast for. `im` may still be
+  // mid-load this late in a decline — every read here is defensive and answers `null` rather than
+  // throwing, so a stalled image degrades the bias, never the rescue's own reliability.
+  function lastResortImageStat(im) {
+    try {
+      if (!im || !im.naturalWidth || !im.naturalHeight) return null;
+      var n = 8, c = document.createElement("canvas");
+      c.width = n; c.height = n;
+      var ctx = c.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(im, 0, 0, n, n);
+      var d = ctx.getImageData(0, 0, n, n).data, sumR = 0, sumG = 0, sumB = 0, sumL = 0, count = n * n, i;
+      for (i = 0; i < d.length; i += 4) {
+        sumR += d[i]; sumG += d[i + 1]; sumB += d[i + 2];
+        sumL += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+      }
+      return { lum: sumL / count / 255, r: sumR / count / 255, g: sumG / count / 255, b: sumB / count / 255 };
+    } catch (e) {
+      return null;
+    }
+  }
+  // Which way and how far the rescue sweeps, from the two actual pictures. `dir < 0` reverses a
+  // handle's own [min,max] to [max,min] — the arriving picture reads darker/cooler than the
+  // departing one, so the rescue travels the other way — and `mag` (0..1) scales how much of the
+  // handle's own span the sweep uses, so two measurably similar pictures get a gentler rescue than
+  // two very different ones (still moving — never collapsed to a standstill — at `mag === 0`).
+  function lastResortBias(a, b) {
+    var sa = lastResortImageStat(a), sb = lastResortImageStat(b);
+    if (sa && sb) {
+      var dl = sb.lum - sa.lum;
+      var chroma = (Math.abs(sb.r - sa.r) + Math.abs(sb.g - sa.g) + Math.abs(sb.b - sa.b)) / 3;
+      var diff = Math.max(Math.abs(dl), chroma);
+      return { dir: dl >= 0 ? 1 : -1, mag: Math.min(1, diff * 3) };
+    }
+    // The pixel sample needs a decoded image; where neither picture has one yet, its own natural
+    // aspect ratio is the cheapest always-available signal already on the DOM.
+    var aa = a && a.naturalWidth ? a.naturalWidth / Math.max(1, a.naturalHeight) : null;
+    var ab = b && b.naturalWidth ? b.naturalWidth / Math.max(1, b.naturalHeight) : null;
+    if (aa !== null && ab !== null) {
+      var da = ab - aa;
+      return { dir: da >= 0 ? 1 : -1, mag: Math.min(1, Math.abs(da)) };
+    }
+    return { dir: 1, mag: 0 };
+  }
+  function lastResortCast(cmd) {
+    var a = workImg(cmd && cmd.from && cmd.from.id), b = workImg(cmd && cmd.to && cmd.to.id);
+    if (!a || !b) return null;
+    var inst = lastResortCastInstrument();
+    if (!inst) return null;
+    var bias = lastResortBias(a, b);   // computed fresh for this cast, never cached or precomputed
+    var tracks = {}, handles = inst.manifest.handles || {}, k;
+    for (k in handles) {
+      if (!Object.prototype.hasOwnProperty.call(handles, k)) continue;
+      var h = handles[k];
+      if (h.open || LAST_RESORT_REST_HANDLES[k]) continue;
+      var lo = h.min === undefined ? 0 : Number(h.min), hi = h.max === undefined ? 1 : Number(h.max);
+      var mid = (lo + hi) / 2, span = (hi - lo) * (0.4 + 0.6 * bias.mag);
+      var loEff = mid - span / 2, hiEff = mid + span / 2;
+      tracks[k] = { op: "map", "in": { source: "progress" }, from: [0, 1],
+                    to: bias.dir >= 0 ? [loEff, hiEff] : [hiEff, loEff] };
+    }
+    return { cues: [{ id: "last-resort", instrument: { id: inst.name }, tracks: tracks }] };
+  }
+
+  // ONE COMMAND, ONE LAST-RESORT ATTEMPT. `__lastResortTried` is set the instant a cast is merged
+  // in, on the merged copy `mergeScore` returns — never on the command it was built from — so the
+  // mark travels with the rescued command and with no other. `mergeScore` itself stays plain (it
+  // also builds `scoreShed`'s trial stacks, which are not a last-resort cast); every place that
+  // merges a last-resort cast — the funnel's two give-up exits in `offerNow`, its refused-score
+  // branch when `scoreShed` cannot answer, and `declineCurrent`'s own rescue below — goes through
+  // here instead, so no route can hand a command a second cast to try.
+  function mergeLastResort(cmd, cast) {
+    var nc = mergeScore(cmd, cast);
+    nc.__lastResortTried = true;
+    return nc;
+  }
+
   function runFrame(rec, now) {
     if (cur !== rec || rec.docked) return;
     rec.raf = requestAnimationFrame(function (t) { runFrame(rec, t); });
@@ -2311,7 +2592,14 @@
   var offeredGen = 0;
   var awaiting = null;      // the command held while its files cross the network, and its own gen
   function offer(cmd, hooks) {
-    offeredGen = cmd && cmd.gen;
+    // NO COMMAND IS NOTHING TO OFFER. Every road past this point — the synchronous take below, the
+    // awaited-instruments branch, and everything offerNow does once it has taken the transaction —
+    // reads cmd.gen unguarded, because a real declare() always hands back a real command; only a
+    // caller mistake (or a declare() that itself declined) could pass null through. Refused here,
+    // the same way an unrecognised instrument or an empty voice stack is refused inside offerNow,
+    // rather than reaching one of those unguarded reads and taking the whole session down with it.
+    if (!cmd) return false;
+    offeredGen = cmd.gen;
     var waiting = warmFor(cmd);
     if (!waiting) return offerNow(cmd, hooks);
     // A HELD COMMAND IS NOT AN IDLE HOST, and the diagnostic surface says so: `state` reads
@@ -2330,6 +2618,16 @@
       logEvt("instruments-dead-air", cmd.gen, "no answer after " + DEAD_AIR_MS
              + "ms — the load request itself never resolved");
       if (cmd.gen !== offeredGen) return;
+      var why = "dead air: no answer after " + DEAD_AIR_MS + "ms";
+      if (!cmd.__lastResortTried) {
+        var cast = lastResortCast(cmd);
+        if (cast) {
+          var rescued = mergeLastResort(cmd, cast);
+          logEvt("declined", cmd.gen, why + " — casting the last resort");
+          if (offerNow(rescued, hooks)) return;
+        }
+      }
+      try { hooks.mark("host-declined", cmd, why); } catch (e) {}
       try { hooks.glide(cmd); } catch (e) {}
     }, DEAD_AIR_MS);
     whenNamedLoaded(cmd, function () {
@@ -2340,21 +2638,48 @@
       // A newer declare has superseded this one, and the newer command owns its own landing. Running
       // a glide for the command that was superseded would move the walk twice.
       if (cmd.gen !== offeredGen) { logEvt("offer-superseded", cmd.gen, null); return; }
-      if (!offerNow(cmd, hooks)) { try { hooks.glide(cmd); } catch (e) {} }
+      if (!offerNow(cmd, hooks)) {
+        try { hooks.mark("host-declined", cmd, "no instrument could be cast, even the last resort"); } catch (e) {}
+        try { hooks.glide(cmd); } catch (e) {}
+      }
     });
     return true;
   }
 
   function offerNow(cmd, hooks) {
     var inst = pick(cmd);
-    if (!inst) return false;
-    // THE GRAPH IS WALKED BEFORE THE COMMAND IS TAKEN. A cycle, or two cues claiming the camera at
-    // one instant, is refused here with its own reason rather than met half-way through a frame.
+    if (!inst) {
+      // THE FIRST OF THE FUNNEL'S TWO GIVE-UP EXITS: the cue's own instrument names nothing the
+      // registry carries. Cast the last resort on the two pictures the DOM already holds before
+      // this reaches the plain glide.
+      var castA = lastResortCast(cmd);
+      if (!castA) return false;
+      cmd = mergeLastResort(cmd, castA);
+      inst = pick(cmd);
+      if (!inst) return false;   // the last resort itself failed manifest validation — a real bug
+    }
+    // THE GRAPH IS WALKED BEFORE THE COMMAND IS TAKEN. A cycle, two cues claiming the camera at one
+    // instant, two cues naming one instrument across a shared window, or either half of the coverage
+    // law is refused here — but the refusal is a property of the STACK (`scoreShed`), so a smaller
+    // stack is tried before the crossing is given up, and the last resort stands behind that.
     var no = scoreWhyNo(cmd);
     if (no) {
-      logEvt("score-refused", cmd.gen, no);
-      try { hooks.glide(cmd); } catch (e) {}
-      return true;
+      var shed = scoreShed(cmd);
+      if (shed) {
+        logEvt("score-shed", cmd.gen, no + " — shed to " + shed.score.cues.length + " voice(s)");
+        cmd = shed;
+      } else {
+        var castB = lastResortCast(cmd);
+        if (castB) {
+          logEvt("score-shed", cmd.gen, no + " — cast the last resort instead");
+          cmd = mergeLastResort(cmd, castB);
+        } else {
+          logEvt("score-refused", cmd.gen, no);
+          try { hooks.mark("host-declined", cmd, "score refused: " + no); } catch (e) {}
+          try { hooks.glide(cmd); } catch (e) {}
+          return true;
+        }
+      }
     }
     if (cur) cancel("superseded", true);   // defensive: declare's own supersede already ended the
                                      // bundle's OWN bookkeeping; this keeps the host's record in step
@@ -2363,7 +2688,16 @@
     var slack = clampNum(settleSlackMs, SLACK_MIN, SLACK_MAX);
     var cue = cueOf(cmd);
     var voices = voicesFor(cmd);
-    if (!voices) return false;
+    if (!voices) {
+      // THE SECOND GIVE-UP EXIT: every voice the score names is unknown to the registry. The same
+      // rescue, on the same two pictures.
+      var castC = lastResortCast(cmd);
+      if (!castC) return false;
+      cmd = mergeLastResort(cmd, castC);
+      cue = cueOf(cmd);
+      voices = voicesFor(cmd);
+      if (!voices) return false;
+    }
     var primary = voices[0];
     for (var vi = 0; vi < voices.length; vi++) if (voices[vi].line === 0) primary = voices[vi];
     // §7's grant across the whole stack: the summed declaration at the pass's worst instant against
@@ -2481,35 +2815,52 @@
       rec.watchdogT = setTimeout(function () { watchdogFire(rec); }, duration + slack);
     }
 
-    // EVERY INSTRUMENT THE SCORE NAMES IS PREPARED, each on its own cue and its own grant. One
-    // decline refuses the whole command with that instrument's reason: the score names a passage of
-    // several voices, and a passage short of a voice is not the one the score wrote.
+    // EVERY INSTRUMENT THE SCORE NAMES IS PREPARED, each on its own cue and its own grant. A voice
+    // whose instrument declines, throws, or rejects at prepare is SHED rather than refusing the
+    // whole command (2026-08-24) — the same lightening `grantVariant` already runs for a slow
+    // device now runs for an instrument that simply would not take its cue. Only losing every voice
+    // this way still gives the command up.
     function ask() {
       try {
         var answers = voices.map(function (v) {
-          return v.inst.prepare({ cmd: cmd, token: cmd.gen, duration: duration, budgetMs: budget,
-                                  score: cmd.score || null, cue: v.cue, variant: variant,
-                                  sources: rec.src,
-                                  grant: cueDeclares(v.cue, v.inst, variant) });
+          try {
+            return v.inst.prepare({ cmd: cmd, token: cmd.gen, duration: duration, budgetMs: budget,
+                                    score: cmd.score || null, cue: v.cue, variant: variant,
+                                    sources: rec.src,
+                                    grant: cueDeclares(v.cue, v.inst, variant) });
+          } catch (e) {
+            return { take: false, why: "threw: " + String((e && e.message) || e) };
+          }
         });
         var thenable = answers.some(function (r) { return r && typeof r.then === "function"; });
         if (thenable) {
-          Promise.all(answers.map(function (r) { return Promise.resolve(r); }))
-            .then(function (all) { onAnswer(firstNo(all)); },
-                  function () { onAnswer({ take: false, why: "prepare rejected" }); });
+          Promise.all(answers.map(function (r) {
+            return Promise.resolve(r).then(function (a) { return a; }, function (e) {
+              return { take: false, why: "prepare rejected: " + String((e && e.message) || e) };
+            });
+          })).then(function (all) { onAnswer(resolveVoices(all)); });
         } else {
-          onAnswer(firstNo(answers));
+          onAnswer(resolveVoices(answers));
         }
       } catch (e) {
         if (!answered) { answered = true; clearTimeout(budgetTimer); declineCurrent(rec, "prepare threw"); }
       }
     }
-    function firstNo(all) {
-      for (var i = 0; i < all.length; i++) {
+    function resolveVoices(all) {
+      var kept = [], shedWhy = [], i;
+      for (i = 0; i < all.length; i++) {
         var r = all[i];
-        if (!r || r.take !== true) {
-          return { take: false, why: voices[i].inst.name + ": " + ((r && r.why) || "declined") };
-        }
+        if (r && r.take === true) kept.push(voices[i]);
+        else shedWhy.push(voices[i].inst.name + ": " + ((r && r.why) || "declined"));
+      }
+      if (!kept.length) return { take: false, why: shedWhy.join("; ") || "declined" };
+      if (kept.length < voices.length) {
+        logEvt("voice-shed", cmd.gen, shedWhy.join("; "));
+        voices = kept;
+        if (primary && voices.indexOf(primary) < 0) primary = voices[0];
+        cue = primary && primary.cue ? primary.cue : cue;
+        inst = primary && primary.inst ? primary.inst : inst;
+        rec.voices = voices; rec.primary = primary; rec.cue = cue; rec.inst = inst;
       }
       return { take: true };
     }
@@ -2680,6 +3031,12 @@
     contextLost: contextLost, contextRestored: contextRestored,
     settle: settle, fail: fail, register: register, configure: configure, report: report,
     prewarmInstruments: prewarmInstruments,
+    // THE NAMES THIS HOST CAN ACTUALLY CAST, off the site's own record — the P2/P3 skew's real fix
+    // (2026-08-24, named as a follow-up: the composer's own castable set should read from this
+    // instead of its separately baked copy; wiring the composer to consume it is outside this file
+    // and outside this pass). Until that lands, a name the composer picks that this list does not
+    // carry sheds to `voicesFor`/the funnel exactly like any other unknown instrument.
+    castable: function () { return record ? Object.keys(record) : []; },
   };
 
   // ================================================================================================
@@ -2727,25 +3084,35 @@
     return s;
   }
 
-  // WHAT A RECORD MUST SATISFY BEFORE ANY OF IT IS HELD. Every entry is judged, and one bad entry
-  // refuses the record whole: a record half-held would leave the host fetching some addresses and
-  // silently missing others, and a visitor would meet a stack with a voice absent from it.
+  // WHAT A RECORD MUST SATISFY BEFORE ANY OF IT IS HELD. Every entry is judged, and ONE BAD ENTRY IS
+  // SET ASIDE RATHER THAN CARRIED WHOLE (2026-08-24): a record of many instruments where one entry
+  // is malformed used to refuse every address it held, leaving a visit unable to load ANY of them
+  // over a single typo in one. The malformed entry alone stands unreachable — a cue naming it finds
+  // no address, exactly as if the record never carried it, and `voicesFor`/the funnel already treat
+  // that as a voice to shed or a last resort to cast rather than a reason to glide outright. Only a
+  // record with NOTHING readable left in it still refuses whole.
   function recordWhyNo(settings) {
     var block = settings && settings.pass;
     var rows = block && block.instruments;
     if (!rows || typeof rows !== "object") return "carries no instrument record";
-    var names = Object.keys(rows), out = {}, i, e;
+    var names = Object.keys(rows), out = {}, skipped = [], i, e;
     if (!names.length) return "carries an instrument record with nothing in it";
     for (i = 0; i < names.length; i++) {
       e = rows[names[i]];
       if (!e || typeof e !== "object" || typeof e.src !== "string" || !e.src
           || typeof e.version !== "string" || !e.version
           || !/^[0-9a-f]{64}$/.test(String(e.digest))) {
-        return "its entry «" + names[i] + "» carries no address, version and digest";
+        skipped.push(names[i]);
+        continue;
       }
       out[names[i]] = { src: e.src, version: e.version, digest: String(e.digest) };
     }
+    if (!Object.keys(out).length) return "carries an instrument record with nothing readable in it";
     record = out;
+    if (skipped.length) {
+      logEvt("record-entry-skipped", null,
+             skipped.join(", ") + ": carries no address, version and digest");
+    }
     return null;
   }
 
@@ -2848,44 +3215,76 @@
     return why ? "its instrument " + why : null;
   }
 
+  // A REFUSAL THAT NAMES A FACT ABOUT THE FILE ITSELF STANDS FOR THE VISIT: its bytes weigh to the
+  // wrong digest, or it declares the wrong version or the wrong name — no retry changes any of
+  // those, the record and the file simply disagree. Every other refusal names the WIRE instead — a
+  // bad status, a dropped connection, bytes that would not run as a script — and the very same file
+  // may answer cleanly a moment later, so it is retried with backoff rather than poisoned for the
+  // visit (2026-08-24).
+  function instLoadPermanent(why) {
+    if (!why) return false;
+    return /^its bytes weigh to /.test(why)
+        || /^declares version /.test(why)
+        || /^declares the instrument /.test(why)
+        || /^declares no named instrument/.test(why)
+        || /^its instrument /.test(why)
+        || /^handed over nothing an instrument could be read from/.test(why);
+  }
+  var INST_RETRY_MAX = 3, INST_RETRY_BASE_MS = 1500;
+  function instRetryEligible(f) {
+    return !!f && f.state === "refused" && !f.permanent && f.attempts < INST_RETRY_MAX
+        && Date.now() >= f.retryAt;
+  }
+
   // ONE INSTRUMENT, FETCHED BY THE ADDRESS THE RECORD GIVES ITS NAME. The bytes are weighed before
   // they run, and the bytes that were weighed are the bytes that run: one fetch, one digest over
   // what arrived, and the very same buffer evaluated.
   //
   // Every road ends by calling `done` exactly once with the reason, or with null when the instrument
   // is on the registry. A file that fails to arrive, fails its version, fails its digest, fails its
-  // name or fails registration leaves the host without that instrument, and a command naming it
-  // finds none: `pick` answers null, `offer` returns false, and the walk's own glide lands the
-  // transition. That is the product's own behaviour, which is what a visit with no renderer file at
-  // all has always looked like (§2's refusal roads).
+  // name or fails registration leaves the host without that instrument for THIS call, and a command
+  // naming it finds none: `pick`/`voicesFor` shed the voice or the funnel casts the last resort. A
+  // wire-level failure is retried with backoff (`instLoadPermanent`, above) up to INST_RETRY_MAX
+  // times before it is treated the same as a permanent one; a genuine fact about the file, or a name
+  // the record never carried at all, is never retried.
   function instLoad(name, done) {
     done = done || function () {};
     if (instruments[name]) return done(null);
     var f = files[name];
     if (f) {
       if (f.state === "asked") { f.waiting.push(done); return; }
-      return done(f.why);
+      if (!instRetryEligible(f)) return done(f.why);
+      files[name] = null;   // fall through and ask again, fresh
     }
     var road = noRoad();
     if (road) {
-      files[name] = { state: "refused", src: null, version: null, waiting: [], why: road };
+      files[name] = { state: "refused", src: null, version: null, waiting: [], why: road,
+                      permanent: true, attempts: 1, retryAt: Infinity };
       logEvt("instrument-refused", null, name + ": " + road);
       return done(road);
     }
     var want = record && record[name];
     if (!want) {
       files[name] = { state: "refused", src: null, version: null, waiting: [],
-                      why: "the site's record names no instrument by that name" };
+                      why: "the site's record names no instrument by that name",
+                      permanent: true, attempts: 1, retryAt: Infinity };
       logEvt("instrument-refused", null, name + ": " + files[name].why);
       return done(files[name].why);
     }
-    var rec = { state: "asked", why: null, src: want.src, version: want.version, waiting: [done] };
+    var priorAttempts = (f && f.attempts) || 0;
+    var rec = { state: "asked", why: null, src: want.src, version: want.version, waiting: [done],
+                permanent: false, attempts: priorAttempts + 1, retryAt: 0 };
     files[name] = rec;
     function land(why) {
+      var permanent = why ? instLoadPermanent(why) : false;
       rec.state = why ? "refused" : "loaded";
       rec.why = why || null;
+      rec.permanent = permanent;
+      var retrying = !!why && !permanent && rec.attempts < INST_RETRY_MAX;
+      rec.retryAt = retrying ? Date.now() + INST_RETRY_BASE_MS * Math.pow(2, rec.attempts - 1) : Infinity;
       logEvt(why ? "instrument-refused" : "instrument-loaded", null,
-             name + " (" + want.src + ")" + (why ? ": " + why : " v" + want.version));
+             name + " (" + want.src + ")" + (why ? ": " + why + (retrying ? " — retrying" : "")
+                                                  : " v" + want.version));
       var q = rec.waiting, i;
       rec.waiting = [];
       for (i = 0; i < q.length; i++) q[i](why);
@@ -2936,23 +3335,24 @@
   // the real command never ends up naming just sits on the registry unused, and a name it guessed
   // right about is the wait `offer` would otherwise have spent, already gone.
   function prewarmInstruments(names) {
-    var i;
+    var i, n;
     for (i = 0; i < (names || []).length; i++) {
-      if (names[i] && !instruments[String(names[i])] && !files[String(names[i])]) instLoad(String(names[i]));
+      n = String(names[i] || "");
+      if (n && !instruments[n] && (!files[n] || instRetryEligible(files[n]))) instLoad(n);
     }
   }
 
   // WHAT A COMMAND NAMES AND THIS HOST DOES NOT HOLD IS ASKED FOR HERE, and the count of what is
-  // still in the air is handed back so the caller knows whether to wait. A name already asked for
-  // is not asked for twice, and a name already refused stays refused for the rest of the visit: a
-  // file that would not load once is not going to load on the next step, and a walk that retried it
-  // every transition would spend the visit fetching the same refusal.
+  // still in the air is handed back so the caller knows whether to wait. A name already asked for is
+  // not asked for twice; a name refused for a fact about the file stays refused for the visit, but a
+  // wire-level refusal is retried once its backoff has elapsed (`instRetryEligible`) rather than
+  // treated as settled forever.
   function warmFor(cmd) {
     var names = namedBy(cmd), waiting = 0, i, id;
     for (i = 0; i < names.length; i++) {
       id = names[i];
       if (instruments[id]) continue;
-      if (!files[id]) instLoad(id);
+      if (!files[id] || instRetryEligible(files[id])) instLoad(id);
       if (files[id] && files[id].state === "asked") waiting++;
     }
     return waiting;
@@ -3026,6 +3426,10 @@
   // is fetched here: what a score names is asked for when a score arrives. The walk glides
   // throughout, which is what it does for the whole time this file itself is being fetched.
   recordLoad(function () {
+  // REGISTERED FOR REAL USE, NOT ONLY FOR DIAGNOSTICS, AND UNCONDITIONALLY: the one thing that must
+  // stand before any score has ever been read, so a cold visit's very first crossing — the
+  // instruments registry still empty either way the record settled — has something to cast.
+  register(makeLastResortInstrument());
   var diag = window.__@@NS@@Pass;
   if (diag) {
     var test = makeTestInstrument();

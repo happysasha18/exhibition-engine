@@ -188,6 +188,23 @@
     });
     if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
     if (cmd && passVisualTakes(cmd) && passOffer(cmd)) return;   // transitions; the layer's file is asked for once
+    // AN INPUT HASN'T ARRIVED YET IS NOT THE SAME FACT AS A DECLINE (2026-08-24): the layer script
+    // may simply still be in flight, the narrow window a gesture can land in on a visit's very first
+    // step. Held here, bounded, rather than taking the plain glide outright the instant it is asked —
+    // nothing has moved yet, so holding costs no frame either way this resolves.
+    if (cmd && passLayerPending(cmd)) {
+      passLayerAwait(cmd, (arrived) => {
+        // A NEWER DECLARE OWNS ITS OWN LANDING (same law `offer`'s own "offer-superseded" reads):
+        // a second gesture landing inside this hold's own window already re-ran this whole function
+        // and glided or offered on its OWN command, so acting on the stale one here would move the
+        // walk twice.
+        if (cmd.gen !== passGen) return;
+        if (arrived && passVisualTakes(cmd) && passOffer(cmd)) return;
+        glideToFrame(stops[k], velocity, "chain");
+        if (!gliding) passLandNow();
+      });
+      return;
+    }
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
     if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }

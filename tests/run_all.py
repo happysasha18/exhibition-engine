@@ -9,8 +9,10 @@ Exit 0 only if EVERY suite exits 0.
 """
 import argparse
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -25,7 +27,7 @@ SUITES = [
     "pulse", "hand", "i18n", "lang", "lang_geo", "memory", "protect", "sound", "guard", "quiz",
     "quiz_copy", "compose", "dead", "quiz_flow", "parity", "zoom", "return", "gesture",
     "wheel", "glide_speed", "beat_css", "a11y", "about",
-    "story_edge", "story_lead", "pass", "pass_api", "pass_weave", "pass_drivers",
+    "story_edge", "story_lead", "pass", "pass_api", "pass_direction", "pass_weave", "pass_drivers",
     "pass_hang",
     "pass_matter",
     "pass_gears",
@@ -88,6 +90,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--jobs", type=int, default=8,
                     help="parallel suites (each spawns its own Chrome); default 8")
+    ap.add_argument("--no-record-timings", action="store_true",
+                    help="run the full gate without rewriting suite_timings.json (release/CI)")
     args = ap.parse_args()
 
     t0 = time.time()
@@ -96,6 +100,14 @@ def main():
     starts = {}     # name → monotonic start, paired at harvest for that suite's duration
     results = {}    # name → (rc, tail)
     durations = {}  # name → suite wall time in seconds
+    logs = {}       # name → Path, this suite's combined stdout+stderr
+
+    # Each child's output is captured to its own file, not a subprocess.PIPE: a pipe has a small
+    # kernel buffer (~64KB), and nothing here reads it while the child runs — only poll() is
+    # called until exit. A suite that prints more than that fill the pipe and blocks on write(),
+    # while this process is blocked waiting for an exit that write() is blocked on: a deadlock. A
+    # file has no such bound, so the child can never stall on it.
+    log_dir = Path(tempfile.mkdtemp(prefix="run_all_logs_"))
 
     def harvest(block=False):
         for name, proc in list(running.items()):
@@ -103,7 +115,7 @@ def main():
             if rc is None:
                 continue
             durations[name] = time.monotonic() - starts[name]
-            out = proc.stdout.read().decode(errors="replace")
+            out = logs[name].read_text(encoding="utf-8", errors="replace")
             lines = out.strip().splitlines()
             tail = lines[-1] if lines else "(no output)"
             # a RED suite keeps its whole verdict: the failing rows print with the gate line,
@@ -117,12 +129,16 @@ def main():
         while queue and len(running) < args.jobs:
             name = queue.pop(0)
             starts[name] = time.monotonic()
-            running[name] = subprocess.Popen(
-                [sys.executable, str(HERE / f"test_{name}.py")],
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            log_path = log_dir / f"{name}.log"
+            logs[name] = log_path
+            with open(log_path, "wb") as logf:
+                running[name] = subprocess.Popen(
+                    [sys.executable, str(HERE / f"test_{name}.py")],
+                    stdout=logf, stderr=subprocess.STDOUT)
         harvest()
         time.sleep(0.2)
     harvest(block=True)
+    shutil.rmtree(log_dir, ignore_errors=True)
 
     wall = time.time() - t0
     failed = [n for n in SUITES if results[n][0] != 0]
@@ -138,8 +154,10 @@ def main():
         print(f"  {n}: {durations[n]:.1f}s")
 
     # This runner has no suite-selection flag — every invocation covers the full SUITES set, so
-    # every run is a FULL run and the committed record is always safe to replace here.
-    TIMINGS_PATH.write_text(json.dumps(durations, indent=2, sort_keys=True) + "\n")
+    # every run is a FULL run and the committed record is always safe to replace here, unless the
+    # caller asked to skip the rewrite (release/CI, where a clean checkout shouldn't get dirtied).
+    if not args.no_record_timings:
+        TIMINGS_PATH.write_text(json.dumps(durations, indent=2, sort_keys=True) + "\n")
 
     sys.exit(1 if failed else 0)
 

@@ -854,8 +854,12 @@
   // switch). Anything inside a running transition reads the frozen snapshot instead.
   function passGet(key, score) { return passResolve(key, score).base; }
 
-  // The score: a versioned record with an allow-list of fields. An unknown field refuses the WHOLE
-  // score, so a typo lands as a refusal in the report instead of half-applying.
+  // The score: a versioned record with an allow-list of fields. AN UNKNOWN FIELD IS STRIPPED AND
+  // NOTED, NOT A REFUSAL OF THE WHOLE SCORE (2026-08-24) — the same conversion the weight fence and
+  // the intent-length fence already took on 2026-08-18: a score is composed by the collection's own
+  // composer, and a field the client's own allow-list has not yet learned about used to cost the
+  // visitor the whole crossing over one name it did not recognise. The field is cut, the cut is
+  // recorded on `noted` alongside the weight and the intent trim, and the passage plays.
   function passScoreCheck(raw) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, why: "no record" };
     let bytes = 0;
@@ -874,7 +878,12 @@
     if (v !== 1 && v !== 2) return { ok: false, why: "names no schema 1 or 2" };
     const stray = Object.keys(raw).filter(
       (k) => (v === 2 ? PASS_SCORE_FIELDS2 : PASS_SCORE_FIELDS).indexOf(k) < 0);
-    if (stray.length) return { ok: false, why: "unknown field «" + stray[0] + "»" };
+    let overField = null;
+    if (stray.length) {
+      overField = "the unknown field" + (stray.length > 1 ? "s" : "") + " «" + stray.join("», «")
+                + "» " + (stray.length > 1 ? "were" : "was") + " stripped";
+      stray.forEach((k) => { delete raw[k]; });
+    }
     // THE AUTHORED LINE IS TRIMMED, NEVER THE REASON A CROSSING IS LOST. «intent is no short text»
     // refused the whole score, and over one collection 1 004 of 6 304 composed crossings were lost
     // to it — no instrument ever saw them. A line running long is a line running long: it is cut to
@@ -901,7 +910,7 @@
       if (shut.length) return { ok: false, why: "«" + shut[0] + "» is closed to a score" };
     }
     // WHAT WAS READ ABOUT THE SCORE'S SIZE travels with it rather than deciding anything.
-    const noted = [overWeight, overLine].filter(Boolean);
+    const noted = [overWeight, overLine, overField].filter(Boolean);
     return { ok: true, score: raw, read: v, noted: noted.length ? noted : null };
   }
 
@@ -1053,11 +1062,15 @@
   // or asked for and has not heard back about) keep working unchanged — the walk's own glide is the
   // one fallback there has ever been for a pair with no record, and it stays the one fallback here.
   let passRecordsMap = Object.create(null);
-  // Which ids this visit has ever asked the route for, whether the wave that asked landed or not. An
-  // id is asked once: the walk never shows the same work twice inside one visit's own `order`, so
-  // there is no second wave that could ever want it, and a failed wave is not retried onto a loop —
-  // its ids simply stay unheld, and the pairs that would have used them take the walk's own glide.
+  // Which ids this visit has ever asked the route for AND HEARD BACK ABOUT, whether the wave landed
+  // or failed to reach the wire at all. A wave that fails the wire is retried with backoff instead
+  // of poisoning its ids for the visit (2026-08-24): its ids come OFF this map in the same beat that
+  // the retry is scheduled, so a later selection naming the same work asks again rather than finding
+  // it permanently unheld. `passRecordsRetryCount` tracks how many times each id has been retried, so
+  // the backoff grows and eventually stops rather than hammering a route that is genuinely down.
   let passRecordsAsked = Object.create(null);
+  let passRecordsRetryCount = Object.create(null);
+  const RECORDS_RETRY_MAX = 3, RECORDS_RETRY_BASE_MS = 1500;
   // SAID ONCE, the way the composer's own absence is (`passComposerSaid` above): the reason the
   // route is missing is one fact about the visit, not one fact per wave, so it is written to the
   // refusal ring a single time rather than pushing every other refusal off it within a few steps —
@@ -1135,7 +1148,13 @@
       const left = want.slice(cap);
       passNote(passRefusals, { what: "records", name: "wave",
                                why: left.length + " id(s) of this wave stand over the route's own "
-                                    + "cap of " + cap + " and are not asked for: " + left.join(",") });
+                                    + "cap of " + cap + " and go out in a second wave: " + left.join(",") });
+      // A SECOND WAVE ASKS FOR WHAT THE FIRST COULD NOT CARRY, rather than dropping it on the floor
+      // (2026-08-24): the cap is the route's own per-REQUEST ceiling, not a statement that these ids
+      // are unwanted. They stand unmarked in `passRecordsAsked` until their own wave goes out, so
+      // this call finds them exactly as it found the ones just capped — and chains again itself if
+      // even `left` stands over the cap.
+      passRecordsAskFor(left);
     }
     // MARKED ASKED BEFORE THE REQUEST LANDS, not after: a second wave that starts while this one is
     // still in flight must not ask the route for the same id twice, and marking on send rather than
@@ -1167,19 +1186,49 @@
         passPrewarmAhead();   // this wave may be exactly what an earlier prewarm attempt was missing
       })
       .catch((e) => {
-        // THE MAP STANDS AS IT WAS. A wave that fails — network, a refusing status, an answer this
-        // client cannot read — changes nothing it has already been given; it only leaves this wave's
-        // own ids unheld, and it is never retried: the next fact this visit reads about the route is
-        // whatever the NEXT wave's own ids bring, not a repeat of this one.
-        passNote(passRefusals, { what: "records", name: "wave",
-                                 why: "the wave for " + asked.length + " id(s) did not land: "
-                                      + (e && e.message ? e.message : String(e)) });
+        // THE MAP OF RECORDS STANDS AS IT WAS — a wave that fails leaves nothing it has already been
+        // given changed. Its ids are RETRIED WITH BACKOFF instead of poisoned for the visit
+        // (2026-08-24): a network hiccup or a refusing status is a fact about that one attempt, not
+        // a fact about whether the route will ever answer for these ids, so each id comes off
+        // `passRecordsAsked` and goes back on the wire once its own backoff has passed — up to
+        // RECORDS_RETRY_MAX tries, past which it is treated as genuinely unreachable this visit.
+        const why = "the wave for " + asked.length + " id(s) did not land: "
+                  + (e && e.message ? e.message : String(e));
+        passNote(passRefusals, { what: "records", name: "wave", why: why });
+        let delay = RECORDS_RETRY_BASE_MS;
+        const retryIds = [];
+        asked.forEach((id) => {
+          delete passRecordsAsked[id];
+          const n = (passRecordsRetryCount[id] || 0) + 1;
+          passRecordsRetryCount[id] = n;
+          if (n <= RECORDS_RETRY_MAX) {
+            retryIds.push(id);
+            delay = Math.max(delay, RECORDS_RETRY_BASE_MS * Math.pow(2, n - 1));
+          }
+        });
+        if (retryIds.length) setTimeout(() => { passRecordsAskFor(retryIds); }, delay);
       })
       // SETTLED EITHER WAY. The wave is off the wire whether it landed or failed, and the readiness
       // the diagnostic surface publishes is about the wire rather than about the outcome.
       .then(() => { passRecordsSettled += 1; }, () => { passRecordsSettled += 1; });
   }
   function passComposerConsts() { return (((EX && EX.pass) || (cfg && cfg.pass) || {})).composer; }
+  // THE P2/P3 SKEW'S STRUCTURAL FIX, PREPARED HERE AND NAMED AS A FOLLOW-UP (2026-08-24). The site's
+  // record and the composer's own idea of what it may cast can drift apart — "the site's record
+  // names no instrument by that name" — because each is baked separately. The real fix is for the
+  // composer to read its castable set from the very record the host already holds (`passLayer.
+  // castable()`) instead of a second baked copy of its own; this wires that hand-off, feature-
+  // detected against a `setCastable` the composer does not carry yet, so it is a no-op today and
+  // starts working the moment the composer's own file adds it. Until then the skew still sheds to
+  // the funnel: an instrument named by the composer that this host cannot load is an unknown
+  // instrument to `voicesFor`, which sheds that voice (or the funnel casts the last resort) rather
+  // than declining the crossing outright.
+  function passWireCastable() {
+    if (!passComposer || !passLayer) return;
+    if (typeof passComposer.setCastable !== "function") return;
+    if (typeof passLayer.castable !== "function") return;
+    try { passComposer.setCastable(passLayer.castable()); } catch (e) {}
+  }
   // The composer hands over a factory rather than a finished composer, so the bundle stays the one
   // owner of the settings block: the composer is handed the collection's own constants and reaches
   // nothing else in this file.
@@ -1198,6 +1247,7 @@
       passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC,
                                why: "the collection's constants made no composer" });
     } else {
+      passWireCastable();
       passPrewarmAhead();   // the composer was the missing half of every request built so far
     }
   }
@@ -1315,6 +1365,17 @@
     traceHandles: 48,
   };
   let passEdgeRows = null, passEdgeStorage = "unread";
+  // WHAT EACH REMEMBERED PASS WAS ASKED ON, keyed by the edge and the direction that played it. The
+  // walk's own note to itself, written at the landing (`passEdgeRemember`) and read by the held
+  // pre-check on a return (`passComposeFor`); it holds the `walkMemory` list the recorded pass was
+  // struck with, because the composer's instrument cast weighs its pool through that list and the
+  // seed alone therefore reproduces the family and not the instrument.
+  //
+  // NOT PART OF THE STORE, deliberately. §4.8 names what an edge remembers and what crosses back to
+  // the composer, and this is neither: it never leaves the page, never reaches storage, and answers
+  // no question outside the visit window. It is bounded by the same thing the route is — a walk has
+  // as many edges as it has steps.
+  const passEdgeWalk = Object.create(null);
   // The clock is read HERE and nowhere else, and it never reaches a die. A cooldown and a visit
   // window are wall time by their nature; a roll that read a clock would make a pinned run
   // irreproducible, which is the very thing §4.4b's determinism row exists to hold.
@@ -1587,6 +1648,46 @@
   // overwrite a measurement with a number nobody read. The doors (`mix`) and the clock never drift
   // either: an effect enters and leaves through its zero whatever the pass. The die is left alone
   // too, since it already travels as the walk's own roll.
+  //
+  // AND `mask`, THE JUDGES' OWN CHANNEL (2026-08-24). It is the one handle every instrument that
+  // publishes it reads back AT ITS OWN DOOR — `pass-inst-*.js`'s `doorWhyNoOf`, "the entry door
+  // leaks: the judges' own channel stands at …", which refuses the door the moment the channel
+  // stands over half a level of 255 — and no branch of the composer ever drives it: `sourceOf` names
+  // it «module-rest», nothing writes `wanted.mask`, so `fillPlan` takes the `req === null` road and
+  // writes `{op:"static", value: <the manifest's own def>}`, which is 0 on every instrument that
+  // publishes the handle. This roll was therefore the ONE writer that could ever move it off zero,
+  // and a door met on a repeated edge refused the whole crossing on a number the roll had put there
+  // itself. It is skipped here rather than tolerated at the door: the door's law is the picture's,
+  // and a breath has no business inside a channel whose whole meaning is that it stands shut.
+  //
+  // `mask` NAMED ONE INSTANCE OF A CLASS, AND THE CLASS IS THE MANIFEST'S OWN WORD, NOT A NAME LIST
+  // (2026-08-25). `unfold`'s `field` was found the same night carrying the identical fault — its
+  // manifest declares `applied: { pitchDegreesAtWhole: PITCH_MAX, shutAt: 0 }` (pass-inst-unfold.js)
+  // and its own `doorWhyNoOf` refuses the door the moment `worldPx` — `field` read through its curve
+  // — leaks past a hair at either door. `gates`' `jamb` declares the same door-rest under a longer
+  // key, `applied: { shutBelowTheSlotsOwnWidth: true, shutAtTheFarDoor: true }` (pass-inst-gates.js)
+  // — the module's own gate that must close by the far door so both leaves clear the frame. Two
+  // instruments, two handle names, one manifest word: `shutAt…`, published beside the handle
+  // whenever the module holds it at a fixed reading right at a door. `passHandleShutsAtDoor` below
+  // reads that word off the manifest directly, so the next instrument that publishes a door-rest
+  // channel is caught the day it ships and never needs a fourth name added here by hand. `mask`
+  // stays in the name list beside it rather than folding into the generalized check: its own
+  // manifest entries carry no `shutAt…` key (`applied.readAtADoor` on `unfold`, `applied.shows` on
+  // `gates`) — it is exempted here on what §4.4f says about the judges' channel, not on what the
+  // manifest happens to spell.
+  //
+  // A handle's manifest may publish, beside its range, that the module holds a fixed reading there
+  // AT A DOOR — `applied.shutAt` (`unfold.field`) or `applied.shutAtTheFarDoor` (`gates.jamb`), both
+  // read as one word rather than two: any key of `applied` that starts `shutAt` names a door-rest
+  // channel, on any instrument, and a breath has no business inside one for the same reason `mask`
+  // does not carry one.
+  function passHandleShutsAtDoor(instrument, handle) {
+    const m = (passComposerConsts() || {}).manifests || {};
+    const h = (m[instrument] && m[instrument].handles) ? m[instrument].handles[handle] : null;
+    const applied = h && h.applied;
+    if (!applied || typeof applied !== "object") return false;
+    return Object.keys(applied).some((k) => k.indexOf("shutAt") === 0);
+  }
   function passDriftScore(score, key, passes) {
     if (!score || !Array.isArray(score.cues) || !(passes > 0)) return null;
     const reach = PASS_EDGE.driftSpan * Math.min(1, passes / PASS_EDGE.driftOpensOver);
@@ -1596,7 +1697,8 @@
       const instr = (c.instrument && c.instrument.id) || null;
       if (!instr) return;
       Object.keys(c.tracks || {}).sort().forEach((name) => {
-        if (name === "mix" || name === "clock" || name === "seed") return;
+        if (name === "mix" || name === "clock" || name === "seed" || name === "mask") return;
+        if (passHandleShutsAtDoor(instr, name)) return;
         if (c.measuredHandles && c.measuredHandles[name] !== undefined) return;
         const span = passHandleSpan(instr, name);
         if (!span || span.rungs !== null || span.named || !(span.hi > span.lo)) return;
@@ -1644,8 +1746,11 @@
     const rows = passEdgeAll()[key] || null;
     const mine = rows ? (rows[direction] || null) : null;
     const other = rows ? (rows[direction === "a-to-b" ? "b-to-a" : "a-to-b"] || null) : null;
-    let last = mine;
-    if (other && (!last || +other.lastAt > +last.lastAt)) last = other;
+    let last = mine, lastDir = direction;
+    if (other && (!last || +other.lastAt > +last.lastAt)) {
+      last = other;
+      lastDir = direction === "a-to-b" ? "b-to-a" : "a-to-b";
+    }
     const now = passEdgeNow();
     // WITHIN A VISIT the family is held and the door breathes; ACROSS the visit boundary the pool
     // re-rolls and the family that just played is cooled (charter shelf 16). The boundary between
@@ -1658,6 +1763,14 @@
       cooled: (last && !within) ? last.family : null,
       // THE WHOLE OF WHAT CROSSES (§4.8). Three fields, and the composer refuses a fourth.
       memory: within ? { family: last.family, seed: last.seed, passIndex: last.passCount } : null,
+      // WHAT THE PASS `memory` NAMES WAS ASKED ON — read off the walk's own note to itself
+      // (`passEdgeWalk`, written at the landing) and never off the stored record, which §4.8 fences
+      // at its own nine names. It rides to the composer on `walkMemory`, a field the request already
+      // carries, so nothing about the contract moves either. Read only by the held pre-check in
+      // `passComposeFor`, and only inside the visit window, which is the only span where a held pass
+      // means anything. It follows the SAME row `memory` does — whichever direction played last —
+      // since the question and the die it was struck with have to come off one pass.
+      heldWalk: within ? (passEdgeWalk[key + "|" + lastDir] || null) : null,
     };
   }
 
@@ -2000,7 +2113,74 @@
     // repetition with the whole crossing.
     let best = null, bestScore = -1, bestWhy = null, bestDrift = null, bestCooled = null;
     const routeLast = passRoutePlayed.length ? passRoutePlayed[passRoutePlayed.length - 1] : null;
-    for (let i = 0; i < PASS_EDGE.dice; i++) {
+    // A RETURN TRIES THE EDGE'S OWN HELD PASS FIRST, and takes it outright the moment it legally
+    // casts (charter shelf 16, amended tonight: "a route's pressure toward variety ... never
+    // outranks the kinship a return owes on an edge already walked ... owed on what is DRAWN — the
+    // instrument, the gesture it makes and the level it makes it at"). Scoring the held die in the
+    // same race as the others is one of the two things that defeated it: `repeatsFamily` and
+    // `repeatsPrimary` exist to space two DIFFERENT edges apart, and scored the one die that is
+    // SUPPOSED to repeat as if it were the weakest option. So it is tried here, outside the race,
+    // and taken whenever the composer does not decline it; the scored dice below run unchanged for
+    // a first crossing (`edge.memory` is null then) and, for a return, only as a fallback where the
+    // held pass cannot legally cast.
+    //
+    // THE OTHER THING THAT DEFEATED IT WAS THE QUESTION, NOT THE DIE (2026-08-24). `request.seed`
+    // carries `edge.memory.seed`, and the note above this function used to say that reproduces the
+    // recorded pass by construction. It does not, and the claim cost a night: the composer's
+    // instrument cast runs the candidate pool through `dieWeighted(pool, seed, key, letters)`, whose
+    // weight is `fit × coolOf(id) × viewerBiasOf(id)`, and `coolOf` reads the request's OWN
+    // `walkMemory` — the letters the walk has docked so far. That list is a letter or three longer
+    // at every step, so the same seed struck two steps later stands on different weights and lands
+    // on a different instrument. It reproduces the recorded FAMILY (which `genreFor` holds off
+    // `memory.family` outright, on a search that does not read the cooldowns) and nothing below it,
+    // which is exactly the shape the evidence showed: the family held while the instrument moved
+    // on almost every trip.
+    //
+    // So the held pre-check asks the composer THE QUESTION THE RECORDED PASS WAS ASKED — the same
+    // records, the same direction, the same seed, the same role («return» on every pass but the
+    // first), the same session memory, and now the same walk memory, replayed off `passEdgeWalk`.
+    // Every input to the cast is then the one that produced the pass being held, so the
+    // instrument comes back by construction rather than by luck. The pass count still turns the
+    // order of the moves over inside the composer (§4.8 allows it), and the door still breathes
+    // through `passDriftScore` below, so a return is held without being a replay.
+    //
+    // A DECLINE PUTS THE LIVE QUESTION BACK. The scored dice below are fresh choices for this step
+    // and the walk's own cooldowns are exactly what should rank them, so the replayed list is
+    // restored to the live one the moment the held pass does not cast.
+    let heldStart = 0;
+    if (edge.memory && edge.memory.seed) {
+      const liveWalk = request.walkMemory;
+      if (Array.isArray(edge.heldWalk)) request.walkMemory = edge.heldWalk;
+      let got = null;
+      try { got = passComposer.passageFor(request); } catch (e) { got = null; }
+      if (!got) {
+        passNote(passRefusals, { what: "composer", name: "passage", why: "the entry threw" });
+        return null;
+      }
+      passage = got;
+      if (!got.declined) {
+        const fam = passFamilyOf(got.plan);
+        const primary = passPrimaryOf(got);
+        drifted = edge.passes > 0 ? passDriftScore(got.score, edge.key, edge.passes) : null;
+        const read = passEdgeJudge(got, edge.within ? edge.last : null);
+        refused = read.why;
+        cooledStood = (edge.cooled && fam === edge.cooled)
+          ? "the family «" + fam + "» played last on this edge and is still cooling" : null;
+        rolls.push({ seed: request.seed, family: fam, instrument: primary,
+                     repeatsPrevious: (!!routeLast && routeLast.family === fam)
+                                      || (!!routeLast && routeLast.instrument === primary),
+                     why: refused || cooledStood });
+        best = got; bestScore = Infinity; bestWhy = refused; bestDrift = drifted;
+        bestCooled = cooledStood;
+      } else {
+        request.walkMemory = liveWalk;
+        passNote(passRefusals, { what: "memory", name: edge.key,
+                                 why: "the held instrument could not legally cast: "
+                                      + got.declined });
+      }
+      heldStart = 1;
+    }
+    for (let i = heldStart; best === null && i < PASS_EDGE.dice; i++) {
       if (i) request.seed = passSeedFor(edge.key, i);
       let got = null;
       try { got = passComposer.passageFor(request); } catch (e) { got = null; }
@@ -2055,8 +2235,11 @@
       passNote(passRefusals, { what: "memory", name: got.key,
                                why: "die " + (i + 1) + ": " + (refused || cooledStood) });
       // A second die that lands on the same family says the die does not reach this choice, so a
-      // third would be the same waste again.
-      if (i && rolls[i].family === rolls[i - 1].family) break;
+      // third would be the same waste again. Read off `rolls`' own length rather than `i`: on a
+      // return whose held instrument declined, `heldStart` skips die 0 without a roll ever pushed
+      // for it, so `i` and the array's own index no longer walk together.
+      if (rolls.length > 1
+          && rolls[rolls.length - 1].family === rolls[rolls.length - 2].family) break;
     }
     if (best !== null) { passage = best; refused = bestWhy; drifted = bestDrift;
                          cooledStood = bestCooled; }
@@ -2124,6 +2307,30 @@
                       ? (before.provenance.planId || null) : null,
                     trace: passTraceOf(row.score) },
     };
+    // THE QUESTION THIS PASS WAS STRUCK ON, held for the length of the page and never stored
+    // (2026-08-24). The seed alone does NOT reproduce a pass, which is the claim that cost a night:
+    // the composer's instrument cast runs its pool through `dieWeighted(..., letters)`, whose weight
+    // is `fit × coolOf(id) × viewerBiasOf(id)`, and `coolOf` reads the request's own `walkMemory` —
+    // the letters the walk has docked so far. That list is a letter or three longer at every step,
+    // so the same seed asked again two steps later stands on different weights and answers a
+    // different instrument. A return has to put the question back the way it stood, so the list is
+    // kept here for the held pre-check in `passComposeFor` to replay.
+    //
+    // NOT ON THE STORED RECORD, and that is the law rather than thrift: §4.8 fences what the edge
+    // remembers at nine names and the return reference at three, and this is neither — it is the
+    // walk's own note to itself about a question it asked a moment ago. It lives as long as the page
+    // does, which is longer than any run of returns can be, and a reload simply re-anchors at the
+    // first pass after it.
+    //
+    // ANCHORED AT THE FIRST PASS OF A RUN, never rewritten by the passes that follow: a list rolled
+    // forward each time would walk the answer forward with it, one letter at a time, which is the
+    // slow version of the very drift this closes. A run that has gone cold (`within` false) starts
+    // its own anchor, the same boundary `passCount` itself restarts on.
+    const walkAt = edgeKey + "|" + direction;
+    if (!within || !Array.isArray(passEdgeWalk[walkAt])) {
+      passEdgeWalk[walkAt] = (row.request && Array.isArray(row.request.walkMemory))
+        ? row.request.walkMemory.slice() : null;
+    }
     const family = passFamilyOf(row.plan);
     const instrument = row.applied.instrument || passPrimaryOf(row);
     passRoutePlayed.push({ edgeKey: edgeKey, direction: direction, family: family,
@@ -2664,31 +2871,75 @@
   // command falls through to the walk's own glide, which is the fallback the seam keeps reversible:
   // turning the layer off is a setting, never a rebuild.
   let passLayer = null, passState = "absent";
+  // Whoever is waiting for the layer script to land (`passLayerAwait`, below) rather than for a
+  // real decline. Drained the instant `passLayerSet` runs, whichever way it lands.
+  let passLayerWaiters = [];
   // PASS-API §12: the renderer's own file registers the HOST here — a registry taking one
   // instrument, exposing offer/resize/cancel/report. The seam's old {name, run} shape is gone with
   // the single run(cmd, done) entry point it belonged to (§0, "Where it stands").
   function passLayerSet(layer) {
     passLayer = (layer && typeof layer.offer === "function") ? layer : null;
     passState = passLayer ? "registered" : "absent";
+    passWireCastable();          // the P2/P3 follow-up: either half landing tries the hand-off again
+    const q = passLayerWaiters; passLayerWaiters = [];
+    q.forEach((fn) => { try { fn(); } catch (e) {} });
   }
   function passVisualTakes(cmd) {
-    if (!passLayer) return false;
-    if (cmd.kind === "jump") return false;
-    if (cmd.reduced || cmd.saveData) return false;
-    return cmd.params.visualLayer.base === "pass";
+    if (!passLayer) { passMark("visual-declined", cmd, "the layer is not registered"); return false; }
+    if (cmd.kind === "jump") { passMark("visual-declined", cmd, "a jump carries no crossing"); return false; }
+    if (cmd.reduced || cmd.saveData) {
+      passMark("visual-declined", cmd, cmd.reduced ? "reduced motion" : "save data");
+      return false;
+    }
+    if (cmd.params.visualLayer.base !== "pass") {
+      passMark("visual-declined", cmd, "visualLayer is not set to pass");
+      return false;
+    }
+    passMark("visual-passed", cmd, null);
+    return true;
   }
-  // A layer that throws is dropped for the rest of the visit and the walk's glide takes at once. The
+  // THE LAYER SCRIPT ASKED FOR BUT NOT YET LANDED is not the same fact as a layer that will never
+  // come (2026-08-24). `passOpen` fires the fetch once, at the setting's own word, and a genuine
+  // absence — reduced motion, save-data, no webgl2, the setting itself standing off, or the fetch
+  // itself failing — is judged once and does not change mid-visit; none of those are held here.
+  // What IS held is the narrow window between that fetch starting and its script's own load event,
+  // which a gesture can easily land inside on a visit's very first step. `passLayerPending` names
+  // the window; `passLayerAwait` waits it out, bounded, before falling back to the plain glide.
+  const PASS_LAYER_HOLD_MS = 350;
+  function passLayerPending(cmd) {
+    if (!cmd || cmd.reduced || cmd.saveData || cmd.kind === "jump") return false;
+    if (passGet("visualLayer") !== "pass") return false;
+    return passAsked && !passLayer && passState === "asked";
+  }
+  function passLayerAwait(cmd, done) {
+    if (!passLayerPending(cmd)) { done(false); return; }
+    let rung = false;
+    const finishOnce = (ok) => { if (rung) return; rung = true; clearTimeout(t); done(ok); };
+    const t = setTimeout(() => finishOnce(false), PASS_LAYER_HOLD_MS);
+    passLayerWaiters.push(() => finishOnce(!!passLayer));
+  }
+  // A layer that throws stands for the rest of the visit and is dropped only after several throws
+  // in a row with no successful offer between them (2026-08-24) — it used to be torn down on its
+  // very first throw, losing the whole visual layer for every later crossing over one bad frame. The
   // host owns the offer/prepare/decline decision entirely (§2.1); a `true` return means the host has
   // taken responsibility for landing this command — by taking over, or by calling the glide hook
   // itself when it declines — never that a renderer is now drawing.
+  let passOfferThrows = 0;
+  const PASS_OFFER_THROW_MAX = 3;
   function passOffer(cmd) {
     try {
-      return passLayer.offer(cmd, { dock: dock, glide: glide, curtain: curtain, mark: passMark,
+      const took = passLayer.offer(cmd, { dock: dock, glide: glide, curtain: curtain, mark: passMark,
                                     hangGeometry: hangGeometry, handoff: handoff }) === true;
+      passOfferThrows = 0;
+      if (!took) passMark("visual-declined", cmd, "the layer's own offer returned false");
+      return took;
     }
     catch (e) {
-      passNote(passRefusals, { what: "layer", name: "offer", why: "threw" });
-      passLayerSet(null);
+      passOfferThrows += 1;
+      passNote(passRefusals, { what: "layer", name: "offer",
+                               why: "threw (" + passOfferThrows + " in a row)" });
+      passMark("visual-declined", cmd, "the layer's offer threw");
+      if (passOfferThrows >= PASS_OFFER_THROW_MAX) passLayerSet(null);
       return false;
     }
   }
@@ -6491,6 +6742,23 @@
     });
     if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
     if (cmd && passVisualTakes(cmd) && passOffer(cmd)) return;   // transitions; the layer's file is asked for once
+    // AN INPUT HASN'T ARRIVED YET IS NOT THE SAME FACT AS A DECLINE (2026-08-24): the layer script
+    // may simply still be in flight, the narrow window a gesture can land in on a visit's very first
+    // step. Held here, bounded, rather than taking the plain glide outright the instant it is asked —
+    // nothing has moved yet, so holding costs no frame either way this resolves.
+    if (cmd && passLayerPending(cmd)) {
+      passLayerAwait(cmd, (arrived) => {
+        // A NEWER DECLARE OWNS ITS OWN LANDING (same law `offer`'s own "offer-superseded" reads):
+        // a second gesture landing inside this hold's own window already re-ran this whole function
+        // and glided or offered on its OWN command, so acting on the stale one here would move the
+        // walk twice.
+        if (cmd.gen !== passGen) return;
+        if (arrived && passVisualTakes(cmd) && passOffer(cmd)) return;
+        glideToFrame(stops[k], velocity, "chain");
+        if (!gliding) passLandNow();
+      });
+      return;
+    }
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
     if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }

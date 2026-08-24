@@ -1196,6 +1196,25 @@
     // instrument, and the instrument is the one home of it.
     var SIZE_MIN = HANDLE_SPECS.gears.size[0];
     var SIZE_MAX = HANDLE_SPECS.gears.size[1];
+    // THE COMPOSITE'S OWN TWO LEGIBILITY LEVELS, AND WHY THESE TWO ARE TYPED WHERE THE SPAN ABOVE IS
+    // READ. A settings record does NOT ship a manifest whole. The site's staging step projects each
+    // handle down to six fields — `min`, `max`, `def`, `open`, `banding`, `rungs` — and nothing else
+    // crosses the wire (tests/fixture_pass_works.json and tests/fixture_pass_composed.json are both
+    // captures of the real record and both carry exactly those six per handle). `SIZE_MIN` above
+    // survives because a span IS one of the six; `applied` is not, so
+    // `MANIFESTS.overlay.handles.exposure.applied` is `undefined` in every browser this file ever
+    // runs in. A floor built on it read nought, `voiceFloor(0, cap)` returned nought, and the lift
+    // became the identity — which is why the composite's two handles came out byte-identical either
+    // side of the repair that was meant to raise them.
+    //
+    // So the two numbers stand here, each with the line of the instrument that owns it:
+    // `pass-inst-overlay.js` publishes `formsBeginAt: 0.5` on `exposure` (where the composite's forms
+    // begin) and `edgeOfTheRegion: EDGE` on `presence`, `EDGE` being its own `0.045` (the softness of
+    // the region's edge, under which the region never stands at all). They are a COPY and named as
+    // one; the instrument stays their author and the day the record's projection carries `applied`
+    // this pair goes back to being read rather than kept.
+    var OVERLAY_FORMS_BEGIN_AT = 0.5;
+    var OVERLAY_REGION_EDGE = 0.045;
 
     // A reading held to the span a number can honestly stand in.
     function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
@@ -1228,8 +1247,20 @@
     // the axis flies to its own published ceiling and no further. That is a bound the camera lane
     // publishes, not a refusal: the passage still plays, and shelf 9's law is kept because nothing
     // is declined.
+    //
+    // THE FLOOR IS THE CLASS AND THE CAMERA IS ONE CASE OF IT (2026-08-24, on his word that the
+    // colour voices have never once been seen). Every counted voice of shelf 17 has the same shape:
+    // the voice writes on some handle with a published ceiling, there is a LEVEL below which nothing
+    // of it can be read, and the pair's own reading says how far above that level it stands. Only
+    // the level differs — an angle for the camera, a loudness for the colour and light voices, a
+    // reach for the composite. So the arithmetic is stated once, in the general terms, and each lane
+    // hands in its own level and its own ceiling. `voiceFloor` is that arithmetic; `camVoiceFloor`
+    // is the camera's own level (`2 · grainFrac`, derived in the paragraphs above) put through it.
+    function voiceFloor(needed, ceiling) {
+      return (needed > 0 && ceiling > 0) ? clamp01(needed / ceiling) : 0;
+    }
     function camVoiceFloor(grainFrac, ceiling) {
-      return (grainFrac > 0 && ceiling > 0) ? clamp01(2 * grainFrac / ceiling) : 0;
+      return voiceFloor(2 * grainFrac, ceiling);
     }
     // WHAT THE LIFT IS, AND WHY IT CANNOT OVERSHOOT. The reading `share` is the pair's own call on
     // this axis, already a share of that axis's own ceiling and so already in [0, 1] by each axis's
@@ -1247,9 +1278,22 @@
     // `(floor + (1 − floor) · share) · ceiling` — the lifted share times the same ceiling, hence
     // at most the ceiling itself. Where there is no floor to clear, or no excursion to lift, the
     // multiplier is 1 and nothing moves.
-    function camVoiceLift(floor, share) {
-      return (floor > 0 && share > 0) ? (floor + (1 - floor) * share) / share : 1;
+    //
+    // AND THE LIFT WAS ALREADY THE CLASS — nothing in it is a camera. It is written under the
+    // general name from here, and the camera's own name stays bound to it so the lane below and the
+    // module's own handed-out arithmetic both go on reading what they always read.
+    // `voiceReach` IS THE LINE ITSELF and `voiceLift` is the same line handed back as a multiplier.
+    // A lane that carries a signed magnitude (the camera's three axes) wants the multiplier so every
+    // sign and every fraction rides through untouched; a lane that writes the share straight onto a
+    // handle wants the line. They are one function read two ways, so neither lane can drift from the
+    // other, and the multiplier form is exactly `voiceReach / share` wherever that division is safe.
+    function voiceReach(floor, share) {
+      return floor + (1 - floor) * clamp01(share);
     }
+    function voiceLift(floor, share) {
+      return (floor > 0 && share > 0) ? voiceReach(floor, share) / share : 1;
+    }
+    var camVoiceLift = voiceLift;
 
     // ---- the pair, derived from the two works rather than looked up ----
 
@@ -4354,9 +4398,22 @@
         // work was actually cut at, falling back to the repeat its own grid was measured at. Three
         // handles of the interfering instrument read exactly this pair of numbers.
         latticePx: Number((st.ownDevice || {}).stepPx) || Number((st.grid || {}).periodPx) || 0,
-        latticeAngleDeg: Number((st.ownDevice || {}).stepPx) > 0
-          ? Number((st.ownDevice || {}).angleDeg) || 0
-          : Number((st.grid || {}).angleDeg) || 0,
+        // AND THE ANGLE FOLLOWS THE SAME ORDER AS THE STEP, NOT THE STEP'S PRESENCE (2026-08-24).
+        // It used to ask whether a DEVICE was recovered and then take that device's angle whatever
+        // that angle read — and `structure.ownDevice.angleDeg` carries a direction only for a device
+        // that HAS one: it is 0 on every ring-cut and every tile-cut work on disk (114 of 121) and
+        // stands at 90 on four striped ones, because a ring pattern has no direction to record. So
+        // every handle downstream of this field — the interfering instrument's `turn`, `mixTurn` and
+        // `regionTurn`, the beat's own `beatTilt`, the leaning instrument's `tilt`, and the camera's
+        // whole ROLL axis, which folds its sign straight out of this number — read the same 0 on
+        // nearly every pair in the collection and could not move. The work's own measured grid angle
+        // is a reading of the same thing (which way this photograph's lattice runs) and it carries
+        // thirty distinct values across the same 121 records, so it answers where the device's own
+        // angle says nothing. The device still speaks first where it recovered a direction; nothing
+        // is invented, and the fallback is the one this file already takes on the other side of the
+        // same reading (`gcAngle` in the grid-and-colour branch, `latFrom`/`latTo` in the parquet).
+        latticeAngleDeg: Number((st.ownDevice || {}).angleDeg)
+          || Number((st.grid || {}).angleDeg) || 0,
         // THE SCALE A WORK PARTS AT, off `texture.reliefEdge`/`reliefCentreMassX`/
         // `reliefCentreDetailX` (lab/build-workrecords-v1.py, itself lab/analyze/recipes.py's own
         // `strata_scale_measure()`, a port of `measure(image)` and of the centre-of-gravity reading
@@ -4527,7 +4584,36 @@
     // caller leaves its handles unwritten exactly as the lab's own mute does. That is not a crossing
     // refused: shelf 17's budget shapes a passage that is already playing, and a passage whose colour
     // voice stays silent still plays every other voice it has.
-    function voiceLoudness(measure, period, phase) {
+    //
+    // WHAT WAS STILL WRONG WITH IT ON 2026-08-24, and it is the same defect the camera lane closed
+    // this morning, met from the other side. Two things stood in `max(quarter, want)`:
+    //
+    //   1. A MAX IS A FLOOR THAT FLATTENS. Every voice whose quarter falls under `want` landed on
+    //      exactly `want` — one number, identical on every pair, whatever the two works read. That
+    //      is shelf 9's disease in miniature: the reading stopped ranking below the threshold. The
+    //      straight line `floor + (1 − floor) · share` keeps the ranking all the way down, which is
+    //      the whole reason the camera's own repair is a line and not a max.
+    //   2. `want` IS A STILL-FRAME LEVEL AND A CROSSING IS NOT STILL. Six parts in 255 is what the
+    //      lab measured on a held frame; a wobble that small, written over a picture that is itself
+    //      moving, is inside the picture's own tonal spread and never reads. What it has to stand
+    //      out of is the ground the two photographs put on the frame between them — the same
+    //      sentence the camera lane writes about grain: below the pair's own reading there is
+    //      nothing on screen to read the voice against.
+    //
+    // SO THE LEVEL IS THE PAIR'S OWN, and it is the WEAKER of the two works' readings of this same
+    // measure — `groundReadings`' own law a few screens up, and the same shape as the camera's finer
+    // grain: the end that carries least is what the voice must clear to be heard across both. It is
+    // handed in by the caller because only the caller knows which measure this voice sings, and a
+    // colour ground under a light voice is exactly the family mix-up the judge seat's standing
+    // correction of 2026-08-18/19 names. Where a caller hands none, the lab's own `want` stands
+    // alone and the arithmetic is unchanged in shape.
+    //
+    // THE CEILING IS THE WORK'S OWN MEASURE, unchanged: a voice cannot be louder than the thing it
+    // is a voice of. So the loudness is bounded in [min(level, measure), measure], rises with the
+    // work's own measure everywhere (the two pieces meet at `measure = level` with the same value),
+    // and is never faked: where even the ceiling cannot clear the lab's own threshold the voice does
+    // not sing and `null` says so, exactly as it always did.
+    function voiceLoudness(measure, period, phase, ground) {
       var peak = voicePeak(period, phase);
       if (!(measure > 0) || !(peak > 0)) return null;
       // THE AMPLITUDE HAS TO CLEAR THE THRESHOLD AFTER IT IS WRITTEN DOWN, not before. A score keeps
@@ -4536,7 +4622,9 @@
       // the wire and is declared unseeable by its own law.
       var want = Math.ceil(VOICE_SEEN / peak * 10000) / 10000;
       if (want > measure) return null;
-      var quarter = VOICE_SHARE * measure, v = quarter > want ? quarter : want;
+      var level = (ground > 0 && ground > want) ? ground : want;
+      var floor = voiceFloor(level, measure);
+      var v = measure * voiceReach(floor, VOICE_SHARE);
       if (r4(v) < want) v = want;
       return clamp01(v);
     }
@@ -4544,8 +4632,10 @@
     // by one instrument's branch and declared by another's. The three instruments that carry these
     // voices all publish the same three handles per voice, `<stem>Period<tail>` and its phase and its
     // amplitude, so one shape serves all three.
-    function sayVoice(wanted, stem, tail, measure, period, phase) {
-      var amp = voiceLoudness(measure, period, phase);
+    // `ground` is the level this voice has to clear to be heard — the pair's own weaker reading of
+    // the SAME measure the voice sings, handed in by the branch that knows which measure that is.
+    function sayVoice(wanted, stem, tail, measure, period, phase, ground) {
+      var amp = voiceLoudness(measure, period, phase, ground);
       if (amp === null) return false;
       wanted[stem + "Period" + tail] = flt(r4(period));
       wanted[stem + "Phase" + tail] = flt(r4(phase));
@@ -4630,6 +4720,32 @@
       d = Math.max(-1, Math.min(1, d)) / 2 * (hi - lo);
       return [flt(r4(Math.min(hi, Math.max(lo, mid + d)))),
               flt(r4(Math.min(hi, Math.max(lo, mid - d))))];
+    }
+
+    // THE SAME SCALE FOR A HANDLE THAT TAKES ONE NUMBER RATHER THAN TWO (2026-08-24). `acrossTheSpan`
+    // answers a pair of ends; a handle a branch fills with a single value had nowhere to go and was
+    // handed the raw reading, which `appliedValue` below then CLAMPED — and a clamp is the mechanism
+    // behind «works the same on every picture». A reading that falls outside a handle's own published
+    // range does not become that range's edge; every reading outside it becomes THE SAME edge,
+    // whichever two photographs are standing there. Measured on the collection: the glass's own
+    // magnification is the ratio of the two works' cutting steps, so every ordered pair whose
+    // arriving work is cut finer than its departing one — half of them, by construction — asked for
+    // a value under 1 and landed on exactly 1, the range's floor; the fold's own radial repeat asked
+    // for a ring count in the tens against a ceiling of 2 and landed on 2 every time.
+    //
+    // The road out is the one already stated for the two-ended case, read for one end: what no file
+    // records is how many units of a reading one step of a handle is worth, what IS measured is a
+    // RATIO, and `OCTAVES_PER_SPAN` is the one number that turns a ratio into a position. So the
+    // reading is placed about the handle's OWN default, a doubling at a time, and the whole span is
+    // reachable. It is monotone in the ratio, it lands exactly on the default where the ratio is 1
+    // — which is where the reading says the two ends of it are the same — and both its own ends stay
+    // inside the handle's published range by the same `min`/`max` `acrossTheSpan` closes with.
+    function alongTheSpan(instr, handle, ratio) {
+      var spec = HANDLE_SPECS[instr][handle], lo = num(spec[0]), hi = num(spec[1]);
+      var mid = num(spec[2]);
+      var d = Math.log2(Math.max(ratio, 1e-6)) / OCTAVES_PER_SPAN;
+      d = Math.max(-1, Math.min(1, d)) / 2 * (hi - lo);
+      return Math.min(hi, Math.max(lo, mid + d));
     }
 
     function appliedValue(instr, handle, requested) {
@@ -4923,14 +5039,28 @@
           // was derived the grid's own period and angle answer, which is the same reading taken a
           // level out.
           var stepPx = made.deviceStepPx > 0 ? made.deviceStepPx : made.gridPeriodPx;
-          var angle = made.deviceStepPx > 0 ? made.deviceAngleDeg : made.gridAngleDeg;
+          // The angle follows whether a DIRECTION was recovered, not whether a step was — the same
+          // repair `latticeAngleDeg` and `gcAngle` take, and for the same reason: a ring-cut or
+          // tile-cut work records a step and no direction, which is 114 of the 121 records on disk.
+          var angle = made.deviceAngleDeg || made.gridAngleDeg;
           if (stepPx > 0 && made.frameSide > 0) {
             wanted.parquetPeriod = flt(r4(clamp01(stepPx / made.frameSide)));
           }
-          wanted.parquetTurn = flt(r4(clamp01(fractional(Math.abs(angle) / 90.0))));
+          // IN THE HANDLE'S OWN UNIT, WHICH IS DEGREES (2026-08-24). `fractional(|angle| / 90)` wrote
+          // a number under 1 into a handle published over [0, 180] in degrees, so the floor was the
+          // only part of the range the plane ever turned in; and being FRACTIONAL it sent an exact
+          // quarter turn to the same value as no turn at all, which is where the four striped works
+          // of the collection landed. A lattice angle is a LINE direction, defined up to half a turn,
+          // so the honest fold is the work's own angle modulo 180 — the same fold this file already
+          // writes for `mixTurn`, `regionTurn` and the parquet's own `lattice`, and it is onto the
+          // handle's whole published range with 0 and 90 distinct.
+          wanted.parquetTurn = flt(r4(Math.abs(angle) % 180.0));
           // THE PLANE IS LAID AWAY AT THE SAME MEASURED ANGLE, which is what puts the parquet in
-          // perspective rather than flat to the eye.
-          wanted.tilt = flt(r4(clamp01(fractional(Math.abs(angle) / 90.0))));
+          // perspective rather than flat to the eye. THIS handle is published as a SHARE over [0, 1]
+          // rather than in degrees, so the same fold is said as a position on the half turn it is
+          // defined over: monotone in the angle, onto the handle's own range, and again with a
+          // quarter turn standing where a quarter turn belongs instead of back at nothing.
+          wanted.tilt = flt(r4(clamp01((Math.abs(angle) % 180.0) / 180.0)));
           // HOW DEEP A ROOM THE SHEET OPENS INTO, and it is the one handle here that reads BOTH
           // works. The five above read one work by design — the making being revealed is one work's
           // — and that is why this branch, which has stood since the unfold landed, still played
@@ -5052,6 +5182,16 @@
           // is simply not driven: the module's own eight stand, which is the vista preset his taste
           // approved on 2026-08-08. That is a gap in the measurement named as a gap, not a number
           // invented to cover it.
+          //
+          // THE ORDER IS HANDED STRAIGHT AND THAT STAYS RIGHT (checked 2026-08-24 against the
+          // clamp-to-an-endpoint class repaired elsewhere in this branch). A wedge count and a
+          // rotational order are the SAME count in the same unit — three wedges is threefold
+          // symmetry — so the handle's own span holds the reading rather than standing in a
+          // different scale from it, and a work turning oftener than the glass reaches is honestly
+          // held at the glass's own reach. What makes this handle stand still on most pairs is the
+          // MEASUREMENT: `structure.rotational.n` reads 2 on 92 of the collection's 121 works, so
+          // nearly every pair asks for the same fold. That is a gap on the record-building side and
+          // it is named as one; no scale invented here can put variety into a reading that has none.
           if (mf.rotationalN > 0 || mt.rotationalN > 0) {
             wanted.wedges = Math.round(Math.max(mf.rotationalN, mt.rotationalN));
           }
@@ -5064,13 +5204,27 @@
           // rings. A work cut some other way lends nothing here and the module's own count stands.
           var ringsFrom = mf.deviceKind === "rings" ? mf.deviceCount : 0;
           var ringsTo = mt.deviceKind === "rings" ? mt.deviceCount : 0;
+          // The handle's own manifest asks for that count «read onto this handle's own span», and
+          // until tonight it was clamped into it instead: the span is 1 to 2 (his own «rings>2
+          // washes to milk») and the ring counts on disk run from 5 to 23, so every pair carrying a
+          // ring-cut work landed on exactly 2 — one repeat for the whole collection. Placed about
+          // the module's own rest by the same ratio law, the repeat now answers to how coarse the
+          // work's own rings actually are.
           if (ringsFrom > 0 || ringsTo > 0) {
-            wanted.rings = Math.round(Math.max(ringsFrom, ringsTo));
+            wanted.rings = Math.round(alongTheSpan(
+              "kaleidoscope", "rings",
+              Math.max(ringsFrom, ringsTo) / num(HANDLE_SPECS.kaleidoscope.rings[2])));
           }
-          // HOW WIDE THE SAMPLE STANDS, at the work's own cutting step over its own frame side.
+          // HOW WIDE THE SAMPLE STANDS, at the work's own cutting step over its own frame side —
+          // placed on the handle's own span by the RATIO of the two works' readings rather than
+          // handed straight, for the reason the water's own crest and refraction state a few screens
+          // down and measured here too: a step is a small share of a frame side (the collection's
+          // run under a fifth of one) and this handle stands over 0.12 to 0.5, so the reading handed
+          // straight fell under the floor and every pair alike came out at exactly 0.12.
           if (mf.deviceStepPx > 0 && mf.frameSide > 0 && mt.deviceStepPx > 0 && mt.frameSide > 0) {
-            wanted.reach = [flt(r4(clamp01(mf.deviceStepPx / mf.frameSide))),
-                            flt(r4(clamp01(mt.deviceStepPx / mt.frameSide)))];
+            wanted.reach = acrossTheSpan("kaleidoscope", "reach",
+                                         mf.deviceStepPx / mf.frameSide,
+                                         mt.deviceStepPx / mt.frameSide);
           }
           // WHERE THE FOLD TURNS: the midpoint of the two works' own measured radial centres.
           centreOfThePair(wanted);
@@ -5118,7 +5272,11 @@
           var wind = Math.max(mf.twirl, mt.twirl);
           wanted.fold = (rot <= 0 && wind <= 0) ? 2 : (rot >= wind ? 0 : 1);
           // HOW OFTEN THE FOLD REPEATS, at the work's own measured rotational order, so the disc
-          // folds as many times as the work itself turns.
+          // folds as many times as the work itself turns. HANDED STRAIGHT, and the fold's own branch
+          // above says why that is right here and wrong for its neighbours: a wedge count and a
+          // rotational order are one count in one unit, so the span holds the reading instead of
+          // standing in another scale from it. This handle looking the same pair to pair is the
+          // MEASUREMENT saying 2 on 92 works of 121, which is a record-side gap and named as one.
           if (mf.rotationalN > 0 || mt.rotationalN > 0) {
             wanted.wedges = Math.round(Math.max(mf.rotationalN, mt.rotationalN));
           }
@@ -5129,8 +5287,15 @@
           }
           // HOW HARD THE GLASS MAGNIFIES, at the ratio of the two works' own cutting steps — which
           // is what brings a piece of the departing work to the size of the arriving work's own.
+          // The ratio is placed ON the handle's span rather than handed to it: the span runs 1 to 4
+          // about a rest of 2, so every ordered pair whose arriving work is cut finer than its
+          // departing one — half of every pair in the world, by construction — asked for a number
+          // under 1 and was clamped to exactly 1, the floor, whichever two photographs met. Placed
+          // about the module's own rest a doubling at a time, a ratio of 1 lands on the rest and the
+          // whole span answers to how far apart the two works' steps actually stand.
           if (mf.deviceStepPx > 0 && mt.deviceStepPx > 0) {
-            wanted.power = flt(r4(mt.deviceStepPx / mf.deviceStepPx));
+            wanted.power = flt(r4(alongTheSpan("lens", "power",
+                                               mt.deviceStepPx / mf.deviceStepPx)));
           }
           // WHERE THE GLASS RESTS: the midpoint of the two works' own measured radial centres, the
           // same point the meshing instrument's own centre reads.
@@ -5175,10 +5340,41 @@
           // distance, taken between their measured colourfulness. Two palettes standing apart
           // make a third colour world; two standing close make one work slightly veiled, and the
           // composite reaches exactly as far as there is a third colour to reach for.
+          //
+          // AND THE READING IS A POSITION ABOVE THE LEVEL THE COMPOSITE READS FROM, not the whole
+          // answer on its own (2026-08-24, the same repair the camera lane made this morning and the
+          // colour voices took above). Handed straight, the apartness landed between 0.012 and 0.043
+          // on every captured crossing against a handle that rests at 1 — a third picture reaching a
+          // fortieth of the way, which is a voice shelf 17 counts and nobody can see. The level below
+          // which there is nothing to see is the INSTRUMENT'S OWN and it publishes both halves of it:
+          // `formsBeginAt` says where the composite's forms begin, and `edgeOfTheRegion` is the
+          // softness of the region's own edge, under which the region never stands at all
+          // (pass-inst-overlay.js's own `reach = presence · (1 + 2·EDGE) − EDGE`). Both stand at the
+          // head of this closure beside `SIZE_MIN`, where the paragraph over them names the
+          // instrument that authors each and says why these two are kept where a span is read.
+          //
+          // NOTHING IS DECLINED AND NOTHING IS FLATTENED. `voiceLift` is the same straight line the
+          // camera flies on: the level takes the bottom of the span and the pair's own apartness
+          // spends what is left, so the composite still RANKS by how far the two palettes stand
+          // apart, reaches the handle's own ceiling exactly where they stand furthest, and never
+          // passes it. The guard is on whether either work carries a colour reading at all — where
+          // neither does, the instrument's own rest stands, which is the honest answer to «where did
+          // this number come from». Two works whose palettes read exactly alike are no longer sent
+          // past the guard to the manifest's full reach while a pair a hair apart got a fortieth of
+          // it: the line is continuous through nought now.
           var apartHere = Math.min(1, Math.abs(mf.colourfulness - mt.colourfulness));
-          if (apartHere > 0) {
-            wanted.exposure = flt(r4(clamp01(apartHere)));
-            wanted.presence = flt(r4(clamp01(apartHere)));
+          if (mf.colourfulness > 0 || mt.colourfulness > 0) {
+            var expCap = num(HANDLE_SPECS.overlay.exposure[1]);
+            var presCap = num(HANDLE_SPECS.overlay.presence[1]);
+            // THE TWO LEVELS ARE THE INSTRUMENT'S OWN, and they are read off the constants beside
+            // `SIZE_MIN` at the head of this closure rather than off `MANIFESTS.overlay` here. The
+            // paragraph there says why in full: the record's manifest projection carries six fields
+            // per handle and `applied` is not among them, so this line read `undefined` and the
+            // whole floor collapsed to nothing.
+            var expFloor = voiceFloor(OVERLAY_FORMS_BEGIN_AT, expCap);
+            var presFloor = voiceFloor(OVERLAY_REGION_EDGE, presCap);
+            wanted.exposure = flt(r4(clamp01(expCap * voiceReach(expFloor, apartHere))));
+            wanted.presence = flt(r4(clamp01(presCap * voiceReach(presFloor, apartHere))));
           }
           // CHARTER SHELF 10, IN THE TWO RHYTHMS THEMSELVES. The third picture is the two works'
           // interference, so how large the arriving work stands against the departing one is the
@@ -5456,7 +5652,11 @@
           // one work twice. Every one reads the work's own device first and its measured grid where
           // no device was recovered, which is the order `measuredParts` already prefers them in.
           function gcStep(m) { return m.deviceStepPx > 0 ? m.deviceStepPx : m.gridPeriodPx; }
-          function gcAngle(m) { return m.deviceStepPx > 0 ? m.deviceAngleDeg : m.gridAngleDeg; }
+          // The ANGLE asks whether the device recovered a DIRECTION, not whether it recovered a
+          // step: a ring-cut work carries a step and no direction at all, and taking its zero over
+          // the work's own measured grid angle is what held both these handles still on 117 of the
+          // collection's 121 records. Same repair, same reason as `latticeAngleDeg` above.
+          function gcAngle(m) { return m.deviceAngleDeg || m.gridAngleDeg; }
           var stepF = gcStep(mf), stepT = gcStep(mt);
           if (stepF > 0 && mf.frameSide > 0) {
             wanted.countFrom = Math.round(Math.min(num(HANDLE_SPECS["grid-colour"].countFrom[1]),
@@ -5472,8 +5672,15 @@
           }
           // THE ANGLE EACH WORK'S OWN STEP WAS CUT AT, said as a position on a quarter turn the way
           // the sheet's own parquet turn is, so the cut leans the way the photograph leans.
-          wanted.angleFrom = flt(r4(clamp01(fractional(Math.abs(gcAngle(mf)) / 90.0))));
-          wanted.angleTo = flt(r4(clamp01(fractional(Math.abs(gcAngle(mt)) / 90.0))));
+          // IN DEGREES, WHICH IS THE UNIT BOTH HANDLES PUBLISH (2026-08-24). They stand over
+          // [0, 180] and their own manifest says «degrees; 0 upright, 90 flat», and this line wrote
+          // `fractional(|angle| / 90)` — at most 1 into a range 180 wide, so the cut leaned by under
+          // one degree however the photograph leaned, and an exact quarter turn came out at the same
+          // nothing a work standing upright does. Both are gone: the angle is folded modulo 180,
+          // because a lattice angle is a line direction defined up to half a turn, and written in
+          // the handle's own unit.
+          wanted.angleFrom = flt(r4(Math.abs(gcAngle(mf)) % 180.0));
+          wanted.angleTo = flt(r4(Math.abs(gcAngle(mt)) % 180.0));
           // WHICH KIND OF CUT EACH WORK FALLS INTO, off the work's own measured device: a work cut
           // as rings is cut into rings here, one cut as a grid into tiles, one banded into strips,
           // and a work whose device was never recovered is cut by its own colour instead, which is
@@ -5535,8 +5742,13 @@
                                             Math.max(num(HANDLE_SPECS["grid-colour"]
                                                          .lightPeriod[0]),
                                                      gcPeriods[1].value)));
-            sayVoice(wanted, "colour", "", mf.sat, gcColourPeriod, 0);
-            sayVoice(wanted, "light", "", mf.contrast, gcLightPeriod, 0.5);
+            // THE LEVEL EACH VOICE HAS TO CLEAR, and it is the pair's own: the weaker of the two
+            // works' readings of the same measure the voice sings, per `voiceLoudness` above. A
+            // colour voice is levelled against colour and a light voice against light, never across.
+            sayVoice(wanted, "colour", "", mf.sat, gcColourPeriod, 0,
+                     Math.min(mf.sat, mt.sat));
+            sayVoice(wanted, "light", "", mf.contrast, gcLightPeriod, 0.5,
+                     Math.min(mf.contrast, mt.contrast));
           }
           // WHAT STAYS IN THE LAB, AND IT IS NOW ONLY THE PROBE. The assembler follows its first
           // pass with an audibility loop (`voiceMove`, `VOICE_TARGET`) that RENDERS the voice's
@@ -5613,14 +5825,20 @@
             // PHASE. The four voices stand a quarter turn apart, `i / 4` — step4-assembler.js:2000.
             // Each is written only where the work whose measure it sings can be seen singing it —
             // `sayVoice` above, the lab's own second pass.
+            // THE LEVEL EACH VOICE HAS TO CLEAR is the pair's own weaker reading of that voice's own
+            // measure (`voiceLoudness` above), one level per family and the same one for both
+            // layers: the two layers stand on the same frame, so what a voice must stand out of
+            // there is what the two works put on it between them.
+            var slColourGround = Math.min(mf.sat, mt.sat);
+            var slLightGround = Math.min(mf.contrast, mt.contrast);
             sayVoice(wanted, "colour", "A", mf.sat,
-                     slClamp("colourPeriodA", slPeriods[0].value), 0 / 4);
+                     slClamp("colourPeriodA", slPeriods[0].value), 0 / 4, slColourGround);
             sayVoice(wanted, "light", "A", mf.contrast,
-                     slClamp("lightPeriodA", slPeriods[1].value), 1 / 4);
+                     slClamp("lightPeriodA", slPeriods[1].value), 1 / 4, slLightGround);
             sayVoice(wanted, "colour", "B", mt.sat,
-                     slClamp("colourPeriodB", slPeriods[2].value), 2 / 4);
+                     slClamp("colourPeriodB", slPeriods[2].value), 2 / 4, slColourGround);
             sayVoice(wanted, "light", "B", mt.contrast,
-                     slClamp("lightPeriodB", slPeriods[3].value), 3 / 4);
+                     slClamp("lightPeriodB", slPeriods[3].value), 3 / 4, slLightGround);
           }
         } else if (instr === "strata-scale") {
           // THE TWO STRATA'S OWN CENTRES OF GRAVITY, off each work's own measured reading —
@@ -5654,14 +5872,17 @@
             // PHASE. The four voices stand a quarter turn apart, `i / 4` — step4-assembler.js:2000,
             // the same rule strata-light's own branch stands its four voices by, and each is written
             // only where it can be seen — `sayVoice` above.
+            // The same per-family level strata-light's own branch hands its four voices.
+            var ssColourGround = Math.min(mf.sat, mt.sat);
+            var ssLightGround = Math.min(mf.contrast, mt.contrast);
             sayVoice(wanted, "colour", "A", mf.sat,
-                     ssClamp("colourPeriodA", ssPeriods[0].value), 0 / 4);
+                     ssClamp("colourPeriodA", ssPeriods[0].value), 0 / 4, ssColourGround);
             sayVoice(wanted, "light", "A", mf.contrast,
-                     ssClamp("lightPeriodA", ssPeriods[1].value), 1 / 4);
+                     ssClamp("lightPeriodA", ssPeriods[1].value), 1 / 4, ssLightGround);
             sayVoice(wanted, "colour", "B", mt.sat,
-                     ssClamp("colourPeriodB", ssPeriods[2].value), 2 / 4);
+                     ssClamp("colourPeriodB", ssPeriods[2].value), 2 / 4, ssColourGround);
             sayVoice(wanted, "light", "B", mt.contrast,
-                     ssClamp("lightPeriodB", ssPeriods[3].value), 3 / 4);
+                     ssClamp("lightPeriodB", ssPeriods[3].value), 3 / 4, ssLightGround);
           }
           //
           // `handover` IS NOT DRIVEN HERE, and that is a fact about the module rather than a gap:
@@ -5854,11 +6075,30 @@
         // — his word of 2026-08-19, "if the records genuinely cannot supply a middle, leave it".
         //
         // THE WEIGHT FENCE NEEDS NOTHING NEW. `fitTheWeight`'s last rung sheds a spline to a
-        // two-point `mix` over its own first and last points; the course's own first and last
+        // two-point `map` over its own first and last points; the course's own first and last
         // points are nought and one, so a shed course becomes a plain eased nought-to-one and every
         // reader goes on mapping it onto its own ends. The shape is what is lost, which is the rung
         // it was always meant to be, and the coupling and the measured ends both survive it.
+        //
+        // AND THE COURSE TAKES A NAME NO TRACK OF THIS CUE ALREADY CLAIMS. Every track's node is
+        // named `<cue>-<handle>` (`tracksFor` above), so `<cue>-course` is a name the cue's own
+        // course and a handle LITERALLY CALLED `course` both answer to — and the ready story
+        // publishes one (`pass-inst-hero.js`, the work's own ring step). Cast on the pivot, both
+        // wrote to `pivot-course`, the handle's own ride landed last, and its `in` — the course it
+        // rides — pointed at the node it had just overwritten. The host's own graph walk read that
+        // for what it was, «cue «pivot» draws a cycle: pivot-course → pivot-course», and refused the
+        // score whole: 51 of the first 2 000 ordered pairs of the 121 real records, on this file as
+        // it stands tonight and equally on the last commit, so the collision is as old as the shared
+        // course and not tonight's. It is closed HERE rather than by renaming that one handle,
+        // because the defect is the collision and not the word: the course asks the cue which names
+        // are already spoken for and takes one that is not, so no instrument landing a handle of any
+        // name can ever take this node's name out from under it again.
         var courseName = c.id + "-course";
+        var trackNames = {};
+        Object.keys(c.tracks).forEach(function (h) {
+          trackNames[(c.tracks[h] || {}).node || (c.id + "-" + h)] = true;
+        });
+        while (trackNames[courseName]) courseName = courseName + "-shared";
         var courseWanted = reach > 0 && mf.level > 0 && mt.level > 0;
         var courseTop = flt(r4(1 + reach));
         var courseLeg = Math.min(midShare, 1 - midShare);
@@ -5991,9 +6231,29 @@
                 nodes[nodeName] = ride;
               }
             } else {
-              nodes[nodeName] = { op: "mix", a: endA, b: endB,
-                                  t: { op: "curve", name: travelShape, in: { source: "cueProgress" } },
-                                  note: noteText };
+              // THE PLAIN TWO-POINT TRAVEL, AND IT IS A `map` RATHER THAN A `mix` (2026-08-24).
+              // A handle's two ends leave `appliedValue` MARKED — an integer where the composition
+              // holds one and a marked float otherwise, which is what keeps this file's own writer
+              // able to print 1.0 where Python prints 1.0. The drawing host reads a `mix` node's `a`
+              // and `b` as NODES, through `evalNode`, and a marked float is an object with no `op`
+              // on it: the host answered «the operator "undefined" is declared and drawn by no
+              // evaluator yet», recorded a fallback and drew the manifest's own default instead. Its
+              // own log names the handles it happened to — refract, reach, swell, crest, slotPlace,
+              // slotHalf — which are exactly the handles the night's audit says give the water and
+              // the fold their character, and it reached EVERY travelling handle whose two ends
+              // resolved equal or whose pair carried no middle, not only those six.
+              //
+              // `map` is the operator that reads its ends as NUMBERS (`Number(t[0])`, which takes a
+              // marked float through its own `valueOf`), and it is already the shape the branch
+              // above writes for the same handle when the cue carries a course — so the two roads
+              // now differ only in what they read, which is the whole difference between them.
+              // NOTHING ABOUT THE MOTION CHANGES: `map` over `from: [0, 1]` onto `to: [endA, endB]`
+              // is `endA + (endB − endA) · x` with `x` the same eased curve the `mix` handed its
+              // `t`, which is the same arithmetic `mix` itself performs on the same two numbers.
+              nodes[nodeName] = {
+                op: "map",
+                in: { op: "curve", name: travelShape, in: { source: "cueProgress" } },
+                from: [0, 1], to: [endA, endB], note: noteText };
             }
             return;
           }
@@ -6531,7 +6791,7 @@
       // earlier rung left untouched, so a score that tripped the fence on its own SHAPE lost
       // everything rather than losing its shape gracefully. `fillPlan`'s own three-point middle
       // spline (charter shelf 3's room, "belonging to neither work") already falls back to a plain
-      // two-point `op: "mix"` whenever the pair's own record cannot honestly supply a middle — see
+      // two-point `op: "map"` whenever the pair's own record cannot honestly supply a middle — see
       // the `else` beside the spline a few screens up — so that two-point shape is one the fence
       // already tolerates on every score that never grew a middle in the first place. A spline still
       // standing here sheds to the SAME shape, reusing its own two ends (its first and last point,
@@ -6548,8 +6808,14 @@
           var a = node.points[0].value, b = node.points[node.points.length - 1].value;
           var na = num(a), nb = num(b);
           var shape = na === nb ? "smooth" : (nb > na ? "in" : "out");
-          c.nodes[n] = { op: "mix", a: a, b: b,
-                         t: { op: "curve", name: shape, in: { source: "cueProgress" } } };
+          // Shed to the SAME two-point shape the fill writes when a pair carries no middle, which is
+          // a `map` over the two ends and not a `mix` — for the reason stated there: a `mix` reads
+          // its ends as nodes and a marked float is not one, so a shed spline would have come out
+          // silent on exactly the scores that were already heaviest.
+          c.nodes[n] = {
+            op: "map",
+            in: { op: "curve", name: shape, in: { source: "cueProgress" } },
+            from: [0, 1], to: [a, b] };
           shed.push("spline:" + c.id + "." + n);
         });
       });
@@ -6926,6 +7192,7 @@
              version: COMPOSER_VERSION, writeJson: writeJson,
              writeJsonTight: writeJsonTight, r4: r4,
              camVoiceFloor: camVoiceFloor, camVoiceLift: camVoiceLift,
+             voiceFloor: voiceFloor, voiceReach: voiceReach, voiceLift: voiceLift,
              voiceLoudness: voiceLoudness };
   }
 
