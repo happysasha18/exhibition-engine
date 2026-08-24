@@ -1198,6 +1198,53 @@
       return (n === n && isFinite(n)) ? clamp01(n) : 0;
     }
 
+    // ---- THE LEVEL A CAMERA VOICE HAS TO CLEAR, AND THE LIFT THAT TAKES IT THERE ----
+    // Two lines of arithmetic, kept here rather than inline in the camera lane below, because what
+    // they claim is a claim about the ARITHMETIC and not about any pair: whatever grain two
+    // photographs carry and whatever ceiling an axis publishes, the two functions together can
+    // never write a pose past that axis's own ceiling, and never below the level the grain asks
+    // for unless the grain asks for more than the ceiling holds. Stated as functions, that is
+    // checkable over the whole span of numbers either argument can take, which is the only span
+    // there is; a collection of photographs is one arbitrary handful of points inside it and
+    // proves nothing about the rest.
+    //
+    // THE FLOOR IS PER AXIS, AND THAT IS THE WHOLE POINT OF THE `ceiling` ARGUMENT. A camera
+    // excursion reads once the frame's own edge travels by at least ONE element of the pair's finer
+    // grain. A rotation of θ about the frame's centre carries a point at the edge — half a frame
+    // out — through θ · 0.5, so the excursion the grain asks for is θ ≥ 2 · grainFrac, an ANGLE.
+    // An axis is written here as a SHARE of its own ceiling, so that same angle is a different
+    // share on each axis: the share is 2 · grainFrac / (that axis's own ceiling), and an axis whose
+    // ceiling is half of another's needs twice the share to travel the same angle. Handing the
+    // ceiling in is what keeps that true for every axis instead of for the widest one only.
+    //
+    // WHY THE CLAMP IS THE HONEST ANSWER AT THE TOP. Where 2 · grainFrac exceeds the ceiling itself
+    // the pair is asking for an excursion the axis is not allowed to make. The floor is held at 1 —
+    // the axis flies to its own published ceiling and no further. That is a bound the camera lane
+    // publishes, not a refusal: the passage still plays, and shelf 9's law is kept because nothing
+    // is declined.
+    function camVoiceFloor(grainFrac, ceiling) {
+      return (grainFrac > 0 && ceiling > 0) ? clamp01(2 * grainFrac / ceiling) : 0;
+    }
+    // WHAT THE LIFT IS, AND WHY IT CANNOT OVERSHOOT. The reading `share` is the pair's own call on
+    // this axis, already a share of that axis's own ceiling and so already in [0, 1] by each axis's
+    // own derivation. The lifted share is `floor + (1 − floor) · share`: the floor takes the bottom
+    // of the span and the reading spends what is left of it. Read as a function of `share` with
+    // `floor` fixed in [0, 1], it is a line from `floor` at share 0 to exactly 1 at share 1 —
+    // increasing, so the readings still RANK; bounded below by `floor`, so the level is always
+    // cleared; and bounded above by 1, so the pose never passes the axis's own ceiling. No input
+    // can break either bound, because both endpoints of a straight line are inside [0, 1] whenever
+    // `floor` is, and `clamp01` in `camVoiceFloor` is what makes `floor` so.
+    //
+    // IT IS RETURNED AS A MULTIPLIER rather than as the lifted share itself, so the caller can
+    // scale a signed magnitude and carry every sign, every arc and every outbound-to-inbound
+    // fraction through untouched. `magnitude = share · ceiling`, so `magnitude · lift` is exactly
+    // `(floor + (1 − floor) · share) · ceiling` — the lifted share times the same ceiling, hence
+    // at most the ceiling itself. Where there is no floor to clear, or no excursion to lift, the
+    // multiplier is 1 and nothing moves.
+    function camVoiceLift(floor, share) {
+      return (floor > 0 && share > 0) ? (floor + (1 - floor) * share) / share : 1;
+    }
+
     // ---- the pair, derived from the two works rather than looked up ----
 
     // HOW STRONGLY A PAIR HOLDS EACH MEASURE — one reading per measure, and no verdict of any kind.
@@ -4356,9 +4403,12 @@
     // lab/effects/grid-colour.js:343 drives every one of these voices as
     // `amp · sin(2π(u/period + phase)) · 4u(1−u)`, and the composer WRITES the period and the phase
     // itself, two lines above wherever it writes the amplitude. So the crest is closed-form in
-    // numbers already in hand, and the lab's own arithmetic checks out against its own record: at
-    // amplitude 0,0208 the peak it measured was 0,0187, which is 0,899 of the amplitude — a crest of
-    // the sine caught well inside the 4u(1−u) window, exactly what this returns.
+    // numbers already in hand — the SAME curve the effect will draw, evaluated on the SAME two
+    // numbers this file is about to write beside the amplitude, which is why no probe is needed and
+    // why the answer is exact rather than approximate. The lab's own recorded reading of 12.08 —
+    // amplitude 0,0208, peak 0,0187 — is the same arithmetic seen from the rendering side, and it is
+    // quoted as the provenance of the threshold above rather than as evidence that this returns the
+    // right number; what makes it right is that it is the curve's own maximum.
     var VOICE_SEEN = 6 / 255;
     function voicePeak(period, phase) {
       if (!(period > 0)) return 0;
@@ -5392,13 +5442,16 @@
             sayVoice(wanted, "colour", "", mf.sat, gcColourPeriod, 0);
             sayVoice(wanted, "light", "", mf.contrast, gcLightPeriod, 0.5);
           }
-          // WHAT STAYS IN THE LAB. The assembler follows this first pass with an audibility loop
-          // (`voiceMove`, `VOICE_TARGET`) that RENDERS the voice's layer off-screen and measures how
-          // far it actually moved a real frame's pixels, muting a voice a work cannot sing loud
-          // enough to clear the visible threshold. The composer derives a crossing at the instant a
-          // visit casts it and cannot render a probe frame to measure against, so that refinement is
-          // not ported: every voice here plays at its first-pass amplitude, unmuted, when it plays
-          // at all.
+          // WHAT STAYS IN THE LAB, AND IT IS NOW ONLY THE PROBE. The assembler follows its first
+          // pass with an audibility loop (`voiceMove`, `VOICE_TARGET`) that RENDERS the voice's
+          // layer off-screen and measures how far it actually moved a real frame's pixels. The
+          // composer derives a crossing at the instant a visit casts it and can render nothing, so
+          // the RENDERING is not ported — but the loop's own decision is, and `sayVoice` above is
+          // where it lives: the peak of `amp · sin(2π(u/period + phase)) · 4u(1−u)` is closed-form
+          // in the period and the phase this branch has just written, so the voice's own level is
+          // known without a probe frame. A voice that cannot clear the lab's threshold at the
+          // loudest its own measure allows is left unwritten here, exactly as the lab's own mute
+          // leaves it — its three handles rest at the manifest's own 0.
         } else if (instr === "strata-light") {
           // THE GRID EACH STRATUM IS CUT ON, off each work's own measured grain: a work made of
           // coarse masses parts into few large areas and a fine-grained one into many small ones.
@@ -5978,8 +6031,10 @@
         // either factor alone does, and reaching `camBound` would need a THIRD reading pushing
         // `reach` itself toward 1 (the passage's own role, shelf 17's tier, still unread by `reach`
         // above) rather than anything this line could change. The construction that IS still a live
-        // ceiling, the one a wall-vs-limit row now has to watch, is `grainShare` itself — measured
-        // over the real 121-work collection in tests/test_pass_drivers.py's own §6 rows.
+        // ceiling is `grainShare` itself, and it is a limit and not a wall by its own shape: for any
+        // gap whatever, `|a| / (|a| + CAP)` is strictly under 1 and reaches 1 only in the limit, so
+        // no pair is ever clipped and no pair ever spends the whole bound. That holds for every pair
+        // of grains there is; no collection is consulted for it, and none could add to it.
         var logScale = 0;
         if (cmf.grainCells > 0 && cmt.grainCells > 0) {
           var grainAsked = Math.log(cmf.grainCells / cmt.grainCells);
@@ -6016,9 +6071,12 @@
         // (measuredParts()'s own `gateAxis`/`gatePlace`). The camera turns toward the slot the
         // work actually has — `gateAxis` says whether it has one at all, read the same way the
         // gates instrument's own `slotAxis` handle already reads it a few screens above — and
-        // turns further the further that slot stands off the frame's own middle: `gatePlace` runs
-        // 0.2508 to 0.7517 across the collection, so `gatePlace - 0.5` is already signed off the
-        // frame's own centre. The same 19:13 word applies here: `gateOff`'s own MAGNITUDE, not only
+        // turns further the further that slot stands off the frame's own middle: `gatePlace` is a
+        // FRAME FRACTION, where the slot sits along its own axis, so it runs 0 to 1 by what it is
+        // and `gatePlace - 0.5` is already signed off the frame's own centre with a magnitude of at
+        // most 0.5. That is the field's own definition and not a range read off any collection; a
+        // collection can only ever occupy part of it. The same 19:13 word applies here: `gateOff`'s
+        // own MAGNITUDE, not only
         // its sign, now grades the turn — a slot standing barely off-centre grades near nothing, one
         // standing at the frame's own edge (`gatePlace` at 0 or 1, `|gateOff|` at its own structural
         // ceiling of 0.5 — the identical 0..1 frame-fraction convention `horizonY - 0.5` reads a few
@@ -6094,11 +6152,12 @@
         // watching the live route: the camera's movement does not visibly read during a crossing.
         // Nothing above this comment is wrong. Every axis reads its own record correctly and the
         // contest between them is honest. What was missing is that the amplitude is a PRODUCT of
-        // independent readings, each already well short of its own ceiling — the pair's own tone
-        // apartness in `reach`, and the axis's own graded magnitude — so the excursion collapses
-        // toward nothing however strongly the pair calls for it. Over the collection's own records
-        // the carrying axis spent a median of nine per cent of its own ceiling, which at this bound
-        // is under three degrees across a whole passage. The note above `reach` names the same gap
+        // independent readings, each already short of its own ceiling before they meet — the pair's
+        // own tone apartness in `reach`, which `clamp01` holds under 1, and the axis's own graded
+        // magnitude, which its own derivation above holds under 1 — so the excursion is bounded by
+        // the SMALLER of two fractions and collapses toward nothing however strongly the pair calls
+        // for it. That is a fact about the shape of the product and not about any collection: two
+        // factors under 1 multiply to less than either. The note above `reach` names the same gap
         // from the other side: shelf 17 gives a culmination more accompaniment than a quiet link and
         // the tier reaches this flight nowhere.
         //
@@ -6114,28 +6173,37 @@
         // The grain is `latticePx` — the step the work was actually cut at, the same reading roll's
         // own sign is folded from — as a share of that work's own frame side. The FINER of the two
         // sets the floor, because the finer grain is what registers the smallest motion; the coarser
-        // would ask for a turn the pair never called for. A rotation of θ about the frame's centre
-        // carries a point at the edge — half a frame out, which is the unit `camBound` is already
-        // stated in — through θ · 0.5, so one element of grain asks θ ≥ 2 · grainFrac, and as a share
-        // of the axis's own ceiling that is 2 · grainFrac / camBound.
+        // would ask for a turn the pair never called for. The arithmetic from there is
+        // `camVoiceFloor`'s own, stated where the function stands.
+        //
+        // AND IT IS THE CARRYING AXIS'S OWN CEILING THE FLOOR IS TAKEN AGAINST. The floor is a
+        // SHARE, the contest above ranks SHARES, and a share only means anything beside the ceiling
+        // it is a share of. The grain asks for an ANGLE — 2 · grainFrac — and the three axes do not
+        // publish one ceiling between them: roll and yaw reach `camBound`, pitch reaches half of it,
+        // exactly as the paragraph above the contest derives. A floor computed against `camBound`
+        // and then spent on pitch would buy pitch only half the angle the grain asked for, which is
+        // the whole failure this block exists to repair, reappearing on one axis in three. So the
+        // ceiling that goes into the floor is the one belonging to the axis that WON the contest —
+        // `camMaxShare` is that axis's own share by construction, since the contest picks the argmax
+        // and this is its max — and the two always answer for the same axis.
         //
         // SHELF 9'S LAW HOLDS INSIDE IT. The readings still RANK — which axis carries is the contest
-        // above, untouched, and how far above the floor it flies is still the pair's own reading —
-        // because the floor takes the bottom of the span and the reading spends what is left:
-        // `floor + (1 − floor) · share`, which is monotone in the reading and can never pass 1. So no
-        // pair is refused, no crossing is declined, and no axis leaves its own published ceiling; the
-        // floor only guarantees that the voice the passage chose can be seen at all.
+        // above, untouched, and how far above the floor it flies is still the pair's own reading.
+        // No pair is refused, no crossing is declined, and no axis leaves its own published ceiling;
+        // the floor only guarantees that the voice the passage chose can be seen at all. Both halves
+        // of that are `camVoiceLift`'s own bounds, proved there over every number either argument
+        // can hold rather than checked against whichever photographs are on disk.
         var camGrainA = cmf.frameSide > 0 && cmf.latticePx > 0 ? cmf.latticePx / cmf.frameSide : 0;
         var camGrainB = cmt.frameSide > 0 && cmt.latticePx > 0 ? cmt.latticePx / cmt.frameSide : 0;
+        var camCap = camAxis === "roll" ? rollCap : (camAxis === "yaw" ? yawCap : pitchCap);
         var camFloor = (camGrainA > 0 && camGrainB > 0)
-          ? clamp01(2 * Math.min(camGrainA, camGrainB) / camBound) : 0;
+          ? camVoiceFloor(Math.min(camGrainA, camGrainB), camCap) : 0;
         // The lift is applied to the carrying axis's own magnitude, so every shape below — the
         // outbound-to-inbound fraction of condition (ii), the arc pitch already travels, the signs
-        // each axis read off its own record — is carried through untouched and only scaled.
-        var camLift = 1;
-        if (camFloor > 0 && camMaxShare > 0) {
-          camLift = (camFloor + (1 - camFloor) * camMaxShare) / camMaxShare;
-        }
+        // each axis read off its own record — is carried through untouched and only scaled. The two
+        // axes that lost the contest are scaled too and then written zero a few lines below, so the
+        // multiply reaches them without reaching the score.
+        var camLift = camVoiceLift(camFloor, camMaxShare);
         roll *= camLift;
         yaw *= camLift;
         pitchFrom *= camLift;
@@ -6687,10 +6755,17 @@
       return made;
     }
 
+    // THE THREE PURE ARITHMETICS TRAVEL BESIDE THE ENTRY, and they are here for one reason: what
+    // each of them claims is a claim about NUMBERS, so it can be answered over the whole span of
+    // numbers it takes rather than over whichever photographs are on disk. `r4` and the two writers
+    // already stood here on the same footing. Nothing in the client calls the three below; they are
+    // the module handing out its own arithmetic so a reader can put every value through it.
     return { passageFor: passageFor, scoreFor: scoreFor, routeRoles: ROUTE_ROLES.slice(),
              seedSpan: SEED_SPAN.slice(),
              version: COMPOSER_VERSION, writeJson: writeJson,
-             writeJsonTight: writeJsonTight, r4: r4 };
+             writeJsonTight: writeJsonTight, r4: r4,
+             camVoiceFloor: camVoiceFloor, camVoiceLift: camVoiceLift,
+             voiceLoudness: voiceLoudness };
   }
 
   join({ version: COMPOSER_VERSION, make: make });

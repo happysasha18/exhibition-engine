@@ -406,6 +406,10 @@ NODE_ROWS = [
     "lab's own measured threshold, and one that cannot be is not declared",
     "EX-COMPOSED a walk memory the entry cannot read as sent is read as far as it can be and "
     "recorded, never a reason to lose the crossing",
+    "EX-COMPOSED the camera's floor-and-lift and the voice's own loudness hold for EVERY value "
+    "their arguments can take, walked over the whole span each one has",
+    "EX-COMPOSED red-on-bug · the carrying axis lifted against another axis's ceiling: a pitch "
+    "passage flies half the grain it owes",
 ]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
@@ -572,7 +576,7 @@ function camReach(fromW, toW) {
 // THE FIVE AXES, EXPECTED. Mirrors pass-composer.js's `fillPlan` camera block: pan and pitch differ
 // at the outbound and inbound points (an arc), logScale, roll and yaw hold one pair fact across
 // both (a plateau) — the shapes named in the code's own comments there.
-function camExpected(fromW, toW) {
+function camExpected(fromW, toW, carried) {
   var reach = camReach(fromW, toW);
   var cFrom = camOwnCentre(fromW), cTo = camOwnCentre(toW);
   var panFrom = cFrom ? [(cFrom[0] - 0.5) * reach, (cFrom[1] - 0.5) * reach] : [0, 0];
@@ -632,15 +636,26 @@ function camExpected(fromW, toW) {
   // THE VOICE LEVEL (2026-08-24, this file's own note beside pass-composer.js's own). The three
   // magnitudes above are exactly as they always were; what is new is that the axis which WINS the
   // contest between them is then lifted so its share of its own ceiling clears the level the pair's
-  // own grain sets — `camVoiceFloor` above. The lift is `(floor + (1 − floor)·share) / share`, so
+  // own grain sets — `camVoiceFloor` below. The lift is `(floor + (1 − floor)·share) / share`, so
   // the reading still spends the whole span above the floor, the shape of every axis is carried
   // through untouched, and nothing passes its own ceiling. Re-derived here from the raw record, as
   // every other line of this function is.
+  //
+  // AND THE CEILING THE FLOOR IS TAKEN AGAINST IS THE CARRYING AXIS'S OWN, which is why `carried`
+  // is handed in. The grain asks for an ANGLE, 2·grainFrac; the axes are compared as SHARES; and
+  // the three do not share one ceiling — roll and yaw reach DOLLY_CAP, pitch reaches half of it.
+  // The same angle is therefore a different share on each axis, twice as large on pitch as on the
+  // other two. A floor taken against DOLLY_CAP and then spent on pitch buys pitch half the angle
+  // the grain asked for; re-deriving it that way here would mean this function agreed with a
+  // composer that only ever half-lifted its pitch, and the row below would have nothing to catch
+  // it with. Which axis carries is read off the composer's own output rather than re-run here (the
+  // tie-break is its own die, see the note above), exactly as expRoll/expYaw/expPitch already are.
+  var eCeiling = carried === "pitch" ? 0.5 * DOLLY_CAP : DOLLY_CAP;
   var eRollShare = Math.abs(rollRaw) / DOLLY_CAP;
   var eYawShare = Math.abs(yawRaw) / DOLLY_CAP;
   var ePitchShare = Math.max(Math.abs(pitchFrom), Math.abs(pitchTo)) / (0.5 * DOLLY_CAP);
   var eMaxShare = Math.max(eRollShare, eYawShare, ePitchShare);
-  var eFloor = camVoiceFloor(fromW, toW);
+  var eFloor = camVoiceFloor(fromW, toW, eCeiling);
   var eLift = (eFloor > 0 && eMaxShare > 0)
     ? (eFloor + (1 - eFloor) * eMaxShare) / eMaxShare : 1;
   rollRaw *= eLift; yawRaw *= eLift;
@@ -648,7 +663,7 @@ function camExpected(fromW, toW) {
   return {reach: reach, panFrom: panFrom, panTo: panTo, logScale: logScale,
           rollRaw: rollRaw, rollFraction: rollFraction, yawRaw: yawRaw, yawFraction: yawFraction,
           pitchFrom: pitchFrom, pitchTo: pitchTo, pitchInTied: pitchInTied,
-          voiceFloor: eFloor, voiceLift: eLift};
+          voiceFloor: eFloor, voiceLift: eLift, voiceCeiling: eCeiling};
 }
 // THE LEVEL THE CARRYING AXIS HAS TO CLEAR (charter shelf 2 with shelf 17's voice budget, and his
 // 2026-08-24 word watching the live route: the camera does not visibly read during a crossing).
@@ -661,18 +676,22 @@ function camExpected(fromW, toW) {
 // taken as a share of the work's own frame side; the FINER of the two is what registers the smallest
 // motion, so the pair's floor is the smaller of the two. A rotation of θ about the frame's centre
 // carries a point at the edge — half a frame out, which is the same 0.5 the composer's own camBound
-// is stated in — through θ·0.5, so one element of grain asks θ ≥ 2·grainFrac, and as a share of the
-// axis's own ceiling that is 2·grainFrac/DOLLY_CAP. Nothing here is a number of taste: every term is
-// a reading off the two records or a bound already published in the composer.
+// is stated in — through θ·0.5, so one element of grain asks θ ≥ 2·grainFrac. That is an ANGLE, and
+// an angle is only a share once it is divided by the ceiling of the axis that will fly it: the same
+// θ is twice the share on pitch, whose ceiling is half of DOLLY_CAP, that it is on roll or yaw. So
+// the ceiling is an ARGUMENT here and never DOLLY_CAP by default — a floor that assumed the widest
+// of the three ceilings would let a half-lifted pitch through unremarked. Nothing here is a number
+// of taste: every term is a reading off the two records or a bound already published in the
+// composer.
 function camGrainFrac(w) {
   var side = Number(w.frameSide) || 0;
   var px = camLattice(w).latticePx;
   return side > 0 && px > 0 ? px / side : 0;
 }
-function camVoiceFloor(fromW, toW) {
+function camVoiceFloor(fromW, toW, ceiling) {
   var a = camGrainFrac(fromW), b = camGrainFrac(toW);
-  if (!(a > 0) || !(b > 0)) return 0;
-  var f = 2 * Math.min(a, b) / DOLLY_CAP;
+  if (!(a > 0) || !(b > 0) || !(ceiling > 0)) return 0;
+  var f = 2 * Math.min(a, b) / ceiling;
   return f > 1 ? 1 : f;
 }
 // THE VOICE'S OWN PEAK, and the threshold it has to clear — both the LAB's, not this file's.
@@ -1009,17 +1028,19 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
       if (track.length === 4) {
         camChecked++;
         if (!camNeutral(track[0]) || !camNeutral(track[3])) camEndsBad++;
-        const exp = camExpected(fromWork, toWork);
         const got1 = track[1], got2 = track[2];
         const close = (a, b) => Math.abs(toNum(a) - b) < 0.0006;
         const nz = (v) => Math.abs(toNum(v)) > 1e-9;
         // WHICH AXIS THE COMPOSER ACTUALLY CARRIED, read off its own output — the palindrome ban's
         // tie-break is the composer's own die and is not reproduced here (see the note above
         // camExpected). At most one of roll/yaw/pitch may be non-zero at either point; that
-        // invariant is asserted directly rather than assumed.
+        // invariant is asserted directly rather than assumed. It is read BEFORE the re-derivation
+        // because the re-derivation needs it: the voice floor is a share of the carrying axis's own
+        // ceiling, and the three axes do not publish one ceiling between them.
         const carried = (nz(got1.roll) || nz(got2.roll)) ? "roll"
           : (nz(got1.yaw) || nz(got2.yaw)) ? "yaw"
           : (nz(got1.pitch) || nz(got2.pitch)) ? "pitch" : "none";
+        const exp = camExpected(fromWork, toWork, carried);
         const singleExcursion = ["roll", "yaw", "pitch"].filter((ax) =>
           nz(got1[ax]) || nz(got2[ax])).length <= 1;
         const expRoll = carried === "roll" ? [exp.rollRaw, exp.rollRaw * exp.rollFraction] : [0, 0];
@@ -1045,15 +1066,18 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
         }
         if (camNeutral(got1) && camNeutral(got2)) camAllZeroCount++;
         camDistinctTracks.add(JSON.stringify([got1, got2]));
-        // THE CARRYING AXIS'S OWN LEVEL, against the level the pair's own grain sets. The share is
-        // taken against each axis's own ceiling, which is the composer's own comparison unit for
-        // the three (roll and yaw reach DOLLY_CAP, pitch half of it) and the only one in which the
-        // three are comparable at all.
+        // THE CARRYING AXIS'S OWN LEVEL, against the level the pair's own grain sets. BOTH sides of
+        // the comparison stand on the SAME ceiling — the carrying axis's own — and that is the whole
+        // content of the check. The share worn is `magnitude / thatAxis'sCeiling`; the level asked
+        // for is `2·grainFrac / thatAxis'sCeiling`. Divide the angle by one ceiling and the
+        // magnitude by another and the comparison silently passes for any pitch-carried pair that
+        // travelled half the angle it owed, which is exactly the shape a floor taken against
+        // DOLLY_CAP alone produces.
         if (carried !== "none") {
           const ceiling = carried === "pitch" ? 0.5 * DOLLY_CAP : DOLLY_CAP;
           const worn = Math.max(Math.abs(toNum(got1[carried])), Math.abs(toNum(got2[carried])));
           const share = ceiling > 0 ? worn / ceiling : 0;
-          const floorAsked = camVoiceFloor(fromWork, toWork);
+          const floorAsked = camVoiceFloor(fromWork, toWork, ceiling);
           camVoiceChecked++;
           camVoiceShares.push(Math.round(share * 10000) / 10000);
           // The written value is rounded to four places, which on the tighter of the two ceilings
@@ -1230,6 +1254,176 @@ out.camera = {checked: camChecked, mismatches: camMismatches, allZero: camAllZer
               voiceShares: camVoiceShares.sort((p, q) => p - q)};
 out.voices = {checked: voiceChecked, silentDeclared: voiceSilentDeclared, worst: voiceWorst,
               target255: VOICE_TARGET_255};
+
+// 6d · THE ARITHMETIC PUT THROUGH ITS OWN WHOLE SPAN, and no photograph anywhere in it.
+//
+// His word of 2026-08-24: «I NEVER asked to measure the combinations, they do not help to anything!
+// we should be able to cope with any set of pics in real time, the distribution should never be
+// measured in prior!» and, on whether a large sample would do instead, «I don't know if 190 pairs is
+// enough or not, I don't know which pairs or pics did you select, it all sounds bad to me as we
+// don't have any confidence about the coverage. I know we have X effects, each effect can have Y
+// parameters, etc etc.»
+//
+// The sweeps above run the composer over the records that happen to be on disk. That is a SMOKE
+// reading — it says the code runs and writes plausible numbers on real input — and it is not
+// evidence about any pair not in the fixture, because the fixture is one arbitrary handful of points
+// inside a space of every possible pair times every effect times every parameter. This section
+// answers the other question. The three functions below are pure arithmetic the composer EXPORTS,
+// and their arguments are numbers with known spans, so every claim about them can be put to every
+// number the span holds: the grid walks the span end to end and the die walks it again at random
+// where a grid would only ever land on round values. A red here is a red for all inputs and not for
+// 190 of them.
+//
+// IT RUNS ON THE STANDING RUN ONLY. A planted run walks a corner of the collection to prove one
+// guard, and the arithmetic below is the same arithmetic whatever is planted elsewhere in the
+// module — re-walking every span once per plant would buy nothing and cost the suite its whole
+// budget. The row that reads it reads the standing run.
+const PROOF = plants.length ? {checked: 0, broke: [], standing: false} : (() => {
+  let checked = 0;
+  const broke = [];
+  const fail = (why, at) => { if (broke.length < 8) broke.push({why: why, at: at}); };
+  // A DIE OF THIS FILE'S OWN, so the random half of the walk repeats exactly run to run — a property
+  // that only reds on a Tuesday is not a property.
+  let s = 20260824;
+  const rnd2 = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+
+  // ---- camVoiceFloor and camVoiceLift ----
+  // THE SPANS, and each is the argument's own and not a sample of one. `grainFrac` is a lattice step
+  // over a frame side: a step below one pixel of the frame is no step, and a step wider than the
+  // frame is no lattice, so it runs (0, 1]. `ceiling` is an axis's own published maximum: both of
+  // the camera lane's two — DOLLY_CAP and half of it — and every value between 0 and 1 besides, so
+  // an axis published at some third ceiling tomorrow is already answered for. `share` is a magnitude
+  // over that same ceiling, [0, 1] by every axis's own derivation. The ends and the two ceilings are
+  // named explicitly, because a bound that only breaks AT its own edge is exactly what a grid of
+  // round numbers steps over.
+  const grains = [1e-9, 1e-6, 1e-4, 0.2499, 0.25, 0.2501, 0.4999, 0.5, 0.5001, 0.999999, 1];
+  for (let i = 1; i <= 64; i++) grains.push(i / 64);
+  const ceilings = [DOLLY_CAP, 0.5 * DOLLY_CAP, 1e-6, 1e-3, 0.999999, 1];
+  for (let i = 1; i <= 48; i++) ceilings.push(i / 48);
+  const shares = [0, 1e-12, 1e-6, 0.999999, 1];
+  for (let i = 0; i <= 64; i++) shares.push(i / 64);
+  for (let i = 0; i < 200; i++) { grains.push(rnd2()); ceilings.push(rnd2()); shares.push(rnd2()); }
+  shares.sort((p, q) => p - q);
+  const EPS = 1e-9;
+  for (const g of grains) {
+    for (const c of ceilings) {
+      const floor = composer.camVoiceFloor(g, c);
+      const asked = 2 * g / c;
+      checked++;
+      // (1) THE FLOOR IS A SHARE AND STAYS ONE. Nothing a grain or a ceiling can be puts it outside
+      //     [0, 1], because clamp01 is the last thing that touches it.
+      if (!(floor >= 0 && floor <= 1)) fail("floor outside [0,1]", {g: g, c: c, floor: floor});
+      // (2) IT IS THE LAW'S OWN NUMBER, not an approximation of it: below the clamp it is exactly
+      //     2·grainFrac / thatCeiling, and at or above the clamp it is exactly 1 — the axis flying to
+      //     its own published maximum, which is as far as it is allowed to go.
+      if (asked <= 1 ? Math.abs(floor - asked) > EPS : floor !== 1) {
+        fail("floor is not 2*grain/ceiling under the clamp", {g: g, c: c, floor: floor});
+      }
+      // (3) A COARSER GRAIN NEVER ASKS FOR LESS, and a wider ceiling never asks for more of itself.
+      if (composer.camVoiceFloor(g / 2, c) - floor > EPS) fail("floor fell as grain rose", {g: g, c: c});
+      if (c < 1 && floor - composer.camVoiceFloor(g, Math.min(1, c * 2)) < -EPS) {
+        fail("floor rose as the ceiling widened", {g: g, c: c});
+      }
+    }
+  }
+  // The lift is swept against every floor the sweep above produced, over every share — this is the
+  // pair (floor, share) the composer actually forms, and both halves of it walk their whole span.
+  const floors = [0, 1e-9, 1e-6, 0.5, 0.999999, 1];
+  for (let i = 0; i <= 64; i++) floors.push(i / 64);
+  for (let i = 0; i < 200; i++) floors.push(rnd2());
+  for (const floor of floors) {
+    let last = -1;
+    for (const share of shares) {
+      const lift = composer.camVoiceLift(floor, share);
+      checked++;
+      // (4) NO EXCURSION, NO LIFT, and no floor, no lift: the multiplier rests at exactly 1 so a pair
+      //     that calls for nothing is left calling for nothing.
+      if ((!(floor > 0) || !(share > 0)) && lift !== 1) fail("lift moved with nothing to lift", {floor: floor, share: share, lift: lift});
+      if (!(share > 0)) continue;
+      const lifted = share * lift;
+      // (5) IT NEVER PASSES THE AXIS'S OWN CEILING. `lifted` is the share of the ceiling the pose is
+      //     written at, so lifted ≤ 1 IS «the magnitude never exceeds the ceiling», for every ceiling
+      //     at once — the ceiling divides out of both sides.
+      if (lifted > 1 + EPS) fail("the lifted share passed 1", {floor: floor, share: share, lifted: lifted});
+      // (6) IT NEVER FALLS BELOW THE LEVEL THE GRAIN ASKED FOR.
+      if (lifted < floor - EPS) fail("the lifted share fell under its floor", {floor: floor, share: share, lifted: lifted});
+      // (7) A LIFT LIFTS. It can never quiet an axis the pair called loudly for.
+      if (lifted < share - EPS) fail("the lift lowered the reading", {floor: floor, share: share, lifted: lifted});
+      // (8) THE READINGS STILL RANK — shelf 9's law, which is the one thing a floor could have cost.
+      //     Two pairs on one floor keep their order: a stronger call still flies further.
+      if (lifted < last - EPS) fail("the lift stopped ranking", {floor: floor, share: share, lifted: lifted, last: last});
+      last = lifted;
+    }
+  }
+  // (9) THE TWO TOGETHER KEEP THE LAW THEY EXIST FOR: the angle actually flown clears one element of
+  //     the pair's finer grain — or the whole ceiling, where the grain asks for more than the axis is
+  //     allowed to give. Stated in ANGLES, which is where the law lives, so the ceiling cannot cancel
+  //     itself out of the claim: this is the check that a pitch axis lifted against roll's ceiling
+  //     fails, and the check the fixture sweep could never make.
+  for (let i = 0; i < 40000; i++) {
+    const g = rnd2(), c = rnd2(), share = rnd2();
+    const floor = composer.camVoiceFloor(g, c);
+    const flown = share * composer.camVoiceLift(floor, share) * c;
+    checked++;
+    if (flown > c + EPS) fail("the angle flown passed the ceiling", {g: g, c: c, share: share, flown: flown});
+    if (flown < Math.min(2 * g, c) - EPS) fail("the angle flown missed one element of grain", {g: g, c: c, share: share, flown: flown, asked: Math.min(2 * g, c)});
+  }
+
+  // ---- voiceLoudness ----
+  // THE SPANS AGAIN. `measure` is a work's own colour or contrast reading, a share in [0, 1].
+  // `period` and `phase` are what the composer writes beside the amplitude; the periods are clamped
+  // into each instrument's own manifest range before they arrive, so the span walked here is wider
+  // than any manifest can ask for, and phase is a turn — [0, 1). The threshold is the LAB's, the same
+  // 6 of 255 the row above reads, and the four decimal places are the score's own.
+  const SEEN = VOICE_TARGET_255 / 255;
+  const measures = [0, 1e-9, 1e-6, 1e-4, 0.001, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.999999, 1];
+  for (let i = 1; i <= 24; i++) measures.push(i / 24);
+  const periods = [0, -1, 1e-6, 0.05, 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 5, 8, 13, 21, 40, 120];
+  const phases = [0, 0.25, 0.5, 0.75, 1 / 3, 0.999999];
+  const tryLoud = (m, per, pha) => {
+    const v = composer.voiceLoudness(m, per, pha);
+    const peak = voicePeakShare(per, pha);
+    checked++;
+    if (v === null) {
+      // (10) A MUTE IS EARNED. The voice is left unwritten only where the work's own reading — the
+      //      ceiling a voice may never be louder than — stands below the least four-decimal loudness
+      //      that clears the lab's threshold. Nothing else can mute a voice.
+      if (m > 0 && peak > 0) {
+        const want = Math.ceil(SEEN / peak * 10000) / 10000;
+        if (m >= want - EPS) fail("a voice was muted that its own measure could carry", {m: m, per: per, pha: pha, want: want});
+      }
+      return null;
+    }
+    // (11) A DECLARED VOICE IS A SEEN VOICE — at the value that reaches the wire, four decimals and
+    //      all, not at the value before rounding. This is the lab's own law: «Заявленный и неслышный
+    //      голос — пустое утверждение разбора».
+    if (!(composer.r4(v) * peak * 255 >= VOICE_TARGET_255 - 1e-6)) {
+      fail("a declared voice peaks under the lab's threshold", {m: m, per: per, pha: pha, v: v});
+    }
+    // (12) AND NEVER LOUDER THAN THE THING IT IS A VOICE OF, nor outside [0, 1].
+    if (!(v > 0 && v <= m + EPS && v <= 1)) fail("a voice passed its own measure", {m: m, per: per, pha: pha, v: v});
+    return v;
+  };
+  for (const per of periods) for (const pha of phases) for (const m of measures) tryLoud(m, per, pha);
+  // AND THE SAME SPANS AGAIN OFF THE DIE, because a grid of round values is exactly where a formula
+  // written from round values would happen to be right. The die lands between the grid's own steps.
+  for (let i = 0; i < 5000; i++) tryLoud(rnd2(), rnd2() * 60, rnd2());
+  // (13) A LOUDER WORK IS NEVER A QUIETER VOICE, and a voice never goes silent as its measure grows.
+  //      Both are the shape of `max(quarter, want)` in the measure and neither depends on any pair.
+  for (const per of [0.7, 1.3, 2.6, 5.5, 11.1]) {
+    for (const pha of [0, 0.25, 0.5, 0.75]) {
+      let prev = null;
+      for (let i = 0; i <= 120; i++) {
+        const v = tryLoud(i / 120, per, pha);
+        if (prev !== null && v === null) fail("a voice went silent as its measure grew", {per: per, pha: pha, m: i / 120});
+        if (prev !== null && v !== null && v < prev - EPS) fail("a louder measure sang quieter", {per: per, pha: pha, m: i / 120});
+        prev = v;
+      }
+    }
+  }
+  return {checked: checked, broke: broke};
+})();
+out.proof = PROOF;
 
 // 7 · the road every pair is measured against, and the one road no instrument can play
 const roadNotes = {};
@@ -1975,21 +2169,40 @@ else:
         # always known what it played — `passRoutePlayed` in the client — and the reading simply
         # never crossed the line.
         #
-        # THE ROW IS THE LAW, NOT A FENCE. Two walks of the same 40 routes on the same dice, one
-        # blind and one handed its own memory at every step; the remembered walk has to spread
-        # WIDER. A fence would drift with the collection; this reads the mechanism itself, and it
-        # reds the moment the cooldown stops being applied whatever the collection does. Beside it
-        # stands shelf 9's own law and the lab's: a cooldown RANKS and never gates, so not one step
-        # of the remembered walk may lose its crossing.
+        # WHAT PROVES IT, AND IT IS THE FORMULA AND NOT A TALLY. `coolOf` multiplies a candidate's fit
+        # by (k + 1) / (n + 1), where k is where the letter sits in the walk's own list and n is how
+        # long that list is. Read as arithmetic and not as an outcome, that factor settles both halves
+        # of this row for any walk, any collection and any pool:
+        #   · it is at most 1 and it is never 0. k runs 0..n−1, so the factor runs 1/(n+1)..n/(n+1) —
+        #     strictly inside (0, 1). A letter the walk has not played is not in the list at all and
+        #     keeps its whole weight. So a played letter's stretch of the die NARROWS and a rival's
+        #     widens, which is the cooling; and no candidate's weight ever reaches zero, so no pool
+        #     is ever emptied and no step can lose its crossing to a cooldown. That is shelf 9's law
+        #     («a measurement ranks the genres», never gates) holding by construction.
+        #   · the most recent letter is the most cooled. k = 0 for the letter just played gives the
+        #     smallest factor and k = n−1 the largest, in even steps between — the cooling fades with
+        #     distance rather than switching off, again for any n.
+        # None of that is a claim about which photographs are on disk, so no count of pairs could
+        # strengthen it and none could weaken it.
+        #
+        # WHAT THE TWO WALKS BELOW ARE FOR, THEN. They are a SMOKE reading: the reading actually
+        # crosses the wire from the walk into the die, the composer takes it, and a real route
+        # composed with it still composes every step it composed without it. The two walks are the
+        # same 40 routes on the same dice, one blind and one handed its own memory. The row holds the
+        # mechanism (the remembered walk leans less on one letter, loses nothing, and covers at least
+        # as many letters); the numbers travel in the detail as a reading a person can look at, and
+        # they are evidence of nothing beyond these routes on these records.
         rt0, rt1 = got["route"], got["routeRemembered"]
         check(NODE_ROWS[46],
               rt1["topShareMean"] < rt0["topShareMean"] and rt1["lost"] == 0
               and rt1["composed"] == rt0["composed"] and rt1["letters"] >= rt0["letters"],
-              f"over {rt0['routes']} cast routes of 21 steps: blind, the commonest instrument "
-              f"carries {rt0['topShareMean']}% of a route on average over {rt0['letters']} letters; "
-              f"handed the route's own memory it carries {rt1['topShareMean']}% over "
-              f"{rt1['letters']} letters, with {rt1['lost']} steps losing their crossing to the "
-              f"cooldown (a cooldown never empties a pool); remembered spread "
+              f"smoke, on the records that happen to be on disk: the reading reaches the die and a "
+              f"remembered walk leans less on its commonest letter than the same walk composed "
+              f"blind, loses no step ({rt1['lost']}), composes the same count "
+              f"({rt1['composed']} against {rt0['composed']}) and covers "
+              f"{rt1['letters']} letters against {rt0['letters']}. The law itself — a cooling factor "
+              f"in (0, 1] that narrows a played letter's stretch and can never empty a pool — is the "
+              f"shape of (k+1)/(n+1) and holds for any walk; see the note above. Remembered spread "
               + json.dumps(rt1["spread"], ensure_ascii=False))
 
         # --- row 8k · THE LEVEL THE CARRYING AXIS CLEARS (charter shelf 2 with shelf 17) ----------
@@ -2004,14 +2217,30 @@ else:
         # law holds inside it: the readings still rank — which axis carries, and how far above the
         # floor it flies — and the floor only guarantees that the voice which was chosen can be seen.
         # Nothing is refused: a floor on an amplitude cannot decline a crossing.
-        low = cam["voiceShares"]
-        med = low[len(low) // 2] if low else 0
+        #
+        # WHERE THE PROOF OF THAT LIVES, AND IT IS NOT THIS ROW. `camVoiceFloor` and `camVoiceLift`
+        # are pure arithmetic over a grain, a ceiling and a share, and row 8m below puts every value
+        # each of those three can take through them — including that the angle actually flown clears
+        # one element of the pair's finer grain, which is the law in the units the law is written in.
+        # THIS row is a SMOKE reading beside it: the two functions are wired into the camera lane on
+        # the right axis's ceiling and the composed output on real records agrees. It carries no
+        # count and no median, because a tally over the fixture would say only that these particular
+        # photographs did not break it — his 2026-08-24 word, «we don't have any confidence about the
+        # coverage» — while row 8m says no photographs can.
+        #
+        # THE ONE THING ONLY THIS ROW CAN CATCH is the WIRING: that the floor handed to the lift is
+        # taken against the ceiling of the axis that actually carries, and not against the widest of
+        # the three. `camVoiceFloor` here is handed `ceiling`, the carrying axis's own, and the share
+        # worn is measured against the same ceiling — so a composer that lifted pitch against roll's
+        # ceiling would show pitch-carried pairs flying half the angle they owe. Row 8n plants exactly
+        # that and this row is what reds.
         check(NODE_ROWS[47],
               cam["voiceChecked"] > 0 and cam["voiceUnder"] == 0,
-              f"of {cam['voiceChecked']} composed pairs whose flight carries a rotational axis, "
-              f"{cam['voiceUnder']} spend less of that axis's own ceiling than the pair's own grain "
-              f"asks for; the share worn runs {low[0] if low else 0}…{low[-1] if low else 0} with a "
-              f"median of {med}; the widest shortfalls were "
+              f"smoke, on the records that happen to be on disk: every composed pair whose flight "
+              f"carries a rotational axis was measured against that axis's OWN ceiling, and none "
+              f"flies under the level the pair's own grain asks for ({cam['voiceUnder']} short). The "
+              f"law itself is proved over the whole span of grains, ceilings and readings in the row "
+              f"below, not here. Shortfalls: "
               + (json.dumps(cam["voiceWorst"], ensure_ascii=False) if cam["voiceWorst"] else "none"))
 
         # --- row 8l · A DECLARED VOICE IS A SEEN VOICE (charter shelf 11 with shelf 17) -----------
@@ -2023,13 +2252,45 @@ else:
         # разбора». The lab needed a rendered probe; the peak of `amp·sin(2π(u/period+phase))·4u(1−u)`
         # is closed-form in the two numbers the composer already writes, so the same reading is taken
         # here without one.
+        #
+        # WHERE THE PROOF LIVES, AGAIN NOT HERE. `voiceLoudness` takes a measure, a period and a
+        # phase, and row 8m below walks all three over their own whole spans: every value it returns
+        # clears the lab's threshold at four decimal places, never passes the work's own measure, and
+        # a mute happens only where the measure itself cannot carry a seen voice. THIS row is the
+        # SMOKE beside it — the function is actually wired into all three instruments that publish
+        # these handles, on the period and phase each of them writes. It states no count of voices,
+        # because a count over the fixture would report which handles this fixture happened to drive,
+        # which says nothing about the eighteen handles on a collection nobody has hung yet.
         vo = got["voices"]
         check(NODE_ROWS[48],
               vo["checked"] > 0 and vo["silentDeclared"] == 0,
-              f"of {vo['checked']} colour and light voices driven over the sweep, "
-              f"{vo['silentDeclared']} peak below the lab's own {vo['target255']} of 255 — declared "
-              f"and unseeable; the quietest were "
+              f"smoke, on the records that happen to be on disk: colour and light voices were driven "
+              f"and every one of them was read back against the lab's own {vo['target255']} of 255 "
+              f"at the period and phase written beside it; none is declared and unseeable "
+              f"({vo['silentDeclared']} were). The law itself is proved over the whole span of "
+              f"measures, periods and phases in the row below. Quietest: "
               + (json.dumps(vo["worst"], ensure_ascii=False) if vo["worst"] else "none"))
+
+        # --- row 8m · THE ARITHMETIC, PUT THROUGH ITS OWN WHOLE SPAN -------------------------------
+        # His word of 2026-08-24, on being shown counts over the fixture: «I don't know if 190 pairs
+        # is enough or not, I don't know which pairs or pics did you select, it all sounds bad to me
+        # as we don't have any confidence about the coverage. I know we have X effects, each effect
+        # can have Y parameters, etc etc.» A count over the records on disk answers a question nobody
+        # asked. The question he names — does this hold for any pictures at all — is answerable
+        # exactly where the behaviour is arithmetic over numbers with known spans, and the composer's
+        # camera floor, its lift and its voice loudness all are. The driver's own §6d walks each
+        # argument end to end, hits every bound and every boundary value explicitly, and walks the
+        # spans again at random on a pinned die; thirteen numbered claims are checked at every point,
+        # including the one the fixture could never reach — that the ANGLE actually flown clears one
+        # element of the pair's finer grain, in the units the law is stated in rather than in shares
+        # of whichever ceiling happens to be in hand.
+        pr = got["proof"]
+        check(NODE_ROWS[50],
+              pr["checked"] > 0 and not pr["broke"],
+              f"{pr['checked']} readings put through the composer's own floor, lift and loudness "
+              f"over the whole span of every argument they take — no photograph anywhere in it; "
+              f"claims broken: "
+              + (json.dumps(pr["broke"], ensure_ascii=False) if pr["broke"] else "none"))
 
         # --- row 9 · the two fences a filled score has to pass -----------------------------------
         # THE FENCES ARE NO LONGER WALLS, AND THAT IS WHY THIS ROW MATTERS MORE THAN IT DID. The
@@ -2302,10 +2563,16 @@ else:
             # THE ROW READS THE GATE'S OWN MECHANISM INSTEAD, which no instrument roster can turn
             # around: `groundReadings` is exactly what the gate zeroes, and `groundReadings` is what
             # decides whether a pair reaches the «shared-ground» road at all — the road IS the gate's
-            # own target, not a downstream consequence of it. Gating out everything short of a
-            # measure's own top quartile starves that road directly: measured over the same sweep the
-            # standing rows walk, 44 of 190 pairs land on shared-ground with the gate out and 9 of 190
-            # with it back in. That is the gate's own cost, read where the gate itself acts.
+            # own target, not a downstream consequence of it.
+            # AND THE DIRECTION IS THE GATE'S OWN SHAPE, not a tally. The plant replaces each reading
+            # by `reading OR 0` — it can only ever ZERO a reading and never raise one — so the set of
+            # pairs whose shared ground survives under the gate is a SUBSET of the set that survives
+            # without it, for any collection whatever. There is no collection on which gating widens
+            # that road. What a run can add to that is only whether the plant BIT here — whether at
+            # least one pair of the records in hand stands below some threshold — and that is what
+            # the strict «fewer» below reads. The old note in this place carried two counts over the
+            # fixture as the gate's cost; they were a reading of 190 arbitrary pairs and never the
+            # argument, which is above.
             (NODE_ROWS[33],
              [["        per[m] = { min: r4(Math.min(sa, sb)), a: r4(sa), b: r4(sb) };",
                "        var th = (consts.thresholds || {})[m];"
@@ -2327,6 +2594,24 @@ else:
               ['      if (hasArrival) voices.arrival = folds === "arrival" ? "miracle" : "letter";',
                '      if (hasArrival) voices.arrival = "letter";']],
              lambda g: sum(g["sweep"]["foldUnspent"][r] for r in g["sweep"]["foldUnspent"]) > 0),
+            # --- row 8n · THE CARRYING AXIS LIFTED AGAINST SOMEBODY ELSE'S CEILING ------------------
+            # The defect this plant restores is the one the voice-level block shipped with on
+            # 2026-08-24 and stood a day: `camFloor` was taken against `camBound` — roll's and yaw's
+            # own ceiling — and then spent on whichever axis won, pitch included. Pitch's ceiling is
+            # HALF of `camBound`, so a pitch-carried passage was lifted to half the angle its grain
+            # asked for and the block missed its whole purpose on one axis in three.
+            # WHY IT NEEDED A PLANT AND NOT ONLY THE CONSTRUCTION PROOF. Row 8m proves the arithmetic
+            # for every grain, ceiling and share there is, and the arithmetic was never wrong — the
+            # WIRING was: the right function was handed the wrong ceiling. A construction proof of a
+            # function cannot catch a caller passing it the wrong argument, so the guard against that
+            # is here, where the composer's own line is changed back and the composed output has to
+            # move. Nothing about this plant reads a count: the row asks whether pairs whose flight
+            # actually lands on pitch now fall under the level their own grain sets, which is the
+            # defect itself and not a proportion of anything.
+            (NODE_ROWS[51],
+             [["camVoiceFloor(Math.min(camGrainA, camGrainB), camCap)",
+               "camVoiceFloor(Math.min(camGrainA, camGrainB), camBound)"]],
+             lambda g: g["camera"]["voiceUnder"] > 0),
         ]
         # The intent fence's own standing row: with the cap planted DOWN and the guard in place,
         # every line the composer writes still fits under it. The red-on-bug above removes the guard

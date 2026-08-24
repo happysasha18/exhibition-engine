@@ -1846,7 +1846,46 @@
     const role = passRouteRole(from, to, edge);
     if (role) req.routeRole = role;
     if (edge && edge.memory) req.sessionMemory = edge.memory;
+    // WHAT THE WALK HAS ALREADY PLAYED, most recent letter first — charter shelf 16's letter
+    // cooldowns, which the composer strikes INSIDE its dice (`coolOf` in pass-composer.js). The walk
+    // is the one that knows: `passRoutePlayed` is written at the DOCK, when a passage has actually
+    // landed in front of the person, so a passage this file only GUESSED at — the compose-ahead
+    // below, which warms instruments and is never docked — never enters the list. A guess about what
+    // might come next must not cool a letter nobody saw.
+    //
+    // A PREWARM REQUEST READS THE SAME LIST A REAL DECLARE WOULD, and that is deliberate rather than
+    // an oversight: the prewarm's whole job is to ask what a real declare would ask, so it builds
+    // its request here like every other caller. What it reads is the list AS IT STANDS WHEN THE
+    // PREWARM RUNS. For the next edge that is the same list the declare will see, because the
+    // compose-ahead is fired from the dock AFTER the just-played passage has been written in. For
+    // the second and third edges of the look-ahead window it is not: the passages that will play
+    // between now and then have not been docked yet, so their letters are missing from the list the
+    // guess was struck on. THAT COSTS A WARM-UP AND NEVER AN OUTPUT — `passPrewarmEdge` below keeps
+    // nothing but instrument NAMES, and `passComposeFor` re-builds its request and re-strikes its
+    // dice at the real gesture — so a guess that misses leaves an unread file on the layer's own
+    // registry and nothing else. It is one more reason the guess and the cast can differ, beside the
+    // several the prewarm already had.
+    //
+    // The reading crosses as a plain list of NAMES and nothing else: the genre the passage ran on
+    // and the instruments its stack carried, which is what a person actually sees repeat. Nothing in
+    // it scales with the number of works or pairs (his 19:21 word), and nothing about the person
+    // travels in it.
+    req.walkMemory = passWalkMemory();
     return req;
+  }
+
+  // The letters of the passages behind this one, most recent first, flattened out of the walk's own
+  // route record. One home for that reading, so the prewarm and a real declare read the list the
+  // same way and can only ever differ by WHEN they read it.
+  function passWalkMemory() {
+    const out = [];
+    for (let i = passRoutePlayed.length - 1; i >= 0; i--) {
+      const step = passRoutePlayed[i];
+      if (!step) continue;
+      if (step.genre) out.push(step.genre);
+      (step.stack || []).forEach((id) => { if (id) out.push(id); });
+    }
+    return out;
   }
 
   // PREWARM (2026-08-21, U27 audit): a head start for the layer's own instLoad race, never a cache a
@@ -2089,6 +2128,11 @@
     const instrument = row.applied.instrument || passPrimaryOf(row);
     passRoutePlayed.push({ edgeKey: edgeKey, direction: direction, family: family,
                            instrument: instrument, role: (row.request || {}).routeRole || null,
+                           // The genre this passage ran on, beside the instruments it cast. A family
+                           // token is not a letter — it names the pivot's transform and the measure
+                           // that travelled — so the genre is what the composer's own cooldown can
+                           // find in this list, and it is recorded here rather than re-derived.
+                           genre: row.genre || null,
                            stack: (row.applied.cues || []).map((c) => c.instrument),
                            world: instrument === "parquet" || !!(row.score && row.score.camera
                                                                   && row.score.camera.lead) });
