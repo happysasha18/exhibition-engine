@@ -12,9 +12,15 @@
 // belongs to the table-based build the architecture decision of 2026-08-14 16:14 and his word of
 // 2026-08-17 17:06 (above) replaced, and no live gate ever enforced the match.
 //
-// WHAT IT MEASURES: nothing. Every number it reads was measured once, per work, and written down.
-// It opens no image, reads no clock and asks no network. The pair step is arithmetic over the two
+// WHAT IT MEASURES: nothing. Every number that describes a WORK was measured once, per work, and
+// written down. It opens no image and asks no network. The pair step is arithmetic over the two
 // records, which is why it can run at the instant a walk casts the pair.
+//
+// THE ONE LIVE READ (charter shelf 16's day's-weather-bias step, added 2026-08-24): `weatherNow`,
+// below, reads the real clock at the instant a ground is rolled — the day and the hour, and nothing
+// else about the machine it runs on. Nothing it reads is stored, cached across a call, or seeded
+// from anything prepared ahead of the visit (shelf 21); it is a session-time input exactly as the
+// seed and the visit's own memory are, not a measurement of the collection.
 //
 // WHAT IT IS HANDED. `make(consts)` takes the facts that belong to the collection rather than to
 // one work: the three instrument manifests as their own files publish them, the cut-line floors,
@@ -2137,6 +2143,90 @@
       var at = walkPlayed.indexOf(id);
       return at < 0 ? 1 : (at + 1) / (walkPlayed.length + 1);
     }
+
+    // THE VISIT'S OWN MEMORY OF ITSELF, beyond the one edge — charter shelf 16's fourth pipeline
+    // step. `sessionMemory` (below, §4.8) is the return reference of ONE edge; this is the visit
+    // standing back further: which letters (genres, instruments — the same vocabulary `coolOf`
+    // already cools) it lingered on or visibly skipped anywhere this visit, and which works it has
+    // already shown. It arrives on the request exactly as `walkMemory` does — set fresh by
+    // `scoreFor` for the length of one composition, never accumulated in this file — and it is read
+    // by the same die `coolOf` already sits inside, never a second pipeline of its own.
+    var viewerMemory = null;
+    // THE BIAS ITSELF. Lingered letters gain, skipped letters cool, and NOTHING IS EVER ZERO — the
+    // same law `coolOf` stands on, so the widest bound either way is 0.7/1.3, never 0. A letter this
+    // file has never heard of from the visit (the ordinary case) reads at the neutral 1.
+    function viewerBiasOf(id) {
+      if (!viewerMemory) return 1;
+      var amp = 0.3, bias = 1;
+      if ((viewerMemory.lingered || []).indexOf(id) >= 0) bias *= (1 + amp);
+      if ((viewerMemory.skipped || []).indexOf(id) >= 0) bias *= (1 - amp);
+      return bias;
+    }
+    // HOW MANY TIMES ONE ID ALREADY STANDS IN A PLAIN LIST OF NAMES — `viewerMemory.seenWorks`'
+    // own shape, read live and never counted anywhere but here.
+    function countIn(list, id) {
+      var n = 0, i;
+      if (!Array.isArray(list)) return 0;
+      for (i = 0; i < list.length; i++) if (list[i] === id) n++;
+      return n;
+    }
+
+    // THE DAY'S WEATHER BIAS — charter shelf 16's third pipeline step. A bias read off the real
+    // clock at the instant a ground is rolled: never a stored config, never a measurement of the
+    // collection, never seeded from anything prepared ahead of the visit (his 2026-08-24 word,
+    // shelf 21 — "ты НИЧЕГО не готовишь заранее"). `new Date()` is called here and nowhere else in
+    // this file; nothing about it is cached across calls, because the day and the hour it answers
+    // for are exactly what changes visit to visit.
+    //
+    // THE VOCABULARY IS THE RECORD'S OWN. The eight hue names below are `palette.hues`' own alphabet
+    // — every work in the collection already carries one or more of them — so the wheel invents no
+    // vocabulary the works do not already speak; it only rotates which one the day currently answers
+    // to.
+    var WEATHER_HUE_WHEEL = ["red", "orange", "yellow", "green", "cyan", "blue", "violet", "magenta"];
+    function weatherNow() {
+      var d = new Date();
+      var startOfYear = new Date(d.getFullYear(), 0, 1);
+      var dayOfYear = Math.floor((d.getTime() - startOfYear.getTime()) / 86400000);
+      var hourFrac = (d.getHours() + d.getMinutes() / 60) / 24;
+      var hueAt = ((dayOfYear + hourFrac) % WEATHER_HUE_WHEEL.length + WEATHER_HUE_WHEEL.length)
+                  % WEATHER_HUE_WHEEL.length;
+      return {
+        hue: WEATHER_HUE_WHEEL[Math.floor(hueAt)],
+        // LIGHT: a smooth day curve, 0 at midnight and 1 at noon — read the way a photographer
+        // reads the day, never a brightness measured off any photograph on file.
+        light: 0.5 + 0.5 * Math.cos(2 * Math.PI * (hourFrac - 0.5)),
+        // TEMPO: the same clock, a quarter turn out of phase with light, so the day's liveliest
+        // hour is not simply its brightest one.
+        tempo: 0.5 + 0.5 * Math.sin(2 * Math.PI * (hourFrac - 0.5))
+      };
+    }
+    // THE BIAS AGAINST ONE GROUND CANDIDATE (`groundCandidates`' own shape, below). Bounded to
+    // [0.65, 1.35] on every branch — the same shape `coolOf` and `viewerBiasOf` already keep, so a
+    // day never empties a ground and the pair's own strongest reading still wins where it is far
+    // ahead. Three of the four candidate kinds already carry one of the day's three named voices
+    // (palette, tempo, light — shelf 16's own parenthetical) and the fourth (`shared-measure`)
+    // carries none of them, so it reads at the neutral 1 exactly as any candidate this file has
+    // nothing to say about does.
+    var WEATHER_AMP = 0.35;
+    function weatherBiasOf(item) {
+      if (!item || !item.kind) return 1;
+      var w = weatherNow();
+      if (item.kind === "shared-palette-region") {
+        var hues = item.hues || [];
+        return 1 + WEATHER_AMP * (hues.indexOf(w.hue) >= 0 ? 1 : -1);
+      }
+      if (item.kind === "tonal-and-spectral") {
+        var ladder = (item.bridge || {}).ladder || [];
+        var avg = ((Number(ladder[0]) || 0) + (Number(ladder[1]) || 0)) / 2;
+        var closeness = 1 - Math.min(1, Math.abs(avg - w.light));
+        return 1 + WEATHER_AMP * (2 * closeness - 1);
+      }
+      if (item.kind === "shared-rotational-order") {
+        return 1 + WEATHER_AMP * (2 * w.tempo - 1);
+      }
+      return 1;
+    }
+
     // THE DIE OVER A RANKING. Each candidate carries a fit, the die lands somewhere in their summed
     // weight, and the best-suited holds the widest stretch of it. Where every fit is nothing the die
     // is even — nothing is refused for reading nothing, it is simply no likelier than its rivals.
@@ -2157,11 +2247,17 @@
     // and a ground, so a pool told to cool indiscriminately would cool a pair's ground because a
     // passage elsewhere on the route happened to run on the genre that shares its name. The default
     // is not to cool, so a call site added later cannot cool a ground by forgetting to say so.
+    // `viewerBiasOf` rides the same `letters` gate as `coolOf` — the visit's own lingered/skipped
+    // reading is a reading of LETTERS too, never of a ground. `weatherBiasOf` rides no gate at all:
+    // it reads `item.kind`, which only a ground candidate ever carries, so it is a no-op on every
+    // genre and instrument pool by construction and never needs a flag to stay out of their way.
     function dieWeighted(list, seed, key, letters) {
       var pool = list.slice().sort(function (x, y) { return x.id < y.id ? -1 : (x.id > y.id ? 1 : 0); });
       var total = 0, i, w = [];
       for (i = 0; i < pool.length; i++) {
-        w.push(Math.max(0, Number(pool[i].fit) || 0) * (letters ? coolOf(pool[i].id) : 1));
+        w.push(Math.max(0, Number(pool[i].fit) || 0)
+               * (letters ? coolOf(pool[i].id) * viewerBiasOf(pool[i].id) : 1)
+               * weatherBiasOf(pool[i]));
         total += w[i];
       }
       if (!(total > 0)) return pool[dieAmong(seed, key, pool.length)].id;
@@ -6462,7 +6558,7 @@
 
     // ---- the choice core: two works, a direction and a die ----
 
-    function scoreFor(a, b, direction, seed, role, memory, played) {
+    function scoreFor(a, b, direction, seed, role, memory, played, viewer) {
       // Two works, a direction, the step's role, what the visit already played here and a die: the
       // whole crossing, decided here and now.
       //
@@ -6472,7 +6568,14 @@
       // the ground, the instrument cast — so the whole choice answers to one reading of the walk
       // rather than to several. It is derived wholly from the request, so a request composed twice
       // still answers twice the same.
+      //
+      // AND WHAT THE VISIT REMEMBERS OF ITSELF. `viewer` is charter shelf 16's fourth pipeline step
+      // (`viewerBiasOf` above) — set fresh here for the length of this one composition exactly as
+      // `walkPlayed` is, never accumulated in this file. Its absence (no field on the request) reads
+      // as a visit with no memory of itself yet, which is the neutral case every die already answers
+      // the same way it always has.
       walkPlayed = Array.isArray(played) ? played : [];
+      viewerMemory = viewer || null;
       var tag = direction === "b-to-a" ? "ba" : "ab";
       var key = a.id + "__" + b.id + "__" + tag;
       var fromW = tag === "ab" ? a : b, toW = tag === "ab" ? b : a;
@@ -6500,8 +6603,20 @@
       // WHICH OF A WORK'S OWN CUTS ACTS. Nothing recorded on this edge leaves it exactly where it
       // has always been; a further pass moves it by the die and the pass count, which is §4.8's
       // «the element selection may differ».
-      var cast = plan.passIndex
-        ? plan.passIndex + dieAmong(seed, key + "|actors", 97) : 0;
+      //
+      // A REVISITED WORK BECOMES A RECURRING CHARACTER (charter shelf 16's fourth step, the other
+      // half of it). §4.8's pass count answers for repeats of ONE edge; `recurrence` answers for a
+      // work the visit has already shown on a DIFFERENT edge entirely — `viewerMemory.seenWorks`,
+      // read live off the request and never held here, is simply how many times each of this pair's
+      // two ids already appears in what the visit has shown. A work meeting the visit again therefore
+      // shows another of its own facets rather than the one it showed last time, by the same
+      // mechanism a repeated edge already uses — one rule for both, exactly as §4.8's own kinship
+      // step already reads a return and a repeat as one rule. A work the visit has not shown before
+      // reads at 0, which is the plain unrecurring case exactly as it always was.
+      var recurrence = countIn(viewerMemory && viewerMemory.seenWorks, fromW.id)
+                      + countIn(viewerMemory && viewerMemory.seenWorks, toW.id);
+      var cast = (plan.passIndex || recurrence)
+        ? plan.passIndex + recurrence + dieAmong(seed, key + "|actors", 97) : 0;
       var tpl = buildTemplate(plan.shape, plan.spec);
       var row = rowOf(plan);
       var pv = plan.pivot;
@@ -6598,6 +6713,12 @@
     //   buffer        the canvas as it stands at this instant: {width, height, dpr, orientation,
     //                 quality}. Missing means the buffer is unstated; the instrument then reads the
     //                 one it is drawing on, which is the truth in either case (his 18:00 decision).
+    //   viewerMemory  the visit's own memory of itself, charter shelf 16's fourth pipeline step —
+    //                 {lingered, skipped, seenWorks}, each a plain list of names, and nothing wider.
+    //                 Missing means the visit remembers nothing of itself yet, which is the neutral
+    //                 case `viewerBiasOf` and the recurrence fold above both already answer the same
+    //                 way. A field outside the three is IGNORED and recorded, exactly as
+    //                 `sessionMemory`'s fence already works.
     //
     // WHAT COMES BACK, AND IT IS ALWAYS A CROSSING. Two refusals stand in this entry and only two:
     // a request naming no departing record and one naming no arriving record, because there is no
@@ -6627,6 +6748,7 @@
       return false;
     }
     var SESSION_MEMORY_FIELDS = ["family", "seed", "passIndex"];
+    var VIEWER_MEMORY_FIELDS = ["lingered", "skipped", "seenWorks"];
     // The span the die is rolled inside, and the one home of that fact on this side of the line.
     // It is the meshing instrument's own `seed` handle span, read out of its manifest rather than
     // written down here, so a copy of it cannot go stale. The walk reads it back off this module.
@@ -6713,8 +6835,47 @@
           }
         }
       }
+      // THE VISIT'S OWN MEMORY OF ITSELF — charter shelf 16's fourth pipeline step. Three named
+      // lists and nothing else, fenced exactly as `sessionMemory` is above: a field outside the
+      // three is dropped and recorded rather than refusing the crossing, and each list is a plain
+      // list of NAMES (a letter for `lingered`/`skipped`, a work id for `seenWorks`) with no length
+      // fence of its own, for the same reason `walkMemory` carries none — the visit's own length is
+      // the visit's business.
+      function readNameList(v, label) {
+        var out = [], stray = 0, i;
+        if (v === undefined || v === null) return { list: out, note: null };
+        if (!Array.isArray(v)) {
+          return { list: out, note: "a " + label + " that is no list, so it reads as empty" };
+        }
+        for (i = 0; i < v.length; i++) {
+          if (typeof v[i] === "string" && v[i]) out.push(v[i]); else stray += 1;
+        }
+        return { list: out,
+                 note: stray ? (stray + " " + label + " entr(y/ies) naming nothing") : null };
+      }
+      var viewer = null;
+      if (req.viewerMemory !== undefined && req.viewerMemory !== null) {
+        if (typeof req.viewerMemory !== "object" || Array.isArray(req.viewerMemory)) {
+          unread.push("a viewer memory that is no record, so the visit remembers nothing of itself "
+                      + "yet");
+        } else {
+          var oddV = Object.keys(req.viewerMemory).filter(function (f) {
+            return VIEWER_MEMORY_FIELDS.indexOf(f) < 0;
+          });
+          if (oddV.length) {
+            unread.push("viewer memory field(s) «" + oddV.sort().join("», «") + "», outside the "
+                        + "three shelf 16 lets cross: " + VIEWER_MEMORY_FIELDS.join(", "));
+          }
+          var lingeredR = readNameList(req.viewerMemory.lingered, "lingered");
+          var skippedR = readNameList(req.viewerMemory.skipped, "skipped");
+          var seenR = readNameList(req.viewerMemory.seenWorks, "seenWorks");
+          [lingeredR, skippedR, seenR].forEach(function (r) { if (r.note) unread.push(r.note); });
+          viewer = { lingered: lingeredR.list, skipped: skippedR.list, seenWorks: seenR.list };
+        }
+      }
       var read = { routeRole: role, direction: direction, seed: seed, sessionMemory: memory,
                    walkMemory: played.length ? played : null,
+                   viewerMemory: viewer,
                    cameraState: req.cameraState === undefined ? null : req.cameraState,
                    buffer: req.buffer === undefined ? null : req.buffer,
                    unread: unread.length ? unread : null };
@@ -6726,7 +6887,7 @@
       // A request with one record names one photograph, and a crossing is between two.
       if (!a || !a.id) return no("the passage request names no departing work record");
       if (!b || !b.id) return no("the passage request names no arriving work record");
-      var made = scoreFor(a, b, direction, seed, role, memory, played);
+      var made = scoreFor(a, b, direction, seed, role, memory, played, viewer);
       // THE PASSAGE THE CAMERA LEADS. The camera lane built the capability and asks one field for
       // it: `camera.lead` says the flight itself is the transition, the anchor gives up its held
       // middle and the pose travels the whole duration without ever standing still. Choosing it is
