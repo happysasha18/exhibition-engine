@@ -24,7 +24,7 @@ TIMINGS_PATH = HERE / "suite_timings.json"
 SUITES = [
     "site", "exhibition", "door", "vector", "back", "greet",
     "series", "motion", "consistency", "reset", "load", "ladder", "share", "glide",
-    "pulse", "hand", "i18n", "lang", "lang_geo", "memory", "protect", "sound", "guard", "quiz",
+    "pulse", "hand", "i18n", "lang", "lang_geo", "memory", "protect", "sound", "guard", "bundle_fresh", "quiz",
     "quiz_copy", "compose", "dead", "quiz_flow", "parity", "zoom", "return", "gesture",
     "wheel", "glide_speed", "beat_css", "a11y", "about",
     "story_edge", "story_lead", "pass", "pass_api", "pass_direction", "pass_weave", "pass_drivers",

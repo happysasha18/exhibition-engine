@@ -39,6 +39,7 @@ Two risks the specification named are answered here with measurement rather than
 arrival loses when its contact shadow falls on the side coverage clears, and how big the step is where
 the travelling voice reaches its exit door opaque and then leaves its window.
 """
+import atexit
 import base64
 import hashlib
 import json
@@ -549,6 +550,17 @@ else:
             self.br.__enter__()
             self.br.navigate(self.base + "/index.html")
             self.ok = ready(self.br)
+            self._closed = False
+            # Any row between here and this bench's own explicit close() can raise (a missing
+            # import, a bad measurement) and this bench's browser + served root would otherwise
+            # never hear about it — an interpreter shutting down on an uncaught exception then
+            # tries to finalize a live Chrome process and a live server thread via garbage
+            # collection, which is not an orderly close and has hung the whole suite process for
+            # hours (found 2026-08-25, `ModuleNotFoundError: No module named 'numpy'` mid-row).
+            # atexit runs before that finalization, in order, so this is the backstop regardless
+            # of which row throws — an explicit close() elsewhere still runs first and this
+            # becomes a no-op.
+            atexit.register(self.close)
 
         def shot(self, score_json, seconds, name):
             js(self.br, "return window.__at(%s, %r, %r);" % (score_json, seconds, DUR))
@@ -559,6 +571,9 @@ else:
             return out
 
         def close(self):
+            if self._closed:
+                return
+            self._closed = True
             try:
                 self.br.__exit__(None, None, None)
                 self.ctx.__exit__(None, None, None)

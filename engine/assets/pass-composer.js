@@ -1196,25 +1196,25 @@
     // instrument, and the instrument is the one home of it.
     var SIZE_MIN = HANDLE_SPECS.gears.size[0];
     var SIZE_MAX = HANDLE_SPECS.gears.size[1];
-    // THE COMPOSITE'S OWN TWO LEGIBILITY LEVELS, AND WHY THESE TWO ARE TYPED WHERE THE SPAN ABOVE IS
-    // READ. A settings record does NOT ship a manifest whole. The site's staging step projects each
-    // handle down to six fields — `min`, `max`, `def`, `open`, `banding`, `rungs` — and nothing else
-    // crosses the wire (tests/fixture_pass_works.json and tests/fixture_pass_composed.json are both
-    // captures of the real record and both carry exactly those six per handle). `SIZE_MIN` above
-    // survives because a span IS one of the six; `applied` is not, so
-    // `MANIFESTS.overlay.handles.exposure.applied` is `undefined` in every browser this file ever
-    // runs in. A floor built on it read nought, `voiceFloor(0, cap)` returned nought, and the lift
-    // became the identity — which is why the composite's two handles came out byte-identical either
-    // side of the repair that was meant to raise them.
+    // THE COMPOSITE'S OWN TWO LEGIBILITY LEVELS, READ OFF THE INSTRUMENT'S OWN MANIFEST NOW THAT THE
+    // WIRE CARRIES IT. A settings record does NOT ship a manifest whole: the site's staging step
+    // projects each handle down to a fixed field list — `min`, `max`, `def`, `open`, `banding`,
+    // `rungs` — and, until lab/work-readings-v1.py's `read_manifests` was widened to carry it,
+    // `applied` was the one field dropped on the floor (tests/fixture_pass_works.json and
+    // tests/fixture_pass_composed.json, both captures of the real record, carried exactly the six).
+    // `SIZE_MIN` above survives because a span IS one of the six; `applied` used to be missing, so
+    // `MANIFESTS.overlay.handles.exposure.applied` read `undefined` in every browser this file ran
+    // in. A floor built on it read nought, `voiceFloor(0, cap)` returned nought, and the lift became
+    // the identity — which is why the composite's two handles came out byte-identical either side of
+    // the repair that was meant to raise them.
     //
-    // So the two numbers stand here, each with the line of the instrument that owns it:
+    // A COPY of the instrument's own two numbers stood here as the stopgap while the wire was narrow:
     // `pass-inst-overlay.js` publishes `formsBeginAt: 0.5` on `exposure` (where the composite's forms
     // begin) and `edgeOfTheRegion: EDGE` on `presence`, `EDGE` being its own `0.045` (the softness of
-    // the region's edge, under which the region never stands at all). They are a COPY and named as
-    // one; the instrument stays their author and the day the record's projection carries `applied`
-    // this pair goes back to being read rather than kept.
-    var OVERLAY_FORMS_BEGIN_AT = 0.5;
-    var OVERLAY_REGION_EDGE = 0.045;
+    // the region's edge, under which the region never stands at all). The instrument was always their
+    // one author; now that `applied` crosses the wire whole, the two are read off it rather than kept.
+    var OVERLAY_FORMS_BEGIN_AT = MANIFESTS.overlay.handles.exposure.applied.formsBeginAt;
+    var OVERLAY_REGION_EDGE = MANIFESTS.overlay.handles.presence.applied.edgeOfTheRegion;
 
     // A reading held to the span a number can honestly stand in.
     function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
@@ -5366,11 +5366,10 @@
           if (mf.colourfulness > 0 || mt.colourfulness > 0) {
             var expCap = num(HANDLE_SPECS.overlay.exposure[1]);
             var presCap = num(HANDLE_SPECS.overlay.presence[1]);
-            // THE TWO LEVELS ARE THE INSTRUMENT'S OWN, and they are read off the constants beside
-            // `SIZE_MIN` at the head of this closure rather than off `MANIFESTS.overlay` here. The
-            // paragraph there says why in full: the record's manifest projection carries six fields
-            // per handle and `applied` is not among them, so this line read `undefined` and the
-            // whole floor collapsed to nothing.
+            // THE TWO LEVELS ARE THE INSTRUMENT'S OWN, read off `MANIFESTS.overlay` at the head of
+            // this closure now that the record's manifest projection carries `applied`. The
+            // paragraph there says why the read went through a local copy for a night and does not
+            // any more.
             var expFloor = voiceFloor(OVERLAY_FORMS_BEGIN_AT, expCap);
             var presFloor = voiceFloor(OVERLAY_REGION_EDGE, presCap);
             wanted.exposure = flt(r4(clamp01(expCap * voiceReach(expFloor, apartHere))));

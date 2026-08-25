@@ -533,12 +533,19 @@ function camGrainCells(w) {
   var spectral = Number((w.texture || {}).spectralPeriodPx) || 0;
   return spectral > 0 && side > 0 ? side / spectral : 0;
 }
+// THE ANGLE FOLLOWS THE SAME ORDER OF PREFERENCE AS THE STEP, NOT THE STEP'S PRESENCE — the rule
+// pass-composer.js:4401-4416 states and takes (2026-08-24). This function used to ask whether a
+// DEVICE was recovered and then take that device's angle whatever it read, and a ring-cut or
+// tile-cut work carries a device with a real step and NO direction at all: `ownDevice.angleDeg`
+// stands at 0 on 114 of the collection's 121 records. Read that way the roll axis sees two works at
+// one angle wherever both were cut that way, and folds an excursion of nothing out of them. The
+// work's own measured grid angle is a reading of the same thing and it answers where the device's
+// says nothing, so the device speaks first only where it recovered a direction.
 function camLattice(w) {
   var st = w.structure || {};
   var stepPx = Number((st.ownDevice || {}).stepPx) || 0;
   var gridPx = Number((st.grid || {}).periodPx) || 0;
-  var angle = stepPx > 0 ? (Number((st.ownDevice || {}).angleDeg) || 0)
-                         : (Number((st.grid || {}).angleDeg) || 0);
+  var angle = Number((st.ownDevice || {}).angleDeg) || Number((st.grid || {}).angleDeg) || 0;
   return {latticePx: stepPx || gridPx, latticeAngleDeg: angle};
 }
 function camGate(w) {
@@ -2696,6 +2703,31 @@ def enter(br, base, pass_arg=None, step=False):
                 break
             br.sleep(0.2)
         br.sleep(0.5)
+        # A STEP IS NOT FINISHED WHERE THE LAYER'S FILE ARRIVES — IT IS FINISHED WHERE THE CROSSING
+        # IT DECLARED HAS LANDED (2026-08-25). The key above declares one command. Where the two
+        # works it crosses both carry records — which is the deal's own coin-flip, since the walk
+        # deals a fresh hand every entry and only some of the hang is recorded — that command is a
+        # COMPOSED passage, and the host runs it for its whole length (five seconds on the score this
+        # collection composes) with the renderer's canvas over the walk the whole time. A caller that
+        # went on working while it ran aimed its click at a control the canvas was covering and the
+        # walk's own scroll was still travelling to the arriving work, so the click landed on
+        # nothing: that is exactly the visit the unfold row below read as a walk that never unfolded.
+        # THE WAIT IS ON THE WALK COMING TO REST, and it takes two readings because either alone is
+        # satisfied too early — the host carries no transaction and none awaiting (state «idle»),
+        # AND the scroll has stopped moving. The scroll alone stands equally still in the moment
+        # before the command is offered; the host alone goes idle a frame before the landing's own
+        # scroll finishes. Two consecutive still readings clear both.
+        was = None
+        for _ in range(90):
+            now = js(br, "return {state: (window.__exPass.host && window.__exPass.host.report)"
+                         "                  ? window.__exPass.host.report().state : 'idle',"
+                         "        y: Math.round(window.scrollY)};")
+            if (now["state"] == "idle" and was is not None
+                    and was["state"] == "idle" and was["y"] == now["y"]):
+                break
+            was = now
+            br.sleep(0.2)
+        br.sleep(0.4)
 
 
 def js(br, body):
@@ -2721,7 +2753,7 @@ RECORDS_CAP = 20   # spread_size 10 + max_unfolds 2 × unfold_step 5 — the bui
 RECORDS_STORE = {}           # id -> record, exactly the shape pass-workrecords.json ships
 RECORDS_LOG = []              # one entry per GET this run answered: the `ids` list it was asked for
 RECORDS_MARK = [0]            # where the CURRENT page load's own waves begin in that log (see enter)
-FAIL_WAVE = {"on": False}    # armed by the "wave that never lands" row; answers the NEXT GET with 500
+FAIL_WAVE = {"on": False}    # held on by the "wave that never lands" row; every GET answers 500
 
 
 def records_answer(raw_path):
@@ -2736,7 +2768,15 @@ def records_answer(raw_path):
     ids = [i for i in parse_qs(urlparse(raw_path).query).get("ids", [""])[0].split(",") if i]
     RECORDS_LOG.append(ids)
     if FAIL_WAVE["on"]:
-        FAIL_WAVE["on"] = False    # fires once — the very next wave this hook sees, and no other
+        # HELD ON WHILE THE ROW STANDS, RATHER THAN FIRED ONCE (2026-08-25). A wave the route refuses
+        # is RETRIED with backoff — engine/client/01a-pass.js's own `.catch()` takes every id of the
+        # failed wave back off `passRecordsAsked` and puts it on the wire again 1.5 s later, up to
+        # three tries. A hook that refused only the FIRST GET therefore let the SECOND one land, and
+        # the row named after a wave that never lands was really racing that backoff: where the
+        # refusal took longer than 1.5 s to reach the diagnostic surface the row polls, the crossing
+        # it then declared found its two records after all and froze a whole score. Refusing every
+        # wave while the gate is on IS the row's own precondition — the route is down, not down for
+        # one request — and the row turns the gate off again when it is finished with it.
         return (500, "text/plain", "induced failure (EX-COMPOSED wave-fails row, 2026-08-19)")
     if not ids or len(ids) > RECORDS_CAP:
         return (400, "text/plain", "bad request")
@@ -2812,7 +2852,6 @@ else:
                     br.sleep(0.2)
                 shown = js(br, "return [].slice.call(document.querySelectorAll('.exh-frame'))"
                                ".map(function(e){return e.dataset.id;});")
-                pair = [w for w in shown if w in recorded][:2]
                 # The walk deals afresh on every entry, so the work with no record of its own is
                 # read off THIS hang rather than remembered from the last one.
                 unrecorded = next((w for w in shown if w not in recorded), None)
@@ -2882,9 +2921,29 @@ else:
                       f"answered {cap_status}")
 
                 # 2 · a step over two recorded works
+                #
+                # WHICH TWO, AND WHY NOT SIMPLY THE FIRST TWO RECORDED (2026-08-25). The one step
+                # `enter(..., step=True)` takes crosses the first two works of a hang the walk deals
+                # afresh every entry, and whether the record set happens to cover both of them is
+                # that deal's own coin-flip. Where it does, the step's crossing composes and LANDS,
+                # and from the landing on the edge it crossed carries §4.8's own record — which is
+                # also, by the same coincidence, the very edge «the first two recorded works» names.
+                # A row declaring over it then reads a request carrying a return reference where it
+                # means to read a first crossing's nothing, and the diagnostic-surface row below
+                # reddened on exactly that. So the pair is chosen against the walk's own edge
+                # register, read off the diagnostic surface at this instant — the first two recorded
+                # works of this hang whose edge this visit has NOT already walked. The rows below ask
+                # for nothing weaker than before; the precondition they were always written against
+                # is made true here instead of left to the deal.
+                walked = set(js(br, "return window.__exPass.report().memory.edges"
+                                    ".map(function(e){return e.edgeKey;});"))
+                cand = [w for w in shown if w in recorded]
+                pair = next(([a, b] for i, a in enumerate(cand) for b in cand[i + 1:]
+                             if "__".join(sorted([a, b])) not in walked), [])
                 if len(pair) < 2:
                     for r_ in BROWSER_ROWS[2:8]:
-                        skip(r_, f"this hang shows fewer than two recorded works: {shown[:4]}")
+                        skip(r_, f"this hang shows no two recorded works on an edge this visit has "
+                                 f"not already walked: recorded {cand[:4]}, walked {sorted(walked)}")
                     pair = None
                 r = None if pair is None else js(br, """
                   var A = document.querySelector('.exh-frame[data-id="%s"]');
@@ -3286,15 +3345,18 @@ else:
                           f"before this visit and {len(RECORDS_LOG)} after — a visit standing still "
                           f"asks the route for nothing, the same as it asks the composer for nothing")
 
-                # 11 · EX-PASS-RECORDS: a wave that never lands. FAIL_WAVE arms the harness's
-                # `answer` hook (records_answer, above) to answer the NEXT `/api/pass/records` GET
-                # with 500 — a real request the client's own fetch really receives and really has to
+                # 11 · EX-PASS-RECORDS: a wave that never lands. FAIL_WAVE holds the harness's
+                # `answer` hook (records_answer, above) at 500 for every `/api/pass/records` GET this
+                # visit makes — real requests the client's own fetch really receives and really has to
                 # handle, the same road `passRecordsAskFor`'s own `.catch()` was written for (its
                 # comment: "the wave for N id(s) did not land"). A fresh visit's very first wave is
-                # the door's own spread, so arming it just before a fresh `enter()` sabotages exactly
-                # that request. What the row asks: the refusal is said in plain words, the visitor
-                # still lands, and a crossing over the now-unrecorded pair still freezes no score
-                # onto the command — the walk's own glide, not a thrown error breaking the visit.
+                # the door's own spread, so turning the gate on just before a fresh `enter()`
+                # sabotages that request and every retry the client makes of it — which is what the
+                # row's own name says and what the client's 1.5 s backoff means it has to say (the
+                # note on the hook itself). What the row asks: the refusal is said in plain words,
+                # the visitor still lands, and a crossing over the still-unrecorded pair freezes no
+                # score onto the command — the walk's own glide, not a thrown error breaking the
+                # visit.
                 FAIL_WAVE["on"] = True
                 with Browser(width=1280, height=900) as br3:
                     enter(br3, base, "diagnostics:on")
@@ -3327,6 +3389,7 @@ else:
                               f"the induced failure was noted: {why!r}; a step declared straight "
                               f"after it froze {fell.get('score') if fell else '?'!r} onto the "
                               f"command — the walk's own glide, not a throw that broke the visit")
+                FAIL_WAVE["on"] = False   # the route stands again; nothing after this row asks it
 
 import shutil  # noqa: E402
 shutil.rmtree(TMP, ignore_errors=True)

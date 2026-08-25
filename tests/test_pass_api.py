@@ -131,7 +131,7 @@ BROWSER_ROWS = [
     "PASS-API row 24 · a second declare inside one frame is refused with its reason",
     "PASS-API row 1  · dock happens exactly once, keyed on generation and destination",
     "PASS-API the chained A→B→C case: the middle work does not dock under the last generation",
-    "PASS-API row 4  · decline before takeover runs the glide and changes no pixel",
+    "PASS-API row 4  · decline before takeover casts the last resort, not the glide",
     "PASS-API row 3  · a superseding input cancels the running transaction and the second declares cleanly",
     "PASS-API row 2/26 · a stale/foreign-token settle changes nothing",
     "PASS-API row 26 · a foreign token with no transaction in flight changes nothing",
@@ -309,9 +309,12 @@ else:
                 check(BROWSER_ROWS[4], ok, f"result={r}")
                 br.sleep(0.1)
 
-                # 5 · decline before takeover: the default test instrument declines, so a real step
-                # must move the walk exactly as it does with no renderer at all — no canvas, no
-                # curtain class, no pixel of the renderer's own.
+                # 5 · decline before takeover: the default test instrument declines, so the funnel
+                # (2026-08-24, engine/assets/pass-layer.js "THE LAST RESORT") casts its own real,
+                # canvas-drawing instrument rather than leaving the walk to glide with no renderer —
+                # the walk still moves the same real step, but now through exactly one canvas, never
+                # the full curtain (the last resort is a plain wipe between the two works, not a
+                # takeover of the whole frame).
                 br.evaluate("window.__exPass.test.reset()")   # mode defaults to 'decline'
                 room(br)
                 y0 = int(br.evaluate("String(Math.round(scrollY))") or 0)
@@ -320,7 +323,7 @@ else:
                 y1 = int(br.evaluate("String(Math.round(scrollY))") or 0)
                 curtained = br.evaluate("String(document.body.classList.contains('ex-pass-curtain'))")
                 canvases = br.evaluate("String(document.querySelectorAll('canvas').length)")
-                check(BROWSER_ROWS[5], y1 > y0 and curtained == "false" and canvases == "0",
+                check(BROWSER_ROWS[5], y1 > y0 and curtained == "false" and canvases == "1",
                       f"scroll {y0}->{y1} curtained={curtained} canvases={canvases}")
                 cleanup(br)
 

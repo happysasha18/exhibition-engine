@@ -370,6 +370,7 @@ BROWSER_ROWS = [
     "PASS-ADRIFT row 16 · the captures are kept as evidence",
     "PASS-ADRIFT the door is read on the DRAWING BUFFER: the front's crossover, and the silhouette pair it stands on",
     "PASS-ADRIFT a door no whole cell can close is refused on the real road, and the visitor still lands",
+    "PASS-ADRIFT §6     · at a door the plane hands the buffer over whole: the two roads draw one picture",
 ]
 
 RED_ROWS = [
@@ -1067,6 +1068,72 @@ else:
                          NO_BUF[0], NO_BUF[1],
                          (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
                          leaked["drew"]))
+
+                # ---- §6: THE PLANE AT A DOOR -------------------------------------------------
+                # Every door row above reads a door against its own FILE, and a file is a picture
+                # taken outside the browser. This row reads the SAME door twice inside it — once
+                # driven straight on the bench (`__hostDraw`, which binds the instrument's own
+                # seating and photographs the drawing buffer as it stands) and once on the real
+                # transaction road (`__offer` held at the entry door) — and asks the two to be one
+                # picture, which is what the whole suite's «two roads of one frame» means.
+                #
+                # BESIDE IT, THE GEOMETRY THAT DECIDES THE DIFFERENCE. The host's canvas carries
+                # two sizes: the DRAWING BUFFER, which is the only thing the instrument seated a
+                # work into, and the CSS BOX the browser paints that buffer across. They are the
+                # same rectangle only while the canvas covers the frame. A passage that boxes the
+                # canvas to a second cover fit of the same source — pass-layer.js's `planeApply`,
+                # from `planeAt`'s `coverCss` — stretches the buffer by cssWidth/bufferWidth and
+                # lets the viewport crop what runs past its edges, so the work is cover-fitted
+                # TWICE and the door is no longer the work. `drawPose`'s `seated()` is what those
+                # two are supposed to cancel through: it fades the instrument's own fit toward the
+                # identity as `plane.door` reaches 1. They cancel only where the plane agrees the
+                # door is a door, so this row reads the box rather than trusting the fade.
+                #
+                # The two numbers are separated on purpose: the pixels say THAT the door moved and
+                # the box says BY WHAT, so a repair cannot make the row green by moving the door
+                # somewhere else that also happens to look right.
+                br.evaluate("window.__cancel('plane at a door row'); 0")
+                idle(br)
+                br.evaluate("window.__clock(1.5); window.__mix(0); window.__mask(0); 0")
+                br.sleep(0.6)
+                br.evaluate("window.__hostDraw(); 0")
+                br.sleep(0.1)
+                br.evaluate("window.__show('host'); 0")
+                br.sleep(0.3)
+                bench_road = png(br, SHOTS / "plane-door-bench.png")
+                js(br, "return window.__offer(%s, {clock: 1.5, progress: 0});" % SCORE)
+                br.sleep(0.7)
+                real_road = png(br, SHOTS / "plane-door-real.png")
+                # The host raises its own canvas position:fixed above everything; the lab module's
+                # stands absolute inside #moduleStage. The fixed one is the frame a visitor sees.
+                box = js(br, "var cs = document.querySelectorAll('canvas'), k = null;"
+                             "for (var i = 0; i < cs.length; i++) "
+                             "  if (getComputedStyle(cs[i]).position === 'fixed') k = cs[i];"
+                             "if (!k) return null;"
+                             "var r = k.getBoundingClientRect();"
+                             "return {bufW: k.width, bufH: k.height, x: r.x, y: r.y,"
+                             " w: r.width, h: r.height, frameW: window.innerWidth,"
+                             " frameH: window.innerHeight};")
+                br.evaluate("window.__cancel('plane at a door row'); 0")
+                idle(br)
+                roads_mn, roads_mx = diff(bench_road, real_road)
+                covers = bool(box) and (abs(box["x"]) <= 1 and abs(box["y"]) <= 1
+                                        and abs(box["w"] - box["frameW"]) <= 1
+                                        and abs(box["h"] - box["frameH"]) <= 1)
+                stretch = (box["w"] / float(box["bufW"])) if box and box["bufW"] else 0.0
+                check(BROWSER_ROWS[26],
+                      roads_mn <= SAME and covers,
+                      f"the entry door drawn on the bench road and on the real transaction road "
+                      f"stand {roads_mn:.4f} of 255 apart (bar {SAME}), worst channel {roads_mx}. "
+                      f"The host's canvas holds a {box and box['bufW']}x{box and box['bufH']} "
+                      f"drawing buffer inside a CSS box of "
+                      f"{box and round(box['w'], 1)}x{box and round(box['h'], 1)} at "
+                      f"({box and round(box['x'], 1)}, {box and round(box['y'], 1)}), in a frame of "
+                      f"{box and box['frameW']}x{box and box['frameH']}: the buffer is painted "
+                      f"{stretch:.4f} of a CSS pixel wide per buffer point, and whatever runs past "
+                      f"the frame's edges is cropped away by the viewport rather than drawn. At a "
+                      f"door the plane has to hand the buffer over whole — the work is seated once, "
+                      f"by the instrument, on the grid the instrument was told about")
 
     shutil.rmtree(BENCH, ignore_errors=True)
 

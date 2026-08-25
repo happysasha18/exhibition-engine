@@ -342,7 +342,14 @@ def rest_at(br, a):
     Ending whatever is in flight FIRST is the whole point of this helper. A pass still running would
     place the walk at its own arriving work the moment it reached the middle of its passage, and the
     next row would then measure a departing work that stands a viewport away from the eye — which is
-    a real reading of a walk that was never put back, not a defect in what it reads."""
+    a real reading of a walk that was never put back, not a defect in what it reads.
+
+    THE WORK'S OWN REVEAL IS IN FLIGHT TOO. Marking a frame seen starts the walk's reveal — the
+    picture fades up over the ground across the reveal token's own duration — so a helper that
+    returned the moment the SCROLL held handed the next row a half-faded photograph and called it
+    the DOM's own picture. A row comparing the renderer's pixels against it then read the fade, at
+    whatever share of it the screenshot happened to land on. So the reveal is waited out here, where
+    every row that asks for a resting walk gets the wait, rather than in the one row that noticed."""
     js(br, "window.__exPass.adapter.interrupt('rest'); return null;")
     wait_state(br, "idle")
     top = 9999.0
@@ -358,7 +365,20 @@ def rest_at(br, a):
         top = float(js(br, "return document.querySelector('.exh-frame[data-id=\"%s\"]')"
                            ".getBoundingClientRect().top;" % a))
         if abs(top) < 3:
+            return rest_revealed(br, a)
+    return False
+
+
+def rest_revealed(br, a, tries=40, nap=0.1):
+    """Wait until the resting work's own reveal has finished — the picture stands at full strength,
+    not part way up its fade. Read off the computed style, so the walk's own token owns the duration
+    and this waits exactly as long as that token asks for."""
+    for _ in range(tries):
+        op = js(br, "var I=document.querySelector('.exh-frame[data-id=\"%s\"] img.work');"
+                    "return I ? Number(getComputedStyle(I).opacity) : 1;" % a)
+        if op >= 0.999:
             return True
+        br.sleep(nap)
     return False
 
 
@@ -473,9 +493,13 @@ else:
                             " clockPin:0, progressPin:0, fixedScale:true}); 0")
                 before = png(br, SHOTS / "depart-dom.png")
                 scale = shot_scale(br, before)
-                where = js(br, "return {scrollY: Math.round(scrollY),"
-                               " aTop: Math.round(document.querySelector('.exh-frame[data-id=\"%s\"]')"
-                               ".getBoundingClientRect().top)};" % A)
+                # The work's own reveal is read beside the place: a picture caught part way up its
+                # fade would read as a seam that is no seam, and this row names what it stood at.
+                where = js(br, "var F=document.querySelector('.exh-frame[data-id=\"%s\"]');"
+                               "var I=F.querySelector('img.work');"
+                               "return {scrollY: Math.round(scrollY),"
+                               " aTop: Math.round(F.getBoundingClientRect().top),"
+                               " revealed: I ? Number(getComputedStyle(I).opacity) : null};" % A)
                 r = declare_and_offer(br, A, B, "hang-depart")
                 running = wait_state(br, "running")
                 br.sleep(0.6)

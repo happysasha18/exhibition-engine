@@ -110,12 +110,18 @@ check("EX-ROUTE the five functions the walk can state are exactly the five the c
       "the walk states %s; the composer accepts %s" % (sorted(SAID), sorted(FENCED)))
 
 # ---------------------------------------------------------------- one place writes the role
+# What this row fences is the DERIVATION and the WRITE, each of which stands once. Reading the role
+# back off a request it is already on is the opposite of a second derivation — it is what keeps one
+# home for the fact — so a reader is counted and named here rather than refused.
+ROLE_WRITES = re.findall(r"routeRole\s*=(?!=)", SRC)
+ROLE_READS = SRC.count("routeRole") - len(ROLE_WRITES)
 check("EX-ROUTE the role is derived in one place and put on the request in one place",
       SRC.count("function passRouteRole(") == 1
       and SRC.count("req.routeRole = role") == 1
-      and SRC.count("routeRole") == 2,
-      "passRouteRole is declared %d time(s) and the request is written %d time(s)"
-      % (SRC.count("function passRouteRole("), SRC.count("req.routeRole = role")))
+      and len(ROLE_WRITES) == 1,
+      "passRouteRole is declared %d time(s) and the request is written %d time(s); the %d further "
+      "mention(s) of the name read the role back off a request that already carries it"
+      % (SRC.count("function passRouteRole("), len(ROLE_WRITES), ROLE_READS))
 
 # ---------------------------------------------------------------- the browser rows
 BROWSER_ROWS = [

@@ -100,8 +100,8 @@ BROWSER_ROWS = [
     "EX-MEMORY the record holds §4.8's own names and nothing about the person",
     "EX-MEMORY walking back hands the composer the return reference and nothing wider",
     "EX-MEMORY the backward passage is kin to the forward one and is not it played backwards",
-    "EX-MEMORY ranking · a backward plan sharing neither the family nor the pivot ranks below its "
-    "kin, and the crossing still plays",
+    "EX-MEMORY held pass · a backward plan sharing neither the family nor the pivot still casts on "
+    "its first and only die, and the mismatch is named on the surface",
     "EX-MEMORY ranking · a pass that reads as the recorded one reversed stands at no distance and "
     "ranks last of the dice",
     "EX-MEMORY a repeated edge inside a visit drifts: the family holds and the door breathes",
@@ -453,11 +453,20 @@ else:
                     # The record is replaced by one no passage on this edge can be kin to. This was
                     # a refusal until 2026-08-18 and cost the visitor the whole crossing; his word
                     # of 09:51 — any two photographs in the world get a crossing, always — struck
-                    # that out. So the walk now ROLLS: it asks for more than one die, ranks each on
-                    # kinship, and plays the best of them, and the reading stands on the diagnostic
-                    # surface in plain words whatever plays. The row holds three things: a score is
-                    # frozen onto the command, the walk spent more than one die looking for a kin
-                    # roll, and the reason is said rather than swallowed.
+                    # that out.
+                    #
+                    # UPDATED 2026-08-25 for the return-hysteresis rebuild (exhibition.js,
+                    # `passComposeFor`'s `heldStart` pre-check, 2026-08-24 night audit): a return no
+                    # longer races several scored dice against the recorded family/pivot. It replays
+                    # the composer with the EXACT question the held pass was struck on (same seed,
+                    # same walk-memory anchored at the edge's first pass) and takes that candidate
+                    # directly the instant it legally casts, before any dice loop runs. The kinship
+                    # ranking this row exercises still happens — `passEdgeJudge` still reads the held
+                    # pass against the (now alien) recorded family/pivot and still says so on the
+                    # diagnostic surface — but it no longer gates whether a second or third die gets
+                    # rolled, because there IS no race for a held pass to lose. So this row now holds
+                    # two things, not three: a score is frozen onto the command on the FIRST and only
+                    # die (the held replay), and the mismatch is still said rather than swallowed.
                     js(br, """
                       var all = window.__exPass.memory.all();
                       var e = all['%s'];
@@ -472,7 +481,7 @@ else:
                     alien = declare(br, B, A, "alien")
                     check(BROWSER_ROWS[4],
                           alien["got"] and alien["hasScore"] is True
-                          and len(alien["memory"]["rolls"]) > 1
+                          and len(alien["memory"]["rolls"]) == 1
                           and any("shares neither the family" in (r.get("why") or "")
                                   for r in alien["memory"]["rolls"]),
                           f"the command carries {('a score' if alien['hasScore'] else 'no score')} "

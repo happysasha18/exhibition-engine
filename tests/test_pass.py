@@ -99,7 +99,7 @@ BROWSER_ROWS = [
     "EX-PASS every setting reports its applied value and the source that won",
     "EX-PASS a refused value falls back to the default and records why",
     "EX-PASS the landing moment applies EXACTLY as asked (0.531 stays 0.531)",
-    "EX-PASS a score naming an unknown field is refused whole",
+    "EX-PASS a score naming an unknown field has that field cut and noted, and still plays",
     "EX-PASS a score may not set a name closed to it",
     "EX-PASS one step declares one command and lands it",
     "EX-PASS a second input supersedes the first, which ends as aborted",
@@ -276,16 +276,27 @@ else:
                   lp["applied"] == 0.531 and lp["source"] == "session" and lp["fallback"] is False,
                   f"applied={lp['applied']} source={lp['source']}")
 
-            # 5 · an unknown field refuses the whole score
+            # 5 · AN UNKNOWN FIELD IS CUT AND NOTED, NOT A REFUSAL OF THE WHOLE SCORE (2026-08-24) —
+            # the same conversion the weight fence and the intent-length fence took on 2026-08-18. A
+            # score is composed by the collection's own composer, and a field the client's own
+            # allow-list has not yet learned about used to cost the visitor the whole crossing over
+            # one name. So the field is cut, the cut is recorded on `noted`, and the passage plays.
+            # What is still refused whole stands beside it here, so the conversion is read as the
+            # narrowing it is rather than as a fence that stopped fencing: a record naming no schema
+            # is refused, and so is a name closed to a score (the row below).
             bad = br.evaluate(
                 "JSON.stringify(window.__exPass.score({schema:1,intent:'a',shader:'x'}))")
             good = br.evaluate(
                 "JSON.stringify(window.__exPass.score({schema:1,intent:'a',"
                 "params:{flightMs:900}}))")
             noschema = br.evaluate("JSON.stringify(window.__exPass.score({intent:'a'}))")
+            cut = json.loads(bad)
             check(BROWSER_ROWS[5],
-                  json.loads(bad)["ok"] is False and "shader" in json.loads(bad)["why"]
+                  cut["ok"] is True
+                  and "shader" not in cut["score"]
+                  and any("shader" in n for n in (cut["noted"] or []))
                   and json.loads(good)["ok"] is True
+                  and json.loads(good)["noted"] is None
                   and json.loads(noschema)["ok"] is False,
                   f"bad={bad} good={good} noschema={noschema}")
 

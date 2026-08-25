@@ -508,7 +508,7 @@ WALK_ROWS = [
     "PASS-WEAVE the walk reads the pair's own score and freezes it onto the command",
     "PASS-WEAVE the score's cue names the instrument, and that instrument takes the command",
     "PASS-WEAVE the pass over a scored pair lands in exactly one dock, curtain down",
-    "PASS-WEAVE a pair with no score of its own keeps the walk's own glide",
+    "PASS-WEAVE a pair with no score of its own is carried by the last resort, and still lands",
 ]
 
 # THE EIGHT PASS-TABLE ROWS RETIRED WITH THE ROAD THEY GUARDED (U27 stage 0, 2026-08-17). They drove
@@ -1635,27 +1635,48 @@ else:
                       and landed["curtains"][-1] is False and "docked" in landed["events"],
                       f"landed={landed}")
 
-                # THE SAME TWO WORKS WALKED THE OTHER WAY, and this declare hands over no score. A
-                # crossing the walk can find no score for is the standing fallback and always has
-                # been: nothing is frozen onto the command, no cue names an instrument, the host
-                # declines the offer outright and the walk's own glide takes it. A→B and B→A are two
-                # distinct passages of one edge, which is the direction the charter's model asks for
-                # and what the composed road derives per direction.
+                # THE SAME TWO WORKS WALKED THE OTHER WAY, and this declare hands over no score.
+                # Nothing is frozen onto the command and no cue names an instrument, so the funnel's
+                # own first give-up exit is reached — and behind that exit stands the LAST RESORT
+                # (2026-08-24), which casts on the two pictures the DOM already holds. The visitor is
+                # carried by a real crossing rather than handed back to the walk's glide: the offer
+                # is taken, the curtain rises and falls, and the passage lands in exactly one dock.
+                # Until the last resort existed this row read the other outcome, the plain glide,
+                # which is the road the host now takes only where even that cast fails.
+                # A→B and B→A are two distinct passages of one edge, which is the direction the
+                # charter's model asks for and what the composed road derives per direction.
                 r = js(br, """
                   var A = document.querySelector('.exh-frame[data-id="%s"]');
                   var B = document.querySelector('.exh-frame[data-id="%s"]');
                   var cmd = window.__exPass.adapter.declare({fromEl:B, toEl:A, dir:-1, span:100,
                                                              kind:'step', cause:'no-score', velocity:0});
-                  var seen = {glide:false, curtains:[]};
-                  window.__exPass.layer().offer(cmd, {dock:function(){},
+                  window.__noscore = {glide:false, curtains:[], docks:0, marks:[]};
+                  var seen = window.__noscore;
+                  var took = window.__exPass.layer().offer(cmd, {dock:function(){ seen.docks++; },
                     glide:function(){ seen.glide = true; },
-                    curtain:function(on){ seen.curtains.push(!!on); }, mark:function(){}});
-                  return {score: cmd ? cmd.score : 'no command', glide: seen.glide,
-                          curtains: seen.curtains};
+                    curtain:function(on){ seen.curtains.push(!!on); },
+                    mark:function(n){ seen.marks.push(n); }});
+                  return {score: cmd ? cmd.score : 'no command', took: took === true};
                 """ % (WORKS[0], WORKS[1]))
+                for _ in range(80):
+                    if js(br, "return window.__exPass.host.report().state;") == "idle":
+                        break
+                    br.sleep(0.1)
+                after = js(br, "var rep = window.__exPass.host.report();"
+                               "return {seen: window.__noscore, state: rep.state,"
+                               " events: rep.events.map(function(e){return e.name;}).slice(-8)};")
+                seen = after["seen"]
                 check(WALK_ROWS[3],
-                      r["score"] is None and r["glide"] is True and r["curtains"] == [],
-                      f"score={r['score']} glide={r['glide']} curtains={r['curtains']}")
+                      r["score"] is None and r["took"] is True
+                      and seen["docks"] == 1 and seen["glide"] is False
+                      and seen["curtains"] == [True, False]
+                      and after["state"] == "idle" and "docked" in after["events"],
+                      f"the declare froze no score onto the command (score={r['score']}) and the "
+                      f"host took it anyway (took={r['took']}): curtains={seen['curtains']} "
+                      f"docks={seen['docks']} glide={seen['glide']} marks={seen['marks']}, "
+                      f"state={after['state']}, events={after['events']} — the last resort cast on "
+                      f"the two pictures the DOM already holds, so the visitor is carried by a real "
+                      f"crossing and the walk's own glide is not spent")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

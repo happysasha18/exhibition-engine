@@ -467,10 +467,13 @@ else:
         # THE SCORES THIS BAKE CARRIES ARE NONE, so a stepped walk asks for the host and for no
         # instrument at all — which is itself the measurement this shape was built for: a visit pays
         # for the instruments its own passage names, and a passage naming none pays nothing.
+        #
+        # The whole visit is read, from the door onwards, rather than only what follows the first
+        # step: the door now opens the host the instant it deals its hand, so the host's own file
+        # leaves the server before a visitor has stepped anywhere.
         with Browser(width=VW, height=VH) as br:
             br.net_capture()
             stood = entered(br, base, "diagnostics:on,visualLayer:pass")
-            br.net_clear()
             br.key("ArrowDown")
             br.sleep(2.2)
             drew = asked(br)
@@ -539,11 +542,20 @@ else:
 
     # R4 · THE NAME CHECK, the rule one file per instrument needs. One instrument's file served at
     # another's address, against a host that stops asking whether it got what it asked for.
+    #
+    # What is read is the two facts the row names — the asked-for name reached no registry and the
+    # other name did — rather than the registry's whole membership, which also carries whatever the
+    # host builds in for itself and is no part of this claim.
+    def name_check_read(br):
+        why = load(br, [FIRST]).get(FIRST)
+        reg = js(br, "return window.__registered();")
+        return [why, [FIRST in reg, other in reg]]
+
     crippled(RED_ROWS[3],
              'if (String(inst.name) !== String(name)) {', 'if (false) {',
              files={FIRST: swapped},
-             read=lambda br: [load(br, [FIRST]).get(FIRST), sorted(js(br, "return window.__registered();"))],
-             expect=[None, sorted([other, "test"])],
+             read=name_check_read,
+             expect=[None, [False, True]],
              detail="with the check in place «%s»'s address answering with «%s»'s file is refused; "
                     "with it removed the host registers the instrument it never asked for, under "
                     "the other name, and the score that named the first finds nothing. This run "

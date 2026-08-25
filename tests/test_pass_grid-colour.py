@@ -1214,8 +1214,12 @@ else:
                          leaked["drew"]))
 
                 # ---- the coverage, read off the frame it publishes -------------------------------
+                # The rows above put real transactions on the road, and a landing takes the host's
+                # own curtain down — so the stage is asked for again here, the way every other
+                # bench reading on this page asks for it.
                 js(br, "return window.__setup(%s);" % json.dumps(cfg(mask=1)))
                 br.sleep(0.35)
+                br.evaluate("window.__show('host'); 0")
                 cov = []
                 for v in (0.0, 0.3, 0.5, 0.7, 1.0):
                     js(br, "return window.__hostDraw({mix: %r});" % v)

@@ -19,7 +19,15 @@ import html
 import json
 import re
 import shutil
+import sys
 from pathlib import Path
+
+# A caller that imports this module (rather than running it as `python engine/build.py`, which
+# auto-prepends this file's own directory) does not necessarily have engine/ on sys.path — the
+# site's own release pipeline imports build.py this way and this import broke it. Put this file's
+# own directory on sys.path explicitly rather than assuming the caller did.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import assemble_client  # engine/assemble_client.py — sibling module
 
 # Set by build() — module-level so helpers read them without threading params (the original's shape)
 OUT = None               # the output bundle dir
@@ -1160,6 +1168,15 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     default, the flip is a deploy argument. Identity comes from site.json — the engine knows
     no instance. ``display_max``: cap the served images' long edge (px) — the deploy passes it,
     tests omit it so the bake stays fast (EX-PROTECT-RES / INV-56)."""
+    # EX-BUNDLE-FRESH: reassemble engine/assets/exhibition.js from its engine/client/ fragments
+    # before anything else in the bake reads it — client_asset() below falls back to exactly
+    # this file. Before this call the served bundle could silently go stale relative to its own
+    # fragments: a real incident shipped an hours-stale bundle because nobody remembered to
+    # re-run `python engine/assemble_client.py` by hand after a fragment fix. Calling assemble()
+    # directly (not assemble_client.main()) skips its argparse, which would otherwise collide
+    # with this script's own CLI args. Idempotent — a bake over unchanged fragments writes back
+    # the same bytes — so every bake, test or deploy, always serves its own fragments fresh.
+    assemble_client.OUT_PATH.write_text(assemble_client.assemble(), encoding="utf-8")
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
     global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, COPYRIGHT_NO_ABOUT
     global _ENGINE_ASSETS, _INSTANCE_ASSETS, _NAMESPACE

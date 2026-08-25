@@ -1039,11 +1039,20 @@
             : (turn ? CAM_TURN_FOV : 0);
     var t = "";
     if (fov) t += "perspective(" + (0.5 * Math.max(cssH, 1) / Math.tan(fov / 2)).toFixed(3) + "px) ";
-    t += "translate(" + (caps.panX ? pose.panX * 100 : 0).toFixed(4) + "%,"
-       + (caps.panY ? pose.panY * 100 : 0).toFixed(4) + "%) ";
+    // THE PAN IS THE HINGE OF THE CHAIN, and which side of it an axis stands on is the whole
+    // difference between the two kinds of turn. A list is applied right to left, so an axis written
+    // to the RIGHT of the pan acts BEFORE it and one written to the LEFT acts after. The camera's
+    // own three — pitch, yaw and roll — stand to the left: the subject is carried to its place
+    // first and the camera then turns where it stands, so the scene swings across the frame. Orbit
+    // and tilt stand to the right: the scene turns about the frame's own centre and the pan then
+    // carries the turned subject to its place, so the point of view travels around the work while
+    // the work holds its framing. Written on one side, as it was until now, a yaw is an orbit under
+    // another name and the orbit axis says nothing the yaw did not already say.
     if (caps.pitch && pose.pitch) t += "rotateX(" + (pose.pitch * deg).toFixed(4) + "deg) ";
     if (caps.yaw && pose.yaw) t += "rotateY(" + (pose.yaw * deg).toFixed(4) + "deg) ";
     if (caps.roll && pose.roll) t += "rotate(" + (pose.roll * deg).toFixed(4) + "deg) ";
+    t += "translate(" + (caps.panX ? pose.panX * 100 : 0).toFixed(4) + "%,"
+       + (caps.panY ? pose.panY * 100 : 0).toFixed(4) + "%) ";
     if (caps.orbit && pose.orbit) t += "rotateY(" + (pose.orbit * deg).toFixed(4) + "deg) ";
     if (caps.tilt && pose.tilt) t += "rotateX(" + (pose.tilt * deg).toFixed(4) + "deg) ";
     t += "scale(" + s.toFixed(6) + ")";
@@ -1091,12 +1100,6 @@
     if (h > cssH) { h = cssH; w = h * a; }
     return { x: (cssW - w) / 2, y: (cssH - h) / 2, w: w, h: h };
   }
-  function coverCss(iw, ih) {
-    var a = Math.max(1, Number(iw)) / Math.max(1, Number(ih));
-    var w = cssW, h = w / a;
-    if (h < cssH) { h = cssH; w = h * a; }
-    return { x: (cssW - w) / 2, y: (cssH - h) / 2, w: w, h: h };
-  }
 
   function hangPoseOf(geom, inst, iw, ih) {
     if (!geom || !geom.w || !geom.h || cssW <= 0 || cssH <= 0) return null;
@@ -1133,32 +1136,38 @@
 
   function doorEase(u) { return CURVES.smooth(u <= 0 ? 0 : u >= 1 ? 1 : u); }
 
-  // One geometric plane carries the picture for the entire passage. Its aspect travels smoothly
-  // between the two source aspects; it is never replaced by a DOM clone. At each endpoint its fit
-  // is exactly the whole source. In the living middle the same plane grows beyond the hang until it
-  // covers the viewport: the work breaks out of its rectangle and becomes the room, rather than a
-  // smaller rectangular card travelling over black. Cropping is allowed only in that constructed
-  // middle and is spent back to zero before the arriving door. Coordinates are drawing-buffer
-  // coordinates because gl.viewport's origin is below.
-  function planeAt(rec, seconds, progress) {
-    var ca = coverCss(rec.src.aw, rec.src.ah), cb = coverCss(rec.src.bw, rec.src.bh);
-    var e = rec.hangEdge || hangEdges(rec), door = 0, box;
+  // One geometric plane carries the picture for the entire passage; it is never replaced by a DOM
+  // clone. THE PLANE IS THE CAMERA'S HANG ANCHOR MADE PHYSICAL. `anchorPose` above travels the
+  // departing hang → the neutral → the arriving hang, and `camPoseAt` deliberately leaves that
+  // anchor out of the transform it applies (`art`) because this box carries it instead. So the
+  // plane's two ends are the two measured DOM rectangles and its middle is the NEUTRAL — the frame
+  // itself, one drawing-buffer point to one frame point. Nothing else is a legal middle: the
+  // instrument seats the work into the buffer on its own (see `seated` in `drawPose`, which cancels
+  // that seating only as `door` reaches 1), so a box that is not the frame would seat the same work
+  // a second time in CSS and hand the visitor a cover fit of a cover fit.
+  //
+  // A DOOR IS A DOOR ONLY WHERE A RECTANGLE WAS MEASURED. `hangGeometry` answers null for a work
+  // the layout never hung — a host driven from a bench, a walk whose adapter found no image, a
+  // passage that opens on nothing. There is then no wall to leave and no wall to land on: the plane
+  // stands at the frame for the whole pass and `door` stays zero, so the instrument seats the work
+  // exactly as it did before any plane existed. Reporting a door there while substituting some
+  // other rectangle for the missing hang is what made the door rows read a work seated twice.
+  // Coordinates are drawing-buffer coordinates because gl.viewport's origin is below.
+  function planeAt(rec, seconds) {
+    // The neutral: the whole frame, which is what the camera's own neutral pose means.
+    var full = { x: 0, y: 0, w: cssW, h: cssH };
+    var e = rec.hangEdge || hangEdges(rec), door = 0, box = full;
     function lerpBox(a, b, q) {
-      a = a || b; b = b || a;
       return { x: a.x + (b.x - a.x) * q, y: a.y + (b.y - a.y) * q,
                w: a.w + (b.w - a.w) * q, h: a.h + (b.h - a.h) * q };
     }
-    if (e.rise > 0 && seconds <= e.rise) {
+    if (rec.hangA && e.rise > 0 && seconds <= e.rise) {
       var qo = doorEase(seconds / e.rise);
-      box = lerpBox(rec.hangA, ca, qo); door = 1 - qo;
-    } else if (e.fall > 0 && seconds >= e.dur - e.fall) {
+      box = lerpBox(rec.hangA, full, qo); door = 1 - qo;
+    } else if (rec.hangB && e.fall > 0 && seconds >= e.dur - e.fall) {
       var qi = doorEase((seconds - (e.dur - e.fall)) / e.fall);
-      box = lerpBox(cb, rec.hangB, qi); door = qi;
-    } else {
-      var middle = Math.max(1e-6, e.dur - e.rise - e.fall);
-      box = lerpBox(ca, cb, doorEase((seconds - e.rise) / middle));
+      box = lerpBox(full, rec.hangB, qi); door = qi;
     }
-    if (!box) box = lerpBox(ca, cb, doorEase(progress));
     return { x: 0, y: 0, w: W, h: H, door: door,
              cssX: box.x, cssY: box.y, cssW: box.w, cssH: box.h };
   }
@@ -2241,7 +2250,7 @@
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
-    var plane = planeAt(rec, seconds, progress);
+    var plane = planeAt(rec, seconds);
     planeApply(plane);
     // A CUE'S WINDOW IS WRITTEN IN THE PASS'S OWN SECONDS, and the pass's own seconds run from zero
     // to its duration. A second outside that span is judged AT THE NEAREST END OF IT, because that

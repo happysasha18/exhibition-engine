@@ -450,16 +450,20 @@ out.arcs = {
 };
 
 // ---- WHAT AN ORBIT DOES TO PIXELS, read off the one place a pose becomes a transform -----------
-// The chain is applied right to left: the orbit stands NEARER THE SCALE than the pan, so it turns
-// the scene about the frame's own centre and the pan then carries the turned subject to its place —
-// the point of view travels around the subject. A yaw stands on the pan's own side of the chain, so
-// it turns the camera where it stands and the scene swings across the frame.
+// PASS-API-V1 §6, and the host's own sentence above `camApply`: orbit and tilt act BEFORE the pan
+// and pitch, yaw and roll act after it. The chain is applied right to left, so «before the pan»
+// is written to the RIGHT of the translate and «after the pan» to its LEFT — which is what these
+// two indices read. The orbit turns the scene about the frame's own centre and the pan then carries
+// the turned subject to its place, so the point of view travels around the subject and the subject
+// holds its framing; the yaw lets the pan place the subject first and then turns the camera where
+// it stands, so the scene swings across the frame. Written on ONE side of the pan the two chains
+// are the same chain, and the orbit axis says nothing the yaw did not already say.
 var orbited = bench.camApplied(pose({ panX: 0.2, orbit: 0.5 }));
 var yawed = bench.camApplied(pose({ panX: 0.2, yaw: 0.5 }));
 out.turn = {
   orbited: orbited, yawed: yawed,
   ok: orbited.indexOf("rotateY(28.6479deg)") > orbited.indexOf("translate(20.0000%")
-      && yawed.indexOf("rotateY(28.6479deg)") > yawed.indexOf("translate(20.0000%")
+      && yawed.indexOf("rotateY(28.6479deg)") < yawed.indexOf("translate(20.0000%")
       && orbited !== yawed
       && orbited.indexOf("rotateY") > orbited.indexOf("rotate(")
 };
