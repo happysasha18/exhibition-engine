@@ -85,15 +85,24 @@
   // port had to say where the second work enters. It enters at the one instant the module's own
   // construction offers: the far door, where the sheet stands closed and the frame holds a single flat
   // quarter of the file at exactly the framing the whole work stood at. Both works reach that instant
-  // as one flat full-frame picture, so the exchange between them is a dissolve of two flat pictures
-  // and nothing is folded while it happens.
+  // as one flat full-frame picture, and it is exactly there that they change hands.
   //
-  // The hand therefore runs: the first work folds shut over the first forty-six hundredths, the two
-  // works exchange across the eight hundredths in the middle, and the second work opens out over the
-  // last forty-six. The module's own response curve is applied to each half of the hand, so equal
-  // movements of the hand are equal felt change on both sides of the exchange, which is the whole
-  // point of the curve. HOLD is the port's own number and the only one that is; every other constant
-  // below is the module's.
+  // WHAT A FLAT PICTURE CANNOT ANSWER WITH A SECOND FOLD. By the instant the sheet stands shut, every
+  // panel has already turned past HOME and the growth law has already given it up — folding a closed
+  // panel FURTHER moves nothing the eye can read. So the one motion left to a panel that has nowhere
+  // further to retreat is the one it already owns: swing back OUT of its own turn and shut again. The
+  // first work's panels take that swing to leave, the second work's panels take the same swing,
+  // mirrored, to arrive, and the two swings meet at the one instant both works are shut — where the
+  // hand switches which file the panels read, with nothing of the frame's own shape changing under it.
+  //
+  // The hand therefore runs: the first work folds shut over the first forty-six hundredths, the first
+  // work's own panels swing out and back across the hold's own first half, the hand changes which work
+  // the panels read at the hold's own middle, the second work's panels swing out and back across the
+  // hold's own second half, and the second work opens out over the last forty-six. The module's own
+  // response curve is applied to each of the two long halves, so equal movements of the hand are equal
+  // felt change on both sides of the exchange, which is the whole point of the curve. HOLD and
+  // FLUTTER_DIP are the port's own numbers and the only two that are; every other constant below is
+  // the module's.
   //
   // ------------------------------------------------------------------------------------------------
   // THE COVERAGE: THIS INSTRUMENT FILLS THE FRAME
@@ -388,17 +397,15 @@
       "  return col;",
       "}",
       "void main(){",
-      "  vec3 jA, jB, judge, col;",
-      // THE EXCHANGE. Outside the hold one work's sheet is drawn and the other is never sampled; inside
-      // it both stand closed, flat and full-frame, and the frame is the two quarters dissolving.
-      "  if (uCrease.w <= 0.0) { col = sheet(uA, uFitA, judge); }",
-      "  else if (uCrease.w >= 1.0) { col = sheet(uB, uFitB, judge); }",
-      "  else {",
-      "    vec3 ca = sheet(uA, uFitA, jA);",
-      "    vec3 cb = sheet(uB, uFitB, jB);",
-      "    col = mix(ca, cb, uCrease.w);",
-      "    judge = mix(jA, jB, uCrease.w);",
-      "  }",
+      "  vec3 judge, col;",
+      // THE EXCHANGE (S-03). One work's sheet is drawn and the other is never sampled, at every point
+      // of the hand alike: the first work's own panels carry the fold up to and through their own
+      // leaving swing, the hand changes which file the panels read at the hold's own middle — where
+      // `uCrease.w` (the very handle that used to weigh a blend) crosses its own half — and the second
+      // work's own panels carry the fold on from their own arriving swing. No two pictures are ever
+      // combined: the frame is always the one sheet the fold is standing on.
+      "  if (uCrease.w >= 0.5) { col = sheet(uB, uFitB, judge); }",
+      "  else { col = sheet(uA, uFitA, judge); }",
       "  col = mix(col, judge, uMask);",
       // THE COVERAGE: the alpha is the constant 1, and it is a decision rather than a default. The
       // growth law fills the frame with picture at every point of the travel, so this instrument has no
@@ -422,15 +429,28 @@
     var HOME_C = Math.cos(HOME * DEG);
     function reachOf(c) { return Math.max(0, (c - HOME_C) / (1 - HOME_C)); }
 
-    // THE PORT'S OWN ONE NUMBER. How much of the hand the closed sheet stands for, and therefore where
-    // the two works exchange. It is centred on the middle of the hand, so the two halves are equal and
-    // the module's own curve runs once over each. The exchange has to sit entirely inside the rest at
-    // fold 1, because that is the only instant at which both works stand as one flat full-frame picture
-    // and a dissolve between them shows no fold at all. Eight hundredths is that rest, wide enough to
-    // read as a held photograph at the pass durations this engine runs — half a second at 6.5 s — and
-    // narrow enough that the fold itself keeps the rest of the hand.
+    // THE PORT'S OWN FIRST NUMBER. How much of the hand carries the exchange, and therefore where it
+    // sits. It is centred on the middle of the hand, so the two halves are equal and the module's own
+    // curve runs once over each of the two long closing/opening stretches either side of it. Both works
+    // reach fold 1 — the one instant each stands as one flat full-frame picture — at the hold's own
+    // middle, which is where the hand switches which file the panels read. Eight hundredths is that
+    // span, wide enough to carry one full swing out and back on each side at the pass durations this
+    // engine runs — half a second at 6.5 s — and narrow enough that the fold itself keeps the rest of
+    // the hand.
     var HOLD = 0.08;
     var SHUT_IN = 0.5 - HOLD / 2, SHUT_OUT = 0.5 + HOLD / 2;
+    // THE PORT'S OWN SECOND NUMBER (S-03, replacing the flat cross-dissolve this exchange used to
+    // play). By SHUT_IN the sheet already stands shut and every panel has already turned past HOME, so
+    // folding a closed panel FURTHER moves nothing the eye can read — the one motion left to it is the
+    // one it already owns: swing back out of its own turn and shut again. Each half of the hold plays
+    // one such swing — shut at its own outer edge, open at the hold's own middle, shut again where the
+    // hand changes which work the panels read — using the very aY/aX/reach machinery every other fold
+    // on this frame already stands on, so nothing new is drawn, only the fold this swing asks for.
+    // FLUTTER_DIP is how far that swing gives the fold back: low enough that it reads as the panels'
+    // own turn and not a second unfold, high enough that the angle actually clears HOME, so the turn is
+    // seen rather than merely computed. One half back is that clearance with room held either side of
+    // it — HOME sits 0.9524 of the way from 0 to MAXA, and 0.5 stops well short of it.
+    var FLUTTER_DIP = 0.5;
 
     /* THE RESPONSE CURVE, MEASURED AND CARRIED DIGIT FOR DIGIT (unfold.js:257-277). Equal movements of
        the hand produce equal felt change, and the curve is not guessed: the raw fold was walked in fine
@@ -559,11 +579,26 @@
       var dial = clamp(st.mix, 0, 1);
       var four = st.panels >= 0.5;
       var lag = clamp(st.stagger, 0, 0.6);
-      // THE HAND'S TWO HALVES. The first work folds shut, the two works exchange on the closed sheet,
-      // the second work opens out. The module's own curve runs over each half.
-      var fold = dial <= 0.5
-        ? feelOf(clamp(dial / SHUT_IN, 0, 1))
-        : feelOf(1 - clamp((dial - SHUT_OUT) / (1 - SHUT_OUT), 0, 1));
+      // THE HAND'S FOUR STRETCHES. The first work folds shut, its own panels swing out and back to
+      // leave, the hand changes hands at the hold's own middle, the second work's panels swing out and
+      // back to arrive, and the second work opens out. The module's own curve runs over each of the two
+      // long stretches; the two swings carry the fold themselves and ask no curve, since a curve is
+      // read against a POSITION on the whole travel and a swing is a there-and-back on one spot of it.
+      var fold;
+      if (dial <= SHUT_IN) {
+        fold = feelOf(clamp(dial / SHUT_IN, 0, 1));
+      } else if (dial < 0.5) {
+        // THE FIRST WORK LEAVES BY ITS OWN FOLD (S-03): shut at SHUT_IN, out to FLUTTER_DIP and shut
+        // again at the hold's own middle, one swing of the very fold every other stretch already reads.
+        fold = 1 - FLUTTER_DIP * Math.sin(Math.PI * (dial - SHUT_IN) / (0.5 - SHUT_IN));
+      } else if (dial < SHUT_OUT) {
+        // THE SECOND WORK ARRIVES BY ITS OWN FOLD: the mirror of the swing above, shut at the hold's
+        // own middle — where the hand below already reads 0.5 and switches which file the panels take
+        // — and shut again at SHUT_OUT, where its own forty-six hundredths of opening takes over.
+        fold = 1 - FLUTTER_DIP * Math.sin(Math.PI * (dial - 0.5) / (SHUT_OUT - 0.5));
+      } else {
+        fold = feelOf(1 - clamp((dial - SHUT_OUT) / (1 - SHUT_OUT), 0, 1));
+      }
       var cross = smoothstep(SHUT_IN, SHUT_OUT, dial);
       // WHEN EACH PAIR OF PANELS GOES (unfold.js:303-315). Both pairs stand flat at fold 0 and fully
       // turned at fold 1 whatever the stagger is, so the handle cannot move either door.

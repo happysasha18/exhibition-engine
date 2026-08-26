@@ -441,7 +441,8 @@ BROWSER_ROWS = [
     "PASS-UNFOLD row 7  · door 1 stands the arriving work, measured against its own file",
     "PASS-UNFOLD row 7  · door 1 carries no trace of the departing work",
     "PASS-UNFOLD the closed sheet stands the one photograph each work was cut from",
-    "PASS-UNFOLD the two works exchange on that photograph, and on nothing folded",
+    "PASS-UNFOLD S-03   · the hand changes which work the panels read at the hold's own middle, "
+    "and no two pictures are ever combined",
     "PASS-UNFOLD the two roads agree at the four poses where the sheet stands square",
     "PASS-UNFOLD the two roads agree through the fold, at the compositor's own bar",
     "PASS-UNFOLD §7     · the frame is covered by panels at every sampled pose",
@@ -461,6 +462,8 @@ BROWSER_ROWS = [
     "PASS-UNFOLD row 16 · the captures are kept as evidence",
     "PASS-UNFOLD the panel map is WALKED on the drawing buffer at both doors, and what it read is published",
     "PASS-UNFOLD a door the judges' channel spoils is refused on the real road, and the visitor still lands",
+    "PASS-UNFOLD S-03   · the middle of the hold agrees with the lab module through a real swing of "
+    "the panels' own turn",
 ]
 
 # THE WORLD THE SHEET OPENS INTO (his 19:13 word, the second register). Four things have to be true
@@ -484,6 +487,7 @@ RED_ROWS = [
     "PASS-UNFOLD red-on-bug · the door reading removed: a door drawing the panel map is let through",
     "PASS-UNFOLD red-on-bug · the parquet removed: the world opens onto bare frame",
     "PASS-UNFOLD red-on-bug · the world's curve reverted: equal hand steps go back to unequal change",
+    "PASS-UNFOLD red-on-bug · the exchange's own swing removed: the hold blends two flat pictures again",
 ]
 
 # THE MEASUREMENT READ AT A DOOR, published in the manifest. His 19:13 word, lifted to the class at
@@ -760,8 +764,15 @@ else:
                 # ---- the poses, on both roads ---------------------------------------------------
                 FLAT = [("door-0", 0.0), ("shut-a", SHUT_IN), ("shut-b", SHUT_OUT), ("door-1", 1.0)]
                 FOLD = [("q1", 0.20), ("q2", 0.32), ("q3", 0.68), ("q4", 0.80)]
+                # S-03: THE MIDDLE OF THE HOLD, WHERE THE FLAT CROSSFADE USED TO STAND. Each half of
+                # the hold now plays one swing of the panels' own turn — shut at its own outer edge,
+                # open at the hold's own middle — so its own peak is a real angle to measure, not a
+                # blend fraction. Read the same way every other fold on this frame already is: against
+                # the lab module at the SAME raw fold, which the port's own `values()` hands it.
+                HOLD_SWING = [("hold-a", SHUT_IN + (0.5 - SHUT_IN) / 2),
+                              ("hold-b", 0.5 + (SHUT_OUT - 0.5) / 2)]
                 shots, reads = {}, {}
-                for tag, at in FLAT + FOLD:
+                for tag, at in FLAT + FOLD + HOLD_SWING:
                     reads[tag], hp, mp = roads(br, at, tag)
                     shots[tag] = (hp, mp)
 
@@ -789,8 +800,10 @@ else:
                         "frame's edge falls on the standing panel's own hinges, so the frame is that "
                         "one quarter at exactly the framing the whole work stood at")
 
-                # THE EXCHANGE ITSELF. At the middle of the hand the two quarters stand at half each,
-                # so the frame is their average — which is what a dissolve of two flat pictures is.
+                # THE EXCHANGE ITSELF (S-03). At the hold's own middle the hand changes which file the
+                # panels read; both works reach that instant fully closed, so the switch crosses no
+                # fraction and the frame there is the arriving work's own closed quarter, exactly as
+                # it stands at any other instant the sheet is shut — never an average of the two.
                 from PIL import Image, ImageChops
                 js(br, "return window.__both(0.5);")
                 br.sleep(0.5)
@@ -800,14 +813,15 @@ else:
                 blend = ImageChops.blend(qtowers, qglass, 0.5)
                 bmn, bmx = apart(midp, blend)
                 da, _ = apart(midp, qtowers)
-                db, _ = apart(midp, qglass)
+                db, dbmx = apart(midp, qglass)
                 check(BROWSER_ROWS[7],
-                      bmn <= SEAM and da > SEAM and db > SEAM,
-                      f"the frame at the middle of the hand stands {bmn:.4f} of 255 from the two "
-                      f"quarters averaged (threshold {SEAM}, worst channel {bmx}), {da:.4f} from the "
-                      f"first alone and {db:.4f} from the second. The sheet has stood shut since "
-                      f"{SHUT_IN} of the hand and stays shut until {SHUT_OUT}, so the whole exchange "
-                      f"happens on one flat picture and nothing is folded while it does")
+                      db <= SEAM and da > SEAM and bmn > SEAM,
+                      f"the frame at the hold's own middle stands {db:.4f} of 255 from the arriving "
+                      f"work's own closed quarter (threshold {SEAM}, worst channel {dbmx}) and "
+                      f"{da:.4f} from the departing work's — the hand has already switched to the one "
+                      f"work standing there. It stands {bmn:.4f} of 255 from the two quarters "
+                      f"averaged, which is what a dissolve of them would read: no two pictures are "
+                      f"ever combined")
 
                 flat_agree = [(t, ) + diff(*shots[t]) for t, _ in FLAT]
                 check(BROWSER_ROWS[8], all(mn <= FLAT_SAME for _, mn, _ in flat_agree),
@@ -827,9 +841,26 @@ else:
                         "with no coverage of its own. The four red-on-bug proofs below move this "
                         "same number by a wide multiple of the bar")
 
+                # S-03: THE SWING'S OWN PEAK, ON BOTH ROADS. `hold-a` is the first work's own turn
+                # giving back and shutting again; `hold-b` is the second work's mirror of it. Neither
+                # is a door and neither is a blend fraction — each is read at the SAME bar the fold
+                # rows above stand at, against the module rebuilt on the very work `cross` names.
+                swing_agree = [(t, reads[t]["fold"], reads[t]["cross"]) + diff(*shots[t])
+                               for t, _ in HOLD_SWING]
+                check(BROWSER_ROWS[27],
+                      all(mn <= FOLD_SAME for _, _, _, mn, _ in swing_agree)
+                      and reads["hold-a"]["cross"] < 0.5 and reads["hold-b"]["cross"] >= 0.5
+                      and 0.0 < reads["hold-a"]["fold"] < 1.0 and 0.0 < reads["hold-b"]["fold"] < 1.0,
+                      "; ".join(f"{t} at raw fold {f:.4f} (cross {c:.4f}): mean {mn:.4f} of 255 "
+                                f"(bar {FOLD_SAME}), worst channel {mx}"
+                                for t, f, c, mn, mx in swing_agree)
+                      + ". Each stands at a real angle away from either door, agreeing with the lab "
+                        "module at that same raw fold — the middle of the hold is a picture of the "
+                        "sheet actually turning, not a blend of two flat ones")
+
                 # ---- §7: the frame is covered, read off the panel map ----------------------------
                 maps = []
-                for tag, at in FLAT + FOLD:
+                for tag, at in FLAT + FOLD + HOLD_SWING:
                     maps.append((tag, unclaimed(panel_map(br, at, tag))))
                 check(BROWSER_ROWS[10], all(s == 0.0 for _, s in maps),
                       "; ".join(f"{t}: {s * 100:.4f}% unclaimed" for t, s in maps)
@@ -1070,10 +1101,11 @@ else:
                 kept = sorted(p.name for p in SHOTS.glob("*.png"))
                 check(BROWSER_ROWS[24],
                       len(kept) >= 35 and all((SHOTS / k).stat().st_size > 1000 for k in kept),
-                      f"{len(kept)} captures under {SHOTS.relative_to(ROOT)}: the eight poses on "
-                      f"both roads, their eight panel maps, the exchange at its middle, the two "
-                      f"doors in a stack, the seven sampled instants, the frame after a resize, the "
-                      f"two seeded runs and the six handle runs")
+                      f"{len(kept)} captures under {SHOTS.relative_to(ROOT)}: the ten poses on both "
+                      f"roads (the eight square and folded, and the hold's own two swings), their "
+                      f"ten panel maps, the exchange at its middle, the two doors in a stack, the "
+                      f"seven sampled instants, the frame after a resize, the two seeded runs and the "
+                      f"six handle runs")
 
                 # ---- THE PANEL MAP, WALKED ON THE BUFFER --------------------------------------
                 # The rows above photograph the map and read it as colour. This one asks the
@@ -1546,6 +1578,40 @@ else:
               "same pose leaves %.2f%% of the frame bare, which is the cleared buffer showing "
               "through a picture that told the host it had no absence to publish"
               % (base_bare * 100, bug_bare * 100))
+
+        # ---- 8. the exchange's own swing removed (S-03) ------------------------------------------
+        # Put the flat crossfade back exactly as it stood before this order: outside the hold one
+        # work draws and the other is never sampled, and inside it both are sampled and mixed by
+        # `uCrease.w`. Nothing else moves; the file on disk is never touched.
+        OLD_EXCHANGE = ('"  if (uCrease.w >= 0.5) { col = sheet(uB, uFitB, judge); }",\n'
+                         '      "  else { col = sheet(uA, uFitA, judge); }",')
+        BLEND_EXCHANGE = (
+            '"  if (uCrease.w <= 0.0) { col = sheet(uA, uFitA, judge); }",\n'
+            '      "  else if (uCrease.w >= 1.0) { col = sheet(uB, uFitB, judge); }",\n'
+            '      "  else { vec3 ca = sheet(uA, uFitA, judge); vec3 cb = sheet(uB, uFitB, judge); '
+            'col = mix(ca, cb, uCrease.w); }",')
+        assert OLD_EXCHANGE in PACK, "the S-03 exchange line moved; update the red-on-bug match"
+
+        def mid_apart_from_blend(b):
+            js(b, "return window.__both(0.5);")
+            b.sleep(0.5)
+            b.evaluate("window.__mask(0); window.__hostDraw(); window.__show('host'); 0")
+            b.sleep(0.3)
+            p = png(b, SHOTS / "exchange-mid-redbug.png")
+            return apart(p, blend)
+
+        bug = PACK.replace(OLD_EXCHANGE, BLEND_EXCHANGE, 1)
+        base_mid = on_bench(mid_apart_from_blend)
+        bug_mid = on_bench(mid_apart_from_blend, pack_text=bug)
+        check(RED_ROWS[7],
+              bug != PACK and base_mid is not None and bug_mid is not None
+              and base_mid[0] > SEAM and bug_mid[0] <= SEAM,
+              f"with the swing standing, the frame at the hold's own middle stands {base_mid[0]:.4f} "
+              f"of 255 from the two quarters averaged (worst channel {base_mid[1]}) — far past the "
+              f"seam of {SEAM}, since no two pictures are ever combined there. With the exchange put "
+              f"back to a flat crossfade the same frame stands {bug_mid[0]:.4f} of 255 from that same "
+              f"average (worst channel {bug_mid[1]}), inside the seam — the exact blend this order "
+              f"replaces")
 
 
 shutil.rmtree(TMP, ignore_errors=True)
