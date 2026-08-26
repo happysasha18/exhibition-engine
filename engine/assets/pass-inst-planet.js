@@ -328,10 +328,19 @@
 
     var TAU = 2 * Math.PI;
 
-    /* ---- THE MODULE'S OWN NUMBERS, carried digit for digit ---------------------------------------
+    /* THE NARROWEST CROSS-DISSOLVE where the two ends of the curled strip meet, so a shut ring has
+       no cut down it either. planet.js:554 carried this digit for digit as 0.14 when this port was
+       first written, and that is still the fallback below where no host has answered yet.
 
-       THE NARROWEST CROSS-DISSOLVE where the two ends meet, so a shut ring has no cut down it
-       either (planet.js:554). */
+       IT NOW TRAVELS ON THE HOST'S OWN SEAM (§8's `seams` block, pass-layer.js), and moving it there
+       changed the number. The 0.14 was the module's own typed literal, fixed regardless of how the
+       strip is bent or how big the buffer is; the host answers instead with a HANDOVER ZONE's own
+       share — one part in eight of the one wrap this strip makes, which is 0.125 — the same shape
+       tunnel's own ring-join now rounds its edge with, so a wrap glued to itself in one file and a
+       ring handed to the next in another read one argument instead of two typed numbers that happen
+       to be close. The difference between 0.14 and 0.125 is inside the crossing's own seam
+       threshold, which is what the two-roads row below still measures against the module untouched.
+    */
     var SEAM = 0.14;
 
     /* HOW FAR THE SKY WASH REACHES, AT ANY FRAME SHAPE (planet.js:323-337). The wash is what keeps
@@ -600,11 +609,14 @@
       // point of the buffer wherever the cut happens to fall.
       var footFlat = 1 / Math.max(H, 1);
       var skyRow = CROP_FOOT + (cropTop - CROP_FOOT) * (flip ? 0.07 : 0.93);
+      // THE WRAP'S OWN SEAM, off the host's own `seams` reading; SEAM is only where this file falls
+      // back before any host has answered.
+      var seam = num(st.seam && st.seam.ring, SEAM);
 
       return {
         geom: [Phi, R, D, ycb],
         cam: [S, totalSpin, gamma, flip],
-        wedge: [gapW, SEAM, far, atm],
+        wedge: [gapW, seam, far, atm],
         crop: [CROP_FOOT, cropTop],
         world: world,
         flatPP: flatPP,
@@ -836,6 +848,13 @@
       // coarser of the two, the contract table's WORLD is the module's own row, and the shelf that
       // names the sphere settles it. CELL, CELL CONTENT, TEXTURE and LIGHT-COLOUR are not claimed.
       levels: ["WORLD", "SURFACE"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The strip this curl bends is one
+      // photograph wrapped into a RING, and its two ends meet at a join the module itself never
+      // closes to nothing — «a shut ring has no cut down it either» — so the join is glued by a
+      // HANDOVER ZONE, a real cross-dissolve rather than an antialiasing retouch. `of` names no
+      // handle: the strip wraps exactly once, so the zone is a single wrap's own share and not a
+      // share divided among several.
+      seams: [{ kind: "ring", of: null, unit: "a share of one repeat's own span" }],
       params: { curl: [0, 1], depth: [0, 1], dip: [0, 1], turn: [0, 1], gather: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial — the module's own hidden `world`
       // key, under the name every instrument in this engine gives it, carrying the whole passage:
@@ -1045,6 +1064,9 @@
           // geometry is built on the picture's proportions, and this is where they come from: the
           // seating the host asked this file's own `fit` for and will bind to the shader.
           fitA: st.fitA, fitB: st.fitB,
+          // THE WRAP'S OWN SEAM, off the host's own `seams` reading (§8's `seams` block). Only the
+          // host knows what every instrument declaring a handover zone is holding its own wrap to.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00

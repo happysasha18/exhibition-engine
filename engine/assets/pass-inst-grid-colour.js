@@ -821,6 +821,26 @@
       // of the work's own colour, which is the kind the composer's `shared-palette-region` pivot
       // names and which no other landed instrument cuts on.
       cuts: ["strip", "ring", "tile", "band"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). Three of the four cuts
+      // share one mechanism, named in this file's own opening comment: "THE HAIRLINE OVERLAP. The
+      // module grows every piece by one pixel at each edge so no seam opens between two clip paths,
+      // and draws the pieces in order so the later one wins. Both are carried: the inverse map tests
+      // the neighbouring piece first and takes it where it stands" (A CANVAS 2D MODULE AND THE SHAPE
+      // IT WAS GIVEN, above). The shader carries the same growth digit for digit — the strip loop's
+      // own bounds are `a0 = k * s - 1.0, a1 = (k + 1.0) * s + 1.0`, the tile loop grows both `a` and
+      // `b` the same way, and the ring loop grows its outer edge by `+ 1.0` before the later ring is
+      // let win — so a strip, a tile or a ring is one point wider at each edge than its own step, and
+      // the point of overlap this buys is what keeps the module's clip paths from opening a gap. It
+      // is a HAIRLINE retouch rather than a handover zone: the pieces are exact by construction and
+      // the growth exists only so the sampling grid never lands a point in neither piece. `of` names
+      // no handle because the growth is a flat point at every edge whatever the count or the angle.
+      // BAND CARRIES NO SUCH ENTRY. A colour band's own membership is `nearestOf`, the plain nearest
+      // of the work's five measured colours in the colour cube, decided once at the point itself with
+      // no quantisation grid to grow the edges of — every point of the picture already names exactly
+      // one band, so there is no clip-path seam of this kind for a band cut to carry.
+      seams: [{ kind: "line", of: null, unit: "points of the drawing buffer" },
+              { kind: "ring", of: null, unit: "points of the drawing buffer" },
+              { kind: "tile", of: null, unit: "points of the drawing buffer" }],
       params: { kindA: [0, 3], kindB: [0, 3], countFrom: [1, RING_MAX], countTo: [1, RING_MAX],
                 angleFrom: [0, 180], angleTo: [0, 180], stagger: [0, 0.9], lead: [0, 0.9] },
       // WHAT THIS INSTRUMENT SHOWS BESIDES A CROSSING (his 19:13 word, the second register). The cut

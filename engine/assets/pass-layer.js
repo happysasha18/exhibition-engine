@@ -2834,6 +2834,52 @@
     rec.camOver = plane.over;
   }
 
+  // ---- §8's `seams` block: THE FLEET'S TWO SHARED SEAM SHAPES ------------------------------------
+  // Three instruments — kaleidoscope, planet, tunnel — each cut the frame at a boundary a picture
+  // cannot help but have (a fold's own edge, a wrap's own join) and each rounded it by hand, in its
+  // own file, with its own typed number: kaleidoscope's crease retouch, planet's cross-dissolve where
+  // a curled strip's two ends meet, tunnel's cross-fade where one depth-ring hands over to the next.
+  // All three are one of exactly two shapes, and an instrument now DECLARES which one it needs
+  // (`manifest.seams`) instead of carrying the arithmetic itself.
+  //
+  //   A HAIRLINE RETOUCH rounds a crease that is already continuous — the fold does not jump, only
+  //   its own derivative does — so its width is CAPABILITY: a fact about the SAMPLING GRID and not
+  //   about the picture, exactly like how many bytes a float takes or how long a frame is. Below one
+  //   point of the drawing buffer it falls inside a single sample and does nothing; past three it
+  //   stops rounding a crease and starts smearing it into a visible band. 1.5 is the middle of that
+  //   span — kaleidoscope's own number, argued in its file before this block existed and carried
+  //   here unchanged, digit for digit, so the two roads it is measured against still agree. It does
+  //   not shrink as its element repeats more often, because a hairline spends none of the element's
+  //   own room.
+  //
+  //   A HANDOVER ZONE glues two ends of a wrap together over a real, visible span — a cross-dissolve,
+  //   not an antialiasing retouch — so its width IS a share of the room the wrap itself has: one part
+  //   in eight of what a single repeat gets, halved again for every further repeat sharing the same
+  //   turn, and never allowed under a hundredth or over a fifth — the same floor-and-ceiling
+  //   reasoning the hairline stands on, read in the handover's own unit.
+  var SEAM_HAIRLINE_POINTS = 1.5;
+  function seamHairlineOf() { return SEAM_HAIRLINE_POINTS; }
+  function seamHandoverOf(count) {
+    var share = 0.125 / Math.max(Number(count) || 1, 1);
+    return share < 0.01 ? 0.01 : (share > 0.2 ? 0.2 : share);
+  }
+  // THE DECLARATION READ, for one instrument, on the handles this frame actually stands at. `of`
+  // names the handle counting how many times this seam's own element repeats round its full turn;
+  // an instrument whose seam is not spent per-repeat (planet's wrap, tunnel's ring) names none, and
+  // the share is read as a single turn's own share. Returns null where the manifest names no seam at
+  // all, so an instrument that predates this block asks the host for nothing and gets nothing back.
+  function seamsOf(inst, handles) {
+    var decl = inst && inst.manifest && inst.manifest.seams;
+    if (!decl || !decl.length) return null;
+    var out = {};
+    decl.forEach(function (s) {
+      var count = s.of && handles && handles[s.of] !== undefined ? handles[s.of] : 1;
+      out[s.kind] = s.unit === "points of the drawing buffer" ? seamHairlineOf()
+                                                               : seamHandoverOf(count);
+    });
+    return out;
+  }
+
   // The record one voice receives. Held apart from the loop above so the closure over `v` and `drew`
   // is made once per voice per frame rather than captured by accident from a shared variable.
   function frameState(rec, v, seconds, progress, handles, cam, hold, drew, plane) {
@@ -2865,6 +2911,11 @@
       // it. Added 2026-08-17 on the doors lane's request.
       fitA: instFit(v.inst, rec.src.aw, rec.src.ah),
       fitB: instFit(v.inst, rec.src.bw, rec.src.bh),
+      // THE SEAM WIDTHS §8's `seams` block asks for, read once here off the handles this frame
+      // stands at, so kaleidoscope's crease, planet's wrap and tunnel's ring-join draw one shared
+      // shape apiece instead of the number each used to carry on its own. Null where the manifest
+      // declares no seam, which is every instrument that predates this block.
+      seams: seamsOf(v.inst, handles),
       reduced: !!rec.cmd.reduced,
       camera: cam.pose,
       // a pinned run is a bench run: it holds its pose instead of walking to the end door, so a

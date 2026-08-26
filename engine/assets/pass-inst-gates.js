@@ -590,6 +590,19 @@
       // composer's own `KIND_OF_MEASURE` maps the `regions` measure to `panel`, which is the kind
       // this cut is named in.
       cuts: ["panel"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The panel cut is the two
+      // leaves parting from the slot, and the shader's own comment above names the edge exactly:
+      // "COVERAGE OVER THE PIXEL'S OWN FOOTPRINT. Across the gate the edge is a straight line and the
+      // signed distance in pixels is exact" — `covL`/`covR` are `clamp(0.5 + (l - a) / hA, 0.0, 1.0)`
+      // and its mirror, `hA = 1.0 / resA`. THE DOOR THE INSTRUMENT READS FOR ITSELF says the width of
+      // it plainly: "the crossover band is exactly one sample wide — the signed distance is divided
+      // by hA, so `cov` moves by one over one sample" (HOW FAR EITHER SIDE OF AN EDGE IS READ, above).
+      // That is a hairline retouch on an edge that is otherwise exact by construction, not a
+      // deliberate handover — along the slot a tooth's own step is filtered by three taps for the
+      // same reason, so a jittered tooth edge never lands as a hard stair. `of` names no handle
+      // because the one-sample width is set by `hA` alone and does not shrink as the tooth count
+      // moves.
+      seams: [{ kind: "line", of: null, unit: "points of the drawing buffer" }],
       params: { jamb: [0, 0.9], teeth: [1, 24], swing: [0, 1], press: [0, 1], lead: [0, 1] },
       // EVERY handle a score can drive (§4.4b). The five above are the module's own declared params
       // (gates.js:435-441); `mix` is its one travelling number and `clock` the second the host hands

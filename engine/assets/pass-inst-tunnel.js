@@ -180,6 +180,9 @@
       "uniform vec4 uCrop;",
       // The judges' channel: which work stands at this point of the corridor, and where in its crop.
       "uniform float uMask;",
+      // WHERE ONE DEPTH-RING HANDS OVER TO THE NEXT: the width of that join's own cross-fade, as a
+      // share of one ring, off the host's own `seams` reading (§8's `seams` block).
+      "uniform float uSeam;",
       "",
       "const float TAU = 6.28318530718;",
       // THE FIVE TAPS' OWN CAP, in the crop's own units. Past a third of the crop the footprint is
@@ -243,7 +246,7 @@
       "  float f = fract(zz * 0.5);",
       "  float v = abs(f * 2.0 - 1.0);",
       "  vec3 a = pickF(vec2(um, v), foot, which, flat0);",
-      "  float edge = smoothstep(0.90, 1.0, abs(v * 2.0 - 1.0));",
+      "  float edge = smoothstep(1.0 - uSeam, 1.0, abs(v * 2.0 - 1.0));",
       "  if (edge > 0.001) {",
       "    float f2 = fract(zz * 0.5 + 0.5);",
       "    vec3 b = pickF(vec2(um, abs(f2 * 2.0 - 1.0)), foot, which, flat0);",
@@ -377,6 +380,21 @@
        corridor stands whole for the whole middle act, so the arriving work never travels while the
        geometry is still moving and the two motions are never read at once. */
     var ACT = 1 / 3;
+
+    /* WHERE ONE DEPTH-RING HANDS OVER TO THE NEXT (tunnel.js:60-71). The picture runs down the
+       corridor's own depth and turns around at each ring's edge, so a short cross-fade with the
+       neighbouring ring keeps the turn itself from showing as a seam. The width used to stand in the
+       shader as a bare `0.90` with no name and no argument beside it — a crease rounded by hand, the
+       same shape kaleidoscope's own crease and planet's own wrap-seam were rounded by before this
+       block existed.
+
+       IT NOW TRAVELS ON THE HOST'S OWN SEAM (§8's `seams` block, pass-layer.js): the manifest
+       declares this join a HANDOVER ZONE, a real cross-dissolve and not an antialiasing retouch, and
+       the host answers with one part in eight of the one ring the join is spent on — 0.125, the same
+       share planet's own wrap-seam now rounds its edge with. `RING_JOIN_FALLBACK` is only where this
+       file stands before any host has answered, and it keeps the number this port shipped with
+       — 0.10 — so a reader who never sees a host-driven frame still finds the join softened. */
+    var RING_JOIN_FALLBACK = 0.10;
 
     /* THE CROP'S OWN TWO SIDES, and whose numbers they are (tunnel.js:143). The module carries two
        rectangles typed for two named photographs; his 19:13 word, lifted to the class at 19:21,
@@ -517,6 +535,9 @@
       // slow drift. The wall's rectangle is a piece of the PICTURE, so it stands where the
       // measurement says and holds still while the corridor wanders about it.
       var crop = cropOf(far, farY);
+      // THE RING-JOIN'S OWN SEAM, off the host's own `seams` reading; RING_JOIN_FALLBACK is only
+      // where this file stands before any host has answered.
+      var seam = (st.seam && typeof st.seam.ring === "number") ? st.seam.ring : RING_JOIN_FALLBACK;
 
       return {
         cam: [aspect, cx, cy, 1],
@@ -528,6 +549,7 @@
         // frame.
         wipe: [station.at, corridor * smoothstep(0, 0.02, flood) * smoothstep(1, 0.98, flood)],
         crop: crop,
+        seam: seam,
         // read on the diagnostic surface, bound to no uniform
         hand: dial, within: x, corridor: corridor, flood: flood,
         act: x < ACT ? "the corridor opens" : (x > 1 - ACT ? "the corridor closes"
@@ -746,6 +768,13 @@
       // LIGHT-COLOUR are not claimed either: the fog, the cold tint and the hole are the module's own
       // depth cue on one surface rather than a voice over a field.
       levels: ["SURFACE", "CELL"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The RING is where one depth-ring hands
+      // over to the next: the picture turns around at that edge and a cross-fade with the
+      // neighbouring ring keeps the turn from showing as a seam. It is a HANDOVER ZONE and not an
+      // antialiasing retouch — the fold really does turn around there — and `of` names no handle:
+      // rings recur without bound as the fall goes on, so the zone is one ring's own share rather
+      // than a share divided among a bounded set of them.
+      seams: [{ kind: "ring", of: null, unit: "a share of one repeat's own span" }],
       params: { depth: [0, 1], ribs: [0, 1], spokes: [REPS_MIN, REPS_MAX], twist: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` the second the host
       // hands down — a corridor that did not fall would not be a corridor, so unlike the folding
@@ -887,6 +916,7 @@
           { name: "uWipe", type: "vec2", source: "frame:wipe" },
           { name: "uCrop", type: "vec4", source: "frame:crop" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uSeam", type: "float", source: "frame:seam" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -945,6 +975,10 @@
           // needs it: what a door asks is that the sample coordinate be the plain cover fit, and the
           // cover fit is the host's own number.
           fitA: st.fitA, fitB: st.fitB,
+          // THE RING-JOIN'S OWN SEAM, off the host's own `seams` reading (§8's `seams` block). Only
+          // the host knows what every instrument declaring a handover zone is holding its own ring
+          // to.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00

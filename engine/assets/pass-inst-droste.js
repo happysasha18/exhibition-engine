@@ -610,6 +610,15 @@
       // and the handover happens on one of them. The collection's `radial` measure cuts on this
       // kind.
       cuts: ["ring"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The handover between
+      // one copy and the next is a RING — the annulus `share` dissolves across — and it is a
+      // HANDOVER ZONE and not an antialiasing retouch: the module's own dissolve is a real,
+      // visible cross-fade rather than a hairline. `SEAM_SHARE` above is that width and it stays
+      // this instrument's own number for now, digit for digit off the module: only the three
+      // instruments the host's shared shape was first argued from — kaleidoscope, planet, tunnel —
+      // have moved their own numbers onto it. `of` names no handle because the width is a share of
+      // one copy and does not depend on how many copies the dive holds.
+      seams: [{ kind: "ring", of: null, unit: "a share of one repeat's own span" }],
       // WHAT A PAIR MUST READ FOR THIS CROSSING TO BE WORTH PLAYING HERE, in the instrument's own
       // words, so the choice can be made when a pair is handed over rather than swept for.
       asks: {

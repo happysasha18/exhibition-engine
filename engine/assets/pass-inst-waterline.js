@@ -560,6 +560,15 @@
       // one horizontal boundary sweeping the frame while each band changes hands on its own
       // schedule. No other element kind is cut here: no tile, no wedge, no ring, no region.
       cuts: ["band"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The boundary between the two bands is
+      // `cov = clamp(0.5 + sd, 0.0, 1.0)` with `sd = (uTau - qe) / (grad * h)`, `h = 1 / bufH` — the
+      // shader's own words above it say exactly what this is: "COVERAGE OVER THE PIXEL'S OWN
+      // FOOTPRINT, from the field's own gradient — the boundary is a side, not a blend, and it is one
+      // pixel wide wherever it runs." A HAIRLINE retouch and not a deliberate cross-fade: the tide's
+      // own raggedness (`uSpread`, the die) moves WHERE the line runs, never how WIDE the crossover
+      // is, so `of` names no handle — the width is fixed at one buffer point regardless of how ragged
+      // the shore reads or how many patches the die scatters.
+      seams: [{ kind: "line", of: null, unit: "points of the drawing buffer" }],
       params: { line: [0, 1], depth: [0, 1], swell: [0, 1], lead: [0, 1], order: [0, 1],
                 settle: [0, 1], tideCells: [0, 1] },
       // THE TWO THE PORT PUBLISHES THAT THE MODULE HELD AS CONSTANTS, and why each is a handle. His

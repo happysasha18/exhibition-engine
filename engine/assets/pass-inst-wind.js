@@ -495,6 +495,16 @@
       // prefers a manifest's own `cuts` to any table it keeps and names an instrument that declares
       // none as UNPLACED — landed and uncastable.
       cuts: ["strip"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The change of hands rides the gust's
+      // own front, read at the source point: `cov = clamp(0.5 + (front - alongS) / band, 0.0, 1.0)`
+      // with `band` the gust's own direction measured in the buffer's resolution — the shader's own
+      // words above it: "It is one point of the drawing buffer wide, measured along the gust's own
+      // direction, so it carries no fade of its own and no step either." A HAIRLINE retouch: the
+      // boundary is bowed and staggered by the same air that bends the rows, but its WIDTH is the
+      // buffer's own sampling footprint rather than a band the shader grew on purpose. `of` names no
+      // handle: the crossover stays one buffer point wide whatever `rows` the picture is cut into or
+      // however hard the gust leans the front through `lag`.
+      seams: [{ kind: "line", of: null, unit: "points of the drawing buffer" }],
       params: { rows: [ROWS_MIN, ROWS_MAX], bend: [0, 1], gust: [0, 1], lag: [0, 1], axis: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down — the one place a second reaches this instrument at all, the fine tremor over the

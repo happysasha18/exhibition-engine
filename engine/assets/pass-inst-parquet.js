@@ -733,6 +733,25 @@
       // instrument out of reach of every step whose role has none to spend, which would be a large
       // consequence to draw from a word the table does not use.
       levels: ["SURFACE", "CELL"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The floor is cut into
+      // tiles, and the header above names the device that keeps a tile's own edge from reading as a
+      // drawn line against its neighbour: "every tile flipped against the one beside it, so the
+      // seams close and the pattern runs on without an edge" (line 31), and `register: "process"`
+      // below says the same thing in the fleet's own second register — "the mirror is the rule that
+      // closes the seams." The shader is where that rule is spent: `par = mod(idx, 2.0)` reads a
+      // tile's own parity and `mir = mix(loc, 1.0 - loc, par)` mirrors every second tile across both
+      // axes, so a tile that ends its own row at `loc.x` approaching 1 sits beside a mirrored
+      // neighbour whose `loc.x` approaches 0 and reads the SAME texture coordinate there — the two
+      // tiles agree on the colour standing at their shared edge because the mirror makes them sample
+      // it from the same place. That is a HAIRLINE case and not a HANDOVER ZONE: nothing here blends
+      // two different colours across a band, the boundary is mathematically continuous by the
+      // mirror's own construction, and anything a viewer could still see at a tile's edge is a
+      // sampling or antialiasing artifact of the grid the shader is drawn on rather than a seam the
+      // mirror left open. `of` names no handle because the mirror's own law is the same at every
+      // tile count the `tiles` handle can ask for — it is a rule about PARITY, not about how many
+      // tiles stand across the floor, so widening or narrowing the lattice never changes what a tile
+      // and its neighbour agree on at the edge between them.
+      seams: [{ kind: "tile", of: null, unit: "points of the drawing buffer" }],
       params: { tiles: [TILES_MIN, TILES_MAX], depth: [0, 1], lattice: [0, 180], spin: [0, SPIN_MAX] },
       // WHAT THIS INSTRUMENT SHOWS BESIDES A CROSSING (his 19:13 word, the second register). A work
       // laid out as a mirrored floor of itself is the work's own cutting device carried on: the

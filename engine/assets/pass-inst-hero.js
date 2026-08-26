@@ -744,6 +744,22 @@
       // light this instrument adds is the planet's own sky and rim, which belong to the reading
       // rather than to a field laid over one.
       levels: ["SURFACE", "CELL"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). There are two, since the window is cut
+      // by two devices in one field: the four angular mirrors, and the mirror across a ring that turns
+      // the wedges into courses. Both are HAIRLINE retouches, on the same construction kaleidoscope's
+      // own wedge and ring seams stand on — `foldTo`'s own `mix(A, 2.0 * axis - A, k)` and the ring
+      // mirror's own `mix(r, 2.0 * uWarp.z - r, rk)` both equal their untouched argument exactly AT
+      // the crease (`2.0 * axis - A` is `A` when `A` is `axis`; `2.0 * uWarp.z - r` is `r` when `r` is
+      // `uWarp.z`), so the two halves of a fold meet with no gap and what is rounded is only the sign
+      // flip in the angle's, and the radius's, own derivative there. The file's own comment says as
+      // much: "the seam is held at a few points wide whatever the radius" (above FRAG's `fw`), and
+      // both widths — `fw = 5.0 / pxu` for the angular mirrors, `rw = 7.0 / pxu` for the ring — are
+      // built from `pxu`, the buffer's own points per unit, so they stay a fixed few points of the
+      // drawing buffer however far a crease has travelled. `of` names no handle for either: neither
+      // width is written in terms of `folds`, the handle that decides how many of the four mirrors the
+      // window opens, so neither shrinks nor grows as that count changes.
+      seams: [{ kind: "wedge", of: null, unit: "points of the drawing buffer" },
+              { kind: "ring", of: null, unit: "points of the drawing buffer" }],
       params: { folds: [1, 4], planet: [0, 1], turn: [0, 1], course: [0, 0.5] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` the second the host
       // hands down; the pair's own measured radial centre places the folds; its measured order of

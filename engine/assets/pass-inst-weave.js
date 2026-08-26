@@ -677,6 +677,23 @@
       // cost something real: an owner holds a level to the exclusion of every other cue, so
       // claiming SURFACE here silenced whichever voice actually drove it.
       levels: ["CELL"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The cells are the
+      // ribbons, and within one ribbon the frame carries the departing work up to the ribbon's own
+      // `dutyV`/`dutyH` mark and the arriving work past it — the boundary `covV = sqcov(cV, dutyV,
+      // wV)` reads, and `colV = mix(texBd(...), texAd(...), covV)` draws. `sqcov` does not step at
+      // that mark; it runs an antialiasing window of half-width `wV`/`wH` across it, and that width
+      // is built to answer the screen grid rather than an artistic choice: "The wandering edge tilts
+      // the cell coordinate across the OTHER axis too, so its own slope joins the pixel footprint —
+      // without it a waved edge sparkles" (the comment standing over `wV = 0.5 * (nV * warpD(...) /
+      // uRes.x + abs(dEdgeV) / uRes.y)`), which reads `uRes` directly and is the same footprint a
+      // plain antialiased edge would need to keep from sparkling. That is a HAIRLINE case and not a
+      // HANDOVER ZONE: the width is sized to the drawing buffer's own points, not to a fraction of
+      // the ribbon's length, and it exists to keep the moving edge from aliasing rather than to blend
+      // two pieces over a deliberate span. `of` names no handle: `wV`/`wH` are carried in cell units
+      // that grow with `nV`/`nH` only so the footprint STAYS the same width in points of the buffer
+      // however many ribbons the `strips` handle asks for — the seam's own width in the unit this
+      // entry publishes does not move with the count.
+      seams: [{ kind: "line", of: null, unit: "points of the drawing buffer" }],
       params: { strips: [3, 64], axis: [0, 2], speed: [0.1, 2.5] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial; `clock` is the second the host
       // hands down; the other four were the module's own params and its own die, and they are

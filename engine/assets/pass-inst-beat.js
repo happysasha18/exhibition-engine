@@ -533,6 +533,18 @@
       // a rhythm is a scale. Both kinds stand in the composer's own vocabulary: `banding` maps to
       // `strip` and `texture` to `scale` in its `KIND_OF_MEASURE`.
       cuts: ["strip", "scale"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The strip cut hands
+      // over along the travelling threshold `tau` where it crosses the beat field `M`, and the
+      // boundary the shader draws there is `cov = clamp(0.5 + (M - tau) / (grad * h), 0.0, 1.0)`
+      // (FRAG, `d`/`cov` above) — a gradient-based edge one buffer row deep, `h = 1.0 / uRes.y`,
+      // exactly the ordinary antialiasing every other cut edge in this fleet needs and not a
+      // deliberate handover the module widened on purpose. The door proof above says the same thing
+      // in its own words: the mask "crosses over inside a band of the field HALF THE FIELD'S OWN
+      // SLOPE PER BUFFER ROW wide" (THE DOOR THE INSTRUMENT READS FOR ITSELF, "WHY THE BUFFER ENTERS
+      // AT ALL"), which is a hairline tied to the drawing buffer's own resolution and not to how many
+      // lobes or gratings stand in the frame. `of` names no handle because that width does not shrink
+      // as the lobe count or either period handle moves — `h` alone sets it.
+      seams: [{ kind: "line", of: null, unit: "points of the drawing buffer" }],
       params: { periodA: [0, 1], periodB: [0, 1], phase: [0, 1], contrast: [0, 1], lead: [0, 1],
                 beatTilt: [TILT_MIN, TILT_MAX] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial — the module's one travelling

@@ -678,6 +678,20 @@
       // note for it reads «a named region is a thing in the picture», which is what this instrument
       // carries whole across an emptiness.
       cuts: ["region"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The cut is on two named
+      // regions — the departing thing and the arriving thing — and a seam would be the boundary
+      // where one region's content meets the other's. There is none to soften, because by this
+      // file's own construction the two pieces never coexist in a drawn frame to have a boundary at
+      // all: "the first is wholly gone by 0.47 of the travel and the second begins at 0.53" (this
+      // file, THE VISITOR SEES, above), and `posed` enforces the gap in the numbers rather than only
+      // in prose — `eA = smoothstep(0, DEPART, d)` walks `thrA` up to `maxA` (the density nothing in
+      // the work reaches) before `eB = smoothstep(ARRIVE, 1, d)` ever lifts off zero, so the frame
+      // that empties the first thing's silhouette is drawn before the frame that fills any of the
+      // second's. The two silhouettes' own edges are already the shader's ordinary gradient-based
+      // antialiasing (`covA`/`covB` at adrift.js:263/:277, one texel wide by `fpA`/`fpB`), which is
+      // sampling retouch on a single region's own outline rather than a seam between two regions, so
+      // it is not what this field is for.
+      seams: [],
       params: { flight: [0, 1], horizon: [0, 1], grain: [0, 1], shrink: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down; the four below them are the module's declared params; `seed` is its die; `shade`,

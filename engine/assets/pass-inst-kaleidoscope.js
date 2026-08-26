@@ -355,11 +355,17 @@
        host can hand, and it costs the picture nothing anywhere else: past the softening `softAbs` is
        the absolute value to the last bit.
 
-       WHY THIS MANY POINTS. Below one point the retouch falls inside a single sample and does
-       nothing; much above three the crease stops being a crease and starts being a smear the eye
-       reads as blur along a line. One and a half points is a crease softened across its own
-       neighbour on either side, which is the least that can remove a hard edge from a sampled grid.
-       It is the port's own number and it stands on the revisit list. */
+       THIS NUMBER NOW TRAVELS ON THE HOST'S OWN SEAM (§8's `seams` block, pass-layer.js). It used to
+       stand here as a private number with a note that it wanted revisiting; the argument for it —
+       below one point of the drawing buffer the retouch falls inside a single sample and does
+       nothing, past three it stops rounding a crease and starts being a smear the eye reads as blur
+       along a line, and one and a half points is the middle of that span — did not belong to this
+       fold alone, because planet's own wrap-seam and tunnel's own ring-join were rounding an edge by
+       the same reasoning in two more files. The manifest below DECLARES both of this instrument's
+       seams (the wedge's own crease and the radial repeat's own crease) as `unit: "points of the
+       drawing buffer"`, the host answers with the one number the argument above settles on, and
+       `SOFT_POINTS` here is only the value this file falls back to where no host has answered yet —
+       at manifest registration, before any frame has been asked for. */
     var SOFT_POINTS = 1.5;
 
     // ---- the grid one frame is drawn on ------------------------------------------------------------
@@ -430,12 +436,16 @@
       var rot = rotOf(t);
       var finish = clamp(num(st.shade, 1), 0, 1) * fold;
       var texA = texelOf(st.fitA, aspect), texB = texelOf(st.fitB, aspect);
-      // THE CREASE'S SOFTENING, carried into the units each fold is folded in. In ANGLE it is a fixed
-      // number of buffer points at unit radius, and the shader divides by the radius so the width on
-      // the frame is the same everywhere. In the RADIAL repeat one buffer point is `rings / (R0 * m)`
-      // of the repeat's own coordinate, which is the chain rule of `t = r / R0 * rings` and nothing
-      // more.
-      var soft = [SOFT_POINTS / Math.max(m, 1), SOFT_POINTS * rings / (1.25 * Math.max(m, 1))];
+      // THE CREASE'S SOFTENING, carried into the units each fold is folded in. Both widths arrive in
+      // POINTS OF THE DRAWING BUFFER off the host's own `seams` reading (§8, pass-layer.js) — the
+      // manifest names both as hairline retouches, so the host answers with the same number for both
+      // and `SOFT_POINTS` stands in only where no host has answered yet. In ANGLE that width is read
+      // at unit radius and the shader divides by the radius so the width on the frame is the same
+      // everywhere. In the RADIAL repeat one buffer point is `rings / (R0 * m)` of the repeat's own
+      // coordinate, which is the chain rule of `t = r / R0 * rings` and nothing more.
+      var softWedgePts = num(st.seam && st.seam.wedge, SOFT_POINTS);
+      var softRingPts = num(st.seam && st.seam.ring, SOFT_POINTS);
+      var soft = [softWedgePts / Math.max(m, 1), softRingPts * rings / (1.25 * Math.max(m, 1))];
       return {
         fold: [fold, wet, wedges, twist],
         ring: [rings, zoom, rot, finish],
@@ -447,7 +457,8 @@
         hand: dial, depth: fold, exchanged: wet, wedges: wedges, twist: twist,
         rings: rings, reach: reach, zoom: zoom, turn: rot, second: t,
         centreX: cx, centreYUp: cy, finish: finish,
-        softPoints: SOFT_POINTS, swapHalf: SWAP_HALF, ringsCeiling: RINGS_MAX,
+        softPoints: softWedgePts, softRingPoints: softRingPts, swapHalf: SWAP_HALF,
+        ringsCeiling: RINGS_MAX,
         mask: clamp(num(st.mask, 0), 0, 1),
         fitA: [num(st.fitA && st.fitA[0], 1), num(st.fitA && st.fitA[1], 1)],
         fitB: [num(st.fitB && st.fitB[0], 1), num(st.fitB && st.fitB[1], 1)],
@@ -650,6 +661,15 @@
       // symmetry rather than an element set a pair could be cast from. Claiming the kind would let a
       // pivot be held on elements this instrument never reads.
       cuts: ["ring"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block), declared so the host can round both
+      // rather than this file carrying two copies of one argument. The WEDGE seam is the fold's own
+      // angular crease — the corner the triangle wave turns at every wedge edge; the RING seam is
+      // the same crease read in the radial repeat, where the tiling mirrors. Both are HAIRLINE
+      // retouches: the fold is already continuous across either edge, so what is rounded is the sign
+      // flip in its own derivative, a fact about the sampling grid rather than about either work, and
+      // `of` names no handle because a hairline does not shrink as its element repeats more often.
+      seams: [{ kind: "wedge", of: null, unit: "points of the drawing buffer" },
+              { kind: "ring", of: null, unit: "points of the drawing buffer" }],
       // WHAT A PAIR MUST READ FOR THE CROSSING TO BE WORTH PLAYING HERE, said in the instrument's own
       // terms and left for the composer to test against the collection's own floors — the numbers
       // belong to the collection and no instrument may keep a copy of them.
@@ -923,6 +943,10 @@
           // aspect correction is recovered from it, so the script and the shader work from ONE
           // seating rather than two guesses at it.
           fitA: st.fitA, fitB: st.fitB,
+          // THE CREASE'S SOFTENING, off the host's own `seams` reading (§8's `seams` block). Only
+          // the host knows what every instrument declaring a hairline retouch is holding its own
+          // crease to, so it answers once and this file carries the number rather than choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00

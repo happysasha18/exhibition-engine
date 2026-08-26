@@ -310,15 +310,19 @@ for (const f of fs.readdirSync(dir).filter((n) => /^pass-inst-.*\.js$/.test(n)))
   catch (e) { failed.push(f); }
 }
 const names = Object.keys(live).sort();
-const shapes = {}, clocks = {};
+const shapes = {}, clocks = {}, cuts = {}, seams = {}, handles = {};
 names.forEach(function (n) {
   const m = live[n];
   const key = JSON.stringify(m.resources || {});
   (shapes[key] = shapes[key] || []).push(n);
   const c = (m.handles || {}).clock;
   if (c) clocks[n] = c.max;
+  cuts[n] = m.cuts || [];
+  seams[n] = m.seams || null;
+  handles[n] = Object.keys(m.handles || {});
 });
-console.log(JSON.stringify({names: names, failed: failed, shapes: shapes, clocks: clocks}));
+console.log(JSON.stringify({names: names, failed: failed, shapes: shapes, clocks: clocks,
+                            cuts: cuts, seams: seams, handles: handles}));
 """
 FLEET_PATH = TMP / "fleet-driver.js"
 FLEET_PATH.write_text(FLEET, encoding="utf-8")
@@ -370,6 +374,60 @@ else:
                + ". A transaction is over at its own bound, so the span above it cannot be reached "
                  "by any score on any pair — a published cap that says something false about the "
                  "module"))
+
+        # ---------------------------------------------------------- row 6: every seam is declared
+        #
+        # An instrument that cuts the frame into panels or pieces has a boundary a picture cannot
+        # help but have, and three of them — kaleidoscope, planet, tunnel — rounded that boundary by
+        # hand, with a typed number no reader outside the file could find. §8's `seams` block is the
+        # repair: an instrument DECLARES where it has a seam (a line, a wedge, a ring) and what
+        # measure sets the seam's own width, so a reader — and the host, for the three that have
+        # moved onto its shared shape — finds it in one place rather than by reading every shader.
+        #
+        # WHO THIS ROW HOLDS TO THE FIELD. Every instrument whose own `cuts` block is non-empty
+        # partitions the frame into named elements by its own declaration, so it is asked for a
+        # `seams` block of its own — even an empty one, where the cut is exact or covered by
+        # something else and the instrument says so. Eight more are held to it by name rather than
+        # by `cuts`, because each cuts the frame into panels, wedges, cells or tiles by its own
+        # header's own words but does not yet publish a `cuts` block at all — a pre-existing gap
+        # this row does not close, it only asks that a `seams` block still exist where the file's
+        # own geometry has one: `planet` (the curled strip's own wrap), `tunnel` (the corridor's own
+        # rings), `boxfold` (the two turning faces), `hero` (the wedges between its mirrors),
+        # `livemirror` (the fold lines' own panels), `parquet` (the floor's own tiles), `unfold`
+        # (the sheet's own four panels), `weave` (the two ribbon sets' own partition). `seams`, once
+        # declared, must be a list, and any entry naming a handle in `of` must name one this
+        # instrument actually publishes, so a seam cannot claim to be set by a measurement nobody
+        # can drive.
+        NAME6 = "STATIC · every instrument that cuts the frame declares its own seams"
+        cuts_map, seams_map = fleet.get("cuts", {}), fleet.get("seams", {})
+        handles_map = fleet.get("handles", {})
+        NAMED_CUTTERS = {"planet", "tunnel", "boxfold", "hero", "livemirror", "parquet",
+                          "unfold", "weave"}
+        expected = sorted(set(n for n in cuts_map if cuts_map[n]) | NAMED_CUTTERS)
+        missing6, malformed = [], []
+        for n in expected:
+            s = seams_map.get(n)
+            if s is None:
+                missing6.append(n)
+                continue
+            if not isinstance(s, list):
+                malformed.append(n + ": `seams` is not a list")
+                continue
+            own_handles = set(handles_map.get(n, []))
+            for entry in s:
+                if not isinstance(entry, dict) or "kind" not in entry or "unit" not in entry:
+                    malformed.append(n + ": a seam entry names no `kind` or no `unit`")
+                elif entry.get("of") is not None and entry["of"] not in own_handles:
+                    malformed.append(n + ": a seam names `of: " + str(entry["of"])
+                                      + "`, which is not one of its own published handles")
+        check(NAME6, not missing6 and not malformed,
+              "" if not (missing6 or malformed) else
+              ("every instrument whose own `cuts` block is non-empty, plus planet and tunnel by "
+               "name, is expected to publish `manifest.seams` — even an empty list, said outright, "
+               "where the cut carries no separate boundary to round. "
+               + ("missing entirely: " + ", ".join(missing6) + ". " if missing6 else "")
+               + ("malformed: " + "; ".join(malformed) + "." if malformed else ""))
+              )
 
 # ---------------------------------------------------------------- report
 print("EX-PASS · shelf 21 over every named constant on the composition road")

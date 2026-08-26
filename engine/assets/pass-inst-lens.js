@@ -595,6 +595,25 @@
       // the manifest rather than kept as a second copy of it. A lens is radial: a disc about a
       // middle, an angular fold, a wind about that middle. The condition a pair must meet is above.
       cuts: ["ring", "wedge"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). Two edges, because the
+      // two cuts above are drawn by two different mechanisms and neither is the module's own crossfade.
+      // THE WEDGE is the kaleidoscope's own fold, `a = abs(mod(a, seg) - seg * 0.5)` in the shader
+      // above: mod's own wrap and the abs either side of it cancel exactly, so the value is continuous
+      // across every wedge boundary — the same triangle-wave law `mirror1` continues the frame's own
+      // edge by. There is nothing here for a HANDOVER ZONE to cross-fade, so a wedge edge that shows
+      // at all is a sampling artifact and its unit is the buffer's own points, not a share of a repeat.
+      // THE RING is the glass's own rim, and the module does not leave it bare: "the rim carries the
+      // module's own glass — a touch of lift inside it, a tight inner shade, one light hairline just
+      // inside the rim and one dark one just outside" (this file's own opening), gated in the shader by
+      // `smoothstep(R - px, R + px, r)` for the lift and by `HAIR * px` for the two hairlines — bands a
+      // few points of the buffer wide and not a share of the glass's own radius, so this edge's unit is
+      // the same as the wedge's. Neither width answers to a handle: the bezel stands at the same few
+      // points whatever `wedges` names, and the wedge fold's own continuity does not depend on the
+      // count either.
+      seams: [
+        { kind: "wedge", of: null, unit: "points of the drawing buffer" },
+        { kind: "ring", of: null, unit: "points of the drawing buffer" },
+      ],
       params: { fold: [0, 2], wedges: [WEDGES_LO, WEDGES_HI], twist: [0, 1],
                 power: [POWER_LO, POWER_HI] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial, under the name every instrument

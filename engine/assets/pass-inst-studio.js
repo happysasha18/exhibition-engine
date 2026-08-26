@@ -504,6 +504,28 @@
       // the frame a different way, and the composer's own `KIND_OF_MEASURE` already carries all
       // three in its vocabulary (droste and kaleidoscope both cut on `ring`, parquet on `tile`).
       cuts: ["ring", "wedge", "tile"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). Three cuts, three edges, each read off
+      // the chain's own operations rather than declared apart from them.
+      //   · WEDGE — `stKal`'s own fold: `a = mod(a, w); a = abs(a - w * 0.5)`, the module's own
+      //     mirrored angular fold, character for character the construction kaleidoscope.js already
+      //     closes as a HAIRLINE retouch — the fold is continuous across the edge and what shows is
+      //     only the sign flip in its own derivative, a fact about the sampling grid rather than
+      //     about either work.
+      //   · TILE — `stTile`'s own mirror: `f = mix(f, 1.0 - f, mod(c, 2.0))` flips every other cell so
+      //     a neighbour's edge already meets it value for value, the same mirrored-tiling
+      //     construction and the same HAIRLINE case, cited in this port's own header as a real thing
+      //     carried without antialiasing: "the aliasing a hard kaleidoscope seam or a tight tile can
+      //     show on a small buffer is named here as a real thing this port does without" (above,
+      //     "WHAT DID NOT COME OVER").
+      //   · RING — `stEndless`'s own `gSeam = smoothstep(0.82, 1.0, x - k)`, read in `main` as
+      //     `col = mix(col, alt, seam * uDial)`: a real, deliberate cross-fade between one nested ring
+      //     and the next rather than a sampling artifact, so it is a HANDOVER ZONE.
+      // `of` names no handle for any of the three: none of them is a hairline that shrinks with an
+      // element count, and the ring's own crossfade width is `uDrL`'s own fraction rather than a share
+      // of how many rings the endless zoom happens to hold.
+      seams: [{ kind: "wedge", of: null, unit: "points of the drawing buffer" },
+              { kind: "tile", of: null, unit: "points of the drawing buffer" },
+              { kind: "ring", of: null, unit: "a share of one repeat's own span" }],
       // THE MODULE'S OWN SLIDER-FACING NUMBERS (studio.js:549-594), published beside their ranges —
       // the artistic eight a visitor's own hand would reach for first. The mode words, the on/off
       // switches and the two handles this port drives off a measurement (`panX`/`panY`, `foldX`/

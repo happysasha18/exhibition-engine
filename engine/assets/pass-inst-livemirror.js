@@ -570,6 +570,20 @@
       // CELL CONTENT is not claimed either. A panel carries the work read at a reflected point, and
       // the reflection is the partition rather than a second thing happening inside a panel.
       levels: ["CELL"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block) — and here it has none to declare. The
+      // fold is a reflection about the crease, `q = p - (h + abs(h)) * n` in FRAG's own `folded`, and
+      // at the crease itself `h` is nothing, so `q` equals `p` and the sampled point on either side of
+      // the line is the very same point of the picture: the two panels the fold makes meet with no
+      // gap to hide and no hard line for a hairline retouch to round off, the same construction
+      // hero's and kaleidoscope's own folds stand on. What this file's own comments call "the seam" —
+      // "a thin bright core with a soft lift around it, plus two dark hairlines flanking it" — is not
+      // a retouch of that boundary at all: it is glint, a deliberate light the shader lays along an
+      // already-seamless crease so a fold reads as a fold, gated by the `glint` handle and drawn only
+      // while the dial is off nothing. Unlike the wedge and ring folds hero and kaleidoscope hold an
+      // antialiasing width at, this one carries no smoothstep at the coordinate map itself — a
+      // straight-line fold has no grazing radius for such a width to guard — so there is no width
+      // here for `seams` to publish.
+      seams: [],
       params: { axis: [0, 3], centreX: [0, 1], centreY: [0, 1], drift: [0, 1], glint: [0, 1],
                 shade: [0, 1] },
       // WHAT THIS INSTRUMENT SHOWS BESIDES A CROSSING (his 19:13 word, the two registers). A picture

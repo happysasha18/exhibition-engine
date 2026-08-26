@@ -456,6 +456,19 @@
       // the instrument's own file, because the site's settings build prefers a manifest's own `cuts`
       // to any table it keeps and names an instrument that declares none as UNPLACED.
       cuts: ["scale"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The crossover between the two works —
+      // "the isoline where the two thicknesses meet" (above, "THE BOUNDARY HAS A SHAPE OF ITS OWN AND
+      // IT MOVES") — is read as `cov = clamp(0.5 + (tB - tA) / band, 0.0, 1.0)` with `band` the
+      // gradient of that difference measured in the buffer's own resolution (`gd / uRes`), which the
+      // file's own words already close as "the crossover between them is one point of the drawing
+      // buffer, read off the analytic gradient of the two thicknesses' own difference... anti-
+      // aliasing and... the same construction the material and the water instruments both close
+      // their boundaries with" (above, "THE BANS"). A HAIRLINE retouch, not a wedge, a ring or a
+      // tile — the shape crossed here is a level set of a continuous field, so `isoline` is this
+      // file's own word for it rather than a forced fit to one of the fleet's usual four. `of` names
+      // no handle: the crossover's width is the buffer's own sampling footprint and does not depend
+      // on any count this instrument publishes.
+      seams: [{ kind: "isoline", of: null, unit: "points of the drawing buffer" }],
       params: { thickness: [0, 1], bodies: [0, 1], depth: [0, 1], airAngle: [0, 180] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down — the one place a second reaches this instrument at all, the wind's own run.

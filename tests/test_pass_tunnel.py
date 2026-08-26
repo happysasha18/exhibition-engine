@@ -239,8 +239,11 @@ CONSTANTS = [
      "float mirrorU(float x){ float m = fract(x * 0.5); return abs(m * 2.0 - 1.0); }",
      "the seamless wrap across the picture: an even number of mirrored copies"),
     ("float edge = smoothstep(0.90, 1.0, abs(v * 2.0 - 1.0));",
-     "float edge = smoothstep(0.90, 1.0, abs(v * 2.0 - 1.0));",
-     "the ring join's own cross-fade with its neighbour, so the turn carries no jump"),
+     "float edge = smoothstep(1.0 - uSeam, 1.0, abs(v * 2.0 - 1.0));",
+     "the ring join's own cross-fade with its neighbour, so the turn carries no jump — the module's "
+     "own 0.90 travels here as `uSeam`, off the host's own `seams` reading (§8), so this join and "
+     "kaleidoscope's crease and planet's wrap-seam round one shared shape instead of three typed "
+     "numbers"),
     ("float leanF = max(1.0 + uLean * dot(dirp, uLeanDir), 0.22);",
      "float leanF = max(1.0 + uLean.z * dot(dirp, uLean.xy), 0.22);",
      "the lean: rings ride nearer on one side of the corridor and further on the other"),
@@ -332,7 +335,7 @@ check("PASS-TUNNEL the mip chain could not cross, and the measurement that fed i
 
 check("PASS-TUNNEL the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "uRing" not in LAYER and "uCrop" not in LAYER,
-      "this instrument declares eleven uniforms, of which five are shared with the folding one. The "
+      "this instrument declares twelve uniforms, of which five are shared with the folding one. The "
       "host reads the manifest")
 
 declared = dict((m.group(1), m.group(2))
@@ -340,7 +343,7 @@ declared = dict((m.group(1), m.group(2))
 spelled = dict((m.group(2), m.group(1))
                for m in re.finditer(r'uniform (\w+) (u\w+);', REGION))
 check("PASS-TUNNEL the manifest's declared names and the shader's own names are one set",
-      set(declared) == set(spelled) and len(declared) == 11,
+      set(declared) == set(spelled) and len(declared) == 12,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(set(declared) - set(spelled))}; "
       f"spelled only: {sorted(set(spelled) - set(declared))}")
@@ -726,7 +729,7 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 11
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 12
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -738,7 +741,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "tunnel" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"ten handles, eleven uniforms in one pass, both doors at a cover crop of "
+                      f"ten handles, twelve uniforms in one pass, both doors at a cover crop of "
                       f"{m['framings']['0']['coverCrop']} — no headroom asked of the frame at all — "
                       f"resources declared for three tiers with a byte estimate of "
                       f"{res['standard']['bytesEstimate']}, and a coverage block reading "

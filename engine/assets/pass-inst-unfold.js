@@ -1000,6 +1000,21 @@
       // moved. Either the two readings want two fields, or a handle's level wants to be free of the
       // instrument's own array.
       levels: ["CELL", "CELL CONTENT"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The sheet cuts the
+      // frame into its own panels, and a panel meets its neighbour at their shared hinge. The shader
+      // grows each face one point past its own hinge before it is tested — `pt = 1.0 / uRes.y` and
+      // the corner it is spent at, `vec2(CW + pt, CH + ey)` and its three siblings a few lines below
+      // it — with the comment standing over that very line: "A face runs one point past its hinge,
+      // so the panels meet with no hairline" (unfold.js:172-175). This is a HAIRLINE case and not a
+      // HANDOVER ZONE: a panel's own quarter and the mirror of the quarter it turns into already
+      // meet at the same texture coordinate at the hinge by the fold's own geometry — "the mirror
+      // over it" a few lines further down, `MIRROR degrees into its turn it is the mirror of the
+      // quarter the sheet closes onto" — so the growth by one point buys nothing against a colour
+      // mismatch and everything against the gap a sampling grid could otherwise open exactly on the
+      // hinge line. `of` names no handle: the growth is pinned at one point of the buffer regardless
+      // of how the sheet is posed, and no handle below counts a repeating element the width could
+      // scale with — the sheet always folds into the same four panels.
+      seams: [{ kind: "panel", of: null, unit: "points of the drawing buffer" }],
       params: { tilt: [0, 1], shade: [0, 1], depth: [0, 1], stagger: [0, 0.6], panels: [0, 1] },
       // WHAT THIS INSTRUMENT SHOWS BESIDES A CROSSING (his 19:13 word, the second register). The
       // sheet opening past its own edges into a parquet that continues without end, on a plane the

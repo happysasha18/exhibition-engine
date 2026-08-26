@@ -420,6 +420,18 @@
       // decomposition the composer's own tonal-and-spectral pivot cuts on, and that pivot reads on
       // any two photographs by construction.
       cuts: ["band"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). None is declared, and
+      // the file's own construction argues it rather than an oversight leaving it out: "NO FADE
+      // ANYWHERE. A point either carries a work's matter or it does not; the alpha this shader writes
+      // is 1 or 0 and never anything between." The shader reads the tonal cut with a plain `<`/`>=`
+      // against `uLevel` (`matterOf` above) and nothing softens the two sides of it into each other —
+      // there is no smoothstep at the level, no crossfade where bright gives way to dark, because the
+      // module this instrument carries is built to leave the frame rather than to dissolve across it.
+      // What the boundary does cost is named already, in its own terms rather than as a seam: it steps
+      // at the mask's own cell rather than at the pixel ("a cell whose centre is untypical of it falls
+      // on the other side of the level from where the module puts it"), which is the cell grid's own
+      // coarseness and not a line this manifest has softening for.
+      seams: [],
       // The module declares NO slider-facing params at all (`params: []`,
       // lab/effects/strata-light.js:415): no page grows a control for it and every one of its
       // handles is a hidden one a score drives. That empty list is carried rather than filled in.

@@ -562,6 +562,19 @@
       //     frame is the element. It is the kind the double-exposure instrument declares, and this
       //     is the second published instrument to cut on it.
       cuts: ["strip", "field"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The travelling front's own boundary —
+      // `d = (front - st.y) / (2.0 * foot); cov = clamp(0.5 + d, 0.0, 1.0)` — crosses over inside a
+      // band exactly `foot` wide, and `foot` is the projection's own Jacobian times half a buffer
+      // point (the shader's own comment above it: "THE PIXEL'S OWN FOOTPRINT IN THE PLANE'S ROWS,
+      // from the projection's own Jacobian"). The door reading holds the very same number to the
+      // very same standard — "foot ≤ MARGIN" — and both readings treat it as an antialiasing width
+      // rather than a deliberate cross-fade: it is the buffer's own sampling footprint, not a band
+      // the shader grew on purpose, so it is a HAIRLINE retouch. `of` names no handle: the footprint
+      // scales with the buffer's own resolution and the plane's own projection, never with how many
+      // columns the front's own raggedness breaks into. NO SECOND SEAM FOR `field`: the plane is the
+      // one surface the strip cut already parts, and it carries no boundary of its own beyond the
+      // front counted above.
+      seams: [{ kind: "line", of: null, unit: "points of the drawing buffer" }],
       params: { tilt: [0, 1], horizon: [0, 1], squeeze: [0, 1], lead: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial — the key the module's own contract
       // row names. The four below it are the module's declared params; `columns` is the one constant

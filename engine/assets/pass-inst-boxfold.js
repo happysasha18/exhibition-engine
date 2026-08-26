@@ -839,6 +839,18 @@
       // one thing this instrument writes over a picture, and it lies along a cell's own edge rather
       // than over a field.
       levels: ["WORLD", "CELL"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The crease between the two faces is a
+      // PANEL edge — the box's own finger joint, where face A's coverage `dA` and face B's coverage
+      // `dB` meet and the shader turns their difference into `cov` over exactly one point of the
+      // drawing buffer, `px` (FRAG's own `float m = (dA - dB) * 0.5 + bite; float cov = clamp(0.5 +
+      // m / px, 0.0, 1.0);`, with `px = 2.0 / max(uRes.y, 1.0)`). That is a HAIRLINE retouch and not
+      // a cross-fade: the boundary itself is exact by construction — the finger joint's own bite is
+      // a real geometric displacement of the crease, six parts a ladder and four the score's die
+      // (box.js:180-186) — and what `px` rounds off is only the sign flip in the coverage's own
+      // derivative at the crease, a fact about the sampling grid rather than a deliberate dissolve
+      // between the two faces. `of` names no handle: the width stands at one point of the buffer
+      // whatever `fingers` says, so it does not shrink as the joint's own count grows.
+      seams: [{ kind: "panel", of: null, unit: "points of the drawing buffer" }],
       params: { axis: [0, 1], depth: [0, 1], dip: [0, 1], lead: [0, 1], fingers: [3, 14] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial — the module's own hidden `turn`
       // key, under the name every instrument in this engine gives it. The five below it are the

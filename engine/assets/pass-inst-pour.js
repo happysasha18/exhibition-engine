@@ -541,6 +541,20 @@
       // prefers a manifest's own `cuts` to any table it keeps and names an instrument that declares
       // none as UNPLACED — landed and uncastable.
       cuts: ["strip"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). None is declared,
+      // because the file's own bans section already argues the strip cut's boundary out of existence
+      // rather than softening it: "NO DRAWN SEAM LINE BETWEEN PARTICLES... A heap wants a contact
+      // line: the eye reads a pile by the dark crease where it meets what it is heaped against... There
+      // is none here." Two neighbouring columns never meet at a drawn edge because the heap's own
+      // surface is the UPPER ENVELOPE of every pile's cone, `H = max over piles of (height − distance ·
+      // slope)` — a max of continuous cones is itself continuous, so where one column's pile gives way
+      // to its neighbour's the surface already agrees on the height at every point between them and
+      // there is no gap or step for a smoothstep to close. The one width the shader does carry, the
+      // heap's own top edge against the gap above it (`covHeap`, one point of `uRes.y` wide), softens a
+      // boundary between a WORK and the frame's own absence — the coverage law, not this cut — and the
+      // file names it as "one point of the drawing buffer wide, read off the surface's own height", a
+      // hairline it already draws rather than a seam this cut still owes.
+      seams: [],
       params: { columns: [COLS_MIN, COLS_MAX], repose: [0, 1], stagger: [0, 0.9], grain: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down — the one place a second reaches this instrument at all, the grain's own drift.

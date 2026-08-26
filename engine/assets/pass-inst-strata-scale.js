@@ -472,6 +472,17 @@
       // scale, the same word beat.js's own cut list gives its rhythm difference
       // ("texture to scale in its KIND_OF_MEASURE", that file's own comment).
       cuts: ["band", "scale"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). None is declared, for
+      // the same reason strata-light's own sibling gives none: "NO FADE ANYWHERE. A point either
+      // carries a work's matter or it does not; the alpha this shader writes is 1 or 0 and never
+      // anything between." `stratumAt` above reads the split as a plain `<=`/`>=` against each
+      // stratum's own measured centre — a point is on one side or the other, with nothing written to
+      // blend the two together where they meet. The one place two candidate sources could both fail is
+      // "a gap of width `2u` centred on `centre` where NEITHER candidate is valid", and the file is
+      // explicit that this gap is "the stratum's own matter having cleared that band of the frame" —
+      // this cut's own coverage absence, which the other stratum, the other work or nothing at all
+      // shows through, not a line this cut still needs softening at.
+      seams: [],
       // The module declares NO slider-facing params at all (`params: []`, lab/effects/strata-
       // scale.js:559), the same empty list strata-light's own module carries: no page grows a control
       // for any of this and every handle below is a hidden one a score drives.
