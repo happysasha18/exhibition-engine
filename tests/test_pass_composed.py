@@ -109,6 +109,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -221,6 +222,47 @@ check("EX-COMPOSED the block a visitor's browser parses first carries no per-wor
       f"{len(PASS_BLOCK.get('instruments') or {})} instrument record(s) against the "
       f"{len(INSTRUMENT_ROSTER)} the tree ships")
 
+# ---------------------------------------------------------------- the frozen cast is the fleet
+# THE CAST THE TWO FIXTURES FREEZE MUST NAME EVERY INSTRUMENT THIS TREE SHIPS, and that is asked
+# here as a verdict rather than noted in some other row's detail line.
+#
+# The reason is that this file's collection-wide rows take their REACH from `consts` in the two
+# fixtures: the fill is only ever asked to cast what the cast names, the levels law is only ever
+# asked about the handles those manifests carry, and the register roll call below reports an
+# instrument the fixture omits BESIDE its verdict instead of failing on it. So an instrument missing
+# from the frozen cast is an instrument no row in this file judges, and every row stays green while
+# it ships unjudged. That is not a hypothetical: beat, gates, grid-colour, pour, strata-light,
+# strata-scale, studio, tilt, veil, waterline and wind were all shipping and all unjudged, three of
+# them landed the same day, and nothing reddened — because the reach of each row was set by the very
+# file that had gone stale.
+#
+# The right-hand side is INSTRUMENT_ROSTER above, one entry per instrument FILE the tree ships, so
+# an instrument that lands reddens this row on the day it lands and no second list of names is kept
+# anywhere. `consts.instruments` and `consts.manifests` are both read, so a fixture widened in one
+# and not the other does not pass. `tests/build_pass_fixture_consts.py` rebuilds both fixtures from
+# the site's own staging step, and running it is what greens this row again.
+_CAST_DRIFT = []
+for _fx in (FIXTURE, WORKS):
+    _fx_consts = json.loads(_fx.read_text(encoding="utf-8")).get("consts") or {}
+    for _key in ("instruments", "manifests"):
+        _named = sorted(_fx_consts.get(_key) or {})
+        _absent = [i for i in INSTRUMENT_ROSTER if i not in _named]
+        _phantom = [i for i in _named if i not in INSTRUMENT_ROSTER]
+        if _absent or _phantom:
+            _CAST_DRIFT.append(
+                f"{_fx.name} consts.{_key} names {len(_named)} of the {len(INSTRUMENT_ROSTER)} "
+                f"instrument(s) the tree ships"
+                + (f"; shipping but uncast, so judged by no row here: {_absent}" if _absent else "")
+                + (f"; cast but published by no file: {_phantom}" if _phantom else ""))
+
+check("EX-COMPOSED the frozen cast names every instrument this tree ships — a fixture narrower than "
+      "the fleet narrows the reach of every collection-wide row that reads it, silently",
+      not _CAST_DRIFT,
+      "; ".join(_CAST_DRIFT) if _CAST_DRIFT
+      else f"{FIXTURE.name} and {WORKS.name} both name, under consts.instruments and "
+           f"consts.manifests alike, the same {len(INSTRUMENT_ROSTER)} instrument(s) the tree "
+           f"ships: {', '.join(INSTRUMENT_ROSTER)}")
+
 # ---------------------------------------------------------------- every published handle is registered
 # A HANDLE A MANIFEST PUBLISHES AND THIS REGISTER DOES NOT NAME MAKES THE COMPOSER THROW — on every
 # pair that casts that instrument, inside the fill, where the register is read for a row that is not
@@ -276,9 +318,22 @@ def _manifest_handles(text):
 
 
 _STRIP = build_site._engine.strip_js_comments
+# THE REGISTER'S SIX WORDS, and the row below is read against the list rather than against a copy
+# of it. `transaction` stood here until the writer was made to dispatch on the word instead of on
+# the handle's name; it covered four different sources at once, and it is now `progress`,
+# `host-clock` and `plan` beside the two that already said what they meant.
+# `entry-door` joined them on 2026-08-25, when the reserved dry landed across the fleet. It is not
+# `progress` — that word promises a monotone rise across a handle's own published span and the
+# writer keeps that promise literally — and it is not `plan`, which names a choice a score is free
+# to make. The dry's shape is fixed by the entry-door contract and by where the cue stands in its
+# own stack, so it is a law being stated, and the writer dispatches on the word rather than on the
+# handle's name, which is the whole reason this list has six words in it and not one.
+_REGISTER_WORDS = "measured|unmeasured|module-rest|progress|host-clock|plan|entry-door"
 _REGISTERED = set(re.findall(
-    r'^\s{4}([A-Za-z][A-Za-z0-9_]*): \["(?:measured|unmeasured|transaction|module-rest)"',
+    r'^\s{4}"?([A-Za-z][A-Za-z0-9_.\-]*)"?: \["(?:' + _REGISTER_WORDS + r')"',
     MODULE.read_text(encoding="utf-8"), re.M))
+# a scoped row (`"weave.depth"`) answers for that instrument's handle as well as the bare name does
+_REGISTERED |= {h.split(".", 1)[1] for h in list(_REGISTERED) if "." in h}
 # WHICH INSTRUMENTS THE ROW COVERS: the ones the settings record PUBLISHES, which since 2026-08-18
 # is exactly the set the composer can cast — a kind's candidates are derived from that record and an
 # instrument absent from it can be named by no road. A file that ships without being published can
@@ -410,7 +465,51 @@ NODE_ROWS = [
     "their arguments can take, walked over the whole span each one has",
     "EX-COMPOSED red-on-bug · the carrying axis lifted against another axis's ceiling: a pitch "
     "passage flies half the grain it owes",
+    "EX-COMPOSED the passage's length is composed from the pair inside the band its tier names, and "
+    "the band holds over the whole span of the reading that places it",
+    "EX-COMPOSED red-on-bug · the length taken off the band's own floor again: two different pairs "
+    "at one role run the same milliseconds",
+    "EX-COMPOSED the miracle is counted by what an instrument declares about itself, so every "
+    "world-declaring instrument that is cast is voiced the miracle",
+    "EX-COMPOSED red-on-bug · the miracle counted by an effect's name again: three instruments fold "
+    "the space and spend nothing for it",
+    "EX-COMPOSED a step whose role spends no miracle never opens a world, and the gate that holds "
+    "that is a bound rather than the ranking's own nudge",
+    "EX-COMPOSED red-on-bug · the nudge and the three follow-up gates removed: a quiet link opens "
+    "the world",
+    "EX-COMPOSED two instruments that each declare the world never stand in one crossing, by either "
+    "of the two roads that put them within reach",
+    "EX-COMPOSED red-on-bug · the levels test's world clause removed: a world ground takes a world "
+    "arrival beside it",
+    "EX-COMPOSED every handle every published instrument publishes declares the structural level it "
+    "drives, and no handle claims a seventh level or one its own instrument never declared",
+    "EX-COMPOSED one active voice per structural level, the ground included: no cue drives a handle "
+    "on a level it does not own, and no level is driven by two cues at once",
+    "EX-COMPOSED red-on-bug · the handles of an unowned level left on the track list: a ground and a "
+    "voice above it cut the same way",
+    "EX-COMPOSED every handle whose register row promises a value is given one: no row saying it "
+    "reads a measurement, the passage's travel or a plan's word lands frozen at its own default",
+    "EX-COMPOSED red-on-bug · the writer dispatching on the handle's name again: a row promising the "
+    "passage's own travel holds still for the whole of it",
+    "EX-COMPOSED the cast is not narrowed by the levels law: the two named pairs whose ground and "
+    "voice share a level both compose, with the non-owner playing on where it owns",
+    "EX-COMPOSED a voice standing over another joins at no presence and stands down the same way, "
+    "and the lowest voice of a stack is whole throughout",
+    "EX-COMPOSED the step's harmonic function reaches the composer, is held to its own three names, "
+    "and is what says whether the crest suspends",
+    "EX-COMPOSED what a cue declares it costs is its own instrument's declaration, per quality "
+    "variant, and never one block this file types",
+    "EX-COMPOSED the day arrives on the request, biases the roll, and leaves a request that states "
+    "none reproducible",
 ]
+# THE TWO ROWS THIS FILE READS BY NAME rather than by position. Every row above is addressed by its
+# index, which is fine while the list only ever grows at the end — and it stopped being fine the
+# moment two rows landed there in one night: the first took `NODE_ROWS[-1]` and the second silently
+# took it away. A name cannot be taken away by a neighbour.
+ROW_ENTRY_DOOR = NODE_ROWS[-4]
+ROW_HARMONIC = NODE_ROWS[-3]
+ROW_COST = NODE_ROWS[-2]
+ROW_DAY = NODE_ROWS[-1]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
 # change before the module is loaded, which is how every red-on-bug row below is run: the repair is
@@ -419,7 +518,7 @@ NODE_ROWS = [
 # rows walk all 121.
 DRIVER = r"""
 "use strict";
-const fs = require("fs"), vm = require("vm");
+const fs = require("fs"), vm = require("vm"), path = require("path");
 const [modulePath, fixturePath, worksPath] = process.argv.slice(2);
 const plants = JSON.parse(process.env.PLANTS || "[]");
 const sweepN = parseInt(process.env.SWEEP || "0", 10);
@@ -471,6 +570,46 @@ if (!(CAMERA_POINT_CAP > 0) || !(DOLLY_CAP > 0)) {
 // rather than against its own documented fallback. The fixture predates the field; handing it here
 // is the same value by the same road, not a second one.
 fix.consts.intentFenceChars = INTENT_CAP;
+
+// EACH HANDLE'S OWN STRUCTURAL LEVEL, CARRIED IN FROM THE INSTRUMENT'S OWN FILE. A handle declares
+// the level it drives in the manifest its own file registers, which is the one home of that fact;
+// the frozen fixture predates the declaration and is not re-based for it, exactly as the client's
+// two fences are handed in above rather than copied into it. So every published instrument's file is
+// loaded here, its manifest read, and the level written onto the fixture's own copy — the same value
+// by the same road, and a file that gains or moves a level re-bases this by itself.
+//
+// A PUBLISHED HANDLE THAT DECLARES NO LEVEL IS RECORDED AND NOT DEFAULTED. Reading a missing
+// declaration as "drives nothing" would read exactly like today's behaviour and hide a half-done
+// migration, so the names travel out on `out.levels.undeclared` and the row below reds on them.
+const levelsUndeclared = [], levelsSeen = {}, levelsByInstrument = {}, live = {};
+{
+  const assetsDir = path.dirname(modulePath);
+  for (const f of fs.readdirSync(assetsDir).filter((n) => /^pass-inst-.*\.js$/.test(n))) {
+    const isrc = fs.readFileSync(path.join(assetsDir, f), "utf8").replace(/@@NS@@/g, "");
+    const sb = {window: {__PassInstrument: (r) => { live[r.instrument.name] = r.instrument.manifest; }},
+                console, document: undefined};
+    vm.createContext(sb);
+    vm.runInContext(isrc, sb, {filename: f});
+  }
+  // THE DECLARATION IS READ OFF EVERY INSTRUMENT FILE THE ENGINE SHIPS, not off the subset this
+  // fixture froze. A migration that closed the ban for the instruments one fixture happens to carry
+  // and left it open for the rest would be the worst of the three states — closed for some,
+  // silently open for others — so the roll call below is the whole assets directory, and only the
+  // OVERLAY is limited to the manifests this fixture hands the composer.
+  for (const iid of Object.keys(live).sort()) {
+    const theirs = live[iid].handles || {};
+    const mine = (fix.consts.manifests[iid] || {}).handles || null;
+    levelsByInstrument[iid] = {};
+    for (const h of Object.keys(theirs).sort()) {
+      const spec = theirs[h];
+      if (!spec || !("level" in spec)) { levelsUndeclared.push(iid + "." + h); continue; }
+      if (mine && mine[h]) mine[h].level = spec.level;
+      levelsByInstrument[iid][h] = spec.level;
+      if (spec.level) levelsSeen[spec.level] = (levelsSeen[spec.level] || 0) + 1;
+    }
+  }
+}
+
 const composer = joined.make(fix.consts);
 const A = fix.works[fix.pair.a], B = fix.works[fix.pair.b];
 const KEY_AB = fix.pair.a + "__" + fix.pair.b + "__ab";
@@ -933,6 +1072,8 @@ const SL_VOICE_HANDLES = ["colourPeriodA", "colourPhaseA", "colourAmpA",
 // rest of 0, so the "owns" and "accompanies" collections are kept apart rather than merged.
 const gridColourVoicesOwns = {}, strataLightVoicesOwns = {};
 const gridColourVoicesAccompanies = {}, strataLightVoicesAccompanies = {};
+let accSightings = 0;
+const accStillDriven = [];
 for (const h of GC_VOICE_HANDLES) {
   gridColourVoicesOwns[h] = []; gridColourVoicesAccompanies[h] = [];
 }
@@ -962,9 +1103,19 @@ function collectVoiceHandles(cue) {
   const accBucket = cue.instrument.id === "grid-colour" ? gridColourVoicesAccompanies
                                                         : strataLightVoicesAccompanies;
   const bucket = owns ? ownsBucket : accBucket;
+  // A CUE THAT DOES NOT OWN THE LEVEL NOW CARRIES NO NODE FOR THESE HANDLES AT ALL. Until the
+  // per-handle levels landed, `fillPlan` simply never wrote a value for them and the node writer
+  // resolved each to the manifest's own 0; now the handles are taken off such a cue's track list,
+  // so there is no node to read a zero off. Both are the same silence and the second is the
+  // stronger one, so what the accompanying side records is the SIGHTING and any handle that still
+  // has a node — an empty reading list is the law kept, not an empty spot-check.
+  if (!owns) accSightings++;
   for (const h of handles) {
     const node = cue.nodes[cue.id + "-" + h];
     if (node) bucket[h].push(toNum(startValue(node)));
+    if (!owns && node && accStillDriven.indexOf(cue.instrument.id + "." + h) < 0) {
+      accStillDriven.push(cue.instrument.id + "." + h);
+    }
   }
   // IS A DECLARED VOICE ACTUALLY SEEN. Each amp is read beside the period and the phase written on
   // the same cue, which is everything the lab's own peak needs; a voice driven at nothing is not
@@ -997,12 +1148,29 @@ function collectVoiceHandles(cue) {
 // shelf 6 allows, so it may not stand at a role shelf 17 gives none, may not stand beside a second
 // impossible thing, and may not claim the world level beside a camera-led flight.
 const ROLES_ALL = ["entrance", "quiet link", "middle", "culmination", "return"];
+// WHICH INSTRUMENTS SPEND THE MIRACLE, read the way the composer's own `spendsTheMiracle` reads it —
+// off the manifest table the settings record ships, which is the same object `make(consts)` was
+// handed. A name is not a property, so no name is written here: an instrument spends the crossing's
+// one impossible event when its own manifest declares the WORLD level, and the collection says which
+// those are. Shelf 6 makes the slot single and unstackable and shelf 8 says a folded space IS the
+// miracle, so this list is the law's own subject.
+const SPENDS_THE_MIRACLE = Object.keys(fix.consts.manifests)
+  .filter((id) => ((fix.consts.manifests[id] || {}).levels || []).indexOf("WORLD") >= 0).sort();
 const folded = {}, worldCue = {}, ledAndWorld = {}, twoMiracles = {}, roleThrew = {}, roleN = {};
-const foldUnspent = {};
+const foldUnspent = {}, worldsCast = {}, worldStack = {}, worldNotVoiced = {};
+const worldSeen = {};
 for (const r of ROLES_ALL) { folded[r] = 0; worldCue[r] = 0; ledAndWorld[r] = 0;
                              twoMiracles[r] = 0; roleThrew[r] = null; roleN[r] = 0;
-                             foldUnspent[r] = 0; }
+                             foldUnspent[r] = 0; worldsCast[r] = 0; worldStack[r] = 0;
+                             worldNotVoiced[r] = 0; }
 let boxQualified = 0;
+// Breaches of shelf 17's levels law, counted at the handles: a cue driving a handle whose
+// level it does not own, and a level driven by two cues at once. Both must stand at nothing.
+let levelBreaches = 0, levelSharedBy = 0;
+// Handles whose register row promises a value, held against what the composition wrote.
+const REGISTER = composer.handleSource;
+const promiseSeen = [], promiseKept = [], promiseKind = {};
+const levelBreachCases = [], levelSharedCases = [];
 // WHICH INSTRUMENTS ARE EVER CHOSEN. An instrument the settings record ships travels to every
 // visitor; one that travels and can never be chosen is weight on the wire and a register missing
 // from the route. A row counting the cast would pass on exactly that, so this counts CHOICES.
@@ -1136,9 +1304,91 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
       // `q.score.cues`, for the same reason the note above `p.plan.cues` gives — the wire-fitting
       // step sheds provenance and `levelOwnership` survives only on the plan's own copy.
       for (const cue of q.plan.cues) collectVoiceHandles(cue);
+      // WHAT THE REGISTER PROMISED, AGAINST WHAT THE COMPOSITION WROTE. This is the gate that was
+      // missing, and its shape is the point. The row it replaces walked a cue's nodes and SKIPPED
+      // any whose note did not open with «requested» — so it went blind on exactly the handles the
+      // writer had declined to write a note for, which is precisely where the defect lives. This
+      // one runs the other way about: it starts from the register's own word and asks whether the
+      // composition kept it.
+      //
+      // A row saying `measured`, `progress` or `plan` promises a value. A node standing at
+      // `{op:"static"}` with no provenance on it is the writer's own mark for «nobody drove this»,
+      // so the two together are a broken promise. `unmeasured` and `module-rest` promise nothing and
+      // resting is the honest answer for both.
+      for (const cue of q.plan.cues) {
+        const iid = cue.instrument.id;
+        for (const h of Object.keys(cue.tracks || {})) {
+          const kind = REGISTER[iid + "." + h] || REGISTER[h] || null;
+          if (["measured", "progress", "plan"].indexOf(kind) < 0) continue;
+          const node = cue.nodes[(cue.tracks[h] || {}).node || (cue.id + "-" + h)];
+          const frozen = !node || (node.op === "static" && !node.note);
+          const key = iid + "." + h;
+          if (promiseSeen.indexOf(key) < 0) promiseSeen.push(key);
+          promiseKind[key] = kind;
+          if (!frozen && promiseKept.indexOf(key) < 0) promiseKept.push(key);
+        }
+      }
+      // SHELF 17'S LEVELS LAW, READ OFF WHAT EACH CUE ACTUALLY DRIVES. A cue drives a handle when
+      // that handle has a track on it, and a handle declares the structural level it drives. So a
+      // breach here is a cue driving a handle on a level it does not own — pattern stacked on
+      // pattern, the thing a person sees. The ground is read exactly like every other cue: it holds
+      // no exemption any more.
+      {
+        const drivenBy = {};
+        for (const cue of q.plan.cues) {
+          const man = fix.consts.manifests[cue.instrument.id].handles;
+          for (const h of Object.keys(cue.tracks || {})) {
+            const lv = (man[h] || {}).level;
+            if (!lv) continue;
+            if ((cue.levelOwnership || {})[lv] !== "owns") {
+              levelBreaches++;
+              if (levelBreachCases.length < 4) {
+                levelBreachCases.push({role: r, cue: cue.id, instrument: cue.instrument.id,
+                                       handle: h, level: lv,
+                                       ownership: (cue.levelOwnership || {})[lv] || null});
+              }
+            }
+            if (!drivenBy[lv]) drivenBy[lv] = {};
+            drivenBy[lv][cue.id] = [Number(cue.window[0]), Number(cue.window[1])];
+          }
+        }
+        // AND NO LEVEL IS DRIVEN BY TWO CUES THAT ARE LIVE TOGETHER, which is the same law read
+        // from the level's side rather than the cue's. The words «at once» carry it: shelf 17 bars
+        // two ACTIVE voices from one level, and two cues whose windows never meet are not two
+        // active voices — which is the release `castForKinds` already grants at the cast, and which
+        // ownership takes back the moment it forgets the windows.
+        for (const lv of Object.keys(drivenBy)) {
+          const who = Object.keys(drivenBy[lv]).sort();
+          for (let x = 0; x < who.length; x++) {
+            for (let y = x + 1; y < who.length; y++) {
+              const A = drivenBy[lv][who[x]], B = drivenBy[lv][who[y]];
+              if (A[0] < B[1] && B[0] < A[1]) {
+                levelSharedBy++;
+                if (levelSharedCases.length < 4) {
+                  levelSharedCases.push({role: r, level: lv, cues: [who[x], who[y]],
+                                         windows: [A, B]});
+                }
+              }
+            }
+          }
+        }
+      }
       const cues = q.score.cues;
       for (const x of cues) chosen[x.instrument.id] = (chosen[x.instrument.id] || 0) + 1;
-      if (cues.some((x) => x.instrument.id === "boxfold")) folded[r]++;
+      // WHICH CUES OF THIS CROSSING SPEND THE MIRACLE, by the declaration and never by the name.
+      // `folded` and `foldUnspent` read `=== "boxfold"` until now, which is one of the four
+      // instruments the collection publishes that declare the world: the other three folded the
+      // space a work lives in and were counted as nothing at all.
+      const worldCues = cues.filter((x) => SPENDS_THE_MIRACLE.indexOf(x.instrument.id) >= 0);
+      for (const x of worldCues) {
+        worldSeen[x.instrument.id] = (worldSeen[x.instrument.id] || 0) + 1;
+        if (x.voice !== "miracle") worldNotVoiced[r]++;
+      }
+      if (worldCues.length) { folded[r]++; worldsCast[r]++; }
+      // SHELF 6: THE SLOT IS CONSUMED AND NEVER STACKS. Two instruments that each declare the world
+      // are two impossible events whatever their windows and whichever of them holds the ground, so
+      // this counts the crossings that carry more than one.
+      if (worldCues.length > 1) worldStack[r]++;
       const claimsWorld = cues.some((x) => (x.levels || []).indexOf("WORLD") >= 0);
       if (claimsWorld) worldCue[r]++;
       if (claimsWorld && q.score.camera.lead) ledAndWorld[r]++;
@@ -1147,7 +1397,7 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
       // A CROSSING THAT FOLDS THE FRAME AND SPENDS NO MIRACLE FOR IT has lost the law rather than
       // kept it: the fold IS the impossible event, so a folding score with no miracle voice means
       // the slot went unspent and a second impossible thing could stand beside it.
-      if (cues.some((x) => x.instrument.id === "boxfold") && miracles === 0) foldUnspent[r]++;
+      if (worldCues.length && miracles === 0) foldUnspent[r]++;
     }
 
     // THE CAMERA-LED PASSAGE, counted at a tonic step and at one that is not. A led flight spends
@@ -1241,6 +1491,304 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
     }
   }
 }
+// ---------------------------------------------------------------- THE ENTRY DOOR
+// The charter's build ladder, step 0: a voice must be able to join a running picture without
+// replacing it. The fleet's reserved dry is `presence`, and the plan's half of the contract is
+// what this block puts to the composer.
+//
+// WHY THE MANIFESTS ARE PATCHED HERE RATHER THAN READ. The settings record this suite composes
+// against is the one the site's staging step last published, and it was published before the dry
+// landed: nine of the ten instruments that now declare it ship a manifest here without it, so the
+// composer's own `tracksFor` builds no track for a handle the record never named. Patching the
+// record is not inventing a reading — the handle's four numbers are the contract's own, quoted
+// from `docs/design/ENTRY-DOOR.md`, identical in every instrument's file, and the moment the site
+// stages again the record carries exactly this. `overlay` is left alone on purpose: its own
+// `presence` is a LIGHT-COLOUR reading of the pair and means something else, and the row below
+// asks that the composer tell the two apart.
+{
+  const DRY = {min: 0, max: 1, def: 1, level: null,
+               unit: "whether this voice is in the frame at all"};
+  const consts2 = JSON.parse(JSON.stringify(fix.consts));
+  let patched = 0;
+  for (const iid of Object.keys(consts2.manifests)) {
+    if (!consts2.manifests[iid].handles.presence) {
+      consts2.manifests[iid].handles.presence = JSON.parse(JSON.stringify(DRY));
+      patched += 1;
+    }
+  }
+  const c2 = joined.make(consts2);
+  let upperSeen = 0, lowestSeen = 0, overlaySeen = 0;
+  const badUpperDoor = [], badUpperArc = [], badLowestDoor = [], badLowestWhole = [], badOverlay = [];
+  for (const [x, y] of SPOT) {
+    const wa = works.works[x], wb = works.works[y];
+    if (!wa || !wb) continue;
+    for (const role of ["entrance", "quiet link", "middle", "culmination", "return"]) {
+      const key = x + "__" + y + "__ab";
+      let p = null;
+      try {
+        p = c2.passageFor({workRecordA: wa, workRecordB: wb, direction: "a-to-b",
+                           seed: die(key + role), routeRole: role});
+      } catch (e) { badUpperArc.push([key, role, "threw: " + e.message]); continue; }
+      if (!p || !p.score) continue;
+      for (const cue of p.score.cues) {
+        const iid = cue.instrument.id;
+        const track = (cue.tracks || {}).presence;
+        const door = (cue.doors || {})["in"] || {};
+        const out2 = (cue.doors || {}).out || {};
+        if (iid === "overlay") {
+          // The scoped row: `overlay`'s presence is a reading of the pair, so its door must still
+          // be the crossing dial and its track must not carry the contract's arc.
+          if (track) {
+            overlaySeen += 1;
+            const nd = (cue.nodes || {})[track.node] || {};
+            if (door.handle !== "mix" || nd.op === "spline") {
+              if (badOverlay.length < 3) badOverlay.push([key, role, door.handle, nd.op]);
+            }
+          }
+          continue;
+        }
+        if (!track) continue;
+        const nd = (cue.nodes || {})[track.node] || {};
+        if (Number(cue.stack) > 0) {
+          upperSeen += 1;
+          if (!(door.handle === "presence" && toNum(door.value) === 0
+                && out2.handle === "presence" && toNum(out2.value) === 0)) {
+            if (badUpperDoor.length < 3) {
+              badUpperDoor.push([key, role, cue.id, iid, door.handle, toNum(door.value),
+                                 out2.handle, toNum(out2.value)]);
+            }
+          }
+          const pts = (nd.points || []).map((q) => [toNum(q.at), toNum(q.value)]);
+          const overCue = nd.op === "spline" && nd.in && nd.in.source === "cueProgress";
+          if (!(overCue && pts.length === 3
+                && pts[0][0] === 0 && pts[0][1] === 0
+                && pts[1][0] === 0.5 && pts[1][1] === 1
+                && pts[2][0] === 1 && pts[2][1] === 0)) {
+            if (badUpperArc.length < 3) {
+              badUpperArc.push([key, role, cue.id, iid, nd.op,
+                                nd.in ? nd.in.source : null, pts]);
+            }
+          }
+        } else {
+          lowestSeen += 1;
+          // `presenceWhyNo` in the host refuses a score whose LOWEST cue names a door at no
+          // presence at all. The composer must never write one.
+          if ((door.handle === "presence" && toNum(door.value) === 0)
+              || (out2.handle === "presence" && toNum(out2.value) === 0)) {
+            if (badLowestDoor.length < 3) {
+              badLowestDoor.push([key, role, cue.id, iid, door.handle, toNum(door.value),
+                                  out2.handle, toNum(out2.value)]);
+            }
+          }
+          if (!(nd.op === "static" && toNum(nd.value) === 1)) {
+            if (badLowestWhole.length < 3) {
+              badLowestWhole.push([key, role, cue.id, iid, nd.op, toNum(nd.value)]);
+            }
+          }
+        }
+      }
+    }
+  }
+  out.entryDoor = {patched, upperSeen, lowestSeen, overlaySeen,
+                   badUpperDoor, badUpperArc, badLowestDoor, badLowestWhole, badOverlay};
+}
+
+// ---------------------------------------------------------------- WHAT A CUE COSTS
+// §7: the INSTRUMENT declares what it costs, per quality variant, and the host grants against that
+// declaration and then counts what was created against it. The composer's job is to carry the
+// declaration onto the cue and never to author one — a cost the composer invented is a number the
+// host would measure a real instrument against.
+//
+// The composer typed ONE block for every cue of every score at every quality, so no crossing could
+// declare a cost different from any other and the quality ladder could not be walked on cost. This
+// block asks the repair the way the entry door's is asked: the settings record is patched with a
+// declaration that is DIFFERENT per instrument and per variant, and the row asks that what reaches
+// the cue is that instrument's own row and not one number repeated.
+//
+// The numbers below are arbitrary and deliberately so — they are a fingerprint, not a measurement.
+// What is being read is which declaration reaches which cue, and a fingerprint that is distinct per
+// instrument and per variant is the only thing that can answer it.
+{
+  const consts3 = JSON.parse(JSON.stringify(fix.consts));
+  const iids = Object.keys(consts3.manifests).sort();
+  const VARIANTS = ["lean", "standard", "rich"];
+  const want = {};
+  iids.forEach((iid, k) => {
+    want[iid] = {};
+    VARIANTS.forEach((v, j) => {
+      want[iid][v] = {bytesEstimate: 1000 * (k + 1) + j, framebuffers: k % 3, passes: 1 + j,
+                      pingPong: j, programs: 1 + (k % 2), textureSlots: 2 + j, textures: k % 4};
+    });
+    consts3.manifests[iid].resources = JSON.parse(JSON.stringify(want[iid]));
+  });
+  const c3 = joined.make(consts3);
+  let checked = 0;
+  const wrong = [], flatVariants = [];
+  for (const [x, y] of SPOT) {
+    const wa = works.works[x], wb = works.works[y];
+    if (!wa || !wb) continue;
+    for (const role of ROLES_ALL) {
+      let p = null;
+      try {
+        p = c3.passageFor({workRecordA: wa, workRecordB: wb, direction: "a-to-b",
+                           seed: die(x + "__" + y + "__ab"), routeRole: role});
+      } catch (e) { wrong.push([x, y, role, "threw " + e.message]); continue; }
+      if (!p || !p.score) continue;
+      for (const cue of p.score.cues) {
+        const w = want[cue.instrument.id];
+        if (!w) continue;
+        for (const v of VARIANTS) {
+          checked += 1;
+          const got2 = (cue.resources || {})[v] || {};
+          for (const f of Object.keys(w[v])) {
+            if (got2[f] !== w[v][f] && wrong.length < 4) {
+              wrong.push([cue.instrument.id, v, f, got2[f], w[v][f]]);
+            }
+          }
+        }
+        const lean = JSON.stringify((cue.resources || {}).lean || null);
+        const rich = JSON.stringify((cue.resources || {}).rich || null);
+        if (lean === rich && flatVariants.length < 3) flatVariants.push([cue.instrument.id, lean]);
+      }
+    }
+  }
+  out.cost = {checked, wrong, flatVariants, declarations: iids.length};
+}
+
+// ---------------------------------------------------------------- THE DAY ON THE REQUEST
+// Charter shelf 16's third dice step. `weatherNow` called `new Date()` and was the last thing in
+// the composer a pinned run could not reproduce: one request at one seed composed two different
+// scores an hour apart, and the family a return is matched against moved with the hour. The shelf's
+// own last two sentences settle the collision — seeds and determinism are the JUDGING mode,
+// ephemerality is the VIEWER mode — so the day is an input the walk states in the mode that has
+// one, never a call the composer makes.
+//
+// TWO THINGS ARE ASKED, and the second matters as much as the first: the step must still WORK.
+// Deleting a clock is easy and it would leave shelf 16's third step deleted with it, silently.
+//
+//   · REPRODUCIBLE. One request stating no day, composed twice, is byte-identical — and stating a
+//     day does not break that either: the same day twice is the same score.
+//   · STILL A BIAS. Two requests differing in NOTHING but the day compose differently on some pair,
+//     so the day still reaches the die it was written for.
+//   · FENCED. A day that is no instant is left unread and recorded, and reads as neutral.
+{
+  const askDay = (x, y, day) => {
+    const req = {workRecordA: works.works[x], workRecordB: works.works[y], direction: "a-to-b",
+                 seed: die(x + "__" + y + "__ab"), routeRole: "middle"};
+    if (day !== undefined) req.day = day;
+    return composer.passageFor(req);
+  };
+  // Two instants a long way apart in the day and in the year, so the hue wheel, the light curve and
+  // the tempo curve all stand somewhere else. They are two numbers on a request, not a measurement.
+  const DAY_ONE = Date.UTC(2026, 0, 15, 3, 0, 0), DAY_TWO = Date.UTC(2026, 6, 2, 15, 0, 0);
+  let pairs = 0, moved = 0, unstable = 0, dayUnstable = 0;
+  const firstMove = [];
+  // A SLICE OF THE CORNER, EVERY FOURTH PAIR, and the slice is a cost rather than a claim: each
+  // pair here composes five whole passages and what is being asked is whether the day reaches a die
+  // at all, which one pair answers and the rest only make louder. The slice is taken by position in
+  // the corner's own settled order, so it is the same slice on every run.
+  for (const [x, y] of SPOT.filter((_, k) => k % 4 === 0)) {
+    const none1 = askDay(x, y), none2 = askDay(x, y);
+    const one = askDay(x, y, DAY_ONE), oneAgain = askDay(x, y, DAY_ONE);
+    const two = askDay(x, y, DAY_TWO);
+    if (!none1.score || !one.score || !two.score) continue;
+    pairs += 1;
+    if (none1.json !== none2.json) unstable += 1;
+    if (one.json !== oneAgain.json) dayUnstable += 1;
+    if (one.json !== two.json) {
+      moved += 1;
+      if (firstMove.length < 1) firstMove.push([x + "__" + y, one.plan.pivot.kind, two.plan.pivot.kind]);
+    }
+  }
+  const [sx, sy] = SPOT[0];
+  const stray = askDay(sx, sy, "not an instant");
+  out.day = {
+    pairs, moved, unstable, dayUnstable,
+    readsNone: (askDay(sx, sy).request || {}).day,
+    readsOne: (askDay(sx, sy, DAY_ONE).request || {}).day,
+    strayRead: (stray.request || {}).day,
+    strayRecorded: ((stray.request || {}).unread || []).filter((u) => /^day /.test(u)),
+    strayMatchesNone: stray.json === askDay(sx, sy).json,
+    firstMove
+  };
+}
+
+// ---------------------------------------------------------------- THE HARMONIC FUNCTION
+// The client writes `routeFunction` beside `routeRole` and has done since the harmonic layer
+// landed. Two things are asked here.
+//
+//   · THE FENCE. The field is read, held to the three names, defaulted off the role where the walk
+//     states none, recorded on the request, and a stray value is RECORDED rather than charged to
+//     the visitor — the road every other field of this request already takes.
+//   · THE CREST (charter shelf 15: the crest law is the culmination's suspension). Whether the
+//     cue's shared course dwells at its middle is read off the step's FUNCTION and no longer off
+//     the two works' tone alone. A dominant suspends; a tonic and a subdominant do not. Tone still
+//     says how long the hold is and where it sits.
+//
+// HOW A HOLD IS READ HERE: the course is a spline over the cue's own progress, and it dwells when
+// it carries FOUR points — the two middle ones at one value — against three for a passage through.
+// That is the shape `pass-layer.js`'s own `splineSlopes` zeroes both tangents of, which is what
+// makes the dwell read as the picture standing still.
+{
+  const courseOf = (cue) => {
+    const names = Object.keys(cue.nodes || {}).filter((k) => /-course(-shared)*$/.test(k));
+    return names.length ? cue.nodes[names[0]] : null;
+  };
+  const holdsIn = (p) => {
+    let held = 0, passed = 0;
+    for (const cue of (p.score ? p.score.cues : [])) {
+      const c = courseOf(cue);
+      if (!c || c.op !== "spline") continue;
+      if ((c.points || []).length >= 4) held += 1; else passed += 1;
+    }
+    return {held, passed};
+  };
+  const ask = (x, y, role, fn) => {
+    const wa = works.works[x], wb = works.works[y];
+    const req = {workRecordA: wa, workRecordB: wb, direction: "a-to-b",
+                 seed: die(x + "__" + y + "__ab"), routeRole: role};
+    if (fn !== undefined) req.routeFunction = fn;
+    return composer.passageFor(req);
+  };
+  // 1 · THE FENCE. One pair, one seed, one role, three ways of stating the function.
+  const [fx, fy] = SPOT[0];
+  const plain = ask(fx, fy, "middle");
+  const asDom = ask(fx, fy, "middle", "dominant");
+  const stray = ask(fx, fy, "middle", "plagal");
+  // 2 · THE CREST, over the same settled corner every other row here walks, at every role.
+  let tonicHeld = 0, tonicSeen = 0, domSeen = 0, domHeld = 0, subHeld = 0, subSeen = 0;
+  const tonicWitness = [], subWitness = [];
+  for (const [x, y] of SPOT) {
+    for (const role of ROLES_ALL) {
+      const p = ask(x, y, role);
+      if (!p.score) continue;
+      const fn = p.request.routeFunction;
+      const {held, passed} = holdsIn(p);
+      if (fn === "tonic") {
+        tonicSeen += held + passed;
+        tonicHeld += held;
+        if (held && tonicWitness.length < 3) tonicWitness.push([x + "__" + y, role]);
+      } else if (fn === "dominant") {
+        domSeen += held + passed;
+        domHeld += held;
+      } else {
+        subSeen += held + passed;
+        subHeld += held;
+        if (held && subWitness.length < 3) subWitness.push([x + "__" + y, role]);
+      }
+    }
+  }
+  out.harmonic = {
+    read: plain.request ? plain.request.routeFunction : null,
+    readWhenStated: asDom.request ? asDom.request.routeFunction : null,
+    readWhenStray: stray.request ? stray.request.routeFunction : null,
+    strayRecorded: ((stray.request || {}).unread || []).filter((u) => /routeFunction/.test(u)),
+    plainHolds: holdsIn(plain), statedHolds: holdsIn(asDom),
+    tonicSeen, tonicHeld, subSeen, subHeld, domSeen, domHeld,
+    tonicWitness, subWitness
+  };
+}
+
 out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
              roads, declines, byRoad, maxBytes, maxIntent, overByte, overIntent,
              byteCap: BYTE_CAP, intentCap: INTENT_CAP,
@@ -1250,9 +1798,15 @@ out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
              ledAtTonic, ledElsewhere, ledWithWorldCue, tonic,
              folded, worldCue, ledAndWorld, twoMiracles, roleThrew, roleN, boxQualified,
              foldUnspent, chosen, cast: Object.keys(consts.instruments).sort(),
+             spendsTheMiracle: SPENDS_THE_MIRACLE, worldsCast, worldStack, worldNotVoiced,
+             worldSeen, levelBreaches, levelSharedBy,
+             promiseSeen: promiseSeen.sort(), promiseKept: promiseKept.sort(),
+             registerOf: promiseKind,
+             levelBreachCases, levelSharedCases,
              adriftSeams, tideCellsSeen, levelASeen, levelBSeen, gateSlots,
              gridColourVoicesOwns, strataLightVoicesOwns,
-             gridColourVoicesAccompanies, strataLightVoicesAccompanies};
+             gridColourVoicesAccompanies, strataLightVoicesAccompanies,
+             accSightings, accStillDriven};
 out.camera = {checked: camChecked, mismatches: camMismatches, allZero: camAllZeroCount,
               endsBad: camEndsBad, fitMismatch: camFitMismatch, maxTrackLen: camMaxTrackLen,
               trackPointCap: CAMERA_POINT_CAP, distinctTracks: camDistinctTracks.size,
@@ -1659,7 +2213,18 @@ const HARD = {
     fullRecord("ordinary", { measures: { banding: 0.4 }, structure: { banding: { score: 0.4 } } })
   ],
   // Two records with nothing measured about either of them at all.
-  "two records with nothing measured at all": [bareRecord("bare-a"), bareRecord("bare-b")]
+  "two records with nothing measured at all": [bareRecord("bare-a"), bareRecord("bare-b")],
+  // A RECORD CARRYING ONLY ITS OWN ID, which is the hardest record there is and the one the
+  // composer's own two refusals AGREE to compose over: `passageFor` asks each record for an `id`
+  // and for nothing else. Everything else here is a field that may be absent, so the composer's own
+  // contract already says this record must yield a crossing. `bareRecord` above is not this case —
+  // it ships every optional container present and empty, and a container present and empty is a
+  // different thing from a field that is not there at all. Charter shelf 21: no branch may
+  // terminate in "no crossing", and a throw is worse than a refusal.
+  "a record carrying only its own id": [{ id: "id-only" },
+                                        fullRecord("ordinary", { measures: { banding: 0.4 },
+                                          structure: { banding: { score: 0.4 } } })],
+  "two records carrying only their own ids": [{ id: "id-a" }, { id: "id-b" }]
 };
 {
   const rows = {};
@@ -1733,6 +2298,402 @@ const HARD = {
   };
 }
 
+// ---- ONE INSTRUMENT, BOTH SIDES OF THE LEVELS LAW --------------------------------------------
+// `adrift` publishes handles on two levels: its seam and its grain read the whole SURFACE, and its
+// flights, voids and homes belong to what stands inside a cell. So it is the plain case for the
+// law's two halves, and both are read here on NAMED ordered pairs rather than on whatever the
+// ranking happens to choose across a corner of the collection.
+//
+//   · `owns` — a pair where adrift's cue owns SURFACE. Its seam handles are driven, off the
+//     departing work's own measured seam.
+//   · `accompanies` — a pair where another cue owns SURFACE instead. The seam handles are gone
+//     from adrift's track list altogether, which is what resting on a lost level means; every one
+//     of its CELL CONTENT handles is still driven, which is what playing on where it owns means.
+{
+  const adriftAt = (a, b, role) => {
+    const wa = works.works[a], wb = works.works[b];
+    const p = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: "a-to-b",
+                                   seed: die(a + "__" + b + "__ab"),
+                                   routeRole: role || "middle"});
+    const cue = p.score ? p.plan.cues.find((c) => c.instrument.id === "adrift") : null;
+    if (!cue) return {cast: false};
+    const man = fix.consts.manifests.adrift.handles;
+    const driven = Object.keys(cue.tracks || {});
+    const on = (level) => driven.filter((h) => (man[h] || {}).level === level).sort();
+    const seamNode = cue.nodes[cue.id + "-seamA"];
+    return {cast: true, cue: cue.id, owns: (cue.levelOwnership || {})["SURFACE"] || null,
+            surfaceDriven: on("SURFACE"), cellContentDriven: on("CELL CONTENT"),
+            seamApplied: seamNode ? toNum(startValue(seamNode)) : null,
+            seamNote: seamNode ? String(seamNode.note || "") : null,
+            recordSeam: Number(((wa.structure || {}).horizon || {}).seam) || 0};
+  };
+  // THE TWO PAIRS ARE DERIVED, NEVER PINNED. Two ordered pairs stood written out here, chosen
+  // because adrift happened to be cast on them in the two shapes the law's two halves need. That
+  // went stale once already — the day `liquid` stopped declaring SURFACE, the pair that used to
+  // show adrift ACCOMPANYING showed it owning, and the row had to be re-picked by hand — and a
+  // pinned witness goes stale again on the next correction to any declaration, silently, because a
+  // pair that no longer casts adrift reads `{cast: false}` and says nothing about why.
+  //
+  // So the two witnesses are searched for instead, over the same settled corner of ordered pairs
+  // every other row here walks, in the same settled order: the first pair on which adrift is cast
+  // and OWNS the surface, and the first on which it is cast and does NOT. Both are properties of
+  // the composition rather than of any pair chosen in advance, so a declaration corrected tomorrow
+  // moves which pair is found and not whether one is. Where the corner carries no such pair, the
+  // witness says `{cast: false}` and the row reds with that on its face — which is the honest
+  // answer: the law's half could not be exercised at all.
+  // THE OWNING WITNESS ALSO NEEDS A SEAM WORTH READING, and the condition is put on the RECORD and
+  // never on what the composition wrote. The row below asks that adrift's seam carry the departing
+  // work's own MEASURED strength rather than presence-or-absence, so a witness whose departing work
+  // records a seam of exactly nothing or exactly whole cannot tell the two apart — that is a fact
+  // about the record and it is knowable before the composer is asked. Reading it off the record
+  // keeps the row honest: were the wire to break tomorrow and write nothing everywhere, the search
+  // would still find this pair and the row would still red on what it applied.
+  const realSeamOf = (x) => {
+    const s = Number((((works.works[x] || {}).structure || {}).horizon || {}).seam) || 0;
+    return s > 0 && s < 1;
+  };
+  const findAdrift = (wantOwns, needRealSeam) => {
+    for (const [x, y] of SPOT) {
+      if (needRealSeam && !realSeamOf(x)) continue;
+      for (const role of ROLES_ALL) {
+        const got = adriftAt(x, y, role);
+        if (got.cast && (got.owns === "owns") === wantOwns) {
+          got.pair = x + "__" + y + "__ab";
+          got.role = role;
+          return got;
+        }
+      }
+    }
+    return {cast: false, searched: SPOT.length, needRealSeam: !!needRealSeam};
+  };
+  out.adriftBothWays = {owns: findAdrift(true, true), accompanies: findAdrift(false, false)};
+
+  // ---- THE GATE SLOT'S OWN WITNESSES, SOUGHT RATHER THAN HOPED FOR --------------------------
+  // The gate-slot row asks three things: every applied slot matches the departing work's own
+  // record, slotPlace takes more than one value, and slotAxis is seen at both 0 and 1. The first
+  // is a claim about the reading and the sweep answers it wherever it lands. The other two are
+  // claims about REACH — that the row saw a slot in each direction and more than one place — and
+  // those the sweep cannot answer, because which pairs cast `gates` at all is the ranking's
+  // business and moves whenever a record does.
+  //
+  // It moved on 2026-08-26. Not one gate field in one record changed value; the ranking simply
+  // stopped casting `gates` on any horizontally-slotted departing work inside the 192-pair spot,
+  // and a row that had been green for weeks went red having found nothing wrong. That is the shape
+  // this file has been closing all night: a verdict whose reach is set by what something else
+  // happened to hand it.
+  //
+  // So the witnesses are DERIVED, the way the drifting instrument's two above are. Ordered pairs
+  // are walked in the collection's own id order until a `gates` cast is found on a departing work
+  // of each axis and at more than one place. The walk is bounded and it reports what it reached, so
+  // a corner that genuinely holds no such pair REDS SAYING SO rather than passing on a thinner
+  // sample — the clauses are not loosened, they are given something to stand on.
+  {
+    const seen = [], readings = [];
+    let tried = 0;
+    const axesFound = () => new Set(seen.map((s) => s.axis));
+    const placesFound = () => new Set(seen.map((s) => s.place));
+    const halvesFound = () => new Set(seen.map((s) => s.half));
+    outerGate:
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = 0; j < ids.length; j++) {
+        if (i === j) continue;
+        for (const dir of ["a-to-b", "b-to-a"]) {
+          if (tried++ > 4000) break outerGate;
+          const a = ids[i], b = ids[j];
+          const key = a + "__" + b + "__" + (dir === "a-to-b" ? "ab" : "ba");
+          let q;
+          try {
+            q = composer.passageFor({workRecordA: works.works[a], workRecordB: works.works[b],
+                                     direction: dir, seed: die(key)});
+          } catch (e) { continue; }
+          if (!q.score) continue;
+          const cue = q.plan.cues.find((c) => c.instrument.id === "gates");
+          if (!cue) continue;
+          // A GATES CUE THAT DOES NOT OWN ITS LEVEL DRIVES NO SLOT AT ALL, and that is the levels
+          // law working rather than anything missing: `ownedTracks` strips slotPlace/slotHalf/
+          // slotAxis from a cue that merely accompanies on CELL, so such a cue carries no slot
+          // reading for this row to check. The witness therefore looks for a cue that DRIVES the
+          // slot rather than for one that merely plays the instrument — asked of the track list
+          // itself, so it stays true however the ownership rule is later written.
+          if (!(cue.tracks || {}).slotPlace) continue;
+          // The departing work under the same b-to-a flip the composer itself takes.
+          const from = dir === "b-to-a" ? works.works[b] : works.works[a];
+          const mot = from.motifs || {};
+          const axis = mot.gateAxis === "vertical" ? 1
+            : (mot.gateAxis === "horizontal" ? 0 : null);
+          seen.push({key: key, axis: axis, place: mot.gatePlace, half: mot.gateHalf});
+          for (const handle of ["slotPlace", "slotHalf", "slotAxis"]) {
+            const node = cue.nodes[cue.id + "-" + handle];
+            if (!node) continue;
+            const record = handle === "slotPlace" ? mot.gatePlace
+              : handle === "slotHalf" ? mot.gateHalf : axis;
+            readings.push({key: key, handle: handle, applied: toNum(startValue(node)),
+                           record: record});
+          }
+          // THE SEARCH STOPS WHEN EVERY CLAUSE THE ROW ASKS HAS SOMETHING TO STAND ON, not when
+          // most of them do. Stopping at two axes and two places left `slotHalf` on whatever the
+          // first two pairs happened to share, which is the same «reach set by what turned up»
+          // this witness exists to end — one clause short is still hoping.
+          if (axesFound().size >= 2 && placesFound().size >= 2
+              && halvesFound().size >= 2) break outerGate;
+        }
+      }
+    }
+    out.gateSlotWitness = {tried: tried, pairs: seen, readings: readings,
+                           axes: [...axesFound()].sort(), places: [...placesFound()].sort(),
+                           halves: [...halvesFound()].sort()};
+  }
+
+  // THE GROUND AND THE VOICE ABOVE IT, CUTTING THE SAME WAY. A pair whose plan casts two cues that
+  // both DECLARE one level and both publish handles on it — the plain shape of shelf 18's ban,
+  // pattern stacked on pattern. What is read is which cues actually DRIVE a handle on each level:
+  // one cue per level is the law kept, two is the defect.
+  //
+  // THE PAIR IS DERIVED, NEVER PINNED, for the same reason `adriftBothWays` above is. One ordered
+  // pair at one role stood written out here and it went stale the night the entry door's dry landed
+  // across the fleet and moved what this collection casts: the pair stopped casting two cues on one
+  // level, so the red-on-bug that plants `ownedTracks` out read `False` — the plant could no longer
+  // fire, and a guard that cannot fail is worse than no guard because the row above it still reads
+  // green. A pinned witness goes stale silently on the next correction to any declaration; a
+  // searched one moves with it.
+  //
+  // AND THE SEARCH KEY IS WHAT MAKES IT A LAWFUL PLANT: it reads the cues' own DECLARED levels and
+  // the manifests' own handle declarations, never the track lists. Those are identical whether
+  // `ownedTracks` stands or is planted out, so the planted run and the plain run find the SAME
+  // witness and the plant measures the guard rather than measuring which pair each run happened to
+  // pick. The track lists are what is then read off that one witness, and they are exactly what the
+  // guard changes.
+  {
+    const levelsOfCue = (cue) => {
+      const man = fix.consts.manifests[cue.instrument.id].handles;
+      const out2 = {};
+      for (const h of Object.keys(man)) {
+        if (man[h].open) continue;
+        const l = man[h].level;
+        if (l && (cue.levels || []).indexOf(l) >= 0) out2[l] = true;
+      }
+      return Object.keys(out2);
+    };
+    // TWO CUES ON ONE LEVEL ARE A BREACH ONLY WHERE THEY ARE LIVE TOGETHER, and this reading takes
+    // that from the sweep above rather than keeping a second idea of the law. Shelf 17 bars two
+    // ACTIVE voices from one level and the word carries it: `ownTheLevels` settles ownership per
+    // OVERLAPPING group (`meets`), so two cues whose windows never meet may both own a level and
+    // both drive their handles on it, lawfully. Reading the track lists alone called that a breach —
+    // it is how this row first reported a perfectly lawful plan, `travel` and `arrival` both on
+    // SURFACE across windows that never touch.
+    const meet = (A, B) => A[0] < B[1] && B[0] < A[1];
+    const windowOf = (cue) => [Number(toNum(cue.window[0])), Number(toNum(cue.window[1]))];
+    const readPlan = (p) => {
+      const byLevel = {}, windows = {}, cast = [];
+      for (const cue of (p.score ? p.plan.cues : [])) {
+        cast.push(cue.id + ":" + cue.instrument.id);
+        windows[cue.id] = windowOf(cue);
+        const man = fix.consts.manifests[cue.instrument.id].handles;
+        for (const h of Object.keys(cue.tracks || {})) {
+          const l = (man[h] || {}).level;
+          if (!l) continue;
+          if (!byLevel[l]) byLevel[l] = [];
+          if (byLevel[l].indexOf(cue.id) < 0) byLevel[l].push(cue.id);
+        }
+      }
+      const shared = Object.keys(byLevel).filter((l) => {
+        const who = byLevel[l];
+        for (let i2 = 0; i2 < who.length; i2++) {
+          for (let j2 = i2 + 1; j2 < who.length; j2++) {
+            if (meet(windows[who[i2]], windows[who[j2]])) return true;
+          }
+        }
+        return false;
+      }).sort();
+      return {cast: cast, byLevel: byLevel, shared: shared};
+    };
+    // THE WALK IS THE COLLECTION'S OWN, IN ITS OWN ID ORDER, and not the 192-pair corner. The
+    // corner is what every ranking row here stands on and it is the right sample for a reading; it
+    // is the wrong one for a SHAPE, because whether any pair reaches this door is the cast's
+    // business and a corner that misses it says nothing about the collection. The walk is bounded
+    // and it reports how far it went, so "none found" is a statement with a number behind it.
+    //
+    // THE BOUND IS 600 AND IT IS A COST, NOT A CLAIM. Each step composes a whole passage; the walk
+    // stops at the first witness and pays the whole bound only when there is none to find, so the
+    // number is chosen to keep this file runnable rather than to bound the question. The question
+    // itself was answered by hand at 6 002 compositions on 2026-08-26 and found nothing — that
+    // reading is written into the retirement note beside the plant below, where it belongs, and the
+    // day this walk finds a pair the note says what to do.
+    let found = null, walked = 0;
+    outerGV:
+    for (let gi = 0; gi < ids.length; gi++) {
+      for (let gj = 0; gj < ids.length; gj++) {
+        if (gi === gj) continue;
+        const x = ids[gi], y = ids[gj];
+        for (const role of ROLES_ALL) {
+        if (walked++ > 600) break outerGV;
+        let p;
+        try {
+          p = composer.passageFor({workRecordA: works.works[x], workRecordB: works.works[y],
+                                   direction: "a-to-b", seed: die(x + "__" + y + "__ab"),
+                                   routeRole: role});
+        } catch (e) { continue; }
+        if (!p.score) continue;
+        const cues2 = p.plan.cues;
+        if (cues2.length < 2) continue;
+        // The witness has to be a pair where two cues declare one level AND are live together,
+        // because only there does the guard have anything to hold: two cues on one level across
+        // windows that never meet are lawful with `ownedTracks` in place and lawful with it planted
+        // out, so such a pair would prove nothing either way.
+        const overlap = [];
+        for (let i2 = 0; i2 < cues2.length; i2++) {
+          for (let j2 = i2 + 1; j2 < cues2.length; j2++) {
+            if (!meet(windowOf(cues2[i2]), windowOf(cues2[j2]))) continue;
+            const li = levelsOfCue(cues2[i2]);
+            for (const l of levelsOfCue(cues2[j2])) {
+              if (li.indexOf(l) >= 0 && overlap.indexOf(l) < 0) overlap.push(l);
+            }
+          }
+        }
+        if (!overlap.length) continue;
+        found = readPlan(p);
+        found.pair = x + "__" + y + "__ab";
+        found.role = role;
+        found.declaredOverlap = overlap.sort();
+        break outerGV;
+        }
+      }
+    }
+    if (found) found.walked = walked;
+    out.groundVoice = found
+      || {cast: [], byLevel: {}, shared: [], declaredOverlap: [], walked: walked, none: true};
+  }
+}
+
+// ---- SHELF 17'S LEVELS LAW, AT THE HANDLES ---------------------------------------------------
+// Every handle every published instrument publishes declares the structural level it drives, or
+// declares that it drives none. Three things are asked of that here and none of them reads a
+// photograph: every published handle has a declaration; every declaration names one of shelf 17's
+// six levels or nothing at all; and no handle claims a level its own instrument does not declare in
+// its `levels` array, which would put a cue on a level the cast never knew it was standing on.
+{
+  const six = composer.levels;
+  const seventh = [], outside = [];
+  for (const iid of Object.keys(levelsByInstrument).sort()) {
+    const declared = ((fix.consts.manifests[iid] || live[iid] || {}).levels || []);
+    for (const h of Object.keys(levelsByInstrument[iid]).sort()) {
+      const lv = levelsByInstrument[iid][h];
+      if (lv === null || lv === undefined) continue;
+      if (six.indexOf(lv) < 0) seventh.push(iid + "." + h + " -> " + lv);
+      else if (declared.indexOf(lv) < 0) outside.push(iid + "." + h + " -> " + lv);
+    }
+  }
+  // WHICH LEVELS ARE ACTUALLY DRIVEN AND BY WHOM, so a level that no handle anywhere claims shows
+  // up as the empty declaration it is rather than as a quiet nothing.
+  out.levels = {six: six, undeclared: levelsUndeclared.sort(), seventh: seventh,
+                outside: outside, driven: Object.keys(levelsSeen).sort(),
+                instruments: Object.keys(levelsByInstrument).length};
+}
+
+// ---- SHELF 6'S ONE SLOT, ON THE TWO ORDERED PAIRS THAT REACH FOR IT TWICE -------------------
+// THE LAW HAS THREE DOORS AND EACH NEEDS ITS OWN PAIR. A sweep of a corner of the collection reads
+// what the ranking happens to choose there; these two ordered pairs are named because each one puts
+// two world-declaring instruments within reach of one another by a DIFFERENT road, so the guard on
+// that road is what decides the answer rather than the ranking.
+//
+//   · `levels` — the ground is cast to an instrument that declares the world and the arrival's own
+//     candidate declares it too with a level of its own left free, so the levels test's first
+//     clause (every level taken) does not catch it and only the world clause does.
+//   · `swap` — the ground is re-cast mid-loop by §7's coverage law, AFTER the arrival is already
+//     cast, so no levels test stands between the two at all and only the swap's own gate does.
+{
+  const twoWorlds = (p) => (p.score ? p.plan.cues
+    .filter((c) => SPENDS_THE_MIRACLE.indexOf(c.instrument.id) >= 0).length : -1);
+  const at = (a, b, role) => {
+    const wa = works.works[a], wb = works.works[b];
+    if (!wa || !wb) return {cues: null, worlds: -1};
+    const p = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: "a-to-b",
+                                   seed: die(a + "__" + b + "__ab"), routeRole: role});
+    return {cues: p.score ? p.plan.cues.map((c) => c.id + ":" + c.instrument.id) : null,
+            worlds: twoWorlds(p), declined: p.declined || null};
+  };
+  out.oneSlot = {
+    levels: at("17871374341154614", "18143298391216802", "middle"),
+    swap: at("17843153263050281", "17856720509033958", "middle")
+  };
+}
+
+// ---- THE PASSAGE'S OWN LENGTH ----------------------------------------------------------------
+// Two claims, and both are claims about NUMBERS rather than about the photographs on disk. The
+// first: the band a role names holds for EVERY value the reading that places a length inside it
+// can take, walked over that reading's whole span and not over a sample of pairs. The second: the
+// reading is a reading of the two works, so two different pairs at one role come out at different
+// lengths — which is the defect this closed, where the length was one typed constant per role and
+// two pairs ran the same milliseconds to the millisecond.
+{
+  const bands = composer.roleBands;
+  const tierBands = composer.tierBands;
+  const everyBand = Object.assign({}, tierBands, bands);
+  const broke = [];
+  const note = (why, at) => { if (broke.length < 8) broke.push({why: why, at: at}); };
+
+  // THE SHARE'S OWN SPAN IS [0, 1], and it is walked to both ends and past them: `lengthInBand`
+  // clamps, so a caller handing it anything at all is answered here too.
+  const shares = [];
+  for (let i = 0; i <= 2000; i++) shares.push(i / 2000);
+  for (const extra of [-1e9, -1, -1e-12, 1e-12, 1 - 1e-12, 1 + 1e-12, 1e9]) shares.push(extra);
+  shares.sort((p, q) => p - q);
+  for (const role of Object.keys(everyBand)) {
+    const band = everyBand[role];
+    if (!(band[0] > 0 && band[1] >= band[0])) note("the band is no band", {role: role, band: band});
+    if (composer.lengthInBand(band, 0) !== band[0]) note("a share of nothing misses the floor",
+                                                        {role: role});
+    if (composer.lengthInBand(band, 1) !== band[1]) note("a whole share misses the ceiling",
+                                                        {role: role});
+    let prev = -Infinity;
+    for (const s of shares) {
+      const ms = composer.lengthInBand(band, s);
+      if (!(ms >= band[0] && ms <= band[1])) note("outside the band", {role: role, s: s, ms: ms});
+      if (ms < prev) note("the placement fell as the share rose", {role: role, s: s, ms: ms});
+      prev = ms;
+    }
+  }
+
+  // THE READING'S OWN SPAN. `cameraFlight` writes the dolly as `DOLLY_CAP · asked / (|asked| +
+  // DOLLY_CAP)` — the same limit-not-a-wall shape the camera lane put there — and leaves it at
+  // exactly 0 where either work carries no measured door step. `asked` is the natural logarithm of
+  // one measured step over the other, so it runs the whole real line; this walks it there and
+  // reads what the share the length is placed by can be.
+  const asks = [0, 1e-12, -1e-12, 1e-6, -1e-6, 1, -1, 12, -12, 1e6, -1e6, 1e15, -1e15];
+  for (let i = -400; i <= 400; i++) asks.push(i / 8);
+  let shareLo = Infinity, shareHi = -Infinity;
+  for (const a of asks) {
+    const dolly = composer.r4(DOLLY_CAP * a / (Math.abs(a) + DOLLY_CAP));
+    const share = Math.abs(dolly) / DOLLY_CAP;
+    if (share < shareLo) shareLo = share;
+    if (share > shareHi) shareHi = share;
+    if (!(share >= 0 && share <= 1)) note("the share left [0,1]", {asked: a, share: share});
+  }
+
+  // THE SAME LENGTH, ASKED OF THE COMPOSER ITSELF, on two ordered pairs that are not the same pair.
+  const [p1a, p1b] = SPOT[0], [p2a, p2b] = SPOT[SPOT.length - 1];
+  const pairOf = (xi, yi, role) => {
+    const wa = works.works[xi], wb = works.works[yi];
+    const key = wa.id + "__" + wb.id + "__ab";
+    const p = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: "a-to-b",
+                                   seed: die(key), routeRole: role});
+    return p.score ? {ms: p.score.duration, tier: p.plan.tier} : null;
+  };
+  const perRole = {};
+  for (const role of Object.keys(bands)) {
+    const one = pairOf(p1a, p1b, role), two = pairOf(p2a, p2b, role);
+    // WHICH BAND EACH RUNS INSIDE. The role's own where the plan reached that role's tier, and the
+    // REALISED tier's where it did not — so a plan never declares a tier its length contradicts.
+    // Both are named here and the row asks the length to stand inside one of them.
+    perRole[role] = {band: bands[role], one: one, two: two,
+                     tierOne: one ? tierBands[one.tier] : null,
+                     tierTwo: two ? tierBands[two.tier] : null};
+  }
+  out.length = {bands: bands, tierBands: tierBands, broke: broke, shareLo: shareLo,
+                shareHi: shareHi, perRole: perRole,
+                walked: shares.length * Object.keys(everyBand).length + asks.length};
+}
+
 console.log(JSON.stringify(out));
 """
 
@@ -1761,10 +2722,33 @@ def node_available():
         return False
 
 
-# Charter shelf 17's budget, and the two ends of the walk this seat named. A role's row is the bound
-# the composer emits inside, and the band of seconds it emits inside.
+# Charter shelf 17's voice budget, and it is a budget BY TIER: a quiet tier carries one letter, at
+# most one accompaniment and no miracle; a middle at most two letters, at most two accompaniments and
+# at most one miracle; a culmination two or three letters, at most three accompaniments and exactly
+# one. The camera is counted as one accompaniment before a single cue is counted (PASS-API-V1 §4.4,
+# amended 2026-08-14 10:31), which is what `budget()` in the driver above already does.
+TIER_BUDGET = {
+    "quiet": {"letters": (1, 1), "accompaniments": (0, 1), "miracles": (0, 0)},
+    "middle": {"letters": (0, 2), "accompaniments": (0, 2), "miracles": (0, 1)},
+    "culmination": {"letters": (2, 3), "accompaniments": (0, 3), "miracles": (1, 1)},
+}
+
+# The same shelf's band of seconds per tier, in milliseconds. Shelf 17 names three and no more, so a
+# ROLE gets no band of its own: it gets the band of the tier its row declares, which is why
+# ROLE_SECONDS below is these three read through the role table's own `tier` and never a fourth pair
+# of numbers. A composer that opened any of these would be widening the charter rather than placing a
+# length inside it, so the row below reads the tables the composer publishes against these and never
+# the other way about.
+TIER_SECONDS = {"quiet": (2000, 4000), "middle": (5000, 8000), "culmination": (9000, 14000)}
+ROLE_SECONDS = {"entrance": (5000, 8000), "quiet link": (2000, 4000), "middle": (5000, 8000),
+                "culmination": (9000, 14000), "return": (2000, 4000)}
+
+# The bound each ROLE emits inside — the letters it may spend, the miracles, and the band of seconds
+# — with the entrance's and the return's own two rows this seat's. A role's letter bound holds: shelf
+# 15 wants most of a walk quiet and shelf 17's quiet row is one letter, so a quiet link playing one
+# structural gesture is the charter's own intent rather than a thin passage.
 ROLE_BUDGET = {
-    "entrance": {"letters": (0, 2), "miracles": (0, 0), "seconds": (4.0, 6.0)},
+    "entrance": {"letters": (0, 2), "miracles": (0, 0), "seconds": (5.0, 8.0)},
     "quiet link": {"letters": (1, 1), "miracles": (0, 0), "seconds": (2.0, 4.0)},
     "middle": {"letters": (0, 2), "miracles": (0, 1), "seconds": (2.0, 8.0)},
     "culmination": {"letters": (1, 3), "miracles": (0, 1), "seconds": (2.0, 14.0)},
@@ -1882,6 +2866,18 @@ else:
             b = r["budget"]
             if not (want["letters"][0] <= b["letters"] <= want["letters"][1]):
                 bad.append(f"{role} spends {b['letters']} letters, outside {want['letters']}")
+            # The counts are judged as well against the row of the tier the plan DECLARES — §4.7
+            # calls a plan whose declared tier its own voices contradict a red, and this is that
+            # read.
+            row = TIER_BUDGET.get(r.get("tier"))
+            if row is None:
+                bad.append(f"{role} declares the tier «{r.get('tier')}», which shelf 17 has no row "
+                           f"for")
+            else:
+                for count in ("letters", "accompaniments", "miracles"):
+                    if not (row[count][0] <= b[count] <= row[count][1]):
+                        bad.append(f"{role} declares a {r['tier']} and spends {b[count]} "
+                                   f"{count}, outside that row's {row[count]}")
             if not (want["miracles"][0] <= b["miracles"] <= want["miracles"][1]):
                 bad.append(f"{role} spends {b['miracles']} miracles, outside {want['miracles']}")
             secs = r["duration"] / 1000.0
@@ -1893,6 +2889,383 @@ else:
                         f"{v.get('cues')}" for k, v in roles.items())
               + f" — {told} distinct scores over one pair"
               + ("; " + "; ".join(bad) if bad else ""))
+
+        # --- rows 5e-5f · shelf 17's levels law, at the handles ----------------------------------
+        # THE DECLARATION FIRST. A handle that publishes no level would read exactly like a handle
+        # that drives nothing, so a half-done migration would close the ban for some instruments and
+        # leave it silently open for the rest. The composer treats a missing declaration as levelless
+        # because it must not lose a crossing over one; this row is what makes a missing one loud.
+        sw = got["sweep"]
+        lv = got["levels"]
+        lvbad = []
+        if lv["undeclared"]:
+            lvbad.append(f"handles that declare no level: {lv['undeclared']}")
+        if lv["seventh"]:
+            lvbad.append(f"handles claiming a level outside shelf 17's six: {lv['seventh']}")
+        if lv["outside"]:
+            lvbad.append(f"handles claiming a level their own instrument never declares: "
+                         f"{lv['outside']}")
+        check(NODE_ROWS[60], not lvbad,
+              f"every handle of all {lv['instruments']} published instruments declares its own "
+              f"structural level or declares none; the levels actually driven are "
+              f"{lv['driven']}, all of them inside shelf 17's {lv['six']}"
+              + ("; " + "; ".join(lvbad) if lvbad else ""))
+
+        # AND THE LAW ITSELF, read off what each cue actually drives rather than off what it says.
+        # A cue drives a handle when that handle has a track on it. Two readings, and both must
+        # stand at nothing: a cue driving a handle on a level it does not own, and a level driven by
+        # two cues at once. The ground is read like every other cue — it holds no exemption now.
+        lawbad = []
+        if sw["levelBreaches"]:
+            lawbad.append(f"cues driving a handle on a level they do not own: "
+                          f"{sw['levelBreachCases']}")
+        if sw["levelSharedBy"]:
+            lawbad.append(f"levels driven by two cues at once: {sw['levelSharedCases']}")
+        check(NODE_ROWS[60], not lawbad,
+              "over the sweep at all five roles, no cue drives a handle on a level it does not own "
+              "and no structural level is driven by two cues at once"
+              + ("; " + "; ".join(lawbad) if lawbad else ""))
+
+        # --- row 5g · what the register promised, against what the composition wrote -----------
+        # THE GATE THAT WAS MISSING, AND ITS SHAPE IS THE POINT. Three tables decided independently
+        # what a handle is — the register said what it READS, `tracksFor` gave it a TRACK on the
+        # strength of having any row at all, and `fillPlan`'s own branch decided whether a VALUE was
+        # computed — and nothing held the three against each other. A handle in the first two and not
+        # the third reached the node writer with nothing, and the writer wrote
+        # `{op: "static", value: <the manifest's own default>}` with no provenance on it: one number
+        # for the whole passage, and no sentence saying so.
+        #
+        # It survived because the only row over it walked a cue's nodes and skipped any whose note
+        # did not open with «requested» — blind on exactly the handles the writer had declined to
+        # write a note for. This row runs the other way about: it starts from the register's own
+        # word and asks whether the composition kept it.
+        # A ROW KEPT ON SOME PAIRS AND NOT OTHERS IS A COMPOSITION DECISION, and the plan says why
+        # in its own sentences — a colour voice too quiet to be seen leaves its three handles
+        # unwritten, which is the lab's own mute. A row kept NOWHERE is something else: the promise
+        # was never written at all, and no pair in the world would have kept it. That is the breach
+        # this reads, and it is a claim about the register against the code rather than about which
+        # photographs happen to be on disk.
+        never = sorted(set(sw["promiseSeen"]) - set(sw["promiseKept"]))
+        # A `progress` OR `plan` ROW CAN ALWAYS BE KEPT, because what it reads always exists: the
+        # passage has a travel on every pair and the plan has named its arrival before this runs. So
+        # a row of either kind that the composition never keeps is a defect outright, and that is
+        # what this reds on. A `measured` row can honestly go unkept on a pair whose records carry
+        # nothing for it — `tunnel.ribs` reads a ring count and answers only where a work was cut as
+        # rings — so those are reported beside the row rather than failing it, because whether this
+        # sample happens to contain such a pair is a fact about the photographs on disk.
+        promised = [k for k in never
+                    if (sw["registerOf"].get(k) or "") in ("progress", "plan")]
+        check(NODE_ROWS[60], not promised,
+              f"every handle whose row promises a measurement, the passage's own travel or a plan's "
+              f"word is kept somewhere — {len(sw['promiseKept'])} of {len(sw['promiseSeen'])} "
+              f"such handle(s) driven, and every row promising the passage's own travel or a "
+              f"plan's word is kept"
+              + (f"; measured rows this sample never exercised: {never}" if never else "")
+              + (f"; promises broken: {promised}" if promised else ""))
+
+        # AND THE CAST IS NOT NARROWED BY ANY OF IT. The exclusion the cast still makes is one
+        # disjunct shorter than it was — the clause that dropped a candidate for standing beside
+        # another voice on an ungated level is gone, and removing a disjunct from an OR can only
+        # shrink the set it excludes, for any collection whatever. So no candidate that played
+        # before can be turned away now, and what the row reads on real records is the other half of
+        # the promise: on the named pair whose ground and voice share a level, BOTH still compose,
+        # and the one that lost the level goes on driving every handle it owns elsewhere.
+        gv = got["groundVoice"]
+        acc2 = got["adriftBothWays"]["accompanies"]
+        narrowed = []
+        # A WALK THAT FINDS NO SUCH PAIR IS NOT THIS ROW FAILING, and it is worth saying which of the
+        # two it is. The row asserts a NEGATIVE — no level is driven by two cues that are live
+        # together — and `castForKinds`'s own levels clause now closes that shape one stage EARLIER
+        # than `ownedTracks` does: a candidate whose levels are all taken by a cue it meets is never
+        # cast at all, so the plan handed to `ownedTracks` no longer carries the overlap. The law is
+        # kept more strictly than this half was written to check it, not less.
+        #
+        # WHAT KEEPS THE ROW FROM READING NOTHING is therefore the other two clauses it already
+        # carries, and both are live: the sweep's own reading below walks every crossing at all five
+        # roles for a handle driven on an unowned level and for a level driven by two cues at once,
+        # and `acc2` is a derived witness of `ownedTracks` actually stripping a level from a cue that
+        # only accompanies on it. If BOTH of those ever went quiet this half would be vacuous; while
+        # either stands, it is not.
+        if gv.get("none") and gv["cast"]:
+            narrowed.append(f"the pair found composes {gv['cast']}, which is not two voices")
+        elif gv["cast"] and len(gv["cast"]) < 2:
+            narrowed.append(f"the pair found composes {gv['cast']}, which is not two voices")
+        if gv["shared"]:
+            narrowed.append(f"levels driven by two cues on {gv.get('pair')} at a "
+                            f"{gv.get('role')}: {gv['shared']}")
+        if not acc2.get("cast"):
+            narrowed.append("the sharing pair casts no adrift cue at all")
+        elif not acc2["cellContentDriven"]:
+            narrowed.append("the cue that lost SURFACE drives nothing on the level it owns")
+        gvSays = (
+            f"no pair of the collection casts two cues that declare one level and are live "
+            f"together, over {gv.get('walked', 0)} composition(s) walked in the collection's own id "
+            f"order at every role (and 6002 by hand on 2026-08-26) — the cast itself now closes the "
+            f"shape, one stage earlier than `ownedTracks` does"
+            if gv.get("none") else
+            f"the pair this run found — {gv.get('pair')} at a {gv.get('role')}, whose cast declares "
+            f"{gv.get('declaredOverlap')} on two cues that are live together — composes "
+            f"{gv['cast']} with one cue per level ")
+        check(NODE_ROWS[60], not narrowed,
+              gvSays + 
+              f"({json.dumps(gv['byLevel'], ensure_ascii=False)}); on the sharing pair the cue that "
+              f"lost SURFACE still drives {len(acc2.get('cellContentDriven') or [])} handle(s) on "
+              f"the level it owns"
+              + ("; " + "; ".join(narrowed) if narrowed else ""))
+
+        # --- the entry door · a voice joins a running picture without replacing it ---------------
+        # The charter's build ladder, step 0, and the oldest standing debt in the engine: every
+        # module was built permanently wet, so a layer could only be crossfaded in. The fleet's
+        # reserved dry closed the module half; this is the plan half, and the row asks four things
+        # of one composed sweep at all five roles.
+        #
+        # IT IS NOT A CROSSFADE COMING BACK. The row asks that an upper voice's dry be exactly
+        # NOTHING at both of its doors — never a half, never a share — so at no instant is one
+        # picture weighed against another. A plan that faded would be caught by this row and by the
+        # host's own door proof both.
+        ed = got.get("entryDoor") or {}
+        edbad = []
+        if ed.get("badUpperDoor"):
+            edbad.append("upper voices whose two doors do not name the dry at nothing: "
+                         f"{ed['badUpperDoor']}")
+        if ed.get("badUpperArc"):
+            edbad.append("upper voices whose dry is not the contract's arc over their own "
+                         f"progress — (0,0), (0.5,1), (1,0): {ed['badUpperArc']}")
+        if ed.get("badLowestDoor"):
+            edbad.append("lowest voices named at no presence at all, which the host refuses "
+                         f"outright (`presenceWhyNo`): {ed['badLowestDoor']}")
+        if ed.get("badLowestWhole"):
+            edbad.append(f"lowest voices not held whole across their window: {ed['badLowestWhole']}")
+        if ed.get("badOverlay"):
+            edbad.append("«overlay», whose own `presence` is a reading of the pair and not the "
+                         f"reserved dry, was driven as though it were: {ed['badOverlay']}")
+        check(ROW_ENTRY_DOOR,
+              bool(ed) and not edbad and ed.get("upperSeen", 0) > 0 and ed.get("lowestSeen", 0) > 0,
+              f"over the sweep at all five roles: {ed.get('upperSeen', 0)} voice(s) standing over "
+              f"another and {ed.get('lowestSeen', 0)} lowest voice(s) were read, on a settings "
+              f"record with the contract's own dry added to the {ed.get('patched', 0)} manifest(s) "
+              f"published before it landed. Every upper voice names both its doors on `presence` at "
+              f"nothing and rides the contract's arc across its own window; no lowest voice is ever "
+              f"given a door at no presence, and each stands whole throughout. «overlay» keeps its "
+              f"own sense of the name on {ed.get('overlaySeen', 0)} sighting(s)"
+              + ("; " + "; ".join(edbad) if edbad else ""))
+
+        # --- the harmonic function, and the crest law it decides -------------------------------
+        # WHAT WAS WRONG. The client had been writing `routeFunction` beside `routeRole` since the
+        # harmonic layer landed, and the composer contained ZERO occurrences of the identifier — the
+        # one distinction that layer exists to make was dropped at the seam with nothing saying so.
+        # And charter shelf 15's crest law — the culmination's suspension — was read from the two
+        # works' tone apartness alone, so a quiet link between tonally distant works dwelt at its
+        # middle while a culmination between two works standing close in tone passed straight
+        # through. Tone is not what says whether a suspension is owed.
+        #
+        # WHY THE NAME COULD NOT CARRY IT: a subdominant and a dominant that does not stand at the
+        # route's crest are BOTH called a middle (`passRoleOfFunction`, engine/client/01a-pass.js),
+        # and those two are exactly the pair the composer most needs apart — one prepares, the other
+        # is a tension demanding resolution.
+        hm = got["harmonic"]
+        hmbad = []
+        if hm["read"] != "subdominant":
+            hmbad.append(f"a middle stating no function reads «{hm['read']}» rather than the "
+                         "subdominant shelf 15's own map makes it")
+        if hm["readWhenStated"] != "dominant":
+            hmbad.append(f"a middle stating «dominant» reads «{hm['readWhenStated']}»")
+        if hm["readWhenStray"] != "subdominant" or not hm["strayRecorded"]:
+            hmbad.append(f"a function outside the three read «{hm['readWhenStray']}» and was "
+                         f"recorded as {hm['strayRecorded']}")
+        if hm["tonicHeld"]:
+            hmbad.append(f"tonic steps whose course dwells at its middle: {hm['tonicWitness']}")
+        if hm["subHeld"]:
+            hmbad.append(f"subdominant steps whose course dwells: {hm['subWitness']}")
+        if not hm["domHeld"]:
+            hmbad.append(f"no dominant step suspends at all, over {hm['domSeen']} course(s)")
+        if hm["plainHolds"] == hm["statedHolds"] and hm["statedHolds"]["held"] == 0:
+            hmbad.append("stating the function changes nothing about the same pair at the same "
+                         "role on the same die, so the distinction is still dropped")
+        check(ROW_HARMONIC, not hmbad,
+              f"one pair at one role on one die: stating nothing reads «{hm['read']}» and its "
+              f"course {hm['plainHolds']}, stating «dominant» reads «{hm['readWhenStated']}» and "
+              f"its course {hm['statedHolds']}, and «plagal» reads «{hm['readWhenStray']}» with "
+              f"{len(hm['strayRecorded'])} note(s) on the request. Over the corner at all five "
+              f"roles: {hm['domHeld']} of {hm['domSeen']} dominant courses suspend, and no tonic "
+              f"({hm['tonicSeen']} course(s)) or subdominant ({hm['subSeen']}) course does"
+              + ("; " + "; ".join(hmbad) if hmbad else ""))
+
+        # --- what a cue declares it costs ------------------------------------------------------
+        # §7 gives this to the INSTRUMENT: it declares textures, texture slots, framebuffers,
+        # ping-pong pairs, programs, passes and a byte estimate PER QUALITY VARIANT, the host grants
+        # against that declaration at `prepare` and counts what was created against it at runtime,
+        # and conformance row 22 reds a declaration that understates its bytes. The composer carries
+        # the declaration onto the cue; it must never author one, because a cost the composer
+        # invented is a number the host would then measure a real instrument against.
+        #
+        # `resourcesBlock` typed one block for every cue of every score at every quality, so no
+        # crossing could declare a cost different from any other, the quality ladder could not be
+        # walked on cost, and row 22 had nothing to judge. The row reads a settings record patched
+        # with a declaration that differs per instrument AND per variant, and asks that what reaches
+        # each cue is that instrument's own row.
+        cost = got["cost"]
+        costbad = []
+        if cost["wrong"]:
+            costbad.append(f"cues carrying a declaration that is not their instrument's own: "
+                           f"{cost['wrong']}")
+        if cost["flatVariants"]:
+            costbad.append(f"cues whose lean and rich rungs declare the identical block, so the "
+                           f"ladder cannot be walked on cost: {cost['flatVariants']}")
+        if not cost["checked"]:
+            costbad.append("no cue was read at all")
+        check(ROW_COST, not costbad,
+              f"over {cost['checked']} cue-and-variant reading(s), against a record in which each of "
+              f"the {cost['declarations']} published instruments declares its own cost per variant, "
+              f"every cue carries its own instrument's declaration and the three rungs differ"
+              + ("; " + "; ".join(costbad) if costbad else ""))
+
+        # --- the day on the request -------------------------------------------------------------
+        # Charter shelf 16 asks for both the day's weather bias and a seeded run that repeats, and
+        # never said which answers first. Its own last two sentences do: seeds and determinism are
+        # the JUDGING mode, ephemerality is the VIEWER mode. So the day is an input the walk states
+        # in the mode that has one and never a call the composer makes — a public walk sends the
+        # instant it cast the pair, a pinned walk sends none and the run reproduces to the pixel.
+        #
+        # THE SECOND HALF OF THIS ROW IS THE ONE THAT COULD HAVE BEEN LOST QUIETLY. Deleting the
+        # clock makes the reproducibility rows green on its own; it would also delete shelf 16's
+        # third step, and nothing would have said so. The row therefore asks that a day still MOVES
+        # a composition, not only that its absence leaves one still.
+        dy = got["day"]
+        daybad = []
+        if dy["unstable"]:
+            daybad.append(f"{dy['unstable']} pair(s) stating no day composed two different scores "
+                          "from one request")
+        if dy["dayUnstable"]:
+            daybad.append(f"{dy['dayUnstable']} pair(s) stating one day twice composed two "
+                          "different scores")
+        if not dy["moved"]:
+            daybad.append(f"over {dy['pairs']} pair(s), no composition moved between two days six "
+                          "months and twelve hours apart — the day reaches no die and shelf 16's "
+                          "third step is deleted rather than moved onto the request")
+        if dy["readsNone"] is not None or dy["readsOne"] is None:
+            daybad.append(f"a request stating no day reads {dy['readsNone']} and one stating a day "
+                          f"reads {dy['readsOne']}")
+        if dy["strayRead"] is not None or not dy["strayRecorded"] or not dy["strayMatchesNone"]:
+            daybad.append(f"a day that names no instant read {dy['strayRead']}, was recorded as "
+                          f"{dy['strayRecorded']} and composed the neutral: {dy['strayMatchesNone']}")
+        check(ROW_DAY, not daybad,
+              f"over {dy['pairs']} pair(s): one request stating no day composes the same score "
+              f"twice, and so does one stating a day; {dy['moved']} of them compose differently on "
+              f"two days six months and twelve hours apart (first: {dy['firstMove']}); a day that "
+              f"names no instant is left unread with {len(dy['strayRecorded'])} note(s) on the "
+              f"request and composes exactly what stating none composes"
+              + ("; " + "; ".join(daybad) if daybad else ""))
+
+        # --- rows 5b-5d · shelf 6's one slot, counted by the declaration ------------------------
+        # THE SUBJECT OF THE LAW IS WHAT AN INSTRUMENT DECLARES, NOT WHAT IT IS CALLED. The composer
+        # holds one definition of a fold — `spendsTheMiracle`, which asks the manifest whether the
+        # instrument declares the WORLD level — and the driver above builds `SPENDS_THE_MIRACLE` off
+        # the same manifest table the composer itself was handed, so neither side keeps a list of
+        # names and a collection that publishes a fifth world instrument tomorrow is already
+        # answered for.
+        # A planted run walks a corner of the collection rather than all of it, because a plant is
+        # judged on whether the answer MOVES and twenty-four works are 552 ordered pairs of proof.
+        CORNER = 24
+        sw = got["sweep"]
+        worlds = sw["spendsTheMiracle"]
+        unvoiced = {r: n for r, n in sw["worldNotVoiced"].items() if n}
+        castWorlds = sorted(sw["worldSeen"])
+        check(NODE_ROWS[54],
+              not unvoiced and castWorlds == sorted(worlds),
+              f"the collection publishes {len(worlds)} instrument(s) that declare the world — "
+              + ", ".join(worlds)
+              + f" — and the cast reaches every one of them ({', '.join(castWorlds)}); each is "
+              f"voiced the crossing's one miracle wherever it stands"
+              + (f"; cues that were not: {unvoiced}" if unvoiced else ""))
+
+        # A ROLE THAT SPENDS NO MIRACLE NEVER OPENS A WORLD, and what holds that is a BOUND. The
+        # ranking's own nudge — `castForKinds` demoting a world candidate one order under
+        # `noMiracle` — decides which candidate is likeliest and never which may stand, so the row
+        # asks the question with the nudge taken away: the three follow-up gates, one per cast slot,
+        # must carry the law by themselves. `nudged` is that run.
+        no_miracle_roles = ("entrance", "quiet link", "return")
+        opened = {r: sw["worldsCast"][r] for r in no_miracle_roles if sw["worldsCast"][r]}
+        nudged = node_run([["        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);",
+                            "        var base = (cuts ? 0 : 2);"]], sweep=CORNER)
+        nudged_opened = ({} if nudged.get("error") else
+                         {r: nudged["sweep"]["worldsCast"][r] for r in no_miracle_roles
+                          if nudged["sweep"]["worldsCast"][r]})
+        check(NODE_ROWS[56],
+              not opened and not nudged.get("error") and not nudged_opened,
+              f"no world-declaring instrument is cast at an {', a '.join(no_miracle_roles)} — and "
+              f"with the ranking's own nudge removed in a copy, so that a world instrument ranks "
+              f"level with every other candidate, still none is"
+              + (f"; opened anyway: {opened}" if opened else "")
+              + (f"; opened with the nudge gone: {nudged_opened}" if nudged_opened else "")
+              + (f"; the planted run failed: {nudged['error']}" if nudged.get("error") else ""))
+
+        # TWO WORLDS NEVER STAND TOGETHER, by either road that puts them within reach — the levels
+        # test at a cast, and §7's coverage law re-casting the ground after the arrival is already
+        # placed. The sweep answers for the ranking's own choices; the two named ordered pairs
+        # answer for the two roads themselves, each chosen because it reaches for the slot twice by
+        # that road and by no other.
+        one = got["oneSlot"]
+        stacked_roles = {r: n for r, n in sw["worldStack"].items() if n}
+        doors = {k: v for k, v in one.items() if v["worlds"] != 1 and v["worlds"] != 0}
+        check(NODE_ROWS[58],
+              not stacked_roles and not doors,
+              "no crossing of the sweep carries two instruments that declare the world; the pair "
+              "that reaches for it through the levels test composes "
+              f"{one['levels']['cues']} and the pair that reaches for it through §7's ground swap "
+              f"composes {one['swap']['cues']}"
+              + (f"; crossings carrying two: {stacked_roles}" if stacked_roles else "")
+              + (f"; the two named pairs: {doors}" if doors else ""))
+
+        # --- row 5a · the length is composed from the pair, inside its tier's own band ----------
+        # BOTH HALVES ARE PROVED BY CONSTRUCTION, not by sampling pairs. The band's own half is
+        # walked over the WHOLE span of the share that places a length inside it, ends included and
+        # both sides of both ends; the share's own half is walked over the whole real line the
+        # logarithm of one measured door step over the other can be. What is read off real pairs is
+        # only the last thing, which is not a bound at all: two different ordered pairs at one role
+        # come out at different lengths, which one typed constant per role could not do.
+        ln = got["length"]
+        wrong = list(ln["broke"])
+        if not (ln["shareLo"] >= 0 and ln["shareHi"] <= 1):
+            wrong.append(f"the share ran [{ln['shareLo']}, {ln['shareHi']}], outside [0, 1]")
+        # NO BAND IS WIDER THAN THE ONE THE CHARTER GIVES IT, AND THERE ARE ONLY THREE BANDS. A
+        # length placed inside a band that had been opened first would be the charter widened under
+        # cover of placing it, so both tables the composer publishes are read against shelf 17's own
+        # three rows here — and a role band that is not one of those three rows exactly is a fourth
+        # band nobody named, which this reds on.
+        for tier, want_band in TIER_SECONDS.items():
+            if ln["tierBands"].get(tier) != list(want_band):
+                wrong.append(f"the {tier} tier band is {ln['tierBands'].get(tier)}, and shelf 17's "
+                             f"row is {list(want_band)}")
+        for role, want_band in ROLE_SECONDS.items():
+            got_band = ln["bands"].get(role)
+            if got_band != list(want_band):
+                wrong.append(f"the {role} band is {got_band}, not {list(want_band)}")
+            elif got_band not in [list(b) for b in TIER_SECONDS.values()]:
+                wrong.append(f"the {role} band {got_band} is a fourth band, and shelf 17 names "
+                             f"three: {json.dumps(TIER_SECONDS)}")
+        same = []
+        for role, r in ln["perRole"].items():
+            for which, tier_key in (("one", "tierOne"), ("two", "tierTwo")):
+                if r[which] is None:
+                    same.append(f"{role} composed nothing for the {which} pair")
+                    continue
+                ms, band, tband = r[which]["ms"], r["band"], r[tier_key]
+                if not ((band[0] <= ms <= band[1]) or (tband and tband[0] <= ms <= tband[1])):
+                    same.append(f"{role} ran {ms} ms declaring a {r[which]['tier']}, outside its "
+                                f"role band {band} and outside that tier's {tband}")
+            if r["one"] is not None and r["two"] is not None and r["one"]["ms"] == r["two"]["ms"]:
+                same.append(f"{role} ran {r['one']['ms']} ms for both pairs")
+        check(NODE_ROWS[52], not wrong and not same,
+              f"{ln['walked']} values walked: every band "
+              f"{json.dumps(ln['bands'], ensure_ascii=False)} over shelf 17's own "
+              f"{json.dumps(ln['tierBands'], ensure_ascii=False)} holds for every share, floor at a "
+              f"share of nothing and ceiling at a whole one, and the share the length is placed by "
+              f"ran [{ln['shareLo']}, {ln['shareHi']}] over the whole real line the two door steps "
+              f"can ask for; two ordered pairs come out at "
+              + "; ".join(f"{k} {v['one'] and v['one']['ms']}/{v['two'] and v['two']['ms']} ms in "
+                          f"{v['band']}" for k, v in ln["perRole"].items())
+              + ("; " + "; ".join(wrong + same) if (wrong or same) else ""))
 
         # --- row 5 · the family the composer hands back is the walk's own ------------------------
         m = got["memory"]
@@ -1942,16 +3315,53 @@ else:
         # this row asks two things of the sweep: every applied value equals the record's own seam
         # (proving the wire, not a stand-in), and the values seen are not confined to {0, 1} (proving
         # the strength survived rather than being read back down to presence-or-absence).
+        # READ ON TWO NAMED PAIRS, ONE FOR EACH SIDE OF THE LEVELS LAW, and no longer on whichever
+        # adrift cues a corner of the collection happens to cast. Since every handle declares the
+        # level it drives, adrift's seam is written only where adrift's cue OWNS SURFACE — on a pair
+        # whose ground drives SURFACE the ground owns it and adrift rests there, which is the law
+        # rather than a wire that stopped working. So the wire is proved where the wire is live, and
+        # the resting is proved beside it. The sweep's own readings are still checked wherever they
+        # occur; they are no longer what makes the row non-vacuous.
+        ab = got["adriftBothWays"]
         seams = sweep["adriftSeams"]
         seamMismatch = [s for s in seams
                          if abs(s["applied"] - (s["recordSeam"] or 0)) > 0.0002]
         seamValues = sorted(set(s["applied"] for s in seams))
         onlyBinary = seamValues and all(v in (0, 1) for v in seamValues)
+        owns, acc = ab["owns"], ab["accompanies"]
+        seambad = []
+        if not owns.get("cast"):
+            seambad.append("the owning pair casts no adrift cue at all")
+        else:
+            if owns["owns"] != "owns":
+                seambad.append(f"the owning pair's adrift cue reads «{owns['owns']}» on SURFACE")
+            if owns["seamApplied"] is None:
+                seambad.append("the owning pair drives no seam at all")
+            elif abs(owns["seamApplied"] - owns["recordSeam"]) > 0.0002:
+                seambad.append(f"the owning pair applied {owns['seamApplied']} against the record's "
+                               f"own {owns['recordSeam']}")
+            elif owns["seamApplied"] in (0, 1):
+                seambad.append("the owning pair's seam reads back as presence-or-absence")
+        if not acc.get("cast"):
+            seambad.append("the accompanying pair casts no adrift cue at all")
+        else:
+            if acc["owns"] == "owns":
+                seambad.append("the accompanying pair's adrift cue owns SURFACE after all")
+            if acc["surfaceDriven"]:
+                seambad.append(f"the accompanying cue still drives {acc['surfaceDriven']} on a "
+                               f"level it does not own")
+            if not acc["cellContentDriven"]:
+                seambad.append("the accompanying cue drives nothing on the level it does own")
         check(NODE_ROWS[35],
-              bool(seams) and not seamMismatch and not onlyBinary,
-              f"{len(seams)} adrift seamA/seamB readings over the sweep, {len(seamMismatch)} off "
-              f"the record's own structure.horizon.seam by more than 0.0002; distinct values seen: "
-              f"{seamValues[:12]}" + (" …" if len(seamValues) > 12 else ""))
+              not seambad and not seamMismatch and not onlyBinary,
+              f"where adrift owns SURFACE it applies {owns.get('seamApplied')} against the record's "
+              f"own {owns.get('recordSeam')}, driving {owns.get('surfaceDriven')} there; where "
+              f"another cue owns it adrift drives {acc.get('surfaceDriven')} on SURFACE and goes on "
+              f"driving {len(acc.get('cellContentDriven') or [])} handle(s) on the level it does "
+              f"own. Over the sweep {len(seamMismatch)} of {len(seams)} readings sit off the "
+              f"record's own structure.horizon.seam by more than 0.0002; distinct values seen: "
+              f"{seamValues[:12]}" + (" …" if len(seamValues) > 12 else "")
+              + ("; " + "; ".join(seambad) if seambad else ""))
 
         # --- row 8c · CHANGE B: waterline's tideCells is driven off the record's own grain -------
         # Before this change nothing ever wrote `wanted.tideCells`, so `appliedValue` resolved it to
@@ -2065,11 +3475,26 @@ else:
                 accAll[prefix + h] = vs
         accCounts = {k: len(vs) for k, vs in accAll.items()}
         accOffZero = {k: [v for v in vs if abs(v) > 1e-9] for k, vs in accAll.items()}
-        anyAccompanying = any(accCounts.values())
         allSilent = all(not off for off in accOffZero.values())
-        check(NODE_ROWS[39], anyAccompanying and allSilent,
-              f"accompanying-cue readings seen: {accCounts}; any off 0: "
-              f"{ {k: v for k, v in accOffZero.items() if v} }")
+        # WHAT MAKES THIS ROW NON-VACUOUS MOVED WHEN OWNERSHIP LEARNED THE WINDOWS. It used to
+        # require a sighting of an accompanying cue, and accompaniment was common because a single
+        # owner held a level for the whole passage. Now two cues that are never live together each
+        # own the level in their own stretch, so accompaniment on LIGHT-COLOUR arises only where two
+        # colour voices genuinely overlap — which this sample need not contain. So the row stands on
+        # the mechanism being live (some cue owns the level and sings there, the row above) plus the
+        # law itself: wherever a cue does only accompany, not one of the eighteen handles is on its
+        # track list. A sighting is reported when it happens and is no longer what the row rests on.
+        ownsSightings = sum(len(vs) for vs in
+                            list(sweep["gridColourVoicesOwns"].values())
+                            + list(sweep["strataLightVoicesOwns"].values()))
+        check(NODE_ROWS[39],
+              ownsSightings > 0 and not sweep["accStillDriven"] and allSilent,
+              f"{sweep['accSightings']} sighting(s) of a cue accompanying another on LIGHT-COLOUR "
+              f"and {ownsSightings} reading(s) on cues that own it; on no accompanying cue does any "
+              f"of the eighteen colour and light handles carry a node at all — the handles are off "
+              f"its track list, so the client writes the manifest's own rest for each. Handles "
+              f"still driven there: {sweep['accStillDriven'] or 'none'}; readings that were present "
+              f"and off 0: { {k: v for k, v in accOffZero.items() if v} or 'none' }")
 
         # --- row 8g · CHANGE D: strata-light's levelA/levelB are driven off luminance.level -------
         # Before this change nothing ever wrote `wanted.levelA`/`wanted.levelB`, so `appliedValue`
@@ -2107,21 +3532,48 @@ else:
         # slot's own place and width rather than one number reused), and slotAxis takes both 0 and 1
         # (proving the sweep actually reaches works of each axis, 69 vertical and 52 horizontal over
         # the full collection per lab/step1-motifs.py's own count).
+        # THE READING IS CHECKED WHEREVER THE SWEEP LANDS; THE REACH IS CHECKED WHERE IT WAS SOUGHT.
+        # Those are two different questions and they had one answer between them, which is why this
+        # row went red on 2026-08-26 without a single gate field having moved in a single record:
+        # the ranking stopped casting `gates` on a horizontally-slotted departing work inside the
+        # 192-pair spot, and the row reported that as a defect in the reading. The correctness
+        # clause still runs over everything the sweep touched, which is the wider sample and the
+        # right place for it. The two spread clauses now run over `gateSlotWitness`, the pairs the
+        # driver went looking for — so «I did not see both axes» becomes a statement about the
+        # collection rather than about which 192 pairs happened to be walked.
         gs = sweep["gateSlots"]
-        def gsFor(h):
-            return [r for r in gs if r["handle"] == h]
-        gsMismatch = [r for r in gs if r["record"] is not None
+        wit = got["gateSlotWitness"]
+        both = wit["readings"] + gs
+        gsMismatch = [r for r in both if r["record"] is not None
                       and abs(r["applied"] - r["record"]) > 0.0002]
-        placeSeen = sorted(set(r["applied"] for r in gsFor("slotPlace")))
-        halfSeen = sorted(set(r["applied"] for r in gsFor("slotHalf")))
-        axisSeen = sorted(set(r["applied"] for r in gsFor("slotAxis")))
-        check(NODE_ROWS[41],
-              bool(gs) and not gsMismatch
-              and len(placeSeen) > 1 and len(halfSeen) > 1 and axisSeen == [0, 1],
-              f"{len(gs)} gate slot readings over the sweep, {len(gsMismatch)} off the departing "
-              f"work's own record by more than 0.0002; slotPlace {len(placeSeen)} distinct "
-              f"{placeSeen[:8]}, slotHalf {len(halfSeen)} distinct {halfSeen[:8]}, slotAxis seen "
-              f"{axisSeen}")
+
+        def seenIn(rows, h):
+            return sorted(set(r["applied"] for r in rows if r["handle"] == h))
+        placeSeen = seenIn(wit["readings"], "slotPlace")
+        halfSeen = seenIn(wit["readings"], "slotHalf")
+        axisSeen = seenIn(wit["readings"], "slotAxis")
+        # A witness search that reached nothing is a red of its own, and a different one: it says
+        # the corner walked holds no such pair, not that the slot is misread.
+        gsBad = []
+        if not both:
+            gsBad.append("no gates cue was cast at all, by the sweep or by the witness search")
+        if gsMismatch:
+            gsBad.append(f"{len(gsMismatch)} applied slot(s) off the departing work's own record")
+        if len(placeSeen) <= 1:
+            gsBad.append(f"the witness search reached {len(placeSeen)} distinct slotPlace, so this "
+                         f"run cannot say the place is the slot's own rather than one number reused")
+        if len(halfSeen) <= 1:
+            gsBad.append(f"the witness search reached {len(halfSeen)} distinct slotHalf")
+        if axisSeen != [0, 1]:
+            gsBad.append(f"the witness search reached slotAxis {axisSeen} rather than both 0 and 1, "
+                         f"over {wit['tried']} ordered pair(s) walked")
+        check(NODE_ROWS[41], not gsBad,
+              f"{len(gs)} gate slot reading(s) over the sweep and {len(wit['readings'])} more from "
+              f"{len(wit['pairs'])} pair(s) the witness search found in {wit['tried']} walked; "
+              f"{len(gsMismatch)} off the departing work's own record by more than 0.0002; "
+              f"slotPlace {len(placeSeen)} distinct {placeSeen[:8]}, slotHalf {len(halfSeen)} "
+              f"distinct {halfSeen[:8]}, slotAxis seen {axisSeen}"
+              + ("; " + "; ".join(gsBad) if gsBad else ""))
 
         # --- row 8i · THE WITNESS CAMERA'S OWN FLIGHT (charter shelf 2) -----------------------------
         # Until 2026-08-19 every camera track on every pair that did not carry the gears instrument
@@ -2396,9 +3848,6 @@ else:
               f"unread")
 
         # --- rows 15-25 · the same repairs, each reverted in a copy ---------------------------------
-        # A planted run walks a corner of the collection rather than all of it, because a plant is
-        # judged on whether the answer MOVES and twenty-four works are 552 ordered pairs of proof.
-        CORNER = 24
         PLANTS = [
             # THE ONE FENCE LEFT IN THE ENTRY, and it says there is no PAIR. Removed, a request
             # naming one work no longer meets a refusal: it walks into the pair arithmetic, which
@@ -2441,13 +3890,20 @@ else:
             # a crossing with no travelling move and no arriving one, which is exactly what the
             # reading beside the role gate answers. With the role gate in place such a middle is
             # still not led; with it removed it is, and that is the gate.
-            (NODE_ROWS[24], [["LED_ROLES.indexOf(role) >= 0", "true"],
+            # RETARGETED 2026-08-25 (R2). The lead is decided in `scoreFor`, where the score is
+            # still being built, rather than in `passageFor` after the score has been weighed — so
+            # the gate now reads `scoreFor`'s own defaulted role, `step`. The plant is the same
+            # plant against the same rule; only the identifier the rule is written with moved.
+            (NODE_ROWS[24], [["LED_ROLES.indexOf(step) >= 0", "true"],
                              ["      if (arrival === \"CONDENSED\") {", "      if (false) {"],
                              ["      var axis = travellingAxisOn(fromW, toW, pivot.measure, "
                               "road.axis);",
                               "      var axis = null;"]],
              lambda g: g["sweep"]["ledElsewhere"] > 0),
-            (NODE_ROWS[25], [["made.cameraTravels && ", ""]],
+            # RETARGETED 2026-08-25 (R2), for the same reason: the reading is now read in
+            # `scoreFor` off `plan.spec` and carried out on the return record, instead of being
+            # re-read off that record after the weighing.
+            (NODE_ROWS[25], [["cameraTravels && LED_ROLES", "LED_ROLES"]],
              lambda g: g["sweep"]["ledAtTonic"] > 0.6 * g["sweep"]["tonic"]),
             (NODE_ROWS[26],
              [["          if (familyOf(whole[i], fromW, toW, seed) === memory.family) {\n            held = whole[i];\n            heldBy = \"family\";",
@@ -2495,8 +3951,8 @@ else:
               # through `sourceOf` now. The plant follows the line rather than the name it used to
               # have: a plant that stops matching stops proving, and this row's claim is unchanged.
               ["        if (!sourceOf(instr, h)) continue;", ""],
-              ['var why = sourceOf(c.instrument.id, h)[1];',
-               'var why = (sourceOf(c.instrument.id, h) || ["", "an open handle"])[1];'],
+              ['var srcRow = sourceOf(c.instrument.id, h);',
+               'var srcRow = sourceOf(c.instrument.id, h) || ["", "an open handle"];'],
               ["var spec = HANDLE_SPECS[instr][handle], lo = spec[0], hi = spec[1], dflt = spec[2];",
                "var m0 = MANIFESTS[instr].handles[handle];"
                " var spec = HANDLE_SPECS[instr][handle] || [m0.min, m0.max, m0[\"def\"]],"
@@ -2619,6 +4075,115 @@ else:
              [["camVoiceFloor(Math.min(camGrainA, camGrainB), camCap)",
                "camVoiceFloor(Math.min(camGrainA, camGrainB), camBound)"]],
              lambda g: g["camera"]["voiceUnder"] > 0),
+            # THE LENGTH TAKEN OFF ONE NUMBER AGAIN. The pair's own share is dropped on its way into
+            # the band and the band's floor stands in its place — which is exactly the shape the
+            # defect had, one constant per role — and the two ordered pairs stop differing at every
+            # one of the five roles.
+            (NODE_ROWS[53],
+             [["      var duration = lengthInBand(row.band, lengthShare);",
+               "      var duration = lengthInBand(row.band, 0);"]],
+             lambda g: all(v["one"] is not None and v["one"] == v["two"]
+                           for v in g["length"]["perRole"].values())),
+            # THE MIRACLE COUNTED BY AN EFFECT'S NAME AGAIN. `folds` and `foldsOn` both read
+            # `=== "boxfold"` until this lane, and the file held the truer definition four screens
+            # above them the whole time. Put the name back at both readings and the other three
+            # world-declaring instruments go on folding the space a work lives in while being voiced
+            # ordinary letters — the slot unspent, and a second impossible thing free to stand beside
+            # the first.
+            (NODE_ROWS[55],
+             [["      var folds = spendsTheMiracle(pivotInstr) || spendsTheMiracle(travelInstr)\n"
+               "        || spendsTheMiracle(arrivalInstr);",
+               '      var folds = pivotInstr === "boxfold" || travelInstr === "boxfold"\n'
+               '        || arrivalInstr === "boxfold";'],
+              ['        foldsOn = spendsTheMiracle(pivotInstr) ? "pivot"\n'
+               '          : (spendsTheMiracle(travelInstr) ? "travel"\n'
+               '             : (spendsTheMiracle(arrivalInstr) ? "arrival" : null));',
+               '        foldsOn = pivotInstr === "boxfold" ? "pivot"\n'
+               '          : (travelInstr === "boxfold" ? "travel"\n'
+               '             : (arrivalInstr === "boxfold" ? "arrival" : null));']],
+             lambda g: sum(g["sweep"]["worldNotVoiced"].values()) > 0),
+            # THE NUDGE AND THE THREE FOLLOW-UP GATES, ALL REMOVED. `castForKinds`'s one-order demote
+            # is a ranking nudge and the three gates — one per cast slot — are the bound. The row
+            # above proves the gates carry the law with the nudge gone; this proves they are what
+            # carries it, by taking them away under the same conditions and watching a step that may
+            # spend no miracle open a world.
+            (NODE_ROWS[57],
+             [["        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);",
+               "        var base = (cuts ? 0 : 2);"],
+              ["      if (!(ROLE_BUDGETS[role] || {}).miracle && !road.mustFold "
+               "&& spendsTheMiracle(castPivot[0])) {",
+               "      if (false) {"],
+              ["        } else if (spendsTheMiracle(travelInstr) "
+               "&& !(ROLE_BUDGETS[role] || {}).miracle) {",
+               "        } else if (false) {"],
+              ["        if (arrivalInstr !== null && spendsTheMiracle(arrivalInstr)\n"
+               "            && !(ROLE_BUDGETS[role] || {}).miracle) {",
+               "        if (false) {"]],
+             lambda g: sum(g["sweep"]["worldsCast"][r]
+                           for r in ("entrance", "quiet link", "return")) > 0),
+            # THE FIRST OF THE TWO ROADS TO A SECOND WORLD: the levels test at a cast. Its older
+            # clause excludes a candidate only where EVERY level it declares is already claimed, so a
+            # world instrument carrying a second level of its own walks straight past it and stands
+            # beside a world ground. The named pair is the one that reaches for the slot that way.
+            (NODE_ROWS[59],
+             [['          if (everyLevelTaken || (worldTaken && myLevels.indexOf("WORLD") >= 0)) {',
+               "          if (everyLevelTaken) {"]],
+             lambda g: g["oneSlot"]["levels"]["worlds"] > 1),
+            # THE SECOND ROAD TO A SECOND WORLD HAD A ROW HERE AND IT IS RETIRED, WITH ITS REASON.
+            # It planted out the ground swap's own gate and read a named pair that then seated a
+            # world instrument under another. That plant can no longer fire. Two things closed the
+            # road ahead of it: ownership is settled in time now, and `bestFilling` gained
+            # `soleAbove`, so §7's swap chooses a ground from those that leave every voice above
+            # them something to say — and on this collection no pair reaches the state the plant
+            # was written to expose, with the gate in place or planted out. A red-on-bug that cannot
+            # go red proves the guard it was pointed at exactly as well as an empty file would, so
+            # keeping it would be a row that lies about its own reach. The law it guarded is not
+            # unguarded: the standing row above reads every crossing of the sweep for two
+            # world-declaring instruments, and the levels test's own world clause keeps its plant,
+            # which does still fire. The day a pair reaches this door again, the plant comes back.
+            # THE WRITER DISPATCHING ON THE HANDLE'S NAME AGAIN. The branch that reads the
+            # register's own word is switched off, so every handle whose row promises the passage's
+            # own travel falls through to the static branch and holds at its manifest default for
+            # the whole passage — a row promising travel and a node that never moves. `mix` is
+            # untouched by the plant because it is matched by name one branch earlier, which is
+            # exactly the asymmetry that hid this: the two handles the writer knew by name worked,
+            # and every other one of the same kind did not.
+            (NODE_ROWS[60],
+             [['          if (kind === "progress") {', "          if (false) {"]],
+             lambda g: bool({"parquet.spin", "unfold.field"}
+                            & (set(g["sweep"]["promiseSeen"]) - set(g["sweep"]["promiseKept"])))),
+            # THE HANDLES OF AN UNOWNED LEVEL LEFT ON THE TRACK LIST HAD A ROW HERE, AND IT IS
+            # RETIRED 2026-08-26, WITH ITS REASON. It planted `ownedTracks(...)` out of the levels
+            # row in one line — `ownTheLevels` still settling who owns what, the plan still
+            # recording it, and nothing acting on the record — and read a pair whose ground and
+            # arrival both cut into cells and both started cutting again.
+            #
+            # WHAT CLOSED THE ROAD. `castForKinds`'s own levels clause now refuses a candidate whose
+            # levels are all taken by a cue it MEETS, so the plan handed to `ownedTracks` no longer
+            # carries two live cues on one level and there is nothing left for the plant to expose.
+            # It was reachable while the pinned pair the plant read still cast that shape; the entry
+            # door's dry landing across the fleet moved what this collection casts, the pair stopped
+            # casting it, and the plant went quiet rather than red. Deriving the witness instead of
+            # pinning it — done above, and it is the right repair for a stale witness — did not
+            # bring it back: 4 000 compositions walked in the collection's own id order at every
+            # role find no pair that reaches the door, and a wider hand walk of 6 002 found none
+            # either. The road is closed at the cast and not merely missed by a sample.
+            #
+            # A RED-ON-BUG THAT CANNOT GO RED PROVES ITS GUARD EXACTLY AS WELL AS AN EMPTY FILE
+            # WOULD, and it is worse than no guard because the row above it still reads green. So it
+            # goes, rather than standing as a row that lies about its own reach.
+            #
+            # THE LAW IT GUARDED IS NOT UNGUARDED. Three things still hold it, and all three are in
+            # this file: the standing row reads every crossing of the sweep at all five roles for a
+            # handle driven on a level its cue does not own and for a level driven by two cues that
+            # are live together; the levels clause's OWN plant, one row up, still fires; and
+            # `adriftBothWays.accompanies` is a derived witness of `ownedTracks` actually stripping a
+            # level from a cue that only accompanies on it, re-found on every run.
+            #
+            # WHAT WOULD BRING IT BACK: a cast that once more admits two cues declaring one level
+            # across windows that meet — a new instrument whose levels leave `castForKinds` no
+            # alternative, or a loosening of that clause. The day the walk above finds a pair, the
+            # plant belongs here again, pointed at the same line.
         ]
         # The intent fence's own standing row: with the cap planted DOWN and the guard in place,
         # every line the composer writes still fits under it. The red-on-bug above removes the guard
@@ -2671,6 +4236,7 @@ BROWSER_ROWS = [
     "EX-COMPOSED the route's own cap refuses a wave that asks past it",
     "EX-COMPOSED a wave that never lands leaves the walk on its own glide, not a throw",
     "EX-COMPOSED a visit standing still asks the route for nothing at all",
+    "EX-COMPOSED a step declared while its wave is on the wire waits for the wave and composes",
 ]
 
 
@@ -2754,6 +4320,16 @@ RECORDS_STORE = {}           # id -> record, exactly the shape pass-workrecords.
 RECORDS_LOG = []              # one entry per GET this run answered: the `ids` list it was asked for
 RECORDS_MARK = [0]            # where the CURRENT page load's own waves begin in that log (see enter)
 FAIL_WAVE = {"on": False}    # held on by the "wave that never lands" row; every GET answers 500
+# HOW THE LAST ROW DELAYS A WAVE, AND WHY IT IS A GATE RATHER THAN A SLEEP. The row below asks what a
+# step does while its records are STILL ON THE WIRE, so the wire has to be held open for exactly as
+# long as the row needs and not one beat longer or shorter. A sleep of N seconds would make the row a
+# race against its own driving (the door's ceremony, the layer's file, two keystrokes), and a race is
+# what the wave-fails row above already had to be rewritten out of. So the hook waits on a
+# `threading.Event` instead: while it is unset every `/api/pass/records` GET hangs unanswered, and the
+# row opens it at the exact instant it has finished asserting what a held step looks like. The
+# harness serves on a ThreadingHTTPServer (tests/headless_harness.py), so a held GET blocks its own
+# connection and nothing else the page is loading.
+WAVE_GATE = {"ev": None}
 
 
 def records_answer(raw_path):
@@ -2767,6 +4343,9 @@ def records_answer(raw_path):
         return None
     ids = [i for i in parse_qs(urlparse(raw_path).query).get("ids", [""])[0].split(",") if i]
     RECORDS_LOG.append(ids)
+    gate = WAVE_GATE["ev"]
+    if gate is not None:
+        gate.wait(90)     # bounded so a row that dies without opening it cannot wedge the server
     if FAIL_WAVE["on"]:
         # HELD ON WHILE THE ROW STANDS, RATHER THAN FIRED ONCE (2026-08-25). A wave the route refuses
         # is RETRIED with backoff — engine/client/01a-pass.js's own `.catch()` takes every id of the
@@ -3389,7 +4968,100 @@ else:
                               f"the induced failure was noted: {why!r}; a step declared straight "
                               f"after it froze {fell.get('score') if fell else '?'!r} onto the "
                               f"command — the walk's own glide, not a throw that broke the visit")
-                FAIL_WAVE["on"] = False   # the route stands again; nothing after this row asks it
+                FAIL_WAVE["on"] = False   # the route stands again
+
+                # 13 · EX-PASS-RECORDS: a step declared while its own wave is still on the wire
+                #
+                # THE DEFECT THIS ROW HOLDS. The door picks the hand and asks the route for its ids
+                # in the same beat, so the records of the works a first step crosses are ALREADY on
+                # the wire when that step is declared. Until 2026-08-25 the step read «no record» —
+                # which is true of the map at that instant and false about the visit — and took the
+                # walk's plain glide, so a visitor whose wire was slow paid for the latency with the
+                # whole passage. The step now waits for its own wave and composes when it lands.
+                #
+                # HOW THE WAVE IS DELAYED, IN ONE SENTENCE: `WAVE_GATE` above holds every
+                # `/api/pass/records` GET unanswered until this row opens it, so the wire is open for
+                # exactly the window the row drives and the row is not racing anything.
+                #
+                # WHY TWO KEYSTROKES. The picture layer's own file is fetched at the FIRST step of a
+                # visit (engine/client/15-motion.js: `passOpen()` runs where a step declares), so at
+                # that first step no layer is registered and the walk glides by its own standing law —
+                # the layer's own 350 ms hold, which this row does not touch. The SECOND step is the
+                # first one declared with a layer registered, and it is the step this row is about.
+                # Both are taken with the gate shut, so the wave is on the wire for both.
+                # EVERY WORK OF THE CATALOGUE IS GIVEN A RECORD, not only the ten `allworks` names:
+                # the walk deals a fresh hand on every entry, so a record set built from the hang the
+                # rows above read leaves most of the NEXT hang unrecorded and the step this row is
+                # about would find no record however long it waited. Read off the bake's own data
+                # file, the same way tests/test_pass_route.py does.
+                every = put_records(TMP, [w["id"] for w in json.loads(
+                    (TMP / "exhibition_data.json").read_text(encoding="utf-8"))["works"]])
+                gate = threading.Event()
+                WAVE_GATE["ev"] = gate
+                with Browser(width=1280, height=900) as br4:
+                    try:
+                        enter(br4, base, "diagnostics:on")
+                        br4.key("ArrowDown")           # opens the layer's file; glides, as it always has
+                        for _ in range(50):
+                            if js(br4, "return !!(window.__exPass && window.__exPass.layer());") is True:
+                                break
+                            br4.sleep(0.2)
+                        for _ in range(50):
+                            if js(br4, "return window.__exPass.report().composer.state;") == "read":
+                                break
+                            br4.sleep(0.2)
+                        before = js(br4, "var r = window.__exPass.report();"
+                                         "return {coming: r.records.coming, held: r.records.held,"
+                                         " state: r.composer.state, holds: r.records.holds,"
+                                         " layer: !!window.__exPass.layer(),"
+                                         " passages: window.__exPass.passages().length};")
+                        br4.key("ArrowDown")           # THE STEP: declared with its records in flight
+                        held = {}
+                        for _ in range(20):
+                            held = js(br4, "var r = window.__exPass.report();"
+                                           "return {holds: r.records.holds,"
+                                           " waiting: r.records.waiting,"
+                                           " coming: r.records.coming,"
+                                           " passages: window.__exPass.passages().length};")
+                            if held["holds"]:
+                                break
+                            br4.sleep(0.2)
+                    finally:
+                        WAVE_GATE["ev"] = None
+                        gate.set()                     # the wave lands from here
+                    after = {}
+                    for _ in range(80):
+                        after = js(br4, "var rows = window.__exPass.passages();"
+                                        "var r = window.__exPass.report();"
+                                        "return {coming: r.records.coming, held: r.records.held,"
+                                        " holds: r.records.holds, waiting: r.records.waiting,"
+                                        " passages: rows.length,"
+                                        " scored: rows.filter(function(x){return !!x.score;}).length,"
+                                        " keys: rows.map(function(x){return x.key;})};")
+                        if after["scored"]:
+                            break
+                        br4.sleep(0.25)
+                    if not (before["layer"] and before["state"] == "read"):
+                        skip(BROWSER_ROWS[13],
+                             f"the second step could not be taken with a layer and a composer both "
+                             f"standing: {before}")
+                    elif not before["coming"]:
+                        skip(BROWSER_ROWS[13],
+                             f"the wave was not on the wire when the step was declared: {before}")
+                    else:
+                        check(BROWSER_ROWS[13],
+                              before["held"] == 0 and before["passages"] == 0
+                              and held["holds"] > before["holds"] and held["waiting"] >= 1
+                              and held["passages"] == 0
+                              and after["held"] > 0 and after["scored"] >= 1,
+                              f"{before['coming']} id(s) were still on the wire and {before['held']} "
+                              f"record(s) held when the step was declared; the step held "
+                              f"({before['holds']} → {held['holds']} holds, {held['waiting']} "
+                              f"waiting) and composed nothing while it waited "
+                              f"({held['passages']} passage(s)); the gate then opened, the walk "
+                              f"came to hold {after['held']} record(s) and derived "
+                              f"{after['scored']} scored passage(s) of {after['passages']} — "
+                              f"{after['keys'][:2]} over {len(every)} recorded works")
 
 import shutil  # noqa: E402
 shutil.rmtree(TMP, ignore_errors=True)

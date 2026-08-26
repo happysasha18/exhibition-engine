@@ -727,10 +727,25 @@ else:
                 # ---- row 4: the levels law, and where it now lives ---------------------------
                 # MOVED OUT OF THE HOST ON 2026-08-14, AND THE LAW KEEPS ITS FULL FORCE. The
                 # declaration it reads is the cue's own `levelOwnership` record, and §4.4's cue
-                # allow-list is closed and does not carry that field — a score is refused whole on
-                # any unknown field, so a run-time checker here stood on a field no legal score may
-                # carry. The levels law is a law about how a passage is COMPOSED and is decidable
-                # from the authored plan alone, so it is enforced where the plan is authored.
+                # allow-list does not carry that field, so a run-time checker here stood on a field
+                # no legal score may carry. The levels law is a law about how a passage is COMPOSED
+                # and is decidable from the authored plan alone, so it is enforced where the plan is
+                # authored.
+                #
+                # THE SECOND HALF OF THAT ARGUMENT WAS COUNTERFACTUAL UNTIL 2026-08-25, and this
+                # note is what it cost to state plainly. It used to read that a score is «refused
+                # whole on any unknown field», so `levelOwnership` could never arrive here. No such
+                # checker existed on the road a visitor's crossing travels: `passScoreCheck` read
+                # the envelope's own keys and never descended into `cues`, and the composer's
+                # `serialise` holds a deny-list of the four plan-only names that judges output the
+                # composer has just built — it can only catch the composer contradicting itself. So
+                # the field the law was said to be unable to reach was reaching the host in cue
+                # records across this suite and others, and playing, because nothing looked. The cue
+                # allow-list is checked from 2026-08-25 (`PASS_CUE_FIELDS`), and it STRIPS rather
+                # than refusing whole — §4.4 amended the same day. The move of the law is right for
+                # its own reason, which is the sentence above this one: the law is about how a
+                # passage is composed and needs nothing from a live frame. It never needed an
+                # allow-list that was not there to hold it up.
                 #
                 # This row reads that gate's own source, the way the browser rows above read the
                 # lab modules: the per-level reading that gathers each level's holders, requires

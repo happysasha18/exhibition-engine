@@ -179,6 +179,7 @@
       "uniform vec2 uLight;",
       // the judges' handle: the two works' own coverage as colour
       "uniform float uMask;",
+      "uniform float uPresence;",  // the entry-door contract's reserved dry
       // THE MASS GRID'S OWN CELL COUNT, pinned rather than published — this port's own choice, unlike
       // strata-light's own `cellsA`/`cellsB` handle, and named as a choice: see this file's own
       // comment beside the JS `MASS_CELLS` constant below for why.
@@ -277,7 +278,7 @@
       "  float cov = max(a.a, b.a);",
       // the judges' own frame: the two works' coverage as colour
       "  col = mix(col, vec3(a.a, b.a, 0.0), uMask);",
-      "  gl_FragColor = vec4(col, mix(cov, 1.0, uMask));",
+      "  gl_FragColor = vec4(col, mix(cov, 1.0, uMask) * uPresence);",
       "}",
     ].join("\n");
     // THE MASS GRID'S OWN CELL COUNT — pinned as the shader's own `const float MASS_CELLS = 16.0`
@@ -505,34 +506,64 @@
       //   · `shade` — the judge channel for a contact shadow. This module casts none: a stratum
       //     translates over the frame and nothing here lies on anything.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
+        // `mix` is the crossing's own dial and `clock` the module's own time; neither drives a
+        // structural level of the picture.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        // Splits the dial's own travel between the two strata, named for and weighted toward the
+        // fine-detail (texture-scale) stratum's own share.
         handover: { min: 0, max: 1, def: FEEL_H_U0,
                     reads: "nothing of either photograph: the module's own single shared handle "
                          + "(strata-scale.js:450-506), resting at the value that reproduces its own "
-                         + "rest of DETAIL_SHARE exactly (see this file's own THE HANDOVER note)" },
+                         + "rest of DETAIL_SHARE exactly (see this file's own THE HANDOVER note)",
+                    level: "TEXTURE" },
+        // The mass stratum is the coarse, large-shape reading of the work — a whole-picture drift
+        // rather than a grain, which reads as SURFACE. SURFACE is not in this instrument's own
+        // `levels` array, so this falls back to CELL, the nearest declared level and the one that
+        // already carries this stratum's own travel geometry.
         massCentreXA: { min: 0, max: 1, def: 0.5,
                         reads: "the departing work's own texture.reliefCentreMassX — the mass "
                              + "stratum's own measured centre of gravity, lab/analyze/recipes.py's "
-                             + "port of lab/effects/strata-scale.js:279-287" },
-        massCentreXB: { min: 0, max: 1, def: 0.5, reads: "the same of the arriving work" },
+                             + "port of lab/effects/strata-scale.js:279-287",
+                        level: "CELL" },
+        massCentreXB: { min: 0, max: 1, def: 0.5, reads: "the same of the arriving work",
+                        level: "CELL" },
+        // The detail stratum is the fine, full-resolution reading of the work, so this is a
+        // texture-scale placement.
         detailCentreXA: { min: 0, max: 1, def: 0.5,
                           reads: "the departing work's own texture.reliefCentreDetailX — the detail "
-                               + "stratum's own measured centre of gravity, the same port" },
-        detailCentreXB: { min: 0, max: 1, def: 0.5, reads: "the same of the arriving work" },
-        colourPeriodA: { min: 0, max: 4, def: 0 },
-        colourPhaseA: { min: 0, max: 1, def: 0 },
-        colourAmpA: { min: 0, max: 1, def: 0 },
-        lightPeriodA: { min: 0, max: 4, def: 0 },
-        lightPhaseA: { min: 0, max: 1, def: 0 },
-        lightAmpA: { min: 0, max: 1, def: 0 },
-        colourPeriodB: { min: 0, max: 4, def: 0 },
-        colourPhaseB: { min: 0, max: 1, def: 0 },
-        colourAmpB: { min: 0, max: 1, def: 0 },
-        lightPeriodB: { min: 0, max: 4, def: 0 },
-        lightPhaseB: { min: 0, max: 1, def: 0 },
-        lightAmpB: { min: 0, max: 1, def: 0 },
-        mask: { min: 0, max: 1, def: 0 },
+                               + "stratum's own measured centre of gravity, the same port",
+                          level: "TEXTURE" },
+        detailCentreXB: { min: 0, max: 1, def: 0.5, reads: "the same of the arriving work",
+                          level: "TEXTURE" },
+        colourPeriodA: { min: 0, max: 4, def: 0, level: "LIGHT-COLOUR" },
+        colourPhaseA: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        colourAmpA: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        lightPeriodA: { min: 0, max: 4, def: 0, level: "LIGHT-COLOUR" },
+        lightPhaseA: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        lightAmpA: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        colourPeriodB: { min: 0, max: 4, def: 0, level: "LIGHT-COLOUR" },
+        colourPhaseB: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        colourAmpB: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        lightPeriodB: { min: 0, max: 4, def: 0, level: "LIGHT-COLOUR" },
+        lightPhaseB: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        lightAmpB: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        // The judges' own coverage channel: it drives no structural level.
+        mask: { min: 0, max: 1, def: 0, level: null },
+        // THE RESERVED DRY OF THE ENTRY-DOOR CONTRACT (docs/design/ENTRY-DOOR.md). One name across
+        // the whole fleet, declared the same way in every manifest, so the host and the composer
+        // learn it once instead of nine times. It says WHETHER THIS VOICE IS IN THE FRAME AT ALL:
+        // at zero the instrument draws nothing anywhere and what stands beneath it shows whole; at
+        // one it draws exactly as it always did, which is where it rests, so a plan that says
+        // nothing about it gets the picture this instrument has always drawn.
+        //
+        // IT IS NOT THE BANNED OPACITY HANDLE RETURNING, and the difference is the whole point. An
+        // opacity handle fades one whole layer against another — the crossfade the charter's own
+        // ladder removed the tempting tool for. This says whether a voice is present, and it is
+        // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
+        // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        presence: { min: 0, max: 1, def: 1, level: null,
+                    unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -565,10 +596,11 @@
                      lightPeriodA: 0, lightPhaseA: 0, lightAmpA: 0,
                      colourPeriodB: 0, colourPhaseB: 0, colourAmpB: 0,
                      lightPeriodB: 0, lightPhaseB: 0, lightAmpB: 0,
-                     mask: 0, reduced: false, cssWidth: 1000, cssHeight: 1000 },
+                     mask: 0, presence: 1, reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "strata-scale", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
+          { name: "uPresence", type: "float", source: "handle:presence" },
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
           { name: "uFitA", type: "vec4", source: "fitA" },
@@ -651,11 +683,21 @@
           lightPeriodA: h.lightPeriodA, lightPhaseA: h.lightPhaseA, lightAmpA: h.lightAmpA,
           colourPeriodB: h.colourPeriodB, colourPhaseB: h.colourPhaseB, colourAmpB: h.colourAmpB,
           lightPeriodB: h.lightPeriodB, lightPhaseB: h.lightPhaseB, lightAmpB: h.lightAmpB,
+          presence: h.presence,
           t: h.clock, reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
         };
-        if (h.mix === 0 || h.mix === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           var i = h.mix === 0 ? 0 : 1;
           if (st.reportApplied) {

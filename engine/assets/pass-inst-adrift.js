@@ -153,6 +153,7 @@
       "uniform float uSeed;",
       // the judges' handle: the two silhouettes as colour
       "uniform float uMask;",
+      "uniform float uPresence;",  // the entry-door contract's reserved dry
       // A fifth of the threshold is the die's, so a thing comes apart in an order that is mostly its
       // own density and partly the score's number (adrift.js:339).
       "const float JITTER = 0.20;",
@@ -321,7 +322,7 @@
       // nothing it contributes nothing and hides nothing, and the cue underneath stands. Played with
       // nothing underneath, the cleared buffer stands there instead, which is the same sentence read
       // against an empty stack.
-      "  float a = mix(1.0 - hole, 1.0, uMask);",
+      "  float a = mix(1.0 - hole, 1.0, uMask) * uPresence;",
       "  gl_FragColor = vec4(col * a, a);",
       "}",
     ].join("\n");
@@ -710,45 +711,69 @@
       // the module because it reads them off the file; they rest at neutral numbers here, and a pair
       // whose row carries no measurement gets a picture standing on those.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
-        flight: { min: 0, max: 1, def: 0.55 },
-        horizon: { min: 0, max: 1, def: 0.55 },
+        // LEVEL, PER CHARTER SHELF 17 (docs/design/PASS-API-V1.md:716). `mix` is the crossing's own
+        // dial, `clock` the module's own time, `seed` the score's die, and `shade`/`travel`/`mask`
+        // are the fleet's judge channels — all six are the passage's own idiom rather than a
+        // structural level, and level: null across the whole fleet.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        flight: { min: 0, max: 1, def: 0.55, level: "CELL CONTENT" },
+        horizon: { min: 0, max: 1, def: 0.55, level: "SURFACE" },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
         // the meshing instrument publishes its own. `heldWholeAtADoor` says what is read (the
         // handover front's own crossover, held against the margin the front leaves at a door), on
         // which grid (the drawing buffer the host binds, with the CSS frame where it hands none),
         // how far the hold reaches (two whole cells of the ground's grain) and where the request the
         // score handed in stays on the record.
+        // LEVEL: this sets the size of the field's own noise cell, which reads as TEXTURE by name —
+        // but this instrument's own `levels` array carries no TEXTURE, and the file already says why
+        // (above, "TEXTURE is not claimed"): the grain shapes the front's own boundary, not the
+        // picture's material. SURFACE is the nearest declared level, since that boundary is the one
+        // field this instrument publishes at SURFACE.
         grain: { min: 0, max: 1, def: 0.66,
                  applied: { heldWholeAtADoor: { cells: DOOR_HOLD, readOn: "the drawing buffer",
                                                 reads: "grainRequest",
                                                 measures: "the handover front's own crossover "
                                                         + "against the margin it leaves at a "
-                                                        + "door" } } },
-        shrink: { min: 0, max: 1, def: 0.5 },
-        seed: { min: 0, max: 8, def: 0 },
-        shade: { min: 0, max: 1, def: 1 },
-        travel: { min: 0, max: 1, def: 1 },
-        mask: { min: 0, max: 1, def: 0 },
-        homeAx: { min: 0, max: 1, def: 0.5 },
-        homeAy: { min: 0, max: 1, def: 0.5 },
-        homeBx: { min: 0, max: 1, def: 0.5 },
-        homeBy: { min: 0, max: 1, def: 0.5 },
-        voidAr: { min: 0, max: 1, def: 0.5 },
-        voidAg: { min: 0, max: 1, def: 0.5 },
-        voidAb: { min: 0, max: 1, def: 0.5 },
-        voidBr: { min: 0, max: 1, def: 0.5 },
-        voidBg: { min: 0, max: 1, def: 0.5 },
-        voidBb: { min: 0, max: 1, def: 0.5 },
-        thrA: { min: 0, max: 1.7321, def: 0.35 },
-        thrB: { min: 0, max: 1.7321, def: 0.35 },
-        maxA: { min: 0, max: 1.7321, def: 0.9 },
-        maxB: { min: 0, max: 1.7321, def: 0.9 },
-        voidShareA: { min: 0, max: 1, def: 0.75 },
-        voidShareB: { min: 0, max: 1, def: 0.75 },
-        seamA: { min: 0, max: 1, def: 0.05 },
-        seamB: { min: 0, max: 1, def: 0.05 },
+                                                        + "door" } },
+                 level: "SURFACE" },
+        shrink: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        seed: { min: 0, max: 8, def: 0, level: null },
+        shade: { min: 0, max: 1, def: 1, level: null },
+        travel: { min: 0, max: 1, def: 1, level: null },
+        mask: { min: 0, max: 1, def: 0, level: null },
+        homeAx: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        homeAy: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        homeBx: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        homeBy: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        voidAr: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        voidAg: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        voidAb: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        voidBr: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        voidBg: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        voidBb: { min: 0, max: 1, def: 0.5, level: "CELL CONTENT" },
+        thrA: { min: 0, max: 1.7321, def: 0.35, level: "CELL CONTENT" },
+        thrB: { min: 0, max: 1.7321, def: 0.35, level: "CELL CONTENT" },
+        maxA: { min: 0, max: 1.7321, def: 0.9, level: "CELL CONTENT" },
+        maxB: { min: 0, max: 1.7321, def: 0.9, level: "CELL CONTENT" },
+        voidShareA: { min: 0, max: 1, def: 0.75, level: "CELL CONTENT" },
+        voidShareB: { min: 0, max: 1, def: 0.75, level: "CELL CONTENT" },
+        seamA: { min: 0, max: 1, def: 0.05, level: "SURFACE" },
+        seamB: { min: 0, max: 1, def: 0.05, level: "SURFACE" },
+        // THE RESERVED DRY OF THE ENTRY-DOOR CONTRACT (docs/design/ENTRY-DOOR.md). One name across
+        // the whole fleet, declared the same way in every manifest, so the host and the composer
+        // learn it once instead of nine times. It says WHETHER THIS VOICE IS IN THE FRAME AT ALL:
+        // at zero the instrument draws nothing anywhere and what stands beneath it shows whole; at
+        // one it draws exactly as it always did, which is where it rests, so a plan that says
+        // nothing about it gets the picture this instrument has always drawn.
+        //
+        // IT IS NOT THE BANNED OPACITY HANDLE RETURNING, and the difference is the whole point. An
+        // opacity handle fades one whole layer against another — the crossfade the charter's own
+        // ladder removed the tempting tool for. This says whether a voice is present, and it is
+        // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
+        // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        presence: { min: 0, max: 1, def: 1, level: null,
+                    unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -776,7 +801,7 @@
       },
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
-      neutralPose: { mix: 0, flight: 0.55, horizon: 0.55, grain: 0.66, shrink: 0.5, seed: 0,
+      neutralPose: { presence: 1, mix: 0, flight: 0.55, horizon: 0.55, grain: 0.66, shrink: 0.5, seed: 0,
                      cssWidth: 1000, cssHeight: 1000,
                      shade: 1, travel: 1, mask: 0,
                      homeAx: 0.5, homeAy: 0.5, homeBx: 0.5, homeBy: 0.5,
@@ -786,6 +811,7 @@
       passes: [{
         program: "adrift", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
+          { name: "uPresence", type: "float", source: "handle:presence" },
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
           { name: "uFitA", type: "vec4", source: "fitA" },
@@ -875,6 +901,7 @@
         var pose = {
           mix: h.mix, flight: h.flight, horizon: h.horizon, grain: h.grain, shrink: h.shrink,
           seed: h.seed, shade: h.shade, travel: h.travel, mask: h.mask,
+          presence: h.presence,
           homeAx: h.homeAx, homeAy: h.homeAy, homeBx: h.homeBx, homeBy: h.homeBy,
           voidAr: h.voidAr, voidAg: h.voidAg, voidAb: h.voidAb,
           voidBr: h.voidBr, voidBg: h.voidBg, voidBb: h.voidBb,
@@ -892,7 +919,16 @@
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
         // decision asks for rather than the grain the score asked for. `applied` is the request less
         // the whole cells the hold walked back, which is the grain the frame was actually posed on.
-        if (h.mix === 0 || h.mix === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           if (st.reportApplied) {
             st.reportApplied({

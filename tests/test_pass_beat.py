@@ -183,7 +183,7 @@ check("PASS-BEAT the instrument creates no context, no canvas, no loop and no li
       if not held else "the instrument's region holds " + ", ".join(held))
 
 HANDLES = ["mix", "clock", "periodA", "periodB", "phase", "contrast", "lead", "beatTilt", "seed",
-           "shade", "travel", "mask"]
+           "shade", "travel", "mask", "presence"]
 check("PASS-BEAT every handle the instrument publishes is a handle a score can drive",
       all(("%s: { min" % h) in REGION for h in HANDLES),
       "§4.4b: twelve handles — the dial, the second, the module's own five declared params, the "
@@ -315,10 +315,17 @@ CHANGED = {
         "the module had no stack to lie under and wrote a flat alpha; §7's coverage law asks for "
         "the arriving work's own share, which is the mask the shader already built: `1.0 - cov`",
 }
+# THE FIFTH ADDED LINE AND THE FOURTH'S NEW SHAPE arrived with the entry-door contract on
+# 2026-08-25 (docs/design/ENTRY-DOOR.md). `uPresence` is the reserved dry every instrument that may
+# stand OVER another now declares: at nothing it draws no pixel anywhere, so a voice can join a
+# running picture without replacing it, and at whole — where it rests — it draws exactly what it
+# always drew. The alpha the port already wrote is gated by it, which is the whole of the change to
+# this shader's mathematics: nothing else in the line moved.
 ADDED = ["  float uAspect = uRes.x / max(uRes.y, 1.0);",
          "uniform float uMask;",
          "  col = mix(col, vec3(cov), uMask);",
-         "  gl_FragColor = vec4(col, 1.0 - cov);"]
+         "uniform float uPresence;",
+         "  gl_FragColor = vec4(col, (1.0 - cov) * uPresence);"]
 lab_frag = re.search(r"var FRAG = \[(.*?)\]\.join", LABTXT, re.S) if LABTXT else None
 lab_lines = []
 for _raw in (lab_frag.group(1).split("\n") if lab_frag else []):
@@ -335,7 +342,7 @@ check("PASS-BEAT every line of the module's own shader is carried verbatim but t
       bool(lab_lines) and not lost and not absent_add,
       f"{len(carried)} of the module's {len(lab_lines)} shader lines stand in the built instrument "
       f"unchanged; the two that do not are «" + "», «".join(CHANGED) + "» — "
-      + "; ".join(CHANGED.values()) + f" — and the four lines that replace them are all present"
+      + "; ".join(CHANGED.values()) + f" — and the five lines that replace them are all present"
       if lab_lines and not lost and not absent_add
       else f"lines the port lost: {lost}; lines the port never added: {absent_add}")
 
@@ -368,7 +375,7 @@ check("PASS-BEAT the host binds uniforms by declared name, never by position or 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-BEAT the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 16,
+      declared == spelled and len(declared) == 17,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -565,7 +572,7 @@ else:
                     and m["cuts"] == ["strip", "scale"]
                     and sorted(m["params"]) == ["beatTilt", "contrast", "lead", "periodA",
                                                 "periodB", "phase"]
-                    and len(m["handles"]) == 12
+                    and len(m["handles"]) == 13
                     and m["handles"]["beatTilt"]["def"] == TILT
                     and m["handles"]["beatTilt"]["min"] == TILT_MIN
                     and m["handles"]["beatTilt"]["max"] == TILT_MAX
@@ -584,7 +591,7 @@ else:
                     and abs(zoom - ZOOM) < 1e-12
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["coverage"]["writes"] is True
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 16
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 17
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2

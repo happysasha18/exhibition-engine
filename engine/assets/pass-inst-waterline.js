@@ -626,8 +626,11 @@
       // `seam_y`, WHERE that line sits. Two different numbers of one measure, in two instruments'
       // own namespaces.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
+        // `mix` is the crossing's own dial and `clock` the module's own time; neither drives a
+        // structural level of the picture.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        // The waterline is the world's own horizon: where its axis stands.
         line: { min: 0, max: 1, def: 0.5,
                 // WHAT THIS HANDLE IS READ AGAINST, published beside its range the way the meshing
                 // and the material instruments publish their own: the lift is taken against the
@@ -636,28 +639,48 @@
                 // measured curve turns out to be.
                 applied: { liftAgainst: "its own default", reach: LINE_LIFT,
                            measures: "the departing work's own measured seam, carried into the "
-                                   + "frame through the seating the host applied" } },
-        depth: { min: 0, max: 1, def: 0.3 },
-        swell: { min: 0, max: 1, def: 0.45 },
-        lead: { min: 0, max: 1, def: 0.62 },
-        order: { min: 0, max: 1, def: 0.2 },
+                                   + "frame through the seating the host applied" },
+                level: "WORLD" },
+        // How near the eye stands to the water's own reflection: the mirror's fold density is a
+        // reading of the world's own depth.
+        depth: { min: 0, max: 1, def: 0.3, level: "WORLD" },
+        // The one surface that combs both works (this file's own note above the `handles` map).
+        swell: { min: 0, max: 1, def: 0.45, level: "SURFACE" },
+        // Which band of the world — sky or water — hands over first.
+        lead: { min: 0, max: 1, def: 0.62, level: "WORLD" },
+        // The shoreline's own raggedness, a property of the one water surface rather than of
+        // either photograph.
+        order: { min: 0, max: 1, def: 0.2, level: "SURFACE" },
         // The two the port publishes; the block above this `handles` map says why each is one.
         // `settle` rests at 1, which is the whole of the counter-motion the module carries, and
         // `tideCells` at its own middle, which is exactly the module's 19 and 8.
-        settle: { min: 0, max: 1, def: 1 },
+        //
+        // `settle` is the counter-motion's own share — a drift of the picture taken as one, which
+        // is SURFACE. `tideCells` is honestly a CELL reading — the tide's own patch count — but
+        // CELL is not in this instrument's own `levels` array, so it falls back to SURFACE, the
+        // nearest declared level and the one that already carries the water's own shore texture.
+        settle: { min: 0, max: 1, def: 1, level: "SURFACE" },
         tideCells: { min: 0, max: 1, def: 0.5,
                      applied: { octavesEitherSide: CELL_SPAN, aboutCells: [CELLS_X, CELLS_Q],
                                 measures: "a cell across the frame's height, which is the unit a "
-                                        + "work's own measured spectral period is read in" } },
-        seed: { min: 0, max: 8, def: 0 },
-        shade: { min: 0, max: 1, def: 1 },
-        shadeEdge: { min: 0, max: 1, def: 1 },
-        shadeLine: { min: 0, max: 1, def: 1 },
-        travel: { min: 0, max: 1, def: 1 },
-        comb: { min: 0, max: 1, def: 1 },
-        raw: { min: 0, max: 1, def: 0 },
-        seamA: { min: 0, max: 1, def: 0.5 },
-        seamB: { min: 0, max: 1, def: 0.5 },
+                                        + "work's own measured spectral period is read in" },
+                     level: "SURFACE" },
+        seed: { min: 0, max: 8, def: 0, level: null },
+        // `shade`, `shadeEdge` and `shadeLine` are the fleet's shade judge channel, split into its
+        // two gates so a check can measure each contact shadow independently (the block above this
+        // `handles` map, "TWO SHADOW CHANNELS AND NOT ONE"); `travel` is the fleet's own travel
+        // judge channel. None of the four drives a structural level.
+        shade: { min: 0, max: 1, def: 1, level: null },
+        shadeEdge: { min: 0, max: 1, def: 1, level: null },
+        shadeLine: { min: 0, max: 1, def: 1, level: null },
+        travel: { min: 0, max: 1, def: 1, level: null },
+        // How hard the one surface's own swell combs what lies under it.
+        comb: { min: 0, max: 1, def: 1, level: "SURFACE" },
+        // Takes every response curve out for measurement; it drives no structural level of its own.
+        raw: { min: 0, max: 1, def: 0, level: null },
+        // The measured input the world's own horizon line is built from.
+        seamA: { min: 0, max: 1, def: 0.5, level: "WORLD" },
+        seamB: { min: 0, max: 1, def: 0.5, level: "WORLD" },
       },
       // The dial's two ends. At 0 the water stands below the bottom edge of the frame, the threshold
       // stands MARGIN below everything the field reads, both contact shadows and the counter-motion

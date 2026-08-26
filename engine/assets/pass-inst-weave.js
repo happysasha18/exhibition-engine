@@ -665,7 +665,18 @@
     var manifest = {
       id: "weave", api: 1, arity: 2,
       roles: ["disassembly", "mystery", "assembly"],
-      levels: ["SURFACE", "CELL"],
+      // CELL, AND THAT IS THE WHOLE OF IT. The ribbons are the cells: `strips` is how many there
+      // are, `axis` which way they run, `nMul` their count multiplier, and the three wave handles
+      // shape the ribbon edge itself.
+      //
+      // SURFACE STOOD BESIDE IT AND WAS A FALSE DECLARATION. The woven fabric does cover the frame,
+      // which is what the claim rested on, but covering the frame is not driving a level: of the
+      // handles below not one moves the picture plane as a whole — they move the ribbons, or they
+      // drive no structural level at all. Since every handle now declares the level it drives, a
+      // level this instrument occupies but never moves is a claim it cannot keep, and keeping it
+      // cost something real: an owner holds a level to the exclusion of every other cue, so
+      // claiming SURFACE here silenced whichever voice actually drove it.
+      levels: ["CELL"],
       params: { strips: [3, 64], axis: [0, 2], speed: [0.1, 2.5] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial; `clock` is the second the host
       // hands down; the other four were the module's own params and its own die, and they are
@@ -761,14 +772,17 @@
       // read. Every one of these gates is the lab module's own, carried here character for character;
       // the conformance rows hold this frame against that module's frame point for point.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
+        // `mix` is the crossing's own dial and `clock` the module's own time; neither drives a
+        // structural level of the picture.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
         strips: { min: 3, max: 64, def: 28,
                   applied: { floor: 3, ceiling: 64, timesHandle: "nMul",
                              frameWidth: { full: 1000, least: 0.5 },
-                             drawnFloor: 3, basketTakes: 0.25 } },
+                             drawnFloor: 3, basketTakes: 0.25 },
+                  level: "CELL" },
         axis: { min: 0, max: 2, def: 2, kind: "enum", step: 1, names: AXES,
-                banding: ["vertical", "horizontal"], turns: 2, turnPeriodS: 27 },
+                banding: ["vertical", "horizontal"], turns: 2, turnPeriodS: 27, level: "CELL" },
         // WHERE THE GRAIN STANDS, AS A PLACE RATHER THAN AS A CLOCK. `axis` names three states and
         // only the third moves, on a 27 s walk nothing measured — which is what the entry above says
         // in its own words. A pair whose two band families CROSS has a passage written into it: the
@@ -786,7 +800,10 @@
                      + "travels this handle from the departing work's reading to the arriving "
                      + "work's, and a pair sharing one direction holds it still",
                 applied: { verticalAt: 0, horizontalAt: 1, basketAt: 0.5,
-                           whenAbsent: "the axis handle and its own 27 s turn" } },
+                           whenAbsent: "the axis handle and its own 27 s turn" },
+                // OPEN, so it drives no structural level of its own: a score naming no track for it
+                // leaves the axis and its 27 s clock exactly as they stood.
+                level: null },
         // HOW FAR UNDER A DIPPING RIBBON LIES. Depth was drawn as shade alone and a ribbon passing
         // under a crossing one came out as sharp as the one on top, so a basket read as tiles laid
         // side by side rather than as cloth. The dip now also carries a level of the picture's own
@@ -794,22 +811,31 @@
         // no track for it draws the frame this instrument has always drawn, and it can only reach
         // the frame where two ribbon sets exist — a single-direction weave has nothing to pass
         // under, and both doors stand at the sharpest copy by the same gate the shade uses.
+        // Same class as the ribbon edge's own wave handles below: a property of the fabric's own
+        // lattice, not of either photograph, so it is CELL.
         depth: { min: 0, max: 1, def: 0,
                  reads: "nothing of the work: it is a property of the FABRIC, the same class as the "
                       + "ribbon edge's own two waves and the contact shadow's own reach, and it is "
                       + "the material speaking rather than the photograph",
                  applied: { levelsAtAFullDip: 2, sharpAt: 0, needsBasket: true,
-                            gate: "the same door gate the shade is held by" } },
+                            gate: "the same door gate the shade is held by" },
+                 level: "CELL" },
+        // A rate rather than a position, but what it moves is the strips' own travel — a period of
+        // the lattice — so it is CELL.
         speed: { min: 0.1, max: 2.5, def: 1,
                  curve: { knots: CURVES.speed, band: CURVE_BANDS.speed, applied: false,
-                          measuredOn: CURVE_MEASURED_ON } },
-        seed: { min: 0, max: 8, def: 0 },
+                          measuredOn: CURVE_MEASURED_ON },
+                 level: "CELL" },
+        seed: { min: 0, max: 8, def: 0, level: null },
         // THE THREE THAT CARRY THE WAVE, and the reason they are handles rather than numbers in a
         // shader. Until 2026-08-17 the ribbon edge waved on eleven literals that read nothing off
         // the photograph, on every work alike; the band count on this same instrument was measured
         // from the work, which is what the difference looks like. Each of these three now says
         // which measurement it is driven from, and all three rest at the straight edge — `wave` at
         // 0 is the whole switch and the other two cost nothing while it is shut.
+        //
+        // All three shape the ribbon edge itself — the repeating unit — so they stand with the
+        // strip handles above rather than with the judge channels: CELL.
         wave: { min: 0, max: WAVE_MAX, def: 0, unit: "cells",
                 reads: "texture.type at «рябь» as the gate, and 1 - texture.localStraightness as "
                      + "the depth; a work whose texture is not a ripple drives this to 0 and the "
@@ -818,22 +844,29 @@
                          measuredOn: CURVE_MEASURED_ON },
                 applied: { straightAt: 0, ceiling: WAVE_MAX,
                            shape: { fundamental: WLOW, overtone: WHIGH,
-                                    overtoneTimes: WOVER, overtoneDriftTimes: -WBEAT } } },
+                                    overtoneTimes: WOVER, overtoneDriftTimes: -WBEAT } },
+                level: "CELL" },
         wavePeriod: { min: WAVE_PERIOD_MIN, max: WAVE_PERIOD_MAX, def: WAVE_PERIOD_DEF,
                       unit: "a fraction of the frame side the wave runs along",
                       reads: "texture.spectralPeriodPx over the work's own frame side — the "
                            + "wavelength of the spectral band the ripple gate fires on; the shader "
-                           + "takes its reciprocal" },
+                           + "takes its reciprocal",
+                      level: "CELL" },
         waveDrift: { min: -WAVE_DRIFT_MAX, max: WAVE_DRIFT_MAX, def: 0,
                      unit: "cycles a second",
                      reads: "the same texture.spectralPeriodPx, as a share of the wave's own "
-                          + "period travelled in a second; nothing while the depth is nothing" },
+                          + "period travelled in a second; nothing while the depth is nothing",
+                     level: "CELL" },
+        // Multiplies the strip count — the lattice's own band count: CELL.
         nMul: { min: 0.62, max: 1.65, def: 1,
                  curve: { knots: CURVES.nMul, band: CURVE_BANDS.nMul, applied: false,
-                          measuredOn: CURVE_MEASURED_ON } },
+                          measuredOn: CURVE_MEASURED_ON },
+                 level: "CELL" },
+        // The strips' own slide amplitude — a size of the lattice's own travel: CELL.
         press: { min: 1, max: PRESS, def: 1,
                  curve: { knots: CURVES.press, band: CURVE_BANDS.press, applied: false,
-                          measuredOn: CURVE_MEASURED_ON } },
+                          measuredOn: CURVE_MEASURED_ON },
+                 level: "CELL" },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
         // the meshing instrument publishes its own. `heldWholeAtADoor` says what is read (the share
         // of every band the fabric leaves to the other work), on which grid (the drawing buffer the
@@ -843,7 +876,10 @@
                applied: { heldWholeAtADoor: { bands: DOOR_HOLD, readOn: "the drawing buffer",
                                               reads: "balRequest",
                                               measures: "the share of every band the fabric leaves "
-                                                      + "to the other work" } } },
+                                                      + "to the other work" } },
+               // OPEN, so it drives no structural level of its own: a score naming no track for it
+               // leaves the balance derived from `mix` through the response curve.
+               level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

@@ -457,7 +457,7 @@ else:
                     m["id"] == "matter" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and sorted(m["params"]) == ["drift", "gather", "grain", "loosen"]
-                    and len(m["handles"]) == 9
+                    and len(m["handles"]) == 10
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -466,7 +466,7 @@ else:
                     and m["framings"]["0"] == m["framings"]["1"]
                     and abs(zoom - (1 + 2 * 0.07 + 0.03)) < 1e-12
                     and m["camera"] == {"needs": "none", "authority": "stage"}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 14
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 15
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2

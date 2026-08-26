@@ -36,8 +36,14 @@
   if (typeof join !== "function") return;
 
   // ---- the three ranges of contract §2.5 — a legal value must read differently from a hang -------
+  // UNJUSTIFIED — the longest a transaction may run. Fourteen seconds is the contract's own §2.5
+  // bound, written there rather than here, and no measurement of any pair stands behind it.
   var DURATION_MIN = 0, DURATION_MAX = 14000;
+  // UNJUSTIFIED — how long the host waits for every instrument of a score to answer `prepare`. Four
+  // hundred milliseconds was chosen when this seam was built and nobody has measured it since.
   var PREPARE_MIN = 0, PREPARE_MAX = 400;
+  // UNJUSTIFIED — how far past its own duration a transaction may run before the watchdog ends it.
+  // Two seconds was chosen beside the budget above and stands on nothing measured.
   var SLACK_MIN = 0, SLACK_MAX = 2000;
   function clampNum(n, lo, hi) {
     n = Number(n);
@@ -58,6 +64,8 @@
                              // from manifests, so one host carries many instruments)
   var probe = null;          // the diagnostics-only test instrument, when one is registered
   var cur = null;            // the current transaction record, or null between transactions
+  var foldHeld = null;       // the superseding command, held for as long as the crossing it
+                             // supersedes takes to fold up — {cmd, hooks}; see `offerNow`
   var lastRun = null;        // what the last transaction left behind for the diagnostic surface:
                              // the camera's rest, its handoffs and the cadence it landed through
   var prepareBudgetMs = 120; // within PREPARE_MIN…PREPARE_MAX; overridable for testing (host.configure)
@@ -74,8 +82,21 @@
   // the release envelope asks for steady 30 frames a second, p95 within 33 ms, so the ladder drops a
   // step above 33 ms and climbs back below 22 ms; a device pixel ratio past two costs memory a
   // full-screen pass never sees back.
+  // UNJUSTIFIED — the rungs the render scale steps through. Five of them, at these five widths,
+  // were chosen in lab/gl-carrier.js and carried here unchanged; nobody measured which five.
   var STEPS = [1.0, 0.85, 0.72, 0.60, 0.50];
-  var DPR_CAP = 2, P95_DROP = 33, P95_RAISE = 22, WIN_DROP = 45, WIN_RAISE = 120, KEEP = 240;
+  // CAPABILITY — a fact about the machine: past two device pixels to the point, a full-screen pass
+  // spends memory and fill it never sees back on any display this walk runs on.
+  var DPR_CAP = 2;
+  // CAPABILITY — arithmetic on the release envelope's own target. One frame at the thirty a second
+  // it asks for is 33 ms, which is the bar above which the ladder steps down.
+  var P95_DROP = 33;
+  // UNJUSTIFIED — the bar below which the ladder climbs back. It was chosen under the drop bar so
+  // the two do not chatter against each other, and nothing measured where it should stand.
+  var P95_RAISE = 22;
+  // UNJUSTIFIED — how many frame gaps a step down and a step up are each read over, and how many
+  // the recorder keeps. All three were chosen in lab/gl-carrier.js and nothing measured them.
+  var WIN_DROP = 45, WIN_RAISE = 120, KEEP = 240;
 
   var stage = null;          // {canvas, gl, vao, quad, texA, texB, sceneTex, programs}
   var stepIx = 0, W = 1, H = 1, cssW = 1, cssH = 1, dpr = 1;
@@ -306,6 +327,8 @@
   // ground voice and one thereafter. This is a host capability, never a per-instrument surface.
   var SUPPLY = { textureA: 1, textureB: 1, sceneTexture: 1, sceneAvailable: 1,
                  fitA: 1, fitB: 1, resolution: 1, seconds: 1 };
+  // CAPABILITY — a fact about the format: the four uniform types this host knows how to bind. The
+  // ones are set membership and not quantities.
   var UTYPE = { sampler2D: 1, float: 1, vec2: 1, vec4: 1 };
   function supplySeen(source, provides) {
     if (SUPPLY[source]) return true;
@@ -342,6 +365,27 @@
   }
 
   // ---- one frame ---------------------------------------------------------------------------------
+  // The pose as the uniforms are bound from it: every handle the manifest declares, standing at the
+  // value the pose names or, where it names none, at the handle's own declared rest. The pose itself
+  // is never touched — an instrument's own `values` reads what it was handed.
+  function withRests(pose, inst) {
+    var hs = inst && inst.manifest && inst.manifest.handles;
+    if (!hs) return pose;
+    var out = null, k;
+    for (k in hs) {
+      if (!Object.prototype.hasOwnProperty.call(hs, k)) continue;
+      if (pose[k] !== undefined || hs[k].def === undefined) continue;
+      if (!out) {
+        out = {};
+        for (var j in pose) {
+          if (Object.prototype.hasOwnProperty.call(pose, j)) out[j] = pose[j];
+        }
+      }
+      out[k] = hs[k].def;
+    }
+    return out || pose;
+  }
+
   function bindUniform(gl, loc, u, box) {
     var v;
     if (u.source === "textureA") v = 0;
@@ -439,7 +483,16 @@
     }
     var box = {
       frame: inst.values(pose),
-      handles: pose,
+      // A POSE THAT NAMES NO VALUE FOR A DECLARED HANDLE STANDS AT THAT HANDLE'S OWN REST, which is
+      // what `def` in a manifest means and what a caller handing a partial pose has always meant to
+      // say. Until the entry-door contract landed nothing noticed: every handle a shader read was
+      // one every caller filled in. The contract adds `presence` to ten manifests at a rest of ONE —
+      // draw exactly as you always did — and a caller that predates it names no value for it, so the
+      // uniform went unset. An unset uniform is ZERO in GL, which for this handle means «not in the
+      // frame at all», and an instrument drawn from such a pose went blank. Read off the manifest
+      // here rather than defended against in ten instruments, because the manifest is where the rest
+      // is declared and this is the one place a pose becomes uniforms.
+      handles: withRests(pose, inst),
       seconds: pose.t,
       fitA: seated(ownA), fitB: seated(ownB),
       resolution: [pw, ph], sceneAvailable: !!over,
@@ -576,6 +629,7 @@
   //   · CYCLES REFUSED AT VALIDATION, WITH THE CYCLE NAMED. A graph is walked once before a command
   //     is taken; a node that reaches itself is refused and the path is written out, so the score's
   //     author reads which three names close the ring rather than watching a frame hang.
+  // CAPABILITY — arithmetic. One turn in radians.
   var TAU = Math.PI * 2;
 
   // The four named curves are the lab engine's own (lab/crossing-engine.js SHAPES), carried across
@@ -708,6 +762,19 @@
   // record, a `{node:"name"}` reference, or a bare number. A node that cannot answer returns its
   // reason rather than a number, and the caller records the fallback with that reason — silence
   // about an unbuilt field is what makes an unbuilt field dangerous.
+  // The number a composed float is carrying, or null where this is not one. A node record always
+  // names an `op`, a `source` or another `node`; a boxed float names none of the three and answers
+  // to `valueOf` while it is still an object in this realm, and carries its number on `v` once it
+  // has been through JSON.
+  function boxedNumber(o) {
+    if (o.op !== undefined || o.source !== undefined || o.node !== undefined) return null;
+    if (typeof o.valueOf === "function") {
+      var n = o.valueOf();
+      if (typeof n === "number" && isFinite(n)) return n;
+    }
+    return (typeof o.v === "number" && isFinite(o.v)) ? o.v : null;
+  }
+
   function evalNode(spec, ctx, depth) {
     if (spec === null || spec === undefined) return nov("names no node");
     if (typeof spec === "number") return okv(spec);
@@ -720,6 +787,28 @@
       return evalNode(ref, ctx, depth + 1);
     }
     if (spec.source !== undefined) return evalSource(spec, ctx);
+    // A COMPOSED FLOAT ARRIVES BOXED, AND THIS IS THE READER THAT NEVER LEARNED IT.
+    // `pass-composer.js` wraps every composed number in its own `Flt` — an object whose `valueOf`
+    // returns the number — and the camera reader already unwraps it (`camRead`, with its own note
+    // saying the box exists). A node operand is the other place a composed number arrives, and it
+    // was never taught: serialised onto a score the prototype does not survive, so what reaches
+    // here is a plain `{ v: 0 }` with no `op`, no `source` and no `node`. It fell through to
+    // `evalOp`, which answered «the operator «undefined» is declared and drawn by no evaluator
+    // yet», the node failed, and the HANDLE FELL BACK TO ITS MANIFEST DEFAULT — silently, for the
+    // whole passage, with the score's own number never reaching the picture.
+    //
+    // It is not a small thing. The composed `mix` template is `mix({v:0}, {v:1}, curve(...))`, so
+    // the crossing's own dial fell back to its default on every composed cue that used it — and a
+    // dial resting at its entry-door value all the way through tells an instrument it stands at its
+    // entry door on every frame. That is what recovered a passage on the phone bench: unfold read
+    // `mix` at nought while its own `field` opened the world, and its door proof refused a door it
+    // was never actually standing at. The host said so the whole time on its own surface
+    // («handle-fallback: mix: the operator «undefined»») and nothing was reading it.
+    //
+    // Unwrapped HERE and once, the way `camRead` already does it, rather than asking every operator
+    // to know the box exists.
+    var boxed = boxedNumber(spec);
+    if (boxed !== null) return okv(boxed);
     return evalOp(spec, ctx, depth);
   }
 
@@ -896,17 +985,27 @@
   // a track that never names one has lost something and the host says so; a track that names no
   // orbit is simply a flight that does not orbit, and a sentence about it would be noise on every
   // passage the collection plays.
+  // CAPABILITY — a fact about the score's own grammar: which two camera places a track names only
+  // when it uses them. The ones are set membership and not quantities.
   var CAM_OPTIONAL = { orbit: 1, tilt: 1 };
   // The field of view a turn is seen through where a score names none. Without a projection an orbit
   // is an affine squash rather than a turn, so the host carries its own lens: 0.9 rad is 51.6
   // degrees across the frame's height, which is the ordinary lens a room is photographed with.
+  // UNJUSTIFIED — the lens a turn is seen through where a score names none. This file chose 0.9
+  // radians because it is the angle a room is ordinarily photographed at; no photograph of this
+  // collection was measured for it, and none was consulted.
   var CAM_TURN_FOV = 0.9;
   // The pose rests on the arriving work within this much. The check READS THE POSE rather than the
   // picture, so the number is a computation tolerance and not a matter of taste: a spline evaluated
   // at its own last point returns that point, and only floating point stands between.
+  // CAPABILITY — arithmetic. A spline evaluated at its own last point returns that point, so what
+  // this bar leaves room for is floating point and nothing else.
   var CAM_REST_TOL = 1e-6;
   // A handoff between two authorities is continuous within this much, measured on the pose across
   // the handoff frame. Normalised pan and radians share one bar.
+  // UNJUSTIFIED — how far two camera authorities may stand apart across the instant one hands to
+  // the other. This file chose a thousandth; nobody measured how far apart a person can see them
+  // stand, and the number is a thousand times the arithmetic bar above it rather than a reading.
   var CAM_HANDOFF_TOL = 1e-3;
 
   // `pass-composer.js` boxes every composed float in its own `Flt` wrapper (a plain object whose
@@ -1025,9 +1124,17 @@
   // about the point the pan is holding — the point of view travels around the subject and the
   // subject keeps its framing — while pitch, yaw and roll turn the camera where it stands and let
   // the scene swing across the frame.
-  function camApply(pose, caps) {
+  // `over` is the plane's own overscan — how many times the frame the carrier has been grown to so
+  // that this very pose still reaches every edge (see `planeReach`). It changes what a PERCENTAGE
+  // means and nothing else: a CSS percentage translation resolves against the element's own border
+  // box, so a pan written as a plain percentage would travel further the moment the carrier grew,
+  // and the pose would stop meaning what it says. Divided by the overscan, the pan moves the picture
+  // by the same share of the FRAME it always moved it by, whatever size the carrier under it is. A
+  // carrier at its ordinary size passes `over` of 1 and the transform is written exactly as before.
+  function camApply(pose, caps, over) {
     if (!stage) return;
     if (!pose) { stage.canvas.style.transform = ""; return; }
+    var span = (typeof over === "number" && over > 0) ? over : 1;
     var s = Math.exp(caps.logScale ? pose.logScale : 0);
     var deg = 180 / Math.PI;
     // Pitch and yaw need the same lens orbit and tilt already fall back to: without a perspective
@@ -1051,13 +1158,199 @@
     if (caps.pitch && pose.pitch) t += "rotateX(" + (pose.pitch * deg).toFixed(4) + "deg) ";
     if (caps.yaw && pose.yaw) t += "rotateY(" + (pose.yaw * deg).toFixed(4) + "deg) ";
     if (caps.roll && pose.roll) t += "rotate(" + (pose.roll * deg).toFixed(4) + "deg) ";
-    t += "translate(" + (caps.panX ? pose.panX * 100 : 0).toFixed(4) + "%,"
-       + (caps.panY ? pose.panY * 100 : 0).toFixed(4) + "%) ";
+    t += "translate(" + (caps.panX ? pose.panX * 100 / span : 0).toFixed(4) + "%,"
+       + (caps.panY ? pose.panY * 100 / span : 0).toFixed(4) + "%) ";
     if (caps.orbit && pose.orbit) t += "rotateY(" + (pose.orbit * deg).toFixed(4) + "deg) ";
     if (caps.tilt && pose.tilt) t += "rotateX(" + (pose.tilt * deg).toFixed(4) + "deg) ";
     t += "scale(" + s.toFixed(6) + ")";
     stage.canvas.style.transformOrigin = "50% 50%";
     stage.canvas.style.transform = t;
+  }
+
+  // ================================================================================================
+  // THE PLANE'S REACH — a pose that would bare an edge is drawn on a carrier large enough to cover it
+  // ================================================================================================
+  // HIS WORD, 2026-08-25: it is beautiful when the camera stands at an angle, but that does not
+  // always cover the screen. It does not, and nothing checked it. The coverage law already in this
+  // file answers a different question — whether a voice drawing over another lets what is beneath it
+  // show through where it draws nothing. This is the other case, and it is geometric: the drawn plane
+  // itself, carried by a pose that pans or dollies out or turns, stops short of the frame's own
+  // edges, and whatever lies under the canvas shows in the gap.
+  //
+  // THE CARRIER IS GROWN, THE POSE IS NEVER REFUSED. The charter's laws degrade a crossing and never
+  // refuse one, and its second shelf asks for the camera's excursion — so the repair is on the
+  // carrier's own size and not on the pose. The plane is enlarged about the frame's centre until the
+  // very pose that would have bared an edge lands inside it. The enlargement is UNIFORM, so the
+  // carrier keeps the frame's aspect and therefore the drawing buffer's, and the instrument's cover
+  // fit is seated exactly as it was — the picture is simply drawn larger and the frame crops it a
+  // little tighter. What it costs is resolution, in the ratio of the enlargement, which is the same
+  // currency the render ladder already spends and is spent here only on the poses that need it.
+  //
+  // WHY IT IS COMPUTED RATHER THAN TABULATED. The reach is a property of THE POSE, and the pose is
+  // composed at run time from the two photographs in front of it. There is no pose list to look it
+  // up in, and a single number covering every pose would over-grow every ordinary one.
+  //
+  // The chain below is the very chain `camApply` writes, as a matrix. Written twice it could drift,
+  // so `camApply` is the reader of record for the string and this is the reader of record for the
+  // geometry; the conformance rows hold the two against the browser's own rendering of the string.
+  function m4mul(a, b) {
+    var o = new Array(16), i, j, k, s;
+    for (i = 0; i < 4; i++) {
+      for (j = 0; j < 4; j++) {
+        s = 0;
+        for (k = 0; k < 4; k++) s += a[i * 4 + k] * b[k * 4 + j];
+        o[i * 4 + j] = s;
+      }
+    }
+    return o;
+  }
+  function m4id() { return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; }
+  function m4rotX(r) {
+    var c = Math.cos(r), s = Math.sin(r);
+    return [1, 0, 0, 0, 0, c, -s, 0, 0, s, c, 0, 0, 0, 0, 1];
+  }
+  function m4rotY(r) {
+    var c = Math.cos(r), s = Math.sin(r);
+    return [c, 0, s, 0, 0, 1, 0, 0, -s, 0, c, 0, 0, 0, 0, 1];
+  }
+  function m4rotZ(r) {
+    var c = Math.cos(r), s = Math.sin(r);
+    return [c, -s, 0, 0, s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  }
+  function m4trans(x, y) { return [1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, 0, 0, 0, 0, 1]; }
+  function m4scale(s) { return [s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1]; }
+  // CSS `perspective(P)`: the one entry that makes the map projective rather than affine.
+  function m4persp(p) {
+    var m = m4id();
+    if (p > 0) m[14] = -1 / p;
+    return m;
+  }
+
+  // The matrix of one pose on a carrier of the given CSS size. `panBox` is the box a percentage
+  // translation resolves against — the carrier's own UNENLARGED size, which is what keeps a pan
+  // meaning the same share of the frame however far the carrier has been grown.
+  function camMatrix(pose, caps, panBox) {
+    var s = Math.exp(caps.logScale ? pose.logScale : 0);
+    var turn = (caps.orbit && pose.orbit) || (caps.tilt && pose.tilt)
+            || (caps.pitch && pose.pitch) || (caps.yaw && pose.yaw);
+    var fov = (caps.fov && typeof pose.fov === "number" && pose.fov > 0) ? pose.fov
+            : (turn ? CAM_TURN_FOV : 0);
+    var m = fov ? m4persp(0.5 * Math.max(cssH, 1) / Math.tan(fov / 2)) : m4id();
+    if (caps.pitch && pose.pitch) m = m4mul(m, m4rotX(pose.pitch));
+    if (caps.yaw && pose.yaw) m = m4mul(m, m4rotY(pose.yaw));
+    if (caps.roll && pose.roll) m = m4mul(m, m4rotZ(pose.roll));
+    m = m4mul(m, m4trans(caps.panX ? pose.panX * panBox.w : 0,
+                         caps.panY ? pose.panY * panBox.h : 0));
+    if (caps.orbit && pose.orbit) m = m4mul(m, m4rotY(pose.orbit));
+    if (caps.tilt && pose.tilt) m = m4mul(m, m4rotX(pose.tilt));
+    return m4mul(m, m4scale(s));
+  }
+
+  // Where the carrier's four corners land, in frame coordinates measured from the frame's centre.
+  // A corner behind the vanishing plane (w at or below zero) is reported as null: the quad has
+  // turned inside out there, and no enlargement of a plane seen edge-on ever covers anything.
+  function camQuad(pose, caps, halfW, halfH, panBox) {
+    var m = camMatrix(pose, caps, panBox), out = [], i;
+    var corners = [[-halfW, -halfH], [halfW, -halfH], [halfW, halfH], [-halfW, halfH]];
+    for (i = 0; i < 4; i++) {
+      var x = corners[i][0], y = corners[i][1];
+      var w = m[12] * x + m[13] * y + m[15];
+      if (!(w > 1e-6)) return null;
+      out.push([(m[0] * x + m[1] * y + m[3]) / w, (m[4] * x + m[5] * y + m[7]) / w]);
+    }
+    return out;
+  }
+
+  // Is every corner of the frame inside the quad? The quad is walked as a loop and a point is inside
+  // when it lies on the same side of all four edges. The frame's own four corners are the only points
+  // that need asking about: both shapes are convex, so a convex quad containing the four corners of a
+  // rectangle contains the whole rectangle.
+  function quadCovers(q, halfW, halfH) {
+    if (!q) return false;
+    var pts = [[-halfW, -halfH], [halfW, -halfH], [halfW, halfH], [-halfW, halfH]];
+    var sign = 0, i, j, k;
+    for (i = 0; i < 4; i++) {
+      var a = q[i], b = q[(i + 1) % 4];
+      var ex = b[0] - a[0], ey = b[1] - a[1];
+      for (j = 0; j < 4; j++) {
+        var cross = ex * (pts[j][1] - a[1]) - ey * (pts[j][0] - a[0]);
+        k = cross > 1e-9 ? 1 : (cross < -1e-9 ? -1 : 0);
+        if (k === 0) continue;
+        if (sign === 0) sign = k;
+        else if (k !== sign) return false;
+      }
+    }
+    return true;
+  }
+
+  // HOW WIDE THE CARRIER MAY GROW, AND THE NUMBER IS NOT CHOSEN. Growing the carrier spends
+  // resolution and nothing else: the drawing buffer is sized to the frame, so a carrier of k frames
+  // spreads those same points over k frames' worth of screen and the picture stands at one part in k
+  // of the resolution it would otherwise have had. The engine has already declared how much of that
+  // it is willing to spend — the render ladder's own last rung, `STEPS[STEPS.length - 1]`, is the
+  // resolution it will draw a passage at on a device that needs it. So the carrier may grow until
+  // the picture stands at exactly that same floor and no further: one over the ladder's last rung.
+  // The overscan therefore spends the same currency, out of the same purse, down to the same floor
+  // the file already set for itself.
+  function reachCeiling() { return 1 / STEPS[STEPS.length - 1]; }
+
+  // HOW FAR THE CARRIER HAS TO REACH FOR THIS POSE, as a multiple of the frame, and HOW MUCH OF THE
+  // POSE THE CARRIER CAN THEN CARRY.
+  //
+  // One and whole is the ordinary answer: a pose at its neutral needs no enlargement and pays
+  // nothing, and most of a flight is spent near it. Where a pose does need room, the least room that
+  // answers it is found — and where the ceiling above cannot answer it even at its widest, the POSE
+  // IS HELD CLOSER IN rather than the frame being left bare. Held, never refused: the excursion
+  // still plays, on the same axes, in the same direction, through the same arc — it simply travels
+  // as far as the frame can be kept whole and no further. That is the charter's own degrade, and it
+  // is what shelf 2's excursion asks for on a device that cannot carry all of it.
+  //
+  // BOTH ANSWERS ARE FOUND BY HALVING, NOT BY STEPPING. A carrier quantised to rungs would step
+  // between one frame and the next, and a step in the carrier is a step in the picture — the very
+  // seam the crossing charter's own seam check reds on. Halving converges to a width finer than a
+  // point of the screen, so what the eye sees moves as smoothly as the pose that drives it.
+  // CAPABILITY — how finely the carrier's own width is settled, and it is a fact about the screen
+  // rather than about any pair. The search runs on an interval no wider than the ceiling itself, a
+  // little over one frame, and each halving cuts that in two: twenty-four of them settle the width
+  // to about one part in seventeen million of a frame, which is thousands of times finer than the
+  // point the width is finally rounded onto. Fewer would leave a carrier that steps between two
+  // frames, and a step in the carrier is a step in the picture; more would settle a difference no
+  // screen can carry. No picture, no walk and no session has anything to say about it.
+  var REACH_HALVINGS = 24;
+  function coversAt(pose, caps, panBox, k) {
+    return quadCovers(camQuad(pose, caps, cssW * k / 2, cssH * k / 2, panBox), cssW / 2, cssH / 2);
+  }
+  function poseHeld(pose, t) {
+    if (t >= 1) return pose;
+    var out = {}, i;
+    for (i = 0; i < CAM_KEYS.length; i++) {
+      var k = CAM_KEYS[i];
+      out[k] = (k === "fov") ? pose[k]
+             : (typeof pose[k] === "number" ? pose[k] * t : pose[k]);
+    }
+    return out;
+  }
+  function camFit(pose, caps, panBox) {
+    var top = reachCeiling(), i, lo, hi, mid;
+    if (!pose || coversAt(pose, caps, panBox, 1)) {
+      return { over: 1, hold: 1, pose: pose };
+    }
+    if (coversAt(pose, caps, panBox, top)) {
+      // The least carrier that answers this pose, between the frame itself and the ceiling.
+      lo = 1; hi = top;
+      for (i = 0; i < REACH_HALVINGS; i++) {
+        mid = (lo + hi) / 2;
+        if (coversAt(pose, caps, panBox, mid)) hi = mid; else lo = mid;
+      }
+      return { over: hi, hold: 1, pose: pose };
+    }
+    // The ceiling cannot answer it: hold the pose in until the widest carrier can.
+    lo = 0; hi = 1;
+    for (i = 0; i < REACH_HALVINGS; i++) {
+      mid = (lo + hi) / 2;
+      if (coversAt(poseHeld(pose, mid), caps, panBox, top)) lo = mid; else hi = mid;
+    }
+    return { over: top, hold: lo, pose: poseHeld(pose, lo) };
   }
 
   function camOff(a, b) {
@@ -1124,6 +1417,8 @@
   // hangs, rises to the whole frame for the crossing itself, and comes back down onto the arriving
   // work's own box. The rise and the fall are seconds a score may name; with none named they take a
   // share of the pass at either end, and the whole middle stands at the neutral pose.
+  // UNJUSTIFIED — the share of a passage the rise and the fall each take where the score names no
+  // seconds for them. This file chose 0.18 and nothing measured it.
   var HANG_SHARE = 0.18;
   function hangEdges(rec) {
     var cam = (rec.cmd && rec.cmd.score && rec.cmd.score.camera) || {}, h = cam.hang || {};
@@ -1153,7 +1448,14 @@
   // exactly as it did before any plane existed. Reporting a door there while substituting some
   // other rectangle for the missing hang is what made the door rows read a work seated twice.
   // Coordinates are drawing-buffer coordinates because gl.viewport's origin is below.
-  function planeAt(rec, seconds) {
+  // THE CARRIER REACHES AS FAR AS THE POSE ON IT NEEDS, and only where the passage claims the whole
+  // frame. `art` is the score's own camera track — the very pose `camApply` puts on this canvas, the
+  // hang anchor excluded because this box carries that instead. Where `door` stands above zero the
+  // passage is on its way out of one wall or onto another and the walk around it is MEANT to be
+  // seen: the carrier is the work's own rectangle there and enlarging it would paint over the room.
+  // Where `door` is zero the passage owns the frame outright, and owning it means reaching every
+  // pixel of it.
+  function planeAt(rec, seconds, art) {
     // The neutral: the whole frame, which is what the camera's own neutral pose means.
     var full = { x: 0, y: 0, w: cssW, h: cssH };
     var e = rec.hangEdge || hangEdges(rec), door = 0, box = full;
@@ -1168,7 +1470,12 @@
       var qi = doorEase((seconds - (e.dur - e.fall)) / e.fall);
       box = lerpBox(full, rec.hangB, qi); door = qi;
     }
-    return { x: 0, y: 0, w: W, h: H, door: door,
+    var fit = (door === 0 && art) ? camFit(art, rec.caps, box) : { over: 1, hold: 1, pose: art };
+    if (fit.over !== 1) {
+      box = { x: box.x - box.w * (fit.over - 1) / 2, y: box.y - box.h * (fit.over - 1) / 2,
+              w: box.w * fit.over, h: box.h * fit.over };
+    }
+    return { x: 0, y: 0, w: W, h: H, door: door, over: fit.over, hold: fit.hold, art: fit.pose,
              cssX: box.x, cssY: box.y, cssW: box.w, cssH: box.h };
   }
 
@@ -1478,6 +1785,10 @@
     { name: "culmination", lo: 9, hi: 14, lettersLo: 2, lettersHi: 3, accompaniments: 3,
       miraclesLo: 1, miraclesHi: 1 },
   ];
+  // UNJUSTIFIED — the most of a passage that may carry no cue at all. The crossing charter's
+  // seventeenth shelf sets the third, and the charter says of it in as many words that the tier
+  // numbers beside it were written by an agent in `ae2b5da` on 2026-08-08 at 15:59 and that nobody
+  // measured them. It is carried here rather than chosen here, and it stands on nothing.
   var HELD_MAX = 1 / 3;
 
   // The seconds of the pass some cue's window covers, with the overlaps merged so a second under
@@ -1565,10 +1876,37 @@
   // a driver graph that reaches itself, two cues both claiming the camera at one instant, two cues
   // standing on one structural level at one instant, one instrument asked to carry two cues at once,
   // and the tier budget.
+  // THE LOWEST VOICE MAY NOT STAND ABSENT AT ITS OWN DOOR. The entry-door contract gives an
+  // instrument standing over another a state in which it draws nothing — the reserved `presence`
+  // handle at zero — so a voice can join a running picture without replacing it. The lowest voice of
+  // a score has no such licence: it is drawn onto the cleared buffer, nothing stands beneath it, and
+  // a door at which it draws nothing is a door at which the visitor sees the page. Only the host can
+  // say which cue is lowest, so the law is stated here rather than inside any instrument. It is
+  // checked for a score of ONE cue as well as for a stack: a lone voice is its own lowest, and the
+  // coverage law's own exemption for a one-cue score does not extend to this.
+  var PRESENCE_HANDLE = "presence";
+  function presenceWhyNo(cues) {
+    if (!cues || !cues.length) return null;
+    var rows = stackOrder(cues), low = rows[0] && rows[0].cue;
+    var doors = (low && low.doors) || {}, side;
+    for (side in doors) {
+      if (!Object.prototype.hasOwnProperty.call(doors, side)) continue;
+      var d = doors[side];
+      if (d && d.handle === PRESENCE_HANDLE && Number(d.value) === 0) {
+        return "cue «" + low.id + "» stands lowest in the stack and names its " + side
+             + " door at no presence at all — nothing stands beneath the lowest voice, so a door it "
+             + "draws nothing at is a door the visitor sees the page through";
+      }
+    }
+    return null;
+  }
+
   function scoreWhyNo(cmd) {
     var s = cmd && cmd.score;
     if (!s) return null;
     var cues = s.cues || [], i, j;
+    var low = presenceWhyNo(cues);
+    if (low) return low;
     for (i = 0; i < cues.length; i++) {
       var ring = cycleIn(cues[i].nodes || {});
       if (ring) return "cue «" + cues[i].id + "» draws a cycle: " + ring;
@@ -1742,10 +2080,72 @@
   }
   // §7's quality tier finally gains a consumer: the host reads it at prepare, picks the variant and
   // records the decision with its reason.
+  //
+  // THE RUNG COMES FROM THE DEVICE; A NAMED SETTING OUTRANKS IT (charter shelf 19). The nineteenth
+  // shelf puts the order this way round: the device is read first and the plan is DEGRADED to what
+  // it can carry, never refused for not being able to carry more. This function used to read the
+  // `qualityTier` setting and nothing else, so the rung a visitor got was whatever a session, a site
+  // record or the register's own default happened to say, and the machine in front of the person was
+  // never asked.
+  //
+  // THE READING IS THE ONE ALREADY BEING TAKEN, not a second one. `stepIx` is where the render-scale
+  // ladder stands — walked down by `decideScale` on a p95 of the last 45 frame gaps against 33 ms,
+  // and back up on 120 gaps under 22 ms — so it is exactly «how many rungs this device's own frame
+  // times have already cost it». The tier walks down one rung for each rung the scale ladder has
+  // spent, and stops at the tier ladder's own floor. Nothing here can walk a tier UP: a fast device
+  // gets what was asked for and no more, because a machine being quick is not a request for a
+  // richer plan.
+  //
+  // WHAT «NAMED» MEANS, exactly. The bundle's own settings ladder resolves each name on the session,
+  // the score, the site record and the register's default, in that order, and says on the frozen
+  // command which rung won (`source`). Any rung but `default` is a word somebody said, and a word
+  // outranks the measurement. `default` is nobody having said anything, and it yields.
   function variantOf(cmd) {
     var t = cmd && cmd.params && cmd.params.qualityTier;
     var name = t ? t.base : "standard";
-    return name === "rich" || name === "lean" ? name : "standard";
+    if (name !== "rich" && name !== "lean") name = "standard";
+    if (t && t.source && t.source !== "default") return name;
+    var ix = VARIANTS.indexOf(name);
+    if (ix < 0) ix = VARIANTS.indexOf("standard");
+    return VARIANTS[Math.max(0, ix - stepIx)];
+  }
+
+  // THE LADDER'S MIDDLE STEP: the accompaniment at 30 while the miracle keeps 60 (charter shelf 19).
+  // The shelf names three things a weak device is given in order — a lighter plan, then accompaniment
+  // voices at half rate while the miracle holds full rate, then resolution easing — and this file
+  // already carries ONE reading those three hang off: the render-scale ladder's rungs. So the order
+  // is read off the rungs rather than off three separately chosen numbers:
+  //
+  //   rung 0 (scale 1.00)  nothing is given up.
+  //   rung 1 (scale 0.85)  the plan walks down a tier — `variantOf` above, first thing given up.
+  //   rung 2 (scale 0.72)  the accompaniment halves — this, second thing given up; by this rung the
+  //                        tier ladder has already reached its own floor and has nothing left.
+  //   rungs 3-4            resolution alone keeps easing, which is what `decideScale` already does.
+  //
+  // A PINNED SCALE IS A BENCH, NOT A DEVICE: a row that holds the ladder still is photographing one
+  // instant, and halving a voice under it would move the picture between two shots of one pose.
+  function halvesAccompaniment() {
+    return !fixedScale && stepIx >= 2;
+  }
+
+  // THE JOY FLOOR (charter shelf 19), and every number in it is one already being read. Below the
+  // floor the device plays the floor grammar instead of a degraded miracle — and without one, the
+  // scale ladder simply walks on to its last rung and keeps drawing a miracle nobody can see move.
+  //
+  // The floor is where the ladders RUN OUT, which is a reading and not a number: the render ladder
+  // standing on its own last rung (`STEPS[STEPS.length - 1]`, nothing further down to step to) while
+  // the device's frame times are STILL over the same threshold that made every step before it
+  // (`P95_DROP`, on the same window `decideScale` reads). At that point every rung the file has has
+  // been spent and the frames are still long — there is nothing left to degrade, so what plays is the
+  // grammar rather than a thinner miracle. `fixedScale` is a bench holding the ladder still, and a
+  // held ladder has spent no rungs.
+  function joyFloorWhy() {
+    if (fixedScale || stepIx < STEPS.length - 1) return null;
+    var hot = p95Over(WIN_DROP);
+    if (hot === null || hot <= P95_DROP) return null;
+    return "the render ladder stands on its last rung (" + STEPS[stepIx] + ") and this device's own "
+         + "frame gaps still run over " + P95_DROP + " ms: every rung is spent, so the floor grammar "
+         + "plays rather than a degraded miracle";
   }
 
   // ---- resources across a stack (§7) --------------------------------------------------------------
@@ -1975,6 +2375,23 @@
       try { if (x.dispose) x.dispose(); } catch (e) {}
     });
     cur = null;
+    // THE HELD COMMAND TAKES THE STAGE THE INSTANT THE FOLD LETS GO OF IT. This stands in `finish`
+    // rather than at the end of the cadence because `finish` is the single dock every exit from
+    // `running` passes through: a fold that lands on its own envelope, one the deadline force-ends,
+    // an instrument that settles mid-fold, a watchdog, a lost context — all of them arrive here, so
+    // a held command can be stranded by none of them.
+    //
+    // `offer` already answered `true` for this command, so this file owns its landing outright: a
+    // road that cannot take it hands it to the glide here rather than returning a `false` nobody is
+    // left to read.
+    if (foldHeld) {
+      var held = foldHeld;
+      foldHeld = null;
+      if (!offerNow(held.cmd, held.hooks)) {
+        try { held.hooks.mark("host-declined", held.cmd, "no instrument could be cast"); } catch (e) {}
+        try { held.hooks.glide(held.cmd); } catch (e) {}
+      }
+    }
   }
 
   // Both settle and fail are token-checked against the CURRENT transaction's own generation (§2.3),
@@ -1983,6 +2400,23 @@
   function settle(token) {
     if (!cur || cur.docked || token !== cur.cmd.gen || cur.state !== "running") {
       logEvt("stale-settle", token, null);
+      return;
+    }
+    // A CADENCE ALREADY LANDING THIS TRANSACTION OWNS THE LANDING, and an instrument settling
+    // inside it is answering a question that has already been answered. The cadence's own last
+    // frame stands at the door — which for an arriving door is the pass's own end — so an
+    // instrument that settles when it sees its end reports one from inside the call that is landing
+    // the pass. Acted on, it docks the transaction half way through `cadenceEnd`, and everything a
+    // landing sets running (a held command a fold is holding, above all) starts underneath it.
+    // ONCE A CADENCE HAS BEGUN IT OWNS THE LANDING, ended or not. `cadenceEnd` marks itself ended
+    // before it draws its own last frame — it has to, or a frame scheduled inside that call would
+    // start a second walk — and that last frame stands at the DOOR'S own progress, which for an
+    // arriving door is the pass's own end. So an instrument that settles when it sees its end
+    // reports one from inside the very call that is landing the pass, at the one instant `ended` is
+    // already true. Guarding on `!ended` let exactly that through: the pass docked half way through
+    // `cadenceEnd`, and the held command a fold was holding started underneath it.
+    if (cur.cadence) {
+      logEvt("stale-settle", token, "a cadence is already landing this transaction");
       return;
     }
     finish("docked", null);
@@ -2115,9 +2549,13 @@
   // ---- the interruption cadence (§2.5 / §11) ------------------------------------------------------
   // WHAT STOOD HERE BEFORE was a hard stop: a cancel resolved the transaction inside one call and the
   // picture jumped to whatever the curtain dropped on. §2.5 and the charter's nineteenth shelf ask for
-  // the other thing — on an interruption every handle TRAVELS to its nearest door through its own
-  // envelope, inside the score's own budget, and the transition then lands. The host force-ends at the
-  // deadline, so a slow envelope can no more strand the visitor than a silent instrument can.
+  // the other thing — on an interruption every handle TRAVELS through its own envelope, inside the
+  // score's own budget, to the door the visit is landing on, and the transition then lands. The host
+  // force-ends at the deadline, so a slow envelope can no more strand the visitor than a silent
+  // instrument can.
+  // UNJUSTIFIED — the longest a cadence may take to walk to its door. The nineteenth shelf asks
+  // for about seven hundred milliseconds and this file chose two seconds as the outer clamp; no
+  // measurement of a person watching one stands behind either figure.
   var CADENCE_MIN = 0, CADENCE_MAX = 2000;
 
   function budgetOf(cmd) {
@@ -2125,20 +2563,64 @@
     return clampNum(i && i.withinMs !== undefined ? i.withinMs : 0, CADENCE_MIN, CADENCE_MAX);
   }
 
-  // WHICH DOOR THE VISITOR IS NEAREST. The cue names its two doors by ONE handle and its two values;
-  // whichever value the live handle stands nearer is the door the cadence walks to. The whole
-  // transition picks one door — every handle then travels to the value IT takes at that door, so the
-  // picture that lands is a whole work and never a mongrel of two.
-  function nearestDoorOf(rec, live) {
+  // THE SCORE'S OWN WORD ABOUT WHERE A CADENCE RESOLVES, read forward. `interruption.resolve` has
+  // carried «nearest-door» on every composed score since the composer shipped and no line of this
+  // file ever read it; what the host actually did was walk to the nearer door, and that is what put
+  // the picture on one work while the visit docked on the other. The field is read now, and a value
+  // asking for a door other than the one the visit lands on is RECORDED rather than obeyed — a
+  // score cannot name a resolution that contradicts its own `failLand`, because the two would be
+  // two answers to one question again.
+  function resolveOf(rec) {
+    var s = rec.cmd && rec.cmd.score, i = s && s.interruption;
+    var named = i && i.resolve ? String(i.resolve) : null;
+    if (named && named !== "arriving-door" && !rec.said.resolve) {
+      rec.said.resolve = true;
+      logEvt("interruption-resolve", rec.cmd.gen,
+             "the score asks for «" + named + "»; the cadence resolves to the door the visit is "
+             + "landing on, which is where the dock and §6's rest both already stand");
+    }
+    return "arriving-door";
+  }
+
+  // THE DOOR THE TRANSACTION IS LANDING ON. The cue names its two doors by ONE handle and its two
+  // values; the cadence walks to the one whose picture is the work this visit is arriving at. The
+  // whole transition picks one door — every handle then travels to the value IT takes at that door,
+  // so the picture that lands is a whole work and never a mongrel of two.
+  //
+  // WHAT STOOD HERE BEFORE was the NEAREST door: whichever of the two values the live handle
+  // happened to stand closer to. That gave one question two answers. Interrupted early, the cadence
+  // walked back to the DEPARTING work while `finish` docked the visit on the ARRIVING one — the
+  // canvas rested on A and the DOM revealed B, in one frame, which is his own 2026-08-25 complaint
+  // («картинка бабах и перевернулась прямо перед конечной») and which the seam rows measured at 241
+  // of 255 over 99.87 per cent of the frame. A cadence landing on the wrong picture is a cut by any
+  // other name, whatever its envelopes did on the way.
+  //
+  // WHY THE DOCK IS THE ONE THAT WAS RIGHT, read off the mechanism and not off which was cheaper:
+  //   · `finish` measures the last pose against `rec.hangPoseB` — the ARRIVING work's own box — and
+  //     writes «camera-not-rested» when it misses. §6's rest law already named the arrival, and it
+  //     was firing on exactly the landings this repair is about.
+  //   · `dock(cmd)` lands the visit on `cmd.to`, and the walk's own resting record is corrected to
+  //     that same work at the same instant.
+  //   · a further step counts from the running transaction's destination (15-motion.js), so the walk
+  //     already considers itself on its way to the arriving work while the passage plays.
+  //   · the score itself says so twice — `failLand: "arrive"` and `camera.rests: "b"`.
+  // Four readings name the arrival and one named whichever was closer; the one is the one that moved.
+  //
+  // AND IT IS WHAT THE NINETEENTH SHELF ASKS FOR IN ITS OWN WORDS: on interruption the crossing
+  // COMPRESSES TO ITS CADENCE. A crossing interrupted at a tenth of its length compresses the
+  // remaining nine tenths into the cadence's own budget, through the same envelopes. Retreating to
+  // where it began is not a compression of a crossing; it is the abandonment of one.
+  function landingDoorOf(rec, live) {
     var v = rec.primary, cue = v.cue || {}, doors = cue.doors || {};
     var din = doors["in"], dout = doors.out;
     if (!din || !dout || din.handle !== dout.handle) return null;
     var k = din.handle, at = Number(live[k]);
     if (!isFinite(at)) return null;
-    var toIn = Math.abs(at - Number(din.value)), toOut = Math.abs(at - Number(dout.value));
-    var which = toIn <= toOut ? "in" : "out";
-    var seconds = (cue.window || [0, rec.duration / 1000])[which === "in" ? 0 : 1];
-    var progress = which === "in" ? 0 : 1;
+    // The arriving door is the cue's own far end — the state the pass would have ended in had
+    // nothing interrupted it, which is the state the visit is docking on.
+    var which = "out";
+    var seconds = (cue.window || [0, rec.duration / 1000])[1];
+    var progress = 1;
     // Every handle at the door: its own track read at the door's own instant, with the door handle
     // itself pinned to exactly the value the door names.
     var want = handlesOf(rec, v, progress, seconds, 0);
@@ -2147,7 +2629,10 @@
     at_door[k] = clampNum(doors[which].value, v.inst.manifest.handles[k].min,
                           v.inst.manifest.handles[k].max);
     return { which: which, handle: k, value: Number(doors[which].value), handles: at_door,
-             progress: progress, seconds: seconds };
+             progress: progress, seconds: seconds,
+             // How far the walk actually is — the reading the old choice was made on, kept because
+             // it says what the compression cost, and dropped as an authority over where to land.
+             walk: +Math.abs(at - Number(dout.value)).toFixed(9) };
   }
 
   // Each handle travels on its OWN envelope. A cue may name one per handle in `cadence` — any of the
@@ -2161,13 +2646,27 @@
   function cadenceStart(rec, reason, immediate) {
     var live = rec.lastHandles
              || handlesOf(rec, rec.primary, rec.lastProgress || 0, rec.lastSeconds || 0, 0);
-    var door = nearestDoorOf(rec, live);
+    resolveOf(rec);
+    var door = landingDoorOf(rec, live);
     var budget = immediate ? 0 : budgetOf(rec.cmd);
     rec.cadence = {
       reason: reason, budget: budget, forced: !!immediate,
       door: door ? door.which : null, doorHandle: door ? door.handle : null,
       seconds: door ? door.seconds : undefined,
       from: live, to: door ? door.handles : live,
+      // THE PASSAGE'S OWN CLOCK TRAVELS WITH THE HANDLES. A cadence used to walk the instrument's
+      // handles to their door while the SECOND fed to the frame loop went on running off the wall
+      // clock — so the carrier and the camera, which read that second and not the handles, stayed
+      // wherever the interruption caught them and were then put on the landing in `cadenceEnd`'s one
+      // last frame. The handles arrived through their envelopes and the plane arrived in a step: a
+      // crossing cut short at a tenth of its length snapped from the whole frame down to the
+      // arriving work's own rectangle between two frames, which is a cut whatever the handles did.
+      // The nineteenth shelf asks for EVERY voice to resolve through the same envelopes, and the
+      // carrier and the flight are voices. So the second travels too, from where the interruption
+      // caught the passage to the door's own second, and the remaining span of the crossing is
+      // COMPRESSED into the cadence's budget — which is the shelf's own word for what this is.
+      fromSeconds: rec.lastSeconds || 0, toSeconds: door ? door.seconds : (rec.lastSeconds || 0),
+      fromProgress: rec.lastProgress || 0, toProgress: door ? 1 : (rec.lastProgress || 0),
       t0: performance.now(), landedInMs: null, ended: false, atDoor: null,
     };
     if (!door) {
@@ -2193,7 +2692,14 @@
       if (typeof a !== "number" || typeof b !== "number") { out[k] = b; return; }
       out[k] = a + (b - a) * envelopeFor(cue, k)(u);
     });
-    return { handles: out, u: u };
+    // The passage's own second and its own progress, carried on `smooth` — the curve a handle the
+    // cue says nothing about already walks on, and the second is exactly such a thing: no cue names
+    // it, and every voice that reads it (the carrier, the flight, a window's own opening) must
+    // arrive with the handles rather than after them.
+    var e = CURVES.smooth(u);
+    return { handles: out, u: u,
+             seconds: c.fromSeconds + (c.toSeconds - c.fromSeconds) * e,
+             progress: c.fromProgress + (c.toProgress - c.fromProgress) * e };
   }
 
   function cadenceEnd(rec, why) {
@@ -2206,7 +2712,8 @@
     // force-end at the deadline a landing rather than a cut.
     if (rec.inst && rec.inst.manifest && !rec.docked) {
       try { playFrame(rec, c.seconds === undefined ? (rec.lastSeconds || 0) : c.seconds,
-                      rec.lastProgress || 0, 0, c.to); }
+                      c.toProgress === undefined ? (rec.lastProgress || 0) : c.toProgress,
+                      0, c.to); }
       catch (e) { logEvt("cadence-frame-threw", rec.cmd.gen, String((e && e.message) || e)); }
     }
     // EVERY HANDLE AT A DOOR, written down as a number rather than asserted. The last frame put each
@@ -2220,7 +2727,10 @@
     });
     clearTimeout(rec.deadlineT);
     logEvt("cadence-end", rec.cmd.gen, why + " in " + c.landedInMs + " ms");
-    finish("cancelled", c.reason);
+    // `finish` acts on whatever stands in `cur`. Every other caller in this file checks first that
+    // the record it means is still the one there; this one does too, so a landing that happened
+    // inside the frame above can never be followed by a second landing of somebody else's pass.
+    if (cur === rec && !rec.docked) finish("cancelled", c.reason);
   }
 
   // ---- the frame loop ----------------------------------------------------------------------------
@@ -2250,7 +2760,7 @@
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
-    var plane = planeAt(rec, seconds);
+    var plane = planeAt(rec, seconds, cam.art);
     planeApply(plane);
     // A CUE'S WINDOW IS WRITTEN IN THE PASS'S OWN SECONDS, and the pass's own seconds run from zero
     // to its duration. A second outside that span is judged AT THE NEAREST END OF IT, because that
@@ -2266,6 +2776,25 @@
     // at the pass's own end.
     var span = rec.duration > 0 ? rec.duration / 1000 : 0;
     var judge = span > 0 ? Math.max(0, Math.min(seconds, span)) : 0;
+    // THE ACCOMPANIMENT AT HALF RATE, THE MIRACLE AT FULL (charter shelf 19's middle step). Every
+    // voice still DRAWS on every frame — the buffer is cleared and rebuilt each time, so a voice that
+    // skipped its draw would blink out rather than play slower — and what halves is the rate its own
+    // motion is re-read at: on the odd frames an accompaniment voice is handed the very handles it
+    // was handed on the frame before, so its motion advances 30 times a second while the miracle's
+    // advances 60. `rec.primary` is the miracle — the score's own line-0 voice — and it is never
+    // slowed. A voice on its first frame has no previous handles to hold and reads its own.
+    var halve = halvesAccompaniment();
+    var odd = (rec.frames & 1) === 1;
+    // THE HANDLES A HELD FRAME IS DRAWN WITH ARE KNOWN BEFORE IT IS DRAWN, so they are written down
+    // before it is drawn. This stood at the foot of the loop, after every voice had been walked, and
+    // an instrument that FAILS from inside its own frame never reached it: `st.fail` lands the
+    // transaction there and then, and `finish` freezes what the run left behind — so the record
+    // carried the PREVIOUS frame's handles beside a reading the instrument had just published from
+    // THIS one, and the two could not be read as one frame. A door proof refusing at the cadence's
+    // own landing frame is exactly that case, and it is not a rare one: it is what a door proof is
+    // for. `hold` is the cadence's own handle set, settled before the loop begins and untouched by
+    // it, so nothing is lost by saying so first.
+    if (hold) rec.lastHandles = hold;
     var drew = 0, live = [];
     for (var i = 0; i < rec.voices.length; i++) {
       var v = rec.voices[i];
@@ -2279,17 +2808,30 @@
         continue;
       }
       live.push(v.cue && v.cue.id);
+      var slowed = halve && odd && v !== rec.primary && v.paceHandles;
       var handles = (hold && v === rec.primary) ? hold
                   : (hold ? doorHandles(rec, v, (rec.cadence && rec.cadence.door) || "out")
-                          : handlesOf(rec, v, progress, seconds, dt));
+                          : (slowed ? v.paceHandles
+                                    : handlesOf(rec, v, progress, seconds, dt)));
+      // WRITTEN DOWN BEFORE THE INSTRUMENT IS ASKED, for the same reason the frame's own handles
+      // are: an instrument that refuses its door does so from inside `frame`, and `st.fail` lands
+      // the transaction from there — so a voice's row would otherwise be frozen carrying the
+      // handles of the frame BEFORE the one whose reading it is published beside, and the two could
+      // not be read as one frame.
+      if (hold) v.lastHandles = handles;
       v.inst.frame(frameState(rec, v, seconds, progress, handles, cam, hold, drew, plane));
       if (v.drawnThisFrame) { drew++; v.drawnThisFrame = false; }
-      if (hold) v.lastHandles = handles;
+      if (!hold) v.paceHandles = handles;
     }
     rec.liveCues = live;
     rec.drewLastFrame = drew;
-    camApply(cam.art, rec.caps);
-    if (hold) rec.lastHandles = hold;
+    // THE POSE AS THE CARRIER COULD CARRY IT. `plane.art` is the score's own track where the frame
+    // is covered outright, and the same track held closer in where covering it would have asked for
+    // more carrier than the resolution floor allows. The pose the record reports is what was ASKED;
+    // `plane.hold` beside it is how much of it the frame could take.
+    camApply(plane.art || cam.art, rec.caps, plane.over);
+    rec.camHold = plane.hold;
+    rec.camOver = plane.over;
   }
 
   // The record one voice receives. Held apart from the loop above so the closure over `v` and `drew`
@@ -2298,6 +2840,15 @@
     return {
       token: rec.cmd.gen, t: seconds, progress: progress,
       handles: handles,
+      // WHERE THIS VOICE STANDS IN THE STACK, which is the one thing an instrument cannot know about
+      // itself and which decides WHICH DOOR LAW it owes (see the entry-door contract,
+      // docs/design/ENTRY-DOOR.md). The lowest voice of a score is drawn onto the cleared buffer
+      // with blending disabled and must be the departing work whole at its entry door and the
+      // arriving work whole at its exit — that is the law every door proof in the fleet was written
+      // against. A voice standing OVER another owes the opposite: at its doors it must be ABSENT at
+      // every point, so that what stands beneath it is what the door shows, whole and untouched.
+      // `rec.voices` is held in draw order, ascending stack, so its first entry is the lowest.
+      standsOver: !!(rec.voices && rec.voices.length && v !== rec.voices[0]),
       // The frame, and the grid it is drawn on. `w`/`h` are CSS pixels; `bufferW`/`bufferH` are the
       // drawing buffer this host binds as the `resolution` source, which is the CSS frame times the
       // device ratio times the live resolution step. An instrument whose own law depends on where a
@@ -2306,9 +2857,9 @@
       viewport: { w: cssW, h: cssH, dpr: dpr, bufferW: W, bufferH: H },
       // BOTH WORKS' SEATING ON THIS BUFFER, which only the host can answer. The instrument's own
       // `fit` cover-fits a work into the frame and pulls in by its own framing headroom, and the
-      // draw binds the result as the `fitA`/`fitB` uniforms — so the shaders of the unfold and the
-      // adrift read the seating BACK out of it (`SZ`, `outOf`) while their scripts could not reach
-      // it at all. Both therefore bounded their geometry by the worst seating a cover fit can hand
+      // draw binds the result as the `fitA`/`fitB` uniforms — so a shader that folds a work, and one
+      // that drifts it, read the seating BACK out of it (`SZ`, `outOf`) while their scripts could
+      // not reach it at all. Both therefore bounded their geometry by the worst a cover fit can hand
       // and could only over-hold. Asked for here, on the same buffer, through the same function the
       // draw calls, so the script and the shader work from ONE seating rather than two guesses at
       // it. Added 2026-08-17 on the doors lane's request.
@@ -2470,6 +3021,8 @@
   // declared `def` (0 on every instrument that carries it) at both doors; sweeping it end to end is
   // exactly Bug 1's door-refusal class, so the rescue leaves it alone the same way it already leaves
   // an `open` handle alone.
+  // CAPABILITY — a fact about the fleet's own declared names: which handle the rescue leaves where
+  // its instrument rests it. The one is set membership and not a quantity.
   var LAST_RESORT_REST_HANDLES = { mask: 1 };
 
   // A COARSE READING OF THE TWO ACTUAL PICTURES, taken fresh at the instant of the cast — never
@@ -2555,22 +3108,35 @@
   function runFrame(rec, now) {
     if (cur !== rec || rec.docked) return;
     rec.raf = requestAnimationFrame(function (t) { runFrame(rec, t); });
+    rec.frames++;              // this transaction's own frame count, which the half-rate accompaniment
+                               // reads the parity of — never the wall clock, so a pinned bench clock
+                               // and a live one pace the voices the same way
     noteFrame(now);
     var dt = rec.lastNow ? (now - rec.lastNow) / 1000 : 0;
     rec.lastNow = now;
     var seconds = pinClock !== null ? pinClock : (now - rec.t0) / 1000;
     var progress = pinProgress !== null ? pinProgress
       : (rec.duration > 0 ? Math.min(1, (now - rec.t0) / rec.duration) : 1);
-    rec.lastSeconds = seconds;
-    rec.lastProgress = progress;
-    placeUnderCover(rec, seconds);
     try {
       if (rec.cadence && !rec.cadence.ended) {
+        // THE CADENCE OWNS THE CLOCK while it plays. The second and the progress are its own
+        // compressed ones, and everything downstream — the carrier's box, the camera's anchor, the
+        // placement of the walk under cover — reads them, so the whole picture arrives together.
         var walk = cadenceHandles(rec, now);
-        playFrame(rec, seconds, progress, dt, walk.handles);
+        rec.lastSeconds = walk.seconds;
+        rec.lastProgress = walk.progress;
+        // THE WALK IS PLACED UNDER COVER ON THE CADENCE'S CLOCK TOO. Interrupted before the
+        // passage reached its own middle, the placement never happened at all and the pass landed
+        // on a PREDICTED arriving box rather than a measured one. The compressed clock crosses that
+        // threshold on its way to the door, so the destination is measured before it is landed on.
+        placeUnderCover(rec, walk.seconds);
+        playFrame(rec, walk.seconds, walk.progress, dt, walk.handles);
         if (walk.u >= 1) cadenceEnd(rec, "on its own envelope");
         return;
       }
+      rec.lastSeconds = seconds;
+      rec.lastProgress = progress;
+      placeUnderCover(rec, seconds);
       playFrame(rec, seconds, progress, dt, null);
     } catch (e) {
       logEvt("frame-threw", rec.cmd.gen, String((e && e.message) || e));
@@ -2597,6 +3163,9 @@
   // sits in "this connection is broken" territory, not "this connection is slow" territory, and it
   // exists only so a visit stuck behind a dead socket eventually reads as broken instead of pulsing
   // forever. It is not offered through host.configure — nothing legitimate ever needs to move it.
+  // UNJUSTIFIED — how long a request may neither land nor fail before the visit reads it as a
+  // broken connection. This file chose twenty-five seconds; nothing measured it, and the sentence
+  // above says only what the number is FOR, which is not the same as what it should be.
   var DEAD_AIR_MS = 25000;
   var offeredGen = 0;
   var awaiting = null;      // the command held while its files cross the network, and its own gen
@@ -2656,6 +3225,58 @@
   }
 
   function offerNow(cmd, hooks) {
+    // ---- A SWIPE FOLDS THE RUNNING CROSSING UP; IT NEVER CUTS IT (§2.5 / charter shelf 19) -------
+    // The nineteenth shelf makes every plan exhale-able from any point, and names a swipe as the
+    // first interruption it means: the crossing COMPRESSES TO ITS CADENCE, every voice resolving to
+    // neutral through the same envelopes, inside the score's own bound. Every other surface already
+    // reached that road — a zoom, a quiz, the door, the Back arrow all call `cancel(reason)` with no
+    // `immediate` and the cadence walks. A supersede was the one road that did not: it collapsed the
+    // budget to nothing and put every handle ON its door in one frame.
+    //
+    // THE REASON THE SHORTCUT EXISTED IS ANSWERED HERE RATHER THAN IGNORED. It was that the next
+    // command is already on its way and the product's declare is synchronous, so there was nowhere
+    // to put it while the cadence played. There is now: the host holds it. `offer` has already
+    // returned `true` to the walk, which is the word this file has always given for «I have taken
+    // responsibility for landing this command» — so the walk goes no further, nothing else declares,
+    // and the command waits exactly as long as the fold takes and no longer.
+    //
+    // AND THE FOLD COSTS THE ARRIVING CROSSING NO TIME IT WOULD OTHERWISE HAVE SPENT. The one part
+    // of a takeover that touches nothing shared is the decode of the two photographs, and it is
+    // started here, on the held command, at the instant the fold begins — so the pictures cross the
+    // decode while the picture on screen resolves. Everything past that point — prepare, the texture
+    // upload, the programme build — writes into instruments and a stage that the folding crossing is
+    // still drawing with, which is why it waits for the fold and not the other way round.
+    //
+    // A SECOND SWIPE INSIDE THE FOLD REPLACES THE HELD COMMAND rather than starting a second fold:
+    // the newer declare owns its own landing, the same law `offer-superseded` already reads by, and
+    // one crossing folding up is one cadence however many gestures arrive while it plays.
+    if (foldHeld) {
+      logEvt("fold-superseded", foldHeld.cmd.gen, "held command replaced by gen " + cmd.gen);
+      foldHeld = { cmd: cmd, hooks: hooks };
+      return true;
+    }
+    // The fold road is taken only where there is something to walk and time to walk it in: a running
+    // transaction, an instrument that draws (one without a manifest has no handle and no door), no
+    // cadence already playing, and a score naming a budget. A score naming none clamps to zero at
+    // `budgetOf`, and a zero budget IS the one-frame placement — so a pair whose score asks for no
+    // cadence keeps exactly the landing it had.
+    if (cur && !cur.docked && !cur.cadence && cur.state === "running"
+        && cur.inst && cur.inst.manifest && budgetOf(cur.cmd) > 0) {
+      foldHeld = { cmd: cmd, hooks: hooks };
+      // the arriving pair's two photographs decode WHILE the fold plays; the rejection is swallowed
+      // because this is a warm-up and never the arm — `armSources` is called again for real when the
+      // held command is taken, and a picture that cannot decode is refused there, on its own road.
+      try { armSources(cmd).then(null, function () {}); } catch (e) {}
+      cancel("superseded");
+      // A CUE NAMING NO PAIR OF DOORS HAS NOTHING TO WALK TO, and holding the visitor on a still
+      // picture for the length of the budget would be the stall the fold exists to avoid. The
+      // cadence has already said so on its own record, so this reads its answer rather than asking
+      // the question a second time.
+      if (foldHeld && cur && cur.cadence && !cur.cadence.door) {
+        cadenceEnd(cur, "the cue names no door to walk to");
+      }
+      return true;
+    }
     var inst = pick(cmd);
     if (!inst) {
       // THE FIRST OF THE FUNNEL'S TWO GIVE-UP EXITS: the cue's own instrument names nothing the
@@ -2688,6 +3309,22 @@
           try { hooks.glide(cmd); } catch (e) {}
           return true;
         }
+      }
+    }
+    // THE JOY FLOOR, ON THE SAME ROAD §7'S RESOURCE FLOOR ALREADY TAKES. Below it the device plays
+    // the floor grammar rather than a degraded miracle — and the floor grammar this file has is the
+    // last resort: one programme, one pass, the two photographs the DOM already holds, cast fresh on
+    // this pair at this instant. So the crossing is DEGRADED to the cheapest thing that is still a
+    // crossing, and no branch here ends in none: a command that has already been rescued once is let
+    // through untouched, and where the two pictures cannot even be read the ordinary funnel below
+    // answers exactly as it always did.
+    var floorWhy = cmd.__lastResortTried ? null : joyFloorWhy();
+    if (floorWhy) {
+      var castJ = lastResortCast(cmd);
+      if (castJ) {
+        logEvt("joy-floor", cmd.gen, floorWhy);
+        cmd = mergeLastResort(cmd, castJ);
+        inst = pick(cmd) || inst;
       }
     }
     if (cur) cancel("superseded", true);   // defensive: declare's own supersede already ended the
@@ -2730,6 +3367,7 @@
                 needsScene: voices.length > 1
                   && voices.some(function (vv) { return instrumentReadsScene(vv.inst); }),
                 docked: false, watchdogT: null, duration: duration, raf: 0, t0: 0, src: null,
+                frames: 0,
                 said: {}, driverState: {}, lastHandles: null, lastNow: 0,
                 lastSeconds: 0, lastProgress: 0,
                 caps: camCaps(variant), camOwner: null, camera: null, lastPose: null, ownPose: null,
@@ -2901,12 +3539,15 @@
   // door through its own envelope inside the score's own budget, and the transition then lands
   // through the SAME single dock every other exit uses.
   //
-  // `immediate` collapses the envelope to nothing. It is the supersede's own road: §2.5 wants the
-  // cadence played before the next command declares, but the product's declare is synchronous and
-  // this branch leaves the product side untouched, so a superseded transition puts every handle ON
-  // its door in one step instead of walking there. Every handle still lands at a door; only the
-  // walking is skipped, and the record says so (`forced`). Playing the full cadence ahead of a
-  // supersede needs the bundle's declare to become deferrable, which is named as a question.
+  // `immediate` collapses the envelope to nothing: every handle is put ON its door in one step
+  // instead of walking there, and the record says so (`forced`).
+  //
+  // A SUPERSEDE NO LONGER TAKES THAT ROAD. It used to, because §2.5 wants the cadence played before
+  // the next command declares and the product's declare is synchronous — there was nowhere to put
+  // the arriving command while the fold played. `offerNow` now holds it (see the fold-up note there)
+  // and the walked cadence is what a swipe gets. What is left for `immediate` is the case where the
+  // fold has nowhere to go: a defensive supersede reaching a transaction that is ALREADY folding,
+  // which ends that fold on its door rather than letting two cadences overlap on one canvas.
   function cancel(reason, immediate) {
     if (!cur || cur.docked) return;
     if (cur.state === "offered") { declineCurrent(cur, reason || "cancelled"); return; }
@@ -2961,6 +3602,9 @@
       state: cur ? cur.state : (awaiting ? "awaiting" : "idle"),
       active: !!cur,
       gen: cur ? cur.cmd.gen : null,
+      // The superseding command waiting for the crossing it superseded to fold up, by its own
+      // generation — null whenever nothing is held, which is every instant outside a fold.
+      held: foldHeld ? foldHeld.cmd.gen : null,
       duration: cur ? cur.duration : null,
       variant: cur ? cur.variant : null,
       prepareBudgetMs: prepareBudgetMs, settleSlackMs: settleSlackMs,
@@ -3017,6 +3661,13 @@
                 preserveDrawingBuffer: stage ? stage.gl.getContextAttributes().preserveDrawingBuffer : null,
                 buffer: W + "x" + H, scale: STEPS[stepIx], changes: changes, dpr: dpr },
       resources: grantRow(),
+      // CHARTER SHELF 19's LADDER, as the device stands on it right now: which rung of the render
+      // ladder its own frame times have walked it to, the scale that rung draws at, the rate each
+      // kind of voice is re-read at, and the joy floor's own reason where the rungs have run out
+      // (null everywhere above it). A picture that looks thin reads back to the rung that made it.
+      pace: { rung: stepIx, rungs: STEPS.length, scale: STEPS[stepIx],
+              miracle: 60, accompaniment: halvesAccompaniment() ? 30 : 60,
+              floor: joyFloorWhy() },
       // §9's inspector: the drivers with their evaluated values, the camera with its authority and
       // its pose, the handoffs it measured, and the cadence an interruption landed through. What the
       // last transaction left behind stays readable after it has gone, so a row can read a landing.
@@ -3030,6 +3681,11 @@
       handoffs: cur ? cur.handoffs : (lastRun ? lastRun.handoffs : []),
       cadence: cur ? cur.cadence : (lastRun ? lastRun.cadence : null),
       camTolerances: { rest: CAM_REST_TOL, handoff: CAM_HANDOFF_TOL },
+      // WHAT THE CARRIER HAD TO DO TO KEEP THE FRAME WHOLE at the last frame drawn: how many frames
+      // wide it stood, how much of the pose it could carry at that width, and the widest it is ever
+      // allowed to stand. A picture that looks tighter than the plan asked for reads back to these.
+      carrier: { over: cur ? (cur.camOver || 1) : null, hold: cur ? (cur.camHold || 1) : null,
+                 ceiling: +reachCeiling().toFixed(6) },
       frames: { count: s.length, p95: +quantile(s, 0.95).toFixed(2), p50: +quantile(s, 0.5).toFixed(2) },
     };
   }
@@ -3239,6 +3895,8 @@
         || /^its instrument /.test(why)
         || /^handed over nothing an instrument could be read from/.test(why);
   }
+  // UNJUSTIFIED — how many times an instrument file is asked for again, and how long the first
+  // wait is. Both were chosen here and nothing measured either.
   var INST_RETRY_MAX = 3, INST_RETRY_BASE_MS = 1500;
   function instRetryEligible(f) {
     return !!f && f.state === "refused" && !f.permanent && f.attempts < INST_RETRY_MAX
@@ -3628,6 +4286,32 @@
         return t;
       },
       camCaps: function (variant) { return camCaps(variant); },
+      // THE CARRIER'S OWN REACH FOR ONE POSE, and whether the frame is covered at a given reach —
+      // the very functions the frame loop calls, handed over so a conformance row reads the host's
+      // own geometry rather than a copy of it made in the row. `covers` answers for a carrier of
+      // `over` times the frame, so a row can ask the question the repair exists to answer both
+      // before and after it: does THIS pose on THAT carrier reach every pixel of the frame.
+      reach: function (pose, variant) {
+        return camFit(pose, camCaps(variant || "standard"), { w: cssW, h: cssH }).over;
+      },
+      fit: function (pose, variant) {
+        var f = camFit(pose, camCaps(variant || "standard"), { w: cssW, h: cssH });
+        return { over: f.over, hold: f.hold, pose: f.pose, ceiling: reachCeiling() };
+      },
+      covers: function (pose, variant, over) {
+        var k = (typeof over === "number" && over > 0) ? over : 1;
+        return quadCovers(camQuad(pose, camCaps(variant || "standard"),
+                                  cssW * k / 2, cssH * k / 2, { w: cssW, h: cssH }),
+                          cssW / 2, cssH / 2);
+      },
+      // Where the four corners of that carrier land, in frame coordinates from the frame's centre —
+      // what a row holds against the browser's own rendering of the transform string.
+      quad: function (pose, variant, over) {
+        var k = (typeof over === "number" && over > 0) ? over : 1;
+        return camQuad(pose, camCaps(variant || "standard"),
+                       cssW * k / 2, cssH * k / 2, { w: cssW, h: cssH });
+      },
+      frame: function () { return { w: cssW, h: cssH, buffer: [W, H] }; },
       camTolerances: function () { return { rest: CAM_REST_TOL, handoff: CAM_HANDOFF_TOL }; },
       ladder: function (ms, frames) {
         var t = 1e6;

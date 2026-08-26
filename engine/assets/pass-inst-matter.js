@@ -94,6 +94,7 @@
       "uniform float uGather;",      // how wide the loosened band is, in field units
       "uniform float uSeed;",
       "uniform float uGuard;",
+      "uniform float uPresence;",  // the entry-door contract's reserved dry
       "float h11(vec2 i){ return fract(sin(dot(i, vec2(41.317, 289.107)) + uSeed) * 43758.5453); }",
       // value noise with its own exact gradient: the material's grain, and the direction it drags
       "vec3 vnoise(vec2 p){",
@@ -152,7 +153,7 @@
       // cue plays beneath. The meshing instrument's shadow rides `(1.0 - cov)` and survives. Casting
       // a shadow onto what plays underneath would need a multiply blend, which would let one cue
       // darken another — an imposed weight by another road, which the charter bans as a class.
-      "  gl_FragColor = vec4(col, 1.0 - cov);",
+      "  gl_FragColor = vec4(col, (1.0 - cov) * uPresence);",
       "}",
     ].join("\n");
 
@@ -385,12 +386,17 @@
       // NO HANDLE HERE KEEPS A CLOCK OF ITS OWN. The one place the module reads time is the drift of
       // the field, `t * 0.11 * drift` (matter.js:321), where `t` was its own accumulated frame time.
       // It reads the `clock` handle instead, so a seeded score repeats to the pixel.
+      // LEVEL, PER SHELF 17 (docs/design/PASS-API-V1.md:716). The field — its direction, its drag
+      // and the band it loosens — runs over the whole frame at SURFACE; the grain it drags is the
+      // TEXTURE, per the manifest's own `levels` reasoning above. `mix` is the crossing's own dial
+      // and `clock` is the module's own time, neither a structural level; `seed` is the score's die;
+      // `shade` and `travel` are the two judge channels named in this file's own handles comment.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
-        loosen: { min: 0, max: 1, def: 0.6 },
-        drift: { min: 0, max: 1, def: 0.45 },
-        gather: { min: 0, max: 1, def: 0.3 },
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        loosen: { min: 0, max: 1, def: 0.6, level: "SURFACE" },
+        drift: { min: 0, max: 1, def: 0.45, level: "SURFACE" },
+        gather: { min: 0, max: 1, def: 0.3, level: "SURFACE" },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
         // the meshing instrument publishes its own. `heldWholeAtADoor` says what is read (the
         // field's own steepest slope, held against the tenth the threshold stands past the field's
@@ -402,10 +408,25 @@
                                                 reads: "grainRequest",
                                                 measures: "the field's own steepest slope against "
                                                         + "the tenth the threshold stands past the "
-                                                        + "field's own range" } } },
-        seed: { min: 0, max: 8, def: 0 },
-        shade: { min: 0, max: 1, def: 1 },
-        travel: { min: 0, max: 1, def: 1 },
+                                                        + "field's own range" } },
+                 level: "TEXTURE" },
+        seed: { min: 0, max: 8, def: 0, level: null },
+        shade: { min: 0, max: 1, def: 1, level: null },
+        travel: { min: 0, max: 1, def: 1, level: null },
+        // THE RESERVED DRY OF THE ENTRY-DOOR CONTRACT (docs/design/ENTRY-DOOR.md). One name across
+        // the whole fleet, declared the same way in every manifest, so the host and the composer
+        // learn it once instead of nine times. It says WHETHER THIS VOICE IS IN THE FRAME AT ALL:
+        // at zero the instrument draws nothing anywhere and what stands beneath it shows whole; at
+        // one it draws exactly as it always did, which is where it rests, so a plan that says
+        // nothing about it gets the picture this instrument has always drawn.
+        //
+        // IT IS NOT THE BANNED OPACITY HANDLE RETURNING, and the difference is the whole point. An
+        // opacity handle fades one whole layer against another — the crossfade the charter's own
+        // ladder removed the tempting tool for. This says whether a voice is present, and it is
+        // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
+        // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        presence: { min: 0, max: 1, def: 1, level: null,
+                    unit: "whether this voice is in the frame at all" },
       },
       // The dial's two ends. At 0 the threshold stands a tenth below the field's whole range, so
       // every point covers on A; at 1 it stands a tenth above it and every point covers on B. The
@@ -433,11 +454,12 @@
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, loosen: 0.6, drift: 0.45, gather: 0.3, grain: 0.45,
-                     seed: 0, shade: 1, travel: 1, t: 0, reduced: false,
+                     seed: 0, shade: 1, travel: 1, presence: 1, t: 0, reduced: false,
                      cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "matter", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
+          { name: "uPresence", type: "float", source: "handle:presence" },
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
           { name: "uFitA", type: "vec4", source: "fitA" },
@@ -516,7 +538,8 @@
         var h = st.handles;
         var pose = {
           mix: h.mix, loosen: h.loosen, drift: h.drift, gather: h.gather, grain: h.grain,
-          shade: h.shade, travel: h.travel, seed: h.seed, t: h.clock, reduced: st.reduced,
+          shade: h.shade, travel: h.travel, seed: h.seed, presence: h.presence,
+          t: h.clock, reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
           // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The
@@ -528,7 +551,16 @@
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
         // decision asks for rather than the grain the score asked for. `applied` is the request less
         // the whole cells the hold walked back, which is the grain the frame was actually posed on.
-        if (h.mix === 0 || h.mix === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           if (st.reportApplied) {
             st.reportApplied({

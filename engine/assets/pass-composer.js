@@ -139,6 +139,8 @@
   // Python's own JSON: sorted keys, one space of indent, unicode written as itself.
   // ---------------------------------------------------------------------------------------
 
+  // CAPABILITY — JSON's own escape table. The format says which code points must be written which
+  // way, and nothing here is a choice: a different table would write invalid JSON.
   var ESCAPES = { 8: "\\b", 9: "\\t", 10: "\\n", 12: "\\f", 13: "\\r", 34: "\\\"", 92: "\\\\" };
 
   function jsonString(s) {
@@ -227,19 +229,23 @@
   // The composer's own vocabulary, carried from lab/build-sceneplan-v1.py word for word.
   // ---------------------------------------------------------------------------------------
 
+  // CAPABILITY — the score's own wire format version (§4.4a). Two schemas live at once and this
+  // names which one this module writes; the number belongs to the format, not to any pair.
   var SCHEMA = 1;
   var CUE_IDS = ["pivot", "travel", "arrival"];
   var TRAVEL_AXES = ["banding", "dominant_object", "grid", "radial", "regions", "texture"];
   var LOCUS_KINDS = ["none", "pole", "horizon-seam", "gate"];
-  // THE LEVELS A CUE MAY STAND ON WITHOUT OWNING THEM, because on those levels this composer
-  // actually holds a non-owner's handles at the instrument's own rest instead of merely saying it
-  // does. Today that is one level and one gate: `singsLightColour` writes the eighteen colour and
-  // light handles only where the cue owns LIGHT-COLOUR, so a cue accompanying there is genuinely
-  // silent on it. Every other level carries no such gate — a cue that does not own CELL still
-  // writes every CELL-driving handle it has — so on those levels two voices really do collide, and
-  // `castForKinds` bars the second one outright. A level belongs on this list the day a gate of its
-  // own exists, and adding it here without that gate is how the law becomes a sentence again.
-  var PINNED_LEVELS = ["LIGHT-COLOUR"];
+  // `PINNED_LEVELS` STOOD HERE AND IS RETIRED. It named the levels a cue could stand on without
+  // owning them, because on those levels this composer actually held a non-owner's handles at the
+  // instrument's own rest instead of merely saying it did. It held one entry, LIGHT-COLOUR, and one
+  // gate behind it. Every level has that gate now: each handle declares in its own instrument's
+  // manifest which structural level it drives, and `buildTemplate` takes the handles of an unowned
+  // level off the cue's track list, so a non-owner rests there and plays on where it owns. A list of
+  // the gated levels is now a list of all six, and `castForKinds` reads no such list.
+  //
+  // The six are shelf 17's own and there is no seventh: WORLD, SURFACE, CELL, CELL CONTENT,
+  // TEXTURE, LIGHT-COLOUR (docs/design/PASS-API-V1.md:716).
+  var LEVELS = ["WORLD", "SURFACE", "CELL", "CELL CONTENT", "TEXTURE", "LIGHT-COLOUR"];
   var WORLDS = ["sphere", "corridor", "log-spiral"];
   var POLAR_WORLD = { planet: "sphere", tunnel: "corridor", twirl: "log-spiral" };
   var SUBTYPES = ["angular", "ring", "none"];
@@ -284,8 +290,9 @@
     //
     // IT IS NOT A BRIDGE AND IT IS NOT A FALLBACK, on his word of 2026-08-18 10:15: «я не просил
     // запасную дорогу, логика построена так что дорога всегда сработает». It was reached only after
-    // every other ground had turned a pair away, which is why 83 per cent of compositions landed on
-    // it with one cut and one instrument — they were not choosing it, they were pushed. It is now a
+    // every other ground had turned a pair away, and a candidate reachable only after every rival
+    // has refused is selected by those refusals and not by its own fit — a fact about the control
+    // flow, true whatever pool it stands in. They were not choosing it, they were pushed. It is now a
     // candidate like the rest, ranked on its own reading of the pair, reached by the same code path
     // as every other, and it wins where it suits the pair better than the others do.
     "tonal-and-spectral": { cut: "tonal_zones_and_detail_scales",
@@ -324,14 +331,38 @@
   var KIND_OF_AXIS = { banding: "strip", radial: "ring", regions: "panel", grid: "tile",
                        texture: "scale", dominant_object: "panel" };
   var TIERS = [
-    { tier: "quiet", letters: [1, 1], accompaniments: [0, 1], miracles: [0, 0], duration: 3000 },
-    { tier: "middle", letters: [0, 2], accompaniments: [0, 2], miracles: [0, 1], duration: 6500 },
+    // A `duration` stood on each of these three rows — 3000, 6500 and 11000 — and the composition
+    // read one of them straight off, so every plan that realised a tier ran the same number of
+    // milliseconds whatever pair it was made of. Shelf 17 gives each tier a BAND of seconds, not a
+    // number — 2 to 4 at a quiet one, 5 to 8 at a middle, 9 to 14 at a culmination — and the band is
+    // what stands here now; the pair's own reading places the length inside it (`compose`).
+    { tier: "quiet", letters: [1, 1], accompaniments: [0, 1], miracles: [0, 0],
+      band: [2000, 4000] },
+    { tier: "middle", letters: [0, 2], accompaniments: [0, 2], miracles: [0, 1],
+      band: [5000, 8000] },
     { tier: "culmination", letters: [2, 3], accompaniments: [0, 3], miracles: [1, 1],
-      duration: 11000 }
+      band: [9000, 14000] }
   ];
-  // The three tiers in order, so a role can be asked whether a realised tier reaches it.
-  var TIER_RANK = { quiet: 0, middle: 1, culmination: 2 };
-  var TRANSACTION_MS = 14000;
+  // DERIVED — the three tiers in their own order, so a role can be asked whether a realised tier
+  // reaches it. It reads `TIERS` above rather than restating it, so a row added, removed or
+  // reordered there carries this with it and no second copy of shelf 17's ladder can go stale.
+  var TIER_RANK = (function () {
+    var out = {}, i;
+    for (i = 0; i < TIERS.length; i++) out[TIERS[i].tier] = i;
+    return out;
+  }());
+  // DERIVED — the transaction's own ceiling, which is the top of shelf 17's longest band: a
+  // culmination runs nine to fourteen seconds and the transaction ends where the longest crossing
+  // does. It stood here as a typed 14000, a third copy of one number that also lives in `TIERS`
+  // above and in `pass-layer.js`'s own §2.5 range, and three copies of one fact drift. Read from the
+  // table, so a change to the charter's own bands carries the ceiling with it. `pass-layer.js`'s
+  // `DURATION_MAX` is the third copy and stays a literal on purpose: it is on the other side of the
+  // line and the layer must enforce §2.5 whatever the composer thinks.
+  var TRANSACTION_MS = (function () {
+    var top = 0, i;
+    for (i = 0; i < TIERS.length; i++) if (TIERS[i].band[1] > top) top = TIERS[i].band[1];
+    return top;
+  }());
   // How far the camera may come in or pull back on the score's own track, as a natural logarithm:
   // 0.5 bounds the approach at 1.65 times, and it bounds a magnification of the RENDERED canvas,
   // because the host applies the dolly as one transform over the buffer the instrument drew on.
@@ -340,16 +371,23 @@
   //
   // THE NUMBER IS UNMEASURED AND IT IS ON HIS LIST FOR GATE 1 (U27 stage 1, the camera lane,
   // 2026-08-17 22:2x). It was written when this field held a base-2 logarithm, so it bounded the
-  // approach at 1.41 times and now bounds it at 1.65; and the measurement over the 121 works' own
-  // door steps says no number here can be the honest bound. What the door framings ASK for has a
-  // median of 2.05 times, a nine-tenths point of 6.44 and a worst of 86.3 — a smooth tail with no
-  // knee to set a cap at — while what the FRAME can carry is the buffer's own oversampling,
-  // min(dpr, 2) times the resolution step, which is 1.00 times on any dpr-1 frame and falls to 1.00
-  // on a dpr-2 phone at the governor's floor. The bound is therefore a property of the device the
-  // composer cannot see (his architecture decision of 18:00), and the defect the composer lane
-  // measured — 63.9 per cent of ordered pairs landing on one number, so the approach carries no
-  // reading of any pair — belongs to the CLIPPING rather than to this value. The report names the
-  // repair and its numbers; nothing is guessed here in the meantime.
+  // approach at 1.41 times and now bounds it at 1.65. No number here can be the honest bound, and
+  // the argument for that is a construction one: what the door framings ASK for is the logarithm of
+  // a ratio of two framings, which runs the whole real line and is bounded above by nothing at all,
+  // so no cap on it can be read off anything the composer holds. What the FRAME can carry is
+  // bounded, and by something else entirely: the buffer's own oversampling, min(dpr, 2) times the
+  // resolution step, which is 1.00 times on any dpr-1 frame and falls to 1.00 on a dpr-2 phone at
+  // the governor's floor. The bound is therefore a property of the device the composer cannot see
+  // (his architecture decision of 18:00). The defect the composer lane found belongs to the CLIPPING
+  // rather than to this value: a clamp is constant on the whole half-line above its bound, so it
+  // destroys the ordering there for every input whatever, and the approach carries no reading of any
+  // pair on any of them. The report names the repair; nothing is guessed here in the meantime.
+  //
+  // UNJUSTIFIED. Everything above argues the SHAPE — that a bound belongs to the device rather than
+  // to any pair, and that a limit is the right form for it — and none of it derives this value. The
+  // half was chosen by this seat. What it has to satisfy is only that it be positive, so the limit
+  // holds and the map stays monotone; every positive value satisfies that equally, and the number
+  // that would be right is a property of the buffer the composer cannot see.
   var DOLLY_CAP = 0.5;
   // WHAT LEFT THIS BLOCK ON 2026-08-18, and it is one sweep rather than eight repairs. His word of
   // 09:57: a number this project computed and gave a name to, with no requirement of his behind it,
@@ -400,9 +438,32 @@
   // NOTHING IS RENAMED TO FIT THIS TABLE. A module's own handle name is the module's, and bending
   // it to a table's shape is the invention his 08:47 word strikes; the table takes the instrument's
   // name instead.
+  // THE FIRST WORD OF A ROW SAYS WHERE THE NUMBER COMES FROM, and the node writer dispatches on it
+  // rather than on the handle's name. There are six words and each has exactly one road:
+  //
+  //   · `measured`    — read off the two works' own records. The composition owes a value; a handle
+  //                     of this kind that reaches the writer with none is a broken promise, and the
+  //                     writer says so rather than freezing it at the manifest default in silence.
+  //   · `progress`    — the passage's own travel, door to door. It rides `cueProgress`.
+  //   · `host-clock`  — the second the host hands down.
+  //   · `plan`        — a value of neither photograph that the PLAN names: shelf 7's interfered
+  //                     arrival, and which of his six approved meeting rules two works meet under.
+  //                     The composition owes a value here too, for the same reason.
+  //   · `unmeasured`  — nothing in a work record carries it. Resting at the instrument's own default
+  //                     is the honest answer and the plan says so in its own sentence.
+  //   · `module-rest` — a judge channel the module rests at. Resting is what it is for.
+  //
+  // `transaction` STOOD WHERE FOUR OF THESE NOW DO, and one word covering four sources is what let
+  // the defect live: the writer could not dispatch on it, so it dispatched on the handle's NAME
+  // instead — `mix` and `clock` by name, and every other transaction handle fell through to the
+  // static branch and held still at its default for the whole passage. A row promising the
+  // passage's own travel and a node that never moves is the sharpest form of it, and it reached
+  // `parquet.spin`, `unfold.field`, `overlay.blend` and the interfered `arrival` of two
+  // instruments. The word is split so that what a row promises and what the writer does are the
+  // same fact read once.
   var HANDLE_SOURCE = {
-    mix: ["transaction", "the pass's own progress, door to door"],
-    clock: ["transaction", "the second the host hands down"],
+    mix: ["progress", "the pass's own progress, door to door"],
+    clock: ["host-clock", "the second the host hands down"],
     seed: ["measured", "the ordered pair's own seed"],
     strips: ["measured", "the pivot's band family, its measured count along the cut"],
     // WIDENED 2026-08-17 for the box: for the woven instrument `axis` is which way the ribbons run,
@@ -449,7 +510,7 @@
     // taste-approved rate of 2026-08-08, and this engine hands an instrument no clock, so the rate
     // is carried at the engine's own pass duration and rides the dial. That is the passage's own
     // travel, the same tag the plane and the parquet's envelope already stand under.
-    spin: ["transaction", "the passage's own travel: the module's own floor turn at the vista "
+    spin: ["progress", "the passage's own travel: the module's own floor turn at the vista "
                           + "preset's approved rate, carried at this engine's pass duration "
                           + "because an instrument is handed no clock"],
     // THE READY STORY'S OWN FOUR. Its other five — mix, clock, centreX, centreY, turn, mask — were
@@ -475,17 +536,44 @@
                            + "distance: two palettes standing apart make a third colour world "
                            + "worth reaching for, two standing close make one work slightly "
                            + "veiled"],
-    presence: ["measured", "the share of the frame the composite stands on, read off the same "
-                           + "colour distance the exposure is placed by"],
+    // THE COMPOSITE'S OWN REGION SHARE, SCOPED TO THE INSTRUMENT THAT MEANS IT. This row is
+    // `overlay`'s and nobody else's: on that instrument `presence` is the share of the frame the
+    // exposure stands on, a LIGHT-COLOUR reading of the pair. Since the entry-door contract landed
+    // (2026-08-25) the bare name means something else across the rest of the fleet — the reserved
+    // dry, below — so this row is scoped exactly as `axis` and `weave.depth` were scoped before it:
+    // one name, two senses, and `sourceOf` reads the scoped row first.
+    "overlay.presence": ["measured", "the share of the frame the composite stands on, read off the "
+                                     + "same colour distance the exposure is placed by"],
+    // THE ENTRY DOOR'S RESERVED DRY, and it takes a word of its own rather than borrowing one.
+    //
+    // WHY NOT `progress`. That word promises the passage's own travel across a handle's published
+    // span, and the writer keeps that promise literally: it maps `smooth(cueProgress)` from the
+    // handle's floor to its ceiling, a monotone rise. The dry owes the opposite shape — nothing at
+    // the cue's own two doors and whole across its middle — so a `progress` row would promise one
+    // journey and the writer would have to dispatch on the handle's NAME to write another. That is
+    // exactly the defect the paragraph above this register records: `transaction` covered four
+    // sources at once, the writer could not dispatch on it, so it dispatched on names instead. The
+    // word is what the writer reads; a different shape earns a different word.
+    //
+    // WHY IT IS NOT `plan` EITHER. `plan` names a choice a score is free to make — the blend rule,
+    // the interfered arrival. This is not free: the contract fixes it. An upper voice's dry is
+    // nothing at both of its doors and whole between, and the lowest voice's is whole throughout,
+    // and which of the two a cue owes is decided by where it stands in its own stack and by nothing
+    // else. It is a law being stated, not a taste being exercised.
+    presence: ["entry-door", "the entry-door contract's reserved dry: nothing at the cue's own two "
+                             + "doors, whole across its middle, so a voice joins a running picture "
+                             + "without replacing it and stands down the same way. The lowest voice "
+                             + "of a stack owes the opposite and stands whole throughout, because "
+                             + "nothing stands beneath it"],
     // TWO HANDLES THAT READ NOTHING OF EITHER PHOTOGRAPH AND SAY SO. They are not «uncalibrated»
     // and they are not unmeasured: there is no measurement to take, because the choice is his and a
     // score's. They stand under the same tag as the passage's own travel envelope — what the
     // transaction itself supplies — and the class law holds, because a handle naming a score's word
     // is a handle naming what it reads.
-    blend: ["transaction", "nothing of either photograph: the six rules the two works meet under are his "
+    blend: ["plan", "nothing of either photograph: the six rules the two works meet under are his "
                     + "own approved list of 2026-08-08 11:39 and the choice between them is a "
                     + "score's word"],
-    arrival: ["transaction", "nothing of either photograph: charter shelf 7 names the interfered arrival "
+    arrival: ["plan", "nothing of either photograph: charter shelf 7 names the interfered arrival "
                       + "and a score names it, so this is a plan's word"],
     scale: ["measured", "the ratio of the two works' own cutting steps — structure.ownDevice.stepPx "
                         + "of the arriving work over the departing one's, with "
@@ -521,8 +609,16 @@
     speed: ["measured", "the pattern's own count — strips for the fabric, copies for the spiral — "
                         + "against the instrument's own default count, so one unit of the pattern "
                         + "crosses its own width in the same time whatever the pair"],
-    drift: ["measured", "the fractional part of the two works' measured spectral periods in "
-                        + "ratio, charter shelf 13's incommensurate-period instrument"],
+    // THE MIRROR'S OWN LIFE IS NOT DRIVEN, AND THAT IS A RECORDED VERDICT RATHER THAN A GAP. The
+    // reading this row named is real and the record carries it, but `fillPlan`'s own note beside the
+    // live-mirror branch states the decision plainly: the handle rests at nothing because a
+    // wandering fold line does not land on the work's own structural line, and a reading may not
+    // overrule that verdict on the effect. A row saying `measured` beside a decision not to drive it
+    // is the register contradicting the code, and the register is what was wrong: the handle rests
+    // on purpose, so the row says so and the plan carries the sentence.
+    drift: ["unmeasured", "the fractional part of the two works' measured spectral periods in ratio "
+                          + "is the reading, and it is deliberately not driven: a wandering fold "
+                          + "line does not land on the work's own structural line"],
     tooth: ["measured", "how much finer each work's measured ring repeat is than the cut it was "
                         + "given, which is the relief a tooth stands in"],
     // WIDENED 2026-08-18 for the spiral, on the same one measurement: for the meshing instrument the
@@ -560,26 +656,67 @@
     lead: ["measured", "the finger count, read off its own range onto this one and turned over"],
     fingers: ["measured", "the departing work's repeat across the crease: its frame side over "
                           + "structure.grid.periodPx"],
-    // THE ONE REAL GAP. Where along the turn the departing work falls into two regions is measured
-    // in lab/cut-lines.py and STRIPPED before the engine sees it: a work record carries
-    // structure.regions.count and .score and no position at all. So this file can hand no line. The
-    // instrument keeps its own edge, and `seamScore` is handed under the instrument's own floor so
-    // it says as much rather than folding on a line nobody measured — which is the first of the
-    // charter's five box conditions, honestly unmet rather than quietly claimed.
-    seam: ["unmeasured", "where the work's region line stands; the position is stripped before a "
-                         + "record reaches the engine"],
-    seamScore: ["measured", "structure.regions.score, handed at nothing while the line itself "
-                            + "does not travel"],
+    // THE GAP THAT WAS REAL AND IS NOW CLOSED (2026-08-26). Where along the turn the departing work
+    // falls into two regions is measured in lab/cut-lines.py, and until tonight it was STRIPPED
+    // before the engine saw it: a record carried `structure.regions.count` and `.score` and no
+    // position at all, so this file could hand no line, `seam` stood at the instrument's own edge
+    // and `seamScore` was handed under the instrument's floor to say so out loud. The record now
+    // carries `structure.regions.line.{x,y}.at` and `.explains` — a Python mirror of
+    // `lab/effects/box.js`'s own `seamOf`, verified against that file's published readings — so the
+    // first of the charter's five box conditions is met rather than honestly unmet, and both rows
+    // below name a measurement because a record now holds one.
+    //
+    // WHICH AXIS EACH READS is the crease's own direction and is settled in the fill branch, not
+    // here: `box.js` has `vertical = P.axis >= 0.5` and calls `seamOf(src, !vertical)`, and the
+    // engine's `flat` is that same `vertical`, so a crease at or above a half reads the record's
+    // `y` and one below it reads the `x`.
+    seam: ["measured", "structure.regions.line.<axis>.at — where along the crease's own direction "
+                       + "the departing work falls into two regions, as a share of its own frame. "
+                       + "The handle's published span is the measurement's own search window, the "
+                       + "middle half of the work, so the reading is placed on it in the unit it is "
+                       + "already in"],
+    // AND THIS ROW NAMES `.explains` AND NOT `regions.score`, which is the substantive half of the
+    // repair. `SEAM_FLOOR` in the instrument was calibrated against the between-versus-within
+    // column reading and against no other quantity. `regions.score` is the share of frame the large
+    // regions cover — a different quantity that happens to share the same 0..1 range — so pointing
+    // the floor at it would open a gate on grounds nobody measured, on every pair, silently.
+    seamScore: ["measured", "structure.regions.line.<axis>.explains — how cleanly that line divides "
+                            + "the picture, the between-versus-within reading of the work's own "
+                            + "columns at that place. It is handed with the instrument's own floor "
+                            + "UNAPPLIED, so the gate stays where the gate lives"],
     mask: ["module-rest", "a judge channel the module rests shut"],
     // THE WAVED RIBBON AND THE PARQUET, from the instruments lane's own manifests. No template names
     // these yet; the rows stand so a score that names them can be written, and so the register keeps
     // its promise that every handle says where it comes from. The wave's own two readings —
     // texture.type and texture.localStraightness — are stripped before the engine sees them, so the
     // composer can hand only nothing, which is the straight ribbon and the reference look.
-    wave: ["measured", "texture.type at «рябь», with 1 - texture.localStraightness as the depth"],
+    // THE FABRIC'S OWN DEPTH IS NOT A READING OF EITHER PHOTOGRAPH, and the woven instrument's own
+    // manifest says so in as many words: this handle "reads nothing of the work: it is a property of
+    // the FABRIC, the same class as the ribbon edge's own two waves and the contact shadow's own
+    // reach, and it is the material speaking rather than the photograph". The bare `depth` row below
+    // was written for the folding instrument, whose depth IS a corridor reading, and `sourceOf`
+    // handed it to the weave as well because the two share a handle name. So the weave's own depth
+    // carried a promise of a measurement that no work record holds and that nothing was ever going
+    // to write, and it stood frozen at the instrument's rest with no sentence saying why. A scoped
+    // row is the honest answer: the fabric rests where the fabric rests, and the plan says so.
+    "weave.depth": ["unmeasured", "nothing of either work: the woven instrument's own manifest calls "
+                                  + "this a property of the fabric rather than of the photograph, "
+                                  + "so it stands at the material's own rest"],
+    // THE RIBBON EDGE'S OWN WAVE HAS NOTHING IN THE RECORD TO READ. This row promised
+    // `texture.type` at «рябь» with `1 - texture.localStraightness` as the depth, and neither field
+    // reaches the engine: both are stripped before a work record leaves the lab, which this file
+    // already says a few rows below about the same pair of fields. So the row promised a reading
+    // that no pair in the world could supply, `fillPlan` never wrote one, and the handle stood at
+    // the instrument's own rest for the whole passage with no sentence saying why — which is how
+    // the wave came never to appear. Naming it `unmeasured` is the honest answer: the plan now says
+    // the instrument publishes it and no measurement is written for it, and the day the two fields
+    // survive the trip this row becomes `measured` again with the same words it always had.
+    wave: ["unmeasured", "the ribbon edge's own ripple: texture.type and texture.localStraightness "
+                         + "are the reading, and both are stripped before a work record reaches "
+                         + "the engine"],
     wavePeriod: ["measured", "texture.spectralPeriodPx over the work's own frame side"],
     waveDrift: ["measured", "the same spectral period, as a share of it travelled in a second"],
-    field: ["transaction", "the passage's own travel, one envelope for the plane and the parquet"],
+    field: ["progress", "the passage's own travel, one envelope for the plane and the parquet"],
     parquetPeriod: ["measured", "structure.ownDevice.stepPx over the work's own frame side"],
     parquetTurn: ["measured", "structure.ownDevice.angleDeg, the angle that step was cut at"],
     // THE UNFOLD'S OTHER THREE. Its manifest now travels in the composer's own constants — the
@@ -853,14 +990,16 @@
 
     // ---- the parting-by-scale instrument ----
     // THE MODULE'S OWN SINGLE SHARED HANDLE (strata-scale.js:450-506) — one number for the whole
-    // pair, since the detail/masses handover is a property of the departure itself and not of
-    // either work — and it reads nothing of either photograph: no measurement decides how the dial
-    // is shared between the two strata, so it stands at pass-inst-strata-scale.js's own resting
-    // value, the one that reproduces the module's own rest of DETAIL_SHARE exactly.
-    handover: ["module-rest", "the module's own single shared handle; nothing of either photograph "
-                              + "decides how the dial's own travel is shared between the two strata, "
-                              + "so it rests at the value that reproduces the module's own "
-                              + "DETAIL_SHARE exactly"],
+    // pair, because the split between the two strata is a property of the arrival itself and not a
+    // travelling value. Charter shelf 12's spectral sentence is what it sets: the blurred mass of
+    // the ARRIVING work grows first and its detail grows into it, and this handle is how long the
+    // mass stands alone before the detail follows. It stood at the module's own rest with the note
+    // that nothing of either photograph decides it; the record says otherwise, and this file was
+    // already reading the field — the instrument's own `suits` row ranks the pair on
+    // `texture.reliefEdge`, the scale a work parts at.
+    handover: ["measured", "the ARRIVING work's own parting scale, texture.reliefEdge — how much of "
+                           + "its own luminance its mass stratum carries — read as the share of the "
+                           + "dial its detail needs, which is one minus that reading"],
     // EACH STRATUM'S OWN MEASURED CENTRE OF GRAVITY, off `texture.reliefCentreMassX`/
     // `reliefCentreDetailX` — lab/analyze/recipes.py's own port of the centre-of-gravity reading in
     // lab/effects/strata-scale.js's own `cut()` (strata-scale.js:279-287), threaded through
@@ -1008,7 +1147,68 @@
                                   + "turned it"],
     "studio.colLook": ["module-rest", "the module's own declared default, \"rich\" — no reading says "
                                       + "which of the colour operation's three looks a visitor would "
-                                      + "have chosen"]
+                                      + "have chosen"],
+    // THE THREE ELEMENTS OF SHELF 14, and every row of the three is instrument-scoped. `sourceOf`
+    // reads the scoped row first, so a name this file already carries in another instrument's unit
+    // — `axis` above all — answers here in this instrument's own.
+    "pour.columns": ["measured", "the work's own frame side over structure.grid.periodPx, the "
+                                 + "count of its own measured lattice across it; the same off "
+                                 + "structure.ownDevice.stepPx where no grid period was derived. "
+                                 + "The picture lets go along the repeat it was made on"],
+    "pour.repose": ["measured", "texture.detailPx of the two works over their own frame sides, "
+                                + "read as a ratio: the heap is made of the arriving work, and a "
+                                + "finer material heaps at a steeper angle than a coarse one"],
+    "pour.stagger": ["measured", "structure.regions.score of the departing work — how much of the "
+                                 + "difference between its own columns its region line explains, "
+                                 + "which is how plainly it lets go region by region rather than "
+                                 + "all at once"],
+    "pour.grain": ["measured", "texture.spectralPeriodPx of the two works over their own frame "
+                               + "sides, read as a ratio — the departing work's own strongest "
+                               + "repeat said as cells across the frame, which is the unit the "
+                               + "material instrument's coarse grain is published in"],
+    "veil.thickness": ["measured", "texture.scoreFromCutLines — how much of a work reads as grain "
+                                   + "rather than as line. A work that IS texture makes a thick "
+                                   + "air, because the veil reads a picture at a coarser scale of "
+                                   + "its own material and a work of straight architecture has "
+                                   + "little there to lose. It travels from the departing work's "
+                                   + "reading to the arriving one's"],
+    "veil.bodies": ["measured", "the work's own frame side over structure.grid.periodPx, the count "
+                                + "of its own measured lattice across it; the same off "
+                                + "structure.ownDevice.stepPx where no grid period was derived. "
+                                + "The weather banks at the scale the work's own structure stands "
+                                + "at"],
+    "veil.depth": ["measured", "structure.polar.tunnel, how strongly a work already reads as a "
+                               + "corridor — a picture that carries depth gets a deep stack and "
+                               + "passes the sheets one at a time, one that reads flat gets them "
+                               + "crowded into a single bank that parts once"],
+    "veil.airAngle": ["measured", "structure.grid.angleDeg, the direction the work's own lattice "
+                                  + "runs, and structure.ownDevice.angleDeg where the device "
+                                  + "recovered one — the same recorded angle the parquet's own "
+                                  + "`lattice` handle reads. The air moves along the work's own "
+                                  + "grain"],
+    "wind.rows": ["measured", "the pivot's band family, its measured count along the cut — the "
+                              + "same reading `strips` names for the woven ribbon, under this "
+                              + "instrument's own name because a row of this instrument is a row "
+                              + "and not a ribbon: it is not woven with anything, it is bent"],
+    "wind.axis": ["measured", "the banding axis cut-lines.json recorded, read into this "
+                              + "instrument's own unit — half turns, the direction a row LIES in. "
+                              + "The shared `axis` row names the same recorded measurement in the "
+                              + "woven instrument's unit, which is a three-way code, so this "
+                              + "handle takes a row of its own rather than a value in another "
+                              + "instrument's scale"],
+    "wind.bend": ["measured", "structure.banding.score — how plainly a work bands. A work that "
+                              + "bands plainly has rows the air can catch; one that reads as a "
+                              + "single field is barely moved, which is the picture saying what it "
+                              + "is rather than a floor turning it away. It travels from the "
+                              + "departing work's reading to the arriving one's"],
+    "wind.gust": ["measured", "structure.grid.periodPx over the work's own frame side, read as a "
+                              + "ratio between the two works — the repeat each carries along the "
+                              + "row, so the body of air is as long as the thing it is blowing "
+                              + "over"],
+    "wind.lag": ["measured", "structure.grid.angleDeg read AGAINST the row axis above — the tangent "
+                             + "of the angle between the work's own lattice and the direction its "
+                             + "rows lie in, so the air comes in across the work's own grain "
+                             + "rather than square to a direction nobody measured"]
   };
 
   // THE ROAD OPENS THE AUTHORED LINE. §4.7: the intent is the one written line a plan opens with,
@@ -1131,15 +1331,17 @@
     var INSTRUMENTS = consts.instruments;
     // THE COLLECTION'S FLOORS AND THRESHOLDS ARE NO LONGER READ, and a settings record may go on
     // carrying them. `consts.floors` held ten typed numbers — a cut-line floor per measure and a
-    // «tight» floor for three of them — and `consts.thresholds` seven more, each the top quartile
-    // of one measure over one collection. Both were admission tests: a reading under a floor was
-    // struck out of the travelling axes, a measure both works did not clear its threshold on was no
-    // ground, and three of the ten floors stood above what any photograph in the collection could
-    // score, so three families of effect were dead by construction.
+    // «tight» floor for three of them — and `consts.thresholds` seven more, each of them a cut taken
+    // over one collection of photographs, which is exactly the object charter shelf 20 names. Citing
+    // the class is the whole argument; showing how the works on disk fell either side of a cut would
+    // argue the point by committing the offence. Both were admission tests: a reading under a floor
+    // was struck out of the travelling axes, and a measure both works did not clear its threshold on
+    // was no ground — so a family of effect whose floor stands above the range its own reading can
+    // reach is dead by construction, whatever pictures are hung.
     //
     // His word of 2026-08-18 09:51 and its sharpening at 09:53: a measurement ranks which genre of
     // crossing suits a pair and shapes the genre that wins, and it never admits and never rejects.
-    // A quartile of some collection answers neither question — it says how a reading stands among
+    // A cut taken over some collection answers neither question — it says how a reading stands among
     // other photographs, when what is being asked is how these two photographs stand to each other,
     // and the two numbers are in hand. So the composer reads the pair and nothing else, and it is
     // now free of the collection it happens to be shown with: any two photographs in the world get
@@ -1148,9 +1350,11 @@
     var SCORE_FENCE_BYTES = consts.scoreFenceBytes;
     // THE CLIENT'S OWN FENCE ON THE ONE FIELD §4.4 CALLS PROSE, and since 2026-08-18 it is a
     // SHAPING rather than a wall. A score whose intent ran past it was refused WHOLE with «intent is
-    // no short text», so an intent nobody measured was a crossing nobody saw: stage 0 found 1 004 of
-    // 6 304 composed crossings standing over the 400 the client then applied. Raising the number to
-    // 600 moved the wall; it did not take it down. `realiseIntent` now FITS the line — it gives up
+    // no short text», so an intent nobody measured was a crossing nobody saw. The argument needs no
+    // count: the intent is prose whose length is bounded above by nothing in this file, and prose
+    // against a fixed cap runs past it whenever it is long enough — so crossings are lost for as
+    // long as the cap is a wall. Raising the number from 400 to 600 moved the wall; it did not take
+    // it down, and a moved wall refuses the next longer line. `realiseIntent` now FITS the line — it gives up
     // its own clauses in order and then trims at a word, and the plan records what it gave up — so
     // no crossing is ever lost to the length of its own sentence.
     //
@@ -1161,6 +1365,12 @@
     // number the client applies rather than a second copy of it. What stands after the `||` is a
     // FALLBACK for a settings record built before that line landed; it is the number the client
     // applies today, and a record that carries the field overrides it without argument.
+    //
+    // UNJUSTIFIED, and precisely in its second half. The VALUE comes from the client and belongs to
+    // it, which is a derivation; the `|| 600` beside it does not. That fallback stands for a
+    // settings record built before the field existed, and 600 is the number the client happens to
+    // apply today rather than anything this file can read — so a record published without the field
+    // is measured against a number nobody here derived.
     var INTENT_FENCE_CHARS = consts.intentFenceChars || 600;
 
     var HANDLE_SPECS = {};
@@ -1190,11 +1400,16 @@
     var BANDING = (MANIFESTS.weave.handles.axis.banding) || [];
     var AXIS_OF_BANDING = {};
     BANDING.forEach(function (name, i) { AXIS_OF_BANDING[name] = i; });
+    // DERIVED — the meshing instrument's own published rung count, read off its manifest. A
+    // constant that reads a published fact is not a static value, it is a cached read: the module
+    // that changes its own reach re-bases this by itself and no copy of it can go stale.
     var RATIO_STEPS = MANIFESTS.gears.handles.ratio.rungs || 0;
-    // THE MESHING PICTURE'S OWN SPAN, read off its manifest at the moment it is needed. A typed 0.7
-    // stood here as the size the picture stopped reading at; that is a fact about the meshing
-    // instrument, and the instrument is the one home of it.
+    // DERIVED — THE MESHING PICTURE'S OWN SPAN, read off its manifest at the moment it is needed. A
+    // typed 0.7 stood here as the size the picture stopped reading at; that is a fact about the
+    // meshing instrument, and the instrument is the one home of it. Both are cached reads of a
+    // published fact rather than values chosen here.
     var SIZE_MIN = HANDLE_SPECS.gears.size[0];
+    // DERIVED — the other end of the same published span, read the same way.
     var SIZE_MAX = HANDLE_SPECS.gears.size[1];
     // THE COMPOSITE'S OWN TWO LEGIBILITY LEVELS, READ OFF THE INSTRUMENT'S OWN MANIFEST NOW THAT THE
     // WIRE CARRIES IT. A settings record does NOT ship a manifest whole: the site's staging step
@@ -1305,13 +1520,16 @@
     // a candidate ground for every pair; the strength says which to reach for first.
     //
     // WHAT WENT, AND WHY IT COULD NEVER HAVE BEEN RIGHT. Two verdicts stood beside this reading.
-    // `both` asked whether both works cleared the measure's discriminating threshold — a top
-    // quartile over one collection, which by construction 31 of 121 works clear, so both ends
-    // cleared any one measure on about six ordered pairs in a hundred and 83 per cent of all
-    // compositions fell past every shared measure onto one nominated ground with one cut and one
-    // instrument. `usable` asked whether both cleared the measure's typed cut-line floor. Between
-    // them they turned a ranking question into an admission test, which is the disease his word of
-    // 09:51 names. Both are gone; what is left is the number itself.
+    // `both` asked whether both works cleared the measure's discriminating threshold — a cut taken
+    // over one collection of photographs. An admission test compares a pair's own reading against a
+    // number derived from OTHER photographs, so it answers how a reading stands among strangers when
+    // what is asked is how these two stand to each other; and both works having to clear it made the
+    // ground scarcer than either work's own reading ever was, so pairs fell past every shared measure
+    // onto one nominated ground with one cut and one instrument. `usable` asked whether both cleared
+    // the measure's typed cut-line floor. Between them they turned a ranking question into an
+    // admission test, which is the disease his word of 09:51 names. Both numbers were in hand all
+    // along and the third was never a better answer to a question it does not ask. Both are gone;
+    // what is left is the number itself.
     function groundReadings(a, b) {
       var per = {}, i, m, sa, sb;
       for (i = 0; i < MEASURES.length; i++) {
@@ -1413,10 +1631,13 @@
       // beyond that it have a ground at all, every photograph can be under water.
       //
       // WHAT STOOD HERE WAS NOTHING AT ALL. This instrument published no row, so `suitsPair` below
-      // answered for it with its typed 0.5 on all 14 520 pairs — 5.1 per cent of the collection's
-      // cues chosen by a constant that never looked at either photograph, and ranked above the
-      // measured readings of `overlay`, `tunnel` and `weave` everywhere, permanently, on no
-      // evidence. His word of 2026-08-18 15:13 names that class: no static transitions.
+      // answered for it with its typed 0.5 on every pair alike. A constant reads neither record, so
+      // its output is independent of both inputs over the WHOLE input space: it ranks identically
+      // against every rival on every pair there can ever be, above the measured readings of
+      // `overlay`, `tunnel` and `weave` wherever theirs fall under a half and below them wherever
+      // they do not — permanently, and on no evidence either way. That is the defect whole, and how
+      // often it was reached adds nothing to it. His word of 2026-08-18 15:13 names the class: no
+      // static transitions.
       liquid: function (a, b) {
         var sa = readingOf((a.measures || {}).texture);
         var sb = readingOf((b.measures || {}).texture);
@@ -1424,17 +1645,89 @@
                 + pyText(flt(r4(sa))) + " and " + pyText(flt(r4(sb)))
                 + ", and the swell travels out to the deeper of the two"];
       },
+      // A POUR NEEDS A PICTURE THAT WILL LET GO AND A MATERIAL TO HEAP. The departing work's own
+      // region line says how plainly it comes apart into streams — a work that falls into regions
+      // pours in streams, one that reads as a single mass drops all at once. And the two works'
+      // detail scales say whether the material that FALLS is the material that HEAPS: the heap is
+      // the arriving work and the stream is the departing one, so a pair whose grains stand close
+      // reads as one substance changing rather than two pictures swapped. The reading is the mean
+      // of the two, and where neither work carries a detail reading the second half reads nothing
+      // rather than the whole it would read by default.
+      pour: function (a, b) {
+        var reg = readingOf(((a.structure || {}).regions || {}).score);
+        var da = Number((a.texture || {}).detailPx) || 0;
+        var db = Number((b.texture || {}).detailPx) || 0;
+        var scales = (da > 0 && db > 0) ? tonalSpectral(a, b).spectral : 0;
+        return [clamp01((reg + scales) / 2),
+                "the departing work's own region line reads " + pyText(flt(r4(reg)))
+                + ", so it comes apart in that many streams, and the two works' detail scales "
+                + "stand at " + pyText(flt(r4(scales))) + " of each other, so the material that "
+                + "falls is the material that heaps"];
+      },
+      // A VEIL IS WORTH WATCHING WHERE A WORK HAS SOMETHING TO LOSE TO IT. What the veil does to a
+      // photograph is read it at a coarser scale of its own material, so the two works' own grain
+      // readings say how much there is to take away — and the stronger end carries it, because the
+      // works trade depths and one work with material in it is enough to make the coming-forward
+      // read. How far apart their detail scales stand says how much passing each sheet actually
+      // changes: two works of one grain would come forward through the same weather twice.
+      veil: function (a, b) {
+        var ga = readingOf((a.measures || {}).texture);
+        var gb = readingOf((b.measures || {}).texture);
+        var va = Number((a.texture || {}).detailPx) || 0;
+        var vb = Number((b.texture || {}).detailPx) || 0;
+        var apart = (va > 0 && vb > 0) ? 1 - tonalSpectral(a, b).spectral : 0;
+        return [clamp01((Math.max(ga, gb) + apart) / 2),
+                "the works read as grain rather than as line at " + pyText(flt(r4(ga))) + " and "
+                + pyText(flt(r4(gb))) + ", which is what a coarsening has to take away, and their "
+                + "detail scales stand " + pyText(flt(r4(apart))) + " apart, which is how much "
+                + "coming forward through the sheets actually changes"];
+      },
+      // THE AIR CATCHES WHAT BANDS. The two works' own banding readings say how much row structure
+      // there is for a gust to take, and the STRONGER end carries it — the front travels from one
+      // work's rows to the other's, so one work of plain rows is enough to watch the air bend
+      // something. How far apart their two lattices stand says whether the front comes in ACROSS
+      // the picture's own grain, which is what makes a gust read as air rather than as a wipe.
+      //
+      // THE SECOND HALF IS READ ONLY WHERE BOTH WORKS CARRY A LATTICE AT ALL. An angle of zero is
+      // a lattice running square, so `Number(...) || 0` cannot tell a measured horizontal grain
+      // from a work that was never measured for one, and the gap between a real angle and an
+      // absent one would be a reading of nothing dressed as a reading of half a right angle. The
+      // work's own lattice PERIOD says whether the angle beside it is a measurement — the grid's
+      // period first and the device's step where no grid period was derived, which is the order
+      // this file's own fill branches already prefer them in. Where either work carries neither,
+      // this half reads nothing and the pair ranks by its banding alone; nothing is turned away.
+      wind: function (a, b) {
+        var sa = readingOf(((a.structure || {}).banding || {}).score);
+        var sb = readingOf(((b.structure || {}).banding || {}).score);
+        function latticeOf(w) {
+          var st = w.structure || {}, g = st.grid || {}, d = st.ownDevice || {};
+          if (Number(g.periodPx) > 0) return Number(g.angleDeg) || 0;
+          if (Number(d.stepPx) > 0) return Number(d.angleDeg) || 0;
+          return null;
+        }
+        var aa = latticeOf(a), ab = latticeOf(b), across = 0;
+        if (aa !== null && ab !== null) {
+          var gap = (((aa - ab) % 180) + 180) % 180;
+          across = Math.min(gap, 180 - gap) / 90;
+        }
+        return [clamp01((Math.max(sa, sb) + across) / 2),
+                "the two works read banding at " + pyText(flt(r4(sa))) + " and "
+                + pyText(flt(r4(sb))) + ", so the air has rows to catch at the stronger end, and "
+                + "their two lattices stand " + pyText(flt(r4(across))) + " of a right angle "
+                + "apart, which is how far across the picture's own grain the front comes in"];
+      },
       // THE FLOOR IS TWO ROOMS AND THE CROSSING IS THE HANDOVER BETWEEN THEM. Both works are laid on
       // one mirrored floor tile for tile and the room changes hands as each sheet turns up, so what
       // the pair gives this instrument is TWO tile counts — and where they are the same count the
       // floor turns over into itself and there is nothing to watch. The count is the one the
       // instrument's own `tiles` handle is published in, taken the way its fill already takes it:
       // the work's own frame side over `structure.grid.periodPx`, and over
-      // `structure.ownDevice.stepPx` where no grid period was derived. The port's own report chose
-      // that order on a measurement of this collection — the grid period spreads the 121 works over
-      // all five counts while the device step saturates at the range's top on 100 of them, «so a
-      // floor laid from the device would be the same floor for five works in six» — which is this
-      // same law read one level down, at the parameter rather than at the choice.
+      // `structure.ownDevice.stepPx` where no grid period was derived. The order follows from the
+      // two measurements' own resolutions: a device step is quantised to the device's own repeat, so
+      // its range is coarser than the grid period's by construction, and reading the coarser one
+      // first puts more works on one value whatever the works are. A floor laid from the coarser
+      // reading is therefore the same floor more often, which is this same law read one level down,
+      // at the parameter rather than at the choice.
       //
       // The distance is said across the handle's OWN published span, so nothing here invents a
       // scale. This instrument published no row either, and carried the same typed 0.5.
@@ -1632,7 +1925,9 @@
       // whichever work carries the structure. Only the lean and the sample width travel end to end.
       // An instrument whose geometry is read off the stronger work cannot be RANKED by the weaker
       // one; the min against a rival's max on the same number is a loss by construction rather than
-      // by merit, and it is why the fold never once held the top of the reading over 14 520 pairs.
+      // by merit — the minimum of two readings can never exceed the maximum of the same two, so the
+      // fold could not hold the top of the reading on ANY pair whatever, not merely on the ones on
+      // disk.
       //
       // WHAT ALSO WENT IS A TYPED HALF. The rings-against-spokes reading is the instrument's own —
       // rings open into a rosette and spokes turn instead, which is the same reading the genre
@@ -1667,7 +1962,7 @@
       // draft would not have run at all: `suitsPair` hands an instrument two work records and
       // nothing else, so the floors it read would have been undefined and every pair casting the
       // glass would have thrown. The collection's floors are not read by this file in any case —
-      // struck all ten under his 09:51 word, because a quartile of some collection answers how a
+      // struck all ten under his 09:51 word, because a cut over some collection answers how a
       // reading stands among other photographs when what is asked is how these two stand to each
       // other. So the reading itself is the fit: the stronger radial score, because one glass rests
       // on one point.
@@ -1733,8 +2028,8 @@
                 + pyText(flt(r4(near))) + " of each other — the nearer they stand the coarser and "
                 + "slower the lobes the frame changes hands in"];
       },
-      // THE DEPARTING WORK'S OWN SLOT IS WHAT PARTS, and the collection measures the motif
-      // directly: lab/step1-motifs.py read ворота on 30 of the 121 works and every work's record
+      // THE DEPARTING WORK'S OWN SLOT IS WHAT PARTS, and the motif is measured directly:
+      // lab/step1-motifs.py reads ворота off one picture's own pixels, and every work's record
       // carries its own `motifs.gateGap`. The fit is that reading. Where a work carries no gate the
       // fit is nothing and the slot stands in the middle of the frame at the motif's own band
       // width, which is the module's own answer for a source with no gate — a plainer crossing,
@@ -1892,7 +2187,19 @@
     function suitsPair(iid, a, b) {
       var ask = INSTRUMENT_SUITS[iid];
       if (!ask) {
-        return [0.5, "«" + iid + "» publishes no reading of a pair, so it suits this one no more "
+        // DERIVED — an instrument that publishes no reading of a pair says so, and `rankUnread`
+        // below places it where the pool it competes in actually landed for THIS pair. A typed 0.5
+        // stood here and it is the middle of the SCALE, not of the pool: against rivals reading low
+        // it towered and against rivals reading high it vanished, on every pair alike and
+        // permanently, on no evidence either way.
+        //
+        // AND THE RULE IS WHAT IS REPAIRED, NOT THE INSTANCE. This file has already named the defect
+        // twice in its own comments and closed it twice by giving one instrument a row — and the
+        // rule then produced three more the night `pour`, `veil` and `wind` landed. Repairing the
+        // instance leaves the rule standing to produce the next one, so the answer is returned
+        // rather than typed: the comment that stood here already said the right one — no more and no
+        // less than any other — and a number written in this file cannot mean it.
+        return [null, "«" + iid + "» publishes no reading of a pair, so it suits this one no more "
                 + "and no less than any other"];
       }
       var answer = ask(a, b);
@@ -1931,9 +2238,10 @@
     // collision was to GIVE THE TRAVELLING MOVE UP: «the travelling axis cuts on the same instrument
     // as the pivot», and the second voice was gone. With one instrument reachable per kind that
     // collision was constant, and it is the direct mechanical cause of a passage playing on one
-    // voice: on the route he walked, seventeen of twenty-two ran alone. A lane that landed a second
-    // instrument on the same kinds measured what it costs — the route recovered 1 997 cues it had
-    // been losing, on top of what the new instrument itself plays.
+    // voice: with one instrument per kind, a second cue asking for that kind finds it taken on EVERY
+    // pair, so the voice folds away by construction rather than by any property of the pictures. A
+    // second instrument on the same kinds gives the collision somewhere to go, and every cue it
+    // recovers is a cue the one-instrument rule was losing whatever was hanging on the wall.
     //
     // So a collision CHOOSES. The instrument already spoken for drops to the back of the ranking,
     // the next-best-suited takes the move, and only where it is the sole instrument in the whole
@@ -1949,11 +2257,11 @@
     // coverage law is what it reads. Only one cue of a stack may fill the frame — everything under
     // a second whole cue is drawn and never seen, which is what `placeTheStack` calls «two grounds»
     // — and each instrument's own manifest declares whether it fills one. Three of the fifteen do
-    // not, so a stack of three voices needs two of those three, and a cast blind to the law drew a
-    // second whole cue about two times in three and the composer then RETIRED the voice for it.
-    // That is why the arrival was handed to a name: «matter» is one of the three, so naming it
-    // answered the law by accident on every pair, and 26.7 per cent of the collection's cues rested
-    // on the accident. The law is a preference here rather than a gate, in the same shape as the
+    // not, so a stack of three voices needs two of those three, and a cast blind to the law breaks
+    // it whenever the law applies — the composer then RETIRED the voice to pay for the breach. That
+    // is why the arrival was handed to a name: «matter» is one of the three, so naming it answered
+    // the law by ACCIDENT, and a name that satisfies a law by accident satisfies it for a reason
+    // that changes on the next landing. The law is a preference here rather than a gate, in the same shape as the
     // other two: an instrument that fills the frame ranks after every one that does not, and where
     // the collection publishes nothing else it still plays and the loop's own answer stands.
     //
@@ -2053,52 +2361,47 @@
         // of this. Where every candidate is excluded the slot retires exactly as it does when the
         // collection casts nothing for it — the same road already walked below for "no instrument at
         // all".
-        // 2026-08-19 EVENING: THE EXEMPTION IS NARROWED TO WHERE ITS PROMISE IS KEPT. The paragraph
-        // above rests its whole case on one sentence — "every other cue placed on it keeps its
-        // handles for that level pinned to manifest rest, so the two never actually collide at the
-        // handle a viewer would see move". THAT PINNING EXISTS ON ONE LEVEL. It is
-        // `singsLightColour`, which is why the eighteen colour and light handles of `grid-colour`,
-        // `strata-light` and `strata-scale` are written only where the cue owns LIGHT-COLOUR. On
-        // every other level nothing pins anything: a cue that does not own CELL still writes every
-        // CELL-driving handle it has and still draws its pattern, so two patterns land in one
-        // passage and shelf 18's ban — pattern stacked on pattern — is broken in the plain sense a
-        // person sees on the screen. The charter audit of this morning measured exactly that and
-        // named the collisions by instrument.
+        // THE SECOND CLAUSE THAT STOOD HERE IS GONE, BECAUSE ITS WHOLE PREMISE IS NOW FALSE. It
+        // excluded a candidate that would stand beside another VOICE on an occupied level carrying
+        // no pinning gate, and it kept a list — `PINNED_LEVELS` — of the levels that did have one.
+        // That list held exactly one entry, LIGHT-COLOUR, because `singsLightColour` was the only
+        // place a non-owner's handles were actually held at rest. On the other five levels nothing
+        // pinned anything: a cue that did not own CELL still wrote every CELL-driving handle it had
+        // and still drew its pattern.
         //
-        // SO THE TEST BELOW ASKS TWO THINGS RATHER THAN ONE. A candidate is excluded when every
-        // level it declares is already claimed across the window it would be live — the reading
-        // that stood here since this morning, unchanged — AND when it would stand beside another
-        // VOICE on an occupied level that carries no pinning gate. A level joins `PINNED_LEVELS`
-        // the day a gate of its own exists and not before.
+        // The gate now exists on every level. Each handle an instrument publishes declares, in that
+        // instrument's own manifest, the structural level it drives, and `buildTemplate` takes the
+        // handles of a level a cue does not own off that cue's track list — so a non-owner rests on
+        // the level it lost and goes on playing the level it owns. With a gate on all six levels the
+        // list of the gated ones is the list of all of them, and a clause that fires only for the
+        // ungated ones can never fire. Keeping it would exclude candidates the law no longer needs
+        // excluded, which starves the cast for nothing.
         //
-        // THE GROUND IS NOT ANOTHER VOICE FOR THE SECOND TEST, and its own record says so
-        // (`pivotClashRecord`'s `ground: true`). It holds the whole passage by construction, so
-        // counting it as a competitor excludes every instrument sharing a level with it at every
-        // slot — the very defect the afternoon's own record measured and repaired, which left
-        // `adrift` and `gears` uncastable. The FIRST test still counts it: a candidate with nothing
-        // free to say, the ground included, is excluded exactly as it was this morning.
+        // THE GROUND'S OWN EXEMPTION GOES WITH IT, for the same reason and not as a loosening. The
+        // ground held `ground: true` on its clash record so that the second clause would not count
+        // it as a competitor: it holds its levels from the first frame to the last, so counting it
+        // as one excluded every instrument sharing a level with it at every slot — the state that
+        // left `adrift` and `gears` uncastable. With the second clause gone there is nothing left
+        // for that mark to exempt the ground FROM. The collisions it was papering over — the ground
+        // and a voice above it on one level — are the ones the handles now settle.
         //
-        // WHAT THIS STILL DOES NOT CLOSE. The collisions that remain are between the GROUND and a
-        // voice above it, because the ground holds its levels from the first frame to the last.
-        // Two roads close them and neither is a line here: shelf 3's enfilade, where the ground
-        // hands the floor over before the passage ends, or a declaration per handle of which
-        // structural level that handle drives, in each instrument's own manifest — the one thing
-        // that would let a non-owner rest on the level it lost while going on playing the level it
-        // owns, which is all `singsLightColour` is.
+        // WHAT STILL EXCLUDES A CANDIDATE OUTRIGHT, and it is one thing: a candidate with NOTHING
+        // free to say. Every level it declares already claimed, across the window it would be live,
+        // by voices already placed and by the ground. Such a cue would have every handle of its own
+        // taken off its track list and would stand there playing nothing at all, so it is not cast.
         //
-        // ONE FALSE DIAGNOSIS ON THE WAY, so it is not repeated. This law was withdrawn once
-        // tonight for reddening `test_pass_composed.py`'s row about the gates instrument's own
+        // ONE FALSE DIAGNOSIS ON THE WAY, so it is not repeated. This law was withdrawn once on
+        // 2026-08-19 for reddening `test_pass_composed.py`'s row about the gates instrument's own
         // slot. The cause was elsewhere entirely: the `clamp` wrapper the cue-course layer
         // introduced had taken a node's provenance note one level down, and that row skips any
         // node whose note does not open with «requested». With the note back on the outermost node
         // the row reads its full sweep again, with this law standing.
         if (clash.length) {
-          var overlapLevels = [], voiceLevels = [];
+          var overlapLevels = [];
           clash.forEach(function (rec) {
             if (num(win[0]) < num(rec.window[1]) && num(rec.window[0]) < num(win[1])) {
               (rec.levels || []).forEach(function (lv) {
                 if (overlapLevels.indexOf(lv) < 0) overlapLevels.push(lv);
-                if (!rec.ground && voiceLevels.indexOf(lv) < 0) voiceLevels.push(lv);
               });
             }
           });
@@ -2106,10 +2409,15 @@
           var everyLevelTaken = myLevels.length && myLevels.every(function (lv) {
             return overlapLevels.indexOf(lv) >= 0;
           });
-          var standsUnpinned = myLevels.some(function (lv) {
-            return voiceLevels.indexOf(lv) >= 0 && PINNED_LEVELS.indexOf(lv) < 0;
-          });
-          if (everyLevelTaken || standsUnpinned) {
+          // THE WORLD IS THE ONE LEVEL NO OWNERSHIP CAN SHARE OUT. Every other level is settled
+          // after the cast by `ownTheLevels` and kept by the handles themselves — one owner drives,
+          // every other cue rests. Shelf 6 asks something else entirely of this one: a folded space,
+          // a shift of what a thing is or a change of substance CONSUMES the crossing's single
+          // impossible event and NEVER STACKS, and shelf 8 says at most one folded space per
+          // crossing. Two instruments that both declare the world are two miracles however their
+          // handles are shared out, so this is decided here, at the cast, and not by ownership.
+          var worldTaken = overlapLevels.indexOf("WORLD") >= 0;
+          if (everyLevelTaken || (worldTaken && myLevels.indexOf("WORLD") >= 0)) {
             sawClash = true;
             continue;
           }
@@ -2136,14 +2444,14 @@
         var order = (taken.indexOf(iid) >= 0) ? 8
           : ((mustFill && !FILLS_THE_FRAME[iid]) ? 8
              : ((standsAbove && FILLS_THE_FRAME[iid]) ? base + 4 : base));
-        said.push({ instrument: iid, fit: r4(answer[0]), cuts: cuts, why: answer[1],
-                    order: order });
+        said.push({ instrument: iid, fit: answer[0] === null ? null : r4(answer[0]), cuts: cuts,
+                    why: answer[1], order: order });
         tiers[order].push({ id: iid, fit: answer[0] });
       }
       for (i = 0; i < tiers.length; i++) {
         if (tiers[i].length) {
-          return [dieWeighted(tiers[i], seed, key + "|" + list.join("+") + "|" + slot, 1), said,
-                  cutters, false];
+          return [dieWeighted(rankUnread(tiers[i]), seed, key + "|" + list.join("+") + "|" + slot,
+                              1), said, cutters, false];
         }
       }
       // A COLLECTION WITH NO INSTRUMENT AT ALL is the one case with nothing to rank, and it is a
@@ -2196,6 +2504,14 @@
     // `scoreFor` for the length of one composition, never accumulated in this file — and it is read
     // by the same die `coolOf` already sits inside, never a second pipeline of its own.
     var viewerMemory = null;
+    // THE INSTANT THIS VISIT HAPPENS AT — charter shelf 16's third pipeline step, and it arrives the
+    // way every other step of that pipeline arrives: the walk hands it in. It is set fresh by
+    // `scoreFor` for the length of one composition and never accumulated here, exactly as
+    // `walkPlayed` and `viewerMemory` are. Nothing in this file calls the clock, because a value the
+    // composer takes for itself is a value nothing can pin, and shelf 16's own last two sentences
+    // put the day in the VIEWER mode while a pinned seed is the JUDGING one. A request that names no
+    // instant reads at the neutral, which is the neutral `coolOf` and `viewerBiasOf` already take.
+    var visitClock = null;
     // THE BIAS ITSELF. Lingered letters gain, skipped letters cool, and NOTHING IS EVER ZERO — the
     // same law `coolOf` stands on, so the widest bound either way is 0.7/1.3, never 0. A letter this
     // file has never heard of from the visit (the ordinary case) reads at the neutral 1.
@@ -2215,12 +2531,17 @@
       return n;
     }
 
-    // THE DAY'S WEATHER BIAS — charter shelf 16's third pipeline step. A bias read off the real
-    // clock at the instant a ground is rolled: never a stored config, never a measurement of the
+    // THE DAY'S WEATHER BIAS — charter shelf 16's third pipeline step. A bias read off the instant
+    // the walk states on its own request: never a stored config, never a measurement of the
     // collection, never seeded from anything prepared ahead of the visit (his 2026-08-24 word,
-    // shelf 21 — "ты НИЧЕГО не готовишь заранее"). `new Date()` is called here and nowhere else in
-    // this file; nothing about it is cached across calls, because the day and the hour it answers
-    // for are exactly what changes visit to visit.
+    // shelf 21 — "ты НИЧЕГО не готовишь заранее"). Nothing about it is cached across calls, because
+    // the day and the hour it answers for are exactly what changes visit to visit.
+    //
+    // AND THIS FILE CALLS NO CLOCK AT ALL, which is the repair of 2026-08-26. `new Date()` stood in
+    // `weatherNow` below and was the last thing in the composer that a pinned run could not
+    // reproduce; the instant now arrives on the request as `day` and the composition is a function
+    // of the request alone. `new Date(visitClock)` below is the arithmetic that turns that stated
+    // instant into a date and an hour, and it reads no clock: it is handed the number.
     //
     // THE VOCABULARY IS THE RECORD'S OWN. The eight hue names below are `palette.hues`' own alphabet
     // — every work in the collection already carries one or more of them — so the wheel invents no
@@ -2228,19 +2549,38 @@
     // to.
     var WEATHER_HUE_WHEEL = ["red", "orange", "yellow", "green", "cyan", "blue", "violet", "magenta"];
     function weatherNow() {
-      var d = new Date();
-      var startOfYear = new Date(d.getFullYear(), 0, 1);
-      var dayOfYear = Math.floor((d.getTime() - startOfYear.getTime()) / 86400000);
-      var hourFrac = (d.getHours() + d.getMinutes() / 60) / 24;
+      // ONE CLOCK FOR EVERY VIEWER. These four readings were taken off the LOCAL getters, so two
+      // people meeting one crossing at one instant read two different hours, two different weights
+      // and two different grounds, and the family a return is matched against moved with the offset
+      // the machine happens to be set to. That offset is an input from none of the three sources
+      // charter shelf 20 allows — a picture's own record, the dramaturgy of the walk, the session —
+      // and it is not the day either: the day is one day everywhere, and local midnight is not.
+      //
+      // AND THE INSTANT ITSELF IS NOW HANDED IN RATHER THAN TAKEN. `new Date()` stood here, which is
+      // the one thing in this file that no pinned run could reproduce: a value the composer takes
+      // for itself is a value nothing can pin, so one request at one seed composed two different
+      // scores an hour apart and the family a return is matched against moved with the hour. Shelf
+      // 16 asks for both the day's bias and a seeded run that repeats, and its own last two
+      // sentences say which answers where — seeds and determinism are the JUDGING mode, ephemerality
+      // is the VIEWER mode. So the day is an input the walk states in the mode that has one, and
+      // never a call made here: a public walk sends the instant it cast the pair and the composition
+      // breathes with the day, a pinned walk sends none and the run reproduces to the pixel. The
+      // contract's own line three paragraphs on — that the die carries no clock — is true of this
+      // file now rather than aspirational, because there is no clock left inside it to read.
+      var d = new Date(visitClock);
+      var dayOfYear = Math.floor((d.getTime() - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000);
+      var hourFrac = (d.getUTCHours() + d.getUTCMinutes() / 60) / 24;
       var hueAt = ((dayOfYear + hourFrac) % WEATHER_HUE_WHEEL.length + WEATHER_HUE_WHEEL.length)
                   % WEATHER_HUE_WHEEL.length;
       return {
         hue: WEATHER_HUE_WHEEL[Math.floor(hueAt)],
-        // LIGHT: a smooth day curve, 0 at midnight and 1 at noon — read the way a photographer
-        // reads the day, never a brightness measured off any photograph on file.
+        // LIGHT: the DAY'S own smooth curve and no one viewer's, 0 at the day's start and 1 at its
+        // middle — read the way a photographer reads the day, never a brightness measured off any
+        // photograph on file, and never off the hour the reader's own machine is set to.
         light: 0.5 + 0.5 * Math.cos(2 * Math.PI * (hourFrac - 0.5)),
-        // TEMPO: the same clock, a quarter turn out of phase with light, so the day's liveliest
-        // hour is not simply its brightest one.
+        // TEMPO: the same one clock, a quarter turn out of phase with light, so the day's liveliest
+        // hour is not simply its brightest one. It is the day's liveliest hour and not the
+        // reader's: two people meeting this crossing at one instant now read one tempo.
         tempo: 0.5 + 0.5 * Math.sin(2 * Math.PI * (hourFrac - 0.5))
       };
     }
@@ -2251,9 +2591,18 @@
     // (palette, tempo, light — shelf 16's own parenthetical) and the fourth (`shared-measure`)
     // carries none of them, so it reads at the neutral 1 exactly as any candidate this file has
     // nothing to say about does.
+    //
+    // UNJUSTIFIED. Everything above argues the number's SHAPE — that it must stay under one so the
+    // day never empties a pool — and an argument about a shape is not a derivation of a value. This
+    // seat chose 0.35 and nothing measured it; every value under one satisfies the shape equally.
     var WEATHER_AMP = 0.35;
     function weatherBiasOf(item) {
       if (!item || !item.kind) return 1;
+      // A REQUEST THAT NAMES NO DAY GETS NO DAY'S BIAS, and that is the neutral rather than a
+      // refusal: the reading is 1 on every candidate, the pair's own strongest reading ranks the
+      // pool alone, and the crossing plays. It is the same neutral `coolOf` gives a letter no walk
+      // has played and `viewerBiasOf` gives a letter no visit has heard of.
+      if (visitClock === null) return 1;
       var w = weatherNow();
       if (item.kind === "shared-palette-region") {
         var hues = item.hues || [];
@@ -2374,17 +2723,59 @@
       out.push({ id: "shared-rotational-order", kind: "shared-rotational-order", fit: turn,
                  order: na, strength: r4(turn) });
       // THE SHARED PALETTE REGION. Its strength is the share of the departing work's own hues the
-      // arriving work also carries, where both stand on one rung of the ladder. The elements builder
-      // reads no `strength` off this pivot's value, so the ROW's strength stays at nothing exactly
-      // as it always has — what is new is that the share above ranks the pivot instead of a
-      // precedence order deciding it.
-      var ra = (a.palette || {}).rung, rb = (b.palette || {}).rung;
+      // arriving work also carries, where both stand on one rung of the ladder.
+      //
+      // THE STRENGTH STOOD AT A TYPED NOTHING UNTIL NOW, and the reasoning was that the elements
+      // builder reads no `strength` off this pivot's value. That was true of the builder and false
+      // of everything else: `compose` opens the travelling voice's own window at
+      // `clamp01(pivot.strength)`, so on every pair that crossed on this ground the travel opened at
+      // exactly 0 — the same instant the ground opens — and two windows that begin together are the
+      // tie that used to be settled by comparing cue ids as text. A number that could have been
+      // written before either photograph was seen is charter shelf 21's own named failure, and this
+      // one was reaching the composition by a road nobody had traced. The share above IS the
+      // strength of a shared palette region, and every neighbouring candidate on this list already
+      // publishes its own reading in both fields, so this one does too.
+      // WHAT WENT, AND WHY IT COULD NOT STAND. This read `ra === rb` — the two works' ladder RUNGS,
+      // equal or not — as a gate in front of the share, and one expression broke two laws.
+      //
+      // The rung is a bucket whose four coloured cuts are the collection's own top quarter on their
+      // defining measure (the record builder's `classify_tone`), so which rung a photograph stands
+      // on is a statement about the OTHER photographs it was measured beside. Hanging one more
+      // picture moves an existing work's rung, and the die below reads the whole pool's weight as
+      // one sum — so it moves not only whether these two cross on colour but which of the other
+      // grounds the same die lands on, and with it the pivot's transform and the family §4.8 matches
+      // a return against. A third photograph deciding a crossing between two others is charter
+      // shelf 20's own sentence at the place where it decides one.
+      //
+      // And an equality between two bucket names is a GATE. A candidate whose weight is exactly
+      // nothing holds a stretch of the die's running sum of exactly no width, so it is never rolled
+      // while any rival reads anything: two works standing a hair apart on the ladder had this
+      // ground REFUSED rather than ranked. That is the admission test `groundReadings` a few screens
+      // above was already cured of, and his word of 2026-08-18 09:51 is the cure — a measurement
+      // ranks which genre suits a pair and shapes the one that wins, and never admits.
+      //
+      // WHAT STANDS INSTEAD is the ladder's own CONTINUOUS coordinate, which the record already
+      // carries as `palette.colourfulness`: half how much colour is present (the chroma at the
+      // coloured end of the frame against a fixed perceptual anchor) and half how wide it is spread
+      // (the normalised entropy of the work's own hue histogram). Both halves are read off one
+      // picture's own pixels and both are 0 at grey and 1 at a frankly polychrome frame, so the
+      // coordinate is in [0, 1] by construction and the closeness below is too. The rung itself
+      // still travels on the candidate, where a person reads it — it names a palette world and
+      // naming is what a name is for; it decides nothing here.
+      var ra = (a.palette || {}).rung;
       var mine = (a.palette || {}).hues || [], theirs = (b.palette || {}).hues || [], hues = [];
       for (i = 0; i < mine.length; i++) if (theirs.indexOf(mine[i]) >= 0) hues.push(mine[i]);
       hues.sort();
+      var wa = (a.palette || {}).colourfulness, wb = (b.palette || {}).colourfulness;
+      var together = (typeof wa === "number" && typeof wb === "number")
+        ? 1 - Math.abs(clamp01(wa) - clamp01(wb)) : 1;
+      // WHERE EITHER WORK NAMES NO HUE THERE IS NOTHING TO NARROW, and the closeness stands alone.
+      // Two grey frames share the grey end of the ladder whole, and the line this replaces wrote
+      // them down to nothing because neither had a hue to overlap with the other's.
+      var overlap = (mine.length && theirs.length) ? hues.length / mine.length : 1;
+      var paletteShare = together * overlap;
       out.push({ id: "shared-palette-region", kind: "shared-palette-region",
-                 fit: (ra === rb && mine.length) ? hues.length / mine.length : 0,
-                 hues: hues, rung: ra, strength: r4(0.0) });
+                 fit: paletteShare, hues: hues, rung: ra, strength: r4(paletteShare) });
       // THE TONAL ZONES AND THE DETAIL SCALES. Two decompositions that read on any two photographs
       // by construction, so this candidate answers for every pair. It is ranked on its own reading
       // like every other and reached by the same code path — there is no «when nothing else, then
@@ -2457,6 +2848,22 @@
     // What is left is the arithmetic: the weaker readiness, narrowed by how unevenly the two ends
     // are prepared. The guard on a zero denominator stays, because it is arithmetic rather than
     // judgement.
+    //
+    // A RECORD THAT CARRIES NO READINESS READS AT NOTHING, and does not throw. `passageFor`'s own
+    // two refusals — the only two left in this file — ask a record for an `id` and for nothing else,
+    // so a record carrying an id alone is a record this file has already agreed to compose over.
+    // This reading indexed the field straight (`ra[0]`) and threw on exactly that record, and
+    // charter shelf 21 says no branch may terminate in «no crossing»: a throw is worse than a
+    // refusal, because a refusal at least names itself. Every neighbouring reading in this file
+    // answers a missing field with that field's own neutral — `readingOf` for a share, `Number(x)
+    // || 0` for a length, `null` for a horizon — and the neutral here is nothing: a pair whose
+    // preparedness is exactly zero already reads at nothing by the line below, so a pair with no
+    // readiness recorded at all reads the same and ranks last, and still crosses.
+    function readinessOf(w) {
+      var r = w && w.readiness;
+      if (Object.prototype.toString.call(r) !== "[object Array]" || r.length < 2) return [0, 0];
+      return [Number(r[0]) || 0, Number(r[1]) || 0];
+    }
     function pairScore(ra, rb) {
       var sa = ra[0], pa = ra[1], sb = rb[0], pb = rb[1];
       if (pa <= 0 || pb <= 0) return 0.0;
@@ -2492,7 +2899,7 @@
         direction: direction,
         pivot: { kind: kind, value: value },
         doorFraming: { from: fromW.door, to: toW.door },
-        readiness: r4(pairScore(fromW.readiness, toW.readiness)),
+        readiness: r4(pairScore(readinessOf(fromW), readinessOf(toW))),
         seed: seed
       };
     }
@@ -2699,9 +3106,17 @@
       if (measured.indexOf(MOTIF_SEAM) >= 0) {
         y = (st.horizon || {}).y;
         if (y !== null && y !== undefined) {
-          // A MEASURED SEAM IS ITS OWN EVIDENCE. The motif list carries only what was measured, so a
-          // seam standing on it reads whole; the record publishes no strength of its own for it.
-          pool.push({ kind: "horizon-seam", at: [r4(0.5), r4(y)], fit: 1 });
+          // THE SEAM'S OWN STRENGTH, AND THE RECORD DOES PUBLISH ONE. This read `fit: 1` on the
+          // reasoning that the motif list carries only what was measured, so a seam standing on it
+          // reads whole. The list says the seam is THERE; how strongly it reads is a different fact
+          // and `structure.horizon.seam` carries it — the same field `adrift`'s own seam handles are
+          // driven from a few screens below, so the reading was in hand the whole time. A locus
+          // published at a flat 1 put the arriving voice's own window at 0 on every pair that
+          // carried a seam at all, which is a number that could have been written before either
+          // photograph was seen. Where the record carries no strength the seam still stands and
+          // `readingOf` answers for it exactly as it does for the pole and the gate.
+          pool.push({ kind: "horizon-seam", at: [r4(0.5), r4(y)],
+                      fit: readingOf((st.horizon || {}).seam) });
         }
       }
       if (measured.indexOf(MOTIF_GATE) >= 0 && (mot.gateGap || 0) > 0) {
@@ -2822,10 +3237,12 @@
     // and made a middle is a middle, not a refusal — the visitor sees a passage either way, and the
     // plan says which one it is.
     //
-    // What this replaces: a hard refusal. It cost 73 ordered pairs of the real collection at a
-    // culmination, every one of them a crossing whose frame folds under a pivot with an arrival
-    // beside it and no travelling move — one letter where the culmination row asks for two, which
-    // is a middle by the row's own reading and was a glide by the code's.
+    // What this replaces: a hard refusal. The three rows leave GAPS between them, and the reachable
+    // count space is enumerable from `voiceTheCues`' own branches rather than from any collection —
+    // a crossing whose frame folds under a pivot with an arrival beside it and no travelling move
+    // makes one letter where the culmination row asks for two, which is a middle by the row's own
+    // reading and was a glide by the code's. A refusal on a reachable gap is a defect on the gap's
+    // own account, and the gap is reachable whatever pictures are hung.
     function tierFor(voices, tier, singsColour) {
       // `accs` SEEDS AT 1 FOR THE CAMERA, deliberately — docs/design/PASS-API-V1.md:463-472, "the
       // camera counts as one accompaniment, amended 2026-08-14 10:31".
@@ -2837,11 +3254,11 @@
       }
       // THE COLOUR VOICE COUNTS ONCE, exactly, shelf 17's own words: colour is an accompaniment
       // voice (shelf 11) and «EVERYTHING counts; no "never counted" class exists». `singsColour` is
-      // whether SOME cue of this cast owns the LIGHT-COLOUR level — decided in `compose`'s own cast,
-      // the one place that now knows it, since the levels law is answered there (the note over
-      // `castForKinds`) and never leaves two cues holding LIGHT-COLOUR at once to begin with. One
-      // owner, however many of the colour-and-light handles it drives underneath that ownership
-      // (`singsLightColour`'s own three call sites) — the voice is one, not a count of handles.
+      // whether SOME cue of this cast declares the LIGHT-COLOUR level — read in `compose` off the
+      // cues that survived its budget loop. However many cues declare it, `ownTheLevels` leaves
+      // exactly one of them owning it and takes that level's handles off every other cue's track
+      // list, so what reaches the picture is one colour voice however many of its own handles that
+      // one owner drives underneath it — the voice is one, not a count of handles.
       if (singsColour) accs += 1;
       var counts = { letters: letters, accompaniments: accs, miracles: miracles };
       function fitsRow(r) {
@@ -2988,43 +3405,143 @@
       return [stacks, null];
     }
 
+    // WHO DRIVES A LEVEL, AND WHEN. Shelf 17 allows one ACTIVE voice per structural level, and the
+    // word that carries the whole law is «active». `castForKinds` already reads it that way: it
+    // admits a candidate onto an occupied level provided the two windows never meet, because two
+    // voices that are never live together are not two voices on one level. That release was
+    // deliberate — the blanket exclusion it replaced starved a three-voice cast down to whatever
+    // handful of instruments never touch the ground's own levels.
+    //
+    // THIS SETTLED OWNERSHIP WITH NO REFERENCE TO ANY WINDOW, AND TOOK THE RELEASE BACK IN SILENCE.
+    // One owner per level over every holder, for the whole passage: so the very cue the cast let in
+    // because its window does not meet another's had that level's handles stripped from it anyway,
+    // for the whole passage, and its `levels` list emptied. The plain case is `overlay`, which
+    // declares exactly one level and drives it with every handle it publishes but `mix`: cast as the
+    // arrival beside a travelling voice whose window has already shut, it ended holding nothing,
+    // drawing its picture and driving none of it. The same shape reached the GROUND, which is on
+    // screen from the first frame to the last.
+    //
+    // So a level is settled among the cues whose windows actually MEET, and a cue is judged once per
+    // level against the rivals it is live beside. Two cues that never overlap can each own the same
+    // level in their own stretch of the passage, which is what the cast promised them.
+    //
+    // WHICH RIVAL WINS, AS A STATED RULE. Comparing cue ids as text stood here — `"arrival"` sorts
+    // before `"travel"`, so the arrival won every tie — and that is alphabetical order standing in
+    // for a rule nobody wrote. The rule is need:
+    //
+    //   1. ONLY A CUE THAT DRIVES A HANDLE ON THE LEVEL CONTENDS FOR IT. A cue can hold a level and
+    //      move nothing on it — its manifest may declare a level no handle of its own drives, or
+    //      every handle it has there may be one the register names no reading for, which
+    //      `tracksFor` drops. Either way, owning it would silence whichever cue does drive it, for
+    //      no picture at all. Where no holder drives it, the holders contend as they are and nobody
+    //      is silenced, because there is nothing to silence.
+    //   2. THE GROUND HOLDS THE SURFACE. Charter shelf 4 makes the pivot the pair's invariant shared
+    //      part, held throughout, and the surface is the floor it holds.
+    //   3. OTHERWISE THE CUE THAT NEEDS THE LEVEL MOST TAKES IT — the one with the fewest levels of
+    //      its own it actually drives. A cue with one level has nowhere else to be; a cue with two
+    //      keeps its voice either way. This is the sentence the alphabet was standing in for.
+    //   4. EQUAL NEED GOES TO THE CUE THAT OPENS FIRST, which is the one that establishes the level.
+    //   5. AND EQUAL OPENING GOES TO THE LOWER CUE OF THE STACK, which is a fact about the score
+    //      rather than about the spelling of a name.
     function ownTheLevels(cues, pivotCueId) {
       var byLevel = {}, out = {}, i, j, cue, lv;
       for (i = 0; i < cues.length; i++) {
         cue = cues[i];
+        out[cue.id] = {};
         for (j = 0; j < cue.levels.length; j++) {
           lv = cue.levels[j];
           if (!byLevel[lv]) byLevel[lv] = [];
           byLevel[lv].push(cue);
         }
-        out[cue.id] = {};
       }
       Object.keys(byLevel).sort().forEach(function (level) {
-        var holders = byLevel[level], owner = null, pool, k;
-        if (level === "SURFACE") {
-          for (k = 0; k < holders.length; k++) {
-            if (holders[k].id === pivotCueId) { owner = holders[k]; break; }
-          }
-          if (owner === null) owner = earliest(holders);
-        } else {
-          pool = holders.filter(function (c) { return c.id !== pivotCueId; });
-          owner = earliest(pool.length ? pool : holders);
-        }
-        for (k = 0; k < holders.length; k++) {
-          out[holders[k].id][level] = holders[k] === owner ? "owns" : ("accompanies:" + owner.id);
-        }
+        var holders = byLevel[level];
+        holders.forEach(function (c) {
+          var group = holders.filter(function (d) { return d === c || meets(c, d); });
+          var owner = preferredOn(group, level, pivotCueId);
+          out[c.id][level] = owner === c ? "owns" : ("accompanies:" + owner.id);
+        });
       });
+      // EVERY CUE IN A SCORE OWNS A LEVEL OR DRIVES A LEVELLED HANDLE, and this is where that stops
+      // being a description and becomes a bound. A cue that owns nothing anywhere and drives nothing
+      // of its own is drawing a picture and saying nothing with it. Where one ends that way it is
+      // given back the level it needs most, taken from a rival that has somewhere else to be; a
+      // rival with nowhere else to be keeps it, because moving the silence from one cue to another
+      // answers nothing.
+      for (i = 0; i < cues.length; i++) {
+        cue = cues[i];
+        if (ownsAnything(out[cue.id]) || !drivenLevelsOf(cue).length) continue;
+        var want = needOrder(cue, out[cue.id]);
+        for (j = 0; j < want.length; j++) {
+          var lvl = want[j], holder = null, k;
+          for (k = 0; k < cues.length; k++) {
+            if (out[cues[k].id][lvl] === "owns" && meets(cue, cues[k])) holder = cues[k];
+          }
+          if (holder && drivenLevelsOf(holder).length > 1) {
+            out[holder.id][lvl] = "accompanies:" + cue.id;
+            out[cue.id][lvl] = "owns";
+            break;
+          }
+        }
+      }
       return out;
     }
 
-    function earliest(cues) {
-      var best = cues[0], i;
-      for (i = 1; i < cues.length; i++) {
-        var a = cues[i], b = best;
-        if (num(a.window[0]) < num(b.window[0])
-            || (num(a.window[0]) === num(b.window[0]) && a.id < b.id)) best = a;
+    // Two cues are live together when their windows meet at all.
+    function meets(a, b) {
+      return num(a.window[0]) < num(b.window[1]) && num(b.window[0]) < num(a.window[1]);
+    }
+
+    // Whether this cue drives any handle at all on the named level, read off the tracks it was built
+    // with and the level each of those handles publishes. A handle the register names no reading for
+    // never reached the track list, so this reads what the cue can actually move rather than what
+    // its manifest says it occupies.
+    function drivesOn(cue, level) {
+      var iid = cue.instrument.id, hs = Object.keys(cue.tracks || {}), i;
+      for (i = 0; i < hs.length; i++) if (levelOf(iid, hs[i]) === level) return true;
+      return false;
+    }
+
+    // The levels this cue actually moves something on, which is how much it needs any one of them.
+    function drivenLevelsOf(cue) {
+      var out = [], i;
+      for (i = 0; i < cue.levels.length; i++) {
+        if (drivesOn(cue, cue.levels[i]) && out.indexOf(cue.levels[i]) < 0) out.push(cue.levels[i]);
+      }
+      return out;
+    }
+
+    function ownsAnything(record) {
+      var k;
+      for (k in record) if (record[k] === "owns") return true;
+      return false;
+    }
+
+    // The levels this cue drives, neediest first, skipping any it already owns.
+    function needOrder(cue, record) {
+      return drivenLevelsOf(cue).filter(function (lv) { return record[lv] !== "owns"; }).sort();
+    }
+
+    function preferredOn(group, level, pivotCueId) {
+      var movers = group.filter(function (c) { return drivesOn(c, level); });
+      var pool = movers.length ? movers : group, i, best;
+      if (level === "SURFACE") {
+        for (i = 0; i < pool.length; i++) if (pool[i].id === pivotCueId) return pool[i];
+      }
+      best = pool[0];
+      for (i = 1; i < pool.length; i++) {
+        if (needier(pool[i], best)) best = pool[i];
       }
       return best;
+    }
+
+    // Clauses 3, 4 and 5 of the rule above, in that order.
+    function needier(a, b) {
+      var na = drivenLevelsOf(a).length, nb = drivenLevelsOf(b).length;
+      if (na !== nb) return na < nb;
+      var oa = num(a.window[0]), ob = num(b.window[0]);
+      if (oa !== ob) return oa < ob;
+      return num(a.stack) < num(b.stack);
     }
 
     // THE CAMERA'S OWN FLIGHT, derived from the two works' door framings.
@@ -3038,19 +3555,22 @@
     // two door framings differ by a ratio, and the logarithm of that ratio is what travels.
     //
     // THE DEMAND IS COMPRESSED, NEVER CLIPPED (2026-08-17 22:3x, on the judge's word, after this
-    // lane measured the collection and the composer lane measured the saturation). A clamp put
-    // 9 280 of the 14 520 ordered pairs on exactly the same number: three passages in five approached
-    // identically, and the approach — the one thing a person feels most directly — carried no reading
-    // of any pair. That is his 19:13 word about breadth failing in the plainest place there is.
+    // lane measured the collection and the composer lane measured the saturation). A clamp is
+    // CONSTANT on the whole half-line above its bound, so every demand past that bound arrives as the
+    // same number — the ordering is destroyed there for every input, and the approach, the one thing
+    // a person feels most directly, carries no reading of any pair on any of them. That is his 19:13
+    // word about breadth failing in the plainest place there is.
     //
-    // What the door framings ask for has a median of 2.05 times, a nine-tenths point of 6.44 and a
-    // worst of 86.3: a smooth tail with no knee, so no clamp point is the right one and clamping is
-    // the wrong shape whatever number it carries. `CAP · a / (|a| + CAP)` is the same bound written
-    // as a limit instead of a wall — it keeps the sign, it is monotone, so a pair asking for more
-    // still gets more than a pair asking for less, and it APPROACHES the cap without ever reaching
-    // it. Measured over the same 14 520 pairs: nothing lands on the bound where 9 280 did, distinct
-    // approaches rise from 3 453 to 5 957, and the worst magnification falls to 1.568 times from
-    // 1.649. The bound is not loosened by a hair — it is held more tightly than the clamp held it.
+    // And no clamp point is the right one, because what the door framings ask for is the logarithm
+    // of a ratio of two framings: it runs the whole real line and is bounded above by nothing, so
+    // there is no knee to set a cap at and clamping is the wrong SHAPE whatever number it carries.
+    // `CAP · a / (|a| + CAP)` is the same bound written as a limit instead of a wall — it keeps the
+    // sign, it is monotone, so a pair asking for more still gets more than a pair asking for less,
+    // and it APPROACHES the cap without ever reaching it. Both facts hold over the whole real line
+    // and not over any set of photographs: the magnitude of the expression stays strictly under CAP
+    // for every finite demand, so NOTHING can land on the bound where a clamp put everything past
+    // it; and the map is strictly monotone, so two different demands stay two different approaches.
+    // The bound is not loosened by a hair — it is held more tightly than the clamp held it.
     function cameraFlight(pair, axis, locus) {
       var doors = pair.doorFraming;
       var stepFrom = (doors.from || {}).stepPx, stepTo = (doors.to || {}).stepPx;
@@ -3171,7 +3691,80 @@
       return out;
     }
 
-    function resourcesBlock(variant) {
+    // THE STRUCTURAL LEVEL ONE HANDLE DRIVES, read off the instrument's own manifest. A handle that
+    // drives no structural level — the crossing's own dial, the module's time, the score's die, the
+    // fleet's judge channels — declares `null` and answers to no ownership at all.
+    function levelOf(iid, handle) {
+      var m = iid && MANIFESTS[iid];
+      var spec = m && m.handles ? m.handles[handle] : null;
+      return spec && spec.level ? spec.level : null;
+    }
+
+    // WHETHER THIS CUE MAY DRIVE THIS HANDLE, by shelf 17's levels law. A handle with no level of
+    // its own is always driven; one that drives a level is driven only by the cue that owns that
+    // level. `levelOwnership` is `ownTheLevels`'s own record, settled once per plan.
+    function ownsLevelOf(cue, iid, handle) {
+      var lv = levelOf(iid, handle);
+      return !lv || !!(cue.levelOwnership && cue.levelOwnership[lv] === "owns");
+    }
+
+    // The track list a cue is left with once the levels law has run over it.
+    function ownedTracks(iid, tracks, ownership) {
+      var out = {}, hs = Object.keys(tracks), i, lv;
+      for (i = 0; i < hs.length; i++) {
+        lv = levelOf(iid, hs[i]);
+        if (lv && ownership[lv] !== "owns") continue;
+        out[hs[i]] = tracks[hs[i]];
+      }
+      return out;
+    }
+
+    // WHAT A CUE COSTS, AND IT IS THE INSTRUMENT'S OWN DECLARATION rather than this file's.
+    //
+    // §7 is unambiguous about who owns this: "an instrument's manifest declares textures, texture
+    // slots, framebuffers, ping-pong pairs, programs, passes, per-frame samples and a byte estimate,
+    // PER QUALITY VARIANT", the host grants against that declaration at `prepare`, counts what was
+    // actually created against it at runtime, and conformance row 22 reds a declaration that
+    // understates its bytes. The composer's job is to carry the declaration onto the cue, never to
+    // author one — a cost the composer invented would be a number the host then measured a real
+    // instrument against.
+    //
+    // WHAT STOOD HERE AND WHY IT COULD NOT STAND. One block, typed in this function, written into
+    // all three quality blocks of every cue of every score: `bytesEstimate: 0` at every quality, the
+    // same counts at every quality. Three things followed by construction and none of them about any
+    // pair. No crossing could declare a cost different from any other, because one function wrote
+    // them all. The quality ladder could not be walked on cost, because the three rungs it writes are
+    // the same numbers. And row 22 had nothing to judge: a declaration of nought bytes is understated
+    // by every real allocation there can ever be, so the row either never fires or fires on
+    // everything, and neither reading is a test.
+    //
+    // WHAT IS OWED, AND BY WHOM. This function now reads the cue's own instrument's published
+    // declaration for the variant asked. Two things have to land before it can read one, and neither
+    // is this file's:
+    //
+    //   · THE INSTRUMENTS must publish real per-variant numbers. All 27 files carry a `resources`
+    //     block today and all 27 carry the SAME one, `bytesEstimate` at nothing — a placeholder
+    //     repeated fifty-four times, not twenty-seven measurements agreeing.
+    //   · THE SITE'S STAGING STEP must carry the block into the settings record. It projects each
+    //     manifest down to a fixed field list — api, coverage, cuts, handles, levels, roles — and
+    //     `resources` is not on it, so no published manifest this file is ever handed carries one.
+    //
+    // UNTIL BOTH LAND the placeholder stands, and it stands where a reader can see it is one. It is
+    // not a substitute invented here for a measurement: it is the fleet's own placeholder, named as
+    // such, kept so no score loses a field it already carries, and it goes the moment the record
+    // carries the real declaration — with no further change to this file.
+    function resourcesBlock(iid, variant) {
+      var own = ((MANIFESTS[iid] || {}).resources || {})[variant];
+      if (own) {
+        return { bytesEstimate: num(own.bytesEstimate) || 0,
+                 framebuffers: num(own.framebuffers) || 0,
+                 passes: num(own.passes) || 0,
+                 pingPong: num(own.pingPong) || 0,
+                 programs: num(own.programs) || 0,
+                 textureSlots: num(own.textureSlots) || 0,
+                 textures: num(own.textures) || 0,
+                 variant: variant };
+      }
       return { bytesEstimate: 0, framebuffers: 0, passes: 1, pingPong: 0, programs: 1,
                textureSlots: 2, textures: 0, variant: variant };
     }
@@ -3209,7 +3802,16 @@
           instrument: { api: INSTRUMENTS[instr].api, id: instr },
           voice: voices[cueId],
           roles: spec.roles[cueId].slice(),
-          levels: INSTRUMENTS[instr].levels.slice(),
+          // THE LEVEL A CROSSING GAVE UP IS OWNED BY NOBODY. `spec.colourVoice === false` is
+          // `compose`'s own word that shelf 17's accompaniment ceiling was already spent by the
+          // camera and the ground. The level leaves every cue's declared list, `ownTheLevels` gives
+          // it to no one, `ownedTracks` takes its handles off the track lists, and each
+          // instrument's own published default stands there — the same road every non-owner in this
+          // score already takes. No cue, no instrument and no move is given up. A plan built by some
+          // other road carries no such field and is unchanged.
+          levels: INSTRUMENTS[instr].levels.filter(function (lv) {
+            return spec.colourVoice !== false || lv !== "LIGHT-COLOUR";
+          }),
           window: [flt(windows[cueId][0]), flt(windows[cueId][1])],
           works: ["a", "b"],
           stack: stacks[cueId],
@@ -3217,13 +3819,58 @@
           doors: { "in": { handle: "mix", value: 0, measured: true },
                    out: { handle: "mix", value: 1, measured: true } },
           tracks: tracksFor(instr, cueId),
-          resources: { lean: resourcesBlock("lean"), standard: resourcesBlock("standard"),
-                       rich: resourcesBlock("rich") }
+          resources: { lean: resourcesBlock(instr, "lean"),
+                       standard: resourcesBlock(instr, "standard"),
+                       rich: resourcesBlock(instr, "rich") }
         });
+      }
+      // THE ENTRY DOOR — the charter's build ladder, step 0, and the oldest debt in the engine.
+      // Every module was built permanently wet, so a voice could not join a running picture without
+      // replacing it; the reserved dry `presence` is what closed that, and this is the plan's half
+      // of the contract.
+      //
+      // A CUE THAT STANDS OVER ANOTHER NAMES ITS DOORS ON THE DRY, at nothing on both sides. The
+      // host's own two door laws are chosen by where a voice stands (`pass-layer.js`'s `standsOver`
+      // and `presenceWhyNo`): the LOWEST voice is drawn onto the cleared buffer with blending off
+      // and must be the departing or the arriving work whole at its doors, while a voice standing
+      // above one must be ABSENT at its doors so that what stands beneath shows whole and untouched.
+      // A door record names one handle and two values, so an upper voice's door IS its dry — the
+      // shape `tests/test_pass_seam.py` walks — and its crossing dial goes on running across its own
+      // window like any other letter's, which is what keeps it off its own door proof mid-passage.
+      //
+      // IT FIRES EXACTLY WHERE THE RESERVED NAME IS MEANT. `sourceOf` answers `entry-door` only for
+      // an instrument whose `presence` is the fleet's reserved dry; `overlay`'s own `presence` is a
+      // LIGHT-COLOUR reading of the pair and carries a scoped row of its own, so its doors and its
+      // scores are untouched by this and stay byte-identical.
+      //
+      // AND THE LOWEST CUE IS NEVER GIVEN A ZERO DOOR HERE. `stack` of nought is the ground — the
+      // one cue that fills the frame — so the branch cannot write the door `presenceWhyNo` refuses.
+      for (i = 0; i < cues.length; i++) {
+        if (num(cues[i].stack) > 0 && cues[i].tracks.presence
+            && (sourceOf(cues[i].instrument.id, "presence") || [])[0] === "entry-door") {
+          cues[i].doors = { "in": { handle: "presence", value: 0, measured: true },
+                            out: { handle: "presence", value: 0, measured: true } };
+        }
       }
       var levels = ownTheLevels(cues, "pivot");
       for (i = 0; i < cues.length; i++) {
         cues[i].levelOwnership = levels[cues[i].id];
+        // A NON-OWNER RESTS ON THE LEVEL IT LOST AND GOES ON PLAYING THE LEVEL IT OWNS. This is
+        // shelf 17's levels law applied where a viewer can actually see it — at the handles. Every
+        // handle an instrument publishes now declares, in that instrument's own manifest, the
+        // structural level it drives; a cue that does not own that level has the handle taken off
+        // its track list here, so the client writes the manifest's own default for it and the cue
+        // is genuinely silent there. The cue goes on driving every handle whose level it does own,
+        // and every handle that drives no structural level at all.
+        //
+        // WHAT THIS REPLACES. One level had this gate and five did not: `singsLightColour` held the
+        // eighteen colour and light handles of three instruments, and on CELL, SURFACE, TEXTURE,
+        // CELL CONTENT and WORLD nothing pinned anything — a cue that did not own CELL still wrote
+        // every CELL-driving handle it had and still drew its pattern, so two patterns landed in one
+        // passage and shelf 18's ban on pattern stacked on pattern was broken in the plain sense a
+        // person sees on the screen. The gate is the same one; what changed is that the fact it
+        // reads is published per handle instead of being known for one level in this file.
+        cues[i].tracks = ownedTracks(cues[i].instrument.id, cues[i].tracks, levels[cues[i].id]);
         cues[i].levels = cues[i].levels.filter(function (lv) {
           return levels[cues[i].id][lv] === "owns";
         });
@@ -3252,7 +3899,9 @@
       var quality = {};
       ["lean", "standard", "rich"].forEach(function (v) {
         var perCue = {};
-        cues.forEach(function (c) { perCue[c.id] = { resources: resourcesBlock(v) }; });
+        cues.forEach(function (c) {
+          perCue[c.id] = { resources: resourcesBlock(c.instrument.id, v) };
+        });
         quality[v] = { renderScale: null, cues: perCue };
       });
       return {
@@ -3476,8 +4125,9 @@
       // arriving work's blurred mass grows first with its detail growing into it — two
       // decompositions that read on any two photographs by construction, which is why this genre
       // answers for every pair. It carried a special status until 2026-08-18: it was reached only
-      // when every other road had turned the pair away, so 83 per cent of compositions took it with
-      // one cut and one instrument. They were never choosing it — the floors pushed them there. Its
+      // when every other road had turned the pair away, and a candidate reachable only after every
+      // rival has refused is selected by those refusals and not by its own fit. They were never
+      // choosing it — the floors pushed them there. Its
       // fit is the pair's own tonal and spectral closeness and it competes on that, like the seven
       // above it.
       var bridge = tonalSpectral(fromW, toW);
@@ -3562,17 +4212,55 @@
     // them onto the harmonic grammar, where a return is a landing at home and an entrance the
     // motion away that prepares. Their two numbers are this seat's and stand on the revisit list.
     //
-    // The role does two things and no third. It BOUNDS what the composer emits, which is the budget
-    // above. And it names the register the composer reaches for — which roads belong to a quiet
-    // link and which to a culmination — so two neighbouring edges of one walk stop resembling each
-    // other even where the two pairs read alike.
+    // The role does three things and no fourth. It BOUNDS what the composer emits, which is the
+    // budget above — the letters it may spend and the tier it may reach. It says whether the step
+    // may spend a miracle at all. And it names the register the composer reaches for — which roads
+    // belong to a quiet link and which to a culmination — so two neighbouring edges of one walk stop
+    // resembling each other even where the two pairs read alike.
+    //
+    // THE LENGTH IS A BAND AND NEVER A NUMBER, AND THE BAND IS THE TIER'S. Each role carried ONE
+    // typed duration here until now — 5000, 3000, 6500, 11000, 4000 — and the composition read it
+    // straight off, so two different pairs at one role ran the same number of milliseconds to the
+    // millisecond. That is a parameter pinned to one value for the whole crossing, which is the
+    // named failure. Shelf 17 names THREE bands of seconds and no more — 2 to 4 at a quiet tier,
+    // 5 to 8 at a middle, 9 to 14 at a culmination — so a role gets no band of its own: it gets the
+    // band of the tier it declares, read off `TIERS` above rather than copied beside it, and the
+    // pair's own reading places the length inside that band (`compose`, where the length is taken).
+    // A fourth band written here would be this seat naming a number the charter does not.
     var ROLE_BUDGETS = {
-      "entrance":    { tier: "middle", duration: 5000, miracle: false, letters: 2 },
-      "quiet link":  { tier: "quiet", duration: 3000, miracle: false, letters: 1 },
-      "middle":      { tier: "middle", duration: 6500, miracle: true, letters: 2 },
-      "culmination": { tier: "culmination", duration: 11000, miracle: true, letters: 3 },
-      "return":      { tier: "quiet", duration: 4000, miracle: false, letters: 1 }
+      "entrance":    { tier: "middle", miracle: false, letters: 2 },
+      "quiet link":  { tier: "quiet", miracle: false, letters: 1 },
+      "middle":      { tier: "middle", miracle: true, letters: 2 },
+      "culmination": { tier: "culmination", miracle: true, letters: 3 },
+      "return":      { tier: "quiet", miracle: false, letters: 1 }
     };
+    // Shelf 17's band of seconds for a named tier, and the one road to it. `TIERS` is where the
+    // three bands live; a caller naming a tier that has no row is answered with the middle's, the
+    // same default every other reading of an unstated tier takes.
+    function bandOfTier(tier) {
+      var i;
+      for (i = 0; i < TIERS.length; i++) if (TIERS[i].tier === tier) return TIERS[i].band;
+      return TIERS[1].band;
+    }
+    // SHELF 17'S OWN CEILING FOR ONE COLUMN OF A NAMED TIER, and the one road to it. `TIERS` is
+    // where the three rows live, so a ceiling is read off the row rather than copied beside it; a
+    // caller naming a tier that has no row is answered with the middle's, the same default
+    // `bandOfTier` above already takes.
+    function ceilingOfTier(tier, column) {
+      var i;
+      for (i = 0; i < TIERS.length; i++) if (TIERS[i].tier === tier) return TIERS[i][column][1];
+      return TIERS[1][column][1];
+    }
+    // WHERE A LENGTH LANDS INSIDE A BAND. It is a pure arithmetic and it travels beside the entry
+    // with the others (the note over the export at the foot of this file), because what it claims is
+    // a claim about NUMBERS: every band this table names, walked against every share between nothing
+    // and whole, lands between the band's own two numbers. `clamp01` is the last thing that touches
+    // the share, so a caller handing it anything at all cannot put the length outside; a share of 0
+    // gives the floor exactly, a share of 1 the ceiling exactly, and the placement is monotone
+    // between them because it is a straight line in the share.
+    function lengthInBand(band, share) {
+      return roundToInt(band[0] + clamp01(share) * (band[1] - band[0]));
+    }
     // The register each role reaches for, as a list of roads in the order the role prefers them. A
     // role whose list catches none of the roads a pair qualifies for takes what qualifies and says
     // so on the plan, because a step of the walk still has to play.
@@ -3708,17 +4396,42 @@
     // lowest cue of a stack to leave nothing of the frame open, and an instrument declares in its
     // own manifest whether it does — so this ranks the ones that do and hands the best-suited over.
     // It is what a stack with no ground reaches for before any voice is given up.
-    function bestFilling(fromW, toW, avoid, noMiracle, seed, key) {
+    // `sole` NAMES THE LEVELS A VOICE ABOVE THE GROUND CANNOT GIVE UP — the ones it drives and has
+    // no second level of its own to fall back on. A ground that declares one of them takes that
+    // voice's only level and leaves it drawing a picture it drives nothing of, which is the one
+    // thing no cue of a score may end up doing. The swap runs AFTER the voices above are cast, so
+    // this is the only place that can know it.
+    function bestFilling(fromW, toW, avoid, noMiracle, seed, key, sole) {
       var pool = [], i, iid;
       for (i = 0; i < ALL_INSTRUMENTS.length; i++) {
         iid = ALL_INSTRUMENTS[i];
         if (!FILLS_THE_FRAME[iid]) continue;
         if ((avoid || []).indexOf(iid) >= 0) continue;
         if (noMiracle && spendsTheMiracle(iid)) continue;
+        if ((sole || []).length && (MANIFESTS[iid].levels || []).some(function (lv) {
+          return sole.indexOf(lv) >= 0;
+        })) continue;
         pool.push({ id: iid, fit: suitsPair(iid, fromW, toW)[0] });
       }
       if (!pool.length) return null;
-      return dieWeighted(pool, seed, key + "|ground-fills", 1);
+      return dieWeighted(rankUnread(pool), seed, key + "|ground-fills", 1);
+    }
+
+    // WHERE AN UNREAD INSTRUMENT STANDS IN THE POOL IT COMPETES IN, which is the middle of what its
+    // rivals read for this pair — a reading of the pair taken through the instruments that did read
+    // it, and never a number written here. Where no instrument in the pool read the pair at all,
+    // every fit is nothing and `dieWeighted`'s own even roll answers, which is what "no more and no
+    // less than any other" means when there is nothing to be no more than.
+    function rankUnread(pool) {
+      var sum = 0, read = 0, i;
+      for (i = 0; i < pool.length; i++) {
+        if (typeof pool[i].fit === "number") { sum += pool[i].fit; read += 1; }
+      }
+      var middle = read ? sum / read : 0;
+      for (i = 0; i < pool.length; i++) {
+        if (typeof pool[i].fit !== "number") pool[i].fit = middle;
+      }
+      return pool;
     }
 
     // The die over a ranked pool of genres, weighted by how well each suits the pair.
@@ -3769,6 +4482,30 @@
         stood.push("the " + road.id + " road is the fold itself and no instrument that folds cuts "
                    + pivotKinds.join(" or ") + " for this pair, so the ground plays unfolded");
       }
+      // THE MIRACLE'S OWN GATE ON THE GROUND, which the travelling move has had since 2026-08-19
+      // and the cue that plays the WHOLE passage never had. `castForKinds` only DEMOTES a
+      // world-declaring candidate by one order where the role spends no miracle (`base` there), so
+      // on a pair whose kinds nothing else cuts well the ground could still open a world at a step
+      // shelf 17 gives no miracle at all. The cast is asked again with the folding instrument set
+      // aside, and only its answer is taken — where the collection publishes nothing else, or
+      // nothing else that does not fold either, the first cast stands and the plan says the step
+      // folded because nothing else could stand there. So this shapes the ground and never refuses
+      // the crossing: there is no road out of here that leaves the pair without a passage.
+      if (!(ROLE_BUDGETS[role] || {}).miracle && !road.mustFold && spendsTheMiracle(castPivot[0])) {
+        var unfolded = castForKinds(pivotKinds, fromW, toW, true, pair.seed, key, "pivot",
+                                    [castPivot[0]], false, true, null, [0, 1], false);
+        if (unfolded[0] !== null && !spendsTheMiracle(unfolded[0])) {
+          stood.push("«" + castPivot[0] + "» opens the world the works live in, which shelf 6 makes "
+                     + "this crossing's one impossible event, and the step is a " + role
+                     + ", which shelf 17 gives no miracle — so «" + unfolded[0] + "» takes the "
+                     + "ground instead");
+          castPivot = unfolded;
+        } else {
+          stood.push("«" + castPivot[0] + "» opens the world the works live in and the step is a "
+                     + role + ", which shelf 17 gives no miracle, but this collection publishes no "
+                     + "other instrument that can hold the ground for this pair, so it plays");
+        }
+      }
       var pivotInstr = castPivot[0];
       var castNotes = { pivot: castPivot[1] };
       if (pivotInstr !== null && castPivot[2].indexOf(pivotInstr) < 0) {
@@ -3780,15 +4517,16 @@
       // candidates by this same list, widened by whatever it itself goes on to claim. Pivot's own
       // window is `[0, 1]` always, so it is recorded beside its levels rather than assumed.
       var pivotLevels = pivotInstr ? (MANIFESTS[pivotInstr].levels || []) : [];
-      // `ground: true` says which record this is, and `castForKinds` reads it. The ground is the
-      // floor the passage stands on rather than a voice competing for a level: its window is the
-      // whole passage by construction, so a levels test that treats it as a competitor is not
-      // strict — it is unsatisfiable, and it was measured to be exactly that on 2026-08-19, when it
-      // left `adrift` and `gears` uncastable at every slot on almost every pair because the ground
-      // holds SURFACE from the first frame to the last. The day the ground can hand the floor over
-      // before the passage ends — shelf 3's enfilade — this mark stops being needed and the ground
-      // joins the contest like any voice.
-      var pivotClashRecord = { levels: pivotLevels, window: [0, 1], ground: true };
+      // THE GROUND IS NO LONGER MARKED APART. This record carried `ground: true` so the cast's
+      // second clause would not count the ground as a competitor for a level: the ground holds its
+      // levels from the first frame to the last, so counting it as one excluded every instrument
+      // sharing a level with it at every slot, which left `adrift` and `gears` uncastable. That
+      // second clause is retired (the note over `castForKinds`), because the collision it was
+      // standing in for is settled at the handles now — a cue that does not own a level has that
+      // level's handles taken off its track list and rests there. So the mark has nothing left to
+      // exempt the ground from, and the ground is a record like any other: its levels and its
+      // window, which is the whole passage.
+      var pivotClashRecord = { levels: pivotLevels, window: [0, 1] };
       // THE RETURN-PASS SHIFT, READ ONCE HERE (2026-08-19) so the windows composed below and the
       // levels-law exclusion they inform can both know the ONE nonzero value this edge will ever
       // draw. `dieAmong` is deterministic on `(seed, key)` alone — `key` carries no pass index — so
@@ -3909,14 +4647,14 @@
         // WHAT WENT, AND WHY THE TWO WENT TOGETHER. The line here handed the slot to «matter» BY
         // NAME whenever «matter» was free — no fit consulted, no die rolled — and that is the class
         // his word of 2026-08-18 13:41 strikes: a special case where the general rule already
-        // covers the ground. Under it the material instrument took 31.4 per cent of every cue the
-        // collection composes while it led the pair's own reading on a sixth of pairs and took the
-        // ground cue on a twenty-fifth of passages. Beneath the name stood the second fault: the
+        // covers the ground. Handing a slot to one instrument BY NAME consults no fit and rolls no
+        // die, so the choice carries no reading of either photograph at all — the strongest thing
+        // that can be said about a decision, and it needs no count beside it. Beneath the name stood the second fault: the
         // fallback DROPPED the arrival whenever the cast collided with the ground or the travel,
         // rather than choosing the next-best — the same collision the travelling move was repaired
-        // for at `castForKinds` above and the arrival never was. Each hid the other, and the
-        // measurement says so: striking the name alone loses 26.7 per cent of all the collection's
-        // cues into the drop, and repairing the drop alone leaves the name deciding.
+        // for at `castForKinds` above and the arrival never was. Each hid the other by construction:
+        // striking the name alone sends every cue the name used to catch into the drop, and repairing
+        // the drop alone leaves the name deciding before the drop is ever reached.
         //
         // So the name goes and the collision CHOOSES, on one call. Only where every instrument the
         // collection publishes is already spoken for does the arrival fold into the voice it
@@ -3949,6 +4687,31 @@
           stood.push("«" + arrivalInstr + "» is the only instrument this collection publishes, so "
                      + "the arrival folds into the voice it collided with");
           arrivalInstr = null;
+        }
+        // THE SAME GATE THE GROUND AND THE TRAVELLING MOVE STAND UNDER, and the arrival is the third
+        // slot a cast reaches. `castForKinds` only DEMOTES a world-declaring candidate by one order
+        // where the role spends no miracle, which is a ranking nudge and not a bound: it decides
+        // which candidate is likeliest, never which may stand. So the gate is stated here as it is
+        // stated for the other two, and the arrival that opens a world at a step shelf 17 gives no
+        // miracle is asked to be cast again with that instrument set aside. Only where nothing else
+        // the collection publishes can condense this arrival does it stand down, which is the same
+        // sentence the travelling move already stands under and the same one the two lines above
+        // say for a collision.
+        if (arrivalInstr !== null && spendsTheMiracle(arrivalInstr)
+            && !(ROLE_BUDGETS[role] || {}).miracle) {
+          var castPlain = castForKinds([], fromW, toW, true, pair.seed, key, "arrival",
+                                       [pivotInstr, travelInstr, arrivalInstr],
+                                       FILLS_THE_FRAME[pivotInstr] || FILLS_THE_FRAME[travelInstr],
+                                       false, clashForArrival, arrivalWindowBound);
+          stood.push("the arrival casts «" + arrivalInstr + "», which opens the world the works "
+                     + "live in, and the step is a " + role + ", which shelf 17 gives no miracle"
+                     + (castPlain[0] !== null && !spendsTheMiracle(castPlain[0])
+                        ? " — so «" + castPlain[0] + "» condenses the arrival instead"
+                        : ", and no other instrument this collection publishes can condense this "
+                          + "arrival, so the work carries over unaltered"));
+          arrivalInstr = (castPlain[0] !== null && !spendsTheMiracle(castPlain[0]))
+            ? castPlain[0] : null;
+          if (arrivalInstr !== null) castNotes.arrival = castPlain[1];
         }
       }
       var departing = locusOf(fromW);
@@ -4028,8 +4791,19 @@
       // instruments lane's own manifest says as much by declaring the world level — so a crossing
       // that folds has spent its miracle, and the polar world of `worldOf` stands down beside it
       // rather than making a second impossible thing.
-      var folds = pivotInstr === "boxfold" || travelInstr === "boxfold"
-        || arrivalInstr === "boxfold";
+      //
+      // WHAT A FOLD IS, IS WHAT THE INSTRUMENT DECLARES ABOUT ITSELF, never what it is called. This
+      // read `=== "boxfold"` on all three cast slots, and the file already held the other, truer
+      // definition four screens up: `spendsTheMiracle` asks the manifest whether the instrument
+      // declares the WORLD level. That is the charter's own definition — shelf 6 says a folded
+      // space, a shift of what a thing is or a change of substance consumes the slot and never
+      // stacks, shelf 8 says at most one folded space per crossing and it IS the miracle — and the
+      // manifest's world declaration is the one place an instrument says it does that. The name test
+      // was the accident: this collection publishes four instruments that declare the world and the
+      // name saw one of them, so the other three folded the space a work lives in, were voiced as
+      // ordinary letters and were counted as no miracle at all.
+      var folds = spendsTheMiracle(pivotInstr) || spendsTheMiracle(travelInstr)
+        || spendsTheMiracle(arrivalInstr);
       var couldFold = travelInstr ? worldOf(toW, axis) : null;
       var mayFold = !!(road.miracle && roleBudget.miracle && !folds);
       var world = mayFold ? couldFold : null;
@@ -4043,8 +4817,17 @@
                  + "space")))
         : null;
       var voices, tier, letters, accs, k, instrumentOf, stackOrder, placed, capped = [];
-      // WHICH CUE FOLDS THE FRAME, or nothing. It is re-read on every turn of the budget loop
-      // below, because the loop can retire the very cue that folds.
+      // WHETHER THIS CROSSING STILL SPENDS ITS COLOUR VOICE. Shelf 17 counts the camera, the ground
+      // and colour in one column, and the loop below may find all three standing against a ceiling
+      // of two. The colour voice is the one of the three that is neither the camera nor the crossing
+      // itself, so it is the one an accompaniment budget can spend: the level goes unowned, its
+      // handles come off every track list, and the instruments' own published defaults stand there.
+      // Every cue, every instrument and every move stands. It is re-read on every turn of the loop
+      // because the loop can retire the very cue that sings it.
+      var colourVoice = true, accCeiling = 0;
+      // WHICH CUE FOLDS THE FRAME, or nothing — read off the manifest exactly as `folds` above is,
+      // and never off a name. It is re-read on every turn of the budget loop below, because the loop
+      // can retire the very cue that folds.
       var foldsOn = null, stackSwapped = false;
 
       // THE ROLE'S BUDGET IS A BOUND ON WHAT IS EMITTED, not a wish. Shelf 17 counts letters, and a
@@ -4053,9 +4836,9 @@
       // ground and the arrival are the two the charter names by role, and the plan records every
       // move it gave up so a thin passage can be read back to the reason it is thin.
       for (;;) {
-        foldsOn = pivotInstr === "boxfold" ? "pivot"
-          : (travelInstr === "boxfold" ? "travel"
-             : (arrivalInstr === "boxfold" ? "arrival" : null));
+        foldsOn = spendsTheMiracle(pivotInstr) ? "pivot"
+          : (spendsTheMiracle(travelInstr) ? "travel"
+             : (spendsTheMiracle(arrivalInstr) ? "arrival" : null));
         var voiced = voiceTheCues(travelInstr !== null, arrivalInstr !== null, world,
                                   role, foldsOn);
         voices = voiced[0];
@@ -4086,14 +4869,72 @@
         if (arrivalInstr && voices.arrival) instrumentOf.arrival = arrivalInstr;
         stackOrder = CUE_IDS.filter(function (c) { return instrumentOf[c] !== undefined; });
         placed = placeTheStack(stackOrder, instrumentOf);
+        // WHETHER THIS CAST SINGS LIGHT-COLOUR, read here rather than after the loop, because the
+        // count it changes is one the loop has to answer, and re-read on every turn because the
+        // loop can retire the very cue that sings it. It is read off the cues that survived this
+        // turn, never off the instrument variables alone.
+        var singsHere = false, ci;
+        for (ci = 0; ci < stackOrder.length; ci++) {
+          if ((MANIFESTS[instrumentOf[stackOrder[ci]]].levels || []).indexOf("LIGHT-COLOUR") >= 0) {
+            singsHere = true;
+            break;
+          }
+        }
+        // THE ACCOMPANIMENT CEILING IS THE THIRD BOUND, and it belongs to the tier this plan will
+        // DECLARE rather than to the one the role reached for. §4.7 asks the declared tier and the
+        // measured one to agree, so the ceiling that has to hold is the declared row's; and since
+        // the three rows' accompaniment ceilings rise with the tier's own rank, and the rank test
+        // below already holds the realised tier at or under the role's, the declared row's ceiling
+        // is the tighter of the two and answering it answers both.
+        accCeiling = ceilingOfTier(tier, "accompaniments");
+        // THE COUNT SHAPES THE CROSSING WITHOUT TOUCHING A MOVE. Charter shelf 17 as amended on his
+        // word of 2026-08-18 13:41: the counts shape a crossing that is already playing and never
+        // refuse one. An accompaniment overrun is paid for with an ACCOMPANYING VOICE, which is what
+        // the column counts — never with a letter, which would take a move away to settle a debt it
+        // did not run up. The camera is a constant of every crossing by §4.4's own amendment and the
+        // ground IS the crossing, so colour is the one of the three that can stand down, and it
+        // stands down the way the levels law already stands a voice down: the level goes unowned.
+        //
+        // IT IS A READING OF THIS TURN AND NEVER A LATCH. Written as a one-way give-up it would
+        // outlive the count that caused it: a turn that later retires the very cue that sang would
+        // leave the crossing without a colour voice it could now afford. This line is a pure
+        // function of the counts the turn it runs on actually carries, so the answer that stands is
+        // the answer for the cast that stands, and the loop gains no new road out.
+        colourVoice = !(singsHere && accs + 1 > accCeiling);
         var fits = placed[0] !== null
           && letters <= roleBudget.letters
+          && accs + ((colourVoice && singsHere) ? 1 : 0) <= accCeiling
           && TIER_RANK[tier] <= TIER_RANK[roleBudget.tier];
         if (fits) break;
         if (placed[0] === null && !stackSwapped && stackOrder.length > 1) {
           stackSwapped = true;
+          // THE GROUND SWAP IS THE THIRD DOOR THE MIRACLE COULD COME THROUGH, and it stood open.
+          // `bestFilling` already sets a world-declaring instrument aside where the role spends no
+          // miracle, but at a role that MAY spend one the slot is free by the role's reckoning even
+          // when a voice above the ground has already taken it — and this swap runs after the
+          // travelling move and the arrival are cast, so it could seat a second world instrument
+          // under a first. Shelf 6 says the slot is consumed and never stacks, so a crossing whose
+          // voices already fold asks for a ground that does not, on the same argument
+          // `bestFilling` already takes: no new bound, the one it has, told the truth about what
+          // the crossing has already spent.
+          var alreadyFolds = spendsTheMiracle(travelInstr) || spendsTheMiracle(arrivalInstr);
+          // THE LEVELS THE VOICES ABOVE CANNOT GIVE UP. A voice that drives exactly one level has
+          // nowhere else to be, so a ground declaring that level annihilates it — the voice plays
+          // on, drawing, driving nothing of its own. `soleAbove` is read off the voices already cast
+          // and handed to the choice, so the ground that fills the frame is chosen from those that
+          // leave every voice above it something to say.
+          var soleAbove = [];
+          [travelInstr, arrivalInstr].forEach(function (iid2) {
+            if (!iid2 || !MANIFESTS[iid2]) return;
+            var lv2 = (MANIFESTS[iid2].levels || []).filter(function (l) {
+              return Object.keys(MANIFESTS[iid2].handles || {}).some(function (hh) {
+                return levelOf(iid2, hh) === l;
+              });
+            });
+            if (lv2.length === 1 && soleAbove.indexOf(lv2[0]) < 0) soleAbove.push(lv2[0]);
+          });
           var fill1 = bestFilling(fromW, toW, [travelInstr, arrivalInstr],
-                                  !roleBudget.miracle, pair.seed, key);
+                                  !roleBudget.miracle || alreadyFolds, pair.seed, key, soleAbove);
           if (fill1 && fill1 !== pivotInstr) {
             stood.push("the stack §7's coverage law asks for had " + placed[1].split(":")[0]
                        + ", so «" + fill1 + "» takes the ground and fills the frame instead of «"
@@ -4128,13 +4969,27 @@
         stackOrder = ["pivot"];
       }
       var stacks = placed[0];
+      // WHAT THE COUNT SHAPED, in the same place every other shaping this crossing took is written.
+      // A thin passage reads back to the reason it is thin, and this one is thin in exactly one
+      // way: it keeps every move, every cue and every instrument, and plays without its colour
+      // voice. `capped` and `stood` are the two lists that already carry every other shaping.
+      if (!colourVoice) {
+        capped.push("colour");
+        stood.push("shelf 17 gives a " + tier + " at most " + accCeiling + " accompanying voices "
+                   + "and the camera and the ground already stand in them, so the crossing plays "
+                   + "without its colour voice and keeps every move it makes");
+      }
       // WHETHER THIS CAST SINGS LIGHT-COLOUR, read off the cues that actually survived the loop
       // above (`stackOrder`, never the instrument variables alone — a voice the loop retired must
       // not still be counted). Because the levels law now excludes a second LIGHT-COLOUR candidate
       // at the cast itself (the note over `castForKinds`), at most one surviving cue can ever answer
       // yes, so there is no ownership left to contend for by the time this asks.
+      // AND IT ANSWERS TO THE LOOP'S OWN DECISION. Where the budget loop above gave the colour
+      // voice up to hold shelf 17's accompaniment ceiling, no cue owns LIGHT-COLOUR any more, so
+      // this reading has to say so too — otherwise the count taken here and the count the loop
+      // answered would disagree by exactly the voice that was spent.
       var singsColour = false, colourCk;
-      for (i = 0; i < stackOrder.length; i++) {
+      for (i = 0; colourVoice && i < stackOrder.length; i++) {
         colourCk = stackOrder[i];
         if (instrumentOf[colourCk]
             && (MANIFESTS[instrumentOf[colourCk]].levels || []).indexOf("LIGHT-COLOUR") >= 0) {
@@ -4145,11 +5000,34 @@
       var reordered = stackOrder.filter(function (c, i2) { return stacks[c] !== i2; });
 
       var judged = tierFor(voices, tier, singsColour), row = judged[0], counts = judged[1];
-      // THE STEP'S OWN LENGTH. Shelf 17 gives each role a band of seconds and the role names the
-      // length it takes inside that band; where the pair could not reach its role's tier the
-      // realised tier's own length stands instead, so a plan never declares a tier its duration
-      // contradicts — the disagreement §4.7 calls a red.
-      var duration = row.tier === roleBudget.tier ? roleBudget.duration : row.duration;
+      // THE STEP'S OWN LENGTH, COMPOSED FROM THE PAIR INSIDE THE BAND ITS TIER ALLOWS. The band is
+      // the REALISED tier's, which `tierFor` has just settled: a role reaches for a tier and gets
+      // the band of the tier it actually made, so a plan never declares a tier its length
+      // contradicts — the disagreement §4.7 calls a red — and a role that reached its own tier is
+      // answered by that tier's band without a second copy of it standing anywhere. What stood here
+      // read ONE typed duration off whichever row answered, and since `cueWindows` fixes the pivot's
+      // window at [0, 1] and every score carries a pivot, `Math.max(ends)` is exactly 1 on every
+      // composition and the derived length was that typed number to the millisecond — one duration
+      // for every pair the role ever plays.
+      //
+      // THE READING IS THE ONE THE PASSAGE ALREADY PUBLISHES AS `cameraReach`'s first number: the
+      // camera's own dolly as a share of the bound it answers to. It is a reading of the two
+      // works — `cameraFlight` takes it from their measured door steps, `log(stepTo / stepFrom)`
+      // spent against `DOLLY_CAP` as a limit — and it is already in hand here, so no second
+      // "how far apart" number is invented for the length (grammar law 5: one gesture, one scalar).
+      // How far the eye has to travel in depth between the two pictures is how long the crossing
+      // takes, and a pair whose two door steps say nothing crosses at the short end of its band
+      // rather than not at all.
+      //
+      // THE BAND HOLDS FOR EVERY VALUE THE READING CAN TAKE, by the reading's own construction.
+      // `cameraFlight` writes `dolly = DOLLY_CAP · asked / (|asked| + DOLLY_CAP)` where either
+      // measured door step missing leaves it at exactly 0, so |dolly| = DOLLY_CAP · |asked| /
+      // (|asked| + DOLLY_CAP) < DOLLY_CAP for every finite `asked` and the share below is at most 1
+      // (`r4` can carry it onto the bound, never past it, and `clamp01` states that rather than
+      // trusting it). A share of 0 gives the band's own floor, a share of 1 its own ceiling, and the
+      // placement is monotone between them — so no pair in the world composes outside the band.
+      var lengthShare = Math.abs(num(cam.logScale)) / DOLLY_CAP;
+      var duration = lengthInBand(row.band, lengthShare);
       // The deviation this pass puts on the rhythm. It moves no window's close, so the ends below
       // read the same numbers whatever it is.
       // THE DEVIATION IS A SHARE OF THE ROOM EACH WINDOW HAS, drawn on the die, so a further pass
@@ -4201,6 +5079,11 @@
           : (travelInstr ? { kind: "surface" } : { kind: "none" }),
         budget: counts, intentKey: intentKey, road: road.id, role: role, passIndex: passIndex,
         rhythmShift: rhythmShift,
+        // WHETHER THIS CROSSING STILL SPENDS ITS COLOUR VOICE (the budget loop above). It travels
+        // here so the score and the counts say the same thing: a crossing that gave the voice up
+        // must not go on emitting a cue that owns LIGHT-COLOUR, or the plan's declared tier and the
+        // score's own voices would disagree again by another road.
+        colourVoice: colourVoice,
         // THE WINDOWS' OWN BASE VALUES, carried to `buildTemplate` so it composes the same windows
         // from the same readings rather than re-deriving them from scratch with no access to the
         // two works' own records. `cueWindows` applies `rhythmShift` to these exactly once here and
@@ -4355,6 +5238,22 @@
           ? side / Number(st.grid.periodPx) : 0,
         // how much of the difference between the work's own columns its region line explains
         regionScore: Number((st.regions || {}).score) || 0,
+        // WHERE THE WORK'S OWN REGION LINE FALLS, AND HOW CLEANLY IT DIVIDES THE PICTURE — both
+        // axes, because which one the fold reads is decided by the crease's own direction and not
+        // here. `structure.regions.line.{x,y}.at` is the place along that axis, a share of the
+        // frame; `.explains` is the between-versus-within column reading at that place, the plain
+        // two-means split, and it is handed with the instrument's own floor UNAPPLIED so the gate
+        // stays where the gate lives. Both are a Python mirror of `lab/effects/box.js`'s own
+        // `seamOf`, verified against that file's published readings, and they landed in the record
+        // on 2026-08-26. Until they did, this file could hand no line at all and said so.
+        //
+        // `.explains` IS NOT `regions.score` ABOVE, and the two must not be confused: the score is
+        // the share of frame the large regions cover, a different quantity in the same 0..1 range.
+        // Pointing the instrument's own floor at it would open a gate on grounds nobody measured.
+        regionLineXAt: Number((((st.regions || {}).line || {}).x || {}).at),
+        regionLineXExplains: Number((((st.regions || {}).line || {}).x || {}).explains),
+        regionLineYAt: Number((((st.regions || {}).line || {}).y || {}).at),
+        regionLineYExplains: Number((((st.regions || {}).line || {}).y || {}).explains),
         // the work's own device: how many regions it falls into, the step it was cut at and the
         // angle of that step — what a passage revealing the making has to read
         regionCount: Number((st.regions || {}).count) || 0,
@@ -4401,15 +5300,17 @@
         // AND THE ANGLE FOLLOWS THE SAME ORDER AS THE STEP, NOT THE STEP'S PRESENCE (2026-08-24).
         // It used to ask whether a DEVICE was recovered and then take that device's angle whatever
         // that angle read — and `structure.ownDevice.angleDeg` carries a direction only for a device
-        // that HAS one: it is 0 on every ring-cut and every tile-cut work on disk (114 of 121) and
-        // stands at 90 on four striped ones, because a ring pattern has no direction to record. So
+        // that HAS one. A ring pattern and a tile pattern have no direction to record, so the field
+        // reads its own zero for EVERY ring-cut and every tile-cut work in any collection — not most
+        // of them, all of them, by the measurement's own definition. So
         // every handle downstream of this field — the interfering instrument's `turn`, `mixTurn` and
         // `regionTurn`, the beat's own `beatTilt`, the leaning instrument's `tilt`, and the camera's
         // whole ROLL axis, which folds its sign straight out of this number — read the same 0 on
-        // nearly every pair in the collection and could not move. The work's own measured grid angle
-        // is a reading of the same thing (which way this photograph's lattice runs) and it carries
-        // thirty distinct values across the same 121 records, so it answers where the device's own
-        // angle says nothing. The device still speaks first where it recovered a direction; nothing
+        // same 0 on every such pair and could not move. The work's own measured grid angle is a
+        // reading of the same thing (which way this photograph's lattice runs) and is DEFINED
+        // wherever a grid is, so it answers where the device's own angle says nothing — which is a
+        // fact about the two fields' domains and not about any set of pictures. The device still
+        // speaks first where it recovered a direction; nothing
         // is invented, and the fallback is the one this file already takes on the other side of the
         // same reading (`gcAngle` in the grid-and-colour branch, `latFrom`/`latTo` in the parquet).
         latticeAngleDeg: Number((st.ownDevice || {}).angleDeg)
@@ -4428,8 +5329,18 @@
 
     function workParts(work, at) {
       var sets = {}, counts = {}, fig = {}, ends = {}, lists = {}, i, s, reading;
-      for (i = 0; i < work.sets.length; i++) {
-        s = work.sets[i];
+      // A RECORD THAT CARRIES NO CUTS AT ALL READS AS A WORK WITH NO CUTS, and does not throw. This
+      // is `pairScore`'s own repair one screen down, in the same class and for the same reason:
+      // `passageFor`'s two refusals ask a record for an `id` and for nothing else, so a record
+      // carrying an id alone is one this file has agreed to compose over, and indexing an absent
+      // field terminated it in a throw — worse than the refusal charter shelf 21 already forbids.
+      // The neutral is the empty list, which is exactly what a record whose every set reads
+      // `realCount: 0` already produces by the loop below: no element set on any kind, so the pair
+      // crosses whole, which is a plainer crossing and never a refused one.
+      var ownSets = Object.prototype.toString.call(work && work.sets) === "[object Array]"
+        ? work.sets : [];
+      for (i = 0; i < ownSets.length; i++) {
+        s = ownSets[i];
         if (!s.realCount) continue;
         if (!lists[s.kind]) lists[s.kind] = [];
         lists[s.kind].push(s);
@@ -4451,7 +5362,7 @@
         if (reading !== null) ends[TRAVEL_AXES[i]] = encodeEnds(TRAVEL_AXES[i], reading);
       }
       var found = locusOf(work), locusKind = found[0], locus = found[1];
-      var polar = work.structure.polar || {}, keys = Object.keys(POLAR_WORLD).sort();
+      var polar = (work.structure || {}).polar || {}, keys = Object.keys(POLAR_WORLD).sort();
       var best = null, bestv = null, v;
       for (i = 0; i < keys.length; i++) {
         v = polar[keys[i]];
@@ -4467,7 +5378,7 @@
         world: (best && bestv && bestv > 0) ? WORLDS.indexOf(POLAR_WORLD[best]) : -1,
         providerOf: (function () {
           var out = {};
-          work.sets.forEach(function (s2) { out[s2.index] = s2.provider; });
+          ownSets.forEach(function (s2) { out[s2.index] = s2.provider; });
           return out;
         }())
       };
@@ -4500,20 +5411,20 @@
     // The golden angle of a count: charter shelf 13's stagger instrument, which is what keeps no
     // two fragments of a cascade in line. The constant is the golden section itself and is
     // measured by nothing, because it is a number rather than a reading.
+    //
+    // CAPABILITY — the golden section itself, a fact about arithmetic. Nothing about any pair or any
+    // machine could move it; what could change is only how many of its digits are written here.
     var GOLDEN = 0.6180339887;
     function goldenStagger(count) { return fractional(count * GOLDEN); }
 
-    // SHELF 17'S LEVELS LAW, applied to the colour and light voices: "one active voice per
-    // structural level ... LIGHT-COLOUR its own slot. Two voices on one level read as noise." The
-    // composer already resolves who owns which level, per cue, before `fillPlan` runs
-    // (`buildTemplate`'s call to `ownTheLevels`, stored on `cue.levelOwnership`); a cue that only
-    // ACCOMPANIES another on LIGHT-COLOUR must not sing there too, so the colour and light voices are
-    // driven only for the cue this reads "owns" on. Where it is not owned the eighteen handles are
-    // left unset and rest at the manifest's own 0 — the module's own silence, and no second
-    // mechanism is built to produce it.
-    function singsLightColour(cue) {
-      return !!(cue.levelOwnership && cue.levelOwnership["LIGHT-COLOUR"] === "owns");
-    }
+    // `singsLightColour` STOOD HERE AND IS RETIRED INTO THE GENERAL RULE. It asked one question of
+    // one level — does this cue own LIGHT-COLOUR — and it was the only place in the composer where
+    // a non-owner's handles were actually held at rest. The question is the same for every level
+    // now and it is asked in one place, `ownsLevelOf` beside `tracksFor`, off the level each handle
+    // publishes in its own instrument's manifest. `buildTemplate` takes an unowned level's handles
+    // off the cue's track list, so nothing this branch computes for such a handle would be written
+    // anyway; the three guards below stand so the reading is not taken at all, and each asks
+    // `ownsLevelOf` rather than naming a level here.
 
     // ---- the accompanying colour-and-light voices (lab/step4-assembler.js:1966-2010) ----
     //
@@ -4529,12 +5440,17 @@
     // period is published in. lab/step4-assembler.js:60-66: LEN = 6.0s, OVERLAP = LEN*2/3 = 4.0s,
     // LAYER = (LEN + OVERLAP)/2 = 5.0s, BEAT = LEN − LAYER = 1.0s, and BEAT_DIAL = BEAT / LAYER =
     // 0.2 — the same beat, measured in one layer's own handle travel rather than in seconds.
+    //
+    // UNJUSTIFIED. It is carried from the lab's own assembler word for word, and it was unmeasured
+    // there: nothing in that file derives the fifth either. Carrying a number faithfully is not the
+    // same as deriving it, and this line says which of the two happened.
     var BEAT_DIAL = 0.2;
 
     // VOICE_SHARE — how much of a work's own measure becomes a voice's loudness. Carried from
     // lab/step4-assembler.js:91, where its own comment names it plainly: "ЧЕТВЕРТЬ ЗДЕСЬ — ЧИСЛО
     // ВКУСА, поднято в отчёте" — a quarter is a number of taste, raised in a report rather than
     // measured. It is carried here as that same admitted number, not re-derived as if it were one.
+    // UNJUSTIFIED, on the lab's own admission quoted above.
     var VOICE_SHARE = 0.25;
 
     // WHEN A VOICE IS SEEN, AND IT IS THE LAB'S OWN MEASUREMENT — the second pass of
@@ -4562,6 +5478,10 @@
     // amplitude 0,0208, peak 0,0187 — is the same arithmetic seen from the rendering side, and it is
     // quoted as the provenance of the threshold above rather than as evidence that this returns the
     // right number; what makes it right is that it is the curve's own maximum.
+    //
+    // CAPABILITY — six steps of an eight-bit channel, which is the smallest difference above the
+    // threshold the eye reads on a rendered frame. It is a fact about the channel and about seeing,
+    // and it is a measurement in the unit the eye reads rather than a distribution over anything.
     var VOICE_SEEN = 6 / 255;
     function voicePeak(period, phase) {
       if (!(period > 0)) return 0;
@@ -4647,7 +5567,14 @@
     // near, and the band around each. lab/step4-assembler.js:84-85 (RATIOS, RATIO_BAND = 0.05),
     // serving the plan's own «Правила времени»: accompanying voices carry incommensurable periods
     // so they never repeat together exactly.
+    //
+    // CAPABILITY — which small whole-number ratios beat against each other, which is a fact about
+    // arithmetic and about nothing else: two periods standing at one of these repeat together, and
+    // that is true of any two periods anywhere.
     var VOICE_RATIOS = [1 / 1, 1 / 2, 1 / 3, 1 / 4, 1 / 5, 2 / 3, 2 / 5, 3 / 4, 3 / 5, 4 / 5];
+    // UNJUSTIFIED — how near a ratio has to stand to one of those before it counts as that ratio.
+    // It is carried from the lab, unmeasured there, and nothing here derives it: what it has to
+    // satisfy is only that it be smaller than the gaps between the ratios above, and many values are.
     var VOICE_RATIO_BAND = 0.05;
 
     // aligned(p, q) — whether two periods sit within the band of one of the small-integer ratios
@@ -4700,6 +5627,23 @@
     // What answers the return HERE is everything the family does not fix: the order of the moves,
     // the actors and the rhythm, each varied from the die and the pass count in `compose` above.
 
+    // UNJUSTIFIED — and it is the most consequential unmarked number that stood in this file. It
+    // carries no sentence anywhere and nothing derives it, while `acrossTheSpan` and `alongTheSpan`
+    // below read it for EVERY travelling handle the composer writes: one unmeasured four sets how
+    // far every handle in this file moves.
+    //
+    // WHAT IT DOES, said plainly so the next reader does not have to work it out. It says a ratio of
+    // sixteen to one between the two works' readings uses the handle's whole published span, and
+    // that any ratio wider than that is held at the span's own end. So it decides how sensitively
+    // every travelling handle answers the pair: two pairs standing three to one and eight to one
+    // apart land at different places on one handle precisely because of this number, and every pair
+    // past sixteen to one lands on the same place — which is the clamp shape the camera lane has
+    // already named once elsewhere, here at the far end of the scale rather than at the near one.
+    //
+    // Nothing in this tree measured it and no file records what it should be. What it has to satisfy
+    // is only that it be positive, so the map is monotone in the ratio and lands on the handle's own
+    // default where the ratio is one; every positive value satisfies that equally, and this seat
+    // picked four.
     var OCTAVES_PER_SPAN = 4;
 
     // WHERE A READING STANDS IN ONE HANDLE'S OWN RANGE, READ OFF ONTO ANOTHER'S. Two handles of one
@@ -4774,6 +5718,280 @@
       if (same) return "requested " + pyText(requested) + " and applied, from " + why;
       return "requested " + pyText(requested) + ", applied " + pyText(applied)
         + " — the handle's own range does not reach the measured value. From " + why;
+    }
+
+    // ============================================================================================
+    // THE PLAN'S MOTION PEAK — charter shelf 5, THE CONJUROR
+    // ============================================================================================
+    // The shelf's own sentence: "the content swap sits at the plan's motion peak, computable as
+    // argmax of summed normalized parameter velocity, where the eye is led away". Everything below
+    // is that sentence and nothing else. Nothing here is prepared before the visit, nothing is
+    // indexed by the pair, and nothing is chosen at bake: the reading is taken off the score this
+    // composition has just written, at the instant two photographs meet.
+    //
+    // THE SUM. Over the passage's own normalised time, every handle the plan drives has a rate of
+    // change. Each is divided by that handle's OWN PUBLISHED RANGE — `HANDLE_SPECS[instrument][h]`,
+    // the manifest's own min and max — so a handle that swings across a wide span does not drown
+    // one that swings across a narrow one, and every term is in the same unit: fractions of a
+    // handle's own range per unit of passage time. The sum of those terms is one dimensionless
+    // reading of how fast the whole plan is moving at an instant.
+    //
+    // TWO HANDLES ARE OUT OF THE SUM, AND FOR ONE REASON: a measurement cannot read the thing it is
+    // placing.
+    //
+    //   THE DOOR is the content swap itself — the cue's own `doors` record names the handle, and
+    //   what it carries is the share of the arriving work standing in the frame. Counting its speed
+    //   would make the shelf's law say the swap sits where the swap moves fastest, which says
+    //   nothing. It is also where the eye is looking rather than where the eye is led away, which
+    //   is the half of the sentence that names what the sum is for.
+    //
+    //   THE CAMERA's own track is the other. Its two middle points are what this reading PLACES, so
+    //   their velocity is a consequence of the answer and never an input to it. The flight's
+    //   magnitudes are read a few lines below off the same pair, after the two points are placed;
+    //   the order is what keeps the loop out.
+    //
+    // A HANDLE WHOSE RANGE IS EMPTY, and an operator this file writes nowhere, each add nothing and
+    // refuse nothing. The reading RANKS: a plan whose handles barely move still has a peak, and the
+    // crossing still plays. There is no floor here and no threshold anywhere below.
+    //
+    // THE WALK STANDS STRICTLY INSIDE THE PASSAGE. The two ends are where the two works stand
+    // still — the camera's own first and last points are the neutral rest pose, shelf 2's "resting
+    // exactly when B stands" — so the instant the eye is led away is an instant INSIDE the
+    // crossing rather than one of its two ends. A thousand steps is the same walk `voicePeak` above
+    // already takes over a curve this file knows every number of, and for the same stated reason:
+    // it resolves the crest to four decimal places, which is the precision a score is written at.
+    //
+    // THE PEAK IS A PLATEAU'S MIDDLE, not its first instant. Where several instants tie for the
+    // maximum the peak is the middle of the first run of them, so a sum that never changes at all
+    // reads as the passage's own middle rather than as its first step — the argmax of a flat
+    // function is the whole span, and the whole span's middle is the honest name for it.
+    //
+    // CAPABILITY — the resolution of the walk, and it is a fact about the wire rather than a choice
+    // about pictures: a score is written to four decimal places, and a thousand steps resolve the
+    // peak to that precision. It is the same walk `voicePeak` above already takes, for the reason
+    // stated there.
+    var PEAK_STEPS = 1000;
+
+    // THE FOUR NAMED CURVES AND THEIR DERIVATIVES, WRITTEN OUT. The four shapes are the drawing
+    // host's own (`pass-layer.js`'s `CURVES`), carried here so the rate this file reads is the rate
+    // the viewer actually sees:
+    //
+    //     linear(x) = x                 linear'(x) = 1
+    //     smooth(x) = x²(3 − 2x)        smooth'(x) = 6x(1 − x)
+    //     in(x)     = x²                in'(x)     = 2x
+    //     out(x)    = 1 − (1 − x)²      out'(x)    = 2(1 − x)
+    //
+    // Every one of the four derivatives is bounded on nought to one, and 2 is the largest any of
+    // them reaches — `in` at the close, `out` at the open, `smooth` 1.5 at the middle. That is the
+    // first half of the bound the whole sum answers to.
+    var PEAK_CURVES = {
+      linear: [function (x) { return x; }, function () { return 1; }],
+      smooth: [function (x) { return x * x * (3 - 2 * x); },
+               function (x) { return 6 * x * (1 - x); }],
+      "in": [function (x) { return x * x; }, function (x) { return 2 * x; }],
+      out: [function (x) { return 1 - (1 - x) * (1 - x); },
+            function (x) { return 2 * (1 - x); }]
+    };
+
+    // THE MONOTONE SPLINE'S OWN TANGENTS — `pass-layer.js`'s `splineSlopes`, Fritsch–Carlson,
+    // carried over unchanged so the course this file differentiates is the course the host draws.
+    function peakSlopes(pts) {
+      var n = pts.length, d = [], m = [], i, h, a, b, s;
+      for (i = 0; i < n - 1; i++) {
+        h = num(pts[i + 1].at) - num(pts[i].at);
+        d.push(h > 0 ? (num(pts[i + 1].value) - num(pts[i].value)) / h : 0);
+      }
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      return m;
+    }
+
+    // ONE READING: a node's value at normalised passage time `u`, and its rate of change there,
+    // handed back as `[value, slope]`. The slope is in the node's own units PER UNIT OF PASSAGE
+    // TIME, so two handles living in windows of different lengths are already comparable before
+    // either is divided by its own published range.
+    //
+    // THE DERIVATIVE OF EACH KIND, and every one of them is the derivative of the evaluator
+    // `pass-layer.js` actually runs:
+    //
+    //   static      value is fixed              slope 0
+    //   cueProgress p = (u·D − w₀)/(w₁ − w₀)    slope D/(w₁ − w₀) inside the window, 0 outside it,
+    //                                           because the host clamps it and a clamped reading
+    //                                           has stopped moving
+    //   progress    u                           slope 1
+    //   time        u·D                         slope D
+    //   curve       c(x)                        slope c′(x)·x′, and 0 where x has left nought-to-one
+    //   map         t₀ + (t₁ − t₀)(x − f₀)/(f₁ − f₀)
+    //                                           slope (t₁ − t₀)/(f₁ − f₀)·x′; an empty `from` range
+    //                                           is the node the host itself refuses, and it reads 0
+    //   mix         a + (b − a)·t               slope a′ + (b′ − a′)·t + (b − a)·t′
+    //   clamp       x held between min and max  slope x′ strictly between them, 0 at or past either
+    //   spline      the Hermite piece between two points, with the tangents above:
+    //                 H(s) = (2s³ − 3s² + 1)·vₐ + (s³ − 2s² + s)·h·mₐ
+    //                      + (3s² − 2s³)·v_b   + (s³ − s²)·h·m_b
+    //                 H′(x) = [ (6s² − 6s)·vₐ + (3s² − 4s + 1)·h·mₐ
+    //                         + (6s − 6s²)·v_b + (3s² − 2s)·h·m_b ] / h  ·  x′
+    //                                           and 0 before the first point and after the last,
+    //                                           where the host holds the value
+    //
+    // A HOST SIGNAL A PLAN CANNOT KNOW — velocity, capability, noise, pointer — carries no shape
+    // here. It is read at nought with no slope, because the composer is deciding at the instant two
+    // works meet and the visitor has not moved yet. An operator this file writes nowhere is read
+    // the same way. Neither refuses anything; both simply add nothing to the ranking.
+    function peakRead(spec, u, cue, durSec, depth) {
+      if (spec === null || spec === undefined) return [0, 0];
+      if (typeof spec === "number" || isFlt(spec)) return [num(spec), 0];
+      if (typeof spec !== "object") return [0, 0];
+      depth = depth || 0;
+      if (depth > 64) return [0, 0];
+      if (spec.node) {
+        var ref = (cue.nodes || {})[spec.node];
+        return ref ? peakRead(ref, u, cue, durSec, depth + 1) : [0, 0];
+      }
+      if (spec.source !== undefined) {
+        if (spec.source === "progress") return [u, 1];
+        if (spec.source === "time") return [u * durSec, durSec];
+        if (spec.source === "cueProgress") {
+          var w = cue.window || [0, durSec];
+          var w0 = num(w[0]), w1 = num(w[1]);
+          if (!(w1 > w0)) return [0, 0];
+          var p = (u * durSec - w0) / (w1 - w0);
+          if (p <= 0) return [0, 0];
+          if (p >= 1) return [1, 0];
+          return [p, durSec / (w1 - w0)];
+        }
+        return [0, 0];
+      }
+      var r, ra, rb, rt, c, f, t, f0, f1, t0, t1, lo, hi;
+      switch (spec.op) {
+        case "static":
+          return [num(spec.value), 0];
+        case "curve":
+          c = PEAK_CURVES[spec.name] || PEAK_CURVES.linear;
+          r = peakRead(spec["in"], u, cue, durSec, depth + 1);
+          if (r[0] <= 0) return [c[0](0), 0];
+          if (r[0] >= 1) return [c[0](1), 0];
+          return [c[0](r[0]), c[1](r[0]) * r[1]];
+        case "map":
+          r = peakRead(spec["in"], u, cue, durSec, depth + 1);
+          f = spec.from || [0, 1]; t = spec.to || [0, 1];
+          f0 = num(f[0]); f1 = num(f[1]); t0 = num(t[0]); t1 = num(t[1]);
+          if (f1 - f0 === 0) return [0, 0];
+          return [t0 + (t1 - t0) * ((r[0] - f0) / (f1 - f0)), (t1 - t0) / (f1 - f0) * r[1]];
+        case "mix":
+          ra = peakRead(spec.a, u, cue, durSec, depth + 1);
+          rb = peakRead(spec.b, u, cue, durSec, depth + 1);
+          rt = peakRead(spec.t, u, cue, durSec, depth + 1);
+          return [ra[0] + (rb[0] - ra[0]) * rt[0],
+                  ra[1] + (rb[1] - ra[1]) * rt[0] + (rb[0] - ra[0]) * rt[1]];
+        case "clamp":
+          r = peakRead(spec["in"], u, cue, durSec, depth + 1);
+          lo = spec.min === undefined ? -Infinity : num(spec.min);
+          hi = spec.max === undefined ? Infinity : num(spec.max);
+          if (r[0] <= lo) return [lo, 0];
+          if (r[0] >= hi) return [hi, 0];
+          return r;
+        case "spline":
+          return peakSpline(spec, u, cue, durSec, depth);
+        default:
+          return [0, 0];
+      }
+    }
+
+    function peakSpline(spec, u, cue, durSec, depth) {
+      var pts = spec.points;
+      if (Object.prototype.toString.call(pts) !== "[object Array]" || !pts.length) return [0, 0];
+      var r = peakRead(spec["in"] === undefined ? { source: "progress" } : spec["in"],
+                       u, cue, durSec, depth + 1);
+      var x = r[0], n = pts.length, i;
+      if (n === 1 || x <= num(pts[0].at)) return [num(pts[0].value), 0];
+      if (x >= num(pts[n - 1].at)) return [num(pts[n - 1].value), 0];
+      var m = peakSlopes(pts);
+      for (i = 1; i < n - 1; i++) if (x <= num(pts[i].at)) break;
+      var pa = pts[i - 1], pb = pts[i];
+      var h = num(pb.at) - num(pa.at);
+      if (!(h > 0)) return [num(pb.value), 0];
+      var va = num(pa.value), vb = num(pb.value);
+      var s = (x - num(pa.at)) / h, s2 = s * s, s3 = s2 * s;
+      var value = (2 * s3 - 3 * s2 + 1) * va + (s3 - 2 * s2 + s) * h * m[i - 1]
+                + (3 * s2 - 2 * s3) * vb + (s3 - s2) * h * m[i];
+      var slope = ((6 * s2 - 6 * s) * va + (3 * s2 - 4 * s + 1) * h * m[i - 1]
+                   + (6 * s - 6 * s2) * vb + (3 * s2 - 2 * s) * h * m[i]) / h;
+      return [value, slope * r[1]];
+    }
+
+    // THE PEAK ITSELF. `at` is the instant in seconds, `share` the same instant as a share of the
+    // passage, `top` the largest the sum reached and `flat` whether it ever changed at all.
+    //
+    // THE BOUND, BY CONSTRUCTION. Every term is |slope| divided by a published range that is
+    // strictly positive, and every slope is a product of three bounded factors: a curve derivative
+    // (at most 2), a handle's own travel across its published range (at most 1 after the division),
+    // and the ratio of the passage's own length to the cue window's — which is finite because a
+    // window with no length contributes nothing at all. So the sum is a finite sum of finite terms
+    // for every cue table, and `top` is finite for every one of them.
+    //
+    // THE ARGMAX EXISTS FOR EVERY PASSAGE. The walk is a finite list of numbers, so it has a
+    // largest; the run attaining it is non-empty, so its middle is a real index. A passage carrying
+    // one cue that drives nothing but fixed readings sums to nought at every step, the run is the
+    // whole interior, and the peak is the passage's own middle. Nothing here can return nothing,
+    // and nothing here declines.
+    function motionPeak(cues, durSec) {
+      if (!(durSec > 0) || !cues || !cues.length) return { at: 0, share: 0.5, flat: true, top: 0 };
+      var terms = [], i, k, u, s;
+      for (k = 0; k < cues.length; k++) {
+        (function (c) {
+          var specs = HANDLE_SPECS[(c.instrument || {}).id] || {};
+          // THE DOOR THE CUE'S OWN RECORD NAMES, AND THE CROSSING DIAL BESIDE IT. Both are out, and
+          // for the one reason stated above: a measurement cannot read the thing it is placing. The
+          // dial is the content swap the shelf places, whatever the door record happens to name —
+          // and since the entry-door contract landed an upper voice's door record names its
+          // reserved dry rather than its dial, so reading the record alone would have let the swap
+          // back into the sum on exactly the voices that stand over another. The dry is out on its
+          // own account: its arc is the PLAN's statement of when the voice is in the frame, not the
+          // accompaniment's motion, and letting the plan's own shape decide the peak would be the
+          // measurement reading its own author.
+          var door = ((c.doors || {})["in"] || {}).handle;
+          var tracks = c.tracks || {};
+          Object.keys(tracks).sort().forEach(function (h) {
+            if (h === door || h === "mix") return;
+            if (h === "presence"
+                && (sourceOf((c.instrument || {}).id, h) || [])[0] === "entry-door") return;
+            var sp = specs[h];
+            if (!sp) return;
+            var range = Math.abs(num(sp[1]) - num(sp[0]));
+            if (!(range > 0)) return;
+            var node = (c.nodes || {})[(tracks[h] || {}).node];
+            if (!node) return;
+            terms.push([node, c, 1 / range]);
+          });
+        }(cues[k]));
+      }
+      var sums = [], top = -Infinity, low = Infinity;
+      for (i = 1; i < PEAK_STEPS; i++) {
+        u = i / PEAK_STEPS;
+        s = 0;
+        for (k = 0; k < terms.length; k++) {
+          s += Math.abs(peakRead(terms[k][0], u, terms[k][1], durSec, 0)[1]) * terms[k][2];
+        }
+        sums.push(s);
+        if (s > top) top = s;
+        if (s < low) low = s;
+      }
+      var lo = -1, hi = 0;
+      for (i = 0; i < sums.length; i++) {
+        if (sums[i] >= top) { if (lo < 0) lo = i; hi = i; }
+        else if (lo >= 0) break;
+      }
+      if (lo < 0) { lo = 0; hi = sums.length - 1; }
+      var share = (lo + hi + 2) / 2 / PEAK_STEPS;
+      return { at: share * durSec, share: share, flat: top === low, top: top };
     }
 
     function fillPlan(key, row, tpl, ctx) {
@@ -4942,6 +6160,36 @@
           } else if (n) {
             wanted.speed = flt(r4(betweenSpans("weave", "strips", "speed", n)));
           }
+          // THE WAVE'S PERIOD, off each work's own measured spectral period as a share of that
+          // work's own frame side (texture.spectralPeriodPx over frameSide) — the wavelength of
+          // the very spectral band the wave's own depth gate reads. A work with no measured
+          // spectral period has nothing to say here and the other work's reading stands alone
+          // rather than a number being invented for it, exactly as the horizon's own fallback
+          // above does for `dip`.
+          var perFrom = mf.frameSide > 0 ? mf.spectralPeriodPx / mf.frameSide : 0;
+          var perTo = mt.frameSide > 0 ? mt.spectralPeriodPx / mt.frameSide : 0;
+          if (perFrom > 0 || perTo > 0) {
+            var pFrom = perFrom > 0 ? perFrom : perTo;
+            var pTo = perTo > 0 ? perTo : perFrom;
+            var loWP = num(HANDLE_SPECS.weave.wavePeriod[0]);
+            var hiWP = num(HANDLE_SPECS.weave.wavePeriod[1]);
+            wanted.wavePeriod = [flt(r4(Math.min(hiWP, Math.max(loWP, pFrom)))),
+                                 flt(r4(Math.min(hiWP, Math.max(loWP, pTo))))];
+            // THE WAVE'S DRIFT READS THE SAME MEASUREMENT AS THE PERIOD, carrying no clock of its
+            // own — the instrument's own manifest says so in as many words (pass-inst-weave.js
+            // "it reads the SAME measurement as the period"). `betweenSpans` places the identical
+            // reading onto the drift handle's own published span, exactly as `speed` above places
+            // the strip count onto its own span.
+            wanted.waveDrift = [flt(r4(betweenSpans("weave", "wavePeriod", "waveDrift", pFrom))),
+                                flt(r4(betweenSpans("weave", "wavePeriod", "waveDrift", pTo)))];
+          }
+          // THE WAVE'S OWN DEPTH IS NOT WRITTEN HERE. Its register row asks for texture.type at
+          // «рябь» and 1 - texture.localStraightness, and neither field reaches this file: the
+          // trimmed work record the composer is handed carries no `texture.type` and no
+          // `texture.localStraightness` on any work (checked across the collection's own
+          // fixture), which this same register already said in as many words at the `wave` row
+          // above and at "weave.depth" beside it. Writing a number for `wave` here would be a
+          // number nobody measured, so the handle stays unwritten and the ribbon stands straight.
         } else if (instr === "gears") {
           if (num(row[11]) >= 0) {
             wanted.ratio = row[13];
@@ -4952,6 +6200,29 @@
           // is a fact about the pair rather than about the mesh, so it stands outside the mesh's
           // own guard — a pair whose mesh was not derived still turns about its own centre.
           centreOfThePair(wanted);
+          // HOW CLOSE THE DOORS STAND, off each work's own measured banding period as a share of
+          // that work's own frame side — the narrower of the two, because the finer spacing is
+          // the one the doors have to answer to. `row[14]` carries this same reading from
+          // `meshingTravel`, but only where `pivot.measure` is «banding», which a mesh's own
+          // radial pivot almost never is, so that guard stands closed on nearly every gears cue
+          // and the handle was left frozen at the module's own rest. The two works' own banding
+          // period is a fact about the pair, not about the mesh's own derivation, so it answers
+          // here directly, outside that guard, exactly as the pair's own centre already does.
+          if (wanted.bandPeriod === undefined) {
+            var bandFracs = [];
+            if (fromP.ends.banding && mf.frameSide > 0) {
+              bandFracs.push(num(fromP.ends.banding[1]) / mf.frameSide);
+            }
+            if (toP.ends.banding && mt.frameSide > 0) {
+              bandFracs.push(num(toP.ends.banding[1]) / mt.frameSide);
+            }
+            if (bandFracs.length) {
+              var loBand = num(HANDLE_SPECS.gears.bandPeriod[0]);
+              var hiBand = num(HANDLE_SPECS.gears.bandPeriod[1]);
+              wanted.bandPeriod = flt(r4(Math.min(hiBand,
+                Math.max(loBand, Math.min.apply(null, bandFracs)))));
+            }
+          }
           // HOW HARD THE WHEELS TURN, read off how strongly each work reads as radial. A work whose
           // rings and spokes are its own device drives the mesh; one that barely reads radial
           // barely turns, and the rate travels from the one to the other with the crossing.
@@ -5007,13 +6278,37 @@
           // horizon: the ride starts from where that work already stands. A work whose horizon was
           // never measured leaves the handle at the module's own rest.
           if (mf.horizonY !== null) wanted.dip = flt(r4(clamp01(mf.horizonY)));
-          // THE CREASE'S OWN LINE DOES NOT TRAVEL, so the instrument is told so rather than being
-          // let fold on a line nobody measured. A work record carries the region split's COUNT and
-          // its SCORE and no position at all, so `seam` is left at the instrument's own edge and
-          // `seamScore` is handed at nothing — under the module's own floor, which is the reading
-          // that sends the crease back to that edge and says why. The day the position travels,
-          // this is the one place that changes.
-          wanted.seamScore = flt(r4(0.0));
+          // THE CREASE'S OWN LINE, AND THIS IS THE ONE PLACE THAT CHANGED. The comment that stood
+          // here said the position did not travel and named this line as the one place that would
+          // change the day it did. It travels: the record now carries
+          // `structure.regions.line.{x,y}.at` and `.explains`, so `seam` takes the departing work's
+          // own measured place and `seamScore` the measured reading of how cleanly that place
+          // divides the picture, in place of the written zero that used to send the crease back to
+          // the box's own edge and say why.
+          //
+          // WHICH AXIS THE CREASE LIES ALONG, and it is the easy thing to get backwards. `wanted.axis`
+          // two screens up is the engine's `flat`, and the instrument reads it as `flat = axis >= 0.5`
+          // (pass-inst-boxfold.js). `lab/effects/box.js` writes the same expression as `vertical` and
+          // calls `seamOf(src, !vertical)`; inside `seamOf`, `acrossX` false walks the frame's ROWS,
+          // so a crease at or above a half is measured along Y and one below it along X. Where the
+          // branch wrote no axis at all the instrument's own default of nought stands, which is below
+          // a half, so the X reading is the one that answers — the same fallback, read the same way.
+          //
+          // THE FLOOR IS NOT APPLIED HERE. `explains` is handed as the record measured it and the
+          // instrument's own `SEAM_FLOOR` decides what to do with it, which is where that gate has
+          // always lived: a floor applied on this side would be this file deciding a question the
+          // module publishes an answer to.
+          //
+          // AND A WORK CARRYING NO LINE LEAVES BOTH HANDLES ALONE, so the crease stands at the box's
+          // own edge exactly as it did before the record carried a line — the module's own default,
+          // reached by saying nothing rather than by writing a zero.
+          var seamFlat = num(wanted.axis === undefined ? 0 : wanted.axis) >= 0.5;
+          var seamAt = seamFlat ? mf.regionLineYAt : mf.regionLineXAt;
+          var seamHow = seamFlat ? mf.regionLineYExplains : mf.regionLineXExplains;
+          if (seamAt === seamAt && seamHow === seamHow) {
+            wanted.seam = flt(r4(clamp01(seamAt)));
+            wanted.seamScore = flt(r4(clamp01(seamHow)));
+          }
         } else if (instr === "unfold") {
           // THE SHEET OPENS INTO THE WORK'S OWN PARQUET. Every handle here reads the departing
           // work's own device — the step it was cut at and the angle of that step — because the
@@ -5040,8 +6335,9 @@
           // level out.
           var stepPx = made.deviceStepPx > 0 ? made.deviceStepPx : made.gridPeriodPx;
           // The angle follows whether a DIRECTION was recovered, not whether a step was — the same
-          // repair `latticeAngleDeg` and `gcAngle` take, and for the same reason: a ring-cut or
-          // tile-cut work records a step and no direction, which is 114 of the 121 records on disk.
+          // repair `latticeAngleDeg` and `gcAngle` take, and for the same reason: a ring-cut or a
+          // tile-cut work has no direction to record, so the device's own angle reads its zero for
+          // every such work in any collection, by the measurement's own definition.
           var angle = made.deviceAngleDeg || made.gridAngleDeg;
           if (stepPx > 0 && made.frameSide > 0) {
             wanted.parquetPeriod = flt(r4(clamp01(stepPx / made.frameSide)));
@@ -5188,10 +6484,12 @@
           // rotational order are the SAME count in the same unit — three wedges is threefold
           // symmetry — so the handle's own span holds the reading rather than standing in a
           // different scale from it, and a work turning oftener than the glass reaches is honestly
-          // held at the glass's own reach. What makes this handle stand still on most pairs is the
-          // MEASUREMENT: `structure.rotational.n` reads 2 on 92 of the collection's 121 works, so
-          // nearly every pair asks for the same fold. That is a gap on the record-building side and
-          // it is named as one; no scale invented here can put variety into a reading that has none.
+          // held at the glass's own reach. WHAT THIS HANDLE DEPENDS ON, named rather than argued:
+          // it reads `structure.rotational.n` and it moves exactly as far as that field moves. No
+          // sentence here can prove that field varies and none should try — how far it varies is a
+          // property of the record builder's own reading and belongs in that tree, with an owner.
+          // What is provable here is that no scale invented in this file can put variety into a
+          // reading that has none.
           if (mf.rotationalN > 0 || mt.rotationalN > 0) {
             wanted.wedges = Math.round(Math.max(mf.rotationalN, mt.rotationalN));
           }
@@ -5237,9 +6535,9 @@
           // HOW MANY TILES ACROSS THE FLOOR, at the count of the work's own measured lattice —
           // the frame side over the grid's period. THE GRID IS READ FIRST HERE AND THE DEVICE
           // SECOND, the other way round from the unfold's parquet, and the reason is measured on
-          // this collection: the grid period spreads the works over all five counts while the
-          // device step saturates at the range's own top on five works in six, so a floor laid from
-          // the device would be one floor.
+          // the two measurements' own resolutions: a device step is quantised to the device's own
+          // repeat, so its range is coarser than the grid period's by construction and reading it
+          // first puts more works on one value whatever the works are.
           var tilesFrom = mf.gridCount > 0 ? mf.gridCount
             : (mf.deviceStepPx > 0 && mf.frameSide > 0 ? mf.frameSide / mf.deviceStepPx : 0);
           var tilesTo = mt.gridCount > 0 ? mt.gridCount
@@ -5275,8 +6573,8 @@
           // folds as many times as the work itself turns. HANDED STRAIGHT, and the fold's own branch
           // above says why that is right here and wrong for its neighbours: a wedge count and a
           // rotational order are one count in one unit, so the span holds the reading instead of
-          // standing in another scale from it. This handle looking the same pair to pair is the
-          // MEASUREMENT saying 2 on 92 works of 121, which is a record-side gap and named as one.
+          // standing in another scale from it. This handle reads `structure.rotational.n` and moves
+          // exactly as far as that field moves, which is a record-side dependency and named as one.
           if (mf.rotationalN > 0 || mt.rotationalN > 0) {
             wanted.wedges = Math.round(Math.max(mf.rotationalN, mt.rotationalN));
           }
@@ -5329,11 +6627,25 @@
                                            mt.detailPx / mt.frameSide);
           }
         } else if (instr === "overlay") {
-          // THE SEVEN HANDLES THE THIRD PICTURE IS PLACED BY. Two of the instrument's nine read
-          // nothing of either photograph and say so — `blend` names the rule the two works meet
-          // under, which is his own approved list, and `arrival` names charter shelf 7's interfered
-          // arrival — so both stay at the instrument's own rest and their nodes carry no note, which
-          // is the honest answer to «where did this number come from».
+          // THE TWO HANDLES THE PLAN ITSELF NAMES. `blend` says which of his six approved rules the
+          // two works meet under and `arrival` says whether charter shelf 7's interfered arrival is
+          // the one this crossing makes. Neither reads a photograph, and the note that stood here
+          // took that to mean neither could be answered — so both stayed at the instrument's own
+          // rest, `arrival` at 0 on every cast, and the interfered arrival never happened at all.
+          // Reading nothing of either work is not the same as having nothing to say: a plan's word
+          // is still a word, and this plan has already said both.
+          //
+          // THE ARRIVAL IS THE ONE THE PLAN ALREADY DECIDED. `arrival.mode` is settled long before
+          // this fill runs — CONDENSED where the arriving work's own record names a destination,
+          // CARRIED where it does not — and the interfered arrival IS the condensed one. So the
+          // handle carries the plan's own answer rather than a second decision taken here.
+          wanted.arrival = arrival.mode === "CONDENSED" ? 1 : 0;
+          // AND THE RULE THE TWO WORKS MEET UNDER IS ROLLED ON THE PAIR'S OWN DIE, over the six the
+          // instrument publishes. The list is his and the choice is the score's, which is what the
+          // register row says; the die is the same one every other choice in this file is made on,
+          // so a pinned seed reproduces it and two edges of one walk choose differently.
+          wanted.blend = dieAmong(num(row[4]), key + "|overlay-blend",
+                                  num(HANDLE_SPECS.overlay.blend[1]) + 1);
           //
           // HOW FAR THE COMPOSITE REACHES AND HOW MUCH OF THE FRAME IT STANDS ON, both off the one
           // reading that decides whether this crossing is worth watching: the two works' own colour
@@ -5400,19 +6712,20 @@
           }
         } else if (instr === "droste") {
           // THE SPIRAL'S FIVE. Without this branch the dive stood at the module's own four copies,
-          // its own wind and its own speed for every pair alike — 7 222 cues of the collection, and
-          // not one of them different from the next. Every row below is the sentence the handle
+          // its own wind and its own speed for every pair alike: no branch means no track, no track
+          // means `appliedValue` fills the handle from the manifest default, and a default is one
+          // number for every pair there can ever be. Every row below is the sentence the handle
           // itself publishes.
           //
           // HOW MANY COPIES STAND INSIDE ONE FALL OF FORTY, off the two works' own measured ring
           // counts: a work of few rings dives in few large copies and one of many in many small
           // ones, which is the module's own sentence. The counts are positioned about the module's
-          // own four by their RATIO rather than handed straight, and the reason is measured on this
-          // collection: 99 of the 121 works read more than six rings, so a count handed straight
-          // would land 82 works in a hundred on the handle's own ceiling — the same floor for five
-          // works in six, which is the sameness this branch exists to close. What no file records
-          // is how many rings one copy is worth; what both records carry is which of the two works
-          // has more of them.
+          // own four by their RATIO rather than handed straight, and the reason is a statement about
+          // two ranges: a ring count and a share-of-span handle are different scales, so a count
+          // handed straight saturates for EVERY count above the span's own top — one value for all
+          // of them, which is the sameness this branch exists to close. What no file records is how
+          // many rings one copy is worth; what both records carry is which of the two works has more
+          // of them.
           if (mf.ringGrain > 0 && mt.ringGrain > 0) {
             wanted.size = acrossTheSpan("droste", "size", mf.ringGrain, mt.ringGrain);
           }
@@ -5437,7 +6750,8 @@
         } else if (instr === "hero") {
           // THE READY STORY'S SEVEN. Without this branch the whole story — how many mirrors the
           // window opens, how far out the arc travels, how hard it turns and where its courses
-          // stand — was the module's own for every pair alike, on 7 790 cues of the collection.
+          // stand — was the module's own for every pair alike: no branch, no track, and the manifest
+          // default is one number for every pair there can ever be.
           //
           // HOW MANY OF THE FOUR MIRRORS THE WINDOW OPENS, and HOW CONFIDENTLY that order reads.
           // Both are read on the ONE work whose turn reads most confidently, because they are one
@@ -5474,8 +6788,9 @@
           centreOfThePair(wanted);
         } else if (instr === "livemirror") {
           // THE MIRROR'S THREE, AND THE ONE IT WILL NOT TAKE. Without this branch the fold stood at
-          // the module's own both-folds-at-once, dead centre of the frame, on 11 373 cues of the
-          // collection — the largest single block of identical crossings the sweep found.
+          // the module's own both-folds-at-once, dead centre of the frame, on every pair alike — no
+          // branch, no track, and the manifest default is one number for every pair there can ever
+          // be.
           //
           // WHICH WAY THE PICTURE FOLDS ONTO ITSELF, off the one recorded banding axis. This
           // instrument's own manifest asks for the fold line to lie ALONG the works' own structure,
@@ -5548,9 +6863,9 @@
         // line and no branch here is cast for real pairs and plays ONE identical crossing on every
         // one of them, because `tracksFor` builds a track for each handle and `appliedValue` fills
         // an unasked track with the manifest default. Three instruments stood in exactly that state
-        // this morning. Measured before these branches: of the parameters each of the six drives,
-        // beat moved 1 of 7 between two pairs of four different works, waterline 1 of 11, and gates,
-        // grid-colour, strata-light and tilt moved NOTHING at all.
+        // this morning, and the claim needs no tally beside it: a handle with no branch takes the
+        // manifest's own default, and a default is one number for every pair there can ever be. The
+        // six branches below are what make each of these instruments read the pair in front of it.
         } else if (instr === "beat") {
           // THE TWO GRATINGS ARE THE TWO WORKS' OWN RHYTHMS. Each work's measured spectral period,
           // said as a share of its own frame side, is exactly the unit the two period handles are
@@ -5646,15 +6961,21 @@
             wanted.swing = [flt(r4(clamp01(mf.voidShare))), flt(r4(clamp01(mt.voidShare)))];
           }
         } else if (instr === "grid-colour") {
+          // SHELF 7'S INTERFERED ARRIVAL, THE SAME PLAN'S WORD THE OVERLAY CARRIES. `arrival.mode`
+          // is settled before this fill runs and the interfered arrival is the condensed one, so
+          // this handle carries the plan's own answer. It stood at the instrument's own rest on
+          // every cast until now, which made the arrival the plan had already named never happen.
+          wanted.arrival = arrival.mode === "CONDENSED" ? 1 : 0;
           // THE CUT STANDS AT ONE WORK'S OWN STRUCTURE AND ARRIVES AT THE OTHER'S — the module's
           // whole claim, and the four handles below are what makes it true of a PAIR rather than of
           // one work twice. Every one reads the work's own device first and its measured grid where
           // no device was recovered, which is the order `measuredParts` already prefers them in.
           function gcStep(m) { return m.deviceStepPx > 0 ? m.deviceStepPx : m.gridPeriodPx; }
           // The ANGLE asks whether the device recovered a DIRECTION, not whether it recovered a
-          // step: a ring-cut work carries a step and no direction at all, and taking its zero over
-          // the work's own measured grid angle is what held both these handles still on 117 of the
-          // collection's 121 records. Same repair, same reason as `latticeAngleDeg` above.
+          // step: a ring-cut work carries a step and no direction at all, so its device angle reads
+          // its own zero by the measurement's own definition, and taking that zero over the work's
+          // own measured grid angle held both these handles still on every such work in any
+          // collection. Same repair, same reason as `latticeAngleDeg` above.
           function gcAngle(m) { return m.deviceAngleDeg || m.gridAngleDeg; }
           var stepF = gcStep(mf), stepT = gcStep(mt);
           if (stepF > 0 && mf.frameSide > 0) {
@@ -5722,11 +7043,12 @@
           // not a new number, the same index-over-count law read at this instrument's own voice
           // count.
           //
-          // SUNG ONLY WHERE THIS CUE OWNS LIGHT-COLOUR (shelf 17's levels law, `singsLightColour`
-          // above). Where another cue of this same passage owns that level instead, this cue only
-          // ACCOMPANIES it there and every one of the six handles is left unset — the manifest's own
-          // rest of 0, not a second silence invented here.
-          if (singsLightColour(cue)) {
+          // SUNG ONLY WHERE THIS CUE OWNS THE LEVEL THESE SIX HANDLES DECLARE (shelf 17's levels
+          // law, `ownsLevelOf` above, reading the level off this instrument's own manifest). Where
+          // another cue of this same passage owns that level instead, this cue only ACCOMPANIES it
+          // there and every one of the six handles is left unset — the manifest's own rest of 0,
+          // not a second silence invented here.
+          if (ownsLevelOf(cue, "grid-colour", "colourAmp")) {
             var gcBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.contrast)];
             var gcPeriods = voiceSpread(gcBase);
             // The period is settled first, because the loudness is read against the crest the period
@@ -5809,11 +7131,12 @@
           // because that is the pairing the assembler's own `seeds[].measure` uses, and the two
           // arrays are not the same on purpose in the ported code either.
           //
-          // SUNG ONLY WHERE THIS CUE OWNS LIGHT-COLOUR (shelf 17's levels law, `singsLightColour`
-          // above). Where another cue of this same passage owns that level instead, this cue only
+          // SUNG ONLY WHERE THIS CUE OWNS THE LEVEL THESE TWELVE HANDLES DECLARE (shelf 17's
+          // levels law, `ownsLevelOf` above, reading the level off this instrument's own manifest).
+          // Where another cue of this same passage owns that level instead, this cue only
           // ACCOMPANIES it there and every one of the twelve handles is left unset — the manifest's
           // own rest of 0, not a second silence invented here.
-          if (singsLightColour(cue)) {
+          if (ownsLevelOf(cue, "strata-light", "colourAmpA")) {
             var slBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.brightness),
                           BEAT_DIAL * (4 + mt.sat), BEAT_DIAL * (5 + mt.contrast)];
             var slPeriods = voiceSpread(slBase);
@@ -5849,6 +7172,28 @@
           wanted.detailCentreXA = flt(r4(clamp01(mf.reliefCentreDetailX)));
           wanted.massCentreXB = flt(r4(clamp01(mt.reliefCentreMassX)));
           wanted.detailCentreXB = flt(r4(clamp01(mt.reliefCentreDetailX)));
+          // HOW LONG THE ARRIVING WORK'S BLURRED MASS STANDS ALONE BEFORE ITS DETAIL GROWS INTO IT
+          // — charter shelf 12's spectral sentence, composed rather than left at the module's rest.
+          // The ARRIVING work's own parting scale is what answers, because it is that work's detail
+          // that has to grow in: a work whose luminance lives mostly in its masses has little detail
+          // to bring, so the two arrive nearly together, and a work whose luminance lives mostly in
+          // its detail needs room for it. `reliefEdge` is how much the MASS stratum carries, so the
+          // share the DETAIL needs is one minus it.
+          //
+          // NOTHING INVENTS A SCALE HERE. `readingOf`'s own clamp puts `reliefEdge` in [0, 1] and
+          // the handle is published over [0, 1], so the reading is placed on the handle in the unit
+          // it is already in — the same road `parquetPeriod`, `voidShareA`/`voidShareB` and
+          // `seamA`/`seamB` already take. The map is monotone and covers the handle's whole span: a
+          // work parting entirely into masses lands at one end and one parting entirely into detail
+          // at the other.
+          //
+          // WHERE THE ARRIVING WORK CARRIES NO READING the handle is not driven at all and the
+          // module's own rest stands, which is the honest answer and the one every other branch in
+          // this file gives. Writing the reading's own zero would send the crossing to one end of
+          // the span on the strength of a measurement nobody took.
+          if (mt.reliefEdge > 0) {
+            wanted.handover = flt(r4(clamp01(1 - mt.reliefEdge)));
+          }
           //
           // THE TWELVE COLOUR AND LIGHT VOICES, the same derivation strata-light's own branch above
           // ports (lab/step4-assembler.js:1966-2010), read here for this instrument's own sibling in
@@ -5856,11 +7201,12 @@
           // ARRIVING work's, colour on each work's own saturation and light on its own contrast —
           // the same pairing strata-light's branch above uses.
           //
-          // SUNG ONLY WHERE THIS CUE OWNS LIGHT-COLOUR (shelf 17's levels law, `singsLightColour`
-          // above). Where another cue of this same passage owns that level instead, this cue only
+          // SUNG ONLY WHERE THIS CUE OWNS THE LEVEL THESE TWELVE HANDLES DECLARE (shelf 17's
+          // levels law, `ownsLevelOf` above, reading the level off this instrument's own manifest).
+          // Where another cue of this same passage owns that level instead, this cue only
           // ACCOMPANIES it there and every one of the twelve handles is left unset — the manifest's
           // own rest of 0, not a second silence invented here.
-          if (singsLightColour(cue)) {
+          if (ownsLevelOf(cue, "strata-scale", "colourAmpA")) {
             var ssBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.brightness),
                           BEAT_DIAL * (4 + mt.sat), BEAT_DIAL * (5 + mt.contrast)];
             var ssPeriods = voiceSpread(ssBase);
@@ -5883,14 +7229,6 @@
             sayVoice(wanted, "light", "B", mt.contrast,
                      ssClamp("lightPeriodB", ssPeriods[3].value), 3 / 4, ssLightGround);
           }
-          //
-          // `handover` IS NOT DRIVEN HERE, and that is a fact about the module rather than a gap:
-          // no reading in a work record says how a visitor's own hand would have shared the dial's
-          // own travel between the detail and the masses — that is the module's own free number,
-          // "a handle a score can drive" (strata-scale.js:450-506) rather than a measurement of
-          // either photograph — so it rests at the manifest's own default honestly, the same way
-          // studio's own eight-operation switches rest at the module's opening pose where no
-          // reading answers them (his law of 2026-08-18 15:13).
         } else if (instr === "tilt") {
           // HOW FAR THE PLANE LIES DOWN, off each work's own corridor reading: a picture that
           // already reads as depth is laid down further, and the lean travels from the departing
@@ -5966,6 +7304,164 @@
             wanted.tideCells = acrossTheSpan("waterline", "tideCells",
                                               mf.grainCells, mt.grainCells)[0];
           }
+        } else if (instr === "pour") {
+          // THE POUR'S FOUR HANDLES. Without this branch all four rest at the instrument's own
+          // pour — a correct pour, but the SAME pour for every pair, which is what this branch
+          // exists to close.
+          //
+          // HOW MANY COLUMNS THE PICTURE POURS IN, at the count of the departing work's own
+          // measured lattice across the frame — the grid's period first and the device's step
+          // where no grid period was derived. It is handed STRAIGHT rather than positioned,
+          // because a column count and a lattice count are one count in one unit; the
+          // instrument's own published range holds it, and the instrument rounds it to whole
+          // columns and says so in its `applied` block.
+          var pourCols = mf.gridCount > 0 ? mf.gridCount
+            : (mf.deviceStepPx > 0 && mf.frameSide > 0 ? mf.frameSide / mf.deviceStepPx : 0);
+          if (pourCols > 0) {
+            wanted.columns = Math.round(Math.min(num(HANDLE_SPECS.pour.columns[1]),
+                                        Math.max(num(HANDLE_SPECS.pour.columns[0]), pourCols)));
+          }
+          // THE ANGLE THE HEAP STANDS AT, off the two works' own finest detail as a RATIO and never
+          // as an equality: what no file records is how many degrees of repose one point of detail
+          // is worth, and what both records carry is which of the two materials is finer. Each
+          // work's detail is said as a share of that work's OWN frame side first, so the ratio is
+          // between two shares and not between two pixel counts taken on two different buffers.
+          // The heap is the arriving work, so a ratio over one — the arriving work finer than the
+          // departing one — walks the handle up and the heap stands steeper. `alongTheSpan` places
+          // it about the instrument's own rest a doubling at a time, so the whole span is
+          // reachable and a ratio of one lands exactly on the rest.
+          if (mf.detailPx > 0 && mt.detailPx > 0 && mf.frameSide > 0 && mt.frameSide > 0) {
+            wanted.repose = flt(r4(alongTheSpan("pour", "repose",
+                                                (mf.detailPx / mf.frameSide)
+                                                / (mt.detailPx / mt.frameSide))));
+          }
+          // HOW FAR APART THE COLUMNS' OWN RELEASES STAND, at the departing work's own region
+          // score. Both are shares already and the handle is a share of its own range, so it is a
+          // share against a share with nothing invented between them; the handle's own ceiling of
+          // 0.9 is what holds it, because a stagger of one would leave the last column no travel.
+          if (mf.regionScore > 0) {
+            wanted.stagger = flt(r4(Math.min(num(HANDLE_SPECS.pour.stagger[1]),
+                                             clamp01(mf.regionScore))));
+          }
+          // HOW COARSE THE MATERIAL IS, off the two works' own strongest repeats as a ratio, each
+          // said as a share of its own work's frame side for the same reason the repose above is.
+          // A coarse departing work — a long repeat — pours in few large crumbs, so the ratio is
+          // taken the other way up from the repose: the arriving work's share over the departing
+          // one's, which walks the handle DOWN toward the coarse end as the departing work's own
+          // repeat grows.
+          if (mf.spectralPeriodPx > 0 && mt.spectralPeriodPx > 0
+              && mf.frameSide > 0 && mt.frameSide > 0) {
+            wanted.grain = flt(r4(alongTheSpan("pour", "grain",
+                                               (mt.spectralPeriodPx / mt.frameSide)
+                                               / (mf.spectralPeriodPx / mf.frameSide))));
+          }
+        } else if (instr === "veil") {
+          // THE VEIL'S FOUR HANDLES. Without this branch all four rest at the instrument's own
+          // weather for every pair alike.
+          //
+          // HOW THICK THE AIR IS, TRAVELLING from the departing work's own grain reading to the
+          // arriving one's — so the air itself changes across the crossing rather than standing
+          // still while the works move through it. Both readings are shares and the handle is a
+          // share of its own range, so it is a share against a share. The instrument keeps a floor
+          // under every sheet, so a thickness of nothing is still a real veil and both doors stay
+          // exact at every value this row can write.
+          if (mf.textureScore > 0 || mt.textureScore > 0) {
+            wanted.thickness = [flt(r4(clamp01(mf.textureScore))),
+                                flt(r4(clamp01(mt.textureScore)))];
+          }
+          // HOW MANY BODIES OF VEIL STAND ACROSS THE FRAME, off the two works' own lattice counts
+          // placed ACROSS the handle's own span by their ratio — the same road the water's crest
+          // spacing travels, and for the same reason: a lattice count and a count of fog banks are
+          // not one number, and saying they were would be a scale nobody measured.
+          var vFrom = mf.gridCount > 0 ? mf.gridCount
+            : (mf.deviceStepPx > 0 && mf.frameSide > 0 ? mf.frameSide / mf.deviceStepPx : 0);
+          var vTo = mt.gridCount > 0 ? mt.gridCount
+            : (mt.deviceStepPx > 0 && mt.frameSide > 0 ? mt.frameSide / mt.deviceStepPx : 0);
+          if (vFrom > 0 && vTo > 0) {
+            wanted.bodies = acrossTheSpan("veil", "bodies", vFrom, vTo);
+          }
+          // HOW FAR APART THE SHEETS STAND IN DEPTH, at the stronger of the two works' own corridor
+          // readings — one stack serves both works, so the pair's own depth is what sets it, and
+          // the work that carries depth is the one that has it to give. It is a single value and
+          // not a travel: the stack's spread is what the two works' own travel is derived FROM, so
+          // a spread that moved mid-pass would move the two works under the visitor.
+          if (mf.tunnel > 0 || mt.tunnel > 0) {
+            wanted.depth = flt(r4(clamp01(Math.max(mf.tunnel, mt.tunnel))));
+          }
+          // WHICH WAY THE WIND CARRIES THE SHEETS, along the departing work's own lattice angle —
+          // the grid's angle first and the device's where the device recovered a direction, which
+          // is the order this file already prefers them in everywhere else. What says the angle IS
+          // a reading is the lattice's own PERIOD beside it, not the angle's own value: an angle of
+          // exactly nothing is a lattice running square, so a test on the angle alone both drops
+          // that real reading and lets an unmeasured work write one.
+          var vAng = mf.gridPeriodPx > 0 ? mf.gridAngleDeg
+            : (mf.deviceStepPx > 0 ? mf.deviceAngleDeg : null);
+          if (vAng !== null) wanted.airAngle = flt(r4(Math.abs(vAng) % 180.0));
+        } else if (instr === "wind") {
+          // THE WIND'S FIVE HANDLES. Without this branch all five rest at the instrument's own
+          // gust for every pair alike.
+          //
+          // HOW MANY ROWS THE PICTURE IS CUT INTO, at the pivot's own band family — the same count
+          // the woven instrument's `strips` takes, off the actors this plan has already cast. It
+          // is handed STRAIGHT for the same reason the pour's column count is: a row count and a
+          // band count are one count in one unit.
+          var rowN = 0;
+          actors.forEach(function (a) {
+            if (a.role === "pivot-carrier" && a.ref === "a") rowN += a.parts;
+          });
+          if (rowN) {
+            wanted.rows = Math.round(Math.min(num(HANDLE_SPECS.wind.rows[1]),
+                                     Math.max(num(HANDLE_SPECS.wind.rows[0]), rowN)));
+          }
+          // WHICH WAY THE ROWS LIE, off the recorded banding axis and TURNED INTO THIS
+          // INSTRUMENT'S OWN UNIT. A vertical band family means the bands run up the frame, so the
+          // rows lie that way and the handle stands at a quarter turn; a horizontal family leaves
+          // it at nothing. The departing work's family speaks first and the arriving one's answers
+          // where it carries none, which is the order the woven instrument's own axis already
+          // prefers them in.
+          var bandFrom = fromP.ends.banding, bandTo = toP.ends.banding;
+          var windFrom = (bandFrom !== undefined && bandFrom !== null
+                          && num(bandFrom[2]) < BANDING.length)
+            ? AXIS_OF_BANDING[BANDING[num(bandFrom[2])]] : null;
+          var windTo = (bandTo !== undefined && bandTo !== null && num(bandTo[2]) < BANDING.length)
+            ? AXIS_OF_BANDING[BANDING[num(bandTo[2])]] : null;
+          var windCode = windFrom !== null ? windFrom : windTo;
+          if (windCode !== null) wanted.axis = flt(windCode === 0 ? 0.5 : 0.0);
+          // HOW FAR THE AIR BENDS A ROW, TRAVELLING from the departing work's own banding score to
+          // the arriving one's — the same recorded reading the axis two lines up came from, read
+          // for its strength rather than for its direction. The bend rides the instrument's own
+          // envelope, which is nothing at both doors, so this row cannot reach a landing whatever
+          // it writes.
+          if (bandFrom || bandTo) {
+            wanted.bend = [flt(r4(bandFrom ? clamp01(num(bandFrom[0])) : 0)),
+                           flt(r4(bandTo ? clamp01(num(bandTo[0])) : 0))];
+          }
+          // HOW LONG THE GUST'S OWN BODY IS, off the two works' own repeats along the row as a
+          // ratio. It is a single value and not a travel: the front's own start and end are
+          // derived FROM the body, so a body that moved mid-pass would move the front under the
+          // visitor and the gust would stop being one gust crossing once.
+          if (mf.gridPeriodPx > 0 && mt.gridPeriodPx > 0 && mf.frameSide > 0 && mt.frameSide > 0) {
+            wanted.gust = flt(r4(alongTheSpan("wind", "gust",
+                                              (mf.gridPeriodPx / mf.frameSide)
+                                              / (mt.gridPeriodPx / mt.frameSide))));
+          }
+          // HOW FAR BEHIND THE NEAR ROWS THE FAR ROWS STAND, at the tangent of the angle between
+          // the departing work's own lattice and the direction its rows lie in — which is exactly
+          // what an angle of incidence means. Past forty-five degrees the tangent passes one and
+          // the handle stands at its own ceiling; that ceiling is the instrument's and the row
+          // stops there rather than inventing a scale to fit it. The lattice is read the way the
+          // veil's own air angle reads it — the PERIOD beside the angle says whether the angle is a
+          // reading — because a lag taken against an absent lattice is not a small error: an angle
+          // defaulted to nothing against a quarter-turn row axis lands the tangent past its own
+          // ceiling, so an unmeasured work would drive this handle to its extreme.
+          var wAng = mf.gridPeriodPx > 0 ? mf.gridAngleDeg
+            : (mf.deviceStepPx > 0 ? mf.deviceAngleDeg : null);
+          if (wAng !== null) {
+            var rowDeg = (wanted.axis === undefined ? 0 : num(wanted.axis)) * 180.0;
+            var off = (((Math.abs(wAng) - rowDeg) % 180) + 180) % 180;
+            if (off > 90) off = 180 - off;
+            wanted.lag = flt(r4(clamp01(Math.tan(off * Math.PI / 180.0))));
+          }
         } else if (instr === "studio") {
           // THE DARKROOM'S SIX. Without this branch every one of them stood at the module's own
           // number for every pair alike, which is the sameness his word of 2026-08-18 15:13 names.
@@ -6029,10 +7525,13 @@
         // Reusing it here rather than a second "how far apart" number of this branch's own is law 5
         // itself: properties that belong to one gesture hang on one scalar so they cannot disagree.
         var reach = clamp01(Math.abs(mf.level - mt.level));
-        // `share` is where the brighter work's own claim sits in the passage — the same
-        // `camLvlShare` fallback idiom the camera's own asymmetric split falls back to at 0.5 where
-        // the pair's own tone carries nothing (both readings exactly absent), read here rather than
-        // duplicated because it is the same fact about the same pair.
+        // `share` is where the brighter work's own claim sits in the passage — the same tone-share
+        // idiom the camera's own pitch split falls back to at 0.5 where the pair's own tone carries
+        // nothing (both readings exactly absent), read here rather than duplicated because it is
+        // the same fact about the same pair. It named `camLvlShare` until 2026-08-25, when the
+        // motion peak took over placing the camera's excursion and that variable — which only ever
+        // moved the excursion's two ends together — was deleted; the pitch's own `camLvlSum2` a few
+        // screens below is the surviving one, and it is the same reading.
         var levelSum = mf.level + mt.level;
         var midShare = levelSum > 0 ? clamp01(mf.level / levelSum) : 0.5;
 
@@ -6086,9 +7585,10 @@
         // wrote to `pivot-course`, the handle's own ride landed last, and its `in` — the course it
         // rides — pointed at the node it had just overwritten. The host's own graph walk read that
         // for what it was, «cue «pivot» draws a cycle: pivot-course → pivot-course», and refused the
-        // score whole: 51 of the first 2 000 ordered pairs of the 121 real records, on this file as
-        // it stands tonight and equally on the last commit, so the collision is as old as the shared
-        // course and not tonight's. It is closed HERE rather than by renaming that one handle,
+        // score whole. Two things deriving one name collide whenever both are present, so the defect
+        // fires on the first pair that casts the ready story on the pivot and on every one after it;
+        // it stands on this file as it does on the last commit, so the collision is as old as the
+        // shared course and not tonight's. It is closed HERE rather than by renaming that one handle,
         // because the defect is the collision and not the word: the course asks the cue which names
         // are already spoken for and takes one that is not, so no instrument landing a handle of any
         // name can ever take this node's name out from under it again.
@@ -6103,7 +7603,32 @@
         var courseLeg = Math.min(midShare, 1 - midShare);
         var holdFrom = r4(midShare - reach * courseLeg / 2);
         var holdTo = r4(midShare + reach * courseLeg / 2);
-        var courseHolds = holdTo > holdFrom;
+        // WHETHER THERE IS A CREST TO SUSPEND AT ALL — charter shelf 15: the crest law IS the
+        // culmination's suspension. Until 2026-08-25 both halves of the hold were read from the two
+        // works' tone apartness and from nothing else, and the step's own place in the walk never
+        // reached this block: a quiet link between two tonally distant works dwelt at its middle,
+        // and a culmination between two works standing close in tone passed through without one.
+        // The hold is a musical event and tone is not what says whether one is owed.
+        //
+        // WHAT DECIDES IS THE STEP'S HARMONIC FUNCTION, which the request now carries beside its
+        // name and which shelf 15's own map supplies where the walk states none. A DOMINANT is the
+        // tension that demands resolution, and a suspension is what that demand sounds like held —
+        // so a dominant suspends. A TONIC is the home the eye settles in, with nothing standing
+        // unresolved to hold; a SUBDOMINANT prepares, and a preparation that dwells has stopped
+        // preparing and arrived. Neither suspends. The function is what is read rather than the
+        // name, because a non-crest dominant and a subdominant are both called a middle and those
+        // two are exactly the pair this decision has to tell apart.
+        //
+        // TONE STILL SHAPES THE HOLD and is untouched: how long the room is held and where it sits
+        // in the passage are the two works' own `luminance.level`, exactly as before. What changed
+        // is that tone no longer decides WHETHER. Where the pair's own tone carries nothing at all
+        // there is still no room and no hold — the course itself is not written (`courseWanted`
+        // above) — because the room's own height, length and place are all read off that one
+        // reading, and his word of 2026-08-19 stands: if the records genuinely cannot supply a
+        // middle, leave it. Nothing here refuses a crossing; a step that does not suspend keeps the
+        // course's plain passage through, which is what every step read before this line existed.
+        var suspends = ctx.routeFunction === "dominant";
+        var courseHolds = suspends && holdTo > holdFrom;
         var courseWritten = false;
         // Written on first use, so a cue whose handles all stand still never carries a course
         // nobody reads.
@@ -6124,8 +7649,12 @@
                   + (courseHolds
                      ? ", and is held from " + pyText(flt(holdFrom)) + " to " + pyText(flt(holdTo))
                        + " of the passage"
-                     : ", and passes through without a hold, the two works standing too close in "
-                       + "tone for the shorter leg to spare one"),
+                     : (suspends
+                        ? ", and passes through without a hold, the two works standing too close in "
+                          + "tone for the shorter leg to spare one"
+                        : ", and passes through without a hold: this step is a "
+                          + ctx.routeFunction + " and shelf 15's crest is the culmination's own "
+                          + "suspension, so there is no tension standing here to hold")),
             };
             courseWritten = true;
           }
@@ -6139,7 +7668,8 @@
         // of by a refusal.
         Object.keys(c.tracks).sort().forEach(function (h) {
           var nodeName = (c.tracks[h] || {}).node || (c.id + "-" + h);
-          var why = sourceOf(c.instrument.id, h)[1];
+          var srcRow = sourceOf(c.instrument.id, h);
+          var kind = srcRow[0], why = srcRow[1];
           var req = wanted[h] === undefined ? null : wanted[h];
           if (h === "mix") {
             // THE DOOR'S OWN SHAPE (shelf 18: the straight fade is the stock-video-editor feel
@@ -6162,13 +7692,72 @@
               : arrival.locusKind === "gate" ? mt.gateGap : 0;
             var doorShape = (arrival.mode === "CONDENSED" && condenseFit >= reach) ? "in"
               : (mt.level > mf.level ? "out" : "smooth");
-            nodes[nodeName] = { op: "mix", a: c.doors["in"].value, b: c.doors.out.value,
+            // THE DIAL'S OWN TWO ENDS COME OFF THE DIAL, not off the cue's door record. They were
+            // read from `c.doors` while every cue's door record named `mix`; since the entry-door
+            // contract landed an upper voice's door record names its reserved dry instead, and this
+            // line would then have run the crossing dial from nothing to nothing — the voice would
+            // have stood at its own departing pose for the whole window. `HANDLE_SPECS[instr].mix`
+            // is the handle's own published floor and ceiling, which is what a door value always
+            // was; for every cue whose door still names `mix` this writes the identical two numbers.
+            var mixSpan = HANDLE_SPECS[instr].mix;
+            nodes[nodeName] = { op: "mix", a: flt(num(mixSpan[0])), b: flt(num(mixSpan[1])),
                                 t: { op: "curve", name: doorShape, in: { source: "cueProgress" } },
                                 note: why };
             return;
           }
-          if (h === "clock") {
+          // THE ENTRY DOOR'S RESERVED DRY — the charter's build ladder, step 0. A voice standing
+          // over another is ABSENT at both of its doors and whole across its middle, so it joins a
+          // running picture without replacing it and stands down the same way. Nothing is ever
+          // weighed against anything: at no instant does this hold one picture against another,
+          // which is what separates it from the opacity handle clause (a) removed.
+          //
+          // THE SHAPE IS THE ONE THE SEAM CHECK WALKS: a monotone spline over the cue's OWN
+          // progress through (0, 0), (0.5, 1), (1, 0). The host's own spline sets both tangents of
+          // a flat segment to zero, so the dry leaves nothing and returns to nothing with no speed
+          // at either end — the join and the stand-down are continuous in value and in speed, which
+          // is what makes them unseeable rather than merely small.
+          //
+          // THE LOWEST VOICE OWES THE OPPOSITE and gets it: nothing stands beneath it, so a door it
+          // draws nothing at is a door the visitor sees the page through, and the host refuses such
+          // a score outright (`presenceWhyNo`). It stands whole for its whole window — the handle's
+          // own rest, written rather than left implied so the plan says what it means.
+          if (kind === "entry-door") {
+            if (num(c.stack) > 0) {
+              nodes[nodeName] = {
+                op: "spline", in: { source: "cueProgress" },
+                points: [{ at: flt(0.0), value: flt(0.0) },
+                         { at: flt(0.5), value: flt(1.0) },
+                         { at: flt(1.0), value: flt(0.0) }],
+                note: "requested nothing at this cue's own two doors and whole across its middle, "
+                      + "because this voice stands over another. From " + why };
+            } else {
+              nodes[nodeName] = {
+                op: "static", value: flt(1.0),
+                note: "requested whole for the whole window, because this voice is the lowest of "
+                      + "its stack and nothing stands beneath it. From " + why };
+            }
+            return;
+          }
+          if (kind === "host-clock") {
             nodes[nodeName] = { source: "time", note: why };
+            return;
+          }
+          // A HANDLE THAT RIDES THE PASSAGE'S OWN TRAVEL, and it is the row's word that says so
+          // rather than the handle's name. `mix` is the door and has its own shape, above; every
+          // other `progress` handle crosses its own published span as the passage crosses, which is
+          // exactly what its row promises. This is the branch whose absence held `parquet.spin` and
+          // `unfold.field` still at their defaults for the whole passage while their rows said they
+          // travelled.
+          if (kind === "progress") {
+            var pSpan = HANDLE_SPECS[instr][h];
+            var pFrom = appliedValue(instr, h, pSpan[0])[1];
+            var pTo = appliedValue(instr, h, pSpan[1])[1];
+            nodes[nodeName] = {
+              op: "map",
+              in: { op: "curve", name: "smooth", in: { source: "cueProgress" } },
+              from: [0, 1], to: [pFrom, pTo],
+              note: "requested the passage's own travel across this handle's own published span, "
+                    + "from " + pyText(pFrom) + " to " + pyText(pTo) + ", from " + why };
             return;
           }
           if (Array.isArray(req)) {
@@ -6277,33 +7866,87 @@
       if (camera.track.length === 4) {
         var travel = null;
         cues.forEach(function (c) { if (c.id === "travel") travel = c; });
-        // WHERE THE TWO MIDDLE POINTS STAND IN TIME. Shelf 5's conjuror law puts the content swap
-        // at the plan's motion peak, and the travelling cue's own window is the composer's own
-        // reading of where that peak sits — so the outbound and inbound poses land at the
-        // travelling cue's own open and close. That window is already asymmetric about the
-        // passage's own midpoint (0.0 or 0.18 out against 0.14 back), which is what shelf 18's
-        // camera reading (2026-08-19) asks for — outbound and return taking different shares — so
-        // a plan that travels on a cue of its own is left exactly as it stood.
+        // HOW LONG THE EXCURSION IS. `span` decides the LENGTH of the witness camera's excursion
+        // and nothing about where it stands: where the plan travels on a cue of its own, the
+        // travelling cue's own window gives that length; where it travels on no cue, the length is
+        // half the passage.
         //
-        // Where the plan travels on no cue of its own (a ground-only passage) there is no motion
-        // peak the composer can name, and the two points used to fall back to the passage's own
-        // first and third quarter — 0.25 out against 0.25 back, symmetric about the midpoint, the
-        // mirror shape the same shelf forbids. The split now leans on the two works' own TONE,
-        // `luminance.level` (`measuredParts()`'s own `level`, the identical reading the flight's
-        // own `reach` a few lines below takes on this same pair), so which work reads brighter
-        // decides how the passage's own half is shared between the two legs, rather than splitting
-        // it in two by an unmeasured half each.
+        // WHERE THE EXCURSION STANDS is decided below, by the plan's own motion peak — shelf 5's
+        // conjuror law, computed rather than asserted. Until 2026-08-25 the two middle points
+        // simply took `span`'s own two ends, and the comment that stood here called the travelling
+        // cue's window "the composer's own reading of where that peak sits": no parameter velocity
+        // was ever summed, normalised or maximised, and where a plan travelled on no cue this file
+        // said outright that there was no motion peak it could name. `motionPeak` above names one
+        // for every plan.
+        //
+        // AND THE TONE SPLIT IS GONE FROM THIS LINE, deliberately. `camLvlShare` — the two works'
+        // own `luminance.level` read as a share — multiplied both ends of the no-travel span by the
+        // same factor, so it moved the excursion's two ends TOGETHER and its length was exactly
+        // half the passage whatever the share read. The moment the peak decides where the excursion
+        // stands, that reading reaches nothing at all: a number taken off the two works that no
+        // longer touches the plan, which is worse than no reading because it looks like one. It is
+        // deleted rather than left standing. The length it produced is unchanged — half the
+        // passage, the same half it always was — so nothing static is introduced here; what is
+        // removed is a dead reading, and what the no-travel plan GAINED is a placement that is now
+        // measured off the plan's own motion instead of sitting at a fixed share of the passage.
+        //
+        // THE OTHER HONEST ANSWER — routing the tone reading into the excursion's own LENGTH, where
+        // a viewer would actually see it — is the better one and is not taken here: it re-bases
+        // `tests/test_pass_peak.py`'s own length row, which asks for half the passage on a
+        // no-travel plan, and that file stands outside this hand's write set.
         var span;
         if (travel) {
           span = travel.window;
         } else {
-          var camLvlSum = fromP.measured.level + toP.measured.level;
-          var camLvlShare = camLvlSum > 0 ? fromP.measured.level / camLvlSum : 0.5;
-          span = [flt(r4(0.5 * camLvlShare * duration / 1000.0)),
-                  flt(r4((0.5 + 0.5 * camLvlShare) * duration / 1000.0))];
+          span = [flt(0), flt(r4(0.5 * duration / 1000.0))];
         }
-        camera.track[1].at = span[0];
-        camera.track[2].at = span[1];
+        // WHERE THE TWO MIDDLE POINTS STAND IN TIME — charter shelf 5, THE CONJUROR. `span` above
+        // gives the excursion its LENGTH, measured: the travelling cue's own window, or half the
+        // passage where the plan travels on no cue. That length is not touched here. What the shelf
+        // decides is WHERE the excursion stands, and the answer is the plan's own motion peak — the
+        // argmax of its summed normalised parameter velocity, `motionPeak` above.
+        //
+        // THE ROOM IS SHARED IN THE PEAK'S OWN PROPORTION. The excursion of length `L` leaves the
+        // passage `D − L` of room over, and the two legs — the flight out of the departing pose and
+        // the flight back into the arriving one — take that room in the same proportion the peak
+        // takes the passage. Writing `q` for the peak's own share:
+        //
+        //     track[1].at = q · (D − L)          track[2].at = q · (D − L) + L
+        //
+        // FOUR THINGS FALL OUT OF THOSE TWO LINES BY ALGEBRA, for every `q` in nought to one and
+        // every `L` no longer than `D`, so none of them needs a clamp and none can be lost to a
+        // pair the collection happens not to carry:
+        //
+        //   · both points stand inside the passage — the first between nought and `D − L`, the
+        //     second between `L` and `D`;
+        //   · they keep their order and stand exactly `L` apart, so the excursion is the same
+        //     journey the measurement above sized, moved rather than stretched;
+        //   · the peak itself stands INSIDE the excursion, at the same share `q` of it as it holds
+        //     of the passage — `qD − q(D − L) = qL` is never negative and `q(D − L) + L − qD =
+        //     L(1 − q)` never is either, so the camera is out on its flight at the instant the
+        //     plan moves fastest, which is the whole of what the shelf asks for;
+        //   · the two legs are `q(D − L)` and `(1 − q)(D − L)`, which are equal only where the peak
+        //     stands exactly at the passage's middle. Shelf 18's reading of 2026-08-19 — outbound
+        //     and return taking different shares — therefore survives as a measured fact rather
+        //     than as a shape this branch has to arrange.
+        //
+        // `L ≤ D` IS ALREADY TRUE OF EVERY `span` THIS BRANCH CAN BUILD: a cue window is composed
+        // inside the passage, and the no-travel length is half of it. The guard below states it
+        // anyway, so the arithmetic answers for values that never reach it.
+        //
+        // AND WHERE NO INSTANT IS LOUDER THAN ANOTHER the shelf names no peak, and the excursion is
+        // left exactly where the measurement above put it — his word of 2026-08-19, "if the records
+        // genuinely cannot supply a middle, leave it". That is not a crossing refused: the flight
+        // still flies, the doors still open, and the passage plays whole.
+        var camPeak = motionPeak(cues, duration / 1000.0);
+        var camAt0 = num(span[0]), camAt1 = num(span[1]);
+        var camLen = camAt1 - camAt0, camRoom = duration / 1000.0 - camLen;
+        if (!camPeak.flat && camRoom >= 0) {
+          camAt0 = camPeak.share * camRoom;
+          camAt1 = camAt0 + camLen;
+        }
+        camera.track[1].at = flt(r4(camAt0));
+        camera.track[2].at = flt(r4(camAt1));
 
         // THE FLIGHT ITSELF (charter shelf 2, grammar law 5). `cmf`/`cmt` are the two works' own
         // measured record — `measuredParts()` above, the same one every cue's handles already read
@@ -6679,9 +8322,11 @@
       if (world) fields.worldName = WORLD_NAMES[world];
       fields.registerPhrase = REGISTER_PHRASES[REGISTERS[num(row[15])]];
       // THE LINE IS FITTED TO THE FENCE IT HAS TO PASS, and it always fits. The client refuses a
-      // score whose intent runs past its own cap WHOLE, with «intent is no short text» — 1 004 of
-      // 6 304 composed crossings were lost that way before the cap was raised, and raising it moved
-      // the wall rather than taking it down. So the line gives up its clauses in the order of what
+      // score whose intent runs past its own cap WHOLE, with «intent is no short text». The line is
+      // prose and its length is bounded above by nothing in this file, so an unbounded field against
+      // a fixed cap refuses whenever it exceeds it — crossings are lost for as long as the cap is a
+      // wall, and raising the cap moves the wall rather than taking it
+      // down. So the line gives up its clauses in the order of what
       // a person can most afford to lose — the pass count, then the genre's own opening — and where
       // it still runs long it is TRIMMED at a word with an ellipsis. What was given up stands on the
       // plan, so a shortened line can always be read back to what it lost.
@@ -6823,7 +8468,7 @@
 
     // ---- the choice core: two works, a direction and a die ----
 
-    function scoreFor(a, b, direction, seed, role, memory, played, viewer) {
+    function scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day) {
       // Two works, a direction, the step's role, what the visit already played here and a die: the
       // whole crossing, decided here and now.
       //
@@ -6841,10 +8486,21 @@
       // the same way it always has.
       walkPlayed = Array.isArray(played) ? played : [];
       viewerMemory = viewer || null;
+      // AND THE INSTANT THE VISIT IS HAPPENING AT — charter shelf 16's third pipeline step, set
+      // fresh here for the length of this one composition exactly as the two lines above are. Its
+      // absence reads as a visit that stated no day, which is the neutral every die already answers
+      // the same way, and it is what makes a pinned seed reproduce a run: every input the
+      // composition reads is now on the request.
+      visitClock = (typeof day === "number" && day === day && isFinite(day)) ? day : null;
       var tag = direction === "b-to-a" ? "ba" : "ab";
       var key = a.id + "__" + b.id + "__" + tag;
       var fromW = tag === "ab" ? a : b, toW = tag === "ab" ? b : a;
       var step = ROLE_BUDGETS[role] ? role : "middle";
+      // THE STEP'S OWN HARMONIC FUNCTION, defaulted here as well as at the entry so both roads
+      // answer alike. A direct four-value call to this function states no function and gets the
+      // one its own defaulted role is the image of, which is what every passage read before the
+      // field existed; the entry's fence has already held a stated one to the three.
+      var stepFn = ROUTE_FUNCTIONS.indexOf(routeFn) >= 0 ? routeFn : FUNCTION_OF_ROLE[step];
       // Whether this step of the walk may spend the one miracle at all — shelf 17's budget, read
       // once here so the ground, the roads and the voicing all answer to one reading of it.
       var spendsAMiracle = !!ROLE_BUDGETS[step].miracle;
@@ -6888,7 +8544,12 @@
       var ctx = {
         pivot: [pv.kind, pv.measure, pv.cut, pv.transform, pv.elementKind, pivotKindsOf(pv)],
         fromParts: workParts(fromW, cast),
-        toParts: workParts(toW, cast)
+        toParts: workParts(toW, cast),
+        // THE STEP'S OWN PLACE IN THE WALK, carried into the fill because the crest law needs it
+        // there (charter shelf 15, the culmination's suspension). `ctx` is what this file already
+        // hands the fill; nothing new is built to carry two words across one call.
+        role: step,
+        routeFunction: stepFn
       };
       var filled = fillPlan(key, row, tpl, ctx);
       // THE FAMILY THE WALK WILL READ, read the same way the walk reads it: off the composed plan,
@@ -6897,10 +8558,33 @@
       chosen.family = familyToken(filled.pivot.transform,
                                   filled.travellingAxis ? filled.travellingAxis.measure : null);
       var out = serialise(filled);
+      // THE LAST FIELD A SCORE EVER GAINS IS WRITTEN BEFORE THE SCORE IS WEIGHED. A score is
+      // weighed after the last field that will ever be written to it, or not at all: `fitTheWeight`
+      // below tightens the score and `overTheFence` reads the tightened bytes, so a field added
+      // after them leaves the published weight, the published text, the fence reading and the
+      // record of what was shed all answering for a score the caller never receives. `passageFor`
+      // wrote this one there, past the weighing, and while the client reads the weight rather than
+      // enforcing it that costs a lying diagnostic; the day the fence is a wall again it costs a
+      // crossing.
+      //
+      // WHAT THE READING IS, unchanged from the entry that used to hold it. `camera.lead` says the
+      // flight itself is the transition: the anchor gives up its held middle and the pose travels
+      // the whole duration. Its two homes are the quiet link and the return, which charter shelf 15
+      // makes tonic and shelf 17 gives one move, at most one accompanying voice and no miracle — the
+      // register a led passage wants underneath it, because the camera is the world voice and a led
+      // flight spends it. The pair's own records have to give the flight somewhere to go, since a
+      // still flight leads nothing. And under the levels law one voice holds one level, so a led
+      // score may never also give a cue the WORLD level. All three readings are in hand here.
+      var cameraTravels = plan.spec.travel === null && plan.spec.arrival === null;
+      if (out[0] && cameraTravels && LED_ROLES.indexOf(step) >= 0 && !claimsTheWorld(out[0])) {
+        out[0].camera.lead = true;
+      }
       // THE SCORE IS FITTED TO THE CLIENT'S OWN WEIGHT FENCE, never handed over to be thrown away.
-      // The client refuses a score over its published byte fence WHOLE — 1 783 of 7 708 shipped
-      // scores were refused that way at the fence's earlier value, every one of them before any
-      // instrument saw it — and a score's weight is almost entirely the prose it carries: the
+      // The client refuses a score over its published byte fence WHOLE, before any instrument sees
+      // it, and a score's weight is dominated by prose whose length is bounded above by nothing —
+      // the provenance note on every driven node, and the authored line. A whole score can therefore
+      // be lost to prose, which follows from those two rules together and from no set of pictures:
+      // the
       // provenance note on every driven node, and the authored line. So where a filled score stands
       // over the fence the notes go first, then the line is trimmed, until it fits. What was given
       // up stands beside it, so a fitted score can always be read back to what it lost.
@@ -6939,7 +8623,7 @@
                // only cue is its held ground has NOTHING but the camera to be the transition, and
                // one that travels or arrives has the instruments underneath it. That reads the
                // passage rather than a number, and it needs no number at all.
-               cameraTravels: (plan.spec.travel === null && plan.spec.arrival === null) };
+               cameraTravels: cameraTravels };
     }
 
     // ---- THE ONE ENTRY A PASSAGE COMES THROUGH ----
@@ -6966,6 +8650,14 @@
     //                 subdominant, a culmination dominant). Missing means the walk stated no
     //                 function and the passage is read as a middle; a name outside the five reads
     //                 as a middle too, with the unknown name recorded on the request.
+    //   routeFunction the harmonic function that role is the image OF: tonic, subdominant or
+    //                 dominant. It is on the request because the NAME alone cannot carry it — a
+    //                 subdominant and a non-crest dominant are both called a middle — and those two
+    //                 are the pair the composer most needs apart: one prepares, the other is a
+    //                 tension that demands resolution. Missing means the walk stated no function
+    //                 and it is read off the role by shelf 15's own map above, which is exactly how
+    //                 every passage read before the field existed; a name outside the three reads
+    //                 the same way, with the unknown name recorded on the request.
     //   sessionMemory the return reference of §4.8 — {family, seed, passIndex} naming the pass
     //                 already played on this edge in this visit, and nothing wider. Missing means
     //                 nothing has played on this edge yet. A field outside the three is IGNORED and
@@ -6984,6 +8676,13 @@
     //                 case `viewerBiasOf` and the recurrence fold above both already answer the same
     //                 way. A field outside the three is IGNORED and recorded, exactly as
     //                 `sessionMemory`'s fence already works.
+    //   day           the instant the walk casts this pair, in milliseconds since the epoch in UTC —
+    //                 charter shelf 16's third pipeline step, from which the day's palette, tempo and
+    //                 light are read (§4.4g, added 2026-08-26). Missing means the walk stated no day
+    //                 and the day's bias reads neutral on every candidate, which is the judging mode:
+    //                 the client sends it only on an UNPINNED visit, so a pinned walk reproduces to
+    //                 the pixel and a public one breathes with the day. A value that is no instant is
+    //                 left unread and recorded, like every other field here.
     //
     // WHAT COMES BACK, AND IT IS ALWAYS A CROSSING. Two refusals stand in this entry and only two:
     // a request naming no departing record and one naming no arriving record, because there is no
@@ -6999,6 +8698,27 @@
     // caller writes it onto this record when the host reports, so one record carries the whole
     // passage — what was asked, what came back, and what was applied or refused mid-flight.
     var ROUTE_ROLES = ["entrance", "quiet link", "middle", "culmination", "return"];
+    // THE THREE HARMONIC FUNCTIONS THE FIVE NAMES ARE THE IMAGE OF (charter shelf 15), and the one
+    // home of that vocabulary on this side of the line. The client writes `routeFunction` beside
+    // `routeRole` and has done since the harmonic layer landed; this file contained no occurrence
+    // of the identifier at all, so the one distinction that layer was built to make was dropped
+    // silently at the seam, with no diagnostic saying it had been.
+    //
+    // WHY THE NAME CANNOT CARRY IT. The map from a function to a name is not one-to-one: a
+    // subdominant is always called a middle, and so is a dominant that does not stand at the
+    // route's own crest (`passRoleOfFunction` in engine/client/01a-pass.js). So the two the
+    // composer most needs apart — a preparation and a tension that demands resolution — both
+    // arrive here under one word.
+    var ROUTE_FUNCTIONS = ["tonic", "subdominant", "dominant"];
+    // AND THE MAP THE OTHER WAY, which is what a step whose function goes unstated is read by. It
+    // is not a new reading: it is shelf 15's own map, already written out word for word in the
+    // request's own field list below — a quiet link and a return are tonic, an entrance and a
+    // middle subdominant, a culmination dominant. A walk that states no function therefore reads
+    // exactly as it read before this fence existed, which is the whole of what «missing means
+    // unstated» has to mean here.
+    var FUNCTION_OF_ROLE = { "entrance": "subdominant", "quiet link": "tonic",
+                             "middle": "subdominant", "culmination": "dominant",
+                             "return": "tonic" };
     // The two steps of the walk a camera-led passage belongs to, and the one home of that reading.
     var LED_ROLES = ["quiet link", "return"];
 
@@ -7037,6 +8757,19 @@
                     + ", so the step reads as a middle");
         role = "middle";
       }
+      // THE STEP'S HARMONIC FUNCTION, FENCED THE WAY ITS OWN NAME ALREADY IS. It is read, it is
+      // held to the three, and a stray value is RECORDED rather than charged to the visitor — the
+      // same road `routeRole`, the die and the two memories all take, because a walk that sends a
+      // value nobody expected must still get a crossing. Where the walk states nothing the role's
+      // own function stands, so this fence changes no passage that was composing before it.
+      var routeFn = req.routeFunction === undefined || req.routeFunction === null
+        ? null : String(req.routeFunction);
+      if (routeFn !== null && ROUTE_FUNCTIONS.indexOf(routeFn) < 0) {
+        unread.push("routeFunction «" + routeFn + "», which is none of "
+                    + ROUTE_FUNCTIONS.join(", ") + ", so the step's function is read off its role");
+        routeFn = null;
+      }
+      if (routeFn === null) routeFn = FUNCTION_OF_ROLE[role];
       // A DIE OUTSIDE THE INSTRUMENT'S OWN SPAN IS WRAPPED INTO IT. The span is the meshing
       // instrument's own published one and it holds; a walk that rolls past it gets a die inside it
       // rather than no crossing.
@@ -7138,9 +8871,37 @@
           viewer = { lingered: lingeredR.list, skipped: skippedR.list, seenWorks: seenR.list };
         }
       }
-      var read = { routeRole: role, direction: direction, seed: seed, sessionMemory: memory,
+      // THE DAY THIS VISIT HAPPENS ON — charter shelf 16's third pipeline step, read here and handed
+      // to the choice core exactly as the walk memory and the viewer memory are. It is one number:
+      // the instant, in milliseconds since the epoch in UTC, that the day and the hour are read off.
+      // A walk that states none states none, and the day's bias reads at its own neutral — which is
+      // the viewer mode where the walk rolls a fresh die anyway, and the judging mode where a pinned
+      // seed has to reproduce its predecessor to the pixel (§4.4f). The client already draws the line
+      // there and not here: `engine/client/01a-pass.js` sets `req.day` only on an unpinned visit.
+      //
+      // THE FIELD IS `day`, WHICH IS THE CONTRACT'S OWN NAME FOR IT. The block this was applied from
+      // called it `dayOfVisit`; it was written before §4.4g's row landed, and the row that landed
+      // (PASS-API-V1.md, 2026-08-26) and the client that writes it both say `day`. The wire's name is
+      // the one that binds, so a field this entry read under any other name would read nothing at all
+      // on every request the client actually sends.
+      //
+      // A VALUE THAT IS NO INSTANT IS LEFT UNREAD RATHER THAN REFUSED, exactly as every other field
+      // of this entry is: it is recorded, the day reads at its neutral, and the crossing plays.
+      var day = null;
+      if (req.day !== undefined && req.day !== null) {
+        var dv = Number(req.day);
+        if (dv !== dv || !isFinite(dv)) {
+          unread.push("day «" + String(req.day) + "», which names no instant, so the day's own bias "
+                      + "reads neutral on every candidate");
+        } else {
+          day = dv;
+        }
+      }
+      var read = { routeRole: role, routeFunction: routeFn,
+                   direction: direction, seed: seed, sessionMemory: memory,
                    walkMemory: played.length ? played : null,
                    viewerMemory: viewer,
+                   day: day,
                    cameraState: req.cameraState === undefined ? null : req.cameraState,
                    buffer: req.buffer === undefined ? null : req.buffer,
                    unread: unread.length ? unread : null };
@@ -7152,28 +8913,12 @@
       // A request with one record names one photograph, and a crossing is between two.
       if (!a || !a.id) return no("the passage request names no departing work record");
       if (!b || !b.id) return no("the passage request names no arriving work record");
-      var made = scoreFor(a, b, direction, seed, role, memory, played, viewer);
-      // THE PASSAGE THE CAMERA LEADS. The camera lane built the capability and asks one field for
-      // it: `camera.lead` says the flight itself is the transition, the anchor gives up its held
-      // middle and the pose travels the whole duration without ever standing still. Choosing it is
-      // a reading of the step's function in the route, which is why it belongs here rather than in
-      // the choice core — the core never sees the role.
-      //
-      // The two homes are the quiet link and the return. Charter shelf 15 makes both TONIC, the
-      // home the eye settles in, and shelf 17 gives a quiet link one move from the vocabulary, at
-      // most one accompanying voice and no miracle — which is exactly the register a led passage
-      // wants underneath it, because the camera is the world voice and a led flight spends it. A
-      // culmination spends its voices elsewhere, and its miracle is the accent.
-      //
-      // Two readings gate it beyond the role. The pair's own records have to give the flight
-      // somewhere to go, since a still flight leads nothing. And under the levels law one voice
-      // holds one level, so a led score may never also give a cue the WORLD level: the host refuses
-      // that combination before the command is taken and names the cue, and this side never emits
-      // it.
-      if (made.score && made.cameraTravels && LED_ROLES.indexOf(role) >= 0
-          && !claimsTheWorld(made.score)) {
-        made.score.camera.lead = true;
-      }
+      var made = scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day);
+      // THE PASSAGE THE CAMERA LEADS IS DECIDED IN THE CHOICE CORE, where the score is still being
+      // built. It stood here, after the core had already weighed the score and published its bytes,
+      // its text and its fence reading, so those three answered for a score without this field on
+      // it. The reading itself is unchanged and its whole argument travels with it; what changed is
+      // that a score is now weighed after the last field it will ever gain.
       made.request = read;
       made.applied = null;
       if (made.declined !== undefined) made.score = null;
@@ -7189,10 +8934,38 @@
     return { passageFor: passageFor, scoreFor: scoreFor, routeRoles: ROUTE_ROLES.slice(),
              seedSpan: SEED_SPAN.slice(),
              version: COMPOSER_VERSION, writeJson: writeJson,
+             motionPeak: motionPeak,
              writeJsonTight: writeJsonTight, r4: r4,
              camVoiceFloor: camVoiceFloor, camVoiceLift: camVoiceLift,
              voiceFloor: voiceFloor, voiceReach: voiceReach, voiceLift: voiceLift,
-             voiceLoudness: voiceLoudness };
+             voiceLoudness: voiceLoudness,
+             // The band each route role names for its own length, and the arithmetic that places a
+             // pair's reading inside one. Both travel for the same reason as the rest of this list:
+             // the claim they carry is about numbers, so it is answered over every number they take.
+             // Shelf 17's six structural levels, so a reader can put every handle every instrument
+             // publishes through them and find the one that declares a seventh.
+             levels: LEVELS.slice(),
+             // THE REGISTER'S OWN WORD FOR EVERY HANDLE, so a reader can hold what a row PROMISES
+             // against what the composition actually wrote. That comparison is the one thing
+             // nothing checked: a row saying `measured` and a node standing at the instrument's own
+             // default is a broken promise, and it shipped in silence because the only gate over it
+             // read the note the writer had already declined to write.
+             handleSource: (function () {
+               var out = {}, k;
+               for (k in HANDLE_SOURCE) out[k] = HANDLE_SOURCE[k][0];
+               return out;
+             }()),
+             lengthInBand: lengthInBand,
+             roleBands: (function () {
+               var out = {}, r;
+               for (r in ROLE_BUDGETS) out[r] = bandOfTier(ROLE_BUDGETS[r].tier).slice();
+               return out;
+             }()),
+             tierBands: (function () {
+               var out = {}, i2;
+               for (i2 = 0; i2 < TIERS.length; i2++) out[TIERS[i2].tier] = TIERS[i2].band.slice();
+               return out;
+             }()) };
   }
 
   join({ version: COMPOSER_VERSION, make: make });

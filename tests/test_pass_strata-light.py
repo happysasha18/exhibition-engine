@@ -109,7 +109,7 @@ HANDLES = ["mix", "clock", "levelA", "levelB", "cellsA", "cellsB",
            "colourPeriodA", "colourPhaseA", "colourAmpA",
            "lightPeriodA", "lightPhaseA", "lightAmpA",
            "colourPeriodB", "colourPhaseB", "colourAmpB",
-           "lightPeriodB", "lightPhaseB", "lightAmpB", "mask"]
+           "lightPeriodB", "lightPhaseB", "lightAmpB", "mask", "presence"]
 
 
 def strata_score(level_a=0.5, level_b=0.5, pair_a="a", pair_b="b", **statics):
@@ -260,7 +260,7 @@ check("PASS-STRATA every constant of the cut stands at the number the lab module
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-STRATA the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 11,
+      declared == spelled and len(declared) == 12,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -492,7 +492,7 @@ else:
                     # would never see a second cue that also claims it.
                     and m["levels"] == ["CELL", "LIGHT-COLOUR"] and m["cuts"] == ["band"]
                     and m["params"] == {}
-                    and len(m["handles"]) == 19
+                    and len(m["handles"]) == 20
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and sorted(m["handles"]) == sorted(HANDLES)
                     and m["neutrals"] == {"a": 0, "b": 1}
@@ -502,7 +502,7 @@ else:
                     and m["framings"]["0"] == m["framings"]["1"] == {"coverCrop": 1.0}
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["coverage"]["writes"] is True
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 11
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 12
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2

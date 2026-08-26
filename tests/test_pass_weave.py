@@ -315,9 +315,14 @@ check("PASS-WEAVE every wave handle names the measurement it is read from",
 # Both rows read the manifest against the very lines it describes, so a number that moves in one
 # place and stands still in the other is red rather than quietly wrong.
 
+# THE HANDLE GAINED A LEVEL with the sweep that made every handle in the fleet declare the
+# structural level it drives (charter shelf 17). The ribbon's grain is a CELL reading, and the
+# pattern follows it there: every number this row was written to hold — the three named states, the
+# two band directions, the one that turns and the period it turns on — is unchanged and still read
+# off the very lines the manifest describes.
 AXIS_ENUM = re.search(
     r'axis: \{ min: 0, max: 2, def: 2, kind: "enum", step: 1, names: AXES,\s*'
-    r'banding: \["vertical", "horizontal"\], turns: 2, turnPeriodS: 27 \}', WEAVE)
+    r'banding: \["vertical", "horizontal"\], turns: 2, turnPeriodS: 27, level: "CELL" \}', WEAVE)
 check("PASS-WEAVE the ribbon axis publishes three named states, their band directions, and the one that turns",
       bool(AXIS_ENUM)
       and 'var AXES = ["up and down", "side to side", "both"];' in WEAVE
@@ -456,7 +461,7 @@ BROWSER_ROWS = [
     "PASS-WEAVE the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
     "PASS-WEAVE §2.5 · an interruption at each of five instants lands inside the score's own budget",
     "PASS-WEAVE §2.5 · every handle stands on its door when the cadence ends",
-    "PASS-WEAVE §2.5 · the cadence walks to the NEARER door, not always the same one",
+    "PASS-WEAVE §2.5 · the cadence walks to the door the visit is LANDING on, from every instant",
     "PASS-WEAVE row 9  · one camera authority through a real pass, and the pose rests on the arrival",
     "PASS-WEAVE §5     · one node drives two handles of the real instrument, and moves both",
     "PASS-WEAVE §4.4b  · the strip-count breath and the press reach the PICTURE, not just the record",
@@ -995,11 +1000,22 @@ else:
                       f"handle finished from its door was {worst[0]} ({worst[1]}) — the doors are "
                       f"exact, so the bar is 1e-09")
 
+                # THE DOOR MOVED ON 2026-08-25, and this row moved with it. It read
+                # ["in", "in", "in", "out", "out"] — the NEAREST door, whichever of the dial's two
+                # ends the handle happened to stand closer to. That gave one question two answers:
+                # interrupted early the cadence walked back to the DEPARTING work while `finish`
+                # docked the visit on the ARRIVING one, so the canvas rested on A while the DOM
+                # revealed B (his own complaint of that morning; tests/test_pass_seam.py measured it
+                # at 241 of 255 over 99.87 per cent of the frame). Four readings in the engine
+                # already named the arrival — §6's rest law, the dock's own key, the walk's own
+                # notion of where a further step counts from, and the score's `failLand` — and the
+                # nearest door was the one that moved. A cadence now resolves to the door the visit
+                # is landing on from every instant, so every landing reads «out».
                 doors = [(L["at"], (L["r"]["cadence"] or {}).get("door")) for L in lands]
                 check(BROWSER_ROWS[17],
-                      [d for _, d in doors] == ["in", "in", "in", "out", "out"],
-                      f"nearest door per instant: {doors} — the dial's own two ends are 0 and 1, so "
-                      f"0.5 and below walks back to «in» and past it walks on to «out»")
+                      [d for _, d in doors] == ["out"] * 5,
+                      f"the door walked to per instant: {doors} — the visit docks on the arriving "
+                      f"work from every one of them, so the picture lands there too")
 
                 # ---- §5: one node, two handles, on the real instrument -------------------------
                 # The one breath drives the strip count and the press together. Read at two clocks:

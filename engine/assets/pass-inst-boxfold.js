@@ -65,7 +65,9 @@
   //      drawing the picture into a scratch surface and counting, which §1.2's fence forbids here.
   //      So the place arrives as a handle — `seam`, with `seamScore` as its gate — and the handle
   //      publishes the measurement it reads: `structure.regions` from lab/cut-lines.py, whose
-  //      `score` is the gate and whose line is the place. Below the floor the crease stays where the
+  //      `line.<axis>.at` is the place and whose `line.<axis>.explains` is the gate — that second
+  //      reading, and not the record's own `regions.score`, is what the floor was calibrated
+  //      against. Below the floor the crease stays where the
   //      box's own edge puts it and the reading says so out loud, rather than passing a made-up
   //      number off as the work's own.
   //   2. THE FACES CARRY LIVE PICTURES RE-READ EVERY DRAWN FRAME — the host's. The module re-read a
@@ -855,25 +857,32 @@
       // nothing instead, because an instrument that rolls its own die makes a seeded score draw two
       // different pictures.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
+        // NO LEVEL FOR `mix`, `seed`, `shade`, `travel` OR `mask`: the crossing's own dial, the
+        // score's die, and the fleet's own judge channels — none of them drive a structural level.
+        mix: { min: 0, max: 1, def: 0, level: null },
         axis: { min: 0, max: 1, def: 0, kind: "enum", step: 1,
                 names: { "0": "the crease stands upright", "1": "the crease lies flat" },
                 unit: "which way the box turns",
                 reads: "the banding axis lab/data/cut-lines.json recorded for the pivot — the "
-                     + "direction the two works' own structure runs, so the crease crosses it" },
+                     + "direction the two works' own structure runs, so the crease crosses it",
+                level: "WORLD" },
         depth: { min: 0, max: 1, def: 0.9, unit: "how deep the perspective is",
-                 applied: { boxHalfWidthsAtNothing: CAM_FAR, boxHalfWidthsAtWhole: CAM_NEAR } },
+                 applied: { boxHalfWidthsAtNothing: CAM_FAR, boxHalfWidthsAtWhole: CAM_NEAR },
+                 level: "WORLD" },
         dip: { min: 0, max: 1, def: 0.5, unit: "how far the eye rides up through a quarter",
-               applied: { framesOfHalfHeightAtWhole: DIP_MAX, restsAt: "every landing" } },
+               applied: { framesOfHalfHeightAtWhole: DIP_MAX, restsAt: "every landing" },
+               level: "WORLD" },
         lead: { min: 0, max: 1, def: 0.5, unit: "how deep the finger joint bites",
-                applied: { frameUnitsAtWhole: FING_MAX, restsAt: "every landing" } },
+                applied: { frameUnitsAtWhole: FING_MAX, restsAt: "every landing" },
+                level: "CELL" },
         fingers: { min: 3, max: 14, def: FING_N, kind: "enum", step: 1,
                    unit: "how many fingers stand along the crease",
                    reads: "structure.grid.countFrom over the departing work's own frame side — the "
                         + "measured repeat that work carries ACROSS the crease, the collection's own "
                         + "in lab/data/step3-grid-derivation.json, which is the same number "
                         + "grid-colour derives its count from. It is the SHAPE of the boundary, and "
-                        + "the work owns it" },
+                        + "the work owns it",
+                   level: "CELL" },
         // THE MEASUREMENT THE CREASE READS, published beside the handle's range the way the meshing
         // instrument publishes its own. This is the half of the charter's boundary test that asks
         // whose structure draws the boundary, and the answer has to be a measurement of the work or
@@ -888,22 +897,38 @@
                      + "middle half of the work — and the box is built with room for exactly that "
                      + "travel and no more",
                 applied: { restsAt: "every landing", belowTheFloor: "the box's own edge",
-                           roomInTheCrop: SEAM_ROOM } },
+                           roomInTheCrop: SEAM_ROOM },
+                level: "CELL" },
         seamScore: { min: 0, max: 1, def: 0,
                      unit: "how much of the difference between the work's own columns that line "
                          + "explains",
-                     reads: "structure.regions.score from the same file, which is the gate: a work "
-                          + "whose split explains less than the floor has no region line to fold "
-                          + "along, and the crease goes back to the box's own edge with the reading "
-                          + "saying so",
-                     applied: { floor: SEAM_FLOOR } },
+                     // THIS SENTENCE NAMED THE WRONG FIELD until 2026-08-26. It read
+                     // `structure.regions.score`, which the record does carry — but that is a
+                     // different quantity from the one the `unit` two lines above describes and the
+                     // one `SEAM_FLOOR` was set against. The floor's own calibration lists four
+                     // works explaining 0.89, 0.48, 0.28 and 0.03, and those are the per-axis
+                     // `explains` readings; the same record's `score` stands elsewhere entirely (on
+                     // the fixture's own first work, `score` is 0.7401 while the line explains
+                     // 0.1402 across and 0.6054 down). So the gate was published against a number
+                     // it was never calibrated on. The floor has not moved and no behaviour changes
+                     // here: what is corrected is the name the handle publishes for what it reads.
+                     reads: "structure.regions.line.<axis>.explains from the same file — the axis "
+                          + "being the one the crease runs along — which is the gate: a work whose "
+                          + "line explains less of the difference between its own columns than the "
+                          + "floor has no region line to fold along, and the crease goes back to "
+                          + "the box's own edge with the reading saying so",
+                     applied: { floor: SEAM_FLOOR },
+                     level: "CELL" },
         shade: { min: 0, max: 1, def: 1, unit: "the contact shadow's own weight",
-                 applied: { depthAtTheCrease: 0.34, pointsOfReach: 9, restsAt: "every landing" } },
+                 applied: { depthAtTheCrease: 0.34, pointsOfReach: 9, restsAt: "every landing" },
+                 level: null },
         travel: { min: 0, max: 1, def: 1, unit: "the counter-motion each face's picture travels by",
-                  applied: { uvAtWhole: AMP, restsAt: "every landing" } },
+                  applied: { uvAtWhole: AMP, restsAt: "every landing" },
+                  level: null },
         seed: { min: 0, max: 8, def: 0, unit: "the ordered pair's own die",
                 reads: "the score's own seed, which decides four parts in ten of the order the "
-                     + "joint's fingers stand in; the other six are a plain ladder along the crease" },
+                     + "joint's fingers stand in; the other six are a plain ladder along the crease",
+                level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own two faces, walked at the buffer's own sample points), on which grid
         // (the drawing buffer the host binds, with the CSS frame where it hands none), what the
@@ -915,7 +940,8 @@
                                           measures: "this instrument's own two faces over the frame, "
                                                   + "walked at the buffer's own sample points, and "
                                                   + "the standing face's own travel from its landing",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

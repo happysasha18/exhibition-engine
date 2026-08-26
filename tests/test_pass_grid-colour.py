@@ -223,7 +223,8 @@ check("PASS-GRID the instrument creates no context, no canvas, no loop and no li
 
 missing_handles = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-GRID every handle the instrument publishes is a handle a score can drive",
-      not missing_handles and len(HANDLES) == 23,
+      not missing_handles and len(HANDLES) == 23
+      and "presence: { min: 0, max: 1, def: 1" in REGION,
       "§4.4b: twenty-three handles — the module's own two declared params (the cut, once per layer), "
       "the two structures the dial travels between with the beat each travels inside, the stagger, "
       "the palette's lead, the six fields of the two accompanying voices, the arrival mode, and the "
@@ -282,7 +283,7 @@ check("PASS-GRID the host binds uniforms by declared name, never by position or 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-GRID the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 14,
+      declared == spelled and len(declared) == 15,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -563,7 +564,7 @@ else:
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and m["levels"] == ["CELL", "LIGHT-COLOUR"]
                     and m["cuts"] == ["strip", "ring", "tile", "band"]
-                    and len(m["handles"]) == 23
+                    and len(m["handles"]) == 24
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -575,7 +576,7 @@ else:
                     and m["coverage"]["writes"] is True
                     and m["applied"]["flow"]["departing"] == "out"
                     and m["applied"]["flow"]["arriving"] == "in"
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 14
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 15
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2

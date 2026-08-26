@@ -595,15 +595,20 @@
       // The departing work loosens onto the swell, the middle is water carrying two photographs at
       // once, and the arriving work settles flat.
       roles: ["disassembly", "mystery", "assembly"],
-      // THE CHARTER'S OWN ROW GIVES THE FIRST; THE SECOND IS DERIVED AND SAID TO BE DERIVED.
-      //   · TEXTURE — `lab/CROSSING-BRIEF.md`'s vocabulary table publishes exactly this level for
-      //     this module. The water bends the picture's own material and splits its colour at the
-      //     bend; nothing here cuts the frame into parts.
-      //   · SURFACE — one field runs over the whole frame and its value at a point decides which of
-      //     the two works stands there, which is the level `pass-inst-adrift.js` places that same act
-      //     at. WORLD is not claimed: the eye never leaves the glass, and this instrument asks the
-      //     host's camera for nothing.
-      levels: ["SURFACE", "TEXTURE"],
+      // TEXTURE, AND THAT IS THE WHOLE OF IT. `lab/CROSSING-BRIEF.md`'s vocabulary table publishes
+      // exactly this level for this module. The water bends the picture's own material and splits
+      // its colour at the bend; nothing here cuts the frame into parts. WORLD is not claimed either:
+      // the eye never leaves the glass, and this instrument asks the host's camera for nothing.
+      //
+      // SURFACE STOOD HERE AND WAS A FALSE DECLARATION. The reasoning was that one field runs over
+      // the whole frame and its value at a point decides which of the two works stands there. That
+      // is true of what the module DRAWS, and it is not true of anything this manifest publishes: of
+      // the handles below, `swell`, `crest` and `refract` drive the material and the rest drive no
+      // structural level at all. Not one of them moves the surface. Since every handle now declares
+      // the level it drives, a level this instrument occupies but never moves is a claim it cannot
+      // keep — and it cost something real, because a cue owns a level to the exclusion of every
+      // other cue: claiming SURFACE here silenced whichever voice actually drove it.
+      levels: ["TEXTURE"],
       params: { swell: [0, 1], crest: [0, 1], refract: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial — the module's own `wet` under the
       // name every instrument in this engine gives it — and `clock` is the second the host hands
@@ -620,8 +625,11 @@
       // measurement of a photograph is a phase. It is spent on the score's die instead, where it
       // keeps two passes over one edge from opening on the same crest.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
+        // NO LEVEL FOR `mix`, `clock`, `seed`, `shade` OR `travel`: the crossing's own dial, the
+        // module's own time, the score's die, and the fleet's own judge channels — none of them
+        // drive a structural level.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
         swell: { min: 0, max: 1, def: 0.5,
                  unit: "how far the picture bends as a crest passes",
                  reads: "texture.scoreFromCutLines, how much of the work reads as grain rather than "
@@ -629,7 +637,8 @@
                       + "a work that IS texture takes the deep swell and a work of straight "
                       + "architecture takes the shallow one",
                  applied: { atMiddle: LIFE_DOOR, reach: WAVE_REACH,
-                            restsAt: "both doors, where the crossing dial is nothing" } },
+                            restsAt: "both doors, where the crossing dial is nothing" },
+                 level: "TEXTURE" },
         crest: { min: 0, max: 1, def: FEEL_C_U0,
                  unit: "how far apart the crests of the swell stand",
                  // READ AS A POSITION AND NOT AS AN EQUALITY, and the reason is a measurement. The
@@ -653,7 +662,10 @@
                                                 reads: "crestRequest",
                                                 measures: "the water's own crossover against the "
                                                         + "tenth the handover's line stands beyond "
-                                                        + "the height's own ceiling" } } },
+                                                        + "the height's own ceiling" } },
+                 // The crest spacing is the grain of the bend itself — how fine or coarse the
+                 // material's own repeat stands — the same register `swell` is placed at.
+                 level: "TEXTURE" },
         refract: { min: 0, max: 1, def: 0.45,
                    unit: "how far red and blue land apart at the bend",
                    // ALSO A POSITION. The module holds the split to a hair of 0.0032 of the frame
@@ -666,18 +678,24 @@
                         + "this handle's own range against the collection's own spread of that "
                         + "detail — the split is what would smear the work's finest detail first",
                    applied: { hairAtWhole: 0.0032,
-                              restsAt: "both doors, where the crossing dial is nothing" } },
+                              restsAt: "both doors, where the crossing dial is nothing" },
+                   // The colour split is read at the bend itself — this file's own header names it
+                   // in the same breath as the water bending the picture's own material, both TEXTURE.
+                   level: "TEXTURE" },
         seed: { min: 0, max: SEED_SPAN, def: 0,
                 unit: "the phase the swell stands at when the crossing opens",
                 reads: "the score's own die. The travel is ONE WHOLE WAVE (liquid.js:364-368), so "
                      + "the two ends of the span stand the same picture and a die of nothing is the "
-                     + "module's own rest" },
+                     + "module's own rest",
+                level: null },
         shade: { min: 0, max: 1, def: 1,
                  unit: "the water's own light — the specular the bend catches and the light the "
                      + "height carries",
-                 applied: { restsAt: "both doors" } },
+                 applied: { restsAt: "both doors" },
+                 level: null },
         travel: { min: 0, max: 1, def: 1, unit: "the bend the picture rides",
-                  applied: { restsAt: "both doors" } },
+                  applied: { restsAt: "both doors" },
+                  level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (the water's own height walked at the buffer's own sample points, with its ceiling beside
         // it), on which grid, what the reading is counted in, and how far the hold reaches.
@@ -687,7 +705,8 @@
                                           measures: "the water's own height at the buffer's own "
                                                   + "sample points, and the widest its crossover "
                                                   + "stands there",
-                                          held: DOOR_HOLD } } },
+                                          held: DOOR_HOLD } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

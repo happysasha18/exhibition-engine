@@ -421,10 +421,16 @@ check("PASS-COVERAGE the host imposes no weight of its own, and no uniform carri
 
 check("PASS-COVERAGE coverage asks the host for no new uniform",
       "uCoverage" not in PACK and "uAlpha" not in PACK
-      and "vec4(col, 1.0 - cov)" in PACK,
+      and "vec4(col, (1.0 - cov) * uPresence)" in PACK,
       "every quantity the alpha rests on — `cov` in two shaders, the constant in the third — is "
       "computed inside the fragment shader from uniforms already declared, so no manifest gains a "
-      "source §7's closed set would refuse at registration (row 59)")
+      "source §7's closed set would refuse at registration (row 59). THE ALPHA LITERAL MOVED ON "
+      "2026-08-25 and the law did not: the entry-door contract gates it by `uPresence`, the one "
+      "reserved dry every instrument that may stand over another declares "
+      "(docs/design/ENTRY-DOOR.md). That uniform is not coverage asking for one — coverage still "
+      "computes `cov` in the shader from what was already there — and it is bound through the "
+      "`handle:` source §7's closed set already carries, which is why every instrument in the fleet "
+      "still registers with no manifest refused")
 
 check("PASS-COVERAGE the lowest cue of a stack must fill the frame, and the rest must not",
       "function coverageWhyNo" in LAYER
@@ -737,7 +743,12 @@ else:
         # counting occurrences inside one pack. At 2.000 s `matter` is not even playing, which is
         # why every revert below cripples the meshing instrument. The per-file count is asserted so
         # a future edit that adds a second line to that file cannot pass silently.
-        ALPHA = "gl_FragColor = vec4(col, 1.0 - cov);"
+        # THE ALPHA IS GATED BY THE ENTRY-DOOR CONTRACT'S RESERVED DRY since 2026-08-25
+        # (docs/design/ENTRY-DOOR.md). Each replacement below keeps `uPresence` so the
+        # crippled file stays a well-formed shader whose manifest still spells every uniform
+        # it declares; at the handle's own rest of one the simulated bug is bit for bit the
+        # bug it always was.
+        ALPHA = "gl_FragColor = vec4(col, (1.0 - cov) * uPresence);"
         GEARS = "gears"          # the meshing instrument, in the one file it travels in
 
         def red_pack(row, replace, measure, why):
@@ -771,7 +782,7 @@ else:
                 "`1.0` the ground reaches %.1f%% and the stack IS that voice again (worst channel "
                 "%d)" % (100 * share2, off2[1], 100 * sh, off[1]))
 
-        red_pack(RED[0], "gl_FragColor = vec4(col, 1.0);", m_ground_gone,
+        red_pack(RED[0], "gl_FragColor = vec4(col, 1.0 * uPresence);", m_ground_gone,
                  "the meshing instrument's coverage is what gives the band family back")
 
         def m_door_pops(b):
@@ -787,7 +798,7 @@ else:
                 "`cov` it opens at alpha 1 and the same instant moves by mean %.3f of 255 (worst "
                 "channel %d)" % (at, gateT[1], off[0], off[1]))
 
-        red_pack(RED[1], "gl_FragColor = vec4(col, cov);", m_door_pops,
+        red_pack(RED[1], "gl_FragColor = vec4(col, cov * uPresence);", m_door_pops,
                  "an entry door is free only because the arriving territory starts empty")
 
         def m_weight_fits(b):
@@ -806,7 +817,7 @@ else:
 
         # `uOff` is the meshing instrument's tangential sweep: one number for the whole frame, moving
         # with the dial. Standing it in for the mask is exactly a per-cue weight of presence.
-        red_pack(RED[3], "gl_FragColor = vec4(col, clamp(uOff * 20.0, 0.0, 1.0));", m_weight_fits,
+        red_pack(RED[3], "gl_FragColor = vec4(col, clamp(uOff * 20.0, 0.0, 1.0) * uPresence);", m_weight_fits,
                  "a weight of presence over the whole frame is the crossfade under another name")
 
         # The one that matters most: blending must never be enabled for a frame's first cue.

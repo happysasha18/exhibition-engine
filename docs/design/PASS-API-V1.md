@@ -6,6 +6,24 @@ share/history, every input method, resize/orientation/DPR, RTL, reduced motion, 
 analytics/A-B and the static layer. A crossing is a subordinate visual transaction A → B; it owns
 none of those.
 
+**How this document argues, and the one thing it may not argue from (2026-08-26).** Charter shelf 20
+binds a document as plainly as it binds code, and the class it bans is named here by what makes
+something a member of it rather than by reciting its vocabulary: **a figure whose value would move
+if a different set of photographs were on disk.** No such figure may justify, tune, calibrate or
+validate any rule here or any claim about one. Every rule below is argued from its own mechanism
+instead — the bounds and clamps of the formula, the definition and the range of each field it reads,
+and the shape of how a road grows — each holding over the whole span rather than over the works that
+happen to be on hand.
+
+The document does still speak ABOUT that class, to refuse it and to record where it was once leaned
+on, and speaking of it is distinguishable from committing it by a rule a reader and a sweep can both
+apply: **a sentence that names the class carries no figure of it.** So «this was set by measuring a
+pack of composed scores» and «this gate was a count over the collection» are lawful and stand where
+they are needed, while any figure of that shape written out is an offence wherever it appears. That
+is also why this very paragraph gives the criterion in place of the list of statistical names: a
+sentence should not have to spell the words a sweep is hunting for in order to forbid them.
+Superseded sentences that carried such figures are in `PASS-API-V1-HISTORY.md` with their dates.
+
 **Status, 2026-08-14 08:47.** Built and standing: the transaction of §2 with its watchdog, its
 idempotence guard and its token check; the frame half of §1.2 and §7 — one canvas, one WebGL2
 context with the drawing buffer unpreserved, the two source textures, the programme cache, the frame
@@ -39,11 +57,18 @@ divergence between what §2.6 asks and what was built.
 §4.6, §4.7 and §4.8 have offline builders and checks in the tlvphotos tree, and no engine code
 answers to them. Their conformance rows in §9 are unwritten.
 
-**Two measurements from 2026-08-14 worth carrying.** The immersive road's boot fell from 285 074 B
-gzipped to 136 190 B once the score table and the plans moved onto a digest-pinned pack road, with
-23 255 B gzipped fetched before the first crossing. And the woven instrument's band count stands at
-a floor of 8 against this pair's measured 3, recorded as requested-against-applied across 1935 cues;
-§11 carries that divergence with an owner.
+**Two readings from 2026-08-14 worth carrying, restated from their mechanism (amended 2026-08-26).**
+The immersive road's boot no longer carries the score table or the plans at all: both moved onto a
+digest-pinned pack road, so what a visitor fetches before the first crossing is the boot plus one
+pinned digest and nothing that grows with the collection. That is the fact worth carrying, and it
+follows from where the two live rather than from what any one collection weighed.
+
+And the woven instrument REQUESTS a band count its own manifest floors: the floor is the
+instrument's published minimum for that handle, so a pair whose measurement falls below it is drawn
+at the floor and the record says requested-against-applied. That divergence is a property of the
+handle's own span meeting a pair's own reading — it stands for any pair whose measurement falls
+under the published floor, in any collection, by construction — so it needs no count of how often it
+happens to say what it is. §11 carries it with an owner.
 
 This block read that no line of code answers to any of the four, which was true at 08:47 and is
 false for §2.6 now. The superseded sentence is in `PASS-API-V1-HISTORY.md` with its date. Section 11
@@ -374,14 +399,39 @@ owner.
 
 **Amended 2026-08-14 08:47: where the direction lives.** §4.8 states it. A ScenePlan carries
 `direction`, EdgeMemory keys an unordered edge with a direction beside it, and the two directed
-plans of one pair hold the same family and the same pivot while everything else may differ. The
-measured shape of today's gap: `lab/data/pair-shared.json` holds 7260 unordered pairs, each appearing
-exactly once with no reverse row, so the pivot candidates on file read the same for both directions.
+plans of one pair hold the same family and the same pivot while everything else may differ.
+
+**Amended 2026-08-26: the shape of the gap is read off the file's own key, not off its size.**
+`lab/data/pair-shared.json` is keyed by the UNORDERED pair — the two ids sorted — so a row is
+addressed by a key that cannot distinguish A→B from B→A. Every lookup of either direction therefore
+lands on the same row and reads the same pivot candidates, whatever the file holds and however large
+the collection it was built from. That is a fact about the key, true by construction and independent
+of how many rows there are, and it is why the direction has to live in EdgeMemory and in the
+ScenePlan's own `direction` field instead. The superseded sentence, which argued the same point from
+a count of the rows, is in `PASS-API-V1-HISTORY.md` with its date.
 
 ### 4.4 Score — the data a transition plays
 
-A versioned record with an allow-list of fields, refused whole on any unknown field. The score names
-no expression, no function and no executable string.
+A versioned record with an allow-list of fields. A field the list does not name is STRIPPED and the
+cut is recorded; the rest of the score plays. The score names no expression, no function and no
+executable string.
+
+**Amended 2026-08-25: the unknown field is stripped, not the whole score refused.** A strip serves
+this fence's purpose exactly — the field is deleted before anything reads it, so nothing outside the
+list ever reaches an instrument, which is the whole of what "no expression, no function and no
+executable string" asks for. Whole refusal served it too, and charged the visitor a crossing for it.
+
+It also gives the contract the forward-compatibility story it otherwise does not have. Nothing here
+negotiates a version: §4.4e publishes capabilities, not a schema, so a composer and a client are
+whatever pair happens to be deployed together. Under whole refusal the day a composer writes any new
+field is the day every crossing on every client not rebuilt with it is lost — and lost invisibly,
+because the checker answers not-ok and the walk falls through to its own plain glide, which looks
+from outside like no layer at all rather than like a refused score. The strip is what lets an older
+client read a newer score: it takes what it knows, records what it did not, and plays.
+
+This is the third fence in the same checker to make this move, and the class is one: the weight fence
+and the intent-length fence were converted from walls to readings on 2026-08-18. The superseded
+sentence is in `PASS-API-V1-HISTORY.md` with its date.
 
 ```
 { schema: 2, intent, pair:{a,b}, seed, duration, direction,
@@ -426,8 +476,20 @@ the adversarial review of 2026-08-13 23:30 proved by writing a legal score that 
 `disassembly`, `mystery`, `assembly`, and a ScenePlan cue carries one or more of the nine of §4.7. A
 cue naming `world` or `witness-camera` would have been refused whole against the old three, which
 would have left the ScenePlan with no serialised form. The superseded line is in
-`PASS-API-V1-HISTORY.md`. The rest of the allow-list is untouched: a score is still refused whole on
-any unknown field, and no field was added to the cue record.
+`PASS-API-V1-HISTORY.md`. The rest of the allow-list is untouched, and no field was added to the cue
+record.
+
+**Amended 2026-08-25: the cue's own allow-list is checked, and it strips.** The thirteen names above
+are what a cue may carry; anything else is stripped from that cue and the cut recorded, the same way
+and for the same reasons as the envelope's. Until today no such check existed on the road a
+visitor's crossing travels — the client read the envelope's keys and never descended — so the four
+plan-only cue fields of §4.7, `cast`, `levelOwnership`, `measuredHandles` and `returnOf`, reached the
+host inside cue records whenever anything but the composer's own serialiser built them. The
+composer's `serialise` holds a deny-list of those four, but it judges output the composer has just
+built and can only catch it contradicting itself; a score arriving by another road, a hand-written
+one on the settings ladder among them, passed unread. The claim in this section that the levels check
+may leave the host because a closed cue allow-list stands is only true from today. The superseded
+sentence is in `PASS-API-V1-HISTORY.md` with its date.
 
 **`levels` is a list**, because a real instrument occupies more than one at once — the woven
 instrument moves at SURFACE while each strip turns at CELL, which is exactly why it reads as alive.
@@ -480,10 +542,20 @@ every new score. The lock states the road:
 - the checker accepts both versions and says which one it read;
 - a version-1 score is read forward — its five fields map onto the version-2 envelope, its `params`
   become the default cue's tracks, and the reader records that it did so;
-- a version-2 score is refused whole on any unknown field, exactly as version 1 is;
+- a version-2 score has an unknown field stripped and the cut recorded, exactly as version 1 does,
+  at the envelope and inside each cue alike (amended 2026-08-25; the superseded bullet is in
+  `PASS-API-V1-HISTORY.md` with its date);
 - a stored or shared address carrying a version-1 score therefore keeps working, which matters
   because such an address can already exist in a visitor's session store;
 - a conformance row feeds one score of each version through the checker and proves both land.
+
+**Amended 2026-08-25: reading forward is what this section is for, and the strip is how it works.**
+The bullets above read forward in one direction only — an older score into a newer client — and said
+nothing about the other, which is the direction that actually breaks: a newer composer's score
+arriving at an older client. Nothing in this contract negotiates a schema, so that pairing is not
+prevented, only refused after the fact. With the strip it is read instead: the client takes the
+fields it knows, records the names it did not, and the crossing plays. A field a client strips is a
+field it was never going to act on, so nothing is lost that the older client could have used.
 
 ### 4.4b Every handle a score can drive, a score does drive
 
@@ -498,8 +570,9 @@ the row names the handle.
 
 **RETIRED 2026-08-17 by his word of 19:21, and §4.4d with it.** Both sections answer one question —
 where does the score for THIS pair come from — and both answer it with a table keyed by the pair.
-That table is quadratic in the collection, and the collection grows to thousands of works, so
-nothing on the product path may carry it. §4.4g below is the road that replaced them. The two
+That table grows as the SQUARE of the collection where a record per work grows in step with it, so
+it is the larger road at every size beyond the smallest and nothing on the product path may carry
+it. §4.4g below is the road that replaced them. The two
 sections stand unedited underneath because a shipped preview was built on them and a stored address
 can still name one of their scores; nothing in the walk reads either road any more, and the two
 suites that guarded them — `tests/test_pass_reader.py` whole and the PASS-TABLE rows of
@@ -507,11 +580,22 @@ suites that guarded them — `tests/test_pass_reader.py` whole and the PASS-TABL
 is what proves the road in their place.
 
 
-A score per pair covers nothing on a walk that deals its works afresh each visit. The walk orders
-its ten works by its own arc, so a pair scored ahead of time essentially never comes up; and a
-collection of 121 works holds about fourteen thousand ordered pairs, which one whole score each
-would make some fifty megabytes of settings file. The preview of 2026-08-14 showed exactly this: a
-renderer registered, a score on file, and not one crossing played.
+A score per pair covers nothing on a walk that deals its works afresh each visit, and the reason is
+structural rather than a matter of how often it happened to miss (restated 2026-08-26). Two things
+have to line up for a prescored pair to play: the walk must deal both of those works into one hang,
+and it must deal them ADJACENT, because a score is asked for only at a step. The hang is drawn
+afresh every visit and ordered by its own arc, so which pairs end up adjacent is decided at the
+visit and cannot be known when the scores are written. A road that can only answer for pairs chosen
+before the visit therefore answers for a set it has no way to intersect with the set the walk will
+ask about — whatever the size of either. The preview of 2026-08-14 is the shape of that: a renderer
+registered, a score on file, and the walk asking about steps the file was not keyed for.
+
+And the road cannot be made to cover the gap by writing more of it. A table keyed by the pair grows
+as the SQUARE of the collection while a record per work grows in step with it, so at any size beyond
+the smallest the table is the larger road, and it goes on being the larger road however many works
+arrive. That is the comparison that decides it, and it needs no figure from any one collection to
+make. The superseded sentences, which argued the same point from a count of the works and the pairs
+they make, are in `PASS-API-V1-HISTORY.md` with their date.
 
 So a site may carry, beside `pass.scores`:
 
@@ -541,11 +625,15 @@ field, to the score the per-pair builder wrote for the one pair that has both.
 **RETIRED 2026-08-17 with §4.4c; see §4.4g.** `pass-reader.js` is deleted, no bake serves it, and no
 site step stages a pack. What follows is the record of the road as it stood.
 
-§4.4c's inline road holds while a site scores by hand. It stops holding the moment a composer scores
-every pair: the composed pack of 2026-08-15 carries 7708 serialised scores, and a settings file
-parsed at boot by every visitor cannot carry them. It also takes ONE TEMPLATE PER INSTRUMENT, and a
-composed pack does not have that shape — it factors by PASSAGE SHAPE, twenty-five of them, and each
-pair's row names its own. So a site ships the scores as a pack of static files and its settings
+§4.4c's inline road holds while a site scores by hand, because what a hand writes is bounded by the
+hand. It stops holding the moment a composer scores every pair, and for the reason §4.4c gives just
+above: the scores then grow as the square of the collection, while the settings record is parsed at
+boot by every visitor before anything is shown. A boot cost that grows quadratically is the one cost
+a road may not have, whatever the collection (restated 2026-08-26; the superseded sentence, which
+argued it from a count of the scores in one pack, is in `PASS-API-V1-HISTORY.md`). It also takes ONE
+TEMPLATE PER INSTRUMENT, and a composed pack does not have that shape — it factors by PASSAGE SHAPE,
+and each pair's row names its own, so the templates a pack needs are keyed by something the
+instrument does not determine. So a site ships the scores as a pack of static files and its settings
 record carries the pack's addresses alone, under `pass.packs`, one entry per pack:
 
 - `base` — the address every file of the pack stands under, carrying the pack's version and the
@@ -600,9 +688,32 @@ the served client and writes them into the settings record under `pass.capabilit
   as JSON, which is the very measure the client applies.
 
 The number is READ rather than restated, so the published number and the applied number are one
-number. `scoreBytes` stands at **12 288 B as an observed baseline with its evidence**: the composed
-pack of 2026-08-15 carries 7708 filled scores whose median weighs 7029 B and whose longest weighs
-10 851 B, and the 8192 B that stood before refused 1783 of them — 23.1 percent — unread.
+number.
+
+**Amended 2026-08-25: `scoreBytes` and `intentChars` no longer decide anything in the client.** Both
+were set by measuring a shipped pack of composed scores rather than by deriving anything, which is
+the ground charter shelf 20 refuses: what such a measurement describes is the works that were on
+disk when it was taken, and it says nothing about the next collection this engine is pointed at.
+Both readings the two numbers drove are re-founded, and neither number is read in the client any
+more:
+
+- the WEIGHT is read against a ceiling the client CONSTRUCTS from its own capability — at most
+  `instruments` cues, each driving at most as many handles as the widest instrument manifest the
+  client actually holds, each track at most `curve` points, each point as wide as the writer itself
+  says a written point is. Every factor is a capability or a fact about the format. The reading is
+  not vacuous: `intent` is the one envelope field with no bound of its own, and a runaway authored
+  line is exactly what the ceiling now catches;
+- the AUTHORED LINE is read for STRUCTURE rather than length — whether it carries the braces,
+  brackets, angle brackets, backslashes, backticks or function tokens that a record or a piece of
+  code cannot avoid and a sentence never has. That is the question this fence was always for, in its
+  own words: an intent is a sentence, not a place to put a payload. A length never answered it; it
+  only cut honest sentences that ran long. An authored line now travels whole or not at all.
+
+The two literals stay in the client because THIS section reads them: the bake takes them straight
+out of the served client and publishes them, and the composer fits its scores and its prose to what
+is published. Retiring them is a change to the wire — the bake, the composer's own read of
+`intentChars`, and the rows that check the published pair against the client's literals — and not a
+change to the client, which no longer consults either.
 
 ### 4.4f Family bounds, and the roll at fill time
 
@@ -730,9 +841,12 @@ reads a hole as damage. `coverage` records the fraction of the frame the named e
 `complement` carries the remainder as one element of kind `region`.
 
 The law already has a working implementation to cite. `lab/data/objects-pass2.json` derives the
-complement on a 32-cell grid and stores it as a region of its own beside the named ones, for all 121
-works. A provider returning a set whose elements and complement fail to reconstruct the frame is a
-red, and conformance row 32 measures the reconstruction against the source.
+complement on a 32-cell grid and stores it as a region of its own beside the named ones — it is
+derived PER WORK, from that work's own named elements, so a work either carries one or is not in the
+file at all and the provider declines it. That is what makes it an implementation of the law rather
+than an approximation of it, and it holds for whatever the file covers. A provider returning a set
+whose elements and complement fail to reconstruct the frame is a red, and conformance row 32
+measures the reconstruction against the source.
 
 **One provider contract serves five providers.**
 
@@ -740,8 +854,8 @@ red, and conformance row 32 measures the reconstruction against the source.
 
 | provider | what it reads | where its data lives |
 |---|---|---|
-| `structural` | strips, axes, horizon, symmetry, tiles, contrast regions | `lab/data/recipes.json`, all 121 works, and `lab/data/motifs.json` |
-| `semantic` | named classes with per-region boxes and confidences | `lab/data/objects-pass2.json`, all 121 works |
+| `structural` | strips, axes, horizon, symmetry, tiles, contrast regions | `lab/data/recipes.json`, one row per work, and `lab/data/motifs.json` |
+| `semantic` | named classes with per-region boxes and confidences | `lab/data/objects-pass2.json`, one row per work |
 | `hybrid` | both of the above at once | both files |
 | `author` | hand-drawn masks and regions | no file today; see §11 |
 | `fallback` | tonal zones plus detail scales | derived from each work's own measurements |
@@ -752,9 +866,11 @@ value, busyness and source region. Beside them `lab/data/motifs.json` carries, p
 and void shares, the radial centre and the seam position, measured 2026-08-13 against four stated
 thresholds.
 
-**`semantic`** reads `lab/data/objects-pass2.json`: five named classes, per-region boxes with
-confidences, and the derived complement, extracted by `qwen3-vl:8b` under prompt version
-`objects-pass2-v3` and measured 2026-08-12. `lab/data/material-subject.json` stands beside it with
+**`semantic`** reads `lab/data/objects-pass2.json`: a closed vocabulary of named classes, per-region
+boxes with confidences, and the derived complement, extracted by `qwen3-vl:8b` under prompt version
+`objects-pass2-v3` and measured 2026-08-12. The vocabulary being CLOSED is the property that matters
+to a reader here — a work whose subject falls outside it carries no named class and the provider
+declines, which is the contract's own road — and not how many names the vocabulary happens to hold. `lab/data/material-subject.json` stands beside it with
 the construction matter and the depicted substance per work — the two layers of the charter's shelf
 1 — voted three times at temperature zero against a fixed vocabulary shuffled per work, with a label
 kept only on two votes of three.
@@ -772,18 +888,31 @@ displaced, so a reader of the diagnostic surface can see which axis drew each bo
 declared and unbuilt, and no file backs it today. Its owner is the author's seat, which the charter
 seats on Fable.
 
-**`fallback` is the majority road on this collection, and it answers the same provider contract as
-the other four.** It
-returns tonal zones and detail scales, which apply to any pair by construction, so it serves every
-work whatever the pair holds in common. Shelf 12 names exactly this pair — tonal and
-spectral — as the lawful universal bridge for pairs sharing nothing.
+**`fallback` is the road that answers for every pair, and it answers the same provider contract as
+the other four.** It returns tonal zones and detail scales, which apply to any pair by construction,
+so it serves every work whatever the pair holds in common. Shelf 12 names exactly this pair — tonal
+and spectral — as the lawful universal bridge for pairs sharing nothing.
 
-The measured reason it ranks beside the structural provider:
-`lab/data/pair-shared.json` holds all 7260 unordered pairs of the 121 works, and 4793 of them —
-66.02 percent — carry `shared_measure: null`, meaning no measure of the seven-measure table holds on
-both works at once. A reader who takes the structural road for the normal one has designed for a
-third of the traffic. Conformance row 34 therefore asks the fallback provider for an ElementSet on
-every ordered pair in the collection and reds on a single decline.
+**Why it ranks beside the structural provider, from what the two READ (restated 2026-08-26).** The
+structural road needs a SHARED measure: one of the seven-measure table has to hold on the departing
+work AND on the arriving one. That is a conjunction of two independent per-work readings, so there
+is no work that guarantees it and no pair that is owed it — for any work, a partner exists that
+shares none of its measures, because the seven readings are of structure a picture may simply not
+have. The fallback reads no conjunction at all. A tonal zone and a detail scale are readings EVERY
+frame carries by definition — a frame has a luminance range and a scale at which its detail sits,
+whatever it depicts — so the fallback answers for every work, and therefore for every pair, for the
+same reason `dist` answers for every two points.
+
+So the ranking is between a road that answers always and a road that answers only where a
+conjunction happens to hold, and that comparison is settled without knowing how often the
+conjunction holds. A reader who takes the structural road for the normal one has designed for the
+case that is not guaranteed. The superseded paragraph, which argued the same ranking from a share of
+the pairs on file, is in `PASS-API-V1-HISTORY.md` with its date.
+
+Conformance row 34 follows from the universality claim rather than from any count: a road that
+claims to answer for every pair is tested by asking it for every pair the works on disk make and
+reddening on a single decline. That sweep is a smoke check of the claim — it says the code runs and
+answers on real records — and never the ground for it; the ground is the paragraph above.
 
 **Declining, and the order of the fall.** A provider that cannot serve a work returns
 `decline{why}`, and the composer falls to the next provider in the request's own order. The order is
@@ -840,17 +969,18 @@ the pivot is the pair's invariant shared part, and everything outside the pivot 
 written `true` and stays `true`; a plan that lets the pivot travel has no pivot.
 
 The idea has prior art on disk, and the contract names it as the pivot's provenance.
-`lab/data/pair-shared.json` carries, for each of the 7260 unordered pairs, the shared measure, that
-measure's strength, the cut the measure implies and the transform the cut implies. The mapping on
+`lab/data/pair-shared.json` carries, per unordered pair, the shared measure, that measure's
+strength, the cut the measure implies and the transform the cut implies. The mapping on
 file reads: regions to regions to `region_dissolve`; named objects to named boxes to
 `object_by_object`; texture to grain to `grain_wipe`; banding to bands to `band_slide`; radial to
 rings or spokes to `radial_unfold`; dominant object to figure and ground to `object_reveal`; grid to
 tiles to `tile_crossfade`. That is a first version of the road from a pair's invariant to its
 actors, and the `pivot` and `actors` fields here are its successor.
 
-The one thing that file lacks is the direction. Its 7260 rows are unordered — each unordered pair
-appears exactly once and no row's reverse is present — so A to B and B to A read from one row. That
-is precisely the gap §11 has carried since the review of 2026-08-13, and §4.8 closes it.
+The one thing that file lacks is the direction, and its own KEY is why: a row is addressed by the
+unordered pair, the two ids sorted, and such a key cannot tell A→B from B→A. So both directions read
+from one row by construction, whatever the file holds. That is precisely the gap §11 has carried
+since the review of 2026-08-13, and §4.8 closes it.
 
 **The camera's resting pose is resolved at run time, and no plan carries it.** `camera` on the plan
 names the flight; the pose it rests on is the arriving work's hang pose, resolved when the passage
@@ -1030,8 +1160,11 @@ the road §4.4c and §4.4d were retired for.
 **Nothing pairwise is written down.** The score that plays on an edge is DERIVED, in the browser, at
 the instant the walk casts the pair, from the two works' own records. A record describes ONE work —
 its light, palette, texture, geometric structure, motifs and safe crops, plus its element sets'
-counts and grains — so what the settings record carries is linear in the collection: 121 works weigh
-33 000 B gzipped under `pass.works`, where the per-pair rows they replace weighed 1 862 611 B. The
+counts and grains — so what the settings record carries under `pass.works` grows in step with the
+collection where the per-pair rows it replaces grew as the square of it. One record per work against
+one row per pair is the whole of the comparison, and it decides the same way at every size
+(restated 2026-08-26; the superseded sentence, which weighed one collection's records against one
+collection's rows, is in `PASS-API-V1-HISTORY.md`). The
 collection's own constants travel beside them under `pass.composer`: the instrument manifests, the
 cut-line floors, the discriminating thresholds, the score fence and the provenance sentence.
 
@@ -1056,6 +1189,18 @@ for:
 | `walkMemory` | the letters the walk has already played ELSEWHERE, most recent first — a plain list of names, the genre each passage ran on and the instruments its stack carried (charter shelf 16's letter cooldowns) | the walk has played nothing yet, and every letter carries its whole weight |
 | `cameraState` | the pose the camera rests in as the passage starts; the flight departs from it | the walk stated no pose; the flight departs from the score's own rest |
 | `buffer` | the canvas as it stands: width, height, dpr, orientation, quality tier | unstated; the instrument reads the one it is drawing on |
+| `day` | the instant the walk casts this pair, as milliseconds since the epoch in UTC — the date-and-hour seed charter shelf 16's third dice step names, from which the day's palette, tempo and light are read (added 2026-08-26) | the walk stated no day; the day's bias reads neutral and every candidate carries its whole weight |
+
+**The day belongs to the visit, not to the machine.** Shelf 16 asks for two things that meet here and
+it never says which wins: the day's weather is to bias what plays, and a pinned seed is to reproduce
+a run exactly. Its own last two sentences settle it — seeds and determinism are the JUDGING mode,
+ephemerality is the VIEWER mode — so the day is an input the walk states, in the mode that has one,
+and never a call the composer makes. A public walk sends the instant it cast the pair and the
+composition breathes with the day; a pinned walk sends none, the bias reads neutral on every
+candidate, and the run reproduces to the pixel. That is also what makes **the die carries no clock**,
+three paragraphs below, true rather than aspirational: with the day on the request there is no clock
+left inside the composer to read, and one instant stated once answers for every viewer meeting that
+crossing instead of each machine answering for itself.
 
 A name outside the five route roles, a session memory naming a field outside §4.8's three, and a die
 outside the instrument's span are each a named refusal, so the vocabulary cannot drift and §4.8's
@@ -1081,39 +1226,50 @@ moved and why; the composer emits the artistic request and the bounds live in th
 prebaked door table this replaced was keyed by the pair's own camera pose — pair-scaled — and
 answered for one 1000 x 1000 frame.
 
-**The equality this road was landed on, and why it is a record rather than a gate.** Stage 0 moved
-the composer onto the product path and changed nothing about what it composed, so the gate it was
-landed on was byte equality against the road it replaced: every one of the 6 304 ordered pairs the
-shipped table carried composed through this entry to the byte-identical score the prebaked pack
-shipped, and every one of its 4 254 declines carried the same sentence character for character. 161
-of the 6 304 differed from the shipped bytes in the meshing travel's two door-instant sizes alone,
-which is the measured cost of the 18:00 decision and nothing else, and that number stands: the doors
-are the instrument's own reading of the buffer and the composer no longer answers for them.
+**How this road was landed, and the one argument here that does not survive its tally
+(amended 2026-08-26).** Stage 0 moved the composer onto the product path and changed nothing about
+what it composed, so the gate it was landed on was byte equality against the road it replaced: every
+ordered pair the shipped table carried was composed through this entry and its bytes compared with
+the pack's, and the declines were compared sentence for sentence.
 
-**What stage 1 changed on purpose, and by how much.** The equality above stopped being the gate the
-moment the composer's derivations became plural on his word of 18:56. Seven roads now stand where one
-did, the step's role in the route bounds what is emitted, the visit's memory of the edge is answered,
-and every geometric and temporal parameter names the measurement it reads under his 19:13 word lifted
-to the class at 19:21. Measured pair by pair against the stage 0 composer, on one and the same die,
-over the 121 per-work records the settings record ships — all 14 520 ordered pairs:
+That gate is of the class charter shelf 20 bans, and saying so is the honest reading rather than a
+wording to repair. Its whole content is a count over the collection — so many pairs matched, so many
+differed — and a count over the works on disk is a fact about those works and evidence of nothing
+beyond them. The figures are therefore not restated here; the superseded paragraph carrying them is
+in `PASS-API-V1-HISTORY.md` with its date.
 
-| | pairs |
-| --- | --- |
-| declined before, composes now | 5 378 |
-| composed before, declines now | 0 |
-| declines both ways | 466 |
-| composes both ways, byte-identical | 0 |
-| … differing in the handles alone, the geometry sweep | 6 629 |
-| … differing structurally — a different ground, cue set, travelling axis or length | 2 047 |
+What the gate was reaching for CAN be argued from construction, and one part of it already is. The
+part that survives: the doors are no longer the composer's to answer for at all. The meshing
+instrument reads its own mask at both doors on the buffer it is drawing on and holds its size inside
+the reach its own manifest publishes, so any difference in the two door-instant sizes is a
+difference between what an instrument reads and what a table guessed — it is the 18:00 decision
+working, and it needs no count of how many pairs showed it. The part that does not survive: «the
+composer composes what the table composed» is a claim of extensional equality between two functions,
+and the only proof of it offered was a sweep of the works on disk. A proof from construction would
+have to come from the derivations themselves — that each road reads the same fields, combines them
+in the same order, and clamps them to the same bounds — and that proof was never written. The road
+has since moved on, which is why this is recorded as a finding about how the road was landed rather
+than as work now owed.
 
-So the byte row is retired with the road it guarded, and what stands in its place proves the
-derivation the composer now makes: that each of the seven roads carries real pairs and names the
-reading that qualified each; that the five route roles compose inside charter shelf 17's budget; that
-a return keeps the family the walk itself reads off the plan, or the pivot in its place; that every
-handle the composer drives names its measurement and no handle an instrument declares OPEN is driven
-at all; and that no filled score of the collection crosses the byte or the intent fence. The
-conformance rows are `tests/test_pass_composed.py`, which stands on the real per-work records rather
-than on one worked pair.
+**What stage 1 changed on purpose.** The equality above stopped being the gate the moment the
+composer's derivations became plural on his word of 18:56. Seven roads now stand where one did, the
+step's role in the route bounds what is emitted, the visit's memory of the edge is answered, and
+every geometric and temporal parameter names the measurement it reads under his 19:13 word lifted to
+the class at 19:21. The table that stood here — one row per outcome, each row a count of pairs
+compared against the stage 0 composer — was the same class again, and it is in
+`PASS-API-V1-HISTORY.md` with its date.
+
+So the byte row is retired with the road it guarded, and what stands in its place is a set of claims
+about the derivation the composer now makes, each of which is decided by reading a passage rather
+than by counting them: that every one of the seven roads names the reading that qualified it, so a
+passage says which road it took and why; that a passage composed at each of the five route roles
+sits inside charter shelf 17's budget for that role; that a return keeps the family the walk itself
+reads off the plan, or the pivot in its place; that every handle the composer drives names its
+measurement and no handle an instrument declares OPEN is driven at all; and that a filled score
+crosses neither the weight ceiling of §4.4e nor the reading that says an authored line is prose. The
+conformance rows are `tests/test_pass_composed.py`. Where those rows run over the works on disk they
+are smoke checks — the code runs and writes plausible output on real records — and the claims above
+are what they are checks OF, never what makes them true.
 
 ## 5. Driver AST v1 — data only
 
@@ -1479,8 +1635,10 @@ when its rule is removed, like every row above it.
 32. an ElementSet plus its complement reconstructs the source frame within the seam threshold
 33. a provider that cannot serve a work declines with its reason, and the composer falls to the next
     provider in the request's own order
-34. the fallback provider returns an ElementSet for every ordered pair in the collection, a single
-    decline reading red
+34. the fallback provider returns an ElementSet for every pair it is asked for, a single decline
+    reading red. The row stands on §4.6's construction — a tonal zone and a detail scale are
+    readings every frame carries, so the provider answers without a conjunction to satisfy — and
+    sweeping the works on disk is the smoke check of that claim, never its ground
 35. the scene plan contains real actors, never one accidental fullscreen cue: a ScenePlan naming no
     element of either work is refused, and one naming at least one element of each is accepted
 36. a ScenePlan's declared tier agrees with the serialised score's duration band and voice counts
@@ -1573,18 +1731,18 @@ resizes a running transaction rather than replacing it.
 | the interruption cadence — every handle to its nearest door within its own envelope | built 2026-08-14: the whole transition picks the door its own door-handle stands nearer, every handle then walks to the value IT takes at that door on its own named curve, and the host force-ends at the deadline with the last frame drawn ON the door | closed |
 | the cadence ahead of a *supersede* | a superseded transition puts every handle on its door in one step instead of walking there, because the product's `declare` is synchronous and this branch left the product side untouched. Every handle still lands at a door and the record says `forced` | the bundle, a later branch |
 | `pointer` driver | declared; one normalised host signal arrives later; instruments attach no listeners | a later branch |
-| PairDossier direction A→B against B→A | amended 2026-08-14: §4.8 states where the direction is recorded and what holds across it. `lab/data/pair-shared.json` is unordered — 7260 rows, no row's reverse present — so the direction lives in EdgeMemory and in the ScenePlan's own `direction` field. Unbuilt | site build, with the walk |
-| offline masks and segments | amended 2026-08-14: the extraction landed. `lab/data/objects-pass2.json` carries five named classes with per-region boxes, confidences and a complement on a 32-cell grid, for all 121 works, measured 2026-08-12 by `qwen3-vl:8b`. The provider that reads them is unbuilt | site build |
-| the `structural` element provider | unbuilt; `lab/data/recipes.json` and `lab/data/motifs.json` stand, all 121 works | site build |
+| PairDossier direction A→B against B→A | amended 2026-08-14: §4.8 states where the direction is recorded and what holds across it. `lab/data/pair-shared.json` is keyed by the UNORDERED pair, a key that cannot tell A→B from B→A, so both directions read one row by construction and the direction has to live in EdgeMemory and in the ScenePlan's own `direction` field. Unbuilt | site build, with the walk |
+| offline masks and segments | amended 2026-08-14: the extraction landed. `lab/data/objects-pass2.json` carries a closed class vocabulary with per-region boxes, confidences and a per-work complement on a 32-cell grid, measured 2026-08-12 by `qwen3-vl:8b`; a work outside the vocabulary carries no named class and the provider declines it. The provider that reads them is unbuilt | site build |
+| the `structural` element provider | unbuilt; `lab/data/recipes.json` and `lab/data/motifs.json` stand, one row per work | site build |
 | the `semantic` element provider | unbuilt; its data stands, as the row above records | site build |
 | the `hybrid` element provider | unbuilt; blocked on neither file, since both stand. Semantic wins where the two overlap and the merge records that it did | site build |
-| the `fallback` element provider — tonal zones plus detail scales | unbuilt, and the majority road: 4793 of 7260 pairs, 66.02 percent, share no measure | site build |
+| the `fallback` element provider — tonal zones plus detail scales | unbuilt, and the road that answers for every pair: a tonal zone and a detail scale are readings every frame carries, where the structural road needs a measure holding on BOTH works at once (§4.6) | site build |
 | the `author` element provider — hand-drawn masks and regions | declared and unbuilt; no file backs it today | the author's seat (Fable) |
 | the passage composer that emits a ScenePlan (§4.7) | declared and unbuilt. Until it lands, §4.4c's template and table stay the road that produces scores | a later branch |
 | where the passage composer runs — the bundle or the renderer's own file | undecided; its size is unmeasured, and §12's split is the question it answers | a later branch, at the composer's first landing |
 | the woven instrument's ElementSet-naming port | the instrument plays two whole works today. Its port names A's strips and B's strips as actors at the composer's landing, which is what row 35 asks of it | the instrument's port, at the composer's landing |
 | the return to the hang (§2.6) — `hangGeometry`, the two exact geometries, the canvas-to-DOM handoff | built 2026-08-14 at `7ee2708`: 21 conformance rows green, five red-on-bug proofs, departure and arrival agreeing with the DOM inside the seam threshold of 6 of 255, and the rest at 0.000000000 against 1e-6. The row named one run's pixel means until 11:12; they drift per run and the threshold is the judged fact | closed, except the divergence in the row below and the flake in the row under it |
-| §2.6's row 7, the orientation change mid-passage | observed flaky 2026-08-14 11:12: one run of `tests/test_pass_hang.py` failed it with the pose turning 0.629031 against the undisturbed flight's 0.186345 on a 3.0× bar, and a re-run passed 21 of 21. A row that reds intermittently proves nothing on the run where it passes | the hang suite's owner, before §2.6 is called closed |
+| §2.6's row 7, the orientation change mid-passage | observed flaky 2026-08-14 11:12: one run of `tests/test_pass_hang.py` failed it with the pose turning 0.629031 against the undisturbed flight's 0.186345 on a 3.0× bar, and a re-run passed. A row that reds intermittently proves nothing on the run where it passes, and re-running it until it is green proves less | the hang suite's owner, before §2.6 is called closed |
 | how the two geometries reach the host | §2.6 asks them to arrive as data frozen onto the command's `doors`. What was built hands the measurement through a read-only hook the product owns, which the host calls at `prepare` and at `reframe`, because freezing the record onto every declared command costs bundle bytes and the walk's bundle stands at 67 985 B against a 68 000 B fence — 15 B remaining. §1.1 declares the exception and row 51, unwritten, is what will prove the callback mutates nothing. The two readings are reconciled by that declaration and the divergence stays open as a design question | a later branch, when the bundle has room |
 | `chromeReveal` as a scoreable product choreography with its six named parts | built 2026-08-14 at `7ee2708`: the chrome is revealed once, after the landing, with its parts named — plaque, counter, focus, share, sound and series — and a score may name the chrome's own timing | closed |
 | EdgeMemory (§4.8) | declared and unbuilt; held by the walk in the site's layer, and the engine sees only `returnOf` | the walk, in tlvphotos |
@@ -1594,8 +1752,8 @@ resizes a running transaction rather than replacing it.
 | the digest check fails closed with no subtle-crypto | a browser offering no subtle-crypto cannot verify the digest, so the pack is refused and the walk's own glide lands with the reason recorded. This costs the picture on a plain-http deployment, where subtle-crypto is unavailable by the browser's own rule | a later branch, with the deployment's owner |
 | a conformance row reads a build-time gate in the tlvphotos tree | the row degrades to a named skip when that tree is absent, so an engine-only checkout reports a skip rather than a pass. A skip that reads as a pass is the failure to watch for here | the suite's owner |
 | the shape of the plan's `measuredHandles` field | named 2026-08-14 as a plan-only field that never travels, with its shape left to the plan gate. This contract fixes only that it stays in the plan; what it holds is undefined here | the plan gate's owner |
-| the woven instrument's band count | the floor stands at 8 against this pair's measured 3, recorded as requested-against-applied across 1935 cues. It is the first place his brief's requirement that every meaningful number carry both values actually bites, and the divergence between what the pair measures and what the instrument will draw is unresolved | the instrument's port, with his eye on the motion |
-| the version-pinned opaque effect pack (§12) | declared and unbuilt. The engine knows no TLV effect name and loads the pack; tlvphotos owns it and its manifests, and the renderer's file then holds the host alone. It is what stops the renderer file's fence tracking the effect farm — 25 lab modules on disk, and headroom after each move smaller than one instrument costs. Queued behind the first composed passage playing | a later branch, on his word of 2026-08-14 08:39 |
+| the woven instrument's band count | the instrument's own published floor for the handle stands above this pair's measurement, so the pair is drawn at the floor and the record says requested-against-applied — which holds for any pair reading under a published floor, in any collection. It is the first place his brief's requirement that every meaningful number carry both values actually bites, and the divergence between what the pair measures and what the instrument will draw is unresolved | the instrument's port, with his eye on the motion |
+| the version-pinned opaque effect pack (§12) | declared and unbuilt. The engine knows no TLV effect name and loads the pack; tlvphotos owns it and its manifests, and the renderer's file then holds the host alone. It is what stops the renderer file's fence tracking the effect farm, which grows with the lab and not with the engine. Queued behind the first composed passage playing | a later branch, on his word of 2026-08-14 08:39 |
 | the byte fence for the renderer's own file | moved again 2026-08-14 at `83ddc82`, sized after the merge of three instruments and the return to the hang: 102 000 B raw (measured 92 669) and 27 000 B gzipped (measured 24 270), each with its breakdown written into its test. The row read 42 000 B raw and 13 000 B gzipped until 11:12 | closed, and §12 states what ends the moving |
 
 **The interruption field is read and what happened is recorded.** A score names `interruption` with

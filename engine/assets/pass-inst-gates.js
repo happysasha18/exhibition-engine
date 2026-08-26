@@ -645,25 +645,35 @@
       // It is also where the module's third judge channel went — `rawfeel` (gates.js:730), the walk
       // with the curve taken out, is a score driving `dial` straight.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
-        dial: { min: 0, max: 1, def: 0, open: true },
+        // LEVEL, PER CHARTER SHELF 17 (docs/design/PASS-API-V1.md:716). `mix` is the crossing's own
+        // dial, `clock` the module's own time, `seed` the score's die, and `shade`/`travel`/`mask`
+        // are the fleet's judge channels — all six are the passage's own idiom rather than a
+        // structural level, and level: null across the whole fleet.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        // `dial` is already `open: true` — the instrument reads its own door here and the composer
+        // drives it at no level.
+        dial: { min: 0, max: 1, def: 0, open: true, level: null },
         jamb: { min: 0, max: 0.9, def: 0.55,
-                applied: { shutBelowTheSlotsOwnWidth: true, shutAtTheFarDoor: true } },
-        teeth: { min: 1, max: 24, def: 9, kind: "count", applied: { roundedToWholeTeeth: true } },
-        swing: { min: 0, max: 1, def: 0.35 },
-        press: { min: 0, max: 1, def: 0.65 },
-        lead: { min: 0, max: 1, def: 0.5 },
-        slotAxis: { min: 0, max: 1, def: 1 },
+                applied: { shutBelowTheSlotsOwnWidth: true, shutAtTheFarDoor: true },
+                level: "CELL" },
+        teeth: { min: 1, max: 24, def: 9, kind: "count", applied: { roundedToWholeTeeth: true },
+                 level: "CELL" },
+        swing: { min: 0, max: 1, def: 0.35, level: "CELL CONTENT" },
+        press: { min: 0, max: 1, def: 0.65, level: "CELL CONTENT" },
+        lead: { min: 0, max: 1, def: 0.5, level: "CELL" },
+        slotAxis: { min: 0, max: 1, def: 1, level: "CELL" },
         slotPlace: { min: SLOT_AT_MIN, max: SLOT_AT_MAX, def: 0.5,
                      applied: { seatedThroughTheHostsOwnFit: true, reads: "slotInFile",
-                                clampedInFrame: [SEATED_MIN, SEATED_MAX] } },
+                                clampedInFrame: [SEATED_MIN, SEATED_MAX] },
+                     level: "CELL" },
         slotHalf: { min: SLOT_MIN, max: SLOT_MAX, def: MOTIF_BAND / 2,
                     applied: { seatedThroughTheHostsOwnFit: true, reads: "halfInFile",
-                               clampedInFrame: [SLOT_MIN, SLOT_MAX] } },
-        seed: { min: 0, max: 8, def: 0 },
-        shade: { min: 0, max: 1, def: 1 },
-        travel: { min: 0, max: 1, def: 1 },
+                               clampedInFrame: [SLOT_MIN, SLOT_MAX] },
+                    level: "CELL" },
+        seed: { min: 0, max: 8, def: 0, level: null },
+        shade: { min: 0, max: 1, def: 1, level: null },
+        travel: { min: 0, max: 1, def: 1, level: null },
         // THE FLEET'S JUDGES' CHANNEL, and the one handle here the lab module has no counterpart
         // for. It is not an artistic handle and it is not invented for this instrument: thirteen
         // instruments published it before this one, always for the same job — the frame with the
@@ -672,7 +682,8 @@
         // where the line that reads it is the identity.
         mask: { min: 0, max: 1, def: 0,
                 applied: { shows: "the two leaves as red and green and the opening as black, "
-                                + "written with no blue at all" } },
+                                + "written with no blue at all" },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

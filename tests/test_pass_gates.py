@@ -313,14 +313,17 @@ check("PASS-GATES the three slot handles publish where their measurement is seat
       "rest at",
       'seatedThroughTheHostsOwnFit: true, reads: "slotInFile"' in REGION
       and 'seatedThroughTheHostsOwnFit: true, reads: "halfInFile"' in REGION
-      and "slotAxis: { min: 0, max: 1, def: 1 }" in REGION
+      and 'slotAxis: { min: 0, max: 1, def: 1, level: "CELL" }' in REGION
       and "def: MOTIF_BAND / 2" in REGION,
       "his 19:13 word lifted to the class at 19:21: every geometric parameter names the measurement "
       "of the work it reads. These three carry the departing work's own gate — the axis it stands "
       "on, its place as a share of the FILE and half its own width — and each publishes that its "
       "value is seated through the host's own fit before it reaches the frame, beside the name the "
       "request stays on the record under. Their defaults are the module's own naive reading "
-      "(gates.js:399-400): upright, the middle of the frame, half the motif's own band")
+      "(gates.js:399-400): upright, the middle of the frame, half the motif's own band. THE AXIS "
+      "LITERAL GAINED A LEVEL on 2026-08-25, with the sweep that made every handle in the fleet "
+      "declare the structural level it drives; the slot is a CELL reading and the row follows it "
+      "there, holding every number it always held")
 
 check("PASS-GATES the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "gl.uniform1f(U.uSlot" not in LAYER

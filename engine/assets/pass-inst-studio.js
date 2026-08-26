@@ -540,54 +540,68 @@
       // rest at the numbers named in "WHAT CAME OVER" above, the same for every pair until a
       // measurement answers them.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
-        cropOn: { min: 0, max: 1, def: 1 },
-        zoom: { min: 0.30, max: 3.20, def: 1.15 },
+        // NO LEVEL FOR `mix` OR `clock`: mix is the crossing's own dial, the passage itself, and
+        // clock is the module's own time — neither drives a structural level.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        cropOn: { min: 0, max: 1, def: 1, level: "TEXTURE" },
+        zoom: { min: 0.30, max: 3.20, def: 1.15, level: "TEXTURE" },
         panX: { min: -0.30, max: 0.30, def: 0,
                 reads: "the midpoint of the two works' own measured radial centres, "
-                     + "structure.radial.centre — the same construction hero's centreX reads" },
+                     + "structure.radial.centre — the same construction hero's centreX reads",
+                level: "TEXTURE" },
         panY: { min: -0.30, max: 0.30, def: 0,
                 reads: "the midpoint of the two works' own measured radial centres, "
-                     + "structure.radial.centre — the same construction hero's centreY reads" },
-        twirlOn: { min: 0, max: 1, def: 0 },
+                     + "structure.radial.centre — the same construction hero's centreY reads",
+                level: "TEXTURE" },
+        twirlOn: { min: 0, max: 1, def: 0, level: "TEXTURE" },
         twirlAmt: { min: -4, max: 4, def: 1.4,
                     reads: "structure.polar.twirl, how strongly the pair's own making already winds — "
-                         + "the same reading kaleidoscope's own twist handle reads" },
-        polarOn: { min: 0, max: 1, def: 1 },
+                         + "the same reading kaleidoscope's own twist handle reads",
+                    level: "TEXTURE" },
+        polarOn: { min: 0, max: 1, def: 1, level: "TEXTURE" },
         polarSpread: { min: 0.30, max: 0.95, def: 0.62,
                        reads: "structure.polar.planet, how strongly the pair reads as a little world — "
-                            + "the same reading hero's own planet handle reads" },
-        polarFlip: { min: 0, max: 1, def: 0 },
-        mirrorOn: { min: 0, max: 1, def: 1 },
-        mirrorMode: { min: 0, max: 2, def: 0, kind: "count", applied: { roundedToAWholeMode: true } },
+                            + "the same reading hero's own planet handle reads",
+                       level: "TEXTURE" },
+        polarFlip: { min: 0, max: 1, def: 0, level: "TEXTURE" },
+        mirrorOn: { min: 0, max: 1, def: 1, level: "TEXTURE" },
+        mirrorMode: { min: 0, max: 2, def: 0, kind: "count", applied: { roundedToAWholeMode: true },
+                      level: "TEXTURE" },
         foldX: { min: -0.50, max: 0.50, def: -0.06,
                  reads: "the midpoint of the two works' own measured radial centres, "
-                      + "structure.radial.centre — the same construction livemirror's own fold reads" },
+                      + "structure.radial.centre — the same construction livemirror's own fold reads",
+                 level: "TEXTURE" },
         foldY: { min: -0.50, max: 0.50, def: 0,
                  reads: "the midpoint of the two works' own measured radial centres, "
-                      + "structure.radial.centre — the same construction livemirror's own fold reads" },
-        kalOn: { min: 0, max: 1, def: 0 },
+                      + "structure.radial.centre — the same construction livemirror's own fold reads",
+                 level: "TEXTURE" },
+        kalOn: { min: 0, max: 1, def: 0, level: "TEXTURE" },
         kalN: { min: 3, max: 16, def: 8, kind: "count", applied: { roundedToAWholeCount: true },
                 reads: "structure.rotational.n, the pair's own measured rotational order — the same "
-                     + "reading kaleidoscope's own wedges handle reads" },
-        kalRot: { min: -6.5, max: 6.5, def: 0 },
-        ringOn: { min: 0, max: 1, def: 0 },
-        ringTwist: { min: -1.20, max: 1.20, def: 0.35 },
-        ringSize: { min: 0, max: 2, def: 1, kind: "count", applied: { roundedToAWholeSize: true } },
-        tileOn: { min: 0, max: 1, def: 0 },
+                     + "reading kaleidoscope's own wedges handle reads",
+                level: "TEXTURE" },
+        kalRot: { min: -6.5, max: 6.5, def: 0, level: "TEXTURE" },
+        ringOn: { min: 0, max: 1, def: 0, level: "TEXTURE" },
+        ringTwist: { min: -1.20, max: 1.20, def: 0.35, level: "TEXTURE" },
+        ringSize: { min: 0, max: 2, def: 1, kind: "count", applied: { roundedToAWholeSize: true },
+                    level: "TEXTURE" },
+        tileOn: { min: 0, max: 1, def: 0, level: "TEXTURE" },
         tileN: { min: 2, max: 6, def: 2, kind: "count", applied: { roundedToAWholeCount: true },
                  reads: "structure.grid.periodPx said as a count across the work's own frame side — "
-                      + "the same reading parquet's own tiles handle reads" },
-        colOn: { min: 0, max: 1, def: 0 },
-        hue: { min: -3.14159, max: 3.14159, def: 0, unit: "radians" },
-        colLook: { min: 0, max: 2, def: 1, kind: "count", applied: { roundedToAWholeLook: true } },
+                      + "the same reading parquet's own tiles handle reads",
+                 level: "TEXTURE" },
+        colOn: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        hue: { min: -3.14159, max: 3.14159, def: 0, unit: "radians", level: "LIGHT-COLOUR" },
+        colLook: { min: 0, max: 2, def: 1, kind: "count", applied: { roundedToAWholeLook: true },
+                   level: "LIGHT-COLOUR" },
         // THE FLEET'S JUDGES' CHANNEL: at 0 the picture, at 1 which work stands (red), the chain's
         // own strength (green) and the endless zoom's own seam (blue) — the one handle here the lab
-        // module has no counterpart for.
+        // module has no counterpart for. NO LEVEL: a judge channel, not a structural act.
         mask: { min: 0, max: 1, def: 0,
                 applied: { shows: "which work stands as red, the chain's own strength as green and "
-                                + "the endless zoom's own seam as blue" } },
+                                + "the endless zoom's own seam as blue" },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

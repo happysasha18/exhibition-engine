@@ -748,7 +748,15 @@ else:
                 if not node_available():
                     levels_out, levels_ok = {"error": "node is not installed"}, False
                 else:
-                    lc_cues = [{"id": n, "levels": others[n], "window": [0, 3]} for n in mine]
+                    # EACH CUE CARRIES THE INSTRUMENT IT NAMES, because the composer's own
+                    # `ownTheLevels` now reads it. It asks which handles a cue actually DRIVES on a
+                    # level before deciding who owns that level, and a handle belongs to an
+                    # instrument — so `cue.instrument.id` is part of the cue shape the function
+                    # reads, and a synthetic cue without one is not a cue it can answer about. The
+                    # law this row measures has not moved a word: one active voice per structural
+                    # level in a composed passage, every other claimant accompanying it.
+                    lc_cues = [{"id": n, "instrument": {"id": n}, "levels": others[n],
+                                "window": [0, 3]} for n in mine]
                     levels_out = own_the_levels(lc_cues, pivot=mine[0] if mine else "pivot")
                     lc_owners = [n for n in mine
                                 if (levels_out.get(n) or {}).get("LIGHT-COLOUR") == "owns"]

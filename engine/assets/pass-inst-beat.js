@@ -97,7 +97,8 @@
       "uniform float uSeed;",
       "uniform float uOff;",        // counter-motion, frame heights
       "uniform float uGuard;",      // the contact shadow's gate: nothing at either door
-      "uniform float uMask;",       // the judges' channel: the coverage in place of the picture
+      "uniform float uMask;",
+      "uniform float uPresence;",  // the entry-door contract's reserved dry       // the judges' channel: the coverage in place of the picture
       "const float PI = 3.14159265359;",
 
       // The sample is pushed by at most uOff, and the cover-fit was pulled in by exactly that
@@ -195,7 +196,7 @@
       // THE COLOUR CHANNEL IS UNTOUCHED, which is what makes a one-cue score byte-identical: laid
       // down first the host disables blending and reads no alpha, so `col` reaches the frame exactly
       // as it always did. The blend is STRAIGHT source-over, never premultiplied — see the host.
-      "  gl_FragColor = vec4(col, 1.0 - cov);",
+      "  gl_FragColor = vec4(col, (1.0 - cov) * uPresence);",
       "}",
     ].join("\n");
 
@@ -579,8 +580,12 @@
       //     instrument's own hand, and nothing measured of a photograph sets them; `clock` and
       //     `shade` scale them where a score wants them moved.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
+        // LEVEL, PER CHARTER SHELF 17 (docs/design/PASS-API-V1.md:716). `mix` is the crossing's own
+        // dial, `clock` the module's own time, `seed` the score's die, and `shade`/`travel`/`mask`
+        // are the fleet's judge channels — all six are the passage's own idiom rather than a
+        // structural level, and level: null across the whole fleet.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
         // THE TWO PERIODS, AND THE SPAN THAT SAYS WHAT THEY MEAN. A range of 0…1 is a place, not a
         // length, and a fill holding the two works' own measured periods — `spectralPeriodPx` over
         // `frameSide`, which is already a share of a frame — has nothing to map that share onto
@@ -600,15 +605,17 @@
                    reads: { of: "the departing work",
                             paths: ["texture.spectralPeriodPx", "frameSide"],
                             how: "the work's own measured period said as a share of its own frame "
-                               + "side, placed on this handle's own span in frame heights" } },
+                               + "side, placed on this handle's own span in frame heights" },
+                   level: "SURFACE" },
         periodB: { min: 0, max: 1, def: 0.42,
                    unit: "a position on the span below, in frame heights",
                    frameHeights: [P_MIN, P_MAX],
                    reads: { of: "the arriving work",
                             paths: ["texture.spectralPeriodPx", "frameSide"],
                             how: "the work's own measured period said as a share of its own frame "
-                               + "side, placed on this handle's own span in frame heights" } },
-        phase: { min: 0, max: 1, def: 0 },
+                               + "side, placed on this handle's own span in frame heights" },
+                   level: "SURFACE" },
+        phase: { min: 0, max: 1, def: 0, level: "SURFACE" },
         // THE MEASUREMENT THE PERIODS ARE READ AGAINST AT A DOOR, published beside the range of the
         // handle that sets the field's steepness. `heldWholeAtADoor` says what is read (how far this
         // instrument's own mask reaches past the field's extreme, held against the margin the
@@ -622,8 +629,9 @@
                                                    measures: "how far this instrument's own mask "
                                                            + "reaches past the field's own extreme, "
                                                            + "against the margin the threshold "
-                                                           + "stands beyond that extreme" } } },
-        lead: { min: 0, max: 1, def: 0.6 },
+                                                           + "stands beyond that extreme" } },
+                    level: "SURFACE" },
+        lead: { min: 0, max: 1, def: 0.6, level: "SURFACE" },
         // THE ONE HANDLE THIS PORT PUBLISHES THAT THE MODULE HELD AS A CONSTANT, and the
         // measurement it names, published beside its range the way the meshing instrument publishes
         // its own. `reads` says which reading of a WORK RECORD sets it and how the two are put
@@ -639,11 +647,26 @@
                              how: "the angle between the two works' own measured lattices — "
                                 + "|angleA - angleB| taken modulo half a turn and folded back "
                                 + "under a right angle, since a lattice angle is a line direction "
-                                + "and two grating families never stand further apart than that" } },
-        seed: { min: 0, max: 8, def: 0 },
-        shade: { min: 0, max: 1, def: 1 },
-        travel: { min: 0, max: 1, def: 1 },
-        mask: { min: 0, max: 1, def: 0 },
+                                + "and two grating families never stand further apart than that" },
+                    level: "SURFACE" },
+        seed: { min: 0, max: 8, def: 0, level: null },
+        shade: { min: 0, max: 1, def: 1, level: null },
+        travel: { min: 0, max: 1, def: 1, level: null },
+        mask: { min: 0, max: 1, def: 0, level: null },
+        // THE RESERVED DRY OF THE ENTRY-DOOR CONTRACT (docs/design/ENTRY-DOOR.md). One name across
+        // the whole fleet, declared the same way in every manifest, so the host and the composer
+        // learn it once instead of nine times. It says WHETHER THIS VOICE IS IN THE FRAME AT ALL:
+        // at zero the instrument draws nothing anywhere and what stands beneath it shows whole; at
+        // one it draws exactly as it always did, which is where it rests, so a plan that says
+        // nothing about it gets the picture this instrument has always drawn.
+        //
+        // IT IS NOT THE BANNED OPACITY HANDLE RETURNING, and the difference is the whole point. An
+        // opacity handle fades one whole layer against another — the crossfade the charter's own
+        // ladder removed the tempting tool for. This says whether a voice is present, and it is
+        // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
+        // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        presence: { min: 0, max: 1, def: 1, level: null,
+                    unit: "whether this voice is in the frame at all" },
       },
       // The dial's two ends, as the module's contract row words them. At 0 the threshold stands a
       // margin below the field's whole range, so every point of the frame is the first work standing
@@ -676,11 +699,12 @@
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, periodA: 0.14, periodB: 0.42, phase: 0, contrast: 0.82, lead: 0.6,
-                     beatTilt: BEAT_TILT, seed: 0, shade: 1, travel: 1, mask: 0, t: 0,
+                     beatTilt: BEAT_TILT, seed: 0, shade: 1, travel: 1, mask: 0, presence: 1, t: 0,
                      reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "beat", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
+          { name: "uPresence", type: "float", source: "handle:presence" },
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
           { name: "uFitA", type: "vec4", source: "fitA" },
@@ -762,6 +786,7 @@
           mix: h.mix, periodA: h.periodA, periodB: h.periodB, phase: h.phase,
           contrast: h.contrast, lead: h.lead, beatTilt: h.beatTilt,
           shade: h.shade, travel: h.travel, seed: h.seed, mask: h.mask,
+          presence: h.presence,
           t: h.clock, reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
@@ -773,7 +798,16 @@
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
         // decision asks for rather than the periods the score asked for.
-        if (h.mix === 0 || h.mix === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           if (st.reportApplied) {
             st.reportApplied({

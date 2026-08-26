@@ -753,9 +753,16 @@
       // own declared params and the two handles it already publishes for a score, each naming the
       // measurement of the photograph it derives from.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
+        // `mix` is the crossing's own dial and `clock` the module's own time; neither drives a
+        // structural level of the picture.
+        mix: { min: 0, max: 1, def: 0, level: null },
         clock: { min: 0, max: 14, def: 0, unit: "the second the fall is read at",
-                 applied: { depthPerSecondAtWhole: SPEED_TOP, startsAt: Z0 } },
+                 applied: { depthPerSecondAtWhole: SPEED_TOP, startsAt: Z0 }, level: null },
+        // Where the corridor's own vanishing point stands is where its axis stands — a WORLD
+        // reading — but this instrument deliberately does not claim WORLD (the header's own WHERE
+        // IT STANDS ON THE CHARTER'S SHELF), so WORLD is not in its `levels` array. This falls back
+        // to SURFACE, the nearest declared level: a placement of the whole frame's own vanishing
+        // point rather than a repeating unit.
         centreX: { min: 0, max: 1, def: 0.5,
                    unit: "where the corridor's far point stands across the frame",
                    reads: "the midpoint of the two works' own measured radial centres, "
@@ -763,26 +770,35 @@
                         + "turns about, so the corridor falls toward what the picture is already "
                         + "about",
                    applied: { reach: FAR_REACH,
-                              restsAt: "the module's own wandering vanishing point at that second" } },
+                              restsAt: "the module's own wandering vanishing point at that second" },
+                   level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "where the corridor's far point stands up the frame",
                    reads: "the midpoint of the two works' own measured radial centres, "
                         + "structure.radial.centre, read on the other axis",
                    applied: { reach: FAR_REACH,
-                              restsAt: "the module's own wandering vanishing point at that second" } },
+                              restsAt: "the module's own wandering vanishing point at that second" },
+                   level: "SURFACE" },
+        // How fast the eye travels down the corridor is a WORLD reading (how near the eye stands to
+        // it, moving), which this instrument does not claim; it falls back to SURFACE, the nearest
+        // declared level, as the whole frame's own drift down the passage.
         depth: { min: 0, max: 1, def: SPEED_DEF,
                  unit: "how fast the fall travels down the corridor",
                  reads: "the departing work's own corridor reading, structure.polar.tunnel — a "
                       + "photograph whose depth already reads as a corridor is fallen down further "
                       + "in the same passage than one that barely does",
-                 applied: { depthPerSecondAtWhole: SPEED_TOP, moduleShipsAt: SPEED_DEF } },
+                 applied: { depthPerSecondAtWhole: SPEED_TOP, moduleShipsAt: SPEED_DEF },
+                 level: "SURFACE" },
+        // The rings' own spacing: CELL.
         ribs: { min: 0, max: 1, def: 0.5, unit: "how far apart the corridor's rings stand",
                 reads: "the departing work's own measured ring repeat — structure.ownDevice.count "
                      + "where that work was cut as rings, and the work's own ring set's measured "
                      + "grain otherwise. The rings stand at even RATIOS of depth, so this handle "
                      + "moves the spacing in ratios too",
                 applied: { reach: RIBS_REACH, restsAt: "the module's own spacing, TAU over the "
-                                                     + "angular repeats" } },
+                                                     + "angular repeats" },
+                level: "CELL" },
+        // The angular repeat count: CELL.
         spokes: { min: REPS_MIN, max: REPS_MAX, def: REPS_DEF, kind: "enum", step: 2,
                   unit: "how many mirrored copies of the picture stand around the corridor",
                   reads: "the departing work's own measured turn, structure.rotational.n — how many "
@@ -791,20 +807,25 @@
                        + "corridor takes that work's own ring count instead "
                        + "(structure.ownDevice.count where it was cut as rings), rounded to the "
                        + "nearest even count, because the wrap across the picture is a mirrored pair "
-                       + "and an odd count would put a seam where the mirror closes" },
+                       + "and an odd count would put a seam where the mirror closes",
+                  level: "CELL" },
+        // The rings' own phase shift: CELL.
         twist: { min: 0, max: 1, def: TWIST_DEF, unit: "the corridor's spiral shear",
                  reads: "the departing work's own measured twirl, structure.polar.twirl — the "
                       + "reading that says how far that photograph's structure already spirals about "
                       + "its centre, which is exactly what a shear per ring is",
                  applied: { radiansPerRingAtWhole: TWIST_TOP, moduleShipsAt: TWIST_DEF,
-                            breathes: "0.78 to 1.00 of itself, on the module's own slow breath" } },
+                            breathes: "0.78 to 1.00 of itself, on the module's own slow breath" },
+                 level: "CELL" },
         seed: { min: 0, max: 8, def: 0, unit: "the ordered pair's own die",
                 reads: "the score's own seed, spent on the phase of the drift the fall wanders on, "
                      + "so two corridors falling on one second wander differently and a route never "
-                     + "plays one corridor twice" },
+                     + "plays one corridor twice",
+                level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own sample coordinate, walked at the buffer's own sample points), on
-        // which grid, what the reading is counted in, and that there is no hold.
+        // which grid, what the reading is counted in, and that there is no hold. It is the judges'
+        // own channel and drives no structural level.
         mask: { min: 0, max: 1, def: 0,
                 applied: { readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",
                                           reads: "flatness",
@@ -812,7 +833,8 @@
                                                   + "stands from the door work's plain cover fit, "
                                                   + "walked at the buffer's own sample points, and "
                                                   + "how many of them read the other work",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

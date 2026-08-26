@@ -360,13 +360,21 @@ check("PASS-BOXFOLD the coverage is declared, and the frame it fills is the reas
 # structure draws the boundary.
 check("PASS-BOXFOLD the crease's own handle publishes the measurement it reads",
       'reads: "structure.regions from lab/cut-lines.py' in REGION
-      and "structure.regions.score from the same file, which is the gate" in REGION
+      and "structure.regions.line.<axis>.explains from the same file" in REGION
       and 'applied: { floor: SEAM_FLOOR }' in REGION
       and "structure.grid.countFrom over the departing work's own frame side" in REGION,
+      # THE GATE'S OWN FIELD WAS NAMED WRONG until 2026-08-26 and this row carried the wrong name
+      # with it. The handle published `structure.regions.score`, which the record does carry, but
+      # `SEAM_FLOOR` was calibrated against the per-axis `line.<axis>.explains` reading and against
+      # no other — the floor's own table lists four works explaining 0.89, 0.48, 0.28 and 0.03,
+      # which are those readings, while `score` on the fixture's own first work stands at 0.7401
+      # against a line explaining 0.6054. The floor did not move; the name did. (A tally over the
+      # collection stood in this sentence too and is gone: it is the one thing the standing rules
+      # forbid a row to argue from.)
       "the fold's PLACE is `seam`, reading structure.regions — the line along the turn's own "
-      "direction that best splits the departing work's columns into two groups, the measure "
-      "cut-lines.py wins on 66 of the collection's 121 works; its gate is `seamScore`, reading "
-      "structure.regions.score against the module's own floor of 0.20. The fold's SHAPE is "
+      "direction that best splits the departing work's columns into two groups; its gate is "
+      "`seamScore`, reading how much of that difference the line explains, against the module's "
+      "own floor of 0.20. The fold's SHAPE is "
       "`fingers`, reading the same measured repeat grid-colour derives its count from. Both halves "
       "of the boundary are the work's, which is the whole of the charter's pardon")
 

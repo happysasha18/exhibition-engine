@@ -613,19 +613,28 @@
       // pointer across its mount for dominance and for the top layer's turn (overlay.js:536-545);
       // both are gone. The one place time reaches the picture is the two layers' breath and the two
       // fields' drift, and both read the `clock` handle, so a seeded score repeats to the pixel.
+      // LEVEL, PER SHELF 17 (docs/design/PASS-API-V1.md:716). This instrument declares one level,
+      // LIGHT-COLOUR, and its own comment above already disclaims the rest: nothing here cuts the
+      // frame into cells, claims a world or touches the grain, so the turn, the scale and the two
+      // fields' periods are not a lattice of their own — they are how this one light-and-colour
+      // effect is built, and every one of them is read at LIGHT-COLOUR rather than at a level this
+      // instrument does not occupy. `mix` is the crossing's own dial and `clock` is the module's own
+      // time, so neither is a structural level; `mask` is the judges' channel.
       handles: {
         mix: { min: 0, max: 1, def: 0,
                unit: "which of the two works the frame belongs to",
                curve: { family: "a logarithm on each half, mirrored about the middle, k = 1.65",
-                        band: CURVE_BANDS.mix, applied: true, measuredOn: CURVE_MEASURED_ON } },
-        clock: { min: 0, max: 14, def: 0 },
+                        band: CURVE_BANDS.mix, applied: true, measuredOn: CURVE_MEASURED_ON },
+               level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
         exposure: { min: 0, max: 1, def: 1,
                     unit: "how far the composite reaches",
                     curve: { family: "an S-curve on each of the dial's two stages, s = 0.65",
                              band: CURVE_BANDS.exposure, applied: true,
                              measuredOn: CURVE_MEASURED_ON },
                     applied: { colourFullAt: 0.5, formsBeginAt: 0.5,
-                               doorsExactAt: "whole, which is where this handle rests" } },
+                               doorsExactAt: "whole, which is where this handle rests" },
+                    level: "LIGHT-COLOUR" },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own presence field at that field's deepest possible place), on which
         // grid (the drawing buffer the host binds, with the CSS frame where it hands none), how far
@@ -640,7 +649,8 @@
                                readAtADoor: { band: DOOR_HOLD, readOn: "the drawing buffer",
                                               reads: "presenceRequest",
                                               measures: "this instrument's own presence field at "
-                                                      + "that field's deepest possible place" } } },
+                                                      + "that field's deepest possible place" } },
+                    level: "LIGHT-COLOUR" },
         blend: { min: 0, max: BLENDS.length - 1, def: 0, kind: "enum", step: 1,
                  unit: "which rule the two works meet under",
                  names: { "0": BLENDS[0], "1": BLENDS[1], "2": BLENDS[2],
@@ -649,7 +659,8 @@
                       + "the choice between them is a score's, not a measurement's. «light "
                       + "difference» is the one that stands far from both works without inverting "
                       + "colour, and the vista preset of 08-08 11:39 names «screen», which is why "
-                      + "screen rests here" },
+                      + "screen rests here",
+                 level: "LIGHT-COLOUR" },
         scale: { min: SCALE_MIN, max: SCALE_MAX, def: 1,
                  unit: "how large the arriving work stands against the departing one",
                  reads: "the ratio of the two works' own cutting steps — "
@@ -657,46 +668,54 @@
                       + "with structure.grid.periodPx where no device was derived. Charter shelf 10 "
                       + "is why: the third picture is the two works' interference, and near-matched "
                       + "rhythms are what yield the slow large beats, so the handle that sets how "
-                      + "near they stand has to be the two rhythms themselves" },
+                      + "near they stand has to be the two rhythms themselves",
+                 level: "LIGHT-COLOUR" },
         turn: { min: 0, max: 180, def: 0, unit: "degrees",
                 reads: "the angle between the two works' own lattices — "
                      + "structure.ownDevice.angleDeg of the arriving work less the departing one's, "
                      + "with structure.grid.angleDeg where no device was derived. It is the second "
                      + "half of shelf 10's reading: two lattices at a small angle beat into a "
-                     + "moiré, two at a large one do not" },
+                     + "moiré, two at a large one do not",
+                level: "LIGHT-COLOUR" },
         arrival: { min: 0, max: 1, def: 0, kind: "enum", step: 1,
                    names: { "0": "the whole frame at once", "1": "interfered" },
                    unit: "which named arrival the score put on this exposure",
                    reads: "nothing of either photograph: charter shelf 7 names the interfered "
                         + "arrival and a score names it, so this is a plan's word and not a "
-                        + "measurement" },
+                        + "measurement",
+                   level: "LIGHT-COLOUR" },
         mixPeriod: { min: PERIOD_MIN, max: PERIOD_MAX, def: MIX_PERIOD_DEF,
                      unit: "a fraction of the departing work's own frame side",
                      reads: "structure.ownDevice.stepPx over the departing work's own frame side — "
                           + "the step that work was actually cut at, so the field that decides "
                           + "which places of the frame lean to which work leans along the work's "
                           + "own structure; structure.grid.periodPx over the same side where no "
-                          + "device was derived" },
+                          + "device was derived",
+                     level: "LIGHT-COLOUR" },
         mixTurn: { min: 0, max: 180, def: 0, unit: "degrees",
                    reads: "structure.ownDevice.angleDeg of the departing work, the angle that same "
-                        + "step was cut at; structure.grid.angleDeg where no device was derived" },
+                        + "step was cut at; structure.grid.angleDeg where no device was derived",
+                   level: "LIGHT-COLOUR" },
         regionPeriod: { min: PERIOD_MIN, max: PERIOD_MAX, def: REGION_PERIOD_DEF,
                         unit: "a fraction of the arriving work's own frame side",
                         reads: "structure.ownDevice.stepPx over the ARRIVING work's own frame side "
                              + "— the exposure's region grows along the structure of the work it is "
                              + "resolving into, which is what makes the arrival that work's own; "
                              + "structure.grid.periodPx over the same side where no device was "
-                             + "derived" },
+                             + "derived",
+                        level: "LIGHT-COLOUR" },
         regionTurn: { min: 0, max: 180, def: 0, unit: "degrees",
                       reads: "structure.ownDevice.angleDeg of the arriving work; "
-                           + "structure.grid.angleDeg where no device was derived" },
+                           + "structure.grid.angleDeg where no device was derived",
+                      level: "LIGHT-COLOUR" },
         mask: { min: 0, max: 1, def: 0,
                 applied: { readAtADoor: { band: DOOR_SHOW, readOn: "the drawing buffer",
                                           reads: "mask",
                                           measures: "this instrument's own map — where the exposure "
                                                   + "stands, where the frame stands between the two "
                                                   + "works, and how far the envelope is open",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -834,7 +853,16 @@
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
         // decision asks for rather than the curve the module carries. `moved` is how far the applied
         // presence had to be walked to whole for this door to be the photograph.
-        if (h.mix === 0 || h.mix === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           if (st.reportApplied) {
             st.reportApplied({

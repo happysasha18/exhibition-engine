@@ -140,6 +140,7 @@
       "uniform vec2 uLight;",
       // the judges' handle: the two works' own coverage as colour
       "uniform float uMask;",
+      "uniform float uPresence;",  // the entry-door contract's reserved dry
       "vec2 into(vec2 p, vec4 f){",
       "  return clamp((p - 0.5) * f.xy + 0.5 + f.zw, 0.0008, 0.9992);",
       "}",
@@ -207,7 +208,7 @@
       // the judges' own frame: the two works' coverage as colour, so a check reads on the picture
       // which work claims a point and whether either alpha ever stands between 0 and 1
       "  col = mix(col, vec3(a.a, b.a, 0.0), uMask);",
-      "  gl_FragColor = vec4(col, mix(cov, 1.0, uMask));",
+      "  gl_FragColor = vec4(col, mix(cov, 1.0, uMask) * uPresence);",
       "}",
     ].join("\n");
 
@@ -474,28 +475,47 @@
       //     height, which is what makes the far door exact; a handle scaling it below one would
       //     leave the departing work standing in the frame at `mix` 1 and break the door this
       //     instrument's own coverage line claims.
+      // LEVEL, PER SHELF 17 (docs/design/PASS-API-V1.md:716). `mix` is the crossing's own dial and
+      // `clock` is the module's own time — neither is a structural level. `mask` is the judges'
+      // channel, the same reason as every other instrument's own `mask`.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
-        levelA: { min: 0, max: 1, def: 0.5 },
-        levelB: { min: 0, max: 1, def: 0.5 },
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        levelA: { min: 0, max: 1, def: 0.5, level: "CELL" },
+        levelB: { min: 0, max: 1, def: 0.5, level: "CELL" },
         cellsA: { min: CELLS_MIN, max: CELLS_MAX, def: MASK_CELLS,
-                  applied: { roundedToWholeCells: true } },
+                  applied: { roundedToWholeCells: true },
+                  level: "CELL" },
         cellsB: { min: CELLS_MIN, max: CELLS_MAX, def: MASK_CELLS,
-                  applied: { roundedToWholeCells: true } },
-        colourPeriodA: { min: 0, max: 4, def: 0 },
-        colourPhaseA: { min: 0, max: 1, def: 0 },
-        colourAmpA: { min: 0, max: 1, def: 0 },
-        lightPeriodA: { min: 0, max: 4, def: 0 },
-        lightPhaseA: { min: 0, max: 1, def: 0 },
-        lightAmpA: { min: 0, max: 1, def: 0 },
-        colourPeriodB: { min: 0, max: 4, def: 0 },
-        colourPhaseB: { min: 0, max: 1, def: 0 },
-        colourAmpB: { min: 0, max: 1, def: 0 },
-        lightPeriodB: { min: 0, max: 4, def: 0 },
-        lightPhaseB: { min: 0, max: 1, def: 0 },
-        lightAmpB: { min: 0, max: 1, def: 0 },
-        mask: { min: 0, max: 1, def: 0 },
+                  applied: { roundedToWholeCells: true },
+                  level: "CELL" },
+        colourPeriodA: { min: 0, max: 4, def: 0, level: "LIGHT-COLOUR" },
+        colourPhaseA: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        colourAmpA: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        lightPeriodA: { min: 0, max: 4, def: 0, level: "LIGHT-COLOUR" },
+        lightPhaseA: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        lightAmpA: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        colourPeriodB: { min: 0, max: 4, def: 0, level: "LIGHT-COLOUR" },
+        colourPhaseB: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        colourAmpB: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        lightPeriodB: { min: 0, max: 4, def: 0, level: "LIGHT-COLOUR" },
+        lightPhaseB: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        lightAmpB: { min: 0, max: 1, def: 0, level: "LIGHT-COLOUR" },
+        mask: { min: 0, max: 1, def: 0, level: null },
+        // THE RESERVED DRY OF THE ENTRY-DOOR CONTRACT (docs/design/ENTRY-DOOR.md). One name across
+        // the whole fleet, declared the same way in every manifest, so the host and the composer
+        // learn it once instead of nine times. It says WHETHER THIS VOICE IS IN THE FRAME AT ALL:
+        // at zero the instrument draws nothing anywhere and what stands beneath it shows whole; at
+        // one it draws exactly as it always did, which is where it rests, so a plan that says
+        // nothing about it gets the picture this instrument has always drawn.
+        //
+        // IT IS NOT THE BANNED OPACITY HANDLE RETURNING, and the difference is the whole point. An
+        // opacity handle fades one whole layer against another — the crossfade the charter's own
+        // ladder removed the tempting tool for. This says whether a voice is present, and it is
+        // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
+        // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        presence: { min: 0, max: 1, def: 1, level: null,
+                    unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -532,10 +552,11 @@
                      lightPeriodA: 0, lightPhaseA: 0, lightAmpA: 0,
                      colourPeriodB: 0, colourPhaseB: 0, colourAmpB: 0,
                      lightPeriodB: 0, lightPhaseB: 0, lightAmpB: 0,
-                     mask: 0, reduced: false, cssWidth: 1000, cssHeight: 1000 },
+                     mask: 0, presence: 1, reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "strata-light", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
+          { name: "uPresence", type: "float", source: "handle:presence" },
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
           { name: "uFitA", type: "vec4", source: "fitA" },
@@ -619,6 +640,7 @@
           lightPeriodA: h.lightPeriodA, lightPhaseA: h.lightPhaseA, lightAmpA: h.lightAmpA,
           colourPeriodB: h.colourPeriodB, colourPhaseB: h.colourPhaseB, colourAmpB: h.colourAmpB,
           lightPeriodB: h.lightPeriodB, lightPhaseB: h.lightPhaseB, lightAmpB: h.lightAmpB,
+          presence: h.presence,
           t: h.clock, reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
@@ -630,7 +652,16 @@
         // applied state are one and the same, and what the record carries is the state itself: the
         // two dials, the two levels, the two cell counts and the two voices of the work whose door
         // it is.
-        if (h.mix === 0 || h.mix === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           var i = h.mix === 0 ? 0 : 1;
           if (st.reportApplied) {

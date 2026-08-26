@@ -94,9 +94,18 @@ CAM_VOCAB = set(re.findall(r'"([^"]+)"', _cam_keys_m.group(1))) if _cam_keys_m e
 
 
 def host_names(text):
+    """The instrument names the host's own text carries — WHOLE WORDS, never substrings.
+
+    The alternation was unanchored until 2026-08-26, so a name that happens to be a fragment of an
+    ordinary word matched inside it: the fleet gained an instrument called `wind`, and every
+    `window.innerWidth` in the host read as the host naming an instrument. The law this row keeps is
+    about the host knowing a NAME, so the match is anchored at both ends and the law is measured
+    exactly rather than approximately. `grid-colour` carries a hyphen and is bounded at both ends by
+    it just the same."""
     if not NAMES:
         return []
-    return sorted(set(re.findall("|".join(NAMES), text)) - CAM_VOCAB)
+    pattern = r"\b(?:" + "|".join(re.escape(n) for n in NAMES) + r")\b"
+    return sorted(set(re.findall(pattern, text)) - CAM_VOCAB)
 
 
 check("PASS-PACK the host knows no instrument name — the built host names none of them",

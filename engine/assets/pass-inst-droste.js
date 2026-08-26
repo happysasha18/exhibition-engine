@@ -639,42 +639,53 @@
       // owes a door at each end, so which work stands where is the passage's own question and not a
       // handle: the ring answers it.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
+        // LEVEL, PER CHARTER SHELF 17 (docs/design/PASS-API-V1.md:716). `mix` is the crossing's own
+        // dial, `clock` the module's own time and `shade`/`mask` are the fleet's judge channels —
+        // this instrument holds no `seed` or `travel` handle at all — and all four are the passage's
+        // own idiom rather than a structural level, level: null across the whole fleet.
+        mix: { min: 0, max: 1, def: 0, level: null },
         clock: { min: 0, max: 14, def: 0, unit: "seconds",
                  reads: "the second the host hands down; the dive, the turn, the centre's wander "
-                      + "and the breathing bend are closed forms of it" },
+                      + "and the breathing bend are closed forms of it",
+                 level: null },
         size: { min: 2, max: 6, def: COPIES_DEF, kind: "enum", step: 1,
                 unit: "how many copies stand inside one fall of forty",
                 reads: "the work's own measured ring count, the collection's `radial` reading — the "
                      + "same measurement the meshing instrument takes its ring count from. A work "
                      + "of few rings dives in few large copies and one of many in many small ones",
-                applied: { fallOfForty: DIVE_SPAN, onePeriodIs: "log(40) over the count" } },
+                applied: { fallOfForty: DIVE_SPAN, onePeriodIs: "log(40) over the count" },
+                level: "SURFACE" },
         turn: { min: 0, max: 1, def: TURN_DEF,
                 unit: "how far the copies wind into a spiral, in radians of turn per e-fold",
                 reads: "the work's own measured radial score, so a work whose rings are its own "
                      + "device winds hard into the spiral and one that barely reads radial barely "
                      + "winds at all",
-                applied: { radiansPerEFoldAtWhole: 1.75, curve: "u^1.15, the module's own" } },
+                applied: { radiansPerEFoldAtWhole: 1.75, curve: "u^1.15, the module's own" },
+                level: "SURFACE" },
         speed: { min: 0, max: 1, def: SPEED_DEF, unit: "how fast the dive falls",
                  reads: "the copy count against the instrument's own default count, so one copy "
                       + "passes the eye in the same time whatever the pair",
-                 applied: { periodsPerSecondAtWhole: 0.95, curve: "u^1.35, the module's own" } },
+                 applied: { periodsPerSecondAtWhole: 0.95, curve: "u^1.35, the module's own" },
+                 level: "SURFACE" },
         centreX: { min: 0, max: 1, def: 0.5,
                    unit: "where the spiral's throat stands across the frame, as an offset on the "
                        + "module's own wander",
                    reads: "the work's own measured radial centre, the collection's `radial.centreX`",
-                   applied: { reach: CENTRE_REACH, restsOn: "the module's own wander" } },
+                   applied: { reach: CENTRE_REACH, restsOn: "the module's own wander" },
+                   level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "where the throat stands up the frame, as an offset on that same wander",
                    reads: "the work's own measured radial centre, the collection's `radial.centreY`. "
                         + "The module publishes only the across-frame half of this pair; the other "
                         + "half is the port's, in the module's own idiom, because a measured centre "
                         + "has two coordinates and a handle for one of them would read half of it",
-                   applied: { reach: CENTRE_REACH, restsOn: "the module's own wander" } },
+                   applied: { reach: CENTRE_REACH, restsOn: "the module's own wander" },
+                   level: "SURFACE" },
         shade: { min: 0, max: 1, def: 1,
                  unit: "the weight of the darkening the spiral carries",
                  applied: { wellAtTheThroat: WELL, rimOnTheSeam: 0.55, cornerSink: 0.55,
-                            farSink: 0.50, restsAt: "both doors" } },
+                            farSink: 0.50, restsAt: "both doors" },
+                 level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own share of the arriving work, walked at the buffer's own sample
         // points), on which grid, what the reading is counted in, and that there is no hold — the
@@ -685,7 +696,8 @@
                                           reads: "handover",
                                           measures: "the arriving work's own share at the buffer's "
                                                   + "own sample points, the wind, and this channel",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

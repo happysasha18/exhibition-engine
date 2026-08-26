@@ -755,7 +755,11 @@
       // because an instrument that rolls its own die makes a seeded score draw two different
       // pictures.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
+        // LEVEL, PER CHARTER SHELF 17 (docs/design/PASS-API-V1.md:716). `mix` is the crossing's own
+        // dial, `seed` the score's die, and `shade`/`mask` are the fleet's judge channels — this
+        // instrument holds no `clock` or `travel` handle at all — and all four are the passage's own
+        // idiom rather than a structural level, level: null across the whole fleet.
+        mix: { min: 0, max: 1, def: 0, level: null },
         tiles: { min: TILES_MIN, max: TILES_MAX, def: TILES_DEF, kind: "enum", step: 2,
                  unit: "how many tiles stand across the floor",
                  reads: "the work's own frame side over structure.grid.periodPx — the count of the "
@@ -770,7 +774,8 @@
                       + "device would be the same floor for five works in six",
                  applied: { oddOnly: true,
                             why: "the middle tile is what the dry door stands on, so the count has "
-                               + "to leave one, which is the module's own oddClamp" } },
+                               + "to leave one, which is the module's own oddClamp" },
+                 level: "CELL" },
         depth: { min: 0, max: 1, def: 1,
                  unit: "how far the floor tips at the middle of the passage",
                  applied: { degreesAtWhole: PITCH_MAX, restsAt: "both doors",
@@ -778,27 +783,32 @@
                                + "by, so this handle can flatten the room without a door noticing" },
                  reads: "nothing in this tree bears on it: how deep a room a passage wants is the "
                       + "score's own reading of the step it stands at, and it rests at the module's "
-                      + "own deepest" },
+                      + "own deepest",
+                 level: "SURFACE" },
         lattice: { min: 0, max: 180, def: 0, unit: "degrees",
                    reads: "structure.grid.angleDeg — the direction the work's own lattice varies "
                         + "along, which is the angle the step was cut at, and which stands off "
                         + "square on 91 of this collection's 121 works; "
                         + "structure.ownDevice.angleDeg where the work carries no grid angle, "
-                        + "which is nothing on 117 of the 121 and is named second for that reason" },
+                        + "which is nothing on 117 of the 121 and is named second for that reason",
+                   level: "CELL" },
         spin: { min: 0, max: SPIN_MAX, def: SPIN_DEF, unit: "degrees across the whole passage",
                 reads: "nothing in this tree bears on it. The module turns its floor on a clock at "
                      + "the taste-approved vista preset's own rate, and this engine hands an "
                      + "instrument no clock, so the rate is carried at this engine's own pass "
                      + "duration and rides the dial. It is the one handle here that names no "
                      + "measurement, and the port's report says so rather than leaving a reader to "
-                     + "find it from a missing row" },
+                     + "find it from a missing row",
+                level: "CELL" },
         shade: { min: 0, max: 1, def: 1,
                  unit: "the weight of this floor's own light and of the shadow a sheet throws",
-                 applied: { atRest: 0.17, addedByDistance: 0.32, restsAt: "both doors" } },
+                 applied: { atRest: 0.17, addedByDistance: 0.32, restsAt: "both doors" },
+                 level: null },
         seed: { min: 0, max: 8, def: 0, unit: "the ordered pair's own die",
                 reads: "the score's own seed, which scatters the tiles' own moments over 0.14 of "
                      + "the dial so the front turns the floor over in a ragged band rather than "
-                     + "along a ruled line; the same number turns the same floor over tile for tile" },
+                     + "along a ruled line; the same number turns the same floor over tile for tile",
+                level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own floor, walked at the buffer's own sample points), on which grid
         // (the drawing buffer the host binds, with the CSS frame where it hands none), what the
@@ -812,7 +822,8 @@
                                                   + "walked at the buffer's own sample points, the "
                                                   + "standing tile's travel from its landing, and "
                                                   + "how far the room has changed hands",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

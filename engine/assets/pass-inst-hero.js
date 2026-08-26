@@ -755,22 +755,38 @@
       // score can walk without moving the picture is noise in the score, so none is published, and a
       // seeded run repeats to the point for the same reason.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 3600, def: 0, unit: "seconds",
+        // LEVEL, PER CHARTER SHELF 17 (docs/design/PASS-API-V1.md:716). `mix` is the crossing's own
+        // dial, `clock` the module's own time and `mask` the fleet's judge channel — this instrument
+        // holds no `seed`, `shade` or `travel` handle at all — and all three are the passage's own
+        // idiom rather than a structural level, level: null across the whole fleet.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        // THE SPAN STOOD AT 3600 AND SAID NOTHING FOR IT. An hour of seconds was published where
+        // every other instrument of the fleet publishes fourteen, which is §2.5's own transaction
+        // bound: a passage is clamped to fourteen seconds at `durationOf`, this handle is fed the
+        // pass's own second, and `handlesOf` clamps what it is fed to the span declared here — so
+        // every value above fourteen was unreachable by construction, on every pair, forever. The
+        // number appeared once in this file and nowhere else, with no sentence anywhere naming a
+        // reason for it, so it was not a reading anybody took: it was one nobody revisited. A
+        // published span that says something false about the module is worse than a narrow one, and
+        // this now says what its neighbours say. Corrected 2026-08-26; nothing reachable moved.
+        clock: { min: 0, max: 14, def: 0, unit: "seconds",
                  applied: { carries: "the wander of the fold's centre, the crop's own sway, the "
                                    + "sample point's two sways, the ring's breath and the turn the "
                                    + "story accumulates",
-                            restsAt: "every door, where each of them is multiplied by nothing" } },
+                            restsAt: "every door, where each of them is multiplied by nothing" },
+                 level: null },
         centreX: { min: 0, max: 1, def: 0.5,
                    unit: "where along the picture's own width the folds turn",
                    reads: "structure.radial.centre — the place lab/step1 measures a work's own radial "
                         + "reading about, taken as the midpoint of the two works' own centres, which "
                         + "is the same measurement the meshing instrument's own centre reads. The "
                         + "module let a visitor's pointer steer this place; a crossing has no hand on "
-                        + "it and the work's own measured centre is where the folds belong" },
+                        + "it and the work's own measured centre is where the folds belong",
+                   level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "where down the picture's own height the folds turn",
-                   reads: "structure.radial.centre, the same measurement read on the other axis" },
+                   reads: "structure.radial.centre, the same measurement read on the other axis",
+                   level: "SURFACE" },
         folds: { min: 1, max: 4, def: 4, kind: "enum", step: 1,
                  names: { "1": "two wedges", "2": "four wedges", "3": "eight wedges",
                           "4": "sixteen wedges" },
@@ -778,7 +794,8 @@
                  reads: "structure.rotational.n, the order of the pair's own measured turn, read onto "
                       + "the module's own ladder of two, four, eight and sixteen wedges, so the "
                       + "window is cut at the count the works themselves carry",
-                 applied: { atNoConfidence: "the module's own four folds" } },
+                 applied: { atNoConfidence: "the module's own four folds" },
+                 level: "CELL" },
         foldsScore: { min: 0, max: 1, def: 0,
                       unit: "how confidently that order of turn reads",
                       reads: "structure.rotational.score, which CARRIES the count: the window "
@@ -786,28 +803,32 @@
                            + "in proportion to how confidently that order reads, so a reading of "
                            + "nothing lands on the module's own folds and a whole one on the work's",
                       applied: { atNothing: "the module's own four folds",
-                                 atWhole: "the pair's own measured order of turn" } },
+                                 atWhole: "the pair's own measured order of turn" },
+                      level: "CELL" },
         planet: { min: 0, max: 1, def: 1,
                   unit: "how far out along the story the arc travels",
                   reads: "structure.polar.planet, the collection's own measurement of how strongly a "
                        + "work reads as a planet. It places the far end of the arc between the rose "
                        + "window standing widest and the small planet, so a pair that reads nothing "
                        + "polar turns back at the window and one that reads it goes all the way",
-                  applied: { atNothing: STORY_WINDOW, atWhole: STORY_SPAN } },
+                  applied: { atNothing: STORY_WINDOW, atWhole: STORY_SPAN },
+                  level: "SURFACE" },
         turn: { min: 0, max: 1, def: 1,
                 unit: "how far the window turns as it opens",
                 reads: "each work's own measured radial score, so a work whose rings are its own "
                      + "device drives the turn and one that barely reads radial barely turns — the "
                      + "same measurement and the same reasoning the meshing instrument's own turn "
                      + "reads",
-                applied: { restsAt: "every door" } },
+                applied: { restsAt: "every door" },
+                level: "SURFACE" },
         course: { min: 0, max: 0.5, def: 0,
                   unit: "the work's own ring step, as a fraction of its frame side",
                   reads: "structure.ownDevice.stepPx over the work's own frame side, where that "
                        + "device is rings — the step the work was actually cut at. The ring mirror "
                        + "then stands on the work's own ring nearest the module's resting radius, so "
                        + "the course the window is built on is the work's course",
-                  applied: { restsAt: RING_REST, breath: RING_BREATH } },
+                  applied: { restsAt: RING_REST, breath: RING_BREATH },
+                  level: "CELL" },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own warp field, walked at the buffer's own sample points), on which grid
         // (the drawing buffer the host binds, with the CSS frame where it hands none), what the
@@ -819,7 +840,8 @@
                                                   + "buffer's own sample points against the door's "
                                                   + "own framing, and the gate every colour it lays "
                                                   + "over a photograph rides",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

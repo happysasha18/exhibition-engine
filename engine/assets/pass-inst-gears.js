@@ -101,6 +101,7 @@
       "uniform float uSeed;",
       "uniform float uOff;",          // counter-motion, tangential, frame heights
       "uniform float uGuard;",
+      "uniform float uPresence;",  // the entry-door contract's reserved dry
       "const float PI = 3.14159265359;",
       "const float TAU = 6.28318530718;",
 
@@ -177,7 +178,7 @@
       // THE COLOUR CHANNEL IS UNTOUCHED, which is what makes a one-cue score byte-identical: laid
       // down first the host disables blending and reads no alpha, so `col` reaches the frame exactly
       // as it always did. The blend is STRAIGHT source-over, never premultiplied — see the host.
-      "  gl_FragColor = vec4(col, 1.0 - cov);",
+      "  gl_FragColor = vec4(col, (1.0 - cov) * uPresence);",
       "}",
     ].join("\n");
 
@@ -592,25 +593,52 @@
       //     proportion and keeps both doors whole. At the module's own size nothing comes near it;
       //     at a small pair with a far-apart rung it binds.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
-        dial: { min: 0, max: 1, def: 0, open: true },
+        // NO LEVEL: `mix`/`clock` are the fleet's own dial and the module's own time; `dial` already
+        // reads its own door (`open: true`), so the composer drives it at no level; `seed` is the
+        // score's die and `shade`/`travel` are the fleet's judge channels.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        dial: { min: 0, max: 1, def: 0, open: true, level: null },
+        // `size` is rounded to whole teeth and moves in whole rungs of the multiplier k both wheels'
+        // tooth counts come from, so what it drives is the lattice's own count rather than a placement
+        // or a world-scale reading.
         size: { min: 0.3, max: 8, def: 4.5,
                 applied: { roundedToWholeTeeth: true, leastTeeth: 3,
                            heldWholeAtADoor: { rungs: DOOR_HOLD, readOn: "the drawing buffer",
-                                               reads: "sizeRequest" } } },
-        centreX: { min: 0, max: 1, def: 0.5 },
-        centreY: { min: 0, max: 1, def: 0.5 },
-        bandPeriod: { min: 0.02, max: 1, def: 1 / 6 },
+                                               reads: "sizeRequest" } },
+                level: "CELL" },
+        centreX: { min: 0, max: 1, def: 0.5, level: "SURFACE" },
+        centreY: { min: 0, max: 1, def: 0.5, level: "SURFACE" },
+        bandPeriod: { min: 0.02, max: 1, def: 1 / 6, level: "CELL" },
         ratio: { min: 0, max: 1, def: 0.5, kind: "enum", step: 1 / (RATIOS.length - 1),
-                 rungs: RATIOS },
-        tooth: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "order" } },
-        order: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "tooth" } },
-        turn: { min: 0, max: 1, def: 0.55 },
-        flank: { min: 0.05, max: 1, def: 0.35 },
-        seed: { min: 0, max: 8, def: 0 },
-        shade: { min: 0, max: 1, def: 1 },
-        travel: { min: 0, max: 1, def: 1 },
+                 rungs: RATIOS, level: "CELL" },
+        tooth: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "order" }, level: "CELL" },
+        order: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "tooth" }, level: "CELL" },
+        // `turn` scales the clock-driven advance of the wheels' own phase (`ph`, the same term the
+        // tooth wave reads), so what it moves is the teeth's own phase rather than time itself.
+        turn: { min: 0, max: 1, def: 0.55, level: "CELL" },
+        // FALLBACK UNDER THE HARD CONSTRAINT: `flank` sets how upright a tooth's cross-section is,
+        // which is a material/grain reading (TEXTURE) rather than a lattice fact, but this instrument
+        // declares only SURFACE and CELL. CELL is the nearer of the two, since a flank is a property
+        // of the tooth — the cell itself.
+        flank: { min: 0.05, max: 1, def: 0.35, level: "CELL" },
+        seed: { min: 0, max: 8, def: 0, level: null },
+        shade: { min: 0, max: 1, def: 1, level: null },
+        travel: { min: 0, max: 1, def: 1, level: null },
+        // THE RESERVED DRY OF THE ENTRY-DOOR CONTRACT (docs/design/ENTRY-DOOR.md). One name across
+        // the whole fleet, declared the same way in every manifest, so the host and the composer
+        // learn it once instead of nine times. It says WHETHER THIS VOICE IS IN THE FRAME AT ALL:
+        // at zero the instrument draws nothing anywhere and what stands beneath it shows whole; at
+        // one it draws exactly as it always did, which is where it rests, so a plan that says
+        // nothing about it gets the picture this instrument has always drawn.
+        //
+        // IT IS NOT THE BANNED OPACITY HANDLE RETURNING, and the difference is the whole point. An
+        // opacity handle fades one whole layer against another — the crossfade the charter's own
+        // ladder removed the tempting tool for. This says whether a voice is present, and it is
+        // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
+        // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        presence: { min: 0, max: 1, def: 1, level: null,
+                    unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -635,10 +663,11 @@
                   how: "1.0 - cov, the share of the frame inside the arriving wheel's rim" },
       neutralPose: { dial: 0, size: 4.5, centreX: 0.5, centreY: 0.5, bandPeriod: 1 / 6, ratio: 0.5,
                      tooth: 0.4, order: 0.4, turn: 0.55, flank: 0.35, shade: 1, travel: 1,
-                     cssWidth: 1000, cssHeight: 1000, t: 0, reduced: false },
+                     presence: 1, cssWidth: 1000, cssHeight: 1000, t: 0, reduced: false },
       passes: [{
         program: "gears", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
+          { name: "uPresence", type: "float", source: "handle:presence" },
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
           { name: "uFitA", type: "vec4", source: "fitA" },
@@ -722,6 +751,7 @@
           size: h.size, centreX: h.centreX, centreY: h.centreY, bandPeriod: h.bandPeriod,
           ratio: h.ratio, tooth: h.tooth, order: h.order, turn: h.turn, flank: h.flank,
           shade: h.shade, travel: h.travel,
+          presence: h.presence,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h, t: h.clock, reduced: st.reduced,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
           // buffer the host is about to bind as `uRes` rather than on the CSS frame around it. The
@@ -733,7 +763,16 @@
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
         // decision asks for rather than the size the score asked for. The host stores it and reads
         // nothing in it; the walk finds it on the passage record the request came from.
-        if (dial === 0 || dial === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((dial === 0 || dial === 1) && !absent) {
           var v = values(pose);
           if (st.reportApplied) {
             st.reportApplied({

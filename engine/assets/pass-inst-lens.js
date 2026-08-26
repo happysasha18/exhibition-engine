@@ -616,7 +616,11 @@
       // so it is derived from the frame's own corners and the place the glass rests at. It is
       // published as a reading, never as a handle a score could put a wrong number in.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
+        // NO LEVEL: `mix` is the crossing's own dial and does not itself drive a structural level.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        // `fold` chooses which single map is applied over the whole disc — the kaleidoscope's,
+        // the swirl's or the magnifier's — rather than the wedge count itself, so it is the map over
+        // the surface rather than the cell it can produce under one of its three rules.
         fold: { min: 0, max: 2, def: 0, kind: "enum", step: 1,
                 names: { "0": "kaleidoscope", "1": "swirl", "2": "magnify" },
                 unit: "which glass the pair is seen through",
@@ -624,34 +628,41 @@
                      + "structure.rotational.n and .score for the mirrored wedges, "
                      + "structure.polar.twirl for the wound glass, whichever of the two reads "
                      + "loudest, and the plain magnification only where neither reading stands at "
-                     + "all, which is a fact about the pair and not a bar it failed to clear" },
+                     + "all, which is a fact about the pair and not a bar it failed to clear",
+                level: "SURFACE" },
         wedges: { min: WEDGES_LO, max: WEDGES_HI, def: WEDGES_N, kind: "enum", step: 1,
                   unit: "how many mirrored wedges the disc folds into",
                   reads: "structure.rotational.n, the work's own measured rotational order, so the "
                        + "fold repeats as often as the work itself does. The module's own six is "
                        + "what it stands at until a score names the work's",
-                  applied: { restsAt: "every door", moduleOwn: WEDGES_N } },
+                  applied: { restsAt: "every door", moduleOwn: WEDGES_N },
+                  level: "CELL" },
         twist: { min: 0, max: 1, def: TWIST_REST,
                  unit: "how hard the glass winds the picture at its middle",
                  reads: "structure.polar.twirl, the work's own measured twirl — a work that turns "
                       + "about its own middle is wound and one that does not is barely touched",
-                 applied: { radiansAtWhole: 3.6, restsAt: "the rim, exactly, at every reach" } },
+                 applied: { radiansAtWhole: 3.6, restsAt: "the rim, exactly, at every reach" },
+                 level: "SURFACE" },
         power: { min: POWER_LO, max: POWER_HI, def: POWER_REST,
                  unit: "how much nearer the glass brings the picture",
                  reads: "the ratio of the two works' own measured device steps — "
                       + "structure.ownDevice.stepPx — so the glass brings a piece of the departing "
                       + "work to the size of the arriving work's own piece. The module's own two is "
-                      + "what it stands at until a score names the pair's" },
+                      + "what it stands at until a score names the pair's",
+                 level: "SURFACE" },
         centreX: { min: 0, max: 1, def: 0.5, unit: "where across the frame the glass rests",
                    reads: "the midpoint of the two measured radial centres, structure.radial.centre "
-                        + "— the point the two works' own structure turns about" },
+                        + "— the point the two works' own structure turns about",
+                   level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5, unit: "where down the frame the glass rests",
                    reads: "the midpoint of the two measured radial centres, structure.radial.centre "
-                        + "— the point the two works' own structure turns about" },
+                        + "— the point the two works' own structure turns about",
+                   level: "SURFACE" },
         shade: { min: 0, max: 1, def: 1, unit: "the glass's own weight — its lift, its inner shade "
                                             + "and its two hairlines",
                  applied: { liftInside: 1.045, shadeDepth: 0.30, shadePointsOfReach: 7,
-                            restsAt: "every door" } },
+                            restsAt: "every door" },
+                 level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own glass, walked at the buffer's own sample points), on which grid,
         // what the reading is counted in, and that there is no hold — the reach is exactly nothing
@@ -662,7 +673,8 @@
                                           measures: "this instrument's own glass over the frame, "
                                                   + "walked at the buffer's own sample points, and "
                                                   + "how far the two works have changed hands",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

@@ -920,14 +920,50 @@
       //   · CELL — the panels themselves. lab/data/module-contract.json records this module's level as
       //     CELL, and that row is carried here rather than re-decided: the motion is a partition of the
       //     frame into cells that turn.
-      //   · CELL CONTENT — what a cell CARRIES. Each panel shows its own quarter of the work while it
-      //     lies flat and the mirror of the closing quarter once it has turned, and at the far door the
-      //     whole frame is one quarter standing alone. That is the content of a named region changing
-      //     inside the region, which is the level the composer's own census records as held by no
-      //     landed instrument.
       // SURFACE is not claimed. What covers the frame here is the works' own pictures, cut and carried;
       // no field of this instrument's own runs over it. Claiming it would also put this voice on the one
       // level all three landed instruments already hold, where the levels law allows a single owner.
+      //   · CELL CONTENT — what a cell CARRIES. Each panel shows its own quarter of the work while
+      //     it lies flat and the mirror of the quarter the sheet closes onto once it has turned, so
+      //     the content of a named region changes inside the region while nothing about the region
+      //     itself moves. It is read on the shader rather than asserted: the three turning panels
+      //     each sample through `mix(pane(tex, CW + u), pane(tex, CW - u), uLean.w)` a few screens
+      //     up, which is one panel's own point travelling from its quarter to that quarter's mirror
+      //     as the sheet turns. The frame at the far door is one quarter standing alone.
+      //
+      // THIS DECLARATION WAS REMOVED ON 2026-08-25 AND IS RESTORED, because the argument for
+      // removing it does not survive the mechanism, and the argument is worth writing down so it is
+      // not made again. It ran: no handle published below asks for CELL CONTENT — `panels`,
+      // `stagger`, `tilt`, `depth`, `field` and the parquet pair all shape the partition, which is
+      // CELL — so a level this instrument occupies but never moves is a claim it cannot keep; and an
+      // owner holds a level to the exclusion of every other cue, so claiming it would silence
+      // whichever voice actually drove it.
+      //
+      // THE FIRST HALF IS TRUE AND IS NOT A REASON. No dial of this instrument moves what a panel
+      // carries; the geometry of the turn does. But `levels` says what a voice ACTS on, and the
+      // levels law exists because two voices acting on one level at one instant collide on screen.
+      // A voice that acts without a dial collides exactly as hard as one that acts with a dial, so a
+      // level dropped for want of a handle is a collision the law can no longer see.
+      //
+      // THE SECOND HALF IS NOT TRUE OF THE COMPOSER. Ownership does not go to whoever claims a
+      // level; `preferredOn` (pass-composer.js) filters the group to the cues that DRIVE a handle on
+      // that level and falls back to the whole group only when not one of them does. So a cue
+      // declaring a level it cannot drive is passed over the moment any rival can drive it, and is
+      // marked as accompanying that rival. Claiming CELL CONTENT here takes it from nobody. Where no
+      // cue in the group can drive it, this one may hold it — and holding a level nobody can move
+      // excludes nobody who could have moved it.
+      //
+      // ONE THING THIS FIELD IS BEING ASKED TO DO TWICE, left standing and written down rather than
+      // repaired here, because it belongs to the levels sweep and not to this instrument. `levels`
+      // says what a voice ACTS on, and the levels law reads it for collisions. The sweep also reads
+      // it as the allowed set a handle's own `level:` may name — so three handles below say CELL
+      // while their own sentences say WORLD: `tilt` is the sheet's lean in space, `depth` is how
+      // near the eye stands to it, and the parquet's continuation is the world the sheet opens
+      // into. Each falls back to CELL for no reason but that WORLD is absent from this array. Those
+      // three now publish a level their own words deny, which is the same shape of defect as a level
+      // dropped for want of a handle: a declaration that stays true in form while what it means has
+      // moved. Either the two readings want two fields, or a handle's level wants to be free of the
+      // instrument's own array.
       levels: ["CELL", "CELL CONTENT"],
       params: { tilt: [0, 1], shade: [0, 1], depth: [0, 1], stagger: [0, 0.6], panels: [0, 1] },
       // WHAT THIS INSTRUMENT SHOWS BESIDES A CROSSING (his 19:13 word, the second register). The
@@ -951,26 +987,40 @@
       // changes; nothing is rebuilt here, so the handle is a plain number a score can hold or step, and
       // the frame answers it at once.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
+        // `mix` is the crossing's own dial and `clock` the module's own time; neither drives a
+        // structural level of the picture.
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
+        // The sheet's own lean is an axis of the whole sheet standing in space — a WORLD reading —
+        // but WORLD is not in this instrument's own `levels` array, so this falls back to CELL, the
+        // nearest declared level and the one that already carries the sheet's own global geometry.
         tilt: { min: 0, max: 1, def: 0.5,
                  curve: { knots: CURVES.tilt, band: CURVE_BANDS.tilt, applied: false,
                           measuredOn: CURVE_MEASURED_ON },
+                 level: "CELL",
                },
+        // The fleet's own shade judge channel; it drives no structural level.
         shade: { min: 0, max: 1, def: 1,
                  curve: { knots: CURVES.shade, band: CURVE_BANDS.shade, applied: false,
                           measuredOn: CURVE_MEASURED_ON },
+                 level: null,
                },
+        // The viewing distance is how near the eye stands to the sheet — a WORLD reading — but
+        // WORLD is not in this instrument's own `levels` array, so this falls back to CELL, the
+        // same nearest declared level `tilt` above falls back to.
         depth: { min: 0, max: 1, def: 0.5,
                  curve: { knots: CURVES.depth, band: CURVE_BANDS.depth, applied: false,
                           measuredOn: CURVE_MEASURED_ON },
+                 level: "CELL",
                },
+        // A phase offset between the two panel pairs' own turning: CELL.
         stagger: { min: 0, max: 0.6, def: 0.34,
                  curve: { knots: CURVES.stagger, band: CURVE_BANDS.stagger, applied: false,
                           measuredOn: CURVE_MEASURED_ON },
+                 level: "CELL",
                },
         panels: { min: 0, max: 1, def: 1, kind: "enum", step: 1,
-                  names: { "0": "two", "1": "four" } },
+                  names: { "0": "two", "1": "four" }, level: "CELL" },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
         // the meshing instrument publishes its own. `readAtADoor` says what is read (this
         // instrument's own panel map, walked at the buffer's own sample points), on which grid (the
@@ -981,6 +1031,10 @@
         // switch and the other two cost nothing while it is shut: at nothing the plane's attitude
         // is nothing, the growth law binds, the sheet covers the frame at every point and the
         // parquet draws on no point at all — the module's own frame, arithmetic for arithmetic.
+        // The world the sheet opens into is a WORLD reading by its own name, but WORLD is not in
+        // this instrument's own `levels` array. The parquet is the sheet's own four panels
+        // continuing past their edge as themselves — the same lattice extended without end — so
+        // this falls back to CELL, the nearest declared level.
         field: { min: 0, max: 1, def: 0,
                  unit: "how far the world stands open, on the curve's own scale",
                  curve: { knots: CURVES.field, band: CURVE_BANDS.field, applied: true,
@@ -989,23 +1043,30 @@
                       + "attitude, the growth law's release and the parquet's arrival on one "
                       + "envelope, which is lab/PARQUET-WORLD-BRIEF.md's own rule that the eye's "
                       + "axes ride one envelope and cannot argue",
-                 applied: { pitchDegreesAtWhole: PITCH_MAX, shutAt: 0 } },
+                 applied: { pitchDegreesAtWhole: PITCH_MAX, shutAt: 0 },
+                 level: "CELL" },
+        // The parquet's own repeating period: CELL.
         parquetPeriod: { min: TILE_MIN, max: TILE_MAX, def: TILE_DEF,
                          unit: "a fraction of the work's own side",
                          reads: "structure.ownDevice.stepPx over the work's own frame side — the "
                               + "step the work was actually cut at, which is what makes the "
                               + "continuation the work's own device and not a pattern laid over "
                               + "it; structure.grid.periodPx over the same side where no device "
-                              + "was derived" },
+                              + "was derived",
+                         level: "CELL" },
+        // The lattice's own turn: CELL.
         parquetTurn: { min: 0, max: 180, def: 0, unit: "degrees",
                        reads: "structure.ownDevice.angleDeg, the angle that same step was cut at; "
                             + "structure.grid.angleDeg, the direction the work's own lattice "
-                            + "varies along, where no device was derived" },
+                            + "varies along, where no device was derived",
+                       level: "CELL" },
+        // The judges' own panel-map channel: it drives no structural level.
         mask: { min: 0, max: 1, def: 0,
                 applied: { readAtADoor: { points: DOOR_HOLD, readOn: "the drawing buffer",
                                           reads: "flatDegRequest",
                                           measures: "this instrument's own panel map, walked at "
-                                                  + "the buffer's own sample points" } } },
+                                                  + "the buffer's own sample points" } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

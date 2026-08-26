@@ -717,16 +717,20 @@
       // handle whose two ends coincide would be a handle naming no measurement of any work. The turn
       // that reaches this instrument reaches it as the second.
       handles: {
+        // NO LEVEL FOR `mix`, `clock`, `shade` OR `mask`: the crossing's own dial, the module's own
+        // time, and the fleet's own judge channels — none of them drive a structural level.
         mix: { min: 0, max: 1, def: 0,
                unit: "the passage's own travel, door to door",
                reads: "the pass's own progress; it opens the fold to whole at the middle of the "
                     + "passage and closes it onto the arriving work",
                applied: { window: "one sine over the whole hand", swapHalfWidth: SWAP_HALF,
-                          swapStandsUnder: SWAP_UNDER } },
+                          swapStandsUnder: SWAP_UNDER },
+               level: null },
         clock: { min: 0, max: CLOCK_MAX, def: 0,
                  unit: "the second the host hands down",
                  reads: "the transaction's own seconds; the module's own wander, breath and turn "
-                      + "are pure functions of it, so a driven walk repeats to the pixel" },
+                      + "are pure functions of it, so a driven walk repeats to the pixel",
+                 level: null },
         // THE MEASUREMENTS THE FOLD'S CENTRE READS. His 19:13 word lifted to the class at 19:21: a
         // geometric parameter names the measurement of the photograph it derives from. The module
         // anchored its wander on two numbers chosen by eye for its own two photographs; the anchor
@@ -736,14 +740,16 @@
                    unit: "across the picture, from its left edge",
                    reads: "structure.radial.centre — the midpoint of the two works' own measured "
                         + "radial centres, which is the point the fold is built around",
-                   applied: { wanderRidesOn: "the module's own driftX" } },
+                   applied: { wanderRidesOn: "the module's own driftX" },
+                   level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "down the picture, from its top edge, the way every place in a work "
                        + "record is measured",
                    reads: "structure.radial.centre — the midpoint of the two works' own measured "
                         + "radial centres",
                    applied: { wanderRidesOn: "the module's own driftY",
-                              turnedOverOnce: "the fold reads up the picture" } },
+                              turnedOverOnce: "the fold reads up the picture" },
+                   level: "SURFACE" },
         wedges: { min: WEDGES_MIN, max: WEDGES_MAX, def: WEDGES_DEF, kind: "enum", step: 1,
                   unit: "how many wedges the fold makes round the centre",
                   reads: "the work's own measured rotational order — its `wedge` element set, the "
@@ -753,13 +759,15 @@
                        + "approved on 2026-08-08 11:39 and the module's own default besides; that "
                        + "case is a gap in the record rather than a number this file invented, and "
                        + "it is said here rather than left for a reader to discover",
-                  applied: { withoutARotationalOrder: WEDGES_DEF } },
+                  applied: { withoutARotationalOrder: WEDGES_DEF },
+                  level: "CELL" },
         twist: { min: TWIST_MIN, max: TWIST_MAX, def: TWIST_DEF,
                  unit: "how far the wedge leans as it goes out",
                  reads: "structure.polar.twirl — how strongly the work's own making reads as a "
                       + "twirl. A work that was turned about its centre gets a fold that turns "
                       + "with it; one that was not gets a straight rosette. Its rest of 0.55 is "
-                      + "the vista preset his taste approved on 2026-08-08 11:39" },
+                      + "the vista preset his taste approved on 2026-08-08 11:39",
+                 level: "CELL" },
         rings: { min: RINGS_MIN, max: RINGS_MAX, def: RINGS_DEF,
                  unit: "how many times the wedge tiles outward before it mirrors",
                  reads: "structure.ownDevice.count where the work's own device is rings — the "
@@ -767,18 +775,21 @@
                       + "handle's own span",
                  applied: { ceiling: RINGS_MAX,
                             whoseNumber: "his standing verdict in the charter's vocabulary table, "
-                                       + "«rings>2 washes to milk»; the module publishes up to 5" } },
+                                       + "«rings>2 washes to milk»; the module publishes up to 5" },
+                 level: "CELL" },
         reach: { min: REACH_MIN, max: REACH_MAX, def: REACH_DEF,
                  unit: "how much of the picture one wedge reads, across it",
                  reads: "structure.ownDevice.stepPx over the work's own frame side where the "
                       + "work's own device is rings — how coarse the work's own radial repeat is, "
                       + "which is what one wedge should take in",
-                 applied: { breathesBy: 0.26, whose: "the module's own driftZoom, on the clock" } },
+                 applied: { breathesBy: 0.26, whose: "the module's own driftZoom, on the clock" },
+                 level: "CELL" },
         shade: { min: 0, max: 1, def: 1,
                  unit: "the finish's own weight",
                  reads: "a judge channel the module rests at 1",
                  applied: { gamma: 1.24, boost: 1.12, vignette: 0.34,
-                            restsAt: "both doors, whatever this handle is placed at" } },
+                            restsAt: "both doors, whatever this handle is placed at" },
+                 level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own sample point, walked at the buffer's own sample points), on which
         // grid (the drawing buffer the host binds, with the CSS frame where it hands none), what the
@@ -793,7 +804,8 @@
                                                   + "its flat place, how many read outside the work "
                                                   + "at all, and how much of the other work stands "
                                                   + "in the frame",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

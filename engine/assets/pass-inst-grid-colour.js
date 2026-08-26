@@ -146,6 +146,7 @@
       "uniform vec2 uVoiceB;",
       // The judges' channel: the cut map as colour.
       "uniform float uMask;",
+      "uniform float uPresence;",  // the entry-door contract's reserved dry
       // ---- the module's own numbers, carried digit for digit -------------------------------------
       // HOW MANY COLOURS MAKE THE BANDS CUT (grid-colour.js:109, BAND_COUNT). Five, because that is
       // what a work's measured palette carries.
@@ -409,7 +410,7 @@
       // belongs to whatever plays underneath. At the entry door every point is claimed by the
       // departing work's own pieces standing at home and at the exit door by the arriving work's, so
       // the alpha is 1 at every point at both doors and a mixture at neither.
-      "  gl_FragColor = vec4(col, cover);",
+      "  gl_FragColor = vec4(col, cover * uPresence);",
       "}",
     ].join("\n");
 
@@ -846,23 +847,31 @@
       //
       // `flow` DOES NOT CROSS AS A HANDLE. It is the pair's own order — the departing work's layer
       // runs `out` and the arriving work's runs `in` — and it is applied below rather than published.
+      // LEVEL, PER SHELF 17 (docs/design/PASS-API-V1.md:716). Every handle below names the one
+      // structural level it drives, WORLD / SURFACE / CELL / CELL CONTENT / TEXTURE / LIGHT-COLOUR,
+      // or null where none of the six is the handle's own business: `mix` is the crossing's own
+      // dial, `clock` is the module's own time, and `mask` and `shade` are the judges' channels —
+      // the composer drives none of these four at a structural level.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
+        mix: { min: 0, max: 1, def: 0, level: null },
         clock: { min: 0, max: 14, def: 0,
                  applied: { movesNoPixel: true,
                             why: "every position and every saturation in this module is a pure "
                                + "function of its own dial, so the handed second changes nothing on "
-                               + "screen; the handle stands because a score owns the clock" } },
+                               + "screen; the handle stands because a score owns the clock" },
+                 level: null },
         kindA: { min: 0, max: 3, def: 0, kind: "enum", step: 1, rungs: KINDS,
                  unit: "the cut the DEPARTING work's own layer is made of",
                  reads: "structure.ownDevice.kind — the work's own measured device, since the kind is "
                       + "the work's own устройство and rides with the layer carrying that work; "
                       + "where the record names no device, the strongest of structure.radial.score "
                       + "(rings), the work's own grid count (tiles) and its strip family (stripes), "
-                      + "and `band` where the pair's pivot is the composer's shared-palette-region" },
+                      + "and `band` where the pair's pivot is the composer's shared-palette-region",
+                 level: "CELL" },
         kindB: { min: 0, max: 3, def: 0, kind: "enum", step: 1, rungs: KINDS,
                  unit: "the cut the ARRIVING work's own layer is made of",
-                 reads: "the same reading off the arriving work's own record" },
+                 reads: "the same reading off the arriving work's own record",
+                 level: "CELL" },
         countFrom: { min: 1, max: RING_MAX, def: FALLBACK_COUNT,
                      unit: "pieces across the departing work's own drawn extent",
                      reads: "the work's own frameSide over its lattice step — structure.ownDevice."
@@ -875,17 +884,21 @@
                      applied: { ringsWalkedTo: RING_MAX,
                                 why: "the inverse map walks the rings and a shader's walk is bounded "
                                    + "at compile time; the bound is finer than the finest lattice a "
-                                   + "work has been measured at" } },
+                                   + "work has been measured at" },
+                     level: "CELL" },
         countTo: { min: 1, max: RING_MAX, def: FALLBACK_COUNT,
                    unit: "pieces across the arriving work's own drawn extent",
                    reads: "the same reading off the arriving work's own record",
-                   applied: { ringsWalkedTo: RING_MAX } },
+                   applied: { ringsWalkedTo: RING_MAX },
+                   level: "CELL" },
         angleFrom: { min: 0, max: 180, def: 0, unit: "degrees; 0 upright, 90 flat",
                      reads: "structure.ownDevice.angleDeg — the angle the departing work's own step "
                           + "was cut at, falling to structure.grid.angleDeg where it carries no "
-                          + "device, which is the composer's own `latticeAngleDeg`" },
+                          + "device, which is the composer's own `latticeAngleDeg`",
+                     level: "CELL" },
         angleTo: { min: 0, max: 180, def: 0, unit: "degrees; 0 upright, 90 flat",
-                   reads: "the same reading off the arriving work's own record" },
+                   reads: "the same reading off the arriving work's own record",
+                   level: "CELL" },
         // ONE PROPERTY PER BEAT (grid-colour.js, its own heading). The count and the angle no longer
         // travel over the whole handle at once: each carries a window of the handle the score names,
         // inside which that one property travels, held before it and after it. The doors stay the
@@ -893,13 +906,17 @@
         // neither of these four can move a door.
         countBeatIn: { min: 0, max: 1, def: 0, unit: "where the count's own beat opens",
                        reads: "nothing in a work record bears on it: where in a passage a structure "
-                            + "should travel is the score's reading of the step it stands at" },
+                            + "should travel is the score's reading of the step it stands at",
+                       level: "CELL" },
         countBeatOut: { min: 0, max: 1, def: 1, unit: "where the count's own beat closes",
-                        reads: "nothing in a work record bears on it" },
+                        reads: "nothing in a work record bears on it",
+                        level: "CELL" },
         angleBeatIn: { min: 0, max: 1, def: 0, unit: "where the angle's own beat opens",
-                       reads: "nothing in a work record bears on it" },
+                       reads: "nothing in a work record bears on it",
+                       level: "CELL" },
         angleBeatOut: { min: 0, max: 1, def: 1, unit: "where the angle's own beat closes",
-                        reads: "nothing in a work record bears on it" },
+                        reads: "nothing in a work record bears on it",
+                        level: "CELL" },
         stagger: { min: 0, max: 0.9, def: 0,
                    unit: "how much of the handle the piece departures are spread over, by piece area",
                    applied: { restsAt: "both doors",
@@ -909,25 +926,29 @@
                    reads: "nothing in this tree bears on it. A LARGER PIECE MOVES HEAVIER is the "
                         + "plan's own rule and the module reads each piece's area off its own cut, "
                         + "which the instrument recomputes; how far apart to set the departures is "
-                        + "the score's own reading and no measurement of a work publishes it" },
+                        + "the score's own reading and no measurement of a work publishes it",
+                   level: "CELL" },
         lead: { min: 0, max: 0.9, def: LEAD_IN,
                 unit: "how early the arriving work's palette is full, as a share of the handle",
                 reads: "nothing in the composer's own per-work readings bears on it. The record does "
                      + "carry palette.hueConcentration and palette.rung, and neither reaches "
                      + "`measuredParts` — that gap is named in this port's report rather than "
-                     + "answered here with a number nobody measured" },
+                     + "answered here with a number nobody measured",
+                level: "LIGHT-COLOUR" },
         colourPeriod: { min: 0, max: 4, def: 0, unit: "the colour voice's own breath, in handle units",
                         reads: "the departing work's own colour.sat, carried through BEAT_DIAL and "
                              + "spread the way the assembler carries its own layer-A colour voice — "
                              + "lab/step4-assembler.js:1966-2010, ported into pass-composer.js — but "
                              + "ONLY WHERE THIS CUE OWNS LIGHT-COLOUR. Shelf 17's levels law gives "
                              + "that level one active voice, and where a passage's other cue owns it "
-                             + "instead this handle is left unset and rests at its own 0 above" },
+                             + "instead this handle is left unset and rests at its own 0 above",
+                        level: "LIGHT-COLOUR" },
         colourPhase: { min: 0, max: 1, def: 0, unit: "the head start the score gives that breath",
                        reads: "this voice's own place among this instrument's two voices, i/2 — the "
                             + "same index-over-count rule the assembler stands its own four voices a "
                             + "quarter turn apart by, read at this instrument's own voice count. Same "
-                            + "LIGHT-COLOUR ownership gate as colourPeriod above" },
+                            + "LIGHT-COLOUR ownership gate as colourPeriod above",
+                       level: "LIGHT-COLOUR" },
         colourAmp: { min: 0, max: 1, def: 0, unit: "how far that breath carries the palette",
                      applied: { restsAt: "both doors",
                                 why: "the window 4u(1 − u) holds a voice to nothing at either end" },
@@ -935,14 +956,17 @@
                           + "quarter-of-the-work's-own-measure law the assembler's amplitude uses "
                           + "(step4-assembler.js:91), carried across with its own admission that the "
                           + "quarter is a number of taste rather than a measurement. Same "
-                          + "LIGHT-COLOUR ownership gate as colourPeriod above" },
+                          + "LIGHT-COLOUR ownership gate as colourPeriod above",
+                     level: "LIGHT-COLOUR" },
         lightPeriod: { min: 0, max: 4, def: 0, unit: "the light voice's own breath, in handle units",
                        reads: "the departing work's own colour.contrast, carried through BEAT_DIAL "
                             + "and spread; the same reason as colourPeriod, including its LIGHT-COLOUR "
-                            + "ownership gate" },
+                            + "ownership gate",
+                       level: "LIGHT-COLOUR" },
         lightPhase: { min: 0, max: 1, def: 0, unit: "the head start the score gives it",
                       reads: "this voice's own place among this instrument's two voices, i/2. Same "
-                           + "LIGHT-COLOUR ownership gate as colourPeriod above" },
+                           + "LIGHT-COLOUR ownership gate as colourPeriod above",
+                      level: "LIGHT-COLOUR" },
         lightAmp: { min: 0, max: 1, def: 0,
                     unit: "how far the standing frame is written lighter and darker",
                     applied: { restsAt: "both doors", scaledBy: "shade" },
@@ -955,22 +979,42 @@
                          + "ladder, and a light voice has no business reading a colour number. "
                          + "colour.contrast is the (p95 − p5) tonal spread recipes.py:526-585 "
                          + "already measures, which is what a light voice needs. Same LIGHT-COLOUR "
-                         + "ownership gate as colourPeriod above" },
+                         + "ownership gate as colourPeriod above",
+                    level: "LIGHT-COLOUR" },
         arrival: { min: 0, max: 1, def: 0, kind: "enum", step: 1,
                    rungs: ["none named — the plain reverse", "carried"],
                    unit: "which of the charter's arrival modes brings the arriving work",
                    applied: { toTheArrivingLayerOnly: true },
                    reads: "nothing in a work record bears on it: an arrival mode is the charter's "
-                        + "shelf-7 choice and belongs to the passage rather than to a photograph" },
+                        + "shelf-7 choice and belongs to the passage rather than to a photograph",
+                   // the mode flips the SENSE the arriving layer's pieces travel in — a direction of
+                   // the cut, which is the lattice's own property, not the passage's crossing dial
+                   level: "CELL" },
         shade: { min: 0, max: 1, def: 1, unit: "the weight of the light voice",
-                 applied: { restsAt: "both doors" } },
+                 applied: { restsAt: "both doors" },
+                 level: null },
         mask: { min: 0, max: 1, def: 0,
                 applied: { readAtADoor: { readOn: "the drawing buffer", reads: "clearance",
                                           measures: "how far the last piece of the leaving layer has "
                                                   + "still to travel along its own line, the "
                                                   + "standing layer's own dial, its palette and its "
                                                   + "light, and this channel itself",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
+        // THE RESERVED DRY OF THE ENTRY-DOOR CONTRACT (docs/design/ENTRY-DOOR.md). One name across
+        // the whole fleet, declared the same way in every manifest, so the host and the composer
+        // learn it once instead of nine times. It says WHETHER THIS VOICE IS IN THE FRAME AT ALL:
+        // at zero the instrument draws nothing anywhere and what stands beneath it shows whole; at
+        // one it draws exactly as it always did, which is where it rests, so a plan that says
+        // nothing about it gets the picture this instrument has always drawn.
+        //
+        // IT IS NOT THE BANNED OPACITY HANDLE RETURNING, and the difference is the whole point. An
+        // opacity handle fades one whole layer against another — the crossfade the charter's own
+        // ladder removed the tempting tool for. This says whether a voice is present, and it is
+        // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
+        // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        presence: { min: 0, max: 1, def: 1, level: null,
+                    unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -1015,11 +1059,12 @@
                      stagger: 0, lead: LEAD_IN,
                      colourPeriod: 0, colourPhase: 0, colourAmp: 0,
                      lightPeriod: 0, lightPhase: 0, lightAmp: 0,
-                     arrival: 0, shade: 1, mask: 0,
+                     arrival: 0, shade: 1, mask: 0, presence: 1,
                      reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "grid-colour", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
+          { name: "uPresence", type: "float", source: "handle:presence" },
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
           { name: "uFitA", type: "vec4", source: "fitA" },
@@ -1111,6 +1156,7 @@
           colourPeriod: h.colourPeriod, colourPhase: h.colourPhase, colourAmp: h.colourAmp,
           lightPeriod: h.lightPeriod, lightPhase: h.lightPhase, lightAmp: h.lightAmp,
           arrival: h.arrival, shade: h.shade, mask: h.mask,
+          presence: h.presence,
           reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           // THE GRID THE SHADER WILL SAMPLE ON, and BOTH WORKS' SEATING ON IT. The step between two
@@ -1123,7 +1169,16 @@
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. `request` is
         // the travel a door asks of the leaving layer's last piece — all of it, and no more — and
         // `applied` is the travel this frame's own geometry gives it.
-        if (h.mix === 0 || h.mix === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           if (st.reportApplied) {
             st.reportApplied({

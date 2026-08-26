@@ -212,7 +212,7 @@ check("PASS-ADRIFT the instrument creates no context, no canvas, no loop and no 
 HANDLES = ["mix", "clock", "flight", "horizon", "grain", "shrink", "seed", "shade", "travel", "mask",
            "homeAx", "homeAy", "homeBx", "homeBy", "voidAr", "voidAg", "voidAb",
            "voidBr", "voidBg", "voidBb", "thrA", "thrB", "maxA", "maxB",
-           "voidShareA", "voidShareB", "seamA", "seamB"]
+           "voidShareA", "voidShareB", "seamA", "seamB", "presence"]
 absent = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-ADRIFT every handle the instrument publishes is a handle a score can drive",
       not absent,
@@ -324,14 +324,22 @@ check("PASS-ADRIFT the module's four source textures are carried by the host's t
 check("PASS-ADRIFT the coverage is declared, and it rests on a quantity the shader computes",
       "coverage: {" in REGION and "writes: true" in REGION
       and "clamp(covHome - cov)" in REGION
-      and "float a = mix(1.0 - hole, 1.0, uMask);" in REGION
+      and "float a = mix(1.0 - hole, 1.0, uMask) * uPresence;" in REGION
       and "gl_FragColor = vec4(col * a, a);" in REGION
-      and "opacity" not in REGION and "presence" not in REGION,
+      and "opacity" not in REGION
+      and "presence: { min: 0, max: 1, def: 1" in REGION,
       "§8's coverage block and §7's law: the alpha is 1 minus the difference between the silhouette "
       "where the measurement put it and the silhouette where the thing stands now — the shader's own "
       "coverage read twice, at the same construction. The colour is handed over premultiplied, which "
-      "is the form the host blends (`ONE, ONE_MINUS_SRC_ALPHA`, pass-layer.js). No handle of opacity "
-      "and no weight of presence stands anywhere in the instrument")
+      "is the form the host blends (`ONE, ONE_MINUS_SRC_ALPHA`, pass-layer.js). "
+      "THIS ROW BANNED THE WORD `presence` OUTRIGHT UNTIL 2026-08-25, alongside `opacity`, and the "
+      "entry-door contract retired half of that (docs/design/ENTRY-DOOR.md). The opacity ban stands "
+      "and always will: the ladder's clause (a) hands a plan no tool to fade one whole layer against "
+      "another. `presence` is the opposite thing — the reserved dry every instrument that may stand "
+      "OVER another now declares, saying whether the voice is in the frame at all, resting at whole "
+      "and standing at nothing at both doors of an upper voice. A voice cannot join a running "
+      "picture without it, which is what the seam check's own door rows measure. So the row now "
+      "requires the declaration it used to forbid, and forbids what it always forbade")
 
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
@@ -573,7 +581,7 @@ else:
                     m["id"] == "adrift" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and sorted(m["params"]) == ["flight", "grain", "horizon", "shrink"]
-                    and len(m["handles"]) == 28
+                    and len(m["handles"]) == 29
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -582,7 +590,7 @@ else:
                     and m["framings"]["0"] == m["framings"]["1"]
                     and abs(zoom - (1 + 2 * 0.06 + 0.05)) < 1e-12
                     and m["camera"] == {"needs": "none", "authority": "stage"}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 22
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 23
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -1169,7 +1177,7 @@ else:
             return measure_coverage(br, s, su)
 
         base_share = on_bench(red_one)
-        bug = PACK.replace("float a = mix(1.0 - hole, 1.0, uMask);", "float a = 1.0;", 1)
+        bug = PACK.replace("float a = mix(1.0 - hole, 1.0, uMask) * uPresence;", "float a = 1.0;", 1)
         bug_share = on_bench(red_one, pack_text=bug)
         check(RED_ROWS[0],
               bug != PACK and base_share is not None and bug_share is not None

@@ -174,7 +174,7 @@ check("PASS-TILT the instrument creates no context, no canvas, no loop and no li
       "and its resize listener all stayed in the lab"
       if not held else "the instrument's region holds " + ", ".join(held))
 
-HANDLES = ["mix", "tilt", "horizon", "squeeze", "lead", "columns", "seed", "shade", "travel", "mask"]
+HANDLES = ["mix", "tilt", "horizon", "squeeze", "lead", "columns", "seed", "shade", "travel", "mask", "presence"]
 check("PASS-TILT every handle the instrument publishes is a handle a score can drive",
       all(("%s: { min" % h) in REGION for h in HANDLES),
       "§4.4b: ten handles — the dial, the module's own four params, the one constant the port "
@@ -577,7 +577,7 @@ else:
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and m["cuts"] == ["strip", "field"]
                     and sorted(m["params"]) == ["horizon", "lead", "squeeze", "tilt"]
-                    and len(m["handles"]) == 10
+                    and len(m["handles"]) == 11
                     and sorted(m["handles"]) == sorted(HANDLES)
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
@@ -589,7 +589,7 @@ else:
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False}
                     and m["coverage"]["writes"] is True and m["coverage"]["how"]
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 16
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 17
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2

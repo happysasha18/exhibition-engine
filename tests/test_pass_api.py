@@ -141,7 +141,54 @@ BROWSER_ROWS = [
     "PASS-API row 27 · the covered walk is inert and hidden from the accessibility tree while running",
     "PASS-API a double settle is idempotent — the second call changes nothing",
     "PASS-API §9 · the applied reading's channel stands on every stack row, live and after landing",
+    "PASS-API §2.5 · a swipe folds the running crossing up through its envelopes, never in one frame",
+    "PASS-API §2.5 · the crossing the swipe asked for takes the stage the instant the fold lands",
+    "PASS-API §7 · with no tier named, the rung comes from the device's own frame times",
+    "PASS-API §7 · a named tier outranks the measurement and pins the rung",
+    "PASS-API §7 · the ladder's middle step: the accompaniment halves, the miracle keeps its rate",
+    "PASS-API §7 · below the joy floor the floor grammar plays, and the crossing is never refused",
 ]
+
+# THE FOLD BENCH. A hand-made command of exactly the shape the bundle freezes, carrying a score whose
+# one cue names the host's OWN last-resort instrument — registered unconditionally, so this bench
+# needs no instrument file and no lab module — with the two doors §2.5 walks between named on that
+# instrument's own `reveal` handle and its own declared span. The score names an interruption budget,
+# which is what a cadence is given to walk in.
+FOLD_BENCH = """
+  window.__fold = {docks: [], glides: [], curtains: [], marks: []};
+  window.__foldHooks = {
+    dock: function (c) { window.__fold.docks.push(c.gen); },
+    glide: function (c) { window.__fold.glides.push(c.gen); },
+    curtain: function (on) { window.__fold.curtains.push(!!on); },
+    mark: function (n) { window.__fold.marks.push(n); },
+    hangGeometry: function () { return null; }
+  };
+  window.__foldCmd = function (gen, withinMs, tier, source) {
+    var ids = [].slice.call(document.querySelectorAll('.exh-frame')).map(function (f) {
+      return f.dataset.id;
+    });
+    return {
+      gen: gen, from: {id: ids[0], n: 1}, to: {id: ids[1], n: 2},
+      kind: 'step', cause: 'fold-bench', dir: 1, span: 100, velocity: 0,
+      reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+      viewport: {w: innerWidth, h: innerHeight},
+      params: {flightMs: {base: 3000},
+               qualityTier: {base: tier || 'standard', source: source || 'default'}},
+      score: {
+        version: 2, duration: 3000,
+        interruption: {withinMs: withinMs, resolve: 'nearest-door'},
+        cues: [{
+          id: 'fold', instrument: {id: '@host/last-resort'}, window: [0, 3],
+          doors: {'in': {handle: 'reveal', value: -0.15},
+                  out: {handle: 'reveal', value: 1.15}},
+          cadence: {reveal: 'smooth'},
+          tracks: {reveal: {op: 'map', 'in': {source: 'progress'}, from: [0, 1],
+                            to: [-0.15, 1.15]}}
+        }]
+      }
+    };
+  };
+"""
 
 
 def ready(br, tries=25):
@@ -525,6 +572,226 @@ else:
                       f"{json.dumps(after)} at state {landed['state']}. The probe publishes nothing, "
                       f"so the channel reads empty on both — and it is a field of its own beside "
                       f"`handles` rather than a fold into it")
+                cleanup(br)
+
+                # 15/16 · §2.5 AND CHARTER SHELF 19 — A SWIPE FOLDS THE CROSSING UP, IT DOES NOT
+                # CUT IT. Every plan is exhale-able from any point: on an interruption every voice
+                # resolves to its nearest door THROUGH ITS OWN ENVELOPE, inside the score's own
+                # bound. A supersede was the one road that reached the cadence with the envelope
+                # collapsed to nothing — one frame, every handle placed on its door.
+                #
+                # The bench offers a scored crossing, lets it run, then offers a second command over
+                # it exactly as a second swipe does. Two things are read: what the cadence was GIVEN
+                # (the score's own budget, not zero) and what it SPENT (a walk down its envelope, not
+                # a single frame) — and then that the held command took the stage with nothing
+                # between the fold's landing and its own offer.
+                js(br, FOLD_BENCH + "return null;")
+                r = js(br, "window.__exPass.host.configure({prepareBudgetMs:400, settleSlackMs:6000});"
+                          "var c1 = window.__foldCmd(9101, 500);"
+                          "return {took: window.__exPass.host.offer(c1, window.__foldHooks) === true,"
+                          " gen: c1.gen};")
+                br.sleep(0.7)
+                mid = jhost(br)
+                r2 = js(br, "var c2 = window.__foldCmd(9102, 500);"
+                           "var took = window.__exPass.host.offer(c2, window.__foldHooks) === true;"
+                           "var rep = window.__exPass.host.report();"
+                           "return {took: took, gen: c2.gen, held: rep.held, on: rep.gen,"
+                           " state: rep.state};")
+                for _ in range(60):
+                    if jhost(br)["gen"] == 9102:
+                        break
+                    br.sleep(0.05)
+                after = jhost(br)
+                evs = after["events"]
+                cad = [e for e in evs if e["name"] == "cadence" and e["gen"] == 9101]
+                end = [e for e in evs if e["name"] == "cadence-end" and e["gen"] == 9101]
+                walked = bool(cad) and "within 500 ms" in (cad[-1]["why"] or "")
+                spent = 0
+                if end:
+                    tail = (end[-1]["why"] or "").split(" in ")
+                    try:
+                        spent = int(tail[-1].replace(" ms", ""))
+                    except ValueError:
+                        spent = -1
+                # EITHER OF THE TWO LANDINGS IS A WALK, AND «at once» IS THE ONE THAT IS NOT. A
+                # cadence given a budget ends either on its own envelope reaching 1 or on the host's
+                # force-end at the deadline — and the force-end is a landing rather than a cut,
+                # because `cadenceEnd` plays one last frame ON the door. Which of the two wins is a
+                # race between the deadline timer and the frame scheduled either side of it, so the
+                # row reads what the cadence was GIVEN and what it SPENT rather than which of the two
+                # correct endings arrived first.
+                envelope = bool(end) and "at once" not in (end[-1]["why"] or "")
+                check(BROWSER_ROWS[15],
+                      r["took"] and mid["state"] == "running" and mid["gen"] == 9101
+                      and walked and envelope and spent >= 400,
+                      f"running={mid.get('state')}/{mid.get('gen')} cadence={cad[-1:]} "
+                      f"end={end[-1:]} spent={spent}ms — the score's own budget is 500 ms, so a "
+                      f"walked envelope spends it and a one-frame placement spends none of it")
+
+                # The held command's own two facts: it was HELD (named on the host's surface, with
+                # the folding crossing still the one on the stage), and it was TAKEN with nothing
+                # between — the fold's landing, the folding transaction's dock, and the held
+                # command's offer stand next to each other in the log, in that order.
+                names = [(e["name"], e["gen"]) for e in evs]
+                try:
+                    at = names.index(("cadence-end", 9101))
+                    adjacent = names[at:at + 3] == [("cadence-end", 9101), ("cancelled", 9101),
+                                                    ("offer", 9102)]
+                except ValueError:
+                    at, adjacent = -1, False
+                check(BROWSER_ROWS[16],
+                      r2["took"] and r2["held"] == 9102 and r2["on"] == 9101
+                      and r2["state"] == "running" and after["gen"] == 9102 and adjacent,
+                      f"at the swipe the host reads held={r2.get('held')} on={r2.get('on')} "
+                      f"state={r2.get('state')}; afterwards gen={after.get('gen')}; the log around "
+                      f"the landing reads {names[max(at, 0):max(at, 0) + 3]}; the whole tail is {names[-16:]}")
+                br.evaluate("window.__exPass.host.cancel('fold-bench cleanup')")
+                br.sleep(0.9)
+                cleanup(br)
+
+                # 17-20 · CHARTER SHELF 19's LADDER, DRIVEN FROM THE DEVICE'S OWN FRAME TIMES.
+                #
+                # `bench.ladder(ms, frames)` feeds the host's own frame-time recorder a run of gaps
+                # of exactly `ms` and hands back where the render ladder ended up — the same recorder
+                # a real visit fills from its own `requestAnimationFrame` callbacks, and the same
+                # `decideScale` walk. So a row can stand the host on a slow device and on a fast one
+                # without owning a slow device, and every number it is judged on is one the file was
+                # already reading.
+                #
+                # `settle` ends each offered crossing at once, so one row's transaction never rides
+                # into the next; the tier is read off the host's own surface while it is running.
+                rung_gen = [9200]
+
+                def rung_at(br_, gaps, frames, tier, source):
+                    """Walk the ladder with `frames` gaps of `gaps` ms, then offer a crossing whose
+                    tier setting stands at `tier` from rung `source`, and read back what the host
+                    granted and where the ladder stands."""
+                    rung_gen[0] += 1
+                    return js(br_,
+                              "window.__exPass.host.configure({fixedScale:false, prepareBudgetMs:400,"
+                              " settleSlackMs:6000});"
+                              "window.__exPass.bench.ladder(%d, %d);"
+                              "var c = window.__foldCmd(%d, 0, '%s', '%s');"
+                              "var took = window.__exPass.host.offer(c, window.__foldHooks) === true;"
+                              "var rep = window.__exPass.host.report();"
+                              "window.__exPass.host.cancel('rung row');"
+                              "return {took: took, variant: rep.variant, pace: rep.pace,"
+                              " state: rep.state, gen: rep.gen, instrument: rep.instrument};"
+                              % (gaps, frames, rung_gen[0], tier, source))
+
+                # A fast device first: the ladder walks back to its top rung, and the crossing plays
+                # at the tier the register's own default names.
+                fast = rung_at(br, 8, 800, "standard", "default")
+                br.sleep(0.4)
+                # Then the same command on a device whose frames run long enough for the ladder to
+                # spend one rung. Nothing about the command changed; only the machine did.
+                slow = rung_at(br, 40, 60, "standard", "default")
+                br.sleep(0.4)
+                check(BROWSER_ROWS[17],
+                      fast["took"] and slow["took"]
+                      and fast["pace"]["rung"] == 0 and fast["variant"] == "standard"
+                      and slow["pace"]["rung"] >= 1 and slow["variant"] == "lean",
+                      f"at 8 ms gaps the ladder stands on rung {fast['pace']['rung']} "
+                      f"(scale {fast['pace']['scale']}) and the crossing plays at "
+                      f"«{fast['variant']}»; at 40 ms gaps it stands on rung "
+                      f"{slow['pace']['rung']} (scale {slow['pace']['scale']}) and the same command "
+                      f"plays at «{slow['variant']}»")
+
+                # The same slow device, with a tier NAMED. The word outranks the measurement.
+                pinned = rung_at(br, 40, 60, "standard", "site")
+                br.sleep(0.4)
+                pinned_rich = rung_at(br, 40, 60, "rich", "session")
+                br.sleep(0.4)
+                check(BROWSER_ROWS[18],
+                      pinned["took"] and pinned_rich["took"]
+                      and pinned["pace"]["rung"] >= 1 and pinned["variant"] == "standard"
+                      and pinned_rich["variant"] == "rich",
+                      f"on a device standing at rung {pinned['pace']['rung']} a tier named by the "
+                      f"site holds at «{pinned['variant']}» and one named by the session holds at "
+                      f"«{pinned_rich['variant']}»")
+
+                # The middle step of the ladder. The rate the accompaniment is re-read at is the
+                # host's own answer, read off the rung rather than off a clock: full rate for both
+                # kinds of voice while the ladder has rungs left to spend on the plan, and half rate
+                # for the accompaniment once it has not — with the miracle at full rate throughout.
+                #
+                # WHERE THE PICTURE PROOF LIVES. A halved voice is an ACCOMPANIMENT voice, and a
+                # stack needs two instruments that can stand over one another; the host's own
+                # last-resort instrument fills the frame whole, so two of it in one score is refused
+                # by the coverage law before any rate matters (pass-layer.js `coverageWhyNo`). The
+                # picture is therefore measured where a real stack draws — the instrument suites —
+                # and what this row owns is the decision itself, across the ladder's own rungs.
+                # The ladder is walked ONE GAP AT A TIME from its top rung to its last, and the pace
+                # is read at every rung it passes through — so the row reads the whole span of the
+                # ladder rather than two sampled points on it.
+                paces = js(br, "window.__exPass.host.configure({fixedScale:false});"
+                              "window.__exPass.bench.ladder(8, 800);"
+                              "var out = [window.__exPass.host.report().pace];"
+                              # ten gaps a call: `ladder` restarts its own clock on every call, so the
+                              # first gap of each run is a step back to that clock's origin and says
+                              # nothing about the device. Ten at a time keeps those origins rare
+                              # enough in the 45-gap window the ladder reads to leave the reading the
+                              # run's own 40 ms, and still lands the rung boundaries finely enough to
+                              # read every rung the ladder passes through.
+                              "for (var i = 0; i < 400; i++) {"
+                              "  window.__exPass.bench.ladder(40, 10);"
+                              "  var p = window.__exPass.host.report().pace;"
+                              "  if (p.rung !== out[out.length - 1].rung) out.push(p);"
+                              "  if (p.rung >= p.rungs - 1) break;"
+                              "}"
+                              "return out;")
+                check(BROWSER_ROWS[19],
+                      [p["rung"] for p in paces] == [0, 1, 2, 3, 4]
+                      and [p["accompaniment"] for p in paces] == [60, 60, 30, 30, 30]
+                      and [p["miracle"] for p in paces] == [60] * 5,
+                      "rung → (miracle, accompaniment): "
+                      + ", ".join(f"{p['rung']} → ({p['miracle']}, {p['accompaniment']})"
+                                  for p in paces))
+
+                # The joy floor. The ladder is walked to its last rung with the frames still running
+                # long, and there is nothing left to spend: what plays is the floor grammar — the
+                # host's own last resort, cast fresh on the two photographs the DOM holds — and the
+                # crossing is degraded to it rather than refused. `glides` counts the walk's own
+                # plain slide, which is what «no crossing at all» would look like.
+                started = js(br, "window.__exPass.host.configure({fixedScale:false,"
+                                " prepareBudgetMs:400, settleSlackMs:6000});"
+                                "window.__exPass.bench.ladder(40, 400);"
+                                "var before = window.__exPass.host.report().pace;"
+                                "var c = window.__foldCmd(9301, 0, 'standard', 'default');"
+                                "var took = window.__exPass.host.offer(c, window.__foldHooks) === true;"
+                                "return {took: took, before: before};")
+                for _ in range(80):
+                    if jhost(br)["state"] in ("running", "idle"):
+                        break
+                    br.sleep(0.05)
+                # THE CUE THE HOST IS ACTUALLY PLAYING is what says the crossing was recast: the
+                # command was offered carrying the bench's own «fold» cue, and below the floor what
+                # runs is the last resort's own, cast fresh on the two photographs the DOM holds.
+                floor = js(br, "var rep = window.__exPass.host.report();"
+                              "return {state: rep.state, instrument: rep.instrument,"
+                              " cues: (rep.stack || []).map(function (row) { return row.id; }),"
+                              " said: rep.events.filter(function (e) {"
+                              "   return e.name === 'joy-floor' && e.gen === 9301; }),"
+                              " mine: window.__fold.glides.filter(function (g) { return g === 9301; }),"
+                              " docks: window.__fold.docks.filter(function (g) { return g === 9301; })};")
+                br.evaluate("window.__exPass.host.cancel('floor row')")
+                check(BROWSER_ROWS[20],
+                      started["took"]
+                      and started["before"]["rung"] == started["before"]["rungs"] - 1
+                      and started["before"]["floor"] is not None
+                      and len(floor["said"]) == 1
+                      and floor["state"] == "running"
+                      and floor["instrument"] == "@host/last-resort"
+                      and floor["cues"] == ["last-resort"]
+                      and floor["mine"] == [],
+                      f"the ladder stands on rung {started['before']['rung']} of "
+                      f"{started['before']['rungs']} and reads «{started['before']['floor']}»; the "
+                      f"crossing plays cue(s) {floor['cues']} on «{floor['instrument']}» at state "
+                      f"{floor['state']}, the floor was named {len(floor['said'])} time(s) and the "
+                      f"walk's own slide ran {len(floor['mine'])} time(s) for this command")
+                br.evaluate("window.__exPass.bench.ladder(8, 800);"
+                           "window.__exPass.host.configure({fixedScale:false})")
+                br.sleep(0.6)
                 cleanup(br)
 
 # ---------------------------------------------------------------- report

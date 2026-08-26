@@ -286,12 +286,20 @@ check("PASS-GEARS the ratio handle publishes the ladder it steps through, with t
       "the handle carried a bare 0 to 1 while ratioAt rounds it to one of seven rungs before any "
       "tooth count is taken; the rungs are published by reference, so the ladder keeps one home")
 
+# THE TWO LITERALS GAINED A LEVEL on 2026-08-25, with the sweep that made every handle in the fleet
+# declare the structural level it drives (charter shelf 17). Both of these drive the CELL, and the
+# row follows them there: what it asserts is unchanged — the two ranges, the pairing that says each
+# is scaled back with the other, and the one factor in the shader that does it — and the level
+# declaration is now part of the shape it reads rather than something it would trip over.
 check("PASS-GEARS the two handles the instrument scales back together publish that they are scaled",
-      'tooth: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "order" } }' in REGION
-      and 'order: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "tooth" } }' in REGION
+      'tooth: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "order" }, level: "CELL" }'
+      in REGION
+      and 'order: { min: 0, max: 1, def: 0.4, applied: { scaledBackWith: "tooth" }, level: "CELL" }'
+      in REGION
       and "amp *= back;" in REGION and "spread *= back;" in REGION,
       "a tooth stands no taller than the wheel it stands on: past the field's own depth both are "
-      "multiplied by one factor, and a composer reads that here rather than measuring it downstream")
+      "multiplied by one factor, and a composer reads that here rather than measuring it downstream "
+      "— each of them declaring the CELL as the level it drives")
 
 check("PASS-GEARS the pair's size publishes that it is rounded to whole teeth",
       "applied: { roundedToWholeTeeth: true, leastTeeth: 3," in REGION

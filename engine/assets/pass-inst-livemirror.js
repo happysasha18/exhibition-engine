@@ -588,9 +588,18 @@
       // bypassed — is exactly the pure function an instrument of this engine may keep, and it is
       // what came across. The one place time reaches the picture is `drift`, and that reads the
       // `clock` handle, so a seeded score repeats to the pixel.
+      // LEVEL, PER SHELF 17 (docs/design/PASS-API-V1.md:716). This instrument declares one level,
+      // CELL — the fold partitions the frame into mirrored panels and every handle below either
+      // places that partition or is levelless in the fleet's own idiom. `mix` is the crossing's own
+      // dial, `clock` is the module's own time, and `shade` is the fleet's own judge-idiom name
+      // (held levelless here as everywhere it appears, though this instrument's own prose calls it a
+      // "resting channel" rather than a judges' channel); `mask` is the judges' channel proper.
+      // `glint` — the fold line's own brightness — is honestly a LIGHT-COLOUR reading, which this
+      // instrument does not declare, so it is held at CELL under the HARD CONSTRAINT above, as the
+      // seam's own finish on the CELL boundary it lights; named here and in this port's report.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
-        clock: { min: 0, max: 14, def: 0 },
+        mix: { min: 0, max: 1, def: 0, level: null },
+        clock: { min: 0, max: 14, def: 0, level: null },
         // WHICH FOLD. The module's own `mode`, with its four names. The module rebuilds nothing when
         // the mode changes and neither does this, so the handle is a plain number a score can hold
         // or step and the frame answers it at once. It rests at BOTH, which is his own taste-
@@ -603,7 +612,8 @@
                 reads: "the banding axis lab/data/cut-lines.json recorded for the pivot — the "
                      + "direction the two works' own structure runs, so the fold line lies ALONG "
                      + "that structure rather than across it, which is what his standing verdict on "
-                     + "this effect asks for: the fold lines land on the work's own lines" },
+                     + "this effect asks for: the fold lines land on the work's own lines",
+                level: "CELL" },
         // WHERE THE FOLD STANDS. His standing verdict on this effect in one pair of handles. The
         // module's line is placed by a pointer and wanders on its own when nobody holds it; here it
         // is placed by the pair's own measured centre and stands there.
@@ -614,12 +624,14 @@
                         + "both works are built around, which is the line a mirror fold has to land "
                         + "on for the reflection to read as the work's own and not as a line drawn "
                         + "over it",
-                   applied: { roomAtTheEdge: LINE_EDGE } },
+                   applied: { roomAtTheEdge: LINE_EDGE },
+                   level: "CELL" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "where down the frame the flat fold stands",
                    reads: "the midpoint of the two works' measured radial centres, "
                         + "structure.radial.centre, read on the other axis",
-                   applied: { roomAtTheEdge: LINE_EDGE } },
+                   applied: { roomAtTheEdge: LINE_EDGE },
+                   level: "CELL" },
         // THE MIRROR'S OWN LIFE, ON ONE ENVELOPE (charter shelf 5: properties that belong to one
         // gesture hang on one scalar, so they cannot disagree). One handle carries how far the fold
         // line wanders about the place it was given AND how deep the picture breathes, because both
@@ -638,16 +650,19 @@
                       + "wander already is: two incommensurate sines on each axis and a third on "
                       + "the breath",
                  applied: { lineX: LINE_X, lineY: LINE_Y, breath: BREATH,
-                            restsAt: "the place the two centres name" } },
+                            restsAt: "the place the two centres name" },
+                 level: "CELL" },
         // THE MODULE'S OWN TWO RESTING CHANNELS, published at the rests the module holds them at.
         glint: { min: 0, max: 1, def: GLINT_REST,
                  unit: "the fold line's own brightness",
                  applied: { moduleRest: GLINT_REST, heldByAHand: 1,
-                            restsAt: "both doors, where the dial gates it to nothing" } },
+                            restsAt: "both doors, where the dial gates it to nothing" },
+                 level: "CELL" },
         shade: { min: 0, max: 1, def: DEPTH_REST,
                  unit: "how deep each further mirrored copy falls into the dark",
                  applied: { moduleRest: DEPTH_REST, reach: 0.60,
-                            restsAt: "both doors, where no copy stands in the frame" } },
+                            restsAt: "both doors, where no copy stands in the frame" },
+                 level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR, published beside its range the way
         // the meshing instrument publishes its own. `readAtADoor` says what is read (this
         // instrument's own fold map, walked at the buffer's own sample points), on which grid (the
@@ -659,7 +674,8 @@
                                           reads: "the sample's own travel",
                                           measures: "this instrument's own fold map, walked at the "
                                                   + "buffer's own sample points, and how far the "
-                                                  + "fold moves each of them off its own place" } } },
+                                                  + "fold moves each of them off its own place" } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

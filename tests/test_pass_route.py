@@ -2,10 +2,10 @@
 """EX-ROUTE — the walk's own dramaturgy: what a step of the route is FOR, and how it is read.
 Run: python3 tests/test_pass_route.py
 
-Root: charter shelf 15 (`lab/CROSSING-BRIEF.md` in the tlvphotos tree) — the route's roles are
-entrance, quiet link, middle, culmination and return, mapped onto a harmonic grammar of a home the
-eye settles in, a motion away that prepares, and a tension that demands resolution, with a dynamics
-curve of about 70 parts quiet, 25 middle and 5 culmination across a walk. Unit brief:
+Root: charter shelf 15 (`lab/CROSSING-BRIEF.md` in the tlvphotos tree) — the route's five names are
+entrance, quiet link, middle, culmination and return, and they are the IMAGE of the shelf's three
+harmonic functions: a tonic the eye settles in, a subdominant that moves away and prepares, and a
+dominant whose tension demands resolution. Unit brief:
 docs/immersive/briefs/2026-08-17-U27-composed-full-route.md, stage 2, and his 18:43 formulation of
 the full route — 10 works, extendable twice by 5, every edge composed.
 
@@ -16,32 +16,41 @@ WHAT THIS MEASURES.
 
   The function of a step is READ, not typed. The hang is already ordered by kinship: `arcOrder`
   draws the near neighbours in and then widens its steps on purpose, so the distance the route
-  crosses at each step is a number the walk has already measured. Every role below comes off that
-  curve by shelf 15's grammar — the widest step is the crest, the step that leads into it prepares
-  it, a step standing above both its neighbours is a motion away, and everything else is a home the
-  eye settles in.
+  crosses at each step is a number the walk has already measured. Every function below comes off
+  that curve — the widest step is the crest and the route's one dominant culmination, the step that
+  leads into it prepares it, a step standing above both its neighbours is a motion away, and
+  everything else is a home the eye settles in.
 
-  Two roles outrank the curve because they are facts about the VISIT rather than about the route's
-  shape: an edge this visit has already walked is a return (which is the same edge §4.8's return
-  reference crosses on), and the visit's first crossing is an entrance.
+  WHAT DECIDES, SINCE THE HARMONIC LAYER LANDED (2026-08-25). The step's FUNCTION decides, and the
+  name follows from it: `passRoleOfFunction` is the one place any of the five is written, and every
+  row here that names a step is reading the image of a function. The two facts about the VISIT no
+  longer OUTRANK the curve as a second ordering laid over it — they are read as functions too. An
+  edge this visit has already walked is the walk restating something it has already resolved, so it
+  is a tonic, and the name that tonic goes by there is the return (the same edge §4.8's return
+  reference crosses on). The visit's first crossing is where the key is first stated at this
+  person's ear, so it is a tonic as well, and the name it goes by is the entrance. Both keep the
+  precedence they have always had; what changed is that there is one ordering and not two that can
+  disagree. The layer's own rows — the key, the modulation through a pivot, the cadences and the
+  reprise — live in tests/test_pass_harmony.py; this file goes on judging what a step ASKS UNDER
+  and what the composer reads back.
 
-  The role reaches the composer. It is put on the passage request at one place, and the composer's
+  The name reaches the composer. It is put on the passage request at one place, and the composer's
   own reading of the request echoes it, so what the walk authored is what the passage was bounded by.
 
 WHAT EVERY ROW HERE IS ANCHORED TO. Three things, and no fourth.
 
   1. THE WALK'S OWN SETTINGS AND THE COMPOSER'S OWN FENCE. The route's length is read from the
-     bundle's own `spread_size` / `unfold_step` / `max_unfolds` lines, and the five role names from
+     bundle's own `spread_size` / `unfold_step` / `max_unfolds` lines, and the five names from
      the composer's own `routeRoles`. Neither is typed twice here.
 
-  2. THE RULE, RE-DERIVED AND COMPARED. The role rows recompute shelf 15's grammar in Python from
-     the gaps the walk publishes and compare it against the roles the walk published beside them.
+  2. THE RULE, RE-DERIVED AND COMPARED. The naming rows recompute shelf 15's grammar in Python from
+     the gaps the walk publishes and compare it against the names the walk published beside them.
      A change to the curve moves both sides together, so these never re-base on a change of content;
      they redden only when the walk stops reading the grammar it says it reads.
 
-  3. NOTHING — a measured reading, printed so a person can read the number. The realised dynamics
-     share is one of these: it is the outcome of the grammar over one dealt hang, not a quota, and
-     the walk deals a different hang every visit.
+  3. NOTHING — a measured reading, printed so a person can read the number. How one dealt hang
+     divides among the five names is one of these: it is the outcome of the grammar over that hang,
+     never a quota to compose toward, and the walk deals a different hang every visit.
 
 WHAT IS NEVER RESTORED FROM GIT. Every red-on-bug row below serves a COPY of the built bundle with
 one rule put back the way it stood. The source tree is never written to; the copy lives in the
@@ -328,15 +337,26 @@ def grammar(gaps):
 
 # The plants: one rule of the derivation put back the way it stood, in a COPY of the bundle the
 # browser is served. Each names the line it reverts and what that line was for.
+# EACH PLANT NOW REVERTS THE RULE WHERE THE HARMONIC LAYER PUT IT (2026-08-25). The four lines these
+# anchored on before the layer landed wrote the five names straight off the curve; two of them WERE
+# the second ordering the layer removed and cannot come back. Each plant below reverts the same rule
+# at its new home, and each leaves the same floor behind it always did.
 PLANTS = {
-    "crest": ('if (i === crest) return "culmination";',
-              'if (false) return "culmination";'),
-    "widening": ('return (g > before && g > after) ? "middle" : "quiet link";',
-                 'return "quiet link";'),
-    "return": ('if (edge && edge.passes > 0) return "return";',
-               'if (false) return "return";'),
-    "entrance": ('if (!passVisitOpened()) return "entrance";',
-                 'if (false) return "entrance";'),
+    # the crest's own name, taken away where the function is mapped to a name: every dominant then
+    # reads as a middle and the route carries no culmination at all.
+    "crest": ('if (fn === "dominant") return standingAs === "crest" ? "culmination" : "middle";',
+              'if (fn === "dominant") return "middle";'),
+    # the local-widening rule, taken away where the function is read: every step that is neither the
+    # crest nor its own preparation collapses to a tonic, so every motion away is lost.
+    "widening": ('if (!(g > before && g > after)) return "tonic";',
+                 'return "tonic";'),
+    # a walked-back edge is still heard as a tonic, but reverted to the name a tonic goes by on the
+    # route itself, so it stops asking as a return.
+    "return": ('return { at: at, fn: "tonic", role: passRoleOfFunction("tonic", "restated") };',
+               'return { at: at, fn: "tonic", role: passRoleOfFunction("tonic", "route") };'),
+    # and the same for the visit's opening, so it stops asking as an entrance.
+    "entrance": ('return { at: at, fn: "tonic", role: passRoleOfFunction("tonic", "founding") };',
+                 'return { at: at, fn: "tonic", role: passRoleOfFunction("tonic", "route") };'),
 }
 SERVED = TMP / "exhibition.js"
 ORIGINAL = SERVED.read_text(encoding="utf-8")
@@ -386,11 +406,10 @@ else:
             check(BROWSER_ROWS[1],
                   share.get("culmination") == 1
                   and share.get("quiet link", 0) >= share.get("middle", 0),
-                  "over %d steps: %d quiet (%.0f%%), %d middle (%.0f%%), %d culmination (%.0f%%) — "
-                  "the outcome of the grammar over one dealt hang, against shelf 15's ~70/25/5"
-                  % (n, share.get("quiet link", 0), 100.0 * share.get("quiet link", 0) / n,
-                     share.get("middle", 0), 100.0 * share.get("middle", 0) / n,
-                     share.get("culmination", 0), 100.0 * share.get("culmination", 0) / n))
+                  "over %d steps: %d quiet, %d middle, %d culmination — how the grammar divided one "
+                  "dealt hang, printed so a person can read it and gated on nothing"
+                  % (n, share.get("quiet link", 0), share.get("middle", 0),
+                     share.get("culmination", 0)))
 
             # 2 · the role reaches the composer. The visit's first crossing is the real step
             # `enter` took, and it is an entrance by the rule above; the step measured here is the

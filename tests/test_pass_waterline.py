@@ -228,7 +228,7 @@ check("PASS-WATERLINE every handle the module carries is a handle a score can dr
 # constant at their own default, which is what keeps the two roads comparable at all.
 check("PASS-WATERLINE the two constants a record can set are handles, and stand at the module's "
       "own number at their default",
-      "settle: { min: 0, max: 1, def: 1 }" in REGION
+      'settle: { min: 0, max: 1, def: 1, level: "SURFACE" }' in REGION
       and "tideCells: { min: 0, max: 1, def: 0.5," in REGION
       and "var CELL_SPAN = 1.0;" in REGION
       and "cells: [CELLS_X * cell, CELLS_Q * cell]" in REGION
@@ -346,13 +346,17 @@ check("PASS-WATERLINE the manifest publishes what it cuts on and what it reads o
       "nothing that can refuse one",
       'cuts: ["band"]' in REGION
       and '"motifs.measured"' in REGION and '"structure.horizon.y"' in REGION
-      and 'seamA: { min: 0, max: 1, def: 0.5 }' in REGION
-      and 'seamB: { min: 0, max: 1, def: 0.5 }' in REGION,
+      and 'seamA: { min: 0, max: 1, def: 0.5, level: "WORLD" }' in REGION
+      and 'seamB: { min: 0, max: 1, def: 0.5, level: "WORLD" }' in REGION,
       "the waterline parts the frame into two BANDS and the crossing travels through the line "
       "between them; the reading it publishes is the motif list that carries the seam and the "
       "work's own measured horizon, and it RANKS only — a pair carrying no measured seam rests on "
       "the handles' own default of 0.5, which is the frame's own middle and the module's own "
-      "fallback, so such a pair plays rather than being turned away")
+      "fallback, so such a pair plays rather than being turned away. THE TWO SEAM LITERALS GAINED A "
+      "LEVEL on 2026-08-25, with the sweep that made every handle in the fleet declare the "
+      "structural level it drives — the seam is where the frame parts into its two bands, which is "
+      "a WORLD reading — and the row follows them there while holding every number and every "
+      "default it always held")
 
 # ---------------------------------------------------------------- browser rows
 

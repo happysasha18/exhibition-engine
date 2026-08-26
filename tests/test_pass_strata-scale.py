@@ -139,7 +139,7 @@ declared = set(re.findall(r'\{ name: "(u\w+)", type:', INSTRUMENT_TEXT))
 spelled = set(re.findall(r'uniform\s+\w+\s+(u\w+)\s*;', INSTRUMENT_TEXT))
 check("PASS-SCALE the manifest's declared uniform names and the shader's own spelled names are one "
       "set",
-      declared == spelled and len(declared) == 12,
+      declared == spelled and len(declared) == 13,
       f"{len(declared)} declared, {len(spelled)} spelled; declared only: {sorted(declared - spelled)}; "
       f"spelled only: {sorted(spelled - declared)}")
 
@@ -481,7 +481,7 @@ else:
                 shape = (
                     m["id"] == "strata-scale" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
-                    and len(m["handles"]) == 20
+                    and len(m["handles"]) == 21
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -492,7 +492,7 @@ else:
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and sorted(m["cuts"]) == ["band", "scale"]
                     and m["coverage"]["writes"] is True
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 12
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 13
                     and sorted(res) == ["lean", "rich", "standard"]
                     and m["capabilities"] == ["webgl2"] and m["decline"]
                     and m["suits"]["reads"] == ["texture.reliefEdge"] and m["suits"]["how"]

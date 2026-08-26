@@ -845,11 +845,15 @@
       // die of its own and this port adds none, so a handle for one would be a handle a score could
       // walk without moving the picture, which is noise in the score (§4.4b).
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
+        // `mix` is the crossing's own dial and `clock` the module's own time; neither drives a
+        // structural level of the picture.
+        mix: { min: 0, max: 1, def: 0, level: null },
         clock: { min: 0, max: 14, def: 0, unit: "the second the passage stands at",
                  applied: { breathAtWhole: 0.055,
                             restsAt: "no instant; the breath is a sum of two slow sines and the "
-                                   + "world stays shut through all of it" } },
+                                   + "world stays shut through all of it" },
+                 level: null },
+        // How far it bends: WORLD.
         curl: { min: 0, max: 1, def: 0.82,
                 unit: "how far the strip is bent when the world stands open",
                 reads: "structure.polar.planet, the departing work's own reading as a little world "
@@ -857,27 +861,36 @@
                      + "one that barely does is left as a bowed band. The rest at 0.82 is his own "
                      + "taste-approved state of 2026-08-08 11:39 («planet curl 82»), which is where "
                      + "the handle stands until a score names the work's own",
-                applied: { easedBy: 2.4, floor: 0.006 } },
+                applied: { easedBy: 2.4, floor: 0.006 },
+                level: "WORLD" },
+        // Which geometry the space itself takes — a sphere or a corridor: WORLD.
         depth: { min: 0, max: 1, def: 0,
                  unit: "which of the two worlds: a sphere, or the same one turned inside out",
                  reads: "structure.polar.tunnel, the departing work's own corridor reading. Over "
                       + "half the picture is turned inside out and the visitor stands inside a "
                       + "corridor instead of outside a sphere; under it the world is a sphere",
-                 applied: { turnsInsideOutAbove: 0.5 } },
+                 applied: { turnsInsideOutAbove: 0.5 },
+                 level: "WORLD" },
+        // Where the horizon's axis stands: WORLD.
         dip: { min: 0, max: 1, def: 0.5,
                unit: "where the horizon stands: how much of the sky is pulled in toward the centre",
                reads: "structure.horizon.y, the departing work's own measured horizon. The middle "
                     + "of the handle is the picture's own place — the module's own door — and the "
                     + "reach is half a gamma either way, which is the reach the hand had",
                applied: { reach: HORIZON_REACH, curve: "a two-piece logarithm hinged at the middle, "
-                                                     + "because the middle is a door" } },
+                                                     + "because the middle is a door" },
+               level: "WORLD" },
+        // Turns the world about its own axis: WORLD.
         turn: { min: 0, max: 1, def: 0.5, unit: "how far the world is turned",
                 reads: "structure.radial.score, the work's own measured radial reading — a work "
                      + "whose rings are its own device turns the world and one that barely reads "
                      + "radial barely turns it",
                 applied: { reach: TURN_REACH, restsAt: "the middle, where the world stands square",
                            curve: "linear by measurement: equal angles of turn move the same "
-                                + "picture past the same eye" } },
+                                + "picture past the same eye" },
+                level: "WORLD" },
+        // How much of the frame the figure holds — a gather of the whole picture, taken as one:
+        // SURFACE.
         gather: { min: 0, max: 1, def: FIG_HI,
                   unit: "how much of the frame the work's own figure holds",
                   reads: "the share of the frame the work's own measured dominant object holds. It "
@@ -886,22 +899,27 @@
                        + "and a spike in a wide sky is taken with the sky cut away and bent harder, "
                        + "or it comes out as a speck in a cloud",
                   applied: { cropAt: [CROP_LO, CROP_HI], gammaAt: [GAMMA_LO, GAMMA_HI],
-                             readAt: [FIG_LO, FIG_HI] } },
+                             readAt: [FIG_LO, FIG_HI] },
+                  level: "SURFACE" },
+        // The fleet's own shade judge channel; it drives no structural level.
         shade: { min: 0, max: 1, def: 1, unit: "the world's own finish",
                  applied: { restsAt: "1, where the finish is the module's own",
                             covers: "the radial curve of light, the stage's own lamp, the sitting "
-                                  + "back of the collapsing centre and the closing gamma" } },
+                                  + "back of the collapsing centre and the closing gamma" },
+                 level: null },
         // THE MEASUREMENT THIS HANDLE IS READ AGAINST AT A DOOR. `readAtADoor` says what is read
         // (this instrument's own cut, walked at the buffer's own sample points), on which grid (the
         // drawing buffer the host binds, with the CSS frame where it hands none), what the reading
         // is counted in, and that there is no hold — both doors are exact by construction rather
-        // than by a tolerance, so a door this reading finds a fault at is refused outright.
+        // than by a tolerance, so a door this reading finds a fault at is refused outright. It is
+        // the judges' own channel and drives no structural level.
         mask: { min: 0, max: 1, def: 0,
                 applied: { readAtADoor: { rows: CUT_ROOM, readOn: "the drawing buffer",
                                           reads: "the cut",
                                           measures: "which work stands at the buffer's own sample "
                                                   + "points, and how far the world stands open",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },

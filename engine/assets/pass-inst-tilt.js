@@ -109,6 +109,7 @@
       "uniform float uOff;",         // counter-motion, in the plane's own uv
       "uniform float uGuard;",
       "uniform float uMask;",        // the judges' channel: draw this instrument's own coverage
+      "uniform float uPresence;",  // the entry-door contract's reserved dry
 
       "float hash11(float n){ return fract(sin(n * 127.1) * 43758.5453); }",
 
@@ -175,7 +176,7 @@
       // THE COLOUR CHANNEL IS UNTOUCHED at the judges' rest, which is what makes a one-cue score
       // byte-identical: laid down first the host disables blending and reads no alpha, so `col`
       // reaches the frame exactly as the lab module drew it.
-      "  gl_FragColor = vec4(col, 1.0 - cov);",
+      "  gl_FragColor = vec4(col, (1.0 - cov) * uPresence);",
       "}",
     ].join("\n");
 
@@ -581,8 +582,16 @@
       // names no seed (`Math.random()` inside its `seedFrom`); here that case answers with the
       // handle's own rest instead, because an instrument that rolls its own die makes a seeded score
       // draw two different pictures.
+      // LEVEL, PER SHELF 17 (docs/design/PASS-API-V1.md:716). This instrument declares one level,
+      // WORLD — the plane's own geometry and nothing else. `mix` is the crossing's own dial and is
+      // not a structural level; `seed` is the score's die; `shade` and `travel` are the module's own
+      // judge channels and `mask` is the fleet's third. `lead` and `columns` name a raggedness and a
+      // count that would read as CELL on another instrument's lattice, but this instrument's own
+      // manifest declares WORLD alone (its comment above: «a geometry rather than a field»), so both
+      // are held at the one level this instrument occupies rather than a level it does not declare —
+      // named here and in this port's report.
       handles: {
-        mix: { min: 0, max: 1, def: 0 },
+        mix: { min: 0, max: 1, def: 0, level: null },
         // THE LEAN. Its two ends are the module's own words: nothing at all is the carrier switched
         // off and the crossing walking a flat picture; whole is TILT_MAX at mid-passage, the most
         // these photographs' window grids survive before the far rows stop resolving.
@@ -591,14 +600,16 @@
                 applied: { degreesAtMidPassageWhenWhole: TILT_MAX, restsAt: "both doors" },
                 reads: "structure.polar.tunnel — how strongly a work already reads as a corridor, "
                      + "the weaker of the pair's two readings, since a lean built on a depth only "
-                     + "one work carries is laid on rather than found" },
+                     + "one work carries is laid on rather than found",
+                level: "WORLD" },
         // THE LINE THE PLANE TURNS ABOUT. Nothing is a line at the top of the frame — almost all of
         // it goes away into depth; whole is a line at the bottom and the frame leans toward the eye.
         horizon: { min: 0, max: 1, def: 0.35,
                    unit: "where the plane's own axis stands down the frame",
                    reads: "structure.horizon.y — the work's own measured horizon, which is the line "
                         + "the plane should turn about; a work that carries none leaves this at the "
-                        + "module's own rest" },
+                        + "module's own rest",
+                   level: "WORLD" },
         // HOW HARD THE ROWS CROWD. Nothing stands the camera CAM_FAR half-heights off, where the
         // lean is nearly a shear; whole brings it to CAM_NEAR, where the far rows crowd by one over
         // the depth and the near ones open right out.
@@ -610,7 +621,8 @@
                         + "the far rows may crowd before they stop resolving into anything. This is "
                         + "the handle the reading behind the module's own thirty-five-degree ceiling "
                         + "is spent on, because the crowding is this handle's whole act and the "
-                        + "module named both ends of this axis and only one end of that one" },
+                        + "module named both ends of this axis and only one end of that one",
+                   level: "WORLD" },
         // HOW BROKEN THE FRONT IS. Nothing is one straight row travelling forward; whole spreads the
         // columns' own moments over four fifths of the plane.
         lead: { min: 0, max: 1, def: 0.4,
@@ -619,7 +631,10 @@
                 // number to hand. How ragged a handover should read is a matter of the crossing's own
                 // taste; nothing in a work record measures it, and inventing a reading for it would
                 // be a number nobody measured.
-                reads: null },
+                reads: null,
+                // held at WORLD under the HARD CONSTRAINT above: honestly a per-column stagger reads
+                // as CELL, and this instrument declares WORLD alone
+                level: "WORLD" },
         // THE ONE CONSTANT THE PORT PUBLISHES. The module pins nine columns (tilt.js:176). How many
         // columns a front breaks into is a reading of the pair — it is the count of vertical divisions
         // the works themselves carry — so it travels as a handle rather than as a constant, and it is
@@ -629,14 +644,19 @@
                    applied: { roundedToWholeColumns: true, reads: "colsRequest" },
                    reads: "the strip element sets — the count of the bands a work's own structure "
                         + "was measured to fall into across the frame, which is what the front's "
-                        + "columns should stand on" },
-        seed: { min: 0, max: 8, def: 0 },
+                        + "columns should stand on",
+                   // held at WORLD under the HARD CONSTRAINT above: honestly a count of divisions
+                   // reads as CELL, and this instrument declares WORLD alone
+                   level: "WORLD" },
+        seed: { min: 0, max: 8, def: 0, level: null },
         shade: { min: 0, max: 1, def: 1,
                  unit: "the weight of the contact shadow the near work throws over the far one",
-                 applied: { atTheFront: 0.34, decaysOverRows: 6, restsAt: "both doors" } },
+                 applied: { atTheFront: 0.34, decaysOverRows: 6, restsAt: "both doors" },
+                 level: null },
         travel: { min: 0, max: 1, def: 1,
                   unit: "the weight of the counter-motion inside the plane",
-                  applied: { frameUnitsAtMidPassage: AMP, restsAt: "both doors" } },
+                  applied: { frameUnitsAtMidPassage: AMP, restsAt: "both doors" },
+                  level: null },
         // THE JUDGES' THIRD CHANNEL, and the measurement its door is read against. It rests at
         // nothing, where the picture is the module's own; opened it draws this instrument's own
         // coverage, so a law about the coverage is read off the picture. `readAtADoor` says what is
@@ -648,7 +668,22 @@
                                                   + "buffer point in the plane's own rows against "
                                                   + "the margin the front stands beyond the plane's "
                                                   + "own edge",
-                                          held: null } } },
+                                          held: null } },
+                level: null },
+        // THE RESERVED DRY OF THE ENTRY-DOOR CONTRACT (docs/design/ENTRY-DOOR.md). One name across
+        // the whole fleet, declared the same way in every manifest, so the host and the composer
+        // learn it once instead of nine times. It says WHETHER THIS VOICE IS IN THE FRAME AT ALL:
+        // at zero the instrument draws nothing anywhere and what stands beneath it shows whole; at
+        // one it draws exactly as it always did, which is where it rests, so a plan that says
+        // nothing about it gets the picture this instrument has always drawn.
+        //
+        // IT IS NOT THE BANNED OPACITY HANDLE RETURNING, and the difference is the whole point. An
+        // opacity handle fades one whole layer against another — the crossfade the charter's own
+        // ladder removed the tempting tool for. This says whether a voice is present, and it is
+        // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
+        // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        presence: { min: 0, max: 1, def: 1, level: null,
+                    unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },
       doors: { in: { handle: "mix", value: 0, work: "a" },
@@ -677,11 +712,12 @@
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names — so
       // the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, tilt: 0.72, horizon: 0.35, squeeze: 0.55, lead: 0.4, columns: COLS,
-                     seed: 0, shade: 1, travel: 1, mask: 0, reduced: false,
+                     seed: 0, shade: 1, travel: 1, mask: 0, presence: 1, reduced: false,
                      cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "tilt", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
+          { name: "uPresence", type: "float", source: "handle:presence" },
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
           { name: "uFitA", type: "vec4", source: "fitA" },
@@ -765,6 +801,7 @@
         var pose = {
           mix: h.mix, tilt: h.tilt, horizon: h.horizon, squeeze: h.squeeze, lead: h.lead,
           columns: h.columns, seed: h.seed, shade: h.shade, travel: h.travel, mask: h.mask,
+          presence: h.presence,
           reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
@@ -776,7 +813,16 @@
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
         // decision asks for rather than the count the score asked for.
-        if (h.mix === 0 || h.mix === 1) {
+        // WHICH DOOR LAW THIS VOICE OWES, and it is not this instrument's to choose — the host
+        // publishes where the voice stands and the contract is docs/design/ENTRY-DOOR.md. Standing
+        // LOWEST, it owes the departing work whole at its entry door and the arriving work whole at
+        // its exit, which is what the proof below measures. Standing OVER another voice at no
+        // presence at all it owes the opposite, and already keeps it: its alpha is zero at every
+        // point, so what the door shows is whatever stands beneath, whole and untouched. There is no
+        // reading to take of a frame this instrument never drew into, and the whole-work proof would
+        // refuse it for doing exactly what its own law asks.
+        var absent = st.standsOver && !(h.presence > 0);
+        if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           if (st.reportApplied) {
             st.reportApplied({

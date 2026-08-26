@@ -78,7 +78,7 @@ build_site.OUT = TMP
 build_site.build(SITE_URL)
 
 BROWSER_ROWS = [
-    "EX-PHONE a composed passage cut off mid-flight exhales to the nearer of its own two doors and "
+    "EX-PHONE a composed passage cut off mid-flight exhales to the door it is LANDING on and "
     "lands, inside the budget the score itself names",
     "EX-PHONE every handle WALKS to that door — the picture travels out rather than jumping",
     "EX-PHONE one passage, exactly one landing, whether it plays, refuses or is cut off",
@@ -176,12 +176,37 @@ def active(br):
                        "&& window.__exPass.layer().report().active))") == "true"
 
 
+def folding(br):
+    """Is a crossing being FOLDED UP under a swipe that superseded it? Since 2026-08-25 a swipe no
+    longer cuts the running crossing: it compresses to its cadence and the superseding command waits,
+    named on the host's own surface as `held`, until the fold lands (§2.5, charter shelf 19)."""
+    return br.evaluate("String(!!(window.__exPass.layer() "
+                       "&& window.__exPass.layer().report().held))") == "true"
+
+
 def step_until_live(br, tries=8):
-    """Step until a passage is actually drawing, and answer while it draws."""
+    """Step until a passage is actually drawing, and answer while it draws.
+
+    `active` ALONE STOPPED MEANING THAT on 2026-08-25. It says a crossing holds the frame, and while
+    a swipe folds the one it superseded that crossing is the OUTGOING one, on its way out inside its
+    own cadence budget. A step-and-poll loop that answered on `active` therefore handed its caller
+    the passage it had just replaced, a few hundred milliseconds from landing — and the row below,
+    which cuts a passage mid-flight, cut nothing at all: by the time it fired the fold had landed and
+    the host stood idle, which is what it reported. So the wait is for a crossing that is BOTH on the
+    frame and not something a swipe is folding away, which is what «the passage I just asked for» now
+    means."""
     for _ in range(tries):
+        # WHICH CROSSING IS ON THE FRAME, not merely whether one is. The generation standing before
+        # the step is remembered, and the wait is for a crossing whose own generation is a LATER one
+        # — so a passage still running from an earlier press, which `active` answers for just as
+        # readily and which may be a breath from its own end, can never be mistaken for the one this
+        # press asked for.
+        was = js(br, "var r = window.__exPass.layer().report(); return r.gen;")
         br.key("ArrowDown")
         for _ in range(40):
-            if active(br):
+            now = js(br, "var r = window.__exPass.layer().report();"
+                         "return {gen: r.gen, active: !!r.active, held: !!r.held};")
+            if now["active"] and not now["held"] and now["gen"] != was:
                 return True
             br.sleep(0.05)
         br.sleep(0.8)
@@ -230,7 +255,10 @@ else:
                 """)
                 for _ in range(60):
                     got = js(br, "var r = window.__exPass.layer().report();"
-                                 "return {c: r.cadence, active: !!r.active};")
+                                 "return {c: r.cadence, active: !!r.active,"
+                                 " state: r.state, gen: r.gen, held: r.held,"
+                                 " ev: r.events.slice(-8).map(function(e){"
+                                 "   return e.name + '/' + e.gen + ': ' + (e.why || ''); })};")
                     if got["c"] and got["c"].get("ended"):
                         break
                     br.sleep(0.05)
@@ -244,7 +272,9 @@ else:
                       "«%s»; the host landed it in %s ms, against his bar of %s ms. The door walked "
                       "to was the «%s» door on the handle «%s»"
                       % (budget, cut["duration"], (cut["asked"] or {}).get("resolve"), landed,
-                         EXHALE_MS, cad.get("door"), cad.get("doorHandle")))
+                         EXHALE_MS, cad.get("door"), cad.get("doorHandle"))
+                      + " || host=%s/%s held=%s log=%s"
+                      % (got.get("state"), got.get("gen"), got.get("held"), got.get("ev")))
 
                 walked = [h for h in (cad.get("to") or {})
                           if h in (cad.get("from") or {})
