@@ -2498,9 +2498,76 @@
     // pool. The strength of the cooling is therefore not a number this file invents: it is exactly
     // how much the walk chose to remember, which is the walk's own dramaturgy and one of the three
     // sources his 2026-08-19 11:58 word allows.
+    //
+    // THE ARITHMETIC HOLE HIS 2026-08-26 WORD NAMED, AND WHERE IT LIVED. «разнообразие необходимо,
+    // вопрос в ранжировании» — the die stays, the cooling stays, and the fix is in how the four
+    // multipliers of `dieWeighted` (:2654, below) weigh each other: fit (0..1, `genresFor` :4008),
+    // this cooldown, `viewerBiasOf` (0.7..1.3) and `weatherBiasOf` (0.65..1.35). The last two carry
+    // FIXED ranges — no request can push either under its own floor or over its own ceiling. This
+    // cooldown did not: `n` in `(k + 1) / (n + 1)` was `walkPlayed.length`, the RAW LENGTH OF THE
+    // WALK'S OWN LOG — and that log is deliberately unbounded (two paragraphs up: "there is no
+    // length fence... the list is bounded by the walk's own length, which is the walk's business").
+    // Every passage the visit plays pushes another entry for as long as the visit runs, so the
+    // floor for the letter played most recently (k = 0) was `1 / (n + 1)` with no ceiling on n: the
+    // longer a visit ran, the closer that floor sat to zero, without a bound below.
+    //
+    // A FLOOR WITH NO BOUND MAKES ANY FIT GAP INVERTIBLE. Take a road read at the best fit this file
+    // ever hands out, 1.0, played on the passage just gone, against a rival read at 0.01 — a
+    // hundredth of it. Weather and viewer sit at their neutral 1 for both, so only the cooldown
+    // decides. At n = 99 the favoured road's weight, 1.0 × 1/100 = 0.01, ties the rival's; past
+    // n = 100 the rival's steady 0.01 stands ahead of the favoured road's own share, which keeps
+    // shrinking. A hundred logged letters is not a large walk — a dozen or two passages, each
+    // carrying a genre and two or three instruments, cross it — and past that point NO fit gap
+    // survives being the letter just played, however wide: the same arithmetic that inverts 1.0
+    // against 0.01 at n = 100 inverts 1.0 against 0.0001 at n = 10000, because the floor never stops
+    // falling. The hole is not that a low fit can win — shelf 9 already lets it (a measurement
+    // ranks, never gates) — it is that NOTHING BOUNDED HOW BADLY IT COULD WIN, where the other two
+    // riders on the same product each carry a floor no length of anything moves.
+    //
+    // THE FIX IS WHAT `n` COUNTS, NEVER A NEW FLOOR PICKED TO TASTE. `walkPlayed` is a LOG — one
+    // entry per letter of every passage the visit has played, the same letter pushed again each time
+    // the walk returns to it — and the law this cooldown states above (WHAT ONE COOLING IS WORTH)
+    // was always about a letter's place AMONG THE LETTERS IN ROTATION, never about how long the log
+    // that recorded them has grown. Read `n` as the count of DISTINCT letters the log holds
+    // (`walkPlayedDistinct`, below) instead of the log's raw length, and `n` is bounded by the
+    // walk's own vocabulary — the eight roads `genresFor` answers with, or the collection's own
+    // fixed instrument list — a count fixed for the whole visit and never a function of how long the
+    // visit has been running. A thousand passages that keep returning to one letter still read
+    // n = 1; the floor for the letter just played is still 1/2, the floor a visit of ONE passage
+    // would give it. The die still keeps every road on the board (k never removes a candidate, n
+    // never reaches infinity) and the walk's own memory is read exactly as before — only what the
+    // ratio is taken OVER changes, from a log that grows without end to a vocabulary that does not.
+    //
+    // THE LOG, KEPT ONCE PER LETTER — first occurrence only, which on a most-recent-first log is a
+    // letter's own most recent play; everything after it is a repeat the cooldown never needed to
+    // see twice. `coolOf` reads recency off this list and never off `walkPlayed` itself.
+    function dedupeMostRecent(list) {
+      var out = [], seen = {}, i, id;
+      for (i = 0; i < list.length; i++) {
+        id = list[i];
+        if (!Object.prototype.hasOwnProperty.call(seen, id)) { seen[id] = true; out.push(id); }
+      }
+      return out;
+    }
+    var walkPlayedDistinct = [];
+    // THE COOLDOWN'S OWN RATIO, cut out as pure arithmetic over two numbers — a place `at` (−1 for
+    // "never played") and a pool size — so it is provable over the whole span either can take
+    // (row 8j-2 of tests/test_pass_composed.py) rather than over whichever walk happens to be
+    // running.
+    function coolFactor(at, poolSize) {
+      return at < 0 ? 1 : (at + 1) / (poolSize + 1);
+    }
     function coolOf(id) {
-      var at = walkPlayed.indexOf(id);
-      return at < 0 ? 1 : (at + 1) / (walkPlayed.length + 1);
+      return coolFactor(walkPlayedDistinct.indexOf(id), walkPlayedDistinct.length);
+    }
+    // THE SAME COOLDOWN, TAKEN OFF A RAW LIST HANDED IN rather than off the module's own held
+    // `walkPlayedDistinct` — exposed beside `coolFactor` for the reason `camVoiceFloor` and the rest
+    // travel beside the entry (:8996 below): a claim about numbers is answered over numbers, not
+    // over a route. It is not a second cooldown; it is `coolOf`'s own two steps, dedupe then
+    // `coolFactor`, run on a list a caller supplies.
+    function walkCooldown(list, id) {
+      var distinct = dedupeMostRecent(Array.isArray(list) ? list : []);
+      return coolFactor(distinct.indexOf(id), distinct.length);
     }
 
     // THE VISIT'S OWN MEMORY OF ITSELF, beyond the one edge — charter shelf 16's fourth pipeline
@@ -8555,6 +8622,7 @@
       // as a visit with no memory of itself yet, which is the neutral case every die already answers
       // the same way it always has.
       walkPlayed = Array.isArray(played) ? played : [];
+      walkPlayedDistinct = dedupeMostRecent(walkPlayed);
       viewerMemory = viewer || null;
       // AND THE INSTANT THE VISIT IS HAPPENING AT — charter shelf 16's third pipeline step, set
       // fresh here for the length of this one composition exactly as the two lines above are. Its
@@ -9009,6 +9077,10 @@
              camVoiceFloor: camVoiceFloor, camVoiceLift: camVoiceLift,
              voiceFloor: voiceFloor, voiceReach: voiceReach, voiceLift: voiceLift,
              voiceLoudness: voiceLoudness,
+             // THE LETTER COOLDOWN'S OWN ARITHMETIC (:2501-2531 above) — a claim about a place and
+             // a pool size, and about a raw walk-memory list reduced to one, so a reader can put
+             // every value either takes through it rather than trusting a route's own die.
+             coolFactor: coolFactor, walkCooldown: walkCooldown,
              // The band each route role names for its own length, and the arithmetic that places a
              // pair's reading inside one. Both travel for the same reason as the rest of this list:
              // the claim they carry is about numbers, so it is answered over every number they take.

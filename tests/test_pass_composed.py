@@ -501,15 +501,19 @@ NODE_ROWS = [
     "variant, and never one block this file types",
     "EX-COMPOSED the day arrives on the request, biases the roll, and leaves a request that states "
     "none reproducible",
+    "EX-COMPOSED the letter cooldown's floor is bounded by the walk's own vocabulary and never by "
+    "how long the visit has run, so a road just played cannot lose to an arbitrarily worse rival "
+    "for no reason but the log's own length, over the whole span of place and pool size either "
+    "can take",
 ]
 # THE TWO ROWS THIS FILE READS BY NAME rather than by position. Every row above is addressed by its
 # index, which is fine while the list only ever grows at the end — and it stopped being fine the
 # moment two rows landed there in one night: the first took `NODE_ROWS[-1]` and the second silently
 # took it away. A name cannot be taken away by a neighbour.
-ROW_ENTRY_DOOR = NODE_ROWS[-4]
-ROW_HARMONIC = NODE_ROWS[-3]
-ROW_COST = NODE_ROWS[-2]
-ROW_DAY = NODE_ROWS[-1]
+ROW_ENTRY_DOOR = NODE_ROWS[-5]
+ROW_HARMONIC = NODE_ROWS[-4]
+ROW_COST = NODE_ROWS[-3]
+ROW_DAY = NODE_ROWS[-2]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
 # change before the module is loaded, which is how every red-on-bug row below is run: the repair is
@@ -2078,6 +2082,45 @@ function walkRoutes(withMemory) {
 }
 out.route = walkRoutes(false);
 out.routeRemembered = walkRoutes(true);
+
+// 8j-2 · THE COOLDOWN'S OWN FLOOR, PROVED OVER THE WHOLE SPAN OF `at` AND `poolSize` RATHER THAN
+// walked on any route. His 2026-08-26 word: «разнообразие необходимо, вопрос в ранжировании» — the
+// die and the cooling both stay, and what moved is what `coolFactor`'s `poolSize` counts. Before the
+// fix it was `walkPlayed.length`, the raw length of the walk's own log — a quantity `walkMemory`'s
+// own law declares deliberately unbounded, so the floor for the letter played most recently
+// (at = 0) had no floor of its own: it fell toward 0 as a visit ran on, and at n = 100 it already
+// stood under 0.01 — meaning a road read at the file's own best fit (1.0) lost to a rival read at a
+// hundredth of it (0.01) for no reason but the length of the log, and the same arithmetic inverts
+// any fit gap given a long enough visit. `coolFactor` and `walkCooldown` are the module's own
+// arithmetic (pass-composer.js :2501-2531), exposed exactly as `camVoiceFloor` is, so this is
+// proved over the numbers rather than assumed from the fix reading right.
+const sweepBad = [];
+for (let poolSize = 0; poolSize <= 64; poolSize++) {
+  const never = composer.coolFactor(-1, poolSize);
+  if (never !== 1) sweepBad.push(`poolSize ${poolSize} at -1 -> ${never}, wanted 1`);
+  let prev = 0;
+  for (let at = 0; at < Math.max(poolSize, 1); at++) {
+    const v = composer.coolFactor(at, poolSize);
+    if (!(v > 0 && v <= 1)) sweepBad.push(`poolSize ${poolSize} at ${at} -> ${v}, outside (0,1]`);
+    if (v < prev) sweepBad.push(`poolSize ${poolSize} at ${at} -> ${v}, fell below ${prev}`);
+    prev = v;
+  }
+}
+// A THOUSAND PASSAGES THAT KEEP RETURNING TO ONE LETTER, against a walk of exactly one passage
+// naming that same letter. Old `n` (raw log length) reads 1000 against 1 and the floors it hands
+// out differ by three orders of magnitude for the SAME recency; `walkCooldown` (the fixed,
+// distinct-letter `n`) reads both logs as poolSize 1 and hands out the same floor for both, because
+// how many times a walk revisited one letter is not what the cooldown was ever supposed to answer.
+const longLog = [];
+for (let i = 0; i < 1000; i++) longLog.push("kaleidoscope");
+const cooldownArith = {
+  sweepBad,
+  longLogFixedFloor: composer.walkCooldown(longLog, "kaleidoscope"),
+  oneLogFixedFloor: composer.walkCooldown(["kaleidoscope"], "kaleidoscope"),
+  longLogOldFloorWouldHaveBeen: composer.coolFactor(0, longLog.length),
+  neverPlayedStaysWhole: composer.walkCooldown(["spin", "spin", "spin"], "kaleidoscope"),
+};
+out.cooldownArith = cooldownArith;
 
 // 9 · the composer measures its line against the number it is HANDED, not against its fallback.
 //     The constants are handed a cap of their own and the longest line the composer writes has to
@@ -3685,9 +3728,9 @@ else:
         # never crossed the line.
         #
         # WHAT PROVES IT, AND IT IS THE FORMULA AND NOT A TALLY. `coolOf` multiplies a candidate's fit
-        # by (k + 1) / (n + 1), where k is where the letter sits in the walk's own list and n is how
-        # long that list is. Read as arithmetic and not as an outcome, that factor settles both halves
-        # of this row for any walk, any collection and any pool:
+        # by (k + 1) / (n + 1), where k is where the letter sits in the walk's own list. Read as
+        # arithmetic and not as an outcome, that factor settles both halves of this row for any walk,
+        # any collection and any pool:
         #   · it is at most 1 and it is never 0. k runs 0..n−1, so the factor runs 1/(n+1)..n/(n+1) —
         #     strictly inside (0, 1). A letter the walk has not played is not in the list at all and
         #     keeps its whole weight. So a played letter's stretch of the die NARROWS and a rival's
@@ -3699,6 +3742,18 @@ else:
         #     distance rather than switching off, again for any n.
         # None of that is a claim about which photographs are on disk, so no count of pairs could
         # strengthen it and none could weaken it.
+        #
+        # WHAT `n` IS, AND HIS 2026-08-26 WORD ABOUT IT. Until that word, `n` was `walkPlayed.length`
+        # — the raw length of the walk's own log, a quantity with no ceiling (a passage played a
+        # thousand times over a long visit still pushes a thousand entries). That let the floor for
+        # the letter JUST played (k = 0) fall toward 0 as a visit ran on, and past n = 100 it already
+        # inverted any fit gap, however wide, for no reason but the log's length — the one factor of
+        # `dieWeighted`'s four whose own bound moved with something that has nothing to do with fit
+        # (`viewerBiasOf` and `weatherBiasOf` both hold fixed floors, 0.7 and 0.65, on every request).
+        # `n` now counts the DISTINCT letters the log holds, never how many times any one of them was
+        # logged, so it is bounded by the walk's own vocabulary — the eight roads, or the collection's
+        # fixed instrument list — for as long as the visit runs. Row 8j-2 below proves both halves of
+        # that repair as arithmetic, over the whole span of place and pool size, not on this route.
         #
         # WHAT THE TWO WALKS BELOW ARE FOR, THEN. They are a SMOKE reading: the reading actually
         # crosses the wire from the walk into the die, the composer takes it, and a real route
@@ -3719,6 +3774,29 @@ else:
               f"in (0, 1] that narrows a played letter's stretch and can never empty a pool — is the "
               f"shape of (k+1)/(n+1) and holds for any walk; see the note above. Remembered spread "
               + json.dumps(rt1["spread"], ensure_ascii=False))
+
+        # --- row 8j-2 · THE COOLDOWN'S OWN FLOOR, PROVED OVER NUMBERS AND NOT OVER A ROUTE ---------
+        # His 2026-08-26 word: «разнообразие необходимо, вопрос в ранжировании». `coolFactor(at,
+        # poolSize)` is the module's own ratio and `walkCooldown(list, id)` is its exact production
+        # path from a raw walk-memory list down to that ratio (pass-composer.js :2501-2531),
+        # exposed for the same reason `camVoiceFloor` is (:8996): a claim about numbers is answered
+        # over the numbers.
+        ca = got["cooldownArith"]
+        check(NODE_ROWS[-1],
+              not ca["sweepBad"]
+              and ca["longLogFixedFloor"] == ca["oneLogFixedFloor"] == 0.5
+              and ca["neverPlayedStaysWhole"] == 1
+              and ca["longLogFixedFloor"] > ca["longLogOldFloorWouldHaveBeen"] * 100,
+              "swept every (at, poolSize) from at=-1 through poolSize=64: coolFactor(-1, ·) is "
+              "always exactly 1 and coolFactor(at, ·) for at>=0 always lands in (0, 1] rising with "
+              "at" + ("" if not ca["sweepBad"]
+                      else "; violations: " + json.dumps(ca["sweepBad"][:5], ensure_ascii=False))
+              + f". A log of 1000 entries all naming one letter and a log of exactly 1 entry naming "
+              f"it give the SAME floor for that letter now "
+              f"({ca['longLogFixedFloor']} both), where the raw log length the old formula read "
+              f"would have handed the 1000-entry walk {ca['longLogOldFloorWouldHaveBeen']} — under "
+              f"a hundredth of the fixed floor — for no reason but how long the visit had run. A "
+              f"letter never played keeps its whole weight ({ca['neverPlayedStaysWhole']}).")
 
         # --- row 8k · THE LEVEL THE CARRYING AXIS CLEARS (charter shelf 2 with shelf 17) ----------
         # His 2026-08-24 word watching the live route: the camera's movement does not visibly read

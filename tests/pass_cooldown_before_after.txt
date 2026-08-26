@@ -1,0 +1,71 @@
+S-19 - the letter cooldown's floor, before and after 2026-08-26
+========================================================================
+
+weight = fit * cooldown(at, poolSize); cooldown = 1 if at < 0 (never played),
+else (at+1)/(poolSize+1).
+BEFORE: poolSize = the walk's raw log length (grows without end as a visit runs).
+AFTER:  poolSize = the walk's DISTINCT letters (bounded by the vocabulary in play).
+
+-- 1. THE FLOOR ITSELF, AS THE SAME ROAD KEEPS BEING PLAYED ------------
+The pair's own favourite road, played on every passage of the visit so far (the exact
+failure walkPlayed's own comment names: 'a letter that suits a whole collection well
+carried step after step of one route'). Column shown: what fraction of its own fit that
+road's weight keeps, played most recently, as the visit lengthens.
+
+ visits so far |  before (raw length) |  after (distinct=1)
+             1 |                  0.5 |                 0.5
+             8 |           0.11111111 |                 0.5
+            40 |           0.02439024 |                 0.5
+           160 |           0.00621118 |                 0.5
+           800 |           0.00124844 |                 0.5
+          4000 |           0.00024994 |                 0.5
+
+The 'before' column has no floor: it halves roughly every doubling of the visit and
+keeps falling for as long as the visit runs. The 'after' column is exactly 0.5 at every
+length, because one road played any number of times is still ONE distinct letter.
+
+-- 2. WHEN A NEVER-PLAYED RIVAL OVERTAKES THE FAVOURITE ----------------
+Same walk (the pair's own best-fit road, played on every passage so far) against a rival
+of fixed, lower fit that the visit has simply never played (cooldown neutral, weight =
+its own fit throughout — the ordinary case for a road no walk has touched). 'crossover'
+is the first visit length at which the rival's fixed weight overtakes the favourite's.
+
+pair 17843080526947498 -> 17843153263050281
+  favourite = box-fold (fit 0.8788), never-played rival = spin (fit 0.1358)
+   visits |  favourite weight before |  favourite weight after
+        1 |                   0.4394 |                  0.4394
+        5 |                 0.146467 |                  0.4394
+       20 |                 0.041848 |                  0.4394
+       50 |                 0.017231 |                  0.4394
+      100 |                 0.008701 |                  0.4394
+      300 |                  0.00292 |                  0.4394
+     1000 |                 0.000878 |                  0.4394
+  crossover before: visit 20 -- the favourite loses to the never-played rival once the visit runs that long
+  crossover after:  never, at any visit length -- whether it can lose depends only on the two fits, never on how long the visit runs
+
+pair 17945678195417816 -> 17948576099381888
+  favourite = shared-ground (fit 0.5623), never-played rival = symmetry-slide (fit 0.1829)
+   visits |  favourite weight before |  favourite weight after
+        1 |                  0.28115 |                 0.28115
+        5 |                 0.093717 |                 0.28115
+       20 |                 0.026776 |                 0.28115
+       50 |                 0.011025 |                 0.28115
+      100 |                 0.005567 |                 0.28115
+      300 |                 0.001868 |                 0.28115
+     1000 |                 0.000562 |                 0.28115
+  crossover before: visit 5 -- the favourite loses to the never-played rival once the visit runs that long
+  crossover after:  never, at any visit length -- whether it can lose depends only on the two fits, never on how long the visit runs
+
+pair 18023729152236427 -> 18026626057913576
+  favourite = tonal-and-spectral (fit 0.75), never-played rival = dissimilar-mystery (fit 0.2027)
+   visits |  favourite weight before |  favourite weight after
+        1 |                    0.375 |                   0.375
+        5 |                    0.125 |                   0.375
+       20 |                 0.035714 |                   0.375
+       50 |                 0.014706 |                   0.375
+      100 |                 0.007426 |                   0.375
+      300 |                 0.002492 |                   0.375
+     1000 |                 0.000749 |                   0.375
+  crossover before: visit 5 -- the favourite loses to the never-played rival once the visit runs that long
+  crossover after:  never, at any visit length -- whether it can lose depends only on the two fits, never on how long the visit runs
+
