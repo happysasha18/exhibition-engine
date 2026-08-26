@@ -84,8 +84,8 @@ BROWSER_ROWS = [
     "EX-PHONE one passage, exactly one landing, whether it plays, refuses or is cut off",
     "EX-PHONE the phone turned mid-passage reseats the passage in place and still lands on the "
     "arriving work's own box",
-    "EX-PHONE a visit asking for reduced motion plays no crossing and fetches neither file, and the "
-    "visitor still walks",
+    "EX-PHONE a visit asking for reduced motion registers the layer and plays the charter's "
+    "pardoned floor, never the engine's own composed passage, and the visitor still walks",
     "EX-PHONE a visit asking for saved data does the same",
     "EX-PHONE red-on-bug · the cadence budget forced to nothing: the exhale stops walking and the "
     "picture jumps to its door",
@@ -371,12 +371,20 @@ else:
             """
 
             def way_out(row, got):
+                # Charter shelf 19's pardoned floor, naряд S-08 (2026-08-26): a reduced-motion visit
+                # is no longer refused the layer outright, so this road's file count moves from 0 to
+                # 1 — pass-layer.js is fetched and registers. What stays refused is the engine's OWN
+                # composed passage: pass-composer.js is never asked for (the pardoned floor is a
+                # fixed, hand-built score, never a genre the composer picks), so the derived-passage
+                # count this suite exists to prove stays at 0 regardless.
                 check(BROWSER_ROWS[row],
-                      got["files"] == 0 and got["passages"] == 0 and got["docks"] > 0,
+                      got["files"] == 1 and got["layer"] == "registered"
+                      and got["composer"] != "read" and got["passages"] == 0 and got["docks"] > 0,
                       "the visit reported reduced=%s saveData=%s and asked for %d of the two "
-                      "files; it derived %d passage(s), landed %d time(s), and the surface says "
-                      "«%s»" % (got["device"]["reduced"], got["device"]["saveData"], got["files"],
-                                got["passages"], got["docks"], got["why"]))
+                      "files; the layer reports «%s», the composer «%s»; it derived %d passage(s), "
+                      "landed %d time(s), and the surface says «%s»"
+                      % (got["device"]["reduced"], got["device"]["saveData"], got["files"],
+                         got["layer"], got["composer"], got["passages"], got["docks"], got["why"]))
 
             br.emulate_media(prefers_reduced_motion="reduce")
             enter(br, base)

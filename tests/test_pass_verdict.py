@@ -104,6 +104,20 @@ def js(br, body):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % body))
 
 
+def wait_for(br, expr, timeout=15.0, step=0.2):
+    """Poll a JS expression until it returns truthy (or the deadline) — no fixed-sleep races.
+    15s of headroom: a road's own typed duration runs as long as 11000ms (pass-composer.js), so a
+    budget shorter than that reads the panel before a real crossing has had time to land."""
+    end = time.time() + timeout
+    val = None
+    while time.time() < end:
+        val = br.evaluate(expr)
+        if val:
+            return val
+        br.sleep(step)
+    return val
+
+
 def wait_ready(br, budget=150):
     for _ in range(budget):
         got = js(br, "if (!window.__exPass) return {st: null, held: 0};"
@@ -164,13 +178,11 @@ else:
             enter(br, base, "diagnostics:on", step=True)
             # The dock this step aims for lands off the composer's own async road (the record
             # wave, the composer's file) — `wait_ready` only waits for that machinery to be IN
-            # PLACE, not for THIS step's own landing to have reached it, so the panel's pending
-            # row is polled for directly rather than assumed the instant the key is up.
-            for _ in range(25):
-                if js(br, "var p = document.getElementById('ex-verdict');"
-                          "return {p: !!(p && p.dataset.pending === '1')};")["p"]:
-                    break
-                br.sleep(0.2)
+            # PLACE, not for THIS step's own landing to have reached it, so the panel is polled
+            # for the condition itself — shown AND pending — rather than assumed the instant the
+            # key is up, or after some fixed sleep too short for the road actually picked.
+            wait_for(br, "(()=>{var p=document.getElementById('ex-verdict');"
+                         "return !!(p && p.hidden===false && p.dataset.pending==='1');})()")
 
             panel = js(br, "var p = document.getElementById('ex-verdict');"
                           "if (!p) return {present: false};"
