@@ -2298,6 +2298,45 @@ const HARD = {
   };
 }
 
+// 12b · THE FIVE ARRIVALS ANSWER TOO (charter shelf 7, naряд S-06), each proved by a pair BUILT to
+//       win it — `arrivalOf`'s own ranking, exercised through the one door it has, `passageFor`,
+//       never through an internal function this suite would otherwise have to reach past. Each
+//       built pair raises exactly the one reading its own arrival's fit reads and leaves every
+//       other reading at `fullRecord`'s own zero, so the winning name is a genuine ranking rather
+//       than a coincidence of the real collection's 121 records.
+{
+  // MISMATCH THE PAIR'S OWN TWO RHYTHMS, so INTERFERED's own fit — which two untouched
+  // `fullRecord`s would otherwise hand a perfect 1, both carrying the same default step and
+  // angle — never outranks the arrival a given pair is built to prove. Left off only for
+  // INTERFERED's own pair, where the match IS the reading being proved.
+  const detune = { ownDevice: { stepPx: 400.0, angleDeg: 90 } };
+  const runArrival = (label, bStructure, bTexture) => {
+    const wa = fullRecord("arr-a-" + label, {});
+    const wb = fullRecord("arr-b-" + label, { structure: bStructure || {} });
+    if (bTexture) Object.assign(wb.texture, bTexture);
+    let p, err = null;
+    try {
+      p = composer.passageFor({ workRecordA: wa, workRecordB: wb, direction: "a-to-b",
+                                routeRole: "middle", seed: 0 });
+    } catch (e) {
+      err = String((e && e.message) || e);
+    }
+    return { mode: (p && p.plan && p.plan.arrival && p.plan.arrival.mode) || null,
+             declined: (p && p.declined) || null, error: err };
+  };
+  out.arrivalVocabulary = {
+    CARRIED: runArrival("carried", Object.assign({}, detune)),
+    CONDENSED: runArrival("condensed",
+      Object.assign({ radial: { score: 0.9, centre: [0.3, 0.4] } }, detune)),
+    CRYSTALLIZED: runArrival("crystallized",
+      Object.assign({ regions: { line: { x: { at: 0.2 }, y: { at: 0.6 } } } }, detune),
+      { scoreFromCutLines: 0.85 }),
+    PROPAGATED: runArrival("propagated",
+      Object.assign({ rotational: { n: 4, score: 0.9 } }, detune)),
+    INTERFERED: runArrival("interfered", {})
+  };
+}
+
 // ---- ONE INSTRUMENT, BOTH SIDES OF THE LEVELS LAW --------------------------------------------
 // `adrift` publishes handles on two levels: its seam and its grain read the whole SURFACE, and its
 // flights, voids and homes belong to what stands inside a cell. So it is the plain case for the
@@ -2785,6 +2824,23 @@ else:
               f"({len(namesOnReal)} genres, played «{v['realPlayed']}»); every one carries the "
               f"sentence naming what it read: {v['everyGenreSaidSomething']}. The real pair's own "
               f"ranking: " + json.dumps(v["ranking"], ensure_ascii=False))
+
+        # --- row 0b · the five arrivals, each proved by a pair built to win it ------------------
+        # Charter shelf 7 names five arrivals — CARRIED, CRYSTALLIZED, CONDENSED, PROPAGATED,
+        # INTERFERED — and naряд S-06 lifted the choice among them off a two-way gate onto the
+        # same ranking-by-the-pair's-own-records shape row 0 above already proves for the genres.
+        # Each of the five checks below builds one pair through the public `passageFor` door,
+        # raising exactly the reading its own arrival's fit reads and leaving every other reading
+        # at the record's own zero, and asks the composed plan's own `arrival.mode` for the name
+        # the ranking actually played.
+        av = got["arrivalVocabulary"]
+        for _mode in ("CARRIED", "CRYSTALLIZED", "CONDENSED", "PROPAGATED", "INTERFERED"):
+            _row = av[_mode]
+            check(f"EX-COMPOSED the {_mode} arrival wins the pair built to read highest on it",
+                  _row["mode"] == _mode,
+                  f"built pair declined: {_row['declined']}; threw: {_row['error']}; the plan's "
+                  f"own arrival.mode read «{_row['mode']}»" if _row["mode"] != _mode
+                  else f"the plan's own arrival.mode read «{_row['mode']}» exactly as built")
 
         # --- row 1 · the fold, and the two laws that bind it ------------------------------------
         noMiracle = ["entrance", "quiet link", "return"]

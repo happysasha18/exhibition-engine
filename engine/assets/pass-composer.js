@@ -1277,12 +1277,19 @@
     banding: "band family", dominant_object: "figure", grid: "tile grid",
     radial: "radial reading", regions: "region count", texture: "grain"
   };
+  // THE CHARTER'S FIVE ARRIVALS (shelf 7). CRYSTALLIZED, PROPAGATED and INTERFERED joined
+  // CARRIED and CONDENSED on 2026-08-26 (naряд S-06); `arrivalOf`, beside `workParts`, is what
+  // ranks the five against a pair's own records and hands back the one that plays.
   var ARRIVAL_PHRASES = { CARRIED: "carried by the gesture already running",
-                          CONDENSED: "by condensing" };
+                          CRYSTALLIZED: "by crystallizing from a seed",
+                          CONDENSED: "by condensing",
+                          PROPAGATED: "by propagating through its own mirrored copies",
+                          INTERFERED: "by interfering with the departing work's own rhythm" };
   var LOCUS_PHRASES = {
     none: "", pole: " at its own pole {locusX}, {locusY}",
     "horizon-seam": " at its own horizon seam {locusX}, {locusY}",
-    gate: " at its own gate {locusX}, {locusY}"
+    gate: " at its own gate {locusX}, {locusY}",
+    "grain-seed": " at its own point of greatest disorder {locusX}, {locusY}"
   };
   var WORLD_NAMES = { sphere: "sphere", corridor: "corridor", "log-spiral": "log spiral" };
   var REGISTER_PHRASES = {
@@ -5361,7 +5368,7 @@
         reading = axisReading(work, TRAVEL_AXES[i]);
         if (reading !== null) ends[TRAVEL_AXES[i]] = encodeEnds(TRAVEL_AXES[i], reading);
       }
-      var found = locusOf(work), locusKind = found[0], locus = found[1];
+      var found = locusOf(work), locusKind = found[0], locus = found[1], locusFit = found[2];
       var polar = (work.structure || {}).polar || {}, keys = Object.keys(POLAR_WORLD).sort();
       var best = null, bestv = null, v;
       for (i = 0; i < keys.length; i++) {
@@ -5374,7 +5381,11 @@
       }
       return {
         sets: sets, counts: counts, fig: fig, ends: ends, measured: measuredParts(work),
-        locus: [LOCUS_KINDS.indexOf(locusKind)].concat(locus || [0, 0]),
+        // THE FOURTH ELEMENT IS locusOf's OWN fit, ADDED FOR arrivalOf (naряд S-06). The first
+        // three packed the kind and the point exactly as before; the fit itself stayed local to
+        // `compose`'s own casting, and `arrivalOf` needs it in hand to rank CONDENSED against the
+        // other four arrivals rather than only asking whether it is "none".
+        locus: [LOCUS_KINDS.indexOf(locusKind)].concat(locus || [0, 0]).concat([r4(locusFit)]),
         world: (best && bestv && bestv > 0) ? WORLDS.indexOf(POLAR_WORLD[best]) : -1,
         providerOf: (function () {
           var out = {};
@@ -5382,6 +5393,62 @@
           return out;
         }())
       };
+    }
+
+    // THE FIVE ARRIVALS, RANKED RATHER THAN GATED (charter shelf 7, naряд S-06). Every arrival is
+    // a candidate for every pair, exactly as a genre is (`genresFor`): each gets a fit read off
+    // the pair's own measured records and never off a typed floor, and the strongest fit plays.
+    //
+    // CARRIED has nothing of its own to read — the gesture already running is always available —
+    // so it stands at 0 and is what plays where none of the other four reads anything at all.
+    //
+    // CONDENSED reuses `locusOf`'s own reading of the arriving work's pole, seam or gate, already
+    // packed into `toP.locus` by `workParts` above (its fourth element is that reading's own fit).
+    //
+    // CRYSTALLIZED reads the arriving work's own texture score — how much of it reads as grain
+    // rather than as line, `measuredParts`'s own `textureScore` — as how strongly a seed at the
+    // frame's own least-ordered place suits it; the seed at that peak of disorder is what the
+    // grown effect's own distance-stagger then radiates order out from. The seed's own place is
+    // the arriving work's own measured region line where the record carries one — the same
+    // `regionLineXAt`/`regionLineYAt` the box law already reads for where a work's own structure
+    // divides — and is nameless where it does not, exactly as a locus with nothing to report reads
+    // "none" above.
+    //
+    // PROPAGATED reads the arriving work's own rotational reading, `rotationalScore`, gated only
+    // on there being more than one copy for the change to run through — `rotationalN >= 2` is an
+    // existence question, the same kind `genresFor`'s own "arrives on rings" already reads, and
+    // not a typed floor laid over a continuous number.
+    //
+    // INTERFERED reads the PAIR's own two rhythms — how near the two works' own measured lattices
+    // stand, in period and in angle, `latticePx`/`latticeAngleDeg` — the same two numbers overlay's
+    // own `scale` and `turn` handles already read off this pair for the same reason (charter shelf
+    // 10: near-matched rhythms beat into a moiré, and near angles do too). A pair with no measured
+    // lattice on either side reads nothing here, which is the honest answer and not a refusal.
+    function arrivalOf(fromP, toP) {
+      var mf = fromP.measured, mt = toP.measured;
+      var locusKind = LOCUS_KINDS[num(toP.locus[0])];
+      var locusAt = locusKind === "none" ? null : [toP.locus[1], toP.locus[2]];
+      var locusFit = num(toP.locus[3]);
+      var pool = [{ id: "CARRIED", fit: 0, kind: "none", at: null },
+                  { id: "CONDENSED", fit: locusFit, kind: locusKind, at: locusAt }];
+      var seedAt = (isFinite(mt.regionLineXAt) && isFinite(mt.regionLineYAt))
+        ? [r4(mt.regionLineXAt), r4(mt.regionLineYAt)] : null;
+      pool.push({ id: "CRYSTALLIZED", fit: readingOf(mt.textureScore),
+                  kind: seedAt ? "grain-seed" : "none", at: seedAt });
+      pool.push({ id: "PROPAGATED",
+                  fit: mt.rotationalN >= 2 ? readingOf(mt.rotationalScore) : 0,
+                  kind: "none", at: null });
+      var haveLattice = mf.latticePx > 0 && mt.latticePx > 0;
+      var ratio = haveLattice
+        ? Math.min(mf.latticePx, mt.latticePx) / Math.max(mf.latticePx, mt.latticePx) : 0;
+      var angleDelta = haveLattice
+        ? Math.abs(mt.latticeAngleDeg - mf.latticeAngleDeg) % 180 : 90;
+      pool.push({ id: "INTERFERED",
+                  fit: haveLattice ? clamp01(ratio * (1 - clamp01(angleDelta / 90))) : 0,
+                  kind: "none", at: null });
+      var best = pool[0], i;
+      for (i = 1; i < pool.length; i++) { if (pool[i].fit > best.fit) best = pool[i]; }
+      return { mode: best.id, locusKind: best.kind, locus: best.at, fit: best.fit };
     }
 
     function rowOf(plan) {
@@ -6040,10 +6107,11 @@
           if (k) add(one[0], one[1], one[2], k, one[3], [one[2].fig[k]]);
         });
 
-      var locusKind = LOCUS_KINDS[num(toP.locus[0])];
-      var arrival = { mode: locusKind !== "none" ? "CONDENSED" : "CARRIED",
-                      locusKind: locusKind,
-                      locus: locusKind === "none" ? null : [toP.locus[1], toP.locus[2]] };
+      // THE ARRIVAL IS THE STRONGEST OF THE CHARTER'S FIVE (shelf 7), read off the pair's own
+      // records by `arrivalOf` beside `workParts` above — the same ranking-not-gating shape
+      // `genresFor` already gives the genres, extended from the two this file knew (CONDENSED,
+      // CARRIED) to the five the charter names.
+      var arrival = arrivalOf(fromP, toP);
 
       var castOf = { pivot: ["pivot-carrier"], travel: ["traveller"],
                      arrival: ["arriving-figure", "departing-figure"] };
@@ -6636,10 +6704,12 @@
           // is still a word, and this plan has already said both.
           //
           // THE ARRIVAL IS THE ONE THE PLAN ALREADY DECIDED. `arrival.mode` is settled long before
-          // this fill runs — CONDENSED where the arriving work's own record names a destination,
-          // CARRIED where it does not — and the interfered arrival IS the condensed one. So the
-          // handle carries the plan's own answer rather than a second decision taken here.
-          wanted.arrival = arrival.mode === "CONDENSED" ? 1 : 0;
+          // this fill runs, by `arrivalOf` ranking the charter's five arrivals against the pair's
+          // own records (naряд S-06). INTERFERED is the shelf-7 arrival this module's own shader
+          // already carries, so the handle plays it exactly where the plan's own ranking named it
+          // — never on CONDENSED, which used to stand in for it here and is its own separate
+          // arrival with its own separate phrase.
+          wanted.arrival = arrival.mode === "INTERFERED" ? 1 : 0;
           // AND THE RULE THE TWO WORKS MEET UNDER IS ROLLED ON THE PAIR'S OWN DIE, over the six the
           // instrument publishes. The list is his and the choice is the score's, which is what the
           // register row says; the die is the same one every other choice in this file is made on,
