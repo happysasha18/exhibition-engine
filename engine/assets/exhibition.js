@@ -3618,15 +3618,13 @@
     // never arrive in time. It is asked for once per visit; every landing after the first returns at
     // the first line. Nothing per work is fetched: one file decides every crossing of the walk.
     passComposerOpen();
-    // THE HOST'S OWN FILE IS NOT ASKED FOR HERE, AND THE REASON IS WRITTEN DOWN RATHER THAN LEFT
-    // TO BE REDISCOVERED (U27 stage 2). It is asked for at the first DECLARE instead — one line in
-    // 15-motion.js — and a fetch begun at a declare cannot arrive in time for the crossing that
-    // declare belongs to, so the visitor's FIRST crossing of every visit falls to the walk's own
-    // glide whatever the pair. Measured on the cast route: 1 step of 19. Moving the ask to this
-    // door repairs it and was tried here; it also moves the instant the host exists, and two rows of
-    // `tests/test_pass_api.py` sequence a reload against the old instant and go red on it. The
-    // repair is therefore named for its own pass, with those two rows re-sequenced beside it,
-    // rather than half-landed in the middle of an assembly.
+    // THE HOST'S OWN FILE IS ASKED FOR HERE TOO, THE SAME LAW AS THE COMPOSER'S TWO LINES ABOVE
+    // (U27 stage 2, closing what §10.3's neighbour left open). `passOpen` is guarded on `passAsked`,
+    // so this is a no-op wherever an earlier road — the door's own pick, the first render — already
+    // fired it; what this line adds is the one path neither of those covers: it makes the landing
+    // itself, not a declare, the backstop that guarantees the fetch has started before the visitor's
+    // FIRST crossing is ever composed, whatever road brought the visit here.
+    passOpen();
     const g = gen === undefined ? passGen : gen;
     if (el === passLastEl && g === passLastGen) return;
     if (reason === "observe" && passNav && passNav.to

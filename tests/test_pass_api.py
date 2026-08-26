@@ -253,10 +253,12 @@ def room(br):
 def reload_and_prime(br):
     """Wait for the fresh host without spending a navigation step.
 
-    The first-room preload now asks for pass-layer.js while the hang is rendered. Older builds only
-    asked on the first step, so keep that step solely as a compatibility fallback. Spending it when
-    preload already succeeded can leave a real passage in flight underneath the diagnostic row and
-    makes a legal zero-duration test look like a decline from the previous transaction.
+    The first room's own landing now asks for pass-layer.js, a backstop that holds whatever road
+    brought the visit here; the render itself and the door's pick already ask earlier still. Older
+    builds only asked on the first step, so keep that step solely as a compatibility fallback for a
+    build with none of the three. Spending it when preload already succeeded can leave a real
+    passage in flight underneath the diagnostic row and makes a legal zero-duration test look like a
+    decline from the previous transaction.
     """
     ready(br)
     br.sleep(0.4)
