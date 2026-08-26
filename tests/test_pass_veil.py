@@ -26,6 +26,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   missing — never a silent pass.
 """
 import base64
+import hashlib
 import json
 import re
 import shutil
@@ -438,6 +439,10 @@ BROWSER_ROWS = [
     "PASS-VEIL row 15 · the console stays clean",
     "PASS-VEIL the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
     "PASS-VEIL row 16 · the captures are kept as evidence",
+    "PASS-VEIL red-on-bug · the sheets' own noise painted onto the picture: a pattern laid over a "
+    "work that carries its own",
+    "PASS-VEIL red-on-bug · the door hold widened past the door: the pass stalls on a still frame "
+    "mid-crossing",
 ]
 
 missing = [str(p) for p in PHOTOS if not p.exists()]
@@ -493,6 +498,42 @@ def bench_dir():
     return d
 
 
+def bench_dir_plant(path):
+    """Like `bench_dir()`, but the instrument's own file is served from `path` — a copy planted by
+    `plant()` with one rule changed — and the record's digest is recomputed to match, exactly as a
+    real build stamps the file it serves. Without this a planted file is refused unread rather than
+    measured, which is the same refusal `plant()`'s own docstring names for the Node road."""
+    d = Path(tempfile.mkdtemp(prefix="synth_veilbenchplant_"))
+    shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
+    settings = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+    text = Path(path).read_text(encoding="utf-8")
+    settings["pass"]["instruments"][NAME]["digest"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    for inst in sorted(TMP.glob("pass-inst-*.js")):
+        if inst.name == "pass-inst-%s.js" % NAME:
+            (d / inst.name).write_text(text, encoding="utf-8")
+        else:
+            shutil.copy2(inst, d / inst.name)
+    (d / "config.json").write_text(json.dumps(settings), encoding="utf-8")
+    (d / "photos").mkdir()
+    for p in PHOTOS:
+        shutil.copy2(p, d / "photos" / p.name)
+    shutil.copy2(ROOT / "tests" / "fixture_pass_elements.html", d / "index.html")
+    return d
+
+
+def highpass_energy(path, radius=2):
+    """The mean size of what a Gaussian blur of `radius` takes out of the frame — its own
+    high-frequency content. A pattern laid over a photograph (a periodic texture, a grain, a weave)
+    raises this; a photograph's own material, read at whatever level of the chain, does not."""
+    from PIL import Image, ImageFilter
+    import numpy as np
+    im = Image.open(path).convert("L")
+    blurred = im.filter(ImageFilter.GaussianBlur(radius))
+    a = np.asarray(im).astype(np.float64)
+    b = np.asarray(blurred).astype(np.float64)
+    return float(np.abs(a - b).mean())
+
+
 def js(br, expr):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % expr))
 
@@ -507,6 +548,21 @@ def ready(br, tries=80):
 
 def on_bench(fn):
     d = bench_dir()
+    try:
+        with serve(d) as base:
+            with Browser(width=VW, height=VH) as br:
+                br.navigate(base + "/index.html#" + NAME)
+                if not ready(br):
+                    return None
+                return fn(br)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def on_bench_plant(path, fn):
+    """Same road as `on_bench`, standing a PLANTED copy of this instrument instead of the built one —
+    the pixel-side twin of `run_node(instrument_file=...)`."""
+    d = bench_dir_plant(path)
     try:
         with serve(d) as base:
             with Browser(width=VW, height=VH) as br:
@@ -673,6 +729,80 @@ else:
         kept = sorted(p.name for p in SHOTS.glob("*.png")) if SHOTS.exists() else []
         check(BROWSER_ROWS[9], len(kept) >= 9,
               "%d captures kept at %s" % (len(kept), SHOTS))
+
+        # ---- red on bug: charter shelf 18's pattern laid over a work that carries its own --------
+        # `tA` and `tB` are the two thicknesses the shader already reads off the sheets' own noise —
+        # the walk that decides which work stands where and how coarsely it is read (§96-97 above).
+        # The plant below folds that same field into the OUTPUT colour as a visible modulation,
+        # which is the one thing the file's own comment says never happens. The pose stands the
+        # sheets at their widest so the noise the plant paints is there to find.
+        p5 = plant("paint",
+                   [('vec3 col = mix(colB, colA, cov);',
+                     'vec3 col = mix(colB, colA, cov) * (1.0 + 0.8 * (tA + tB - 1.0));')])
+        if p5 is None:
+            skip(BROWSER_ROWS[10], "the plant found nothing to change")
+        else:
+            pose = {"mix": 0.5, "thickness": 1.0, "bodies": 1.0, "depth": 0.6}
+
+            def shoot_paint(br, tag):
+                js(br, "window.__draw(%s); return 1;" % json.dumps(pose))
+                return png(br, SHOTS / ("redbug-paint-%s.png" % tag))
+            real_shot = on_bench(lambda br: shoot_paint(br, "real"))
+            mut_shot = on_bench_plant(p5, lambda br: shoot_paint(br, "paint"))
+            if real_shot is None or mut_shot is None:
+                skip(BROWSER_ROWS[10], "one of the two benches never reported ready")
+            else:
+                hp_real = highpass_energy(real_shot)
+                hp_mut = highpass_energy(mut_shot)
+                caught = hp_mut > hp_real * 2.0
+                check(BROWSER_ROWS[10], caught,
+                      "a Gaussian blur of the frame at mix 0.5 with the sheets at their widest takes "
+                      "out %.3f of 255 on average — the photographs' own material, at whatever level "
+                      "of the chain each is read at; with the sheets' own thickness field folded "
+                      "into the colour the same measure rises to %.3f, more than twice as much — the "
+                      "sheets are drawn after all, which is the mark on the picture the file's own "
+                      "comment says never lands" % (hp_real, hp_mut))
+
+        # ---- red on bug: charter shelf 18's full-frame freeze ------------------------------------
+        # `FEEL_D0` is the dead band `feelOf` holds flat at either door (§4.4's 5%, matching
+        # `test_pass_adrift.py`'s own reading of this same construction on a neighbouring
+        # instrument). The plant below widens it past the middle of the dial, so most of the pass
+        # stands on the flat part of the curve and only a sliver in the middle still moves — a
+        # frame that stops changing while the dial keeps advancing, which is the growth-only pacing
+        # and full-frame freeze §18 bans.
+        p6 = plant("widedoor", [("var FEEL_D0 = 0.05;", "var FEEL_D0 = 0.45;")])
+        if p6 is None:
+            skip(BROWSER_ROWS[11], "the plant found nothing to change")
+        else:
+            SWEEP = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+            def sweep_shots(br, tag):
+                shots = []
+                for i, m in enumerate(SWEEP):
+                    js(br, "window.__draw({mix: %r}); return 1;" % m)
+                    shots.append(png(br, SHOTS / ("redbug-sweep-%s-%d.png" % (tag, i))))
+                return shots
+            real_shots = on_bench(lambda br: sweep_shots(br, "real"))
+            mut_shots = on_bench_plant(p6, lambda br: sweep_shots(br, "wide"))
+            if real_shots is None or mut_shots is None:
+                skip(BROWSER_ROWS[11], "one of the two benches never reported ready")
+            else:
+                real_diffs = [diff(real_shots[i], real_shots[i + 1])[0]
+                              for i in range(len(real_shots) - 1)]
+                mut_diffs = [diff(mut_shots[i], mut_shots[i + 1])[0]
+                             for i in range(len(mut_shots) - 1)]
+                frozen_real = sum(1 for d in real_diffs if d < 0.5)
+                frozen_mut = sum(1 for d in mut_diffs if d < 0.5)
+                caught = frozen_real == 0 and frozen_mut > 0
+                check(BROWSER_ROWS[11], caught,
+                      "nine steps of the dial from 0.1 to 0.9, each pair of neighbours diffed: with "
+                      "the door's own 5%% dead band every one of the eight pairs moves (least %.2f "
+                      "of 255); with the dead band widened to 45%% %d of the eight pairs stand at "
+                      "the same frame to the byte (%s) — the pass stalls on a still frame while the "
+                      "dial keeps advancing through most of its own middle"
+                      % (min(real_diffs), frozen_mut,
+                         ", ".join("%.1f-%.1f" % (SWEEP[i], SWEEP[i + 1])
+                                   for i, d in enumerate(mut_diffs) if d < 0.5)))
 
 # ---------------------------------------------------------------- report
 fails = [r for r in results if r[1] == "FAIL"]

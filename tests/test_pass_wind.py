@@ -26,6 +26,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   missing — never a silent pass.
 """
 import base64
+import hashlib
 import json
 import re
 import shutil
@@ -439,6 +440,8 @@ BROWSER_ROWS = [
     "PASS-WIND row 15 · the console stays clean",
     "PASS-WIND the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
     "PASS-WIND row 16 · the captures are kept as evidence",
+    "PASS-WIND red-on-bug · the boundary flattened to the gust alone: the two works blend by one "
+    "weight across the whole frame",
 ]
 
 missing = [str(p) for p in PHOTOS if not p.exists()]
@@ -494,6 +497,48 @@ def bench_dir():
     return d
 
 
+def bench_dir_plant(path):
+    """Like `bench_dir()`, but the instrument's own file is served from `path` — a copy planted by
+    `plant()` with one rule changed — and the record's digest is recomputed to match, exactly as a
+    real build stamps the file it serves. Without this a planted file is refused unread rather than
+    measured, which is the same refusal `plant()`'s own docstring names for the Node road."""
+    d = Path(tempfile.mkdtemp(prefix="synth_windbenchplant_"))
+    shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
+    settings = json.loads((TMP / "config.json").read_text(encoding="utf-8"))
+    text = Path(path).read_text(encoding="utf-8")
+    settings["pass"]["instruments"][NAME]["digest"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    for inst in sorted(TMP.glob("pass-inst-*.js")):
+        if inst.name == "pass-inst-%s.js" % NAME:
+            (d / inst.name).write_text(text, encoding="utf-8")
+        else:
+            shutil.copy2(inst, d / inst.name)
+    (d / "config.json").write_text(json.dumps(settings), encoding="utf-8")
+    (d / "photos").mkdir()
+    for p in PHOTOS:
+        shutil.copy2(p, d / "photos" / p.name)
+    shutil.copy2(ROOT / "tests" / "fixture_pass_elements.html", d / "index.html")
+    return d
+
+
+def blend_residual(s, t, p):
+    """THE ROW-55-STYLE NUMBER (`test_pass_coverage.py`'s own `blend_residual`, restated here for a
+    second instrument). If the two works stood behind ONE weight of presence over the whole frame,
+    the picture would BE the blend `w*t + (1-w)*p` at every point for a single w. Fit the best such w
+    in closed form and return the RMS residual in channel units: a crossfade drives this near
+    nothing; a boundary read per point of the buffer cannot be written that way and leaves it large."""
+    import numpy as np
+    from PIL import Image
+    S = np.asarray(Image.open(s).convert("RGB")).astype(np.float64)
+    T = np.asarray(t.convert("RGB") if hasattr(t, "convert") else Image.open(t).convert("RGB")).astype(np.float64)
+    P = np.asarray(p.convert("RGB") if hasattr(p, "convert") else Image.open(p).convert("RGB")).astype(np.float64)
+    dt = (T - P).ravel()
+    ds = (S - P).ravel()
+    den = float(dt @ dt)
+    w = float(ds @ dt) / den if den > 0 else 0.0
+    res = ds - w * dt
+    return w, float(np.sqrt((res @ res) / res.size))
+
+
 def js(br, expr):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % expr))
 
@@ -508,6 +553,21 @@ def ready(br, tries=80):
 
 def on_bench(fn):
     d = bench_dir()
+    try:
+        with serve(d) as base:
+            with Browser(width=VW, height=VH) as br:
+                br.navigate(base + "/index.html#" + NAME)
+                if not ready(br):
+                    return None
+                return fn(br)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def on_bench_plant(path, fn):
+    """Same road as `on_bench`, standing a PLANTED copy of this instrument instead of the built one —
+    the pixel-side twin of `run_node(instrument_file=...)`."""
+    d = bench_dir_plant(path)
     try:
         with serve(d) as base:
             with Browser(width=VW, height=VH) as br:
@@ -669,6 +729,40 @@ else:
         kept = sorted(p.name for p in SHOTS.glob("*.png")) if SHOTS.exists() else []
         check(BROWSER_ROWS[9], len(kept) >= 7,
               "%d captures kept at %s" % (len(kept), SHOTS))
+
+        # ---- red on bug: charter shelf 18's alpha crossfade as arrival --------------------------
+        # The pose below stands `bend: 0`, which zeroes the row's own displacement (`push`, and so
+        # `disp`) — the only other thing that could move a pixel. With the boundary formula intact
+        # this leaves a plain per-point step at the gust's front; with the plant below it leaves a
+        # plain two-photograph crossfade, and nothing else in the frame moved to cause the
+        # difference the row below measures.
+        p4 = plant("flat-cov",
+                   [('float cov = clamp(0.5 + (front - alongS) / band, 0.0, 1.0);',
+                     'float cov = clamp(0.5 + (front - 0.5) * 3.0, 0.0, 1.0);')])
+        if p4 is None:
+            skip(BROWSER_ROWS[10], "the plant found nothing to change")
+        else:
+            pose = {"mix": 0.4, "bend": 0}
+
+            def shoot(br, tag):
+                js(br, "window.__draw(%s); return 1;" % json.dumps(pose))
+                return png(br, SHOTS / ("redbug-%s.png" % tag))
+            real_shot = on_bench(lambda br: shoot(br, "real"))
+            mut_shot = on_bench_plant(p4, lambda br: shoot(br, "flatcov"))
+            if real_shot is None or mut_shot is None:
+                skip(BROWSER_ROWS[10], "one of the two benches never reported ready")
+            else:
+                w_real, res_real = blend_residual(real_shot, wB, wA)
+                w_mut, res_mut = blend_residual(mut_shot, wB, wA)
+                caught = res_mut < res_real * 0.5 and res_real > 15.0
+                check(BROWSER_ROWS[10], caught,
+                      "fit the best single weight w of `arriving·w + departing·(1-w)` against the "
+                      "frame at mix 0.4, bend 0: with the boundary reading its own position the best "
+                      "fit still leaves a residual of %.1f of 255 (w=%.3f) — the frame is not any "
+                      "one weight's blend of the two files; with the boundary flattened to a plain "
+                      "function of the gust alone the same fit leaves only %.1f (w=%.3f), which is "
+                      "the alpha crossfade §18 bans, caught by how well ONE number now explains the "
+                      "whole frame" % (res_real, w_real, res_mut, w_mut))
 
 # ---------------------------------------------------------------- report
 fails = [r for r in results if r[1] == "FAIL"]
