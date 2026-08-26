@@ -45,6 +45,7 @@ MANIFEST = [
     "16-renderhang-series.js",
     "17-place-hash-boot.js",
     "18-i18n-memory-lang.js",
+    "19-verdict.js",
     "98-sound.js",
     "99-close.js",
 ]

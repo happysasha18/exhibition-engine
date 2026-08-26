@@ -38,6 +38,7 @@ SUITES = [
     "pass_coverage",
     "pass_composed",
     "pass_memory",
+    "pass_verdict",
     "pass_boxfold",
     "pass_droste",
     "pass_planet",
