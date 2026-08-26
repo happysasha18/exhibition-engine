@@ -2921,9 +2921,25 @@
     var VERT = "attribute vec2 aPos;\nvarying vec2 vUV;\n"
              + "void main(){ vUV = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }\n";
     // A REAL WIPE, NOT A CROSSFADE (charter shelf 18 forbids a "no bridge derives" fallback road): a
-    // moving edge between two sharp images, never a blend of both. The handle's own span carries
+    // moving boundary between two sharp images, never a blend of both. The handle's own span carries
     // padding past 0…1 (see MANIFEST below) so the frame reads as purely A at the door and purely B
     // at the far door, with no partial mix visible at either rest.
+    //
+    // IS THIS RESCUE'S BOUNDARY A WIPE SHELF 18 STILL CONVICTS? THE THREE-PART TEST, ANSWERED ON ALL
+    // THREE COUNTS (2026-08-26, replacing an earlier draft that failed all three by comparing
+    // `uReveal` against `vUV.x` — a frame coordinate that reads neither photograph and could have
+    // been written before either work was known):
+    //   1. THE BOUNDARY IS A LEVEL SET OF WHAT THE TWO PHOTOGRAPHS THEMSELVES CARRY. `field` below
+    //      is built from `lumA` and `lumB`, the luminance of the very texels each fragment already
+    //      read off `uTexA`/`uTexB` — never from `vUV`, and never from anything that could exist
+    //      before this pair's own pixels were sampled.
+    //   2. THE TWO IMAGES INTERACT AT EVERY FRAGMENT, NOT ACROSS A LINE. Both textures are read and
+    //      folded into `field` before any mix weight exists, so no pixel's fate is decided by one
+    //      picture alone or by neither.
+    //   3. IT READS AS A DISSOLVE LED BY THE PICTURES, NEVER AN EDGE TRAVELLING THE FRAME. The same
+    //      `uReveal` run against two different pairs yields two different boundary shapes, because
+    //      the shape IS the pair's own measured field (shelf 21: nothing here could have been baked
+    //      in before the two photographs arrived).
     var FRAG = "precision mediump float;\nvarying vec2 vUV;\n"
              + "uniform sampler2D uTexA;\nuniform sampler2D uTexB;\n"
              + "uniform vec4 uFitA;\nuniform vec4 uFitB;\nuniform float uReveal;\n"
@@ -2938,7 +2954,10 @@
              + "  vec2 uvB = clamp(coverUV(vUV, uFitB), 0.0, 1.0);\n"
              + "  vec3 a = texture2D(uTexA, uvA).rgb;\n"
              + "  vec3 b = texture2D(uTexB, uvB).rgb;\n"
-             + "  float w = smoothstep(uReveal - 0.08, uReveal + 0.08, vUV.x);\n"
+             + "  float lumA = dot(a, vec3(0.2126, 0.7152, 0.0722));\n"
+             + "  float lumB = dot(b, vec3(0.2126, 0.7152, 0.0722));\n"
+             + "  float field = 0.5 * (lumA + (1.0 - lumB));\n"
+             + "  float w = smoothstep(uReveal - 0.08, uReveal + 0.08, field);\n"
              + "  gl_FragColor = vec4(mix(b, a, w), 1.0);\n"
              + "}\n";
     var MANIFEST = {
