@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the gate instrument — the host's frame beside the lab module's</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own canvas.
+     One is visible at a time; the check shows the one it means and photographs it. -->
+<div id="moduleStage" class="stage"></div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="gates.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  var asked = false, warmed = false;
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled. So the bench is waited
+    // for rather than assumed, which is what a real visitor's walk does too.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    // EACH INSTRUMENT TRAVELS AS ITS OWN FILE, and a visit fetches only the ones its own score
+    // names. This page draws poses as well as commands, and a bench measures one instrument against
+    // another as often as it measures one alone, so it asks for every instrument the site's record
+    // names — by the same road an offer takes — and waits for the answer before it draws anything.
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var moduleStage = document.getElementById("moduleStage");
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+    // THE TWO ROADS DRAW ON ONE GRID. The host's own resolution ladder may shrink its buffer under
+    // the CSS frame while the lab module's canvas always stands at the device ratio, and a mask whose
+    // crossover is one buffer sample wide would then be one sample wider on one road than on the
+    // other. Pinned here, so a comparison of the two roads is a comparison of the mathematics.
+    window.__host.configure({ fixedScale: true });
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "gates") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «gates» effect"); return; }
+
+    // The one record both roads read. The module keeps its own copy of these five inside its
+    // closure; this is the same set handed to it at creation and moved through the same onParam,
+    // so the pose the host draws is the pose the module drew and never a guess at it.
+    var P = { jamb: 0.55, teeth: 9, swing: 0.35, press: 0.65, lead: 0.5 };
+    var hand = 0, clockAt = 0, shadeAt = 1, travelAt = 1, maskAt = 0;
+    var ctx = { images: imgs, reduced: false,
+                params: { jamb: P.jamb, teeth: P.teeth, swing: P.swing, press: P.press,
+                          lead: P.lead, seed: 20260813 } };
+    var api = def.create(moduleStage, ctx);
+    window.__api = api;
+
+    /* WHAT THE MODULE READ OFF THE DEPARTING FILE, AND WHAT THE PORT TAKES AS HANDLES. The module
+       opens the departing photograph once at creation and solves three numbers on it with the
+       motif's own instrument (gateOf): which axis the slot stands on, where it stands along that
+       axis as a share of the FILE, and half its own width on the same share. The instrument file may
+       not open a picture (§1.2), so a score row carries those three. They are read back out of the
+       module here, so both roads stand on ONE set of numbers and the comparison below is two roads
+       of one frame rather than two measurements of one photograph.
+
+       THE PORT SEATS THEM ITSELF, from the file's share into the frame, through the very fit the
+       host applies — which is what the module does too (gates.js:514-521). So the seated place is
+       never handed across; only the file's own reading is. */
+    var GATE = api.reading().slot;
+    function gateHandles() {
+      return { slotAxis: GATE.axis === "upright" ? 1 : 0,
+               slotPlace: GATE.inFile, slotHalf: GATE.halfInFile };
+    }
+    window.__gate = function () { return { measured: GATE, handles: gateHandles(),
+                                           reading: api.reading() }; };
+
+    window.__mix = function (v) { hand = +v; api.onParam("mix", v); };
+    window.__clock = function (s) { clockAt = +s; api.onParam("clock", s); };
+    window.__param = function (k, v) { P[k] = +v; api.onParam(k, v); };
+    /* THE JUDGE CHANNELS. `shade` and `travel` are the module's own and go to both roads. `mask` is
+       the FLEET'S — the module has no counterpart for it, so it moves on the port's road alone and
+       the two-road comparison is never taken with it standing. */
+    window.__judge = function (k, v) {
+      if (k === "shade") shadeAt = +v; else if (k === "travel") travelAt = +v;
+      api.onParam(k, v);
+    };
+    window.__mask = function (v) { maskAt = +v; };
+    window.__reading = function () { return api.reading(); };
+    window.__show = function (which) {
+      bench.show(which === "host");
+      moduleStage.classList.toggle("hidden", which !== "module");
+    };
+
+    /* THE SEATING, AS THE INSTRUMENT'S OWN `fit` ANSWERS IT. On the real road the host hands both
+       works' seating down on the frame state; a bench posing this instrument by hand has to hand it
+       the same numbers, so this is the instrument's own cover fit pulled in by the crop its manifest
+       publishes — one formula, read from the manifest rather than typed twice. */
+    var ZOOM = bench.manifest("gates").framings["0"].coverCrop;
+    function coverFit(iw, ih, w, h) {
+      var fa = w / Math.max(h, 1), ia = iw / Math.max(ih, 1);
+      var sx, sy;
+      if (ia > fa) { sx = fa / ia; sy = 1; } else { sx = 1; sy = ia / fa; }
+      return [sx / ZOOM, sy / ZOOM, 0, 0];
+    }
+
+    function pose(over) {
+      var host = document.querySelector("canvas[aria-hidden]");
+      var W = host ? host.width : innerWidth, H = host ? host.height : innerHeight;
+      var g = gateHandles();
+      var p = {
+        mix: hand, seed: api.reading().seed, t: clockAt, reduced: false,
+        jamb: P.jamb, teeth: P.teeth, swing: P.swing, press: P.press, lead: P.lead,
+        slotAxis: g.slotAxis, slotPlace: g.slotPlace, slotHalf: g.slotHalf,
+        shade: shadeAt, travel: travelAt, mask: maskAt,
+        cssWidth: innerWidth, cssHeight: innerHeight,
+        bufWidth: W, bufHeight: H,
+        aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+        bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight,
+        fitA: coverFit(imgs[0].naturalWidth, imgs[0].naturalHeight, W, H),
+        fitB: coverFit(imgs[1].naturalWidth, imgs[1].naturalHeight, W, H)
+      };
+      if (over) { for (var k in over) if (over.hasOwnProperty(k)) p[k] = over[k]; }
+      return p;
+    }
+    window.__pose = pose;
+    window.__values = function (over) { return bench.values("gates", pose(over)); };
+
+    // THE HOST DRAWS THE SAME POSE, through the same drawPose a running transaction takes. Handed an
+    // override it draws a pose the module was never given — which is how a row moves ONE handle and
+    // photographs what it did, with nothing else about the frame changed.
+    window.__hostDraw = function (over) {
+      bench.draw("gates", pose(over));
+      return api.reading();
+    };
+
+    // ---- the real transaction road ---------------------------------------------------------
+    // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
+    // arms and decodes both works off the walk markup above, builds the programme from the
+    // manifest, raises its curtain and runs its own frame loop.
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>

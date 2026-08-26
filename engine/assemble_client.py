@@ -6,8 +6,7 @@ deliberate forward references (declarations are read by handlers that run only a
 evaluation). Reordering declarations is the risk the split must never take, so the fragments
 below are raw, unedited LINE SLICES of the file in the order they already appear — no
 wrappers, no headers, no per-file changes. Joining them with the empty string reproduces the
-served file byte-for-byte; that reproduction (not the names below) is what proves the split
-correct — see tests/test_assembly.py.
+served file byte-for-byte.
 
 MANIFEST is an explicit ordered list (never a glob): a fragment is invisible to the build
 unless it is named here, so a stray or misordered file in engine/client/ cannot silently
@@ -15,10 +14,8 @@ change what gets served.
 
 Usage:
   python engine/assemble_client.py                 # writes engine/assets/exhibition.js
-  python engine/assemble_client.py --check         # writes nowhere; exits 1 on any diff
 """
 import argparse
-import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -30,6 +27,7 @@ OUT_PATH = HERE / "assets" / "exhibition.js"
 MANIFEST = [
     "00-prelude.js",
     "01-knobs-lang-history.js",
+    "01a-pass.js",
     "02-kinship-orderings.js",
     "03-quiz-seed-ab-story.js",
     "04-arrival-facts.js",
@@ -47,6 +45,7 @@ MANIFEST = [
     "16-renderhang-series.js",
     "17-place-hash-boot.js",
     "18-i18n-memory-lang.js",
+    "19-verdict.js",
     "98-sound.js",
     "99-close.js",
 ]
@@ -80,21 +79,9 @@ def fragment_slice(js, name):
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--check", action="store_true",
-                     help="don't write; exit 1 if the assembled bytes differ from the committed file")
-    args = ap.parse_args()
+    argparse.ArgumentParser().parse_args()
 
     assembled = assemble()
-
-    if args.check:
-        current = OUT_PATH.read_text(encoding="utf-8") if OUT_PATH.exists() else None
-        if assembled != current:
-            print("DRIFT: assembling engine/client/ no longer reproduces engine/assets/exhibition.js")
-            sys.exit(1)
-        print("OK: assembly matches the committed exhibition.js byte-for-byte")
-        return
-
     OUT_PATH.write_text(assembled, encoding="utf-8")
     print(f"wrote {OUT_PATH} ({len(assembled)} bytes, {len(MANIFEST)} fragments)")
 

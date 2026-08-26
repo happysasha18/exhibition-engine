@@ -19,7 +19,15 @@ import html
 import json
 import re
 import shutil
+import sys
 from pathlib import Path
+
+# A caller that imports this module (rather than running it as `python engine/build.py`, which
+# auto-prepends this file's own directory) does not necessarily have engine/ on sys.path — the
+# site's own release pipeline imports build.py this way and this import broke it. Put this file's
+# own directory on sys.path explicitly rather than assuming the caller did.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import assemble_client  # engine/assemble_client.py — sibling module
 
 # Set by build() — module-level so helpers read them without threading params (the original's shape)
 OUT = None               # the output bundle dir
@@ -684,12 +692,83 @@ def copy_gallery(display_max=None, mark_text=None):
             shutil.copytree(src / "assets", dst / "assets", dirs_exist_ok=True)
 
 
+def _clamp_int(x, dflt, lo, hi):
+    """The same clamp the client applies to a feel-knob (clampInt in engine/client/01-knobs-lang-
+    history.js), read back here so a number derived from a knob — the walk's own records cap, below
+    — never drifts from what the walk itself will actually deal (2026-08-19). A knob absent or not a
+    number falls back to `dflt`; a knob present is clamped into [lo, hi], exactly as the client
+    clamps the SAME config value at read time."""
+    try:
+        n = int(x)
+    except (TypeError, ValueError):
+        try:
+            n = int(float(x))
+        except (TypeError, ValueError):
+            return dflt
+    return max(lo, min(hi, n))
+
+
+def pass_capabilities():
+    """EX-PASS §4.4d — THE CLIENT'S OWN LIMITS, PUBLISHED SO THE COMPOSER CAN MEASURE AGAINST THEM.
+
+    A limit is part of the client's CAPABILITY: raising one is a rebuild, never a setting, and the
+    one home of the number is the `PASS_LIMITS` literal in engine/client/01a-pass.js. A site that
+    composes scores has to know what the client will accept — a score written past the fence is
+    refused before any instrument sees it, and the composer that wrote it never hears — so the
+    number is READ BACK OUT of the served client here and written into the settings record. Reading
+    it rather than restating it is what keeps the published number and the applied number one
+    number; a second copy could only drift.
+
+    `scoreBytes` is the whole weight a score may have, measured the way passScoreCheck measures it:
+    the length of the score written out as JSON. It is an observed baseline with its evidence, and
+    the evidence stands beside the literal it is read from.
+
+    `intentChars` is the length of the ONE field §4.4 calls prose — the authored line a score opens
+    with — and it is published here for the same reason and by the same road, added 2026-08-17 (U27
+    stage 1). A score whose intent runs past it is refused WHOLE, with «intent is no short text», and
+    stage 0 found what an unmeasured prose fence costs: 1 004 of 6 304 composed crossings wrote a
+    line longer than the 400 the client then applied, and every one of them was refused before an
+    instrument saw it. The client's cap was raised to 600 on that finding. The composer that writes
+    the line could not measure it, because the number reached the settings record nowhere; now it
+    does, and the number the composer measures against and the number the client applies are one
+    number rather than two copies. A composer handed no capability falls back to what the client
+    applies today, which is a fallback and not a second home."""
+    src = client_asset("exhibition.js").read_text(encoding="utf-8")
+    found = re.search(r"PASS_LIMITS\s*=\s*\{[^}]*\bbytes:\s*(\d+)", src)
+    if not found:
+        raise SystemExit("engine/assets/exhibition.js declares no PASS_LIMITS.bytes — the site has "
+                         "no score fence to measure against")
+    prose = re.search(r"PASS_LIMITS\s*=\s*\{[^}]*\bintent:\s*(\d+)", src)
+    if not prose:
+        raise SystemExit("engine/assets/exhibition.js declares no PASS_LIMITS.intent — the site has "
+                         "no fence on a score's authored line to measure against")
+    return {"scoreBytes": int(found.group(1)), "intentChars": int(prose.group(1))}
+
+
 def client_asset(name):
     """One client source file (exhibition.js/css, the worker template): the INSTANCE's own copy
     wins when its assets dir carries one — an instance that grew its client first keeps shipping
     it byte-exact while the generic client serves everyone else. Engine's own copy otherwise."""
     cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
     return cand if (cand and cand.exists()) else _ENGINE_ASSETS / name
+
+
+# The instrument record this bake produced: name → {src, version, digest}, filled by
+# copy_exhibition_assets and read at the config assembly. One home for one fact.
+_PASS_INSTRUMENTS = {}
+
+
+def _pass_instrument_sources():
+    """Every instrument file that ships, one path each. An instrument the INSTANCE carries wins over
+    the engine's own copy of the same name, which is client_asset's rule applied file by file; an
+    instrument only the instance carries ships too, so a site can bring instruments of its own."""
+    names = {}
+    for d in (_ENGINE_ASSETS, _INSTANCE_ASSETS):
+        if not d:
+            continue
+        for p in d.glob("pass-inst-*.js"):
+            names[p.name] = p
+    return list(names.values())
 
 
 def apply_namespace(text, ns):
@@ -866,6 +945,61 @@ def copy_exhibition_assets():
     write(OUT / "exhibition.js", strip_js_comments(js_src))
     css_src = client_asset("exhibition.css").read_text(encoding="utf-8")
     write(OUT / "exhibition.css", strip_css_comments(css_src))
+    # EX-PASS: the drawing layer travels as its own file, fetched by the client only when a walk
+    # asks for it. Absent from the assets dir, the bundle simply has none and every transition
+    # rides the walk's own glide.
+    #
+    # EVERY INSTRUMENT TRAVELS AS ITS OWN FILE, AND THE SITE'S RECORD NAMES WHAT EXISTS (§7). The
+    # engine knows no effect name, so nothing here is stamped into the host: the host is told
+    # neither an address nor a name at bake. What the bake produces instead is a RECORD — one entry
+    # per instrument, keyed by the instrument's own name, carrying the address the file is served
+    # at, the version it declares and the digest its served bytes weigh to. That record joins the
+    # site's own `pass` block in config.json (see the `pass` seam at the config assembly below),
+    # which is the same block that already carries the score tables and the score templates. A cue
+    # names an instrument, the host looks the name up in the record, and fetches that one file.
+    #
+    # WHY ONE FILE EACH. One file holding the farm makes a visit pay for twenty-five instruments to
+    # see one crossing, and it makes one byte fence answer for a number nobody can act on. One file
+    # per instrument makes the fence the honest unit and makes a visit pay for its own passage.
+    #
+    # THE FILE'S NAME IS THE INSTRUMENT'S NAME, and it is read from the file name alone — the source
+    # `pass-inst-<name>.js` serves as `pass-inst-<name>.js` and is recorded under `<name>`. The host
+    # refuses a file whose instrument declares a different name than the one it was fetched for, so
+    # a file name and the instrument inside it cannot drift apart unnoticed.
+    #
+    # The version has one home, each file's own `INSTRUMENT_VERSION` literal, read back out here.
+    # The digest is taken over the bytes actually written, never over the source: a digest over a
+    # file no visitor fetches would weigh the wrong thing.
+    global _PASS_INSTRUMENTS
+    _PASS_INSTRUMENTS = {}
+    for inst_path in sorted(_pass_instrument_sources()):
+        name = inst_path.name[len("pass-inst-"):-len(".js")]
+        inst_src = inst_path.read_text(encoding="utf-8")
+        found = re.search(r'var\s+INSTRUMENT_VERSION\s*=\s*"([^"]+)"', inst_src)
+        if not found:
+            raise SystemExit("%s declares no INSTRUMENT_VERSION — the site has no version to pin"
+                             % inst_path.name)
+        if "@@NS@@" in inst_src or "@@NS_UPPER@@" in inst_src:
+            inst_src = apply_namespace(inst_src, _NAMESPACE)
+        write(OUT / inst_path.name, strip_js_comments(inst_src))
+        _PASS_INSTRUMENTS[name] = {
+            "src": inst_path.name,
+            "version": found.group(1),
+            "digest": hashlib.sha256((OUT / inst_path.name).read_bytes()).hexdigest(),
+        }
+
+    # EX-PASS §4.4d: the passage composer travels the same way — its own file, fetched by the bundle
+    # once per visit at the walk's first landing, on a walk whose settings record actually carries
+    # the per-work records it reads. A bake without it simply serves none, the bundle's fetch answers
+    # 404, the refusal lands on the diagnostic surface and every crossing keeps the walk's own glide.
+    for _name in ("pass-layer.js", "pass-composer.js"):
+        _p = client_asset(_name)
+        if not _p.exists():
+            continue
+        _src = _p.read_text(encoding="utf-8")
+        if "@@NS@@" in _src or "@@NS_UPPER@@" in _src:
+            _src = apply_namespace(_src, _NAMESPACE)
+        write(OUT / _name, strip_js_comments(_src))
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
         if cand and cand.exists():
@@ -1034,6 +1168,15 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     default, the flip is a deploy argument. Identity comes from site.json — the engine knows
     no instance. ``display_max``: cap the served images' long edge (px) — the deploy passes it,
     tests omit it so the bake stays fast (EX-PROTECT-RES / INV-56)."""
+    # EX-BUNDLE-FRESH: reassemble engine/assets/exhibition.js from its engine/client/ fragments
+    # before anything else in the bake reads it — client_asset() below falls back to exactly
+    # this file. Before this call the served bundle could silently go stale relative to its own
+    # fragments: a real incident shipped an hours-stale bundle because nobody remembered to
+    # re-run `python engine/assemble_client.py` by hand after a fragment fix. Calling assemble()
+    # directly (not assemble_client.main()) skips its argparse, which would otherwise collide
+    # with this script's own CLI args. Idempotent — a bake over unchanged fragments writes back
+    # the same bytes — so every bake, test or deploy, always serves its own fragments fresh.
+    assemble_client.OUT_PATH.write_text(assemble_client.assemble(), encoding="utf-8")
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
     global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, COPYRIGHT_NO_ABOUT
     global _ENGINE_ASSETS, _INSTANCE_ASSETS, _NAMESPACE
@@ -1354,6 +1497,78 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # pick chips — it never enters a beat, so no analytics seam rides here (INV-1).
     if site_config.get("lang_geo"):
         config["lang_geo"] = site_config["lang_geo"]
+    # EX-PASS: the transition seam's site rung. The bake passes the block through as DATA and judges
+    # nothing in it — every name, range and limit is checked in the client at read time, and a value
+    # the register refuses falls back to its default with the refusal on the diagnostic surface. An
+    # absent block leaves every setting on its built-in default, so a site that sets nothing behaves
+    # exactly as it did before the seam.
+    if isinstance(site_config.get("pass"), dict) and site_config["pass"]:
+        config["pass"] = dict(site_config["pass"])
+    # EX-PASS-RECORDS (2026-08-19): `works` LEAVES config.json. Until today the site's `pass` block
+    # carried `works` straight through — one record per work of the whole collection — so the very
+    # first file a visitor's browser parses grew with the collection: his word of 2026-08-19 13:36,
+    # «какой размер по устройству?? почему это должно зависеть от числа работ?». The records still
+    # exist and the passage composer still reads them, but they now travel as a STATIC ASSET beside
+    # the other baked files — pass-workrecords.json — fetched by no browser on the walk. Only the
+    # Worker reads it, answering a selection's own ids at /api/pass/records. What config.json keeps
+    # in `works`'s place is `records`: the route, and a constant — the walk's own ceiling on how many
+    # ids one answer may ever carry, never a count that follows the collection.
+    if isinstance(config.get("pass"), dict) and "works" in config["pass"]:
+        block = config["pass"]
+        records = block.pop("works")
+        if not isinstance(records, dict):
+            raise SystemExit("site.json's pass.works is not an id → record map — the bake "
+                             "has nothing to key a lookup by")
+        records_text = json.dumps(records, ensure_ascii=False, indent=0, sort_keys=True) + "\n"
+        records_bytes = records_text.encode("utf-8")
+        write(OUT / "pass-workrecords.json", records_text)
+        # THE WALK'S OWN CEILING, DERIVED RATHER THAN TYPED TWICE. The door deals `spread_size`
+        # works, and the visitor may add `unfold_step` more, up to `max_unfolds` times (his 13:39
+        # word the same day, and the shape engine/client/01-knobs-lang-history.js:77-79 already
+        # clamps this exact way — SPREAD, UNFOLD, MAXU). `cap` is read off the SAME config knobs by
+        # the SAME bounds and defaults, never a second number typed here: a site that raises
+        # spread_size or max_unfolds moves the route's own ceiling with it, in one place,
+        # automatically. Where a site names none of them, the built-in defaults give 10 + 2*5 = 20.
+        _ex = config.get("exhibition") or {}
+        _spread = _clamp_int(_ex.get("spread_size"), 10, 3, 12)
+        _unfold = _clamp_int(_ex.get("unfold_step"), 5, 1, 12)
+        _maxu = _clamp_int(_ex.get("max_unfolds"), 2, 0, 5)
+        # THE STAMP IS WHAT MAKES A LONG CACHE SAFE (2026-08-19). The route's answer may be held for
+        # a day — the map behind it only changes when the site is rebuilt — and that is exactly the
+        # hole: a visitor who returns the day after a rebake would be handed yesterday's measurements
+        # for today's photographs, and a crossing composed off a stale reading is wrong in a way
+        # nothing on the page shows. So the address carries the map's own digest: the same selection
+        # asks at the same address for as long as the records stand, and the instant they change the
+        # address changes with them. The Worker reads only `ids`, so the stamp costs it nothing.
+        block["records"] = {
+            "route": "/api/pass/records",
+            "cap": _spread + _maxu * _unfold,
+            "stamp": hashlib.sha256(records_bytes).hexdigest()[:12],
+        }
+    # THE SITE NAMES WHAT EXISTS (§7). Beside everything the site wrote, the `pass` block carries the
+    # instrument record: one entry per instrument, keyed by its own name, with the address it is
+    # served at, the version it declares and the digest its served bytes weigh to. The host reads the
+    # instrument names out of the score's cues and their addresses out of this record, so the engine
+    # holds no instrument name and no instrument address of its own.
+    #
+    # A site may write entries of its own for instruments this bake does not carry, and they pass
+    # through untouched like every other value in the block. An entry whose name this bake DID write
+    # a file for takes the bake's own numbers: the bake weighed the bytes it served, and a digest
+    # from anywhere else would weigh a file no visitor fetches.
+    if _PASS_INSTRUMENTS:
+        block = config.get("pass")
+        if not isinstance(block, dict):
+            block = {}
+        record = dict(block.get("instruments") or {})
+        record.update(_PASS_INSTRUMENTS)
+        block["instruments"] = record
+        config["pass"] = block
+    # AND THE CLIENT NAMES WHAT IT CAN TAKE (§4.4d). Beside the instrument record stands the
+    # capability record: the limits the client applies, read out of the served client itself. The
+    # site composes against them — a score longer than `scoreBytes` is refused before any instrument
+    # sees it — and a site that reads the published number never has to keep a copy of it.
+    if isinstance(config.get("pass"), dict) and config["pass"]:
+        config["pass"]["capabilities"] = pass_capabilities()
     config["experiments"] = {}      # variant → flag → metric (empty registry)
     # EX-QUIZ-ONCE (INV-66) + EX-QUIZ-COPY: config seams join ONLY when the quiz is on —
     # flag off leaves config.json byte-for-byte today's (INV-60 fence).

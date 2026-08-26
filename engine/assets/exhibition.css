@@ -210,7 +210,12 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
    itself (never the full-viewport section), shown only for the keyboard (:focus-visible). */
 .exh-frame:focus{ outline:none; }
 .exh-frame:focus-visible{ outline:none; }
-.exh-frame:focus-visible img.work{ outline:2px solid var(--accent,#c9a86a); outline-offset:4px; }
+/* Safari can classify a tap on a tabindex frame as :focus-visible.  The prelude records the real
+   input origin before that focus is assigned, so only an actual keyboard journey receives this
+   useful halo; a finger never leaves the photograph looking selected. */
+html[data-ex-input="keyboard"] .exh-frame:focus-visible img.work{
+  outline:2px solid var(--accent,#c9a86a); outline-offset:4px;
+}
 
 /* the quiet share affordance — ONE link-glyph FLOATING over the walk (2026-07-09: the player
    and the link are chrome ABOVE the room, they never ride a frame or drift with a scroll).
@@ -343,7 +348,14 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
 .exs-stage.lane::-webkit-scrollbar{ display:none; }
 .exs-stage.lane img{ max-height:56vh; max-height:56dvh; max-width:64vw; flex:none; border-radius:2px;
   scroll-snap-align:center;
-  box-shadow:0 10px 34px rgba(0,0,0,.22); }
+  box-shadow:0 10px 34px rgba(0,0,0,.22);
+  /* EX-PROTECT (INV-49): the lane photograph is a face that shows a picture, so it wears the same
+     soft deter as every other one — the hung work, the door window, the polaroid, the enlarged view.
+     This one surface was missing it (the 2026-07-22 sweep covered the print and the zoom but the lane
+     predates both, from the 2026-07-07 series-room bake, and was never swept): a phone's long-press
+     showed the OS's own selection/lift halo and the native save sheet on the lane picture, reading as
+     a stray "selected" outline (his find, phone, 2026-08-18) — the class covers every place, not most. */
+  user-select:none; -webkit-user-select:none; -webkit-user-drag:none; -webkit-touch-callout:none; }
 .exs-stage.polaroids{ background:radial-gradient(130% 110% at 50% 12%, #1c1913 0%, #12100c 62%, #0d0c09 100%); }
 .exs-print{ position:absolute; background:var(--paper,#f4f1e8); padding:7px 7px 28px;
   border-radius:1px; cursor:pointer; box-shadow:0 14px 40px rgba(0,0,0,.5);

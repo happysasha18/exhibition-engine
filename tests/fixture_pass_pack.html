@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>the instrument-file bench</title>
+<style>html,body{margin:0;background:#111;height:100%}</style>
+</head>
+<body>
+<script>
+  // Every console error and every uncaught throw, kept so a row can read them rather than guess.
+  window.__errs = [];
+  window.onerror = function (m) { window.__errs.push(String(m)); };
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The bundle's two globals, standing in for the client so the file under test is the real built
+  // artifact with nothing about it stubbed: the diagnostics surface it hangs its bench on, and the
+  // join point it reaches the walk through.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script>
+(function () {
+  // THE HOST JOINS ONCE THE SITE'S RECORD IS SETTLED — read, or refused with its reason. That is
+  // one fetch later than this file's own script tag, so the page waits for it. Every road through
+  // the record reader ends in a join, including every refusal, so this wait always ends. No
+  // instrument file is fetched at that point: a visit asks for the instruments its own score names.
+  function go() {
+    if (!window.__host) { setTimeout(go, 20); return; }
+    var host = window.__host;
+    var gen = 900;
+
+    // What the host says about the site's record: where it read it, whether it was read or refused,
+    // the reason in the host's own words, and the names the record carries.
+    window.__record = function () { return host.report().record; };
+    // Every instrument file this visit has asked for, and nothing it has not.
+    window.__files = function () { return host.report().files; };
+    window.__registered = function () { return host.report().registered; };
+    window.__events = function () {
+      return host.report().events.map(function (e) { return { name: e.name, why: e.why }; });
+    };
+
+    // ASK FOR INSTRUMENTS BY NAME, the same road an offer takes. A bench draws no command of its
+    // own here, so the load is asked for outright and its answer — one reason per name, or null
+    // where the instrument reached the registry — is left where a row can read it.
+    window.__loaded = null;
+    window.__load = function (names) {
+      window.__loaded = null;
+      window.__exPass.bench.load(names, function (whys) { window.__loaded = whys; });
+      return true;
+    };
+
+    // A real command, offered to the real host. `took` is the host's own answer: true means it has
+    // taken responsibility for landing this transition, false means the walk's own glide lands it.
+    window.__offer = function (score) {
+      var seen = { docks: 0, glides: 0, curtains: 0 };
+      var hooks = {
+        dock: function () { seen.docks++; },
+        glide: function () { seen.glides++; },
+        curtain: function () { seen.curtains++; },
+        mark: function () {},
+        hangGeometry: function () { return null; },
+        handoff: function () {},
+      };
+      var cmd = { gen: gen++, kind: "step", reduced: false, saveData: false,
+                  from: { id: "a" }, to: { id: "b" },
+                  params: { flightMs: { base: 3000 }, qualityTier: { base: "standard" } },
+                  score: score };
+      var took = host.offer(cmd, hooks) === true;
+      return { took: took, seen: seen, instrument: host.report().instrument };
+    };
+
+    window.__ready = true;
+  }
+  go();
+})();
+</script>
+</body>
+</html>

@@ -116,11 +116,15 @@
     glideSpan = plan.span;
     gliding = true;
     const step = (nw) => {
-      if (atDoor || busy || sideOpen) { glideCancel(); glideGoal = null; return; }
+      // EVERY standing face stops the flight, by the one predicate the rest of this fragment uses.
+      // The three-flag list this replaced left a glide writing scrollY under an open closer-look or
+      // question card, where the snap-back guard is already holding the place — the two then fought
+      // for the position frame by frame.
+      if (faceStands()) { glideCancel(); glideGoal = null; passAbortNow("a face stands"); return; }
       const p = Math.min(1, (nw - t0) / dur);
       scrollTo(0, from + d * cv.at(p));                // the animator OWNS the position
       if (p < 1) glideRaf = requestAnimationFrame(step);
-      else { glideCancel(); glideGoal = null; }        // landed centered — no tail, no drift
+      else { glideCancel(); glideGoal = null; passLandNow(); }  // landed centered — no tail, no drift
     };
     glideRaf = requestAnimationFrame(step);
   }
@@ -147,17 +151,62 @@
   }
   // one step = advance exactly ONE frame from where the walk is — or from where a running
   // transition is headed, so a second input CHAINS to the next frame, never re-rounds backward.
-  function stepFrame(dir, velocity) {
+  function stepFrame(dir, velocity, interaction) {
     travelDir = dir < 0 ? -1 : 1;                        // the feet declare a direction (EX-LOAD-3)
     const els = stage.querySelectorAll(".exh-frame, .exh-fin");
     const stops = Array.prototype.map.call(els, frameCenter);
     if (!stops.length) return;
-    const base = gliding && glideGoal != null ? glideGoal : scrollY;
+    // WHERE THE STEP COUNTS FROM. The walk's own glide names its goal, and a step taken while it
+    // flies chains from that goal — that road is unchanged. A RENDERER holding the command is the
+    // second road to the same law (EX-GLIDE, SPEC.md:1329-1331): a new input mid-transition chains
+    // to the next frame and never re-rounds backward. While the renderer holds it the walk's own
+    // scroll has not moved — the passage is the motion, and the placement comes at the handoff — so
+    // `scrollY` still names the DEPARTING frame and a second gesture re-rounds onto it and
+    // re-declares the very step already in flight (U10 §3, four rows red: the visitor's second
+    // swipe bought a shortened crossing and no progress). The running transaction's own destination
+    // is where the walk is headed, so that is what this step counts from.
+    let base = scrollY;
+    if (gliding && glideGoal != null) base = glideGoal;
+    else if (passRunning() && passNav && passNav.kind === "step" && passNav.to) {
+      const held = passNav.to.id
+        ? stage.querySelector('.exh-frame[data-id="' + String(passNav.to.id).replace(/"/g, "") + '"]')
+        : document.getElementById("exh-fin");
+      if (held && document.body.contains(held)) base = frameCenter(held);
+    }
     const cur = nearestStop(stops, base);
     const k = Math.min(stops.length - 1, Math.max(0, cur + dir));
     if (k === cur) noteStuckStep(); else stuckBurst = [];   // EX-FRICTION: a clamped no-move step vs a real advance
     glideTargetEl = els[k];                              // the destination SECTION — a mid-glide rotation docks HERE (INV-86)
+    // EX-PASS: the transition is DECLARED here. This is the one place holding both works, the
+    // direction and the force, and it is the place that calls the landing — so a picture layer can
+    // be handed a whole command and hand control back on the arriving work. A clamped no-move step
+    // declares nothing: there is no work to arrive at.
+    const cmd = (k === cur) ? null : declare({
+      fromEl: els[cur], toEl: els[k], dir: dir,
+      span: Math.abs(stops[k] - stops[cur]),
+      kind: "step", cause: "step", velocity: velocity, interaction: interaction || null,
+    });
+    if (cmd) { passObserverSync(); passOpen(); }        // a changed landProgress takes effect between
+    if (cmd && passVisualTakes(cmd) && passOffer(cmd)) return;   // transitions; the layer's file is asked for once
+    // AN INPUT HASN'T ARRIVED YET IS NOT THE SAME FACT AS A DECLINE (2026-08-24): the layer script
+    // may simply still be in flight, the narrow window a gesture can land in on a visit's very first
+    // step. Held here, bounded, rather than taking the plain glide outright the instant it is asked —
+    // nothing has moved yet, so holding costs no frame either way this resolves.
+    if (cmd && passLayerPending(cmd)) {
+      passLayerAwait(cmd, (arrived) => {
+        // A NEWER DECLARE OWNS ITS OWN LANDING (same law `offer`'s own "offer-superseded" reads):
+        // a second gesture landing inside this hold's own window already re-ran this whole function
+        // and glided or offered on its OWN command, so acting on the stale one here would move the
+        // walk twice.
+        if (cmd.gen !== passGen) return;
+        if (arrived && passVisualTakes(cmd) && passOffer(cmd)) return;
+        glideToFrame(stops[k], velocity, "chain");
+        if (!gliding) passLandNow();
+      });
+      return;
+    }
     glideToFrame(stops[k], velocity, "chain");         // a second gesture keeps the speed it had
+    if (cmd && !gliding) passLandNow();                // already centred — the command lands within the frame
   }
   // the viewport metric moves under a RESTING walk (phone chrome collapses, a window resize) —
   // quietly re-dock the frame the eye is on to the new centre; mid-glide the landing already
@@ -170,6 +219,10 @@
   // zoom standing the walk beneath is re-docked too (invisibly, under the layer) so its exit lands true.
   let turnT = null, turnTargetEl = null;
   function onViewportTurn() {
+    // EX-PASS §10.3: a turn arriving while a renderer has TAKEN the command resizes the running
+    // transaction in place — the host's own instrument keeps its progress — rather than superseding
+    // it the way a fresh declare would. The free-glide path below is unaffected and unchanged.
+    if (passRunning()) { reframe({ w: innerWidth, h: innerHeight }); return; }
     if (gliding && glideTargetEl && document.body.contains(glideTargetEl)) {
       turnTargetEl = glideTargetEl;                    // remember the destination across coalesced turn events
       glideCancel(); glideGoal = null;                 // stop writing OLD-viewport positions at once
@@ -179,10 +232,11 @@
       if (document.documentElement.classList.contains("ex-walk")) {
         const stops = frameStops();
         if (stops.length) {
-          let y;
-          if (turnTargetEl && document.body.contains(turnTargetEl)) { y = frameCenter(turnTargetEl); restingEl = turnTargetEl; }
-          else if (restingEl && document.body.contains(restingEl)) y = frameCenter(restingEl);
-          else y = stops[nearestStop(stops, scrollY)];
+          let y, docked = null;
+          if (turnTargetEl && document.body.contains(turnTargetEl)) { docked = turnTargetEl; y = frameCenter(docked); restingEl = docked; }
+          else if (restingEl && document.body.contains(restingEl)) { docked = restingEl; y = frameCenter(docked); }
+          else { const i = nearestStop(stops, scrollY); y = stops[i]; docked = stage.querySelectorAll(".exh-frame, .exh-fin")[i] || null; }
+          passJump(docked, "rotate");                  // EX-PASS: a turn lands on a work, so it carries a command too
           scrollTo(0, y);
           guardHold = y;                               // if the zoom (a face) stands, hold the recomputed place beneath (EX-CHROME)
         }
@@ -268,7 +322,10 @@
     if (!document.documentElement.classList.contains("ex-walk")) return;
     const stops = frameStops();
     if (!stops.length) return;
-    scrollTo(0, restingEl ? frameCenter(restingEl) : stops[nearestStop(stops, scrollY)]);
+    const i = nearestStop(stops, scrollY);
+    const under = restingEl || stage.querySelectorAll(".exh-frame, .exh-fin")[i] || null;
+    passJump(under, "recentre");                       // EX-PASS: the re-centre under a leaving face lands on a work
+    scrollTo(0, restingEl ? frameCenter(restingEl) : stops[i]);
   }
   // DESKTOP wheel: one gesture → one frame. A mouse notch is a single event; a trackpad swipe is
   // a burst of them — both coalesce to ONE step (force ignored, phase 1). preventDefault kills
@@ -370,7 +427,12 @@
       // re-acceleration out of the crested tail (never sooner than the human double-swipe floor)
       // re-arms. A non-stepping event still feeds the ONE glide's SPEED: a rising peak re-times
       // the running glide to the same goal (force→speed, unchanged).
-      if (step) { wheelPeak = mag; stepFrame(step, mag); return; }
+      if (step) {
+        wheelPeak = mag;
+        stepFrame(step, mag, { kind: "wheel", x: e.clientX, y: e.clientY,
+                               energy: Math.min(1, mag / Math.max(1, VEL_SHARP)) });
+        return;
+      }
       if (mag > wheelPeak) {
         wheelPeak = mag;
         if (gliding && glideGoal != null) glideToFrame(glideGoal, wheelPeak, "retime");
@@ -392,7 +454,7 @@
     if (e.key === " " && e.shiftKey) dir = -1;         // shift+space pages back, as everywhere
     e.preventDefault();                                // the native jump never fights the glide
     if (e.repeat) return;                              // a held key = one frame per press
-    stepFrame(dir);
+    stepFrame(dir, 0, { kind: "key", x: innerWidth / 2, y: innerHeight / 2, energy: 0.12 });
   }, { passive: false });
 
   // EX-CHROME: while a face stands, rest the browser's own scroll keys behind it (the walk's step
@@ -417,15 +479,16 @@
   // here). Overlays (side room, quiz/gift card) and the door keep native scroll — see the guards.
   if (HAS_TOUCH) {
     try { window.@@NS_UPPER@@Motion.touchPager = true; } catch (e) {}
-    let tY = null, tLast = 0, tMoved = false;
+    let tY = null, tX = null, tLast = 0, tLastX = 0, tMoved = false;
     const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
     const NATIVE_TOUCH = "#ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound, .ex-share";
     addEventListener("touchstart", (e) => {
       if (!walkOwnsInput() || e.touches.length !== 1
           || (e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
-        tY = null; return;                             // door / overlays / chrome controls / multi-touch keep native touch
+        tY = tX = null; return;                        // door / overlays / chrome controls / multi-touch keep native touch
       }
       tY = tLast = e.touches[0].clientY;
+      tX = tLastX = e.touches[0].clientX;
       tMoved = false;
     }, { passive: true });
     // EX-CHROME: does some part of the face under the finger truly take this drag's axis?
@@ -478,20 +541,25 @@
         // kill). Only when the walk truly owns the input and the finger is not on chrome/an overlay.
         if (e.touches.length === 1 && walkOwnsInput()
             && !(e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
-          tY = tLast = e.touches[0].clientY; tMoved = false;
+          tY = tLast = e.touches[0].clientY;
+          tX = tLastX = e.touches[0].clientX; tMoved = false;
         } else return;
       }
       tLast = e.touches[0].clientY;
+      tLastX = e.touches[0].clientX;
       if (Math.abs(tLast - tY) > 6) tMoved = true;
       e.preventDefault();                              // the walk is paginated — no native scroll, no fly-through
     }, { passive: false });
-    addEventListener("touchcancel", () => { tY = null; });   // a system-cancelled touch leaves no stale drag
+    addEventListener("touchcancel", () => { tY = tX = null; });   // a system-cancelled touch leaves no stale drag
     addEventListener("touchend", () => {
       if (tY == null) return;
       const net = tY - tLast;                          // finger travels UP (net>0) = advance forward
-      tY = null;
+      const fromX = tX, toX = tLastX, toY = tLast;
+      tY = tX = null;
       if (!tMoved || Math.abs(net) < SWIPE_MIN) return;
-      stepFrame(net > 0 ? 1 : -1);                     // exactly one framed transition, force ignored (phase 1)
+      stepFrame(net > 0 ? 1 : -1, 0, {
+        kind: "touch", x: toX, y: toY,
+        energy: Math.min(1, Math.hypot(toX - fromX, net) / Math.max(innerWidth, innerHeight) * 3)
+      });                                              // exactly one framed transition, force ignored (phase 1)
     }, { passive: true });
   }
-

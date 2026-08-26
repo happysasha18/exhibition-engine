@@ -7,7 +7,7 @@
     try { sessionStorage.removeItem(PLACE_KEY); } catch (e) {}   // one-shot
     if (!m || m.v !== VER) return;                     // stale/foreign marker → the top, never an error
     const f = stage.querySelector('.exh-frame[data-id="' + m.id + '"]');
-    if (f) scrollTo(0, frameCenter(f));               // centered in the LIVE viewport (EX-GLIDE)
+    if (f) { passJump(f, "restore"); scrollTo(0, frameCenter(f)); }   // centered in the LIVE viewport (EX-GLIDE)
   }
 
   // ---- the permalink arrival (EX-SHARE-IN): the hash is a doorway, not a leash ----
@@ -46,7 +46,7 @@
     // frame, forward by default until a step declares a direction (EX-LOAD-3 / prover F5)
     travelDir = 1; preloadCancel();
     const f = stage.querySelector('.exh-frame[data-id="' + hid + '"]');
-    if (f) scrollTo(0, frameCenter(f));               // instant, centered in the LIVE viewport
+    if (f) { passJump(f, "hash"); scrollTo(0, frameCenter(f)); }      // instant, centered in the LIVE viewport
     // the consuming jump writes the place marker so the room's memory agrees with the eye
     try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: hid })); } catch (e) {}
   }

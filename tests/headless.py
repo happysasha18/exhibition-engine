@@ -61,13 +61,21 @@ def _wp_clean_rewrite(root):
 
 
 @contextlib.contextmanager
-def serve(root, hold=None):
+def serve(root, hold=None, answer=None):
     """The engine's ``serve``: the core server with the WP-CLEAN clean-URL map wired on by default.
 
     ``hold`` (optional): a MUTABLE dict ``{"match": substring, "delay": seconds}`` — any GET whose
     path contains ``match`` is held ``delay`` seconds before the bytes go out, so the EX-LOAD rows
-    meet a slow image DETERMINISTICALLY. Passed straight through to the core."""
-    with _core_serve(str(root), hold=hold, path_rewrite=_wp_clean_rewrite(str(root))) as base:
+    meet a slow image DETERMINISTICALLY. Passed straight through to the core.
+
+    ``answer`` (optional, 2026-08-19): a callable ``raw_path -> (status, content_type, body) or None``
+    that answers a request path directly, with no file behind it on disk — a project's stand-in for
+    an API route a CDN's own Worker serves in production (EX-PASS-RECORDS's ``/api/pass/records``).
+    Passed straight through to the core; see ``headless_harness.serve``'s own docstring for the
+    contract. ``None`` (the default) leaves every request to the WP-CLEAN map and the file system,
+    exactly as before this hook existed."""
+    with _core_serve(str(root), hold=hold, path_rewrite=_wp_clean_rewrite(str(root)),
+                      answer=answer) as base:
         yield base
 
 

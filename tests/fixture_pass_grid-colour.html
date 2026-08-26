@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the grid-and-colour instrument — the host's frame beside the lab module's two layers</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME. The host draws the crossing in ONE pass; the lab module is a one-work
+     module, so its own road is the two layers a crossing plays it as — the departing work's layer
+     running `out` on top, the arriving work's running `in` underneath. Both roads leave the frame
+     bare where no piece stands, so both show this page's own background there and the two are
+     comparable point for point. One road is visible at a time. -->
+<div id="moduleStage" class="stage">
+  <div id="modB" class="stage"></div>
+  <div id="modA" class="stage"></div>
+</div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="grid-colour.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  var KINDS = ["stripes", "rings", "tiles", "bands"];
+  var asked = false, warmed = false;
+
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+    // The resolution ladder is pinned so the drawing buffer does not walk under a comparison; the
+    // buffer is still the buffer the host binds, and every pose below reads it off the canvas.
+    window.__host.configure({ fixedScale: true });
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "grid-colour") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «grid-colour» effect"); return; }
+
+    var mountA = document.getElementById("modA"), mountB = document.getElementById("modB");
+    var apiA = null, apiB = null, cfg = null, pairIx = [0, 1];
+
+    // THE ONE RECORD BOTH ROADS READ. The port folds the crossing's two layers into one pass; the
+    // lab road is those two layers themselves, so the arriving layer is handed the module's own
+    // params with its two structural ends SWAPPED and its beats read backwards — which is what a
+    // crossing does with a module whose near door is the other work's structure.
+    function beatBack(w) { return [1 - w[1], 1 - w[0]]; }
+
+    window.__setup = function (c) {
+      cfg = JSON.parse(JSON.stringify(c));
+      if (apiA) { apiA.destroy(); apiA = null; }
+      if (apiB) { apiB.destroy(); apiB = null; }
+      pairIx = cfg.pair || [0, 1];
+      bench.pair(imgs[pairIx[0]], imgs[pairIx[1]]);
+      var shared = {
+        stagger: cfg.stagger, lead: cfg.lead,
+        colourPeriod: cfg.colourPeriod, colourPhase: cfg.colourPhase, colourAmp: cfg.colourAmp,
+        lightPeriod: cfg.lightPeriod, lightPhase: cfg.lightPhase, lightAmp: cfg.lightAmp
+      };
+      var pA = { flow: "out", kind: KINDS[cfg.kindA], arrival: "",
+                 countFrom: cfg.countFrom, countTo: cfg.countTo,
+                 angleFrom: cfg.angleFrom, angleTo: cfg.angleTo,
+                 countBeat: cfg.countBeat, angleBeat: cfg.angleBeat };
+      var pB = { flow: "in", kind: KINDS[cfg.kindB], arrival: cfg.arrival ? "carried" : "",
+                 countFrom: cfg.countTo, countTo: cfg.countFrom,
+                 angleFrom: cfg.angleTo, angleTo: cfg.angleFrom,
+                 countBeat: beatBack(cfg.countBeat), angleBeat: beatBack(cfg.angleBeat) };
+      var k;
+      for (k in shared) { pA[k] = shared[k]; pB[k] = shared[k]; }
+      apiA = def.create(mountA, { images: [imgs[pairIx[0]]], params: pA, reduced: false });
+      apiB = def.create(mountB, { images: [imgs[pairIx[1]]], params: pB, reduced: false });
+      return true;
+    };
+
+    // The two roads driven independently, which is what the port's own repair of the response
+    // curve's far end asks for: the port derives that far end on the frame it is drawing and the
+    // module carries a measured constant, so a comparison of the GEOMETRY stands both roads at one
+    // RAW dial and reaches it with each road's own hand.
+    window.__hands = function (hA, hB) {
+      if (apiA) apiA.onParam("part", hA);
+      if (apiB) apiB.onParam("part", hB);
+    };
+    window.__mix = function (v) { window.__hands(v, 1 - v); };
+    window.__reading = function () {
+      return { a: apiA ? apiA.reading() : null, b: apiB ? apiB.reading() : null };
+    };
+    window.__pieces = function (u) {
+      return { a: apiA ? apiA.pieces(u) : null, b: apiB ? apiB.pieces(1 - u) : null };
+    };
+    window.__show = function (which) {
+      bench.show(which === "host");
+      document.getElementById("moduleStage").classList.toggle("hidden", which !== "module");
+    };
+
+    // THE HOST DRAWS THE SAME POSE. Every number is the record above; the grid the shader samples on
+    // is read off the canvas the host actually raised, so the script and the shader work from one
+    // buffer rather than two guesses at one.
+    window.__pose = function (over) {
+      var cv = document.querySelector("canvas");
+      var p = {
+        mix: 0, clock: 0,
+        kindA: cfg.kindA, kindB: cfg.kindB,
+        countFrom: cfg.countFrom, countTo: cfg.countTo,
+        angleFrom: cfg.angleFrom, angleTo: cfg.angleTo,
+        countBeatIn: cfg.countBeat[0], countBeatOut: cfg.countBeat[1],
+        angleBeatIn: cfg.angleBeat[0], angleBeatOut: cfg.angleBeat[1],
+        stagger: cfg.stagger, lead: cfg.lead,
+        colourPeriod: cfg.colourPeriod, colourPhase: cfg.colourPhase, colourAmp: cfg.colourAmp,
+        lightPeriod: cfg.lightPeriod, lightPhase: cfg.lightPhase, lightAmp: cfg.lightAmp,
+        arrival: cfg.arrival, shade: cfg.shade === undefined ? 1 : cfg.shade,
+        mask: cfg.mask === undefined ? 0 : cfg.mask,
+        reduced: false,
+        cssWidth: window.innerWidth, cssHeight: window.innerHeight,
+        bufWidth: cv ? cv.width : 0, bufHeight: cv ? cv.height : 0,
+        aw: imgs[pairIx[0]].naturalWidth, ah: imgs[pairIx[0]].naturalHeight,
+        bw: imgs[pairIx[1]].naturalWidth, bh: imgs[pairIx[1]].naturalHeight
+      };
+      var k;
+      if (over) for (k in over) p[k] = over[k];
+      return p;
+    };
+    window.__hostDraw = function (over) {
+      var p = window.__pose(over);
+      bench.draw("grid-colour", p);
+      // the buffer may have been settled by the draw itself; where it moved, the pose is rebuilt on
+      // the buffer that now stands and drawn again, so the reading and the picture are one grid
+      var cv = document.querySelector("canvas");
+      if (cv && (cv.width !== p.bufWidth || cv.height !== p.bufHeight)) {
+        p = window.__pose(over);
+        bench.draw("grid-colour", p);
+      }
+      return p;
+    };
+    window.__values = function (over) { return bench.values("grid-colour", window.__pose(over)); };
+
+    // ---- the real transaction road ---------------------------------------------------------
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: opts.from || "a", n: 1 }, to: { id: opts.to || "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>

@@ -55,6 +55,7 @@
   function quizCardOpen(id) {
     const w = byId[id];
     if (!w || !w.quiz) return;
+    interrupt("quiz");   // EX-PASS §10.3: the question card stands in front of the walk
     const opener = document.activeElement;             // N7-A11Y (INV-102, B1): the card returns focus to its opener (the chip)
     quizOpener = opener;                               // remembered so the prize gift restores to the chip too (D4)
     quizWorkId = id;

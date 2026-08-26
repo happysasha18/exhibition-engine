@@ -18,6 +18,15 @@
   }
 
   function appendFrames(slice, startN) {
+    // The first selection is known here, before its first photograph is even drawn.  Start BOTH
+    // pieces of the crossing vocabulary now: the record wave and the collection-wide composer.
+    // Opening the composer only after the first landing made the first gesture of every visit a
+    // guaranteed plain glide, however fast the network and however rich the pair.  The composer
+    // needs its fixed constants, not a record already in the map; the two records arrive in parallel
+    // while the visitor is choosing whether to move on.
+    passComposerOpen();
+    passRecordsAskFor(slice);
+    passOpen();
     document.getElementById("exh-fin")?.remove();
     const html = slice.map((id, i) => frameHTML(id, startN + i)).join("");
     stage.insertAdjacentHTML("beforeend", html);
@@ -71,4 +80,3 @@
     fin.querySelector("#ex-return")?.addEventListener("click", doorReturn);
     counter.querySelector(".tot").textContent = String(shown).padStart(2, "0");
   }
-

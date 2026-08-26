@@ -73,9 +73,19 @@
   // comment already stated (a pointer open forces no focus): the opener alone did not carry it,
   // since the quiz and the series room capture activeElement as opener under any modality.
   let _kbModality = false;
-  addEventListener("keydown", () => { _kbModality = true; }, { capture: true, passive: true });
+  // WebKit may report a touched `tabindex` element as :focus-visible.  The browser pseudo-class
+  // remains useful for keyboard navigation, but it cannot by itself preserve the distinction the
+  // gallery needs: a finger must never leave a decorative ring around a photograph.  Keep the
+  // input origin on the document root as well as in the modal helper, so CSS can require both
+  // facts for the work's own halo.  Pointerdown runs before the element receives focus.
+  function exInputModality(kind) {
+    _kbModality = kind === "keyboard";
+    document.documentElement.setAttribute("data-ex-input", kind);
+  }
+  exInputModality("pointer");
+  addEventListener("keydown", () => { exInputModality("keyboard"); }, { capture: true, passive: true });
   ["pointerdown", "mousedown", "touchstart"].forEach((e) =>
-    addEventListener(e, () => { _kbModality = false; }, { capture: true, passive: true }));
+    addEventListener(e, () => { exInputModality("pointer"); }, { capture: true, passive: true }));
   // EX-CHROME touch-press (his 2026-07-23). 1.11.1 gated every control's engaged FILL to hover:hover
   // so a finger tap leaves no sticky tint — correct, but it left a tap with NO feedback at all. This
   // gives a coarse pointer the response a mouse gets from hover: a press lights the control's OWN
@@ -410,4 +420,3 @@
   // (a beacon may be lost for the fastest bounces; the read's own caption owns that honesty).
   addEventListener("visibilitychange", () => { if (document.hidden) layDoorReady(); });
   addEventListener("pagehide", layDoorReady);
-

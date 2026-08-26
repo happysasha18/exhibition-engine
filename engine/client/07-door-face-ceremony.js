@@ -312,6 +312,8 @@
   // 2026-07-06 evening) — only the WAITS shortened; the reveal fade keeps its full span
   function doorPick(w, win) {
     if (busy) return;
+    interrupt("door");                                  // EX-PASS §10.3: the door ceremony stands in
+                                                         // front of the walk — end any transaction first
     busy = true;
     faceSync();                                        // the ceremony holds the lock (EX-CHROME)
     tlog("pick");
@@ -326,7 +328,20 @@
     const g = ++cerGen;
     const ok = () => g === cerGen;
     pick = w.id;
+    // The picked entrance is also the passage route's starting condition.  It resets only the
+    // visit die; edge-memory remains intact for related returns inside the browser session.
+    passBeginAtDoor();
     order = assembleOrder(pick);
+    // PREWARM (loading pulse head start, 2026-08-21 audit): the dealt hand is known the instant the
+    // door is picked, well before the ceremony's own timers render the hang — `appendFrames` below
+    // asks for these same three at that later instant, guarded to run once per visit either way, so
+    // starting them here costs nothing extra and spends the veil's own ~1.18*TEMPO seconds (the
+    // loading pulse a visitor watches) on the composer script, the first records wave and the
+    // drawing layer's own file, instead of starting all three only once the hang is already on
+    // screen — the head start the visitor's first gesture was always racing against.
+    passComposerOpen();
+    passRecordsAskFor(order.slice(0, SPREAD));
+    passOpen();
     recomputeQuizChoice();   // INV-66: the new arc = the new eligible set for the one quiz chip
     shown = SPREAD;                                    // a fresh arc = a fresh budget (INV-30/31)
     storyReset();                                      // …and a fresh story — no portion leaks across picks (EX-STORY)
@@ -412,6 +427,12 @@
       veil.hidden = true;
       busy = false;
       faceSync();                                      // the walk is bare — the lock lifts (EX-CHROME)
+      // INV-32c: the hand-over writes the place itself, so the walk's memory agrees with the eye
+      // from its first breath — the same write the #w- hand-over makes at its own jump. The
+      // watcher holds its report for the length of a stand, and the whole ceremony is one; the
+      // picked work is where the visitor stands the moment the walk is bare, before they have
+      // moved a frame.
+      try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: pick })); } catch (e) {}
       // the crossing warms its own picked work, so the room opens without a plate; but a
       // cache-evicted or slow-landing first image falls through to THIS ladder now the lock has
       // lifted (EX-DOOR-2e → EX-LOAD-2). And the feet warm forward from the threshold (EX-LOAD-3).
@@ -436,6 +457,8 @@
   let walkY = 0;                                       // the walk's place while a door covers it
   function doorReturn() {                              // the gallery's quiet exit (INV-31)
     if (busy || !doorAvailable) return;
+    interrupt("door");                                  // EX-PASS §10.3: leaving to the door also
+                                                         // stands in front of the walk
     tlog("exit");
     pulse("walk_exit");
     noteExit();                                        // EX-RETURN/INV-78: this real leave counts toward the 2nd-exit farewell
@@ -455,6 +478,9 @@
   }
 
   addEventListener("popstate", (ev) => {               // Back/Forward walk the faces (INV-32)
+    interrupt("popstate");                              // EX-PASS §10.3: the address road stands in
+                                                         // front of the walk too — end any transaction
+                                                         // in flight before a face renders over it
     const wasWalk = !atDoor;                            // the face we are LEAVING (before any render)
     const wasSide = sideOpen;                           // the side room may be the face we leave (EX-SERIES)
     ceremonyCancel();                                  // navigation wins mid-ceremony (EX-DOOR-2e)
@@ -484,7 +510,17 @@
       // EX-PULSE registry: a browser-Back (or Forward) leave from the WALK to the door counts ONCE,
       // exactly like the exit control — the funnel undercounted history leaves. The exit control uses
       // pushState (never popstate), so control and history never double-count.
-      if (wasWalk) { pulse("walk_exit"); noteExit(); }   // EX-RETURN/INV-78: a Back-leave counts like the exit control
+      if (wasWalk) {
+        pulse("walk_exit"); noteExit();                  // EX-RETURN/INV-78: a Back-leave counts like the exit control
+        // INV-32b: and it remembers the walk's place the same way the exit control does. The spec
+        // holds the two leaves alike — the exit control, the browser's own Back landing on the door
+        // and a returned-door reload all count as the same door render — so the walk this step
+        // returns to must stand where the visitor left it. Measured here, before the door's own
+        // scrollTo(0, 0) below rests it at the top and the reading is gone; the same MEASURED
+        // centered stop doorReturn takes, so Back restores a whole work rather than a sub-frame offset.
+        const stops = frameStops();
+        walkY = stops.length ? stops[nearestStop(stops, scrollY)] : 0;
+      }
       groundRest();
       // EX-DOOR-4 (F2 folded 11:50): a Back landing on the door over a circled, unanswered walk
       // deals FRESH — the history step's "as it stood" (INV-32a) yields on this one point, and the
@@ -511,8 +547,13 @@
     if (atDoor) {
       closeDoor();
       if (pick && byId[pick]) ground(byId[pick].dom);
+      // EX-PASS §1.1: declare refuses an absent destination, so the section this Back is about
+      // to rest on (the same measured stop doorReturn remembered as walkY) is named here — the
+      // same nearest-stop reading the rotation road already uses, not a null left for the watcher.
+      const stops = frameStops();
+      const sections = stage.querySelectorAll(".exh-frame, .exh-fin");
+      passJump(stops.length ? sections[nearestStop(stops, walkY)] : null, "popstate");
       scrollTo(0, walkY);                              // the closing screen the visitor left (INV-32b)
       tellStory();                                     // a return is a natural beat — any owed portion re-asks (EX-STORY)
     }
   });
-

@@ -26,12 +26,14 @@
     fillTold();                                         // the line, where the narrator has spoken
   }
 
-  const io = new IntersectionObserver((es) => es.forEach((x) => {
-    if (!x.isIntersecting) return;
-    if (!sideOpen && !quizOpen && !giftOpen
-        && performance.now() - lastResizeAt > 250) {
-      restingEl = x.target;                            // the eye's section, fin included — organic
-    }                                                  // moves only, never a reflow's stale pixels
+  // EX-PASS: ONE owner of «this work is now current». Everything the arriving work switches — the
+  // seen mark, the circle's count, the ladder, the remembered place, the tone, the counter, the
+  // share link, the plaque, the ear's label, the narrator's next ask — lives in this one function.
+  // The in-view watcher below calls it, and so does the end of a transition when the landCommit
+  // setting says so; passLandGate lets exactly one of them through per work per generation.
+  function landOn(target, reason) {
+    // the watcher's own shape, kept whole so the body below reads exactly as it did in the callback
+    const x = { target: target };
     // the closing screen is not a work: the plaque must not strand the last work's title + told
     // story over the finale. Fade the caption out like a frame leaving — never a jump, never stale.
     if (x.target.id === "exh-fin") {                   // the closing screen clears the walk chrome
@@ -52,8 +54,16 @@
       preloadAhead(+x.target.dataset.n);
     }
     if (window.__@@NS@@Seen) window.__@@NS@@Seen(w.id);      // the coat-check report (EX-MEMORY)
-    // the walk tracks its place per frame in view (INV-32c re-carried after the ↗ retired)
-    try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: w.id })); } catch (e) {}
+    // the walk tracks its place per frame in view (INV-32c re-carried after the ↗ retired) — and
+    // ONLY while the walk is the surface the visitor stands on. A face over the walk rests at its
+    // own top (the door writes scrollTo(0,0) as it renders), so the covered document's first frames
+    // cross this watcher's threshold under a scroll the HOUSE wrote, and an unguarded write replaced
+    // the place the visitor left with the walk's first work — gone before any return could restore
+    // it. The marker HOLDS for the length of the stand, the same freeze faceSync already keeps for
+    // the walk's own scroll beneath a standing face (`guardHold`, EX-CHROME/INV-70).
+    if (!faceStands()) {
+      try { sessionStorage.setItem(PLACE_KEY, JSON.stringify({ v: VER, id: w.id })); } catch (e) {}
+    }
     // a late callback must never re-live the tone ON the door (EX-ACCENT rests at the seams)
     if (!atDoor) ground(w.dom);
     counter.querySelector(".now").textContent = String(+x.target.dataset.n).padStart(2, "0");
@@ -88,7 +98,53 @@
     // …which also fills the visible told seat for this work, if the narrator has spoken (EX-STORY)
     storyPreAsk();                                     // near the fork, the NEXT portion asks ahead (INV-89)
     capSettle(x.target.querySelector("img.work"));     // EX-CAPTION (INV-97): seat the caption in the free zone at the frame's settle
-  }), { threshold: 0.55 });
+  }
+
+  // The watcher itself carries no product state any more: it names the eye's section and hands the
+  // arriving work to its one owner. Its threshold is the live landProgress setting, taken EXACTLY —
+  // a rounded threshold would make the setting lie about the moment it names. A changed value
+  // rebuilds the watcher at the next transition start (EX-PASS), never inside a running one.
+  let io = null, ioAt = null;
+  function ioSaw(es) {
+    es.forEach((x) => {
+      if (!x.isIntersecting) return;
+      // WHILE A RENDERER HOLDS THE COMMAND, THE COMMAND OWNS WHERE THE WALK IS. The walk's own
+      // scroll stands still under the curtain for the whole flight, so a device change arriving
+      // mid-flight leaves that standing offset naming a different section in the new viewport, and
+      // this watcher then reports a work the visitor is neither on nor going to — which warms its
+      // picture ladder and its one-ahead (U10 §4a measured 19 fresh requests on one turn, 18 of
+      // them pictures, for a work eight frames away). The report for the command's OWN destination
+      // is the arrival and passes exactly as it always did; every other section, for the length of
+      // the flight, is the stale offset speaking and is left alone.
+      if (passRunning() && passNav && passNav.to
+          && passNav.to.id !== ((x.target.dataset && x.target.dataset.id) || null)) return;
+      if (!sideOpen && !quizOpen && !giftOpen
+          && performance.now() - lastResizeAt > 250) {
+        restingEl = x.target;                          // the eye's section, fin included — organic
+      }                                                // moves only, never a reflow's stale pixels
+      // PASS-API §3: the gate binds the TAKEOVER road, where two landings could actually happen —
+      // never the plain walk. With visualLayer off the watcher runs exactly as it does on the
+      // shipped engine (fe52eac): every intersecting report re-runs landOn whole, ungated, so a
+      // repeat report after a rebuilt threshold or a language switch still refills the caption.
+      if (passGet("visualLayer") === "pass") passLandGate(x.target, "observe", landOn);
+      else landOn(x.target, "observe");
+    });
+  }
+  function ioBuild() {
+    const t = passGet("landProgress");
+    const held = [];
+    if (io) {
+      stage.querySelectorAll(".exh-frame.observed").forEach((f) => held.push(f));
+      const fin = document.getElementById("exh-fin");
+      if (fin) held.push(fin);
+      io.disconnect();
+    }
+    io = new IntersectionObserver(ioSaw, { threshold: t });
+    ioAt = t;
+    held.forEach((f) => io.observe(f));                 // a re-watch re-reports what is already in view;
+  }                                                    // the gate's per-generation claim absorbs that
+  function passObserverSync() { if (passGet("landProgress") !== ioAt) ioBuild(); }
+  ioBuild();
 
   // ---- EX-CAPTION (INV-97/98): the caption keeps to its own space -------------------------------
   // The centred picture is never moved or scaled here (INV-27); the caption block alone measures the

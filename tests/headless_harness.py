@@ -405,10 +405,10 @@ def orphan_guard():
 # ---------------------------------------------------------------- local http server
 
 @contextlib.contextmanager
-def serve(root, hold=None, path_rewrite=None):
+def serve(root, hold=None, path_rewrite=None, answer=None):
     """Serve ``root`` over http on a free port; yields the base URL. Quiet, threaded.
 
-    Two OPTIONAL project hooks, both inert by default so the template ships generic:
+    Three OPTIONAL project hooks, all inert by default so the template ships generic:
 
     ``hold`` (optional): a MUTABLE dict ``{"match": substring, "delay": seconds}`` — any GET whose
     path contains ``match`` is held ``delay`` seconds before the bytes go out. A project passes it to
@@ -418,7 +418,16 @@ def serve(root, hold=None, path_rewrite=None):
     ``path_rewrite`` (optional): a callable ``clean_path -> new_path_or_None``. A project passes it to
     remap a request path before it is served — e.g. a live host that serves clean extensionless
     addresses maps ``/about`` to ``/about.html`` on disk, so browser rows walk a visitor's real
-    addresses. Returning ``None`` leaves the path untouched. Off by default."""
+    addresses. Returning ``None`` leaves the path untouched. Off by default.
+
+    ``answer`` (optional, 2026-08-19): a callable ``raw_path -> (status, content_type, body) or None``.
+    ``raw_path`` is ``self.path`` UNCHANGED — the request path with its query string still attached —
+    so the callable reads its own arguments (an ``?ids=...`` list, say) without this harness parsing
+    them on its behalf. A project passes it to answer a request PATH ITSELF, with no file behind it on
+    disk, standing in for an API route a CDN's own Worker serves in production (the composed-pass
+    records route is the first consumer, at ``tests/test_pass_composed.py``). ``body`` may be ``str``
+    or ``bytes``. Returning ``None`` leaves the request to fall through to ``path_rewrite`` and the
+    ordinary file serving below, exactly as if ``answer`` had never been passed. Off by default."""
     root = str(root)
     hold = hold if hold is not None else {}
 
@@ -427,6 +436,22 @@ def serve(root, hold=None, path_rewrite=None):
             super().__init__(*a, directory=root, **k)
 
         def do_GET(self):
+            # optional project API route, answered directly with no file behind it on disk
+            if answer is not None:
+                served = answer(self.path)
+                if served is not None:
+                    status, content_type, body = served
+                    if isinstance(body, str):
+                        body = body.encode("utf-8")
+                    self.send_response(status)
+                    self.send_header("Content-Type", content_type)
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    try:
+                        self.wfile.write(body)
+                    except (ConnectionResetError, BrokenPipeError):
+                        pass    # the browser left mid-transfer
+                    return
             # optional project path remap (e.g. extensionless clean address → .html on disk)
             if path_rewrite is not None:
                 clean = self.path.split("?", 1)[0].split("#", 1)[0]

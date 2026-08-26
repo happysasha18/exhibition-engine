@@ -41,6 +41,8 @@ BROWSER_ROWS = [
     "INV-32(d) superseded arc never renders: fresh-top pick; old walk step renders the walk as it now is",
     "INV-32(e) «ещё 5» lays NO history step",
     "INV-32(f) work-page return is a plain script-free link that still keeps the place",
+    "INV-32(b/c) browser Back to the door holds the place; Forward lands on the work left, at its own scroll place",
+    "INV-32(c) the hand-over writes the walk's place at the pick, before the visitor moves a frame",
 ]
 
 DOOR_IDS = "Array.from(document.querySelectorAll('.exd-window')).map(b=>b.dataset.id)"
@@ -185,6 +187,51 @@ else:
                       and br.evaluate(AT_DOOR))
         check(BROWSER_ROWS[5], no_script and link_keeps_place and cold_plain,
               f"no_script={no_script} link_keeps_place={link_keeps_place} cold_plain={cold_plain}")
+
+        # g · the browser's own Back and Forward keep the visitor's place (U19 §5's recorded defect).
+        # The walk is left by the BROWSER's Back rather than the exit control, and the door renders
+        # over it: the place marker must hold for the length of that stand, and Forward must land the
+        # visitor on the work they left, at the scroll place they left it at. Read on the root road
+        # with the visual layer off — the client both roads share.
+        def go_forward(br, wait=1.6):
+            try:
+                br.evaluate("history.forward()")
+            except RuntimeError:
+                pass
+            br.sleep(wait)
+
+        fresh(br, base)
+        pick(br)
+        # h · the ceremony's own hand-over writes the place. The watcher holds its report for the
+        # length of a stand and the whole ceremony is one, so the walk would otherwise carry no
+        # memory of where it stands until the visitor moved a frame.
+        picked_id = br.evaluate("document.querySelectorAll('.exh-frame')[0].dataset.id")
+        handover = br.evaluate("sessionStorage.getItem('ex.place')")
+        try:
+            handover_id = (json.loads(handover) or {}).get("id") if handover else None
+        except ValueError:
+            handover_id = None
+        check(BROWSER_ROWS[7], handover_id == picked_id,
+              f"marker={handover} picked={picked_id}")
+
+        br.evaluate("document.querySelectorAll('.exh-frame')[3].scrollIntoView({behavior:'instant'})")
+        br.sleep(0.9)
+        left_id = br.evaluate(FRAME_IN_VIEW)
+        left_place = br.evaluate("sessionStorage.getItem('ex.place')")
+        left_y = br.evaluate("Math.round(scrollY)")
+        walked = bool(left_id) and left_y > 0 and left_place is not None
+        go_back(br, wait=1.6)
+        at_door_mid = br.evaluate(AT_DOOR)
+        place_holds = br.evaluate("sessionStorage.getItem('ex.place')") == left_place
+        go_forward(br)
+        back_on_walk = not br.evaluate(AT_DOOR)
+        lands_on = br.evaluate(FRAME_IN_VIEW)
+        land_y = br.evaluate("Math.round(scrollY)")
+        check(BROWSER_ROWS[6],
+              walked and at_door_mid and place_holds and back_on_walk
+              and lands_on == left_id and abs(land_y - left_y) <= 2,
+              f"walked={walked} at_door={at_door_mid} place_holds={place_holds} "
+              f"lands_on={lands_on} want={left_id} scrollY={land_y} want={left_y}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

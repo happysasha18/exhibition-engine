@@ -233,6 +233,7 @@
     if (zoomOpen || !el) return;
     const src = el.currentSrc || el.getAttribute("src") || el.src;
     if (!src) return;
+    interrupt("zoom");   // EX-PASS §10.3: the closer look stands in front of the walk
     inspectLaid = false; clearInspect();               // EX-PICSTAT: a fresh open is a new inspect episode
     zCancelTeardown();                                 // a reopen mid-teardown lands clean (rule 7)
     zSrcEl = el; zLastEl = el;                          // the tapped picture — the FLIP's place, re-measured on close

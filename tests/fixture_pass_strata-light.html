@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the parting-by-light instrument — the host's frame beside the lab module's</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  .hidden { visibility:hidden; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the two full-frame stages above are the only pixels a screenshot sees. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- TWO ROADS OF ONE FRAME, so they can be compared point for point: the host's own canvas (created
+     by pass-layer.js itself, position:fixed above everything) and the lab module on its own canvas.
+     One is visible at a time; the check shows the one it means and photographs it.
+
+     THE LAB MODULE HOLDS ONE WORK. It is created here on the DEPARTING work, which is the work the
+     instrument's own entry door stands whole, so the door the two roads share is a door both roads
+     can actually draw. Away from that door the two roads draw different pictures by construction —
+     the module parts one work into an empty frame, the instrument parts a PAIR into each other —
+     and the rows that compare them there compare the NUMBERS both roads compute rather than the
+     pixels neither can share. -->
+<div id="moduleStage" class="stage"></div>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through. `__exPass` is the diagnostics surface the client
+  // builds when diagnostics are on; here the bench stands in for it, so the file under test is the
+  // real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script src="strata-light.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  var asked = false, warmed = false;
+  function go() {
+    // THE HOST REACHES THIS PAGE ONE FETCH LATER THAN ITS OWN SCRIPT TAG. It reads the site's own
+    // settings record first — where every instrument's address, version and digest stand under the
+    // instrument's own name — and joins only when that question is settled.
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var moduleStage = document.getElementById("moduleStage");
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+
+    var def = null;
+    (window.LAB.effects || []).forEach(function (e) { if (e.id === "strata-light") def = e; });
+    if (!def) { window.__errs.push("the lab module registered no «strata-light» effect"); return; }
+
+    // THE LEVEL EACH WORK PARTS AT, TAKEN FROM THE MODULE'S OWN MEASUREMENT. `measure(image)` is
+    // published by the module itself and is the number a score is meant to carry, so both roads part
+    // each work at the very number the module solves for it and neither road guesses one.
+    window.__labMeasure = function (which) {
+      return def.measure(imgs[which === "b" ? 1 : 0]);
+    };
+    var LEVEL = { a: def.measure(imgs[0]).level, b: def.measure(imgs[1]).level };
+    window.__level = function () { return LEVEL; };
+
+    // The one record both roads read. The module keeps its own copy inside its closure; this is the
+    // same set handed to it at creation and moved through the same onParam.
+    var P = { level: LEVEL.a,
+              colourPeriod: 0, colourPhase: 0, colourAmp: 0,
+              lightPeriod: 0, lightPhase: 0, lightAmp: 0 };
+    var hand = 0, clockAt = 0;
+    var api = def.create(moduleStage, { images: [imgs[0]], params: P, reduced: false });
+    window.__api = api;
+
+    // The module's own dial is `part`; the instrument's hand is `mix`, and at the ENTRY DOOR the two
+    // are the same number on the same work — which is what makes the door row a comparison of two
+    // roads rather than of two pictures.
+    window.__part = function (v) { hand = +v; api.onParam("part", v); };
+    window.__clock = function (s) { clockAt = +s; api.onParam("clock", s); };
+    window.__param = function (k, v) { P[k] = v; api.onParam(k, v); };
+    window.__reading = function () { return api.reading(); };
+    window.__show = function (which) {
+      bench.show(which === "host");
+      moduleStage.classList.toggle("hidden", which !== "module");
+    };
+
+    // THE HOST DRAWS A POSE OF ITS OWN. Everything but `mix` rests where the module rests it, and
+    // the two levels are the module's own measurements of the two files.
+    function pose(over) {
+      var p = { mix: hand, mask: 0,
+                levelA: LEVEL.a, levelB: LEVEL.b, cellsA: 128, cellsB: 128,
+                colourPeriodA: 0, colourPhaseA: 0, colourAmpA: 0,
+                lightPeriodA: 0, lightPhaseA: 0, lightAmpA: 0,
+                colourPeriodB: 0, colourPhaseB: 0, colourAmpB: 0,
+                lightPeriodB: 0, lightPhaseB: 0, lightAmpB: 0,
+                t: clockAt, reduced: false,
+                aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+                bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight };
+      for (var k in (over || {})) p[k] = over[k];
+      return p;
+    }
+    window.__pose = pose;
+    window.__hostDraw = function (over) { return bench.draw("strata-light", pose(over)); };
+    window.__hostValues = function (over) {
+      return bench.values("strata-light", pose(over));
+    };
+
+    // WHAT THE PICTURE ITSELF SAYS, read off the host's own canvas. The judges' `mask` channel
+    // writes each work's own coverage as colour, so a row can read on the PICTURE whether this
+    // instrument's alpha is ever anything but 0 or 1 — the module's own «no fade» law.
+    //
+    // THE DRAW AND THE READ STAND IN ONE TASK, and they have to: the host's context keeps nothing
+    // between frames, so a read taken after the browser has composited would read a cleared buffer
+    // and report an empty frame however full it was.
+    window.__drawAndRead = function (over) {
+      bench.draw("strata-light", pose(over));
+      var cv = null;
+      var all = document.querySelectorAll("canvas");
+      for (var i = 0; i < all.length; i++) if (all[i].parentNode !== moduleStage) cv = all[i];
+      if (!cv) return null;
+      var w = cv.width, h = cv.height;
+      var o = document.createElement("canvas");
+      o.width = w; o.height = h;
+      var g = o.getContext("2d");
+      g.drawImage(cv, 0, 0);
+      var d = g.getImageData(0, 0, w, h).data;
+      // how many points of the frame carry a red or a green channel that is neither wholly off nor
+      // wholly on, which under the mask channel is an alpha standing between 0 and 1
+      var between = 0, red = 0, green = 0, none = 0, i2;
+      for (i2 = 0; i2 < d.length; i2 += 4) {
+        var r = d[i2], gg = d[i2 + 1];
+        if (r > 4 && r < 251) between++;
+        else if (gg > 4 && gg < 251) between++;
+        if (r >= 251) red++;
+        if (gg >= 251) green++;
+        if (r < 5 && gg < 5) none++;
+      }
+      return { w: w, h: h, points: d.length / 4, between: between, red: red, green: green,
+               none: none };
+    };
+
+    // WHAT THE LAB MODULE'S OWN MASK SAYS, cell by cell, so a row can weigh the port's own reading
+    // of a cell — its centre point — against the module's own reading of it, which is the mean of
+    // the file's pixels inside it. Both grids are built here with the module's own arithmetic; only
+    // the reading of a cell differs, which is exactly the departure the port records.
+    window.__cellAgreement = function (which, cells) {
+      var im = imgs[which === "b" ? 1 : 0];
+      var iw = im.naturalWidth, ih = im.naturalHeight, gw, gh;
+      if (iw >= ih) { gw = cells; gh = Math.max(1, Math.round(cells * ih / iw)); }
+      else { gh = cells; gw = Math.max(1, Math.round(cells * iw / ih)); }
+      function grid(smooth, w, h) {
+        var c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        var g = c.getContext("2d");
+        g.imageSmoothingEnabled = smooth;
+        g.drawImage(im, 0, 0, w, h);
+        return g.getImageData(0, 0, w, h).data;
+      }
+      // the module's own reading: the file drawn down to the mask grid, smoothed, so a cell is the
+      // mean of the pixels inside it
+      var mean = grid(true, gw, gh);
+      // the port's own reading: the file at full size, sampled at each cell's own centre
+      var full = document.createElement("canvas");
+      full.width = iw; full.height = ih;
+      var fg = full.getContext("2d");
+      fg.drawImage(im, 0, 0);
+      var fd = fg.getImageData(0, 0, iw, ih).data;
+      var lev = def.measure(im).level, x, y, agree = 0, total = gw * gh;
+      for (y = 0; y < gh; y++) {
+        for (x = 0; x < gw; x++) {
+          var k = (y * gw + x) * 4;
+          var lm = (0.2126 * mean[k] + 0.7152 * mean[k + 1] + 0.0722 * mean[k + 2]) / 255;
+          var px = Math.min(iw - 1, Math.floor((x + 0.5) / gw * iw));
+          var py = Math.min(ih - 1, Math.floor((y + 0.5) / gh * ih));
+          var j = (py * iw + px) * 4;
+          var lc = (0.2126 * fd[j] + 0.7152 * fd[j + 1] + 0.0722 * fd[j + 2]) / 255;
+          if ((lm >= lev) === (lc >= lev)) agree++;
+        }
+      }
+      return { cells: total, agree: agree, level: lev, grid: [gw, gh] };
+    };
+
+    // ---- the real transaction road ---------------------------------------------------------
+    // A hand-made command of exactly the shape the bundle freezes, offered to the real host: it
+    // arms and decodes both works off the walk markup above, builds the programme from the
+    // manifest, raises its curtain and runs its own frame loop.
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>

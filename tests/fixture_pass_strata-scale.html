@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the parting-by-scale instrument — the host's own frame</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  .stage { position:absolute; inset:0; }
+  /* The walk's own markup, as the host reads it: the host arms and decodes both works by finding
+     .exh-frame[data-id] in the document, exactly as it does on the real walk. Kept off-screen and
+     out of the way so the frame the check photographs carries nothing else. */
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  var asked = false, warmed = false;
+  function go() {
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    if (!warmed) {
+      if (!asked) { asked = true; window.__exPass.bench.load(window.__host.report().record.names,
+                                    function () { warmed = true; }); }
+      setTimeout(go, 20);
+      return;
+    }
+    var bench = window.__exPass.bench;
+    if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.pair(imgs[0], imgs[1]);
+    // THE HOST'S OWN CANVAS STARTS HIDDEN — there is no second stage to toggle away from here (no
+    // lab module travels with this port; the module holds one work and this instrument a pair, so
+    // the two roads share no picture to compare pixel for pixel — see the test this fixture serves,
+    // "WHAT IS COMPARED, AND AGAINST WHAT"), so it is shown once and stays shown for the whole bench.
+    bench.show(true);
+    window.__host.configure({ fixedScale: true });
+
+    var ZOOM = bench.manifest("strata-scale").framings["0"].coverCrop;
+    function coverFit(iw, ih, w, h) {
+      var fa = w / Math.max(h, 1), ia = iw / Math.max(ih, 1);
+      var sx, sy;
+      if (ia > fa) { sx = fa / ia; sy = 1; } else { sx = 1; sy = ia / fa; }
+      return [sx / ZOOM, sy / ZOOM, 0, 0];
+    }
+
+    var HANDOVER_DEF = bench.manifest("strata-scale").handles.handover.def;
+    var P = { handover: HANDOVER_DEF,
+              massCentreXA: 0.5, massCentreXB: 0.5, detailCentreXA: 0.5, detailCentreXB: 0.5,
+              colourPeriodA: 0, colourPhaseA: 0, colourAmpA: 0,
+              lightPeriodA: 0, lightPhaseA: 0, lightAmpA: 0,
+              colourPeriodB: 0, colourPhaseB: 0, colourAmpB: 0,
+              lightPeriodB: 0, lightPhaseB: 0, lightAmpB: 0,
+              mask: 0 };
+    var hand = 0, clockAt = 0;
+    window.__mix = function (v) { hand = +v; };
+    window.__clock = function (s) { clockAt = +s; };
+    window.__param = function (k, v) { P[k] = v; };
+    window.__setAll = function (obj) { for (var k in obj) if (obj.hasOwnProperty(k)) P[k] = obj[k]; };
+
+    function pose(over) {
+      var host = document.querySelector("canvas[aria-hidden]");
+      var W = host ? host.width : innerWidth, H = host ? host.height : innerHeight;
+      var p = {
+        mix: hand, clock: clockAt, reduced: false,
+        cssWidth: innerWidth, cssHeight: innerHeight, bufWidth: W, bufHeight: H,
+        aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,
+        bw: imgs[1].naturalWidth, bh: imgs[1].naturalHeight,
+        fitA: coverFit(imgs[0].naturalWidth, imgs[0].naturalHeight, W, H),
+        fitB: coverFit(imgs[1].naturalWidth, imgs[1].naturalHeight, W, H)
+      };
+      for (var k in P) if (P.hasOwnProperty(k)) p[k] = P[k];
+      if (over) { for (var k2 in over) if (over.hasOwnProperty(k2)) p[k2] = over[k2]; }
+      return p;
+    }
+    window.__pose = pose;
+    window.__values = function (over) { return bench.values("strata-scale", pose(over)); };
+    window.__hostDraw = function (over) {
+      bench.draw("strata-scale", pose(over));
+    };
+
+    var gen = 100;
+    window.__hooks = { docks: [], curtains: [], glides: [], marks: [] };
+    var hooks = {
+      dock: function (c) { window.__hooks.docks.push(c.gen); },
+      glide: function (c) { window.__hooks.glides.push(c.gen); },
+      curtain: function (on) { window.__hooks.curtains.push(!!on); },
+      mark: function (n) { window.__hooks.marks.push(n); },
+    };
+    window.__offer = function (score, opts) {
+      opts = opts || {};
+      window.__host.configure({
+        prepareBudgetMs: 400, settleSlackMs: 2000, fixedScale: true,
+        clockPin: opts.clock === undefined ? null : opts.clock,
+        progressPin: opts.progress === undefined ? null : opts.progress,
+      });
+      var cmd = {
+        gen: ++gen, from: { id: "a", n: 1 }, to: { id: "b", n: 2 },
+        kind: "step", cause: "bench", dir: 1, span: 100, velocity: 0,
+        reduced: false, saveData: false, rtl: false, dpr: window.devicePixelRatio || 1,
+        viewport: { w: innerWidth, h: innerHeight },
+        params: { flightMs: { base: 3000 }, qualityTier: { base: opts.tier || "standard" } },
+        score: score,
+      };
+      return { took: window.__host.offer(cmd, hooks) === true, gen: cmd.gen };
+    };
+    window.__cancel = function (why) { window.__host.cancel(why || "bench"); };
+    window.__report = function () { return window.__host.report(); };
+    window.__resize = function () { window.__host.resize({ w: innerWidth, h: innerHeight }); };
+    // A real transaction's own curtain can lower the host's canvas again after it idles; this puts
+    // the bench's own manual show back once a `__hostDraw` road is wanted after one has run.
+    window.__reshow = function () { bench.show(true); };
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>
