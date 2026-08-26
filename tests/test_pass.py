@@ -108,10 +108,15 @@ BROWSER_ROWS = [
     "EX-PASS a closer look opening mid-flight stops the flight",
     "EX-PASS the drawing layer's file is never fetched while the setting stands off",
     "EX-PASS the setting preloads the layer before the gesture and the walk keeps stepping",
-    "EX-PASS reduced motion refuses the layer and records why",
+    "EX-PASS reduced motion plays the charter's pardoned floor rather than refusing the layer",
     "EX-PASS the walk's rest record follows the dock: the turn after a crossing holds the arriving work",
     "EX-PASS a second gesture while a renderer holds the command chains to the NEXT frame",
+    "EX-PASS the pardoned floor names one voice, no miracle and no camera flight, at the quiet "
+    "tier's own duration floor",
+    "EX-PASS the composer's file still never reaches a reduced visit, even one whose floor plays",
     "EX-PASS the register names nothing the settings record already owns, so real refusals stand",
+    "EX-PASS RED-ON-BUG · reverting the pardon (charter shelf 19, naряд S-08) makes reduced motion "
+    "refuse the layer again",
 ]
 
 # A HOST THAT TAKES THE COMMAND AND HOLDS IT, registered through the seam's own door — the same
@@ -415,19 +420,38 @@ else:
                   and rep["device"]["webgl2"] is True,
                   f"requests-after-gesture={len(got)} layer={rep['layer']} scroll {y0}->{y1} webgl2={rep['device']['webgl2']}")
 
-            # 14 · a visitor who asked for less motion is never sent the picture's file
+            # 14 · a visitor who asked for less motion is still sent the picture's file (charter
+            # shelf 19's pardoned floor, naряд S-08, 2026-08-26). Before this naряд the layer refused
+            # itself outright here and pass-layer.js was never asked for; the walk fell through to
+            # its own glide at TEMPO 0.05, which reads as breaking rather than a passage playing
+            # calmly. Now the layer is offered exactly as for any other visitor — it is the SCORE
+            # that stays calm (row 17 below), not the layer refusing itself.
+            #
+            # THE GROUND TRUTH IS `rep["layer"]`, NOT THE NETWORK LOG. Row 13, right above, already
+            # fetched pass-layer.js in this same browser session — a fresh `enter()` re-executes the
+            # module from scratch (`passState`/`passLayer` reset with the navigation), but the file
+            # itself may now answer from the browser's own disk cache with no new entry on
+            # `net_log()`, so a row asking whether the FILE WAS EVER REQUESTED must not read that log
+            # a second time. `rep["layer"]` is the one fact the module itself reports and it answers
+            # for a fresh navigation regardless of the wire under it.
+            #
+            # THE REFUSAL FILTER NAMES THE LAYER, NOT ONLY THE REASON. `passRecordsAskFor` (the
+            # composed-pass records wave, a wholly different subsystem — it never needed the layer to
+            # begin with) also stands down for "reduced motion", on its own unrelated row of the
+            # refusal ring, and reading the reason alone caught that row instead of the layer's own.
+            # `what == "layer"` is `passOpen`'s own refusal shape (`passNote(passRefusals, {what:
+            # "layer", ...})`), so this reads exactly the fact this row is about.
             br.emulate_media(prefers_reduced_motion="reduce")
             enter(br, base, "diagnostics:on,visualLayer:pass")
-            br.net_clear()
             br.key("ArrowDown")
-            br.sleep(1.2)
+            br.sleep(1.6)
             rep = report(br)
-            quiet = [u for u in br.net_log() if "pass-layer" in u]
-            said = [r for r in rep["refusals"] if r.get("why") == "reduced motion"]
+            said = [r for r in rep["refusals"]
+                    if r.get("what") == "layer" and r.get("why") == "reduced motion"]
             check(BROWSER_ROWS[14],
-                  not quiet and bool(said) and rep["layer"] == "absent"
+                  rep["layer"] == "registered" and not said
                   and rep["device"]["reduced"] is True,
-                  f"requests={quiet} refusals={said[:1]} layer={rep['layer']}")
+                  f"refusals={said[:1]} layer={rep['layer']} device={rep['device']}")
             br.emulate_media()
 
             # 15 · the rest record follows the dock — red on U10 §4b's five rows.
@@ -504,7 +528,47 @@ else:
                       f"are {ids[1:4]}")
                 br.set_viewport(1280, 900)
 
-            # 17 · the register names nothing the settings record already owns — red on U8's find,
+            # 17 · the pardoned floor itself: one voice, no miracle, no camera flight, a duration at
+            # the quiet tier's own floor (charter shelf 19, naряд S-08). STUB_HOST intercepts the
+            # real `cmd` the host is offered — the score `passReducedScore` composes — without
+            # needing the real drawing layer's own WebGL instruments to be loaded at all.
+            br.emulate_media(prefers_reduced_motion="reduce")
+            enter(br, base, "diagnostics:on,visualLayer:pass")
+            br.net_clear()
+            br.key("ArrowDown")                     # fetches pass-layer.js (row 14 above)
+            br.sleep(1.6)
+            door = br.evaluate(STUB_HOST)
+            if door != "registered":
+                for i in (17, 18):
+                    skip(BROWSER_ROWS[i], f"the seam's registration door never opened: {door}")
+            else:
+                br.key("ArrowDown")                 # the reduced-motion crossing the stub captures
+                br.sleep(0.6)
+                got = json.loads(br.evaluate(
+                    "JSON.stringify({active: !!(window.__stub && window.__stub.active), "
+                    "score: (window.__stub && window.__stub.cmd) ? window.__stub.cmd.score : null})"))
+                score = got.get("score") or {}
+                cues = score.get("cues") or []
+                camera = score.get("camera") or {}
+                voices = [c.get("voice") for c in cues]
+                check(BROWSER_ROWS[17],
+                      got.get("active") is True and len(cues) == 1 and voices == ["letter"]
+                      and not camera.get("lead") and not camera.get("track")
+                      and score.get("duration") == 2000,
+                      f"active={got.get('active')} cues={voices} camera={camera} "
+                      f"duration={score.get('duration')}")
+
+                # 18 · the same crossing never asked for the composer's own file (EX-COMPOSED's law
+                # holds even here: the floor is a fixed grammar, never a genre pass-composer.js
+                # picks, so a reduced visit whose floor actually plays still never fetches it).
+                rep = report(br)
+                asked_composer = [u for u in br.net_log() if "pass-composer" in u]
+                check(BROWSER_ROWS[18],
+                      not asked_composer and rep["composer"]["state"] == "absent",
+                      f"requests={asked_composer} composer.state={rep['composer']['state']}")
+            br.emulate_media()
+
+            # 19 · the register names nothing the settings record already owns — red on U8's find,
             # still standing at U10 §5. The bake writes the instrument ADDRESS record into the
             # settings block under `pass.instruments`; a register setting of that same name read the
             # record off the site rung and refused it, «wants a list», about four times per step.
@@ -512,7 +576,14 @@ else:
             # — which is why U10 had to read the layer's own word one step into the visit. Both
             # halves are read here: no such note is minted, and the layer's own refusal, minted at
             # the first step, still stands ten steps later.
-            br.emulate_media(prefers_reduced_motion="reduce")
+            #
+            # THE STANDING NOTE IS SAVE-DATA, NOT REDUCED MOTION, SINCE THIS naряд (S-08, 2026-08-26,
+            # charter shelf 19's pardoned floor): reduced motion no longer refuses the layer at all —
+            # it plays the floor grammar instead (row 14 above), which is exactly why it can no
+            # longer serve as this row's long-lived refusal. Save-Data is the one decline this naряд
+            # left untouched, so it takes over the same job here.
+            br.inject("Object.defineProperty(navigator, 'connection', "
+                      "{get: function () { return {saveData: true}; }, configurable: true});")
             enter(br, base, "diagnostics:on,visualLayer:pass")
             for _ in range(10):
                 br.key("ArrowDown")
@@ -521,15 +592,66 @@ else:
             owned = [r for r in rep["refusals"]
                      if r.get("what") == "setting" and r.get("name") in ("instruments",
                                                                          "instrumentNames")]
-            layer_said = [r for r in rep["refusals"] if r.get("why") == "reduced motion"]
+            layer_said = [r for r in rep["refusals"] if r.get("why") == "save data"]
             names = sorted(s["name"] for s in rep["settings"] if s)
-            check(BROWSER_ROWS[17],
+            check(BROWSER_ROWS[19],
                   not owned and bool(layer_said) and "instruments" not in names
                   and "instrumentNames" in names,
                   f"after ten steps the ring carries {len(rep['refusals'])} refusals; notes about a "
-                  f"setting the record owns: {owned[:2]}; the layer's own «reduced motion» note "
+                  f"setting the record owns: {owned[:2]}; the layer's own «save data» note "
                   f"still on the ring: {bool(layer_said)}; the register's names are {names}")
-            br.emulate_media()
+
+    # 20 · RED-ON-BUG. Naряд S-08's own two decline-lines are reverted in a COPY of the built
+    # artifact — never the source tree, never git (the same convention tests/test_pass_coverage.py
+    # documents over its own `red_pack`) — and the row passes when the answer MOVES: with the
+    # naряд's text in place a reduced visit's layer takes the crossing; reverted to the pre-S-08
+    # text, the same visit's registration door never opens at all, which is the bug rows 14/17/18
+    # above exist to have fixed.
+    import shutil  # noqa: E402
+
+    def stub_gets_offered(served_base):
+        with Browser(width=1280, height=900) as brx:
+            brx.emulate_media(prefers_reduced_motion="reduce")
+            enter(brx, served_base, "diagnostics:on,visualLayer:pass")
+            brx.key("ArrowDown")
+            brx.sleep(1.6)
+            door = brx.evaluate(STUB_HOST)
+            if door != "registered":
+                return {"door": door, "active": False}
+            brx.key("ArrowDown")
+            brx.sleep(0.6)
+            got = json.loads(brx.evaluate(
+                "JSON.stringify({active: !!(window.__stub && window.__stub.active)})"))
+            got["door"] = door
+            return got
+
+    with serve(TMP) as base_now:
+        now = stub_gets_offered(base_now)
+
+    HURT = JS.replace(
+        'if (cmd.saveData) {\n      passMark("visual-declined", cmd, "save data");',
+        'if (cmd.reduced || cmd.saveData) {\n      passMark("visual-declined", cmd, '
+        'cmd.reduced ? "reduced motion" : "save data");',
+        1,
+    ).replace(
+        'const no = dataSaver() ? "save data" : passCan() ? null : "no webgl2";',
+        'const no = REDUCED ? "reduced motion" : dataSaver() ? "save data" : passCan() ? '
+        'null : "no webgl2";',
+        1,
+    )
+    moved = HURT != JS
+    HURT_DIR = Path(tempfile.mkdtemp(prefix="synth_pass_hurt_"))
+    shutil.copytree(TMP, HURT_DIR, dirs_exist_ok=True)
+    (HURT_DIR / "exhibition.js").write_text(HURT, encoding="utf-8")
+    with serve(HURT_DIR) as base_hurt:
+        hurt = stub_gets_offered(base_hurt)
+    shutil.rmtree(HURT_DIR, ignore_errors=True)
+
+    check(BROWSER_ROWS[20],
+          moved and now.get("active") is True and hurt.get("active") is not True,
+          f"with naряд S-08's two lines in place a reduced visit's layer took the crossing "
+          f"({now}); reverted to the pre-S-08 text the same visit's door read "
+          f"{hurt.get('door')!r} and active={hurt.get('active')}")
 
 # ---------------------------------------------------------------- report
 import shutil  # noqa: E402

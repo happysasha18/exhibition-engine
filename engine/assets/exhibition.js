@@ -3265,6 +3265,44 @@
     passFlush();
     passMark(name, cmd, why);
   }
+  // CHARTER SHELF 19's PARDONED FLOOR (naряд S-08, 2026-08-26). Shelf 18 names it in as many words:
+  // "a bare alpha crossfade ... is the ONE pardoned exception, and it is the reduced-motion grammar
+  // rather than a road for pairs" — a FIXED, hand-built floor, never a genre `pass-composer.js`
+  // picks. So this is composed here, on this side of the line, and the composer's own file still
+  // never reaches a reduced visit (`passComposerOpen` above keeps its stand-down; EX-COMPOSED holds
+  // unchanged). One cue (`voice: "letter"`, so the diagnostic surface reads it as the single voice
+  // it is), the host's own always-registered last-resort instrument (`@host/last-resort` — never a
+  // miracle, never a camera track, exempt from the coverage law and the tier budget by construction,
+  // per pass-layer.js's own note over `lastResortCast`), an empty `camera` record (no `lead`, no
+  // `track` — the flight shelf 19 asks this floor to do without), and a duration held at shelf 17's
+  // own quiet-tier FLOOR — 2 of its 2…4 s band (`TIERS[0].band` in pass-composer.js) — never its
+  // ceiling, so the pass reads as a still vista and not merely a slower ordinary crossing. The two
+  // door values match the last-resort instrument's own published handle span (`reveal`: -0.15…1.15,
+  // the same span `tests/test_pass_api.py`'s FOLD_BENCH already casts it on), so the frame reads as
+  // purely the departing work at the near door and purely the arriving one at the far door, with no
+  // partial mix visible at rest.
+  const PASS_REDUCED_DURATION_MS = 2000;   // shelf 17's own quiet-tier floor, TIERS[0].band[0]
+  function passReducedScore(dir) {
+    const span = PASS_REDUCED_DURATION_MS / 1000;
+    return {
+      schema: 2,
+      intent: "a still hold, asked for less motion",
+      duration: PASS_REDUCED_DURATION_MS,
+      direction: (+dir < 0) ? "b-to-a" : "a-to-b",
+      interruption: { withinMs: 500, resolve: "nearest-door" },
+      failLand: "arrive",
+      camera: {},
+      cues: [{
+        id: "reduced-floor", voice: "letter", instrument: { id: "@host/last-resort" },
+        window: [0, span],
+        doors: { "in": { handle: "reveal", value: -0.15 }, "out": { handle: "reveal", value: 1.15 } },
+        cadence: { reveal: "smooth" },
+        tracks: { reveal: { op: "map", "in": { source: "progress" }, from: [0, 1],
+                            to: [-0.15, 1.15] } },
+      }],
+    };
+  }
+
   // The one place a transition is declared. Every road that moves the visitor from one work to
   // another comes through here — the stepping input AND every programmatic jump — so the state
   // contract is the same for all of them, whatever the picture does.
@@ -3277,7 +3315,7 @@
     passGen += 1;
     const g = passGen;
     let score = null;
-    const raw = a.score || passComposeFor(a.fromEl, a.toEl);
+    const raw = a.score || (REDUCED ? passReducedScore(a.dir) : passComposeFor(a.fromEl, a.toEl));
     if (raw) {
       const seen = passScoreCheck(raw);
       if (seen.ok) {
@@ -3657,8 +3695,17 @@
   function passVisualTakes(cmd) {
     if (!passLayer) { passMark("visual-declined", cmd, "the layer is not registered"); return false; }
     if (cmd.kind === "jump") { passMark("visual-declined", cmd, "a jump carries no crossing"); return false; }
-    if (cmd.reduced || cmd.saveData) {
-      passMark("visual-declined", cmd, cmd.reduced ? "reduced motion" : "save data");
+    // REDUCED MOTION NO LONGER DECLINES HERE (charter shelf 19's pardoned floor, naряд S-08,
+    // 2026-08-26). It used to stand beside `saveData` and refuse the layer outright, so a visitor
+    // who asked for less motion fell through to the walk's own glide at TEMPO 0.05
+    // (01-knobs-lang-history.js:97), which reads as the walk breaking rather than a passage playing
+    // calmly. `cmd.score` is already the hand-built floor grammar by the time a reduced command
+    // reaches this line (`passReducedScore`, above `passStart`) — one voice, no miracle, no camera
+    // — so the layer is offered exactly as for any other visitor, and it is the SCORE that stays
+    // calm rather than the layer refusing itself. Save-Data is a different concern (bandwidth, not
+    // motion) and keeps its own decline unchanged.
+    if (cmd.saveData) {
+      passMark("visual-declined", cmd, "save data");
       return false;
     }
     if (cmd.params.visualLayer.base !== "pass") {
@@ -3679,7 +3726,10 @@
   // before it takes the plain glide instead. This file chose 350 ms and nothing measured it.
   const PASS_LAYER_HOLD_MS = 350;
   function passLayerPending(cmd) {
-    if (!cmd || cmd.reduced || cmd.saveData || cmd.kind === "jump") return false;
+    // `cmd.reduced` dropped from this bail-out with the same word as `passVisualTakes` above: a
+    // reduced-motion visitor's very first gesture is now worth waiting the same bounded window for,
+    // rather than always taking the plain glide before the layer script has even had a chance to land.
+    if (!cmd || cmd.saveData || cmd.kind === "jump") return false;
     if (passGet("visualLayer") !== "pass") return false;
     return passAsked && !passLayer && passState === "asked";
   }
@@ -3803,7 +3853,14 @@
   function passOpen() {
     if (passAsked || passLayer) return;
     if (passGet("visualLayer") !== "pass") return;
-    const no = REDUCED ? "reduced motion" : dataSaver() ? "save data" : passCan() ? null : "no webgl2";
+    // REDUCED MOTION IS DROPPED FROM THIS STAND-DOWN (charter shelf 19's pardoned floor, naряд
+    // S-08): the layer's own file is what draws the calm floor grammar `passReducedScore` composes
+    // (above `passStart`), so a reduced visit fetches it exactly as any other now. The composer's
+    // OWN fetch (`passComposerOpen`, above) still stands down for reduced — the floor grammar is a
+    // fixed, hand-built score and never a genre the composer picks, so a reduced visit still never
+    // asks for pass-composer.js (EX-COMPOSED holds unchanged). Save-Data is the unrelated bandwidth
+    // concern and keeps its own stand-down here.
+    const no = dataSaver() ? "save data" : passCan() ? null : "no webgl2";
     if (no) { passNote(passRefusals, { what: "layer", name: PASS_SRC, why: no }); passAsked = true; return; }
     passAsked = true;
     passState = "asked";
