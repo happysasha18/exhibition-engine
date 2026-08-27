@@ -1105,12 +1105,22 @@
       // already holds and the one programme the host builds from this manifest. The module's own two
       // canvases per layer — the picture and its grey twin — its clip paths, its band surfaces and
       // its own draw on every parameter change are what this port does without.
-      resources: { lean: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
-                           passes: 1, bytesEstimate: 0, variant: "lean" },
+      // `bytesEstimate` is DERIVED. Two texture reads at this manifest's own reference frame
+      // (`cssWidth`/`cssHeight` above, 1000×1000 CSS px), sized per variant off two facts
+      // already read elsewhere on this road: the render ladder's own floor scale (pass-layer.js
+      // `STEPS`, 0.50) for `lean`, the native frame for `standard`, and the device pixel ratio
+      // ceiling (`DPR_CAP`, 2) for `rich` — at four bytes a pixel (RGBA8, a fact of the format),
+      // doubled for the two
+      // texture slots this instrument reads. The rest is CAPABILITY: 0 own textures,
+      // 0 own framebuffers, 1 programme, 1 pass — a single-pass compositor that
+      // spends only the two source slots the host already holds.
+      resources: { lean: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0,
+                   programs: 1, passes: 1, bytesEstimate: 2000160, variant: "lean" },
                    standard: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0,
-                               programs: 1, passes: 1, bytesEstimate: 0, variant: "standard" },
+                               programs: 1, passes: 1, bytesEstimate: 8000160,
+                               variant: "standard" },
                    rich: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
-                           passes: 1, bytesEstimate: 0, variant: "rich" } },
+                           passes: 1, bytesEstimate: 32000160, variant: "rich" } },
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/grid-colour.js", commit: "5cf8968" },

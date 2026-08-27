@@ -631,12 +631,22 @@
       // canvases — the standing picture, the masses picture, two grey twins and two per travelling
       // piece — are the textures this port does not ask for: the masses reading is a bilinear blend
       // of the very texture already bound, and the twins are the luminance of the same fetch.
-      resources: { lean: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
-                           passes: 1, bytesEstimate: 0, variant: "lean" },
-                   standard: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
-                               passes: 1, bytesEstimate: 0, variant: "standard" },
+      // `bytesEstimate` is DERIVED. Two texture reads at this manifest's own reference frame
+      // (`cssWidth`/`cssHeight` above, 1000×1000 CSS px), sized per variant off two facts
+      // already read elsewhere on this road: the render ladder's own floor scale (pass-layer.js
+      // `STEPS`, 0.50) for `lean`, the native frame for `standard`, and the device pixel ratio
+      // ceiling (`DPR_CAP`, 2) for `rich` — at four bytes a pixel (RGBA8, a fact of the format),
+      // doubled for the two
+      // texture slots this instrument reads. The rest is CAPABILITY: 0 own textures,
+      // 0 own framebuffers, 1 programme, 1 pass — a single-pass compositor that
+      // spends only the two source slots the host already holds.
+      resources: { lean: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0,
+                   programs: 1, passes: 1, bytesEstimate: 2000096, variant: "lean" },
+                   standard: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0,
+                               programs: 1, passes: 1, bytesEstimate: 8000096,
+                               variant: "standard" },
                    rich: { textures: 0, textureSlots: 2, framebuffers: 0, pingPong: 0, programs: 1,
-                           passes: 1, bytesEstimate: 0, variant: "rich" } },
+                           passes: 1, bytesEstimate: 32000096, variant: "rich" } },
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/strata-scale.js", commit: "fc885a3",

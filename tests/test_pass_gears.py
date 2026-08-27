@@ -506,7 +506,14 @@ else:
                       and man["camera"]["authority"] == "stage"
                       and man["provenance"]["labPath"] == "lab/effects/gears.js"
                       and man["resources"]["standard"]["programs"] == 1
-                      and man["resources"]["standard"]["bytesEstimate"] == 0,
+                      # `bytesEstimate` is DERIVED (pass-inst-gears.js's own comment beside
+                      # `resources`), so it is real and it climbs the ladder — a zero here would be
+                      # the placeholder the fleet carried before every instrument published its own
+                      # declared cost.
+                      and man["resources"]["standard"]["bytesEstimate"] > 0
+                      and (man["resources"]["lean"]["bytesEstimate"]
+                           < man["resources"]["standard"]["bytesEstimate"]
+                           < man["resources"]["rich"]["bytesEstimate"]),
                       f"registered={reg} lacking={lacks} camera={man and man['camera']} "
                       f"provenance={man and man['provenance']} readiness={man and man['readiness']} "
                       f"coverCrop={man and man['framings']['0']['coverCrop']}")
