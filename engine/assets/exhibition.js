@@ -2520,6 +2520,23 @@
     // it scales with the number of works or pairs (his 19:21 word), and nothing about the person
     // travels in it.
     req.walkMemory = passWalkMemory();
+    // …AND THE SAME WALK, ROADS ONLY. His night-run adversarial follow-up on S-19 (2026-08-26) found
+    // that `walkMemory` above cannot serve a road's own cooldown: it flattens a step's genre in with
+    // every instrument its stack carried, the two vocabularies collide on at least one name
+    // (`kaleidoscope` names both a road and an instrument), and a mixed list of up to ~35 names
+    // dilutes the eight-road pool the design promises — the floor for a road just played landed near
+    // 1/36, not the claimed 1/9. `passWalkGenres` reads `step.genre` alone, never `step.stack`, so
+    // this can only ever name one of the eight roads `genresFor` answers with, however many
+    // instruments the same steps cast.
+    req.walkGenres = passWalkGenres();
+    // …AND THE SAME WALK, STRONG MOVES ONLY. His word of 2026-08-26 20:17: a miracle is a wow, a
+    // concept, it is subjective, and repeated it stops being one (naряд S-18). `walkMemory` names
+    // every letter a step carried and cannot serve this alone — a fold that already played once
+    // this walk still sits in that list beside every other letter, with nothing saying it was ever
+    // the ONE the crossing spent its miracle on. `passWalkMiracles` reads the one thing that does:
+    // which cue, if any, `pass-composer.js` itself voiced `"miracle"` on the step's own score,
+    // filed at the dock exactly where `passWalkMemory`/`passWalkGenres` already read.
+    req.walkMiracles = passWalkMiracles();
     // …AND THE VISIT'S OWN MEMORY OF ITSELF, shelf 16's fourth step, filled at this one place for
     // the same reason `walkMemory` is: the walk is the one that knows. Left OFF the request where
     // the visit has been shown nothing yet, rather than sent as three empty lists — an absent field
@@ -2555,6 +2572,37 @@
       if (!step) continue;
       if (step.genre) out.push(step.genre);
       (step.stack || []).forEach((id) => { if (id) out.push(id); });
+    }
+    return out;
+  }
+
+  // THE SAME LIST, ROADS ONLY. One more home beside `passWalkMemory`, read the same list a second
+  // time rather than filtered out of the first: a road and an instrument can share a name
+  // (`kaleidoscope` is both), so telling them apart AFTER they are flattened into one list is not
+  // sound — this reads `step.genre` and never touches `step.stack`, so what it hands back can only
+  // ever be one of the eight roads a step actually ran on, never an instrument's name by accident of
+  // spelling. `pass-composer.js`'s road cooldown (`coolOfRoad`) reads this list and never
+  // `walkMemory`, which is what keeps its pool bounded by the walk's own eight roads.
+  function passWalkGenres() {
+    const out = [];
+    for (let i = passRoutePlayed.length - 1; i >= 0; i--) {
+      const step = passRoutePlayed[i];
+      if (step && step.genre) out.push(step.genre);
+    }
+    return out;
+  }
+
+  // THE SAME LIST, STRONG MOVES ONLY (naряд S-18, 2026-08-27). Neither `passWalkMemory` nor
+  // `passWalkGenres` can serve `spendsTheMiracle`: the first names every instrument a step's stack
+  // carried whether or not it was voiced the miracle, and mixing the two would cool a fold on plays
+  // that never spent the slot. This reads `step.miracle` alone — the one instrument, if any, the
+  // step's own score voiced `"miracle"` on, filed once at the dock beside the other two lists — so
+  // it can only ever name a fold this walk actually spent, never a fold that merely played.
+  function passWalkMiracles() {
+    const out = [];
+    for (let i = passRoutePlayed.length - 1; i >= 0; i--) {
+      const step = passRoutePlayed[i];
+      if (step && step.miracle) out.push(step.miracle);
     }
     return out;
   }
@@ -3059,6 +3107,13 @@
     }
     const family = passFamilyOf(row.plan);
     const instrument = row.applied.instrument || passPrimaryOf(row);
+    // WHICH FOLD, IF ANY, THIS STEP SPENT THE CROSSING'S ONE MIRACLE ON (naряд S-18). Read off the
+    // composer's own score rather than the host's applied report: `voice: "miracle"` is
+    // `pass-composer.js`'s own decision, taken before anything is drawn, and it is the one place
+    // that already tells apart a fold that spent the slot from a repeat voiced an ordinary letter.
+    const miracleCue = row.score && Array.isArray(row.score.cues)
+      ? row.score.cues.find((c) => c.voice === "miracle") : null;
+    const miracle = (miracleCue && miracleCue.instrument && miracleCue.instrument.id) || null;
     passRoutePlayed.push({ edgeKey: edgeKey, direction: direction, family: family,
                            instrument: instrument, role: (row.request || {}).routeRole || null,
                            // The genre this passage ran on, beside the instruments it cast. A family
@@ -3067,6 +3122,11 @@
                            // find in this list, and it is recorded here rather than re-derived.
                            genre: row.genre || null,
                            stack: (row.applied.cues || []).map((c) => c.instrument),
+                           // The fold this step actually spent the miracle on, or none — read once
+                           // here and read back by `passWalkMiracles` alone, never mixed into
+                           // `stack`: a repeat instrument still stands in `stack`, it just is not
+                           // the miracle a second time.
+                           miracle: miracle,
                            world: instrument === "parquet" || !!(row.score && row.score.camera
                                                                   && row.score.camera.lead) });
     passRouteFamilyCount[family] = (passRouteFamilyCount[family] || 0) + 1;
@@ -3297,8 +3357,16 @@
         window: [0, span],
         doors: { "in": { handle: "reveal", value: -0.15 }, "out": { handle: "reveal", value: 1.15 } },
         cadence: { reveal: "smooth" },
-        tracks: { reveal: { op: "map", "in": { source: "progress" }, from: [0, 1],
-                            to: [-0.15, 1.15] } },
+        // THE HANDLE RIDES A CURVE, NOT THE BARE CLOCK. `pass-composer.js`'s own "progress" branch
+        // (`buildTemplate`, the `kind === "progress"` row) never lets a travelling handle read the
+        // bare clock straight: it wraps the clock in `{op:"curve", name:"smooth", ...}` first, so the
+        // handle eases into and out of its travel instead of moving at a constant rate from the first
+        // frame. `reveal` here rides the passage exactly the way those handles do — the same wrap,
+        // over the same clock — so the calm floor's one voice starts and stops gently rather than at
+        // full speed. Copied shape, not a new one.
+        tracks: { reveal: { op: "map",
+                            "in": { op: "curve", name: "smooth", "in": { source: "progress" } },
+                            from: [0, 1], to: [-0.15, 1.15] } },
       }],
     };
   }
@@ -8894,8 +8962,31 @@
       return { road: null, cues: [] };
     }
 
+    // Any dock that is not itself a judgeable crossing (a jump, or a landing on the door) still
+    // ENDS whatever crossing was pending before it — the panel is about the pair on screen NOW,
+    // and once a jump or the door has moved the visitor past it, the old pair is not on screen any
+    // more for a judge to press a button on. Clearing it here, in the one place every dock passes
+    // through, is what keeps a stray click from ever writing a verdict against a crossing nobody is
+    // looking at (P6). The same clear covers the ordinary case of two judgeable crossings landing
+    // back to back with no button pressed between them: the second dock discards the first pending
+    // row's note along with its `from`/`to`, rather than letting an unsent note ride into the row
+    // the SECOND crossing eventually gets (P5) — a judge who typed a note and then let the pair
+    // scroll past never gets that note reattributed; it is dropped exactly as the missed verdict is.
+    function verdictClearPending() {
+      verdictPending = null;
+      note.value = "";
+      // Only an ALREADY-SHOWN panel is touched here — a dock arriving before the first judgeable
+      // crossing (a jump or the door landing right after the visitor walks in) must not be the
+      // reason the panel first appears; it stays exactly as hidden as it was.
+      if (!panel.hidden) {
+        panel.dataset.pending = "0";
+        info.textContent = "";
+      }
+    }
+
     function verdictOnDock(cmd) {
-      if (!cmd || cmd.kind !== "step" || !cmd.from || !cmd.to) return;
+      verdictClearPending();
+      if (!cmd || cmd.kind !== "step" || !cmd.from || !cmd.to) return;   // a jump judges nothing
       const from = cmd.from.id, to = cmd.to.id;
       if (!from || !to || from === "door" || to === "door") return;   // a door is not a work
       const rc = verdictRoadAndCues(cmd);
