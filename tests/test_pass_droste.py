@@ -267,24 +267,38 @@ PORTS_OWN = [
      "the ring travels evenly in the RADIUS and not in the logarithm the picture is written in"),
 ]
 own_missing = [c for c, _ in PORTS_OWN if c not in REGION]
-check("PASS-DROSTE the port's own numbers stand in the file with the reason each was read from",
-      not own_missing and "THE PORT'S OWN NUMBER" in SOURCE_TEXT
-      and "IT TRAVELS IN THE RADIUS" in SOURCE_TEXT,
+# BEHAVIOUR NOT TEXT. A grep of "THE PORT'S OWN NUMBER"/"IT TRAVELS IN THE RADIUS" beside the
+# formula proves only that the heading and the formula sit in the same file — a defect could stand
+# right beside them and the row would still pass. That the ring travels in the RADIUS and not in
+# the LOGARITHM the picture is written in is a claim about rendered pixels, and it is proved on
+# rendered pixels: RED_ROWS[3] below reverts exactly this line to the logarithm and reads how far
+# the frame's own share of the two works moves at the middle of the handover. This row keeps only
+# what it can check without a browser — that the module's own numbers actually reached the built
+# file.
+check("PASS-DROSTE the port's own numbers stand in the built file, and the ring's own travel is proved on the picture",
+      not own_missing,
       "the module has no passage and no doors, so what nothing in it measured had to be decided "
       "here: %s. The seam is the module's own dissolve width read back as a number; the hold and "
-      "the travel are the two real choices, and the file states both"
+      "the travel are the two real choices. That the travel is walked in the radius rather than "
+      "the logarithm is read on the rendered frame in RED_ROWS[3] further below, not grepped here"
       % "; ".join("%s — %s" % (c, why) for c, why in PORTS_OWN)
       if not own_missing else "missing from the built file: %s" % own_missing)
 
-check("PASS-DROSTE the module's own single picture becomes an ordered pair, and the file says how",
-      "HOW ONE PHOTOGRAPH BECAME TWO" in SOURCE_TEXT
-      and "picture" in LABTXT and "'first', 'second'" in LABTXT.replace('"', "'")
-      and "picture" not in [h for h in HANDLES],
-      "the module picks the first or the second photograph and never draws the other; a cue of this "
-      "engine carries an ordered pair and owes a door at each end. The two works meet on a ring "
-      "about the work's own centre, at the seam the module's own arithmetic already draws, and the "
-      "ring travels one way and completes — so nothing is retraced and both doors are exact by "
-      "construction rather than by tolerance")
+# BEHAVIOUR NOT TEXT. A grep of "HOW ONE PHOTOGRAPH BECAME TWO" proves only that the heading is in
+# the file. What actually proves the module's one-picture choice became this port's ordered pair is
+# the manifest's own `arity` (fetched off the running instrument, BROWSER_ROWS[0] below) and the two
+# doors standing on their own files (BROWSER_ROWS further below) — not a citation of the heading
+# that introduces them.
+check("PASS-DROSTE the module's own single picture becomes an ordered pair, and the doors below say how",
+      "picture" in LABTXT and "'first', 'second'" in LABTXT.replace('"', "'")
+      and "picture" not in HANDLES,
+      "the module picks the first or the second photograph and never draws the other; this port "
+      "declares no `picture` handle at all — read off HANDLES rather than grepped — and instead "
+      "carries the ordered pair as its manifest's own arity of 2 (BROWSER_ROWS[0]), so a cue of "
+      "this engine owes a door at each end. The two works meet on a ring about the work's own "
+      "centre, at the seam the module's own arithmetic already draws, and the ring travels one way "
+      "and completes — so nothing is retraced and both doors are exact by construction rather than "
+      "by tolerance, which the door rows below measure rather than this one")
 
 check("PASS-DROSTE the shader is written in the one dialect the fleet is written in",
       REGION.count("#version") == 0 and "textureGrad" in REGION
@@ -631,9 +645,10 @@ else:
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE"] and m["cuts"] == ["ring"]
                       and m["asks"]["measure"] == "radial"
-                      and m["asks"]["floor"] == "radial_tight"
-                      and "WHERE IT STANDS ON THE CHARTER'S SHELF" in SOURCE_TEXT,
-                      f"levels={m['levels']}, cuts={m['cuts']}. The level is his own standing "
+                      and m["asks"]["floor"] == "radial_tight",
+                      f"levels={m['levels']}, cuts={m['cuts']}, read off the manifest "
+                      f"bench.manifest() actually hands back rather than grepped off a comment "
+                      f"citing the charter's shelf. The level is his own standing "
                       f"verdict in the vocabulary table of lab/CROSSING-BRIEF.md — «droste · внутрь "
                       f"себя · переход + vista · SURFACE» — and the cut is what the picture is made "
                       f"of: the copies are annuli about the work's own measured centre and the two "

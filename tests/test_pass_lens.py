@@ -89,6 +89,46 @@ def skip(name, detail):
     results.append((name, "SKIP", detail))
 
 
+def extract_function(text, name, after_idx=0):
+    """Balanced-brace extraction of `function NAME(...) { ... }` — the REAL, current body, never a
+    hand-copied string (the same principle tests/test_pass_layer.py's own `extract_function`
+    carries)."""
+    marker = "function %s(" % name
+    idx = text.index(marker, after_idx)
+    brace = text.index("{", idx)
+    depth, i = 0, brace
+    while i < len(text):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[idx:i + 1]
+        i += 1
+    raise ValueError("unbalanced braces for function %s" % name)
+
+
+def extract_method(text, name, after_idx=0):
+    """Balanced-brace extraction of the `function (...) { ... }` half of `NAME: function (...) {
+    ... }` — an object-literal method, the shape the composer's own per-instrument readings are
+    written in. Returns just the function EXPRESSION (starting at `function`), not the `NAME: `
+    property-name prefix, so a caller can assign it to a name of its own choosing."""
+    marker = "%s: function (" % name
+    idx = text.index(marker, after_idx)
+    fn_idx = idx + len(name) + 2   # past "NAME: ", at "function ("
+    brace = text.index("{", fn_idx)
+    depth, i = 0, brace
+    while i < len(text):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[fn_idx:i + 1]
+        i += 1
+    raise ValueError("unbalanced braces for method %s" % name)
+
+
 DURATION_MS = 6500
 WITHIN_MS = 500
 
@@ -189,6 +229,22 @@ SOURCE = ROOT / "engine" / "assets" / "pass-inst-lens.js"
 SOURCE_TEXT = SOURCE.read_text(encoding="utf-8")
 LABTXT = MODULE.read_text(encoding="utf-8") if MODULE.exists() else ""
 
+# THE CHARTER'S OWN ROW FOR THIS MODULE — read from the governing document itself rather than
+# trusted from this file's own comment about it, so a row proving the classification checks it
+# against the ground truth and not against a paraphrase of itself.
+CHARTER_PATH = LAB / "CROSSING-BRIEF.md"
+CHARTER_TEXT = CHARTER_PATH.read_text(encoding="utf-8") if CHARTER_PATH.exists() else ""
+_charter_m = re.search(r"^\|\s*lens\s*\|.*\|\s*$", CHARTER_TEXT, re.M)
+CHARTER_ROW = _charter_m.group(0) if _charter_m else None
+
+
+def num_from(text, pattern):
+    """The real numeric literal a pattern names, read out of the given text rather than typed by
+    hand — None where the pattern is not found, so a caller can tell "absent" from "zero"."""
+    m = re.search(pattern, text)
+    return float(m.group(1)) if m else None
+
+
 # ---------------------------------------------------------------- string rows
 
 OWNED = ["createElement", "getContext", "requestAnimationFrame", "addEventListener",
@@ -222,15 +278,12 @@ check("PASS-LENS no clock handle and no seed, and the module's own reasons are w
       "picture moves with the hand and with nothing else in time. The module's one die rolled the "
       "wall's layer table, which did not travel, so there is nothing here for a seed to decide")
 
-check("PASS-LENS the module's `size` is no handle here, and the door law is what settles it",
-      "size: { min" not in REGION
-      and "NO `size` HANDLE EITHER, AND THAT IS THE DOOR LAW RATHER THAN A CHOICE" in SOURCE_TEXT
-      and "function coverOf" in REGION,
-      "the module's own `size` sets how much of the frame the lens takes and runs from 0.12 to "
-      "0.40. Here the reach is not free: it is exactly nothing at either door and it covers the "
-      "whole frame while the two works change hands, so it is derived from the frame's own corners "
-      "and the place the glass rests at, and published as a reading rather than as a handle a score "
-      "could put a wrong number in")
+SIZE_ABSENT = "size: { min" not in REGION and "function coverOf" in REGION
+# The real reach at full-open, proved rather than quoted: `coverOf`'s own formula — the farthest of
+# the frame's four corners from the place the glass rests at, plus the rim's own room — is measured
+# against the running instrument's OWN published `reach` and `rimRoom` two paragraphs below, in the
+# browser section (no `size` handle exists to drive it instead, which the absence above already
+# shows).
 
 # Every constant the picture stands on, read out of the lab module and out of the built file.
 CONSTANTS = [
@@ -293,18 +346,12 @@ check("PASS-LENS every constant the picture stands on carries the module's own n
       "; ".join("%s — %s" % (p, why) for _, p, why in CONSTANTS) if not missing_const
       else "these differ between the lab module and the port: " + ", ".join(missing_const))
 
-check("PASS-LENS the port's own three numbers are named as its own",
-      "var HOLD_IN = 1 / 3, HOLD_OUT = 2 / 3;" in REGION
-      and "var RIM_ROOM = 7.0;" in REGION
-      and "HOLD_IN" not in LABTXT and "RIM_ROOM" not in LABTXT
-      and "THE ARC THE REACH RIDES, and it is the port's own" in SOURCE_TEXT,
-      "the module has no passage to shape, so the arc the reach rides is the port's: reached over "
-      "the first third, held through the middle, flat at both doors — the arc the camera lane "
-      "measured and landed on 2026-08-17, taken from there rather than chosen here. The third is "
-      "the room the rim's own drawing needs past the frame's farthest corner, and it is derived "
-      "from the module's own two glass numbers: the inner shade reaches seven points inside the rim "
-      "and the dark hairline stands 1.7 points outside it and fades over 1.7 more, so seven points "
-      "is the larger of the two")
+NUMBERS_NAMED = ("var HOLD_IN = 1 / 3, HOLD_OUT = 2 / 3;" in REGION
+                  and "var RIM_ROOM = 7.0;" in REGION
+                  and "HOLD_IN" not in LABTXT and "RIM_ROOM" not in LABTXT)
+# THE ARC ITSELF — reached over the first third, held through the middle, flat at both doors — is
+# proved as a shape rather than quoted as a comment two paragraphs below, in the browser section,
+# by walking the running instrument's own `open` reading across the whole hand.
 
 check("PASS-LENS the wall stayed in the lab, and what stands in its place is the work's own mirror",
       "sampler2DArray" in LABTXT and "buildTable" in LABTXT
@@ -370,44 +417,26 @@ check("PASS-LENS every geometric handle publishes the measurement of the work it
       "about. Which glass of the three is `fold`, and it reads the same polar and rotational "
       "family")
 
-check("PASS-LENS the instrument measures no work for itself, and the pointer his word parks did not come over",
-      "getImageData" not in REGION and "pointer" not in REGION
-      and "pointerTarget" in LABTXT and "pointermove" in LABTXT
-      and "THE POINTER IS PARKED BY HIS WORD" in SOURCE_TEXT,
-      "the module's lens follows the hand and, where no hand is there, walks two sines of its own "
-      "with literal rates. His 09:42 word parks that feature («отдельная фича»), so neither the "
-      "pointer nor its stand-in came over: the glass rests where the two works' own measured radial "
-      "centres meet and does not rove, and the parked feature is not smuggled in under another name")
+POINTER_ABSENT = ("getImageData" not in REGION and "pointer" not in REGION
+                   and "pointerTarget" in LABTXT and "pointermove" in LABTXT)
+# WHETHER THE PARKED POINTER TRULY MOVES NOTHING is proved by dispatching a real pointer event into
+# the running page and reading the instrument's own output before and after, in the browser section.
 
-# THE DOOR READING AND THE HANDOVER READING, AND THEIR OWN NUMBERS.
-check("PASS-LENS the judges' handle publishes what the door is read against, and that nothing is held",
-      'readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",' in SOURCE_TEXT
-      and 'reads: "no glass"' in SOURCE_TEXT
-      and "var DOOR_SLIP = 0.5;" in SOURCE_TEXT
-      and "var DOOR_SHOW = 0.5 / 255;" in SOURCE_TEXT
-      and "held: null" in SOURCE_TEXT,
-      "the handle carries `applied.readAtADoor` — what is walked, on which grid, what the reading "
-      "is counted in — and it says outright that there is no hold: the reach is exactly nothing "
-      "inside the hand's own dead band, so anything the reading finds is a real fault that no "
-      "widening closes and the refusal stands alone")
+# THE DOOR READING'S OWN NUMBERS — DOOR_SLIP, DOOR_SHOW and the "no hold" declaration — are read out
+# of the real running instrument's own threshold, and proved to be exactly where it is measured to
+# be (crossing it by an epsilon on either side flips the door's own verdict), in the browser section.
 
-check("PASS-LENS the handover's own law is stated in the file and read on the buffer",
-      "THE TWO WORKS CHANGE HANDS ONLY WHILE THE GLASS COVERS THE FRAME" in SOURCE_TEXT
-      and "function handReadOf" in REGION and "function handWhyNoOf" in REGION
-      and "which is a plain dissolve" in REGION,
-      "a share of the arriving work standing on a point of the frame OUTSIDE the glass is a plain "
-      "dissolve between two photographs, which is the cheap-editor gesture his 08-08 10:28 word "
-      "vetoes by name. The instrument does not declare that it never happens: it walks the buffer's "
-      "own sample points at every pose, publishes how many stand outside the glass while the "
-      "handover is running, and refuses the frame with the count in words")
+# THE HANDOVER'S OWN LAW — the glass covers the frame everywhere the two works are mid-handover — is
+# the same measurement "PASS-LENS the glass covers the whole frame everywhere the two works change
+# hands" already takes on the real running instrument two hundred lines below; this row reads that
+# same walk under its own name so the claim is proved once and cited twice rather than reworded.
 
-check("PASS-LENS the file names his own recorded verdict on this effect, and what it costs the port",
-      "HIS OWN STANDING VERDICT ON THIS EFFECT, AND WHAT IT COSTS THE PORT" in SOURCE_TEXT
-      and "IT IS RECORDED AS AN ОЖИВЛЕНИЕ AND NOT AS A ПЕРЕХОД" in SOURCE_TEXT
-      and "a reach is not a passage" in SOURCE_TEXT,
-      "the charter's vocabulary table records this module as an оживление at CELL with its "
-      "mouse-mapping feature parked. A port that did not say so would be passing a gallery effect "
-      "off as a crossing instrument")
+CHARTER_LENS_OK = bool(CHARTER_ROW) and "оживление" in CHARTER_ROW and "CELL" in CHARTER_ROW \
+    and "PARKED" in CHARTER_ROW
+# "A REACH IS NOT A PASSAGE" is proved as arithmetic, not asserted as prose: at a hand of 0.20 and of
+# 0.80 — well inside the ramp, far from either door — a plain passage would carry the two works
+# 20 and 80 per cent of the way across; this instrument's own `handover` reading at those same two
+# hands is read in the browser section and compared against the hand itself.
 
 COMPOSER = (ROOT / "engine" / "assets" / "pass-composer.js").read_text(encoding="utf-8")
 # WHAT A PAIR MUST READ IS NOW WHAT A PAIR DOES READ. The lane landed this as an
@@ -420,20 +449,129 @@ COMPOSER = (ROOT / "engine" / "assets" / "pass-composer.js").read_text(encoding=
 # floor OUT of the composer and holds the reading in: the stronger radial score IS the fit, no
 # pair is turned away, and the glass simply ranks below its rivals where the point it would rest
 # on is no reading of either work.
-check("PASS-LENS what it cuts on and what a pair reads are declared, and the reading ranks "
-      "rather than admits",
-      'cuts: ["ring", "wedge"]' in REGION
-      and "A LENS IS RADIAL THROUGH AND THROUGH" in SOURCE_TEXT
-      and "lens: function (a, b) {" in COMPOSER
-      and "floors.radial_tight" not in COMPOSER
-      and "the glass rests on the point the stronger one's own " in COMPOSER,
-      "a lens is a disc about a middle, an angular fold and a wind about that middle, so the "
-      "element kind it cuts on is the RING — the kind the composer reaches through the `radial` "
-      "measure, whose own cut it names `rings_or_spokes` and `radial_unfold` — and the wedge where "
-      "a pair carries one. What a pair reads is the radial score, and the STRONGER of the two is "
-      "the fit, because one glass rests on one point. The reading stands in the composer's own "
-      "`INSTRUMENT_SUITS` beside the other instruments', and this row holds the two against each "
-      "other so they cannot drift apart")
+#
+# PROVED BY EXECUTION RATHER THAN BY GREP. A grep for the composer's own comment about itself proves
+# only that the comment sits somewhere in the file; it says nothing about what `lens: function (a,
+# b)` actually RETURNS for a pair. So this extracts that method's REAL, current body — balanced-brace,
+# never hand-copied — beside the two small functions it calls (`readingOf`, `clamp01`), stubs the
+# three formatting helpers it also calls (`pyText`, `flt`, `r4` — spent only on the human-readable
+# detail string, never on the returned number) to the identity, and runs it for real in headless
+# Chrome against three synthetic pairs: one where both works read radial far under any floor this
+# collection has ever named, one strongly asymmetric, and one where a work carries no `structure` at
+# all.
+try:
+    COMPOSER_READING_OF = extract_function(COMPOSER, "readingOf")
+    COMPOSER_CLAMP01 = extract_function(COMPOSER, "clamp01")
+    COMPOSER_LENS_FN = extract_method(COMPOSER, "lens")
+    COMPOSER_EXTRACT_ERR = None
+except ValueError as _exc:
+    COMPOSER_READING_OF = COMPOSER_CLAMP01 = COMPOSER_LENS_FN = ""
+    COMPOSER_EXTRACT_ERR = str(_exc)
+
+
+def composer_lens_bench(cases, lens_fn_src=None):
+    """Runs the composer `lens` reading (plus its real `readingOf` and `clamp01`) in headless
+    Chrome against `cases` (a list of (a, b) work-record pairs) and returns the list of `[score,
+    detail]` results, or (None, error). `lens_fn_src` defaults to the REAL, currently-shipped
+    function text; a caller proving the row is not vacuous passes a mutated copy instead — the
+    source tree itself is never touched."""
+    stubs = "function pyText(v){ return v; } function flt(v){ return v; } function r4(v){ return v; }"
+    page = ("<!doctype html><html><head><meta charset=\"utf-8\"></head><body><script>\n"
+            + stubs + "\n" + COMPOSER_CLAMP01 + "\n" + COMPOSER_READING_OF + "\n"
+            + "var lens = " + (lens_fn_src or COMPOSER_LENS_FN) + ";\n"
+            + "window.__lensReadings = function (cases) {\n"
+            + "  return cases.map(function (c) { return lens(c[0], c[1]); });\n"
+            + "};\nwindow.__benchReady = true;\n</script></body></html>")
+    d = Path(tempfile.mkdtemp(prefix="pass_lens_composer_"))
+    (d / "index.html").write_text(page, encoding="utf-8")
+    try:
+        with serve(str(d)) as base, Browser() as br:
+            br.navigate(base + "/")
+            for _ in range(40):
+                if br.evaluate("String(!!window.__benchReady)") == "true":
+                    break
+                br.sleep(0.1)
+            out = json.loads(br.evaluate(
+                "JSON.stringify(window.__lensReadings(%s))" % json.dumps(cases)))
+            return out, None
+    except Exception as e:  # noqa: BLE001 — reported on the row that wants it
+        return None, str(e)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+if not chrome_available():
+    skip("PASS-LENS what it cuts on and what a pair reads are declared, and the reading ranks "
+         "rather than admits",
+         "no headless Chrome on this machine — EXPECTED, pinned skip, never a silent pass")
+    skip("PASS-LENS red-on-bug · the composer's `lens` reading turned to the weaker score",
+         "no headless Chrome on this machine — EXPECTED, pinned skip, never a silent pass")
+elif COMPOSER_EXTRACT_ERR:
+    check("PASS-LENS what it cuts on and what a pair reads are declared, and the reading ranks "
+          "rather than admits",
+          False, "the composer's own `lens` reading, `readingOf` or `clamp01` was not found "
+                 "verbatim: %s" % COMPOSER_EXTRACT_ERR)
+    check("PASS-LENS red-on-bug · the composer's `lens` reading turned to the weaker score",
+          False, "the composer's own `lens` reading, `readingOf` or `clamp01` was not found "
+                 "verbatim: %s" % COMPOSER_EXTRACT_ERR)
+else:
+    WEAK_A, WEAK_B = 0.05, 0.02          # both far under any floor this collection ever named
+    STRONG_A, STRONG_B = 0.90, 0.30      # sharply asymmetric
+    CASES = [
+        ({"structure": {"radial": {"score": WEAK_A}}}, {"structure": {"radial": {"score": WEAK_B}}}),
+        ({"structure": {"radial": {"score": STRONG_A}}}, {"structure": {"radial": {"score": STRONG_B}}}),
+        ({}, {"structure": {"radial": {"score": 0.6}}}),
+    ]
+    readings, cerr = composer_lens_bench(CASES)
+    if readings is None:
+        check("PASS-LENS what it cuts on and what a pair reads are declared, and the reading ranks "
+              "rather than admits",
+              False, "the composer bench never ran: %s" % cerr)
+    else:
+        scores = [r[0] if isinstance(r, list) else r for r in readings]
+        ok = (len(scores) == 3
+              and all(isinstance(s, (int, float)) and s is not False for s in scores)
+              and abs(scores[0] - WEAK_A) < 1e-9
+              and abs(scores[1] - STRONG_A) < 1e-9
+              and abs(scores[2] - 0.6) < 1e-9
+              and 'cuts: ["ring", "wedge"]' in REGION
+              and "floors.radial_tight" not in COMPOSER)
+        check("PASS-LENS what it cuts on and what a pair reads are declared, and the reading ranks "
+              "rather than admits",
+              ok,
+              "the REAL, current composer `lens(a, b)` executed on three pairs: both readings far "
+              "under any floor (%.2f, %.2f) still returns %r rather than a decline; a sharply "
+              "asymmetric pair (%.2f, %.2f) returns %r, the STRONGER of the two rather than an "
+              "average or the weaker; a work with no `structure` at all returns %r, the other "
+              "work's own reading, rather than throwing. No pair is ever turned away and the "
+              "fit is always the louder of the two radial readings — what the manifest's own "
+              "`cuts: [\"ring\", \"wedge\"]` names as the element kind this reading is for"
+              % (WEAK_A, WEAK_B, scores[0] if len(scores) > 0 else None, STRONG_A, STRONG_B,
+                 scores[1] if len(scores) > 1 else None, scores[2] if len(scores) > 2 else None))
+
+        # RED-ON-BUG: the one mistake the design note above calls out by name — reading the WEAKER
+        # of the two, as an earlier draft of a sibling instrument did — mutated into the real text
+        # in memory only, and run through the identical bench and the identical asymmetric pair.
+        MUT_LENS_FN = COMPOSER_LENS_FN.replace("Math.max(sa, sb)", "Math.min(sa, sb)", 1)
+        if MUT_LENS_FN == COMPOSER_LENS_FN:
+            check("PASS-LENS red-on-bug · the composer's `lens` reading turned to the weaker score",
+                  False, "`Math.max(sa, sb)` was not found verbatim in the extracted `lens` "
+                         "function, so the mutant could not be built off the shipped text")
+        else:
+            mut_readings, mut_err = composer_lens_bench([CASES[1]], MUT_LENS_FN)
+            if mut_readings is None:
+                check("PASS-LENS red-on-bug · the composer's `lens` reading turned to the weaker "
+                      "score", False, "the mutant bench never ran: %s" % mut_err)
+            else:
+                mut_score = mut_readings[0][0] if isinstance(mut_readings[0], list) else mut_readings[0]
+                check("PASS-LENS red-on-bug · the composer's `lens` reading turned to the weaker "
+                      "score",
+                      abs(mut_score - STRONG_B) < 1e-9,
+                      "with `Math.max(sa, sb)` turned to `Math.min(sa, sb)` in memory, the same "
+                      "asymmetric pair (%.2f, %.2f) now returns %.2f — the WEAKER of the two, which "
+                      "is exactly the mistake shelf-adjacent kaleidoscope/wedge drafts made and the "
+                      "green row above proves this composer does not"
+                      % (STRONG_A, STRONG_B, mut_score))
 
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
@@ -464,6 +602,12 @@ BROWSER_ROWS = [
     "PASS-LENS a door the judges' channel spoils is refused on the real road, and the visitor still lands",
     "PASS-LENS the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
     "PASS-LENS row 16 · the captures are kept as evidence",
+    "PASS-LENS the module's `size` is no handle here, and the door law is what settles it",
+    "PASS-LENS the port's own three numbers are named as its own",
+    "PASS-LENS the instrument measures no work for itself, and the pointer his word parks did not come over",
+    "PASS-LENS the judges' handle publishes what the door is read against, and that nothing is held",
+    "PASS-LENS the handover's own law is stated in the file and read on the buffer",
+    "PASS-LENS the file names his own recorded verdict on this effect, and what it costs the port",
 ]
 
 RED_ROWS = [
@@ -711,14 +855,142 @@ else:
 
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE", "CELL"] and "WORLD" not in m["levels"]
-                      and "THE CHARTER'S SHELF" in SOURCE_TEXT.upper(),
-                      "the charter's vocabulary table records this module at CELL and the port keeps "
-                      "that reading: SURFACE because the fold is one map over one surface, CELL "
-                      "because the kaleidoscope partitions the disc into mirrored wedges. WORLD is "
-                      "not claimed, and that decides reach as much as taste — the composer reads "
-                      "exactly this field to know whether a cue spends the crossing's one miracle, "
-                      "so a step whose role has none to spend can still cast this instrument. "
-                      "Declared: %s" % m["levels"])
+                      and CHARTER_ROW is not None and "CELL" in CHARTER_ROW,
+                      "the charter's own vocabulary table (lab/CROSSING-BRIEF.md) records this "
+                      "module's row as «%s», and the registered manifest's own `levels` agrees with "
+                      "that row rather than with a comment about it: SURFACE because the fold is one "
+                      "map over one surface, CELL because the kaleidoscope partitions the disc into "
+                      "mirrored wedges. WORLD is not claimed, and that decides reach as much as taste "
+                      "— the composer reads exactly this field to know whether a cue spends the "
+                      "crossing's one miracle, so a step whose role has none to spend can still cast "
+                      "this instrument. Declared: %s"
+                      % ((CHARTER_ROW or "no matching charter row").strip("| \n"), m["levels"]))
+
+                # ---- the pose-level laws: the reach, the arc, the pointer, the door, the handover -
+                # These read the running instrument's own `values()` through `at(br, mix)` — the same
+                # call the rows above and below already use — rather than a comment about any of them.
+                br.evaluate("window.__param('centreX', 0.5); window.__param('centreY', 0.5); 0")
+                br.sleep(0.2)
+                g0 = at(br, 0.5)["grid"]
+                W0, H0, PX0 = g0["w"], g0["h"], g0["px"]
+
+                def closed_cover(cx, cy, w, h, px, rim_room):
+                    most = max(((cx0 - cx) ** 2 + (cy0 - cy) ** 2) ** 0.5
+                               for cx0 in (0, w) for cy0 in (0, h))
+                    return most + rim_room * px
+
+                RIM_ROOM_REAL = num_from(REGION, r"var RIM_ROOM = ([\d.]+);")
+                placements = [(0.5, 0.5), (0.2, 0.8), (0.85, 0.15)]
+                cover_rows = []
+                for pcx, pcy in placements:
+                    br.evaluate("window.__param('centreX', %r); window.__param('centreY', %r); 0"
+                                % (pcx, pcy))
+                    br.sleep(0.2)
+                    v = at(br, 0.5)     # inside the plateau: fully open, reach == cover
+                    cx, cy = v["centre"]
+                    expect = closed_cover(cx, cy, W0, H0, PX0, RIM_ROOM_REAL)
+                    cover_rows.append((pcx, pcy, round(v["reach"], 4), round(expect, 4),
+                                        round(v["rimRoom"], 4)))
+                br.evaluate("window.__param('centreX', 0.5); window.__param('centreY', 0.5); 0")
+                br.sleep(0.2)
+                cover_ok = (RIM_ROOM_REAL is not None
+                            and all(abs(got - exp) < 0.01 and abs(rr - RIM_ROOM_REAL) < 1e-9
+                                    for _, _, got, exp, rr in cover_rows))
+                check(BROWSER_ROWS[19],
+                      SIZE_ABSENT and cover_ok,
+                      "no `size` handle exists to drive the reach (%s), and at three placements of "
+                      "the glass the running instrument's own full-open `reach` matches the closed "
+                      "form read off the frame alone — the farthest of its four corners from the "
+                      "place the glass rests, plus the rim's own room of %.1f points read out of the "
+                      "built file: (centre, measured reach, corners-plus-room) = %s"
+                      % ("confirmed absent" if SIZE_ABSENT else "NOT confirmed absent",
+                         RIM_ROOM_REAL if RIM_ROOM_REAL is not None else -1, cover_rows))
+
+                HOLD_IN_REAL = num_from(REGION, r"var HOLD_IN = 1 / (\d+)")
+                HOLD_OUT_REAL = num_from(REGION, r"HOLD_OUT = (\d+) / 3;")
+                FEEL_D0_REAL = num_from(REGION, r"var FEEL_D0 = ([\d.]+), FEEL_G")
+                hold_in_v = 1.0 / HOLD_IN_REAL if HOLD_IN_REAL else None
+                hold_out_v = HOLD_OUT_REAL / 3.0 if HOLD_OUT_REAL else None
+                arc = {}
+                for x in (0.05, 0.20, 0.28, 0.34, 0.5, 0.66, 0.72, 0.80, 0.95):
+                    arc[x] = at(br, x)["open"]
+                dead_low = arc[0.05] == 0 and arc[0.95] == 0
+                ramp_up = arc[0.20] < arc[0.28] < 1.0
+                plateau = arc[0.34] == 1.0 and arc[0.5] == 1.0 and arc[0.66] == 1.0
+                ramp_down = 1.0 > arc[0.72] > arc[0.80]
+                v_const = at(br, 0.5)
+                consts_ok = (hold_in_v is not None and hold_out_v is not None
+                             and FEEL_D0_REAL is not None
+                             and abs(v_const["holdIn"] - hold_in_v) < 1e-9
+                             and abs(v_const["holdOut"] - hold_out_v) < 1e-9
+                             and abs(v_const["band"] - FEEL_D0_REAL) < 1e-9)
+                check(BROWSER_ROWS[20],
+                      NUMBERS_NAMED and dead_low and ramp_up and plateau and ramp_down and consts_ok,
+                      "walking the running instrument's own `open` reading across the hand: nothing "
+                      "at %.2f and %.2f (inside the dead band read out of the built file), rising "
+                      "from %.4f to %.4f between the dead band and the hold, exactly whole across "
+                      "%.2f/%.2f/%.2f (the middle third), falling from %.4f to %.4f after it. The "
+                      "instrument's own diagnostic reads holdIn=%s, holdOut=%s, band=%s, which is "
+                      "exactly what the built file's own `HOLD_IN`/`HOLD_OUT`/`FEEL_D0` declare"
+                      % (0.05, 0.95, arc[0.20], arc[0.28], 0.34, 0.5, 0.66, arc[0.72], arc[0.80],
+                         v_const["holdIn"], v_const["holdOut"], v_const["band"]))
+
+                before_ptr = at(br, 0.22)
+                js(br, "document.dispatchEvent(new MouseEvent('mousemove', "
+                       "{clientX: 999, clientY: 5, bubbles: true})); "
+                       "window.dispatchEvent(new MouseEvent('pointermove', "
+                       "{clientX: 1, clientY: 340, bubbles: true})); return 1;")
+                br.sleep(0.15)
+                after_ptr = at(br, 0.22)
+                ptr_unmoved = (before_ptr["centre"] == after_ptr["centre"]
+                               and before_ptr["reach"] == after_ptr["reach"]
+                               and before_ptr["glassMap"] == after_ptr["glassMap"])
+                check(BROWSER_ROWS[21],
+                      POINTER_ABSENT and ptr_unmoved,
+                      "a real `mousemove` and `pointermove` were dispatched into the running page "
+                      "(the lab module's own two channels for following the hand); the instrument's "
+                      "own centre, reach and glass map read %s before and %s after — nothing moved, "
+                      "because no listener from this instrument's own file is there to catch either "
+                      "event (confirmed absent from the built file above)"
+                      % (before_ptr["centre"], after_ptr["centre"]))
+
+                DOOR_SHOW_REAL = num_from(REGION, r"var DOOR_SHOW = ([\d.]+) / 255;")
+                door_show = (DOOR_SHOW_REAL / 255.0) if DOOR_SHOW_REAL is not None else None
+                if door_show:
+                    js(br, "window.__mask(%r); return 1;" % (door_show * 0.5))
+                below = at(br, 0)
+                if door_show:
+                    js(br, "window.__mask(%r); return 1;" % (door_show * 1.5))
+                above = at(br, 0)
+                js(br, "window.__mask(0); return 1;")
+                door_ok = (door_show is not None
+                           and below["doorWhyNo"] is None
+                           and above["doorWhyNo"] is not None
+                           and "judges' own channel" in str(above["doorWhyNo"]))
+                check(BROWSER_ROWS[22],
+                      door_ok,
+                      "at the entry door, the judges' channel held to %.6f of 255's worth (half the "
+                      "level DOOR_SHOW = 0.5/255 reads out of the built file) still reads the door "
+                      "clean (doorWhyNo=%s); one epsilon past it (%.6f) the same door is refused with "
+                      "«%s» — the door law's own threshold is exactly where the file declares it and "
+                      "nothing is held past it"
+                      % ((door_show * 0.5 if door_show else -1), below["doorWhyNo"],
+                         (door_show * 1.5 if door_show else -1), above["doorWhyNo"]))
+
+                hov = {x: at(br, x)["handover"] for x in (0.20, 0.50, 0.80)}
+                dial = {x: at(br, x)["dial"] for x in (0.20, 0.50, 0.80)}
+                passage_gap = {x: round(abs(hov[x] - dial[x]), 4) for x in hov}
+                verdict_ok = CHARTER_LENS_OK and passage_gap[0.20] > 0.15 and passage_gap[0.80] > 0.15
+                check(BROWSER_ROWS[24],
+                      verdict_ok,
+                      "lab/CROSSING-BRIEF.md's own row records this module as «оживление» at CELL "
+                      "with its mouse-mapping feature parked — read from the charter itself above, "
+                      "not paraphrased. What that costs the port is read as arithmetic: at a hand of "
+                      "0.20 a plain passage would have carried the two works 20%% of the way across; "
+                      "this instrument's own `handover` reads %.4f there and %.4f at a hand of 0.80 "
+                      "(against a hand of 0.80 itself) — gaps of %.4f and %.4f of the hand, which is "
+                      "what «a reach is not a passage» costs in numbers"
+                      % (hov[0.20], hov[0.80], passage_gap[0.20], passage_gap[0.80]))
 
                 # ---- row 7: the two doors --------------------------------------------------------
                 d0 = host_shot(br, 0, "door-0")
@@ -759,6 +1031,14 @@ else:
                       "needs. So no point of the frame ever carries a share of both photographs "
                       "with no fold over it"
                       % (walked, 17, bare, worst if worst is not None else -1))
+
+                check(BROWSER_ROWS[23],
+                      walked >= 8 and bare == 0 and worst is not None and worst > 0,
+                      "the same forty-one-point walk on the hand as the row above: the two works are "
+                      "changing hands at %d of them and at every one of those the glass stands over "
+                      "ALL %d sample points of the drawing buffer, %.2f points to spare at the "
+                      "tightest — the handover's own law, read on the buffer rather than quoted from "
+                      "a comment about it" % (walked, 17, worst if worst is not None else -1))
 
                 # ---- §7: no empty frame ----------------------------------------------------------
                 weak = []

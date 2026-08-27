@@ -379,6 +379,7 @@ BROWSER_ROWS = [
     "PASS-ADRIFT the door is read on the DRAWING BUFFER: the front's crossover, and the silhouette pair it stands on",
     "PASS-ADRIFT a door no whole cell can close is refused on the real road, and the visitor still lands",
     "PASS-ADRIFT §6     · at a door the plane hands the buffer over whole: the two roads draw one picture",
+    "PASS-ADRIFT the grain handle's published door contract is the boundary just measured",
 ]
 
 RED_ROWS = [
@@ -394,15 +395,28 @@ RED_ROWS = [
 # The grain's own reading is the handover front's crossover against the margin the front leaves at a
 # door, on the drawing buffer — and the handle says so where a composer can read it. The margin is
 # the shader's own 0.03, so it is named once in script and once in the shader and never twice over.
-check("PASS-ADRIFT the grain handle publishes the measurement its door is read against",
-      'heldWholeAtADoor: { cells: DOOR_HOLD, readOn: "the drawing buffer",' in SOURCE_TEXT
-      and 'reads: "grainRequest"' in SOURCE_TEXT
-      and "var FRONT_MARGIN = 0.03;" in SOURCE_TEXT
-      and "var DOOR_HOLD = 2;" in SOURCE_TEXT
-      and '"  float margin = 0.03 + 0.5 * (grainW + fine);",' in SOURCE_TEXT,
-      "the handle carries `applied.heldWholeAtADoor` — what is read, on which grid, how far the "
-      "hold reaches and where the request stays on the record — beside its own range, and the "
-      "margin the reading is held against is the very 0.03 the shader's own `margin` is built on")
+#
+# BEHAVIOUR NOT TEXT. A row that greps the manifest's literal field names beside the shader's own
+# literal 0.03 proves only that both strings sit in the file — a defect could stand right beside
+# them and the row would still pass. The manifest's own contract (`applied.heldWholeAtADoor` on the
+# grain handle: its `cells`, its `readOn`, its `reads`) is read back off the RUNNING instrument
+# instead, further down where the browser has already walked the real door boundary and stepped a
+# whole cell to keep it (BROWSER_ROWS[-1], beside `on_no`/`on_buf` below) — a manifest whose
+# published `cells` or `reads` field no longer named what the search loop actually does could not
+# pass that row, where it could still pass a text match.
+#
+# WHAT THIS ROW DOES NOT COVER. The shader's own 0.03 (pass-inst-adrift.js:211, `margin = 0.03 +
+# 0.5*(grainW+fine)`) and the script's `FRONT_MARGIN` are two readings of one number by construction
+# and nothing in the build ties them; RED_ROWS[4] reverts `FRONT_MARGIN` and shows the script's own
+# refusal answers for it, but a render-based counterpart that shrinks the SHADER's literal alone,
+# holding `FRONT_MARGIN` standing, was tried at the narrowest buffer this file's own door search
+# will pass without a whole-cell step (137 x 296) and moved no pixel at all against an identically
+# posed, un-mutated build — the safety margin a whole held-back cell buys is wide enough that a
+# tenfold shrink of the 0.03 term alone, which the `fine`-scaled second term dominates, never enters
+# the visible frame at any pose this suite's harness could reach in the time this row had. So the
+# shader's own 0.03 matching the script's is asserted here as a manifest fact, cross-checked against
+# real runtime numbers, and not additionally proved to move a rendered pixel if it drifted — that
+# residual gap is real and is not papered over with a red-on-bug row that would not actually go red.
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
 
@@ -1022,6 +1036,36 @@ else:
                          on_buf["doorHeld"] or "nothing", on_buf["grainCells"], applied,
                          on_buf["grainRequest"], NO_BUF[0], NO_BUF[1], on_no["doorWhyNo"],
                          away["doorGrid"], sil, sil_out, whole_ms, held_ms))
+
+                # ---- THE MANIFEST'S OWN DOOR CONTRACT, CROSS-CHECKED AGAINST THE BOUNDARY JUST
+                # ---- MEASURED, NOT AGAINST ITS OWN SOURCE TEXT ---------------------------------
+                # The row above measures what the runtime actually enforces at a door. This one reads
+                # what the manifest PUBLISHES about that same enforcement — `applied.heldWholeAtADoor`
+                # on the grain handle, fetched off the live manifest rather than grepped off the file
+                # — and holds it against the numbers `on_no`/`on_buf` already took. A manifest whose
+                # published `cells` no longer matched the boundary the search loop actually gives up
+                # at would be a manifest lying about its own runtime, and a text match can never catch
+                # that: the same JS literal (`DOOR_HOLD`) feeds both the manifest field and the loop's
+                # own bound, so the two can never drift apart in THIS file — they can only ever drift
+                # apart from what the runtime does, which is exactly what this row reads instead.
+                contract = m["handles"]["grain"].get("applied", {}).get("heldWholeAtADoor")
+                check(BROWSER_ROWS[27],
+                      isinstance(contract, dict)
+                      and contract.get("readOn") == "the drawing buffer"
+                      and contract.get("reads") == "grainRequest"
+                      and contract.get("cells") == 2
+                      and ("within %d cells" % contract["cells"]) in on_no["doorWhyNo"]
+                      and 0 < on_buf["grainCells"] <= contract["cells"]
+                      and applied == on_buf["grainRequest"] - on_buf["grainCells"],
+                      f"the manifest publishes applied.heldWholeAtADoor={contract} on the grain "
+                      f"handle. Its own `cells`, {contract and contract['cells']}, is the same number "
+                      f"the search just gave up at on the {NO_BUF[0]} x {NO_BUF[1]} buffer above "
+                      f"(«{on_no['doorWhyNo']}»), and the `reads` it names, `grainRequest`, is the "
+                      f"very field the {HELD_BUF[0]} x {HELD_BUF[1]} buffer stepped down by "
+                      f"{on_buf['grainCells']} whole cell(s) to reach the {applied:.4f} actually "
+                      f"drawn out of the {on_buf['grainRequest']:.4f} asked for — so the number the "
+                      f"manifest promises is the number the door was just held to, not a second copy "
+                      f"of it that could read anything at all")
 
                 # ---- THE DOOR REFUSED ON THE REAL TRANSACTION ROAD ---------------------------
                 # The row above reads the instrument's own record. This one puts real commands on

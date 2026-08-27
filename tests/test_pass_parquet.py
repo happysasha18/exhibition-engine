@@ -51,6 +51,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -221,13 +222,9 @@ check("PASS-PARQUET every handle the instrument publishes is a handle a score ca
       "reason the module itself gives: while a score holds the pose the hand is off the floor"
       if not absent else "these are published nowhere: " + ", ".join(absent))
 
-check("PASS-PARQUET no clock and no roll of its own reaches the picture",
-      "clock: { min" not in REGION and "Math.random" not in REGION
-      and "NO `clock` HANDLE, AND THAT IS A DECISION" in SOURCE_TEXT,
-      "the module counts a second up and spends it on a slow camera drift, a fifteen-second breath "
-      "and the floor's own turn; the first two stayed in the lab and the third rides the dial, so "
-      "this picture moves with the hand and with nothing else. The module rolls its own die where a "
-      "score names no seed; here that case answers with nothing, so a seeded score draws one picture")
+# "PASS-PARQUET no clock and no roll of its own reaches the picture" moved below the bench helpers
+# (host_at/on_bench), which it needs: proving no clock and no roll reach the PICTURE takes a real
+# render, not a sentence found in the source. See the bench-dependent proofs section after roads().
 
 # ---- THE MODULE'S OWN NUMBERS, read out of the lab file itself -----------------------------------
 # His 19:21 word lifted to the class: a port carries the module's numbers, and a suite that typed
@@ -307,18 +304,9 @@ else:
               "PASS-PARQUET the module's own die is carried, coefficient for coefficient"]:
         skip(r, "the lab tree is read-only source material and is absent here: " + str(MODULE))
 
-check("PASS-PARQUET both of the module's measured response curves are carried, and both are applied",
-      "var FEEL_K = -2.9;" in REGION and "var ARRIVE_W = 1.24;" in REGION
-      and "Math.acos(c) / Math.PI" in REGION
-      and "(Math.exp(FEEL_K * clamp(u, 0, 1)) - 1) / (Math.exp(FEEL_K) - 1)" in REGION
-      and "WHY THE TWO CURVES ARE APPLIED TO PLAIN RAMPS AND NOT TO THE SHAPE" in SOURCE_TEXT,
-      "the module measured two curves and they are of different families, because the measurement "
-      "decided each: the floor's own lean is logarithmic, since the picture a plane throws grows as "
-      "1/cos of the pitch and the change per degree is a RATIO; the arrival's is an arc, since the "
-      "front's road is a trapezium and a curve that levels one has to be infinitely steep at both "
-      "ends, which no exponential can be. Both are applied here, each to its own plain ramp, and "
-      "both ends of both are exact — feel(0) is 0, feel(1) is 1 — which is what keeps both doors "
-      "exact while the curves are in force")
+# "PASS-PARQUET both of the module's measured response curves are carried, and both are applied"
+# moved below the bench helpers too: proving the curves are APPLIED and not merely present takes a
+# render at a dial position each one bends, held against a build with that one curve bypassed.
 
 check("PASS-PARQUET the coverage is a proof and not a claim",
       'coverage: { writes: false,' in REGION
@@ -336,16 +324,9 @@ check("PASS-PARQUET the coverage is a proof and not a claim",
       "the horizon stands at 5.196, on a 390 x 844 phone at 2.401, and on a 300 x 1600 frame the "
       "guard takes over and holds it at 1.250")
 
-check("PASS-PARQUET the judges' handle publishes the measurement the door is read against",
-      'readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",' in SOURCE_TEXT
-      and 'reads: "landing"' in SOURCE_TEXT
-      and "var DOOR_SLIP = 0.5;" in SOURCE_TEXT
-      and "var DOOR_SHOW = 0.5 / 255;" in SOURCE_TEXT
-      and "held: null" in SOURCE_TEXT,
-      "his 18:00 architecture decision: the instrument reads its door at run time on the buffer the "
-      "host is about to bind, and the handle that can spoil a door is where that reading is "
-      "published — what is walked, on which grid, in what unit, and that there is no hold, because "
-      "this floor's landing is exact by construction rather than by a tolerance")
+# "PASS-PARQUET the judges' handle publishes the measurement the door is read against" moved below
+# the bench helpers as well: proving DOOR_SLIP/DOOR_SHOW actually drive the door's refusal takes
+# widening or shrinking each constant in a built copy and reading the door's own verdict change.
 
 # EVERY GEOMETRIC AND TEMPORAL PARAMETER NAMES THE MEASUREMENT IT READS (his 19:13 word, lifted to
 # the class at 19:21). Two of this instrument's handles read a measurement of the work; two name no
@@ -363,6 +344,67 @@ check("PASS-PARQUET each handle names the measurement it reads, or says there is
       "measurement and say so in the file: how deep a room the passage wants, which is the score's "
       "reading of the step it stands at, and the floor's own slow turn, which the module keeps on a "
       "clock this engine does not hand out")
+
+# ---- THE REAL "one miracle per crossing" MECHANISM, read by executing pass-composer.js -----------
+# WHERE THIS INSTRUMENT'S `levels` (no "WORLD") ACTUALLY MEETS THE CROSSING. The manifest's prose
+# says WORLD is not claimed; the mechanism that prose describes lives entirely in
+# engine/assets/pass-composer.js's own WORLD_FOLD_INSTRUMENTS array (isWorldFold/spendsTheMiracle
+# read it by identity) and its verbatim re-export as composer.worldFoldInstruments. A row that only
+# found the prose sentence in this file would pass even if that array had drifted to include
+# "parquet"; this loads the REAL composer, in Node, exactly the way tests/test_pass_composed.py's
+# own driver already does, and plants the mutation into a COPY of its source the same way that
+# driver's `PLANTS` env var already does — never touching the file on disk.
+COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
+COMPOSED_FIXTURE = ROOT / "tests" / "fixture_pass_composed.json"
+
+WORLD_FOLD_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [modulePath, fixturePath] = process.argv.slice(2);
+const plants = JSON.parse(process.env.PLANTS || "[]");
+let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
+for (const [from, to] of plants) {
+  if (source.indexOf(from) < 0) {
+    console.log(JSON.stringify({error: "the plant found nothing to change: " + from}));
+    process.exit(0);
+  }
+  source = source.split(from).join(to);
+}
+let joined = null;
+const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, {filename: "pass-composer.js"});
+if (!joined) { console.log(JSON.stringify({error: "the module joined nothing"})); process.exit(0); }
+const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+const composer = joined.make(fix.consts);
+console.log(JSON.stringify({
+  worldFoldInstruments: composer.worldFoldInstruments,
+  hasParquet: composer.worldFoldInstruments.indexOf("parquet") >= 0
+}));
+"""
+
+
+def node_available():
+    try:
+        return subprocess.run(["node", "--version"], capture_output=True).returncode == 0
+    except Exception:
+        return False
+
+
+def world_fold_run(plants=()):
+    d = Path(tempfile.mkdtemp(prefix="synth_worldfold_"))
+    try:
+        driver_path = d / "driver.js"
+        driver_path.write_text(WORLD_FOLD_DRIVER, encoding="utf-8")
+        env = dict(os.environ, PLANTS=json.dumps(list(plants)))
+        proc = subprocess.run(["node", str(driver_path), str(COMPOSER), str(COMPOSED_FIXTURE)],
+                              capture_output=True, text=True, env=env, timeout=120)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-400:]}
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
 
 # ---------------------------------------------------------------- browser rows
 
@@ -580,6 +622,133 @@ def roads(br, at, tag):
     return r, ph, pm
 
 
+# ---------------------------------------------------------------- three real proofs, bench-driven
+# These three rows stood on a SOURCE_TEXT string match — the sentence sits somewhere in the file,
+# never that the code alongside it behaves as the sentence claims. Each is now a render taken
+# through the real bench (on_bench/host_at, above), with a mutation of the BUILT bytes standing in
+# for the bug the row exists to catch, exactly the red_pack idiom test_pass_coverage.py already
+# uses and test_pass_layer.py already carries for this file's own row S-13.
+PARQUET_CLAIM_ROWS = [
+    "PASS-PARQUET no clock and no roll of its own reaches the picture",
+    "PASS-PARQUET both of the module's measured response curves are carried, and both are applied",
+    "PASS-PARQUET the judges' handle publishes the measurement the door is read against",
+]
+
+if not chrome_available():
+    for r in PARQUET_CLAIM_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
+elif missing:
+    for r in PARQUET_CLAIM_ROWS:
+        skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
+else:
+    # 1 · NO CLOCK AND NO ROLL OF ITS OWN REACHES THE PICTURE. The proof is determinism: the same
+    # pose, drawn twice through the real bench, must come back byte-for-byte the same — nothing
+    # hidden (no clock, no Math.random) is free to move the picture between the two draws. The
+    # red half plants a `Math.random()` term into the one number every axis of the pose is built
+    # from (`open`, in `posed()`) and shows the same repeated draw now disagrees with itself.
+    def repeat_render(text, tag):
+        def go(br):
+            p1 = host_at(br, 0.5, tag + "-1")
+            br.sleep(1.0)
+            p2 = host_at(br, 0.5, tag + "-2")
+            return (hashlib.sha256(Path(p1).read_bytes()).hexdigest(),
+                    hashlib.sha256(Path(p2).read_bytes()).hexdigest())
+        return on_bench(go, text)
+
+    CLOCK_OLD = "var open = openAt(dial) * depth;"
+    CLOCK_NEW = "var open = openAt(dial) * depth + (Math.random() - 0.5) * 0.05;"
+    clock_mut_text = PACK.replace(CLOCK_OLD, CLOCK_NEW, 1) if CLOCK_OLD in PACK else None
+
+    det_real = repeat_render(PACK, "clock-real")
+    det_mut = repeat_render(clock_mut_text, "clock-mut") if clock_mut_text else None
+
+    check("PASS-PARQUET no clock and no roll of its own reaches the picture",
+          "clock: { min" not in REGION and "Math.random" not in REGION
+          and det_real is not None and det_real[0] == det_real[1]
+          and det_mut is not None and det_mut[0] != det_mut[1],
+          "the same pose drawn twice a second apart through the real bench comes back "
+          + ("byte-identical" if det_real and det_real[0] == det_real[1] else "DIFFERENT")
+          + ", which is what a picture with no clock and no roll of its own has to do. With a "
+          "`Math.random()` term planted into `open` — the one number every axis of the pose reads —"
+          " the same repeated draw now disagrees with itself: "
+          + (str(det_mut) if det_mut else "the served bytes could not be changed"))
+
+    # 2 · BOTH MEASURED RESPONSE CURVES ARE CARRIED, AND BOTH ARE APPLIED. The source snippets
+    # below are real code (the fitted numbers and the two formulas), kept as they were; what was
+    # vacuous was the claim that they are APPLIED rather than merely present. The proof renders at
+    # a dial position each curve visibly bends — 0.1 is inside the rise `feel` warps, 0.35 is
+    # inside the arrival `arriveFeel` warps — against a build with that one curve's call site
+    # bypassed for the plain ramp, and shows the picture moves.
+    def curve_shot(text, at, tag):
+        return on_bench(lambda br: host_at(br, at, tag), text)
+
+    OPEN_OLD = "return feel(clamp((u <= 0.5 ? u : 1 - u) / RISE, 0, 1));"
+    OPEN_NEW = "return clamp((u <= 0.5 ? u : 1 - u) / RISE, 0, 1);"
+    ARR_OLD = "return arriveFeel(clamp((clamp(u, 0, 1) - RISE) / (1 - 2 * RISE), 0, 1));"
+    ARR_NEW = "return clamp((clamp(u, 0, 1) - RISE) / (1 - 2 * RISE), 0, 1);"
+
+    open_mut_text = PACK.replace(OPEN_OLD, OPEN_NEW, 1) if OPEN_OLD in PACK else None
+    arr_mut_text = PACK.replace(ARR_OLD, ARR_NEW, 1) if ARR_OLD in PACK else None
+
+    open_base = curve_shot(PACK, 0.1, "curve-open-base")
+    open_mut = curve_shot(open_mut_text, 0.1, "curve-open-mut") if open_mut_text else None
+    open_d = diff(open_base, open_mut) if (open_base and open_mut) else None
+
+    arr_base = curve_shot(PACK, 0.35, "curve-arrive-base")
+    arr_mut = curve_shot(arr_mut_text, 0.35, "curve-arrive-mut") if arr_mut_text else None
+    arr_d = diff(arr_base, arr_mut) if (arr_base and arr_mut) else None
+
+    check("PASS-PARQUET both of the module's measured response curves are carried, and both are applied",
+          "var FEEL_K = -2.9;" in REGION and "var ARRIVE_W = 1.24;" in REGION
+          and "Math.acos(c) / Math.PI" in REGION
+          and "(Math.exp(FEEL_K * clamp(u, 0, 1)) - 1) / (Math.exp(FEEL_K) - 1)" in REGION
+          and open_d is not None and open_d[0] > SEAM
+          and arr_d is not None and arr_d[0] > SEAM,
+          "the module measured two curves and they are of different families, because the "
+          "measurement decided each: the floor's own lean is logarithmic and the arrival's is an "
+          "arc. Both are carried as real source above, and both are shown APPLIED here: with the "
+          "floor's own `feel` curve bypassed for the plain ramp at a rise of 0.1, the frame moves "
+          f"{open_d and open_d[0]:.1f} of 255 from the real build; with the arrival's `arriveFeel` "
+          f"bypassed the same way at 0.35, the frame moves {arr_d and arr_d[0]:.1f} of 255 — both "
+          "well past the project's own seam, so each curve is doing real work on the picture and "
+          "not standing beside it as a comment")
+
+    # 3 · THE JUDGES' HANDLE PUBLISHES THE MEASUREMENT THE DOOR IS READ AGAINST. DOOR_SLIP and
+    # DOOR_SHOW are the two thresholds `doorWhyNoOf` (this same file) reads to refuse a door; the
+    # proof widens/shrinks each in a built copy and shows the door's own verdict flips.
+    def door_why_at(text, mix, mask=0):
+        def go(br):
+            return js(br, "window.__mix(%r); window.__mask(%r); "
+                          "var v = window.__values(); window.__mask(0); return v.doorWhyNo;"
+                      % (mix, mask))
+        return on_bench(go, text)
+
+    SHOW_OLD, SHOW_NEW = "var DOOR_SHOW = 0.5 / 255;", "var DOOR_SHOW = 999;"
+    SLIP_OLD, SLIP_NEW = "var DOOR_SLIP = 0.5;", "var DOOR_SLIP = -1;"
+    show_mut_text = PACK.replace(SHOW_OLD, SHOW_NEW, 1) if SHOW_OLD in PACK else None
+    slip_mut_text = PACK.replace(SLIP_OLD, SLIP_NEW, 1) if SLIP_OLD in PACK else None
+
+    # the judges' channel held open at a door: the real DOOR_SHOW refuses it, a DOOR_SHOW widened
+    # past 1 (mask's own top) never can
+    show_real_why = door_why_at(PACK, 0, mask=1)
+    show_mut_why = door_why_at(show_mut_text, 0, mask=1) if show_mut_text else None
+    # a clean door, mask shut: the real DOOR_SLIP passes it, a DOOR_SLIP shrunk below zero refuses
+    # even a landing that is exact
+    slip_real_why = door_why_at(PACK, 0, mask=0)
+    slip_mut_why = door_why_at(slip_mut_text, 0, mask=0) if slip_mut_text else None
+
+    check("PASS-PARQUET the judges' handle publishes the measurement the door is read against",
+          show_mut_text is not None and slip_mut_text is not None
+          and show_real_why is not None and show_mut_why is None
+          and slip_real_why is None and slip_mut_why is not None,
+          "his 18:00 architecture decision, proved by moving the two numbers the reading is held "
+          "to: with the judges' channel held open at a door, the real DOOR_SHOW refuses it "
+          f"(«{str(show_real_why)[:100]}…») and a DOOR_SHOW widened to 999 does not (reads "
+          f"{show_mut_why}); with the judges' channel shut and the floor's own landing exact, the "
+          f"real DOOR_SLIP passes the door (reads {slip_real_why}) and a DOOR_SLIP shrunk to -1 "
+          f"refuses the very same landing («{str(slip_mut_why)[:100]}…»). Both constants are read "
+          "by `doorWhyNoOf` and nowhere else, so this is the whole of what they are for")
+
 if not chrome_available():
     for r in BROWSER_ROWS + RED_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
@@ -643,18 +812,30 @@ else:
                       f"with a byte estimate of {res['standard']['bytesEstimate']}, and a coverage "
                       f"block reading «{m['coverage']['how'][:120]}…»")
 
+                # WORLD not claimed is proved against the real mechanism it would spend: the
+                # composer's own WORLD_FOLD_INSTRUMENTS array, executed in Node, never in text.
+                real_fold = world_fold_run() if node_available() else {"error": "node is not installed"}
+                mut_fold = world_fold_run(plants=[[
+                    'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];',
+                    'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline", '
+                    '"parquet"];',
+                ]]) if node_available() else {"error": "node is not installed"}
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE", "CELL"]
-                      and "WHERE THIS STANDS ON THE CHARTER'S SHELF" in SOURCE_TEXT
-                      and "WORLD IS NOT CLAIMED" in SOURCE_TEXT,
+                      and "parquet" not in (real_fold.get("worldFoldInstruments") or [])
+                      and real_fold.get("hasParquet") is False
+                      and mut_fold.get("hasParquet") is True,
                       f"levels={m['levels']}, which is the row lab/CROSSING-BRIEF.md's own "
                       f"vocabulary table carries for this module rather than a reading made here. "
                       f"SURFACE is the one plane and its mirrored field; CELL is the tiles, which is "
                       f"the element the composer's KIND_OF_MEASURE reads out of a grid pivot. WORLD "
-                      f"is not claimed, and the file says why: the eye stands still and the floor "
-                      f"tips, so the attitude is the surface's own lean. Claiming it would spend the "
-                      f"crossing's one miracle and put this instrument out of reach of every step "
-                      f"whose role has none")
+                      f"is not claimed, proved against the real mechanism that word would spend: "
+                      f"pass-composer.js's own WORLD_FOLD_INSTRUMENTS is "
+                      f"{real_fold.get('worldFoldInstruments')}, executed in Node, and does not "
+                      f"carry «parquet»; planting «parquet» into that same array in a copy of the "
+                      f"real file and asking the same composer.worldFoldInstruments answers true — "
+                      f"the array is what isWorldFold/spendsTheMiracle read by identity, so this is "
+                      f"the whole of what claiming WORLD would cost")
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas').width)"))

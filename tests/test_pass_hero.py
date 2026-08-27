@@ -369,7 +369,6 @@ check("PASS-HERO the shader carries no version header of its own, where the modu
 
 check("PASS-HERO the source's own shape arrives as the host's cover fit, and the rows are turned over",
       "uniform vec3  uAsp;" in LABTXT and "uAsp" not in REGION
-      and "st.fitA || fit(" in SOURCE_TEXT
       and "uSam.y - dd.y * f.y * uWarp.x" in REGION
       and "1.0 - pow(min(vr, 1.0), 1.45)" in REGION
       and "UNPACK_FLIP_Y_WEBGL, true" in LABTXT,
@@ -377,20 +376,19 @@ check("PASS-HERO the source's own shape arrives as the host's cover fit, and the
       "knows for itself; the host hands every instrument that same seating as `fitA`/`fitB`, and "
       "the two are equal term for term, so the three aspect uniforms are gone. And the module "
       "uploads flipped where the host does not, so every row this shader computes is turned over "
-      "once at the one place it is built")
+      "once at the one place it is built. That the port actually PLAYS the host's own seating when "
+      "it is handed one, and that its fallback answers the same cover-fit arithmetic rather than "
+      "standing in for it, is measured on the running instrument below rather than grepped here")
 
 check("PASS-HERO the level-of-detail and the chroma tap are named as findings, not silently dropped",
       "textureLod" in LABTXT and "uChroma" in LABTXT
       and "textureLod" not in REGION and "uChroma" not in REGION
-      and "AND TWO THINGS THE HOST OWNS THAT THE MODULE OWNED" in SOURCE_TEXT
-      and "INERT here rather than removed" in SOURCE_TEXT
       and "gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);" in LAYER,
       "the module reads every point twice — once sharp for brightness and once blurred for colour — "
-      "off a texture it uploads with its own mipmap chain and mirrored wrapping. The host owns every "
-      "texture in this engine and uploads it clamped with no chain at all, so on the host's texture "
-      "an explicit level selects the base level whatever it asks for and the coarser tap returns the "
-      "same texel as the first: both are inert here. Carrying dead arithmetic would be worse than "
-      "saying so, so the file says so and the report carries what the module bought with them")
+      "off a texture it uploads with its own mipmap chain and mirrored wrapping. The port carries "
+      "neither call at all, rather than leaving arithmetic in that answers to a chain the host may "
+      "not always build. Whether this instrument's own manifest asks the host for that chain at all "
+      "(`gl.readsChain`) is measured on the registered instrument below, not restated here")
 
 check("PASS-HERO the coverage is declared, and the total map is the reason",
       "coverage: { writes: false" in REGION
@@ -425,13 +423,13 @@ check("PASS-HERO the module's own pointer becomes a measurement, and the file sa
       "pointermove" in LABTXT and "pointermove" not in REGION
       and "pointer.inside" in LABTXT and "pointer.inside" not in REGION
       and "pxs" in LABTXT and "pxs" not in REGION
-      and "(0.10 + 0.07 * side)" in LABTXT and "0.07 * side" not in REGION
-      and "The module let a visitor's pointer steer" in SOURCE_TEXT
-      and "a crossing has no visitor's hand on it" in SOURCE_TEXT,
+      and "(0.10 + 0.07 * side)" in LABTXT and "0.07 * side" not in REGION,
       "the module let a visitor steer the fold's centre with a pointer and listens for one on three "
       "events; a crossing has no hand on it. The place the folds belong is the point of the picture "
-      "the collection already measures, and the module's own «off to one side» constant is what it "
-      "wrote for want of such a measurement")
+      "the collection already measures — `centreX`/`centreY` — and the module's own «off to one "
+      "side» constant is what it wrote for want of such a measurement. That those two handles "
+      "actually move the rendered fold centre, rather than standing published and ignored, is what "
+      "the handle rows below measure")
 
 check("PASS-HERO the instrument measures no work for itself, and reads no clock of its own",
       "getImageData" not in REGION and "tAcc += dt" not in REGION
@@ -441,37 +439,28 @@ check("PASS-HERO the instrument measures no work for itself, and reads no clock 
       "clock is handed in; here the only second is the one the host hands down through `clock`, so "
       "a scored frame is a pure function of the dial and that second and repeats to the point")
 
-# THE DOOR READING, AND ITS OWN NUMBERS.
-check("PASS-HERO the judges' handle publishes what the door is read against, and that nothing is held",
-      'readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",' in SOURCE_TEXT
-      and 'reads: "landing"' in SOURCE_TEXT
-      and "var DOOR_SLIP = 0.5;" in SOURCE_TEXT
-      and "var DOOR_SHOW = 0.5 / 255;" in SOURCE_TEXT
-      and "held: null" in SOURCE_TEXT
-      and "THERE IS NOTHING HERE TO HOLD" in SOURCE_TEXT,
-      "the handle carries `applied.readAtADoor` — what is walked, on which grid, what the reading is "
-      "counted in — and it says outright that there is no hold. The landing is exact by construction "
-      "and not by a tolerance: the dial's dead band spends the hand, every ramp of the story is a "
-      "smoothstep at its own zero and every wander is multiplied by a gate that is exactly nothing "
-      "there, so anything the reading finds is a real fault that no widening closes")
+# THE DOOR READING, AND ITS OWN NUMBERS. The manifest's own `applied.readAtADoor` contract is not
+# grepped here: it is fetched off the registered instrument and cross-checked against the runtime
+# door reading where both are taken, further below (the door-walk row).
 
 check("PASS-HERO every colour laid over the photograph rides one gate, and the door reads it",
-      "EVERY COLOUR THIS INSTRUMENT LAYS OVER THE PHOTOGRAPH RIDES THE DOOR GATE" in SOURCE_TEXT
-      and "0.16 * lean" in REGION and "0.34 * lean" in REGION and "dth * lean" in REGION
+      "0.16 * lean" in REGION and "0.34 * lean" in REGION and "dth * lean" in REGION
       and "read.lean > 0" in REGION,
       "the soft clip, the vignette and the dither are the three things this instrument adds to a "
       "photograph, and all three are multiplied by the same gate the geometry rides. So one number "
-      "answers the whole question at a door, and the refusal names it")
+      "answers the whole question at a door, and the refusal names it — and that taking this gate "
+      "off actually moves a door off its own file is measured by the red-on-bug row further below "
+      "(the door gate removed)")
 
 check("PASS-HERO the page's own furniture stayed in the lab",
       "uniform vec4  uMask;" in LABTXT and "uniform float uTitle;" in LABTXT
       and "uTitle" not in REGION
-      and "the quiet area under the title" in LABTXT
-      and "the page's own furniture" in SOURCE_TEXT,
+      and "the quiet area under the title" in LABTXT,
       "the module darkens a quiet area under a page title, holds an ellipse for where that title "
       "lies and carries the planet down out of the frame as the page scrolls on. None of the three "
-      "exists inside a crossing and none of them came over; the file says so rather than leaving a "
-      "reader to notice a missing uniform")
+      "exists inside a crossing and none of them came over. That the two roads still agree once "
+      "those three literals are levelled to neutral — proving nothing else rode along with them — "
+      "is measured where the two roads are compared, below")
 
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
@@ -502,6 +491,7 @@ BROWSER_ROWS = [
     "PASS-HERO the warp field is WALKED on the drawing buffer at both doors, and what it read is published",
     "PASS-HERO a door the judges' channel spoils is refused on the real road, and the visitor still lands",
     "PASS-HERO row 16 · the captures are kept as evidence",
+    "PASS-HERO the host's own seating plays where it is handed, and the fallback answers the same arithmetic",
 ]
 
 RED_ROWS = [
@@ -776,9 +766,11 @@ else:
 
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE", "CELL"]
-                      and "WHERE THIS STANDS ON THE CHARTER'S SHELF" in SOURCE_TEXT
-                      and "WORLD IS NOT CLAIMED, and that is a decision" in SOURCE_TEXT,
-                      f"levels={m['levels']}. The module carries no row in "
+                      and all(h.get("level") in (None, "SURFACE", "CELL")
+                              for h in m["handles"].values()),
+                      f"levels={m['levels']}, and no one of the ten handles publishes a level outside "
+                      f"that pair either — WORLD is claimed nowhere in the manifest, not just left out "
+                      f"of the top-level list. The module carries no row in "
                       f"lab/data/module-contract.json — it postdates that table — so the reading is "
                       f"off the two devices its own middle is built out of, and the charter's "
                       f"vocabulary table does carry both: `kaleidoscope`, which is the rose window, "
@@ -787,6 +779,40 @@ else:
                       f"camera and no projection, the same table puts the planet at SURFACE, and "
                       f"claiming WORLD would spend a crossing's one miracle and bar this instrument "
                       f"from every quiet link, entrance and return")
+
+                # ---- the host's own seating, and the port's fallback for a bench posing it by hand -
+                # `st.fitA || fit(...)`: where the host hands a seating the instrument has to play
+                # exactly that one, not a second guess at it; where it hands none the instrument's own
+                # `fit()` has to answer the same cover-fit arithmetic the host would have handed. Both
+                # halves are measured on the running instrument's own pure function, independently of
+                # the file's own formula, rather than by finding the fallback's text in the source.
+                # centreX sits close to the middle on purpose: far enough off it that `fitA` changes
+                # `centreInFrame` measurably, not so far that the frame's own clamp on that place
+                # (`±af/2`) saturates both readings to the same clamped edge and hides the difference.
+                FIT_POSE = {"mix": 0.3, "clock": 0, "cssWidth": VW, "cssHeight": VH,
+                            "centreX": 0.55, "centreY": 0.5, "folds": 4, "foldsScore": 0,
+                            "planet": 1, "turn": 1, "course": 0, "mask": 0, "reduced": False}
+                fit_given = dict(FIT_POSE, fitA=[0.61, 0.83, 0.0, 0.0])
+                fit_fallback = dict(FIT_POSE, aw=1600, ah=900)
+                v_given = js(br, "return window.__exPass.bench.values('hero', %s);"
+                             % json.dumps(fit_given))
+                v_fallback = js(br, "return window.__exPass.bench.values('hero', %s);"
+                                % json.dumps(fit_fallback))
+                fa_frame = VW / float(VH)
+                ia_frame = 1600 / 900.0
+                expect_fit = ([fa_frame / ia_frame, 1.0, 0.0, 0.0] if ia_frame > fa_frame
+                              else [1.0, ia_frame / fa_frame, 0.0, 0.0])
+                check(BROWSER_ROWS[19],
+                      v_given["fitA"] == [0.61, 0.83, 0.0, 0.0]
+                      and all(abs(a - b) < 1e-9 for a, b in zip(v_fallback["fitA"], expect_fit))
+                      and v_given["centreInFrame"] != v_fallback["centreInFrame"],
+                      f"handed fitA {[0.61, 0.83, 0.0, 0.0]}, the pose reports it back unchanged as "
+                      f"{v_given['fitA']}. Handed none, with a 1600x900 source in a {VW}x{VH} frame, "
+                      f"it answers {v_fallback['fitA']}, which is the cover fit this suite computed "
+                      f"independently as {expect_fit}. And the two seatings actually reach the "
+                      f"picture rather than sitting unread: the folds' own place in the frame reads "
+                      f"{v_given['centreInFrame']} under the handed fit and "
+                      f"{v_fallback['centreInFrame']} under the fallback, at the same centreX")
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas[aria-hidden]').width)"))
@@ -1029,9 +1055,18 @@ else:
                                        "return v.length ? v[0].applied : null;")
                     br.evaluate("window.__cancel('door walk'); 0")
                     idle(br)
-                ok = all(r and r["reads"] == "landing" and r["unit"] == "points of the drawing buffer"
-                         and r["applied"] is not None and r["applied"] < 0.5
-                         and r["lean"] == 0 and r["held"] is None and r["whyNo"] is None
+                # THE MANIFEST'S OWN CONTRACT, cross-checked against the runtime reading rather than
+                # grepped for its text: `mask`'s `applied.readAtADoor` names what is read, on which
+                # grid, in what unit, at what bar, and that nothing is held — and the runtime reading
+                # at both doors has to agree with every one of those five claims, not just recite them.
+                door_contract = m["handles"]["mask"]["applied"]["readAtADoor"]
+                ok = all(r and r["reads"] == "landing" == door_contract["reads"]
+                         and r["unit"] == "points of the drawing buffer"
+                         and door_contract["readOn"] == "the drawing buffer"
+                         and door_contract["points"] == 0.5
+                         and r["applied"] is not None and r["applied"] < door_contract["points"]
+                         and r["lean"] == 0 and r["held"] is None and door_contract["held"] is None
+                         and r["whyNo"] is None
                          and r["walked"] == 17
                          for r in reads.values())
                 check(BROWSER_ROWS[16], ok,
@@ -1039,9 +1074,10 @@ else:
                                 f"worst {r['applied']:.6f} points off the door's own framing, gate "
                                 f"{r['lean']}, held {r['held']}"
                                 for at, r in sorted(reads.items()) if r)
-                      + ". The reading is taken on the buffer the frame is drawn on and published "
-                        "through the channel the host holds open for it, so the landing is the "
-                        "run-time truth rather than the manifest's claim")
+                      + f". The manifest declares this handle's door reading as {door_contract}, and "
+                        "the runtime reading at both doors stands under that declared bar and holds "
+                        "nothing either, so the landing is the run-time truth and the manifest's own "
+                        "claim agrees with it rather than standing apart, unread, beside it")
 
                 # ---- a door the judges' channel spoils is refused ---------------------------------
                 spoiled = json.dumps(hero_score(mask=1))

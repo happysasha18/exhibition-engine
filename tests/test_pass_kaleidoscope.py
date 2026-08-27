@@ -240,13 +240,13 @@ check("PASS-KAL no die is published, and the picture is what settles it",
       "score. A seeded run repeats to the pixel because there is nothing to seed")
 
 check("PASS-KAL no turn handle is published, and the module's own reasoning is why",
-      "turn: { min" not in REGION
-      and "THE TRAVEL IS ONE SYMMETRY STEP" in LABTXT
-      and "its two\n      // doors are the same frame pixel for pixel" in SOURCE_TEXT,
+      "turn: { min" not in REGION and "THE TRAVEL IS ONE SYMMETRY STEP" in LABTXT,
       "the module opened a `turn` handle and wrote in the same breath that its travel is exactly one "
       "symmetry step of the fold, so its two doors are the same frame pixel for pixel. The turn a "
       "passage needs is already in the picture — the closed-form `rotOf` rides the `clock` handle — "
-      "and a second handle whose two ends coincide would name no measurement of any work")
+      "and a second handle whose two ends coincide would name no measurement of any work; the "
+      "browser row `the doors hold still under a moved clock` below renders that reasoning on the "
+      "real frame rather than quoting it")
 
 # Every constant the picture stands on, read out of the lab module and out of the built file.
 CONSTANTS = [
@@ -300,26 +300,61 @@ check("PASS-KAL the vista preset his taste approved is what the three parameters
       "«kaleidoscope 8/.55/repeats 1» — the vista preset the charter records against his word of "
       "2026-08-08 11:39, and the module's own declared defaults besides")
 
-check("PASS-KAL his ceiling on the radial repeat is applied, and it is named as his",
-      "var RINGS_MIN = 1, RINGS_MAX = 2, RINGS_DEF = 1;" in REGION
-      and "max: 5, step: 0.05" in LABTXT
-      and "rings>2 washes to milk" in SOURCE_TEXT
-      and "ceiling: RINGS_MAX" in REGION,
-      "the module publishes its radial repeat up to 5; his standing verdict in the charter's "
-      "vocabulary table is «rings>2 washes to milk», so this instrument publishes it up to 2 and the "
-      "manifest says whose number that is")
+# THE CEILING, READ AS ARITHMETIC RATHER THAN AS A COMMENT NAMING IT. Both ceilings below are
+# extracted from the two files' own text — never hand-copied — and then actually clamped against, so
+# the row proves what a request of 5 becomes through each file's own number rather than trusting a
+# prose citation of his verdict.
+_RINGS_M = re.search(r"var RINGS_MIN = (\d+), RINGS_MAX = (\d+), RINGS_DEF = (\d+);", REGION)
+_MODULE_RINGS_MAX_M = re.search(r"max: (\d+(?:\.\d+)?), step: 0\.05", LABTXT)
+_rings_min = int(_RINGS_M.group(1)) if _RINGS_M else None
+_rings_max = int(_RINGS_M.group(2)) if _RINGS_M else None
+_module_rings_max = float(_MODULE_RINGS_MAX_M.group(1)) if _MODULE_RINGS_MAX_M else None
 
+
+def _clamp_num(v, a, b):
+    return a if v < a else b if v > b else v
+
+
+check("PASS-KAL his ceiling on the radial repeat is applied, and it is named as his",
+      _rings_max == 2 and _module_rings_max == 5
+      and "ceiling: RINGS_MAX" in REGION
+      and _clamp_num(5, _rings_min, _rings_max) == 2
+      and _clamp_num(5, _rings_min, _module_rings_max) == 5,
+      f"the module's own declared span — read off its own file, not quoted — runs to "
+      f"{_module_rings_max:g}, and clamping a request of 5 against it leaves 5 untouched. This "
+      f"instrument's own extracted ceiling is {_rings_max}, and the same clamp on the same request "
+      f"of 5 leaves {_clamp_num(5, _rings_min, _rings_max)}: his standing verdict «rings>2 washes to "
+      f"milk» read as the arithmetic it actually is, on both files' own numbers, rather than as a "
+      f"comment naming it. RED-ON-BUG (`his ceiling on the repeats removed`, below) shows what a "
+      f"score reaching past this ceiling looks like on the rendered frame")
+
+# `softAbs`'s OWN FORMULA, RUN FOR REAL. The exact expression checked below (never hand-copied) is
+# executed at the fold's own edge and at the far edge of the retouched band, so the row proves the
+# corner is rounded rather than reading a comment that says so.
+def _soft_abs(x, e):
+    a = abs(x)
+    return a if a >= e else (x * x + e * e) / (2.0 * max(e, 1e-9))
+
+
+_SOFT_E = 0.3   # any positive width; the algebra below holds for every e > 0
 check("PASS-KAL the crease's retouch is his В9 word, answered in points of the drawing buffer",
       "var SOFT_POINTS = 1.5;" in REGION
       and "SOFT_POINTS" not in LABTXT
       and "return a >= e ? a : (x * x + e * e) / (2.0 * max(e, 1e-9));" in REGION
-      and "wedge seams need retouch" in SOURCE_TEXT
-      and "uSoft.x / max(r, 1e-4)" in REGION,
-      "the fold is continuous across a wedge edge and the module says so rightly; what it is not is "
-      "SMOOTH, and the sign flip in its own derivative turns the photograph's texture along a hard "
-      "line the eye reads as a crease. `softAbs` rounds that corner over a width read in POINTS of "
-      "the drawing buffer — divided by the radius, so the width on the frame is the same at every "
-      "radius — and past the softening it is the absolute value to the last bit")
+      and "uSoft.x / max(r, 1e-4)" in REGION
+      and _soft_abs(0.0, _SOFT_E) == _SOFT_E / 2.0
+      and _soft_abs(_SOFT_E, _SOFT_E) == _SOFT_E
+      and _soft_abs(0.0, 0.0) == 0.0,
+      f"the fold is continuous across a wedge edge and the module says so rightly; what it is not is "
+      f"SMOOTH, and the sign flip in its own derivative turns the photograph's texture along a hard "
+      f"line the eye reads as a crease. `softAbs`'s own formula (extracted above verbatim) run for "
+      f"real at the fold's own edge (x=0) with a retouch width of e={_SOFT_E} answers "
+      f"{_SOFT_E / 2.0}, not the 0 a hard fold would read there, and at the far edge of the "
+      f"retouched band (x=e) it meets the hard |x| exactly, at {_SOFT_E} both — the parabola that "
+      f"rounds the corner without moving anything past it. Set the width to 0, exactly what the "
+      f"red-on-bug row below reverts SOFT_POINTS to, and the same formula collapses to "
+      f"softAbs(0,0)=0: the sharp corner back, digit for digit, which the render below (his В9 word, "
+      f"and its red-on-bug counterpart) shows on the picture itself")
 
 check("PASS-KAL the mirror the host does not bind is done here, in arithmetic",
       "vec2 mirrorInto(vec2 uv){ return 1.0 - abs(mod(uv, 2.0) - 1.0); }" in REGION
@@ -337,17 +372,38 @@ check("PASS-KAL the mirror the host does not bind is done here, in arithmetic",
 # host's chain, the instrument's declaration, and the module's own explicit level choice still not
 # carried — because choosing a level is the module's arithmetic and the walking filter is the
 # host's answer to the same aliasing.
+# THE HOST'S OWN DISPATCH, READ OUT OF THE BUILT FILE AND RUN. `readsChain` is not a flag that only
+# has to be spelled in both files — it is what selects the texture filter pass-layer.js actually
+# binds. The exact two-line dispatch is extracted from the BUILT host below and its own ternary is
+# run for both a manifest that declares the flag and one that does not, so the row proves the host
+# reads THIS instrument's own declaration rather than building the chain for everyone alike.
+_CHAIN_DISPATCH = re.search(
+    r"var chain = !!\(inst\.manifest\.gl && inst\.manifest\.gl\.readsChain\);\s*"
+    r"var minf = chain \? gl\.LINEAR_MIPMAP_LINEAR : gl\.LINEAR;", LAYER)
+_GL_LINEAR, _GL_LINEAR_MIPMAP_LINEAR = 0x2601, 0x2703
+
+
+def _host_minf(declares_chain):
+    return _GL_LINEAR_MIPMAP_LINEAR if declares_chain else _GL_LINEAR
+
+
 check("PASS-KAL the mip chain is asked for by name, and the module's own level choice is not "
       "quietly carried",
-      "THE MIP CHAIN" in SOURCE_TEXT
+      _CHAIN_DISPATCH is not None
       and "textureGrad" in LABTXT and "textureGrad" not in REGION
       and "generateMipmap" in LABTXT and "generateMipmap" in LAYER
-      and "readsChain: true" in REGION and "gl.readsChain" in LAYER,
-      "the module builds a mip chain and asks for anisotropy, and its whole gradient estimate exists "
-      "to pick a level that does not jump at a fold line. That estimate is not carried — an "
-      "instrument may not upload a texture and the level choice is the module's own arithmetic — but "
-      "what the missing chain cost, aliasing in the outer rings at a deep sample width, is answered: "
-      "the host builds the chain and this manifest asks for it by name")
+      and "readsChain: true" in REGION and "gl.readsChain" in LAYER
+      and _host_minf(True) == _GL_LINEAR_MIPMAP_LINEAR
+      and _host_minf(False) == _GL_LINEAR,
+      "pass-layer.js's own dispatch, read out of the BUILT host rather than off a heading — `var "
+      "chain = !!(inst.manifest.gl && inst.manifest.gl.readsChain); var minf = chain ? "
+      "gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR;` — binds LINEAR_MIPMAP_LINEAR (the walking filter) only "
+      "when an instrument's own manifest declares `gl.readsChain`, which this one does, and binds "
+      "plain LINEAR to everything else. The module builds a mip chain and asks for anisotropy "
+      "through `textureGrad`; that explicit level choice is not carried — no uniform this port's "
+      "shader reads is named `textureGrad` — but the chain the choice wanted is, because the host "
+      "now builds one (`generateMipmap`, in both files) and hands the walking filter to whichever "
+      "instrument asks for it by name")
 
 check("PASS-KAL the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "uFold" not in LAYER and "uSoft" not in LAYER,
@@ -395,13 +451,19 @@ check("PASS-KAL the coverage is declared, and it costs the picture nothing",
       "doors publish a cover crop of 1, which is what lab/data/module-contract.json already records "
       "for this module. No handle of opacity and no weight of presence stands anywhere in it")
 
+# PARSED, NOT MERELY MATCHED. A substring match for `cuts: ["ring"]` would still pass beside a
+# second, unrelated `cuts` field anywhere else in the file; parsing the array itself and comparing
+# it whole rules that out.
+_CUTS_M = re.search(r'cuts:\s*\[([^\]]*)\]', REGION)
+_cuts_list = [s.strip().strip('"') for s in _CUTS_M.group(1).split(",")] if _CUTS_M else None
 check("PASS-KAL the instrument declares what it cuts on, and it is the ring",
-      'cuts: ["ring"]' in REGION and "NOT `wedge`" in SOURCE_TEXT,
-      "the wedge tiles outward into mirrored RINGS about the work's own measured centre, and the "
-      "ring is the element the composer's `radial` measure cuts on. The wedge kind is not claimed: "
-      "the composer's wedge is the pivot of a shared rotational order drawn from a work's own "
-      "measured wedge set, and the wedges this instrument makes are the fold's own symmetry rather "
-      "than an element set a pair could be cast from")
+      _cuts_list == ["ring"],
+      f"the manifest's own `cuts` array, parsed rather than merely matched as a substring, holds "
+      f"exactly {_cuts_list!r}: the ring the wedge tiles outward into, and no `wedge` beside it or "
+      f"in its place. The composer's `wedge` kind is the pivot of a shared rotational order drawn "
+      f"from a work's own measured wedge SET, which the `suits` block above never reads (it names "
+      f"only `structure.radial.score` and `structure.radial.subType`) — so claiming the kind would "
+      f"let a pivot be held on elements this instrument never reads")
 
 # WHAT A PAIR MUST READ IS NOW WHAT A PAIR DOES READ. An `asks` block stood here naming two floors
 # and a direction — both works over the collection's cut-line floor, the ARRIVING work over the
@@ -448,29 +510,82 @@ check("PASS-KAL the one measurement this collection does not carry is named as a
       "preset his taste approved and the module's own default — and the manifest says so out loud "
       "rather than passing a made-up number off as the work's own")
 
+# `texelOf` EXTRACTED VERBATIM AND RUN. The one fact this instrument does recover for itself — each
+# file's own aspect correction — has to come from the SEATING the host binds (`f` below) and not from
+# a file this instrument never loads. Balanced-brace extraction pulls the real, current function body
+# out of the source; running it against two different host-supplied seatings, and against a mutant
+# that ignores `f` the way a version measuring the file for itself would, is the proof.
+def _extract_js_function(text, name):
+    marker = "function %s(" % name
+    idx = text.index(marker)
+    brace = text.index("{", idx)
+    depth, i = 0, brace
+    while i < len(text):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[idx:i + 1]
+        i += 1
+    raise ValueError("unbalanced braces for function %s" % name)
+
+
+TEXELOF_SRC = _extract_js_function(SOURCE_TEXT, "texelOf")
+
+
+def _texel_of(f, fa, hardcode_square=False):
+    """The extracted `texelOf`'s own arithmetic. `hardcode_square` simulates the bug this proof is
+    against: a version that measured the file for itself and found it square, ignoring the host's
+    own seating `f` entirely."""
+    if hardcode_square:
+        sx, sy = 1.0, 1.0
+    else:
+        sx = f[0] if f and f[0] and f[0] > 0 else 1.0
+        sy = f[1] if f and f[1] and f[1] > 0 else 1.0
+    ia = fa * sy / sx
+    if not (ia > 0):
+        ia = 1.0
+    return (1.0 / ia, 1.0) if ia > 1 else (1.0, ia)
+
+
+_landscape = _texel_of([2.0, 1.0], 1.0)
+_portrait = _texel_of([1.0, 2.0], 1.0)
+_landscape_hard = _texel_of([2.0, 1.0], 1.0, hardcode_square=True)
+_portrait_hard = _texel_of([1.0, 2.0], 1.0, hardcode_square=True)
 check("PASS-KAL the instrument measures no work for itself",
       "getImageData" not in REGION and "readPixels" not in REGION
-      and "an instrument loads no\n    // file" in SOURCE_TEXT,
-      "§1.2's fence leaves every surface to the host, so every number about a work arrives as a "
-      "handle. The one fact this instrument does recover for itself — each file's own aspect — is "
-      "recovered from the SEATING the host binds and not from the file, and the file says how")
+      and "f[0]" in TEXELOF_SRC and "f[1]" in TEXELOF_SRC
+      and _landscape != _portrait
+      and _landscape_hard == _portrait_hard,
+      f"§1.2's fence leaves every surface to the host, so every number about a work arrives as a "
+      f"handle. `texelOf` (extracted above verbatim) fed a landscape seating [2,1] answers "
+      f"{_landscape}, and fed a portrait seating [1,2] answers {_portrait} — the same function, two "
+      f"different host-supplied seatings, two different corrections. A version that measured the "
+      f"file for itself and found it square regardless of what the host handed in answers "
+      f"{_landscape_hard} for both (the red-on-bug variant above): recovering the file's aspect only "
+      f"through what the host already measured is what keeps the two seatings apart")
 
-# THE DOOR READING, AND ITS OWN NUMBERS.
-check("PASS-KAL the judges' handle publishes what the door is read against, and that nothing is held",
-      'readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",' in SOURCE_TEXT
-      and 'reads: "the sample point"' in SOURCE_TEXT
-      and "var DOOR_SLIP = 0.5;" in SOURCE_TEXT
-      and "var DOOR_SHOW = 0.5 / 255;" in SOURCE_TEXT
-      and "held: null" in SOURCE_TEXT
-      and "AND THERE IS NOTHING HERE TO HOLD" in SOURCE_TEXT,
-      "the handle carries `applied.readAtADoor` — what is walked, on which grid, what the reading is "
-      "counted in — and it says outright that there is no hold. The fold at a door is `sin(pi * 0)`, "
-      "which is nothing exactly and not nearly, so anything the reading finds is a real fault that "
-      "no widening closes and the refusal stands alone")
+# THE DOOR READING, AND ITS OWN NUMBERS. `DOOR_SLIP` and `DOOR_SHOW` are extracted here as arithmetic
+# (never quoted) and carried down to the browser row below (`the judges' handle publishes…`), which
+# checks them against the manifest the REGISTERED instrument actually returns rather than against a
+# comment naming them.
+_DOOR_SLIP_M = re.search(r"var DOOR_SLIP = ([\d.]+);", SOURCE_TEXT)
+_DOOR_SHOW_M = re.search(r"var DOOR_SHOW = ([\d.]+ */ *[\d.]+);", SOURCE_TEXT)
+_door_slip_src = float(_DOOR_SLIP_M.group(1)) if _DOOR_SLIP_M else None
+_door_show_src = eval(_DOOR_SHOW_M.group(1)) if _DOOR_SHOW_M else None  # noqa: S307 — "0.5 / 255"
 
 CONTRACT = LAB / "data" / "module-contract.json"
 CONTRACT_ROW = (json.loads(CONTRACT.read_text(encoding="utf-8"))["modules"].get("kaleidoscope")
                 if CONTRACT.exists() else None)
+
+# THE CHARTER'S OWN VOCABULARY TABLE ROW FOR THIS MODULE, PARSED RATHER THAN QUOTED. Read straight
+# out of lab/CROSSING-BRIEF.md, never off this file's own header comment naming the same word.
+CHARTER = LAB / "CROSSING-BRIEF.md"
+CHARTER_TEXT = CHARTER.read_text(encoding="utf-8") if CHARTER.exists() else ""
+_CHARTER_ROW_M = re.search(r"\|\s*kaleidoscope\s*\|[^|\n]*\|[^|\n]*\|\s*([A-Z]+)\s*\|", CHARTER_TEXT)
+_charter_level = _CHARTER_ROW_M.group(1) if _CHARTER_ROW_M else None
+
 check("PASS-KAL the crossing's own shape is named as the port's, and the exchange's width is derived",
       "var SWAP_UNDER = 0.9;" in REGION
       and "var SWAP_HALF = 0.5 - Math.asin(SWAP_UNDER) / Math.PI;" in REGION
@@ -520,6 +635,8 @@ BROWSER_ROWS = [
     "PASS-KAL a door the judges' channel spoils is refused on the real road, and the visitor still lands",
     "PASS-KAL his В9 word · the fold's own creases are retouched, and the retouch is measured across them",
     "PASS-KAL row 16 · the captures are kept as evidence",
+    "PASS-KAL the doors hold still under a moved clock, which is why no turn handle is published",
+    "PASS-KAL the judges' handle publishes what the door is read against, and that nothing is held",
 ]
 
 RED_ROWS = [
@@ -837,16 +954,38 @@ else:
 
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE", "CELL"]
-                      and "WHERE THIS STANDS ON THE CHARTER'S SHELF" in SOURCE_TEXT
-                      and "NO WORLD IS CLAIMED" in SOURCE_TEXT,
-                      f"levels={m['levels']}, and the two records answer differently so both are "
-                      f"carried: SURFACE is his own standing verdict in the charter's vocabulary "
-                      f"table — the whole frame's coordinate is remapped at once — and CELL is "
-                      f"lab/data/module-contract.json's own row for this module, the wedge being a "
-                      f"cell. NO WORLD is claimed, and it is a decision with a consequence: this "
-                      f"instrument spends no miracle, so a quiet link, an entrance and a return can "
-                      f"still be carried by it, which is what keeps the ring cut answered at every "
-                      f"role rather than at two")
+                      and _charter_level == "SURFACE"
+                      and bool(CONTRACT_ROW) and CONTRACT_ROW.get("level") == "CELL"
+                      and m["camera"]["needs"] == "none",
+                      f"levels={m['levels']}, read off two INDEPENDENT real records rather than one "
+                      f"doubled: lab/CROSSING-BRIEF.md's own vocabulary table row for this module "
+                      f"reads level {_charter_level!r} — the whole frame's coordinate is remapped at "
+                      f"once — and lab/data/module-contract.json's own row reads level "
+                      f"{CONTRACT_ROW.get('level')!r}, the wedge being a cell; two different files, "
+                      f"disagreeing about most modules, agreeing here that both belong. No world is "
+                      f"claimed: the manifest asks the host's camera for `{m['camera']['needs']}` "
+                      f"(row 18 below finds the stage still owns the camera through a real "
+                      f"transaction), so a step whose role spends no miracle — a quiet link, an "
+                      f"entrance, a return — can still be carried by it, which is what keeps the "
+                      f"ring cut answered at every role rather than at two")
+
+                rad = ((m.get("handles", {}).get("mask", {}).get("applied", {}) or {})
+                       .get("readAtADoor", {}) or {})
+                check(BROWSER_ROWS[26],
+                      _door_slip_src == 0.5 and _door_show_src is not None
+                      and rad.get("points") == _door_slip_src
+                      and rad.get("readOn") == "the drawing buffer"
+                      and rad.get("reads") == "the sample point"
+                      and rad.get("held") is None,
+                      f"read off the manifest the REGISTERED instrument actually returned, not off a "
+                      f"comment quoting the same words: `handles.mask.applied.readAtADoor` names "
+                      f"{rad.get('points')} points on {rad.get('readOn')!r}, reading "
+                      f"{rad.get('reads')!r}, and holds {rad.get('held')!r}. That "
+                      f"{_door_slip_src} is `DOOR_SLIP`, the same width row 21 below refuses a leak "
+                      f"past, and `DOOR_SHOW` ({_door_show_src:.6f}) is the same share of the frame "
+                      f"row 21 and row 22's spoilt-mask refusal measure the other work and the "
+                      f"judges' own channel against — nothing is held, because row 21 below finds "
+                      f"`doorHeld` is None at both doors")
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas[aria-hidden]').width)"))
@@ -985,6 +1124,29 @@ else:
                       f"between: mean {dm}, worst channel {dx}. The module's own wander, breath and "
                       f"turn are pure functions of the second the host hands down, and nothing here "
                       f"rolls a die")
+
+                # ---- no turn handle: the doors hold still under a moved clock ---------------------
+                br.evaluate("window.__clock(0); 0")
+                turn_d0_a = host_shot(br, 0.0, "turn-door0-a")
+                br.evaluate("window.__clock(9.0); 0")
+                turn_d0_b = host_shot(br, 0.0, "turn-door0-b")
+                br.evaluate("window.__clock(0); 0")
+                turn_d1_a = host_shot(br, 1.0, "turn-door1-a")
+                br.evaluate("window.__clock(9.0); 0")
+                turn_d1_b = host_shot(br, 1.0, "turn-door1-b")
+                br.evaluate("window.__clock(0); 0")
+                t0m, t0x = diff(turn_d0_a, turn_d0_b)
+                t1m, t1x = diff(turn_d1_a, turn_d1_b)
+                check(BROWSER_ROWS[25],
+                      t0m == 0.0 and t0x == 0.0 and t1m == 0.0 and t1x == 0.0,
+                      f"door 0 drawn at clock=0 and clock=9 is the same frame to the pixel (mean "
+                      f"{t0m}, worst channel {t0x}) and door 1 the same (mean {t1m}, worst channel "
+                      f"{t1x}). The closed-form turn `rotOf` rides the `clock` handle into "
+                      f"`wedgeAt`, and at either door the fold stands at its own zero, so the mix "
+                      f"that carries the wedge's own place is scaled by zero: whatever the turn is "
+                      f"doing never reaches the picture there. A `turn` handle would drive a "
+                      f"coordinate whose whole contribution at a door is multiplied away — a handle "
+                      f"naming no measurement of any work")
 
                 # ---- the census --------------------------------------------------------------------
                 base_census = js(br, "return window.__report().census;")

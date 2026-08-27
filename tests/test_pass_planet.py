@@ -422,15 +422,17 @@ check("PASS-PLANET the coverage is declared, and the frame it fills is the reaso
       "Under the placement rule that makes this instrument lawful as the LOWEST cue of a stack. No "
       "handle of opacity and no weight of presence stands anywhere in the instrument")
 
-check("PASS-PLANET the two works meet at a hard cut and never at a dissolve",
-      "float cov = clamp(0.5 + (uCut.x - row) / foot, 0.0, 1.0);" in REGION
-      and "Coverage over a pixel's footprint, never transparency" in SOURCE_TEXT
-      and "float foot = max(mix(uCut.y, gv, uWorld), 1e-6);" in REGION,
-      "the charter bans the dead dissolve between two works, and this instrument's boundary is one "
-      "row of the photograph with the share of a single point of the buffer as its only softening. "
-      "In the world that row is a RING, because the world is the picture's rows wrapped round a "
-      "circle; at the flat door it is the frame's own height. One law, two readings, and the same "
-      "uWorld the sample coordinate is mixed on carries it between them")
+# THE HARD-CUT ROW MOVED INTO THE BROWSER SECTION BELOW, where a real WebGL2 context is open to
+# prove it. Grepping for the comment "Coverage over a pixel's footprint, never transparency" only
+# ever proved the sentence sits somewhere in the file; the row now renders the actual boundary at
+# uWorld=0 (where `row` is the frame's own flat coordinate, nothing else) and measures the PIXEL
+# WIDTH the coverage takes to travel from one work to the other, off the judges' own channel, which
+# is `mix(0.5, 1.0, cov)` and nothing else — so a wide dissolve shows up as a wide band and a hard
+# cut as a narrow one, whichever text sits beside the line. `COV_LINE`/`FOOT_LINE` are the two real
+# shader-source checks the row always kept; `WIDE_DISSOLVE` is the mutation its red half plants.
+COV_LINE = "float cov = clamp(0.5 + (uCut.x - row) / foot, 0.0, 1.0);"
+FOOT_LINE = "float foot = max(mix(uCut.y, gv, uWorld), 1e-6);"
+WIDE_DISSOLVE = "float cov = smoothstep(uCut.x - 0.3, uCut.x + 0.3, row);"
 
 check("PASS-PLANET every geometric handle publishes the measurement of the photograph it reads",
       'reads: "structure.polar.planet' in REGION
@@ -444,18 +446,14 @@ check("PASS-PLANET every geometric handle publishes the measurement of the photo
       "crop reads the share of the frame its figure holds, which is the reading the module's own "
       "table of three photographs stands on")
 
-check("PASS-PLANET the instrument measures no work for itself, and READS the pair it is handed",
-      "suits: suitsPair," in SOURCE_TEXT and "suits: { reads:" in SOURCE_TEXT
-      # the struck floor is NAMED in a comment where it stood, which is how a strike is recorded;
-      # what the row holds out is the constant itself and the branch that read it
-      and "asks: asks," not in SOURCE_TEXT and "var WORLD_FLOOR" not in SOURCE_TEXT
-      and "p.best < WORLD_FLOOR" not in SOURCE_TEXT
-      and "getImageData" not in REGION and "drawImage" not in REGION,
-      "his word of 2026-08-18 09:01 — «просто пара приходит и ты смотришь какими инструментами ее "
-      "вести» — and his 09:53: a measurement ranks and never admits. The instrument names the "
-      "fields it reads and answers, for two work records, a fit between nothing and whole with the "
-      "reason in the works' own numbers. It reads no picture: measuring means drawing a work into a "
-      "surface of its own and counting, and §1.2's fence leaves every surface to the host")
+# THIS ROW MOVED INTO THE NODE SECTION BELOW, where the real DRIVER already loads the instrument
+# through `vm` and can call its live `suits()` rather than grep the source for the names beside it.
+# Grepping for "suits: suitsPair," or the struck "var WORLD_FLOOR" only ever proved those strings
+# sit somewhere in the file; the row now calls `I.suits(...)` on synthetic work records and reads
+# what it actually returns — an unrelated field moves nothing, a field the manifest names moves
+# everything, and an extreme-low reading still comes back played rather than declined — and its own
+# red-on-bug plants `WORLD_FLOOR`'s struck branch back into a copy of `worldOfOne` held only in
+# memory to show the same reading decline where the shipped file lets it play.
 
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
@@ -469,22 +467,67 @@ contract_says_world = False
 if CONTRACT.exists():
     _row = json.loads(CONTRACT.read_text(encoding="utf-8"))["modules"].get("planet") or {}
     contract_says_world = _row.get("level") == "WORLD"
-check("PASS-PLANET the two readings of this module's level are both recorded, and the shelf settles them",
-      'levels: ["WORLD", "SURFACE"]' in REGION
-      and "the vocabulary's SURFACE is the older and" in SOURCE_TEXT
-      and contract_says_world,
-      "lab/data/module-contract.json gives this module WORLD and the charter's vocabulary table "
-      "gives it SURFACE. Shelf 8 names the sphere among its projection worlds and says a folded "
-      "space is at most one per crossing and IS the miracle, which settles it: WORLD is declared "
-      "and paid for — an instrument publishing it spends the crossing's one miracle — and SURFACE "
-      "is kept because it is the level the CUT lives on")
+# THIS ROW MOVED INTO THE NODE SECTION BELOW TOO. Grepping the source for the sentence "the
+# vocabulary's SURFACE is the older and" only ever proved that sentence sits in the file; the row
+# now loads the REAL pass-composer.js through `vm`, the file that actually spends the crossing's
+# one miracle on a WORLD reading (`WORLD_FOLD_INSTRUMENTS`, `isWorldFold`, `spendsTheMiracle`), and
+# asks it whether "planet" stands among the instruments it folds — then asks the same question of
+# a copy of that file, held only in memory, with "planet" struck from the array literal.
 
 # ---------------------------------------------------------------- the instrument as a pure function
 NODE_ROWS = [
     "PASS-PLANET node   · both doors are exact by construction, on five grids",
     "PASS-PLANET node   · a door with the judges' channel open is refused, in the instrument's own numbers",
     "PASS-PLANET node   · every pair is read and ranked, and no pair is turned away",
+    "PASS-PLANET the instrument measures no work for itself, and READS the pair it is handed",
+    "PASS-PLANET node red-on-bug · a floor planted in `worldOfOne` declines the same low reading "
+    "the real one plays",
+    "PASS-PLANET the two readings of this module's level are both recorded, and the shelf settles them",
+    "PASS-PLANET node red-on-bug · planet struck from WORLD_FOLD_INSTRUMENTS stops spending the "
+    "crossing's miracle",
 ]
+
+COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
+COMPOSED_FIXTURE = ROOT / "tests" / "fixture_pass_composed.json"
+
+# THE COMPOSER'S OWN ARRAY, READ THROUGH REAL EXECUTION RATHER THAN GREPPED. `WORLD_FOLD_INSTRUMENTS`
+# (pass-composer.js) is what `isWorldFold`/`spendsTheMiracle` read, and `composer.worldFoldInstruments`
+# is that same array re-exposed on the module's own returned object (naряд S-18, 2026-08-27). The
+# mutation strikes "planet" from the literal, in a copy of the file held only in memory.
+FOLD_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [modulePath, fixturePath, mutate] = process.argv.slice(2);
+let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
+if (mutate === "1") {
+  const before = 'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];';
+  const after = 'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "tilt", "waterline"];';
+  if (source.indexOf(before) < 0) {
+    console.log(JSON.stringify({error: "the array literal was not found verbatim"}));
+    process.exit(0);
+  }
+  source = source.split(before).join(after);
+}
+let joined = null;
+const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, {filename: "pass-composer.js"});
+if (!joined) { console.log(JSON.stringify({error: "the module joined nothing"})); process.exit(0); }
+const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+const composer = joined.make(fix.consts);
+console.log(JSON.stringify({worldFoldInstruments: composer.worldFoldInstruments || null}));
+"""
+
+# THE FLOOR THIS DRIVER PLANTS BACK, to prove the row above is not vacuous — a copy of the source
+# tree held only in memory, never written back to it, with `WORLD_FLOOR`'s own struck branch
+# reinstated at the one place it used to stand (planet.js:413 above names where it went).
+FLOOR_BUG_OLD = ("    function worldOfOne(w) {\n"
+                 "      var p = polarOf(w);\n"
+                 "      var whole = p.best + p.spiral;")
+FLOOR_BUG_NEW = ("    function worldOfOne(w) {\n"
+                 "      var p = polarOf(w);\n"
+                 "      if (p.best < 0.20) return [0, \"declined\"];\n"
+                 "      var whole = p.best + p.spiral;")
 
 DRIVER = r"""
 "use strict";
@@ -532,9 +575,22 @@ const asked = {
   noHorizon: I.suits(world.noHorizon, world.noHorizon),
   declared: I.manifest.suits,
 };
+// PURITY (his 09:01/09:53): `suits` reads only the two records' own numeric fields, so a field it
+// never names moves nothing and a field its own manifest names moves the fit; and no reading, "
+// however low, is ever declined — it ranks last and still plays.
+const withJunk = Object.assign({}, world.radial, {notReadByAnything: "junk"});
+const changedPlanet = JSON.parse(JSON.stringify(world.radial));
+changedPlanet.structure.polar.planet = 0.05;
+const extremeLow = {structure: {polar: {planet: 0.05, tunnel: 0, twirl: 0}, horizon: {y: 0.5}}};
+const purity = {
+  base: I.suits(world.radial, world.radial),
+  withJunk: I.suits(withJunk, withJunk),
+  changedPlanet: I.suits(changedPlanet, changedPlanet),
+  extremeLow: I.suits(extremeLow, extremeLow),
+};
 console.log(JSON.stringify({doors: doors, away: {map: away.cutMap, grid: away.doorGrid},
                             open: open.doorWhyNo, openOut: openOut.doorWhyNo, asked: asked,
-                            name: I.name, version: joined.version}));
+                            purity: purity, name: I.name, version: joined.version}));
 """
 
 DRIVER_PATH = TMP / "planet-driver.js"
@@ -608,6 +664,96 @@ else:
               f"{fits['spiral']:.4f}; a pair with no measured horizon reads {fits['noHorizon']:.4f} "
               f"— every one of them lower, every one of them still playable")
 
+        # ---- suits reads only the pair's own numbers, and never declines --------------------------
+        p = got.get("purity") or {}
+        base_fit = p.get("base", [None])[0]
+        junk_fit = p.get("withJunk", [None])[0]
+        changed_fit = p.get("changedPlanet", [None])[0]
+        low = p.get("extremeLow", [None, ""])
+        low_fit, low_reason = low[0], (low[1] or "")
+        check(NODE_ROWS[3],
+              "getImageData" not in REGION and "drawImage" not in REGION
+              and base_fit is not None and junk_fit == base_fit and changed_fit is not None
+              and changed_fit != base_fit
+              and isinstance(low_fit, (int, float)) and 0 <= low_fit <= 1
+              and "declin" not in low_reason.lower() and "refus" not in low_reason.lower(),
+              f"his word of 2026-08-18 09:01 — «просто пара приходит и ты смотришь какими "
+              f"инструментами ее вести» — and his 09:53: a measurement ranks and never admits. "
+              f"`getImageData`/`drawImage` stand nowhere in the built instrument, so it reads no "
+              f"picture of its own — measuring means drawing a work into a surface and counting, "
+              f"and §1.2's fence leaves every surface to the host. What `suits` is left to read is "
+              f"the pair's own numbers, called live here rather than assumed: a field this "
+              f"instrument's own manifest never names moves nothing (a work with an extra "
+              f"`notReadByAnything` field reads the identical {junk_fit} the same work without it "
+              f"does), a field it does name moves the fit (the same work with its own "
+              f"`structure.polar.planet` changed from 0.6733 to 0.05 reads {changed_fit} against "
+              f"{base_fit}), and a pair reading as little of a world as 0.05 with no corridor, no "
+              f"log-spiral and a horizon at the middle still reads a played fit of {low_fit} — "
+              f"«{low_reason}» — never a decline")
+
+        floor_bug_text = SOURCE_TEXT.replace(FLOOR_BUG_OLD, FLOOR_BUG_NEW, 1)
+        if floor_bug_text == SOURCE_TEXT:
+            check(NODE_ROWS[4], False,
+                  "the floor's own anchor text was not found in the source tree, so the planted "
+                  "copy could not be built off it")
+        else:
+            floor_bug_path = TMP / "pass-inst-planet-floor-bug.js"
+            floor_bug_path.write_text(floor_bug_text, encoding="utf-8")
+            proc2 = subprocess.run(["node", str(DRIVER_PATH), str(floor_bug_path)],
+                                   capture_output=True, text=True, timeout=120)
+            if proc2.returncode != 0:
+                check(NODE_ROWS[4], False,
+                      "the planted copy would not load: " + (proc2.stderr or "").strip()[-300:])
+            else:
+                got2 = json.loads(proc2.stdout.strip().splitlines()[-1])
+                low2 = (got2.get("purity") or {}).get("extremeLow", [None, ""])
+                low2_fit, low2_reason = low2[0], (low2[1] or "")
+                check(NODE_ROWS[4],
+                      low2_fit == 0 and "declin" in low2_reason.lower()
+                      and low_fit is not None and low_fit != low2_fit,
+                      f"the same pair that reads a played fit of {low_fit} — «{low_reason}» — off "
+                      f"the source tree reads {low2_fit} — «{low2_reason}» — off a copy of it with "
+                      f"`WORLD_FLOOR`'s own struck branch planted back into `worldOfOne`. The row "
+                      f"above is real: it is this exact plant that it stands against")
+
+        # ---- the two readings of this module's level, and the shelf that spends the miracle ------
+        FOLD_DRIVER_PATH = TMP / "composer-fold-driver.js"
+        FOLD_DRIVER_PATH.write_text(FOLD_DRIVER, encoding="utf-8")
+
+        def fold_run(mutate):
+            proc3 = subprocess.run(
+                ["node", str(FOLD_DRIVER_PATH), str(COMPOSER), str(COMPOSED_FIXTURE),
+                 "1" if mutate else "0"],
+                capture_output=True, text=True, timeout=120)
+            if proc3.returncode != 0:
+                return {"error": (proc3.stderr or "").strip()[-400:]}
+            return json.loads(proc3.stdout.strip().splitlines()[-1])
+
+        fold_real = fold_run(False)
+        fold_mut = fold_run(True)
+        real_fold = fold_real.get("worldFoldInstruments")
+        mut_fold = fold_mut.get("worldFoldInstruments")
+        check(NODE_ROWS[5],
+              'levels: ["WORLD", "SURFACE"]' in REGION and contract_says_world
+              and isinstance(real_fold, list) and "planet" in real_fold,
+              f"lab/data/module-contract.json gives this module WORLD and the charter's vocabulary "
+              f"table gives it SURFACE. Shelf 8 names the sphere among its projection worlds and "
+              f"says a folded space is at most one per crossing and IS the miracle, which settles "
+              f"it: WORLD is declared and paid for, and the composer's own "
+              f"`WORLD_FOLD_INSTRUMENTS` — read live here off the real pass-composer.js, re-exposed "
+              f"on its own returned object as `worldFoldInstruments` {real_fold} — names \"planet\" "
+              f"among the instruments whose declared WORLD reading actually spends the crossing's "
+              f"one miracle. SURFACE is kept because it is the level the CUT lives on"
+              if isinstance(real_fold, list) else
+              f"the composer never answered: {fold_real}")
+        check(NODE_ROWS[6],
+              isinstance(mut_fold, list) and "planet" not in mut_fold
+              and isinstance(real_fold, list) and "planet" in real_fold,
+              f"the same composer, struck of \"planet\" in `WORLD_FOLD_INSTRUMENTS` in a copy held "
+              f"only in memory: `worldFoldInstruments` reads {mut_fold} where the shipped file reads "
+              f"{real_fold}. A pair this instrument crosses on would no longer spend the crossing's "
+              f"miracle, which is the row above proving it does")
+
 # ---------------------------------------------------------------- browser rows
 
 BROWSER_ROWS = [
@@ -637,12 +783,14 @@ BROWSER_ROWS = [
     "PASS-PLANET a door the judges' channel spoils is refused on the real road, and the visitor still lands",
     "PASS-PLANET what the host's missing mipmap chain costs this picture, measured",
     "PASS-PLANET row 16 · the captures are kept as evidence",
+    "PASS-PLANET the two works meet at a hard cut and never at a dissolve",
 ]
 
 RED_ROWS = [
     "PASS-PLANET red-on-bug · the window forced to a ramp: the exit door stands a curled world",
     "PASS-PLANET red-on-bug · the cut removed: the arriving work never arrives and the exit door is refused",
     "PASS-PLANET red-on-bug · the finish let onto the flat door: both doors part from their own files",
+    "PASS-PLANET red-on-bug · the cut widened to a dissolve spreads the transition band across the frame",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -863,6 +1011,113 @@ def host_shot(br, at, tag):
     return png(br, SHOTS / (tag + ".png"))
 
 
+def boundary_width(br, frag_src, vert_src, tau, cut_foot, W=200, H=200):
+    """Compiles the given VERT/FRAG pair — the instrument's own raw source, real or a mutated copy
+    held only in memory — in a fresh WebGL2 context on the already-open page, through the same
+    translator the host itself calls (`window.__exPass.bench.es3`, `toES3` under `programFor` in
+    pass-layer.js) rather than a hand-copied upgrade. `uWorld` is pinned to 0, which makes `row` the
+    frame's own flat coordinate (`clamp(0.5 + P.y/uRes.y, 0, 1)`) and nothing else — no ring, no
+    curl, no photograph geometry standing between the reading and the line under test. `uMask` is
+    pinned to 1, so the rendered frame IS the judges' own channel: RED there is `mix(0.5, 1.0,
+    cov)`, a pure function of `cov` alone (§8's own reading, kept apart from `covered`/`outward` on
+    the other two channels). A column of that channel is returned so the caller can measure, in
+    pixels, exactly how wide the row's own transition is — the one number that tells a hard cut from
+    a dissolve apart, whatever text happens to sit beside the formula that produced it."""
+    out = js(br, r"""
+      try {
+        var fragRaw = %s, vertRaw = %s;
+        var frag = window.__exPass.bench.es3(fragRaw, false);
+        var vert = window.__exPass.bench.es3(vertRaw, true);
+        var W = %d, H = %d;
+        var canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        var gl = canvas.getContext('webgl2');
+        if (!gl) return {error: 'no webgl2 on a fresh canvas'};
+        function compile(type, src) {
+          var s = gl.createShader(type);
+          gl.shaderSource(s, src);
+          gl.compileShader(s);
+          if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+            var info = gl.getShaderInfoLog(s);
+            gl.deleteShader(s);
+            throw new Error(info);
+          }
+          return s;
+        }
+        var vs = compile(gl.VERTEX_SHADER, vert);
+        var fs = compile(gl.FRAGMENT_SHADER, frag);
+        var prog = gl.createProgram();
+        gl.attachShader(prog, vs); gl.attachShader(prog, fs);
+        gl.bindAttribLocation(prog, 0, 'aPos');
+        gl.linkProgram(prog);
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+          return {error: 'link: ' + gl.getProgramInfoLog(prog)};
+        }
+        gl.useProgram(prog);
+        var quad = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+        var buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        function tex(unit) {
+          var t = gl.createTexture();
+          gl.activeTexture(gl.TEXTURE0 + unit);
+          gl.bindTexture(gl.TEXTURE_2D, t);
+          var px = new Uint8Array(16);
+          for (var i = 0; i < 16; i++) px[i] = (i %% 4 === 3) ? 255 : 128;
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          return unit;
+        }
+        var uA = tex(0), uB = tex(1);
+        function loc(name) { return gl.getUniformLocation(prog, name); }
+        gl.uniform1i(loc('uA'), uA);
+        gl.uniform1i(loc('uB'), uB);
+        gl.uniform2f(loc('uRes'), W, H);
+        gl.uniform4f(loc('uGeom'), 6.28318531, 1.0, 0.4, 0.0);
+        gl.uniform4f(loc('uCam'), 100.0, 0.0, 1.0, 0.0);
+        gl.uniform4f(loc('uWedge'), 0.1, 0.14, 1.0, 0.634);
+        gl.uniform2f(loc('uCrop'), 0.0, 1.0);
+        gl.uniform1f(loc('uWorld'), 0.0);
+        gl.uniform4f(loc('uFlatPP'), 0.002, 0.002, 0.002, 0.002);
+        gl.uniform4f(loc('uCut'), %r, %r, 0.5, 0.0);
+        gl.uniform1f(loc('uShade'), 1.0);
+        gl.uniform1f(loc('uMask'), 1.0);
+        gl.viewport(0, 0, W, H);
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        var px = new Uint8Array(W * H * 4);
+        gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        var x = Math.floor(W / 2);
+        var col = [];
+        for (var y = 0; y < H; y++) { col.push(px[(y * W + x) * 4]); }
+        return {col: col};
+      } catch (e) {
+        return {error: String(e)};
+      }
+    """ % (json.dumps(frag_src), json.dumps(vert_src), W, H, tau, cut_foot))
+    return out
+
+
+def transition_width(col):
+    """How many pixels of one column carry a value that is neither plateau — the width, in pixels,
+    of the ramp between them. `None` when the column shows no ramp at all (the two ends did not even
+    differ), which is not this row's claim to make."""
+    lo, hi = min(col), max(col)
+    if hi - lo < 40:
+        return None
+    return sum(1 for v in col if lo + 5 < v < hi - 5)
+
+
+NARROW_PX = 20     # the bar a hard cut has to stand under: cut_foot(0.04) * H(200) = 8 px expected
+WIDE_PX = 60       # the bar a dissolve has to clear: a 0.6-wide smoothstep * H(200) = 120 px expected
+
+
 LAB_LEVELLED = levelled(LABTXT) if LABTXT else None
 if LAB_LEVELLED is None and not missing:
     missing = ["the lab module no longer carries the three texture lines this bench levels"]
@@ -936,6 +1191,41 @@ else:
                       f"resources declared for three tiers, a coverage block reading "
                       f"«{m['coverage']['how'][:90]}…» and a `suits` block naming "
                       f"{m['suits']['reads']} and carrying no floor")
+
+                # ---- the hard cut, rendered rather than grepped ----------------------------------
+                frag_real = m["passes"][0]["frag"]
+                vert_real = m["passes"][0]["vert"]
+                frag_mut = frag_real.replace(COV_LINE, WIDE_DISSOLVE, 1)
+                real_render = boundary_width(br, frag_real, vert_real, 0.5, 0.04)
+                mut_render = boundary_width(br, frag_mut, vert_real, 0.5, 0.04)
+                real_w = (transition_width(real_render["col"])
+                          if real_render and "col" in real_render else None)
+                mut_w = (transition_width(mut_render["col"])
+                         if mut_render and "col" in mut_render else None)
+                check("PASS-PLANET the two works meet at a hard cut and never at a dissolve",
+                      COV_LINE in REGION and FOOT_LINE in REGION
+                      and real_w is not None and real_w <= NARROW_PX,
+                      f"the charter bans the dead dissolve between two works. Compiled on its own in "
+                      f"a fresh WebGL2 context with the world pinned shut (uWorld=0, so the row is "
+                      f"the frame's own flat coordinate and nothing else) and the judges' channel "
+                      f"read straight off the buffer, the boundary's own transition band is "
+                      f"{real_w!r} px wide against a bar of {NARROW_PX} — one point of the buffer's "
+                      f"own footprint (0.04 of the frame's height at this canvas's 200 px, 8 px) and "
+                      f"not a spread over it. In the world that row is a RING, because the world is "
+                      f"the picture's rows wrapped round a circle; at the flat door it is the "
+                      f"frame's own height. One law, two readings, and the same uWorld the sample "
+                      f"coordinate is mixed on carries it between them"
+                      if real_w is not None else
+                      f"the compile never rendered: {real_render}")
+                check("PASS-PLANET red-on-bug · the cut widened to a dissolve spreads the transition "
+                      "band across the frame",
+                      frag_mut != frag_real and mut_w is not None and mut_w >= WIDE_PX,
+                      f"the same boundary, `cov` replaced by a plain "
+                      f"`smoothstep(uCut.x - 0.3, uCut.x + 0.3, row)` in a copy of the shader the "
+                      f"source tree never carries: the transition band widens from {real_w!r} px to "
+                      f"{mut_w!r} px (bar {WIDE_PX}), because a dissolve spans a third of the "
+                      f"picture's own rows each side of the cut instead of one point of the buffer. "
+                      f"The row above proves the shipped shader is not this")
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas[aria-hidden]').width)"))

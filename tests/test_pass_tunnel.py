@@ -48,6 +48,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -399,13 +400,10 @@ check("PASS-TUNNEL the coverage is declared, and the map it draws is the reason"
       "publish. Under the placement rule that makes it lawful as the LOWEST cue of a stack. No "
       "handle of opacity and no weight of presence stands anywhere in the instrument")
 
-check("PASS-TUNNEL neither door is cropped, and the file says why",
-      'framings: { "0": { coverCrop: 1 }, "1": { coverCrop: 1 } }' in SOURCE_TEXT
-      and "asks the frame for no headroom" in SOURCE_TEXT,
-      "the folding instrument has to publish a cover crop of 1.90 because a box turning about its "
-      "own centre retreats from the frame's corners and the frame has to be a window in the middle "
-      "of a bigger box. A corridor has no such fault: the map answers every point, so a door here "
-      "is the source cover-fitted and nothing else, and the visitor loses no picture to the passage")
+# "PASS-TUNNEL neither door is cropped, and the file says why" — the real proof is a render, not a
+# grep for the manifest's own text, so it stands with the DOORS loop below (which already renders
+# both doors against a crop=1 reference) plus a red-on-bug row that reserves headroom in the actual
+# fit() the shader uses and shows the render depart. See the DOORS loop and RED_ROWS[4].
 
 # EVERY GEOMETRIC PARAMETER NAMES THE MEASUREMENT IT READS. His 19:13 word, lifted to the class at
 # 19:21. This is the row that holds the whole class law for this instrument.
@@ -427,28 +425,320 @@ check("PASS-TUNNEL every geometric parameter publishes the measurement of the wo
         "spiral shear is its own measured twirl. Not one of the six is a number typed here"
       if not unread else "these name no measurement: " + ", ".join(unread))
 
-check("PASS-TUNNEL the file answers the wipe's own three-part test on all three counts",
-      "IS THE RING A WIPE? THE THREE-PART TEST, ANSWERED ON ALL THREE COUNTS" in SOURCE_TEXT
-      and "THE BOUNDARY IS THE CORRIDOR'S OWN RING" in SOURCE_TEXT
-      and "THE TWO IMAGES INTERACT ALONG THE WHOLE PASSAGE" in SOURCE_TEXT
-      and "IT READS AS FALLING DOWN A CORRIDOR" in SOURCE_TEXT,
-      "the charter's ban list convicts a wipe only where ALL THREE counts convict, and a boundary "
-      "that travels across a frame has to answer that test out loud. The boundary is the level set "
-      "of a depth axis every parameter of which is a reading of the photographs; the two works are "
-      "the near and the far halves of one corridor and meet at a ring carrying a contact shade; and "
-      "what arrives is a place further down the corridor, reached by travelling")
+# ------------------------------------------------------------------------------------------------
+# IS THE RING A WIPE? THE THREE-PART TEST, ANSWERED ON THE REAL SHADER RATHER THAN ON ITS COMMENT.
+# ------------------------------------------------------------------------------------------------
+# The same test tests/test_pass_layer.py answers for its own boundary, answered here for the
+# corridor's ring: the REAL, CURRENT fragment shader is extracted out of the BUILT file (never a
+# hand-copied string — the array-of-literals `var FRAG = [...].join("\n")` this file writes its
+# shaders in, scanned the way `test_pass_layer.py`'s `parse_concat_string` scans its own concatenated
+# form), compiled in real headless-Chrome WebGL, and driven with controlled uniforms rather than
+# through a full page — the boundary the ring answers to is computed from `uCam`/`uLean`/`uRing`/
+# `uWipe` alone and never samples a texture, so a synthetic solid-colour pair is enough to drive it.
+#
+#   (a) THE BOUNDARY IS A LEVEL SET OF THE VANISHING POINT (`uCam.yz`, the pair's own measured
+#       radial centre standing in for the manifest's `centreX`/`centreY` reads), not a fixed frame
+#       coordinate: the ring is read at two different settings of `uCam.yz`, and at each one it lands
+#       exactly where that setting says.
+#   (c) THE STANDARD DEVIATION ORTHOGONAL TO THE DEPTH AXIS STAYS AT ZERO: eight points walked around
+#       a circle of one radius about the vanishing point read one identical value apiece, at both
+#       radii and at both centres — a true ring, not a shape that secretly answers to frame x/y.
+#   (b) THE TWO IMAGES INTERACT: a point inside the ring's own antialiased band renders a colour
+#       strictly between the two textures' own flat colours — a blend the boundary produces, not a
+#       hard replacement of one work by the other.
+#
+# THE RED HALF mutates the boundary's own vanishing point read back to a fixed frame coordinate —
+# `uCam.yz` replaced by the constant `vec2(0.5, 0.5)` — and the SAME measurement is retaken: the ring
+# stops moving with the declared centre and (a)/(c) flip from a clean single value to a mixed one,
+# exactly as test_pass_layer.py's own red row flips on the banned `vUV.x` form.
 
-check("PASS-TUNNEL the judges' handle publishes what the door is read against, and that nothing is held",
-      'readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",' in SOURCE_TEXT
-      and 'reads: "flatness"' in SOURCE_TEXT
-      and "var DOOR_SLIP = 0.5;" in SOURCE_TEXT
-      and "var DOOR_SHOW = 0.5 / 255;" in SOURCE_TEXT
-      and "held: null" in SOURCE_TEXT
-      and "AND THERE IS NOTHING HERE TO HOLD" in SOURCE_TEXT,
-      "the handle carries `applied.readAtADoor` — what is walked, on which grid, what the reading is "
-      "counted in — and it says outright that there is no hold. A corridor's flat door is exact by "
-      "construction and not by a tolerance: the dead band spends the hand and the dial is exactly "
-      "nothing inside it, so anything the reading finds is a real fault that no widening closes")
+
+def _skip_ws_and_comments(text, i):
+    n = len(text)
+    while True:
+        while i < n and text[i] in " \t\r\n,":
+            i += 1
+        if text[i:i + 2] == "//":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        break
+    return i
+
+
+def parse_join_array(text, start_idx):
+    """`text[start_idx:]` holds `"…", "…", …` (each element possibly trailed by a `// comment` on its
+    own line) up to a closing `].join("\\n");` — the shape this file's own `VERT`/`FRAG` are written
+    in. A scanner rather than a pattern, so it reads exactly what the file's own array builds."""
+    i, n = start_idx, len(text)
+    parts = []
+    while True:
+        i = _skip_ws_and_comments(text, i)
+        if text[i] == "]":
+            i += 1
+            break
+        if text[i] != '"':
+            raise ValueError("parse_join_array: unexpected char at %d: %r" % (i, text[i:i + 20]))
+        i += 1
+        buf = []
+        while text[i] != '"':
+            if text[i] == "\\":
+                buf.append(text[i:i + 2])
+                i += 2
+                continue
+            buf.append(text[i])
+            i += 1
+        i += 1
+        parts.append("".join(buf))
+    end = text.index(";", i)
+    raw = "\n".join(json.loads('"' + p + '"') for p in parts)
+    return raw, end + 1
+
+
+def extract_shader_array(text, var_name, after_idx=0):
+    marker = "var %s = [" % var_name
+    idx = text.index(marker, after_idx)
+    return parse_join_array(text, idx + len(marker))
+
+
+_TUN_FN_IDX = REGION.index("function tunnelInstrument()")
+TUN_VERT_SRC, _tun_after_vert = extract_shader_array(REGION, "VERT", _TUN_FN_IDX)
+TUN_FRAG_SRC, _tun_after_frag = extract_shader_array(REGION, "FRAG", _tun_after_vert)
+
+_RING_W = _RING_H = 128
+_RING_PAGE = """<!doctype html><html><head><meta charset="utf-8"></head><body>
+<canvas id="c" width="%(w)d" height="%(h)d"></canvas>
+<script>
+function makeSolidTex(gl, r, g, b) {
+  var t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array([r, g, b, 255]));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return t;
+}
+window.__runTunnelFrag = function (vertSrc, fragSrc, u) {
+  try {
+    var canvas = document.getElementById("c");
+    var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    if (!gl) return { error: "no webgl" };
+    var vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, vertSrc); gl.compileShader(vs);
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS))
+      return { error: "vert: " + gl.getShaderInfoLog(vs) };
+    var fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, fragSrc); gl.compileShader(fs);
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS))
+      return { error: "frag: " + gl.getShaderInfoLog(fs) };
+    var prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+      return { error: "link: " + gl.getProgramInfoLog(prog) };
+    gl.useProgram(prog);
+    var quad = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+    var buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
+    var loc = gl.getAttribLocation(prog, "aPos");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    var texA = makeSolidTex(gl, u.colA[0], u.colA[1], u.colA[2]);
+    var texB = makeSolidTex(gl, u.colB[0], u.colB[1], u.colB[2]);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texA);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texB);
+    function u1i(n, v) { gl.uniform1i(gl.getUniformLocation(prog, n), v); }
+    function u1f(n, v) { gl.uniform1f(gl.getUniformLocation(prog, n), v); }
+    function u2f(n, v) { gl.uniform2f(gl.getUniformLocation(prog, n), v[0], v[1]); }
+    function u4f(n, v) { gl.uniform4f(gl.getUniformLocation(prog, n), v[0], v[1], v[2], v[3]); }
+    u1i("uA", 0); u1i("uB", 1);
+    u4f("uFitA", u.fitA); u4f("uFitB", u.fitB);
+    u2f("uRes", [%(w)d, %(h)d]);
+    u4f("uCam", u.cam); u4f("uLean", u.lean); u4f("uRing", u.ring);
+    u2f("uWipe", u.wipe); u4f("uCrop", u.crop);
+    u1f("uMask", u.mask); u1f("uSeam", u.seam);
+    gl.viewport(0, 0, %(w)d, %(h)d);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    var px = new Uint8Array(%(w)d * %(h)d * 4);
+    gl.readPixels(0, 0, %(w)d, %(h)d, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    return { pixels: Array.prototype.slice.call(px) };
+  } catch (e) {
+    return { error: String(e) };
+  }
+};
+window.__ringBenchReady = true;
+</script>
+</body></html>""" % {"w": _RING_W, "h": _RING_H}
+
+# THE RING'S OWN NUMBERS. `RL0` is the radius (in the shader's own leaned-and-scaled `rl` units, with
+# `leanAmt` held at zero so `rl` is a pure Euclidean radius from the vanishing point) at which the
+# boundary sits, `LOGB`/`Z0` are the depth axis' own log-base and start, and `WIPE_X` is the station
+# that places the crossing there — all four picked once, in the open, rather than smuggled in as
+# whatever the shader happens to do.
+_RING_RL0 = 0.3
+_RING_LOGB = 1.0
+_RING_Z0 = 0.0
+_RING_WIPE_X = _RING_Z0 - math.log(_RING_RL0) / _RING_LOGB
+_RING_R_IN = 0.7 * _RING_RL0    # clearly on the near side of the crossing
+_RING_R_OUT = 1.4 * _RING_RL0   # clearly on the far side
+
+
+def _ring_uniforms(cx, cy, mask=1.0, d=1.0, wipe_y=0.0):
+    return {
+        "colA": [220, 60, 60], "colB": [60, 60, 220],
+        "fitA": [1, 1, 0, 0], "fitB": [1, 1, 0, 0],
+        "cam": [1.0, cx, cy, 1.0],
+        "lean": [1.0, 0.0, 0.0, _RING_LOGB],
+        "ring": [_RING_Z0, 0.0, 10.0, d],
+        "wipe": [_RING_WIPE_X, wipe_y],
+        "crop": [0.0, 0.0, 1.0, 1.0],
+        "mask": mask, "seam": 0.1,
+    }
+
+
+def _ring_sample_points(cx, cy, r, n=8):
+    """`n` points around a circle of physical radius `r` (in `rl` units) about (cx, cy), in the
+    shader's own `vUv` space — `p = (uv - c) * 2`, so `uv = c + p / 2`."""
+    pts = []
+    for k in range(n):
+        theta = 2 * math.pi * k / n
+        pts.append((cx + (r * math.cos(theta)) / 2.0, cy + (r * math.sin(theta)) / 2.0))
+    return pts
+
+
+def _ring_pixel_at(pixels, ux, uy):
+    # vUv.y runs 0 at the top of the buffer and 1 at the bottom (this file's own VERT, `0.5 -
+    # aPos.y * 0.5`), while a read-back row 0 is the buffer's bottom row — so a `uv` is flipped
+    # before it is turned into a row.
+    px = max(0, min(_RING_W - 1, int(round(ux * _RING_W))))
+    py = max(0, min(_RING_H - 1, int(round((1 - uy) * _RING_H))))
+    o = (py * _RING_W + px) * 4
+    return pixels[o], pixels[o + 1], pixels[o + 2]
+
+
+def _ring_std(vals):
+    m = sum(vals) / len(vals)
+    return math.sqrt(sum((v - m) ** 2 for v in vals) / len(vals))
+
+
+def run_ring_jobs(jobs):
+    """`jobs`: a list of (vert_src, frag_src, uniforms). One browser, one page, run through every
+    job in turn — the shader is real headless-Chrome WebGL each time, only the plumbing is shared."""
+    d = Path(tempfile.mkdtemp(prefix="synth_tunring_"))
+    (d / "index.html").write_text(_RING_PAGE, encoding="utf-8")
+    out = []
+    try:
+        with serve(str(d)) as base:
+            with Browser() as br:
+                br.navigate(base + "/index.html")
+                for _ in range(25):
+                    if br.evaluate("String(!!window.__ringBenchReady)") == "true":
+                        break
+                    br.sleep(0.1)
+                for vert_src, frag_src, u in jobs:
+                    res = json.loads(br.evaluate(
+                        "JSON.stringify(window.__runTunnelFrag(%s, %s, %s))"
+                        % (json.dumps(vert_src), json.dumps(frag_src), json.dumps(u))))
+                    out.append((res.get("pixels"), res.get("error")))
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    return out
+
+
+_RING_CHECK = "PASS-TUNNEL the file answers the wipe's own three-part test on all three counts"
+_RING_RED = ("PASS-TUNNEL red-on-bug · the ring's boundary reads a fixed frame coordinate instead "
+             "of the pair's own measured centre")
+_RING_CAM_FROM = "vec2 p = (uv - uCam.yz) * 2.0 * vec2(asp, 1.0) * uCam.w;"
+_RING_CAM_TO = "vec2 p = (uv - vec2(0.5, 0.5)) * 2.0 * vec2(asp, 1.0) * uCam.w;"
+
+if not chrome_available():
+    skip(_RING_CHECK, "no headless Chrome on this machine — EXPECTED, pinned skip, never a "
+                       "silent pass")
+    skip(_RING_RED, "no headless Chrome on this machine — EXPECTED, pinned skip, never a "
+                     "silent pass")
+elif _RING_CAM_FROM not in TUN_FRAG_SRC:
+    check(_RING_CHECK, False,
+          "the boundary's own vanishing-point read was not found verbatim in the extracted shader, "
+          "so the mutant could not be built off the shipped text")
+    skip(_RING_RED, "the standing row above did not find its own anchor")
+else:
+    CENTRES = [(0.5, 0.5), (0.3, 0.3)]
+    green_jobs = []
+    for cx, cy in CENTRES:
+        green_jobs.append((TUN_VERT_SRC, TUN_FRAG_SRC, _ring_uniforms(cx, cy)))
+    # THE INTERACTION SAMPLE (count b): mask off, the corridor's own colour-grading finish gated to
+    # nothing (`uRing.w = 0`, the same gate the shader's own `d` uses) so the antialiased band between
+    # the two flat colours is read undisturbed, and the contact shade turned on (`uWipe.y = 1`) so
+    # the ring's own coupling is live. The sample point sits inside the band the render above showed
+    # holds a genuine blend.
+    green_jobs.append((TUN_VERT_SRC, TUN_FRAG_SRC,
+                        _ring_uniforms(0.5, 0.5, mask=0.0, d=0.0, wipe_y=1.0)))
+    green_out = run_ring_jobs(green_jobs)
+
+    errs = [e for _, e in green_out if e]
+    if errs:
+        check(_RING_CHECK, False, "the bench never rendered: " + "; ".join(errs)[:300])
+        skip(_RING_RED, "the standing row above never rendered")
+    else:
+        def _ring_readings(pixels, cx, cy):
+            vin = [_ring_pixel_at(pixels, ux, uy)[0]
+                   for ux, uy in _ring_sample_points(cx, cy, _RING_R_IN)]
+            vout = [_ring_pixel_at(pixels, ux, uy)[0]
+                    for ux, uy in _ring_sample_points(cx, cy, _RING_R_OUT)]
+            return vin, vout
+
+        STD_TOL = 5.0
+        SEP_MIN = 150.0
+
+        def _ring_clean(vin, vout):
+            return (_ring_std(vin) <= STD_TOL and _ring_std(vout) <= STD_TOL
+                    and abs((sum(vin) / len(vin)) - (sum(vout) / len(vout))) >= SEP_MIN)
+
+        readings = [_ring_readings(green_out[i][0], cx, cy) for i, (cx, cy) in enumerate(CENTRES)]
+        # ONE POINT INSIDE THE RING'S OWN ANTIALIASED BAND (rl = 0.28, just short of the crossing at
+        # rl0 = 0.3): `uv = centre + (rl/2, 0)`.
+        blend_r, blend_g, blend_b = _ring_pixel_at(green_out[-1][0], 0.5 + 0.28 / 2.0, 0.5)
+        blended = 70 <= blend_r <= 210
+
+        clean_all = all(_ring_clean(vin, vout) for vin, vout in readings)
+        check(_RING_CHECK,
+              clean_all and blended,
+              "; ".join(f"centre {cx, cy}: inner std {_ring_std(vin):.2f}, outer std "
+                        f"{_ring_std(vout):.2f}, separation "
+                        f"{abs((sum(vin) / len(vin)) - (sum(vout) / len(vout))):.1f}"
+                        for (cx, cy), (vin, vout) in zip(CENTRES, readings))
+              + f"; the ring's own antialiased band reads ({blend_r}, {blend_g}, {blend_b}), between "
+                f"the two flat colours (220, 60, 60) and (60, 60, 220) rather than equal to either. "
+                f"(a) the boundary is read exactly where each declared vanishing point says, at "
+                f"both centres tried; (c) eight points walked around one radius about that centre "
+                f"read one identical value apiece — a true ring; (b) the boundary blends the two "
+                f"works rather than replacing one with the other")
+
+        # ---- THE RED-ON-BUG PROOF: the vanishing-point read put back to a fixed frame coordinate --
+        red_jobs = [(TUN_VERT_SRC, TUN_FRAG_SRC.replace(_RING_CAM_FROM, _RING_CAM_TO, 1),
+                     _ring_uniforms(0.3, 0.3))]
+        red_out = run_ring_jobs(red_jobs)
+        if red_out[0][1]:
+            check(_RING_RED, False, "the mutant bench never rendered: %s" % red_out[0][1])
+        else:
+            vin_r, vout_r = _ring_readings(red_out[0][0], 0.3, 0.3)
+            hurt_clean = _ring_clean(vin_r, vout_r)
+            check(_RING_RED,
+                  not hurt_clean,
+                  f"the SAME reading at the SAME declared centre (0.3, 0.3), with `uCam.yz` in the "
+                  f"boundary's own read replaced by the constant `vec2(0.5, 0.5)`: inner std "
+                  f"{_ring_std(vin_r):.2f}, outer std {_ring_std(vout_r):.2f}, separation "
+                  f"{abs((sum(vin_r) / len(vin_r)) - (sum(vout_r) / len(vout_r))):.1f} — the ring "
+                  f"stayed where the frame's own centre is rather than moving to the declared "
+                  f"vanishing point, so the clean single-valued reading above breaks")
+
+# "PASS-TUNNEL the judges' handle publishes what the door is read against, and that nothing is
+# held" — the real proof reads the LIVE registered manifest's `handles.mask.applied.readAtADoor`
+# (see the Chrome section, right after `m` is fetched) rather than grepping the source for the
+# fields' own names, and a red-on-bug row (RED_ROWS[3]) mutates `DOOR_SLIP`/`DOOR_SHOW` in the built
+# instrument and shows a door the real values pass gets refused under the mutated ones.
 
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
@@ -488,6 +778,17 @@ RED_ROWS = [
     "PASS-TUNNEL red-on-bug · the wipe's own radius unbounded at the hole: the entry door reads "
     "the arriving work",
     "PASS-TUNNEL red-on-bug · the contact shade at the meeting ring removed",
+    "PASS-TUNNEL red-on-bug · DOOR_SLIP/DOOR_SHOW tightened past what the real door clears",
+    "PASS-TUNNEL red-on-bug · the fit the doors are cover-fitted by reserves headroom",
+]
+
+# ROWS THAT RUN INSIDE THE MAIN BENCH BLOCK BUT ARE NOT ADDRESSED BY INDEX (BROWSER_ROWS[n]) — named
+# checks the two skip branches below and the bottom's "never ran" sweep must still cover, so an
+# absent Chrome or an absent lab tree never leaves them silently missing from the report.
+EXTRA_ROWS = [
+    "PASS-TUNNEL the judges' handle publishes what the door is read against, and that nothing is "
+    "held",
+    "PASS-TUNNEL neither door is cropped, and the file says why",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -544,6 +845,68 @@ def apart(p, work):
         return 255.0, 255.0
     st = ImageStat.Stat(ImageChops.difference(a, work))
     return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
+
+
+# ---------------------------------------------------------------- the composer's own world-fold list
+# THE FOUR INSTRUMENTS `spendsTheMiracle` READS BY IDENTITY — engine/assets/pass-composer.js's own
+# `WORLD_FOLD_INSTRUMENTS`, which does NOT name tunnel. Read by REAL code execution in node rather
+# than by grepping the manifest's own prose beside it, the same `vm.createContext`/`vm.runInContext`
+# idiom test_pass_composed.py's own DRIVER uses: the real module is loaded in a sandboxed VM off a
+# fake `window.__PassComposer`, `PLANTS` names literal substitutions to make in the source text
+# before it loads — never touching the file on disk — and `composer.worldFoldInstruments` is read
+# off the object the real `make()` returns.
+COMPOSER_SRC = ROOT / "engine" / "assets" / "pass-composer.js"
+COMPOSED_FIXTURE = ROOT / "tests" / "fixture_pass_composed.json"
+
+WORLD_FOLD_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [modulePath, fixturePath] = process.argv.slice(2);
+const plants = JSON.parse(process.env.PLANTS || "[]");
+let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
+for (const [from, to] of plants) {
+  if (source.indexOf(from) < 0) {
+    console.log(JSON.stringify({error: "the plant found nothing to change: " + from}));
+    process.exit(0);
+  }
+  source = source.split(from).join(to);
+}
+let joined = null;
+const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, {filename: "pass-composer.js"});
+if (!joined) {
+  console.log(JSON.stringify({error: "the module joined nothing"}));
+  process.exit(0);
+}
+const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+const composer = joined.make(fix.consts);
+console.log(JSON.stringify({worldFoldInstruments: composer.worldFoldInstruments}));
+"""
+
+
+def node_available():
+    try:
+        return subprocess.run(["node", "--version"], capture_output=True).returncode == 0
+    except Exception:
+        return False
+
+
+def run_world_fold_driver(plants=()):
+    if not node_available():
+        return {"error": "no node on this machine"}
+    d = Path(tempfile.mkdtemp(prefix="synth_tunworldfold_"))
+    driver_path = d / "world-fold-driver.js"
+    driver_path.write_text(WORLD_FOLD_DRIVER, encoding="utf-8")
+    env = dict(os.environ, PLANTS=json.dumps(list(plants)))
+    try:
+        proc = subprocess.run(["node", str(driver_path), str(COMPOSER_SRC), str(COMPOSED_FIXTURE)],
+                              capture_output=True, text=True, env=env, timeout=120)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-400:]}
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 # THE LAB MODULE AS THE BENCH SERVES IT, and the port beside it, each with one literal changed.
@@ -683,10 +1046,10 @@ def roads(br, at, tag):
 
 
 if not chrome_available():
-    for r in BROWSER_ROWS + RED_ROWS:
+    for r in BROWSER_ROWS + RED_ROWS + EXTRA_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 elif missing:
-    for r in BROWSER_ROWS + RED_ROWS:
+    for r in BROWSER_ROWS + RED_ROWS + EXTRA_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
 else:
     shutil.rmtree(SHOTS, ignore_errors=True)
@@ -696,14 +1059,14 @@ else:
         with Browser(width=VW, height=VH) as br:
             br.navigate(base + "/index.html")
             if not ready(br):
-                for r in BROWSER_ROWS:
+                for r in BROWSER_ROWS + EXTRA_ROWS:
                     check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             elif not js(br, "return !!window.__exPass.bench.manifest('tunnel');"):
                 why = js(br, "var e = window.__host.report().events.filter(function(x){"
                              "return x.name === 'manifest-refused';});"
                              "return e.length ? e[e.length - 1].why : null;")
-                for r in BROWSER_ROWS:
+                for r in BROWSER_ROWS + EXTRA_ROWS:
                     check(r, False, "the host registered no «tunnel» instrument: " + str(why))
             else:
                 SCORE = json.dumps(tunnel_score())
@@ -747,10 +1110,44 @@ else:
                       f"{res['standard']['bytesEstimate']}, and a coverage block reading "
                       f"«{m['coverage']['how']}»")
 
+                # THE JUDGES' HANDLE'S OWN FIELDS, READ OFF THE LIVE REGISTERED MANIFEST rather than
+                # grepped out of the source. `readAtADoor` is what the door reads the mask handle
+                # against: the drawing buffer, counted in "flatness", with nothing held.
+                rad = m["handles"]["mask"]["applied"]["readAtADoor"]
+                check("PASS-TUNNEL the judges' handle publishes what the door is read against, and "
+                      "that nothing is held",
+                      rad["points"] == 0.5 and rad["readOn"] == "the drawing buffer"
+                      and rad["reads"] == "flatness" and rad["held"] is None,
+                      f"the live manifest's handles.mask.applied.readAtADoor reads {rad} — a "
+                      f"half-point tolerance on the drawing buffer, counted in flatness, with no "
+                      f"hold. A corridor's flat door is exact by construction and not by a "
+                      f"tolerance: the dead band spends the hand and the dial is exactly nothing "
+                      f"inside it, so anything the reading finds is a real fault that no widening "
+                      f"closes. RED_ROWS[3] mutates the two constants this points value and this "
+                      f"door's own mask threshold are read from and shows a door the real values "
+                      f"pass gets refused under the mutated ones")
+
+                # THE OTHER HALF OF THIS ROW IS NOT A TEXT MATCH FOR "spends no crossing's miracle" —
+                # it is pass-composer.js's own `WORLD_FOLD_INSTRUMENTS` array, read by REAL code
+                # execution in node (the same `vm.createContext`/`vm.runInContext` idiom
+                # test_pass_composed.py's own DRIVER uses), asserting "tunnel" is absent from the
+                # live list `spendsTheMiracle` reads by identity, and then mutating the built
+                # composer's own array literal to ADD "tunnel" and showing the composer's returned
+                # `worldFoldInstruments` now carries it — a real execution proof that the composer's
+                # list is what decides this, not a grep for a sentence beside it.
+                world_fold_base = run_world_fold_driver()
+                world_fold_mutated = run_world_fold_driver(plants=[(
+                    'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];',
+                    'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline", '
+                    '"tunnel"];')])
+                world_fold_ok = (
+                    node_available()
+                    and "error" not in world_fold_base
+                    and "tunnel" not in world_fold_base.get("worldFoldInstruments", [])
+                    and "error" not in world_fold_mutated
+                    and "tunnel" in world_fold_mutated.get("worldFoldInstruments", []))
                 check(BROWSER_ROWS[1],
-                      m["levels"] == ["SURFACE", "CELL"]
-                      and "WHERE THIS STANDS ON THE CHARTER'S SHELF" in SOURCE_TEXT
-                      and "SURFACE" in SOURCE_TEXT and "spends no crossing's miracle" in SOURCE_TEXT,
+                      m["levels"] == ["SURFACE", "CELL"] and world_fold_ok,
                       f"levels={m['levels']}, and the source of that reading is his own standing "
                       f"verdict on this module in lab/CROSSING-BRIEF.md's vocabulary table, which "
                       f"carries the level in the same row: SURFACE. Shelf 17's levels law keeps "
@@ -758,7 +1155,13 @@ else:
                       f"corridor is a surface — which is why this instrument spends no crossing's "
                       f"one miracle and a quiet link may play it as readily as a culmination. CELL "
                       f"is the rings, which is where the two works meet. CELL CONTENT, TEXTURE and "
-                      f"LIGHT-COLOUR are not claimed")
+                      f"LIGHT-COLOUR are not claimed. The real composer, run in node, carries "
+                      f"worldFoldInstruments={world_fold_base.get('worldFoldInstruments')} — "
+                      f"«tunnel» absent — and with the array literal planted to add it, carries "
+                      f"worldFoldInstruments={world_fold_mutated.get('worldFoldInstruments')}"
+                      if node_available() else
+                      "levels=%s; no node on this machine to run the composer's own array — "
+                      "EXPECTED, pinned fail rather than a silent pass" % m["levels"])
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas[aria-hidden]').width)"))
@@ -776,10 +1179,12 @@ else:
                 for tag, at in DOORS:
                     reads[tag], shots[tag] = host_shot(br, at, tag)
 
+                door_apart = {}
                 for i, (door, own, other, ownn, othern) in enumerate((
                         ("door-0", towers, glass, "towers.jpg", "glassgrid.jpg"),
                         ("door-1", glass, towers, "glassgrid.jpg", "towers.jpg"))):
                     a, amx = apart(shots[door], own)
+                    door_apart[door] = (a, amx, ownn)
                     check(BROWSER_ROWS[2 + i * 2], a <= SEAM,
                           f"{door} against {ownn}, cover-fitted and cropped by nothing: mean "
                           f"{a:.4f} of 255 (threshold {SEAM}), worst channel {amx}. Inside the dead "
@@ -789,6 +1194,23 @@ else:
                     o, _ = apart(shots[door], other)
                     check(BROWSER_ROWS[3 + i * 2], o >= FAR,
                           f"{door} against {othern}: mean {o:.4f} of 255 (must exceed {FAR})")
+
+                # "PASS-TUNNEL neither door is cropped, and the file says why" — the render just
+                # taken IS the proof: both doors already stand within the seam of a plain crop=1
+                # cover fit. RED_ROWS[4], in the tail RED-ON-BUG section below, mutates the actual
+                # code path that decides the crop applied at a door — this instrument's own `fit()`,
+                # not the manifest's declared `coverCrop` text, which nothing in this file or in
+                # pass-composer.js ever reads back out at render time — and shows the same door
+                # depart from this same reference once it reserves headroom.
+                check("PASS-TUNNEL neither door is cropped, and the file says why",
+                      door_apart["door-0"][0] <= SEAM and door_apart["door-1"][0] <= SEAM,
+                      f"door-0 against towers.jpg: mean {door_apart['door-0'][0]:.4f} of 255; "
+                      f"door-1 against glassgrid.jpg: mean {door_apart['door-1'][0]:.4f} of 255 "
+                      f"(threshold {SEAM}), both cover-fitted and cropped by nothing. A log-polar "
+                      f"map answers every point of the plane, so this instrument asks the frame for "
+                      f"no headroom — RED_ROWS[4] mutates the actual `fit()` this render is taken "
+                      f"through to reserve some and shows the same door depart from this same "
+                      f"crop=1 reference")
 
                 # ---- the arriving work comes up the corridor -------------------------------------
                 # The module carries one photograph, so this act is measured on the frame itself:
@@ -1231,11 +1653,73 @@ else:
           f"the other"
           if shade_gap else "the proof did not run")
 
+    # ---- 4. DOOR_SLIP/DOOR_SHOW tightened past what the real door clears --------------------------
+    # Both constants are read inside `doorWhyNoOf`'s own three branches. A door the real values pass
+    # cleanly (the entry door at mix=0: no measured slip, no wrong work, mask resting at its own
+    # default of 0) is refused once either threshold is tightened past what that door actually
+    # measures — DOOR_SLIP taken negative refuses on ANY measured slip at all, and DOOR_SHOW taken
+    # negative refuses on the mask resting at 0 — which is what proves the two constants actually
+    # gate the door's own accept/refuse decision rather than sitting beside it unread.
+    base_slip = on_bench(lambda b: door_read(b, "red-slip-standing"))
+    bug = PACK.replace("var DOOR_SLIP = 0.5;", "var DOOR_SLIP = -1;", 1)
+    bug_slip = on_bench(lambda b: door_read(b, "red-slip-reverted"), pack_text=bug)
+    bug = PACK.replace("var DOOR_SHOW = 0.5 / 255;", "var DOOR_SHOW = -1;", 1)
+    bug_show = on_bench(lambda b: door_read(b, "red-show-reverted"), pack_text=bug)
+    check(RED_ROWS[3],
+          base_slip and bug_slip and bug_show
+          and base_slip["whyNo"] is None
+          and bug_slip["whyNo"] is not None and "door leaks" in bug_slip["whyNo"]
+          and bug_show["whyNo"] is not None and "door leaks" in bug_show["whyNo"],
+          f"with the real constants, the entry door reads clean: whyNo={base_slip['whyNo']}. With "
+          f"`DOOR_SLIP` taken to -1 in the served bytes, the same door is refused: "
+          f"«{bug_slip['whyNo'] if bug_slip else None}». With `DOOR_SHOW` taken to -1 instead, the "
+          f"same door is refused on the judges' channel resting at its own default: "
+          f"«{bug_show['whyNo'] if bug_show else None}». So both constants actually decide the door "
+          f"rather than sitting unread beside the manifest's own words about them"
+          if (base_slip and bug_slip and bug_show) else "the proof did not run")
+
+    # ---- 5. the fit the doors are cover-fitted by reserves headroom -------------------------------
+    # `manifest.framings` is never read back out at render time — not by this file, not by
+    # pass-composer.js — so the code path that actually decides a door's crop is this instrument's
+    # own `fit()`. Made to reserve headroom the way Python's own `cover_into(..., crop=0.85)` does,
+    # the same door (mix=0, against towers.jpg cover-fitted with no crop) now departs from that
+    # reference by a wide multiple of the seam.
+    bug = PACK.replace(
+        "    function fit(iw, ih, w, h) {\n"
+        "      var fa = w / Math.max(h, 1);\n"
+        "      var ia = iw / Math.max(ih, 1);\n"
+        "      if (ia > fa) return [fa / ia, 1, 0, 0];\n"
+        "      return [1, ia / fa, 0, 0];\n"
+        "    }",
+        "    function fit(iw, ih, w, h) {\n"
+        "      var fa = w / Math.max(h, 1);\n"
+        "      var ia = iw / Math.max(ih, 1);\n"
+        "      if (ia > fa) return [fa / ia / 0.85, 1 / 0.85, 0, 0];\n"
+        "      return [1 / 0.85, ia / fa / 0.85, 0, 0];\n"
+        "    }", 1)
+
+    def door0_frame(br, tag):
+        br.evaluate("window.__mix(0); 0")
+        return frame_at(br, 0.0, tag)
+
+    base_fit = on_bench(lambda b: door0_frame(b, "red-fit-standing"))
+    bug_fit = on_bench(lambda b: door0_frame(b, "red-fit-reverted"), pack_text=bug)
+    fit_gap = None if (base_fit is None or bug_fit is None) else apart(base_fit, towers)
+    bug_gap = None if bug_fit is None else apart(bug_fit, towers)
+    check(RED_ROWS[4],
+          bug != PACK and fit_gap is not None and bug_gap is not None
+          and fit_gap[0] <= SEAM and bug_gap[0] > SEAM,
+          f"door-0 against towers.jpg cover-fitted with no crop: mean {fit_gap[0] if fit_gap else '?'} "
+          f"of 255 with the real `fit()` (threshold {SEAM}). With `fit()` reserving headroom the way "
+          f"`cover_into(..., crop=0.85)` does, the same door against the same reference now stands "
+          f"{bug_gap[0] if bug_gap else '?'} of 255 apart. So the crop=1 claim is carried by the "
+          f"function that actually draws the door, not by the manifest's own declared number"
+          if (fit_gap and bug_gap) else "the proof did not run")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
 ran = {name for name, _, _ in results}
-for name in BROWSER_ROWS + RED_ROWS:
+for name in BROWSER_ROWS + RED_ROWS + EXTRA_ROWS:
     if name not in ran:
         check(name, False, "the row never ran")
 

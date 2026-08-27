@@ -492,22 +492,12 @@ RED_ROWS = [
     "at the joins again",
 ]
 
-# THE MEASUREMENT READ AT A DOOR, published in the manifest. His 19:13 word, lifted to the class at
-# 19:21: every geometric parameter names the measurement of the work it reads. This instrument's own
-# door reading is its PANEL MAP, walked at the buffer's own sample points, and the handle that can
-# spoil a door — the judges' channel — is where that is published, beside the flat guard the module's
-# own half degree stands at and the reach the hold has in points of the grid.
-check("PASS-UNFOLD the judges' handle publishes the measurement the door is read against",
-      'readAtADoor: { points: DOOR_HOLD, readOn: "the drawing buffer",' in SOURCE_TEXT
-      and 'reads: "flatDegRequest"' in SOURCE_TEXT
-      and "var FLAT_DEG = 0.5;" in SOURCE_TEXT
-      and "var DOOR_HOLD = 2;" in SOURCE_TEXT
-      and "var DOOR_SHOW = 0.5 / 255;" in SOURCE_TEXT
-      and "if (aY < flatDeg) aY = 0;" in SOURCE_TEXT,
-      "the handle carries `applied.readAtADoor` — what is walked, on which grid, how far the hold "
-      "reaches and where the module's own guard stays on the record — and the guard itself is a "
-      "parameter of the pose, so a door can re-ask it in the grid's own units while the middle of "
-      "a passage keeps the module's half degree")
+# "PASS-UNFOLD the judges' handle publishes the measurement the door is read against" moved below
+# the bench helpers: proving the manifest's `readAtADoor` block names a REAL door reading, rather
+# than a sentence sitting next to unrelated code, takes the registered instrument's own live
+# manifest and a built copy with DOOR_HOLD widened, plus the real `values()` function read at a
+# pose a hair off a door — the same idiom test_pass_parquet.py already carries for this file's own
+# S-13 row.
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
 
@@ -674,6 +664,73 @@ def panel_map(br, at, tag):
     p = png(br, SHOTS / ("map-" + tag + ".png"))
     br.evaluate("window.__mask(0); 0")
     return p
+
+
+# ---------------------------------------------------------------- one real proof, bench-driven
+# This row stood on a SOURCE_TEXT string match — the sentence sits somewhere in the file, never that
+# the code beside it behaves as the sentence claims. It is now: (1) the registered instrument's own
+# LIVE manifest, read through `bench.manifest`, with a built copy that widens DOOR_HOLD to show the
+# manifest's `points` field is a real reference to the constant and not a duplicate literal that
+# happens to agree with it; and (2) the real `values()` function, called through `bench.values` at a
+# dial a hair off a door, showing the module's own half-degree guard (`FLAT_DEG`) really zeroes a
+# residual turn on the record (`v.aY`) rather than merely being named beside the clamp — the same
+# idiom test_pass_parquet.py already carries for this file's own S-13 row.
+DOOR_MEASURE_ROW = "PASS-UNFOLD the judges' handle publishes the measurement the door is read against"
+
+if not chrome_available():
+    skip(DOOR_MEASURE_ROW, "Chrome not installed (pinned expected skip)")
+elif missing:
+    skip(DOOR_MEASURE_ROW,
+         "the lab tree is read-only source material and is absent here: " + missing[0])
+else:
+    def door_manifest(text=None):
+        return on_bench(lambda br: js(br, "return window.__exPass.bench.manifest('unfold');"),
+                         text)
+
+    def flat_guard_at(mix, text=None):
+        def go(br):
+            return js(br, "window.__mix(%r); var v = window.__values(); "
+                          "return {aY: v.aY, aX: v.aX, flatDeg: v.flatDeg, "
+                          "flatDegRequest: v.flatDegRequest};" % mix)
+        return on_bench(go, text)
+
+    m_real = door_manifest() or {}
+    read_at_door = (((m_real.get("handles") or {}).get("mask") or {}).get("applied") or {}) \
+        .get("readAtADoor") or {}
+
+    HOLD_OLD, HOLD_NEW = "var DOOR_HOLD = 2;", "var DOOR_HOLD = 97;"
+    hold_mut_text = PACK.replace(HOLD_OLD, HOLD_NEW, 1) if HOLD_OLD in PACK else None
+    m_mut = door_manifest(hold_mut_text) if hold_mut_text else None
+    read_at_door_mut = (((((m_mut or {}).get("handles") or {}).get("mask") or {})
+                        .get("applied") or {}).get("readAtADoor") or {})
+
+    CLAMP_OLD = "if (aY < flatDeg) aY = 0;\n      if (aX < flatDeg) aX = 0;"
+    clamp_mut_text = PACK.replace(CLAMP_OLD, "", 1) if CLAMP_OLD in PACK else None
+
+    NEAR_DOOR_MIX = 0.001   # a hair off the entry door: fold is small and nonzero, well under FLAT_DEG
+    real_guard = flat_guard_at(NEAR_DOOR_MIX)
+    mut_guard = flat_guard_at(NEAR_DOOR_MIX, clamp_mut_text) if clamp_mut_text else None
+
+    check(DOOR_MEASURE_ROW,
+          hold_mut_text is not None and clamp_mut_text is not None
+          and read_at_door.get("readOn") == "the drawing buffer"
+          and read_at_door.get("reads") == "flatDegRequest"
+          and read_at_door.get("points") == 2
+          and read_at_door_mut.get("points") == 97
+          and real_guard is not None and real_guard["flatDegRequest"] == 0.5
+          and real_guard["aY"] == 0 and real_guard["aX"] == 0
+          and mut_guard is not None and mut_guard["aY"] > 0,
+          "the registered instrument's own manifest publishes `mask.applied.readAtADoor` reading "
+          f"«{read_at_door.get('reads')}» on «{read_at_door.get('readOn')}», holding "
+          f"{read_at_door.get('points')} points of the grid — and that number is DOOR_HOLD read "
+          f"LIVE rather than a duplicate literal that happens to agree with it: widen DOOR_HOLD to "
+          f"97 in a built copy and the same manifest now quotes {read_at_door_mut.get('points')}. "
+          f"At the dial held {NEAR_DOOR_MIX} off the door, the real build requests a flat guard of "
+          f"{real_guard and real_guard['flatDegRequest']} degrees and carries {real_guard and real_guard['aY']} "
+          f"through to the record — the guard has zeroed the hair of a turn the fold computed. With "
+          f"the guard's own clamp cut from the built bytes, the identical pose now carries "
+          f"{mut_guard and round(mut_guard['aY'], 4)} degrees through instead of the flat a door "
+          f"needs")
 
 
 if not chrome_available():

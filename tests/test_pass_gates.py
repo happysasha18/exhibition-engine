@@ -570,19 +570,58 @@ else:
                       f"block reading {m['suits']['reads']} — the very two readings the composer "
                       f"already carries for this motif")
 
+                contract_a = json.loads((LAB / "data" / "module-contract.json")
+                                         .read_text(encoding="utf-8"))
+                contract_b = json.loads((LAB / "data" / "module-contract-new.json")
+                                         .read_text(encoding="utf-8"))
+
+                def gate_values(over):
+                    # 0.85 rather than mid-passage: the jamb's own bite only engages once the
+                    # opening has passed the slot's own emptiness (`posed()`'s own guard), and at
+                    # this pair's measured gate that is past the middle of the dial.
+                    p = dict(DEFAULTS)
+                    p.update({"mix": 0.85, "cssWidth": VW, "cssHeight": VH, "t": 0,
+                              "reduced": False})
+                    p.update(over)
+                    return js(br, "return window.__exPass.bench.values('gates', %s);"
+                              % json.dumps(p))
+
+                # CELL is «two whole pieces of the frame moving as pieces» — the cut's own boundary,
+                # which `posed()` carries as `open` (how far each leaf has parted) and `bite` (how far
+                # the jamb has broken into teeth). CELL CONTENT is «the content inside each piece moves
+                # in its own right» — `swing` (the leaf's own turn) and `press` (the arriving work's
+                # squeeze) — and neither term is read anywhere in the computation of `open`, `bite` or
+                # `slot`, so a handle at that level must leave the cut exactly where it stood.
+                base_v = gate_values({})
+                lead_v = gate_values({"lead": 0.0})
+                jamb_v = gate_values({"jamb": 0.0})
+                swing_v = gate_values({"swing": 0.9})
+                press_v = gate_values({"press": 0.05})
+                cut_moved = (lead_v["open"] != base_v["open"]
+                             and jamb_v["bite"] != base_v["bite"])
+                cut_held = (swing_v["open"] == base_v["open"]
+                            and swing_v["bite"] == base_v["bite"]
+                            and swing_v["slot"] == base_v["slot"]
+                            and press_v["open"] == base_v["open"]
+                            and press_v["bite"] == base_v["bite"]
+                            and press_v["slot"] == base_v["slot"])
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["CELL", "CELL CONTENT"]
-                      and "carries a `gates` row" in SOURCE_TEXT
-                      and "gates.js:176-177" in SOURCE_TEXT
-                      and "gates.js:192-194" in SOURCE_TEXT
-                      and "SURFACE is NOT claimed" in SOURCE_TEXT,
+                      and all(h.get("level") != "SURFACE" for h in m["handles"].values())
+                      and m["handles"]["lead"]["level"] == "CELL"
+                      and m["handles"]["jamb"]["level"] == "CELL"
+                      and m["handles"]["swing"]["level"] == "CELL CONTENT"
+                      and m["handles"]["press"]["level"] == "CELL CONTENT"
+                      and "gates" not in contract_a and "gates" not in contract_b
+                      and cut_moved and cut_held,
                       "neither module-contract file carries a `gates` row, so no level is published "
-                      "for this module anywhere and both are read off its own header, at the lines "
-                      "named in the port: CELL because «each is a rigid half of the departing work "
-                      "sliding out of the frame» (gates.js:176-177), CELL CONTENT because the content "
-                      "inside the cut moves in its own right on both sides of it — the leaf's "
-                      "projective turn (gates.js:178-180) and the arriving work's squeeze "
-                      "(gates.js:192-194). SURFACE is not claimed and the port says why")
+                      f"for this module anywhere. Moving a CELL handle moves the cut itself: `lead` "
+                      f"from 0.5 to 0 moves `open` from {base_v['open']} to {lead_v['open']} and "
+                      f"`jamb` from 0.55 to 0 moves `bite` from {base_v['bite']} to {jamb_v['bite']}. "
+                      f"Moving a CELL CONTENT handle leaves the cut exactly where it stood: `swing` "
+                      f"to 0.9 and `press` to 0.05 both hold `open`, `bite` and `slot` bit-identical "
+                      f"to the base pose, because neither name is read anywhere the cut is computed. "
+                      f"No handle anywhere in the manifest declares level SURFACE")
 
                 GATE = js(br, "return window.__gate();")
                 br.evaluate("window.__clock(%r); 0" % CLOCK)

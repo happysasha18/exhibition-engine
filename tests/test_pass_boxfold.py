@@ -378,37 +378,29 @@ check("PASS-BOXFOLD the crease's own handle publishes the measurement it reads",
       "`fingers`, reading the same measured repeat grid-colour derives its count from. Both halves "
       "of the boundary are the work's, which is the whole of the charter's pardon")
 
+# BEHAVIOUR NOT TEXT. A grep of the sentence explaining why this file may not measure a work for
+# itself proves only that the sentence sits in the file — a defect could stand right beside it and
+# the row would still pass. What actually keeps the instrument from measuring anything is that none
+# of the APIs measuring would require are anywhere in the built file; that absence is what is read.
+FENCE = ["createElement", "getContext", "requestAnimationFrame", "addEventListener",
+         "performance.now", "Date.now", "new Image", "setTimeout", "setInterval",
+         "getImageData", "readPixels"]
+held = [s for s in FENCE if s in REGION]
 check("PASS-BOXFOLD the instrument measures no work for itself, and says why",
-      "may not, because measuring means drawing the work into a surface of its own and counting"
-      in SOURCE_TEXT and "seamOf" not in REGION and "getImageData" not in REGION,
-      "the module reads the seam off the picture itself, in a scratch surface of its own "
-      "(`seamOf`); §1.2's fence leaves every surface to the host, so the number arrives as a handle "
-      "and the file names the measurement rather than taking it")
+      not held and "seamOf" not in REGION,
+      "§1.2's fence, read against the built file: none of the ways of drawing a work into a "
+      "surface of its own and counting it appears there, so the seam this instrument plays on can "
+      "only ever be a handle a score hands in — never a number this file took for itself"
+      if not held else "the instrument's file holds " + ", ".join(held))
 
-# THE DOOR READING, AND ITS OWN NUMBERS.
-check("PASS-BOXFOLD the judges' handle publishes what the door is read against, and that nothing is held",
-      'readAtADoor: { points: DOOR_SLIP, readOn: "the drawing buffer",' in SOURCE_TEXT
-      and 'reads: "landing"' in SOURCE_TEXT
-      and "var DOOR_SLIP = 0.5;" in SOURCE_TEXT
-      and "var DOOR_SHOW = 0.5 / 255;" in SOURCE_TEXT
-      and "held: null" in SOURCE_TEXT
-      and "AND THERE IS NOTHING HERE TO HOLD" in SOURCE_TEXT,
-      "the handle carries `applied.readAtADoor` — what is walked, on which grid, what the reading is "
-      "counted in — and it says outright that there is no hold. A box's landing is exact by "
-      "construction and not by a tolerance: the dead band spends the hand and the window every "
-      "travelling number rides is a sine at its own zero, so anything the reading finds is a real "
-      "fault that no widening closes and the refusal stands alone")
-
-check("PASS-BOXFOLD the file names which of the five pardon conditions it answers, and whose the rest are",
-      "THE FIVE-CONDITION PARDON, AND WHICH OF THE FIVE THIS FILE ANSWERS" in SOURCE_TEXT
-      and "answers three of them whole, one with the composer, and one with the" in SOURCE_TEXT
-      and "THE FACES CARRY LIVE PICTURES RE-READ EVERY DRAWN FRAME — the host's." in SOURCE_TEXT
-      and "IT LANDS EXACTLY — the instrument's, whole, and it is the door law below."
-      in SOURCE_TEXT,
-      "the charter pardons the box under five conditions and the port has to say which of them it "
-      "carries. Three are the instrument's whole — the contact shadow, the true perspective and the "
-      "exact landing; the fold's place is the instrument's with the composer, which hands in the "
-      "measurement; the live faces are the host's, which owns every texture")
+# THE DOOR READING, AND ITS OWN NUMBERS. The manifest's own contract (`applied.readAtADoor` on the
+# `mask` handle) and the five-pardon-condition split are both read back off the RUNNING instrument
+# further down, where the browser has already walked the real door boundary and measured the other
+# four conditions — a manifest-vs-comment text match can never catch either drifting from what the
+# runtime actually does, since both would be read out of one file by such a match. See
+# "PASS-BOXFOLD the judges' handle's published door contract is the boundary just measured" and
+# "PASS-BOXFOLD the five pardon conditions divide the way the file says, and the split is real",
+# both in the browser rows below.
 
 sha = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 declared_sha = (re.search(r'sha256: "([0-9a-f]{64})"', REGION) or [None, None])[1]
@@ -445,6 +437,8 @@ BROWSER_ROWS = [
     "PASS-BOXFOLD the box is WALKED on the drawing buffer at both doors, and what it read is published",
     "PASS-BOXFOLD a door the judges' channel spoils is refused on the real road, and the visitor still lands",
     "PASS-BOXFOLD row 16 · the captures are kept as evidence",
+    "PASS-BOXFOLD the judges' handle's published door contract is the boundary just measured",
+    "PASS-BOXFOLD the five pardon conditions divide the way the file says, and the split is real",
 ]
 
 RED_ROWS = [
@@ -698,14 +692,16 @@ else:
 
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["WORLD", "CELL"]
-                      and "WHERE THIS STANDS ON THE CHARTER'S SHELF" in SOURCE_TEXT,
-                      f"levels={m['levels']}. The module carries no row in "
-                      f"lab/data/module-contract.json — it postdates that table — so the reading is "
-                      f"off its own construction and said to be derived. WORLD: the flat frame "
-                      f"becomes one face of a solid standing in a space, seen through a real "
-                      f"projection, with the eye riding up through the turn. CELL: the two faces, "
-                      f"meeting at a finger joint, which is the panel a `regions` pivot asks for. "
-                      f"CELL CONTENT, TEXTURE and LIGHT-COLOUR are not claimed")
+                      and all(h.get("level") not in ("CELL CONTENT", "TEXTURE", "LIGHT-COLOUR")
+                              for h in m["handles"].values()),
+                      f"levels={m['levels']}, read off the manifest bench.manifest() actually hands "
+                      f"back rather than grepped off a comment citing the charter's shelf. No handle "
+                      f"anywhere in it claims CELL CONTENT, TEXTURE or LIGHT-COLOUR either. WORLD: "
+                      f"the flat frame becomes one face of a solid standing in a space, seen through "
+                      f"a real projection, with the eye riding up through the turn — the two roads' "
+                      f"own inverted-projection residual further below is what proves that whole, "
+                      f"not this row. CELL: the two faces, meeting at a finger joint, which is the "
+                      f"panel a `regions` pivot asks for")
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas[aria-hidden]').width)"))
@@ -1092,6 +1088,31 @@ else:
                          away["doorGrid"], "%dx%d" % grids[1],
                          walked[(0, 0, grids[1])]["boxMap"]))
 
+                # ---- THE JUDGES' HANDLE'S PUBLISHED DOOR CONTRACT, HELD AGAINST THE BOUNDARY JUST
+                # ---- MEASURED, NOT AGAINST ITS OWN SOURCE TEXT -----------------------------------
+                # A grep of the manifest's own field names beside the shader's declared numbers
+                # proves only that both strings sit in the file. What the manifest actually promises
+                # is a NUMBER — `points`, on the drawing buffer, against `landing`, with nothing
+                # held — and that number is read here off the live manifest and set against the
+                # twenty readings the search just took.
+                contract = m["handles"]["mask"]["applied"]["readAtADoor"]
+                worst_off = max(v["boxMap"]["offPx"] for v in walked.values())
+                check(BROWSER_ROWS[25],
+                      contract["points"] == 0.5
+                      and contract["readOn"] == "the drawing buffer"
+                      and contract["reads"] == "landing"
+                      and contract["held"] is None
+                      and all(v["boxMap"]["offPx"] < contract["points"] for v in walked.values())
+                      and one["offPx"] < contract["points"],
+                      f"the manifest publishes applied.readAtADoor={contract} on the judges' handle. "
+                      f"Its own `points`, {contract['points']}, is the same bound every one of the "
+                      f"{len(walked)} readings above stayed under — the worst of them at "
+                      f"{worst_off:.2e} points — and the red-on-bug row below that removes the "
+                      f"landing window shows what crossing it means: the same reading refuses the "
+                      f"door the instant offPx reaches it. So the number the manifest promises is "
+                      f"the number the door is actually held to, not a second copy that could read "
+                      f"anything at all")
+
                 # ---- THE DOOR REFUSED ON THE REAL TRANSACTION ROAD -------------------------------
                 # The reading above comes out whole on every buffer this host can hand and every pose
                 # these handles admit, which is the runtime truth this lane was asked for and not a
@@ -1136,6 +1157,47 @@ else:
                          played["refused"] or "nothing",
                          (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
                          leaked["drew"]))
+
+                # ---- THE FIVE PARDON CONDITIONS, HELD AGAINST THE MEASUREMENTS ALREADY TAKEN -----
+                # A grep of the file's own heading and its "three whole, one with the composer, one
+                # with the host" sentence proves only that the sentence is there. Each of the five
+                # already has a real measurement standing behind it, taken earlier in this same run;
+                # this row reads those five back rather than the prose that describes them.
+                check(BROWSER_ROWS[26],
+                      # 1. THE FOLD ON THE WORK'S OWN LINE — with the composer: `seam` is a handle
+                      # reading an outside measurement, and moving the crease off that line moves
+                      # the frame (the charter row above, `seam_read`/`crease_moved`).
+                      m["handles"]["seam"]["reads"].startswith("structure.regions from lab/cut-lines.py")
+                      and seam_read["seamMeasured"] is True
+                      and min(crease_moved[1:4]) > 1.0
+                      # 2. THE FACES CARRY LIVE PICTURES RE-READ EVERY FRAME — the host's: this
+                      # instrument is never seen holding more than the host's own two source
+                      # textures, at census taken at the start and after ten runs.
+                      and cen["textures"] == 2 == base_c["textures"] == after["textures"]
+                      and cen["framebuffers"] == 0 == base_c["framebuffers"] == after["framebuffers"]
+                      # 3. A CONTACT SHADOW ON EVERY EDGE — whole: `shade` moves the frame where the
+                      # shadow lies, read on the worst channel exactly as BROWSER_ROWS[20] reads it
+                      # (it is one of the four handles that live ON THE CREASE, not one of WIDE's
+                      # four that move the whole frame).
+                      and moved["shade"][1] > SEAM
+                      # 4. THE CAMERA TRAVELS WITH TRUE PERSPECTIVE — whole: the two roads' own
+                      # inverted projection agrees with the module's at both doors and six turns,
+                      # and the instrument asks the host's camera for nothing.
+                      and all(mn <= ROADS for _, mn, _ in agree)
+                      and cam["camera"]["owner"] == "stage" and cam["handoffs"] == []
+                      # 5. IT LANDS EXACTLY — whole: the walk above found no fault to refuse.
+                      and not wrong,
+                      f"the fold's place is `seam`, reading an outside measurement "
+                      f"({m['handles']['seam']['reads'][:44]}…); moving the crease off it moves the "
+                      f"frame by {min(crease_moved[1:4]):.4f} of 255 at the least — the composer's "
+                      f"own half. The census never shows more than the host's own two textures and "
+                      f"zero framebuffers ({cen['textures']}/{cen['framebuffers']} at start, "
+                      f"{after['textures']}/{after['framebuffers']} after ten runs) — the host's "
+                      f"half. `shade` moves the frame by {moved['shade'][1]} worst channel where the "
+                      f"shadow lies, the two roads' own perspective agrees to "
+                      f"{max(mn for _, mn, _ in agree):.4f} of 255 worst case while asking the "
+                      f"host's camera for nothing, and the door walk above found nothing to refuse — "
+                      f"the instrument's own three, whole")
 
                 kept = sorted(p.name for p in SHOTS.glob("*.png"))
                 check(BROWSER_ROWS[24],

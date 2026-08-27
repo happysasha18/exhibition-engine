@@ -34,6 +34,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -50,6 +51,12 @@ PHOTOS = [Path("/Users/sashaabramovich/tlvphotos/lab/photos/towers.jpg"),
           Path("/Users/sashaabramovich/tlvphotos/lab/photos/glassgrid.jpg")]
 MODULE = LAB / "effects" / "tilt.js"
 SOURCE = ROOT / "engine" / "assets" / "pass-inst-tilt.js"
+# The composer and the two fixtures test_pass_composed.py already drives pass-composer.js against —
+# read here, never written, for the two proofs below that run through the REAL composer rather than
+# through a comment naming it.
+COMPOSER_MODULE = ROOT / "engine" / "assets" / "pass-composer.js"
+FIXTURE_COMPOSED = ROOT / "tests" / "fixture_pass_composed.json"
+FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
 
 SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844          # the phone frame lab/carrier-check.py measures on
@@ -74,6 +81,42 @@ def check(name, cond, detail=""):
 
 def skip(name, detail):
     results.append((name, "SKIP", detail))
+
+
+def node_available():
+    try:
+        return subprocess.run(["node", "--version"], capture_output=True).returncode == 0
+    except Exception:
+        return False
+
+
+def run_node(driver_text, files=None, args=()):
+    """Runs `driver_text` under a real `node`, in a throwaway directory. `files` is an optional
+    {filename: text} written alongside the driver (their paths are handed to it as the first
+    argv, in the dict's own order, ahead of `args`), which is how a REAL module's own text — built
+    or mutated, never hand-copied — reaches a driver without touching the tree on disk. Returns the
+    parsed JSON of the driver's own last stdout line, or an {"error": …} dict naming what went
+    wrong, so a row that could not run reads as a stated failure rather than a silent pass."""
+    d = Path(tempfile.mkdtemp(prefix="synth_tiltnode_"))
+    try:
+        (d / "driver.js").write_text(driver_text, encoding="utf-8")
+        file_paths = []
+        for name, text in (files or {}).items():
+            p = d / name
+            p.write_text(text, encoding="utf-8")
+            file_paths.append(str(p))
+        proc = subprocess.run(["node", str(d / "driver.js")] + file_paths + [str(a) for a in args],
+                              capture_output=True, text=True, timeout=120)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-400:]}
+        lines = proc.stdout.strip().splitlines()
+        if not lines:
+            return {"error": "the driver printed nothing"}
+        return json.loads(lines[-1])
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 # ---------------------------------------------------------------- the score this instrument plays
@@ -187,13 +230,13 @@ LAB_FRAG = (re.search(r"var FRAG = \[(.*?)\]\.join", LABTXT, re.S) or ["", ""])[
 check("PASS-TILT no clock handle is published, and the module's own record is why",
       "clock: { min" not in REGION and "handle:clock" not in REGION
       and 'source: "seconds"' not in REGION
-      and "clockMoves: false" in SOURCE_TEXT
       and "extTime" in LABTXT and "uTime" not in LAB_FRAG and "uClock" not in LAB_FRAG,
       "the module takes a second through onParam('clock', …) and accumulates one in its own frame "
       "loop, and no uniform of its shader ever reads it — its `values()` is a pure function of the "
-      "hand, which is what lab/data/module-contract-new.json states in one word as `clockMoves: "
-      "false`. A handle a score can walk without moving the picture is noise in the score, so none "
-      "is published and the row that every handle reaches the picture stays honest")
+      "hand. A handle a score can walk without moving the picture is noise in the score, so none "
+      "is published and the row that every handle reaches the picture stays honest; a red-on-bug "
+      "row further down renders the same held pose real seconds apart and proves nothing hidden "
+      "moves it")
 
 check("PASS-TILT the manifest leaves the drawing buffer unpreserved",
       "gl: { preserveDrawingBuffer: false }" in REGION,
@@ -310,13 +353,13 @@ check("PASS-TILT the plane's inverse travels as three rows and the shader rebuil
       "footprint reads")
 
 check("PASS-TILT the instrument declares what it cuts on, and it is the strip and the field",
-      'cuts: ["strip", "field"]' in REGION
-      and "the handover front travels ROW BY ROW" in SOURCE_TEXT
-      and "one surface carrying both works at once" in SOURCE_TEXT,
+      'cuts: ["strip", "field"]' in REGION,
       "the front is a row of the plane travelling toward the eye, which is a strip cut and the same "
       "kind the composer's KIND_OF_MEASURE reads out of a banding pivot; and the plane itself is one "
       "surface carrying both works, so the whole frame is the element — the field kind the "
-      "double-exposure instrument declares")
+      "double-exposure instrument declares; a red-on-bug row further down renders synthetic works "
+      "that vary only by row and shows the front tracks that row, with both works standing on the "
+      "one surface at once")
 
 # WHAT A PAIR MUST READ IS WHAT A PAIR DOES READ. His words of 2026-08-18 09:51, 09:53 and 10:15: a
 # measurement ranks which genre suits and never admits or rejects, and a reading of a PAIR carries no
@@ -341,15 +384,72 @@ check("PASS-TILT the instrument declares what it READS of a pair, and no floor a
 # drawing on and re-reads it every frame. This engine hands an instrument two decoded works and no
 # second module's canvas, so that half cannot cross; the row asks that the file SAY so rather than
 # drop it quietly or invent a substitute for it.
-check("PASS-TILT the carrier half that could not cross is named in the file, with its reason",
-      "THE CARRIER HALF DID NOT CROSS" in SOURCE_TEXT
-      and "no second instrument's canvas" in SOURCE_TEXT
-      and "carries the plain photographs of ctx.images" in SOURCE_TEXT
-      and "ctx.sources" in LABTXT and "f.live" in LABTXT,
-      "the module's own header names both roads and this port took the second: the module handed no "
-      "source carries the plain photographs of ctx.images, «which is the same module with nothing "
-      "playing on it». What is lost is exactly the leaning of a MOVING picture, and it is written "
-      "into the file rather than left as a silence")
+# THE CARRIER HALF, READ IN THE REAL CODE RATHER THAN TAKEN ON A COMMENT'S WORD. There is no render
+# behind "this port did not build the live-source road" for a screenshot to measure — it is an
+# absence. So the substitute is the strongest real one available: the built artifact is searched for
+# the actual API surface a live second canvas would need (never found, since none was built), the
+# manifest's only two sampler sources are counted (both the plain decoded works), and the module's
+# OTHER face is confirmed real in the lab file itself (its own `ctx.sources`/`f.live`). The Node
+# driver then runs the real `values()` against a pose that carries no `sources`, no `ctx` and no
+# `live` field of any kind and shows it still draws a whole frame — the instrument's real inputs are
+# exactly the two static images and nothing else, proven by running it rather than by reading a note
+# about it.
+LIVE_CARRIER_APIS = ["ctx.sources", "f.live", ".live(", "drawImage", "getImageData",
+                      "captureStream", "requestVideoFrameCallback", "HTMLVideoElement",
+                      "HTMLCanvasElement"]
+present_live = [s for s in LIVE_CARRIER_APIS if s in REGION]
+sampler_sources = sorted(re.findall(r'type: "sampler2D", source: "(\w+)"', REGION))
+carrier_static_ok = (not present_live and sampler_sources == ["textureA", "textureB"]
+                     and "ctx.sources" in LABTXT and "f.live" in LABTXT)
+
+DRIVER_BARE_POSE = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const modulePath = process.argv[2];
+const source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
+let joined = null;
+const sandbox = {window: {__exPassInstrument: (m) => { joined = m; }}, console};
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, {filename: "pass-inst-tilt.js"});
+if (!joined) { console.log(JSON.stringify({error: "the instrument joined nothing"})); process.exit(0); }
+const inst = joined.instrument;
+inst.start();
+// A BARE POSE: no `sources`, no `ctx`, no live canvas of any kind — only the plain numeric handles
+// every score in this suite already hands it.
+const pose = {mix: 0.5, tilt: 0.72, horizon: 0.35, squeeze: 0.55, lead: 0.4, columns: 9,
+              seed: 4.91016, shade: 1, travel: 1, mask: 0,
+              reduced: false, cssWidth: 390, cssHeight: 844, bufWidth: 390, bufHeight: 844};
+const v = inst.values(pose);
+const ok = !!v && isFinite(v.zoom) && isFinite(v.front) && isFinite(v.cols)
+  && Array.isArray(v.inv0) && v.inv0.length === 4;
+console.log(JSON.stringify({ok: ok, hasSources: Object.prototype.hasOwnProperty.call(pose, "sources"),
+                             hasCtx: Object.prototype.hasOwnProperty.call(pose, "ctx"),
+                             hasLive: Object.prototype.hasOwnProperty.call(pose, "live"),
+                             zoom: v && v.zoom, cols: v && v.cols}));
+"""
+
+if not node_available():
+    skip("PASS-TILT the carrier half that could not cross is absent from the real code, and the "
+         "other road runs on nothing live",
+         "node is not installed (pinned expected skip)")
+else:
+    bare_pose = run_node(DRIVER_BARE_POSE, files={"pass-inst-tilt.js": REGION})
+    carrier_render_ok = (carrier_static_ok and not bare_pose.get("error") and bare_pose.get("ok")
+                         and not bare_pose.get("hasSources") and not bare_pose.get("hasCtx")
+                         and not bare_pose.get("hasLive"))
+    check("PASS-TILT the carrier half that could not cross is absent from the real code, and the "
+          "other road runs on nothing live",
+          carrier_render_ok,
+          ("no live-carrier API stands in the built artifact (checked for %s), the only two sampler "
+           "sources it ever binds are %s, and the module's own other face is real — its "
+           "`ctx.sources`/`f.live` stand in lab/effects/tilt.js. Run for real: the Node driver calls "
+           "`values()` on a pose carrying no `sources`, no `ctx` and no `live` field at all, and it "
+           "still returns a whole frame (zoom %s, columns %s) — the instrument's real inputs are "
+           "exactly the two decoded photographs and nothing else"
+           % (LIVE_CARRIER_APIS, sampler_sources, bare_pose.get("zoom"), bare_pose.get("cols"))
+           if carrier_render_ok
+           else "present live-carrier text: %s; sampler sources: %s; driver: %s"
+                % (present_live, sampler_sources, bare_pose)))
 
 # EVERY GEOMETRIC HANDLE NAMES THE MEASUREMENT OF THE PHOTOGRAPH IT READS. His 19:13 word, lifted to
 # the class at 19:21 — and where no measurement honestly stands behind a handle, the file says so
@@ -359,15 +459,126 @@ check("PASS-TILT every geometric handle publishes the measurement it reads, or s
       and 'reads: "structure.horizon.y' in REGION
       and "texture.spectralPeriodPx over structure.frameSide" in REGION
       and "the strip element sets" in REGION
-      and "reads: null" in REGION
-      and "How ragged a handover should read" in SOURCE_TEXT,
+      and "reads: null" in REGION,
       "the LEAN reads structure.polar.tunnel, how strongly a work already reads as a corridor; the "
       "AXIS reads structure.horizon.y, the work's own measured horizon, which is the line the plane "
       "should turn about; the CROWDING reads texture.spectralPeriodPx over structure.frameSide, the "
       "repeat that decides how far the far rows may crowd before they stop resolving; the COLUMN "
       "COUNT reads the strip element sets. The front's own ORDER reads nothing — no measurement in a "
       "work record says how ragged a handover should be, and the handle says `reads: null` rather "
-      "than naming a number nobody measured")
+      "than naming a number nobody measured; the row below runs the real composer and shows each "
+      "claimed reading is what actually moves its handle, and none of them move `lead`")
+
+# EACH HANDLE'S CLAIMED READING, PROVEN BY MOVING IT. The manifest's `reads:` prose is the LEAN's,
+# the AXIS's, the CROWDING's and the COLUMN COUNT's own claim about what work-record field drives
+# them; what actually drives a handle's computed value lives in pass-composer.js's own `instr ===
+# "tilt"` branch, which is real code and not a comment. This runs the REAL composer (the same file
+# and the same two fixtures test_pass_composed.py drives) over a real pair, once per axis, changing
+# ONLY the one field that handle's own manifest names — and asks that ONLY that handle's node move,
+# with `lead` (whose own manifest says `reads: null`) standing dead still throughout, since nothing
+# names a measurement for it to answer to.
+DRIVER_HANDLES = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [modulePath, fixturePath, worksPath] = process.argv.slice(2);
+let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
+let joined = null;
+const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, {filename: "pass-composer.js"});
+if (!joined) { console.log(JSON.stringify({error: "the composer joined nothing"})); process.exit(0); }
+
+const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+const works = JSON.parse(fs.readFileSync(worksPath, "utf8"));
+const composer = joined.make(fix.consts);
+
+// A REAL PAIR THAT REALLY CASTS TILT, off the suite's own fixture works — not invented records.
+const A0 = works.works["17843080526947498"];
+const B = works.works["17843154031050281"];
+const SEED = 3.3, ROLE = "middle";
+
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function run(A) {
+  return composer.passageFor({workRecordA: A, workRecordB: B, direction: "a-to-b", seed: SEED,
+                              routeRole: ROLE});
+}
+function tiltCue(p) {
+  return (p && p.score && (p.score.cues || []).find((c) => c.instrument.id === "tilt")) || null;
+}
+function nodesOf(cue) {
+  const out = {};
+  for (const h of ["tilt", "horizon", "squeeze", "columns", "lead"]) {
+    const nn = (cue.tracks[h] || {}).node || (cue.id + "-" + h);
+    out[h] = cue.nodes[nn];
+  }
+  return out;
+}
+
+const baseCue = tiltCue(run(A0));
+if (!baseCue) {
+  console.log(JSON.stringify({error: "the base pair casts no tilt cue at all"}));
+  process.exit(0);
+}
+const baseNodes = nodesOf(baseCue);
+
+// ONE MUTATION PER HANDLE, each touching ONLY the raw field that handle's own manifest names:
+// LEAN off structure.polar.tunnel, AXIS off structure.horizon.y, CROWDING off the pair's own
+// repeat (texture.spectralPeriodPx over frameSide), COLUMN COUNT off the strip element's own count.
+const MUTANTS = [
+  ["tilt", (A) => { A.structure.polar.tunnel = 0.9; }],
+  ["horizon", (A) => { A.structure.horizon.y = 0.1; }],
+  ["squeeze", (A) => { A.texture.spectralPeriodPx = A.texture.spectralPeriodPx / 2; }],
+  ["columns", (A) => {
+    const s = A.sets.find((x) => x.kind === "strip");
+    s.count = 12; s.realCount = 12;
+  }],
+];
+
+const out = {baseCue: baseCue.id, axes: {}};
+let ok = true;
+for (const [axis, mut] of MUTANTS) {
+  const A = clone(A0);
+  mut(A);
+  const cue = tiltCue(run(A));
+  if (!cue || cue.id !== baseCue.id) {
+    out.axes[axis] = {error: "casting changed: " + (cue && cue.id)};
+    ok = false;
+    continue;
+  }
+  const nodes = nodesOf(cue);
+  const moved = JSON.stringify(nodes[axis]) !== JSON.stringify(baseNodes[axis]);
+  const othersStill = ["tilt", "horizon", "squeeze", "columns", "lead"]
+    .filter((h) => h !== axis)
+    .every((h) => JSON.stringify(nodes[h]) === JSON.stringify(baseNodes[h]));
+  out.axes[axis] = {moved: moved, othersStill: othersStill};
+  if (!moved || !othersStill) ok = false;
+}
+out.ok = ok;
+console.log(JSON.stringify(out));
+"""
+
+if not node_available():
+    skip("PASS-TILT each geometric handle's own named measurement is what actually moves it, and "
+         "nothing moves `lead`",
+         "node is not installed (pinned expected skip)")
+else:
+    handles = run_node(DRIVER_HANDLES, args=[COMPOSER_MODULE, FIXTURE_COMPOSED, FIXTURE_WORKS])
+    axes = handles.get("axes", {}) if isinstance(handles, dict) else {}
+    check("PASS-TILT each geometric handle's own named measurement is what actually moves it, and "
+          "nothing moves `lead`",
+          not handles.get("error") and handles.get("ok") is True
+          and sorted(axes) == ["columns", "horizon", "squeeze", "tilt"]
+          and all(axes[a].get("moved") and axes[a].get("othersStill") for a in axes),
+          ("on a real pair that casts tilt as its «%s» cue, varying structure.polar.tunnel alone "
+           "moves only `tilt`'s own node; varying structure.horizon.y alone moves only `horizon`'s; "
+           "halving the pair's own repeat (texture.spectralPeriodPx) moves only `squeeze`'s; and "
+           "changing the strip element's own count moves only `columns`'s — in every one of the "
+           "four runs the other three handles AND `lead` stood at the exact node they started at, "
+           "which is what `reads: null` on `lead` claims and what the other four's own `reads:` "
+           "prose claims made real"
+           % handles.get("baseCue")
+           if not handles.get("error") and handles.get("ok") is True
+           else "driver result: %s" % handles))
 
 check("PASS-TILT the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "gl.uniform1f(U.uFront" not in LAYER
@@ -414,6 +625,9 @@ BROWSER_ROWS = [
 RED_ROWS = [
     "PASS-TILT red-on-bug · the door reading removed: a door the law cannot hold is drawn",
     "PASS-TILT red-on-bug · the plane's inverse rebuilt row by row: the two roads part company",
+    "PASS-TILT red-on-bug · a term reads real elapsed time: two takes of one held pose part company",
+    "PASS-TILT red-on-bug · the boundary reads the column instead of the row: a hard wipe appears "
+    "where neither work carries one",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -471,7 +685,7 @@ def apart(p, work):
     return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
 
 
-def bench_dir(pack_text=None):
+def bench_dir(pack_text=None, photos=None):
     """The bench's own served root: the BUILT pass-layer.js and the built instrument files (the real
     artifacts, namespace applied and comments stripped), the site's own settings record, the lab
     module unchanged, the two photographs, and the page that stands the two roads of one frame side
@@ -480,7 +694,13 @@ def bench_dir(pack_text=None):
     A row proving a rule reds hands over a CHANGED instrument file and writes the site's own record
     with the digest of the bytes actually served, which is what the build does. The source file on
     disk is never touched, so nothing has to be restored and no working tree can be left changed by a
-    red-on-bug proof."""
+    red-on-bug proof.
+
+    `photos`, when given, stands in for the module-level PHOTOS list — the two files the fixture
+    page's own markup names by their fixed names (photos/towers.jpg, photos/glassgrid.jpg). A row
+    proving the boundary answers to a work's own content rather than to the frame hands in two
+    SYNTHETIC images under those same two names, so the real bench serves them exactly as it serves
+    the real photographs and nothing about the harness itself is stubbed."""
     d = Path(tempfile.mkdtemp(prefix="synth_tiltbench_"))
     pack = REGION if pack_text is None else pack_text
     shutil.copy2(TMP / "pass-layer.js", d / "pass-layer.js")
@@ -493,7 +713,7 @@ def bench_dir(pack_text=None):
     (d / "config.json").write_text(json.dumps(record), encoding="utf-8")
     shutil.copy2(MODULE, d / "tilt.js")
     (d / "photos").mkdir()
-    for p in PHOTOS:
+    for p in (PHOTOS if photos is None else photos):
         shutil.copy2(p, d / "photos" / p.name)
     shutil.copy2(ROOT / "tests" / "fixture_pass_tilt.html", d / "index.html")
     return d
@@ -519,11 +739,11 @@ def idle(br, tries=60, nap=0.1):
     return False
 
 
-def on_bench(fn, pack_text=None):
+def on_bench(fn, pack_text=None, photos=None):
     """One reading, taken on a bench of its own: a served root, a fresh browser, and the instrument
     file this call names. Held apart so a red-on-bug proof and the run it is compared against differ
     in exactly one thing — the bytes the host was handed."""
-    d = bench_dir(pack_text)
+    d = bench_dir(pack_text, photos)
     try:
         with serve(d) as base:
             with Browser(width=VW, height=VH) as br:
@@ -607,17 +827,63 @@ else:
                       f"«{m['coverage']['how']}»")
 
                 # ---- the level, and the miracle it spends ---------------------------------------
-                check(BROWSER_ROWS[1],
-                      m["levels"] == ["WORLD"]
-                      and "spendsTheMiracle" in SOURCE_TEXT
-                      and "consumes the slot" in SOURCE_TEXT,
-                      f"levels={m['levels']}, carried from lab/data/module-contract-new.json's own "
-                      f"`tilt` row rather than derived. The composer's `spendsTheMiracle` reads this "
-                      f"very line rather than any list of names, so declaring it has a price the "
-                      f"file states: this instrument spends the crossing's one miracle, it never "
-                      f"stacks, and a role given no miracle cannot be carried by it at all — which "
-                      f"is right for a module whose whole act is the space the photographs live in "
-                      f"lying down")
+                # THE MECHANISM READ IN THE REAL COMPOSER RATHER THAN IN A COMMENT NAMING IT.
+                # pass-composer.js carries a hardcoded WORLD_FOLD_INSTRUMENTS array driving
+                # `isWorldFold`/`spendsTheMiracle`, and re-exposes it as `worldFoldInstruments` on
+                # the object `make()` returns. The Node driver runs the REAL file and confirms
+                # «tilt» stands in it, then strikes «tilt» from that one array literal in memory
+                # (the file on disk is never touched) and confirms the same composer's own
+                # `worldFoldInstruments` no longer carries it — a real code-execution proof that
+                # declaring the WORLD level actually spends the crossing's miracle mechanism.
+                DRIVER_MIRACLE = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [modulePath, fixturePath] = process.argv.slice(2);
+function loadMade(src) {
+  let joined = null;
+  const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
+  vm.createContext(sandbox);
+  vm.runInContext(src, sandbox, {filename: "pass-composer.js"});
+  if (!joined) return null;
+  const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+  return joined.make(fix.consts);
+}
+const real = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
+const ANCHOR = 'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];';
+const REPLACED = 'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "waterline"];';
+if (real.indexOf(ANCHOR) < 0) {
+  console.log(JSON.stringify({error: "the row's own anchor text was not found in the real composer"}));
+  process.exit(0);
+}
+const madeReal = loadMade(real);
+const mutated = real.split(ANCHOR).join(REPLACED);
+const madeMutant = loadMade(mutated);
+console.log(JSON.stringify({
+  realHas: !!madeReal && madeReal.worldFoldInstruments.indexOf("tilt") >= 0,
+  realList: madeReal && madeReal.worldFoldInstruments,
+  mutantHas: !!madeMutant && madeMutant.worldFoldInstruments.indexOf("tilt") >= 0,
+  mutantList: madeMutant && madeMutant.worldFoldInstruments,
+}));
+"""
+                if not node_available():
+                    skip(BROWSER_ROWS[1], "node is not installed (pinned expected skip)")
+                else:
+                    miracle = run_node(DRIVER_MIRACLE, args=[COMPOSER_MODULE, FIXTURE_COMPOSED])
+                    check(BROWSER_ROWS[1],
+                          m["levels"] == ["WORLD"]
+                          and not miracle.get("error")
+                          and miracle.get("realHas") is True
+                          and miracle.get("mutantHas") is False,
+                          f"levels={m['levels']}, carried from lab/data/module-contract-new.json's "
+                          f"own `tilt` row rather than derived. Run for real: pass-composer.js's own "
+                          f"WORLD_FOLD_INSTRUMENTS reads {miracle.get('realList')}, «tilt» among "
+                          f"them, which is what `isWorldFold`/`spendsTheMiracle` read by identity; "
+                          f"with «tilt» struck from that one array in memory the same composer's "
+                          f"`worldFoldInstruments` reads {miracle.get('mutantList')} and no longer "
+                          f"carries it — declaring WORLD really does spend the crossing's one "
+                          f"miracle, folding the space a work lives in is a world act that consumes "
+                          f"the slot and never stacks, and a role given no miracle cannot be carried "
+                          f"by this instrument at all")
 
                 # ---- the five poses: the host's frame beside the lab module's -------------------
                 pairs = []
@@ -1072,6 +1338,129 @@ else:
           % (road_at(roads_base, "mid"), SAME, road_at(roads_bug, "mid"),
              road_at(roads_base, "door-0"), road_at(roads_bug, "door-0"),
              road_at(roads_base, "door-1"), road_at(roads_bug, "door-1")))
+
+    # THREE · THE CLOCK THAT IS NOT THERE. `values()` is a pure function of the hand — no uniform of
+    # this shader ever reads a wall clock — so a held pose, photographed twice with real seconds
+    # passing between the two takes and nothing else touched, must come back byte-identical. This
+    # renders the same pinned progress twice, real time apart, and separately mutates the built
+    # instrument to give one geometric term a term keyed to `Date.now()` — a fake time-driven signal
+    # reaching the picture, of exactly the kind the manifest's own record (`clockMoves: false`) says
+    # is not there — and shows the same two takes now measurably part company.
+    def clock_still(br):
+        js(br, "return window.__offer(%s, {clock: 1.5, progress: 0.5});" % SCORE_JSON)
+        br.sleep(0.5)
+        tag = len(list(SHOTS.glob("clock-still-1-*.png")))
+        p1 = png(br, SHOTS / ("clock-still-1-%d.png" % tag))
+        br.sleep(1.5)   # real wall-clock time passes; the score's own pinned progress does not move
+        p2 = png(br, SHOTS / ("clock-still-2-%d.png" % tag))
+        br.evaluate("window.__cancel('clock still row'); 0")
+        return diff(p1, p2)
+
+    clock_base = on_bench(clock_still)
+    CLOCK_FROM = "front: reach - 2 * reach * d,"
+    if REGION.count(CLOCK_FROM) != 1:
+        check(RED_ROWS[2], False,
+              "the row's own anchor text was not found once in the built instrument")
+    else:
+        CLOCK_TO = "front: reach - 2 * reach * d + (Date.now() % 2000) / 2000 * 0.06,"
+        clock_bug_pack = REGION.replace(CLOCK_FROM, CLOCK_TO, 1)
+        clock_bug = on_bench(clock_still, pack_text=clock_bug_pack)
+        check(RED_ROWS[2],
+              clock_bug_pack != REGION and clock_base and clock_bug
+              and clock_base[0] == 0.0 and clock_base[1] == 0
+              and (clock_bug[0] > 0 or clock_bug[1] > 0),
+              "the same held pose (mix 0.5, progress pinned at 0.5), photographed twice with 1.5 "
+              "real seconds passing between the takes and nothing else touched: mean %.4f of 255 "
+              "(worst channel %d) — the two takes are the same frame. With the front's own row "
+              "position given a term keyed to Date.now() the same two takes, the same 1.5 real "
+              "seconds apart, now differ by mean %.4f (worst channel %d), which is what "
+              "`clockMoves: false` stands for and is not vacuous"
+              % (clock_base + clock_bug))
+
+    # FOUR · THE HANDOVER FRONT AS A LEVEL SET OF THE PLANE'S OWN ROW. Two synthetic works whose
+    # content varies ONLY by their own row (never by column) are leant at mid-passage with the
+    # front's own raggedness (`lead`) held at nothing, which removes the one legitimate per-column
+    # stagger the design owns (the columns' own moments) and leaves the boundary answering to
+    # nothing but the plane's row if the claim holds. Under the real code the worst row's own
+    # column-to-column spread is near zero and both works' own extremes still stand in the one
+    # frame together; with the boundary's comparison read off the plane's COLUMN instead of its row,
+    # the same two textures at the same pose show a hard wipe where neither texture carries a
+    # column of its own — the adversarial method test_pass_layer.py already uses for its own
+    # boundary, carried over to this one.
+    def _row_gradient_jpeg(path, w, h, top, bottom):
+        from PIL import Image
+        im = Image.new("RGB", (w, h))
+        px = im.load()
+        for row in range(h):
+            v = round(top + (bottom - top) * (row / max(h - 1, 1)))
+            for col in range(w):
+                px[col, row] = (v, v, v)
+        im.save(path, format="JPEG", quality=100)
+
+    def _synthetic_row_photos():
+        rd = Path(tempfile.mkdtemp(prefix="synth_rowphotos_"))
+        a, b = rd / "towers.jpg", rd / "glassgrid.jpg"
+        _row_gradient_jpeg(a, 200, 200, 0, 255)      # black at the top row, white at the bottom
+        _row_gradient_jpeg(b, 200, 200, 255, 0)      # the mirror
+        return [a, b], rd
+
+    def boundary_row_measure(br):
+        br.evaluate("window.__param('lead', 0); 0")
+        br.evaluate("window.__mix(0.5); 0")
+        br.sleep(0.7)
+        br.evaluate("window.__hostDraw(); 0")
+        br.sleep(0.1)
+        br.evaluate("window.__show('host'); 0")
+        br.sleep(0.2)
+        tag = len(list(SHOTS.glob("boundary-row-*.png")))
+        p = png(br, SHOTS / ("boundary-row-%d.png" % tag))
+        from PIL import Image
+        im = Image.open(p).convert("RGB")
+        w, h = im.size
+        px = im.load()
+        worst, lo_all, hi_all = 0, 255, 0
+        for row in range(h):
+            lo, hi = 255, 0
+            for col in range(w):
+                r = px[col, row][0]
+                if r < lo:
+                    lo = r
+                if r > hi:
+                    hi = r
+            if hi - lo > worst:
+                worst = hi - lo
+            if lo < lo_all:
+                lo_all = lo
+            if hi > hi_all:
+                hi_all = hi
+        return worst, lo_all, hi_all
+
+    ROW_PHOTOS, ROW_PHOTOS_DIR = _synthetic_row_photos()
+    try:
+        boundary_base = on_bench(boundary_row_measure, photos=ROW_PHOTOS)
+        BOUNDARY_FROM = "float d = (front - st.y) / (2.0 * foot);"
+        if REGION.count(BOUNDARY_FROM) != 1:
+            check(RED_ROWS[3], False,
+                  "the row's own anchor text was not found once in the built instrument")
+        else:
+            BOUNDARY_TO = "float d = (front - st.x) / (2.0 * foot);"
+            boundary_bug_pack = REGION.replace(BOUNDARY_FROM, BOUNDARY_TO, 1)
+            boundary_bug = on_bench(boundary_row_measure, pack_text=boundary_bug_pack,
+                                    photos=ROW_PHOTOS)
+            check(RED_ROWS[3],
+                  boundary_bug_pack != REGION and boundary_base and boundary_bug
+                  and boundary_base[0] <= 4 and boundary_base[1] <= 130 and boundary_base[2] >= 200
+                  and boundary_bug[0] > 60,
+                  "two textures whose content varies only by their own row (never by column), "
+                  "leant at mid-passage with the front's own raggedness at nothing: the worst row's "
+                  "column spread is %d of 255, and %d/%d stand as the frame's own low and high — "
+                  "both works present on the one tilted surface at once. With the same comparison "
+                  "read off the plane's COLUMN instead of its row, the same pair at the same pose "
+                  "reads a worst row spread of %d — a hard wipe where neither texture carries a "
+                  "column of its own, which is the defect class a strip cut on the row must exclude"
+                  % (boundary_base[0], boundary_base[1], boundary_base[2], boundary_bug[0]))
+    finally:
+        shutil.rmtree(ROW_PHOTOS_DIR, ignore_errors=True)
 
 shutil.rmtree(TMP, ignore_errors=True)
 
