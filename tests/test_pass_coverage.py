@@ -589,7 +589,7 @@ else:
     NOW = Bench()
     if not NOW.ok:
         for r in ROWS + RED + REPORTS:
-            skip(r, "the bench never came up: "
+            check(r, False, "the bench never came up: "
                  + NOW.br.evaluate("JSON.stringify(window.__errs||[])"))
         NOW.close()
     else:
@@ -679,8 +679,8 @@ else:
                         NOW.shot(STACK, 5.60, "risk-step-after-5.60"))
         BEFORE = Bench(arrangement=HEAD_BUILT)
         if not BEFORE.ok:
-            skip(REPORTS[1], "the before-coverage bench never came up")
-            skip(REPORTS[2], "the before-coverage bench never came up")
+            check(REPORTS[1], False, "the before-coverage bench never came up")
+            check(REPORTS[2], False, "the before-coverage bench never came up")
             before_frames = None
         else:
             step_was = diff(BEFORE.shot(STACK, 5.58, "risk-step-before-5.58"),
@@ -728,7 +728,7 @@ else:
                 for t, x, y in zip(INSTANTS, pair["before"], pair["after"]):
                     one_offs.append((tag, t, diff(x, y)))
         if not okay or not one_offs:
-            skip(ROWS[3], "one of the benches never came up")
+            check(ROWS[3], False, "one of the benches never came up")
         else:
             worst = max(x for _, _, (_, x) in one_offs)
             check(ROWS[3], all(m == 0.0 and x == 0 for _, _, (m, x) in one_offs),

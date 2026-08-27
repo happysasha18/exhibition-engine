@@ -486,7 +486,7 @@ else:
             br.navigate(base + "/index.html")
             if not ready(br):
                 for r in BROWSER_ROWS:
-                    skip(r, "the bench never came up: "
+                    check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             else:
                 # ---- §8: the manifest itself -------------------------------------------------

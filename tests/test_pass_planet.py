@@ -882,7 +882,7 @@ else:
             br.navigate(base + "/index.html")
             if not ready(br):
                 for r in BROWSER_ROWS:
-                    skip(r, "the bench never came up: "
+                    check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             elif not js(br, "return !!window.__exPass.bench.manifest('planet');"):
                 why = js(br, "var e = window.__host.report().events.filter(function(x){"
@@ -1373,7 +1373,7 @@ else:
                 "fetches exactly as the module wrote them, so the day the host hands a chain this "
                 "picture gains the module's own filtering with no edit here")
     else:
-        skip(BROWSER_ROWS[24], "the bench never came up for the two-filter reading")
+        check(BROWSER_ROWS[24], False, "the bench never came up for the two-filter reading")
 
     kept = sorted(p.name for p in SHOTS.glob("*.png"))
     check(BROWSER_ROWS[25],

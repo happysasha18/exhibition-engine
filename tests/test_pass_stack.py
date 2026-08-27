@@ -642,7 +642,7 @@ else:
             br.navigate(base + "/index.html")
             if not ready(br):
                 for r in BROWSER_ROWS + RED_ROWS:
-                    skip(r, "the bench never came up: "
+                    check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             else:
                 # ---- row 1 + row 10 + row 13: the pass, instant by instant -------------------
@@ -921,7 +921,7 @@ else:
                         br2.sleep(0.45)
                     pair[tag] = frames
         if not pair.get("before") or not pair.get("after"):
-            skip(BROWSER_ROWS[2], "one of the two benches never came up")
+            check(BROWSER_ROWS[2], False, "one of the two benches never came up")
         else:
             offs = [diff(p, q) for p, q in zip(pair["before"], pair["after"])]
             check(BROWSER_ROWS[2], all(m > SEAM for m, _ in offs),

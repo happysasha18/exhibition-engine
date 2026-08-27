@@ -691,7 +691,7 @@ else:
             br.navigate(base + "/index.html")
             if not ready(br):
                 for r in BROWSER_ROWS:
-                    skip(r, "the bench never came up: "
+                    check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             elif not js(br, "return !!window.__exPass.bench.manifest('unfold');"):
                 why = js(br, "var e = window.__host.report().events.filter(function(x){"
@@ -1300,7 +1300,7 @@ else:
         world = on_bench(world_read)
         if not world:
             for r in WORLD_ROWS:
-                skip(r, "the world bench never came up")
+                check(r, False, "the world bench never came up")
         else:
             grew, _ = diff(world["shut"]["pic"], world["open"]["pic"])
             bare_shut = unclaimed(world["shut"]["map"])

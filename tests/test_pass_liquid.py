@@ -483,7 +483,7 @@ else:
     G = run_browser_rows()
     if G is None:
         for r in BROWSER_ROWS + RED_ROWS:
-            skip(r, "the bench page never reported ready")
+            check(r, False, "the bench page never reported ready")
     else:
         man = G["manifest"] or {}
         need = ["id", "api", "arity", "roles", "levels", "params", "handles", "neutrals", "doors",
@@ -668,7 +668,7 @@ else:
         p1 = plant(REGION, [("* wet * WAVE_REACH * clamp(st.swell, 0, 1)",
                              "* WAVE_REACH * clamp(st.swell, 0, 1)")])
         if p1 is None:
-            skip(RED_ROWS[0], "the plant found nothing to change")
+            check(RED_ROWS[0], False, "the plant found nothing to change")
         else:
             def r1(br):
                 shot_host(br, "red1-door0.png", "{mix: 0, a: 0, b: 1}")
@@ -689,7 +689,7 @@ else:
         # photograph is on the frame where the departing one owes every point.
         p2 = plant(REGION, [("FIELD_TOP = SA[0] + SA[1] + SA[2]", "FIELD_TOP = 0.5")])
         if p2 is None:
-            skip(RED_ROWS[1], "the plant found nothing to change")
+            check(RED_ROWS[1], False, "the plant found nothing to change")
         else:
             def r2(br):
                 return js(br, "var v = window.__values({mix: 0, a: 0, b: 1, "
@@ -707,7 +707,7 @@ else:
 
             p3 = plant(p2, [("var no = doorWhyNoOf(read);", "var no = null;")])
             if p3 is None:
-                skip(RED_ROWS[2], "the plant found nothing to change")
+                check(RED_ROWS[2], False, "the plant found nothing to change")
             else:
                 def r3(br):
                     shot_host(br, "red3-door0.png", "{mix: 0, a: 0, b: 1}")
@@ -729,7 +729,7 @@ else:
         p4 = plant(REGION, [("Math.pow(SPREAD_REACH, 1 - 2 * feelCrest(clamp(crest, 0, 1)))",
                              "Math.pow(SPREAD_REACH, 1 - 2 * clamp(crest, 0, 1))")])
         if p4 is None:
-            skip(RED_ROWS[3], "the plant found nothing to change")
+            check(RED_ROWS[3], False, "the plant found nothing to change")
         else:
             def r4(br):
                 br.evaluate("window.__set('wet', 0.8)")

@@ -551,7 +551,7 @@ else:
             br.navigate(base + "/index.html")
             if not ready(br):
                 for r in BROWSER_ROWS:
-                    skip(r, "the bench never came up: "
+                    check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             # An instrument the host refuses at registration draws nothing, so every row below it
             # would read as a crash. It reads as what it is instead: the whole set red, with the

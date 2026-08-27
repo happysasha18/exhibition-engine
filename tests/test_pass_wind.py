@@ -389,7 +389,7 @@ else:
         p1 = plant("short", [("var start = 0.5 - half - MARGIN - 2 * body;",
                               "var start = 0.5 - half + 0.05;")])
         if p1 is None:
-            skip(RED_ROWS[0], "the plant found nothing to change")
+            check(RED_ROWS[0], False, "the plant found nothing to change")
         else:
             R1, w1 = run_node(p1, "short")
             leaked = R1 and len(R1["doors"]["leaks"]) > 0
@@ -404,7 +404,7 @@ else:
                                          "var start = 0.5 - half + 0.05;"),
                                         ("var no = doorWhyNoOf(read);", "var no = null;")])
             if p2 is None:
-                skip(RED_ROWS[1], "the plant found nothing to change")
+                check(RED_ROWS[1], False, "the plant found nothing to change")
             else:
                 R2, w2 = run_node(p2, "short-silent")
                 check(RED_ROWS[1], bool(R2) and len(R2["doors"]["leaks"]) == 0,
@@ -415,7 +415,7 @@ else:
 
         p3 = plant("sine", [("var env = 4 * d * (1 - d);", "var env = Math.sin(Math.PI * d);")])
         if p3 is None:
-            skip(RED_ROWS[2], "the plant found nothing to change")
+            check(RED_ROWS[2], False, "the plant found nothing to change")
         else:
             R3, w3 = run_node(p3, "sine")
             leaked3 = R3 and len(R3["doors"]["leaks"]) > 0 and R3["doors"]["worstPush"] > 0
@@ -612,7 +612,7 @@ else:
     B = run_browser_rows()
     if B is None:
         for r in BROWSER_ROWS:
-            skip(r, "the bench page never reported ready")
+            check(r, False, "the bench page never reported ready")
     else:
         check(BROWSER_ROWS[0],
               bool(B["manifest"]) and B["manifest"].get("id") == NAME and B["drew"] is True,
@@ -740,7 +740,7 @@ else:
                    [('float cov = clamp(0.5 + (front - alongS) / band, 0.0, 1.0);',
                      'float cov = clamp(0.5 + (front - 0.5) * 3.0, 0.0, 1.0);')])
         if p4 is None:
-            skip(BROWSER_ROWS[10], "the plant found nothing to change")
+            check(BROWSER_ROWS[10], False, "the plant found nothing to change")
         else:
             pose = {"mix": 0.4, "bend": 0}
 
@@ -750,7 +750,7 @@ else:
             real_shot = on_bench(lambda br: shoot(br, "real"))
             mut_shot = on_bench_plant(p4, lambda br: shoot(br, "flatcov"))
             if real_shot is None or mut_shot is None:
-                skip(BROWSER_ROWS[10], "one of the two benches never reported ready")
+                check(BROWSER_ROWS[10], False, "one of the two benches never reported ready")
             else:
                 w_real, res_real = blend_residual(real_shot, wB, wA)
                 w_mut, res_mut = blend_residual(mut_shot, wB, wA)

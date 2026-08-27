@@ -668,7 +668,7 @@ else:
             br.navigate(base + "/index.html")
             if not ready(br):
                 for r in BROWSER_ROWS:
-                    skip(r, "the bench never came up: "
+                    check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             elif not js(br, "return !!window.__exPass.bench.manifest('lens');"):
                 why = js(br, "var e = window.__host.report().events.filter(function(x){"
@@ -1057,7 +1057,7 @@ else:
     BASE = on_bench(standing_reads)
     if BASE is None:
         for r in RED_ROWS:
-            skip(r, "the standing bench never came up, so nothing could be measured against it")
+            check(r, False, "the standing bench never came up, so nothing could be measured against it")
     else:
         for row, pairs in PLANTS:
             planted = plant(PACK, pairs)

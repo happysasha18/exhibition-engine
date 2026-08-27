@@ -753,7 +753,7 @@ else:
             br.navigate(base + "/index.html")
             if not ready(br):
                 for r in BROWSER_ROWS:
-                    skip(r, "the bench never came up: "
+                    check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             else:
                 zoom = float(br.evaluate("String(window.LAB.branchSource.weave.ZOOM)"))
@@ -1275,7 +1275,7 @@ else:
                     bb.navigate(base + "/index.html" + works)
                     if not ready(bb):
                         for r_ in rows:
-                            skip(r_, "the bench never came up: "
+                            check(r_, False, "the bench never came up: "
                                  + bb.evaluate("JSON.stringify(window.__errs||[])"))
                         continue
                     bb.evaluate("window.__param('axis', 'up and down'); 0")
@@ -1422,7 +1422,7 @@ else:
               % (am, SEAM, ax))
     else:
         for r in WAVE_ROWS:
-            skip(r, "the wave bench never came up")
+            check(r, False, "the wave bench never came up")
 
     # ============================================================================================
     # THE RED-ON-BUG PROOF. The lane's own rule reverted in the artifact the browser actually loads:
@@ -1528,7 +1528,7 @@ else:
               "restored in one line and caught by the row that guards it"
               % (base_m, SAME, lit_m, lit_x))
     else:
-        skip(RED_ROWS[2], "the wave bench never came up")
+        check(RED_ROWS[2], False, "the wave bench never came up")
 
     shutil.rmtree(BENCH, ignore_errors=True)
     shutil.rmtree(SHOTS, ignore_errors=True)

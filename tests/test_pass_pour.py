@@ -410,7 +410,7 @@ else:
         p1 = plant("flat", [("return 1 + slope / (2 * Math.max(cols, 1)) + MARGIN;",
                              "return 1.0;")])
         if p1 is None:
-            skip(RED_ROWS[0], "the plant found nothing to change")
+            check(RED_ROWS[0], False, "the plant found nothing to change")
         else:
             R1, w1 = run_node(p1, "flat")
             leaked = R1 and not R1["doors"]["ok"] and len(R1["doors"]["leaks"]) > 0
@@ -424,7 +424,7 @@ else:
                                         "return 1.0;"),
                                        ("var no = doorWhyNoOf(read);", "var no = null;")])
             if p2 is None:
-                skip(RED_ROWS[1], "the plant found nothing to change")
+                check(RED_ROWS[1], False, "the plant found nothing to change")
             else:
                 R2, w2 = run_node(p2, "flat-silent")
                 check(RED_ROWS[1], bool(R2) and R2["doors"]["ok"],
@@ -435,7 +435,7 @@ else:
 
         p3 = plant("nowin", [("var win = 4 * d * (1 - d);", "var win = 1;")])
         if p3 is None:
-            skip(RED_ROWS[2], "the plant found nothing to change")
+            check(RED_ROWS[2], False, "the plant found nothing to change")
         else:
             R3, w3 = run_node(p3, "nowin")
             broke = R3 and R3["window"]["at0"] == 1 and R3["window"]["at1"] == 1
@@ -574,7 +574,7 @@ else:
     B = run_browser_rows()
     if B is None:
         for r in BROWSER_ROWS:
-            skip(r, "the bench page never reported ready")
+            check(r, False, "the bench page never reported ready")
     else:
         check(BROWSER_ROWS[0],
               bool(B["manifest"]) and B["manifest"].get("id") == NAME and B["drew"] is True,

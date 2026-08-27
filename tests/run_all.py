@@ -9,6 +9,7 @@ Exit 0 only if EVERY suite exits 0.
 """
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,14 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 TIMINGS_PATH = HERE / "suite_timings.json"
+SKIP_RATCHET_PATH = HERE / "skip_ratchet.json"
+
+# Every suite's own final line answers "how many rows did I SKIP" in one of a small number of
+# shapes already in use across tests/ — "N passed / M failed / K skipped", "rows: N pass, M fail,
+# K skip", "N passed, M failed, K skipped" — all of them a digit immediately followed by the word
+# "skip", "skips" or "skipped". Reading that line off the suite's own captured log costs nothing a
+# suite was not already going to print, and needs no suite to change how it reports itself.
+SKIP_COUNT_RE = re.compile(r"(\d+)\s+skip(?:s|ped)?\b", re.IGNORECASE)
 
 # SUITES must match the set of test_*.py files in tests/ exactly (gate INV-5r).
 # Add a suite name here AS SOON as tests/test_<name>.py is created.
@@ -186,6 +195,50 @@ def check_pass_fixture():
     raise SystemExit(2)
 
 
+def suite_skip_count(log_text):
+    """This suite's own SKIP tally, read off the last line of its captured output that reports one
+    (see SKIP_COUNT_RE above). A suite with no such line never uses SKIP at all, so it counts zero
+    — there is no suite whose skip count matters but whose own log never states it."""
+    for line in reversed(log_text.splitlines()):
+        m = SKIP_COUNT_RE.search(line)
+        if m:
+            return int(m.group(1))
+    return 0
+
+
+def check_skip_ratchet(total_skips):
+    """The skip ratchet: tests/skip_ratchet.json holds the total SKIP count this runner last
+    accepted, across every suite. A SKIP is an abstention, not a pass — today this file exits 0
+    however many rows skip, and nothing catches that count creeping up. Same shape as check_roster
+    and check_pass_fixture above: read the prior state, compare, refuse on regression.
+
+    Three answers. No prior file (first run ever): seed it at the current count and say so — a
+    cold start is not a regression, so it must not report red. The count held or fell: the file is
+    the ratchet, so it is rewritten to the new, no-worse number — a shrink is never required, but
+    it is always kept once it happens, or a later run at the old higher count would wrongly read as
+    growth. The count rose: the run is refused, naming what grew and the before/after numbers — a
+    weaker proof must not report green just because every suite that DID run happened to pass.
+
+    Returns True when the run may go green on this account, False when it may not.
+    """
+    if not SKIP_RATCHET_PATH.exists():
+        SKIP_RATCHET_PATH.write_text(json.dumps({"total_skips": total_skips}, indent=2) + "\n")
+        print(f"\nskip ratchet · no prior tests/skip_ratchet.json — seeded at {total_skips} "
+              f"skip(s), nothing to compare against yet")
+        return True
+    prior = json.loads(SKIP_RATCHET_PATH.read_text())["total_skips"]
+    if total_skips > prior:
+        print(f"\ngate · the skip ratchet — this run skipped {total_skips}, up from {prior} held "
+              f"by tests/skip_ratchet.json. A SKIP is an abstention, not a pass: more of them means "
+              f"fewer checks actually ran, so this run may not report green over that growth.")
+        return False
+    if total_skips < prior:
+        print(f"\nskip ratchet · {total_skips} skip(s), down from {prior} — "
+              f"tests/skip_ratchet.json lowered to match")
+    SKIP_RATCHET_PATH.write_text(json.dumps({"total_skips": total_skips}, indent=2) + "\n")
+    return True
+
+
 def ordered_suites():
     """Queue order: longest-first, from the last FULL run's recorded durations in
     tests/suite_timings.json. A suite absent from the record (never timed, e.g. brand new)
@@ -219,6 +272,7 @@ def main():
     results = {}    # name → (rc, tail)
     durations = {}  # name → suite wall time in seconds
     logs = {}       # name → Path, this suite's combined stdout+stderr
+    skips = {}      # name → this suite's own SKIP tally, for the ratchet below
 
     # Each child's output is captured to its own file, not a subprocess.PIPE: a pipe has a small
     # kernel buffer (~64KB), and nothing here reads it while the child runs — only poll() is
@@ -236,6 +290,7 @@ def main():
             out = logs[name].read_text(encoding="utf-8", errors="replace")
             lines = out.strip().splitlines()
             tail = lines[-1] if lines else "(no output)"
+            skips[name] = suite_skip_count(out)
             # a RED suite keeps its whole verdict: the failing rows print with the gate line,
             # so the log itself says WHAT failed (never just the suite's name)
             if rc != 0:
@@ -277,7 +332,15 @@ def main():
     if not args.no_record_timings:
         TIMINGS_PATH.write_text(json.dumps(durations, indent=2, sort_keys=True) + "\n")
 
-    sys.exit(1 if failed else 0)
+    # The skip ratchet runs AFTER every suite is harvested, because its number is the sum of what
+    # every suite already reported of itself (see suite_skip_count()) — there is nothing to compare
+    # until the whole run has spoken. It joins check_roster() and check_pass_fixture() in deciding
+    # this run's exit code, same as any other gate here: a growth here is refused same as a RED
+    # suite is, not layered on top as a separate kind of failure.
+    total_skips = sum(skips.values())
+    ratchet_ok = check_skip_ratchet(total_skips)
+
+    sys.exit(1 if (failed or not ratchet_ok) else 0)
 
 
 if __name__ == "__main__":

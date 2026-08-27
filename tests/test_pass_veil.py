@@ -389,7 +389,7 @@ else:
         p1 = plant("nofloor", [("var FLOOR = 0.22;", "var FLOOR = 0.0;"),
                                ("const float FLOOR = 0.22;", "const float FLOOR = 0.0;")])
         if p1 is None:
-            skip(RED_ROWS[0], "the plant found nothing to change")
+            check(RED_ROWS[0], False, "the plant found nothing to change")
         else:
             R1, w1 = run_node(p1, "nofloor")
             leaked = R1 and not R1["doors"]["ok"] and len(R1["doors"]["leaks"]) > 0
@@ -404,7 +404,7 @@ else:
                         ("const float FLOOR = 0.22;", "const float FLOOR = 0.0;"),
                         ("v.doorWhyNo = doorWhyNoOf(read);", "v.doorWhyNo = null;")])
             if p2 is None:
-                skip(RED_ROWS[1], "the plant found nothing to change")
+                check(RED_ROWS[1], False, "the plant found nothing to change")
             else:
                 R2, w2 = run_node(p2, "nofloor-silent")
                 check(RED_ROWS[1], bool(R2) and R2["doors"]["ok"],
@@ -416,7 +416,7 @@ else:
         p3 = plant("shortreach", [("return 1.5 * gap + SLAB_SHARE * gap + DEPTH_MARGIN;",
                                    "return 1.0 * gap;")])
         if p3 is None:
-            skip(RED_ROWS[2], "the plant found nothing to change")
+            check(RED_ROWS[2], False, "the plant found nothing to change")
         else:
             R3, w3 = run_node(p3, "shortreach")
             leaked3 = R3 and not R3["doors"]["ok"] and len(R3["doors"]["leaks"]) > 0
@@ -607,7 +607,7 @@ else:
     B = run_browser_rows()
     if B is None:
         for r in BROWSER_ROWS:
-            skip(r, "the bench page never reported ready")
+            check(r, False, "the bench page never reported ready")
     else:
         check(BROWSER_ROWS[0],
               bool(B["manifest"]) and B["manifest"].get("id") == NAME and B["drew"] is True,
@@ -740,7 +740,7 @@ else:
                    [('vec3 col = mix(colB, colA, cov);',
                      'vec3 col = mix(colB, colA, cov) * (1.0 + 0.8 * (tA + tB - 1.0));')])
         if p5 is None:
-            skip(BROWSER_ROWS[10], "the plant found nothing to change")
+            check(BROWSER_ROWS[10], False, "the plant found nothing to change")
         else:
             pose = {"mix": 0.5, "thickness": 1.0, "bodies": 1.0, "depth": 0.6}
 
@@ -750,7 +750,7 @@ else:
             real_shot = on_bench(lambda br: shoot_paint(br, "real"))
             mut_shot = on_bench_plant(p5, lambda br: shoot_paint(br, "paint"))
             if real_shot is None or mut_shot is None:
-                skip(BROWSER_ROWS[10], "one of the two benches never reported ready")
+                check(BROWSER_ROWS[10], False, "one of the two benches never reported ready")
             else:
                 hp_real = highpass_energy(real_shot)
                 hp_mut = highpass_energy(mut_shot)
@@ -772,7 +772,7 @@ else:
         # and full-frame freeze §18 bans.
         p6 = plant("widedoor", [("var FEEL_D0 = 0.05;", "var FEEL_D0 = 0.45;")])
         if p6 is None:
-            skip(BROWSER_ROWS[11], "the plant found nothing to change")
+            check(BROWSER_ROWS[11], False, "the plant found nothing to change")
         else:
             SWEEP = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
@@ -785,7 +785,7 @@ else:
             real_shots = on_bench(lambda br: sweep_shots(br, "real"))
             mut_shots = on_bench_plant(p6, lambda br: sweep_shots(br, "wide"))
             if real_shots is None or mut_shots is None:
-                skip(BROWSER_ROWS[11], "one of the two benches never reported ready")
+                check(BROWSER_ROWS[11], False, "one of the two benches never reported ready")
             else:
                 real_diffs = [diff(real_shots[i], real_shots[i + 1])[0]
                               for i in range(len(real_shots) - 1)]
