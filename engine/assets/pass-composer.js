@@ -2560,6 +2560,24 @@
     function coolOf(id) {
       return coolFactor(walkPlayedDistinct.indexOf(id), walkPlayedDistinct.length);
     }
+    // THE SAME COOLDOWN, OVER THE ROAD'S OWN POOL, AND NEVER THE MIXED ONE ABOVE. His adversarial
+    // follow-up on this same fix (2026-08-26 night run, a live production walk) found what
+    // `walkPlayedDistinct` actually holds: `walkMemory` is `01a-pass.js`'s flattened reading of a
+    // step's road AND every instrument its stack carried, so a road's own cooldown, read off that
+    // pool, divides by up to ~35 (eight roads plus roughly twenty-seven instruments) rather than the
+    // eight `genresFor` ever answers with — the floor for a road just played sat near 1/36, not the
+    // claimed 1/9, and his own live numbers showed a fitness gap of 0.88 against 0.14 inverting at a
+    // pool no wider than six. Filtering the mixed list after the fact cannot fix it either: a road
+    // and an instrument can share one spelling (`kaleidoscope` is both), so a name alone cannot say
+    // which vocabulary it came from. `01a-pass.js`'s `passWalkGenres` reads the road off each step
+    // and never the stack, so `walkGenres` — and `roadPlayedDistinct` below, its dedupe — can only
+    // ever hold one of the eight roads, however many instruments the same steps cast. `pickGenre` is
+    // the one caller that reads `coolOfRoad`; every instrument cast still reads `coolOf` above,
+    // unchanged.
+    var roadPlayedDistinct = [];
+    function coolOfRoad(id) {
+      return coolFactor(roadPlayedDistinct.indexOf(id), roadPlayedDistinct.length);
+    }
     // THE SAME COOLDOWN, TAKEN OFF A RAW LIST HANDED IN rather than off the module's own held
     // `walkPlayedDistinct` — exposed beside `coolFactor` for the reason `camVoiceFloor` and the rest
     // travel beside the entry (:8996 below): a claim about numbers is answered over numbers, not
@@ -2705,6 +2723,10 @@
     // does is narrow that stretch for a letter this walk has just played, so a near-rival takes the
     // die more often. A letter no walk has played keeps its whole weight.
     //
+    // `letters === "road"` READS `coolOfRoad`'S OWN POOL rather than `coolOf`'s mixed one — the
+    // 2026-08-26 night-run separation, above `coolOfRoad`. `pickGenre` passes `"road"`; the
+    // instrument casts pass a plain `1` and keep reading `coolOf` exactly as before.
+    //
     // IT COOLS LETTERS AND NOTHING ELSE, and the caller says which pool is which. Shelf 16's own
     // words are «letter cooldowns»: a genre and an instrument are letters of the vocabulary and a
     // person sees them repeat, while the GROUND a pair stands on is the pair's own structure and
@@ -2723,7 +2745,8 @@
       var total = 0, i, w = [];
       for (i = 0; i < pool.length; i++) {
         w.push(Math.max(0, Number(pool[i].fit) || 0)
-               * (letters ? coolOf(pool[i].id) * viewerBiasOf(pool[i].id) : 1)
+               * (letters ? (letters === "road" ? coolOfRoad(pool[i].id) : coolOf(pool[i].id))
+                            * viewerBiasOf(pool[i].id) : 1)
                * weatherBiasOf(pool[i]));
         total += w[i];
       }
@@ -4516,7 +4539,8 @@
 
     // The die over a ranked pool of genres, weighted by how well each suits the pair.
     function pickGenre(pool, seed, key) {
-      var at = dieWeighted(pool.map(function (r) { return { id: r.id, fit: r.fit }; }), seed, key, 1);
+      var at = dieWeighted(pool.map(function (r) { return { id: r.id, fit: r.fit }; }), seed, key,
+                            "road");
       var i;
       for (i = 0; i < pool.length; i++) if (pool[i].id === at) return pool[i];
       return pool[0];
@@ -8679,16 +8703,22 @@
 
     // ---- the choice core: two works, a direction and a die ----
 
-    function scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day) {
+    function scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day, roadPlayed) {
       // Two works, a direction, the step's role, what the visit already played here and a die: the
       // whole crossing, decided here and now.
       //
       // AND WHAT THE WALK HAS ALREADY PLAYED ELSEWHERE. `played` is the letters of the passages
       // behind this one, most recent first (charter shelf 16's cooldowns, `coolOf` above). It is set
-      // for the length of this one composition and read by every die struck inside it — the genre,
-      // the ground, the instrument cast — so the whole choice answers to one reading of the walk
+      // for the length of this one composition and read by every die struck inside it — the
+      // ground, the instrument cast — so the whole choice answers to one reading of the walk
       // rather than to several. It is derived wholly from the request, so a request composed twice
       // still answers twice the same.
+      //
+      // AND THE SAME WALK, ROADS ONLY. `roadPlayed` is `01a-pass.js`'s second reading of it
+      // (`passWalkGenres`, 2026-08-26 night-run separation, `coolOfRoad` above) — never mixed with
+      // `played`, because `played` can carry an instrument's name and a road can share its spelling
+      // (`kaleidoscope` is both). `pickGenre` is the one die that reads it; every other die inside
+      // this composition still reads `played`/`walkPlayed` exactly as it always has.
       //
       // AND WHAT THE VISIT REMEMBERS OF ITSELF. `viewer` is charter shelf 16's fourth pipeline step
       // (`viewerBiasOf` above) — set fresh here for the length of this one composition exactly as
@@ -8697,6 +8727,7 @@
       // the same way it always has.
       walkPlayed = Array.isArray(played) ? played : [];
       walkPlayedDistinct = dedupeMostRecent(walkPlayed);
+      roadPlayedDistinct = dedupeMostRecent(Array.isArray(roadPlayed) ? roadPlayed : []);
       viewerMemory = viewer || null;
       // AND THE INSTANT THE VISIT IS HAPPENING AT — charter shelf 16's third pipeline step, set
       // fresh here for the length of this one composition exactly as the two lines above are. Its
@@ -9045,6 +9076,31 @@
           }
         }
       }
+      // THE SAME WALK, ROADS ONLY — the 2026-08-26 night-run separation above `coolOfRoad`.
+      // `walkMemory` mixes a road's own genre with every instrument its stack carried, and the two
+      // vocabularies can share a spelling (`kaleidoscope` is both), so a road's cooldown cannot be
+      // read off that mixed list by filtering names after the fact. `01a-pass.js`'s `passWalkGenres`
+      // reads the road alone off each step, never the stack, so this can only ever name one of the
+      // eight roads `genresFor` answers with — fenced exactly as `walkMemory` is, for the same
+      // reason: a stray entry is recorded and the crossing still plays.
+      var roadPlayed = [];
+      if (req.walkGenres !== undefined && req.walkGenres !== null) {
+        if (!Array.isArray(req.walkGenres)) {
+          unread.push("a walk-genres list that is no list, so no road has played yet");
+        } else {
+          var strayRoads = 0, wg;
+          for (wg = 0; wg < req.walkGenres.length; wg++) {
+            if (typeof req.walkGenres[wg] === "string" && req.walkGenres[wg]) {
+              roadPlayed.push(req.walkGenres[wg]);
+            } else {
+              strayRoads += 1;
+            }
+          }
+          if (strayRoads) {
+            unread.push(strayRoads + " walk-genres entr(y/ies) naming no road");
+          }
+        }
+      }
       // THE VISIT'S OWN MEMORY OF ITSELF — charter shelf 16's fourth pipeline step. Three named
       // lists and nothing else, fenced exactly as `sessionMemory` is above: a field outside the
       // three is dropped and recorded rather than refusing the crossing, and each list is a plain
@@ -9112,6 +9168,7 @@
       var read = { routeRole: role, routeFunction: routeFn,
                    direction: direction, seed: seed, sessionMemory: memory,
                    walkMemory: played.length ? played : null,
+                   walkGenres: roadPlayed.length ? roadPlayed : null,
                    viewerMemory: viewer,
                    day: day,
                    cameraState: req.cameraState === undefined ? null : req.cameraState,
@@ -9125,7 +9182,8 @@
       // A request with one record names one photograph, and a crossing is between two.
       if (!a || !a.id) return no("the passage request names no departing work record");
       if (!b || !b.id) return no("the passage request names no arriving work record");
-      var made = scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day);
+      var made = scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day,
+                          roadPlayed);
       // THE PASSAGE THE CAMERA LEADS IS DECIDED IN THE CHOICE CORE, where the score is still being
       // built. It stood here, after the core had already weighed the score and published its bytes,
       // its text and its fence reading, so those three answered for a score without this field on

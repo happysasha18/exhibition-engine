@@ -1921,6 +1921,15 @@
     // it scales with the number of works or pairs (his 19:21 word), and nothing about the person
     // travels in it.
     req.walkMemory = passWalkMemory();
+    // …AND THE SAME WALK, ROADS ONLY. His night-run adversarial follow-up on S-19 (2026-08-26) found
+    // that `walkMemory` above cannot serve a road's own cooldown: it flattens a step's genre in with
+    // every instrument its stack carried, the two vocabularies collide on at least one name
+    // (`kaleidoscope` names both a road and an instrument), and a mixed list of up to ~35 names
+    // dilutes the eight-road pool the design promises — the floor for a road just played landed near
+    // 1/36, not the claimed 1/9. `passWalkGenres` reads `step.genre` alone, never `step.stack`, so
+    // this can only ever name one of the eight roads `genresFor` answers with, however many
+    // instruments the same steps cast.
+    req.walkGenres = passWalkGenres();
     // …AND THE VISIT'S OWN MEMORY OF ITSELF, shelf 16's fourth step, filled at this one place for
     // the same reason `walkMemory` is: the walk is the one that knows. Left OFF the request where
     // the visit has been shown nothing yet, rather than sent as three empty lists — an absent field
@@ -1956,6 +1965,22 @@
       if (!step) continue;
       if (step.genre) out.push(step.genre);
       (step.stack || []).forEach((id) => { if (id) out.push(id); });
+    }
+    return out;
+  }
+
+  // THE SAME LIST, ROADS ONLY. One more home beside `passWalkMemory`, read the same list a second
+  // time rather than filtered out of the first: a road and an instrument can share a name
+  // (`kaleidoscope` is both), so telling them apart AFTER they are flattened into one list is not
+  // sound — this reads `step.genre` and never touches `step.stack`, so what it hands back can only
+  // ever be one of the eight roads a step actually ran on, never an instrument's name by accident of
+  // spelling. `pass-composer.js`'s road cooldown (`coolOfRoad`) reads this list and never
+  // `walkMemory`, which is what keeps its pool bounded by the walk's own eight roads.
+  function passWalkGenres() {
+    const out = [];
+    for (let i = passRoutePlayed.length - 1; i >= 0; i--) {
+      const step = passRoutePlayed[i];
+      if (step && step.genre) out.push(step.genre);
     }
     return out;
   }

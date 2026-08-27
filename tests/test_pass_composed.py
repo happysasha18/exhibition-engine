@@ -193,6 +193,17 @@ CLIENT_CAMERA_POINTS = int(re.search(r"\bcamera:\s*(\d+)", CLIENT_LIMITS.group(1
 # itself instead of leaving a second copy to drift.
 COMPOSER_SRC = MODULE.read_text(encoding="utf-8")
 DOLLY_CAP_VALUE = float(re.search(r"\bDOLLY_CAP\s*=\s*([\d.]+)\s*;", COMPOSER_SRC).group(1))
+# `pickGenre`'s OWN CALL, READ RATHER THAN TRUSTED (2026-08-26 night-run separation). It is the one
+# die in this file that used to cool a road off the mixed `walkMemory` pool by passing `dieWeighted`
+# a plain `1`; the fix repoints it at the road's own pool by naming the fourth argument `"road"`
+# instead, which is what `coolOfRoad` (beside `coolOf`, pass-composer.js) answers to. Read here as a
+# source fact rather than assumed from the numbers below composing right, for the same reason
+# `DOLLY_CAP_VALUE` above is read off the source and not retyped.
+PICK_GENRE_CALL = re.search(
+    r"function pickGenre\(pool, seed, key\) \{\s*"
+    r"var at = dieWeighted\(pool\.map\(function \(r\) \{ return \{ id: r\.id, fit: r\.fit \}; \}\), "
+    r"seed, key,(.{0,40}?)\);", COMPOSER_SRC, re.S)
+PICK_GENRE_READS_ROAD = bool(PICK_GENRE_CALL) and '"road"' in PICK_GENRE_CALL.group(1)
 
 # ---------------------------------------------------------------- EX-PASS-RECORDS: no per-work record
 # rides the first file a visitor's browser ever parses (2026-08-19). `works` left the settings
@@ -505,15 +516,20 @@ NODE_ROWS = [
     "how long the visit has run, so a road just played cannot lose to an arbitrarily worse rival "
     "for no reason but the log's own length, over the whole span of place and pool size either "
     "can take",
+    "EX-COMPOSED a road's own cooldown reads a pool of the walk's eight roads and never the mixed "
+    "pool a visit's instruments also stand in, so the floor for a road just played stays fixed at "
+    "1/9 however many instruments the same walk has cast",
 ]
-# THE TWO ROWS THIS FILE READS BY NAME rather than by position. Every row above is addressed by its
+# THE ROWS THIS FILE READS BY NAME rather than by position. Every row above is addressed by its
 # index, which is fine while the list only ever grows at the end — and it stopped being fine the
 # moment two rows landed there in one night: the first took `NODE_ROWS[-1]` and the second silently
 # took it away. A name cannot be taken away by a neighbour.
-ROW_ENTRY_DOOR = NODE_ROWS[-5]
-ROW_HARMONIC = NODE_ROWS[-4]
-ROW_COST = NODE_ROWS[-3]
-ROW_DAY = NODE_ROWS[-2]
+ROW_ENTRY_DOOR = NODE_ROWS[-6]
+ROW_HARMONIC = NODE_ROWS[-5]
+ROW_COST = NODE_ROWS[-4]
+ROW_DAY = NODE_ROWS[-3]
+ROW_COOLDOWN_ARITH = NODE_ROWS[-2]
+ROW_ROAD_POOL = NODE_ROWS[-1]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
 # change before the module is loaded, which is how every red-on-bug row below is run: the repair is
@@ -2121,6 +2137,40 @@ const cooldownArith = {
   neverPlayedStaysWhole: composer.walkCooldown(["spin", "spin", "spin"], "kaleidoscope"),
 };
 out.cooldownArith = cooldownArith;
+
+// 8j-3 · THE ROAD'S OWN POOL, READ OFF THE COMPOSER'S OWN REQUEST DIAGNOSTICS, NEVER THE MIXED ONE
+// ---------------------------------------------------------------------------------------------------
+// His adversarial follow-up on this same fix (2026-08-26 night run, a live production walk): a
+// road's own cooldown was read off `walkPlayedDistinct`, which dedupes `walkMemory` — and
+// `walkMemory` (`passWalkMemory`, 01a-pass.js) mixes a step's road with every instrument its stack
+// carried. A dozen or two passages carry roughly eight roads and twenty-seven instruments between
+// them, so the pool a road's cooldown divided by ran to ~35 rather than the eight `genresFor` ever
+// answers with — his own live numbers, a floor near 1/36 where the design claims 1/9, and a fitness
+// gap of 0.88 against 0.14 inverting at a pool six wide. `walkGenres` (`passWalkGenres`, roads only,
+// never the stack) is read as a second channel and `pickGenre` now cools off it
+// (`coolOfRoad`/`roadPlayedDistinct`, pass-composer.js) rather than off `walkMemory`.
+const roadVocab = ["shared-ground", "kaleidoscope", "spin", "symmetry-slide", "stripes", "box-fold",
+                   "dissimilar-mystery", "tonal-and-spectral"];
+const fakeInstruments = [];
+for (let fi = 0; fi < 27; fi++) fakeInstruments.push("fake-instrument-" + fi);
+// THE MIXED LOG HIS REPORT MEASURED: the walk's eight roads and, beside them, roughly the
+// instrument roster's own width — one list, the same shape `passWalkMemory` hands the composer
+// over a real visit.
+const mixedLog = roadVocab.concat(fakeInstruments);
+const roadEcho = composer.passageFor({
+  workRecordA: A, workRecordB: B, direction: "a-to-b", seed: fix.seeds[KEY_AB],
+  walkMemory: mixedLog, walkGenres: roadVocab.slice()
+});
+const echoedMixed = (roadEcho.request && roadEcho.request.walkMemory) || [];
+const echoedRoad = (roadEcho.request && roadEcho.request.walkGenres) || [];
+out.roadPool = {
+  mixedLen: echoedMixed.length,
+  mixedDistinct: new Set(echoedMixed).size,
+  roadLen: echoedRoad.length,
+  roadDistinct: new Set(echoedRoad).size,
+  floorAtEight: composer.coolFactor(0, 8),
+  floorAtMixed: composer.coolFactor(0, echoedMixed.length || 1),
+};
 
 // 9 · the composer measures its line against the number it is HANDED, not against its fallback.
 //     The constants are handed a cap of their own and the longest line the composer writes has to
@@ -3782,7 +3832,7 @@ else:
         # exposed for the same reason `camVoiceFloor` is (:8996): a claim about numbers is answered
         # over the numbers.
         ca = got["cooldownArith"]
-        check(NODE_ROWS[-1],
+        check(ROW_COOLDOWN_ARITH,
               not ca["sweepBad"]
               and ca["longLogFixedFloor"] == ca["oneLogFixedFloor"] == 0.5
               and ca["neverPlayedStaysWhole"] == 1
@@ -3797,6 +3847,46 @@ else:
               f"would have handed the 1000-entry walk {ca['longLogOldFloorWouldHaveBeen']} — under "
               f"a hundredth of the fixed floor — for no reason but how long the visit had run. A "
               f"letter never played keeps its whole weight ({ca['neverPlayedStaysWhole']}).")
+
+        # --- row 8j-3 · THE ROAD'S OWN POOL, NEVER THE MIXED ONE (his 2026-08-26 night-run
+        # adversarial follow-up on this same fix, a live production walk) ---------------------------
+        # His report, word for word: the fix made the floor `(at+1)/(pool+1)` bounded where it had
+        # been unbounded, but the pool it divides by mixes roads and instruments into one list
+        # (`passWalkMemory` pushes a step's genre AND every instrument its stack carried), so the
+        # divisor reaches ~35 rather than 8 and the floor for a road just played sits near 1/36. His
+        # own live numbers: a fitness of 0.1394 beat 0.901 and 0.1955 beat 0.943, and «после — 0.88
+        # не проигрывает 0.14 ни при какой длине визита» is false at a pool of six or wider.
+        #
+        # THE REPAIR IS A SECOND, ROADS-ONLY CHANNEL rather than a filter over the mixed one: a road
+        # and an instrument can share a spelling (`kaleidoscope` names both), so telling them apart
+        # after they are flattened into one list is not sound. `01a-pass.js`'s `passWalkGenres` reads
+        # `step.genre` alone, never `step.stack`, and rides the wire as `walkGenres` beside
+        # `walkMemory`; `pickGenre` cools off it (`coolOfRoad`) and every instrument cast still
+        # cools off the mixed `walkMemory` pool exactly as before.
+        #
+        # PROVED TWO WAYS. First, on the composer's own request diagnostics: a request naming his
+        # report's own shape — the walk's eight roads plus twenty-seven instruments, one mixed list —
+        # echoes back a `walkGenres` of exactly the eight roads and never absorbs the instruments
+        # beside them, so the floor `coolFactor(0, ·)` divides by is fixed at 8 (1/9) rather than the
+        # mixed list's own length. Second, on the composer's own source: `pickGenre` — the one die
+        # that used to cool a road off the mixed pool — now names `"road"` rather than the bare `1`
+        # every instrument cast still passes, read at `PICK_GENRE_READS_ROAD` above rather than
+        # assumed from the numbers composing right.
+        rp = got["roadPool"]
+        road_wiring_note = ("confirmed" if PICK_GENRE_READS_ROAD
+                             else "NOT FOUND — pickGenre still reads the mixed pool")
+        check(ROW_ROAD_POOL,
+              rp["mixedLen"] == 35 and rp["mixedDistinct"] == 35
+              and rp["roadLen"] == 8 and rp["roadDistinct"] == 8
+              and abs(rp["floorAtEight"] - 1 / 9) < 1e-9
+              and rp["floorAtMixed"] < rp["floorAtEight"] / 3
+              and PICK_GENRE_READS_ROAD,
+              f"a request naming eight roads and twenty-seven instruments in one {rp['mixedLen']}"
+              f"-entry `walkMemory` echoes back a `walkGenres` of {rp['roadDistinct']} distinct "
+              f"entries, never {rp['mixedDistinct']}: the floor for a road just played is fixed at "
+              f"{rp['floorAtEight']:.4f} (1/9), not the {rp['floorAtMixed']:.4f} (~1/36) the mixed "
+              f"pool his report measured would give it, and `pickGenre`'s own source names "
+              f"«road» rather than the mixed pool's «1»: {road_wiring_note}.")
 
         # --- row 8k · THE LEVEL THE CARRYING AXIS CLEARS (charter shelf 2 with shelf 17) ----------
         # His 2026-08-24 word watching the live route: the camera's movement does not visibly read
