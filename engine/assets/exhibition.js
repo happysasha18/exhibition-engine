@@ -1126,13 +1126,43 @@
   // THE COMPOSER TRAVELS AS ITS OWN FILE, the way the picture layer and the instruments do. It is
   // fetched once, at the walk's first landing on a visit whose settings record actually carries the
   // records it reads and whose layer is on, and a visit that never reaches that state never asks for
-  // it. Nothing ever waits on it: a crossing declared before it has arrived answers nothing and
-  // falls through to the walk's own glide, exactly as a pair with no score always has. What stays
-  // HERE is the door — where the composer is asked for, the request the walk builds for it, and the
-  // one synchronous question a declare puts to it.
+  // it. What stays HERE is the door — where the composer is asked for, the request the walk builds
+  // for it, and the one synchronous question a declare puts to it.
+  //
+  // A STEP WHOSE COMPOSER IS STILL ON THE WIRE WAITS FOR IT (2026-08-27), the same law the record
+  // wave already carries a few hundred lines below and the layer's own file carries at
+  // `passLayerAwait`. Until today this road alone had no wait of any kind: `passComposeFor` answered
+  // null the instant it found no composer and the crossing fell through to the walk's plain glide.
+  // That is not a rare race — the composer's file is the LAST of the three the door's pick asks for
+  // to land (it is the heaviest of them by a wide margin), so on any connection slower than a local
+  // disk the visitor's FIRST gesture is declared inside the window and every later one outside it.
+  // Measured on a bake whose composer answered four seconds late: gesture 1 composed nothing and
+  // played the glide, gestures 2 and 3 composed and played real instruments. The fixes before this
+  // one moved the LAYER's request earlier, which was never the file the first crossing was missing.
   const PASS_COMPOSER_SRC = "pass-composer.js";
   let passComposer = null, passComposerAsked = false, passComposerState = "absent";
   let passComposerSaid = null;
+  // Whoever is holding a step until the composer's own file lands, exactly as `passLayerWaiters`
+  // holds one for the layer's and `passRecordsWaiters` for a wave. Drained the instant that fetch
+  // reaches ITS OWN END — the file handing a composer over, the file handing none over, or the
+  // request failing — and never on a clock, so the wait is bounded by the request's own life and
+  // introduces no number of its own.
+  let passComposerWaiters = [];
+  // How many steps this visit has held on the composer's file, so the diagnostic surface can tell a
+  // walk that never had to wait from one that waited and then composed.
+  let passComposerHolds = 0;
+  function passComposerSettleWaiters() {
+    const q = passComposerWaiters; passComposerWaiters = [];
+    q.forEach((fn) => { try { fn(); } catch (e) {} });
+  }
+  // «IS THE COMPOSER'S FILE STILL COMING?» — the one question a step that means to wait asks. Only
+  // «asked» is a WINDOW; «absent», «refused» and «read» are each a verdict this visit already has in
+  // hand, and a verdict is never waited on.
+  function passComposerPending() { return passComposerState === "asked"; }
+  function passComposerAwait(done) {
+    if (!passComposerPending()) { done(); return; }
+    passComposerWaiters.push(done);
+  }
   const passPassages = [];
 
   // ---- THE RECORD WAVE (2026-08-19, U27 stage 3) -------------------------------------------------
@@ -1398,6 +1428,10 @@
       passComposerState = "refused";
       passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC,
                                why: "handed over no composer" });
+      // A STEP HELD ON THIS FILE IS RELEASED HERE TOO, and released onto the walk's own glide, which
+      // is what a visit with no composer has always meant. The wait is on the REQUEST, never on a
+      // good outcome, so every road out of it drains the same queue.
+      passComposerSettleWaiters();
       return;
     }
     try { passComposer = mk(passComposerConsts()) || null; } catch (e) { passComposer = null; }
@@ -1409,6 +1443,7 @@
       passWireCastable();
       passPrewarmAhead();   // the composer was the missing half of every request built so far
     }
+    passComposerSettleWaiters();
   }
   function passComposerOpen() {
     if (passComposerAsked) return;
@@ -1435,11 +1470,13 @@
       s.onerror = () => {
         passComposerState = "absent";
         passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC, why: "load failed" });
+        passComposerSettleWaiters();   // the request's own far end: a held step goes on, on the glide
       };
       document.head.appendChild(s);
     } catch (e) {
       passComposerState = "absent";
       passNote(passRefusals, { what: "composer", name: PASS_COMPOSER_SRC, why: "no door" });
+      passComposerSettleWaiters();
     }
   }
 
@@ -2724,9 +2761,12 @@
   }
 
   // The pair's own passage, derived. This road never waits and never fetches: a composer that has
-  // not arrived answers nothing, the reason goes on the diagnostic surface, and the crossing falls
-  // through to the walk's own glide exactly as a pair with no score always has. A named refusal from
-  // the composer takes the same road, which is what a refusal has always meant here.
+  // not arrived answers nothing here and the reason goes on the diagnostic surface. WHAT HAPPENS
+  // NEXT IS NOT THIS FUNCTION'S ANSWER any more (2026-08-27). A crossing whose composer is still on
+  // the wire is HELD at `passComposerHold` and declared again once the file lands, so what the
+  // visitor gets is the passage and not the glide; the glide is what a composer this visit will
+  // never have — absent, refused, or a named refusal for this pair — has always meant, and that is
+  // unchanged.
   function passComposeFor(fromEl, toEl) {
     if (!passComposer) {
       // ONCE PER STATE, never once per crossing. The refusal ring holds 64 rows and a row written
@@ -3830,7 +3870,10 @@
   // same word the host gives when it takes over, and the caller has always honoured it.
   function passRecordsHold(cmd) {
     if (!cmd || cmd.score) return false;         // composed already; there is nothing to wait for
-    if (!passComposer) return false;             // the composer's own absence, said on its own road
+    // The composer's own absence, said on its own road. Since 2026-08-27 that road is a WAIT, and
+    // it runs before this one (`passComposerHold` in `passOffer`), so a step reaching this line with
+    // no composer has one the visit is never getting rather than one still on the wire.
+    if (!passComposer) return false;
     const from = cmd.from && cmd.from.id, to = cmd.to && cmd.to.id;
     // The door is not a work and carries no record, so a crossing touching it never had one coming.
     if (!from || !to || from === "door" || to === "door") return false;
@@ -3842,18 +3885,65 @@
       // gesture inside this wait has already declared and landed a step of its own, and acting on
       // the stale command here would move the visitor twice.
       if (cmd.gen !== passGen) return;
-      passRecordsResume(cmd);
+      passHeldResume(cmd, "records", "its wave was in flight",
+                     "the wave settled carrying no record for this pair");
+    });
+    return true;
+  }
+  // A STEP WHOSE COMPOSER IS STILL ON THE WIRE WAITS FOR IT (2026-08-27), and it is the SAME law as
+  // the record hold above, applied to the other half of what a crossing needs. The composer's file
+  // and the record wave are both asked for at the door's own pick; a step declared before either has
+  // landed is not a step without a passage, it is a step whose passage is on its way. The layer's
+  // own file has had this since 2026-08-24 (`passLayerAwait`); the wave since 2026-08-25; the
+  // composer, the heaviest of the three and therefore the LAST to land, had nothing at all — and
+  // `passRecordsHold` above bails at `!passComposer`, so the one hold that could have covered this
+  // window was switched off precisely while the window stood open. That is the whole of the defect
+  // the first crossing of every visit has been paying for.
+  //
+  // HELD HERE, AND NOT EARLIER, for the reason the record hold gives in its own words: this is the
+  // first road that knows the step is a crossing at all, so no visit that will never play one — no
+  // reduced motion, no save-data, no jump, no wire with the layer off, no missing layer — ever
+  // reaches this line, let alone waits at one.
+  //
+  // WHAT IS NOT WAITED ON. Only «asked» is a window; every other state of the composer is a verdict
+  // this visit already holds, and a verdict is answered at once. A command that already carries a
+  // score has nothing to wait for — which is also every reduced-motion visit, whose floor grammar is
+  // hand-built and never the composer's. A crossing touching the door carries no record and so has
+  // no passage to compose either way.
+  function passComposerHold(cmd) {
+    if (!cmd || cmd.score) return false;         // composed already; there is nothing to wait for
+    if (!passComposerPending()) return false;    // absent, refused or read: a verdict, not a window
+    const from = cmd.from && cmd.from.id, to = cmd.to && cmd.to.id;
+    if (!from || !to || from === "door" || to === "door") return false;
+    passComposerHolds += 1;
+    passMark("composer-hold", cmd, from + "__" + to);
+    passComposerAwait(() => {
+      // A NEWER DECLARE OWNS ITS OWN LANDING — the same law the record hold and the layer hold both
+      // read by. A second gesture inside this wait has already declared and landed a step of its
+      // own, and acting on the stale command here would move the visitor twice.
+      if (cmd.gen !== passGen) return;
+      // «SETTLED», not «arrived»: the request has three ends and only one of them is the file
+      // landing with a composer in it. A step released by a failed load or by a file that handed
+      // nothing over must not be told a composer arrived and declined it.
+      passHeldResume(cmd, "composer", "the composer's own file was in flight",
+                     "the composer's file settled and no passage came back for this pair");
     });
     return true;
   }
   // THE HELD STEP, DECLARED AGAIN NOW THAT THE ANSWER IS IN. The command being held was frozen
-  // before the wave landed — its score and the settings ladder `passSnapshot` read off that score
+  // before the answer landed — its score and the settings ladder `passSnapshot` read off that score
   // are both a reading of a walk that had no record — so the step is re-declared rather than patched:
   // `passStart` supersedes the held command by the ordinary road and mints one whose score, params
   // and generation are all a reading of THIS instant. Nothing is stored between the two: the fresh
-  // declare composes from the records the map now holds, on its own dice, exactly as a gesture
-  // arriving a moment later would have.
-  function passRecordsResume(cmd) {
+  // declare composes from what the walk now holds, on its own dice, exactly as a gesture arriving a
+  // moment later would have.
+  //
+  // ONE RESUME FOR BOTH HOLDS. The record wave and the composer's own file are two things a crossing
+  // can be waiting on and the way back from either is identical — re-declare, and where the fresh
+  // declare still composes nothing, glide and say why. What differs is only the sentence written to
+  // the refusal ring, so that is what the caller hands over: `held` names who held the step and the
+  // two clauses name what was in flight and what came back empty.
+  function passHeldResume(cmd, held, inFlight, cameBackEmpty) {
     const standing = (el) => !!(el && el.dataset && document.body.contains(el));
     const fromEl = passResolveEl(cmd.from), toEl = passResolveEl(cmd.to);
     const fresh = (standing(fromEl) && standing(toEl))
@@ -3861,19 +3951,19 @@
                     cause: cmd.cause, velocity: cmd.velocity })
       : null;
     if (!fresh) {
-      passNote(passRefusals, { what: "records", name: "hold",
-                               why: "a work of the held step left the hang while its wave was in "
-                                    + "flight: the walk's own glide carries the step" });
+      passNote(passRefusals, { what: held, name: "hold",
+                               why: "a work of the held step left the hang while " + inFlight
+                                    + ": the walk's own glide carries the step" });
       glide(cmd);
       return;
     }
     if (!fresh.score) {
-      // THE WAVE CAME BACK WITH NOTHING FOR THIS PAIR — the route omitted an id, or its retries were
-      // spent. The step still happens, on the walk's own glide, which is what a pair with no record
-      // has always meant; the difference from before is only that the walk waited to find out.
-      passNote(passRefusals, { what: "records", name: "hold",
-                               why: "the wave settled carrying no record for this pair: the held "
-                                    + "step takes the walk's own glide" });
+      // THE ANSWER CAME BACK WITH NOTHING FOR THIS PAIR — the route omitted an id, its retries were
+      // spent, or the composer declined the pair. The step still happens, on the walk's own glide,
+      // which is what a pair with no score has always meant; the difference from before is only that
+      // the walk waited to find out.
+      passNote(passRefusals, { what: held, name: "hold",
+                               why: cameBackEmpty + ": the held step takes the walk's own glide" });
     }
     if (passVisualTakes(fresh) && passOffer(fresh)) return;
     glide(fresh);
@@ -3883,6 +3973,12 @@
   // asking it. Three was chosen here and nothing measured it.
   const PASS_OFFER_THROW_MAX = 3;
   function passOffer(cmd) {
+    // THE TWO HOLDS, IN THE ORDER THE WALK ACTUALLY NEEDS THEM. The composer's own file comes first
+    // because `passRecordsHold` cannot even ask its question without a composer in hand (its second
+    // line bails on exactly that), and because the resume it ends in re-declares by the ordinary
+    // road — so a step that waited for the composer and finds its records still coming is picked up
+    // by the record hold on its own next pass, with no second idea of what waiting means.
+    if (passComposerHold(cmd)) return true;
     if (passRecordsHold(cmd)) return true;
     try {
       const took = passLayer.offer(cmd, { dock: dock, glide: glide, curtain: curtain, mark: passMark,
@@ -3975,6 +4071,11 @@
       composer: { src: PASS_COMPOSER_SRC, state: passComposerState,
                   version: passComposer ? passComposer.version : null,
                   works: Object.keys(passWorkRecords() || {}).length,
+                  // How many steps are holding on the composer's own file at this instant, and how
+                  // many ever have — the same two numbers the record wave publishes, for the same
+                  // reason: a walk that never had to wait reads differently from one that waited and
+                  // then composed, and the first crossing of a cold visit is exactly that question.
+                  waiting: passComposerWaiters.length, holds: passComposerHolds,
                   passages: passPassages.map((row) => ({
                     key: row.key, request: row.request, shape: row.shape || null,
                     bytes: row.bytes === undefined ? null : row.bytes,
