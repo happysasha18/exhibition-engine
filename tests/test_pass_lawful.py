@@ -49,6 +49,7 @@ driver in tests/test_pass_composed.py does, so this file contends with nothing.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -670,6 +671,216 @@ check("R4 · no tally over the collection argues for a rule in the contract",
       ("PASS-API-V1.md carries the same class in its own sections:\n"
        + "\n".join("        " + CONTRACT.name + ":" + str(n) + "  — " + why
                    for n, why, rule in doc_hits)))
+
+# ---------------------------------------------------------------- PASS-11 / PASS-12 (TEST_MATRIX.md)
+#
+# Both rows below extract `tierFor` and the `TIERS`/`TIER_RANK` tables it reads, by the same
+# balanced-brace idiom tests/test_pass_layer.py's own `extract_function` already carries for a
+# shader, and run the REAL function in a bare Node `vm` sandbox — never a hand-retyped mirror.
+#
+# A PROVER PASS ran against SPEC.md's new pass section on 2026-08-27
+# (docs/prover/2026-08-27-pass-section.md) and found the spec text these two rows were originally
+# projected from makes claims the shipped composer does not keep. Finding F3: `tierFor`
+# (pass-composer.js:3407-3452) never refuses a plan whose voices overrun its declared tier — it
+# WALKS DOWN to the highest lower-ranked row that fits, and where no row fits at all (a gap between
+# the three bands — e.g. three letters with no miracle satisfies no row's letters-and-miracles pair
+# at once) it takes the NEAREST row by miss-distance, counts left standing outside that row's own
+# bounds. TEST_MATRIX.md's own PASS-12 fence ("a culmination score that carries none [miracles] are
+# both red") asks for a refusal that does not exist and F8 names writing it a defect-in-waiting.
+# What is tested below instead is what the shipped mechanism actually guarantees: on every path
+# where SOME row's bounds are satisfiable by the realised counts, `tierFor` returns a row those
+# counts satisfy — walking down or reassigning to the row that fits rather than emitting an
+# out-of-bound answer. The one path that is NOT tested here, because F3 shows it is not an
+# invariant of the code, is the genuine-gap nearest-row fallback (no row's bounds are jointly
+# satisfiable); that path is left open by design, per F3, and asserting it red would red working
+# code.
+def extract_function2(text, name, after_idx=0):
+    marker = "function %s(" % name
+    idx = text.index(marker, after_idx)
+    brace = text.index("{", idx)
+    depth, i = 0, brace
+    while i < len(text):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[idx:i + 1]
+        i += 1
+    raise ValueError("unbalanced braces for function %s" % name)
+
+
+RAW = MODULE.read_text(encoding="utf-8").replace("@@NS@@", "")
+_ts = RAW.index("var TIERS = [")
+_i = RAW.index("[", _ts)
+_depth = 0
+while True:
+    if RAW[_i] == "[":
+        _depth += 1
+    elif RAW[_i] == "]":
+        _depth -= 1
+        if _depth == 0:
+            break
+    _i += 1
+_te = RAW.index(";", _i) + 1
+TIERS_SRC = RAW[_ts:_te]
+
+_trs = RAW.index("var TIER_RANK = (function () {")
+_tre = RAW.index("}());", _trs) + len("}());")
+TIER_RANK_SRC = RAW[_trs:_tre]
+
+TIER_FOR_SRC = extract_function2(RAW, "tierFor")
+
+TIER_BASE = "\n".join([TIERS_SRC, TIER_RANK_SRC, TIER_FOR_SRC])
+TIER_TMP = Path(tempfile.mkdtemp(prefix="pass_tierfor_"))
+TIER_DRIVER = TIER_TMP / "tierfor-driver.js"
+
+
+def run_tier(job, plants=None):
+    src = TIER_BASE
+    missed = []
+    for frm, to in (plants or []):
+        if src.find(frm) < 0:
+            missed.append(frm)
+            continue
+        src = src.replace(frm, to)
+    driver = (
+        "\"use strict\";\n" + src + "\n"
+        "var MISSED = " + json.dumps(missed) + ";\n"
+        "var job = " + json.dumps(job) + ";\n"
+        "var out;\n"
+        "if (MISSED.length) { out = {missed: MISSED}; }\n"
+        "else { out = tierFor.apply(null, job.args); }\n"
+        "console.log(JSON.stringify(out));\n"
+    )
+    TIER_DRIVER.write_text(driver, encoding="utf-8")
+    proc = subprocess.run(["node", str(TIER_DRIVER)], capture_output=True, text=True, timeout=60)
+    if proc.returncode != 0:
+        return {"error": (proc.stderr or "").strip()[-800:]}
+    line = (proc.stdout or "").strip().splitlines()
+    if not line:
+        return {"error": "the driver said nothing"}
+    return json.loads(line[-1])
+
+
+if not NODE:
+    for _n in (
+        "PASS-11 (EX-PASS-VOICE) · the tier-budget check (tierFor) reads no field named `roles`",
+        "PASS-11 · tierFor's output cannot depend on a fourth, roles-shaped argument",
+        "PASS-11 red-on-bug · tierFor is sensitive to a roles-shaped input once one is wired in",
+        "PASS-12 (EX-PASS-VOICE, shelf 1/6) · the shipped TIERS table bounds the miracle slot "
+        "exactly: quiet 0, middle at most 1, culmination exactly 1",
+        "PASS-12 · a cast realising a quiet-shaped score keeps its declared quiet tier, with zero "
+        "miracles",
+        "PASS-12 · a cast realising a culmination-shaped score keeps its declared culmination tier, "
+        "with exactly one miracle",
+        "PASS-12 · a quiet-declared cast that actually carries one miracle is reassigned to a row "
+        "its own miracle count satisfies, never left inside quiet's zero-miracle row",
+    ):
+        skip(_n, "node is not on this machine")
+else:
+    # ---- PASS-11 ----
+    roles_ref = ("roles" in TIER_FOR_SRC)
+    check("PASS-11 (EX-PASS-VOICE) · the tier-budget check (tierFor) reads no field named `roles`",
+          not roles_ref,
+          "" if not roles_ref else
+          "the extracted, currently-shipped tierFor source contains the substring \"roles\"")
+
+    def is_err(x):
+        return isinstance(x, dict) and ("error" in x or "missed" in x)
+
+    VOICES = {"pivot": "letter", "travel": "accompaniment", "arrival": "miracle"}
+    plain = run_tier({"args": [VOICES, "culmination", False]})
+    with_roles = run_tier({"args": [VOICES, "culmination", False,
+                                     ["disassembly", "mystery", "assembly"]]})
+    ok_norole = (not is_err(plain) and not is_err(with_roles)
+                 and plain == with_roles)
+    check("PASS-11 · tierFor's output cannot depend on a fourth, roles-shaped argument",
+          ok_norole,
+          "" if ok_norole else
+          "tierFor(voices, tier, singsColour) read " + json.dumps(plain)
+          + " and the same call with a roles-shaped fourth argument read " + json.dumps(with_roles))
+
+    # RED-ON-BUG. Wires a roles-shaped fourth argument into the miracle count — the shape of the
+    # historical conflation PASS-API-V1.md §4.4 records ("Reading the second sense off the first
+    # is the conflation that refused every composed plan as a score"), reproduced here on the
+    # BUDGET side to prove the row above is sensitive rather than vacuous.
+    PLANT_ROLES = [
+        ("if (singsColour) accs += 1;",
+         "if (singsColour) accs += 1;\n"
+         "      if (arguments[3] && arguments[3].indexOf(\"mystery\") >= 0) miracles += 1;"),
+    ]
+    broke_a = run_tier({"args": [VOICES, "culmination", False, []]}, plants=PLANT_ROLES)
+    broke_b = run_tier({"args": [VOICES, "culmination", False, ["mystery"]]}, plants=PLANT_ROLES)
+    if (isinstance(broke_a, dict) and broke_a.get("missed")) or \
+       (isinstance(broke_b, dict) and broke_b.get("missed")):
+        skip("PASS-11 red-on-bug · tierFor is sensitive to a roles-shaped input once one is wired "
+             "in", "the plant text was not found verbatim in the shipped source")
+    elif is_err(broke_a) or is_err(broke_b):
+        check("PASS-11 red-on-bug · tierFor is sensitive to a roles-shaped input once one is wired "
+              "in", False, json.dumps(broke_a) if is_err(broke_a) else json.dumps(broke_b))
+    else:
+        diverged = broke_a != broke_b
+        check("PASS-11 red-on-bug · tierFor is sensitive to a roles-shaped input once one is wired "
+              "in", diverged,
+              "" if diverged else
+              "wiring a roles-shaped fourth argument into the miracle count left two calls "
+              "differing only in that argument reading the same result, so the row above would not "
+              "have caught a real conflation")
+
+    # ---- PASS-12 ----
+    ROWS_BY_TIER = {}
+    _tiers_probe = run_tier({"args": [{}, "quiet", False]})
+    # Read the real table's own miracle bounds off a driver call that echoes it back, rather than
+    # re-typing the array — ask the module itself.
+    TABLE_DRIVER = TIER_TMP / "tiers-table.js"
+    TABLE_DRIVER.write_text("\"use strict\";\n" + TIERS_SRC + "\nconsole.log(JSON.stringify(TIERS));\n",
+                            encoding="utf-8")
+    _proc = subprocess.run(["node", str(TABLE_DRIVER)], capture_output=True, text=True, timeout=30)
+    REAL_TIERS = json.loads(_proc.stdout.strip().splitlines()[-1]) if _proc.returncode == 0 else None
+    want = {"quiet": [0, 0], "middle": [0, 1], "culmination": [1, 1]}
+    if REAL_TIERS is None:
+        check("PASS-12 (EX-PASS-VOICE, shelf 1/6) · the shipped TIERS table bounds the miracle "
+              "slot exactly: quiet 0, middle at most 1, culmination exactly 1", False,
+              (_proc.stderr or "").strip()[-500:])
+    else:
+        got = {r["tier"]: r["miracles"] for r in REAL_TIERS}
+        ok_table = got == want
+        check("PASS-12 (EX-PASS-VOICE, shelf 1/6) · the shipped TIERS table bounds the miracle "
+              "slot exactly: quiet 0, middle at most 1, culmination exactly 1", ok_table,
+              "" if ok_table else
+              "the real, currently-shipped TIERS table reads miracle bounds " + json.dumps(got)
+              + " against shelf 1/6's " + json.dumps(want))
+
+    quiet_voices = {"pivot": "letter"}
+    q = run_tier({"args": [quiet_voices, "quiet", False]})
+    ok_q = (not is_err(q) and q[0]["tier"] == "quiet" and q[1]["miracles"] == 0)
+    check("PASS-12 · a cast realising a quiet-shaped score keeps its declared quiet tier, with "
+          "zero miracles", ok_q,
+          "" if ok_q else "tierFor(%r, \"quiet\", false) read %s" % (quiet_voices, json.dumps(q)))
+
+    culm_voices = {"pivot": "letter", "travel": "letter", "arrival": "miracle"}
+    c = run_tier({"args": [culm_voices, "culmination", False]})
+    ok_c = (not is_err(c) and c[0]["tier"] == "culmination" and c[1]["miracles"] == 1)
+    check("PASS-12 · a cast realising a culmination-shaped score keeps its declared culmination "
+          "tier, with exactly one miracle", ok_c,
+          "" if ok_c else
+          "tierFor(%r, \"culmination\", false) read %s" % (culm_voices, json.dumps(c)))
+
+    # A quiet link that actually carries a miracle (a folding pivot, voiceTheCues' own "a lone
+    # miracle is a lawful plan" case) is not left inside quiet's own [0,0] row — it is reassigned,
+    # here to middle, whose [0,1] row the one miracle satisfies.
+    quiet_but_miracle = {"pivot": "miracle"}
+    m = run_tier({"args": [quiet_but_miracle, "quiet", False]})
+    _mtier_bounds = want.get(m[0]["tier"], [None, None]) if not is_err(m) else [None, None]
+    ok_m = (not is_err(m) and m[1]["miracles"] == 1
+            and _mtier_bounds[0] is not None and _mtier_bounds[0] <= 1 <= _mtier_bounds[1])
+    check("PASS-12 · a quiet-declared cast that actually carries one miracle is reassigned to a "
+          "row its own miracle count satisfies, never left inside quiet's zero-miracle row", ok_m,
+          "" if ok_m else
+          "tierFor(%r, \"quiet\", false) read %s" % (quiet_but_miracle, json.dumps(m)))
+
+shutil.rmtree(TIER_TMP, ignore_errors=True)
 
 # ---------------------------------------------------------------- report
 print("EX-PASS · four laws the composer breaks today")

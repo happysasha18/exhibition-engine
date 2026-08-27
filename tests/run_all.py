@@ -110,6 +110,8 @@ SUITES = [
     "pass_lawful",
     "pass_palette",
     "pass_static",
+    "pass_levels",
+    "pass_matter_gate",
 ]
 
 

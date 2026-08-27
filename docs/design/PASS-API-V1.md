@@ -511,10 +511,19 @@ and its arrival at TEXTURE, each naming only what it owns. The superseded senten
 **The levels check runs at build time, and the host no longer carries it.** It read a field the
 score's closed allow-list does not hold, so the host had nothing to judge.
 
-The gate that judges a plan is `lab/sceneplan-build-check.py`, in the tlvphotos tree on the branch
-`immersive-alpha-sceneplan`, and that is where the law is enforced. An earlier brief placed this
-gate in the engine with a row count beside it. It has never lived in the engine, and the count came
-with the same mistake, so neither is repeated here. Row 17 names the build-time home.
+The gate that judges the levels law is `lab/sceneplan-build-check.py:143-183`, in the tlvphotos tree
+on the branch `immersive-alpha-sceneplan`, and that is where the law is enforced. It carries the tier
+agreement too (`:186-206`); the blank-door refusal of row 19 lives in the file beside it,
+`lab/sceneplan-check.py:603-609`, which judges the score a stranger would read rather than the
+builder's own build. An earlier brief placed this gate in the engine with a row count beside it. It
+has never lived in the engine, and the count came with the same mistake, so neither is repeated here.
+Row 17 names the build-time home.
+
+Both gates build the plans they judge from `lab/build-sceneplan-v1.py`'s own table
+(`sceneplan-build-check.py:99-109`), and neither tlvphotos worktree holds `pass-composer.js` or
+`pass-layer.js`. They have never read a plan this engine's composer emitted, so no gate today stands
+on the road a composed score actually travels; `SPEC.md`'s `INV-109` says the same in its own words
+(pinned 2026-08-27).
 
 **The tier budget check.** From `voice`, `levels`, `window`, the score's `duration` and the score's
 `camera` record: a quiet link carries one letter, at most one accompaniment, no miracle, 2–4 s; a
@@ -529,9 +538,39 @@ camera passed as carrying two. The charter's shelf 17 settles what the answer is
 accompaniment voices opens with the camera, and the shelf's own words are that everything counts and
 no never-counted class exists.
 
-So the budget's counts read the cues together with the camera record. A score naming a camera track
-carries one accompaniment before a single cue is counted. The composer's first real run against
-§4.4 found this, and the superseded paragraph is in `PASS-API-V1-HISTORY.md` with its date.
+So the budget's counts read the cues together with the camera record. One accompaniment is counted
+for the camera before a single cue is counted, and it is counted unconditionally: `fillPlan` writes a
+`camera` record with its four-point track onto every plan it builds, so a camera is a constant of
+every crossing rather than a thing a score may or may not name. `tierFor` seeds its accompaniment
+count at 1 for that reason (`engine/assets/pass-composer.js:3409-3411`). The composer's first real
+run against §4.4 found this, and the superseded paragraph is in `PASS-API-V1-HISTORY.md` with its
+date.
+
+**The colour voice counts as one accompaniment, exactly once, and the composer is the only checker
+that counts it.** Shelf 11 makes colour an accompaniment voice and shelf 17's own words are that
+everything counts and no never-counted class exists, so the composer's own budget adds one
+accompaniment wherever a cue that survives the cast still claims the `LIGHT-COLOUR` level — once,
+however many claim it, because `ownTheLevels` leaves exactly one of them owning that level and strips
+its handles from every other cue's track list. What reaches the picture is one colour voice, and the
+count is of voices rather than of handles.
+
+The condition is the surviving cast's own levels, never the manifest's declaration on its own. Where
+`compose`'s budget loop has already given the colour voice up to hold shelf 17's accompaniment
+ceiling (`colourVoice = !(singsHere && accs + 1 > accCeiling)`,
+`engine/assets/pass-composer.js:5115`), the level leaves every cue's `levels` list on the score
+(`:3966-3975`), the guarded read at `:5203-5211` answers false, and `tierFor` adds nothing — even
+though a cast instrument's manifest declares the level. A quiet-tier plan whose pivot instrument
+declares `LIGHT-COLOUR` is the plainest crossing that takes this road. Reading the condition off the
+score's own cue levels is what lets a checker discharge it, and it is how
+`tests/test_pass_lawful.py:237-247` already reads it.
+
+Like the camera, the colour voice is not a cue and so is invisible to any count read off the `voice`
+fields alone (`engine/assets/pass-composer.js:3416-3423`). Unlike the camera, it is counted by the
+composer alone: the host's `budgetOfScore` (`engine/assets/pass-layer.js:1819-1872`) and both
+out-of-tree gates count the cues and the camera and stop, and neither names `LIGHT-COLOUR` at all.
+Nothing bites today, since every row's accompaniment floor is 0; the day a floor is raised, the gate
+and the composer disagree by one on every colour-singing crossing. Conformance row 18 states the
+gate's sum, this paragraph the composer's (amended 2026-08-27).
 
 ### 4.4a Two schema versions live at once
 
@@ -923,8 +962,13 @@ declining provider and follows the fall.
 
 ### 4.7 ScenePlan — the passage composer's output
 
-Added 2026-08-14 08:47 on his word of 08:39. No engine code answers to this section; the composer's
-own builders and checks stand in the tlvphotos tree.
+Added 2026-08-14 08:47 on his word of 08:39. The note here read "no engine code answers to this
+section; the composer's own builders and checks stand in the tlvphotos tree" until 2026-08-27, and
+that is no longer true of the first half: `engine/assets/pass-composer.js` is this engine's own
+composer, and `compose` → `fillPlan` → `serialise` emits a ScenePlan and its score on the road a
+visitor's crossing travels. The checks are still the tlvphotos tree's, and they read that tree's own
+builder's plans rather than this composer's output — §4.4's gate paragraph and §11 carry that gap
+with its owner.
 
 ScenePlan is data-only and versioned. It sits between the PairDossier and the score's cues: the
 passage composer emits a ScenePlan, and the score of §4.4 is that plan's serialisation for the host.
@@ -1069,26 +1113,44 @@ written here so a third form never appears.
 score's duration and its voice counts, while a ScenePlan declares `tier` outright. A disagreement
 between the two is a red, and conformance row 36 measures it. Neither value silently wins.
 
+The composer meets this by declaring what it realised: `tierFor`
+(`engine/assets/pass-composer.js:3407-3453`) tries the row the crossing reached for, then the highest
+lower row that fits. One branch of it may not meet it. Where neither that row nor any lower one fits,
+`:3444-3452` declares the row the counts stand nearest, and where no row fits them at all that row's
+own span is one the counts fall outside — a plan this rule reds. No cast reaching that branch has
+been constructed and the budget loop at `:5050-5172` may make it unreachable, so it is named here as
+what the code's structure allows rather than as a case anyone has walked. §11 carries the question
+with its owner (added 2026-08-27).
+
 **The correction, made mechanical.** The defect his word of 2026-08-14 named is a passage where two
 whole photographs become fullscreen strips: one instrument, both works entire, for the whole
 crossing. The refusal that closes it reads on the plan's actors.
 
-**A ScenePlan is refused when no actor names any element of either work — when every actor is a
-whole frame.** A plan must name at least one actor drawn from A's ElementSet and at least one drawn
-from B's. Conformance row 35 carries it, in his own naming of the row: the scene plan contains real
-actors, never one accidental fullscreen cue.
+**The refusal was withdrawn from the composer on his word of 2026-08-18 09:51, and every ordered pair
+composes.** It read: a ScenePlan is refused when no actor names any element of either work — when
+every actor is a whole frame. `pass-composer.js:4787-4790` deletes it by name and records why: the
+whole frame is a lawful element, and a work offering only its whole frame along the pivot's cut hands
+that whole frame over as its element. `castActors` (`:3176-3237`) returns actors unconditionally and
+`compose` has one return, never null (`:5312`). The superseded sentence is in
+`PASS-API-V1-HISTORY.md` with its date, and `SPEC.md`'s `EX-PASS-COMPOSER` states the standing rule.
 
-The lawful whole-passage cue survives this untouched. A cue may still span the entire passage. The
-refusal removes a plan that names no element at all. The woven instrument keeps its whole-passage
-cue on the day its port names A's strips and B's strips as its actors.
+**The two out-of-tree gates still carry the refusal, and that disagreement is open.** Both
+`lab/sceneplan-build-check.py:111-141` and `lab/sceneplan-check.py`'s row 35 (tlvphotos tree, branch
+`immersive-alpha-sceneplan`) red a plan drawing only whole frames from a side. A plan this composer
+calls lawful is therefore not yet a plan those gates accept. Which tree owns the law is a product
+decision and it is unmade; §11 carries it.
 
-**What the refusal binds, and what it leaves alone.** The scores shipping today are filled from the
-template and the table of §4.4c and no ScenePlan stands behind them, so the refusal binds a composed
-ScenePlan only. Until the composer lands, §4.4c keeps producing scores under its own rules and the
-crossing standing on the live preview keeps playing. The alternative reading would refuse every
-score on file today and stop the shipped crossing, which no word of 2026-08-14 asked for. This is
-the reversible choice of the two, and the day the composer lands is the day the woven instrument's
-port owes its actors; §11 carries that port with its owner.
+The lawful whole-passage cue was never in question either way. A cue may still span the entire
+passage. The woven instrument keeps its whole-passage cue on the day its port names A's strips and
+B's strips as its actors.
+
+**What the gates' refusal binds, and what it leaves alone.** The scores shipping today are filled
+from the template and the table of §4.4c and no ScenePlan stands behind them, so the gates' refusal
+binds a composed ScenePlan only. §4.4c keeps producing scores under its own rules and the crossing
+standing on the live preview keeps playing. The alternative reading would refuse every score on file
+today and stop the shipped crossing, which no word of 2026-08-14 asked for. The day the woven
+instrument's port names A's strips and B's strips as its actors is the day it satisfies those gates
+without argument; §11 carries that port with its owner.
 
 **Where the composer runs is undecided.** §12 splits the bundle from the renderer's own file by what
 a visit that never draws needs. The composer reads dossiers and emits data, and it is needed only on
@@ -1632,9 +1694,18 @@ carries; it reads its own lists and nothing else.
     gate rather than by the host, and read against the plan's `levelOwnership` record; a cue that
     accompanies on a level it does not own is no contention (amended 2026-08-14 12:40)
 18. the tier budget holds: letters, accompaniments, miracles, duration and held time, with the
-    camera counted as one accompaniment wherever the score names a camera track — a score carrying
-    two accompaniment cues, a camera and a middle tier reads red (extended 2026-08-14 10:31)
-19. a score naming a door the instrument's manifest leaves blank is refused at build time
+    camera always counted as one accompaniment (every plan carries a camera record) — a score
+    carrying two accompaniment cues, a camera and a middle tier reads red. The colour voice is NOT
+    in this row's sum: the composer's own `tierFor` counts it
+    (`engine/assets/pass-composer.js:3416-3423`) and it is the only checker that does — the host's
+    `budgetOfScore` and both out-of-tree gates name `LIGHT-COLOUR` nowhere. §4.4's colour-voice
+    paragraph states the composer's rule; this row states what the gate checks (extended
+    2026-08-14 10:31; the camera made unconditional and the colour voice added 2026-08-27, then
+    narrowed to the composer alone the same day)
+19. a score naming a door the instrument's manifest leaves blank is refused at build time, by the
+    score-side gate `lab/sceneplan-check.py:603-609` — not by `lab/sceneplan-build-check.py`, which
+    holds no manifest-door row, and not by the host, whose `manifestWhyNo` judges a manifest at
+    registration and never reads a score's doors against it (pinned 2026-08-27)
 20. a version-1 score and a version-2 score both pass the checker, and the reader says which it read
 21. an authored intent line carrying a private sentence reds the build
 22. a resource declaration understating its bytes reds, alongside one understating its counts
@@ -1662,8 +1733,12 @@ when its rule is removed, like every row above it.
     reading red. The row stands on §4.6's construction — a tonal zone and a detail scale are
     readings every frame carries, so the provider answers without a conjunction to satisfy — and
     sweeping the works on disk is the smoke check of that claim, never its ground
-35. the scene plan contains real actors, never one accidental fullscreen cue: a ScenePlan naming no
-    element of either work is refused, and one naming at least one element of each is accepted
+35. the scene plan contains real actors, never one accidental fullscreen cue — held today by the two
+    out-of-tree gates alone (`lab/sceneplan-build-check.py:111-141`, `lab/sceneplan-check.py` row 35,
+    tlvphotos tree, branch `immersive-alpha-sceneplan`) and NOT by this engine's composer, which
+    withdrew the refusal on his word of 2026-08-18 09:51 and composes every ordered pair
+    (`pass-composer.js:4787-4790`). A row written against the composer on this sentence reds working
+    code; §4.7 carries the open decision about which tree owns the law (amended 2026-08-27)
 36. a ScenePlan's declared tier agrees with the serialised score's duration band and voice counts
 37. two cues overlapping in time pass, and two cues intersecting on one structural level in
     overlapping windows still red under row 17
@@ -1774,6 +1849,10 @@ resizes a running transaction rather than replacing it.
 | the pack loads through a blob script | no content-security policy is set by the engine today, so nothing refuses it now. A policy added later must name this road, or the picture stops loading on the deployment that adds it | whoever adds the first content-security policy |
 | the digest check fails closed with no subtle-crypto | a browser offering no subtle-crypto cannot verify the digest, so the pack is refused and the walk's own glide lands with the reason recorded. This costs the picture on a plain-http deployment, where subtle-crypto is unavailable by the browser's own rule | a later branch, with the deployment's owner |
 | a conformance row reads a build-time gate in the tlvphotos tree | the row degrades to a named skip when that tree is absent, so an engine-only checkout reports a skip rather than a pass. A skip that reads as a pass is the failure to watch for here | the suite's owner |
+| which tree owns the actor refusal (§4.7) | open 2026-08-27. This engine's composer withdrew it on his word of 2026-08-18 09:51 and composes every ordered pair; both out-of-tree gates still red a plan drawing only whole frames. Either the gates drop their row or this contract says a plan lawful here can be refused there, and the two trees say opposite things until one is chosen | his word, on which tree owns the law |
+| no gate stands on the road a composed score travels | open 2026-08-27. Both out-of-tree gates build the plans they judge from `lab/build-sceneplan-v1.py`'s table, and neither tlvphotos worktree holds `pass-composer.js`, so the levels contention and the blank door are unchecked for this composer's own output. `tests/test_pass_lawful.py` R1 covers the tier agreement over every composed passage and is the cheapest place to port the other two | the suite's owner |
+| `tierFor`'s nearest-row branch may emit a plan the gates must red | open 2026-08-27, and a question about the code rather than this contract. Where neither the row a crossing reached for nor any lower row fits its counts, `engine/assets/pass-composer.js:3444-3452` declares the nearest row, whose span the counts can fall outside — which §4.7 calls a red and row 36 measures. No cast reaching that branch has been constructed, and the budget loop at `:5050-5172` may make it unreachable; until someone settles it by a witness or a proof, the branch is documented as structure rather than as observed behaviour | the composer's owner |
+| `landingDoorOf` dereferences an unpublished handle | open 2026-08-27, and a question about the code rather than this contract. `engine/assets/pass-layer.js:2629` reads `v.inst.manifest.handles[k].min` with no guard on `k` being published, so a score naming a door the manifest leaves blank would throw there on an interruption rather than degrade — the failure mode row 19's build-time gate is meant to make unreachable, on a road where that gate does not stand (the row above) | the host's owner |
 | the shape of the plan's `measuredHandles` field | named 2026-08-14 as a plan-only field that never travels, with its shape left to the plan gate. This contract fixes only that it stays in the plan; what it holds is undefined here | the plan gate's owner |
 | the woven instrument's band count | the instrument's own published floor for the handle stands above this pair's measurement, so the pair is drawn at the floor and the record says requested-against-applied — which holds for any pair reading under a published floor, in any collection. It is the first place his brief's requirement that every meaningful number carry both values actually bites, and the divergence between what the pair measures and what the instrument will draw is unresolved | the instrument's port, with his eye on the motion |
 | the version-pinned opaque effect pack (§12) | declared and unbuilt. The engine knows no TLV effect name and loads the pack; tlvphotos owns it and its manifests, and the renderer's file then holds the host alone. It is what stops the renderer file's fence tracking the effect farm, which grows with the lab and not with the engine. Queued behind the first composed passage playing | a later branch, on his word of 2026-08-14 08:39 |

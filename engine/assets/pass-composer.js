@@ -3354,9 +3354,15 @@
 
     // ---- the voices, the levels, the tier ----
 
-    // THE STEP'S ROLE NAMES THE TIER, and nothing else does. Charter shelf 15 makes a step's
-    // function the walk's own reading and shelf 17 budgets by that function, so the walk's word is
-    // the answer. A second test stood beside it — the pair's widest axis standing over a typed 0.5 —
+    // THE STEP'S ROLE IS THE ONLY THING THAT OPENS A CULMINATION, and it names no other tier on its
+    // own. Charter shelf 15 makes a step's function the walk's own reading and shelf 17 budgets by
+    // that function, so the walk's word gates the top tier: `culmination` below needs the role AND
+    // an arrival AND a world or a fold. Between a quiet and a middle the pair's own cast decides —
+    // whether a travelling move or an arrival stands, and whether anything folds — and the role's
+    // other hand is a ceiling rather than a naming (`ROLE_BUDGETS`, and the budget loop holding the
+    // realised tier at or under it). The comment here read «the step's role names the tier, and
+    // nothing else does» until 2026-08-27, which the three lines below have never done.
+    // A second test stood beside it — the pair's widest axis standing over a typed 0.5 —
     // and it OVERRODE the walk: a step the route called a middle became a culmination because two
     // numbers stood far apart. That number was this seat's own invention with no requirement behind
     // it, and it is gone; a step whose role the walk never stated reads as a middle, which is what

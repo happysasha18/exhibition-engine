@@ -581,20 +581,34 @@ The pass's full contract — every field, every conformance row, its own build s
 `docs/design/PASS-API-V1.md`; that document is the live record of what stands built and this section
 does not repeat or shadow it. What this section states is what a reader of THIS spec must already
 know to place the feature among the rest: what a composer is, what "level" means (three readings, not
-one — the confusion this section exists to close), what a score's own voice counts, and what a pass's
-own door names. `EX-PASS`
+one — the confusion this section exists to close), what a score's own voice counts, what "role" means
+(two readings, and only one of them bears on a tier at all), and what a pass's own door names.
+`EX-PASS`
 
 **The composer** reads two works' ElementSets — the fragments a `decompose` provider cuts each work
 into along a structural, semantic, tonal, spectral or author-drawn axis, always paired with their
 complement so the whole frame stays reconstructable — together with the ordered pair's own dossier,
 and emits a **ScenePlan**: a versioned, data-only record naming the pair's held pivot (the invariant
 shared part that never travels), the actors it casts from each work's own elements, the middle it may
-build between them, and the timed cues that carry the crossing. A plan is refused where no actor names
-any element of either work — a passage between two whole, uncut frames is not what a composer is for.
+build between them, and the timed cues that carry the crossing. Every ordered pair composes: a work
+that offers only its whole frame along the pivot's cut casts that whole frame as its element, and the
+plan records which cut it asked for and which one it got. No pair is refused for the elements it could
+not be cut into. The two out-of-tree gates named below still carry an actor refusal of their own, so a
+plan this composer calls lawful is not yet a plan those gates accept; which tree owns that law is
+undecided and is the pass author's call, not this spec's.
 The ScenePlan never reaches the browser: it is serialised at build time into a **score**, the wire
 format the host actually plays, under a closed allow-list that strips any field the score does not
 name and records the strip rather than refusing the whole score. A score names no expression, no
-function and no executable string. `EX-PASS-COMPOSER`
+function and no executable string. The refusals a composed plan can still meet are judged at build
+time by two gates, both outside this engine, both in the tlvphotos tree on the branch
+`immersive-alpha-sceneplan`: a levels-law contention and a declared tier its own voices contradict by
+`lab/sceneplan-build-check.py`, and a door the instrument's manifest leaves blank by
+`lab/sceneplan-check.py` beside it. Both gates build the plans they judge from the tlvphotos builder's
+own table rather than from this composer's output, and no engine-side code re-checks the three, so no
+gate today stands on the road a composed score actually travels. What this repository's own suite
+proves is the tier agreement alone, over every composed passage (`tests/test_pass_lawful.py` R1);
+neither the blank door nor the levels contention has a row here.
+`EX-PASS-COMPOSER`
 
 **"Level" names three different questions, and answering one with another is the exact defect this
 paragraph closes.** A structural level (`WORLD`, `SURFACE`, `CELL`, `CELL CONTENT`, `TEXTURE`,
@@ -621,13 +635,44 @@ claim. `EX-PASS-LEVEL`
 **A score's `voice` is a budget word, not the exhibition's own narrator** (that sense of "voice" stays
 `EX-STORY`'s alone; the two never name the same thing). Every cue on a score declares
 `voice: "letter" | "accompaniment" | "miracle"` — a structural gesture, an accompanying one, or the
-one impossible event. The tier a pass plays at (quiet, middle, culmination) bounds how many of each a
-score carries on BOTH ends, not as a ceiling alone: a quiet-tier score carries no miracle, a
-middle-tier score at most one, and a culmination-tier score exactly one — never zero — together with
-the camera's own track, which counts as one accompaniment whenever the score names one. `roles` asks a different
-question — what a cue does dramatically inside the pass, drawn from a set of nine named roles — and
-the two fields are read by two different checks; a score naming only one of them cannot be checked by
-the other. `EX-PASS-VOICE`
+one impossible event. A score's realised voices decide the tier it is DECLARED at; what the crossing
+reaches for is set by the step's route role together with the pair's own cast (below). Three rows
+stand: quiet — one letter, at most one accompaniment, no miracle; middle — at most two letters, at
+most two accompaniments, at most one miracle; culmination — two or three letters, at most three
+accompaniments, exactly one miracle. Where the realised counts do not fit the row the crossing reached
+for, the highest lower row that does fit is declared instead. Where neither that row nor any lower one
+fits, the code's own structure leaves a third path: the row the counts stand NEAREST is declared —
+which is a higher row that fits them where one exists, and otherwise a row the counts stand outside.
+No walked case has been constructed that reaches this third path, and whether a plan can end there
+with its counts outside its declared row is an open question against the composer rather than a law
+of this spec; it is named here because the code holds the branch, not because a crossing was seen to
+take it. A crossing that reached for a culmination and made a middle is a middle, and no count ever
+refuses a crossing. Two voices that are not cues count in the composer's own sum: the camera's own
+track, which always counts as one accompaniment, since every composed plan carries a camera record;
+and the colour voice, counted once wherever a cue that survives the cast still claims the
+`LIGHT-COLOUR` level, however many of them claim it — a crossing that gave the colour voice up to
+hold its accompaniment ceiling claims that level nowhere and counts nothing for it. The composer is
+the only reader that counts the colour voice at all: the host's own reckoning and both out-of-tree
+gates count the camera and the cues, and stop. The budget is read against the score's own duration
+rather than against the tier it declares, and a duration falling in
+no tier's band — the legal instant transition at `duration: 0` among them, and the gaps the three
+bands leave between them — names no tier, so the tier rules then say nothing about that score. The
+reason is recorded on the diagnostic surface beside the held-time reading, which is read first and
+stands where both apply. No reading of the budget ever refuses a score: the budget is reckoned and
+recorded, and the refusals a score can still meet are the host's own, which the budget is not among.
+`roles` asks a different question — what a cue does dramatically inside the pass, drawn from a set of
+nine named roles — and the two fields are read by two different checks; a score
+naming only one of them cannot be checked by the other. `EX-PASS-VOICE`
+
+**"Role" names two different questions on a pass, and the one that bears on the tier is the one the
+paragraph above does not name.** A **route role** is what the walk's own step is — `entrance`,
+`quiet link`, `middle`, `culmination` or `return` — and it sets the ceiling of the tier its pass may
+reach for and is the only thing that opens a culmination; between a quiet and a middle the pair's own
+cast decides, by whether a travelling move or an arrival stands and whether anything folds. A step
+whose role the walk never states reads as a middle. A **cue role** is what one cue does dramatically
+inside the pass, drawn from the set of nine. Three of the
+five route-role names are spelled exactly like the three tier names, and that spelling is the whole of
+what a route role and a cue role have in common. `EX-PASS-ROLE`
 
 **A pass's own door is not the exhibition's entry door** (that sense of "door" stays `EX-DOOR`'s
 alone; the two never name the same thing). Every pass command names a destination, and the door it
@@ -639,7 +684,10 @@ never a remembered one. A cue's own `doors` field is a narrower thing entirely: 
 cue reads in and out at its own edges, not a place in the room. The pass itself holds no door of its
 own between two hung works — the instrument that draws the frame reads its own mask at both doors on
 the buffer, and the composer that casts it emits only the artistic request, never the geometry. A pass
-that names a door its instrument's manifest leaves blank is refused before it plays. `EX-PASS-DOOR`
+that names a door its instrument's manifest leaves blank is refused at build time by the score-side of
+the two out-of-tree gates the composer paragraph names (`lab/sceneplan-check.py`) — never by
+`lab/sceneplan-build-check.py`, which holds no such row, and never by the host mid-flight, which
+judges a manifest at registration and never reads a score's doors against it. `EX-PASS-DOOR`
 
 ### Sharing from the walk
 
@@ -1918,6 +1966,10 @@ the worker.
 - **Structural level** — a place on the pass's own ladder (`WORLD` down to `LIGHT-COLOUR`), read
   three ways — declared by an instrument's manifest, owned by a cue for its window, or driven by
   whichever cue actually moves it — never one question (`EX-PASS-LEVEL`).
+- **Route role / cue role** — the walk step's own function (`entrance`, `quiet link`, `middle`,
+  `culmination`, `return`), which sets the ceiling of the tier a pass may reach for and is the only
+  thing that opens a culmination, versus what one cue does dramatically inside the pass; the two
+  share the word and nothing else (`EX-PASS-ROLE`).
 
 ---
 
@@ -1965,10 +2017,11 @@ the worker.
 | `EX-ACCENT` | The breathing ground and live accent |
 | `EX-GLIDE` | One input gesture → EXACTLY one centered frame — a cubic ease that arrives at rest and is entered at the running speed, no drift, no mid-frame stall; force scales the single glide's SPEED, never the count (`INV-84`); one animator over the wheel, the keys and the finger; survives a device rotation (`INV-86`) |
 | `EX-PASS` | The optional composed crossing between two hung works, played instead of `EX-GLIDE`'s plain glide when `visualLayer` is on; subordinate to the walk, owning none of its faces; declines to the untouched plain glide with `visualLayer` off or wherever the pass itself declines; full contract in `docs/design/PASS-API-V1.md` |
-| `EX-PASS-COMPOSER` | The composer: reads both works' ElementSets (with their complements) and the pair's dossier, emits a data-only ScenePlan naming the held pivot, the cast actors, the optional middle and the timed cues, refused where no actor names any element of either work; serialised at build time into the score, the closed allow-listed wire record the host plays, which strips and records any field it does not name rather than refusing whole |
+| `EX-PASS-COMPOSER` | The composer: reads both works' ElementSets (with their complements) and the pair's dossier, emits a data-only ScenePlan naming the held pivot, the cast actors, the optional middle and the timed cues; every ordered pair composes, a work offering only its whole frame along the pivot's cut casting that whole frame as its element; serialised at build time into the score, the closed allow-listed wire record the host plays, which strips and records any field it does not name rather than refusing whole; the refusals a composed plan can still meet are judged by two out-of-tree gates (the levels contention and the tier agreement by `lab/sceneplan-build-check.py`, a blank door by `lab/sceneplan-check.py` beside it, both in the tlvphotos tree on branch `immersive-alpha-sceneplan`), never by this engine — and both gates judge the tlvphotos builder's own plans rather than this composer's, so no gate stands on the road a composed score travels; both also still carry an actor refusal this composer no longer honours |
 | `EX-PASS-LEVEL` | "Level" on a pass answers three different questions and never one: DECLARATION (an instrument's manifest states which structural level each handle touches, a fixed per-instrument fact), OWNERSHIP (a cue's own `levels` list claims a level for its window; two cues owning one level in overlapping windows is the one contention the levels law refuses), and DRIVING (which levels a cue's built tracks actually move, independent of any list); the plan's own `levelOwnership` record keeps ownership and driving apart before either reaches the score |
-| `EX-PASS-VOICE` | A score cue's `voice` (`letter`\|`accompaniment`\|`miracle`) is a budget classification bounded by the pass's tier (quiet/middle/culmination), with the camera's own track counting as one accompaniment whenever named; distinct from `roles` (nine named dramatic functions, checked separately) and distinct from the exhibition's own narrator voice (`EX-STORY`) |
-| `EX-PASS-DOOR` | A pass command's own door is a pair of geometries, `from` and `to`, each a `hangGeometry` (the work's real DOM position, crop, fit, pixel ratio, orientation) and an `immersiveGeometry` (the fullscreen scene state), read live rather than frozen onto a plan; distinct from the exhibition's own entry door (`EX-DOOR`) and from a cue's own narrower `doors` field (handle values at its edges); a pass naming a door its instrument's manifest leaves blank is refused before it plays |
+| `EX-PASS-VOICE` | A score cue's `voice` (`letter`\|`accompaniment`\|`miracle`) is a budget classification, and a score's realised voices decide the tier it is DECLARED at: the row the crossing reached for is tried first, then the highest lower row that fits, then — on a third path the code holds and no constructed case has walked — the nearest row of all, which fits the counts where a higher row does and otherwise leaves them outside it; never a refusal; in the composer's own sum the camera's own track always counts as one accompaniment and the colour voice counts once wherever a surviving cue still claims `LIGHT-COLOUR` (a crossing that gave that voice up to hold its accompaniment ceiling counts nothing for it), while the host's reckoning and both out-of-tree gates count the camera and the cues alone; the budget is read against the score's own duration, and a duration in no band (`duration: 0` among them) names no tier, with that reason recorded on the diagnostic surface behind the held-time reading, which is read first; no reading of the budget ever refuses a score; distinct from `roles` (nine named dramatic functions, checked separately) and distinct from the exhibition's own narrator voice (`EX-STORY`) |
+| `EX-PASS-ROLE` | "Role" on a pass answers two different questions: a ROUTE ROLE is the walk step's own function (`entrance`, `quiet link`, `middle`, `culmination`, `return`), which sets the ceiling of the tier a pass may reach for and is the only thing that opens a culmination — between a quiet and a middle the pair's own cast decides, by whether a travelling move or an arrival stands and whether anything folds — an unstated route role reading as a middle; a CUE ROLE is what one cue does dramatically inside the pass, drawn from the nine; three route-role names are spelled like the three tier names and that spelling is all the two senses share |
+| `EX-PASS-DOOR` | A pass command's own door is a pair of geometries, `from` and `to`, each a `hangGeometry` (the work's real DOM position, crop, fit, pixel ratio, orientation) and an `immersiveGeometry` (the fullscreen scene state), read live rather than frozen onto a plan; distinct from the exhibition's own entry door (`EX-DOOR`) and from a cue's own narrower `doors` field (handle values at its edges); a pass naming a door its instrument's manifest leaves blank is refused at build time by the score-side out-of-tree gate (`lab/sceneplan-check.py`, not `lab/sceneplan-build-check.py`, which holds no such row), never by the host mid-flight |
 | `EX-CHROME` | One page shape for the browser on every face: the root overflow cut is retired as a lock; every standing face (the re-opened door included) rests input + hides the scrollbar gutter-stable, with a snap-back guard correcting any scroll the house did not write |
 | `EX-SHARE-BTN` | The floating share button (fixed chrome): copies the in-view work's room permalink, never navigates |
 | `EX-SHARE-IN` | The permalink arrival: `#w-<id>` as a handed-over pick |
@@ -2108,7 +2161,7 @@ the worker.
 | `INV-105` | One work's missing line leaves its neighbours speaking: the edge serves every well-formed line an answer carries, caches a short plot the way it caches a whole one, and answers one carrying none with a `502` — plus, on a one-work key, an hour-long refusal record answered `502` ahead of every fence — while deleting the single-flight lock it laid at each of its own exits, so a re-ask meets the cache, the record, a fence, or the model; the walk asks for each wordless work by id under its own key shape, in the walk's own order, five asks to a clock hour across door picks and the rest owed to the walk's beats, each ask a three-rung ladder, wearing the wait mark until a line lands and falling to that work's own silence when the ladder is spent (CS-8); an ask the cache and the record leave unanswered passes the three money fences, and a dead account is flagged from this route. |
 
 | `INV-108` | The first spread is told by two plots: an opening one over the first `story_lead` works, asked the moment the walk stands, and a second over the rest of that spread, asked once the focus comes within one work of it. Each keeps its own ordered ids and its own cache key, so no work is told twice and a visitor who walks the whole spread reads the same lines either way. |
-| `INV-109` | A pass changes no pixel of the plain walk unless it actually takes the frame: `visualLayer=off`, a decline before takeover, or any refusal at build time (an actor-less plan, a door the instrument's manifest leaves blank, a levels-law contention, a tier-budget breach) all leave `EX-GLIDE`'s one-frame glide running exactly as this spec states it, with no partial or half-drawn pass ever reaching the visitor |
+| `INV-109` | A pass changes no pixel of the plain walk unless it actually takes the frame: `visualLayer=off`, a decline before takeover, or any refusal at build time all leave `EX-GLIDE`'s one-frame glide running exactly as this spec states it, with no partial or half-drawn pass ever reaching the visitor. The build-time refusals this spec states are three, and none is the composer's: a door the instrument's manifest leaves blank, a levels-law contention, and a declared tier its own voices contradict. Two gates outside this engine judge them, both in the tlvphotos tree on branch `immersive-alpha-sceneplan` — the levels contention and the tier agreement by `lab/sceneplan-build-check.py`, the blank door by `lab/sceneplan-check.py` beside it — and both read the tlvphotos builder's own plans rather than this composer's, so neither stands on the road a composed score travels. Of the three, this repository's suite proves the tier agreement alone, over every composed passage (`tests/test_pass_lawful.py` R1); neither the blank door nor the levels contention has a row here. Both gates also still carry a fourth refusal, an actor-less plan, which this composer no longer honours (`EX-PASS-COMPOSER`), so a plan lawful here can still be red there. The composer itself refuses nothing: every ordered pair composes (`EX-PASS-COMPOSER`), and a tier that does not fit its counts is re-declared at a row that does, except on the one path `EX-PASS-VOICE` names — the nearest-row path, which the code holds, which no constructed case has walked, and on which a plan could carry counts outside its declared row; whether that path is reachable is an open question against `pass-composer.js`, not a law this invariant asserts either way |
 
 ### Reconciliation log — how each behavior above landed in code
 

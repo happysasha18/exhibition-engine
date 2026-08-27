@@ -971,6 +971,30 @@ else:
 
 shutil.rmtree(TMP, ignore_errors=True)
 
+# ---------------------------------------------------------------- TEST_MATRIX.md PASS-08, shelf 3
+#
+# Nothing new is measured here. The three "row 7" rows above already prove EX-PASS-DOOR's live
+# re-measure law — a resize, an orientation change and a moved destination mid-pass all reframe the
+# arriving hang with no jump (PASS-API-V1.md §2.6, conformance rows 38-44). This row names shelf 3
+# (Enfilade) explicitly and reads its verdict off those three by name, so TEST_MATRIX.md's PASS-08
+# can cite a real row instead of an implicit one.
+_shelf3_witnesses = [n for n in ROWS if n.startswith("PASS-HANG row 7")]
+_shelf3_seen = {n: s for n, s, _ in results if n in _shelf3_witnesses}
+if len(_shelf3_seen) < len(_shelf3_witnesses):
+    check("PASS-08 (EX-PASS-DOOR, shelf 3 — Enfilade) · resize, orientation and a moved destination "
+          "mid-pass all reframe the arriving hang with no jump", False,
+          "one or more of the witness rows above never ran")
+elif all(s == "SKIP" for s in _shelf3_seen.values()):
+    _why = next((d for n, s, d in results if n in _shelf3_witnesses and s == "SKIP"), "")
+    skip("PASS-08 (EX-PASS-DOOR, shelf 3 — Enfilade) · resize, orientation and a moved destination "
+         "mid-pass all reframe the arriving hang with no jump", "witness rows skipped: " + _why)
+else:
+    _ok = all(s == "PASS" for s in _shelf3_seen.values())
+    check("PASS-08 (EX-PASS-DOOR, shelf 3 — Enfilade) · resize, orientation and a moved destination "
+          "mid-pass all reframe the arriving hang with no jump", _ok,
+          "" if _ok else
+          ("witness rows: " + ", ".join(n + "=" + s for n, s in _shelf3_seen.items())))
+
 passed = sum(1 for _, s, _ in results if s == "PASS")
 failed = sum(1 for _, s, _ in results if s == "FAIL")
 skipped = sum(1 for _, s, _ in results if s == "SKIP")

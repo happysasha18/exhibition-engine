@@ -10,6 +10,25 @@ word that superseded it.
 
 ---
 
+## 2026-08-27 — the actor refusal, withdrawn from the composer
+
+### From §4.7, the actor refusal
+
+> **A ScenePlan is refused when no actor names any element of either work — when every actor is a
+> whole frame.** A plan must name at least one actor drawn from A's ElementSet and at least one drawn
+> from B's. Conformance row 35 carries it, in his own naming of the row: the scene plan contains real
+> actors, never one accidental fullscreen cue.
+
+Replaced because the composer no longer holds it and has not since his word of 2026-08-18 09:51 —
+any two photographs get a crossing. `engine/assets/pass-composer.js:4787-4790` deletes the refusal by
+name and records that the whole frame is a lawful element; `castActors` (`:3176-3237`) returns actors
+unconditionally and `compose` has one return, never null (`:5312`). The sentence stood on in this
+contract after `SPEC.md` had already been corrected, which is the failure this file exists to
+prevent. The refusal itself is not gone from the world: both out-of-tree gates
+(`lab/sceneplan-build-check.py:111-141` and `lab/sceneplan-check.py` row 35, tlvphotos tree, branch
+`immersive-alpha-sceneplan`) still red such a plan, so §4.7 now records the disagreement and names it
+an open product decision rather than stating either side as the contract's own law.
+
 ## 2026-08-26 — the arguments that leaned on a tally over the collection
 
 Root: charter shelf 20, which binds a document as plainly as it binds code — no median, percentile,

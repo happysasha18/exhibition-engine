@@ -149,6 +149,16 @@ BROWSER_ROWS = [
     "PASS-API §7 · below the joy floor the floor grammar plays, and the crossing is never refused",
 ]
 
+# PASS-01 (TEST_MATRIX.md) — a separate list rather than two more BROWSER_ROWS entries, so the
+# fixed BROWSER_ROWS[N] indices every row above already relies on never shift.
+PIXEL_ROWS = [
+    "PASS-01 (EX-PASS / INV-109, pixel) · visualLayer:off draws exactly the plain glide — no "
+    "canvas ever appears, and the frame reads pixel-identical to the walk with no pass at all, "
+    "mid-flight and settled",
+    "PASS-01 red-on-bug · with the visualLayer guard removed from the built bundle, "
+    "visualLayer:off no longer draws the plain glide alone",
+]
+
 # THE FOLD BENCH. A hand-made command of exactly the shape the bundle freezes, carrying a score whose
 # one cue names the host's OWN last-resort instrument — registered unconditionally, so this bench
 # needs no instrument file and no lab module — with the two doors §2.5 walks between named on that
@@ -279,11 +289,15 @@ def cleanup(br):
 if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
+    for r in PIXEL_ROWS:
+        skip(r, "Chrome not installed (pinned expected skip)")
 else:
     with serve(TMP) as base:
         with Browser(width=1280, height=900) as br:
             if not arm_host(br, base):
                 for r in BROWSER_ROWS:
+                    skip(r, "pass-layer.js never registered a host in this build")
+                for r in PIXEL_ROWS:
                     skip(r, "pass-layer.js never registered a host in this build")
             else:
                 # 0 · declare refuses an absent destination
@@ -795,6 +809,149 @@ else:
                            "window.__exPass.host.configure({fixedScale:false})")
                 br.sleep(0.6)
                 cleanup(br)
+
+                # ---------------------------------------------------- PASS-01 (TEST_MATRIX.md)
+                #
+                # EX-PASS / INV-109's own words, by name: with visualLayer:off the walk plays
+                # exactly EX-GLIDE's plain one-frame glide — never one pixel differing from a walk
+                # with no pass machinery reachable at all. Every row above proves the STATE
+                # MACHINE (no curtain, no leaked canvas, scroll advances); none of them reads a
+                # rendered pixel. This pins PASS-01 at the level TEST_MATRIX.md names it: pixel,
+                # diffed against the plain-glide baseline, PLUS the cheapest and least-flake
+                # witness there is that the pass layer never touched the frame — no <canvas>
+                # element is ever created at all.
+                import base64 as _b64
+                import shutil as _shutil2
+
+                SEAM = 6.0   # the project's own seam threshold (TRANSITION-STAGE-V0 §1)
+                GLIDE_MID_S = 0.3   # GLIDE_MS defaults to 520ms for a calm gesture — still
+                                    # animating at 300ms, so a mid-flight sample lands inside it
+
+                def _png(path):
+                    d = br._cmd("Page.captureScreenshot", format="png", captureBeyondViewport=False)
+                    Path(path).write_bytes(_b64.b64decode(d["data"]))
+                    return path
+
+                def _diff(p1, p2):
+                    from PIL import Image, ImageChops, ImageStat
+                    a = Image.open(p1).convert("RGB")
+                    b = Image.open(p2).convert("RGB")
+                    if a.size != b.size:
+                        return 255.0, 255.0
+                    st = ImageStat.Stat(ImageChops.difference(a, b))
+                    return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
+
+                def _arm(base_url, pass_arg):
+                    # `window.__exPass.host` never appears with visualLayer:off — pass-layer.js
+                    # is fetched only from `passOpen()`, itself gated on
+                    # `passGet("visualLayer") === "pass"` (engine/assets/exhibition.js), so an
+                    # "off" walk is armed the moment the walk itself is ready, not by waiting on
+                    # a host that this very row proves never loads.
+                    #
+                    # `clear_storage()` only clears localStorage; the settings ladder's own
+                    # SESSION tier — where every earlier row in this file left its own
+                    # `sessionStorage['ex-pass']` — outranks a bare URL with no `?pass=` at all,
+                    # so a true "no pass reachable" baseline has to clear it explicitly too.
+                    br.navigate(base_url + "/")
+                    br.evaluate("sessionStorage.clear(); 0")
+                    enter(br, base_url, pass_arg)
+                    return ready(br)
+
+                def _canvas_count():
+                    return int(br.evaluate("String(document.querySelectorAll('canvas').length)")
+                               or "0")
+
+                # EX-DOOR-3 rolls a fresh, evenly-spread door pool every open (Math.random,
+                # exhibition.js:4563/4579) — a real, deliberate law for a live visitor, and pure
+                # noise for a row comparing two SEPARATE page loads pixel for pixel. Pinned here,
+                # on-new-document (the same CDP road headless.py's own `pretend()` uses), so every
+                # navigation below rolls the identical door whichever scenario it is.
+                br._cmd("Page.addScriptToEvaluateOnNewDocument",
+                        source="(function(){var s=42;Math.random=function(){"
+                               "s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};})();")
+
+                SHOTS = Path(tempfile.mkdtemp(prefix="synth_passapi_pixel_"))
+
+                def _sample(base_url, pass_arg, tag):
+                    """Arm a fresh walk, step once for real, and read canvas presence together
+                    with a screenshot at a fixed mid-flight instant and again once settled."""
+                    if not _arm(base_url, pass_arg):
+                        return None
+                    br.key("ArrowDown")
+                    seen = _canvas_count()
+                    br.sleep(GLIDE_MID_S)
+                    seen = max(seen, _canvas_count())
+                    mid = _png(SHOTS / (tag + "-mid.png"))
+                    br.sleep(0.9)
+                    seen = max(seen, _canvas_count())
+                    end = _png(SHOTS / (tag + "-end.png"))
+                    return {"canvases": seen, "mid": mid, "end": end}
+
+                PIXEL_ROW, CONTROL_ROW = PIXEL_ROWS[0], PIXEL_ROWS[1]
+
+                base_run = _sample(base, None, "baseline")
+                off_run = _sample(base, "diagnostics:on,visualLayer:off", "off")
+                if base_run is None or off_run is None:
+                    skip(PIXEL_ROW, "the walk never armed for one of the two scenarios")
+                    skip(CONTROL_ROW, "the walk never armed for one of the two scenarios")
+                else:
+                    # The mid-flight SCREENSHOT is not diffed pixel-for-pixel: EX-GLIDE's own
+                    # curve is in fast motion at 300ms, so a few milliseconds of capture jitter
+                    # between two SEPARATE navigations moves the frame's own position enough to
+                    # swamp a real signal — noted mid_note below, not gated on. The mid-flight
+                    # CANVAS COUNT carries no such timing sensitivity (a canvas either exists in
+                    # the DOM at that instant or it does not) and is what "no partial, half-drawn
+                    # pass state" is actually checked against, together with the pixel-identical
+                    # SETTLED frame, which timing jitter cannot touch once both walks are at rest.
+                    _, max_mid_note = _diff(base_run["mid"], off_run["mid"])
+                    mean_end, max_end = _diff(base_run["end"], off_run["end"])
+                    ok = off_run["canvases"] == base_run["canvases"] and max_end <= SEAM
+                    check(PIXEL_ROW, ok,
+                          f"canvases seen at every sampled instant — baseline: "
+                          f"{base_run['canvases']}, visualLayer:off: {off_run['canvases']}; "
+                          f"settled diff mean {mean_end:.3f} max {max_end:.1f} of 255 "
+                          f"(bar {SEAM} of 255, the project's own seam threshold) — mid-flight "
+                          f"pixel delta {max_mid_note:.1f} of 255, noted but not gated on (timing "
+                          f"jitter between two separate navigations moves an in-motion frame)")
+
+                    # RED-ON-BUG. Three real, currently-shipped guards stand between
+                    # visualLayer:off and a drawn pass, and this file's own instrumentation
+                    # showed all three are load-bearing on the first attempt at this row — bypassing
+                    # only the layer's own FETCH gate (`passOpen`) still left the command declined
+                    # (`visual-declined`) by the separate per-command gate. All three, together, are
+                    # what the guarantee above actually stands on:
+                    #   engine/assets/exhibition.js `passComposerOpen` / `passOpen` — the two fetch
+                    #   gates, each `if (passGet("visualLayer") !== "pass") return;`
+                    #   engine/assets/exhibition.js `passVisualTakes` — the per-command gate,
+                    #   `if (cmd.params.visualLayer.base !== "pass") { ...; return false; }`
+                    GUARD_FETCH = 'if (passGet("visualLayer") !== "pass") return;'
+                    GUARD_TAKE = 'if (cmd.params.visualLayer.base !== "pass") {'
+                    exh_js = (TMP / "exhibition.js").read_text(encoding="utf-8")
+                    if exh_js.count(GUARD_FETCH) != 2 or GUARD_TAKE not in exh_js:
+                        skip(CONTROL_ROW,
+                             "the guard text was not found verbatim (as expected) in the built "
+                             "bundle")
+                    else:
+                        MUT_TMP = Path(tempfile.mkdtemp(prefix="synth_passapi_pixel_mut_"))
+                        _shutil2.copytree(TMP, MUT_TMP, dirs_exist_ok=True)
+                        mutated = exh_js.replace(GUARD_FETCH, "if (false) return;")
+                        mutated = mutated.replace(GUARD_TAKE, "if (false) {", 1)
+                        (MUT_TMP / "exhibition.js").write_text(mutated, encoding="utf-8")
+                        with serve(MUT_TMP) as mut_base:
+                            mut_run = _sample(mut_base, "diagnostics:on,visualLayer:off", "mut")
+                        _shutil2.rmtree(MUT_TMP, ignore_errors=True)
+                        if mut_run is None:
+                            skip(CONTROL_ROW, "the mutated build never armed a walk")
+                        else:
+                            broke = mut_run["canvases"] != base_run["canvases"]
+                            check(CONTROL_ROW, broke,
+                                  "with all three visualLayer guards bypassed, visualLayer:off "
+                                  "drew " + str(mut_run["canvases"]) + " canvas element(s) during "
+                                  "the same step against a baseline of "
+                                  + str(base_run["canvases"]) + " — if these still read equal, "
+                                  "the row above is not reading the guards it claims to")
+                    cleanup(br)
+                _shutil2.rmtree(SHOTS, ignore_errors=True)
 
 # ---------------------------------------------------------------- report
 import shutil  # noqa: E402
