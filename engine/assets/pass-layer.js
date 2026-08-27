@@ -2846,21 +2846,57 @@
   //   its own derivative does — so its width is CAPABILITY: a fact about the SAMPLING GRID and not
   //   about the picture, exactly like how many bytes a float takes or how long a frame is. Below one
   //   point of the drawing buffer it falls inside a single sample and does nothing; past three it
-  //   stops rounding a crease and starts smearing it into a visible band. 1.5 is the middle of that
-  //   span — kaleidoscope's own number, argued in its file before this block existed and carried
-  //   here unchanged, digit for digit, so the two roads it is measured against still agree. It does
-  //   not shrink as its element repeats more often, because a hairline spends none of the element's
-  //   own room.
+  //   stops rounding a crease and starts smearing it into a visible band. 1.5 buffer points is the
+  //   middle of that span AT ONE POINT OF BUFFER PER CSS PIXEL — kaleidoscope's own number, argued
+  //   in its file before this block existed. It used to travel from there into this host unchanged,
+  //   digit for digit, which answered no question this host had not already been asked: a buffer
+  //   point is not a fixed physical width, because the drawing buffer this host binds is the CSS
+  //   frame times the device's own pixel ratio times the render ladder's live rung
+  //   (`bindCanvas`/`changeStep` above bind `W = cssW * dpr * s`), and both of those move under a
+  //   score without either photograph changing at all. 1.5 read as CSS-pixel-equivalent points and
+  //   carried onto the actual buffer through `seamScaleOf()` — the ratio the host already measures
+  //   between the buffer it just bound and the CSS frame it was asked for — answers the same
+  //   question kaleidoscope's own file argued (below one sample does nothing, past three it smears)
+  //   on the buffer this frame is actually drawn on, rather than on the buffer kaleidoscope's file
+  //   happened to carry the argument against. It does not shrink as its element repeats more often,
+  //   because a hairline spends none of the element's own room.
   //
   //   A HANDOVER ZONE glues two ends of a wrap together over a real, visible span — a cross-dissolve,
   //   not an antialiasing retouch — so its width IS a share of the room the wrap itself has: one part
-  //   in eight of what a single repeat gets, halved again for every further repeat sharing the same
-  //   turn, and never allowed under a hundredth or over a fifth — the same floor-and-ceiling
-  //   reasoning the hairline stands on, read in the handover's own unit.
-  var SEAM_HAIRLINE_POINTS = 1.5;
-  function seamHairlineOf() { return SEAM_HAIRLINE_POINTS; }
+  //   in eight of what a single repeat gets AT THAT SAME ONE-POINT-PER-CSS-PIXEL BUFFER, halved again
+  //   for every further repeat sharing the same turn, and never allowed under a hundredth or over a
+  //   fifth — the same floor-and-ceiling reasoning the hairline stands on, read in the handover's own
+  //   unit. The eighth is a share of a repeat's own span in BUFFER points, so at a buffer standing
+  //   denser than one point per CSS pixel a repeat holds more of them and the same physical blend
+  //   costs a smaller share of it; `seamScaleOf()` carries the fraction the same way it carries the
+  //   hairline, so the fleet reads one measurement rather than two.
+  //
+  // `seamScaleOf()` IS THE ONE MEASUREMENT BOTH NUMBERS BELOW READ. `W / cssW` is buffer points per
+  // CSS pixel on the frame actually bound this instant: 1 on a dpr-1 screen at the render ladder's
+  // top rung, 2 on a dpr-2 screen at that same rung, and less again the moment the ladder has dropped
+  // a rung under perf pressure (`changeStep` above). Nothing here is typed against any one screen or
+  // photograph; it is read off the same `W`/`cssW` the buffer was just bound with, so a retina screen
+  // and a throttled rung both move the number the way the case argues they should, rather than both
+  // handing every pair the one literal a single earlier file happened to be measured against.
+  function seamScaleOf() {
+    var scale = W / Math.max(cssW, 1);
+    return scale > 0 ? scale : 1;
+  }
+  // CAPABILITY: the middle of the one-to-three-buffer-point span the HAIRLINE RETOUCH paragraph
+  // above argues, read at one buffer point per CSS pixel — a fact about the sampling grid at that
+  // baseline density, exactly as kaleidoscope's own file argued it, and no more about either
+  // picture than it ever was. `seamHairlineOf` carries it onto the buffer actually bound.
+  var SEAM_HAIRLINE_CSS_POINTS = 1.5;
+  // CAPABILITY: one part in eight of a repeat's own span at that same one-point-per-CSS-pixel
+  // baseline — the HANDOVER ZONE paragraph's own floor-and-ceiling sampling argument, read in the
+  // handover's own unit rather than the hairline's. `seamHandoverOf` carries it the same way.
+  var SEAM_HANDOVER_CSS_SHARE = 0.125;
+  function seamHairlineOf() {
+    var pts = SEAM_HAIRLINE_CSS_POINTS * seamScaleOf();
+    return pts < 1 ? 1 : (pts > 3 ? 3 : pts);
+  }
   function seamHandoverOf(count) {
-    var share = 0.125 / Math.max(Number(count) || 1, 1);
+    var share = (SEAM_HANDOVER_CSS_SHARE / seamScaleOf()) / Math.max(Number(count) || 1, 1);
     return share < 0.01 ? 0.01 : (share > 0.2 ? 0.2 : share);
   }
   // THE DECLARATION READ, for one instrument, on the handles this frame actually stands at. `of`

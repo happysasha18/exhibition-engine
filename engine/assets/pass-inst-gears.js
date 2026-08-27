@@ -102,6 +102,8 @@
       "uniform float uOff;",          // counter-motion, tangential, frame heights
       "uniform float uGuard;",
       "uniform float uPresence;",  // the entry-door contract's reserved dry
+      "uniform float uSeamTooth;",  // §8's `seams` block: the share of one tooth's own span the die's
+                                     // hand-off to the next tooth is blended across
       "const float PI = 3.14159265359;",
       "const float TAU = 6.28318530718;",
 
@@ -145,9 +147,20 @@
 
       // WHICH WEDGE OF WHICH WHEEL, and when that tooth hands over: six parts a ladder down the
       // line where the two rims meet, four parts the score's die.
-      "  float ti = floor(wA / TAU);",
+      "  float tf = wA / TAU;",
+      "  float ti = floor(tf);",
       "  float ladder = clamp(0.5 + 0.5 * p.y, 0.0, 1.0);",
-      "  float ord = mix(ladder, hash11(ti + uSeed), 0.4);",
+      // THE DIE'S OWN HAND-OFF (§8's `seams` block, pass-layer.js). `hash11(ti + uSeed)` is one
+      // whole tooth's own roll of the die, unrelated to its neighbour's, so a point crossing from
+      // one tooth into the next met the two rolls stitched together with nothing between — a
+      // boundary the picture cannot help but have, once a tooth, all the way round the wheel. `edge`
+      // reads how far the point already stands into the LAST share of its own tooth — `uSeamTooth`,
+      // the host's own handover reading — and blends this tooth's roll toward the NEXT tooth's over
+      // exactly that share, so the same crossing read from the next tooth's own start (where `edge`
+      // is already 0 there) meets the identical blended value this tooth's end just handed it.
+      "  float edge = smoothstep(1.0 - uSeamTooth, 1.0, fract(tf));",
+      "  float die = mix(hash11(ti + uSeed), hash11(ti + 1.0 + uSeed), edge);",
+      "  float ord = mix(ladder, die, 0.4);",
 
       "  float M = (RA - rA) - (RB - rB) + uSpread * (ord - 0.5);",
       // the field's own gradient, exactly: the rims' own turning plus the two radial directions
@@ -188,6 +201,8 @@
       t = t < 0 ? 0 : t > 1 ? 1 : t;
       return t * t * (3 - 2 * t);
     }
+    // `hash11`, the shader's own die (FRAG above), read here so `covAt` walks the identical roll.
+    function hash11(n) { var s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); }
 
     // THE SMALL WHOLE RATIOS the handle walks. A gear pair is only a gear pair when the two counts
     // stand in a ratio of small whole numbers — that is what makes the mesh close on itself — so the
@@ -205,6 +220,13 @@
     // pitch out of the pitch circle on each side; below about a tenth the mesh reads as a wavy line
     // and above about a half the teeth are longer than they are wide and read as a comb.
     var TOOTH_MIN = 0.12, TOOTH_MAX = 0.40;
+
+    // THE DIE'S OWN HAND-OFF, off the host's own `seams` reading (§8's `seams` block, pass-layer.js):
+    // one part in eight of one tooth's own span, the same argued baseline planet's wrap and tunnel's
+    // ring stand on, read here in this instrument's own repeat unit — the tooth, which is the
+    // element this instrument's die actually rolls once per. SEAM_TOOTH_FALLBACK is only where this
+    // file stands before any host has answered.
+    var SEAM_TOOTH_FALLBACK = 0.125;
 
     // THE MEASURED RESPONSE CURVE, carried over digit for digit (gears.js:329-337). How far the
     // picture moves per unit of the raw travel was measured with the curve taken out of the module,
@@ -374,9 +396,14 @@
       var sA = Math.sin(wA), sB = Math.sin(wB);
       var RA = v.R1 + v.amp * clamp(sA / f, -1, 1);
       var RB = v.R2 - v.amp * clamp(sB / f, -1, 1);
-      var hs = Math.sin((Math.floor(wA / TAU) + seed) * 127.1) * 43758.5453;
+      // THE DIE'S OWN HAND-OFF, walked exactly as FRAG above walks it: `edge` blends this tooth's
+      // own roll toward the next tooth's over the last `v.seamTooth` share of the tooth's own span.
+      var tf = wA / TAU;
+      var ti = Math.floor(tf);
+      var edge = smoothstep(1 - v.seamTooth, 1, tf - ti);
+      var die = hash11(ti + seed) + (hash11(ti + 1 + seed) - hash11(ti + seed)) * edge;
       var lad = clamp(0.5 + 0.5 * py, 0, 1);
-      var ord = lad + (hs - Math.floor(hs) - lad) * 0.4;
+      var ord = lad + (die - lad) * 0.4;
       var M = (RA - rA) - (RB - rB) + v.spread * (ord - 0.5);
       var tA = Math.abs(sA) < f ? v.amp * (Math.cos(wA) / f) * v.n1 / rA : 0;
       var tB = Math.abs(sB) < f ? v.amp * (Math.cos(wB) / f) * v.n2 : 0;
@@ -497,9 +524,16 @@
       var rate = 2.6 * clamp(st.turn, 0, 1) * win;
       var ph = (reach - xc) * (TAU / pitch) + (st.reduced ? 0 : st.t) * rate;
 
+      // THE DIE'S OWN HAND-OFF, off the host's own `seams` reading (§8's `seams` block). Only the
+      // host knows what every instrument declaring a handover is holding its own hand-off to, so it
+      // answers once and this file carries the number rather than choosing it.
+      var seamTooth = clamp((st.seam && typeof st.seam.tooth === "number") ? st.seam.tooth
+                                                                            : SEAM_TOOTH_FALLBACK,
+                            0.001, 0.49);
+
       var v = {
         n1: n1, n2: n2, R1: R1, R2: R2, amp: amp, ph: ph, spread: spread,
-        flank: clamp(st.flank, 0.05, 1),
+        flank: clamp(st.flank, 0.05, 1), seamTooth: seamTooth,
         cA: [xc - R1 + ox, oy], cB: [xc + R2 + ox, oy],
         off: clamp(st.travel, 0, 1) * AMP * 4 * d * (1 - d),
         guard: clamp(st.shade, 0, 1) * smoothstep(0, 0.09, d) * smoothstep(1, 0.91, d),
@@ -686,6 +720,7 @@
           { name: "uOff", type: "float", source: "frame:off" },
           { name: "uGuard", type: "float", source: "frame:guard" },
           { name: "uSeed", type: "float", source: "handle:seed" },
+          { name: "uSeamTooth", type: "float", source: "frame:seamTooth" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -699,6 +734,24 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/gears.js", commit: "e0f1b91" },
+      // THE FRAME'S OWN PARTITION (§8's `seams` block, pass-layer.js). Each wheel is cut into teeth
+      // by its own tooth count — a WEDGE of the wheel's own turn per tooth, the same primitive
+      // kaleidoscope's fold and studio's mirrors cut on — and the mesh line where the two rims meet
+      // hands off from one wedge to the next once per tooth, all the way round either wheel.
+      cuts: ["wedge"],
+      // WHERE THIS INSTRUMENT HAS A SEAM. The mesh line's own die (`hash11(ti + uSeed)` in FRAG
+      // above) rolls once per tooth and had NOTHING between one roll and the next: a point crossing
+      // from one tooth into its neighbour met two unrelated rolls stitched edge to edge, a boundary
+      // the picture cannot help but have once a tooth, all the way round the wheel doing the
+      // meshing. That is a HANDOVER, not a hairline — the two rolls are unrelated numbers, not one
+      // continuous field whose derivative merely kinks — so it is glued across a real, visible share
+      // of the tooth's own span rather than retouched at the sampling grid's own width. `of` names
+      // no handle: this instrument publishes no handle carrying either wheel's own tooth count (both
+      // come from `size`, `bandPeriod` and `ratio` together, none of them a repeat count on its own),
+      // so the share stands as ONE TOOTH's own share, which is exactly the element this die rolls
+      // once per — unlike planet's wrap or tunnel's ring, where "a single turn's own share" stood in
+      // for an element the file names but does not itself repeat.
+      seams: [{ kind: "tooth", of: null, unit: "a share of one repeat's own span" }],
       // HOW WELL THIS INSTRUMENT SUITS A PAIR (2026-08-18, his word of 09:51 and its sharpening at
       // 09:53). An instrument no longer answers WHETHER it takes a pair — it answers how well it
       // suits one, so a poor fit is still playable and still explains itself. The arithmetic runs in
@@ -758,6 +811,10 @@
           // host settles it from the device ratio and its own resolution step, so it moves while a
           // pass plays and each door is read on the grid standing at that door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE DIE'S OWN HAND-OFF (§8's `seams` block, pass-layer.js). Only the host knows what
+          // every instrument declaring a handover is holding its own hand-off to, so it answers
+          // once and this file carries the number rather than choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
