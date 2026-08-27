@@ -41,16 +41,42 @@
     let verdictPending = null; // {from, to, road, cues, durationMs} — the crossing awaiting a verdict
 
     // ---- one small stylesheet, scoped to the panel's own id — no other file's CSS is touched ----
+    //
+    // WHY THE TOP, NOT THE BOTTOM (found the hard way, 2026-08-26/27). The bottom-right corner is
+    // not free ground: `.ex-share` rides the shared `--ex-rail` there, and `.exh-capzone` (title,
+    // told line, the quiz chip) spans the WHOLE width of the bottom band on a phone frame. A panel
+    // anchored `bottom:12px;right:12px` sat its own real buttons — `.exv-dump` among them — directly
+    // over both, at the very coordinate a real press would land on `#ex-share` or `.ex-quiz-chip`.
+    // The browser's own hit test always resolves to whichever element is topmost there, so the two
+    // suites reading this build measured a press to the SITE's controls landing on the PANEL's
+    // instead — a verdict-JSON clipboard write where a room permalink was asked for, and a quiz
+    // card that never opened because the chip's press never reached it.
+    // `pointer-events` cannot fix this: the collision is not the panel's inert padding sitting over
+    // live ground, it is one real, working button (`.exv-dump`) physically covering another
+    // (`#ex-share`), and both must stay clickable at their own press.
+    // Measured at 390×844 (the phone frame every row of this suite is taken on), the gap above
+    // the hung work's own frame and below the top chrome (`#ex-sound`, the visit counter) is real
+    // but short — about 130px between them — so the panel is also trimmed to fit inside it without
+    // reaching into the picture: the verdict buttons and the dump control now share ONE row
+    // instead of two, which is the height this docking spent to clear both the top controls and
+    // the frame beneath it. `.exv-dump` keeps its own row-independent visibility (see the
+    // `data-pending="0"` rule below) — the export stays reachable with no crossing pending, exactly
+    // as it did before this row merged, because `.exv-row` itself is never hidden, only `.exv-btns`
+    // inside it. The shadow is trimmed the same way: a wide blur painted past the panel's own box
+    // still reads on the pixels just below it, which is the frame's own top edge — the byte-compare
+    // this suite runs there caught it at a single channel step before the row above did.
     const style = document.createElement("style");
     style.textContent =
-      "#ex-verdict{position:fixed;right:12px;bottom:12px;z-index:2147483647;" +
+      "#ex-verdict{position:fixed;right:12px;" +
+      "top:calc(env(safe-area-inset-top,0px) + 58px);z-index:2147483647;" +
       "background:rgba(20,20,20,.92);color:#fff;font:12px/1.4 system-ui,sans-serif;" +
-      "padding:10px;border-radius:8px;max-width:280px;box-shadow:0 2px 12px rgba(0,0,0,.4)}" +
+      "padding:8px;border-radius:8px;max-width:280px;box-shadow:0 1px 3px rgba(0,0,0,.4)}" +
       "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word}" +
       "#ex-verdict .exv-note{width:100%;box-sizing:border-box;margin-bottom:6px;padding:4px}" +
-      "#ex-verdict .exv-btns{display:flex;gap:6px;margin-bottom:6px}" +
+      "#ex-verdict .exv-row{display:flex;gap:6px}" +
+      "#ex-verdict .exv-btns{display:flex;gap:6px;flex:2}" +
       "#ex-verdict .exv-btn{flex:1;padding:6px 4px;cursor:pointer}" +
-      "#ex-verdict .exv-dump{width:100%;padding:6px 4px;cursor:pointer}" +
+      "#ex-verdict .exv-dump{flex:1;padding:6px 4px;cursor:pointer}" +
       "#ex-verdict[data-pending=\"0\"] .exv-info,#ex-verdict[data-pending=\"0\"] .exv-note," +
       "#ex-verdict[data-pending=\"0\"] .exv-btns{display:none}";
     document.head.appendChild(style);
@@ -87,10 +113,14 @@
     dumpBtn.textContent = "выгрузить";
     dumpBtn.addEventListener("click", verdictDump);
 
+    const row = document.createElement("div");
+    row.className = "exv-row";
+    row.appendChild(btnRow);
+    row.appendChild(dumpBtn);
+
     panel.appendChild(info);
     panel.appendChild(note);
-    panel.appendChild(btnRow);
-    panel.appendChild(dumpBtn);
+    panel.appendChild(row);
     document.body.appendChild(panel);
 
     function verdictShowPending() {
