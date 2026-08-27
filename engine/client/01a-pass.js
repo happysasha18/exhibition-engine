@@ -2698,8 +2698,16 @@
         window: [0, span],
         doors: { "in": { handle: "reveal", value: -0.15 }, "out": { handle: "reveal", value: 1.15 } },
         cadence: { reveal: "smooth" },
-        tracks: { reveal: { op: "map", "in": { source: "progress" }, from: [0, 1],
-                            to: [-0.15, 1.15] } },
+        // THE HANDLE RIDES A CURVE, NOT THE BARE CLOCK. `pass-composer.js`'s own "progress" branch
+        // (`buildTemplate`, the `kind === "progress"` row) never lets a travelling handle read the
+        // bare clock straight: it wraps the clock in `{op:"curve", name:"smooth", ...}` first, so the
+        // handle eases into and out of its travel instead of moving at a constant rate from the first
+        // frame. `reveal` here rides the passage exactly the way those handles do — the same wrap,
+        // over the same clock — so the calm floor's one voice starts and stops gently rather than at
+        // full speed. Copied shape, not a new one.
+        tracks: { reveal: { op: "map",
+                            "in": { op: "curve", name: "smooth", "in": { source: "progress" } },
+                            from: [0, 1], to: [-0.15, 1.15] } },
       }],
     };
   }
