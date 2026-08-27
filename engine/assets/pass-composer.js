@@ -3250,7 +3250,13 @@
     // reading's own name for itself, and it names a tone now rather than a colourfulness.
     function registerOf(fromW, toW, arrival, world) {
       var pool = [], best = null, i, la, lb;
-      if (arrival === "CONDENSED") {
+      // APPARITION NAMES A FIGURE GATHERING OUT OF OPEN GROUND, and that is what all three of
+      // CONDENSED, CRYSTALLIZED and PROPAGATED are — a figure condensing at a locus, a seed
+      // crystallizing, a copy propagating — never what CARRIED (nothing gathers, the gesture
+      // already running just carries on) or INTERFERED (a pair-wide rhythm, not a figure) name
+      // (P2 of the 2026-08-27 review, extending shelf 7's three new arrivals the same register
+      // reading CONDENSED already had).
+      if (arrival === "CONDENSED" || arrival === "CRYSTALLIZED" || arrival === "PROPAGATED") {
         pool.push({ name: "apparition", fit: readingOf((toW.motifs || {}).voidShare) });
       }
       if (world) pool.push({ name: "discovery", fit: 1 });
@@ -4701,11 +4707,38 @@
       if (cast[1]) stood.push(cast[1]);
 
       var arrived = locusOf(toW), locusKind = arrived[0], locus = arrived[1], locusFit = arrived[2];
-      var arrival = locusKind !== "none" ? "CONDENSED" : "CARRIED";
+      // THE ONE ARRIVAL DECISION, READ ONCE AND NEVER RECOMPUTED (P1 of the 2026-08-27 adversarial
+      // review, naряд S-06's own repair). `arrivalOf`, beside `workParts`, is what ranks the
+      // charter's five arrivals against a pair's own records; `fillPlan` already called it to name
+      // the arrival the finished score declares, but this function still decided FOR ITSELF, on a
+      // plain two-way read of `locusOf(toW)` alone, whether an arrival instrument ever gets cast
+      // at all — so a pair `arrivalOf` ranked CRYSTALLIZED or PROPAGATED could declare an arrival
+      // that no instrument ever played, because this function's own binary test never saw those
+      // two names at all. `arrivalOf` asks for nothing this function cannot already hand it — its
+      // two arguments are `measuredParts` of each work and the packed `locusOf` reading `workParts`
+      // already builds from the very `arrived` triple two lines up — so it is called here directly,
+      // on the same two works, and its one answer is what both this function and `fillPlan` now
+      // carry; `arrivalOf` touches neither `sets` nor the pass count, so the same call in `fillPlan`
+      // (fed by `workParts`, built for whichever cut this pass plays) always answers identically.
+      var arrivalPlan = arrivalOf(
+        { measured: measuredParts(fromW) },
+        { measured: measuredParts(toW),
+          locus: [LOCUS_KINDS.indexOf(locusKind)].concat(locus || [0, 0]).concat([r4(locusFit)]) });
+      var arrival = arrivalPlan.mode;
+      // THE POINT AND ITS KIND FOLLOW THE SAME DECISION NOW, rather than `locusOf(toW)`'s own point
+      // regardless of which arrival plays. Where CONDENSED wins the two still agree exactly —
+      // `arrivalOf`'s own CONDENSED candidate is packed straight off this same `arrived` triple —
+      // so nothing moves for the case this file always had. Where CRYSTALLIZED wins instead, the
+      // point becomes the arriving work's own region-line grain seed (P2 below), a point this file
+      // had no use for before tonight.
+      locusKind = arrivalPlan.locusKind;
+      locus = arrivalPlan.locus;
+      locusFit = arrivalPlan.fit;
       var arrivalInstr = null;
-      // ARRIVAL'S OWN WINDOW OPENS AT `1 - locusFit*(1 - beforeAtR)` — `locusFit` is `locusOf`'s own
-      // winning reading (the note over `locusOf` names it), how confidently the arriving work's own
-      // record names a destination. A confidently-located arrival can open as early as the room
+      // ARRIVAL'S OWN WINDOW OPENS AT `1 - locusFit*(1 - beforeAtR)` — `locusFit` now carries
+      // `arrivalPlan.fit`, the winning arrival's own reading, whichever of the five plays: `locusOf`'s
+      // reading where CONDENSED wins, the texture reading where CRYSTALLIZED does, and so on — how
+      // confidently the arrival that will actually play reads. A confidently-read arrival can open as early as the room
       // already established allows (`beforeAtR`, above: travel's own worst-case open where travel
       // plays, pivot's otherwise); an unconfident one waits near the `1.0` it always closes at. Its
       // own worst-case-shifted open, `arrivalOpenAtR`, is built the same way travel's was — see the
@@ -4713,7 +4746,14 @@
       var baseArrivalOpen = r4(1 - locusFit * (1 - beforeAtR));
       var arrivalOpenAtR = r4(baseArrivalOpen - R * Math.max(0, baseArrivalOpen - beforeAtR));
       var arrivalWindowBound = [arrivalOpenAtR, 1.0];
-      if (arrival === "CONDENSED") {
+      // THREE OF THE FIVE CAST AN INSTRUMENT (P2 of the 2026-08-27 review). CONDENSED always did;
+      // CRYSTALLIZED and PROPAGATED join it here, because both name a real arriving figure — a
+      // seed crystallizing, a copy propagating — that wants an actual voice exactly as CONDENSED's
+      // figure always did. CARRIED casts nothing because it has nothing of its own to read
+      // (`arrivalOf`'s own comment above); INTERFERED casts nothing either, because it is already
+      // the shelf-7 arrival this module's own overlay shader plays directly off `arrival.mode`
+      // (below, at the overlay and grid-colour branches), with no instrument of its own to cast.
+      if (arrival === "CONDENSED" || arrival === "CRYSTALLIZED" || arrival === "PROPAGATED") {
         // THE ARRIVING WORK CONDENSES, AND THE INSTRUMENT THAT CONDENSES IT IS CAST like every
         // other voice: the whole collection is ranked on its own reading of this pair, the two
         // instruments already spoken for stand aside, and the die runs over what is left.
@@ -4789,7 +4829,16 @@
         }
       }
       var departing = locusOf(fromW);
-      var arrivalLeads = !!arrivalInstr && figureOnLocus(fromW, departing[1]);
+      // PROPAGATED ALWAYS LEADS (P2 of the 2026-08-27 review, naряд S-06's own words: "в
+      // зеркальных копиях дальняя меняется первой" — of the mirrored copies, the far one changes
+      // first). `arrivalLeads` is the existing handle for exactly that ordering — true plays the
+      // arrival's own disassembly before its assembly, false plays assembly alone (`roles.arrival`
+      // below) — so PROPAGATED asks for it outright rather than through `figureOnLocus`'s reading
+      // of the departing work's own figure, which answers a different question (whether the
+      // departing figure already stands where the departing work's own locus falls) that has
+      // nothing to do with a mirrored copy leading its own change.
+      var arrivalLeads = !!arrivalInstr
+        && (arrival === "PROPAGATED" || figureOnLocus(fromW, departing[1]));
 
       // THE VISIT'S MEMORY, on this side of the line. §4.8 lets three fields cross — the family,
       // the seed and the pass index — and the family is what `genreFor` above holds. What the pass
@@ -5510,8 +5559,27 @@
         ? Math.min(mf.latticePx, mt.latticePx) / Math.max(mf.latticePx, mt.latticePx) : 0;
       var angleDelta = haveLattice
         ? Math.abs(mt.latticeAngleDeg - mf.latticeAngleDeg) % 180 : 90;
+      // INTERFERED COMBINES ITS TWO READINGS BY THEIR OWN MINIMUM, NEVER THEIR PRODUCT (P4 of the
+      // 2026-08-27 review). `ratio` (how near the two periods stand) and `1 - angleDelta/90` (how
+      // near the two angles stand) are two READINGS of the same shape as every other candidate's
+      // own single reading in this pool — each already a share of its own [0, 1] span — and this
+      // is exactly the shape `genresFor` combines two such readings under, right above: the
+      // "kaleidoscope"/"spin" pair takes `Math.min(readingOf(rFrom.score), readingOf(rTo.score))`,
+      // "symmetry-slide"/"stripes" takes `Math.min(readingOf(bFrom.score), readingOf(bTo.score))`,
+      // and "tonal-and-spectral" takes `Math.min(bridge.tonal, bridge.spectral)` — never a product
+      // of two readings anywhere in that function. A PRODUCT OF TWO [0, 1] READINGS IS PROVABLY
+      // NO GREATER THAN THEIR MINIMUM (`a*b <= min(a, b)` for any `a, b` in `[0, 1]`, with equality
+      // only where one of them is exactly 1), so the product this line used to compute understated
+      // INTERFERED against every other candidate in `pool` by construction, whatever the two
+      // works' own readings actually were — a pair whose period and angle both stand at a genuine
+      // 0.8 near-match scored 0.64, not 0.8, purely from the arithmetic and not from anything the
+      // pair failed to read. This is provable from the shape of the formula alone, over the whole
+      // span either reading can take, and needs no run over any particular collection to show it
+      // (his 2026-08-19 word: corpus counts prove nothing a construction cannot already prove).
+      // `Math.min` puts INTERFERED back on the same footing as CONDENSED, CRYSTALLIZED and
+      // PROPAGATED, each already a bare reading with nothing multiplied into it.
       pool.push({ id: "INTERFERED",
-                  fit: haveLattice ? clamp01(ratio * (1 - clamp01(angleDelta / 90))) : 0,
+                  fit: haveLattice ? Math.min(ratio, 1 - clamp01(angleDelta / 90)) : 0,
                   kind: "none", at: null });
       var best = pool[0], i;
       for (i = 1; i < pool.length; i++) { if (pool[i].fit > best.fit) best = pool[i]; }
@@ -7099,10 +7167,16 @@
           }
         } else if (instr === "grid-colour") {
           // SHELF 7'S INTERFERED ARRIVAL, THE SAME PLAN'S WORD THE OVERLAY CARRIES. `arrival.mode`
-          // is settled before this fill runs and the interfered arrival is the condensed one, so
-          // this handle carries the plan's own answer. It stood at the instrument's own rest on
-          // every cast until now, which made the arrival the plan had already named never happen.
-          wanted.arrival = arrival.mode === "CONDENSED" ? 1 : 0;
+          // is settled before this fill runs, and this handle now reads the same condition the
+          // overlay's own `wanted.arrival` reads a few hundred lines up — INTERFERED, never
+          // CONDENSED. THE REPAIR (P3 of the 2026-08-27 review): this comment always named
+          // INTERFERED as the word this handle carries, but the line beneath it tested CONDENSED,
+          // so the two instruments this crossing can put on the same charter-shelf-7 arrival
+          // disagreed about which arrival they were both being asked to show — the overlay lit on
+          // INTERFERED while grid-colour lit on CONDENSED, on the same pair, in the same crossing.
+          // Nothing about grid-colour's own six other handles asks for CONDENSED particularly, so
+          // there was no reading of the instrument itself to preserve; the comment's own word wins.
+          wanted.arrival = arrival.mode === "INTERFERED" ? 1 : 0;
           // THE CUT STANDS AT ONE WORK'S OWN STRUCTURE AND ARRIVES AT THE OTHER'S — the module's
           // whole claim, and the four handles below are what makes it true of a PAIR rather than of
           // one work twice. Every one reads the work's own device first and its measured grid where

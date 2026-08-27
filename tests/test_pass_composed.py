@@ -4028,8 +4028,23 @@ else:
             # still being built, rather than in `passageFor` after the score has been weighed — so
             # the gate now reads `scoreFor`'s own defaulted role, `step`. The plant is the same
             # plant against the same rule; only the identifier the rule is written with moved.
+            # THE PLANT NOW NAMES TWO LINES, NOT ONE (2026-08-27, P1/P2 repair). `compose` used to
+            # decide the arrival on a plain `locusKind !== "none"` test and this plant struck the
+            # one line that read it; that line is gone, replaced by a call to `arrivalOf` (the same
+            # ranking `fillPlan` already used), and the instrument-casting gate widened from
+            # CONDENSED alone to CONDENSED/CRYSTALLIZED/PROPAGATED together, so the same-worded
+            # condition now stands at TWO places in the file — here, gating whether `compose` casts
+            # an arrival instrument at all, and in `registerOf`, gating the apparition register.
+            # Only the first is what a led passage needs struck, so the plant carries the next
+            # source line along as context: `source.split(from).join(to)` matches the exact text
+            # including that second line, and `registerOf`'s own occurrence is followed by
+            # different text (`pool.push({ name: "apparition"`), so it never matches and stands.
             (NODE_ROWS[24], [["LED_ROLES.indexOf(step) >= 0", "true"],
-                             ["      if (arrival === \"CONDENSED\") {", "      if (false) {"],
+                             ["      if (arrival === \"CONDENSED\" || arrival === \"CRYSTALLIZED\" "
+                              "|| arrival === \"PROPAGATED\") {\n        // THE ARRIVING WORK "
+                              "CONDENSES, AND THE INSTRUMENT THAT CONDENSES IT IS CAST like every",
+                              "      if (false) {\n        // THE ARRIVING WORK CONDENSES, AND THE "
+                              "INSTRUMENT THAT CONDENSES IT IS CAST like every"],
                              ["      var axis = travellingAxisOn(fromW, toW, pivot.measure, "
                               "road.axis);",
                               "      var axis = null;"]],
