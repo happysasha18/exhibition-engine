@@ -1548,14 +1548,34 @@
       return { per: per };
     }
 
-    // AN INSTRUMENT THAT DECLARES THE WORLD LEVEL SPENDS THE CROSSING'S ONE MIRACLE. Folding the
-    // space a work lives in is a world act — shelf 8's folded space, which shelf 6 says consumes
-    // the slot and never stacks — and the instrument's own manifest is what declares it, so this
-    // reads the manifest instead of keeping a list of names. It is the same fact the host reads
-    // when it refuses a world-level cue beside a camera-led flight.
+    // THE FOUR INSTRUMENTS THAT FOLD THE SPACE A WORK LIVES IN — shelf 8's folded space, the same
+    // event shelf 6 says consumes the crossing's one miracle and never stacks. Naряд S-18
+    // (2026-08-27) moves this off the manifest's shared `levels` array on purpose: that array also
+    // carries shelf 17's own camera-ownership law, which several of these four handles genuinely
+    // still need (their handles are declared at the WORLD level there, and `ownTheLevels` reads
+    // that declaration to grant them the camera at all — stripping it would leave the fold itself
+    // undriven, not merely uncounted). What moves is only the READING of «is this a fold», onto
+    // the instrument's own identity — the box a picture folds into, the little world it curls into
+    // (charter shelf 8's own ontology shift), the plane a frame lies down into, and the landscape a
+    // frame opens into — kept here, beside the function it feeds, rather than smuggled through a
+    // field that answers a different law.
+    var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];
+    function isWorldFold(iid) {
+      return !!iid && WORLD_FOLD_INSTRUMENTS.indexOf(iid) >= 0;
+    }
+
+    // AN INSTRUMENT THAT FOLDS THE SPACE A WORK LIVES IN SPENDS THE CROSSING'S ONE MIRACLE — THE
+    // FIRST TIME THIS WALK PLAYS IT. His word of 2026-08-26 20:17: a miracle is a wow, a concept,
+    // it is subjective, and «если много раз повторяется то уже не чудо» — repeated, it stops being
+    // one. So this no longer reads a mark true for the instrument's whole life on the site: it
+    // reads `walkMiracles`, this composition's own reading of what the walk has already played
+    // (set by `scoreFor`, exactly as `walkPlayed` is, from `01a-pass.js`'s `passWalkMiracles`). The
+    // first time a fold plays on a walk it is the miracle; every repeat is an ordinary letter, and
+    // the slot it no longer spends is free for another move in the same crossing. `isWorldFold`
+    // above is unaffected by any of this — a road built around the fold (`mustFold`) still finds
+    // the instrument that fold IS, whether or not this walk has already spent the miracle on it.
     function spendsTheMiracle(iid) {
-      var m = iid && MANIFESTS[iid];
-      return !!(m && (m.levels || []).indexOf("WORLD") >= 0);
+      return isWorldFold(iid) && walkMiracles.indexOf(iid) < 0;
     }
 
     // Every instrument this collection publishes that cuts on a kind, in one settled order.
@@ -2404,33 +2424,47 @@
         // node whose note does not open with «requested». With the note back on the outermost node
         // the row reads its full sweep again, with this law standing.
         if (clash.length) {
-          var overlapLevels = [];
+          var overlapLevels = [], overlapFolds = false;
           clash.forEach(function (rec) {
             if (num(win[0]) < num(rec.window[1]) && num(rec.window[0]) < num(win[1])) {
               (rec.levels || []).forEach(function (lv) {
                 if (overlapLevels.indexOf(lv) < 0) overlapLevels.push(lv);
               });
+              if (rec.folds) overlapFolds = true;
             }
           });
           var myLevels = MANIFESTS[iid].levels || [];
           var everyLevelTaken = myLevels.length && myLevels.every(function (lv) {
             return overlapLevels.indexOf(lv) >= 0;
           });
-          // THE WORLD IS THE ONE LEVEL NO OWNERSHIP CAN SHARE OUT. Every other level is settled
+          // THE MIRACLE IS THE ONE SLOT NO OWNERSHIP CAN SHARE OUT. Every other level is settled
           // after the cast by `ownTheLevels` and kept by the handles themselves — one owner drives,
           // every other cue rests. Shelf 6 asks something else entirely of this one: a folded space,
           // a shift of what a thing is or a change of substance CONSUMES the crossing's single
           // impossible event and NEVER STACKS, and shelf 8 says at most one folded space per
-          // crossing. Two instruments that both declare the world are two miracles however their
-          // handles are shared out, so this is decided here, at the cast, and not by ownership.
-          var worldTaken = overlapLevels.indexOf("WORLD") >= 0;
-          if (everyLevelTaken || (worldTaken && myLevels.indexOf("WORLD") >= 0)) {
+          // crossing. Naряд S-18 (2026-08-27): this used to read the overlap for a shared WORLD
+          // level, which was the manifest's own mark standing in for «this already-placed cue is
+          // the miracle» — every clash record a cast slot builds now says so itself (`rec.folds`,
+          // set beside it from `spendsTheMiracle`, the very reading this file uses everywhere else
+          // a cast asks whether a candidate would spend the crossing's one impossible event), so
+          // two folds are excluded from standing together whether or not this walk has already
+          // spent either of them once before, and a fold that has already played once this walk and
+          // reads as an ordinary letter no longer excludes a second candidate over this ground.
+          var worldTaken = overlapFolds;
+          if (everyLevelTaken || (worldTaken && spendsTheMiracle(iid))) {
             sawClash = true;
             continue;
           }
         }
         answer = suitsPair(iid, fromW, toW);
         var cuts = cutters.indexOf(iid) >= 0;
+        // TWO READINGS OF THE SAME CANDIDATE, AND THEY ANSWER DIFFERENT LAWS. `isFold` is
+        // structural and never reads the walk: it is what a road built around the fold (`mustFold`,
+        // below) has to find, whether or not this walk has already spent tonight's miracle on it —
+        // the box still folds into a box on its second play, it is only counted differently. `folds`
+        // is `spendsTheMiracle`'s own history-aware reading and is what the ranking (`base`, below)
+        // and every miracle-budget gate elsewhere in this file ask instead.
+        var isFold = isWorldFold(iid);
         var folds = spendsTheMiracle(iid);
         // A ROAD THAT IS ITSELF THE FOLD CASTS AN INSTRUMENT THAT FOLDS (2026-08-19). `genreFor`'s
         // own note says it plainly: the box-fold road «cannot play at all without folding, because
@@ -2446,7 +2480,7 @@
         // one that cuts the road's own ground kind is the one this road is built around. Where the
         // pair carries no such instrument the caller casts again without this bound and records
         // that the road played unfolded, so a thin passage still plays and still says why.
-        if (mustFold && !(folds && cuts)) continue;
+        if (mustFold && !(isFold && cuts)) continue;
         var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);
         var order = (taken.indexOf(iid) >= 0) ? 8
           : ((mustFill && !FILLS_THE_FRAME[iid]) ? 8
@@ -2491,6 +2525,13 @@
     // NOTHING HERE SCALES WITH THE COLLECTION. The list names letters, never pairs — the vocabulary
     // is fixed however many works hang — which is his 19:21 word about the product path.
     var walkPlayed = [];
+    // …AND THE SAME WALK, STRONG MOVES ONLY (naряд S-18, 2026-08-27). `spendsTheMiracle` above
+    // reads this rather than a manifest mark: the instruments named which fold beside its own
+    // definition, and this is which of those folds the walk has already spent on THIS visit,
+    // most recent first, exactly the shape `walkPlayed` and `roadPlayed` already are. It is set by
+    // `scoreFor` for the length of one composition and never accumulated here, for the same reason
+    // the other two are not.
+    var walkMiracles = [];
     // WHAT ONE COOLING IS WORTH. The letter played on the passage just gone is the most cooled and
     // the one played longest ago is barely cooled at all, in even steps between: a letter at place k
     // of n keeps (k + 1) / (n + 1) of its own weight. NOTHING IS EVER ZERO, which is shelf 9's law
@@ -4630,7 +4671,10 @@
       // level's handles taken off its track list and rests there. So the mark has nothing left to
       // exempt the ground from, and the ground is a record like any other: its levels and its
       // window, which is the whole passage.
-      var pivotClashRecord = { levels: pivotLevels, window: [0, 1] };
+      // `folds` TRAVELS BESIDE THE RECORD FOR THE SAME REASON THE LEVELS DO (naряд S-18): the
+      // clash test above no longer reads a shared WORLD level to know whether an already-placed
+      // cue is this crossing's miracle, it reads what that cue's own cast already decided.
+      var pivotClashRecord = { levels: pivotLevels, window: [0, 1], folds: spendsTheMiracle(pivotInstr) };
       // THE RETURN-PASS SHIFT, READ ONCE HERE (2026-08-19) so the windows composed below and the
       // levels-law exclusion they inform can both know the ONE nonzero value this edge will ever
       // draw. `dieAmong` is deterministic on `(seed, key)` alone — `key` carries no pass index — so
@@ -4806,7 +4850,7 @@
         var clashForArrival = [pivotClashRecord];
         if (travelInstr) {
           clashForArrival.push({ levels: MANIFESTS[travelInstr].levels || [],
-                                 window: travelWindowBound });
+                                 window: travelWindowBound, folds: spendsTheMiracle(travelInstr) });
         }
         var castArrival = castForKinds([], fromW, toW, !(ROLE_BUDGETS[role] || {}).miracle,
                                        pair.seed, key, "arrival", [pivotInstr, travelInstr],
@@ -8703,7 +8747,8 @@
 
     // ---- the choice core: two works, a direction and a die ----
 
-    function scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day, roadPlayed) {
+    function scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day, roadPlayed,
+                      miraclesPlayed) {
       // Two works, a direction, the step's role, what the visit already played here and a die: the
       // whole crossing, decided here and now.
       //
@@ -8720,6 +8765,12 @@
       // (`kaleidoscope` is both). `pickGenre` is the one die that reads it; every other die inside
       // this composition still reads `played`/`walkPlayed` exactly as it always has.
       //
+      // AND THE SAME WALK, STRONG MOVES ONLY. `miraclesPlayed` is `01a-pass.js`'s third reading of
+      // it (`passWalkMiracles`, naряд S-18, 2026-08-27) — the walk's own log of which fold has
+      // already spent the crossing's one miracle on this visit, never mixed with `played` or
+      // `roadPlayed` for the same reason those two are kept apart: a fold's name is also a letter,
+      // and mixing the two would make `spendsTheMiracle` cool on plays that were never the miracle.
+      //
       // AND WHAT THE VISIT REMEMBERS OF ITSELF. `viewer` is charter shelf 16's fourth pipeline step
       // (`viewerBiasOf` above) — set fresh here for the length of this one composition exactly as
       // `walkPlayed` is, never accumulated in this file. Its absence (no field on the request) reads
@@ -8728,6 +8779,7 @@
       walkPlayed = Array.isArray(played) ? played : [];
       walkPlayedDistinct = dedupeMostRecent(walkPlayed);
       roadPlayedDistinct = dedupeMostRecent(Array.isArray(roadPlayed) ? roadPlayed : []);
+      walkMiracles = Array.isArray(miraclesPlayed) ? miraclesPlayed : [];
       viewerMemory = viewer || null;
       // AND THE INSTANT THE VISIT IS HAPPENING AT — charter shelf 16's third pipeline step, set
       // fresh here for the length of this one composition exactly as the two lines above are. Its
@@ -9101,6 +9153,30 @@
           }
         }
       }
+      // THE SAME WALK, STRONG MOVES ONLY — naряд S-18 (2026-08-27). His word of 2026-08-26 20:17:
+      // a miracle is a wow, a concept, it is subjective, and repeated it stops being one. So
+      // `spendsTheMiracle` no longer reads a mark an instrument's own manifest carries for its
+      // whole life on the site; it reads which fold this walk has already spent, exactly the shape
+      // `walkMemory` and `walkGenres` already are — a plain list of NAMES, fenced the same way, for
+      // the same reason: a stray entry is recorded and the crossing still plays.
+      var miraclesPlayed = [];
+      if (req.walkMiracles !== undefined && req.walkMiracles !== null) {
+        if (!Array.isArray(req.walkMiracles)) {
+          unread.push("a walk-miracles list that is no list, so no strong move has played yet");
+        } else {
+          var strayMiracles = 0, wmi;
+          for (wmi = 0; wmi < req.walkMiracles.length; wmi++) {
+            if (typeof req.walkMiracles[wmi] === "string" && req.walkMiracles[wmi]) {
+              miraclesPlayed.push(req.walkMiracles[wmi]);
+            } else {
+              strayMiracles += 1;
+            }
+          }
+          if (strayMiracles) {
+            unread.push(strayMiracles + " walk-miracles entr(y/ies) naming no move");
+          }
+        }
+      }
       // THE VISIT'S OWN MEMORY OF ITSELF — charter shelf 16's fourth pipeline step. Three named
       // lists and nothing else, fenced exactly as `sessionMemory` is above: a field outside the
       // three is dropped and recorded rather than refusing the crossing, and each list is a plain
@@ -9169,6 +9245,7 @@
                    direction: direction, seed: seed, sessionMemory: memory,
                    walkMemory: played.length ? played : null,
                    walkGenres: roadPlayed.length ? roadPlayed : null,
+                   walkMiracles: miraclesPlayed.length ? miraclesPlayed : null,
                    viewerMemory: viewer,
                    day: day,
                    cameraState: req.cameraState === undefined ? null : req.cameraState,
@@ -9183,7 +9260,7 @@
       if (!a || !a.id) return no("the passage request names no departing work record");
       if (!b || !b.id) return no("the passage request names no arriving work record");
       var made = scoreFor(a, b, direction, seed, role, memory, played, viewer, routeFn, day,
-                          roadPlayed);
+                          roadPlayed, miraclesPlayed);
       // THE PASSAGE THE CAMERA LEADS IS DECIDED IN THE CHOICE CORE, where the score is still being
       // built. It stood here, after the core had already weighed the score and published its bytes,
       // its text and its fence reading, so those three answered for a score without this field on
@@ -9219,6 +9296,10 @@
              // Shelf 17's six structural levels, so a reader can put every handle every instrument
              // publishes through them and find the one that declares a seventh.
              levels: LEVELS.slice(),
+             // THE FOUR INSTRUMENTS `spendsTheMiracle` READS BY IDENTITY (naряд S-18, 2026-08-27),
+             // so a reader can ask which fold this walk has already spent without keeping its own
+             // second copy of the list this file already holds.
+             worldFoldInstruments: WORLD_FOLD_INSTRUMENTS.slice(),
              // THE REGISTER'S OWN WORD FOR EVERY HANDLE, so a reader can hold what a row PROMISES
              // against what the composition actually wrote. That comparison is the one thing
              // nothing checked: a row saying `measured` and a node standing at the instrument's own

@@ -519,17 +519,20 @@ NODE_ROWS = [
     "EX-COMPOSED a road's own cooldown reads a pool of the walk's eight roads and never the mixed "
     "pool a visit's instruments also stand in, so the floor for a road just played stays fixed at "
     "1/9 however many instruments the same walk has cast",
+    "EX-COMPOSED a fold spends the crossing's one miracle the first time a walk plays it and never "
+    "again, freeing the slot for another fold in the same crossing",
 ]
 # THE ROWS THIS FILE READS BY NAME rather than by position. Every row above is addressed by its
 # index, which is fine while the list only ever grows at the end — and it stopped being fine the
 # moment two rows landed there in one night: the first took `NODE_ROWS[-1]` and the second silently
 # took it away. A name cannot be taken away by a neighbour.
-ROW_ENTRY_DOOR = NODE_ROWS[-6]
-ROW_HARMONIC = NODE_ROWS[-5]
-ROW_COST = NODE_ROWS[-4]
-ROW_DAY = NODE_ROWS[-3]
-ROW_COOLDOWN_ARITH = NODE_ROWS[-2]
-ROW_ROAD_POOL = NODE_ROWS[-1]
+ROW_ENTRY_DOOR = NODE_ROWS[-7]
+ROW_HARMONIC = NODE_ROWS[-6]
+ROW_COST = NODE_ROWS[-5]
+ROW_DAY = NODE_ROWS[-4]
+ROW_COOLDOWN_ARITH = NODE_ROWS[-3]
+ROW_ROAD_POOL = NODE_ROWS[-2]
+ROW_MIRACLE_RARITY = NODE_ROWS[-1]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
 # change before the module is loaded, which is how every red-on-bug row below is run: the repair is
@@ -1168,14 +1171,15 @@ function collectVoiceHandles(cue) {
 // shelf 6 allows, so it may not stand at a role shelf 17 gives none, may not stand beside a second
 // impossible thing, and may not claim the world level beside a camera-led flight.
 const ROLES_ALL = ["entrance", "quiet link", "middle", "culmination", "return"];
-// WHICH INSTRUMENTS SPEND THE MIRACLE, read the way the composer's own `spendsTheMiracle` reads it —
-// off the manifest table the settings record ships, which is the same object `make(consts)` was
-// handed. A name is not a property, so no name is written here: an instrument spends the crossing's
-// one impossible event when its own manifest declares the WORLD level, and the collection says which
-// those are. Shelf 6 makes the slot single and unstackable and shelf 8 says a folded space IS the
-// miracle, so this list is the law's own subject.
-const SPENDS_THE_MIRACLE = Object.keys(fix.consts.manifests)
-  .filter((id) => ((fix.consts.manifests[id] || {}).levels || []).indexOf("WORLD") >= 0).sort();
+// WHICH INSTRUMENTS CAN EVER SPEND THE MIRACLE, read off `composer.worldFoldInstruments` — the one
+// home naряд S-18 (2026-08-27) gave this fact once `spendsTheMiracle` stopped reading a manifest
+// mark that doubled as shelf 17's own camera-ownership law. This names CAPABILITY, exactly as the
+// old manifest scan did: whether a given cast of one of these four actually SPENDS the crossing's
+// one impossible event now also depends on `walkMiracles`, the walk's own history, which the sweep
+// below never sends — so every read of this list, with no walk behind it, still answers "first
+// play" for each of the four exactly as the old always-on mark did. The row that proves the history
+// itself is its own, separate row (below).
+const SPENDS_THE_MIRACLE = composer.worldFoldInstruments.slice().sort();
 const folded = {}, worldCue = {}, ledAndWorld = {}, twoMiracles = {}, roleThrew = {}, roleN = {};
 const foldUnspent = {}, worldsCast = {}, worldStack = {}, worldNotVoiced = {};
 const worldSeen = {};
@@ -2750,6 +2754,45 @@ const HARD = {
   };
 }
 
+// ---- SHELF 6'S ONE SLOT, READ OFF THE WALK RATHER THAN THE MANIFEST (naряд S-18) --------------
+// His word of 2026-08-26 20:17: a miracle is a wow, a concept, it is subjective, and repeated it
+// stops being one. `spendsTheMiracle` no longer answers the same way for the same instrument on
+// every walk that ever casts it; it answers by what THIS walk has already played. The named pair
+// is `oneSlot.levels` above, reused because it already puts two world-declaring instruments within
+// reach of one crossing at once — the levels test above proves only one of them ever stands; this
+// proves WHICH one changes once the walk has already spent it, over a synthetic nine-step walk of
+// the same edge, threading `walkMiracles` forward exactly as `01a-pass.js`'s `passWalkMiracles`
+// does: the fold each step actually voiced `"miracle"`, most recent first.
+{
+  const a = "17871374341154614", b = "18143298391216802";
+  const wa = works.works[a], wb = works.works[b];
+  const seed = die(a + "__" + b + "__ab");
+  let walkMiracles = [];
+  const steps = [];
+  for (let i = 0; i < 9; i++) {
+    const req = {workRecordA: wa, workRecordB: wb, direction: "a-to-b", seed: seed,
+                 routeRole: "middle"};
+    if (walkMiracles.length) req.walkMiracles = walkMiracles.slice();
+    const p = (wa && wb) ? composer.passageFor(req) : {declined: "fixture is missing the work"};
+    const cues = p.score ? p.score.cues.map((c) => ({id: c.id, instrument: c.instrument.id,
+                                                     voice: c.voice})) : null;
+    const miracle = cues ? (cues.find((c) => c.voice === "miracle") || null) : null;
+    steps.push({walkMiracles: walkMiracles.slice(), declined: p.declined || null, cues: cues,
+               miracle: miracle ? miracle.instrument : null});
+    if (miracle) walkMiracles = [miracle.instrument].concat(walkMiracles);
+  }
+  // A FOLD VOICED THE MIRACLE MORE THAN ONCE OVER THE NINE STEPS is the law's own subject failing:
+  // read here as how many times each instrument that was EVER the miracle was voiced it, so a
+  // count over 1 anywhere names the repeat.
+  const miracleVoicedCount = {};
+  steps.forEach((s) => { if (s.miracle) miracleVoicedCount[s.miracle] = (miracleVoicedCount[s.miracle] || 0) + 1; });
+  out.miracleRarity = {
+    steps: steps,
+    distinctFolds: Object.keys(miracleVoicedCount).sort(),
+    repeats: Object.keys(miracleVoicedCount).filter((id) => miracleVoicedCount[id] > 1)
+  };
+}
+
 // ---- THE PASSAGE'S OWN LENGTH ----------------------------------------------------------------
 // Two claims, and both are claims about NUMBERS rather than about the photographs on disk. The
 // first: the band a role names holds for EVERY value the reading that places a length inside it
@@ -3307,12 +3350,16 @@ else:
               + ("; " + "; ".join(daybad) if daybad else ""))
 
         # --- rows 5b-5d · shelf 6's one slot, counted by the declaration ------------------------
-        # THE SUBJECT OF THE LAW IS WHAT AN INSTRUMENT DECLARES, NOT WHAT IT IS CALLED. The composer
-        # holds one definition of a fold — `spendsTheMiracle`, which asks the manifest whether the
-        # instrument declares the WORLD level — and the driver above builds `SPENDS_THE_MIRACLE` off
-        # the same manifest table the composer itself was handed, so neither side keeps a list of
-        # names and a collection that publishes a fifth world instrument tomorrow is already
-        # answered for.
+        # THE SUBJECT OF THE LAW IS WHAT AN INSTRUMENT DECLARES, NOT WHAT IT IS CALLED. Naряд S-18
+        # (2026-08-27) moved `spendsTheMiracle`'s reading of WHICH instruments fold off the
+        # manifest's shared `levels` mark (which also carries shelf 17's own camera-ownership law)
+        # onto the instrument's own identity, kept beside the function it feeds — and the driver
+        # reads the very same list back off `composer.worldFoldInstruments` rather than keeping a
+        # second copy, so neither side names an instrument twice. Whether a given cast of one of the
+        # four actually SPENDS the slot now also asks the walk's own history (`walkMiracles`); this
+        # sweep sends none, so every read below still answers "first play" for each of the four,
+        # exactly as the retired manifest mark always did — the row proving the history itself is
+        # its own, separate row (below, the rarity-on-a-walk check).
         # A planted run walks a corner of the collection rather than all of it, because a plant is
         # judged on whether the answer MOVES and twenty-four works are 552 ordered pairs of proof.
         CORNER = 24
@@ -3365,6 +3412,28 @@ else:
               f"composes {one['swap']['cues']}"
               + (f"; crossings carrying two: {stacked_roles}" if stacked_roles else "")
               + (f"; the two named pairs: {doors}" if doors else ""))
+
+        # --- row 5e · the miracle is a reading of the walk, not a mark an effect keeps for life ---
+        # Naряд S-18 (2026-08-27), his word of 2026-08-26 20:17: a miracle is a wow, a concept, it
+        # is subjective, and repeated it stops being one. Nine steps of the SAME edge, the walk's
+        # own `walkMiracles` threaded forward exactly as `01a-pass.js` would thread it: step 1 casts
+        # a fold and voices it the miracle; every step after names that same fold in its own walk
+        # history, so the slot it no longer spends is free, and this collection's own second
+        # world-declaring instrument (excluded from standing beside the first by the very levels-law
+        # row just above) takes it instead — a second fold, once, and never again either.
+        mr = got["miracleRarity"]
+        rr_bad = [s for s in mr["steps"] if s["declined"]]
+        rr_first = mr["steps"][0]["miracle"] if mr["steps"] else None
+        rr_second = mr["steps"][1]["miracle"] if len(mr["steps"]) > 1 else None
+        check(ROW_MIRACLE_RARITY,
+              not rr_bad and len(mr["steps"]) == 9 and rr_first is not None
+              and rr_second is not None and rr_second != rr_first and not mr["repeats"],
+              f"nine steps of one edge, walkMiracles threaded forward: step 1 voices «{rr_first}» "
+              f"the miracle; with «{rr_first}» now in the walk's own history step 2 no longer voices "
+              f"it and voices «{rr_second}» instead — a different fold takes the freed slot in the "
+              f"same crossing; over all nine steps {len(mr['distinctFolds'])} distinct fold(s) were "
+              f"ever the miracle ({', '.join(mr['distinctFolds'])}) and none twice: {mr['repeats'] or 'none'}"
+              + (f"; steps that declined: {rr_bad}" if rr_bad else ""))
 
         # --- row 5a · the length is composed from the pair, inside its tier's own band ----------
         # BOTH HALVES ARE PROVED BY CONSTRUCTION, not by sampling pairs. The band's own half is
@@ -4365,7 +4434,7 @@ else:
             # world instrument carrying a second level of its own walks straight past it and stands
             # beside a world ground. The named pair is the one that reaches for the slot that way.
             (NODE_ROWS[59],
-             [['          if (everyLevelTaken || (worldTaken && myLevels.indexOf("WORLD") >= 0)) {',
+             [['          if (everyLevelTaken || (worldTaken && spendsTheMiracle(iid))) {',
                "          if (everyLevelTaken) {"]],
              lambda g: g["oneSlot"]["levels"]["worlds"] > 1),
             # THE SECOND ROAD TO A SECOND WORLD HAD A ROW HERE AND IT IS RETIRED, WITH ITS REASON.

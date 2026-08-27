@@ -1930,6 +1930,14 @@
     // this can only ever name one of the eight roads `genresFor` answers with, however many
     // instruments the same steps cast.
     req.walkGenres = passWalkGenres();
+    // …AND THE SAME WALK, STRONG MOVES ONLY. His word of 2026-08-26 20:17: a miracle is a wow, a
+    // concept, it is subjective, and repeated it stops being one (naряд S-18). `walkMemory` names
+    // every letter a step carried and cannot serve this alone — a fold that already played once
+    // this walk still sits in that list beside every other letter, with nothing saying it was ever
+    // the ONE the crossing spent its miracle on. `passWalkMiracles` reads the one thing that does:
+    // which cue, if any, `pass-composer.js` itself voiced `"miracle"` on the step's own score,
+    // filed at the dock exactly where `passWalkMemory`/`passWalkGenres` already read.
+    req.walkMiracles = passWalkMiracles();
     // …AND THE VISIT'S OWN MEMORY OF ITSELF, shelf 16's fourth step, filled at this one place for
     // the same reason `walkMemory` is: the walk is the one that knows. Left OFF the request where
     // the visit has been shown nothing yet, rather than sent as three empty lists — an absent field
@@ -1981,6 +1989,21 @@
     for (let i = passRoutePlayed.length - 1; i >= 0; i--) {
       const step = passRoutePlayed[i];
       if (step && step.genre) out.push(step.genre);
+    }
+    return out;
+  }
+
+  // THE SAME LIST, STRONG MOVES ONLY (naряд S-18, 2026-08-27). Neither `passWalkMemory` nor
+  // `passWalkGenres` can serve `spendsTheMiracle`: the first names every instrument a step's stack
+  // carried whether or not it was voiced the miracle, and mixing the two would cool a fold on plays
+  // that never spent the slot. This reads `step.miracle` alone — the one instrument, if any, the
+  // step's own score voiced `"miracle"` on, filed once at the dock beside the other two lists — so
+  // it can only ever name a fold this walk actually spent, never a fold that merely played.
+  function passWalkMiracles() {
+    const out = [];
+    for (let i = passRoutePlayed.length - 1; i >= 0; i--) {
+      const step = passRoutePlayed[i];
+      if (step && step.miracle) out.push(step.miracle);
     }
     return out;
   }
@@ -2485,6 +2508,13 @@
     }
     const family = passFamilyOf(row.plan);
     const instrument = row.applied.instrument || passPrimaryOf(row);
+    // WHICH FOLD, IF ANY, THIS STEP SPENT THE CROSSING'S ONE MIRACLE ON (naряд S-18). Read off the
+    // composer's own score rather than the host's applied report: `voice: "miracle"` is
+    // `pass-composer.js`'s own decision, taken before anything is drawn, and it is the one place
+    // that already tells apart a fold that spent the slot from a repeat voiced an ordinary letter.
+    const miracleCue = row.score && Array.isArray(row.score.cues)
+      ? row.score.cues.find((c) => c.voice === "miracle") : null;
+    const miracle = (miracleCue && miracleCue.instrument && miracleCue.instrument.id) || null;
     passRoutePlayed.push({ edgeKey: edgeKey, direction: direction, family: family,
                            instrument: instrument, role: (row.request || {}).routeRole || null,
                            // The genre this passage ran on, beside the instruments it cast. A family
@@ -2493,6 +2523,11 @@
                            // find in this list, and it is recorded here rather than re-derived.
                            genre: row.genre || null,
                            stack: (row.applied.cues || []).map((c) => c.instrument),
+                           // The fold this step actually spent the miracle on, or none — read once
+                           // here and read back by `passWalkMiracles` alone, never mixed into
+                           // `stack`: a repeat instrument still stands in `stack`, it just is not
+                           // the miracle a second time.
+                           miracle: miracle,
                            world: instrument === "parquet" || !!(row.score && row.score.camera
                                                                   && row.score.camera.lead) });
     passRouteFamilyCount[family] = (passRouteFamilyCount[family] || 0) + 1;
