@@ -256,7 +256,7 @@ check("PASS-MATTER the grain handle publishes the measurement its door is read a
 check("PASS-MATTER the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "gl.uniform1f(U.uTau" not in LAYER
       and "gl.uniform1f(U.uGrainA" not in LAYER,
-      "nine of this instrument's fourteen uniforms have no place in the lab carrier's own fixed "
+      "nine of this instrument's sixteen uniforms have no place in the lab carrier's own fixed "
       "list (matter.md §9.1); the host reads the manifest")
 
 # Every uniform the manifest declares is a name the shader actually spells, and the other way about.
@@ -296,6 +296,7 @@ BROWSER_ROWS = [
 
 RED_ROWS = [
     "PASS-MATTER red-on-bug · the door reading removed: a door the buffer cannot keep whole is drawn",
+    "PASS-MATTER §8     · the declared seam reaches the picture, and it is the DECLARATION that carries it",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -466,7 +467,7 @@ else:
                     and m["framings"]["0"] == m["framings"]["1"]
                     and abs(zoom - (1 + 2 * 0.07 + 0.03)) < 1e-12
                     and m["camera"] == {"needs": "none", "authority": "stage"}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 15
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 16
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -477,7 +478,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "matter" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"nine handles, fourteen uniforms in one pass, the crop {zoom} that the drag's "
+                      f"nine handles, sixteen uniforms in one pass, the crop {zoom} that the drag's "
                       f"headroom is paid for with, resources declared for three tiers with a byte "
                       f"estimate of {res['standard']['bytesEstimate']}, and the lab commit "
                       f"{m['provenance']['commit']}")
@@ -615,7 +616,7 @@ else:
                   m.gl.preserveDrawingBuffer = true;
                   var ok = window.__exPass.bench.register({name:'matter-preserve', manifest:m,
                       values:function(){return {dial:0,grainA:4,grainB:12,ladder:0.6,gather:0.04,
-                          tau:0,drift:[0,0],loosen:0,guard:0};},
+                          tau:0,drift:[0,0],loosen:0,guard:0,seam:1};},
                       fit:function(){return [1,1,0,0];},
                       prepare:function(){return {take:false};}, start:function(){}, frame:function(){}});
                   var evs = window.__host.report().events.filter(function(e){return e.name==='manifest-refused';});
@@ -632,7 +633,7 @@ else:
                   m.passes[0].uniforms.push({name:'uPointer', type:'vec2', source:'pointer'});
                   var ok = window.__exPass.bench.register({name:'matter-pointer', manifest:m,
                       values:function(){return {dial:0,grainA:4,grainB:12,ladder:0.6,gather:0.04,
-                          tau:0,drift:[0,0],loosen:0,guard:0};},
+                          tau:0,drift:[0,0],loosen:0,guard:0,seam:1};},
                       fit:function(){return [1,1,0,0];},
                       prepare:function(){return {take:false};}, start:function(){}, frame:function(){}});
                   var evs = window.__host.report().events.filter(function(e){return e.name==='manifest-refused';});
@@ -897,6 +898,67 @@ else:
           f"({bug_read and bug_read['refused']} refusals, state {bug_read and bug_read['state']}, "
           f"{bug_read and bug_read['drew']} cue drawn), and nothing anywhere says the frame it laid "
           f"down was one whole work")
+
+    # ---- §8's `seams` block, PROVED ON THE PICTURE ---------------------------------------
+    # THE CLAIM UNDER TEST. This instrument declares one seam — the travelling front, an `isoline`
+    # hairline — and draws that front at the width the HOST answers with, off the manifest's own
+    # declaration. Two things have to be true for that to be more than paper, and each is a
+    # separate bench of its own, differing from the first in exactly one thing:
+    #
+    #   · THE WIDTH REACHES THE FRAME. A pack whose shader divides by nothing — `0.5 + d`, this
+    #     file's own line before §8 reached it, which is the same statement with the width typed in
+    #     as 1 — must draw a MEASURABLY different picture. If it does not, the uniform is bound and
+    #     spent on nothing.
+    #   · THE DECLARATION IS WHAT CARRIES IT. A pack whose shader is untouched but whose MANIFEST
+    #     declares no seam gets no answer from the host, falls back to this file's own one point,
+    #     and must then draw the narrow picture TO THE PIXEL. That is what separates a width the
+    #     declaration sets from a width that merely happens to be the host's default.
+    #
+    # WHERE THE DIFFERENCE STANDS, and why the numbers are small. The two widths differ only within
+    # a point and a half of the front, which is one curve across a 390x844 frame — a few thousand
+    # pixels of three hundred thousand. So the MEAN over the frame is small by construction and the
+    # bar it is held to is the seam threshold read the other way about: what must be large is the
+    # WORST channel, where the two works stand apart across the boundary, and what must be exactly
+    # nothing is the second comparison.
+    def frame_at(br):
+        br.evaluate("window.__show('host'); 0")
+        js(br, "return window.__offer(%s, {clock: 1.5, progress: 0.5});"
+           % json.dumps(matter_score()))
+        br.sleep(0.8)
+        d = br._cmd("Page.captureScreenshot", format="png", captureBeyondViewport=False)
+        br.evaluate("window.__cancel('seam row'); 0")
+        return d["data"]
+
+    def shot_on(pack_text, tag):
+        raw = on_bench(frame_at, pack_text=pack_text)
+        if raw is None:
+            return None
+        out = SHOTS / ("seam-" + tag + ".png")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(base64.b64decode(raw))
+        return out
+
+    NARROW = REGION.replace('"  float cov = clamp(0.5 + d / max(uSeam, 1e-4), 0.0, 1.0);",',
+                            '"  float cov = clamp(0.5 + d, 0.0, 1.0);",', 1)
+    UNDECLARED = REGION.replace(
+        'seams: [{ kind: "isoline", of: null, unit: "points of the drawing buffer" }],',
+        'seams: [],', 1)
+    shipped = shot_on(None, "shipped")
+    narrow = shot_on(NARROW, "narrow")
+    undeclared = shot_on(UNDECLARED, "undeclared")
+    reached = diff(shipped, narrow) if (shipped and narrow) else (0.0, 0.0)
+    carried = diff(narrow, undeclared) if (narrow and undeclared) else (255.0, 255.0)
+    check(RED_ROWS[1],
+          NARROW != REGION and UNDECLARED != REGION
+          and shipped and narrow and undeclared
+          and reached[1] >= SEAM and carried == (0.0, 0.0),
+          f"the shipped pack against one whose shader divides by nothing — this file's own line "
+          f"before §8 reached it: mean {reached[0]:.4f} of 255 over the whole frame, worst channel "
+          f"{reached[1]:.0f} (must reach {SEAM:.0f}), and the difference stands on the front and "
+          f"nowhere else. The same narrow pack against one whose SHADER is untouched and whose "
+          f"MANIFEST declares no seam: mean {carried[0]:.4f}, worst channel {carried[1]:.0f} — the "
+          f"declaration removed, the host answers nothing, this file falls back to its own one "
+          f"point and draws the narrow frame to the pixel")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

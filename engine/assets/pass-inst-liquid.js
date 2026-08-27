@@ -160,6 +160,9 @@
       "uniform vec4 uDial;",
       "uniform float uTime;",
       "uniform float uMask;",
+      // §8's `seams` block, both of this instrument's own boundaries in points of the drawing
+      // buffer: x is the mirrored fold's own retouch, y is the handover's own crossover.
+      "uniform vec2 uSeam;",
       // THE THREE WAVES (liquid.js:121-131), carried digit for digit. Each heading is a vector in
       // the frame's own unit square, each rate is radians a second, and each long count is the slow
       // rise and fall of that wave's own amplitude — so crests arrive in groups and no two moments
@@ -174,14 +177,40 @@
       // (liquid.js:135, :150). Both are the module's own.
       "const float BEND_MAX = 0.070;",
       "const float SPLIT_MAX = 0.0032;",
+      // THE CORNER OF A TRIANGLE WAVE, ROUNDED — the fleet's own `softAbs`, character for character
+      // the one the folding instrument argues and draws with (`pass-inst-kaleidoscope.js`, THE
+      // CREASE'S SOFTENING). Past `e` it is the absolute value to the last bit, so it costs the
+      // picture nothing anywhere but at the corner itself.
+      "float softAbs(float x, float e){",
+      "  float a = abs(x);",
+      "  return a >= e ? a : (x * x + e * e) / (2.0 * max(e, 1e-9));",
+      "}",
       // THE MODULE'S OWN WRAP, WRITTEN OUT. liquid.js binds its picture MIRRORED_REPEAT
       // (liquid.js:273-274); this host binds every source CLAMP_TO_EDGE, so the fold is done here
       // and the two roads read the same texel wherever the swell carries a lookup off the frame.
-      "vec2 mirror(vec2 x){ vec2 m = mod(x, 2.0); return 1.0 - abs(1.0 - m); }",
+      //
+      // AND THE FOLD IS A SEAM (§8's `seams` block, pass-layer.js). Where the swell carries a lookup
+      // past a work's own edge the sampling turns around, and the turn is a sign flip in the
+      // lookup's own derivative — the very same triangle wave, and the very same flip, the folding
+      // instrument retouches at every wedge edge. `e` rounds that corner over a width read in points
+      // of the drawing buffer and carried into this coordinate's own units by the caller.
+      "vec2 mirror(vec2 x, vec2 e){",
+      "  vec2 m = mod(x, 2.0);",
+      "  return vec2(1.0 - softAbs(1.0 - m.x, e.x), 1.0 - softAbs(1.0 - m.y, e.y));",
+      "}",
       // Where one point of the frame falls on one work: the host's own seating, pulled in by the
       // breathing zoom exactly as liquid.js:94-97 pulls it in.
+      //
+      // THE RETOUCH'S OWN WIDTH, in this coordinate's units. The map is affine in `p` at rate
+      // `f.xy / zoom`, and one point of the drawing buffer is `1.0 / uRes` of `p`, so a width of
+      // `uSeam.x` buffer points is `uSeam.x * f.xy / (zoom * uRes)` here. It rides `uWave.x` — the
+      // envelope this file already gates the bend, the colour split, the specular and the breathing
+      // zoom on — because the fold can only bite where the swell has carried a lookup off the frame,
+      // and that envelope is exactly nothing at both doors. So at a door this line is the plain
+      // mirror to the last bit and the door's own law reads the cover fit it always read.
       "vec2 into(vec2 p, vec4 f, float zoom){",
-      "  return mirror((p - 0.5) * f.xy / max(zoom, 1e-4) + 0.5 + f.zw);",
+      "  vec2 e = uSeam.x * f.xy / (max(zoom, 1e-4) * max(uRes, vec2(1.0))) * uWave.x;",
+      "  return mirror((p - 0.5) * f.xy / max(zoom, 1e-4) + 0.5 + f.zw, e);",
       "}",
       // GLSL ES 1.00 carries no `tanh`; the module's own two soft ceilings are written out here and
       // answer the same numbers.
@@ -238,10 +267,16 @@
       "  colB.b = texture2D(uB, into(vUv + sp - sc, uFitB, zoom)).b;",
       // THE HANDOVER, AND ITS OWN FOOTPRINT. `cov` is the share of THIS point that still stands on
       // the departing work: 1 where the water is lower than the line, 0 where it is higher. The
-      // crossover is one point of the drawing buffer wide, read through the height's own gradient,
-      // so the boundary carries no fade of its own and no step either.
+      // crossover is read through the height's own gradient, so it is counted in POINTS OF THE
+      // DRAWING BUFFER and the boundary carries no fade of its own and no step either.
+      //
+      // HOW MANY POINTS WIDE IS §8's ANSWER AND NO LONGER THIS FILE'S (the `seams` block,
+      // pass-layer.js). It stood at a bare `0.5 + (uDial.x - hs) / band`, which is the same statement
+      // with the width typed in as 1; the manifest below declares this handover as an `isoline`
+      // HAIRLINE and the host answers with the one width every hairline in the fleet is held to,
+      // read on the buffer this frame is actually drawn on.
       "  vec2 g = vec2(swell.x / max(uRes.x, 1.0), swell.y / max(uRes.y, 1.0));",
-      "  float band = max(length(g), 1e-6);",
+      "  float band = max(length(g), 1e-6) * max(uSeam.y, 1e-4);",
       "  float cov = clamp(0.5 + (uDial.x - hs) / band, 0.0, 1.0);",
       "  vec3 col = mix(colB, colA, cov);",
       // the bend catches a little light, the way a swell does (liquid.js:155-159)
@@ -299,6 +334,20 @@
        share `pass-inst-matter.js` gives its own travelling threshold — one law, one number, read in
        two instruments' own units. */
     var MARGIN = 0.10;
+
+    /* HOW WIDE EITHER OF THIS INSTRUMENT'S TWO BOUNDARIES STANDS WHERE NO HOST HAS ANSWERED — at
+       registration, before any frame has been asked for. Each falls back to what THIS FILE ITSELF
+       drew it at before §8's `seams` block reached it, and the two are not the same number: the
+       handover's own line was `0.5 + (front − hs) / band` with `band` already counted in points of
+       the drawing buffer, which is a crossover one point wide; the mirrored fold carried no retouch
+       whatever, and its corner was left where the sampling grid found it. A fold falling back to one
+       point would draw a picture this file never drew, and a number nobody asked for is exactly what
+       §8 exists to take away. Every drawn frame reads the host's own answer instead. */
+    var SEAM_FOLD_POINTS = 0, SEAM_LINE_POINTS = 1.0;
+    function seamAt(st, kind, fallback) {
+      var s = st && st.seam && st.seam[kind];
+      return typeof s === "number" && isFinite(s) && s > 0 ? s : fallback;
+    }
 
     /* THE DEAD BANDS AT EITHER END OF THE HAND, the number every instrument of this engine uses. Over
        the first and last five hundredths of the dial the water is flat and the line stands past the
@@ -411,6 +460,12 @@
         // the two carriers the shader reads, and the second the swell travels on
         wave: [wet, life, spread, advect],
         dial: [front, refr, travel, shade],
+        // BOTH BOUNDARIES' OWN WIDTHS (§8's `seams` block), in points of the drawing buffer: the
+        // mirrored fold's retouch and the handover's crossover. Carried into the shader and read
+        // back by the door reading below, so the widths the picture is drawn at and the widths the
+        // door is held against cannot be two different numbers.
+        seam: [seamAt(st, "tile", SEAM_FOLD_POINTS),
+               seamAt(st, "isoline", SEAM_LINE_POINTS)],
         t: t,
         // the same numbers by name, for the reading below and for the diagnostic surface
         dialAt: d, wet: wet, spread: spread, life: life, advect: advect, front: front,
@@ -486,7 +541,10 @@
       function walk(px, py) {
         var qx = px / W, qy = 1 - py / H;
         var r = heightAt(v, qx, qy);
-        var band = Math.max(Math.sqrt((r.gx / W) * (r.gx / W) + (r.gy / H) * (r.gy / H)), 1e-6);
+        // The shader's own `band`, at the width §8's `seams` block holds this handover to — the same
+        // number the frame is drawn at, so the walk reads the very boundary the picture carries.
+        var band = Math.max(Math.sqrt((r.gx / W) * (r.gx / W) + (r.gy / H) * (r.gy / H)), 1e-6)
+                 * v.seam[1];
         var cov = clamp(0.5 + (v.front - r.hs) / band, 0, 1);
         var room = want ? (v.front - r.hs) : (r.hs - v.front);
         if (want ? cov < 1 : cov > 0) wrong++;
@@ -510,7 +568,7 @@
       // between two of them, so the ceiling — the steepest the height can ever run on this buffer at
       // this spacing — is read as well and the refusal below stands on whichever of the two is worse.
       // It costs two multiplications and it can only ever OVER-hold.
-      var ceil = 0.5 * SLOPE_TOP * v.spread / Math.max(Math.min(W, H), 1);
+      var ceil = 0.5 * v.seam[1] * SLOPE_TOP * v.spread / Math.max(Math.min(W, H), 1);
       return { walked: walked, wrong: wrong, spareField: spare, widestBand: widest,
                ceilingBand: ceil, spread: v.spread, crest: v.crest, want: want };
     }
@@ -609,6 +667,34 @@
       // keep — and it cost something real, because a cue owns a level to the exclusion of every
       // other cue: claiming SURFACE here silenced whichever voice actually drove it.
       levels: ["TEXTURE"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). Two, and neither of
+      // them is a cut of the frame into elements — the `levels` note above says rightly that nothing
+      // here cuts the frame into parts, and a seam is a different question: not what elements the
+      // frame is divided into, but what boundary a picture drawn this way cannot help but have.
+      //   · TILE — the mirrored fold in `mirror`/`into` above. The module binds its own picture
+      //     MIRRORED_REPEAT and this host binds every source clamped, so the wrap is written into
+      //     the shader as `1 − |1 − mod(x, 2)|`: a triangle wave, whose derivative flips sign every
+      //     time the swell carries a lookup past a work's own edge. That is the same construction,
+      //     character for character, that the folding instrument closes as a HAIRLINE at every wedge
+      //     edge and the floor instrument closes at every tile's edge — and `tile` is the fleet's own
+      //     word for a mirrored continuation of a work past its own boundary (`pass-inst-parquet.js`
+      //     and `pass-inst-studio.js`, whose TILE bullet names this very construction). A hairline
+      //     and not a handover: the fold is continuous in value across the edge and only its own
+      //     derivative kinks, so what is rounded is a fact about the sampling grid.
+      //   · ISOLINE — the handover's own line in `main` above, where the water's height crosses the
+      //     level the dial has walked it to and one work hands the point to the other. A LEVEL SET
+      //     OF A CONTINUOUS FIELD, which is what `isoline` names in this fleet; the veiling
+      //     instrument's own declaration cites this instrument by name as running the same
+      //     construction (`pass-inst-veil.js`, WHERE THIS INSTRUMENT HAS A SEAM). A hairline too:
+      //     the crossover is read through the height's own analytic gradient, so it is counted in
+      //     points of the buffer and exists to keep the boundary off the grid's own stairs.
+      // `of` names no handle for either, and the host's own block gives the reason: a hairline
+      // spends none of an element's own room, so it does not shrink as an element repeats more
+      // often. Neither width would move if the crests were crowded twice as close together — the
+      // `crest` handle changes how STEEP the height runs, which the gradient already carries, and
+      // not how many buffer points a corner is rounded over.
+      seams: [{ kind: "tile", of: null, unit: "points of the drawing buffer" },
+              { kind: "isoline", of: null, unit: "points of the drawing buffer" }],
       params: { swell: [0, 1], crest: [0, 1], refract: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial — the module's own `wet` under the
       // name every instrument in this engine gives it — and `clock` is the second the host hands
@@ -753,6 +839,7 @@
           { name: "uWave", type: "vec4", source: "frame:wave" },
           { name: "uDial", type: "vec4", source: "frame:dial" },
           { name: "uTime", type: "float", source: "frame:t" },
+          { name: "uSeam", type: "vec2", source: "frame:seam" },
           { name: "uMask", type: "float", source: "handle:mask" },
         ],
       }],
@@ -819,6 +906,10 @@
           // host settles it from the device ratio and its own resolution step, so it moves while a
           // pass plays and each door is read on the grid standing at that door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // BOTH BOUNDARIES' OWN WIDTHS, off the host's own `seams` reading (§8's `seams` block).
+          // Only the host knows what every instrument declaring a hairline is holding its own edge
+          // to, so it answers once and this file carries the numbers rather than choosing them.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. `request` is
         // the crest spacing the score asked for and `applied` the one this grid could keep a whole

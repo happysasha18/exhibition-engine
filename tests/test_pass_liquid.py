@@ -205,12 +205,12 @@ check("PASS-LIQUID the coverage is declared, with the mechanism that pays for it
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-LIQUID the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 9,
+      declared == spelled and len(declared) == 10,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
 check("PASS-LIQUID the module's own MIRRORED_REPEAT is written out, because the host clamps",
-      "MIRRORED_REPEAT" in LABTXT and "vec2 mirror(vec2 x)" in REGION
+      "MIRRORED_REPEAT" in LABTXT and "vec2 mirror(vec2 x, vec2 e)" in REGION
       and "gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE" in LAYER,
       "liquid.js:273-274 binds its picture MIRRORED_REPEAT and the host binds every source "
       "CLAMP_TO_EDGE, so the fold is done in the shader and the two roads read the same texel "
@@ -241,6 +241,7 @@ RED_ROWS = [
     "PASS-LIQUID red-on-bug · the handover stops travelling past the water's ceiling: the door leaks",
     "PASS-LIQUID red-on-bug · the door reading removed as well: the leaking door is drawn",
     "PASS-LIQUID red-on-bug · the crest curve removed: the two roads part",
+    "PASS-LIQUID §8     · both declared seams reach the picture, and it is the DECLARATION that carries them",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -469,6 +470,62 @@ def run_browser_rows():
     return on_bench(body)
 
 
+# THE SCORE THE REAL ROAD PLAYS, held at module level so the transaction row and the seam
+# proof below play THE SAME passage and differ in nothing but the bytes the host is handed.
+SCORE_ON_THE_ROAD = {
+        "schema": 2,
+        "intent": "the photograph is the top of a body of water, and the second work "
+                  "surfaces on the crests of its own swell (lab/effects/liquid.js:1-5)",
+        "pair": {"a": "a", "b": "b"}, "seed": 0, "duration": 3000,
+        "direction": "a-to-b",
+        "interruption": {"withinMs": 500, "resolve": "nearest-door"},
+        "failLand": "arrive",
+        "camera": {"owner": "stage", "rests": "b",
+                   "track": [{"at": "b", "pan": {"x": 0, "y": 0}, "logScale": 0,
+                              "pitch": 0, "yaw": 0, "roll": 0, "fov": None,
+                              "owner": "stage"}]},
+        "cues": [{
+            "id": "liquid-main",
+            "instrument": {"id": "liquid", "api": 1},
+            "voice": "letter",
+            "roles": ["disassembly", "mystery", "assembly"],
+            "levels": ["SURFACE", "TEXTURE"],
+            "window": [0, 3.0], "works": ["a", "b"], "stack": 0,
+            "cameraAuthority": "stage",
+            "doors": {"in": {"handle": "mix", "value": 0, "measured": True},
+                      "out": {"handle": "mix", "value": 1, "measured": True}},
+            "nodes": {"mixDrive": {"source": "progress"},
+                      "clockDrive": {"source": "time"},
+                      "swellStatic": {"op": "static", "value": 0.5},
+                      "crestStatic": {"op": "static", "value": 0.702},
+                      "refractStatic": {"op": "static", "value": 0.45},
+                      "seedStatic": {"op": "static", "value": 0},
+                      "shadeStatic": {"op": "static", "value": 1},
+                      "travelStatic": {"op": "static", "value": 1},
+                      "maskStatic": {"op": "static", "value": 0}},
+            "tracks": {"mix": {"node": "mixDrive"}, "clock": {"node": "clockDrive"},
+                       "swell": {"node": "swellStatic"},
+                       "crest": {"node": "crestStatic"},
+                       "refract": {"node": "refractStatic"},
+                       "seed": {"node": "seedStatic"},
+                       "shade": {"node": "shadeStatic"},
+                       "travel": {"node": "travelStatic"},
+                       "mask": {"node": "maskStatic"}},
+            "resources": {"textures": 0, "textureSlots": 2, "framebuffers": 0,
+                          "pingPong": 0, "programs": 1, "passes": 1, "bytesEstimate": 0,
+                          "variant": "standard"},
+        }],
+        "quality": {v: {"renderScale": None,
+                        "cues": {"liquid-main": {
+                            "textures": 0, "textureSlots": 2, "framebuffers": 0,
+                            "pingPong": 0, "programs": 1, "passes": 1,
+                            "bytesEstimate": 0, "variant": v}}}
+                    for v in ("lean", "standard", "rich")},
+        "provenance": {"source": "lab/effects/liquid.js's own declared constants",
+                       "measuredAt": None, "by": "tests/test_pass_liquid.py"},
+}
+
+
 def run_red(pack_text, fn):
     return on_bench(fn, pack_text)
 
@@ -590,58 +647,7 @@ else:
 
         # the real transaction road
         def road(br):
-            score = {
-                "schema": 2,
-                "intent": "the photograph is the top of a body of water, and the second work "
-                          "surfaces on the crests of its own swell (lab/effects/liquid.js:1-5)",
-                "pair": {"a": "a", "b": "b"}, "seed": 0, "duration": 3000,
-                "direction": "a-to-b",
-                "interruption": {"withinMs": 500, "resolve": "nearest-door"},
-                "failLand": "arrive",
-                "camera": {"owner": "stage", "rests": "b",
-                           "track": [{"at": "b", "pan": {"x": 0, "y": 0}, "logScale": 0,
-                                      "pitch": 0, "yaw": 0, "roll": 0, "fov": None,
-                                      "owner": "stage"}]},
-                "cues": [{
-                    "id": "liquid-main",
-                    "instrument": {"id": "liquid", "api": 1},
-                    "voice": "letter",
-                    "roles": ["disassembly", "mystery", "assembly"],
-                    "levels": ["SURFACE", "TEXTURE"],
-                    "window": [0, 3.0], "works": ["a", "b"], "stack": 0,
-                    "cameraAuthority": "stage",
-                    "doors": {"in": {"handle": "mix", "value": 0, "measured": True},
-                              "out": {"handle": "mix", "value": 1, "measured": True}},
-                    "nodes": {"mixDrive": {"source": "progress"},
-                              "clockDrive": {"source": "time"},
-                              "swellStatic": {"op": "static", "value": 0.5},
-                              "crestStatic": {"op": "static", "value": 0.702},
-                              "refractStatic": {"op": "static", "value": 0.45},
-                              "seedStatic": {"op": "static", "value": 0},
-                              "shadeStatic": {"op": "static", "value": 1},
-                              "travelStatic": {"op": "static", "value": 1},
-                              "maskStatic": {"op": "static", "value": 0}},
-                    "tracks": {"mix": {"node": "mixDrive"}, "clock": {"node": "clockDrive"},
-                               "swell": {"node": "swellStatic"},
-                               "crest": {"node": "crestStatic"},
-                               "refract": {"node": "refractStatic"},
-                               "seed": {"node": "seedStatic"},
-                               "shade": {"node": "shadeStatic"},
-                               "travel": {"node": "travelStatic"},
-                               "mask": {"node": "maskStatic"}},
-                    "resources": {"textures": 0, "textureSlots": 2, "framebuffers": 0,
-                                  "pingPong": 0, "programs": 1, "passes": 1, "bytesEstimate": 0,
-                                  "variant": "standard"},
-                }],
-                "quality": {v: {"renderScale": None,
-                                "cues": {"liquid-main": {
-                                    "textures": 0, "textureSlots": 2, "framebuffers": 0,
-                                    "pingPong": 0, "programs": 1, "passes": 1,
-                                    "bytesEstimate": 0, "variant": v}}}
-                            for v in ("lean", "standard", "rich")},
-                "provenance": {"source": "lab/effects/liquid.js's own declared constants",
-                               "measuredAt": None, "by": "tests/test_pass_liquid.py"},
-            }
+            score = SCORE_ON_THE_ROAD
             out = js(br, "return window.__offer(%s, {});" % json.dumps(score))
             br.sleep(2.0)
             for _ in range(60):
@@ -749,6 +755,70 @@ else:
                   "own bar of %.3f — so the curve is a carrier of the module's own spacing and not "
                   "decoration; the host's capture stands %.1f from the background with a spread of "
                   "%.1f" % (d4, base, BAR, s4[0], s4[1]))
+
+        # ---- §8's `seams` block, PROVED ON THE PICTURE -------------------------------------
+        # THE CLAIM UNDER TEST. This instrument declares TWO seams — the mirrored fold as a `tile`
+        # hairline and the handover's own line as an `isoline` one — and draws both at the width
+        # the HOST answers with, off the manifest's own declaration. Two things have to be true
+        # for that to be more than paper, and each is a bench of its own differing from the first
+        # in exactly one thing:
+        #
+        #   · THE WIDTHS REACH THE FRAME. A pack whose shader spends neither — the fold with no
+        #     retouch and the handover divided by nothing, which is this file's own pair of lines
+        #     before §8 reached it — must draw a MEASURABLY different picture.
+        #   · THE DECLARATION IS WHAT CARRIES THEM. A pack whose shader is untouched but whose
+        #     MANIFEST declares no seam gets no answer from the host, falls back to what this file
+        #     itself drew before §8 — a bare fold and a one-point crossover — and must then draw
+        #     that same narrow picture TO THE PIXEL.
+        #
+        # The passage played is the one the transaction row plays, photographed at the middle of
+        # its own travel, where the swell is up and both boundaries are on the frame at once.
+        p5 = plant(REGION, [
+            ('"  vec2 e = uSeam.x * f.xy / (max(zoom, 1e-4) * max(uRes, vec2(1.0))) * uWave.x;",',
+             '"  vec2 e = vec2(0.0);",'),
+            ('"  float band = max(length(g), 1e-6) * max(uSeam.y, 1e-4);",',
+             '"  float band = max(length(g), 1e-6);",')])
+        p6 = plant(REGION, [
+            ('seams: [{ kind: "tile", of: null, unit: "points of the drawing buffer" },\n'
+             '              { kind: "isoline", of: null, unit: "points of the drawing buffer" }],',
+             'seams: [],')])
+        if p5 is None or p6 is None:
+            check(RED_ROWS[4], False, "the plant found nothing to change")
+        else:
+            def seam_frame(br):
+                br.evaluate("window.__show('host'); 0")
+                js(br, "return window.__offer(%s, {clock: 1.4, progress: 0.5});"
+                   % json.dumps(SCORE_ON_THE_ROAD))
+                br.sleep(0.9)
+                d = br._cmd("Page.captureScreenshot", format="png",
+                            captureBeyondViewport=False)
+                return d["data"]
+
+            def seam_shot(pack_text, tag):
+                raw = on_bench(seam_frame, pack_text)
+                if raw is None:
+                    return None
+                SHOTS.mkdir(parents=True, exist_ok=True)
+                out = SHOTS / ("seam-" + tag + ".png")
+                out.write_bytes(base64.b64decode(raw))
+                return str(out)
+
+            shipped = seam_shot(None, "shipped")
+            narrow = seam_shot(p5, "narrow")
+            undeclared = seam_shot(p6, "undeclared")
+            reached = diff(shipped, narrow) if (shipped and narrow) else (0.0, 0.0)
+            carried = diff(narrow, undeclared) if (narrow and undeclared) else (255.0, 255.0)
+            check(RED_ROWS[4],
+                  shipped and narrow and undeclared
+                  and reached[1] >= SEAM and carried == (0.0, 0.0),
+                  "the shipped pack against one that spends neither width — this file's own two "
+                  "lines before §8 reached it: mean %.4f of 255 over the whole frame, worst "
+                  "channel %.0f, which has to reach the seam threshold of %.0f. The same narrow "
+                  "pack against one whose SHADER is untouched and whose MANIFEST declares no seam: "
+                  "mean %.4f, worst channel %.0f — the declaration removed, the host answers "
+                  "nothing, this file falls back to what it drew before §8 and lays down the "
+                  "narrow frame to the pixel"
+                  % (reached[0], reached[1], SEAM, carried[0], carried[1]))
 
 
 # ---------------------------------------------------------------- report

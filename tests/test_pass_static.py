@@ -375,59 +375,168 @@ else:
                  "by any score on any pair — a published cap that says something false about the "
                  "module"))
 
-        # ---------------------------------------------------------- row 6: every seam is declared
+        # ------------------------------------------------- rows 6 and 7: every seam is declared
         #
-        # An instrument that cuts the frame into panels or pieces has a boundary a picture cannot
-        # help but have, and three of them — kaleidoscope, planet, tunnel — rounded that boundary by
-        # hand, with a typed number no reader outside the file could find. §8's `seams` block is the
-        # repair: an instrument DECLARES where it has a seam (a line, a wedge, a ring) and what
-        # measure sets the seam's own width, so a reader — and the host, for the three that have
-        # moved onto its shared shape — finds it in one place rather than by reading every shader.
+        # An instrument that cuts the frame has a boundary a picture cannot help but have, and three
+        # of them — kaleidoscope, planet, tunnel — rounded that boundary by hand, with a typed number
+        # no reader outside the file could find. §8's `seams` block is the repair: an instrument
+        # DECLARES where it has a seam (a line, a wedge, a ring, a tile, an isoline) and what measure
+        # sets that seam's own width, so a reader — and the host, which answers the width — finds it
+        # in one place rather than by reading every shader.
         #
-        # WHO THIS ROW HOLDS TO THE FIELD. Every instrument whose own `cuts` block is non-empty
-        # partitions the frame into named elements by its own declaration, so it is asked for a
-        # `seams` block of its own — even an empty one, where the cut is exact or covered by
-        # something else and the instrument says so. Eight more are held to it by name rather than
-        # by `cuts`, because each cuts the frame into panels, wedges, cells or tiles by its own
-        # header's own words but does not yet publish a `cuts` block at all — a pre-existing gap
-        # this row does not close, it only asks that a `seams` block still exist where the file's
-        # own geometry has one: `planet` (the curled strip's own wrap), `tunnel` (the corridor's own
-        # rings), `boxfold` (the two turning faces), `hero` (the wedges between its mirrors),
-        # `livemirror` (the fold lines' own panels), `parquet` (the floor's own tiles), `unfold`
-        # (the sheet's own four panels), `weave` (the two ribbon sets' own partition). `seams`, once
-        # declared, must be a list, and any entry naming a handle in `of` must name one this
-        # instrument actually publishes, so a seam cannot claim to be set by a measurement nobody
-        # can drive.
-        NAME6 = "STATIC · every instrument that cuts the frame declares its own seams"
-        cuts_map, seams_map = fleet.get("cuts", {}), fleet.get("seams", {})
+        # WHO THIS ROW HOLDS TO THE FIELD, AND WHY IT IS EVERYONE. It used to be the instruments whose
+        # own `cuts` block is non-empty, PLUS eight more named here by hand because their headers
+        # describe a cut their manifests never publish. That union was exactly the set of files that
+        # already complied, so the three that did not — `liquid`, `matter`, `overlay` — published no
+        # `cuts` block, stood in no list, and were exempt BY CONSTRUCTION: the row could not have
+        # caught them, and it did not. A gate whose population is drawn from the files that pass it
+        # is not a gate. So the population is now THE WHOLE FLEET, every instrument the registry
+        # loads, and the question each is asked is the one a reader actually needs answered: where
+        # does this instrument cut, and how wide is that cut held? An instrument with no boundary of
+        # its own answers `seams: []` and says why in its own file — five did so before this row
+        # changed (adrift, livemirror, pour, strata-light, strata-scale) and that is the pattern.
+        # Silence is no longer one of the answers available.
+        #
+        # WHAT ELSE IS HELD. A declaration must be a list. Every entry must name a `kind` and a
+        # `unit`, and the unit must be one of the exactly two the host distinguishes — a misspelt
+        # unit does not fail loudly, it falls into the handover branch of `seamsOf` and silently
+        # draws a share of a repeat where a hairline was meant. An entry naming a handle in `of` must
+        # name one this instrument actually publishes, so a seam cannot claim to be set by a
+        # measurement nobody can drive.
+        NAME6 = "STATIC · every instrument in the fleet declares where it cuts the frame"
+        UNITS = {"points of the drawing buffer", "a share of one repeat's own span"}
+
+        def seam_verdict(f):
+            """The row's own predicate, held apart so the red-on-bug run below is judged by the very
+            code the live run is judged by rather than by a second description of it."""
+            seams_of, handles_of = f.get("seams", {}), f.get("handles", {})
+            gone, bad = [], []
+            for name in sorted(f["names"]):
+                decl = seams_of.get(name)
+                if decl is None:
+                    gone.append(name)
+                    continue
+                if not isinstance(decl, list):
+                    bad.append(name + ": `seams` is not a list")
+                    continue
+                own = set(handles_of.get(name, []))
+                for entry in decl:
+                    if not isinstance(entry, dict) or "kind" not in entry or "unit" not in entry:
+                        bad.append(name + ": a seam entry names no `kind` or no `unit`")
+                        continue
+                    if entry["unit"] not in UNITS:
+                        bad.append(name + ": a seam names the unit «" + str(entry["unit"])
+                                   + "», which is neither of the two the host reads")
+                    if entry.get("of") is not None and entry["of"] not in own:
+                        bad.append(name + ": a seam names `of: " + str(entry["of"])
+                                   + "`, which is not one of its own published handles")
+                    # A HAIRLINE MAY NAME NO HANDLE, and this is the host's own arithmetic rather
+                    # than a preference. `seamsOf` reads the handle named in `of` into `count` and
+                    # hands `count` to `seamHandoverOf` alone; `seamHairlineOf` takes no argument at
+                    # all, because a hairline spends none of an element's own room and so does not
+                    # shrink as that element repeats more often. A hairline naming a handle would
+                    # therefore publish a dependence the host discards without a word — a sentence
+                    # about the instrument that is false the moment it is read.
+                    if (entry.get("of") is not None
+                            and entry["unit"] == "points of the drawing buffer"):
+                        bad.append(name + ": a hairline seam names `of: " + str(entry["of"])
+                                   + "`, and the host's own hairline reading takes no count — only "
+                                     "a handover's width is divided by one")
+            return gone, bad
+
+        seams_map = fleet.get("seams", {})
         handles_map = fleet.get("handles", {})
-        NAMED_CUTTERS = {"planet", "tunnel", "boxfold", "hero", "livemirror", "parquet",
-                          "unfold", "weave"}
-        expected = sorted(set(n for n in cuts_map if cuts_map[n]) | NAMED_CUTTERS)
-        missing6, malformed = [], []
-        for n in expected:
-            s = seams_map.get(n)
-            if s is None:
-                missing6.append(n)
-                continue
-            if not isinstance(s, list):
-                malformed.append(n + ": `seams` is not a list")
-                continue
-            own_handles = set(handles_map.get(n, []))
-            for entry in s:
-                if not isinstance(entry, dict) or "kind" not in entry or "unit" not in entry:
-                    malformed.append(n + ": a seam entry names no `kind` or no `unit`")
-                elif entry.get("of") is not None and entry["of"] not in own_handles:
-                    malformed.append(n + ": a seam names `of: " + str(entry["of"])
-                                      + "`, which is not one of its own published handles")
+        expected = sorted(fleet["names"])
+        missing6, malformed = seam_verdict(fleet)
         check(NAME6, not missing6 and not malformed,
               "" if not (missing6 or malformed) else
-              ("every instrument whose own `cuts` block is non-empty, plus planet and tunnel by "
-               "name, is expected to publish `manifest.seams` — even an empty list, said outright, "
-               "where the cut carries no separate boundary to round. "
-               + ("missing entirely: " + ", ".join(missing6) + ". " if missing6 else "")
+              ("every one of the " + str(len(expected)) + " instruments the registry loads is asked "
+               "where it cuts the frame — a non-empty `manifest.seams` with a kind and a unit the "
+               "host reads, or an empty list said outright with the reason in the file, which is "
+               "what five of them already publish. No instrument is exempt by name or by what it "
+               "leaves undeclared. "
+               + ("declares nothing at all: " + ", ".join(missing6) + ". " if missing6 else "")
                + ("malformed: " + "; ".join(malformed) + "." if malformed else ""))
               )
+
+        # ROW 7 IS THE OTHER DIRECTION, and it closes the way round the row above cannot see. An
+        # instrument reads its width back off the pose the host hands it (`st.seams`), and a file
+        # that reads one while its manifest declares none is spending a width nobody published: the
+        # host answers `null` for an instrument with no declaration, the file silently falls back to
+        # a private constant, and the declaration §8 exists for is gone again by another door.
+        #
+        # WHAT THIS ROW DOES NOT ASSERT, said outright rather than left as a silence. The reverse —
+        # every DECLARED seam being read back — does not hold today and this row does not pretend it
+        # does: most declarations still stand as paper, each instrument drawing its own softening in
+        # its own shader. The count stands in this row's own words at every run, so it cannot rot
+        # unnoticed, and the names are printed rather than summarised.
+        NAME7 = "STATIC · no instrument reads a seam width the host was never asked for"
+        readers, declared_names = [], []
+        for n in expected:
+            path = ROOT / "engine" / "assets" / ("pass-inst-" + n + ".js")
+            body = path.read_text(encoding="utf-8") if path.exists() else ""
+            if "st.seams" in body or "state.seams" in body:
+                readers.append(n)
+            if seams_map.get(n):
+                declared_names.append(n)
+        unpublished = sorted(set(readers) - set(declared_names))
+        paper = sorted(set(declared_names) - set(readers))
+        check(NAME7, not unpublished,
+              ("these instruments read `st.seams` back at render time and their manifests declare "
+               "no seam for the host to answer: " + ", ".join(unpublished) + ". "
+               if unpublished else "")
+              + str(len(readers)) + " of the " + str(len(declared_names))
+              + " instruments declaring a seam read the host's own answer back and draw at it — "
+              + ", ".join(readers) + ". The remaining " + str(len(paper))
+              + " declare a seam and draw their own softening in their own shaders, so the "
+                "declaration tells a reader where the boundary is and does not yet set its width: "
+              + ", ".join(paper))
+
+        # ---------------------------------------- row 8: the row above, run against a silent file
+        #
+        # WHY THIS ROW EXISTS. The row it guards was green for weeks while three instruments in this
+        # very tree published no `seams` block at all, because its population was built as
+        # «instruments declaring a cut» ∪ «eight names typed here», and that union was exactly the
+        # set of files that already complied. The row was not wrong about the files it looked at; it
+        # never looked at the others. So the repair cannot be judged by the repaired row coming out
+        # green — a row that examines nobody comes out green too. It is judged by handing the SAME
+        # predicate a fleet with one declaration taken out and watching it red.
+        #
+        # WHAT IS TAKEN OUT, and it is the exact shape of the defect this row was blind to: the
+        # instrument keeps every other field, publishes no `cuts` block it did not publish before,
+        # and simply does not mention `seams`. Under the old population it would have been exempt by
+        # construction. The whole asset tree is copied and the copy is edited, so the file on disk is
+        # never touched and no working tree can be left changed by a proof.
+        NAME8 = "STATIC · the row above reds when an instrument declares no seam at all"
+        SILENT = "veil"
+        import shutil as _shutil
+        mute = TMP / "silent-fleet"
+        if mute.exists():
+            _shutil.rmtree(mute)
+        _shutil.copytree(ROOT / "engine" / "assets", mute)
+        target = mute / ("pass-inst-" + SILENT + ".js")
+        text = target.read_text(encoding="utf-8")
+        cut = 'seams: [{ kind: "isoline", of: null, unit: "points of the drawing buffer" }],'
+        if cut not in text:
+            check(NAME8, False, "the plant found no declaration to take out of «" + SILENT + "»")
+        else:
+            target.write_text(text.replace(cut, "", 1), encoding="utf-8")
+            muted = subprocess.run(["node", str(FLEET_PATH), str(mute)],
+                                   capture_output=True, text=True, timeout=300)
+            if muted.returncode != 0:
+                check(NAME8, False, (muted.stderr or "").strip()[-400:])
+            else:
+                bug = json.loads(muted.stdout.strip().splitlines()[-1])
+                gone, bad = seam_verdict(bug)
+                check(NAME8,
+                      gone == [SILENT] and not bad and not missing6 and len(bug["names"]) == len(expected),
+                      "with «" + SILENT + "»'s own declaration taken out of a copy of the asset tree "
+                      "— every other field of its manifest left standing, and no `cuts` block added "
+                      "or removed — the same predicate that passes the shipped fleet names it: "
+                      + (", ".join(gone) if gone else "nobody") + ". It stands over the same "
+                      + str(len(bug["names"])) + " instruments either way, so what changed is the "
+                      "declaration and nothing about the population")
+        _shutil.rmtree(mute, ignore_errors=True)
 
 # ---------------------------------------------------------------- report
 print("EX-PASS · shelf 21 over every named constant on the composition road")

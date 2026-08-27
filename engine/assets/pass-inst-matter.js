@@ -94,6 +94,9 @@
       "uniform float uGather;",      // how wide the loosened band is, in field units
       "uniform float uSeed;",
       "uniform float uGuard;",
+      // §8's `seams` block: how wide the travelling front's own crossover stands, in points of the
+      // drawing buffer, off the host's own shared hairline reading.
+      "uniform float uSeam;",
       "uniform float uPresence;",  // the entry-door contract's reserved dry
       "float h11(vec2 i){ return fract(sin(dot(i, vec2(41.317, 289.107)) + uSeed) * 43758.5453); }",
       // value noise with its own exact gradient: the material's grain, and the direction it drags
@@ -127,7 +130,16 @@
       "          + (1.0 - uLadder) * (0.62 * n1.yz * uGrainA + 0.38 * n2.yz * uGrainB);",
       "  float grad = max(length(gF), 1e-5);",
       "  float d = (F - uTau) / (grad * h);",
-      "  float cov = clamp(0.5 + d, 0.0, 1.0);",
+      // THE FRONT'S OWN RETOUCH, off the host's own `seams` reading (§8's `seams` block,
+      // pass-layer.js). `d` is the signed distance to the front counted in POINTS OF THE DRAWING
+      // BUFFER — the division by `grad * h` is what puts it in that unit — so the crossover this
+      // line writes is `uSeam` buffer points wide and nothing else. It stood at a bare `0.5 + d`,
+      // which is the same statement with the width typed in as 1, and that 1 was this file's own
+      // number for the very question kaleidoscope's crease, planet's wrap and tunnel's ring-join
+      // each answered privately before the host took the argument over. The manifest below declares
+      // this front as an `isoline` HAIRLINE and the host answers with the one width every hairline
+      // in the fleet is held to, read on the buffer this frame is actually drawn on.
+      "  float cov = clamp(0.5 + d / max(uSeam, 1e-4), 0.0, 1.0);",
       // THE LOOSENING. Strongest at the front — where the field stands nearest the threshold — and
       // gone on both sides of it, so a band of loose matter travels and the rest of the frame is the
       // picture standing still. The drag runs along the field's own gradient, and across it the two
@@ -210,6 +222,17 @@
     // either door stands on, and it is the number the reading below is held against.
     var MARGIN = 0.10;
 
+    // HOW WIDE THE FRONT'S OWN CROSSOVER STANDS WHERE NO HOST HAS ANSWERED — at registration, before
+    // any frame has been asked for. One point of the drawing buffer is the width this file drew the
+    // front at before §8's `seams` block existed (`cov = clamp(0.5 + d)` in FRAG, where `d` is
+    // already counted in buffer points), so the fallback is that number and nothing invented. Every
+    // drawn frame reads the host's own answer instead.
+    var SEAM_POINTS = 1.0;
+    function seamOf(st) {
+      var s = st && st.seam && st.seam.isoline;
+      return typeof s === "number" && isFinite(s) && s > 0 ? s : SEAM_POINTS;
+    }
+
     // The numbers of one frame: everything the shader gets beyond the seating of the two works is a
     // pure function of the pose (matter.js:309-329). The threshold travels a tenth past either end
     // of the field and no further — past the field's own range every point stands on one side and
@@ -229,6 +252,10 @@
         drift: [drift, drift * 0.6],
         loosen: st.travel * AMP * clamp(st.loosen, 0, 1) * 4 * d * (1 - d),
         guard: st.shade * smoothstep(0, 0.09, d) * smoothstep(1, 0.91, d),
+        // THE FRONT'S OWN RETOUCH (§8's `seams` block), carried into the shader and read back by the
+        // door reading below, so the width the picture is drawn at and the width the door is held
+        // against cannot be two different numbers.
+        seam: seamOf(st),
       };
     }
 
@@ -296,8 +323,12 @@
       if (!(W >= 1) || !(H >= 1)) return null;
       var slope = slopeOf(v, W / Math.max(H, 1));
       return { grid: g, want: want, slope: slope,
-               // half the mask's own crossover, in the field's own units, on THIS buffer
-               cross: 0.5 * slope / H,
+               // half the mask's own crossover, in the field's own units, on THIS buffer — and at
+               // the width §8's `seams` block holds this front to, which is the same number the
+               // shader draws it at. A wider retouch is a wider crossover and a door that has to
+               // stand further past the field's own range to stay whole, so the two move together
+               // rather than the reading being held against a width the picture no longer uses.
+               cross: 0.5 * v.seam * slope / H,
                cells: v.grainA, cellPx: H / Math.max(v.grainA, 1e-6) };
     }
 
@@ -376,6 +407,27 @@
       // module (lab/CROSSING-BRIEF.md carries no `matter` row), so these two are derived and said to
       // be derived: one field runs over the whole frame at SURFACE, and its grain is the TEXTURE.
       levels: ["SURFACE", "TEXTURE"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). It cuts the frame in
+      // one place and the file's own header names it: "a band of loosened matter travels across the
+      // frame with one work whole ahead of it and the other whole behind" (above, THE MATTER
+      // INSTRUMENT). The edge of that band is the travelling threshold `cov` in FRAG — the level set
+      // of the field `F` where it stands at `uTau`, one work on either side of it — so the shape cut
+      // here is a LEVEL SET OF A CONTINUOUS FIELD and `isoline` is the fleet's own word for it,
+      // already carried by the veiling instrument, whose own declaration names this instrument by
+      // name as running the same construction (`pass-inst-veil.js`, WHERE THIS INSTRUMENT HAS A
+      // SEAM). It is a HAIRLINE retouch and not a handover zone: `d` in FRAG is the distance to that
+      // level set counted in points of the drawing buffer, so what the crossover exists for is to
+      // keep the boundary off the sampling grid's own stairs rather than to blend two unrelated
+      // things across a visible band — the field either side of it is one continuous surface. `of`
+      // names no handle for the reason the host's own block gives: a hairline spends none of an
+      // element's own room, so it does not shrink as the material's cells multiply, and this
+      // instrument's `grain` handle drives the cell count without touching the width of this edge.
+      //
+      // THE GRAIN IS NOT A SECOND SEAM, and that is a decision rather than an omission. `vnoise` is
+      // value noise on smoothstep coordinates — continuous in value AND in its first derivative
+      // across every cell boundary, which is what its own exact gradient in FRAG returns — so a
+      // cell's edge is no boundary the picture can help but have. Only the threshold is.
+      seams: [{ kind: "isoline", of: null, unit: "points of the drawing buffer" }],
       params: { loosen: [0, 1], drift: [0, 1], gather: [0, 1], grain: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down; the four below them are the module's declared params; `seed` is its die; and
@@ -473,6 +525,7 @@
           { name: "uLoosen", type: "float", source: "frame:loosen" },
           { name: "uGather", type: "float", source: "frame:gather" },
           { name: "uGuard", type: "float", source: "frame:guard" },
+          { name: "uSeam", type: "float", source: "frame:seam" },
           { name: "uSeed", type: "float", source: "handle:seed" },
         ],
       }],
@@ -556,6 +609,10 @@
           // host settles it from the device ratio and its own resolution step, so it moves while a
           // pass plays and each door is read on the grid standing at that door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE FRONT'S OWN RETOUCH, off the host's own `seams` reading (§8's `seams` block). Only
+          // the host knows what every instrument declaring a hairline is holding its own edge to, so
+          // it answers once and this file carries the number rather than choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00

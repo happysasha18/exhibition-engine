@@ -117,6 +117,9 @@
       "uniform vec4 uRegionField;",
       "uniform vec4 uPre;",
       "uniform vec4 uPost;",
+      // §8's `seams` block: how wide the mirrored fold's own retouch stands, in points of the
+      // drawing buffer, off the host's own shared hairline reading.
+      "uniform float uSeam;",
 
       // THE SOFTNESS OF THE REGION'S EDGE, in the units of the module's own presence field. It is a
       // fixed width and does not grow with presence: the region ARRIVES by growing, never by turning
@@ -129,17 +132,35 @@
 
       "mat2 rot(float a){ float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }",
 
+      // THE CORNER OF A TRIANGLE WAVE, ROUNDED — the fleet's own `softAbs`, character for character
+      // the one the folding instrument argues and draws with (`pass-inst-kaleidoscope.js`, THE
+      // CREASE'S SOFTENING). Past `e` it is the absolute value to the last bit, so it costs the
+      // picture nothing anywhere but at the corner itself.
+      "float softAbs(float x, float e){",
+      "  float a = abs(x);",
+      "  return a >= e ? a : (x * x + e * e) / (2.0 * max(e, 1e-9));",
+      "}",
+
       // PAST THE EDGE OF A WORK THE PICTURE MIRRORS. The module's own textures carry
       // MIRRORED_REPEAT; the host's two slots are clamped, so the law is written here — one triangle
       // wave per axis, in the module's own unit square, which is the same continuation the unfold's
       // parquet runs on.
-      "vec2 mir(vec2 q){ vec2 t = mod(q, 2.0); return 1.0 - abs(t - 1.0); }",
+      //
+      // AND THE FOLD IS A SEAM (§8's `seams` block, pass-layer.js). Where a layer's own turn, scale
+      // or drift carries a lookup past a work's own edge the sampling turns around, and the turn is
+      // a sign flip in the lookup's own derivative — the same corner the folding instrument
+      // retouches at every wedge edge. `e` rounds it over a width read in points of the drawing
+      // buffer and carried into this coordinate's own units by the caller.
+      "vec2 mir(vec2 q, vec2 e){",
+      "  vec2 t = mod(q, 2.0);",
+      "  return vec2(1.0 - softAbs(t.x - 1.0, e.x), 1.0 - softAbs(t.y - 1.0, e.y));",
+      "}",
 
       // ONE WORK, READ AT ONE PLACE OF THE MODULE'S OWN SQUARE. The square is turned the right way
       // up for a host that uploads with no flip, and then the work is seated inside it by its own
       // two sides, which is the cover fit `fit` below computes and the host binds here.
-      "vec3 pane(sampler2D tex, vec2 uv, vec4 fit){",
-      "  vec2 q = mir(uv);",
+      "vec3 pane(sampler2D tex, vec2 uv, vec4 fit, vec2 e){",
+      "  vec2 q = mir(uv, e);",
       "  q.y = 1.0 - q.y;",
       "  q = (q - 0.5) * fit.xy + 0.5;",
       "  return texture2D(tex, q).rgb;",
@@ -159,7 +180,10 @@
       "    float v = (float(j) + 0.5) / 7.0;",
       "    for (int i = 0; i < 7; i++) {",
       "      float u = fract((float(i) + 0.5) / 7.0 + float(j) * 0.6180339887);",
-      "      acc += pane(tex, vec2(u, v), fit);",
+      // The lattice stands inside the unit square by construction, so no lookup here can reach the
+      // fold and the retouch has nothing to round: it is asked for at a width of nothing, which
+      // leaves `softAbs` the plain absolute value.
+      "      acc += pane(tex, vec2(u, v), fit, vec2(0.0));",
       "    }",
       "  }",
       "  return acc / 49.0;",
@@ -211,13 +235,24 @@
       // top layer — faster, the other way, and the counter-turn turns it further
       "  vec2 uvB = rot(uLayerB.x) * (p / uLayerB.y) + 0.5 + uLayerB.zw;",
 
-      "  vec3 a = pane(uA, uvA, uFitA);",
+      // THE FOLD'S OWN RETOUCH, in each layer's own coordinate (§8's `seams` block). Each layer's
+      // map is `rot(turn) · p / scale`, a rotation and a scale, so one point of the drawing buffer
+      // is `1 / (scale · m)` of the layer's coordinate on either axis — `p` is the frame divided by
+      // `m` and one buffer point of the frame is `1 / uRes`, and the two `uRes` cancel. It rides
+      // `cw` — the envelope this file already hangs the travel, the highlight shoulder, the corner
+      // shading and the dither on — because the fold can only bite where a layer's own turn, scale
+      // and drift have carried a lookup off the work, and `cw` is exactly nothing at both ends of
+      // the dominance travel and at the dry door. So at a door these are the plain mirror to the
+      // last bit and the door's own law reads the cover fit it always read.
+      "  vec2 eA = vec2(uSeam / (max(uLayerA.y, 1e-4) * m)) * cw;",
+      "  vec2 eB = vec2(uSeam / (max(uLayerB.y, 1e-4) * m)) * cw;",
+      "  vec3 a = pane(uA, uvA, uFitA, eA);",
       // THE SECOND WORK'S PALETTE ARRIVES BEFORE ITS FORMS (charter shelf 11, colour as herald): the
       // first stage of the dial carries that work read at its flattest, which is its colour with no
       // shape left in it, and the second stage grows its own picture into that colour. The flat
       // reading is asked for only where the dial has not finished, so a frame at whole exposure —
       // which is where both doors stand — pays nothing for it.
-      "  vec3 b = pane(uB, uvB, uFitB);",
+      "  vec3 b = pane(uB, uvB, uFitB, eB);",
       "  if (sw < 1.0) b = mix(flatOf(uB, uFitB), b, sw);",
 
       // the mix is not one number over the whole frame: a slow field tips different regions toward
@@ -323,6 +358,18 @@
     var MIX_PERIOD_DEF = 1 / MIX_BASE, REGION_PERIOD_DEF = 1 / REGION_BASE;
     var PERIOD_MIN = 0.02, PERIOD_MAX = 1;
     var SCALE_MIN = 0.65, SCALE_MAX = 1.7;
+
+    // HOW WIDE THE MIRRORED FOLD'S OWN RETOUCH STANDS WHERE NO HOST HAS ANSWERED — at registration,
+    // before any frame has been asked for. NOTHING, because nothing is what this file drew the fold
+    // at before §8's `seams` block reached it: the wrap was the bare triangle wave and its corner
+    // was left where the sampling grid found it. A fallback of one point would be a different
+    // picture from the one this file used to draw, and a fallback nobody asked for is exactly the
+    // number §8 exists to take away. Every drawn frame reads the host's own answer instead.
+    var SEAM_POINTS = 0;
+    function seamOf(st) {
+      var s = st && st.seam && st.seam.tile;
+      return typeof s === "number" && isFinite(s) && s > 0 ? s : SEAM_POINTS;
+    }
 
     /* THE RESPONSE CURVES OF THIS MODULE'S THREE HANDLES (DARKROOM-DRAFT D2, his word 08-08 17:57),
        carried digit for digit from overlay.js:300-352: equal movements of the hand produce equal felt
@@ -485,6 +532,10 @@
       return {
         dial: [dom, wet, sw, cw],
         form: [lean, pres, blend, unit(st.mask)],
+        // THE FOLD'S OWN RETOUCH (§8's `seams` block), in points of the drawing buffer, carried into
+        // the shader so the width the picture is drawn at is the host's own answer and not a number
+        // this file chose.
+        seam: seamOf(st),
         // bottom layer — slow, one way (overlay.js:143-146)
         layerA: [0.0135 * t * cw,
                  1 + (0.02 + 0.085 * Math.sin(t * 0.0721)) * cw,
@@ -593,6 +644,30 @@
       // the grain: what this instrument owns is the light and the colour of the frame, and it is the
       // only instrument the settings record publishes that owns them.
       levels: ["LIGHT-COLOUR"],
+      // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). One, and it is not a
+      // cut of the frame into elements — the `levels` note above says rightly that nothing here cuts
+      // the frame into cells, and a seam is a different question: not what elements the frame is
+      // divided into, but what boundary a picture drawn this way cannot help but have.
+      //   · TILE — the mirrored fold in `mir`/`pane` above. Each layer turns, breathes and drifts
+      //     under the envelope, and where that carries a lookup past a work's own edge the picture
+      //     mirrors: the module binds its own textures MIRRORED_REPEAT and this host binds every
+      //     source clamped, so the wrap is written into the shader as `1 − |mod(q, 2) − 1|`, one
+      //     triangle wave per axis. Its derivative flips sign at every fold, which is the same corner
+      //     the folding instrument closes at a wedge edge and the floor instrument at a tile's edge —
+      //     and this file's own comment already names the construction by the fleet's word for it,
+      //     "the same continuation the unfold's parquet runs on". A HAIRLINE and not a handover: the
+      //     fold is continuous in value across the edge and only its derivative kinks, so what is
+      //     rounded is a fact about the sampling grid rather than about either work. `of` names no
+      //     handle, for the reason the host's own block gives — a hairline spends none of an element's
+      //     own room, so it does not shrink as an element repeats more often.
+      //
+      // THE REGION'S OWN EDGE IS NOT A SECOND SEAM, and that is a decision rather than an omission.
+      // `EDGE` above is a deliberate, visible softness in the units of the module's own presence
+      // field, chosen so the region reads as arriving by growing; it is drawn at that width whatever
+      // grid the frame stands on, and it would be a lie to publish it as a boundary the sampling
+      // asks for. The region is one field's own level set and nothing repeats round a turn, so
+      // neither of the two shapes §8 publishes fits it.
+      seams: [{ kind: "tile", of: null, unit: "points of the drawing buffer" }],
       // The module's own declared params, in its own ranges (overlay.js:282-293). Its `pair` handle
       // does not come over: it chose two of the three pictures the module's own test page hands it,
       // and a cue of this engine carries exactly two works, so there is nothing left to choose.
@@ -777,6 +852,7 @@
           { name: "uRegionField", type: "vec4", source: "frame:regionField" },
           { name: "uPre", type: "vec4", source: "frame:pre" },
           { name: "uPost", type: "vec4", source: "frame:post" },
+          { name: "uSeam", type: "float", source: "frame:seam" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -859,6 +935,10 @@
           // host settles it from the device ratio and its own resolution step, so it moves while a
           // pass plays and each door is read on the grid standing at that door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE FOLD'S OWN RETOUCH, off the host's own `seams` reading (§8's `seams` block). Only
+          // the host knows what every instrument declaring a hairline is holding its own edge to, so
+          // it answers once and this file carries the number rather than choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00

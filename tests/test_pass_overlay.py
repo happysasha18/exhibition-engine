@@ -278,7 +278,7 @@ OWN = [
      "module-contract.json says so in its own words. The host already computes a seating from each "
      "work's own two sides, so it is asked for, and both doors are the plain cover fit at every "
      "frame shape"),
-    ("vec2 mir(vec2 q){ vec2 t = mod(q, 2.0); return 1.0 - abs(t - 1.0); }",
+    ("vec2 mir(vec2 q, vec2 e){",
      "THE MIRROR IS WRITTEN IN THE SHADER. The module binds its own textures MIRRORED_REPEAT; the "
      "host binds its two source slots CLAMP_TO_EDGE, which would smear an edge texel across "
      "everything the turn and the scale breath carry past the frame"),
@@ -302,7 +302,7 @@ check("PASS-OVERLAY the three things the port decided for itself are named as th
 DECL = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 SPELT = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-OVERLAY every uniform the manifest declares is a uniform the shader spells, and no other",
-      DECL == SPELT and len(DECL) == 14,
+      DECL == SPELT and len(DECL) == 15,
       "the host looks every location up by the name the manifest declares and never by position "
       "(§7), so the two sets have to be one set: %d names, and they agree" % len(DECL)
       if DECL == SPELT else "declared but not spelled: %s; spelled but not declared: %s"
@@ -540,6 +540,7 @@ RED_ROWS = [
     "PASS-OVERLAY red-on-bug · the door's own hold removed: both doors are refused for a hole in the region",
     "PASS-OVERLAY red-on-bug · the mirror removed: the two roads part where a layer runs past the work's edge",
     "PASS-OVERLAY red-on-bug · the seating given back to the module's own line: the door stops being the file",
+    "PASS-OVERLAY §8     · the declared seam reaches the picture, and it is the DECLARATION that carries it",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -769,7 +770,7 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False, "readsChain": True}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 14
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 15
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -781,7 +782,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "overlay" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"thirteen handles, fourteen uniforms in one pass, both doors at a cover crop "
+                      f"thirteen handles, fifteen uniforms in one pass, both doors at a cover crop "
                       f"of {m['framings']['0']['coverCrop']} — the plain cover fit, no crop and no "
                       f"upscale — resources declared for three tiers, and a coverage block that "
                       f"declares writes={m['coverage']['writes']}")
@@ -1161,8 +1162,9 @@ else:
         return road_gap(br, 0.85, "mirror")
 
     base_mir = on_bench(mirror_gap, w=SQ, h=SQ)
-    bug = PACK.replace("vec2 mir(vec2 q){ vec2 t = mod(q, 2.0); return 1.0 - abs(t - 1.0); }",
-                       "vec2 mir(vec2 q){ return clamp(q, 0.0, 1.0); }", 1)
+    bug = PACK.replace("vec2 mir(vec2 q, vec2 e){",
+                       "vec2 mir(vec2 q, vec2 e){ return clamp(q, 0.0, 1.0); }\\n"
+                       "vec2 mirUnused(vec2 q, vec2 e){", 1)
     bug_mir = on_bench(mirror_gap, pack_text=bug, w=SQ, h=SQ)
     check(RED_ROWS[1],
           bug != PACK and base_mir and bug_mir
@@ -1196,6 +1198,68 @@ else:
           f"mirrored continuation filling what is left — the same door stands {bug_seat[0]:.4f} of "
           f"255 from the file. That is the parting lab/data/module-contract.json records in its own "
           f"words, measured")
+
+    # ---- 4. §8's `seams` block, PROVED ON THE PICTURE ---------------------------------------
+    # THE CLAIM UNDER TEST. This instrument declares one seam — the mirrored fold, a `tile`
+    # hairline — and rounds that fold at the width the HOST answers with, off the manifest's own
+    # declaration. Two things have to be true for that to be more than paper, and each is a bench
+    # of its own differing from the first in exactly one thing:
+    #
+    #   · THE WIDTH REACHES THE FRAME. A pack whose shader asks for no retouch at all — this
+    #     file's own line before §8 reached it — must draw a MEASURABLY different picture.
+    #   · THE DECLARATION IS WHAT CARRIES IT. A pack whose shader is untouched but whose MANIFEST
+    #     declares no seam gets no answer from the host, falls back to the bare fold this file
+    #     drew before §8, and must then draw that same picture TO THE PIXEL.
+    #
+    # WHERE THE FOLD HAS THE MOST TO SAY, and it is the row above's own place: the top layer at its
+    # smallest scale reads a quarter again past the work's own edge each way, with the clock at its
+    # far end putting the turn and both drifts at their widest. The passage is played on the REAL
+    # road, pinned at the middle of its own travel, because the fold's retouch rides the envelope
+    # `cw` — nothing at either end of the dominance travel, which is what keeps both doors the plain
+    # cover fit they always were.
+    def seam_frame(br):
+        br.evaluate("window.__clock(14); 0")
+        js(br, "return window.__offer(%s, {clock: 14, progress: 0.5});"
+           % json.dumps(overlay_score(scale=0.65)))
+        br.sleep(0.9)
+        br.evaluate("window.__show('host'); 0")
+        br.sleep(0.3)
+        d = br._cmd("Page.captureScreenshot", format="png", captureBeyondViewport=False)
+        return d["data"]
+
+    def seam_shot(pack_text, tag):
+        raw = on_bench(seam_frame, pack_text=pack_text, w=SQ, h=SQ)
+        if raw is None:
+            return None
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        out = SHOTS / ("seam-" + tag + ".png")
+        out.write_bytes(base64.b64decode(raw))
+        return str(out)
+
+    flat = PACK.replace('"  vec2 eA = vec2(uSeam / (max(uLayerA.y, 1e-4) * m)) * cw;",',
+                        '"  vec2 eA = vec2(0.0);",', 1)
+    flat = flat.replace('"  vec2 eB = vec2(uSeam / (max(uLayerB.y, 1e-4) * m)) * cw;",',
+                        '"  vec2 eB = vec2(0.0);",', 1)
+    undeclared = PACK.replace(
+        'seams: [{ kind: "tile", of: null, unit: "points of the drawing buffer" }],',
+        'seams: [],', 1)
+    seam_shipped = seam_shot(None, "shipped")
+    seam_flat = seam_shot(flat, "flat")
+    seam_undeclared = seam_shot(undeclared, "undeclared")
+    reached = diff(seam_shipped, seam_flat) if (seam_shipped and seam_flat) else (0.0, 0.0)
+    carried = (diff(seam_flat, seam_undeclared)
+               if (seam_flat and seam_undeclared) else (255.0, 255.0))
+    check(RED_ROWS[3],
+          flat != PACK and undeclared != PACK
+          and seam_shipped and seam_flat and seam_undeclared
+          and reached[1] >= SEAM and carried == (0.0, 0.0),
+          f"the shipped pack against one asking for no retouch at all — this file's own line before "
+          f"§8 reached it: mean {reached[0]:.4f} of 255 over the whole frame, worst channel "
+          f"{reached[1]:.0f}, which has to reach the seam threshold of {SEAM:.0f}. The same pack "
+          f"against one whose SHADER is untouched and whose MANIFEST declares no seam: mean "
+          f"{carried[0]:.4f}, worst channel {carried[1]:.0f} — the declaration removed, the host "
+          f"answers nothing, this file falls back to the bare fold it drew before §8 and lays down "
+          f"that frame to the pixel")
 
 
 shutil.rmtree(TMP, ignore_errors=True)
