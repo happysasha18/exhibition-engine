@@ -278,6 +278,28 @@
   // that pivot's own cut was unreachable by any instrument: nothing refused, nothing errored, and a
   // whole way of crossing simply never got walked while every suite stayed green. There is no
   // exception table now; the shape says what it cuts and the casting asks the shape.
+  // WHAT A `transform` IS ON THIS ROAD, AND WHAT IT IS NOT (traced 2026-08-28, S-21's second half).
+  // A transform is a NAME the ground carries, and every one of the ten this file can write —
+  // the seven of `CUT_OF_MEASURE` and the three below — reaches exactly two readers and no third:
+  // `familyToken` here, and `01a-pass.js`'s own `plan.pivot.transform` beside it, which together
+  // keep a return visit in the family its first pass established. No instrument reads a transform,
+  // no handle is driven off one, and no pixel is decided by one. So `palette_handover` does not
+  // «reach the picture» — and neither does `gear_mesh`, `band_slide` or any of the other eight. It
+  // is a name for a kind of ground, and the picture is made by the instruments cast on the element
+  // kind that ground yields (`band`, here), which is a road that runs and is proved elsewhere.
+  //
+  // WHAT THE PALETTE GROUND ALONE LOSES, and it is a real asymmetry rather than the shared shape
+  // above. `groundCandidates` measures, for this candidate, the two works' own SHARED HUES and the
+  // palette rung they meet on, and `pivotOfPair` carries both onto its value. `pairOf` then copies
+  // `PIVOT_SHAPES[kind]`'s own keys and `strength` and — for its two siblings — `order` and the two
+  // closeness readings; `hues` and `rung` are on no such line, so the one colour fact this ground
+  // was chosen FOR is measured and dropped before the plan is built. `fillPlan` drops it a second
+  // time by a different road: the plan's pivot is rebuilt from a six-slot tuple (kind, measure,
+  // cut, transform, elementKind, cutKinds) that carries no ground payload for any kind at all.
+  // Carrying the two fields through both walls is a small edit; it is NOT made here, because
+  // nothing downstream would read them — the finished connection is an instrument that plays the
+  // pair's own shared hues, and that instrument does not exist. Named here so the next reader does
+  // not trace it again.
   var PIVOT_SHAPES = {
     "shared-rotational-order": { cut: "wedges", transform: "gear_mesh", elementKind: "wedge",
                                  elementKinds: ["wedge"] },
@@ -1142,14 +1164,36 @@
                                        + "would have chosen"],
     "studio.tileOn": ["module-rest", "the module's own declared default: the tile operation stands "
                                      + "off until a score switches it on"],
-    "studio.colOn": ["module-rest", "the module's own declared default: the colour operation stands "
-                                    + "off until a score switches it on"],
-    "studio.hue": ["module-rest", "the module's own declared default of no turn at all — no reading "
-                                  + "says which way round the wheel a visitor's own hand would have "
-                                  + "turned it"],
-    "studio.colLook": ["module-rest", "the module's own declared default, \"rich\" — no reading says "
-                                      + "which of the colour operation's three looks a visitor would "
-                                      + "have chosen"],
+    // THE THREE ROWS BELOW ARE READ ONLY WHERE THIS CUE OWNS LIGHT-COLOUR, the same ownership gate
+    // grid-colour's own six and strata-light's own twelve already take, and for the same reason:
+    // shelf 17's levels law gives that level one active voice, so where another cue of the passage
+    // owns it this one only accompanies and `fillPlan`'s "studio" branch leaves all three unset —
+    // the manifest's own rest of an operation standing off, not a second silence typed here.
+    //
+    // THEY SAID «module-rest» UNTIL 2026-08-28, and the whole colour operation was dead on the
+    // product path because of it: every cast over the collection's own ordered pairs ran with
+    // `colOn` at 0, so the eight-operation chain played its seven geometric operations and never its
+    // colour one. The rest was honest about the module's own default and wrong about the record —
+    // `palette.hues` names the hue each work reads as, and a turn from one work's name to the
+    // other's is exactly the reading the old `studio.hue` row said no measurement could supply.
+    "studio.colOn": ["measured", "whether the two works each name a hue of their own, "
+                                 + "palette.hues — the colour operation turns the departing work's "
+                                 + "hue toward the arriving work's, and a turn needs a hue at each "
+                                 + "end, so the operation stands on exactly where the record gives "
+                                 + "it both and rests off where it gives it neither"],
+    "studio.hue": ["measured", "the shortest signed turn from the departing work's own leading hue "
+                               + "to the arriving work's, taken on `palette.hues`' own eight-name "
+                               + "wheel — the same alphabet the day's own bias reads. The turn "
+                               + "carries the pair's own SIGN, which is what the module-rest this "
+                               + "replaces said no reading could give"],
+    "studio.colLook": ["measured", "which way the pair's own colour travels: the arriving work "
+                                   + "standing at least as far up the collection's colourfulness "
+                                   + "ladder as the departing one gives the rich look, and a "
+                                   + "passage into a less colourful work gives the drained one. "
+                                   + "The comparison is between the two works' own readings, so no "
+                                   + "cut point is chosen here; the inverted look stays unreached, "
+                                   + "because nothing a work record carries says a picture should "
+                                   + "be turned inside out"],
     // THE THREE ELEMENTS OF SHELF 14, and every row of the three is instrument-scoped. `sourceOf`
     // reads the scoped row first, so a name this file already carries in another instrument's unit
     // — `axis` above all — answers here in this instrument's own.
@@ -1194,6 +1238,18 @@
                                 + "structure.ownDevice.stepPx where no grid period was derived. "
                                 + "The weather banks at the scale the work's own structure stands "
                                 + "at"],
+    // A CHOICE OF WORLD, AND NOT AN AMOUNT OF ONE (S-20, 2026-08-28). This is the one `depth` in the
+    // fleet whose handle is a THRESHOLD: `pass-inst-planet.js` publishes `applied: { turnsInsideOutAbove:
+    // 0.5 }` and reads it as `depth >= 0.5 ? 1 : 0`, so the number decides WHICH world stands and
+    // nothing else — a sphere, or the same one turned inside out. The shared `depth` word above is
+    // written for the handles that are an amount of perspective, and this one is not, so it gets its
+    // own word here. It reads the DEPARTING work alone because that is what the instrument's own
+    // manifest publishes for this handle, and because a choice that travels is a choice that gets
+    // made in the middle of the passage.
+    "planet.depth": ["measured", "structure.polar.tunnel, the DEPARTING work's own corridor "
+                                 + "reading — which of the two worlds the passage plays in, settled "
+                                 + "once and held, since this handle is a threshold at a half and "
+                                 + "not an amount of anything"],
     "veil.depth": ["measured", "structure.polar.tunnel, how strongly a work already reads as a "
                                + "corridor — a picture that carries depth gets a deep stack and "
                                + "passes the sheets one at a time, one that reads flat gets them "
@@ -2697,7 +2753,30 @@
     // — every work in the collection already carries one or more of them — so the wheel invents no
     // vocabulary the works do not already speak; it only rotates which one the day currently answers
     // to.
-    var WEATHER_HUE_WHEEL = ["red", "orange", "yellow", "green", "cyan", "blue", "violet", "magenta"];
+    //
+    // IT IS THE COLLECTION'S WHEEL AND NOT THE WEATHER'S, which is why it is named for the record
+    // rather than for the day (renamed from `WEATHER_HUE_WHEEL` 2026-08-28). The day's own bias
+    // reads it to name the hue an hour answers to; `measuredParts` below reads the same eight names
+    // to place a work's OWN leading hue on the same wheel, so the turn one work's colour makes to
+    // reach another's is measured in the alphabet the two records already speak.
+    var HUE_WHEEL = ["red", "orange", "yellow", "green", "cyan", "blue", "violet", "magenta"];
+    // WHERE A NAMED HUE STANDS ON THAT WHEEL, and −1 for a work that names none: `palette.hues` is
+    // empty on a work whose own colour reading found no hue to name, and −1 says so rather than
+    // standing that work at red.
+    function hueSeat(name) {
+      return HUE_WHEEL.indexOf(String(name === undefined || name === null ? "" : name));
+    }
+    // THE SHORTEST SIGNED TURN FROM ONE SEAT TO ANOTHER, in radians, and `null` where either work
+    // names no hue at all. The wheel is eight names round, so one seat is a quarter of a half turn;
+    // the turn is taken the short way about and carries the SIGN the pair supplies — from the
+    // departing work's own hue toward the arriving work's — which is the reading
+    // `HANDLE_SOURCE`'s own row for `studio.hue` said no measurement could give until this line.
+    function hueTurn(fromSeat, toSeat) {
+      if (!(fromSeat >= 0) || !(toSeat >= 0)) return null;
+      var d = ((toSeat - fromSeat) % HUE_WHEEL.length + HUE_WHEEL.length) % HUE_WHEEL.length;
+      if (d > HUE_WHEEL.length / 2) d -= HUE_WHEEL.length;
+      return d * 2 * Math.PI / HUE_WHEEL.length;
+    }
     function weatherNow() {
       // ONE CLOCK FOR EVERY VIEWER. These four readings were taken off the LOCAL getters, so two
       // people meeting one crossing at one instant read two different hours, two different weights
@@ -2720,10 +2799,10 @@
       var d = new Date(visitClock);
       var dayOfYear = Math.floor((d.getTime() - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000);
       var hourFrac = (d.getUTCHours() + d.getUTCMinutes() / 60) / 24;
-      var hueAt = ((dayOfYear + hourFrac) % WEATHER_HUE_WHEEL.length + WEATHER_HUE_WHEEL.length)
-                  % WEATHER_HUE_WHEEL.length;
+      var hueAt = ((dayOfYear + hourFrac) % HUE_WHEEL.length + HUE_WHEEL.length)
+                  % HUE_WHEEL.length;
       return {
-        hue: WEATHER_HUE_WHEEL[Math.floor(hueAt)],
+        hue: HUE_WHEEL[Math.floor(hueAt)],
         // LIGHT: the DAY'S own smooth curve and no one viewer's, 0 at the day's start and 1 at its
         // middle — read the way a photographer reads the day, never a brightness measured off any
         // photograph on file, and never off the hour the reader's own machine is set to.
@@ -5528,6 +5607,13 @@
         // correction of 2026-08-18/19): the field never was a tone, and now reads `palette
         // .colourfulness`.
         colourfulness: Number((work.palette || {}).colourfulness) || 0,
+        // THE WORK'S OWN LEADING HUE, as a seat on `palette.hues`' own eight-name wheel (`HUE_WHEEL`
+        // above, the alphabet the day's own bias already reads). `palette.hues` is the record's own
+        // ordered list and its first name is the hue the work reads as; a work whose own colour
+        // reading named none carries an empty list, and `hueSeat` answers −1 for it rather than
+        // standing that work at red. This is the reading the darkroom's own colour operation turns
+        // on: a turn needs a hue at each end, and the record says outright which works have one.
+        leadHue: hueSeat(((work.palette || {}).hues || [])[0]),
         // THE TONE a work parts at, off `luminance.level` (lab/build-workrecords-v1.py, itself
         // lab/analyze/recipes.py:551-613 colour_stats()'s median luminance, a port of `measure(image)`
         // in lab/effects/strata-light.js:108-113): the reading the "strata-light" branch below drives
@@ -6775,11 +6861,32 @@
           if (mf.planet > 0 || mt.planet > 0) {
             wanted.curl = [flt(r4(clamp01(mf.planet))), flt(r4(clamp01(mt.planet)))];
           }
-          // WHICH OF THE TWO WORLDS — a sphere, or the same one turned inside out — off each work's
-          // own corridor reading. The same measurement the folding instrument's perspective is
-          // placed by, read here as the world's own inversion.
+          // WHICH OF THE TWO WORLDS — a sphere, or the same one turned inside out — off the
+          // DEPARTING work's own corridor reading, settled once and held for the whole passage.
+          //
+          // IT USED TO TRAVEL, AND THAT WAS A CUT (S-20, 2026-08-28). It was written in the shape
+          // `curl` above is written in — from the departing work's reading to the arriving one's —
+          // and for `curl` that is right, because `curl` is an AMOUNT of bending and every value
+          // between two readings is a picture. This handle is not an amount. `pass-inst-planet.js`
+          // publishes it as `applied: { turnsInsideOutAbove: 0.5 }` and reads it as a threshold:
+          // `flip = depth >= 0.5 ? 1 : 0`, and `flip` decides the world's whole geometry, the
+          // `cam` uniform's fourth place, and the row of the source the sky is taken from. So a
+          // pair whose two corridor readings straddle a half turned the world inside out BETWEEN
+          // TWO FRAMES, in the middle of the passage, with nothing moving through it — which is a
+          // cut, the one thing the crossing charter's ladder exists to keep off the screen.
+          //
+          // MEASURED, on the pair 17843080526947498 → 17855281635628600, at 22.9 hundredths of the
+          // pivot's own window: `depth` crosses a half, `shape` goes from «a sphere» to «a corridor»,
+          // `cam`'s fourth place from 0 to 1, and `skyRow` from 0.5766 to 0.0434 — 53 hundredths of
+          // the crop's own range — across a gap of two ten-thousandths of a millionth of a second.
+          //
+          // THE DEPARTING WORK IS WHOSE READING IT IS, and that is not a taste call made here: the
+          // instrument's own manifest publishes this handle as reading «structure.polar.tunnel, the
+          // departing work's own corridor reading». The composer was contradicting the handle's own
+          // declaration by giving it two ends at all. The same file already fills this same handle
+          // from ONE reading for the veiling instrument, so the shape is the file's own.
           if (mf.tunnel > 0 || mt.tunnel > 0) {
-            wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
+            wanted.depth = flt(r4(clamp01(mf.tunnel)));
           }
           // WHERE THE HORIZON STANDS — how much sky is pulled toward the centre — off each work's
           // own measured horizon. A work with no measured horizon has nothing to say here and the
@@ -7918,6 +8025,60 @@
           // track this manifest never declared.
           delete wanted.centreX;
           delete wanted.centreY;
+          // THE DARKROOM'S NINTH OPERATION, AND IT HAD NEVER PLAYED. The chain carries eight
+          // geometric operations and one colour one (`grade`, studio.js:156-165, this port's own
+          // `uColOn` branch), and until now this branch drove the six geometric readings above and
+          // left the colour operation's own three handles to the register's `module-rest` — so no
+          // score this file can write ever switched it on. Measured over the collection's whole
+          // ordered-pair space: at a culmination, the one step whose accompaniment ceiling leaves
+          // room for a colour voice at all, this instrument was cast 748 times, held LIGHT-COLOUR
+          // on 110 of them, and ran `colOn` at 0 on every single one; at every other step the voice
+          // is spent and the three handles are off the cue entirely. His word of 2026-08-28 02:47
+          // names the result: colour as a voice does not work.
+          //
+          // SUNG ONLY WHERE THIS CUE OWNS THE LEVEL THESE THREE HANDLES DECLARE (shelf 17's levels
+          // law, `ownsLevelOf` above, reading the level off this instrument's own manifest) — the
+          // same gate grid-colour's own six and strata-light's own twelve already take, written the
+          // same way. Where the passage spent its colour voice on shelf 17's accompaniment ceiling,
+          // or another cue owns LIGHT-COLOUR beside this one, all three stay unset and the
+          // manifest's own rest stands: the operation off, no turn, the module's own look.
+          if (ownsLevelOf(cue, "studio", "colOn")) {
+            // WHETHER THE COLOUR OPERATION STANDS ON AT ALL, and it is the record's own answer
+            // rather than a floor on a reading. `palette.hues` names the hue a work reads as, and a
+            // hue TURN needs a hue at each end: where both works name one there is a turn to make
+            // and the operation plays, where either names none there is nothing to turn and it
+            // rests. This is the same shape `gates`' own `slotAxis` takes off `motifs.gateAxis` — a
+            // discrete handle answered by a discrete fact the record already carries, never by a
+            // cut point chosen here.
+            var stTurn = hueTurn(mf.leadHue, mt.leadHue);
+            wanted.colOn = stTurn === null ? 0 : 1;
+            // HOW FAR ROUND THE WHEEL, and which way. `hueTurn` takes the short way about and keeps
+            // the pair's own sign — from the departing work's hue toward the arriving work's — so
+            // the objection the old register row recorded («no reading says which way round the
+            // wheel») is answered by the two records rather than by a choice made here. The wheel
+            // is eight names round, so the widest turn it can name is a half turn, which the
+            // handle's own published span already holds; the clamp states that rather than
+            // trusting it. IT ROUNDS BEFORE IT CLAMPS, and the order is not cosmetic: a half turn
+            // rounded to four places is 3.1416 against the manifest's own published 3.14159, so
+            // clamping first left `appliedValue` to close a gap of one hundred-thousandth and write
+            // «the handle's own range does not reach the measured value» — a sentence about a
+            // rounding, printed on the plan as if the record had asked for something the instrument
+            // cannot do. Rounded first, the widest turn the wheel can name lands on the handle's own
+            // ceiling and the plan says «requested and applied», which is what happened.
+            var stHueSpec = HANDLE_SPECS.studio.hue;
+            wanted.hue = flt(Math.min(num(stHueSpec[1]),
+                                      Math.max(num(stHueSpec[0]),
+                                               r4(stTurn === null ? 0 : stTurn))));
+            // WHICH OF THE OPERATION'S THREE LOOKS PLAYS, off which way the pair's own colour
+            // travels on the collection's own colourfulness ladder — the same field `grid-colour`'s
+            // `lead` handle already reads this pair on, taken here for its DIRECTION rather than
+            // its distance. Into a work at least as colourful as the departing one the look is rich
+            // (1, the module's own); into a less colourful one it is drained (0). The comparison is
+            // between the two works' own readings, so no cut point is chosen here, and the inverted
+            // look (2) stays unreached because no reading in a work record asks for a picture
+            // turned inside out.
+            wanted.colLook = mt.colourfulness >= mf.colourfulness ? 1 : 0;
+          }
         }
         var measured = {}, nodes = {};
 

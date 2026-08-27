@@ -239,10 +239,63 @@ for (let i = 0; i < ids.length; i++) {
     if (total >= 6000) break outer;
   }
 }
+
+// ---- THE COLOUR VOICE, ON THE SAME REAL PAIRS AND ON THE ONE STEP THAT CAN AFFORD IT -----------
+// This instrument declares LIGHT-COLOUR and is only ever cast as the GROUND, and shelf 17 counts
+// the camera, the ground and the colour voice in one column: at a quiet link the camera alone
+// fills the ceiling of one, and at a middle the camera and the ground fill the ceiling of two, so
+// the colour voice stands down and `ownedTracks` takes the operation's three handles off the cue.
+// A CULMINATION is the step whose ceiling of three leaves room for it — and the walk really names
+// one (`01a-pass.js`: a dominant standing as the route's crest reads as a culmination) — so the
+// sweep below asks the composer for that step and reads what the colour operation actually gets.
+// Nothing about the budget is touched here; the sweep asks the road that can pay for the voice.
+let colCasts = 0, colOwns = 0, colOn = 0, colOff = 0;
+const turns = {}, looks = {}, colSample = [];
+let ct = 0;
+colour:
+for (let i = 0; i < ids.length; i++) {
+  for (let j = 0; j < ids.length; j++) {
+    if (i === j) continue;
+    ct++;
+    let res;
+    try {
+      res = composer.passageFor({ workRecordA: works[ids[i]], workRecordB: works[ids[j]],
+                                   direction: "a-to-b", seed: ((i * 31 + j * 7) % 100) / 12.5,
+                                   routeRole: "culmination" });
+    } catch (e) { continue; }
+    if (res.declined) continue;
+    const cue = (res.score.cues || []).find((c) => c.instrument.id === "studio");
+    if (!cue) continue;
+    colCasts++;
+    if ((cue.levels || []).indexOf("LIGHT-COLOUR") >= 0) colOwns++;
+    const t = cue.tracks || {}, n = cue.nodes || {};
+    if (!t.colOn) continue;
+    const on = Number((n[t.colOn.node] || {}).value);
+    const turn = Number((n[(t.hue || {}).node] || {}).value);
+    const look = Number((n[(t.colLook || {}).node] || {}).value);
+    if (on === 1) {
+      colOn++;
+      turns[turn.toFixed(4)] = (turns[turn.toFixed(4)] || 0) + 1;
+      looks[look] = (looks[look] || 0) + 1;
+      if (colSample.length < 5) {
+        colSample.push({ a: ids[i], b: ids[j], colOn: on, hue: turn, colLook: look,
+                          note: String((n[t.colOn.node] || {}).note || "").slice(0, 60) });
+      }
+    } else { colOff++; }
+    if (ct >= 6000) break colour;
+  }
+}
+
 console.log(JSON.stringify({ total, declined, studioCasts, errors,
                               instrumentCount: Object.keys(manifests).length,
-                              sample: seenHandleSets.slice(0, 6) }));
+                              sample: seenHandleSets.slice(0, 6),
+                              colour: { tried: ct, casts: colCasts, owns: colOwns,
+                                        on: colOn, off: colOff,
+                                        turns: turns, looks: looks, sample: colSample } }));
 """
+
+COLOUR_ROW = ("PASS-STUDIO the score really turns the colour operation on — `colOn` reads 1 on real "
+              "pairs, with the turn and the look reading differently pair to pair")
 
 DRIVER_PATH = Path(tempfile.mkdtemp(prefix="synth_studio_driver_")) / "driver.js"
 DRIVER_PATH.write_text(DRIVER, encoding="utf-8")
@@ -253,12 +306,14 @@ if not node_available():
     skip("PASS-STUDIO the instrument actually casts on a real sample of the collection's own pairs, "
          "with its measured handles reading differently pair to pair",
          "node is not installed")
+    skip(COLOUR_ROW, "node is not installed")
 elif not WORKS.exists():
     skip("PASS-STUDIO every handle this instrument publishes has a row in the composer's register, "
          "read directly off the two files", "the collection's own work records are absent: " + str(WORKS))
     skip("PASS-STUDIO the instrument actually casts on a real sample of the collection's own pairs, "
          "with its measured handles reading differently pair to pair",
          "the collection's own work records are absent: " + str(WORKS))
+    skip(COLOUR_ROW, "the collection's own work records are absent: " + str(WORKS))
 else:
     proc = subprocess.run(["node", str(DRIVER_PATH), str(ASSETS), str(WORKS)],
                            capture_output=True, text=True)
@@ -290,6 +345,26 @@ else:
           f"measured panX/kalN/tileN/polarSpread across those casts: {json.dumps(sample)}"
           if not SWEEP.get("error") else "the sweep could not run: " + str(SWEEP.get("error")))
 
+    # THE NINTH OPERATION, ON THE SAME REAL PAIRS. The row above proves the six geometric readings
+    # move pair to pair; this one proves the colour operation is switched on at all. It reads three
+    # things off the sweep and every one of them has to hold: the score OWNS the level the three
+    # handles declare on some real pair, `colOn` is written 1 on some of those, and the turn it
+    # writes is not one number repeated — a colour voice that played the same turn on every pair
+    # would be the sameness his word of 2026-08-18 15:13 names, in a new place.
+    col = SWEEP.get("colour", {}) if not SWEEP.get("error") else {}
+    turns = col.get("turns", {})
+    looks = col.get("looks", {})
+    check(COLOUR_ROW,
+          bool(col) and col.get("owns", 0) > 0 and col.get("on", 0) > 0 and len(turns) > 1,
+          f"over {col.get('tried', 0)} real ordered pairs at a culmination step studio was cast "
+          f"{col.get('casts', 0)} times, owned LIGHT-COLOUR on {col.get('owns', 0)} of them, and the "
+          f"score turned the colour operation ON for {col.get('on', 0)} and left it off for "
+          f"{col.get('off', 0)} (the pairs where one of the two works names no hue of its own, so "
+          f"there is no turn to make); the turns it "
+          f"wrote, in radians: {json.dumps(turns)}; the looks: {json.dumps(looks)}; a sample: "
+          f"{json.dumps(col.get('sample', []))}"
+          if col else "the sweep could not run: " + str(SWEEP.get("error")))
+
 shutil.rmtree(DRIVER_PATH.parent, ignore_errors=True)
 
 # ---------------------------------------------------------------- browser rows
@@ -316,6 +391,7 @@ BROWSER_ROWS = [
     "PASS-STUDIO the fleet's judges' channel rests at nothing and, standing, draws which work stands "
     "as red",
     "PASS-STUDIO row 16 · the captures are kept as evidence",
+    "PASS-STUDIO §4.4b  · the colour operation reaches the PICTURE and `colOn` alone gates it",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -680,6 +756,31 @@ else:
                       "; ".join(f"{k} moves the frame by {mn:.4f} of 255 on the mean and {mx} at its "
                                 f"strongest point" for k, (mn, mx) in moved.items())
                       + f"; the same pose drawn twice moves it by {still[0]} at {still[1]}")
+
+                # ---- the colour operation, and its own handle as the gate --------------------
+                # THE TURN AND THE LOOK ARE A REAL PAIR'S, not numbers picked here: the composer's
+                # own sweep above writes 3.14159 radians (four seats round `palette.hues`' own
+                # eight-name wheel) and the drained look for pairs of this collection, so the pose
+                # drawn below is a pose a score really asks for. Three readings, and the middle one
+                # is the whole point: handing the turn and the look while `colOn` rests must leave
+                # the frame untouched to the byte, because the shader's own
+                # `if (uColOn > 0.5)` is the only thing standing between a written handle and the
+                # picture. The third says the operation is worth switching on even where the two
+                # works name the SAME hue and there is no turn to make — the look alone moves it.
+                col_off = drew("colour-off", {"colOn": 0, "hue": 3.14159, "colLook": 0})
+                col_on = drew("colour-on", {"colOn": 1, "hue": 3.14159, "colLook": 0})
+                col_noturn = drew("colour-on-no-turn", {"colOn": 1, "hue": 0, "colLook": 1})
+                rest = diff(base_shot, col_off)
+                turned = diff(base_shot, col_on)
+                lifted = diff(base_shot, col_noturn)
+                check(BROWSER_ROWS[18],
+                      rest == (0.0, 0) and turned[1] > SEAM and lifted[1] > SEAM,
+                      f"the same turn and look handed with the operation resting move the frame by "
+                      f"{rest[0]} at {rest[1]}; switched on, a turn of 3.14159 radians into the "
+                      f"drained look moves it by {turned[0]:.4f} of 255 on the mean and {turned[1]} "
+                      f"at its strongest point; switched on with no turn at all the rich look alone "
+                      f"moves it by {lifted[0]:.4f} on the mean and {lifted[1]} at its strongest "
+                      f"point (threshold {SEAM})")
 
                 fA = m["framings"]["0"]["coverCrop"]
                 fB = m["framings"]["1"]["coverCrop"]
