@@ -16,10 +16,13 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   cover-fitted into the frame with no crop at all — the module's own repair of 2026-08-13 made both
   doors the plain cover fit — inside the project's seam threshold of 6 of 255.
 
-  The closed sheet. At the middle of the hand the sheet stands shut and the frame holds the single
-  photograph the work was cut from: the file's own top-left quarter, cover-fitted. It is measured
-  against that quarter, and the instant halfway through the exchange is measured against the two
-  quarters averaged, because the exchange is a straight dissolve of two flat pictures.
+  The closed sheet. At each of the hold's own two outer edges the sheet stands shut and the frame
+  holds the single photograph the work was cut from: the file's own top-left quarter, cover-fitted. It
+  is measured against that quarter. THE EXCHANGE ITSELF, at the hold's own middle, is a different
+  instant (S-03, moved off the flat instant 2026-08-27): the panels' own swing stands at its deepest
+  turn exactly there, so it is measured the same way as every other fold instant — against the lab
+  module rebuilt on the same raw fold — and against a blend of the two works' own folded pictures at
+  that fold, to show the frame stands far from it: no two pictures are ever combined.
 
   THE TWO ROADS, AND WHY THIS PORT'S BAR IS ITS OWN. Every instrument ported before this one came
   from a lab module that already held a WebGL context, so both roads ran one sampler through one
@@ -115,6 +118,14 @@ WITHIN_MS = 500
 HOLD = 0.08
 SHUT_IN = 0.5 - HOLD / 2
 SHUT_OUT = 0.5 + HOLD / 2
+# A HAIR PAST THE HAND'S OWN EXACT MIDDLE (S-03). At dial 0.5 on the nose, `cross` (JS double
+# precision) reads 0.49999999999999956 — a shade under a half — while the SAME number carried as a
+# float32 uniform, which is what the shader actually reads, rounds back up to exactly 0.5: two
+# precisions disagree on which side of `>= 0.5` the exact tie falls, so a harness asking «which work
+# should the lab module render here» can pick the one texture the shader does not. Nudged past the
+# tie by a comfortable margin — the fold sits at its own stationary point exactly at the middle, so
+# this moves it by an amount too small to matter — both precisions agree on the same side of it.
+EXCHANGE_MID_DIAL = 0.5 + 1e-4
 
 
 def _static(v):
@@ -487,7 +498,7 @@ RED_ROWS = [
     "PASS-UNFOLD red-on-bug · the door reading removed: a door drawing the panel map is let through",
     "PASS-UNFOLD red-on-bug · the parquet removed: the world opens onto bare frame",
     "PASS-UNFOLD red-on-bug · the world's curve reverted: equal hand steps go back to unequal change",
-    "PASS-UNFOLD red-on-bug · the exchange's own swing removed: the hold blends two flat pictures again",
+    "PASS-UNFOLD red-on-bug · the exchange's own swing removed: the hold blends two pictures again",
     "PASS-UNFOLD red-on-bug · the hold's own swing stitched at its old rate: the fold's SPEED jumps "
     "at the joins again",
 ]
@@ -666,6 +677,41 @@ def panel_map(br, at, tag):
     return p
 
 
+def panel_code_shares(p, min_share=0.01):
+    """S-03: WHAT A PANEL MAP READS AS «MORE THAN ONE PANEL». The map's own R channel carries the
+    code — 0.25 the standing panel, 0.50/0.75/1.00 the three that turn, read at `judge`'s own first
+    component — so this reads the channel, buckets each byte to the nearest quarter (antialiased
+    panel edges mint no code of their own) and keeps the codes standing at least `min_share` of the
+    frame. A flat full-frame quarter, the one instant a cut would leave, carries exactly one such
+    code across the whole frame; a real fold carries several at once."""
+    from PIL import Image
+    a = Image.open(p).convert("RGB")
+    r = a.split()[0]
+    total = float(a.size[0] * a.size[1])
+    shares = {}
+    for v, n in enumerate(r.histogram()):
+        if n == 0:
+            continue
+        code = round(v / 255.0 * 4) / 4.0
+        shares[code] = shares.get(code, 0.0) + n / total
+    return {c: s for c, s in shares.items() if s >= min_share}
+
+
+def module_render_of(br, which, fold_value, tag):
+    """THE OTHER HALF OF A TWO-TEXTURE BLEND, IF ONE STOOD. `roads()` already rebuilds the lab module
+    on the ONE work `cross` names at a pose and reads it beside the host; this forces the module onto
+    the NAMED work instead, at the same raw fold, so a red-on-bug row can build the honest reference
+    a reverted dissolve would approach — a blend of the two works' own FOLDED pictures at that fold,
+    never the two flat doors."""
+    br.evaluate("window.__labWork(%r); window.__labFold(%r); 0" % (which, fold_value))
+    br.sleep(0.3)
+    br.evaluate("window.__show('module'); 0")
+    br.sleep(0.2)
+    p = png(br, SHOTS / (tag + "-" + which + "-alone.png"))
+    br.evaluate("window.__show('host'); 0")
+    return p
+
+
 # ---------------------------------------------------------------- one real proof, bench-driven
 # This row stood on a SOURCE_TEXT string match — the sentence sits somewhere in the file, never that
 # the code beside it behaves as the sentence claims. It is now: (1) the registered instrument's own
@@ -830,8 +876,13 @@ else:
                 # the lab module at the SAME raw fold, which the port's own `values()` hands it.
                 HOLD_SWING = [("hold-a", SHUT_IN + (0.5 - SHUT_IN) / 2),
                               ("hold-b", 0.5 + (SHUT_OUT - 0.5) / 2)]
+                # S-03: THE HAND-OVER ITSELF, WHERE THE HAND CHANGES WHICH WORK THE PANELS READ. Moved
+                # off the flat instant 2026-08-27 (the fresh chair audit): the swing's own deepest turn
+                # now stands exactly here, so this is read the same way as every other fold instant —
+                # against the lab module at the same raw fold — rather than against either flat quarter.
+                EXCHANGE_MID = [("exchange-mid", EXCHANGE_MID_DIAL)]
                 shots, reads = {}, {}
-                for tag, at in FLAT + FOLD + HOLD_SWING:
+                for tag, at in FLAT + FOLD + HOLD_SWING + EXCHANGE_MID:
                     reads[tag], hp, mp = roads(br, at, tag)
                     shots[tag] = (hp, mp)
 
@@ -859,28 +910,47 @@ else:
                         "frame's edge falls on the standing panel's own hinges, so the frame is that "
                         "one quarter at exactly the framing the whole work stood at")
 
-                # THE EXCHANGE ITSELF (S-03). At the hold's own middle the hand changes which file the
-                # panels read; both works reach that instant fully closed, so the switch crosses no
-                # fraction and the frame there is the arriving work's own closed quarter, exactly as
-                # it stands at any other instant the sheet is shut — never an average of the two.
+                # THE EXCHANGE ITSELF (S-03, moved off the flat instant 2026-08-27). At the hold's own
+                # middle the hand changes which file the panels read, and the swing now stands at its
+                # own deepest turn exactly there rather than at flat: a real, turned panel is what
+                # changes hands, which is the geometric hand-over the наряд asked for — panels of one
+                # work leaving by their own folding, panels of the other arriving by theirs — and it is
+                # measured four ways: the fold stands off both flat ends: the frame agrees with the lab
+                # module rebuilt on the SAME raw fold, at the bar every other fold instant in this suite
+                # already stands at, so what stood there is a real swing and not a rest; the panel map
+                # there names more than one panel at a real share of the frame, which a flat quarter
+                # never does; and the frame stands far from a blend of the two works' own FOLDED
+                # pictures at that same fold — never the two flat doors, since the swing does not stand
+                # there any more — which is what an averaged dissolve would read.
                 from PIL import Image, ImageChops
-                js(br, "return window.__both(0.5);")
-                br.sleep(0.5)
-                br.evaluate("window.__mask(0); window.__hostDraw(); window.__show('host'); 0")
-                br.sleep(0.3)
-                midp = png(br, SHOTS / "exchange-mid.png")
-                blend = ImageChops.blend(qtowers, qglass, 0.5)
-                bmn, bmx = apart(midp, blend)
-                da, _ = apart(midp, qtowers)
-                db, dbmx = apart(midp, qglass)
+                r_mid = reads["exchange-mid"]
+                midp, modp = shots["exchange-mid"]
+                own_road, own_mx = diff(midp, modp)
+                mid_codes = panel_code_shares(panel_map(br, EXCHANGE_MID_DIAL, "exchange-mid"))
+                other_work = "a" if r_mid["cross"] >= 0.5 else "b"
+                mate_p = module_render_of(br, other_work, r_mid["fold"], "exchange-mid")
+                fold_blend = ImageChops.blend(Image.open(modp).convert("RGB"),
+                                               Image.open(mate_p).convert("RGB"), 0.5)
+                bmn, bmx = apart(midp, fold_blend)
                 check(BROWSER_ROWS[7],
-                      db <= SEAM and da > SEAM and bmn > SEAM,
-                      f"the frame at the hold's own middle stands {db:.4f} of 255 from the arriving "
-                      f"work's own closed quarter (threshold {SEAM}, worst channel {dbmx}) and "
-                      f"{da:.4f} from the departing work's — the hand has already switched to the one "
-                      f"work standing there. It stands {bmn:.4f} of 255 from the two quarters "
-                      f"averaged, which is what a dissolve of them would read: no two pictures are "
-                      f"ever combined")
+                      0.0 < r_mid["fold"] < 1.0 and 0.5 < r_mid["cross"] < 0.52
+                      and own_road <= FOLD_SAME
+                      and len(mid_codes) >= 2
+                      and bmn > SEAM,
+                      f"at the hold's own middle (cross {r_mid['cross']:.4f}) the fold stands at "
+                      f"{r_mid['fold']:.4f} — off both flat ends of the hold. The host's frame agrees "
+                      f"with the lab module rebuilt at that same raw fold within {own_road:.4f} of 255 "
+                      f"(bar {FOLD_SAME}, worst channel {own_mx}), the same bar every other fold "
+                      f"instant in this suite stands at: a real swing, not a rest. The panel map there "
+                      f"names {len(mid_codes)} panels each carrying at least 1% of the frame (codes "
+                      f"{sorted(mid_codes)}) — more than the one flat quarter a cut would leave, since "
+                      f"the stagger between the two panel pairs means one pair stands far along its "
+                      f"own turn (a thin sliver, under a percent of the frame) while the other stands "
+                      f"only lightly turned (most of a half the frame) at this exact fold, and neither "
+                      f"pair's own region is the uniform patch a flat quarter would be. And the frame "
+                      f"stands {bmn:.4f} of 255 from the two works' own folded pictures at that fold "
+                      f"averaged (worst channel {bmx}) — past the seam of {SEAM} — which is what an "
+                      f"averaged dissolve of them would read: no two pictures are ever combined")
 
                 flat_agree = [(t, ) + diff(*shots[t]) for t, _ in FLAT]
                 check(BROWSER_ROWS[8], all(mn <= FLAT_SAME for _, mn, _ in flat_agree),
@@ -1651,42 +1721,54 @@ else:
             'col = mix(ca, cb, uCrease.w); }",')
         assert OLD_EXCHANGE in PACK, "the S-03 exchange line moved; update the red-on-bug match"
 
-        def mid_apart_from_blend(b):
-            js(b, "return window.__both(0.5);")
-            b.sleep(0.5)
-            b.evaluate("window.__mask(0); window.__hostDraw(); window.__show('host'); 0")
-            b.sleep(0.3)
-            p = png(b, SHOTS / "exchange-mid-redbug.png")
-            return apart(p, blend)
-
+        # THE MEASURE: the same two-roads gap every fold row in this suite already reads (`road_gap`,
+        # defined above for the red-on-bug rows), taken at the hold's own middle. S-03's own swing now
+        # stands at its own deepest turn there, not at flat, so the lab module's picture at that instant
+        # is a real folded quarter of ONE work — the module takes one work at a time and never blends —
+        # and with the swing standing the host agrees with it at the bar every other fold instant in
+        # this suite stands at. With the exchange put back to an alpha mix of both works, the host draws
+        # an AVERAGE of two very different folded photographs and the gap against the module's single
+        # -texture picture blows past that bar by a wide multiple: no separate blend reference has to be
+        # built, because the module's own single-texture picture is already the thing a blend departs
+        # from.
         bug = PACK.replace(OLD_EXCHANGE, BLEND_EXCHANGE, 1)
-        base_mid = on_bench(mid_apart_from_blend)
-        bug_mid = on_bench(mid_apart_from_blend, pack_text=bug)
+        base_mid_gap = on_bench(lambda b: road_gap(b, EXCHANGE_MID_DIAL))
+        bug_mid_gap = on_bench(lambda b: road_gap(b, EXCHANGE_MID_DIAL), pack_text=bug)
         check(RED_ROWS[7],
-              bug != PACK and base_mid is not None and bug_mid is not None
-              and base_mid[0] > SEAM and bug_mid[0] <= SEAM,
-              f"with the swing standing, the frame at the hold's own middle stands {base_mid[0]:.4f} "
-              f"of 255 from the two quarters averaged (worst channel {base_mid[1]}) — far past the "
-              f"seam of {SEAM}, since no two pictures are ever combined there. With the exchange put "
-              f"back to a flat crossfade the same frame stands {bug_mid[0]:.4f} of 255 from that same "
-              f"average (worst channel {bug_mid[1]}), inside the seam — the exact blend this order "
-              f"replaces")
+              bug != PACK and base_mid_gap is not None and bug_mid_gap is not None
+              and base_mid_gap <= FOLD_SAME and bug_mid_gap > 4 * FOLD_SAME,
+              f"with the swing standing, the frame at the hold's own middle agrees with the lab module "
+              f"rebuilt on the same raw fold at {base_mid_gap:.4f} of 255 (bar {FOLD_SAME}) — the same "
+              f"bar every other fold instant in this suite stands at, since no two pictures are ever "
+              f"combined there. With the exchange put back to an alpha mix of both works the same "
+              f"frame parts from that single-texture picture by {bug_mid_gap:.4f} of 255 — the module "
+              f"never blends two works, so its own picture is only ever one of them, and an average of "
+              f"two very different photographs stands nowhere near either")
 
         # ---- 9. the hold's own swing stitched at its old rate (S-03, smoothness) -----------------
         # THE CLAIM: `fold` — read straight off the diagnostic surface `posed` publishes, the very
         # number `gate` and therefore `lean`/`form` are built from — is continuous not only in VALUE
-        # but in its own RATE OF CHANGE at all three stitches inside the hold (SHUT_IN, the hold's own
-        # middle, SHUT_OUT). Proved by construction: the fold is walked in fine, equal steps of the
-        # dial, the picture's own rate of change between consecutive steps is read at every step, and
-        # the biggest jump in THAT rate near the three stitches is held against the biggest jump the
-        # SAME walk, at the SAME step, finds well away from the hold — the ordinary grain `feelOf`'s
-        # own straight segments already carry, which this bar is not about and must not be tuned
-        # against. A swing built from two half-sine pieces meeting at the hold's own middle arrives at
-        # each stitch at its own steepest — `sin` is steepest through zero — while the flat curve
-        # either side of it is barely moving there, so the OLD swing's jump stands nowhere near that
-        # grain; the smoothed swing's does, because `dip` (`sin` SQUARED) touches zero tangent-first at
-        # all three stitches and `hHold` is built to carry the flat curve's own edge rate across the
-        # join instead of stopping it.
+        # but in its own RATE OF CHANGE at the hold's own two true joins with the outer curve (SHUT_IN
+        # and SHUT_OUT), where a two-piece construction would otherwise stitch. Proved by construction:
+        # the fold is walked in fine, equal steps of the dial, the picture's own rate of change between
+        # consecutive steps is read at every step, and the biggest jump in THAT rate near the hold is
+        # held against the biggest jump the SAME walk, at the SAME step, finds well away from it — the
+        # ordinary grain `feelOf`'s own straight segments already carry, which this bar is not about and
+        # must not be tuned against. A swing built from two half-sine pieces meeting at the hold's own
+        # middle arrives at each of ITS THREE joins (SHUT_IN, the middle, SHUT_OUT) at its own steepest
+        # — `sin` is steepest through zero — while the flat curve either side of it is barely moving
+        # there, so the OLD swing's jump stands nowhere near that grain; the smoothed single-hump
+        # swing's does, because `dip` (`cos` SQUARED) touches zero tangent-first at the two true joins
+        # (SHUT_IN, SHUT_OUT) and `hHold` is built to carry the flat curve's own edge rate across each of
+        # them instead of stopping it dead. The hold's own MIDDLE is no longer a join of two pieces at
+        # all — S-03's own fix of 2026-08-27 moved it to `dip`'s own PEAK rather than its zero, so a real
+        # panel stands there and the fold's rate is read off one smooth curve through it, tangent-first
+        # the same way. (One number this row's own history got wrong, left as a plain note rather than
+        # re-tuned: a 2026-08-27 commit read the jump this walk finds inside [0.43, 0.57] — 2.8043 a step
+        # — as the middle stitch's own jump; walking `foldAt` finer shows the true peak of that window
+        # sits at dial≈0.437, a knot boundary of the piecewise-linear FEEL_KNOTS curve OUTSIDE the hold
+        # (SHUT_IN is 0.46), not a join this swing owns at all. The row still holds — 2.8043 stays under
+        # the bar either way — the commit's own sentence about what the number measures does not.)
         def fold_speed_jumps(b):
             return js(b, """
                 var bench = window.__exPass.bench;
@@ -1722,7 +1804,7 @@ else:
             '      } else if (dial < SHUT_OUT) {\n'
             '        var y = (dial - 0.5) / HOLD;\n'
             '        var hHold = 1 + FEEL_EDGE_SLOPE * HOLD * y * y * (1 - 4 * y * y);\n'
-            '        var dip = Math.sin(2 * Math.PI * y);\n'
+            '        var dip = Math.cos(Math.PI * y);\n'
             '        fold = hHold - FLUTTER_DIP * dip * dip;\n'
             '      } else {\n'
         )
@@ -1743,13 +1825,12 @@ else:
               and base_jumps["atStitches"] <= SPEED_BAR * base_jumps["awayFromHold"]
               and bug_jumps["atStitches"] > SPEED_BAR * bug_jumps["awayFromHold"],
               f"walked in steps of 0.0001 across the dial, fold's own rate of change jumps by at most "
-              f"{base_jumps['atStitches']:.4f} a step at the hold's three stitches, against "
-              f"{base_jumps['awayFromHold']:.4f} away from it (bar {SPEED_BAR}x) — the stitches read "
-              f"as ordinary curve, not as a defect. Put back the two half-sine pieces that used to "
-              f"meet at the hold's own middle, the same walk finds {bug_jumps['atStitches']:.4f} at "
-              f"the stitches against {bug_jumps['awayFromHold']:.4f} away from them — a jump the "
-              f"straight curve on either side never asked for, which is the «тыц-бум-тыц» the swing "
-              f"put there")
+              f"{base_jumps['atStitches']:.4f} a step near the hold, against "
+              f"{base_jumps['awayFromHold']:.4f} away from it (bar {SPEED_BAR}x) — the hold's own "
+              f"joins read as ordinary curve, not as a defect. Put back the two half-sine pieces that "
+              f"used to meet at the hold's own middle, the same walk finds {bug_jumps['atStitches']:.4f} "
+              f"near it against {bug_jumps['awayFromHold']:.4f} away from it — a jump the straight "
+              f"curve on either side never asked for, which is the «тыц-бум-тыц» the swing put there")
 
 
 shutil.rmtree(TMP, ignore_errors=True)

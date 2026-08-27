@@ -28,10 +28,11 @@
   // THE UNFOLD INSTRUMENT (§8) — lab/effects/unfold.js carried across
   // ================================================================================================
   // WHAT THE VISITOR SEES. One work stands whole and fills the frame. It folds shut along its own
-  // mirrored panels until what is left standing, filling the frame again, is the single photograph
-  // it was cut from. That standing photograph is where the two works meet: across eight hundredths
-  // of the hand the frame holds one flat picture and the first work's quarter gives way to the
-  // second's. Then the second work opens out along the same seams and stands whole.
+  // mirrored panels until the panels swing back out again — the same turn, not a flat rest — and it
+  // is across that swing, at its own deepest point, that the first work's panels give way to the
+  // second's: across eight hundredths of the hand the panels leave their own closed sheet and return
+  // to it, and the exchange happens at the swing's own turned middle rather than at either of its
+  // shut ends. Then the second work opens out along the same seams and stands whole.
   //
   // WHY IT STANDS HERE. The composer's own census counts 1 296 declined pairs whose pivot asks for
   // an instrument that cuts on PANELS — for `region_dissolve` and `object_reveal` — which is the
@@ -82,27 +83,34 @@
   // ------------------------------------------------------------------------------------------------
   // lab/data/module-contract.json records `unfold` as `needsTwoWorks: false`, and the module takes one
   // picture. A cue of this engine carries two works and two doors (§8: `neutrals`, `doors`), so the
-  // port had to say where the second work enters. It enters at the one instant the module's own
+  // port had to say where the second work enters. It enters near the one instant the module's own
   // construction offers: the far door, where the sheet stands closed and the frame holds a single flat
-  // quarter of the file at exactly the framing the whole work stood at. Both works reach that instant
-  // as one flat full-frame picture, and it is exactly there that they change hands.
+  // quarter of the file at exactly the framing the whole work stood at. Both works pass through that
+  // shut instant — first the departing work closing over it, then the arriving work opening back out
+  // of it — but the hand does not change which work the panels read AT it: it changes hands at the
+  // swing's own deepest turn, between the two shut edges, where a real panel stands on screen rather
+  // than the closed sheet (S-03, the fresh chair audit of 2026-08-27).
   //
   // WHAT A FLAT PICTURE CANNOT ANSWER WITH A SECOND FOLD. By the instant the sheet stands shut, every
   // panel has already turned past HOME and the growth law has already given it up — folding a closed
   // panel FURTHER moves nothing the eye can read. So the one motion left to a panel that has nowhere
-  // further to retreat is the one it already owns: swing back OUT of its own turn and shut again. The
-  // first work's panels take that swing to leave, the second work's panels take the same swing,
-  // mirrored, to arrive, and the two swings meet at the one instant both works are shut — where the
-  // hand switches which file the panels read, with nothing of the frame's own shape changing under it.
+  // further to retreat is the one it already owns: swing back OUT of its own turn, away from flat, and
+  // in again. The first work's panels take that swing to leave, the second work's panels take the same
+  // swing, mirrored, to arrive — and the hand changes which file the panels read at the swing's own
+  // DEEPEST turn, not at either of its shut ends, so the two works change hands while panels genuinely
+  // stand turned on screen rather than while the sheet is shut (S-03, the fresh chair audit of
+  // 2026-08-27: a swing that came back to flat at the handover answered «no blend of two textures» and
+  // still cut, at that one instant, between two full-frame photographs — the geometric hand-over the
+  // наряд asked for stood nowhere on screen when it was needed most).
   //
   // The hand therefore runs: the first work folds shut over the first forty-six hundredths, the first
-  // work's own panels swing out and back across the hold's own first half, the hand changes which work
-  // the panels read at the hold's own middle, the second work's panels swing out and back across the
-  // hold's own second half, and the second work opens out over the last forty-six. The module's own
-  // response curve is applied to each of the two long halves, so equal movements of the hand are equal
-  // felt change on both sides of the exchange, which is the whole point of the curve. HOLD and
-  // FLUTTER_DIP are the port's own numbers and the only two that are; every other constant below is
-  // the module's.
+  // work's own panels swing out from flat across the hold's own first half, the hand changes which work
+  // the panels read at the hold's own middle — where the swing stands at its own deepest turn — the
+  // second work's own panels swing back in to flat across the hold's own second half, and the second
+  // work opens out over the last forty-six. The module's own response curve is applied to each of the
+  // two long halves, so equal movements of the hand are equal felt change on both sides of the
+  // exchange, which is the whole point of the curve. HOLD and FLUTTER_DIP are the port's own numbers
+  // and the only two that are; every other constant below is the module's.
   //
   // ------------------------------------------------------------------------------------------------
   // THE COVERAGE: THIS INSTRUMENT FILLS THE FRAME
@@ -401,9 +409,11 @@
       // THE EXCHANGE (S-03). One work's sheet is drawn and the other is never sampled, at every point
       // of the hand alike: the first work's own panels carry the fold up to and through their own
       // leaving swing, the hand changes which file the panels read at the hold's own middle — where
-      // `uCrease.w` (the very handle that used to weigh a blend) crosses its own half — and the second
-      // work's own panels carry the fold on from their own arriving swing. No two pictures are ever
-      // combined: the frame is always the one sheet the fold is standing on.
+      // `uCrease.w` (the very handle that used to weigh a blend) crosses its own half, AND where
+      // `posed`'s own swing stands at its deepest turn rather than at flat, so a real panel is what
+      // changes hands — and the second work's own panels carry the fold on from their own arriving
+      // swing. No two pictures are ever combined: the frame is always the one sheet the fold is
+      // standing on.
       "  if (uCrease.w >= 0.5) { col = sheet(uB, uFitB, judge); }",
       "  else { col = sheet(uA, uFitA, judge); }",
       "  col = mix(col, judge, uMask);",
@@ -439,15 +449,19 @@
     // the hand.
     var HOLD = 0.08;
     var SHUT_IN = 0.5 - HOLD / 2, SHUT_OUT = 0.5 + HOLD / 2;
-    // THE PORT'S OWN SECOND NUMBER (S-03, replacing the flat cross-dissolve this exchange used to
-    // play). By SHUT_IN the sheet already stands shut and every panel has already turned past HOME, so
-    // folding a closed panel FURTHER moves nothing the eye can read — the one motion left to it is the
-    // one it already owns: swing back out of its own turn and shut again. Each half of the hold plays
-    // one such swing — shut at its own outer edge, open at the hold's own middle, shut again where the
-    // hand changes which work the panels read — using the very aY/aX/reach machinery every other fold
-    // on this frame already stands on, so nothing new is drawn, only the fold this swing asks for.
-    // FLUTTER_DIP is how far that swing gives the fold back: low enough that it reads as the panels'
-    // own turn and not a second unfold, high enough that the angle actually clears HOME, so the turn is
+    // THE PORT'S OWN SECOND NUMBER (S-03, replacing first the flat cross-dissolve this exchange used
+    // to play, and then — the fresh chair audit of 2026-08-27 — the flat CUT that replaced it: a swing
+    // built to come back to fold 1 exactly where the hand changed which work the panels read answered
+    // «no blend of two textures» to the letter and still handed the eye a straight cut between two
+    // full-frame photographs, since both works stood flat there alike). By SHUT_IN the sheet already
+    // stands shut and every panel has already turned past HOME, so folding a closed panel FURTHER moves
+    // nothing the eye can read — the one motion left to it is the one it already owns: swing back out
+    // of its own turn and in again. The swing spans the WHOLE hold as one hump — shut at each of the
+    // hold's own outer edges, at its own deepest turn exactly where the hand changes which work the
+    // panels read — using the very aY/aX/reach machinery every other fold on this frame already stands
+    // on, so nothing new is drawn, only the fold this swing asks for. FLUTTER_DIP is how far that swing
+    // gives the fold back: low enough that it reads as the panels' own turn and not a second unfold,
+    // high enough that the angle actually clears HOME, so the turn is
     // seen rather than merely computed. One half back is that clearance with room held either side of
     // it — HOME sits 0.9524 of the way from 0 to MAXA, and 0.5 stops well short of it.
     var FLUTTER_DIP = 0.5;
@@ -596,32 +610,39 @@
       if (dial <= SHUT_IN) {
         fold = feelOf(clamp(dial / SHUT_IN, 0, 1));
       } else if (dial < SHUT_OUT) {
-        // THE HOLD'S OWN SWING (S-03, stitched smooth 2026-08-27): one smooth hump spanning the
-        // WHOLE hold, in place of the two half-sine pieces that used to meet at its own middle. The
-        // two pieces agreed with the flat curve either side of them, and with each other at the
-        // middle, in VALUE — every join stood at fold 1 — but not in the RATE fold was moving at:
-        // a sine half-cycle starts and ends at its own steepest, so the swing arrived at each of its
-        // three stitches at a dead run while the curve either side of it was moving at a comparative
-        // walk (measured 2026-08-26: about 4.85 a unit of dial against about 39.3 a unit at HOLD =
-        // 0.08). The fold's own POSITION never jumped; its SPEED did, three times in half a second,
-        // which reads as a jolt no eye asked for.
+        // THE HOLD'S OWN SWING (S-03, stitched smooth 2026-08-27; moved off the flat instant
+        // 2026-08-27 by the fresh chair audit): one smooth hump spanning the WHOLE hold, in place of
+        // the two half-sine pieces that used to meet at its own middle — and PEAKING at that middle
+        // rather than returning to flat there. The two half-sine pieces agreed with the flat curve
+        // either side of them, and with each other at the middle, in VALUE — every join stood at fold
+        // 1 — but not in the RATE fold was moving at: a sine half-cycle starts and ends at its own
+        // steepest, so the swing arrived at each of its three stitches at a dead run while the curve
+        // either side of it was moving at a comparative walk (measured 2026-08-26: about 4.85 a unit
+        // of dial against about 39.3 a unit at HOLD = 0.08). That defect was fixed by riding a single
+        // hump over the whole hold, but the hump built that day was shaped to return to fold 1 — no
+        // panel standing, both works flat alike — at its own middle, which is the one instant the hand
+        // changes which work the panels read: the fold's own SPEED no longer jolted, but the picture
+        // at the handover was a straight cut between two full-frame photographs, which is the fault
+        // the fresh chair audit of 2026-08-27 found. Naming the hump's PEAK at the middle instead — a
+        // real, turned panel exactly where the hand changes hands — is the one change below.
         //
         // `y` is the dial's own place in the hold, centred and scaled so the hold's middle is 0 and
         // its two edges are ±0.5. `hHold` is the smooth part that carries fold across the hold at
-        // all: it is exactly 1 at both edges and at the middle, its own slope is exactly nothing at
-        // the middle, and at either edge its slope is exactly `FEEL_EDGE_SLOPE` (in the same dial
-        // units the curve on both sides is already moving at there) — so the join carries the flat
-        // curve's own rate of travel across it rather than stopping it dead. `dip` is `sin` squared
-        // of twice the hold's own turn: it is exactly nothing, AND exactly flat, at the hold's two
-        // edges and at its middle (a squared sine touches zero tangent-first, not corner-first,
-        // which a bare `Math.abs(sin(...))` — or the old two-piece sine — does not), and it climbs to
-        // 1 at the quarter-points either side, which is where each swing actually turns the panels
-        // out and back. Riding it on `hHold` swings the fold exactly as far as FLUTTER_DIP asks for
-        // without disturbing either the value or the slope `hHold` alone already carries at the three
-        // stitches.
+        // all: it is exactly 1 at both edges, at either edge its slope is exactly `FEEL_EDGE_SLOPE`
+        // (in the same dial units the curve on both sides is already moving at there) — so the join
+        // carries the flat curve's own rate of travel across it rather than stopping it dead — and it
+        // is exactly 1 at the middle too, where it contributes no swing of its own. `dip` is `cos`
+        // squared of the hold's own turn: it is exactly nothing, AND exactly flat, at the hold's own
+        // two edges (a squared cosine touches zero tangent-first there, not corner-first, which a bare
+        // `Math.abs(cos(...))` does not, so the join with the outer curve is smooth in rate as well as
+        // in value), and it climbs to its own peak of 1 exactly at the hold's own middle, where its own
+        // slope is again exactly nothing — a turning point, not a kink, so the texture switch below
+        // reads a panel standing at its most-turned angle rather than at a corner in the curve. Riding
+        // it on `hHold` swings the fold away from flat across the whole hold and lands it at that
+        // lowest angle exactly where the hand changes which work the panels read.
         var y = (dial - 0.5) / HOLD;
         var hHold = 1 + FEEL_EDGE_SLOPE * HOLD * y * y * (1 - 4 * y * y);
-        var dip = Math.sin(2 * Math.PI * y);
+        var dip = Math.cos(Math.PI * y);
         fold = hHold - FLUTTER_DIP * dip * dip;
       } else {
         fold = feelOf(1 - clamp((dial - SHUT_OUT) / (1 - SHUT_OUT), 0, 1));
