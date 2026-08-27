@@ -19,7 +19,8 @@ the clause describes — each one is listed in the Formal index for easy reconci
    *Specified below (scenarios "Sharing a work" and "Baking the site").*
 3. **The adaptive exhibition** — the single touchpoint at `/` where the personal, ever-changing
    walk lives, assembled per visitor from the kinship vectors. Door, gallery, sharing, the
-   ambient narrator, the optional voice — all one surface, two faces.
+   ambient narrator, the optional voice, the optional composed pass between two hung works — all
+   one surface, two faces.
    *Specified below (scenario "Arriving — the adaptive exhibition").*
 
 ---
@@ -564,6 +565,81 @@ quietly; the closing screen shows «дальше — новый выбор» (lo
 can never grant unlimited "more" (`INV-11`). The closing screen's copy — the exit word, the
 more-line, both questions — speaks the visitor's language from the same greeting strings cache;
 built-in Russian stands under a missing cache. `INV-15` `INV-29`
+
+### The pass — a composed crossing between two works
+
+Behind `EX-GLIDE`'s one-frame walk stands an optional second layer: a **pass**, a composed visual
+transaction that plays instead of the plain glide when the config flag `visualLayer` is on and none
+of the pass's own refusal conditions have tripped — reduced motion, Save-Data, a device with no
+WebGL2, a failed fetch for the renderer's own file, or a renderer that throws at registration all
+fall back the same way `visualLayer=off` does. A pass is subordinate to the walk it interrupts — it
+owns none of the door, the story, the series, the quiz, the gift, the zoom, sound, sharing, history,
+any input method, resize/orientation/DPR, RTL, reduced motion, Save-Data, or the static face, and it
+changes not one pixel of any of them. With `visualLayer=off`, or wherever a pass declines before it
+takes the frame, the walk plays exactly as `EX-GLIDE` states.
+The pass's full contract — every field, every conformance row, its own build status — is
+`docs/design/PASS-API-V1.md`; that document is the live record of what stands built and this section
+does not repeat or shadow it. What this section states is what a reader of THIS spec must already
+know to place the feature among the rest: what a composer is, what "level" means (three readings, not
+one — the confusion this section exists to close), what a score's own voice counts, and what a pass's
+own door names. `EX-PASS`
+
+**The composer** reads two works' ElementSets — the fragments a `decompose` provider cuts each work
+into along a structural, semantic, tonal, spectral or author-drawn axis, always paired with their
+complement so the whole frame stays reconstructable — together with the ordered pair's own dossier,
+and emits a **ScenePlan**: a versioned, data-only record naming the pair's held pivot (the invariant
+shared part that never travels), the actors it casts from each work's own elements, the middle it may
+build between them, and the timed cues that carry the crossing. A plan is refused where no actor names
+any element of either work — a passage between two whole, uncut frames is not what a composer is for.
+The ScenePlan never reaches the browser: it is serialised at build time into a **score**, the wire
+format the host actually plays, under a closed allow-list that strips any field the score does not
+name and records the strip rather than refusing the whole score. A score names no expression, no
+function and no executable string. `EX-PASS-COMPOSER`
+
+**"Level" names three different questions, and answering one with another is the exact defect this
+paragraph closes.** A structural level (`WORLD`, `SURFACE`, `CELL`, `CELL CONTENT`, `TEXTURE`,
+`LIGHT-COLOUR`) is a place in the frame's own structure, and every reading below is a different
+question about who stands where on that ladder:
+- **Declaration** — an instrument's own manifest states, per handle, which structural level that
+  handle touches at all. This is a fixed fact about the instrument, true whether or not any plan ever
+  casts it; a handle the manifest leaves silent touches no level and answers to no ownership at all.
+- **Ownership** — a cue's own `levels` list on the score names the levels that cue CLAIMS for the
+  length of its window. The levels law reads ownership alone: two cues that both own one level in
+  overlapping windows are the one contention it refuses, and a cue that merely plays over a level
+  without claiming it is not competing for it — it stays off that cue's `levels` list by the law's own
+  words, however much of that level's motion it actually supplies.
+- **Driving** — which levels a cue actually moves something on, read off the tracks it was built with
+  rather than off any list it or its instrument declares. A cue can own a level and drive nothing on
+  it, or drive a level it does not own; ownership is a claim on a level, driving is the fact of moving
+  it, and the two do not have to agree.
+The plan's `levelOwnership` record — one of four fields that live only in the plan and never reach the
+score — is what keeps the second and third readings apart at build time, before either reaches the
+host: it states, per level, which cue owns it and which cues merely accompany on it, so the tier
+budget (below) can count the OWNED voice without mistaking a level's other traffic for a second
+claim. `EX-PASS-LEVEL`
+
+**A score's `voice` is a budget word, not the exhibition's own narrator** (that sense of "voice" stays
+`EX-STORY`'s alone; the two never name the same thing). Every cue on a score declares
+`voice: "letter" | "accompaniment" | "miracle"` — a structural gesture, an accompanying one, or the
+one impossible event. The tier a pass plays at (quiet, middle, culmination) bounds how many of each a
+score carries on BOTH ends, not as a ceiling alone: a quiet-tier score carries no miracle, a
+middle-tier score at most one, and a culmination-tier score exactly one — never zero — together with
+the camera's own track, which counts as one accompaniment whenever the score names one. `roles` asks a different
+question — what a cue does dramatically inside the pass, drawn from a set of nine named roles — and
+the two fields are read by two different checks; a score naming only one of them cannot be checked by
+the other. `EX-PASS-VOICE`
+
+**A pass's own door is not the exhibition's entry door** (that sense of "door" stays `EX-DOOR`'s
+alone; the two never name the same thing). Every pass command names a destination, and the door it
+resolves to is a pair of exact geometries, `from` and `to`, each in turn a `hangGeometry` (the work's
+real position, crop, fit, pixel ratio and orientation in the exhibition layout) and an
+`immersiveGeometry` (the fullscreen scene state the pass plays in) — read live off the DOM rather than
+frozen stale onto any plan, so a resize or a turn mid-pass reframes toward the true destination and
+never a remembered one. A cue's own `doors` field is a narrower thing entirely: the handle values that
+cue reads in and out at its own edges, not a place in the room. The pass itself holds no door of its
+own between two hung works — the instrument that draws the frame reads its own mask at both doors on
+the buffer, and the composer that casts it emits only the artistic request, never the geometry. A pass
+that names a door its instrument's manifest leaves blank is refused before it plays. `EX-PASS-DOOR`
 
 ### Sharing from the walk
 
@@ -1831,6 +1907,17 @@ the worker.
 - **Caption** — plain-language prose of what a work shows, from `content_tags.json`; for
   machines and assistive voices only by default (`CAP`).
 - **Work page** — the flat crawlable `/w/<slug>-<idtail>` page for one work (`WP`).
+- **Pass** — the optional composed visual transaction between two hung works, subordinate to and
+  standing in for `EX-GLIDE`'s plain one-frame walk when `visualLayer` is on; full contract in
+  `docs/design/PASS-API-V1.md` (`EX-PASS`).
+- **Composer** — the layer that reads two works' ElementSets and their pair dossier and emits a
+  ScenePlan, later serialised into the score a pass plays (`EX-PASS-COMPOSER`).
+- **ScenePlan / score** — the composer's data-only output (the plan) and its build-time
+  serialisation into the closed, allow-listed wire record the host plays (the score); a plan field
+  that never survives serialisation never reaches a visitor (`EX-PASS-COMPOSER`).
+- **Structural level** — a place on the pass's own ladder (`WORLD` down to `LIGHT-COLOUR`), read
+  three ways — declared by an instrument's manifest, owned by a cue for its window, or driven by
+  whichever cue actually moves it — never one question (`EX-PASS-LEVEL`).
 
 ---
 
@@ -1877,6 +1964,11 @@ the worker.
 | `EX-CAPTION` | The caption block keeps to its own space: a bottom band, a side band on the start edge past a ~140px legibility floor, or a last-resort scrim; balanced wrap (`INV-98`); a narrow-screen type-step |
 | `EX-ACCENT` | The breathing ground and live accent |
 | `EX-GLIDE` | One input gesture → EXACTLY one centered frame — a cubic ease that arrives at rest and is entered at the running speed, no drift, no mid-frame stall; force scales the single glide's SPEED, never the count (`INV-84`); one animator over the wheel, the keys and the finger; survives a device rotation (`INV-86`) |
+| `EX-PASS` | The optional composed crossing between two hung works, played instead of `EX-GLIDE`'s plain glide when `visualLayer` is on; subordinate to the walk, owning none of its faces; declines to the untouched plain glide with `visualLayer` off or wherever the pass itself declines; full contract in `docs/design/PASS-API-V1.md` |
+| `EX-PASS-COMPOSER` | The composer: reads both works' ElementSets (with their complements) and the pair's dossier, emits a data-only ScenePlan naming the held pivot, the cast actors, the optional middle and the timed cues, refused where no actor names any element of either work; serialised at build time into the score, the closed allow-listed wire record the host plays, which strips and records any field it does not name rather than refusing whole |
+| `EX-PASS-LEVEL` | "Level" on a pass answers three different questions and never one: DECLARATION (an instrument's manifest states which structural level each handle touches, a fixed per-instrument fact), OWNERSHIP (a cue's own `levels` list claims a level for its window; two cues owning one level in overlapping windows is the one contention the levels law refuses), and DRIVING (which levels a cue's built tracks actually move, independent of any list); the plan's own `levelOwnership` record keeps ownership and driving apart before either reaches the score |
+| `EX-PASS-VOICE` | A score cue's `voice` (`letter`\|`accompaniment`\|`miracle`) is a budget classification bounded by the pass's tier (quiet/middle/culmination), with the camera's own track counting as one accompaniment whenever named; distinct from `roles` (nine named dramatic functions, checked separately) and distinct from the exhibition's own narrator voice (`EX-STORY`) |
+| `EX-PASS-DOOR` | A pass command's own door is a pair of geometries, `from` and `to`, each a `hangGeometry` (the work's real DOM position, crop, fit, pixel ratio, orientation) and an `immersiveGeometry` (the fullscreen scene state), read live rather than frozen onto a plan; distinct from the exhibition's own entry door (`EX-DOOR`) and from a cue's own narrower `doors` field (handle values at its edges); a pass naming a door its instrument's manifest leaves blank is refused before it plays |
 | `EX-CHROME` | One page shape for the browser on every face: the root overflow cut is retired as a lock; every standing face (the re-opened door included) rests input + hides the scrollbar gutter-stable, with a snap-back guard correcting any scroll the house did not write |
 | `EX-SHARE-BTN` | The floating share button (fixed chrome): copies the in-view work's room permalink, never navigates |
 | `EX-SHARE-IN` | The permalink arrival: `#w-<id>` as a handed-over pick |
@@ -2016,6 +2108,7 @@ the worker.
 | `INV-105` | One work's missing line leaves its neighbours speaking: the edge serves every well-formed line an answer carries, caches a short plot the way it caches a whole one, and answers one carrying none with a `502` — plus, on a one-work key, an hour-long refusal record answered `502` ahead of every fence — while deleting the single-flight lock it laid at each of its own exits, so a re-ask meets the cache, the record, a fence, or the model; the walk asks for each wordless work by id under its own key shape, in the walk's own order, five asks to a clock hour across door picks and the rest owed to the walk's beats, each ask a three-rung ladder, wearing the wait mark until a line lands and falling to that work's own silence when the ladder is spent (CS-8); an ask the cache and the record leave unanswered passes the three money fences, and a dead account is flagged from this route. |
 
 | `INV-108` | The first spread is told by two plots: an opening one over the first `story_lead` works, asked the moment the walk stands, and a second over the rest of that spread, asked once the focus comes within one work of it. Each keeps its own ordered ids and its own cache key, so no work is told twice and a visitor who walks the whole spread reads the same lines either way. |
+| `INV-109` | A pass changes no pixel of the plain walk unless it actually takes the frame: `visualLayer=off`, a decline before takeover, or any refusal at build time (an actor-less plan, a door the instrument's manifest leaves blank, a levels-law contention, a tier-budget breach) all leave `EX-GLIDE`'s one-frame glide running exactly as this spec states it, with no partial or half-drawn pass ever reaching the visitor |
 
 ### Reconciliation log — how each behavior above landed in code
 
