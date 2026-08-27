@@ -1171,9 +1171,32 @@ cut-line floors, the discriminating thresholds, the score fence and the provenan
 **The composer travels as its own file**, `pass-composer.js`, fetched once per visit at the walk's
 first landing on a visit whose settings record actually carries the records and whose layer is on.
 This is the division §12 states for the picture, applied for the same reason. Warming stays at the
-LANDING and nothing ever waits on the wire: the passage is derived synchronously inside `declare`, so
-a crossing declared before the composer has arrived glides, with the reason on the diagnostic
-surface — exactly what a pair with no score has always meant.
+LANDING: the passage is derived synchronously inside `declare`, so a fetch begun there could never
+arrive in time for the crossing that began it.
+
+**Amended 2026-08-27: a crossing waits for a file that is already on its way; it glides only for one
+that is never coming.** The superseded sentence read "nothing ever waits on the wire", and it cost
+the visitor the FIRST crossing of every visit. Three files decide a crossing and the door's own pick
+asks for all three in one beat — the drawing layer, the record wave and the composer. The layer's
+file has been waited for since 2026-08-24 (bounded, at `passLayerAwait`) and the record wave since
+2026-08-25 (bounded by the request's own life, at `passRecordsHold` — a change this document never
+recorded until today). The composer, the heaviest of the three and therefore the last to land, was
+waited for by nothing at all, and `passRecordsHold` bails outright where no composer is in hand, so
+the one wait that could have covered the window was switched off exactly while the window stood
+open. A step declared inside it is not a step without a passage; it is a step whose passage is on its
+way. It is now HELD at `passComposerHold` and DECLARED AGAIN once the file settles, by the same road
+and the same resume the record wave already uses — so the fresh command's score, parameters and
+generation are all a reading of the instant the answer arrived, never a stale command patched after
+the fact. The wait is bounded by the request's own life and by nothing else: the file handing a
+composer over, the file handing none over, and the request failing are its three ends, and no
+duration is named anywhere on this road. A composer that is a VERDICT rather than a window — absent,
+refused, stood down for reduced motion or Save-Data, or answering a named refusal for this pair —
+still glides at once, with the reason on the diagnostic surface, exactly as a pair with no score has
+always meant. The surface publishes the wait itself: `composer.holds` counts every step this visit
+has held on the file and `composer.waiting` how many are holding at this instant, beside the two
+numbers the record wave already publishes. Conformance: `tests/test_pass_composed.py`, the two rows
+about the first crossing of a cold visit — one driving a held file, one reverting the hold's own
+dispatch in a copy of the built artifact and requiring the answer to move.
 
 **The one entry is `passageFor(request)`**, and the request is the whole of what a passage is asked
 for:

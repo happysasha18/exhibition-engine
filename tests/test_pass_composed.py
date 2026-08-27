@@ -2418,7 +2418,21 @@ const HARD = {
     } catch (e) {
       err = String((e && e.message) || e);
     }
-    return { mode: (p && p.plan && p.plan.arrival && p.plan.arrival.mode) || null,
+    // THE ARRIVAL'S OWN CUE, AND WHAT THE PLAN ACTUALLY WROTE ONTO IT. The mode alone says which of
+    // the five was ranked highest; these say whether the decision reached an instrument — which is
+    // the whole difference between an arrival that is NAMED and one that is PLAYED.
+    const plan = (p && p.plan) || null;
+    const arr = (plan && plan.arrival) || {};
+    const cue = plan ? (plan.cues || []).filter((c) => c.id === "arrival")[0] : null;
+    const nodeOf = (h) => {
+      if (!cue || !cue.nodes) return null;
+      const n = cue.nodes[cue.id + "-" + h];
+      return n === undefined || n === null ? null : toNum(n.value);
+    };
+    return { mode: arr.mode || null, locusKind: arr.locusKind || null, locus: arr.locus || null,
+             instrument: cue ? cue.instrument.id : null,
+             seedPlace: nodeOf("seedPlace"), arrivalHandle: nodeOf("arrival"),
+             propagate: nodeOf("propagate"), roles: cue ? cue.roles : null,
              declined: (p && p.declined) || null, error: err };
   };
   out.arrivalVocabulary = {
@@ -2431,6 +2445,29 @@ const HARD = {
     PROPAGATED: runArrival("propagated",
       Object.assign({ rotational: { n: 4, score: 0.9 } }, detune)),
     INTERFERED: runArrival("interfered", {})
+  };
+  // 12c · WHERE THE CRYSTALLIZED ARRIVAL PUTS ITS SEED, ON A PAIR BUILT SO THE TWO CANDIDATE
+  //       PLACES CANNOT BE CONFUSED. The наряд asks for a seed «в точке наибольшего беспорядка» —
+  //       at the point of greatest disorder — and the file placed it for a while at the arriving
+  //       work's own strongest DIVIDING line, which is the most ordered place its record names.
+  //       So this record puts the two far apart: its detail stratum gathers at 0.14 of the frame's
+  //       width and its region line falls at 0.82. One of the two numbers comes back on the plan,
+  //       and which one it is settles the question.
+  //
+  //       AND THE SEED HAS TO REACH THE PICTURE. The second reading is the arrival cue's own
+  //       `seedPlace` node — the handle the pour's column releases are ordered outward from — so a
+  //       seed that named a place and never reached an instrument would still red this.
+  //
+  //       THE SILENT CASE IS BUILT TOO. A work with the same grain score and no relief reading at
+  //       all has no measured point of disorder; it must seed nowhere and say so, rather than
+  //       standing the seed at a middle nobody read.
+  out.crystalSeed = {
+    apart: runArrival("crystal-apart",
+      Object.assign({ regions: { line: { x: { at: 0.82 }, y: { at: 0.6 } }, score: 0.4 } }, detune),
+      { scoreFromCutLines: 0.85, reliefCentreDetailX: 0.14 }),
+    silent: runArrival("crystal-silent",
+      Object.assign({ regions: { line: { x: { at: 0.82 }, y: { at: 0.6 } }, score: 0.4 } }, detune),
+      { scoreFromCutLines: 0.85 })
   };
 }
 
@@ -2977,6 +3014,50 @@ else:
                   f"built pair declined: {_row['declined']}; threw: {_row['error']}; the plan's "
                   f"own arrival.mode read «{_row['mode']}»" if _row["mode"] != _mode
                   else f"the plan's own arrival.mode read «{_row['mode']}» exactly as built")
+
+        # --- row 0c · WHERE THE CRYSTALLIZED ARRIVAL SEEDS, AND WHETHER THE SEED REACHES PIXELS ---
+        # The наряд's own sentence for this arrival is «зерно в точке наибольшего беспорядка,
+        # порядок расходится задержкой по расстоянию» — a seed at the point of greatest disorder,
+        # and order spreading from it with a delay proportional to distance. The pair below is built
+        # so the two candidate places stand far apart: the arriving work's detail stratum gathers at
+        # 0.14 of the frame's width — the least ordered place its record names — and its region
+        # line, the strongest DIVIDING line the same record carries and the most ordered place in
+        # it, falls at 0.82. The plan can hand back only one of the two.
+        cs = got["crystalSeed"]["apart"]
+        seeded = (cs["mode"] == "CRYSTALLIZED" and cs["locusKind"] == "grain-seed"
+                  and cs["locus"] and abs(float(cs["locus"][0]) - 0.14) < 1e-6)
+        check("EX-COMPOSED the crystallized seed stands at the arriving work's own point of "
+              "greatest disorder, never at its strongest dividing line",
+              seeded,
+              "the work's own grain gathers at 0.14 of the frame's width and its region line falls "
+              "at 0.82; the plan seeded at %s, which is the grain and not the line"
+              % (cs["locus"],)
+              if seeded else "the plan seeded at %s under «%s» (mode «%s») — 0.82 is the dividing "
+                             "line and 0.14 is the grain" % (cs["locus"], cs["locusKind"],
+                                                             cs["mode"]))
+
+        reached = (cs["arrivalHandle"] == 1 and cs["seedPlace"] is not None
+                   and abs(float(cs["seedPlace"]) - 0.14) < 1e-6)
+        check("EX-COMPOSED the crystallized seed reaches the instrument that spreads order out "
+              "from it, rather than staying a word on the plan",
+              reached,
+              "the arrival casts «%s» and the score writes its arrival at rung %s with the seed at "
+              "%s of the frame's width — which is what orders that instrument's own releases "
+              "outward from the seed" % (cs["instrument"], cs["arrivalHandle"], cs["seedPlace"])
+              if reached else "the arrival cast «%s» and the score wrote arrival=%s seedPlace=%s"
+                              % (cs["instrument"], cs["arrivalHandle"], cs["seedPlace"]))
+
+        sil = got["crystalSeed"]["silent"]
+        silent = (sil["mode"] == "CRYSTALLIZED" and sil["locusKind"] == "none"
+                  and sil["seedPlace"] is None)
+        check("EX-COMPOSED a work whose record carries no grain reading seeds nowhere and says so",
+              silent,
+              "the same pair with the relief reading taken out of the record still ranks "
+              "CRYSTALLIZED on its grain score, names no place at all («%s») and drives no seed "
+              "onto any instrument — the region line at 0.82 is not borrowed to stand in for a "
+              "point nobody measured" % sil["locusKind"]
+              if silent else "mode «%s», locus kind «%s», seed %s"
+                             % (sil["mode"], sil["locusKind"], sil["seedPlace"]))
 
         # --- row 1 · the fold, and the two laws that bind it ------------------------------------
         noMiracle = ["entrance", "quiet link", "return"]
@@ -4492,6 +4573,20 @@ else:
             # across windows that meet — a new instrument whose levels leave `castForKinds` no
             # alternative, or a loosening of that clause. The day the walk above finds a pair, the
             # plant belongs here again, pointed at the same line.
+
+            # THE SEED PUT BACK ON THE DIVIDING LINE, which is where it stood until 2026-08-27 and
+            # what the audit of that day found. The plant is the placement and nothing else — the
+            # fit the arrival is RANKED on is untouched, so CRYSTALLIZED still wins the same pair —
+            # and the row it reddens is the one that says the seed reads the work's own grain. With
+            # the line back, the same record seeds at 0.82, its strongest dividing line and the most
+            # ordered place it names.
+            ("EX-COMPOSED red-on-bug · the seed placed back on the work's own dividing line: the "
+             "point of greatest disorder is read off the most ordered place in the frame",
+             [["      var seedAt = isFinite(mt.reliefCentreDetailXAt)\n"
+               "        ? [r4(clamp01(mt.reliefCentreDetailXAt)), 0.5] : null;",
+               "      var seedAt = (isFinite(mt.regionLineXAt) && isFinite(mt.regionLineYAt))\n"
+               "        ? [r4(mt.regionLineXAt), r4(mt.regionLineYAt)] : null;"]],
+             lambda g: (g["crystalSeed"]["apart"]["locus"] or [None])[0] == 0.82),
         ]
         # The intent fence's own standing row: with the cap planted DOWN and the guard in place,
         # every line the composer writes still fits under it. The red-on-bug above removes the guard
@@ -4545,6 +4640,12 @@ BROWSER_ROWS = [
     "EX-COMPOSED a wave that never lands leaves the walk on its own glide, not a throw",
     "EX-COMPOSED a visit standing still asks the route for nothing at all",
     "EX-COMPOSED a step declared while its wave is on the wire waits for the wave and composes",
+    # 2026-08-27: the composer's own file is the other half of what a crossing needs, and it was the
+    # half nothing ever waited for. The two rows below hold the wait and prove it is not vacuous.
+    "EX-COMPOSED the FIRST crossing of a visit whose composer file is still on the wire waits for "
+    "it and plays a composed passage",
+    "EX-COMPOSED RED-ON-BUG · with the composer's own hold reverted, that same first crossing "
+    "composes nothing and the visitor gets the walk's plain glide",
 ]
 
 
@@ -4638,9 +4739,27 @@ FAIL_WAVE = {"on": False}    # held on by the "wave that never lands" row; every
 # harness serves on a ThreadingHTTPServer (tests/headless_harness.py), so a held GET blocks its own
 # connection and nothing else the page is loading.
 WAVE_GATE = {"ev": None}
+# HOW THE COMPOSER'S OWN FILE IS HELD ON THE WIRE, and why it is held the same way a wave is. The
+# two rows about the first crossing of a cold visit (2026-08-27) ask what a step does while
+# `pass-composer.js` is still travelling — the window every real visitor's first gesture lands in,
+# since that file is the heaviest of the three the door's pick asks for and therefore the last to
+# arrive. `serve(hold=...)` cannot express it: the delay it takes is fixed when the server is built,
+# and these rows have to open the wire at the exact instant they have finished reading what a held
+# step looks like. So the hook below waits on this `threading.Event` for any request naming that
+# file and then falls through to the ordinary file serving, exactly as `WAVE_GATE` does for a wave.
+COMPOSER_GATE = {"ev": None}
 
 
 def records_answer(raw_path):
+    # THE COMPOSER'S FILE IS SERVED FROM DISK AS ALWAYS — only later. Returning None hands the
+    # request back to the harness's ordinary file road (tests/headless_harness.py's `serve`), so
+    # what the browser finally receives is the real built artifact and nothing about the file
+    # itself is faked; the only thing this hook owns is WHEN it starts arriving.
+    if "pass-composer.js" in raw_path:
+        gate = COMPOSER_GATE["ev"]
+        if gate is not None:
+            gate.wait(90)     # bounded so a row that dies without opening it cannot wedge the server
+        return None
     """The harness's `answer` hook for this suite: answers `GET /api/pass/records?ids=...` the way
     `engine/assets/worker.js`'s `passRecordsRoute` does — a request over `RECORDS_CAP` ids, or with
     none at all, is refused with 400; an id `RECORDS_STORE` does not carry is simply left out of the
@@ -5309,7 +5428,16 @@ else:
                 with Browser(width=1280, height=900) as br4:
                     try:
                         enter(br4, base, "diagnostics:on")
-                        br4.key("ArrowDown")           # opens the layer's file; glides, as it always has
+                        # AMENDED 2026-08-27, and the amendment is what the composer's own hold
+                        # cost this row. The warm-up step below used to reach nothing that could
+                        # wait: the composer was still on the wire, `passRecordsHold` bails without
+                        # one in hand, and the step simply glided. It HOLDS now — first on the
+                        # composer's file, then, once that lands, on this row's own shut wave — so
+                        # `records.holds` already stands at one by the time the baseline below is
+                        # read. Nothing about what this row measures changed; what changed is that
+                        # the delta has to be waited FOR rather than read the instant after the
+                        # keystroke, and the poll at the foot of the row does exactly that.
+                        br4.key("ArrowDown")           # opens the layer's file; holds or glides
                         for _ in range(50):
                             if js(br4, "return !!(window.__exPass && window.__exPass.layer());") is True:
                                 break
@@ -5331,7 +5459,11 @@ else:
                                            " waiting: r.records.waiting,"
                                            " coming: r.records.coming,"
                                            " passages: window.__exPass.passages().length};")
-                            if held["holds"]:
+                            # THE ROW'S OWN STEP, never merely «some step held». A truthy count is
+                            # satisfied by the warm-up step's hold above, which was declared before
+                            # this row's keystroke and says nothing about it; the DELTA is the only
+                            # reading that belongs to the step this row took.
+                            if held["holds"] > before["holds"]:
                                 break
                             br4.sleep(0.2)
                     finally:
@@ -5370,6 +5502,156 @@ else:
                               f"came to hold {after['held']} record(s) and derived "
                               f"{after['scored']} scored passage(s) of {after['passages']} — "
                               f"{after['keys'][:2]} over {len(every)} recorded works")
+
+                # 14 / 15 · THE FIRST CROSSING OF A COLD VISIT (2026-08-27)
+                #
+                # THE DEFECT THESE TWO ROWS HOLD, and why it outlived the fixes before it. A crossing needs
+                # three files, and the door's pick asks for all three in one beat: the drawing
+                # layer, the record wave and the composer. Two of them had a wait — the layer's own
+                # bounded one since 2026-08-24, the wave's since 2026-08-25 — and the composer, the
+                # heaviest of the three by a wide margin and therefore the LAST to land, had none at
+                # all. `passComposeFor` answered null the instant it found no composer, the command
+                # froze with no score, and the visitor's FIRST gesture played the walk's plain glide
+                # while every gesture after it played a composed passage. Worse, `passRecordsHold`
+                # bails at `!passComposer`, so the one wait that could have covered the window was
+                # switched off precisely while the window stood open.
+                #
+                # WHY THE FIRST GESTURE AND NOT A RARE RACE. The window is the composer file's own
+                # travel time, and the visitor's first gesture is the only one that can land inside
+                # it. That is not a probability this row shifts: with the wait in place the first
+                # crossing composes however long the file takes, and that is what row 14 measures.
+                #
+                # WHAT THE RED ROW REVERTS, AND WHAT IT DOES NOT. Row 15 runs the SAME drive against
+                # a copy of the built artifact with one line of `passOffer` removed — the composer
+                # hold's own dispatch, which restores that function byte-for-byte to what it was
+                # before this fix. The source tree is never written to and git is never touched (the
+                # convention tests/test_pass.py's own red row and tests/test_pass_coverage.py's
+                # `red_pack` both document). A row that only asserted the green half would pass just
+                # as well on a visit whose composer happened to arrive early, which is exactly how
+                # this bug has been closed before without being fixed.
+
+                def first_crossing(served_base):
+                    """A genuinely fresh visit whose composer file is held on the wire until this
+                    drive has read what its first crossing did. Returns the three readings the two
+                    rows compare: the walk as the step was declared, the walk while the step was
+                    held, and the walk once the file had landed."""
+                    gate = threading.Event()
+                    COMPOSER_GATE["ev"] = gate
+                    seen = {"before": None, "held": None, "after": None, "marks": []}
+                    READ = ("var r = window.__exPass.report();"
+                            "var rows = window.__exPass.passages();"
+                            "return {layer: !!window.__exPass.layer(),"
+                            " composer: r.composer.state, holds: r.composer.holds,"
+                            " waiting: r.composer.waiting,"
+                            " coming: r.records.coming, held: r.records.held,"
+                            " passages: rows.length,"
+                            " scored: rows.filter(function(x){return !!x.score;}).length,"
+                            " keys: rows.map(function(x){return x.key;})};")
+                    try:
+                        with Browser(width=1280, height=900) as brc:
+                            try:
+                                enter(brc, served_base, "diagnostics:on")
+                                # THE PRECONDITION, MEASURED RATHER THAN ASSUMED: the layer has
+                                # registered and the wave has landed, so neither of them can be what
+                                # this step waits on — and the composer alone is still «asked».
+                                st = {}
+                                for _ in range(60):
+                                    st = js(brc, READ)
+                                    if (st["layer"] and st["composer"] == "asked"
+                                            and st["held"] > 0 and not st["coming"]):
+                                        break
+                                    brc.sleep(0.2)
+                                seen["before"] = st
+                                if not (st["layer"] and st["composer"] == "asked"
+                                        and st["held"] > 0 and not st["coming"]):
+                                    return seen
+                                brc.key("ArrowDown")     # THE FIRST CROSSING OF THE VISIT
+                                held = st
+                                for _ in range(15):
+                                    held = js(brc, READ)
+                                    if held["holds"] or held["scored"]:
+                                        break
+                                    brc.sleep(0.2)
+                                seen["held"] = held
+                            finally:
+                                COMPOSER_GATE["ev"] = None
+                                gate.set()               # the composer's file lands from here
+                            after = seen["held"] or seen["before"]
+                            for _ in range(80):
+                                after = js(brc, READ)
+                                if after["scored"]:
+                                    break
+                                brc.sleep(0.25)
+                            seen["after"] = after
+                            seen["marks"] = js(
+                                brc, "return window.__exPass.report().events"
+                                     ".filter(function(e){return e.name === 'composer-hold';})"
+                                     ".map(function(e){return e.why;});")
+                    finally:
+                        COMPOSER_GATE["ev"] = None
+                        gate.set()
+                    return seen
+
+                import shutil as _shutil     # the bottom-of-file import comes too late for this row
+                now = first_crossing(base)
+
+                HURT_JS = JS.replace(
+                    "  function passOffer(cmd) {\n"
+                    "    if (passComposerHold(cmd)) return true;\n"
+                    "    if (passRecordsHold(cmd)) return true;\n",
+                    "  function passOffer(cmd) {\n"
+                    "    if (passRecordsHold(cmd)) return true;\n",
+                    1,
+                )
+                reverted = HURT_JS != JS
+                hurt = None
+                if reverted:
+                    HURT_DIR = Path(tempfile.mkdtemp(prefix="synth_composed_hurt_"))
+                    _shutil.copytree(TMP, HURT_DIR, dirs_exist_ok=True)
+                    (HURT_DIR / "exhibition.js").write_text(HURT_JS, encoding="utf-8")
+                    with serve(HURT_DIR, answer=records_answer) as base_hurt:
+                        hurt = first_crossing(base_hurt)
+                    _shutil.rmtree(HURT_DIR, ignore_errors=True)
+
+                if not (now["before"] and now["held"]):
+                    skip(BROWSER_ROWS[14],
+                         f"the first crossing could not be taken with the layer standing, the wave "
+                         f"landed and the composer still on the wire: {now['before']}")
+                    skip(BROWSER_ROWS[15], "row 14 never reached its own precondition")
+                else:
+                    check(BROWSER_ROWS[14],
+                          now["before"]["composer"] == "asked"
+                          and now["before"]["scored"] == 0
+                          and now["held"]["holds"] >= 1 and now["held"]["waiting"] >= 1
+                          and now["held"]["scored"] == 0
+                          and now["after"]["composer"] == "read"
+                          and now["after"]["scored"] >= 1,
+                          f"with the composer still on the wire ({now['before']['composer']}), the "
+                          f"layer standing and {now['before']['held']} record(s) already held, the "
+                          f"first crossing held ({now['held']['holds']} hold(s), "
+                          f"{now['held']['waiting']} waiting, marked {now['marks'][:1]}) and "
+                          f"composed nothing while it waited ({now['held']['scored']} scored); the "
+                          f"file then landed and that same crossing derived "
+                          f"{now['after']['scored']} scored passage(s) — {now['after']['keys'][:1]}")
+
+                    if not reverted:
+                        skip(BROWSER_ROWS[15],
+                             "the composer hold's own dispatch line was not found in the served "
+                             "client, so there was nothing to revert")
+                    elif not (hurt and hurt["before"] and hurt["held"]):
+                        skip(BROWSER_ROWS[15],
+                             f"the reverted copy never reached the same precondition: "
+                             f"{hurt['before'] if hurt else None}")
+                    else:
+                        check(BROWSER_ROWS[15],
+                              hurt["held"]["holds"] == 0 and hurt["held"]["scored"] == 0
+                              and hurt["after"]["scored"] == 0
+                              and now["after"]["scored"] >= 1,
+                              f"reverted to the pre-fix `passOffer`, the same drive held the step "
+                              f"{hurt['held']['holds']} time(s) and its first crossing ended with "
+                              f"{hurt['after']['scored']} scored passage(s) even after the composer "
+                              f"landed ({hurt['after']['composer']}); with the hold in place the "
+                              f"same crossing ended with {now['after']['scored']}")
 
 import shutil  # noqa: E402
 shutil.rmtree(TMP, ignore_errors=True)
