@@ -190,8 +190,31 @@
       return { road: null, cues: [] };
     }
 
+    // Any dock that is not itself a judgeable crossing (a jump, or a landing on the door) still
+    // ENDS whatever crossing was pending before it — the panel is about the pair on screen NOW,
+    // and once a jump or the door has moved the visitor past it, the old pair is not on screen any
+    // more for a judge to press a button on. Clearing it here, in the one place every dock passes
+    // through, is what keeps a stray click from ever writing a verdict against a crossing nobody is
+    // looking at (P6). The same clear covers the ordinary case of two judgeable crossings landing
+    // back to back with no button pressed between them: the second dock discards the first pending
+    // row's note along with its `from`/`to`, rather than letting an unsent note ride into the row
+    // the SECOND crossing eventually gets (P5) — a judge who typed a note and then let the pair
+    // scroll past never gets that note reattributed; it is dropped exactly as the missed verdict is.
+    function verdictClearPending() {
+      verdictPending = null;
+      note.value = "";
+      // Only an ALREADY-SHOWN panel is touched here — a dock arriving before the first judgeable
+      // crossing (a jump or the door landing right after the visitor walks in) must not be the
+      // reason the panel first appears; it stays exactly as hidden as it was.
+      if (!panel.hidden) {
+        panel.dataset.pending = "0";
+        info.textContent = "";
+      }
+    }
+
     function verdictOnDock(cmd) {
-      if (!cmd || cmd.kind !== "step" || !cmd.from || !cmd.to) return;
+      verdictClearPending();
+      if (!cmd || cmd.kind !== "step" || !cmd.from || !cmd.to) return;   // a jump judges nothing
       const from = cmd.from.id, to = cmd.to.id;
       if (!from || !to || from === "door" || to === "door") return;   // a door is not a work
       const rc = verdictRoadAndCues(cmd);

@@ -66,6 +66,8 @@ BROWSER_ROWS = [
     "S-01 the panel stands under ?pass=diagnostics:on, with three buttons after a real crossing",
     "S-01 a route walked without the key leaves the panel, and every trace of it, absent",
     "S-01 the export — clipboard and the saved file alike — carries exactly the named schema",
+    "S-01/P5 a note typed for one pending crossing never rides onto the crossing that follows it",
+    "S-01/P6 a jump or a door landing clears the pending crossing before any button can record it",
 ]
 
 RECORDS_ROUTE = "/api/pass/verdict-records"
@@ -254,6 +256,84 @@ else:
                   trace.get("panel") is False and trace.get("marked") == 0
                   and trace.get("global") == "undefined",
                   f"trace left on a plain walk: {json.dumps(trace, ensure_ascii=False)}")
+
+        # ---- row 3 · P5 — a note typed for one pending crossing must not ride onto the next --------
+        # `window.__exPass.adapter.dock` is the testing seam 19-verdict.js's own top comment names:
+        # `dock` handed out BY VALUE still calls the FREE VARIABLE `passMark` at call time, which is
+        # exactly the wrapped one this file installs — so driving `adapter.dock` directly lands on
+        # `verdictOnDock` the same way a real gesture does, without steering a whole composed road.
+        with Browser(width=1280, height=900) as br3:
+            br3.inject(CLIP_STUB)
+            enter(br3, base, "diagnostics:on", step=False)
+            wait_ready(br3)
+            br3.evaluate(
+                "window.__exPass.adapter.dock("
+                "{gen:'verdict-p5-1', from:{id:'zz-p5-a'}, to:{id:'zz-p5-b'}, kind:'step'});")
+            pending1 = js(br3, "var p=document.getElementById('ex-verdict');"
+                               "return {pending: p && p.dataset.pending, info: p && p.textContent};")
+            br3.evaluate("document.querySelector('.exv-note').value = 'первый переход';")
+            # The SECOND crossing lands before any button was pressed on the first — the judge's own
+            # slip P5 was found from.
+            br3.evaluate(
+                "window.__exPass.adapter.dock("
+                "{gen:'verdict-p5-2', from:{id:'zz-p5-c'}, to:{id:'zz-p5-d'}, kind:'step'});")
+            note_after_second_dock = br3.evaluate("document.querySelector('.exv-note').value;")
+            br3.click('.exv-btn[data-verdict="skip"]', settle=0.3)
+            br3.click(".exv-dump", settle=0.5)
+            copied_raw = br3.evaluate(
+                "window.__copied && window.__copied.length "
+                "? window.__copied[window.__copied.length - 1] : null")
+            copied = json.loads(copied_raw) if copied_raw else None
+            rows = (copied or {}).get("rows") or []
+            last = rows[-1] if rows else {}
+            check(BROWSER_ROWS[3],
+                  pending1.get("pending") == "1" and note_after_second_dock == ""
+                  and len(rows) == 1 and last.get("from") == "zz-p5-c"
+                  and last.get("to") == "zz-p5-d" and last.get("note") == "",
+                  f"pending-after-first-dock={pending1} "
+                  f"note-after-second-dock={note_after_second_dock!r} "
+                  f"rows={json.dumps(rows, ensure_ascii=False)}")
+
+        # ---- row 4 · P6 — a jump or a door landing must clear the pending crossing, not carry it ---
+        with Browser(width=1280, height=900) as br4:
+            br4.inject(CLIP_STUB)
+            enter(br4, base, "diagnostics:on", step=False)
+            wait_ready(br4)
+            br4.evaluate(
+                "window.__exPass.adapter.dock("
+                "{gen:'verdict-p6-1', from:{id:'zz-p6-a'}, to:{id:'zz-p6-b'}, kind:'step'});")
+            after_step = js(br4, "return document.getElementById('ex-verdict').dataset.pending;")
+            # A jump lands and draws nothing — the pair just shown is no longer on screen for a
+            # judge to press a button on.
+            br4.evaluate(
+                "window.__exPass.adapter.dock("
+                "{gen:'verdict-p6-2', from:{id:'zz-p6-a'}, to:{id:'zz-p6-c'}, kind:'jump'});")
+            after_jump = js(br4, "return document.getElementById('ex-verdict').dataset.pending;")
+            # `.click()` — the DOM method, not real hit-testing — reaches the handler even though a
+            # cleared pending hides the button (`data-pending="0"`); real hit-testing coordinates are
+            # the `.exv-dump` collision this file's own top comment already covers, not what P6 is
+            # about. Must write nothing.
+            br4.evaluate("document.querySelector('.exv-btn[data-verdict=\"fire\"]').click();")
+            # A second judgeable crossing, then a landing on the door — the other non-judgeable dock
+            # P6 names — must clear it the same way.
+            br4.evaluate(
+                "window.__exPass.adapter.dock("
+                "{gen:'verdict-p6-3', from:{id:'zz-p6-c'}, to:{id:'zz-p6-d'}, kind:'step'});")
+            br4.evaluate(
+                "window.__exPass.adapter.dock("
+                "{gen:'verdict-p6-4', from:{id:'zz-p6-d'}, to:{id:'door'}, kind:'step'});")
+            after_door = js(br4, "return document.getElementById('ex-verdict').dataset.pending;")
+            br4.evaluate("document.querySelector('.exv-btn[data-verdict=\"ok\"]').click();")
+            br4.click(".exv-dump", settle=0.5)
+            copied_raw = br4.evaluate(
+                "window.__copied && window.__copied.length "
+                "? window.__copied[window.__copied.length - 1] : null")
+            copied = json.loads(copied_raw) if copied_raw else None
+            rows = (copied or {}).get("rows") or []
+            check(BROWSER_ROWS[4],
+                  after_step == "1" and after_jump == "0" and after_door == "0" and len(rows) == 0,
+                  f"pending after step/jump/door={after_step}/{after_jump}/{after_door} "
+                  f"rows-written-by-stray-clicks={json.dumps(rows, ensure_ascii=False)}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
