@@ -45,6 +45,7 @@ green above proves nothing.
 """
 import json
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -109,11 +110,102 @@ FN_IDX = SOURCE_TEXT.index("function makeLastResortInstrument()")
 VERT_SRC, _after_vert = extract_shader(SOURCE_TEXT, "VERT", FN_IDX)
 FRAG_SRC, _after_frag = extract_shader(SOURCE_TEXT, "FRAG", _after_vert)
 
-check("PASS-LAYER the last-resort shader still exists at the address the naryad names",
-      "LAST_RESORT_NAME = \"@host/last-resort\"" in SOURCE_TEXT
-      and "host-last-resort-wipe" in SOURCE_TEXT,
-      "engine/assets/pass-layer.js carries `makeLastResortInstrument`, registered under "
-      "`@host/last-resort` and drawing program `host-last-resort-wipe`")
+
+def extract_function(text, name, after_idx=0):
+    """Balanced-brace extraction of `function NAME(...) { ... }` — the REAL, current body, never a
+    hand-copied string, the same principle `extract_shader` already carries for the shader text."""
+    marker = "function %s(" % name
+    idx = text.index(marker, after_idx)
+    brace = text.index("{", idx)
+    depth, i = 0, brace
+    while i < len(text):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[idx:i + 1]
+        i += 1
+    raise ValueError("unbalanced braces for function %s" % name)
+
+
+# THE ADDRESS, PROVED BY EXECUTION RATHER THAN BY GREP. `LAST_RESORT_NAME` is not decorative: two
+# outside callers hardcode the literal "@host/last-resort" when they ask the registry for this
+# instrument by id (engine/client/01a-pass.js and engine/assets/exhibition.js's "reduced-floor"
+# cue, and this same file's own `lastResortCastInstrument`, all keyed on the constant). A grep for
+# the string proves the text sits somewhere in the file; it does not prove the constant is what the
+# RETURNED object's own `name` actually carries at runtime. So this runs the real, current
+# `makeLastResortInstrument` in a real JS context and reads the object it actually returns.
+NAME_DECL_IDX = SOURCE_TEXT.index("var LAST_RESORT_NAME")
+NAME_DECL_END = SOURCE_TEXT.index(";", NAME_DECL_IDX) + 1
+NAME_DECL = SOURCE_TEXT[NAME_DECL_IDX:NAME_DECL_END]
+FIT_SRC = extract_function(SOURCE_TEXT, "fitCoverSpan")
+MAKE_SRC = extract_function(SOURCE_TEXT, "makeLastResortInstrument", FN_IDX)
+
+
+def last_resort_identity(name_decl):
+    """Executes the real, current `makeLastResortInstrument` — built from `name_decl` (the constant
+    declaration, real or mutated in memory) plus the shipped `fitCoverSpan` and the shipped function
+    body itself — and reads back the returned instrument's own `name` and drawing program."""
+    page = ("<!doctype html><html><head><meta charset=\"utf-8\"></head><body><script>\n"
+            + name_decl + "\n" + FIT_SRC + "\n" + MAKE_SRC + "\n"
+            + "window.__lastResort = function () {\n"
+            + "  var inst = makeLastResortInstrument();\n"
+            + "  return { name: inst.name, program: (inst.manifest.passes[0] || {}).program };\n"
+            + "};\nwindow.__benchReady = true;\n</script></body></html>")
+    d = Path(tempfile.mkdtemp(prefix="pass_layer_identity_"))
+    (d / "index.html").write_text(page, encoding="utf-8")
+    try:
+        with serve(str(d)) as base, Browser() as br:
+            br.navigate(base + "/")
+            for _ in range(25):
+                if br.evaluate("String(!!window.__benchReady)") == "true":
+                    break
+                br.sleep(0.1)
+            return json.loads(br.evaluate("JSON.stringify(window.__lastResort())")), None
+    except Exception as e:  # noqa: BLE001 — reported on the row that wants it
+        return None, str(e)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+if not chrome_available():
+    skip("PASS-LAYER the built-in answers to the exact address its outside callers hardcode",
+         "no headless Chrome on this machine — EXPECTED, pinned skip, never a silent pass")
+    skip("PASS-LAYER renaming the address in memory makes it invisible to those same callers",
+         "no headless Chrome on this machine — EXPECTED, pinned skip, never a silent pass")
+else:
+    identity, ierr = last_resort_identity(NAME_DECL)
+    if identity is None:
+        check("PASS-LAYER the built-in answers to the exact address its outside callers hardcode",
+              False, "the identity bench never ran: %s" % ierr)
+    else:
+        check("PASS-LAYER the built-in answers to the exact address its outside callers hardcode",
+              identity.get("name") == "@host/last-resort"
+              and identity.get("program") == "host-last-resort-wipe",
+              "executing the REAL, current `makeLastResortInstrument` returns name=%r, "
+              "manifest.passes[0].program=%r — the literal `@host/last-resort` is what "
+              "engine/client/01a-pass.js's `reduced-floor` cue, engine/assets/exhibition.js and "
+              "this file's own `lastResortCastInstrument` all hardcode when they ask the registry "
+              "for this instrument by id" % (identity.get("name"), identity.get("program")))
+
+    MUT_NAME_DECL = NAME_DECL.replace("@host/last-resort", "@host/renamed-resort", 1)
+    if MUT_NAME_DECL == NAME_DECL:
+        check("PASS-LAYER renaming the address in memory makes it invisible to those same callers",
+              False, "the constant's own text was not found verbatim, so the mutant could not be "
+                     "built off the shipped source")
+    else:
+        mut_identity, merr = last_resort_identity(MUT_NAME_DECL)
+        if mut_identity is None:
+            check("PASS-LAYER renaming the address in memory makes it invisible to those same callers",
+                  False, "the mutant identity bench never ran: %s" % merr)
+        else:
+            check("PASS-LAYER renaming the address in memory makes it invisible to those same callers",
+                  mut_identity.get("name") != "@host/last-resort",
+                  "with `LAST_RESORT_NAME` mutated to \"@host/renamed-resort\" in memory, the same "
+                  "execution returns name=%r — the outside callers above, which hardcode the "
+                  "literal \"@host/last-resort\", would find no instrument registered there at all"
+                  % mut_identity.get("name"))
 
 check("PASS-LAYER no boundary in the shipped shader is drawn from the frame's own coordinate",
       "vUV.x" not in FRAG_SRC and "vUV.y" not in FRAG_SRC,
@@ -128,14 +220,12 @@ check("PASS-LAYER the boundary is built from both textures' own sampled content"
       "`lumA`/`lumB` are read off `a`/`b`, the texels `uTexA`/`uTexB` were just sampled at, and "
       "`field` (not `vUV.x`) is what `uReveal` is compared against")
 
-check("PASS-LAYER the file answers the wipe's own three-part test on all three counts",
-      "THE THREE-PART TEST, ANSWERED ON ALL" in SOURCE_TEXT
-      and "THE BOUNDARY IS A LEVEL SET OF WHAT THE TWO PHOTOGRAPHS THEMSELVES CARRY" in SOURCE_TEXT
-      and "THE TWO IMAGES INTERACT AT EVERY FRAGMENT" in SOURCE_TEXT
-      and "IT READS AS A DISSOLVE LED BY THE PICTURES" in SOURCE_TEXT,
-      "the charter's ban list convicts a wipe only where all three counts convict, and a boundary "
-      "that travels across a frame has to answer that test out loud, the way pass-inst-tunnel.js "
-      "does for its own ring")
+# The third count of the wipe's own three-part test — "IT READS AS A DISSOLVE LED BY THE PICTURES,
+# NEVER AN EDGE TRAVELLING THE FRAME" — is proved below, once the real and reverted renders both
+# exist, by a measurement neither a comment nor a grep can stand in for: see
+# "PASS-LAYER the boundary the pair draws is not the straight line two linear photographs alone can
+# make", after the red-on-bug revert. The other two counts are proved above: no frame coordinate
+# feeds the boundary, and both `lumA` and `lumB` feed `field` before `uReveal` is ever read.
 
 # ---------------------------------------------------------------- the behavioural bench
 W = H = 64
@@ -270,7 +360,11 @@ if not chrome_available():
          "no headless Chrome on this machine — EXPECTED, pinned skip, never a silent pass")
     skip("PASS-LAYER reverting the fix back to `vUV.x` reddens the same measurement",
          "no headless Chrome on this machine — EXPECTED, pinned skip, never a silent pass")
+    skip("PASS-LAYER the boundary the pair draws is not the straight line two linear photographs "
+         "alone can make",
+         "no headless Chrome on this machine — EXPECTED, pinned skip, never a silent pass")
 else:
+    hurt_pixels = None
     pixels, err = render(VERT_SRC, FRAG_SRC, TEX_A, TEX_B, REVEAL)
     if pixels is None:
         check("PASS-LAYER the reveal answers the pair's own measured content, not the frame's column",
@@ -311,6 +405,44 @@ else:
                   "a hard left-to-right wipe appears inside a row that carries no column variation "
                   "of its own, which is the defect class shelf 18 bans and the row above proves gone"
                   % (REVEAL, hurt_spread))
+
+    # THE DISSOLVE CLAIM, THE WIPE'S THIRD COUNT: "it reads as a dissolve led by the pictures, never
+    # an edge travelling the frame." Column 0 of the two renders above already carries one pixel per
+    # source row (row-only content, proved column-invariant above), so its row profile IS the shape
+    # the boundary drew. A boundary built from a fixed weight over two LINEAR gradients (what
+    # `vUV.x` reduces mixing to, once the column itself is held fixed) can only ever produce another
+    # straight line down that column — no single weight bends two lines into a curve. A boundary that
+    # is a level set of the pair's own measured field is under no such constraint.
+    def line_residual(profile):
+        n = len(profile)
+        xs = list(range(n))
+        mean_x = sum(xs) / n
+        mean_y = sum(profile) / n
+        sxx = sum((x - mean_x) ** 2 for x in xs)
+        sxy = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, profile))
+        slope = sxy / sxx if sxx else 0.0
+        intercept = mean_y - slope * mean_x
+        return (sum((y - (slope * x + intercept)) ** 2 for x, y in zip(xs, profile)) / n) ** 0.5
+
+    if pixels is None or hurt_pixels is None:
+        check("PASS-LAYER the boundary the pair draws is not the straight line two linear "
+              "photographs alone can make",
+              False, "one of the two renders above never ran, so no profile could be compared")
+    else:
+        profile_real = [pixels[(row * W + 0) * 4] for row in range(H)]
+        profile_mut = [hurt_pixels[(row * W + 0) * 4] for row in range(H)]
+        resid_real = line_residual(profile_real)
+        resid_mut = line_residual(profile_mut)
+        check("PASS-LAYER the boundary the pair draws is not the straight line two linear "
+              "photographs alone can make",
+              resid_real > 15 and resid_mut < 5,
+              "down column 0, row by row: the real boundary's own profile departs from its best-fit "
+              "straight line by %.1f of 255 (an S-curve, because `field` crosses `uReveal` "
+              "part-way down and bends the mix there); with `field` replaced by `vUV.x` the same "
+              "column — now mixed at one fixed weight over the same two linear gradients — departs "
+              "from a straight line by only %.1f of 255, which is what a level set of the pair's "
+              "own content can do that a frame coordinate cannot"
+              % (resid_real, resid_mut))
 
 passed = sum(1 for _, s, _ in results if s == "PASS")
 failed = sum(1 for _, s, _ in results if s == "FAIL")

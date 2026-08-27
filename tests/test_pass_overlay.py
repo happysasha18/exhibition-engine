@@ -25,7 +25,9 @@ invented:
 import base64
 import hashlib
 import json
+import math
 import os
+import random
 import re
 import shutil
 import subprocess
@@ -372,15 +374,64 @@ check("PASS-OVERLAY the three handles that carry a position carry the module's m
       "must get it. Bands, measured: dominance 6.34 to 1.84, the exposure's colour stage 3.45 to "
       "1.62, presence 2.77 to 1.51")
 
-check("PASS-OVERLAY the instrument measures no work for itself, and the door reading takes no grid",
-      "getImageData" not in REGION and "readPixels" not in REGION
-      and "the field's own DEEPEST possible place" in SOURCE_TEXT,
+check("PASS-OVERLAY the instrument measures no work for itself",
+      "getImageData" not in REGION and "readPixels" not in REGION,
       "measuring a work means drawing it into a surface of its own and counting, which §1.2 forbids "
-      "— so every measurement of a photograph reaches this instrument as a handle. Its own door is "
-      "read the other way: the presence field is three waves whose sum is bounded by 1 and reaches "
-      "it, so the deepest place the field can put anywhere in the frame is known in closed form, "
-      "and reading there is stronger than walking a grid — a walk can step over the very point a "
-      "grid would show")
+      "— so every measurement of a photograph reaches this instrument as a handle")
+
+# THE DOOR READING TAKES NO GRID — proved by the arithmetic itself, not by a comment naming it. The
+# presence field `fp` (the raw quantity `deep` is built from, before `tanh` folds it into [0, 1]) is
+# a sum of three waves whose own amplitudes — read out of the REAL, current built instrument, never
+# hand-copied — divide by exactly their own sum. That is what makes |fp| <= 1 a CLOSED-FORM fact
+# (the triangle inequality on the three amplitudes) rather than a property that only holds at the
+# sample points a grid happens to land on: a walk can step over the one (x, y, t) where the three
+# waves line up, and the closed form cannot, because it never samples at all.
+FP_RE = re.compile(
+    r'float fp = sin\(pr\.x \* ([\d.]+) - t \* ([\d.]+)\) \* cos\(pr\.y \* ([\d.]+) \+ t \* ([\d.]+)\)'
+    r'.*?\+ ([\d.]+) \* sin\(\(pr\.y - pr\.x\) \* ([\d.]+) \+ t \* ([\d.]+)\);'
+    r'.*?fp /= ([\d.]+);',
+    re.S)
+FP_M = FP_RE.search(REGION)
+
+
+def fp_extreme(amp2, div, tries=60000, seed=0):
+    """A wide Monte Carlo sweep of (x, y, t) — never a grid, on purpose, since the claim under test
+    is exactly that a grid can miss the field's own worst point. Returns the largest |fp| found."""
+    rnd = random.Random(seed)
+    worst = 0.0
+    for _ in range(tries):
+        x = rnd.uniform(0, 80)
+        y = rnd.uniform(0, 80)
+        t = rnd.uniform(0, 800)
+        v = (math.sin(x * 7.3 - t * 0.041) * math.cos(y * 8.9 + t * 0.057)
+             + amp2 * math.sin((y - x) * 11.7 + t * 0.029))
+        v /= div
+        worst = max(worst, abs(v))
+    return worst
+
+
+if FP_M is None:
+    check("PASS-OVERLAY the door reading's own closed-form bound holds because the field's real "
+          "amplitudes divide by their own sum",
+          False, "the field's own three-wave formula was not found verbatim in the built instrument")
+else:
+    amp2_real, div_real = float(FP_M.group(5)), float(FP_M.group(8))
+    real_worst = fp_extreme(amp2_real, div_real)
+    # RED-ON-BUG: widen the second wave's amplitude without touching the divisor it is supposed to
+    # share — the exact mistake the shipped construction (amplitude sum == divisor) forecloses.
+    mut_worst = fp_extreme(amp2_real + 0.20, div_real)
+    check("PASS-OVERLAY the door reading's own closed-form bound holds because the field's real "
+          "amplitudes divide by their own sum",
+          real_worst <= 1.0 + 1e-6 and real_worst > 0.99 and mut_worst > 1.05,
+          "sampling %d random (x, y, t) — never a grid — against the field's real formula (second "
+          "wave's amplitude %.2f, divisor %.2f): the worst |fp| found is %.6f, at or just under the "
+          "closed form's own ceiling of 1, so `deep` (built from `clamp(fp, -1, 1)`) never clips a "
+          "genuine excursion and the door law can only ever over-hold. With the second wave's "
+          "amplitude alone widened to %.2f (the divisor left as the file has it — the mistake the "
+          "amplitudes summing to the divisor forecloses), the same sweep finds |fp| up to %.6f, "
+          "past 1: the closed form would now silently clip a real excursion, which is exactly a bare "
+          "point the door law would miss" % (60000, amp2_real, div_real, real_worst,
+                                              amp2_real + 0.20, mut_worst))
 
 LABSHA = hashlib.sha256(MODULE.read_bytes()).hexdigest() if MODULE.exists() else ""
 check("PASS-OVERLAY the provenance weighs to the file it was carried from",

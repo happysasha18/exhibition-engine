@@ -318,13 +318,12 @@ check("PASS-LIVEMIRROR every constant the picture stands on is the module's own,
 
 check("PASS-LIVEMIRROR the port's own one number of the travel is named as the port's, and it is "
       "the only one",
-      "var HOLD = 0.08;" in REGION and "THE PORT'S OWN ONE NUMBER OF THE TRAVEL" in SOURCE_TEXT
-      and "HOLD" not in LABTXT,
+      "var HOLD = 0.08;" in REGION and "HOLD" not in LABTXT,
       "the module takes ONE picture and its dial runs from the flat photograph to the fold, so the "
-      "port had to say where the second work enters. It enters at the DEEP FOLD, the one stretch of "
-      "this instrument's travel at which neither work is legible as itself, and eight hundredths of "
-      "the hand is how wide that stretch is — half a second at the 6.5 s this engine runs a middle "
-      "at. Every other number of the picture is the module's")
+      "port had to say where the second work enters — `HOLD`, present in the built instrument and "
+      "absent from lab/effects/livemirror.js, is the port's own addition rather than the module's. "
+      "What HOLD actually does to a rendered frame is measured below, by mutation, rather than "
+      "asserted here from a comment")
 
 # ---------------------------------------------------------------- browser rows
 
@@ -614,14 +613,16 @@ else:
 
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["CELL"] and m["register"] == "spectacle"
-                      and "WHERE THIS STANDS ON THE CHARTER'S SHELF" in SOURCE_TEXT,
-                      f"levels={m['levels']}, register={m['register']!r}. The reading is CARRIED and "
-                      f"not re-decided: lab/CROSSING-BRIEF.md's vocabulary table records this "
-                      f"module's level as CELL, and that row is his own standing verdict. WORLD is "
-                      f"not claimed and that is the whole difference between this instrument and "
-                      f"the box — no space is folded and no eye travels, so this one spends no "
-                      f"miracle and is reachable at a quiet link and at a return, where the box may "
-                      f"not stand at all")
+                      and m["camera"] == {"needs": "none", "authority": "stage"},
+                      f"levels={m['levels']}, register={m['register']!r}, camera={m['camera']!r}. "
+                      f"The reading is CARRIED and not re-decided: lab/CROSSING-BRIEF.md's "
+                      f"vocabulary table records this module's level as CELL, and that row is his "
+                      f"own standing verdict. WORLD is not claimed, and the registered instrument's "
+                      f"own manifest — read live off the running host, not a heading in the file — "
+                      f"carries the concrete difference: it asks the stage for no pan, no zoom and "
+                      f"no rotation of its own, so no space is folded and no eye travels, this one "
+                      f"spends no miracle and is reachable at a quiet link and at a return, where "
+                      f"the box may not stand at all")
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas[aria-hidden]').width)"))
@@ -1047,6 +1048,49 @@ else:
         "slack before it goes dead». With the room removed a score naming a place of 0.01 gets it: "
         "the line stands at %.4f with nothing held and the frame's own spread falls to %.1f, "
         "against a line held at 0.1000 and the hold on the record when the room stands")
+
+    # ---------------------------------------------------------------- HOLD's own numeric effect
+    # "THE PORT'S OWN ONE NUMBER OF THE TRAVEL" is not proven by a comment naming it — it is proven
+    # by what happens when it is mutated. Widening HOLD widens SHUT_IN..SHUT_OUT, the stretch of the
+    # hand at which `dial` plateaus at 1 (the deep fold, neither work legible); narrowing HOLD keeps
+    # that plateau centred but narrower. A hand chosen just past the SHIPPED SHUT_IN but well before
+    # a WIDENED one lets one instrument file, changed only in this constant, disagree with itself
+    # about whether that hand has reached the deep fold yet — measured against the departing work's
+    # own file, the same bar every door row in this suite reads against.
+    HOLD_TEXT = "var HOLD = 0.08;"
+    if HOLD_TEXT not in PACK:
+        check("PASS-LIVEMIRROR HOLD widens the stretch of the hand spent in the deep fold, measured "
+              "rather than declared",
+              False, "the constant's own text was not found verbatim in the built instrument")
+    else:
+        HAND = 0.12
+        p_real = on_bench(lambda br: host_at(br, HAND, "hold-real"))
+        p_widened = on_bench(lambda br: host_at(br, HAND, "hold-widened"),
+                              PACK.replace(HOLD_TEXT, "var HOLD = 0.9;", 1))
+        if p_real is None or p_widened is None:
+            check("PASS-LIVEMIRROR HOLD widens the stretch of the hand spent in the deep fold, "
+                  "measured rather than declared",
+                  False, "one of the two benches never came up")
+        else:
+            workA = work_in_the_frame(PHOTOS[0], VW, VH)
+            d_real, _ = apart(p_real, workA)
+            d_widened, _ = apart(p_widened, workA)
+            check("PASS-LIVEMIRROR HOLD widens the stretch of the hand spent in the deep fold, "
+                  "measured rather than declared",
+                  d_widened - d_real > 10 and d_real < 30,
+                  "at hand=%.2f, the SHIPPED HOLD (0.08, SHUT_IN=0.46) has not reached the deep fold "
+                  "yet and the frame stands %.2f of 255 from the departing work's own file; the "
+                  "same instrument file with only HOLD mutated to 0.9 in memory (SHUT_IN=0.05) has "
+                  "the deep fold's own plateau reach back past this hand, and the SAME pose now "
+                  "stands %.2f of 255 from that file — HOLD is what decides how much of the hand is "
+                  "spent with neither work legible, not a number a comment merely names"
+                  % (HAND, d_real, d_widened))
+
+    # THE CELL/WORLD DISTINCTION'S OWN CONSEQUENCE, READ RATHER THAN HEADED. BROWSER_ROWS[1] above
+    # already reads `m["camera"] == {"needs": "none", "authority": "stage"}` off the registered
+    # instrument's own manifest (a live execution, not a grep): this instrument asks the stage for
+    # no pan, no zoom and no rotation of its own, which is the concrete difference between claiming
+    # CELL and claiming WORLD that "no space is folded and no eye travels" describes in prose.
 
 shutil.rmtree(TMP, ignore_errors=True)
 
