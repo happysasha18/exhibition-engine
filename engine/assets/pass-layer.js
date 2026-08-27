@@ -2616,6 +2616,21 @@
     if (!din || !dout || din.handle !== dout.handle) return null;
     var k = din.handle, at = Number(live[k]);
     if (!isFinite(at)) return null;
+    // THE DOOR MAY NAME A HANDLE THE MANIFEST NEVER PUBLISHED. Nothing refuses such a score: the
+    // host's own `scoreWhyNo` reads no door against any manifest, and the gate that does stands
+    // outside this engine and never sees a score this composer wrote (`SPEC.md`, `INV-109`). This
+    // read `manifest.handles[k].min` straight, so the blank door cost a TypeError inside the
+    // interruption cadence — the one moment the visitor is already leaving — instead of the plain
+    // landing the cadence has for a cue that names no usable door. `doorHandles` beside it has
+    // guarded the same read since it was written; this is the same guard and the same answer,
+    // said out loud on the diagnostic surface so the score can be found and mended.
+    if (!(v.inst.manifest.handles || {})[k]) {
+      logEvt("cadence-door-unpublished", rec.cmd && rec.cmd.gen,
+             "cue «" + (cue.id || "?") + "» names its doors on handle «" + k + "», which «"
+             + (v.inst.name || "?") + "» does not publish — there is "
+             + "no door to land on, so the handles hold where they stand");
+      return null;
+    }
     // The arriving door is the cue's own far end — the state the pass would have ended in had
     // nothing interrupted it, which is the state the visit is docking on.
     var which = "out";

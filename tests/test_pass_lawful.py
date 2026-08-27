@@ -148,7 +148,8 @@ function makeContext(atMs, offsetMin, plants, fenceBytes) {
     }
   });
   if (fenceBytes) fix.consts.scoreFenceBytes = fenceBytes;
-  return {composer: joined.make(fix.consts), fence: fix.consts.scoreFenceBytes, missed: missed};
+  return {composer: joined.make(fix.consts), fence: fix.consts.scoreFenceBytes, missed: missed,
+          sandbox: sandbox};
 }
 
 // ---- the records the rows compose over ----
@@ -390,6 +391,47 @@ if (job.job === "r3") {
     }
   }
   out(answer);
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------- job: nearest
+//
+// IS `tierFor`'s NEAREST-ROW BRANCH REACHED FROM `compose`? The branch is entered only where
+// neither the row a crossing reached for nor any lower row takes its counts, and a plan leaving it
+// can carry counts outside its own declared row — which §4.7 calls a red. This job plants a probe
+// on the branch's first line and then composes every ordered pair of both record sources, at every
+// route role, at one seed and both directions, reporting the FIRST voice record that reached it.
+// It is a universal claim, never a tally: one witness or none. No sweep can PROVE a branch
+// unreachable — the argument that does stands beside the branch in `pass-composer.js` — so what
+// this job is for is the regression: the day a change lets the miracle slot stack, or lets a
+// crossing overrun a row's letters, this reports the cast that did it.
+if (job.job === "nearest") {
+  const ctx = makeContext(null, 0, (job.plants || []).concat([[
+    "      var bestRow = TIERS[0], bestMiss = null;",
+    "      if (!globalThis.__near) globalThis.__near = [];\n"
+    + "      globalThis.__near.push({counts: counts, tier: tier,\n"
+    + "        voices: JSON.parse(JSON.stringify(voices))});\n"
+    + "      var bestRow = TIERS[0], bestMiss = null;"]]));
+  if (ctx.error) { out({error: ctx.error}); process.exit(0); }
+  if ((ctx.missed || []).length) { out({missed: ctx.missed}); process.exit(0); }
+  let composed = 0;
+  const records = BUILT.concat(REAL);
+  for (const [a, b] of pairsOf(records)) {
+    for (const role of ROLES) {
+      for (const seed of [7]) {
+        for (const dir of ["a-to-b", "b-to-a"]) {
+          let p;
+          try {
+            p = ctx.composer.passageFor({workRecordA: a, workRecordB: b, direction: dir,
+                                         seed: seed, routeRole: role});
+          } catch (e) { continue; }
+          if (p && p.score) composed += 1;
+        }
+      }
+    }
+  }
+  const hits = ctx.sandbox.__near || [];
+  out({composed: composed, hits: hits.length, first: hits.length ? hits[0] : null});
   process.exit(0);
 }
 
@@ -881,6 +923,65 @@ else:
           "tierFor(%r, \"quiet\", false) read %s" % (quiet_but_miracle, json.dumps(m)))
 
 shutil.rmtree(TIER_TMP, ignore_errors=True)
+
+# ---------------------------------------------------------------- PASS-12 · the third branch
+#
+# THE QUESTION `PASS-API-V1.md` §11 CARRIED OPEN, ANSWERED BY THE COMPOSER ITSELF. Two prover passes
+# (`docs/prover/2026-08-27-pass-section.md` F3, and the verification pass's F13) could neither
+# construct a cast that reaches `tierFor`'s nearest-row branch nor prove it unreachable, and left
+# the fork open: strike the sentence that documents the branch as behaviour, or fix the branch.
+# These two rows settle it from the composer's own side rather than from the function's.
+#
+# The first row is the claim: composing every ordered pair of both record sources, at every route
+# role, over four seeds and both directions, never enters the branch. The second row is what makes
+# the first worth reading. The branch is guarded by exactly one thing — the crossing's one miracle
+# slot, which shelf 6 says is consumed and never stacks — so the plant removes the guard that keeps
+# a standing `world` and a folding cue apart (`mayFold`'s own `!folds`) and asks the same question
+# again. Under the plant the branch IS entered, with a cast carrying two miracles that no row of
+# shelf 17 takes; so the first row is measuring the slot and not the corpus.
+if not NODE:
+    skip("PASS-12 · `tierFor`'s nearest-row branch is never entered from `compose`",
+         "node is not on this machine")
+    skip("PASS-12 red-on-bug · the miracle slot is what keeps that branch out of reach",
+         "node is not on this machine")
+else:
+    near = run({"job": "nearest"})
+    if near.get("error"):
+        check("PASS-12 · `tierFor`'s nearest-row branch is never entered from `compose`", False,
+              near["error"])
+    else:
+        first = near.get("first")
+        check("PASS-12 · `tierFor`'s nearest-row branch is never entered from `compose`",
+              not first,
+              "" if not first else
+              ("a composed crossing reached the branch declaring the row its counts stand nearest: "
+               "it reached for «" + str(first["tier"]) + "» with voices "
+               + json.dumps(first["voices"]) + " counting letters="
+               + str(first["counts"]["letters"]) + " accompaniments="
+               + str(first["counts"]["accompaniments"]) + " miracles="
+               + str(first["counts"]["miracles"]) + ", which no row of shelf 17 takes"))
+
+    PLANT_SLOT = [["var mayFold = !!(road.miracle && roleBudget.miracle && !folds);",
+                   "var mayFold = !!(road.miracle && roleBudget.miracle);"]]
+    slot = run({"job": "nearest", "plants": PLANT_SLOT})
+    if slot.get("missed"):
+        skip("PASS-12 red-on-bug · the miracle slot is what keeps that branch out of reach",
+             "the composer no longer carries the `mayFold` guard this plant names, so there is "
+             "nothing to remove; the row above then rests on an argument this file cannot see")
+    elif slot.get("error"):
+        check("PASS-12 red-on-bug · the miracle slot is what keeps that branch out of reach", False,
+              slot["error"])
+    else:
+        broke = slot.get("first")
+        two = bool(broke) and sum(1 for v in broke["voices"].values() if v == "miracle") > 1
+        check("PASS-12 red-on-bug · the miracle slot is what keeps that branch out of reach",
+              bool(broke) and two,
+              "" if broke and two else
+              ("letting a standing world and a folding cue spend the slot together left the row "
+               "above green, so that row is not what the one-miracle law holds up"
+               + ("" if not broke else
+                  " — the branch was reached, but with voices " + json.dumps(broke["voices"])
+                  + " rather than with two miracles")))
 
 # ---------------------------------------------------------------- report
 print("EX-PASS · four laws the composer breaks today")

@@ -3440,13 +3440,36 @@
           return [TIERS[i], counts];
         }
       }
-      // NO ROW FITS THE COUNTS, AND THAT IS STILL NOT A REFUSAL. The three rows leave gaps between
-      // them — a plan carrying more accompaniments than any row takes, say — and this answered with
-      // nothing, which the composer turned into «the declared tier and the realised voices
-      // disagree» and the visitor into a plain slide. The honest answer is the row the counts stand
-      // NEAREST, measured as how far each count falls outside the row's own span, and the tier
-      // declared is the one that was realised. §4.7 calls a plan whose declared tier its own voices
-      // contradict a red; naming the nearest row is how the plan stops contradicting itself.
+      // NO ROW FITS THE COUNTS, AND `compose` NEVER GETS HERE. What this branch does is keep
+      // `tierFor` TOTAL for a voice record handed in from outside a composition — the test row that
+      // extracts this function and asks it about a synthetic cast is the road that reaches it. Over
+      // the composer's own output it stands idle, and the argument is short enough to keep beside
+      // the code (settled 2026-08-28, the reachability question `PASS-API-V1.md` §11 carried open
+      // from 2026-08-27):
+      //
+      //   · MIRACLES ARE NEVER TWO. `voiceTheCues` writes a miracle for the cue `folds` names and
+      //     for the travelling cue where a `world` stands. `world` is only ever set where NO cast
+      //     instrument folds (`mayFold`, in `compose`), and it is cleared on the same line that
+      //     retires the travelling move — so a world and a fold never reach the same voicing. The
+      //     one road that could put them there is the ground swap, and it asks `bestFilling` for a
+      //     ground that spends nothing wherever the slot is already gone (`alreadyFolds`).
+      //   · LETTERS NEVER OVERRUN A ROW. Where the crossing folds on its pivot the pivot is no
+      //     letter; where it does not and any move stands the pivot is an accompaniment; so at most
+      //     the travelling move and the arrival are letters and the count never passes two, which
+      //     the middle row and the culmination row both take.
+      //   · ACCOMPANIMENTS NEVER OVERRUN THE DECLARED ROW, because the budget loop above breaks on
+      //     exactly that reading — `accs` plus the colour voice against `ceilingOfTier(tier)` — and
+      //     every row's accompaniment floor is nought, so no count falls out of a row's bottom.
+      //   · THE ONE EXIT THAT SKIPS THAT READING is the loop's bottom `break`, and it is reached
+      //     only with the travelling move and the arrival both retired: one cue, which is a letter
+      //     at a quiet tier or the fold's own miracle at a middle one, and both rows take theirs.
+      //
+      // Where the letters do fall short of the row the crossing reached for — a culmination that
+      // folds its pivot with no travelling move beside it — the middle row above catches it, which
+      // is the second branch's whole job. So the answer below is arithmetic that stands ready and
+      // never plays: the row the counts stand NEAREST, measured as how far each count falls outside
+      // the row's own span. §4.7 calls a plan whose declared tier its own voices contradict a red;
+      // naming the nearest row is how such a plan would stop contradicting itself.
       var bestRow = TIERS[0], bestMiss = null;
       for (i = 0; i < TIERS.length; i++) {
         var r = TIERS[i];
@@ -5135,7 +5158,18 @@
           // voices already fold asks for a ground that does not, on the same argument
           // `bestFilling` already takes: no new bound, the one it has, told the truth about what
           // the crossing has already spent.
-          var alreadyFolds = spendsTheMiracle(travelInstr) || spendsTheMiracle(arrivalInstr);
+          //
+          // A STANDING `world` HAS SPENT THE SLOT TOO, and this read only the three instruments.
+          // `world` is the arriving work's own space opening under the travelling cue, and
+          // `voiceTheCues` voices that cue a MIRACLE for it — so the slot is gone before any
+          // instrument here declares anything. Reading `spendsTheMiracle` on the three alone
+          // left the swap free to seat a folding ground beneath a travelling cue that was already
+          // the miracle, which is two impossible events in one crossing and exactly what shelf 6
+          // forbids. Only §7's placement law stopped the pair reaching the score, and it stopped it
+          // for a different reason (two cues filling the frame), so the guard was an accident of
+          // another law rather than this one. The reading below is the crossing's whole spend.
+          var alreadyFolds = !!world || spendsTheMiracle(travelInstr)
+            || spendsTheMiracle(arrivalInstr);
           // THE LEVELS THE VOICES ABOVE CANNOT GIVE UP. A voice that drives exactly one level has
           // nowhere else to be, so a ground declaring that level annihilates it — the voice plays
           // on, drawing, driving nothing of its own. `soleAbove` is read off the voices already cast

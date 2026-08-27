@@ -34,10 +34,11 @@ Letters are bounded, the tier's rank is bounded, accompaniments are not in the c
 no voice is ever given up for an accompaniment overrun. `ROLE_BUDGETS` carries no accompaniment
 column for it to read.
 
-`tierFor` then answers with a row the counts do not satisfy. Its last branch, opening on the sentence
-`NO ROW FITS THE COUNTS, AND THAT IS STILL NOT A REFUSAL`, scans the three rows for the one the
-counts stand nearest and returns it, and `compose` writes that row's tier onto the plan. The plan
-then declares a tier its own voice counts contradict.
+`tierFor` then answers with a row the counts do not satisfy. Its last branch — which opened on the
+sentence "NO ROW FITS THE COUNTS, AND THAT IS STILL NOT A REFUSAL" when this was written, and on
+"NO ROW FITS THE COUNTS, AND `compose` NEVER GETS HERE" since 2026-08-28 — scans the three rows for
+the one the counts stand nearest and returns it, and `compose` writes that row's tier onto the plan.
+The plan then declares a tier its own voice counts contradict.
 
 The host reckons the budget and refuses nothing, by design and dated: `engine/client/01a-pass.js`,
 the note opening `THE WEIGHT IS A READING AND NO LONGER A WALL`, and the same lane's treatment of
@@ -333,6 +334,16 @@ letters count never exceeds two where the miracle count is nought, and the middl
 
 The miracle count is nought or one and never two, because `folds` names at most one cue and `world`
 is only ever set where `folds` is null.
+
+That last sentence was written before the ground swap existed and was false while the swap stood as
+first built (found 2026-08-28). `world` is read once, ahead of the budget loop, and the swap inside
+the loop re-casts the ground afterwards — asking `bestFilling` for an instrument that spends no
+miracle only where one of the three CAST instruments already folds. A standing `world` is the same
+spend and was not among the three, so the swap could seat a folding ground beneath a travelling cue
+that had already opened a world, and `voiceTheCues` then voiced both a miracle. What kept those
+plans off the road was §7's placement law, which refused them for having two cues that fill the
+frame — a different law answering by accident. The swap now reads the standing world as a spend, and
+the sentence above holds for the reason it claims.
 
 Every reachable triple therefore satisfies the row of the tier the plan declares, and `tierFor`'s
 nearest-row branch becomes unreachable from `compose`. It is left standing because `tierFor` must

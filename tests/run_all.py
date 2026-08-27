@@ -112,6 +112,7 @@ SUITES = [
     "pass_static",
     "pass_levels",
     "pass_matter_gate",
+    "pass_door",
 ]
 
 
