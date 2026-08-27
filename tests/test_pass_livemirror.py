@@ -344,9 +344,13 @@ BROWSER_ROWS = [
     "PASS-LIVEMIRROR the hand's own band across twenty-one equal marks, and the dial's own "
     "degenerate mark named",
     "PASS-LIVEMIRROR row 16 · the captures are kept as evidence",
+    "PASS-LIVEMIRROR the charter · under the propagated arrival the FURTHER mirrored copies change "
+    "first, and the first copy is still the departing work while they have",
 ]
 
 RED_ROWS = [
+    "PASS-LIVEMIRROR red-on-bug · the copies' own order removed: every mirrored copy exchanges at "
+    "the same instant again",
     "PASS-LIVEMIRROR red-on-bug · the mirrored wrap removed: the picture smears past its own border",
     "PASS-LIVEMIRROR red-on-bug · the seam's own gate removed: the entry door leaves its own file",
     "PASS-LIVEMIRROR red-on-bug · the hand's two halves removed: the exit door is refused, folded",
@@ -410,6 +414,44 @@ def work_in_the_frame(src, w, h, crop=1.0):
     against."""
     from PIL import Image
     return cover_into(Image.open(src).convert("RGB"), w, h, crop)
+
+
+def copies_split(mid, held, changed, foldmap):
+    """WHICH POINTS OF A MID-EXCHANGE FRAME HAVE ALREADY EXCHANGED, GROUPED BY WHICH COPY THEY ARE.
+
+    Four frames of one fold, all at one place, one line and one drift. `held` is the deep fold just
+    before the exchange opens, where every copy still carries the departing work; `changed` is the
+    deep fold just after it closes, where every copy carries the arriving one; `mid` is the instant
+    between them; `foldmap` is this instrument's own judges' channel at that same instant, whose red
+    is `(side + 1) / 4` — the mirrored panel a point stands in, named by the shader itself.
+
+    A point of `mid` is nearer `held` or nearer `changed`, and that is what «has this copy changed
+    yet» means in pixels. The panels are then grouped by HOW MANY MIRROR STEPS each stands from the
+    picture itself: under the both-folds form the panel is `sx + 2·sy`, so the count of steps is the
+    count of ones in it — nought where the point is the photograph, one where it is reflected once,
+    two in the corner reflected twice. Nothing is assumed about where in the frame those panels
+    fall; the instrument says which is which.
+
+    What comes back is the share of each group that has already exchanged, from the nearest copy to
+    the furthest. The наряд's sentence is exactly the shape of that list."""
+    import numpy as np
+    from PIL import Image
+    m = np.asarray(Image.open(mid).convert("RGB"), dtype=np.float64)
+    h = np.asarray(Image.open(held).convert("RGB"), dtype=np.float64)
+    c = np.asarray(Image.open(changed).convert("RGB"), dtype=np.float64)
+    f = np.asarray(Image.open(foldmap).convert("RGB"), dtype=np.float64)
+    if not (m.shape == h.shape == c.shape == f.shape):
+        return None
+    took = np.abs(m - c).mean(axis=2) < np.abs(m - h).mean(axis=2)
+    side = np.rint(f[:, :, 0] / 63.75) - 1.0
+    steps = np.zeros(side.shape)
+    steps += np.where(np.rint(side) % 2 >= 1, 1.0, 0.0)
+    steps += np.where(np.rint(side) // 2 % 2 >= 1, 1.0, 0.0)
+    out = []
+    for k in (0, 1, 2):
+        sel = steps == k
+        out.append((float(sel.mean()), float(took[sel].mean()) if sel.any() else None))
+    return out
 
 
 def apart(p, work):
@@ -582,8 +624,8 @@ else:
                     and m["id"] == "livemirror" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and sorted(m["params"]) == ["axis", "centreX", "centreY", "drift", "glint",
-                                                "shade"]
-                    and len(m["handles"]) == 9
+                                                "propagate", "shade"]
+                    and len(m["handles"]) == 10
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -592,7 +634,7 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 8
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 9
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -604,7 +646,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "livemirror" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"nine handles, eight uniforms in one pass, both doors at a cover crop of "
+                      f"ten handles, nine uniforms in one pass, both doors at a cover crop of "
                       f"{m['framings']['0']['coverCrop']} — this instrument crops nothing, because "
                       f"the module cover-fits its file over its mount and the breathing zoom is "
                       f"gated by the dial — resources declared for three tiers with a byte estimate "
@@ -937,6 +979,63 @@ else:
                          [round(steps[i], 1) for i in flat],
                          ", ".join("%.1f" % s for s in steps)))
 
+                # ---- THE PROPAGATED ARRIVAL, IN PIXELS -----------------------------------
+                # Charter shelf 7 and наряд S-06: «в зеркальных копиях дальняя меняется первой» —
+                # of the mirrored copies, the far one changes first. Four frames of one fold are
+                # taken at the same place, the same line and the same drift: the deep fold just
+                # before the exchange opens, the deep fold just after it closes, the instant
+                # between them, and this instrument's own fold map at that same instant. Every
+                # point of the middle frame is asked which of the two ends it stands nearer to, and
+                # the answers are grouped by the panel the fold map itself names — so what is
+                # compared is copy against copy, by the instrument's own reckoning of which copy is
+                # which, and nothing here assumes where in the frame a panel falls.
+                #
+                # AND THE SAME FOUR ARE TAKEN WITH THE SPREAD AT NOTHING, which is the picture this
+                # instrument drew before the arrival reached it: there every copy exchanges at
+                # once, so the three groups stand together and no copy runs ahead of another.
+                SHUT_IN_HAND, SHUT_OUT_HAND = 0.5 - 0.08 / 2, 0.5 + 0.08 / 2
+                # THE POSE IS NAMED IN FULL rather than inherited from whatever row ran last: the
+                # both-folds form, the line at the frame's own middle and the mirror standing
+                # still, so the frame carries three copies at once — the picture, the two panels
+                # reflected once, and the corner reflected twice — which is what makes a ladder of
+                # copies to read at all.
+                br.evaluate("window.__param('axis', 2); window.__param('drift', 0);"
+                            "window.__param('centreX', 0.5); window.__param('centreY', 0.5); 0")
+                br.sleep(0.5)
+                prop_reads = {}
+                for tag, spread in (("wide", 0.9), ("none", 0.0)):
+                    br.evaluate("window.__param('propagate', %r); window.__mask(0); 0" % spread)
+                    br.sleep(0.3)
+                    held = grab(br, SHUT_IN_HAND, "propagate-%s-held" % tag)
+                    changed = grab(br, SHUT_OUT_HAND, "propagate-%s-changed" % tag)
+                    midp = grab(br, 0.5, "propagate-%s-mid" % tag)
+                    br.evaluate("window.__mask(1); 0")
+                    br.sleep(0.2)
+                    fmap = grab(br, 0.5, "propagate-%s-map" % tag)
+                    br.evaluate("window.__mask(0); 0")
+                    prop_reads[tag] = copies_split(midp, held, changed, fmap)
+                br.evaluate("window.__param('propagate', 0); 0")
+                wide, none = prop_reads["wide"], prop_reads["none"]
+
+                def _ladder(r):
+                    return [x[1] for x in r if x[0] > 0.01] if r else []
+                lw, ln = _ladder(wide), _ladder(none)
+                propagated = (len(lw) == 3 and len(ln) == 3
+                              and lw[2] > lw[1] + 0.05 and lw[1] > lw[0] + 0.05
+                              and lw[2] > 0.9 and lw[0] < 0.1
+                              and max(ln) - min(ln) < 0.05)
+                check(BROWSER_ROWS[15], propagated,
+                      "at the exchange's own instant, with the copies' exchanges spread over nine "
+                      "tenths of it: the copy reflected twice has exchanged over %s of itself, the "
+                      "two reflected once over %s, and the picture itself over %s — the further "
+                      "the copy, the more of it has already become the arriving work. With the "
+                      "spread at nothing the same three groups read %s, all together, which is the "
+                      "picture every arrival but this one asks for"
+                      % ("%.0f%%" % (lw[2] * 100), "%.0f%%" % (lw[1] * 100),
+                         "%.0f%%" % (lw[0] * 100),
+                         ", ".join("%.0f%%" % (x * 100) for x in ln))
+                      if propagated else "spread wide: %s; spread at nothing: %s" % (wide, none))
+
                 shots = sorted(SHOTS.glob("*.png"))
                 check(BROWSER_ROWS[14], len(shots) >= 40,
                       "%d captures under tests/captures/pass-livemirror: both doors, six marks of "
@@ -958,6 +1057,38 @@ else:
             return
         check(name, out[0], why % out[1:])
 
+    # 0 · the copies' own order under the propagated arrival
+    def copies_together(br):
+        br.evaluate("window.__param('axis', 2); window.__param('drift', 0);"
+                    "window.__param('centreX', 0.5); window.__param('centreY', 0.5);"
+                    "window.__param('propagate', 0.9); window.__mask(0); 0")
+        br.sleep(0.5)
+        held = grab(br, 0.5 - 0.08 / 2, "red-propagate-held")
+        changed = grab(br, 0.5 + 0.08 / 2, "red-propagate-changed")
+        midp = grab(br, 0.5, "red-propagate-mid")
+        br.evaluate("window.__mask(1); 0")
+        br.sleep(0.2)
+        fmap = grab(br, 0.5, "red-propagate-map")
+        br.evaluate("window.__mask(0); 0")
+        r = copies_split(midp, held, changed, fmap)
+        if r is None:
+            return (False, 0, 0, 0)
+        lad = [x[1] for x in r if x[0] > 0.01]
+        if len(lad) != 3:
+            return (False, 0, 0, 0)
+        return (max(lad) - min(lad) < 0.05, lad[2] * 100, lad[1] * 100, lad[0] * 100)
+
+    red(RED_ROWS[0],
+        "    float t = clamp((cross - near * spread) / max(1.0 - spread, 1e-4), 0.0, 1.0);",
+        "    float t = cross;",
+        copies_together,
+        "with the copies' own offset struck out of the exchange — the whole of what the charter's "
+        "PROPAGATED arrival asks this instrument for — the same four frames at the same spread of "
+        "nine tenths show the twice-reflected copy exchanged over %.0f%% of itself, the "
+        "once-reflected over %.0f%% and the picture itself over %.0f%%: the three stand together, "
+        "so no further copy runs ahead of the first one any more and the frame exchanges as one "
+        "whatever the score asks")
+
     # 1 · the mirrored wrap, which is the module's own «never stretches»
     def no_wrap(br):
         br.evaluate("window.__param('drift', 0); window.__param('axis', 0);"
@@ -974,7 +1105,7 @@ else:
         mean, worst = diff(p, q)
         return (mean > ROADS * 3, mean, worst)
 
-    red(RED_ROWS[0],
+    red(RED_ROWS[1],
         "  vec2 mst = clamp(mirrored(st), 0.0, 1.0);",
         "  vec2 mst = clamp(st, 0.0, 1.0);",
         no_wrap,
@@ -992,7 +1123,7 @@ else:
         mean, worst = apart(d, file_)
         return (worst > 60 and mean > 3.0, mean, worst)
 
-    red(RED_ROWS[1],
+    red(RED_ROWS[2],
         "  float sm = uForm.y * dial;",
         "  float sm = uForm.y;",
         seam_ungated,
@@ -1017,7 +1148,7 @@ else:
         moved = (v.get("foldMap") or {}).get("movedPx", 0)
         return (bool(v["doorWhyNo"]) and moved > 2, moved, mean, (v["doorWhyNo"] or "")[:150])
 
-    red(RED_ROWS[2],
+    red(RED_ROWS[3],
         "      var dial = hand <= 0.5\n        ? feelOf(clamp01(hand / SHUT_IN))\n"
         "        : feelOf(1 - clamp01((hand - SHUT_OUT) / (1 - SHUT_OUT)));",
         "      var dial = feelOf(hand);",
@@ -1039,7 +1170,7 @@ else:
         return (v["lineHeld"] is None and abs(v["fold"][0] - 0.01) < 1e-9,
                 v["fold"][0], standing(p)[1])
 
-    red(RED_ROWS[3],
+    red(RED_ROWS[4],
         "      var atX = clamp(wantX, LINE_EDGE, 1 - LINE_EDGE);",
         "      var atX = wantX;",
         edge_gone,

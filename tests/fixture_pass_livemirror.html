@@ -89,7 +89,8 @@
     // a fold, which the module takes as its own `fold` handle and the port takes through the first
     // half of its hand.
     var MODES = ["down the middle", "across the middle", "both", "diagonal"];
-    var P = { axis: 2, centreX: 0.5, centreY: 0.5, drift: 1, glint: 0.62, shade: 0.62 };
+    var P = { axis: 2, centreX: 0.5, centreY: 0.5, drift: 1, glint: 0.62, shade: 0.62,
+              propagate: 0 };
     var DIAL = 0, CLOCK = 0, maskAt = 0;
     var api = null;
 
@@ -154,7 +155,8 @@
       var gw = host ? host.width : innerWidth, gh = host ? host.height : innerHeight;
       return { mix: hand === null || hand === undefined ? handOf(DIAL) : hand,
                axis: P.axis, centreX: P.centreX, centreY: P.centreY, drift: P.drift,
-               glint: P.glint, shade: P.shade, mask: maskAt, clock: CLOCK, reduced: false,
+               glint: P.glint, shade: P.shade, propagate: P.propagate,
+               mask: maskAt, clock: CLOCK, reduced: false,
                cssWidth: innerWidth, cssHeight: innerHeight,
                bufWidth: gw, bufHeight: gh,
                fitA: fitOf(imgs[0].naturalWidth, imgs[0].naturalHeight, gw, gh),

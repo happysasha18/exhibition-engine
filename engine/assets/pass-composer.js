@@ -573,8 +573,10 @@
     blend: ["plan", "nothing of either photograph: the six rules the two works meet under are his "
                     + "own approved list of 2026-08-08 11:39 and the choice between them is a "
                     + "score's word"],
-    arrival: ["plan", "nothing of either photograph: charter shelf 7 names the interfered arrival "
-                      + "and a score names it, so this is a plan's word"],
+    arrival: ["plan", "nothing of either photograph: charter shelf 7 names the five arrivals — the "
+                      + "interfered one the overlay and the grid-and-colour cut carry, the "
+                      + "crystallized one the pour's own column order carries — and a score names "
+                      + "which of them this crossing makes, so this is a plan's word"],
     scale: ["measured", "the ratio of the two works' own cutting steps — structure.ownDevice.stepPx "
                         + "of the arriving work over the departing one's, with "
                         + "structure.grid.periodPx where no device was derived"],
@@ -1161,7 +1163,22 @@
     "pour.stagger": ["measured", "structure.regions.score of the departing work — how much of the "
                                  + "difference between its own columns its region line explains, "
                                  + "which is how plainly it lets go region by region rather than "
-                                 + "all at once"],
+                                 + "all at once. Under the crystallized arrival the same share is "
+                                 + "the spread the order takes to travel out from the seed: the "
+                                 + "furthest column's own delay comes to exactly this much of the "
+                                 + "dial, and every nearer one waits its own share of it"],
+    "livemirror.propagate": ["measured", "structure.rotational.score of the ARRIVING work — how "
+                                         + "strongly it already reads as its own copies repeated "
+                                         + "about a centre, which is the reading the charter's "
+                                         + "PROPAGATED arrival is ranked on. It is how far apart "
+                                         + "the mirrored copies' own exchanges stand, and the far "
+                                         + "copy is the one that changes first"],
+    "pour.seedPlace": ["measured", "texture.reliefCentreDetailX of the ARRIVING work — the centre "
+                                   + "of gravity of its own detail stratum, where the grain of that "
+                                   + "picture gathers thickest and so the least ordered place its "
+                                   + "record names. It is `arrivalOf`'s own seed for the "
+                                   + "crystallized arrival, handed on to the instrument that "
+                                   + "spreads order out from it"],
     "pour.grain": ["measured", "texture.spectralPeriodPx of the two works over their own frame "
                                + "sides, read as a ratio — the departing work's own strongest "
                                + "repeat said as cells across the frame, which is the unit the "
@@ -4897,16 +4914,20 @@
         }
       }
       var departing = locusOf(fromW);
-      // PROPAGATED ALWAYS LEADS (P2 of the 2026-08-27 review, naряд S-06's own words: "в
-      // зеркальных копиях дальняя меняется первой" — of the mirrored copies, the far one changes
-      // first). `arrivalLeads` is the existing handle for exactly that ordering — true plays the
-      // arrival's own disassembly before its assembly, false plays assembly alone (`roles.arrival`
-      // below) — so PROPAGATED asks for it outright rather than through `figureOnLocus`'s reading
-      // of the departing work's own figure, which answers a different question (whether the
-      // departing figure already stands where the departing work's own locus falls) that has
-      // nothing to do with a mirrored copy leading its own change.
-      var arrivalLeads = !!arrivalInstr
-        && (arrival === "PROPAGATED" || figureOnLocus(fromW, departing[1]));
+      // WHETHER THE ARRIVAL PLAYS ITS OWN DISASSEMBLY BEFORE ITS ASSEMBLY, and it reads the
+      // departing work's own figure, as it always did — whether that figure already stands where
+      // the departing work's own locus falls.
+      //
+      // PROPAGATED NO LONGER ASKS FOR IT (the 2026-08-27 audit's own finding on наряд S-06). The
+      // clause struck here read `arrival === "PROPAGATED" || …`, put there to carry the наряд's
+      // sentence «в зеркальных копиях дальняя меняется первой» — of the mirrored copies, the far
+      // one changes first. It carried nothing of the kind. `arrivalLeads` orders THE ARRIVAL'S OWN
+      // TWO HALVES, its disassembly against its assembly; the наряд's sentence orders TWO MIRRORED
+      // COPIES OF ONE WORK against each other, which is a different pair of things and lives where
+      // the copies do. It lives there now: `livemirror.propagate` above, the one instrument of the
+      // fleet that makes mirrored copies, spreads their exchanges apart with the further copy
+      // changing first. So this line answers only the question it was always answering.
+      var arrivalLeads = !!arrivalInstr && figureOnLocus(fromW, departing[1]);
 
       // THE VISIT'S MEMORY, on this side of the line. §4.8 lets three fields cross — the family,
       // the seed and the pass index — and the family is what `genreFor` above holds. What the pass
@@ -5514,7 +5535,16 @@
         // `detailCentreXB` from, one work at a time exactly as `level` above drives strata-light's.
         reliefEdge: Number((tex || {}).reliefEdge) || 0,
         reliefCentreMassX: Number((tex || {}).reliefCentreMassX) || 0.5,
-        reliefCentreDetailX: Number((tex || {}).reliefCentreDetailX) || 0.5
+        reliefCentreDetailX: Number((tex || {}).reliefCentreDetailX) || 0.5,
+        // THE SAME DETAIL CENTRE, HANDED WITHOUT A FALLBACK, because one reader needs to know
+        // whether the record carries the reading at all. `reliefCentreDetailX` above answers
+        // strata-scale's own handle, which wants a place on every pair and takes the frame's own
+        // middle where nothing was measured; the crystallized arrival wants the OPPOSITE answer —
+        // a work whose detail stratum was never measured has no point of greatest disorder to seed
+        // from, and saying «the middle» there would be a place nobody read. So the field is handed
+        // raw, NaN and all, exactly as `regionLineXAt` two screens up is, and `arrivalOf` asks
+        // `isFinite` of it.
+        reliefCentreDetailXAt: Number((tex || {}).reliefCentreDetailX)
       };
     }
 
@@ -5592,11 +5622,33 @@
     // CRYSTALLIZED reads the arriving work's own texture score — how much of it reads as grain
     // rather than as line, `measuredParts`'s own `textureScore` — as how strongly a seed at the
     // frame's own least-ordered place suits it; the seed at that peak of disorder is what the
-    // grown effect's own distance-stagger then radiates order out from. The seed's own place is
-    // the arriving work's own measured region line where the record carries one — the same
-    // `regionLineXAt`/`regionLineYAt` the box law already reads for where a work's own structure
-    // divides — and is nameless where it does not, exactly as a locus with nothing to report reads
-    // "none" above.
+    // pour's own seed-ordered release then radiates order out from, column by column.
+    //
+    // THE SEED STANDS WHERE THE WORK'S OWN GRAIN GATHERS THICKEST, and that is the whole repair of
+    // 2026-08-27. Until tonight the place was `regionLineXAt`/`regionLineYAt` — the box law's own
+    // seam, the between-versus-within column reading at `measuredParts:regionLine*`, which is the
+    // work's own strongest DIVIDING line and therefore the most ORDERED place the record names.
+    // The charter's shelf 7 asks for the opposite («CRYSTALLIZED from a seed at peak chaos») and so
+    // does `LOCUS_PHRASES["grain-seed"]`, which prints «at its own point of greatest disorder» over
+    // whatever this line hands it. So fit and place read two different things under one name: the
+    // ranking read grain and the placement read structure.
+    //
+    // They read one thing now. `texture.reliefCentreDetailX` is the centre of gravity of the
+    // work's own DETAIL stratum (lab/analyze/recipes.py's `strata_scale_measure()`, the same
+    // reading `reliefEdge` and `textureScore` come off) — where the fine grain of the picture
+    // actually gathers, which is the least-ordered place the record measures and the same family
+    // of reading the fit already ranks on.
+    //
+    // AND IT IS A PLACE ACROSS THE FRAME'S WIDTH, WITH NO HEIGHT, because that is what was
+    // measured. The relief reading cuts the picture into strata along one axis and takes its centre
+    // of gravity along that axis alone; no record in this collection publishes a height for it. So
+    // the seed stands at that width on the frame's own mid-height, and the mid-height is the same
+    // "nothing was read here" neutral `radialCx`/`radialCy` already stand at — never a height
+    // invented for the seed. The pour, which is the instrument that plays this arrival's own
+    // spreading order, cuts the frame into COLUMNS and measures a column's distance from the seed
+    // across the frame's width, so the axis the record measures is exactly the axis the picture
+    // spends. A record carrying no relief reading at all seeds nowhere and reads "none", exactly as
+    // a locus with nothing to report does above.
     //
     // PROPAGATED reads the arriving work's own rotational reading, `rotationalScore`, gated only
     // on there being more than one copy for the change to run through — `rotationalN >= 2` is an
@@ -5615,8 +5667,8 @@
       var locusFit = num(toP.locus[3]);
       var pool = [{ id: "CARRIED", fit: 0, kind: "none", at: null },
                   { id: "CONDENSED", fit: locusFit, kind: locusKind, at: locusAt }];
-      var seedAt = (isFinite(mt.regionLineXAt) && isFinite(mt.regionLineYAt))
-        ? [r4(mt.regionLineXAt), r4(mt.regionLineYAt)] : null;
+      var seedAt = isFinite(mt.reliefCentreDetailXAt)
+        ? [r4(clamp01(mt.reliefCentreDetailXAt)), 0.5] : null;
       pool.push({ id: "CRYSTALLIZED", fit: readingOf(mt.textureScore),
                   kind: seedAt ? "grain-seed" : "none", at: seedAt });
       pool.push({ id: "PROPAGATED",
@@ -7075,6 +7127,21 @@
           // WHERE THE FOLD STANDS: the midpoint of the two works' own measured radial centres, which
           // is the line his standing verdict on this effect asks the fold to land on.
           centreOfThePair(wanted);
+          // SHELF 7'S PROPAGATED ARRIVAL, WHERE IT REACHES PIXELS — «в зеркальных копиях дальняя
+          // меняется первой», of the mirrored copies the far one changes first (наряд S-06). This
+          // is the one instrument of the fleet that makes mirrored copies of a work, so it is the
+          // one that can carry that sentence: at a spread above nothing a point standing in a
+          // further copy exchanges before a point standing in the first one, and the whole frame
+          // exchanges as one wherever the spread is nothing.
+          //
+          // THE SPREAD IS THE ARRIVING WORK'S OWN ROTATIONAL READING, which is the same number
+          // `arrivalOf` ranked this arrival on: a work that plainly IS its own copies repeated
+          // propagates the change through them over most of the crossing. So the reason this
+          // arrival won and the depth of what it draws are one reading, not two.
+          if (arrival.mode === "PROPAGATED" && mt.rotationalScore > 0) {
+            wanted.propagate = flt(r4(Math.min(num(HANDLE_SPECS.livemirror.propagate[1]),
+                                               clamp01(mt.rotationalScore))));
+          }
           // THE MIRROR'S OWN LIFE IS NOT DRIVEN, AND THAT IS HIS VERDICT RATHER THAN A GAP. `drift`
           // publishes a measurement it would read — the fractional part of the two works' spectral
           // periods in ratio — and the instrument's own manifest answers it: the handle rests at
@@ -7587,6 +7654,27 @@
           // THE POUR'S FOUR HANDLES. Without this branch all four rest at the instrument's own
           // pour — a correct pour, but the SAME pour for every pair, which is what this branch
           // exists to close.
+          //
+          // SHELF 7'S CRYSTALLIZED ARRIVAL, WHERE IT REACHES PIXELS. `arrival.mode` was settled
+          // before this fill ran, by `arrivalOf` ranking the charter's five arrivals against the
+          // pair's own records; this is the same road INTERFERED already takes to the overlay and
+          // to the grid-and-colour cut. The heap this instrument builds IS the arriving work, so
+          // the order its columns let go in is the order that work resolves in: under CRYSTALLIZED
+          // the columns are released outward from the seed instead of on the die's own hash, and
+          // the seed is `arrival.locus` — the arriving work's own point of greatest disorder, the
+          // centre of gravity of its detail stratum (`arrivalOf`'s own note). The delay a column
+          // waits is its distance from that seed times `stagger` below, so the spread is the same
+          // measured share the pour already had and no second number is invented for it.
+          //
+          // THE HANDLES ARE DRIVEN ONLY WHERE THE ARRIVAL ACTUALLY NAMED A PLACE. A crystallized
+          // arrival whose record carried no relief reading names none (`locusKind` "none"), and
+          // there the instrument's own die order stands, which is the honest answer rather than an
+          // order started from a place nobody measured.
+          if (arrival.mode === "CRYSTALLIZED" && arrival.locusKind === "grain-seed"
+              && arrival.locus) {
+            wanted.arrival = 1;
+            wanted.seedPlace = flt(r4(clamp01(num(arrival.locus[0]))));
+          }
           //
           // HOW MANY COLUMNS THE PICTURE POURS IN, at the count of the departing work's own
           // measured lattice across the frame — the grid's period first and the device's step

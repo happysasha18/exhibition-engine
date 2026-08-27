@@ -52,12 +52,19 @@
   // ------------------------------------------------------------------------------------------------
   // THE FIVE THINGS THE CONSTRUCTION HAS TO ANSWER, AND HOW EACH IS ANSWERED
   // ------------------------------------------------------------------------------------------------
-  //   · WHEN A COLUMN LETS GO. Each column's own release stands at `hash(column) · stagger` of the
+  //   · WHEN A COLUMN LETS GO. Each column's own release stands at `order(column) · stagger` of the
   //     dial, so at a stagger of nothing every column pours at once and at a wide stagger they pour
   //     one after another over most of the passage. A column's own travel is then the rest of the
   //     dial, `(d − release) / (1 − stagger)`, which is nothing at the entry door for every column
   //     and whole at the exit door for every column. Both doors are therefore exact for every
   //     stagger a score can name, and no reading is needed to know it.
+  //     THE ORDER IS ONE OF TWO, and the score names which (`arrival`, and `releaseOf` below). The
+  //     die's own order is the column hash — no two columns together and none before another for a
+  //     reason a visitor could name. The charter's CRYSTALLIZED arrival (shelf 7) orders them by
+  //     each column's own DISTANCE FROM THE SEED, a place across the frame the score also names, so
+  //     the seed's column lets go first, the far edge of the frame last, and the arriving work —
+  //     which is the heap — resolves outward from the seed with a delay proportional to distance.
+  //     Both orders hand back a share in [0, 1], so the doors above hold for either.
   //   · HOW FAR IT FALLS. Exactly the heap's own ceiling, which is over one frame height, so at the
   //     exit door every point's source stands above the picture and the departing work has left the
   //     frame rather than faded out of it. The fall accelerates — the distance is the square of the
@@ -142,6 +149,11 @@
       // window: 4d(1−d), exactly nothing at both doors, which is what holds the grain and the light
       // off the two landings.
       "uniform vec2 uLight;",
+      // WHICH ORDER THE COLUMNS LET GO IN, and where the order starts.
+      // x — the arrival the score named: 0 is the die's own order, 1 is the charter's CRYSTALLIZED
+      //     arrival (shelf 7), under which order spreads outward from one place of the frame.
+      // y — that place, as a share of the frame's width.
+      "uniform vec2 uSeed;",
       "uniform float uMask;",
       "uniform float uPresence;",  // the entry-door contract's reserved dry
       // HOW FAR THE FALLING MATTER SCATTERS SIDEWAYS INSIDE ITS OWN COLUMN, in column widths, and
@@ -169,12 +181,35 @@
       "vec2 into(vec2 p, vec4 f){",
       "  return clamp((p - 0.5) * f.xy + 0.5 + f.zw, 0.0008, 0.9992);",
       "}",
+      // WHEN ONE COLUMN LETS GO, as a share of the dial, and it is where the charter's CRYSTALLIZED
+      // arrival reaches the picture (shelf 7, наряд S-06: «зерно в точке наибольшего беспорядка,
+      // порядок расходится задержкой по расстоянию» — a seed at the point of greatest disorder, and
+      // order spreading out from it with a delay proportional to distance).
+      //
+      // TWO ORDERS, ONE SPREAD. The die's own order is the hash — no two columns together, no
+      // column before another for any reason a visitor could name. The crystallized order is the
+      // column's own DISTANCE FROM THE SEED, divided by the distance of the frame's own furthest
+      // column from it, so the column the seed stands in lets go first and the far edge of the
+      // frame lets go last. The arriving work is the heap, so a column that let go earlier stands
+      // resolved earlier: order spreads outward from the seed, and the delay at a column is its own
+      // distance times the spread.
+      //
+      // BOTH DOORS SURVIVE THE CHANGE BY CONSTRUCTION, and no reading is needed to know it: each
+      // order hands back a share in [0, 1], so a release stands in [0, stagger] either way, and
+      // `pouredOf` below is therefore nothing at the entry door for every column and whole at the
+      // exit door for every column exactly as it was.
+      "float releaseOf(float i){",
+      "  float centre = (i + 0.5) / max(uPour.y, 1.0);",
+      "  float far = max(uSeed.y, 1.0 - uSeed.y);",
+      "  float outward = clamp(abs(centre - uSeed.y) / max(far, 1e-4), 0.0, 1.0);",
+      "  return mix(h11(i), outward, step(0.5, uSeed.x));",
+      "}",
       // HOW FAR ONE COLUMN HAS POURED. Nothing at the entry door for every column, whole at the exit
       // door for every column, and monotone in the hand in between — which is the whole of why this
       // instrument needs no reading to know its own doors are exact.
       "float pouredOf(float i){",
       "  float rest = max(1.0 - uPour.z, 1e-4);",
-      "  return clamp((uPour.x - h11(i) * uPour.z) / rest, 0.0, 1.0);",
+      "  return clamp((uPour.x - releaseOf(i) * uPour.z) / rest, 0.0, 1.0);",
       "}",
       "void main(){",
       "  vec2 uv = vUv;",
@@ -347,12 +382,20 @@
       // the material — the same construction the parting-by-light instrument holds its two
       // accompanying voices with.
       var win = 4 * d * (1 - d);
+      // WHICH ORDER THE COLUMNS LET GO IN, and where that order starts. The arrival is the score's
+      // own word — the passage decided which of the charter's five arrivals it makes long before a
+      // handle was filled — and the seed's place is the arriving work's own measured centre of
+      // grain, handed as a share of the frame's width.
+      var crystal = clamp(Number(st.arrival) || 0, 0, 1) >= 0.5 ? 1 : 0;
+      var seedPlace = clamp(typeof st.seedPlace === "number" ? st.seedPlace : 0.5, 0, 1);
       return {
         pour: [d, cols, stagger, phase],
         heap: [slope, topOf(slope, cols), grain, drift],
         light: [clamp(st.shade, 0, 1), win],
+        seedRun: [crystal, seedPlace],
         // the same numbers by name, for the reading below and for the diagnostic surface
         dialAt: d, cols: cols, slope: slope, repose: clamp(repose, 0, 1), stagger: stagger,
+        crystal: crystal, seedPlace: seedPlace,
         grain: grain, drift: drift, phase: phase, window: win, ceiling: topOf(slope, cols),
         shade: clamp(st.shade, 0, 1), margin: MARGIN, coverCrop: 1,
         mask: clamp(typeof st.mask === "number" ? st.mask : 0, 0, 1),
@@ -397,8 +440,17 @@
       var x = Math.sin(i * 127.1 + phase) * 43758.5453;
       return x - Math.floor(x);
     }
+    // WHEN ONE COLUMN LETS GO — the shader's own `releaseOf`, term for term, so the reading below
+    // walks the very order the picture pours in. The crystallized arrival orders the columns by
+    // their own distance from the seed; every other arrival keeps the die's own hash order.
+    function releaseOf(v, i) {
+      if (!(v.crystal >= 0.5)) return hash11(i, v.phase);
+      var centre = (i + 0.5) / Math.max(v.cols, 1);
+      var far = Math.max(v.seedPlace, 1 - v.seedPlace);
+      return clamp(Math.abs(centre - v.seedPlace) / Math.max(far, 1e-4), 0, 1);
+    }
     function pouredOf(v, i) {
-      return clamp((v.dialAt - hash11(i, v.phase) * v.stagger) / Math.max(1 - v.stagger, 1e-4), 0, 1);
+      return clamp((v.dialAt - releaseOf(v, i) * v.stagger) / Math.max(1 - v.stagger, 1e-4), 0, 1);
     }
     // THE HEAP'S SURFACE AT ONE POINT ACROSS THE FRAME — the shader's own envelope, with the same
     // sweep, so the reading and the picture cannot disagree.
@@ -555,7 +607,8 @@
       // file names it as "one point of the drawing buffer wide, read off the surface's own height", a
       // hairline it already draws rather than a seam this cut still owes.
       seams: [],
-      params: { columns: [COLS_MIN, COLS_MAX], repose: [0, 1], stagger: [0, 0.9], grain: [0, 1] },
+      params: { columns: [COLS_MIN, COLS_MAX], repose: [0, 1], stagger: [0, 0.9], grain: [0, 1],
+                arrival: [0, 1], seedPlace: [0, 1] },
       // EVERY handle a score can drive (§4.4b). `mix` is the dial and `clock` is the second the host
       // hands down — the one place a second reaches this instrument at all, the grain's own drift.
       // `seed` is the score's die, `shade` is the judge channel for the heap's own light, and `mask`
@@ -619,6 +672,28 @@
                 unit: "which column lets go first",
                 reads: "the score's own die. It is a phase into the column hash, so two passes over "
                      + "one edge pour in two different orders and neither door moves" , level: null },
+        // THE CHARTER'S SHELF-7 ARRIVAL, WHERE IT REACHES THIS INSTRUMENT'S OWN COLUMNS. The heap
+        // this instrument builds IS the arriving work, so how that work arrives is a word this
+        // instrument can say: under CRYSTALLIZED the columns let go outward from the seed instead
+        // of on the die's own hash, and the arriving work therefore resolves near the seed first
+        // and at the far edge of the frame last.
+        arrival: { min: 0, max: 1, def: 0, kind: "enum", step: 1,
+                   rungs: ["none named — the die's own order", "crystallized"],
+                   unit: "which of the charter's arrival modes brings the arriving work",
+                   reads: "nothing in a work record bears on it: an arrival mode is the charter's "
+                        + "shelf-7 choice and belongs to the passage rather than to a photograph",
+                   applied: { ordersTheColumnReleases: true } , level: "CELL" },
+        seedPlace: { min: 0, max: 1, def: 0.5,
+                     unit: "where the order's own seed stands across the frame, a share of its width",
+                     reads: "texture.reliefCentreDetailX of the ARRIVING work — the centre of "
+                          + "gravity of its own detail stratum, which is where the grain of that "
+                          + "picture gathers thickest and therefore the least ordered place its "
+                          + "record names. It is the same family of reading the crystallized "
+                          + "arrival is ranked on, so the place the order starts from and the "
+                          + "reason it was chosen are one reading",
+                     applied: { restsAtTheFramesOwnMiddle: true,
+                                spreadIs: "the stagger, which is the share of the dial the "
+                                        + "furthest column's own delay comes to" } , level: "CELL" },
         shade: { min: 0, max: 1, def: 1,
                  unit: "the heap's own light — how strongly a flank leaning toward the light is "
                      + "written lighter and one leaning away darker",
@@ -675,8 +750,8 @@
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, clock: 0, columns: 16, repose: 0.45, stagger: 0.5, grain: 0.4,
-                     seed: 0, shade: 1, mask: 0, presence: 1, reduced: false,
-                     cssWidth: 1000, cssHeight: 1000 },
+                     seed: 0, arrival: 0, seedPlace: 0.5, shade: 1, mask: 0, presence: 1,
+                     reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "pour", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
@@ -689,6 +764,7 @@
           { name: "uPour", type: "vec4", source: "frame:pour" },
           { name: "uHeap", type: "vec4", source: "frame:heap" },
           { name: "uLight", type: "vec2", source: "frame:light" },
+          { name: "uSeed", type: "vec2", source: "frame:seedRun" },
           { name: "uMask", type: "float", source: "handle:mask" },
         ],
       }],
@@ -742,6 +818,10 @@
       fit: fit,
       feel: feelOf,
       heapAt: heapAt,
+      // ONE COLUMN'S OWN TRAVEL AT A POSE, handed out beside the heap's own surface and for the
+      // same reason: a reading that walks the very order the shader draws rather than a second
+      // description of it. It is what the seed-ordered release is measured on.
+      pouredOf: pouredOf,
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the pour instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };
@@ -762,7 +842,8 @@
         var h = st.handles;
         var pose = {
           mix: h.mix, columns: h.columns, repose: h.repose, stagger: h.stagger, grain: h.grain,
-          seed: h.seed, shade: h.shade, mask: h.mask,
+          seed: h.seed, arrival: h.arrival, seedPlace: h.seedPlace,
+          shade: h.shade, mask: h.mask,
           presence: h.presence,
           t: h.clock, reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,

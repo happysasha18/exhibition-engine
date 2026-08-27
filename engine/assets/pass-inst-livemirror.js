@@ -129,13 +129,18 @@
       "uniform vec4 uForm;",
       // the judges' handle: the fold map as colour
       "uniform float uMask;",
+      // HOW FAR APART THE MIRRORED COPIES' OWN EXCHANGES STAND (charter shelf 7's PROPAGATED
+      // arrival, наряд S-06: «в зеркальных копиях дальняя меняется первой» — of the mirrored
+      // copies, the far one changes first). At nothing the whole frame exchanges at once, which is
+      // what every other arrival asks for and what this instrument always did.
+      "uniform float uProp;",
       // THE SAMPLER'S OWN MIRRORED WRAP, written as the triangle wave it is. The host binds both
       // works CLAMP_TO_EDGE and an instrument never sees the context, so the module's own
       // MIRRORED_REPEAT (livemirror.js:190-191) is carried here instead of asked for.
       "vec2 mirrored(vec2 q){ return 1.0 - abs(mod(q, 2.0) - 1.0); }",
       // ONE WORK, READ THROUGH THE FOLD. Everything below is the module's own fragment shader read
       // in the same order it wrote it.
-      "vec3 folded(sampler2D tex, vec4 fit, out vec3 judge){",
+      "vec3 folded(sampler2D tex, vec4 fit, out vec3 judge, out float near){",
       "  vec2 uv = vUv;",
       "  float ma = uRes.x / max(uRes.y, 1.0);",
       "  vec2 asp = vec2(ma, 1.0);",
@@ -147,10 +152,16 @@
       "  vec2 q = p;",
       "  float d;",
       "  float side = 0.0;",
-      "  if (mode < 0.5)      { d = abs(p.x); q.x = -d; side = step(0.0, p.x); }",
-      "  else if (mode < 1.5) { d = abs(p.y); q.y = -d; side = step(0.0, p.y); }",
+      // HOW MANY MIRROR STEPS THIS POINT STANDS FROM THE PICTURE ITSELF — nothing where the point
+      // is the photograph, one where it is its reflection, and two in the corner the both-folds
+      // form reflects twice. It is the same `step(0.0, …)` test the panel above is named by, read
+      // for its COUNT rather than for its name, and it is what makes «the further copy» a number.
+      "  float steps = 0.0, maxSteps = 1.0;",
+      "  if (mode < 0.5)      { d = abs(p.x); q.x = -d; side = step(0.0, p.x); steps = side; }",
+      "  else if (mode < 1.5) { d = abs(p.y); q.y = -d; side = step(0.0, p.y); steps = side; }",
       "  else if (mode < 2.5) { d = min(abs(p.x), abs(p.y)); q = -abs(p);",
-      "                         side = step(0.0, p.x) + 2.0 * step(0.0, p.y); }",
+      "                         side = step(0.0, p.x) + 2.0 * step(0.0, p.y);",
+      "                         steps = step(0.0, p.x) + step(0.0, p.y); maxSteps = 2.0; }",
       "  else {",
       "    vec2 n = vec2(0.7071067812, -0.7071067812);",
       "    float h = dot(p, n);",
@@ -159,6 +170,7 @@
       // stands where it was
       "    q = p - (h + abs(h)) * n;",
       "    side = step(0.0, h);",
+      "    steps = side;",
       "  }",
       // THE CROSSING DIAL, and the module's own note on it, which is the reason this instrument
       // stays in focus at every mark of the hand: the dial picks WHICH POINT of the photograph a
@@ -173,7 +185,16 @@
       // past the border of the work the picture keeps mirroring and never stretches; each further
       // copy is pushed down into the dark so the first fold stays the subject
       "  float over = max(max(-st.x, st.x - 1.0), max(-st.y, st.y - 1.0));",
-      "  float depth = 1.0 - uForm.z * smoothstep(0.0, 0.60, max(over, 0.0));",
+      "  float out2 = smoothstep(0.0, 0.60, max(over, 0.0));",
+      "  float depth = 1.0 - uForm.z * out2;",
+      // HOW NEAR THIS POINT STANDS TO THE PICTURE ITSELF, as a share: 1 where the point IS the
+      // photograph and nothing in the furthest copy of it the frame carries. Two readings make it
+      // and both are already in this shader — the count of mirror steps above, which is how many
+      // times the fold has reflected this point, and `out2`, the module's own reading of how far
+      // past the work's own border the sample fell, which is what makes one further copy darker
+      // than the last. Nothing new is measured for the exchange; the copies the module already
+      // writes deeper into the dark are exactly the copies it calls further away.
+      "  near = 1.0 - clamp((steps + out2) / max(maxSteps, 1.0), 0.0, 1.0);",
       "  vec2 mst = clamp(mirrored(st), 0.0, 1.0);",
       // the finish below belongs to the fold alone — none of it stands at the flat door — so every
       // term is gated to its own identity by the same dial the coordinate travelled on
@@ -202,16 +223,37 @@
       "}",
       "void main(){",
       "  vec3 jA, jB, judge, col;",
+      "  float nA, nB, nJ;",
       "  float cross = uFold.w;",
       // THE EXCHANGE. Outside the hold one work is drawn and the other is never sampled; inside it
       // the frame is wholly mirrored on both roads and the two mirrored fields exchange.
-      "  if (cross <= 0.0) { col = folded(uA, uFitA, judge); }",
-      "  else if (cross >= 1.0) { col = folded(uB, uFitB, judge); }",
+      //
+      // AND THE COPIES NEED NOT EXCHANGE TOGETHER. Under the charter's PROPAGATED arrival the
+      // change runs THROUGH the mirrored copies, the far one first: a point's own exchange opens at
+      // `near · spread` of the crossing and runs over what is left of it, so a point standing in a
+      // further copy — small `near` — has already exchanged while the first copy still carries the
+      // departing work. At a spread of nothing every point's own exchange opens at nothing and the
+      // frame exchanges as one, which is the picture this instrument always drew.
+      //
+      // NEITHER DOOR MOVES UNDER ANY SPREAD, and it is arithmetic rather than a reading: the offset
+      // stands in [0, spread], so at `cross` 0 every point's own share is nothing and at `cross` 1
+      // every point's own share is `(1 − offset) / (1 − spread) >= 1`. The two branches above the
+      // exchange are therefore still the two doors, untouched.
+      "  float spread = clamp(uProp, 0.0, 0.9);",
+      "  if (cross <= 0.0) { col = folded(uA, uFitA, judge, nJ); }",
+      "  else if (cross >= 1.0) { col = folded(uB, uFitB, judge, nJ); }",
       "  else {",
-      "    vec3 ca = folded(uA, uFitA, jA);",
-      "    vec3 cb = folded(uB, uFitB, jB);",
-      "    col = mix(ca, cb, cross);",
-      "    judge = mix(jA, jB, cross);",
+      "    vec3 ca = folded(uA, uFitA, jA, nA);",
+      "    vec3 cb = folded(uB, uFitB, jB, nB);",
+      // THE COPY IS READ ON BOTH FIELDS AT ONCE. Each work is seated by its own cover fit, so the
+      // two answer «which copy is this» a hair apart wherever the two files differ in shape; the
+      // mean of them is one number for the one point being drawn, and a point where they disagree
+      // is a point at a copy's own border, where the exchange is between two neighbouring copies
+      // either way.
+      "    float near = 0.5 * (nA + nB);",
+      "    float t = clamp((cross - near * spread) / max(1.0 - spread, 1e-4), 0.0, 1.0);",
+      "    col = mix(ca, cb, t);",
+      "    judge = mix(jA, jB, t);",
       "  }",
       "  col = mix(col, judge, uMask);",
       // The module's own dither, carried: a half-level of ordered noise so a wide soft gradient in a
@@ -585,7 +627,7 @@
       // here for `seams` to publish.
       seams: [],
       params: { axis: [0, 3], centreX: [0, 1], centreY: [0, 1], drift: [0, 1], glint: [0, 1],
-                shade: [0, 1] },
+                shade: [0, 1], propagate: [0, 0.9] },
       // WHAT THIS INSTRUMENT SHOWS BESIDES A CROSSING (his 19:13 word, the two registers). A picture
       // closing onto its own reflection along a line the picture itself carries is a spectacular
       // atypical event: nothing about the making is explained and nothing is a lesson — the work
@@ -666,6 +708,25 @@
                  applied: { lineX: LINE_X, lineY: LINE_Y, breath: BREATH,
                             restsAt: "the place the two centres name" },
                  level: "CELL" },
+        // HOW FAR APART THE MIRRORED COPIES' OWN EXCHANGES STAND — the charter's PROPAGATED
+        // arrival (shelf 7), where it reaches this instrument's pixels. This is the one instrument
+        // of the fleet that makes MIRRORED COPIES of a work, so it is the one that can say what
+        // that arrival says: the change runs through the copies with the further one changing
+        // first. At nothing every copy exchanges at the same instant, which is the picture this
+        // instrument drew before the handle existed and the picture every other arrival asks for.
+        propagate: { min: 0, max: 0.9, def: 0,
+                     unit: "how far apart the mirrored copies' own exchanges stand, as a share of "
+                         + "the crossing",
+                     reads: "structure.rotational.score of the ARRIVING work — how strongly that "
+                          + "work already reads as its own copies repeated about a centre, which is "
+                          + "the very reading the composer ranks the charter's PROPAGATED arrival "
+                          + "on. A work that plainly IS its own copies propagates the change "
+                          + "through them over most of the crossing; one that barely reads as "
+                          + "copies exchanges nearly at once",
+                     applied: { furtherCopiesFirst: true,
+                                copyReadOffTheSameSmoothstepAs: "shade",
+                                restsAt: "both doors, where no copy has anything to exchange" },
+                     level: "CELL" },
         // THE MODULE'S OWN TWO RESTING CHANNELS, published at the rests the module holds them at.
         glint: { min: 0, max: 1, def: GLINT_REST,
                  unit: "the fold line's own brightness",
@@ -718,7 +779,7 @@
                      + "the work to read and the alpha is the constant 1" },
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
-      neutralPose: { mix: 0, axis: 2, centreX: 0.5, centreY: 0.5, drift: 0,
+      neutralPose: { mix: 0, axis: 2, centreX: 0.5, centreY: 0.5, drift: 0, propagate: 0,
                      glint: GLINT_REST, shade: DEPTH_REST, mask: 0, clock: 0,
                      reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
@@ -732,6 +793,7 @@
           { name: "uFold", type: "vec4", source: "frame:fold" },
           { name: "uForm", type: "vec4", source: "frame:form" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uProp", type: "float", source: "handle:propagate" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host

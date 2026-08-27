@@ -2424,10 +2424,14 @@ const HARD = {
     const plan = (p && p.plan) || null;
     const arr = (plan && plan.arrival) || {};
     const cue = plan ? (plan.cues || []).filter((c) => c.id === "arrival")[0] : null;
+    // WHAT THE FILL ASKED FOR, never what the score wrote. A score carries a node for EVERY handle
+    // of a cue — the ones the fill named and the ones left standing at the instrument's own rest —
+    // so reading the node would answer «0.5» for a seed nobody placed, which is exactly the silence
+    // one row below has to be able to see. `measuredHandles` is the cue's own record of the fill's
+    // own requests and carries nothing else.
     const nodeOf = (h) => {
-      if (!cue || !cue.nodes) return null;
-      const n = cue.nodes[cue.id + "-" + h];
-      return n === undefined || n === null ? null : toNum(n.value);
+      const asked = (cue && cue.measuredHandles) || {};
+      return Object.prototype.hasOwnProperty.call(asked, h) ? toNum(asked[h]) : null;
     };
     return { mode: arr.mode || null, locusKind: arr.locusKind || null, locus: arr.locus || null,
              instrument: cue ? cue.instrument.id : null,

@@ -83,11 +83,13 @@ check("PASS-POUR the instrument creates no context, no canvas, no loop and no li
       "hardware appears there"
       if not held else "the instrument's file holds " + ", ".join(held))
 
-HANDLES = ["mix", "clock", "columns", "repose", "stagger", "grain", "seed", "shade", "mask", "presence"]
+HANDLES = ["mix", "clock", "columns", "repose", "stagger", "grain", "seed", "arrival", "seedPlace",
+           "shade", "mask", "presence"]
 check("PASS-POUR every handle the instrument publishes is a handle a score can drive",
       all(("%s: { min" % h) in BUILT for h in HANDLES),
-      "§4.4b: nine handles. The one place a second reaches this instrument — the grain's own drift "
-      "— reads the `clock` handle, which is what makes a seeded repeat mean anything")
+      "§4.4b: eleven handles. The one place a second reaches this instrument — the grain's own "
+      "drift — reads the `clock` handle, which is what makes a seeded repeat mean anything; the "
+      "arrival and its seed are the charter's shelf-7 word about which order the columns let go in")
 
 # EVERY HANDLE THAT SHAPES THE PICTURE NAMES THE MEASUREMENT IT READS (his 19:13 word lifted to the
 # class at 19:21). The four geometric handles and the die are the five that must carry a `reads`
@@ -96,7 +98,9 @@ READS = {"columns": "structure.grid.periodPx",
          "repose": "texture.detailPx of the ARRIVING work",
          "stagger": "structure.regions.score of the DEPARTING work",
          "grain": "texture.spectralPeriodPx of the DEPARTING work",
-         "seed": "the score's own die"}
+         "seed": "the score's own die",
+         "seedPlace": "texture.reliefCentreDetailX of the ARRIVING work",
+         "arrival": "an arrival mode is the charter's"}
 missing_reads = [h for h, m in READS.items() if m not in BUILT]
 check("PASS-POUR every handle that shapes the picture names the measurement of a work it reads",
       not missing_reads,
@@ -147,7 +151,7 @@ check("PASS-POUR nothing is drawn at the heap's own boundary",
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', BUILT))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', BUILT))
 check("PASS-POUR the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 10,
+      declared == spelled and len(declared) == 11,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -159,9 +163,13 @@ NODE_ROWS = [
     "PASS-POUR the pour travels: the middle is neither door, and the heap only ever rises",
     "PASS-POUR a column's own travel is nothing at one door and whole at the other, at every stagger",
     "PASS-POUR the die moves which column lets go first and moves neither door",
+    "PASS-POUR the crystallized arrival lets the columns go outward from the seed, in order of "
+    "their own distance from it",
     "PASS-POUR the same pose answers the same numbers twice",
 ]
 RED_ROWS = [
+    "PASS-POUR red-on-bug · the seed's own order planted back to the die's hash: the columns stop "
+    "standing in order of their distance from the seed",
     "PASS-POUR red-on-bug · the heap's ceiling typed flat: the exit door leaks and says so",
     "PASS-POUR red-on-bug · the reading removed as well: the leaking door is answered with no refusal",
     "PASS-POUR red-on-bug · the grain's window removed: the entry door carries a roughness the file does not",
@@ -216,22 +224,30 @@ var BUFFERS = [[390, 844], [780, 1688], [1170, 2532], [100, 100]];
 var COLS = [4, 9, 16, 33, 64];
 var REPOSE = [0, 0.25, 0.5, 0.75, 1];
 var STAGGER = [0, 0.3, 0.6, 0.9];
+// AND EVERY ORDER THE COLUMNS CAN LET GO IN, which is the second half of the same claim. The
+// crystallized arrival replaces the die's own hash with the column's distance from a seed, so the
+// span walked here carries both orders and, for the seed's own, the two edges of the frame and its
+// middle — the three places a seed can stand that a release rule could get wrong.
+var ORDERS = [[0, 0.5], [1, 0], [1, 0.35], [1, 0.5], [1, 1]];
 var leaks = [], walked = 0, tightestEntry = 1e9, tightestExit = 1e9;
 BUFFERS.forEach(function (b) {
   COLS.forEach(function (c) {
     REPOSE.forEach(function (r) {
       STAGGER.forEach(function (s) {
-        [0, 1].forEach(function (m) {
-          var v = values({ mix: m, columns: c, repose: r, stagger: s,
-                           bufWidth: b[0], bufHeight: b[1] });
-          walked++;
-          if (v.doorWhyNo) {
-            if (leaks.length < 5) leaks.push([b, c, r, s, m, v.doorWhyNo]);
-          }
-          if (v.pileRead) {
-            if (m === 0 && v.pileRead.spareRows < tightestEntry) tightestEntry = v.pileRead.spareRows;
-            if (m === 1 && v.pileRead.spareRows < tightestExit) tightestExit = v.pileRead.spareRows;
-          }
+        ORDERS.forEach(function (o) {
+          [0, 1].forEach(function (m) {
+            var v = values({ mix: m, columns: c, repose: r, stagger: s,
+                             arrival: o[0], seedPlace: o[1],
+                             bufWidth: b[0], bufHeight: b[1] });
+            walked++;
+            if (v.doorWhyNo) {
+              if (leaks.length < 5) leaks.push([b, c, r, s, m, v.doorWhyNo]);
+            }
+            if (v.pileRead) {
+              if (m === 0 && v.pileRead.spareRows < tightestEntry) tightestEntry = v.pileRead.spareRows;
+              if (m === 1 && v.pileRead.spareRows < tightestExit) tightestExit = v.pileRead.spareRows;
+            }
+          });
         });
       });
     });
@@ -294,6 +310,69 @@ for (var x2 = 0; x2 <= 32; x2++) moved = Math.max(moved, Math.abs(midShape[0][x2
 out.die = { moved: moved, phases: [dieMid[0].phase, dieMid[1].phase],
             doorsClean: !dieDoor[0].doorWhyNo && !dieDoor[1].doorWhyNo,
             ok: moved > 0.01 && !dieDoor[0].doorWhyNo && !dieDoor[1].doorWhyNo };
+
+// ---- THE CRYSTALLIZED ARRIVAL'S OWN ORDER -----------------------------------------------------
+// Charter shelf 7 and наряд S-06: «зерно в точке наибольшего беспорядка, порядок расходится
+// задержкой по расстоянию» — a seed at the point of greatest disorder, and order spreading out from
+// it with a delay proportional to distance. The heap IS the arriving work, so a column that has
+// travelled further is a column the arriving work has resolved further in, and the claim is
+// therefore READ ON EVERY ORDERED PAIR OF COLUMNS: wherever one column stands nearer the seed than
+// another, it must have travelled at least as far. Nothing is sampled and nothing is averaged — the
+// whole cross-product of the frame's own columns is walked, at four places a seed can stand.
+//
+// AND THE VISITOR'S OWN PICTURE FOLLOWS IT, which is the point of the mechanism rather than of the
+// arithmetic: the heap's surface — the same envelope the shader draws — is read at nine places
+// across the frame at mid-dial, and the reading nearest the seed must stand higher than the one
+// furthest from it. A per-column delay that never reached the surface would pass the pair walk
+// above and fail this.
+var crystal = { runs: [], ok: true };
+[0, 0.2, 0.5, 0.85].forEach(function (place) {
+  var v = values({ mix: 0.5, arrival: 1, seedPlace: place, stagger: 0.9, columns: 24 });
+  var trav = [], dist = [], i, j;
+  for (i = 0; i < v.cols; i++) {
+    trav.push(inst.pouredOf(v, i));
+    dist.push(Math.abs((i + 0.5) / v.cols - place));
+  }
+  var pairs = 0, wrong = 0;
+  for (i = 0; i < v.cols; i++) {
+    for (j = 0; j < v.cols; j++) {
+      if (dist[i] + 1e-9 < dist[j]) {
+        pairs++;
+        if (trav[i] < trav[j] - 1e-9) wrong++;
+      }
+    }
+  }
+  // the heap the eye sees, nine places across the frame at the same mid-dial
+  var surf = [], near = -1, far = -1, nearD = 1e9, farD = -1, x, qx;
+  for (x = 0; x < 9; x++) {
+    qx = (x + 0.5) / 9;
+    surf.push(inst.heapAt(v, qx));
+    if (Math.abs(qx - place) < nearD) { nearD = Math.abs(qx - place); near = x; }
+    if (Math.abs(qx - place) > farD) { farD = Math.abs(qx - place); far = x; }
+  }
+  var lifted = surf[near] - surf[far];
+  if (wrong > 0 || !(lifted > 0.02)) crystal.ok = false;
+  crystal.runs.push({ place: place, pairs: pairs, wrong: wrong,
+                      travelNearest: trav[Math.max(0, Math.min(v.cols - 1,
+                                                   Math.round(place * v.cols - 0.5)))],
+                      travelSpan: [Math.min.apply(null, trav), Math.max.apply(null, trav)],
+                      surfaceNear: surf[near], surfaceFar: surf[far], lifted: lifted });
+});
+// THE DIE'S OWN ORDER IS STILL THERE where no arrival named a seed, and the two are different
+// pictures — read as the largest gap between the two surfaces at one dial. Without this the row
+// above would pass on an instrument that ordered its columns by distance ALWAYS, which would be a
+// different instrument.
+{
+  var vc = values({ mix: 0.5, arrival: 1, seedPlace: 0.2, stagger: 0.9, columns: 24 });
+  var vh = values({ mix: 0.5, arrival: 0, seedPlace: 0.2, stagger: 0.9, columns: 24 });
+  var gap = 0;
+  for (var g = 0; g <= 32; g++) {
+    gap = Math.max(gap, Math.abs(inst.heapAt(vc, g / 32) - inst.heapAt(vh, g / 32)));
+  }
+  crystal.againstTheDie = gap;
+  if (!(gap > 0.02)) crystal.ok = false;
+}
+out.crystal = crystal;
 
 // ---- THE SAME POSE ANSWERS THE SAME NUMBERS ---------------------------------------------------
 var r1 = JSON.stringify(values({ mix: 0.37, seed: 5, clock: 4.2 }));
@@ -402,19 +481,55 @@ else:
               "middle of the dial, and both doors stay whole under it — the die spends a phase into "
               "the column hash and nothing else" % di["moved"])
 
-        check(NODE_ROWS[5], G["repeat"]["ok"],
+        cr = G["crystal"]
+        check(NODE_ROWS[5], cr["ok"],
+              "; ".join("seed at %.2f of the frame: %d ordered pairs of columns walked and %d out "
+                        "of order, the heap standing %.3f of the frame's height at the reading "
+                        "nearest the seed against %.3f at the furthest"
+                        % (r["place"], r["pairs"], r["wrong"], r["surfaceNear"], r["surfaceFar"])
+                        for r in cr["runs"])
+              + " — and the same dial on the die's own order draws a surface %.3f away from it, so "
+                "the seed's order is a picture of its own rather than the order this instrument "
+                "always had" % cr["againstTheDie"]
+              if cr["ok"] else json.dumps(cr)[:600])
+
+        check(NODE_ROWS[6], G["repeat"]["ok"],
               "the same pose asked twice answers %d bytes of identical numbers, so a seeded score "
               "repeats to the pixel" % G["repeat"]["bytes"])
 
         # ---- red on bug ---------------------------------------------------------------------
+        # THE ORDER PLANTED BACK TO WHAT IT WAS BEFORE THE ARRIVAL REACHED IT. Both roads are
+        # changed together — the shader's own `releaseOf` and the script's mirror of it — because a
+        # plant that changed one would prove only that the two disagree. With the hash back in both,
+        # the column releases carry no reading of the seed at all and the ordered-pair walk above
+        # has to red.
+        p0 = plant("hash-order",
+                   [("return mix(h11(i), outward, step(0.5, uSeed.x));", "return h11(i);"),
+                    ("if (!(v.crystal >= 0.5)) return hash11(i, v.phase);",
+                     "if (true) return hash11(i, v.phase);")])
+        if p0 is None:
+            check(RED_ROWS[0], False, "the plant found nothing to change")
+        else:
+            R0, w0 = run_node(p0, "hash-order")
+            broke = R0 and not R0["crystal"]["ok"]
+            outs = sum(r["wrong"] for r in R0["crystal"]["runs"]) if R0 else 0
+            check(RED_ROWS[0], bool(broke),
+                  "with the seed's own order planted back to the die's hash, %d of the ordered "
+                  "pairs of columns stand out of order against the %d that do with it, and the "
+                  "heap's surface near the seed no longer stands over the surface far from it — so "
+                  "the row above is held by the release rule and not by the shape of a heap"
+                  % (outs, sum(r["wrong"] for r in G["crystal"]["runs"]))
+                  if broke else "the plant changed the rule and the reading did not move: "
+                                + (json.dumps(R0["crystal"])[:300] if R0 else str(w0)))
+
         p1 = plant("flat", [("return 1 + slope / (2 * Math.max(cols, 1)) + MARGIN;",
                              "return 1.0;")])
         if p1 is None:
-            check(RED_ROWS[0], False, "the plant found nothing to change")
+            check(RED_ROWS[1], False, "the plant found nothing to change")
         else:
             R1, w1 = run_node(p1, "flat")
             leaked = R1 and not R1["doors"]["ok"] and len(R1["doors"]["leaks"]) > 0
-            check(RED_ROWS[0], bool(leaked),
+            check(RED_ROWS[1], bool(leaked),
                   "with the ceiling typed at one instead of derived from the repose and the column "
                   "count, the surface stands short of the frame's top row wherever a point falls "
                   "between two piles, and the instrument refuses its own exit door: «%s»"
@@ -424,10 +539,10 @@ else:
                                         "return 1.0;"),
                                        ("var no = doorWhyNoOf(read);", "var no = null;")])
             if p2 is None:
-                check(RED_ROWS[1], False, "the plant found nothing to change")
+                check(RED_ROWS[2], False, "the plant found nothing to change")
             else:
                 R2, w2 = run_node(p2, "flat-silent")
-                check(RED_ROWS[1], bool(R2) and R2["doors"]["ok"],
+                check(RED_ROWS[2], bool(R2) and R2["doors"]["ok"],
                       "with the reading taken out as well the very same leak is answered with no "
                       "refusal at all over all %d poses — so the reading is what stands between a "
                       "visitor and a door that is two photographs, rather than a number nobody acts "
@@ -435,11 +550,11 @@ else:
 
         p3 = plant("nowin", [("var win = 4 * d * (1 - d);", "var win = 1;")])
         if p3 is None:
-            check(RED_ROWS[2], False, "the plant found nothing to change")
+            check(RED_ROWS[3], False, "the plant found nothing to change")
         else:
             R3, w3 = run_node(p3, "nowin")
             broke = R3 and R3["window"]["at0"] == 1 and R3["window"]["at1"] == 1
-            check(RED_ROWS[2], bool(broke),
+            check(RED_ROWS[3], bool(broke),
                   "with the window opened flat the grain and the heap's light stand at their full "
                   "strength at both doors — %s at the entry and %s at the exit against %s and %s "
                   "with the window — so a door would carry a roughness and a modelling the file "
@@ -456,6 +571,8 @@ BROWSER_ROWS = [
     "PASS-POUR row 7  · door 1 stands the arriving work, measured against its own file",
     "PASS-POUR row 7  · door 1 carries no trace of the departing work",
     "PASS-POUR the pour reaches the picture: the middle is no door",
+    "PASS-POUR the crystallized order reaches the PIXELS: near the seed the arriving work already "
+    "stands where far from it the departing work still falls",
     "PASS-POUR row 10 · a seeded run repeats to the pixel",
     "PASS-POUR row 15 · the console stays clean",
     "PASS-POUR the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
@@ -501,6 +618,19 @@ def apart(p, work):
         return 255.0, 255.0
     st = ImageStat.Stat(ImageChops.difference(a, work))
     return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
+
+
+def band(p, work, x0, x1):
+    """How far one upright BAND of a drawn frame stands from the same band of a whole work. The
+    crystallized arrival's whole claim is that one part of the frame resolves before another, so the
+    reading has to be taken part by part rather than over the frame at once."""
+    from PIL import Image, ImageChops, ImageStat
+    a = Image.open(p).convert("RGB")
+    if a.size != work.size:
+        return 255.0
+    box = (int(x0 * a.size[0]), 0, int(x1 * a.size[0]), a.size[1])
+    st = ImageStat.Stat(ImageChops.difference(a.crop(box), work.crop(box)))
+    return sum(st.mean) / 3.0
 
 
 def bench_dir():
@@ -555,6 +685,14 @@ def run_browser_rows():
             js(br, "window.__draw({mix: %r}); return 1;" % m)
             mids.append([m, png(br, SHOTS / ("mid%d.png" % i))])
         got["mids"] = mids
+        # THE CRYSTALLIZED ARRIVAL, DRAWN. One mid-hand pose with the seed near the left edge and
+        # one with it near the right, at the widest spread the handle publishes, so the two frames
+        # differ in nothing but where the order starts. What is measured is the two BANDS of each
+        # frame — the sixth of it nearest the seed and the sixth furthest — against each whole work.
+        for tag, place in (("left", 0.08), ("right", 0.92)):
+            js(br, "window.__draw({mix: 0.5, arrival: 1, seedPlace: %r, stagger: 0.9, "
+                   "columns: 16}); return 1;" % place)
+            got["crystal-" + tag] = png(br, SHOTS / ("crystal-%s.png" % tag))
         js(br, "window.__draw({mix: 0.42, seed: 3, clock: 5}); return 1;")
         got["rep0"] = png(br, SHOTS / "repeat-a.png")
         js(br, "window.__draw({mix: 0.42, seed: 3, clock: 5}); return 1;")
@@ -607,10 +745,34 @@ else:
               + " — the nearest of them is %.1f of 255 from either whole work, over the project's "
                 "seam, so the middle is a picture of its own and not a door held twice" % moved)
 
+        # THE CRYSTALLIZED ORDER, READ OFF THE DRAWN FRAME. The sixth of the frame nearest the
+        # seed and the sixth furthest from it, each measured against BOTH whole works: near the
+        # seed the columns let go first, so the heap — which is the arriving work — already stands
+        # there; far from it no column has let go, so the departing work is still in place. The two
+        # seeds stand at opposite edges and the reading has to turn over with them, which is what
+        # makes it a reading of the seed rather than of one end of the frame.
+        crystal_reads = []
+        for tag, place in (("left", 0.08), ("right", 0.92)):
+            near = (0.0, 1 / 6.0) if place < 0.5 else (5 / 6.0, 1.0)
+            far = (5 / 6.0, 1.0) if place < 0.5 else (0.0, 1 / 6.0)
+            crystal_reads.append((
+                tag, place,
+                band(B["crystal-" + tag], wA, *near), band(B["crystal-" + tag], wB, *near),
+                band(B["crystal-" + tag], wA, *far), band(B["crystal-" + tag], wB, *far)))
+        crystal_ok = all(nb < na and fa < fb for _, _, na, nb, fa, fb in crystal_reads)
+        check(BROWSER_ROWS[6], crystal_ok,
+              "; ".join("seed at %.2f — the band at the seed stands %.1f of 255 from the arriving "
+                        "work against %.1f from the departing one, and the band furthest from it "
+                        "%.1f from the departing work against %.1f from the arriving one"
+                        % (place, nb, na, fa, fb)
+                        for _, place, na, nb, fa, fb in crystal_reads)
+              + " — so at one dial, in one frame, the arriving work has resolved where the seed "
+                "stands and has not where the frame is furthest from it")
+
         rm, rx = diff(B["rep0"], B["rep1"])
-        check(BROWSER_ROWS[6], rx == 0,
+        check(BROWSER_ROWS[7], rx == 0,
               "the same pose drawn twice: %.4f of 255, worst channel %.0f" % (rm, rx))
-        check(BROWSER_ROWS[7], not B["errs"],
+        check(BROWSER_ROWS[8], not B["errs"],
               "no error, no rejection and no console.error over the whole run"
               if not B["errs"] else "; ".join(B["errs"][:4]))
 
@@ -677,14 +839,14 @@ else:
                     "state": js(br, "return window.__report().state;"),
                     "errs": js(br, "return window.__errs;")}
         R = on_bench(road)
-        check(BROWSER_ROWS[8],
+        check(BROWSER_ROWS[9],
               bool(R) and R["took"]["took"] is True and R["hooks"]["curtains"][:1] == [True]
               and len(R["hooks"]["docks"]) == 1 and R["state"] == "idle",
               "the host took the offer, raised its curtain, drew the pass and docked once: %s"
               % json.dumps(R["hooks"]) if R else "the road never ran")
 
         kept = sorted(p.name for p in SHOTS.glob("*.png")) if SHOTS.exists() else []
-        check(BROWSER_ROWS[9], len(kept) >= 7,
+        check(BROWSER_ROWS[10], len(kept) >= 7,
               "%d captures kept at %s" % (len(kept), SHOTS))
 
 # ---------------------------------------------------------------- report
