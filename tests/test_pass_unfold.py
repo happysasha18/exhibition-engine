@@ -488,6 +488,8 @@ RED_ROWS = [
     "PASS-UNFOLD red-on-bug · the parquet removed: the world opens onto bare frame",
     "PASS-UNFOLD red-on-bug · the world's curve reverted: equal hand steps go back to unequal change",
     "PASS-UNFOLD red-on-bug · the exchange's own swing removed: the hold blends two flat pictures again",
+    "PASS-UNFOLD red-on-bug · the hold's own swing stitched at its old rate: the fold's SPEED jumps "
+    "at the joins again",
 ]
 
 # THE MEASUREMENT READ AT A DOOR, published in the manifest. His 19:13 word, lifted to the class at
@@ -1612,6 +1614,85 @@ else:
               f"back to a flat crossfade the same frame stands {bug_mid[0]:.4f} of 255 from that same "
               f"average (worst channel {bug_mid[1]}), inside the seam — the exact blend this order "
               f"replaces")
+
+        # ---- 9. the hold's own swing stitched at its old rate (S-03, smoothness) -----------------
+        # THE CLAIM: `fold` — read straight off the diagnostic surface `posed` publishes, the very
+        # number `gate` and therefore `lean`/`form` are built from — is continuous not only in VALUE
+        # but in its own RATE OF CHANGE at all three stitches inside the hold (SHUT_IN, the hold's own
+        # middle, SHUT_OUT). Proved by construction: the fold is walked in fine, equal steps of the
+        # dial, the picture's own rate of change between consecutive steps is read at every step, and
+        # the biggest jump in THAT rate near the three stitches is held against the biggest jump the
+        # SAME walk, at the SAME step, finds well away from the hold — the ordinary grain `feelOf`'s
+        # own straight segments already carry, which this bar is not about and must not be tuned
+        # against. A swing built from two half-sine pieces meeting at the hold's own middle arrives at
+        # each stitch at its own steepest — `sin` is steepest through zero — while the flat curve
+        # either side of it is barely moving there, so the OLD swing's jump stands nowhere near that
+        # grain; the smoothed swing's does, because `dip` (`sin` SQUARED) touches zero tangent-first at
+        # all three stitches and `hHold` is built to carry the flat curve's own edge rate across the
+        # join instead of stopping it.
+        def fold_speed_jumps(b):
+            return js(b, """
+                var bench = window.__exPass.bench;
+                function foldAt(d) {
+                    var p = {mix: d, tilt: 0.5, shade: 1, depth: 0.5, stagger: 0.34, panels: 1,
+                              mask: 0, t: 0, reduced: false, cssWidth: 390, cssHeight: 844};
+                    return bench.values('unfold', p).fold;
+                }
+                function maxSpeedJump(lo, hi, step) {
+                    var prevFold = null, prevSlope = null, maxJump = 0;
+                    for (var d = lo; d <= hi + 1e-12; d += step) {
+                        var f = foldAt(d);
+                        if (prevFold !== null) {
+                            var slope = (f - prevFold) / step;
+                            if (prevSlope !== null) {
+                                var j = Math.abs(slope - prevSlope);
+                                if (j > maxJump) maxJump = j;
+                            }
+                            prevSlope = slope;
+                        }
+                        prevFold = f;
+                    }
+                    return maxJump;
+                }
+                var step = 0.0001;
+                return {
+                    atStitches: maxSpeedJump(0.43, 0.57, step),
+                    awayFromHold: maxSpeedJump(0.15, 0.35, step)
+                };
+            """)
+
+        NEW_SWING = (
+            '      } else if (dial < SHUT_OUT) {\n'
+            '        var y = (dial - 0.5) / HOLD;\n'
+            '        var hHold = 1 + FEEL_EDGE_SLOPE * HOLD * y * y * (1 - 4 * y * y);\n'
+            '        var dip = Math.sin(2 * Math.PI * y);\n'
+            '        fold = hHold - FLUTTER_DIP * dip * dip;\n'
+            '      } else {\n'
+        )
+        OLD_SWING = (
+            '      } else if (dial < 0.5) {\n'
+            '        fold = 1 - FLUTTER_DIP * Math.sin(Math.PI * (dial - SHUT_IN) / (0.5 - SHUT_IN));\n'
+            '      } else if (dial < SHUT_OUT) {\n'
+            '        fold = 1 - FLUTTER_DIP * Math.sin(Math.PI * (dial - 0.5) / (SHUT_OUT - 0.5));\n'
+            '      } else {\n'
+        )
+        assert NEW_SWING in PACK, "the S-03 swing's own stitch moved; update the red-on-bug match"
+        bug = PACK.replace(NEW_SWING, OLD_SWING, 1)
+        base_jumps = on_bench(fold_speed_jumps)
+        bug_jumps = on_bench(fold_speed_jumps, pack_text=bug)
+        SPEED_BAR = 5.0  # the stitched jump held to five times the ordinary grain away from the hold
+        check(RED_ROWS[8],
+              bug != PACK and base_jumps is not None and bug_jumps is not None
+              and base_jumps["atStitches"] <= SPEED_BAR * base_jumps["awayFromHold"]
+              and bug_jumps["atStitches"] > SPEED_BAR * bug_jumps["awayFromHold"],
+              f"walked in steps of 0.0001 across the dial, fold's own rate of change jumps by at most "
+              f"{base_jumps['atStitches']:.4f} a step at the hold's three stitches, against "
+              f"{base_jumps['awayFromHold']:.4f} away from it (bar {SPEED_BAR}x) — the stitches read "
+              f"as ordinary curve, not as a defect. Put back the two half-sine pieces that used to "
+              f"meet at the hold's own middle, the same walk finds {bug_jumps['atStitches']:.4f} at "
+              f"the stitches against {bug_jumps['awayFromHold']:.4f} away from them — a jump the "
+              f"straight curve on either side never asked for, which is the «тыц-бум-тыц» the swing "
+              f"put there")
 
 
 shutil.rmtree(TMP, ignore_errors=True)

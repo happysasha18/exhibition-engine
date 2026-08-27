@@ -467,6 +467,14 @@
       var n = FEEL_KNOTS.length - 1, x = u * n, i = Math.min(n - 1, Math.floor(x));
       return mix(FEEL_KNOTS[i], FEEL_KNOTS[i + 1], x - i);
     }
+    // THE HOLD'S OWN EDGE SPEED (S-03, stitched smooth 2026-08-27). `feelOf`'s own last measured
+    // step, read at its own last knot and carried through the very division by SHUT_IN that `posed`
+    // below reaches it by, is the rate fold is ALREADY moving at the instant the hold's swing takes
+    // over — and, since SHUT_IN and `1 - SHUT_OUT` are the same number, the rate the second work's
+    // own closing piece is moving at where the swing hands back to it. Built once here so the swing
+    // can be built to leave and return at exactly this rate instead of at nothing.
+    var FEEL_EDGE_SLOPE = (FEEL_KNOTS[FEEL_KNOTS.length - 1] - FEEL_KNOTS[FEEL_KNOTS.length - 2])
+                          * (FEEL_KNOTS.length - 1) / SHUT_IN;
 
     // Cover-fit a work into the frame, and nothing beyond it. The module's own sheet is the plain cover
     // fit at both doors, so the port asks the host for no crop: `framings` publishes 1 at both ends.
@@ -587,15 +595,34 @@
       var fold;
       if (dial <= SHUT_IN) {
         fold = feelOf(clamp(dial / SHUT_IN, 0, 1));
-      } else if (dial < 0.5) {
-        // THE FIRST WORK LEAVES BY ITS OWN FOLD (S-03): shut at SHUT_IN, out to FLUTTER_DIP and shut
-        // again at the hold's own middle, one swing of the very fold every other stretch already reads.
-        fold = 1 - FLUTTER_DIP * Math.sin(Math.PI * (dial - SHUT_IN) / (0.5 - SHUT_IN));
       } else if (dial < SHUT_OUT) {
-        // THE SECOND WORK ARRIVES BY ITS OWN FOLD: the mirror of the swing above, shut at the hold's
-        // own middle — where the hand below already reads 0.5 and switches which file the panels take
-        // — and shut again at SHUT_OUT, where its own forty-six hundredths of opening takes over.
-        fold = 1 - FLUTTER_DIP * Math.sin(Math.PI * (dial - 0.5) / (SHUT_OUT - 0.5));
+        // THE HOLD'S OWN SWING (S-03, stitched smooth 2026-08-27): one smooth hump spanning the
+        // WHOLE hold, in place of the two half-sine pieces that used to meet at its own middle. The
+        // two pieces agreed with the flat curve either side of them, and with each other at the
+        // middle, in VALUE — every join stood at fold 1 — but not in the RATE fold was moving at:
+        // a sine half-cycle starts and ends at its own steepest, so the swing arrived at each of its
+        // three stitches at a dead run while the curve either side of it was moving at a comparative
+        // walk (measured 2026-08-26: about 4.85 a unit of dial against about 39.3 a unit at HOLD =
+        // 0.08). The fold's own POSITION never jumped; its SPEED did, three times in half a second,
+        // which reads as a jolt no eye asked for.
+        //
+        // `y` is the dial's own place in the hold, centred and scaled so the hold's middle is 0 and
+        // its two edges are ±0.5. `hHold` is the smooth part that carries fold across the hold at
+        // all: it is exactly 1 at both edges and at the middle, its own slope is exactly nothing at
+        // the middle, and at either edge its slope is exactly `FEEL_EDGE_SLOPE` (in the same dial
+        // units the curve on both sides is already moving at there) — so the join carries the flat
+        // curve's own rate of travel across it rather than stopping it dead. `dip` is `sin` squared
+        // of twice the hold's own turn: it is exactly nothing, AND exactly flat, at the hold's two
+        // edges and at its middle (a squared sine touches zero tangent-first, not corner-first,
+        // which a bare `Math.abs(sin(...))` — or the old two-piece sine — does not), and it climbs to
+        // 1 at the quarter-points either side, which is where each swing actually turns the panels
+        // out and back. Riding it on `hHold` swings the fold exactly as far as FLUTTER_DIP asks for
+        // without disturbing either the value or the slope `hHold` alone already carries at the three
+        // stitches.
+        var y = (dial - 0.5) / HOLD;
+        var hHold = 1 + FEEL_EDGE_SLOPE * HOLD * y * y * (1 - 4 * y * y);
+        var dip = Math.sin(2 * Math.PI * y);
+        fold = hHold - FLUTTER_DIP * dip * dip;
       } else {
         fold = feelOf(1 - clamp((dial - SHUT_OUT) / (1 - SHUT_OUT), 0, 1));
       }
