@@ -997,8 +997,19 @@ else:
                 # Cut it well inside the flight — a third of the way through DUR — so a camera that
                 # only ever froze in place is caught nowhere near the arriving hang.
                 br.sleep(DUR * 0.35 / 1000.0)
+                # THE CADENCE'S DEADLINE TIMER IS A REAL-TIME `setTimeout`, INDEPENDENT OF THE FRAME
+                # LOOP: `cadenceEnd` runs either when the envelope reaches its own end (a frame,
+                # where `rec.lastSeconds` is already the fully-advanced target) or when this timer
+                # fires first (the score's own 200ms `interruption.withinMs`, on whatever
+                # `rec.lastSeconds` the last natural frame left behind). Found this наряд: this exact
+                # row flaked once under the full parallel suite's own real load — off by 0.0031
+                # against the 1e-6 tolerance, the deadline road landing short because `cadenceStart`
+                # left its own final-frame `seconds` field undefined for a no-door cue (fixed
+                # alongside, in `cadenceStart`: that field now marches to the passage's true end the
+                # same way `toSeconds` already did). A busy CI machine reproduces the deadline road by
+                # its own real load; this row does not manufacture a synthetic stand-in for that load.
                 js(br, "window.__exPass.adapter.interrupt('a3-nodoor'); return null;")
-                landed = wait_state(br, "idle", tries=80)
+                landed = wait_state(br, "idle", tries=200)
                 br.sleep(0.2)
                 rep = js(br, "return window.__exPass.host.report();")
                 br.evaluate("window.__hangScore = window.__hangScoreSaved; 0")

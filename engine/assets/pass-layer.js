@@ -2687,7 +2687,21 @@
     rec.cadence = {
       reason: reason, budget: budget, forced: !!immediate, landState: landState || "cancelled",
       door: door ? door.which : null, doorHandle: door ? door.handle : null,
-      seconds: door ? door.seconds : undefined,
+      // A3 FOLLOW-UP (found under load, `tests/test_pass_hang.py`'s own row A3 flaking in the full
+      // parallel suite): this field — NOT `toSeconds` below — is what `cadenceEnd` draws its own
+      // FINAL frame at. `cadenceEnd` runs on two roads: the cadence reaching its own envelope's end
+      // (`runFrame`, where `rec.lastSeconds` has already been advanced to `toSeconds` by that same
+      // call) and the deadline timer firing first (a real-time `setTimeout`, independent of the
+      // frame loop) — and under a slow or sparse frame rate the deadline can fire before any frame
+      // ever reaches the envelope's own end, landing `cadenceEnd` on whatever `rec.lastSeconds` the
+      // LAST natural frame left behind, short of the target. Leaving this field `undefined` for the
+      // no-door case fell back to exactly that stale value (`cadenceEnd`'s own
+      // `c.seconds === undefined ? rec.lastSeconds : c.seconds`) regardless of which road landed it,
+      // so the camera's own last frame could be drawn short of the true end on the deadline road
+      // even though `toSeconds` below already marches the FRAME LOOP there correctly — a race
+      // between which road gets there first, not a fix. Stating it explicitly, the same way
+      // `toSeconds` is, closes both roads on the one number.
+      seconds: door ? door.seconds : (rec.duration > 0 ? rec.duration / 1000 : undefined),
       from: live, to: door ? door.handles : live,
       // THE PASSAGE'S OWN CLOCK TRAVELS WITH THE HANDLES. A cadence used to walk the instrument's
       // handles to their door while the SECOND fed to the frame loop went on running off the wall
