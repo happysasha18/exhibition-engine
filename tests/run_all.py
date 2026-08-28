@@ -119,6 +119,9 @@ SUITES = [
     # readers: how a measured response table is read BETWEEN its own twenty-one points, which is
     # where the fleet's speed used to step.
     "pass_feel",
+    # P1.2 (2026-08-28) — the joint phrase planner's own five legality rules, its score and its
+    # widened return, registered in the pass that wrote it.
+    "pass_bundle",
 ]
 
 

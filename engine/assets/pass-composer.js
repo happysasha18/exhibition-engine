@@ -2425,7 +2425,17 @@
     // union, so a candidate whose levels are a strict superset of pivot's still keeps the levels
     // pivot leaves free, and the change widens what every voice — travel, arrival, and anything
     // standing beside pivot itself — may share with what came before it.
-    function castForKinds(kinds, fromW, toW, noMiracle, seed, key, slot, avoid, standsAbove,
+    // P1.2 #1 — THE RANKING IS THE ONE SEAT OF TRUTH, AND `castForKinds` IS ITS HEAD (2026-08-28).
+    // This used to pick one instrument and hand back nothing about who else was in the running, so
+    // nothing downstream could ever weigh a COMBINATION of slots against each other — every scoring
+    // decision this file made was one slot at a time. `castForKindsRanked` runs the exact same tier
+    // walk and the exact same weighted die over the winning tier this function always rolled, so its
+    // head is character-for-character the id `castForKinds` always returned; what is new is that
+    // every OTHER candidate this call considered rides along too, tier by tier, fit-ranked within
+    // each tier by the same reading `dieWeighted` itself weighs. `castForKinds` below is now a thin
+    // wrapper over this function's own head, kept so every call site already in this file — and every
+    // test that calls it directly — sees exactly the old shape.
+    function castForKindsRanked(kinds, fromW, toW, noMiracle, seed, key, slot, avoid, standsAbove,
                           mustFill, clashRecords, candidateWindow, mustFold) {
       var list = [].concat(kinds || []).filter(function (k) { return !!k; });
       var taken = [].concat(avoid === undefined || avoid === null ? [] : avoid)
@@ -2569,17 +2579,55 @@
                     why: answer[1], order: order });
         tiers[order].push({ id: iid, fit: answer[0] });
       }
+      // THE RANKED LIST ITSELF. `order` (0..8, the tier a candidate landed in above) rides on every
+      // entry so a caller building a JOINT bundle (P1.2's own planner, below) can tell a genuinely
+      // ranked alternative (`order < 8`) from the last-resort tier that `taken`/`mustFill` failures
+      // land in — that tier is walked too, exactly as the old single-pick loop always fell through to
+      // it when nothing better stood, but nothing outside this function should ever reach for it as
+      // a real ALTERNATIVE.
+      var ranked = [];
       for (i = 0; i < tiers.length; i++) {
-        if (tiers[i].length) {
-          return [dieWeighted(rankUnread(tiers[i]), seed, key + "|" + list.join("+") + "|" + slot,
-                              1), said, cutters, false];
+        if (!tiers[i].length) continue;
+        var pool = rankUnread(tiers[i]);
+        if (!ranked.length) {
+          // THE WINNING TIER, AND ONLY THE WINNING TIER, ROLLS THE DIE — the same call this function
+          // has always made, over the same pool, with the same key. Its answer is this list's head.
+          var pick = dieWeighted(pool, seed, key + "|" + list.join("+") + "|" + slot, 1);
+          var pickedFit = 0;
+          pool.forEach(function (p) { if (p.id === pick) pickedFit = p.fit; });
+          ranked.push({ id: pick, fit: pickedFit, order: i });
+          pool.filter(function (p) { return p.id !== pick; })
+            .sort(function (x, y) {
+              return (Number(y.fit) || 0) - (Number(x.fit) || 0)
+                || (x.id < y.id ? -1 : (x.id > y.id ? 1 : 0));
+            })
+            .forEach(function (p) { ranked.push({ id: p.id, fit: p.fit, order: i }); });
+        } else {
+          // EVERY TIER BEHIND THE WINNING ONE IS STILL ORDERED — fit descending, id as the
+          // deterministic tie-break — but never rolled: only the single best tier's own winner is
+          // ever drawn by die, exactly as this function always drew it.
+          pool.slice().sort(function (x, y) {
+            return (Number(y.fit) || 0) - (Number(x.fit) || 0)
+              || (x.id < y.id ? -1 : (x.id > y.id ? 1 : 0));
+          }).forEach(function (p) { ranked.push({ id: p.id, fit: p.fit, order: i }); });
         }
       }
       // A COLLECTION WITH NO INSTRUMENT AT ALL is the one case with nothing to rank, and it is a
       // fact about the settings record rather than about the pair — UNLESS every candidate this
       // call ranked was excluded by the levels law instead, which is a fact about this slot on
       // this plan and the fourth element says so, so the caller can name the real reason.
-      return [null, said, cutters, sawClash];
+      return [ranked, said, cutters, sawClash];
+    }
+
+    // THE THIN WRAPPER. Every call site this file already had, and every test that calls
+    // `castForKinds` directly, sees exactly the shape it always did: one id or null, `said`,
+    // `cutters`, `sawClash`. The id is the ranked list's own head, so this is provably the same
+    // answer `castForKindsRanked` computes — never a second, divergent pick.
+    function castForKinds(kinds, fromW, toW, noMiracle, seed, key, slot, avoid, standsAbove,
+                          mustFill, clashRecords, candidateWindow, mustFold) {
+      var r = castForKindsRanked(kinds, fromW, toW, noMiracle, seed, key, slot, avoid, standsAbove,
+                                 mustFill, clashRecords, candidateWindow, mustFold);
+      return [r[0].length ? r[0][0].id : null, r[1], r[2], r[3]];
     }
 
     // The one key both directions of an edge roll the ground on.
@@ -4527,6 +4575,215 @@
       for (i = 0; i < TIERS.length; i++) if (TIERS[i].tier === tier) return TIERS[i][column][1];
       return TIERS[1][column][1];
     }
+
+    // ================================================================================================
+    // P1.2 — THE JOINT PHRASE PLANNER'S OWN LEGALITY RULES (2026-08-28, his sprint brief)
+    // ================================================================================================
+    //
+    // A bundle is `{ground, travel, arrival, colour}` — one instrument id (or null) per slot, plus
+    // whether structural colour is spent. WHAT STANDS TODAY, BEFORE THIS: `compose`'s old budget
+    // loop shrank ONE fixed stack in ONE fixed order — swap the ground once, then drop travel, then
+    // drop arrival, then surrender colour first of all, before anything else was even weighed
+    // (`colourVoice = !(singsHere && accs + 1 > accCeiling)`, re-read every turn) — and nothing in
+    // the file ever scored a COMBINATION; every cast scored one slot at a time. This section is the
+    // rules a bundle must clear before `compose`'s own enumeration (further down, where the old loop
+    // stood) ever scores it — an ENTRY CONDITION, never a gate on the crossing itself: every rule
+    // below refuses ONE CANDIDATE bundle, and the ground-alone bundle {ground, null, null, false}
+    // clears every one of them for any two real works, so the set of legal bundles a pair offers is
+    // never empty (shelf 9 — a measurement ranks, it never gates).
+    //
+    // Each rule is written standalone, reading only its own explicit arguments (never closing over
+    // `compose`'s own locals), so each is one fact a test can extract by name and try alone — the
+    // same road `tests/test_pass_lawful.py` already walks for `tierFor`.
+
+    // RULE 1 — ONE WORLD AT A TIME. Shelf 6: at most one impossible event stands in any crossing;
+    // shelf 17 gives some roles none at all. `g` is the ground instrument id a bundle would cast;
+    // `t`/`a` are the travel/arrival instrument ids, or null where the bundle drops that voice;
+    // `world` is the arriving work's own folded space this bundle would open, or null.
+    function bundleWorldLegal(g, t, a, world, roleBudget) {
+      var n = (spendsTheMiracle(g) ? 1 : 0) + ((t && spendsTheMiracle(t)) ? 1 : 0)
+        + ((a && spendsTheMiracle(a)) ? 1 : 0) + (world ? 1 : 0);
+      if (n > 1) {
+        return { ok: false, why: "the bundle spends more than one of the crossing's own one "
+          + "impossible event (shelf 6) across its ground, travel and arrival" };
+      }
+      if (n > 0 && !roleBudget.miracle) {
+        return { ok: false, why: "the bundle spends the crossing's one impossible event at a role "
+          + "shelf 17 gives no miracle" };
+      }
+      return { ok: true, why: null };
+    }
+
+    // RULE 2 — ONE LEVEL-OWNER PER OVERLAPPING WINDOW. The real generalization of what
+    // `castForKinds` only approximates one candidate at a time (excluding a candidate outright only
+    // where EVERY level it declares is already taken by the clash records built up so far, in cast
+    // order — one direction only, so it never re-checks whether an EARLIER voice, like the ground,
+    // still has something free once a later one joins it) and what `ownTheLevels` settles AFTER
+    // every cue is already chosen. `ownTheLevels`'s own tie-break is not "shared means taken": a
+    // cue with FEWER declared levels needs the one they share more and wins it — a cue with exactly
+    // one level has nowhere else to be, so it keeps that level over a rival that has somewhere else
+    // to go — and `ownTheLevels` goes further still, handing a level back to any cue left owning
+    // nothing at all from a rival that can afford to lose it. A plain "every level already claimed"
+    // reading misses that entirely and would refuse, for instance, a single-level fold standing
+    // beside a two-level one sharing WORLD — the single-level one always wins that level, so it is
+    // never actually silenced. This reads that same need ordering up front: a voice has something
+    // free wherever NONE of the live rivals sharing that level need it as much or more (fewer or
+    // equal levels of their own); only where every one of its declared levels loses that contest is
+    // it refused. `entries` is `[{id, window}, ...]` for the voices this bundle would actually cast
+    // — the caller filters out the slots it drops.
+    function bundleLevelsLegal(entries) {
+      var i, j, k, mine, hasFree, rivalLevels, refused = null;
+      for (i = 0; i < entries.length && !refused; i++) {
+        mine = (MANIFESTS[entries[i].id] || {}).levels || [];
+        if (!mine.length) continue;
+        hasFree = false;
+        for (k = 0; k < mine.length && !hasFree; k++) {
+          var lv = mine[k], loses = false;
+          for (j = 0; j < entries.length; j++) {
+            if (j === i) continue;
+            var overlap = num(entries[i].window[0]) < num(entries[j].window[1])
+              && num(entries[j].window[0]) < num(entries[i].window[1]);
+            if (!overlap) continue;
+            rivalLevels = (MANIFESTS[entries[j].id] || {}).levels || [];
+            if (rivalLevels.indexOf(lv) < 0) continue;
+            if (rivalLevels.length <= mine.length) { loses = true; break; }
+          }
+          if (!loses) hasFree = true;
+        }
+        if (!hasFree) refused = entries[i].id;
+      }
+      if (refused) {
+        return { ok: false, why: "«" + refused + "» would own nothing free: every level it "
+          + "declares is shared with a rival, live over the same stretch, that needs it as much or "
+          + "more (as few or fewer levels of its own)" };
+      }
+      return { ok: true, why: null };
+    }
+
+    // RULE 3 — THE TIER BUDGET, AS AN ENTRY CONDITION rather than a loop's own exit test. The exact
+    // reading `compose`'s old budget loop always took to decide whether to keep shrinking — voice
+    // the cues, read the declared row's own accompaniment ceiling, hold letters and the realised
+    // tier to the role's own ceiling — asked once, of one whole candidate, rather than walked down
+    // from a fixed starting stack one give-up at a time.
+    function bundleTierLegal(hasTravel, hasArrival, world, role, foldsOn, roleBudget, singsHere,
+                             colourOn) {
+      var voiced = voiceTheCues(hasTravel, hasArrival, world, role, foldsOn);
+      var voices = voiced[0], tier = voiced[1], letters = 0, accs = 1, k;
+      if (!hasTravel) delete voices.travel;
+      if (!hasArrival) delete voices.arrival;
+      for (k in voices) {
+        if (voices[k] === "letter") letters += 1;
+        else if (voices[k] === "accompaniment") accs += 1;
+      }
+      var accCeiling = ceilingOfTier(tier, "accompaniments");
+      var countedAccs = accs + ((colourOn && singsHere) ? 1 : 0);
+      var ok = letters <= roleBudget.letters && countedAccs <= accCeiling
+        && TIER_RANK[tier] <= TIER_RANK[roleBudget.tier];
+      return { ok: ok, voices: voices, tier: tier, letters: letters, accs: accs,
+               accCeiling: accCeiling,
+               why: ok ? null : ("shelf 17's «" + tier + "» row does not take letters=" + letters
+                 + " accompaniments=" + countedAccs) };
+    }
+
+    // RULE 4 — THE DECLARED RESOURCE PEAK AGAINST A DEVICE-INDEPENDENT CEILING, mirroring
+    // `peakDeclared`/`grantVariant` (pass-layer.js:2202-2284): sum what each cast instrument's own
+    // manifest declares and hold it against the fleet's own most generous published budget
+    // (`RESOURCE_CEILING`, DERIVED — every one of its own fields is `BUDGET.rich` copied verbatim
+    // from that same table, never a second measurement of its own). Composition runs ahead of any
+    // one visitor's device, so this is not the finer, viewer-specific lightening `grantVariant`
+    // still owns alone at render time (which may still lower a bundle this rule passes) — it is the
+    // one thing composition itself can already know: a bundle no device could ever be granted, at
+    // any variant, is not a real candidate to weigh in the first place.
+    var RESOURCE_CEILING = { textures: 8, textureSlots: 16, framebuffers: 4, pingPong: 2,
+                             programs: 8, passes: 8, bytesEstimate: 100663296 };
+    function bundleResourcesLegal(instrIds) {
+      var sum = { textures: 0, textureSlots: 0, framebuffers: 0, pingPong: 0, programs: 0,
+                  passes: 0, bytesEstimate: 0 };
+      var keys = Object.keys(sum), over = null;
+      instrIds.filter(function (iid) { return !!iid; }).forEach(function (iid) {
+        var r = resourcesBlock(iid, "rich");
+        keys.forEach(function (k) { sum[k] += Number(r[k]) || 0; });
+      });
+      keys.forEach(function (k) { if (over === null && sum[k] > RESOURCE_CEILING[k]) over = k; });
+      return { ok: over === null, why: over === null ? null
+        : ("the bundle declares " + sum[over] + " " + over + " summed across its cast, past the "
+          + "fleet's own richest published budget of " + RESOURCE_CEILING[over]) };
+    }
+
+    // RULE 5 — SURFACE HANDOVER. STUBBED, ON PURPOSE, PENDING P3. Which cue's own render surface a
+    // bundle hands to the next is P3's own contract to write; until it exists every bundle is legal
+    // by this rule, so nothing here refuses a bundle against a rule that has not been designed yet.
+    function surfaceHandoverLegal() { return { ok: true, why: null }; }
+
+    // CAPABILITY. A BOUND ON WORK EXAMINED, NEVER ON QUALITY — a fact about the enumeration's own
+    // arithmetic, not a reading of any picture. Crossing every ranked ground/travel/arrival
+    // candidate against every colour setting is a small, fixed cross by construction — two ground
+    // candidates, travel present-or-not, arrival present-or-not, colour on-or-off is 16 at the very
+    // most — and this names the bound explicitly so it travels onto the diagnostic row (never a
+    // hidden constant) rather than being an accident of how many candidates happened to be offered.
+    var BUNDLE_CAP = 16;
+
+    // P1.2's own per-bundle re-derivation of `folds`/`world`/`foldsOn` — the same reading `compose`
+    // took once, sequentially, for the stack the old cast happened to build (`folds` — does any of
+    // the three already-cast instruments spend the miracle; `couldFold` — the arriving work's own
+    // space, where travel plays; `mayFold` — the road and the role both allow it and nothing already
+    // folds; `world` — `mayFold`'s own reading) — asked here instead per CANDIDATE bundle, so RULE 1
+    // above is checked against what THIS bundle would actually spend, not what the sequential cast
+    // happened to.
+    function bundleFoldsAndWorld(g, t, a, road, roleBudget, toW, axis) {
+      var bundleFolds = spendsTheMiracle(g) || (!!t && spendsTheMiracle(t))
+        || (!!a && spendsTheMiracle(a));
+      var couldFold = t ? worldOf(toW, axis) : null;
+      var mayFold = !!(road.miracle && roleBudget.miracle && !bundleFolds);
+      var w = mayFold ? couldFold : null;
+      var foldsOnHere = spendsTheMiracle(g) ? "pivot"
+        : ((t && spendsTheMiracle(t)) ? "travel" : ((a && spendsTheMiracle(a)) ? "arrival" : null));
+      return { folds: bundleFolds, couldFold: couldFold, mayFold: mayFold, world: w,
+               foldsOn: foldsOnHere };
+    }
+
+    // THE SCORE — NEVER A GATE. Every bundle handed here already cleared all five rules above; this
+    // only ranks what is left, per his 2026-08-28 sprint brief's own scoring words:
+    //   · a middle or culmination station rewards a bundle carrying an honest SECOND voice standing
+    //     on a structural level the ground does not itself already hold;
+    //   · where no honest second voice exists the one-voice bundle wins cleanly (nothing forces a
+    //     second voice into existence to be rewarded for it);
+    //   · a quiet-link bundle may stay simple and pays no penalty for staying simple;
+    //   · structural colour is not the first voice surrendered when it carries the herald, the
+    //     bridge (the travelling move) or the arrival — only when it merely rides along on the
+    //     ground does it stand no taller than a lesser accompaniment.
+    function scoreBundle(g, t, a, colourOn, role, singsHere) {
+      // VOICE COUNT IS THE DOMINANT TERM, AND DELIBERATELY SO. Every move this bundle carries was
+      // already the sequential cast's own best-ranked answer for its slot, cleared by all five
+      // legality rules two screens up — so among LEGAL bundles, one that keeps a move is never
+      // outscored by one that drops it for a nicer-looking ground or a livelier second voice. Shelf
+      // 9 (a measurement ranks, it never gates) reads the same way here: the structural and colour
+      // terms below decide AMONG bundles that already carry the same number of voices — which
+      // ground to stand on, whether to spend colour — never whether to carry a voice at all. A
+      // ground swap or a dropped colour voice can move the game the rest of this function plays;
+      // losing an entire move can only ever be the SCORER's answer where every bundle that keeps it
+      // was refused by one of the five rules, never a preference this function states on its own.
+      var voicesPresent = (t ? 1 : 0) + (a ? 1 : 0);
+      var score = voicesPresent * 100;
+      var groundLevels = (MANIFESTS[g] || {}).levels || [];
+      function ownsADifferentLevel(iid) {
+        var lv = (MANIFESTS[iid] || {}).levels || [];
+        return lv.length > 0 && lv.every(function (l) { return groundLevels.indexOf(l) < 0; });
+      }
+      var secondVoice = (!!t && ownsADifferentLevel(t)) || (!!a && ownsADifferentLevel(a));
+      if ((role === "middle" || role === "culmination") && secondVoice) score += 10;
+      if (colourOn && singsHere) {
+        // WHO ACTUALLY SINGS LIGHT-COLOUR in this bundle — at most one voice can, by the levels law
+        // — and whether that voice is the travelling move or the arrival (the herald/bridge/arrival
+        // shelf 11's amendment names) rather than the ground it merely rides along on.
+        var singer = [t, a, g].filter(function (iid) {
+          return iid && (MANIFESTS[iid].levels || []).indexOf("LIGHT-COLOUR") >= 0;
+        })[0];
+        score += (singer && singer !== g) ? 6 : 1;
+      }
+      return score;
+    }
+
     // WHERE A LENGTH LANDS INSIDE A BAND. It is a pure arithmetic and it travels beside the entry
     // with the others (the note over the export at the foot of this file), because what it claims is
     // a claim about NUMBERS: every band this table names, walked against every share between nothing
@@ -5064,8 +5321,23 @@
       // played before it.
       var passIndex = (memory && memory.passIndex)
         ? Math.max(0, Math.round(Number(memory.passIndex))) : 0;
+      // WIDENED FOR P1.2 (2026-08-28), his sprint brief's own words: "no frame should repeat
+      // identically". The key here used to read only `key + "|moves"`, so the die itself never
+      // moved with the pass — only `(passIndex + dieValue) % 2`'s own PARITY did, which means every
+      // odd return drew the identical flip and every even one the identical no-flip: a walk
+      // returning to one edge three, four, five times collapsed into an alternation of two frames
+      // repeated forever after the second. Folding `passIndex` into the key looks like the fix, but
+      // `dieAmong`'s own hash is an XOR-then-multiply-by-an-odd-constant chain, which makes the
+      // RESULT'S OWN LOWEST BIT a pure XOR of the salt's character codes — asking it for a die of 2
+      // reads next to nothing but the parity of the key's own trailing digits, so a key ending in the
+      // decimal `passIndex` still answers by `passIndex`'s own parity and nothing has actually moved.
+      // Reading a wide die first (1009, a prime with no relation to 2) and taking its own parity
+      // mixes far more of the hash before that last, degenerate reduction, so distinct pass indices
+      // genuinely draw independently rather than re-deriving their own parity by another road. A
+      // fresh pass (`passIndex` 0) is untouched — this only widens what a RETURN varies, never what
+      // a first visit draws.
       if (passIndex && arrivalInstr
-          && (passIndex + dieAmong(pair.seed, key + "|moves", 2)) % 2 === 1) {
+          && dieAmong(pair.seed, key + "|moves|" + passIndex, 1009) % 2 === 1) {
         arrivalLeads = !arrivalLeads;
       }
 
@@ -5129,11 +5401,15 @@
       // was the accident: this collection publishes four instruments that declare the world and the
       // name saw one of them, so the other three folded the space a work lives in, were voiced as
       // ordinary letters and were counted as no miracle at all.
-      var folds = spendsTheMiracle(pivotInstr) || spendsTheMiracle(travelInstr)
-        || spendsTheMiracle(arrivalInstr);
-      var couldFold = travelInstr ? worldOf(toW, axis) : null;
-      var mayFold = !!(road.miracle && roleBudget.miracle && !folds);
-      var world = mayFold ? couldFold : null;
+      // P1.2 (2026-08-28): READ THROUGH ONE FUNCTION, NEVER TWO COPIES OF ONE FORMULA. This used to
+      // read `folds`/`couldFold`/`mayFold`/`world` inline, and the joint phrase planner further down
+      // needs the identical reading for every CANDIDATE bundle it weighs — so `bundleFoldsAndWorld`
+      // (two screens up) is now the one place the formula lives, and this is simply its first call,
+      // against the sequentially-cast stack, exactly as `compose` always read it here.
+      var baseFoldsAndWorld = bundleFoldsAndWorld(pivotInstr, travelInstr, arrivalInstr, road,
+                                                  roleBudget, toW, axis);
+      var folds = baseFoldsAndWorld.folds, couldFold = baseFoldsAndWorld.couldFold,
+          mayFold = baseFoldsAndWorld.mayFold, world = baseFoldsAndWorld.world;
       var miracleDecline = (couldFold && !mayFold)
         ? (folds
            ? "the frame folds into a solid, which is this crossing's one miracle, so the arriving "
@@ -5144,158 +5420,196 @@
                  + "space")))
         : null;
       var voices, tier, letters, accs, k, instrumentOf, stackOrder, placed, capped = [];
-      // WHETHER THIS CROSSING STILL SPENDS ITS COLOUR VOICE. Shelf 17 counts the camera, the ground
-      // and colour in one column, and the loop below may find all three standing against a ceiling
-      // of two. The colour voice is the one of the three that is neither the camera nor the crossing
-      // itself, so it is the one an accompaniment budget can spend: the level goes unowned, its
-      // handles come off every track list, and the instruments' own published defaults stand there.
-      // Every cue, every instrument and every move stands. It is re-read on every turn of the loop
-      // because the loop can retire the very cue that sings it.
-      var colourVoice = true, accCeiling = 0;
-      // WHICH CUE FOLDS THE FRAME, or nothing — read off the manifest exactly as `folds` above is,
-      // and never off a name. It is re-read on every turn of the budget loop below, because the loop
-      // can retire the very cue that folds.
-      var foldsOn = null, stackSwapped = false;
+      var colourVoice = true, accCeiling = 0, foldsOn = null, singsHere = false;
 
-      // THE ROLE'S BUDGET IS A BOUND ON WHAT IS EMITTED, not a wish. Shelf 17 counts letters, and a
-      // quiet link carries exactly one; a step whose pair offers more moves than its role may spend
-      // gives them up here rather than at the gate. The travelling move goes first, because the
-      // ground and the arrival are the two the charter names by role, and the plan records every
-      // move it gave up so a thin passage can be read back to the reason it is thin.
-      for (;;) {
-        foldsOn = spendsTheMiracle(pivotInstr) ? "pivot"
-          : (spendsTheMiracle(travelInstr) ? "travel"
-             : (spendsTheMiracle(arrivalInstr) ? "arrival" : null));
-        var voiced = voiceTheCues(travelInstr !== null, arrivalInstr !== null, world,
-                                  role, foldsOn);
-        voices = voiced[0];
-        tier = voiced[1];
-        if (travelInstr === null) delete voices.travel;
-        if (arrivalInstr === null) delete voices.arrival;
-        letters = 0;
-        accs = 1;
-        for (k in voices) {
-          if (voices[k] === "letter") letters += 1;
-          else if (voices[k] === "accompaniment") accs += 1;
-        }
-        // THE PLACEMENT LAW IS THE SECOND BOUND. §7's coverage law lets only the LOWEST cue leave
-        // the frame open — nothing is drawn beneath it, so where its matter is absent the cleared
-        // buffer shows — and it exempts a one-cue score, because nothing stands beneath that either.
-        // A visitor would see a torn frame without it, so it is his requirement in the plainest
-        // sense and it holds.
-        //
-        // WHAT IT NO LONGER DOES IS TAKE A VOICE DOWN AS ITS FIRST ANSWER. A stack whose cues all
-        // write coverage has no ground, and this retired the travelling move for it — which is the
-        // direct cause of a crossing playing on one voice. The law is answered by CHOOSING instead:
-        // the ground is re-cast to an instrument that fills the frame, and only where the collection
-        // publishes none at all does a move stand down. `stackSwapped` holds it to one attempt so
-        // the loop always ends.
-        instrumentOf = {};
-        if (pivotInstr && voices.pivot) instrumentOf.pivot = pivotInstr;
-        if (travelInstr && voices.travel) instrumentOf.travel = travelInstr;
-        if (arrivalInstr && voices.arrival) instrumentOf.arrival = arrivalInstr;
-        stackOrder = CUE_IDS.filter(function (c) { return instrumentOf[c] !== undefined; });
-        placed = placeTheStack(stackOrder, instrumentOf);
-        // WHETHER THIS CAST SINGS LIGHT-COLOUR, read here rather than after the loop, because the
-        // count it changes is one the loop has to answer, and re-read on every turn because the
-        // loop can retire the very cue that sings it. It is read off the cues that survived this
-        // turn, never off the instrument variables alone.
-        var singsHere = false, ci;
-        for (ci = 0; ci < stackOrder.length; ci++) {
-          if ((MANIFESTS[instrumentOf[stackOrder[ci]]].levels || []).indexOf("LIGHT-COLOUR") >= 0) {
-            singsHere = true;
-            break;
-          }
-        }
-        // THE ACCOMPANIMENT CEILING IS THE THIRD BOUND, and it belongs to the tier this plan will
-        // DECLARE rather than to the one the role reached for. §4.7 asks the declared tier and the
-        // measured one to agree, so the ceiling that has to hold is the declared row's; and since
-        // the three rows' accompaniment ceilings rise with the tier's own rank, and the rank test
-        // below already holds the realised tier at or under the role's, the declared row's ceiling
-        // is the tighter of the two and answering it answers both.
-        accCeiling = ceilingOfTier(tier, "accompaniments");
-        // THE COUNT SHAPES THE CROSSING WITHOUT TOUCHING A MOVE. Charter shelf 17 as amended on his
-        // word of 2026-08-18 13:41: the counts shape a crossing that is already playing and never
-        // refuse one. An accompaniment overrun is paid for with an ACCOMPANYING VOICE, which is what
-        // the column counts — never with a letter, which would take a move away to settle a debt it
-        // did not run up. The camera is a constant of every crossing by §4.4's own amendment and the
-        // ground IS the crossing, so colour is the one of the three that can stand down, and it
-        // stands down the way the levels law already stands a voice down: the level goes unowned.
-        //
-        // IT IS A READING OF THIS TURN AND NEVER A LATCH. Written as a one-way give-up it would
-        // outlive the count that caused it: a turn that later retires the very cue that sang would
-        // leave the crossing without a colour voice it could now afford. This line is a pure
-        // function of the counts the turn it runs on actually carries, so the answer that stands is
-        // the answer for the cast that stands, and the loop gains no new road out.
-        colourVoice = !(singsHere && accs + 1 > accCeiling);
-        var fits = placed[0] !== null
-          && letters <= roleBudget.letters
-          && accs + ((colourVoice && singsHere) ? 1 : 0) <= accCeiling
-          && TIER_RANK[tier] <= TIER_RANK[roleBudget.tier];
-        if (fits) break;
-        if (placed[0] === null && !stackSwapped && stackOrder.length > 1) {
-          stackSwapped = true;
-          // THE GROUND SWAP IS THE THIRD DOOR THE MIRACLE COULD COME THROUGH, and it stood open.
-          // `bestFilling` already sets a world-declaring instrument aside where the role spends no
-          // miracle, but at a role that MAY spend one the slot is free by the role's reckoning even
-          // when a voice above the ground has already taken it — and this swap runs after the
-          // travelling move and the arrival are cast, so it could seat a second world instrument
-          // under a first. Shelf 6 says the slot is consumed and never stacks, so a crossing whose
-          // voices already fold asks for a ground that does not, on the same argument
-          // `bestFilling` already takes: no new bound, the one it has, told the truth about what
-          // the crossing has already spent.
-          //
-          // A STANDING `world` HAS SPENT THE SLOT TOO, and this read only the three instruments.
-          // `world` is the arriving work's own space opening under the travelling cue, and
-          // `voiceTheCues` voices that cue a MIRACLE for it — so the slot is gone before any
-          // instrument here declares anything. Reading `spendsTheMiracle` on the three alone
-          // left the swap free to seat a folding ground beneath a travelling cue that was already
-          // the miracle, which is two impossible events in one crossing and exactly what shelf 6
-          // forbids. Only §7's placement law stopped the pair reaching the score, and it stopped it
-          // for a different reason (two cues filling the frame), so the guard was an accident of
-          // another law rather than this one. The reading below is the crossing's whole spend.
-          var alreadyFolds = !!world || spendsTheMiracle(travelInstr)
-            || spendsTheMiracle(arrivalInstr);
-          // THE LEVELS THE VOICES ABOVE CANNOT GIVE UP. A voice that drives exactly one level has
-          // nowhere else to be, so a ground declaring that level annihilates it — the voice plays
-          // on, drawing, driving nothing of its own. `soleAbove` is read off the voices already cast
-          // and handed to the choice, so the ground that fills the frame is chosen from those that
-          // leave every voice above it something to say.
-          var soleAbove = [];
-          [travelInstr, arrivalInstr].forEach(function (iid2) {
-            if (!iid2 || !MANIFESTS[iid2]) return;
-            var lv2 = (MANIFESTS[iid2].levels || []).filter(function (l) {
-              return Object.keys(MANIFESTS[iid2].handles || {}).some(function (hh) {
-                return levelOf(iid2, hh) === l;
-              });
+      // ================================================================================================
+      // P1.2 — THE JOINT PHRASE PLANNER ITSELF (2026-08-28, his sprint brief). What stood here until
+      // today shrank one fixed stack in one fixed order — swap the ground once, drop travel, drop
+      // arrival, surrender colour first of all, before anything else was weighed. This crosses the
+      // ground's own real alternative (the fill-swap the old loop only reached for reactively, once
+      // placement had already failed) against whether travel plays, whether arrival plays and
+      // whether structural colour is spent, keeps only what clears every rule two screens up, and
+      // scores what is left — a joint choice among PHRASES rather than a shrink of one.
+      // ================================================================================================
+
+      // GROUND CANDIDATES: the sequential cast's own pick, plus the fill-swap alternative —
+      // `bestFilling`'s own reading (never seat a ground that annihilates a sole level a voice above
+      // it cannot give up; never fold a second miracle under one that already stands) is unchanged,
+      // only asked once up front instead of reactively.
+      var groundCandidates = [pivotInstr];
+      (function () {
+        var soleAbove = [];
+        [travelInstr, arrivalInstr].forEach(function (iid2) {
+          if (!iid2 || !MANIFESTS[iid2]) return;
+          var lv2 = (MANIFESTS[iid2].levels || []).filter(function (l) {
+            return Object.keys(MANIFESTS[iid2].handles || {}).some(function (hh) {
+              return levelOf(iid2, hh) === l;
             });
-            if (lv2.length === 1 && soleAbove.indexOf(lv2[0]) < 0) soleAbove.push(lv2[0]);
           });
-          var fill1 = bestFilling(fromW, toW, [travelInstr, arrivalInstr],
-                                  !roleBudget.miracle || alreadyFolds, pair.seed, key, soleAbove);
-          if (fill1 && fill1 !== pivotInstr) {
-            stood.push("the stack §7's coverage law asks for had " + placed[1].split(":")[0]
-                       + ", so «" + fill1 + "» takes the ground and fills the frame instead of «"
-                       + pivotInstr + "» — the voices above it stand");
-            pivotInstr = fill1;
-            continue;
+          if (lv2.length === 1 && soleAbove.indexOf(lv2[0]) < 0) soleAbove.push(lv2[0]);
+        });
+        var alreadyFolds = !!world || spendsTheMiracle(travelInstr) || spendsTheMiracle(arrivalInstr);
+        var fill1 = bestFilling(fromW, toW, [travelInstr, arrivalInstr],
+                                !roleBudget.miracle || alreadyFolds, pair.seed, key, soleAbove);
+        if (fill1 && fill1 !== pivotInstr) groundCandidates.push(fill1);
+      })();
+
+      // TRAVEL AND ARRIVAL CANDIDATES: play the instrument the sequential cast already ranked best
+      // for the slot's own window, or stand the slot down. Swapping in a DIFFERENT travelling or
+      // arriving instrument than the one already ranked best is P1.3's own room — WorkRecord signals
+      // narrowing which instrument wins a slot — never which VOICES a bundle carries, which is what
+      // this phase settles.
+      var travelCandidates = travelInstr !== null ? [travelInstr, null] : [null];
+      var arrivalCandidates = arrivalInstr !== null ? [arrivalInstr, null] : [null];
+
+      var examined = 0, considered = [], ties = [], winnerScore = -1, gi, ti, ai, ci2, bg, bt, ba, bc;
+      outerBundleLoop:
+      for (gi = 0; gi < groundCandidates.length; gi++) {
+        for (ti = 0; ti < travelCandidates.length; ti++) {
+          for (ai = 0; ai < arrivalCandidates.length; ai++) {
+            bg = groundCandidates[gi]; bt = travelCandidates[ti]; ba = arrivalCandidates[ai];
+            // WHETHER THIS (ground, travel, arrival) EVEN HAS A COLOUR VOICE TO WEIGH, checked once
+            // per combination rather than inside the colour loop below — a combination nothing here
+            // sings LIGHT-COLOUR on has no colour dimension to cross at all, so the loop only spends
+            // the cap's own two slots for colour on a combination where surrendering it is a real
+            // choice.
+            var entriesForColour = [{ id: bg, window: [0, 1] }];
+            if (bt) entriesForColour.push({ id: bt, window: travelWindowBound || [0, 1] });
+            if (ba) entriesForColour.push({ id: ba, window: arrivalWindowBound || [0, 1] });
+            var bundleSingsHere = entriesForColour.some(function (e) {
+              return (MANIFESTS[e.id].levels || []).indexOf("LIGHT-COLOUR") >= 0;
+            });
+            var colourCandidates = bundleSingsHere ? [true, false] : [true];
+            for (ci2 = 0; ci2 < colourCandidates.length; ci2++) {
+              if (examined >= BUNDLE_CAP) break outerBundleLoop;
+              examined++;
+              bc = colourCandidates[ci2];
+              var row = { ground: bg, travel: bt, arrival: ba, colour: bc, ok: false, why: null,
+                          score: null };
+              if ((bt && bt === bg) || (ba && ba === bg) || (bt && ba && bt === ba)) {
+                row.why = "the same instrument would play two slots of one bundle";
+                considered.push(row);
+                continue;
+              }
+              var bfw = bundleFoldsAndWorld(bg, bt, ba, road, roleBudget, toW, axis);
+              var check1 = bundleWorldLegal(bg, bt, ba, bfw.world, roleBudget);
+              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }
+              var check2 = bundleLevelsLegal(entriesForColour);
+              if (!check2.ok) { row.why = check2.why; considered.push(row); continue; }
+              var check3 = bundleTierLegal(!!bt, !!ba, bfw.world, role, bfw.foldsOn, roleBudget,
+                                           bundleSingsHere, bc);
+              if (!check3.ok) { row.why = check3.why; considered.push(row); continue; }
+              var check4 = bundleResourcesLegal([bg, bt, ba]);
+              if (!check4.ok) { row.why = check4.why; considered.push(row); continue; }
+              var check5 = surfaceHandoverLegal();
+              if (!check5.ok) { row.why = check5.why; considered.push(row); continue; }
+              var bInstrumentOf = {};
+              if (check3.voices.pivot) bInstrumentOf.pivot = bg;
+              if (bt && check3.voices.travel) bInstrumentOf.travel = bt;
+              if (ba && check3.voices.arrival) bInstrumentOf.arrival = ba;
+              var bStackOrder = CUE_IDS.filter(function (c) { return bInstrumentOf[c] !== undefined; });
+              var bPlaced = placeTheStack(bStackOrder, bInstrumentOf);
+              if (bPlaced[0] === null) {
+                row.why = "§7's coverage law: " + bPlaced[1];
+                considered.push(row);
+                continue;
+              }
+              row.ok = true;
+              row.score = scoreBundle(bg, bt, ba, bc, role, bundleSingsHere);
+              considered.push(row);
+              if (row.score > winnerScore) { winnerScore = row.score; ties = [row]; }
+              else if (row.score === winnerScore) { ties.push(row); }
+            }
           }
         }
-        if (travelInstr !== null) {
-          travelInstr = null;
-          world = null;
-          if (placed[0] === null && travelDecline === null) travelDecline = placed[1];
-          capped.push("travel");
-          continue;
-        }
-        if (arrivalInstr !== null) {
-          arrivalInstr = null;
-          arrivalLeads = false;
-          capped.push("arrival");
-          continue;
-        }
-        break;
       }
+
+      // A TIE AMONG EQUALLY-SCORED LEGAL BUNDLES IS WHERE A RETURN IS FREE TO BREATHE, widening the
+      // same `passIndex`-seeded die the arrival-order flip above now uses: a fresh pass always takes
+      // the first tied bundle this walk's own order examined, and a return draws among the tied set
+      // deterministically off its own pass index instead, so a walk returning to one edge again and
+      // again is not stuck replaying whichever tie the enumeration happened to meet first, forever.
+      // Reading a wide die (1009) and only THEN reducing it onto the tied set's own size sidesteps
+      // the same low-bit degeneracy the note above names — asking `dieAmong` directly for a die the
+      // size of a small tied set (as small as 2) would read next to nothing but the key's own
+      // trailing digit.
+      var winner = null;
+      if (ties.length > 1) {
+        winner = ties[passIndex
+          ? dieAmong(pair.seed, key + "|bundle|" + passIndex, 1009) % ties.length : 0];
+      } else if (ties.length === 1) {
+        winner = ties[0];
+      } else {
+        // THE GROUND-ALONE BUNDLE CLEARS EVERY RULE ABOVE FOR ANY TWO REAL WORKS — the one invariant
+        // this whole planner is built to keep (shelf 9: a measurement ranks, it never gates). Falling
+        // through to here means the cap above was reached before this walk's own enumeration order
+        // reached it, which a wider cap would close; the plan says so rather than hiding it.
+        winner = { ground: pivotInstr, travel: null, arrival: null, colour: false, ok: true,
+                  score: 0 };
+        stood.push("the bundle cap (" + BUNDLE_CAP + " examined) was reached before the ground-alone "
+                  + "bundle came up in this walk's own order, so the ground plays alone");
+      }
+
+      if (winner.ground !== pivotInstr) {
+        stood.push("«" + winner.ground + "» takes the ground and fills the frame instead of «"
+                   + pivotInstr + "» — the voices above it stand");
+      }
+      if (travelInstr !== null && winner.travel === null) {
+        capped.push("travel");
+        if (travelDecline === null) travelDecline = "shelf 17's own budget did not carry it in the "
+          + "bundle that won";
+      }
+      if (arrivalInstr !== null && winner.arrival === null) {
+        arrivalLeads = false;
+        capped.push("arrival");
+      }
+      pivotInstr = winner.ground;
+      travelInstr = winner.travel;
+      arrivalInstr = winner.arrival;
+      colourVoice = winner.colour;
+
+      var finalFW = bundleFoldsAndWorld(pivotInstr, travelInstr, arrivalInstr, road, roleBudget,
+                                        toW, axis);
+      world = finalFW.world;
+      foldsOn = finalFW.foldsOn;
+      var finalVoiced = voiceTheCues(travelInstr !== null, arrivalInstr !== null, world, role, foldsOn);
+      voices = finalVoiced[0];
+      tier = finalVoiced[1];
+      if (travelInstr === null) delete voices.travel;
+      if (arrivalInstr === null) delete voices.arrival;
+      letters = 0;
+      accs = 1;
+      for (k in voices) {
+        if (voices[k] === "letter") letters += 1;
+        else if (voices[k] === "accompaniment") accs += 1;
+      }
+      accCeiling = ceilingOfTier(tier, "accompaniments");
+      instrumentOf = {};
+      if (pivotInstr && voices.pivot) instrumentOf.pivot = pivotInstr;
+      if (travelInstr && voices.travel) instrumentOf.travel = travelInstr;
+      if (arrivalInstr && voices.arrival) instrumentOf.arrival = arrivalInstr;
+      stackOrder = CUE_IDS.filter(function (c) { return instrumentOf[c] !== undefined; });
+      placed = placeTheStack(stackOrder, instrumentOf);
+      for (var finalCi = 0; finalCi < stackOrder.length; finalCi++) {
+        if ((MANIFESTS[instrumentOf[stackOrder[finalCi]]].levels || []).indexOf("LIGHT-COLOUR") >= 0) {
+          singsHere = true;
+          break;
+        }
+      }
+      if (!colourVoice && singsHere) {
+        capped.push("colour");
+        stood.push("shelf 17 gives a " + tier + " at most " + accCeiling + " accompanying voices "
+                   + "and the camera and the ground already stand in them; the bundle that won pays "
+                   + "for the overrun with an accompaniment rather than with colour when colour "
+                   + "carries the herald, the bridge or the arrival — here the winning bundle simply "
+                   + "did not carry colour at all");
+      }
+      // THE FULL LEDGER, NEVER HIDDEN (P1.2 §2/§3): the cap this walk actually used, how many
+      // bundles it actually examined against that cap, every one of them with its own legal/refused
+      // reading and — where legal — its own score, and which one won. `passStepJoinedRecord`
+      // (01a-pass.js) carries this straight onto the diagnostic row's own `bundles` field.
+      var bundleLedger = { cap: BUNDLE_CAP, examined: examined, considered: considered,
+                           winner: winner };
 
       // THE LOOP ABOVE ALWAYS REACHES A LAWFUL STACK, because a one-cue score is exempt from §7's
       // placement law by the contract's own sentence — nothing stands beneath it, so its alpha is
@@ -5308,15 +5622,10 @@
       }
       var stacks = placed[0];
       // WHAT THE COUNT SHAPED, in the same place every other shaping this crossing took is written.
-      // A thin passage reads back to the reason it is thin, and this one is thin in exactly one
-      // way: it keeps every move, every cue and every instrument, and plays without its colour
-      // voice. `capped` and `stood` are the two lists that already carry every other shaping.
-      if (!colourVoice) {
-        capped.push("colour");
-        stood.push("shelf 17 gives a " + tier + " at most " + accCeiling + " accompanying voices "
-                   + "and the camera and the ground already stand in them, so the crossing plays "
-                   + "without its colour voice and keeps every move it makes");
-      }
+      // A thin passage reads back to the reason it is thin. `capped` already carries "colour" where
+      // the winning bundle above declined to spend a colour voice it genuinely had (the P1.2 block
+      // above records the sentence at the moment it is decided, not here, because by here the
+      // reason a bundle beat its colour-carrying rival is already gone).
       // WHETHER THIS CAST SINGS LIGHT-COLOUR, read off the cues that actually survived the loop
       // above (`stackOrder`, never the instrument variables alone — a voice the loop retired must
       // not still be counted). Because the levels law now excludes a second LIGHT-COLOUR candidate
@@ -5449,6 +5758,11 @@
                                                                       : road.fit),
         role: role, passIndex: passIndex,
         capped: capped, miracleDecline: miracleDecline, castNotes: castNotes,
+        // P1.2's own room, filled: the joint phrase planner's full ledger — the cap, how many
+        // bundles this walk actually examined, every one with its own legal/refused reading and
+        // score, and the winner. `passStepJoinedRecord` (01a-pass.js) reads this straight onto the
+        // diagnostic row.
+        bundles: bundleLedger,
         // EVERY SHAPING THIS CROSSING TOOK, in one place and in plain words. Each line here is a
         // sentence that used to be a refusal — a ground with no instrument, a work offering only
         // the whole frame, a mesh with no ring count, a handle nobody named, a length past §2.5's
@@ -9639,7 +9953,25 @@
                var out = {}, i2;
                for (i2 = 0; i2 < TIERS.length; i2++) out[TIERS[i2].tier] = TIERS[i2].band.slice();
                return out;
-             }()) };
+             }()),
+             // P1.2's own joint phrase planner — the five legality rules, the scorer and the
+             // per-bundle fold/world reading, exposed exactly as read (never a retyped mirror) so a
+             // test can try each rule against the real, loaded `MANIFESTS`/`ROLE_BUDGETS`/`TIERS`
+             // this composer actually casts against, the same road `tests/test_pass_lawful.py`
+             // already walks for `tierFor` by text-extraction — this walks it by direct exposure
+             // instead, because these five rules need the real manifest table a text-extracted copy
+             // would have to fake.
+             bundleWorldLegal: bundleWorldLegal,
+             bundleLevelsLegal: bundleLevelsLegal,
+             bundleTierLegal: bundleTierLegal,
+             bundleResourcesLegal: bundleResourcesLegal,
+             surfaceHandoverLegal: surfaceHandoverLegal,
+             scoreBundle: scoreBundle,
+             bundleFoldsAndWorld: bundleFoldsAndWorld,
+             resourceCeiling: RESOURCE_CEILING,
+             bundleCap: BUNDLE_CAP,
+             castForKindsRanked: castForKindsRanked,
+             dieAmong: dieAmong };
   }
 
   join({ version: COMPOSER_VERSION, make: make });
