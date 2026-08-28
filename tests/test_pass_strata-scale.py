@@ -56,7 +56,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
 
-LAB = Path(os.environ.get("TLVPHOTOS_ROOT", "/Users/sashaabramovich/tlvphotos-u27")) / "lab"
+LAB = Path(os.environ.get("TLVPHOTOS_ROOT", "/Users/sashaabramovich/tlvphotos-site")) / "lab"
 PHOTOS = [LAB / "photos" / "towers.jpg", LAB / "photos" / "glassgrid.jpg"]
 MODULE = LAB / "effects" / "strata-scale.js"
 ASSETS = ROOT / "engine" / "assets"

@@ -63,7 +63,7 @@ FIXTURES = (ROOT / "tests" / "fixture_pass_works.json",
 
 # THE SITE'S STAGING STEP. Its home is the tlvphotos tree beside this one; a checkout that stands
 # elsewhere names it with PASS_FIXTURE_READER. Nothing is written there — this file only imports it.
-DEFAULT_READER = Path.home() / "tlvphotos-u27" / "lab" / "work-readings-v1.py"
+DEFAULT_READER = Path.home() / "tlvphotos-site" / "lab" / "work-readings-v1.py"
 
 # THE PER-WORK RECORDS, WHICH ARE THE OTHER HALF OF THIS FIXTURE AND WENT STALE THE SAME WAY.
 #
@@ -78,7 +78,7 @@ DEFAULT_READER = Path.home() / "tlvphotos-u27" / "lab" / "work-readings-v1.py"
 # the records are reductions over the pictures themselves, which live in the site's tree and are not
 # this tree's to recompute. Copying the file the site already wrote is the same discipline by the
 # other road: one home for the fact, and this end reads it.
-DEFAULT_RECORDS = (Path.home() / "tlvphotos-u27" / "lab" / "data" / "jscomposer"
+DEFAULT_RECORDS = (Path.home() / "tlvphotos-site" / "lab" / "data" / "jscomposer"
                    / "work-records.json")
 
 

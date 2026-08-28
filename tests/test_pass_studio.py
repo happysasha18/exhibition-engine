@@ -30,7 +30,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   the 121-work collection's own ordered pairs, with its measured handles reading differently pair to
   pair — proof against his word of 2026-08-18 15:13, that nothing may be the same for every pair.
 
-  The lab tree is READ ONLY and is found at $TLVPHOTOS_ROOT, defaulting to tlvphotos-u27, the tree
+  The lab tree is READ ONLY and is found at $TLVPHOTOS_ROOT, defaulting to tlvphotos-site, the tree
   this port's own module was read from. Absent, every browser row here is a pinned SKIP that names
   the missing path — never a silent pass.
 """
@@ -49,7 +49,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
 
-LAB = Path(os.environ.get("TLVPHOTOS_ROOT", "/Users/sashaabramovich/tlvphotos-u27")) / "lab"
+LAB = Path(os.environ.get("TLVPHOTOS_ROOT", "/Users/sashaabramovich/tlvphotos-site")) / "lab"
 PHOTOS = [LAB / "photos" / "towers.jpg", LAB / "photos" / "glassgrid.jpg"]
 MODULE = LAB / "effects" / "studio.js"
 ASSETS = ROOT / "engine" / "assets"
