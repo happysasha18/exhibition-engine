@@ -365,8 +365,9 @@
 
     // THE RESPONSE CURVES, MEASURED AND CARRIED DIGIT FOR DIGIT (adrift.js:358-379). How far the
     // picture moves per unit of the raw parameter was measured with the curves taken out, that rate
-    // integrated, and each table is the inverse of the integral at twenty-one evenly spaced shares
-    // with straight lines between them. Flight, horizon and shrink carry no table, and that is an
+    // integrated, and each table is the inverse of the integral at twenty-one evenly spaced shares (how
+    // a table is read BETWEEN two of them is the block below, and it is the port's own answer, not
+    // the module's). Flight, horizon and shrink carry no table, and that is an
     // assertion rather than an empty cell: the raw parameter is already even, measured at 1.1, 1.5
     // and 1.4 of raw band against the arsenal's ceiling of 2.5. The grain's table is fitted on the
     // geometric ladder, where equal movements of the hand are equal ratios of cell size.
@@ -375,10 +376,54 @@
                     0.5984, 0.6482, 0.6913, 0.7325, 0.7726, 0.8142, 0.8559, 0.8978, 0.9424, 1];
     var FEEL_GRAIN = [0, 0.0285, 0.0586, 0.0905, 0.1228, 0.1554, 0.1892, 0.2233, 0.256, 0.2877,
                       0.3182, 0.348, 0.3787, 0.4113, 0.4471, 0.4866, 0.5352, 0.5966, 0.6721, 0.7903, 1];
+    // HOW A TABLE IS READ BETWEEN TWO OF ITS OWN POINTS (S-20, 2026-08-28). Not one number in either
+    // table above moves here. What changed is the line drawn BETWEEN two of them.
+    //
+    // WHAT WAS WRONG WITH STRAIGHT LINES. Each curve's own VALUE was right at every knot and its
+    // SPEED was a staircase: constant inside each share, and stepping at each of the nineteen joins
+    // between them. On the dial's own table the first join steps from 1.804 of the dial a unit of the
+    // hand down to 1.193 in one instant; on the grain's, the last steps from 2.627 up to 4.660. The
+    // same step stands at each dead band's own edge, where the value is held perfectly still and then
+    // left at the first share's whole speed at once. Neither step is in the measurement: what was
+    // integrated to build these tables is a smooth reading of how far the picture travels, and a
+    // polyline through its samples invents corners the reading never had.
+    //
+    // THE SHAPE IS THE HOST'S OWN, and it is the same repair one layer down. `pass-layer.js`'s
+    // `splineSlopes`/`splineAt` — Fritsch–Carlson, carried over unchanged — is what his word of
+    // 2026-08-11 put on every score track after he judged speed steps at segment joints; a response
+    // curve read as twenty separate lines is that same defect inside one handle. One curve through
+    // all twenty-one points passes through every knot exactly, cannot overshoot or turn back (so each
+    // curve stays monotone and both doors stand exactly where they stood), and rests at both its own
+    // ends — so it leaves a dead band at rest instead of at a run, for the reason the host's own note
+    // gives for its zero end tangents: the value is HELD either side, and a track rests where it is
+    // held. The tangents are built once per table, the first time that table is read.
+    var FEEL_TANGENTS = [];
+    function tangentsOf(q) {
+      var t, n, h, d, m, i, a, b, s;
+      for (t = 0; t < FEEL_TANGENTS.length; t++) {
+        if (FEEL_TANGENTS[t][0] === q) return FEEL_TANGENTS[t][1];
+      }
+      n = q.length; h = 1 / (n - 1); d = []; m = [];
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      FEEL_TANGENTS.push([q, m]);
+      return m;
+    }
     function table(q, d0, u) {
       var x = clamp(d0 > 0 ? (clamp(u, 0, 1) - d0) / (1 - 2 * d0) : clamp(u, 0, 1), 0, 1);
-      var s = x * (q.length - 1), i = Math.min(q.length - 2, Math.floor(s));
-      return q[i] + (q[i + 1] - q[i]) * (s - i);
+      var n = q.length, h = 1 / (n - 1), m = tangentsOf(q);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * q[i] + (s3 - 2 * s2 + s) * h * m[i]
+           + (3 * s2 - 2 * s3) * q[i + 1] + (s3 - s2) * h * m[i + 1];
     }
     function feelOf(u) { return table(FEEL_MIX, FEEL_D0, u); }
 

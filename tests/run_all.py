@@ -113,6 +113,10 @@ SUITES = [
     "pass_levels",
     "pass_matter_gate",
     "pass_door",
+    # 2026-08-28 — S-20's own suite, registered in the pass that wrote it. One law with seven
+    # readers: how a measured response table is read BETWEEN its own twenty-one points, which is
+    # where the fleet's speed used to step.
+    "pass_feel",
 ]
 
 

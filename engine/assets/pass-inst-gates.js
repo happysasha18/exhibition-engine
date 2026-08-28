@@ -346,17 +346,58 @@
     // THE RESPONSE CURVE, MEASURED AND NOT NAMED, carried over digit for digit (gates.js:543-546).
     // How far the picture moves per unit of the raw handle was measured with the curve taken out of
     // the module, that rate integrated, and this is the inverse of the integral at twenty-one evenly
-    // spaced shares with straight lines between them. The DEAD BANDS of 0.055 at either end are what
+    // spaced shares (how it is read BETWEEN two of them is the block below, and it is the port's
+    // own answer, not the module's). The DEAD BANDS of 0.055 at either end are what
     // hold a whole picture whole: the dial stands at exactly 0 across the first band and at exactly 1
     // across the last, so a door is a door to the pixel.
     var FEEL_D0 = 0.055;
     var FEEL_Q = [0, 0.0261, 0.0525, 0.0792, 0.1064, 0.1341, 0.1631, 0.1947, 0.2286, 0.2648,
                   0.3029, 0.3408, 0.3813, 0.425, 0.4732, 0.5261, 0.5854, 0.6535, 0.7377, 0.8523,
                   1];
+
+    // HOW THOSE TWENTY-ONE SHARES ARE READ BETWEEN THEIR OWN POINTS (S-20, 2026-08-28). Not one of
+    // the numbers above moves here. What changed is the line drawn BETWEEN two of them.
+    //
+    // WHAT WAS WRONG WITH STRAIGHT LINES. The curve's own VALUE was right at every knot and its
+    // SPEED was a staircase: constant inside each share, and stepping at each of the nineteen joins
+    // between them. On this table the worst of those joins is the second to last, where the dial
+    // went from 1.892 of its own travel a unit of the hand to 2.575 in one instant — a third again
+    // as fast, with nothing between the two speeds. The same step stood at the dead band's own edge:
+    // the dial is held perfectly still across the first FEEL_D0 of the hand and then left at 0.587 a
+    // unit at once. Neither step is in the measurement. What was integrated to build this table is a
+    // smooth reading of how far the picture travels, and a polyline through its samples invents
+    // corners the reading never had.
+    //
+    // THE SHAPE IS THE HOST'S OWN, and it is the same repair one layer down. `pass-layer.js`'s
+    // `splineSlopes`/`splineAt` — Fritsch–Carlson, carried over unchanged — is what his word of
+    // 2026-08-11 put on every score track after he judged speed steps at segment joints; a response
+    // curve read as twenty separate lines is that same defect inside one handle. One curve through
+    // all twenty-one points passes through every knot exactly, cannot overshoot or turn back (so the
+    // curve stays monotone and both doors stand exactly where they stood), and rests at both its own
+    // ends — so it leaves the dead band at rest instead of at a run, for the reason the host's own
+    // note gives for its zero end tangents: the value is HELD either side, and a track rests where it
+    // is held.
+    var FEEL_M = (function (q) {
+      var n = q.length, h = 1 / (n - 1), d = [], m = [], i, a, b, s;
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      return m;
+    }(FEEL_Q));
     function feelOf(u) {
       var x = clamp((u - FEEL_D0) / (1 - 2 * FEEL_D0), 0, 1);
-      var s = x * (FEEL_Q.length - 1), i = Math.min(FEEL_Q.length - 2, Math.floor(s));
-      return FEEL_Q[i] + (FEEL_Q[i + 1] - FEEL_Q[i]) * (s - i);
+      var n = FEEL_Q.length, h = 1 / (n - 1);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * FEEL_Q[i] + (s3 - 2 * s2 + s) * h * FEEL_M[i]
+           + (3 * s2 - 2 * s3) * FEEL_Q[i + 1] + (s3 - s2) * h * FEEL_M[i + 1];
     }
 
     // cover-fit a work into the frame, then pull in by the squeeze's own headroom. The host hands the

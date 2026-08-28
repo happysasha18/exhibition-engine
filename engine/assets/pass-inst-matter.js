@@ -200,7 +200,8 @@
     // THE RESPONSE CURVE, MEASURED (matter.js:267-307, the module's re-fit of 2026-08-13): equal
     // movements of the hand, equal felt change. The rate of change of the picture per unit of the
     // raw threshold was measured with the curve taken out, that rate integrated, and this is the
-    // inverse of the integral at twenty-one evenly spaced shares with straight lines between them.
+    // inverse of the integral at twenty-one evenly spaced shares (how the curve is read BETWEEN two
+    // of those shares is the block below, and it is the port's own answer, not the module's).
     // The two-piece logarithm the module carried before it cannot hold this handle: the field's own
     // values crowd the middle and thin to nothing at both ends, so the curve stands nearly vertical
     // at both ends and nearly flat across the middle. Carried here digit for digit; the port
@@ -209,10 +210,53 @@
     var FEEL_Q = [0, 0.1994, 0.2488, 0.2852, 0.3168, 0.3454, 0.372, 0.3972, 0.4215, 0.4454,
                   0.469, 0.4925, 0.5162, 0.5405, 0.5657, 0.5923, 0.621, 0.653, 0.6902,
                   0.7388, 1];
+
+    // HOW THOSE TWENTY-ONE SHARES ARE READ BETWEEN THEIR OWN POINTS (S-20, 2026-08-28). Not one of
+    // the numbers above moves here. What changed is the line drawn BETWEEN two of them.
+    //
+    // WHAT WAS WRONG WITH STRAIGHT LINES. The curve's own VALUE was right at every knot and its
+    // SPEED was a staircase: constant inside each share, and stepping at each of the nineteen joins
+    // between them. On this table the worst of those joins is the last, where the threshold's travel
+    // went from 1.080 of the dial a unit to 5.804 in one instant — five and a third times faster,
+    // with nothing at all between the two speeds — and the first join steps the other way just as
+    // hard, from 4.431 down to 1.098, four-fold in one instant.
+    // The same step stood at the dead band's own edge: the dial is held perfectly still across the
+    // first FEEL_D0 of the hand and then left at 4.43 of the dial a unit at once. Neither step is in
+    // the measurement. What was integrated to build this table is a smooth reading of how far a
+    // photograph travels, and a polyline through its samples invents corners the reading never had —
+    // and this instrument spends the whole of that speed on ONE thing the eye is watching, the front
+    // that carries the arriving work across the frame (`tau` below travels 1.2 of the field on it).
+    //
+    // THE SHAPE IS THE HOST'S OWN, and it is the same repair one layer down. `pass-layer.js`'s
+    // `splineSlopes`/`splineAt` — Fritsch–Carlson, carried over unchanged — is what his word of
+    // 2026-08-11 put on every score track after he judged speed steps at segment joints; a response
+    // curve read as twenty separate lines is that same defect inside one handle. One curve through
+    // all twenty-one points passes through every knot exactly, cannot overshoot or turn back (so the
+    // curve stays monotone and both doors stand exactly where they stood), and rests at both its own
+    // ends — so it leaves the dead band at rest instead of at a run, for the reason the host's own
+    // note gives for its zero end tangents: the value is HELD either side, and a track rests where it
+    // is held.
+    var FEEL_M = (function (q) {
+      var n = q.length, h = 1 / (n - 1), d = [], m = [], i, a, b, s;
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      return m;
+    }(FEEL_Q));
     function feelOf(u) {
       var x = clamp((u - FEEL_D0) / (1 - 2 * FEEL_D0), 0, 1);
-      var s = x * (FEEL_Q.length - 1), i = Math.min(FEEL_Q.length - 2, Math.floor(s));
-      return FEEL_Q[i] + (FEEL_Q[i + 1] - FEEL_Q[i]) * (s - i);
+      var n = FEEL_Q.length, h = 1 / (n - 1);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * FEEL_Q[i] + (s3 - 2 * s2 + s) * h * FEEL_M[i]
+           + (3 * s2 - 2 * s3) * FEEL_Q[i + 1] + (s3 - s2) * h * FEEL_M[i + 1];
     }
 
     // HOW FAR PAST THE FIELD'S OWN RANGE THE THRESHOLD TRAVELS (matter.js:312, `reach = 0.5 + 0.10`).

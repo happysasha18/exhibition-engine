@@ -485,10 +485,120 @@ NODE_ROWS = [
     "PASS-PLANET the two readings of this module's level are both recorded, and the shelf settles them",
     "PASS-PLANET node red-on-bug · planet struck from WORLD_FOLD_INSTRUMENTS stops spending the "
     "crossing's miracle",
+    "PASS-PLANET the world is chosen once for a passage and never turns inside out inside one",
+    "PASS-PLANET node red-on-bug · the world's choice given two ends again cuts a passage in half",
 ]
 
 COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
 COMPOSED_FIXTURE = ROOT / "tests" / "fixture_pass_composed.json"
+WORKS_FIXTURE = ROOT / "tests" / "fixture_pass_works.json"
+LAYER = ROOT / "engine" / "assets" / "pass-layer.js"
+
+# ---------------------------------------------------------- THE WORLD IS CHOSEN ONCE, NOT WALKED
+# `depth` is the one handle of this instrument that is a THRESHOLD rather than an amount: the
+# manifest publishes `applied: { turnsInsideOutAbove: 0.5 }` and `posed` reads it as
+# `flip = depth >= 0.5 ? 1 : 0`, and `flip` decides the world's whole geometry, the `cam` uniform's
+# fourth place and the row of the source the sky is taken from. A track that walks it ACROSS a half
+# therefore turns the world inside out between two frames with nothing moving through it — a cut,
+# which is the one thing the crossing charter's ladder exists to keep off the screen (S-20,
+# 2026-08-28; his word of 02:47, «иногда оно как-то дёргается»).
+#
+# THE ROW IS A UNIVERSAL CLAIM AND NAMES A WITNESS, never a tally: over every ordered pair the works
+# fixture carries, no planet cue's own `depth` track may stand on both sides of a half inside its own
+# window. Where one does, the pair and the instant are printed.
+#
+# THE TRACK IS DRIVEN THROUGH THE HOST'S OWN EVALUATOR, sliced out of `pass-layer.js` between its own
+# two landmarks rather than copied here, so what is walked is what a running frame would read.
+WORLD_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm"), path = require("path");
+const [composerPath, layerPath, instPath, fixturePath, worksPath, plant] = process.argv.slice(2);
+const L = fs.readFileSync(layerPath, "utf8").replace(/@@NS@@/g, "ex").split("\n");
+const a = L.findIndex((l) => /^  var TAU = Math\.PI \* 2;/.test(l));
+const b = L.findIndex((l) => /^  var slewIds = 0;/.test(l));
+if (a < 0 || b < 0) { console.log(JSON.stringify({error: "the host's evaluator could not be found"})); process.exit(0); }
+const ebox = {console, Math, JSON, Object, Number, Array, String, isFinite};
+vm.createContext(ebox);
+vm.runInContext(L.slice(a, b + 1).join("\n") + "\n; this.__e = evalNode;", ebox, {filename: "pass-layer-slice.js"});
+const evalNode = ebox.__e;
+
+let csrc = fs.readFileSync(composerPath, "utf8").replace(/@@NS@@/g, "ex");
+if (plant === "1") {
+  const one = "wanted.depth = flt(r4(clamp01(mf.tunnel)));";
+  const two = "wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];";
+  if (csrc.indexOf(one) < 0) { console.log(JSON.stringify({error: "the plant found nothing to change"})); process.exit(0); }
+  csrc = csrc.replace(one, two);
+}
+let jc = null;
+const cbox = {window: {__exPassComposer: (m) => { jc = m; }}, console};
+vm.createContext(cbox);
+vm.runInContext(csrc, cbox, {filename: "pass-composer.js"});
+if (!jc) { console.log(JSON.stringify({error: "the composer joined nothing"})); process.exit(0); }
+
+const isrc = fs.readFileSync(instPath, "utf8").replace(/@@NS@@/g, "ex");
+let ji = null;
+const ibox = {window: {__exPassInstrument: (m) => { ji = m; }}, console: {log(){}, warn(){}, error(){}}};
+vm.createContext(ibox);
+vm.runInContext(isrc, ibox, {filename: "pass-inst-planet.js"});
+const inst = ji.instrument;
+inst.start();
+const H = inst.manifest.handles;
+
+const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+const works = JSON.parse(fs.readFileSync(worksPath, "utf8"));
+const composer = jc.make(fix.consts);
+const W = works.works || works, ids = Object.keys(W).sort();
+let cues = 0, witness = null;
+outer:
+for (let i = 0; i < ids.length; i++) {
+  for (let j = 0; j < ids.length; j++) {
+    if (i === j) continue;
+    let p;
+    try { p = composer.passageFor({workRecordA: W[ids[i]], workRecordB: W[ids[j]], direction: "a-to-b", seed: 0}); }
+    catch (e) { continue; }
+    if (!p || !p.json) continue;
+    const score = JSON.parse(p.json), dur = (score.durationMs || 3000) / 1000;
+    for (const cue of (score.cues || [])) {
+      if ((cue.instrument || {}).id !== "planet") continue;
+      cues++;
+      const w = cue.window || [0, dur], w0 = Number(w[0]), w1 = Number(w[1]);
+      const read = (u) => {
+        const tSec = w0 + (w1 - w0) * u;
+        const ctx = {nodes: cue.nodes || {}, progress: dur > 0 ? tSec / dur : 0,
+                     cueProgress: (w1 > w0) ? Math.max(0, Math.min(1, (tSec - w0) / (w1 - w0))) : 0,
+                     seconds: tSec, velocity: 0, capability: 1, pointer: null, state: {}, dt: 1};
+        const q = {};
+        for (const k of Object.keys(H)) { const h = H[k]; q[k] = (h.def != null) ? h.def : (typeof h.min === "number" ? h.min : 0); }
+        for (const [hn, ts] of Object.entries(cue.tracks || {})) {
+          const r = evalNode(ts.node ? {node: ts.node} : ts, ctx, 0);
+          if (r.ok) q[hn] = r.v;
+        }
+        q.reduced = false; q.cssWidth = 390; q.cssHeight = 844;
+        q.bufWidth = 390; q.bufHeight = 844; q.clock = tSec;
+        return q;
+      };
+      let prev = null, crossed = null;
+      for (let s = 0; s <= 2000; s++) {
+        const d = read(s / 2000).depth;
+        if (prev !== null && ((prev < 0.5) !== (d < 0.5))) { crossed = s / 2000; break; }
+        prev = d;
+      }
+      if (crossed === null) continue;
+      let lo = crossed - 1 / 2000, hi = crossed;
+      const side = (u) => read(u).depth < 0.5;
+      for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; (side(m) === side(lo)) ? lo = m : hi = m; }
+      const va = inst.values(read(lo)), vb = inst.values(read(hi));
+      witness = {pair: ids[i] + " -> " + ids[j], cue: cue.id, at: crossed,
+                 shapeBefore: va.shape, shapeAfter: vb.shape,
+                 flipBefore: va.cam[3], flipAfter: vb.cam[3],
+                 skyRowBefore: va.skyRow, skyRowAfter: vb.skyRow,
+                 gapSec: (hi - lo) * (w1 - w0)};
+      break outer;
+    }
+  }
+}
+console.log(JSON.stringify({cues: cues, witness: witness}));
+"""
 
 # THE COMPOSER'S OWN ARRAY, READ THROUGH REAL EXECUTION RATHER THAN GREPPED. `WORLD_FOLD_INSTRUMENTS`
 # (pass-composer.js) is what `isWorldFold`/`spendsTheMiracle` read, and `composer.worldFoldInstruments`
@@ -753,6 +863,44 @@ else:
               f"only in memory: `worldFoldInstruments` reads {mut_fold} where the shipped file reads "
               f"{real_fold}. A pair this instrument crosses on would no longer spend the crossing's "
               f"miracle, which is the row above proving it does")
+
+        # ---- the world is chosen once for a passage, and the plant that proves the row -----------
+        WORLD_DRIVER_PATH = TMP / "composer-world-driver.js"
+        WORLD_DRIVER_PATH.write_text(WORLD_DRIVER, encoding="utf-8")
+
+        def world_run(plant):
+            proc4 = subprocess.run(
+                ["node", str(WORLD_DRIVER_PATH), str(COMPOSER), str(LAYER), str(SOURCE),
+                 str(COMPOSED_FIXTURE), str(WORKS_FIXTURE), "1" if plant else "0"],
+                capture_output=True, text=True, timeout=900)
+            if proc4.returncode != 0:
+                return {"error": (proc4.stderr or "").strip()[-400:]}
+            return json.loads(proc4.stdout.strip().splitlines()[-1])
+
+        world_real = world_run(False)
+        world_mut = world_run(True)
+        real_w, mut_w = world_real.get("witness"), world_mut.get("witness")
+        check(NODE_ROWS[7],
+              not world_real.get("error") and world_real.get("cues", 0) > 0 and real_w is None,
+              (f"every one of the {world_real.get('cues')} planet cues the works fixture composes "
+               f"holds its own `depth` on one side of a half for the whole of its window, so the "
+               f"world a passage plays in is settled before it starts and the visitor never sees it "
+               f"turn inside out under them"
+               if real_w is None and not world_real.get("error")
+               else f"a passage turns its world inside out inside itself: {real_w or world_real}"))
+        check(NODE_ROWS[8],
+              not world_mut.get("error") and isinstance(mut_w, dict) and real_w is None
+              and mut_w["flipBefore"] != mut_w["flipAfter"],
+              (f"the same composer with `wanted.depth` given two ends again — the shape it carried "
+               f"before S-20, planted into a copy held only in memory — cuts the pair "
+               f"{mut_w['pair']} in half at {mut_w['at']:.4f} of its «{mut_w['cue']}» window: the "
+               f"world goes from «{mut_w['shapeBefore']}» to «{mut_w['shapeAfter']}», the `cam` "
+               f"uniform's fourth place from {mut_w['flipBefore']} to {mut_w['flipAfter']}, and the "
+               f"sky's own row from {mut_w['skyRowBefore']:.4f} to {mut_w['skyRowAfter']:.4f}, "
+               f"across a gap of {mut_w['gapSec']:.3e} seconds — a cut, not a movement. The row "
+               f"above finds no such instant on the file as it ships"
+               if isinstance(mut_w, dict)
+               else f"the plant changed nothing the row can read: {world_mut}"))
 
 # ---------------------------------------------------------------- browser rows
 

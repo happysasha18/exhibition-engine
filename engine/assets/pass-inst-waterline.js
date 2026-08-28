@@ -331,7 +331,8 @@
        per unit of the RAW handle is measured with the curves taken out of the module — the judges'
        channel `raw` does exactly that — the rate is integrated, and the curve is the INVERSE of the
        integral, so the hand's own value is the share of the whole change. Each array below holds
-       that inverse at twenty-one evenly spaced shares, straight lines between them.
+       that inverse at twenty-one evenly spaced shares (how a table is read BETWEEN two of them is
+       the block further down, and it is the port's own answer, not the module's).
        `lab/waterline-check.py --fit` wrote them; nothing here was typed by taste and the port
        re-derives nothing.
 
@@ -353,10 +354,53 @@
               0.4627, 0.5162, 0.5697, 0.6218, 0.6719, 0.7253, 0.7814, 0.8442, 0.9206, 1]
     };
 
+    // HOW A TABLE IS READ BETWEEN TWO OF ITS OWN POINTS (S-20, 2026-08-28). Not one number in the six
+    // tables above moves here. What changed is the line drawn BETWEEN two of them.
+    //
+    // WHAT WAS WRONG WITH STRAIGHT LINES. Each curve's own VALUE was right at every knot and its
+    // SPEED was a staircase: constant inside each share, and stepping at each of the nineteen joins
+    // between them. The dial's own table steps hardest, from 1.676 of the dial a unit of the hand
+    // down to 0.960 in one instant at its ninth join; the same step stands at the dead band's own
+    // edge, where the dial is held perfectly still across the first DIAL_D0 of the hand and then
+    // leaves at 1.416 a unit at once. Neither step is in the measurement: what
+    // `lab/waterline-check.py --fit` integrated to write these tables is a smooth reading of how far
+    // the picture travels, and a polyline through its samples invents corners the reading never had.
+    //
+    // THE SHAPE IS THE HOST'S OWN, and it is the same repair one layer down. `pass-layer.js`'s
+    // `splineSlopes`/`splineAt` — Fritsch–Carlson, carried over unchanged — is what his word of
+    // 2026-08-11 put on every score track after he judged speed steps at segment joints; a response
+    // curve read as twenty separate lines is that same defect inside one handle. One curve through
+    // all twenty-one points passes through every knot exactly, cannot overshoot or turn back (so each
+    // curve stays monotone and both doors stand exactly where they stood), and rests at both its own
+    // ends — so it leaves a dead band at rest instead of at a run, for the reason the host's own note
+    // gives for its zero end tangents: the value is HELD either side, and a track rests where it is
+    // held. The tangents are built once per table, the first time that table is read.
+    var KNOT_TANGENTS = [];
+    function tangentsOf(q) {
+      var t, n, h, d, m, i, a, b, s;
+      for (t = 0; t < KNOT_TANGENTS.length; t++) {
+        if (KNOT_TANGENTS[t][0] === q) return KNOT_TANGENTS[t][1];
+      }
+      n = q.length; h = 1 / (n - 1); d = []; m = [];
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      KNOT_TANGENTS.push([q, m]);
+      return m;
+    }
     function knots(q, u) {
-      var s = clamp(u, 0, 1) * (q.length - 1);
-      var i = Math.min(q.length - 2, Math.floor(s));
-      return q[i] + (q[i + 1] - q[i]) * (s - i);
+      var x = clamp(u, 0, 1), n = q.length, h = 1 / (n - 1), m = tangentsOf(q);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * q[i] + (s3 - 2 * s2 + s) * h * m[i]
+           + (3 * s2 - 2 * s3) * q[i + 1] + (s3 - s2) * h * m[i + 1];
     }
     // THE JUDGES' CHANNEL `raw` TAKES EVERY CURVE OUT, exactly as the module's own `curve`/`feel`
     // do. It is published as a handle rather than kept for a bench, because the curves above were
