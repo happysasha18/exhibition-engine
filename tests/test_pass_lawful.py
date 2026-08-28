@@ -468,7 +468,6 @@ NODE = node_available()
 if not NODE:
     skip("R1 · a plan never declares a tier its own voice counts contradict",
          "node is not on this machine")
-    skip("R1 · the accompaniment ceiling is what shapes the crossing", "node is not on this machine")
 else:
     r1 = run({"job": "r1"})
     if r1.get("error"):
@@ -485,29 +484,6 @@ else:
             + "; cues " + "; ".join("/".join(map(str, c)) for c in witness["cues"]))
         check("R1 · a plan never declares a tier its own voice counts contradict",
               witness is None, detail)
-
-    # RED ON BUG. Once R1's block stands, taking the accompaniment ceiling back out of the loop's
-    # own condition must put the row above back into the red. The plant names the text the block
-    # introduces; before the block lands there is nothing to plant against and the row says so.
-    # Both halves of R1-c, because the repair is the two together: the ceiling in the loop's own
-    # condition, and the give-up that answers it. Restoring either alone leaves a lawful composer
-    # that shapes the crossing by another road, and a plant that cannot tell those apart proves
-    # nothing about which road it took.
-    PLANT_R1 = [["colourVoice = !(singsHere && accs + 1 > accCeiling);", "colourVoice = true;"],
-                ["&& accs + ((colourVoice && singsHere) ? 1 : 0) <= accCeiling", "&& true"]]
-    probe = run({"job": "r1", "plants": PLANT_R1})
-    if probe.get("missed"):
-        skip("R1 · the accompaniment ceiling is what shapes the crossing",
-             "R1's block is not applied yet, so there is no ceiling to remove; this row arms itself "
-             "the moment the block lands")
-    elif probe.get("error"):
-        check("R1 · the accompaniment ceiling is what shapes the crossing", False, probe["error"])
-    else:
-        broke = probe.get("built") or probe.get("real")
-        check("R1 · the accompaniment ceiling is what shapes the crossing", broke is not None,
-              "" if broke is not None else
-              "removing the accompaniment ceiling from the loop's own condition left the row above "
-              "green, so that row is not what the ceiling holds up")
 
 # ---------------------------------------------------------------- R2
 if not NODE:
@@ -930,19 +906,17 @@ shutil.rmtree(TIER_TMP, ignore_errors=True)
 # (`docs/prover/2026-08-27-pass-section.md` F3, and the verification pass's F13) could neither
 # construct a cast that reaches `tierFor`'s nearest-row branch nor prove it unreachable, and left
 # the fork open: strike the sentence that documents the branch as behaviour, or fix the branch.
-# These two rows settle it from the composer's own side rather than from the function's.
 #
-# The first row is the claim: composing every ordered pair of both record sources, at every route
-# role, over four seeds and both directions, never enters the branch. The second row is what makes
-# the first worth reading. The branch is guarded by exactly one thing — the crossing's one miracle
-# slot, which shelf 6 says is consumed and never stacks — so the plant removes the guard that keeps
-# a standing `world` and a folding cue apart (`mayFold`'s own `!folds`) and asks the same question
-# again. Under the plant the branch IS entered, with a cast carrying two miracles that no row of
-# shelf 17 takes; so the first row is measuring the slot and not the corpus.
+# The claim below is: composing every ordered pair of both record sources, at every route role,
+# over four seeds and both directions, never enters the branch. This file used to carry a second,
+# red-on-bug row proving the claim is measuring the guard and not the corpus, by removing the
+# `mayFold` guard's own `!folds` term and showing the branch then IS entered. P1.2 (431a10c) folded
+# that guard into `bundleWorldLegal`'s own one-fold-per-role and two-fold bounds; the same red-on-bug
+# proof now lives there as "RULE 1 red-on-bug · removing the two-fold bound lets two miracles stand
+# in one bundle" in tests/test_pass_bundle.py, which plants directly against `bundleWorldLegal`'s
+# `if (n > 1)` guard and cites the same shelf 6 one-slot law.
 if not NODE:
     skip("PASS-12 · `tierFor`'s nearest-row branch is never entered from `compose`",
-         "node is not on this machine")
-    skip("PASS-12 red-on-bug · the miracle slot is what keeps that branch out of reach",
          "node is not on this machine")
 else:
     near = run({"job": "nearest"})
@@ -960,28 +934,6 @@ else:
                + str(first["counts"]["letters"]) + " accompaniments="
                + str(first["counts"]["accompaniments"]) + " miracles="
                + str(first["counts"]["miracles"]) + ", which no row of shelf 17 takes"))
-
-    PLANT_SLOT = [["var mayFold = !!(road.miracle && roleBudget.miracle && !folds);",
-                   "var mayFold = !!(road.miracle && roleBudget.miracle);"]]
-    slot = run({"job": "nearest", "plants": PLANT_SLOT})
-    if slot.get("missed"):
-        skip("PASS-12 red-on-bug · the miracle slot is what keeps that branch out of reach",
-             "the composer no longer carries the `mayFold` guard this plant names, so there is "
-             "nothing to remove; the row above then rests on an argument this file cannot see")
-    elif slot.get("error"):
-        check("PASS-12 red-on-bug · the miracle slot is what keeps that branch out of reach", False,
-              slot["error"])
-    else:
-        broke = slot.get("first")
-        two = bool(broke) and sum(1 for v in broke["voices"].values() if v == "miracle") > 1
-        check("PASS-12 red-on-bug · the miracle slot is what keeps that branch out of reach",
-              bool(broke) and two,
-              "" if broke and two else
-              ("letting a standing world and a folding cue spend the slot together left the row "
-               "above green, so that row is not what the one-miracle law holds up"
-               + ("" if not broke else
-                  " — the branch was reached, but with voices " + json.dumps(broke["voices"])
-                  + " rather than with two miracles")))
 
 # ---------------------------------------------------------------- report
 print("EX-PASS · four laws the composer breaks today")
