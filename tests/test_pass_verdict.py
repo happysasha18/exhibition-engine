@@ -68,6 +68,10 @@ BROWSER_ROWS = [
     "S-01 the export — clipboard and the saved file alike — carries exactly the named schema",
     "S-01/P5 a note typed for one pending crossing never rides onto the crossing that follows it",
     "S-01/P6 a jump or a door landing clears the pending crossing before any button can record it",
+    "S-01/A1 the panel bounds itself against the viewport and only its growing list scrolls",
+    "S-01/A1 one collapsed row per played step, independently expandable to the full reading",
+    "S-01/A2 the diagnostic surface exposes ONE joined per-step record, read by the panel and the "
+    "export alike",
 ]
 
 RECORDS_ROUTE = "/api/pass/verdict-records"
@@ -229,7 +233,7 @@ else:
                 row = (copied.get("rows") or [{}])[0] if copied else {}
                 ok = bool(copied) and bool(on_disk) and on_disk == copied
                 if ok:
-                    ok = (set(copied.keys()) == {"walk", "startedAt", "rows"}
+                    ok = (set(copied.keys()) == {"walk", "startedAt", "rows", "steps"}
                           and isinstance(copied["walk"], str) and bool(copied["walk"])
                           and isinstance(copied["startedAt"], str)
                           and len(copied["rows"]) == 1
@@ -334,6 +338,101 @@ else:
                   after_step == "1" and after_jump == "0" and after_door == "0" and len(rows) == 0,
                   f"pending after step/jump/door={after_step}/{after_jump}/{after_door} "
                   f"rows-written-by-stray-clicks={json.dumps(rows, ensure_ascii=False)}")
+
+        # ---- rows 5/6 · P1.1/A1 — the panel bounds itself, and its history scrolls, one row a step
+        # Forty synthetic docks — the same testing seam P5/P6 already drive `adapter.dock` through, so
+        # a real composed passage is not needed to grow the panel's own history — are enough to force
+        # the list past any reasonable panel height on a real phone frame (roughly 26px a collapsed
+        # row, against the ~774px this viewport's own bound leaves the list, so 40 rows overflow it
+        # by a comfortable margin rather than a borderline one).
+        STEP_COUNT = 40
+        with Browser(width=390, height=844) as br5:
+            br5.inject(CLIP_STUB)
+            enter(br5, base, "diagnostics:on", step=False)
+            wait_ready(br5)
+            for i in range(STEP_COUNT):
+                br5.evaluate(
+                    "window.__exPass.adapter.dock({gen:'verdict-a1-%d', "
+                    "from:{id:'zz-a1-%d'}, to:{id:'zz-a1-%d'}, kind:'step'});" % (i, i, i + 1))
+            bounds = js(br5, """
+              var p = document.getElementById('ex-verdict');
+              var l = p ? p.querySelector('.exv-list') : null;
+              if (!p || !l) return {present: false};
+              var ps = getComputedStyle(p), ls = getComputedStyle(l);
+              return {present: true, steps: l.querySelectorAll('.exv-step').length,
+                      maxHeight: ps.maxHeight, panelDisplay: ps.display,
+                      listOverflowY: ls.overflowY,
+                      overscroll: ls.overscrollBehaviorY || ls.overscrollBehavior,
+                      scrollsAtAll: l.scrollHeight > l.clientHeight,
+                      panelFitsViewport: p.getBoundingClientRect().bottom <= innerHeight + 1};
+            """)
+            check(BROWSER_ROWS[5],
+                  bounds.get("present") and bounds.get("steps") == STEP_COUNT
+                  and bounds.get("maxHeight") not in (None, "none", "")
+                  and bounds.get("listOverflowY") == "auto"
+                  and str(bounds.get("overscroll")).startswith("contain")
+                  and bounds.get("scrollsAtAll") and bounds.get("panelFitsViewport"),
+                  f"ten steps recorded, the panel reads: {json.dumps(bounds, ensure_ascii=False)}")
+
+            # ---- row 6 · one collapsed row per step, each independently expandable ---------------
+            toggled = js(br5, """
+              var steps = [].slice.call(document.querySelectorAll('#ex-verdict .exv-step'));
+              function stateOf(el) {
+                var d = el.querySelector('.exv-step-detail');
+                return {open: el.dataset.open, shown: d && getComputedStyle(d).display !== 'none',
+                        text: (el.querySelector('.exv-step-sum')||{}).textContent || ''};
+              }
+              var before = steps.map(stateOf);
+              steps[0].click();
+              var afterFirstClick = steps.map(stateOf);
+              steps[0].click();
+              var afterSecondClick = steps.map(stateOf);
+              return {before: before, afterFirstClick: afterFirstClick,
+                      afterSecondClick: afterSecondClick,
+                      detailHasShape: (steps[0].querySelector('.exv-step-detail')||{}).textContent};
+            """)
+            before_all_closed = all(not s["shown"] for s in toggled.get("before", []))
+            first_opened_only = (toggled.get("afterFirstClick", [{}])[0].get("shown") is True
+                                  and all(not s["shown"]
+                                          for s in toggled.get("afterFirstClick", [])[1:]))
+            first_closed_again = not toggled.get("afterSecondClick", [{}])[0].get("shown")
+            detail = toggled.get("detailHasShape") or ""
+            has_shape = all(k in detail for k in
+                            ('"route"', '"camera"', '"quality"', '"frames"', '"cadence"',
+                             '"landedInMs"', '"movedBy"', '"bundles"'))
+            check(BROWSER_ROWS[6],
+                  before_all_closed and first_opened_only and first_closed_again and has_shape,
+                  f"before-all-closed={before_all_closed} "
+                  f"opening-row-0-opens-only-row-0={first_opened_only} "
+                  f"clicking-again-closes-it={first_closed_again} "
+                  f"row-0-detail-carries-the-joined-shape={has_shape}: {detail[:300]}")
+
+        # ---- row 7 · P1.1/A2 — one joined shape, read by both the panel and the export -----------
+        with Browser(width=1280, height=900) as br6:
+            enter(br6, base, "diagnostics:on", step=False)
+            wait_ready(br6)
+            joined = js(br6, """
+              var cmd = {gen:'verdict-a2', from:{id:'zz-a2-a'}, to:{id:'zz-a2-b'}, kind:'step'};
+              return window.__exPass.joined ? window.__exPass.joined(cmd) : null;
+            """)
+            named = {"from", "to", "route", "road", "family", "pivot", "voices", "camera",
+                     "quality", "frames", "cadence", "landedInMs", "durationMs", "movedBy",
+                     "bundles"}
+            ok = (isinstance(joined, dict) and set(joined.keys()) == named
+                  and joined.get("from") == "zz-a2-a" and joined.get("to") == "zz-a2-b"
+                  and isinstance(joined.get("route"), dict)
+                  and set(joined["route"].keys()) == {"role", "function"}
+                  and isinstance(joined.get("camera"), dict)
+                  and set(joined["camera"].keys()) == {"rest", "hang", "pose"}
+                  and isinstance(joined.get("quality"), dict)
+                  and set(joined["quality"].keys()) == {"tier", "grant", "budget", "ladder"}
+                  and isinstance(joined.get("voices"), list)
+                  # P1.2's own room — left empty rather than fabricated, and the honest answer for a
+                  # synthetic dock this suite drove with no real score behind it at all.
+                  and joined.get("movedBy") is None and joined.get("bundles") == []
+                  and isinstance(joined.get("durationMs"), (int, float)))
+            check(BROWSER_ROWS[7], ok, f"window.__exPass.joined(cmd) = "
+                                       f"{json.dumps(joined, ensure_ascii=False)[:600]}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

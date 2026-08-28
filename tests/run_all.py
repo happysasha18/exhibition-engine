@@ -38,6 +38,8 @@ SUITES = [
     "wheel", "glide_speed", "beat_css", "a11y", "about",
     "story_edge", "story_lead", "pass", "pass_api", "pass_direction", "pass_weave", "pass_drivers",
     "pass_hang",
+    "pass_arrival_arc",
+    "pass_sources_hold",
     "pass_matter",
     "pass_gears",
     "pass_stack",

@@ -37,6 +37,10 @@
     const verdictWalk = location.href;
     const verdictStartedAt = new Date().toISOString();
     const verdictRows = [];
+    // A2/A1: one joined record per played step, in the order they landed — read by both the
+    // collapsed-row list below and `verdictDump`'s export, so a number can never differ between
+    // what a person sees in the panel and what the export hands them.
+    const verdictHistory = [];
     let verdictN = 0;
     let verdictPending = null; // {from, to, road, cues, durationMs} — the crossing awaiting a verdict
 
@@ -69,16 +73,37 @@
     style.textContent =
       "#ex-verdict{position:fixed;right:12px;" +
       "top:calc(env(safe-area-inset-top,0px) + 58px);z-index:2147483647;" +
+      "max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)" +
+      " - 58px - 12px);display:flex;flex-direction:column;" +
       "background:rgba(20,20,20,.92);color:#fff;font:12px/1.4 system-ui,sans-serif;" +
       "padding:8px;border-radius:8px;max-width:280px;box-shadow:0 1px 3px rgba(0,0,0,.4)}" +
-      "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word}" +
-      "#ex-verdict .exv-note{width:100%;box-sizing:border-box;margin-bottom:6px;padding:4px}" +
-      "#ex-verdict .exv-row{display:flex;gap:6px}" +
+      "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word;flex:none}" +
+      "#ex-verdict .exv-note{width:100%;box-sizing:border-box;margin-bottom:6px;padding:4px;" +
+      "flex:none}" +
+      "#ex-verdict .exv-row{display:flex;gap:6px;flex:none}" +
       "#ex-verdict .exv-btns{display:flex;gap:6px;flex:2}" +
       "#ex-verdict .exv-btn{flex:1;padding:6px 4px;cursor:pointer}" +
       "#ex-verdict .exv-dump{flex:1;padding:6px 4px;cursor:pointer}" +
+      // `#ex-verdict{display:flex}` above is an ID-selector rule, and an ID selector's author
+      // style always wins over the UA stylesheet's own `[hidden]{display:none}` — an attribute
+      // selector with no `!important` — so stating `display` here at all UNHIDES the panel
+      // before the first crossing ever lands, `hidden` attribute or not (found the hard way, this
+      // наряд: PASS-01's own pixel row read a permanently-visible empty panel as a huge, constant
+      // seam against a walk with diagnostics off at all). `[hidden]` is restated explicitly, on a
+      // selector one step more specific than the bare ID it has to outrank.
+      "#ex-verdict[hidden]{display:none}" +
       "#ex-verdict[data-pending=\"0\"] .exv-info,#ex-verdict[data-pending=\"0\"] .exv-note," +
-      "#ex-verdict[data-pending=\"0\"] .exv-btns{display:none}";
+      "#ex-verdict[data-pending=\"0\"] .exv-btns{display:none}" +
+      "#ex-verdict .exv-list{flex:1 1 auto;min-height:0;overflow-y:auto;" +
+      "overscroll-behavior:contain;-webkit-overflow-scrolling:touch;margin-top:6px}" +
+      "#ex-verdict .exv-list:empty{display:none}" +
+      "#ex-verdict .exv-step{padding:4px 2px;border-top:1px solid rgba(255,255,255,.14);" +
+      "cursor:pointer}" +
+      "#ex-verdict .exv-step:first-child{border-top:none}" +
+      "#ex-verdict .exv-step-sum{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+      "#ex-verdict .exv-step-detail{display:none;white-space:pre-wrap;word-break:break-word;" +
+      "opacity:.82;margin-top:3px;font-size:11px}" +
+      "#ex-verdict .exv-step[data-open=\"1\"] .exv-step-detail{display:block}";
     document.head.appendChild(style);
 
     const panel = document.createElement("div");
@@ -118,9 +143,13 @@
     row.appendChild(btnRow);
     row.appendChild(dumpBtn);
 
+    const list = document.createElement("div");
+    list.className = "exv-list";
+
     panel.appendChild(info);
     panel.appendChild(note);
     panel.appendChild(row);
+    panel.appendChild(list);
     document.body.appendChild(panel);
 
     function verdictShowPending() {
@@ -148,7 +177,8 @@
     // instead of the other. Neither failing (a denied clipboard permission, a download the browser
     // blocks) touches the other.
     function verdictDump() {
-      const out = { walk: verdictWalk, startedAt: verdictStartedAt, rows: verdictRows.slice() };
+      const out = { walk: verdictWalk, startedAt: verdictStartedAt, rows: verdictRows.slice(),
+                   steps: verdictHistory.slice() };
       const text = JSON.stringify(out, null, 2);
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -212,6 +242,33 @@
       }
     }
 
+    // A1/A2: one collapsed row for a played step, appended to the list in landing order and never
+    // rebuilt afterwards — an already-open row stays open under a later step landing beside it.
+    // `passStepJoinedRecord` (01a-pass.js) is the single joined shape both this row and the export
+    // read; nothing here re-derives any of its fields.
+    function verdictAppendStep(cmd) {
+      let joined = null;
+      try { joined = passStepJoinedRecord(cmd); } catch (e) {}
+      if (!joined) return;
+      verdictHistory.push(joined);
+      const el = document.createElement("div");
+      el.className = "exv-step";
+      el.dataset.open = "0";
+      const sum = document.createElement("div");
+      sum.className = "exv-step-sum";
+      sum.textContent = joined.from + " → " + joined.to
+        + (joined.road ? " · " + joined.road : "") + " · " + joined.durationMs + "мс";
+      const detail = document.createElement("div");
+      detail.className = "exv-step-detail";
+      detail.textContent = JSON.stringify(joined, null, 1);
+      el.appendChild(sum);
+      el.appendChild(detail);
+      el.addEventListener("click", () => {
+        el.dataset.open = el.dataset.open === "1" ? "0" : "1";
+      });
+      list.appendChild(el);
+    }
+
     function verdictOnDock(cmd) {
       verdictClearPending();
       if (!cmd || cmd.kind !== "step" || !cmd.from || !cmd.to) return;   // a jump judges nothing
@@ -221,6 +278,7 @@
       verdictPending = { from: String(from), to: String(to), road: rc.road, cues: rc.cues,
                         durationMs: Math.round(passCrossingMsOf(cmd)) };
       verdictShowPending();
+      verdictAppendStep(cmd);
     }
 
     // `passMark` is a plain top-level binding every fragment (this one included) reaches by name,

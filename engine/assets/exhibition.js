@@ -2518,6 +2518,13 @@
       buffer: { width: innerWidth, height: innerHeight, dpr: window.devicePixelRatio || 1,
                 orientation: innerWidth >= innerHeight ? "landscape" : "portrait",
                 quality: passGet("qualityTier") },
+      // A4 (P1.1): the drawing layer's OWN rolling frame-gap reading (`{count, p95, p50}`), as it
+      // stands on this device right now — read the same defensive way `passApply` already reads
+      // this same `report()` field, so a layer not yet registered hands the composer `null` (the
+      // honest "nothing measured yet") rather than a stale or invented number.
+      framePace: (passLayer && typeof passLayer.report === "function")
+        ? (function () { try { return passLayer.report().frames || null; } catch (e) { return null; } }())
+        : null,
     };
     // THE STATION THIS STEP IS, asked once and read twice. `routeRole` is the name the step asks
     // under and is left exactly as it was, so nothing downstream of it shifts. `routeFunction` is
@@ -3218,6 +3225,69 @@
                                             applied: v.applied || null })),
     };
     return row.applied;
+  }
+
+  // ---- P1.1/A2: ONE joined per-step diagnostic record -----------------------------------------
+  // Today a passage's own facts read back from two places a person has to join by hand: this file's
+  // own `passPassages` row (the plan — family, pivot, road, the score's own cues) and the drawing
+  // layer's `report()` (the run — camera rest, the resource grant, the render ladder's rung, frame
+  // timing, the cadence a landing walked through). This builds the one row that carries both halves
+  // under a single shape, so the diagnostics panel (19-verdict.js) and the export it drives both
+  // read this and nothing else — a number can never disagree between the two because there is only
+  // ever the one reading.
+  //
+  // `movedBy` and `bundles` are named here and left null/empty on purpose: P1.2 (the joint phrase
+  // planner, not yet built) is what will fill them — which WorkRecord dimension moved the choice,
+  // and every bundle the composer weighed beside the one it cast, each with its own reason for
+  // standing down. An empty answer today is the honest one; nothing here is invented to look fuller
+  // than what the composer actually read.
+  function passStepJoinedRecord(cmd) {
+    if (!cmd || !cmd.from || !cmd.to) return null;
+    const fromId = cmd.from.id, toId = cmd.to.id;
+    let row = null;
+    for (let i = passPassages.length - 1; i >= 0; i--) {
+      const r = passPassages[i];
+      if (cmd.score && (r.score === cmd.score || r.played === cmd.score)) { row = r; break; }
+    }
+    let rep = null;
+    try { rep = passLayer && passLayer.report ? passLayer.report() : null; } catch (e) {}
+    const scoreCues = (row && row.score && Array.isArray(row.score.cues)) ? row.score.cues : [];
+    let station = { role: null, fn: null };
+    try { station = passRouteStation(fromId, toId, null) || station; } catch (e) {}
+    const qualityTier = (cmd.params && cmd.params.qualityTier) ? cmd.params.qualityTier.base : null;
+    return {
+      from: fromId, to: toId,
+      // ROUTE ROLE/FUNCTION AND THE HARMONIC READING (charter shelf 15).
+      route: { role: station.role, function: station.fn },
+      road: row ? (row.road || null) : null,
+      family: row ? passFamilyOf(row.plan) : null,
+      pivot: row ? passPivotOf(row.plan) : null,
+      // INSTRUMENTS, VOICES, WINDOWS, LEVELS, HANDLES — one row per cue, the plan's own window and
+      // levels beside what the host resolved for it and what the instrument published back, read
+      // the same way `passApply` already joins them rather than a second copy of that arithmetic.
+      voices: scoreCues.map((c) => {
+        const live = ((rep && rep.stack) || []).filter((v) => v.id === c.id)[0] || null;
+        return { id: c.id, instrument: (c.instrument && c.instrument.id) || null,
+                 window: c.window || null, levels: c.levels || null,
+                 handles: live ? live.handles : null, applied: live ? live.applied : null };
+      }),
+      // CAMERA REST AND HANG (§6): the two boxes, the pose each end asks for, and how far the last
+      // pose actually stood from the one it was meant to rest on.
+      camera: { rest: rep ? rep.rest : null, hang: rep ? rep.hang : null,
+                pose: rep ? rep.camera : null },
+      // QUALITY TIER, RESOURCE GRANT, LADDER RUNG (§4.4/§7/shelf 19).
+      quality: { tier: qualityTier, grant: rep ? rep.grant : null, budget: rep ? rep.budget : null,
+                 ladder: rep && rep.pace ? { rung: rep.pace.rung, rungs: rep.pace.rungs,
+                                             scale: rep.pace.scale } : null },
+      // FRAME P95/P50, off the same rolling buffer the render ladder itself reads.
+      frames: rep ? rep.frames : null,
+      // CADENCE AND landedInMs — how a landing (natural or compressed) actually walked home.
+      cadence: rep ? rep.cadence : null,
+      landedInMs: (rep && rep.cadence) ? rep.cadence.landedInMs : null,
+      durationMs: Math.round(passCrossingMsOf(cmd)),
+      // P1.2's own room — left empty rather than fabricated (see the note above).
+      movedBy: null, bundles: [],
+    };
   }
 
   // Every setting resolves ONCE, at nav-start, and the result is frozen onto the command. A live
@@ -4191,6 +4261,12 @@
         // would build for two real elements, so a row can prove the two agree.
         passage: function (req) { return passComposer ? passComposer.passageFor(req) : null; },
         request: passRequestFor, applied: passApply, seed: passSeedFor,
+        // P1.1/A2: the one joined per-step record — route/harmonic reading, family/pivot, voices
+        // with their windows/levels/handles, camera rest and hang, quality/grant/ladder, frame
+        // p95/p50, cadence and landedInMs — read off ONE call rather than joined by hand across
+        // `report()` and the drawing layer's own `report()`. The panel (19-verdict.js) and the
+        // export it drives both call this and nothing else.
+        joined: passStepJoinedRecord,
         // The route's own dramaturgy, handed over the same way and for the same reason: a row that
         // judges the walk's roles needs the curve they were read off, and the report is a reading
         // rather than the thing itself. `role` answers for one edge exactly as the request does.
@@ -8910,6 +8986,10 @@
     const verdictWalk = location.href;
     const verdictStartedAt = new Date().toISOString();
     const verdictRows = [];
+    // A2/A1: one joined record per played step, in the order they landed — read by both the
+    // collapsed-row list below and `verdictDump`'s export, so a number can never differ between
+    // what a person sees in the panel and what the export hands them.
+    const verdictHistory = [];
     let verdictN = 0;
     let verdictPending = null; // {from, to, road, cues, durationMs} — the crossing awaiting a verdict
 
@@ -8942,16 +9022,37 @@
     style.textContent =
       "#ex-verdict{position:fixed;right:12px;" +
       "top:calc(env(safe-area-inset-top,0px) + 58px);z-index:2147483647;" +
+      "max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)" +
+      " - 58px - 12px);display:flex;flex-direction:column;" +
       "background:rgba(20,20,20,.92);color:#fff;font:12px/1.4 system-ui,sans-serif;" +
       "padding:8px;border-radius:8px;max-width:280px;box-shadow:0 1px 3px rgba(0,0,0,.4)}" +
-      "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word}" +
-      "#ex-verdict .exv-note{width:100%;box-sizing:border-box;margin-bottom:6px;padding:4px}" +
-      "#ex-verdict .exv-row{display:flex;gap:6px}" +
+      "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word;flex:none}" +
+      "#ex-verdict .exv-note{width:100%;box-sizing:border-box;margin-bottom:6px;padding:4px;" +
+      "flex:none}" +
+      "#ex-verdict .exv-row{display:flex;gap:6px;flex:none}" +
       "#ex-verdict .exv-btns{display:flex;gap:6px;flex:2}" +
       "#ex-verdict .exv-btn{flex:1;padding:6px 4px;cursor:pointer}" +
       "#ex-verdict .exv-dump{flex:1;padding:6px 4px;cursor:pointer}" +
+      // `#ex-verdict{display:flex}` above is an ID-selector rule, and an ID selector's author
+      // style always wins over the UA stylesheet's own `[hidden]{display:none}` — an attribute
+      // selector with no `!important` — so stating `display` here at all UNHIDES the panel
+      // before the first crossing ever lands, `hidden` attribute or not (found the hard way, this
+      // наряд: PASS-01's own pixel row read a permanently-visible empty panel as a huge, constant
+      // seam against a walk with diagnostics off at all). `[hidden]` is restated explicitly, on a
+      // selector one step more specific than the bare ID it has to outrank.
+      "#ex-verdict[hidden]{display:none}" +
       "#ex-verdict[data-pending=\"0\"] .exv-info,#ex-verdict[data-pending=\"0\"] .exv-note," +
-      "#ex-verdict[data-pending=\"0\"] .exv-btns{display:none}";
+      "#ex-verdict[data-pending=\"0\"] .exv-btns{display:none}" +
+      "#ex-verdict .exv-list{flex:1 1 auto;min-height:0;overflow-y:auto;" +
+      "overscroll-behavior:contain;-webkit-overflow-scrolling:touch;margin-top:6px}" +
+      "#ex-verdict .exv-list:empty{display:none}" +
+      "#ex-verdict .exv-step{padding:4px 2px;border-top:1px solid rgba(255,255,255,.14);" +
+      "cursor:pointer}" +
+      "#ex-verdict .exv-step:first-child{border-top:none}" +
+      "#ex-verdict .exv-step-sum{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+      "#ex-verdict .exv-step-detail{display:none;white-space:pre-wrap;word-break:break-word;" +
+      "opacity:.82;margin-top:3px;font-size:11px}" +
+      "#ex-verdict .exv-step[data-open=\"1\"] .exv-step-detail{display:block}";
     document.head.appendChild(style);
 
     const panel = document.createElement("div");
@@ -8991,9 +9092,13 @@
     row.appendChild(btnRow);
     row.appendChild(dumpBtn);
 
+    const list = document.createElement("div");
+    list.className = "exv-list";
+
     panel.appendChild(info);
     panel.appendChild(note);
     panel.appendChild(row);
+    panel.appendChild(list);
     document.body.appendChild(panel);
 
     function verdictShowPending() {
@@ -9021,7 +9126,8 @@
     // instead of the other. Neither failing (a denied clipboard permission, a download the browser
     // blocks) touches the other.
     function verdictDump() {
-      const out = { walk: verdictWalk, startedAt: verdictStartedAt, rows: verdictRows.slice() };
+      const out = { walk: verdictWalk, startedAt: verdictStartedAt, rows: verdictRows.slice(),
+                   steps: verdictHistory.slice() };
       const text = JSON.stringify(out, null, 2);
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -9085,6 +9191,33 @@
       }
     }
 
+    // A1/A2: one collapsed row for a played step, appended to the list in landing order and never
+    // rebuilt afterwards — an already-open row stays open under a later step landing beside it.
+    // `passStepJoinedRecord` (01a-pass.js) is the single joined shape both this row and the export
+    // read; nothing here re-derives any of its fields.
+    function verdictAppendStep(cmd) {
+      let joined = null;
+      try { joined = passStepJoinedRecord(cmd); } catch (e) {}
+      if (!joined) return;
+      verdictHistory.push(joined);
+      const el = document.createElement("div");
+      el.className = "exv-step";
+      el.dataset.open = "0";
+      const sum = document.createElement("div");
+      sum.className = "exv-step-sum";
+      sum.textContent = joined.from + " → " + joined.to
+        + (joined.road ? " · " + joined.road : "") + " · " + joined.durationMs + "мс";
+      const detail = document.createElement("div");
+      detail.className = "exv-step-detail";
+      detail.textContent = JSON.stringify(joined, null, 1);
+      el.appendChild(sum);
+      el.appendChild(detail);
+      el.addEventListener("click", () => {
+        el.dataset.open = el.dataset.open === "1" ? "0" : "1";
+      });
+      list.appendChild(el);
+    }
+
     function verdictOnDock(cmd) {
       verdictClearPending();
       if (!cmd || cmd.kind !== "step" || !cmd.from || !cmd.to) return;   // a jump judges nothing
@@ -9094,6 +9227,7 @@
       verdictPending = { from: String(from), to: String(to), road: rc.road, cues: rc.cues,
                         durationMs: Math.round(passCrossingMsOf(cmd)) };
       verdictShowPending();
+      verdictAppendStep(cmd);
     }
 
     // `passMark` is a plain top-level binding every fragment (this one included) reaches by name,

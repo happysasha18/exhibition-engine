@@ -237,6 +237,10 @@ ROWS = [
     "PASS-HANG row 7 · an orientation change mid-passage does the same",
     "PASS-HANG row 7 · a moved destination moves the picture at no instant, and still lands exactly",
     "PASS-HANG row 51 · the hangGeometry measurement callback mutates nothing",
+    "PASS-HANG row A3 · an interruption with no usable coverage door still resolves the camera onto "
+    "the exact arriving hang, never freezing short of it",
+    "PASS-HANG row A3 · that resolution still lands exactly once, and the handoff carries the "
+    "resolved pose rather than the one the interruption caught",
 ]
 
 HOOKS = """window.HOOKS = function () {
@@ -968,6 +972,66 @@ else:
                       f"at the instant the destination moved, the picture moved {r['moved']:.9f} "
                       f"(tolerance {REST_TOL}); by the end it stood {r['landed']:.9f} from the box "
                       f"that now hangs. The carry the reseat took up: {r['carry']}")
+
+                # ---- row A3 · an interruption with no usable coverage door -------------------------
+                # `landingDoorOf` (pass-layer.js) answers null for a cue whose `doors` names no pair
+                # of handles — a real, lawful score (the coverage door is the CUE's own opt-in, never
+                # a requirement any score must carry). Before this наряд, `cadenceStart` froze the
+                # passage's own clock at wherever the interruption caught it whenever that door came
+                # back null, which is a bug in the CAMERA's own resolution and not in the cue's: the
+                # camera's target is the arriving work's measured hang box, read straight off the DOM
+                # and owed independently of whether the cue happens to name a coverage door at all.
+                # This score is the SAME fixture `score()` builds, less the one field that makes the
+                # door resolvable, so the only thing that changed between the two is the exact defect
+                # this row exists to catch.
+                nodoor = score()
+                del nodoor["cues"][0]["doors"]
+                rest_at(br, A)
+                br.evaluate("window.__exPass.host.configure({prepareBudgetMs:400,"
+                            " settleSlackMs:4000, clockPin:null, progressPin:null,"
+                            " fixedScale:true}); 0")
+                br.evaluate("window.__hangScoreSaved = window.__hangScore;"
+                            "window.__hangScore = " + json.dumps(nodoor) + "; 0")
+                got = declare_and_offer(br, A, B, "hang-nodoor")
+                running = wait_state(br, "running")
+                # Cut it well inside the flight — a third of the way through DUR — so a camera that
+                # only ever froze in place is caught nowhere near the arriving hang.
+                br.sleep(DUR * 0.35 / 1000.0)
+                js(br, "window.__exPass.adapter.interrupt('a3-nodoor'); return null;")
+                landed = wait_state(br, "idle", tries=80)
+                br.sleep(0.2)
+                rep = js(br, "return window.__exPass.host.report();")
+                br.evaluate("window.__hangScore = window.__hangScoreSaved; 0")
+                hang = rep.get("hang") or {}
+                rest = rep.get("rest") or {}
+                poseB, camera = hang.get("poseB"), (rep.get("camera") or {}).get("pose")
+                near = bool(poseB) and bool(camera) and max(
+                    abs((camera.get(k) or 0) - (poseB.get(k) or 0))
+                    for k in ("panX", "panY", "logScale")) <= REST_TOL
+                if not (got["took"] and running and landed):
+                    check(ROWS[13], False,
+                          f"the interruption never reached a landing to measure: "
+                          f"took={got['took']} running={running} landed={landed}")
+                    check(ROWS[14], False, "no landing to measure — see the row above")
+                else:
+                    check(ROWS[13],
+                          rest.get("rested") is True and rest.get("on") == "hang" and near,
+                          f"a cue with no coverage door, interrupted a third of the way in: "
+                          f"rest={rest}, the pose it was asked to rest on: {poseB}, the pose "
+                          f"actually applied: {camera}")
+                    # ---- row A3, second half · one landing, and the resolved pose survives it ------
+                    # The same measurement `finish` computes is read back after the handoff — the
+                    # renderer's own state is idle, the canvas released — so this proves the gate
+                    # actually held the handoff back rather than only correcting a number nobody
+                    # then acted on.
+                    left = canvas_box(br)
+                    check(ROWS[14],
+                          rep.get("state") == "idle" and bool(left)
+                          and left.get("vis") == "hidden"
+                          and "camera-not-rested" not in [e.get("name") for e in
+                                                          (rep.get("events") or [])[-6:]],
+                          f"state={rep.get('state')} canvas={left} last events="
+                          f"{[e.get('name') for e in (rep.get('events') or [])[-6:]]}")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

@@ -2419,6 +2419,26 @@
       logEvt("stale-settle", token, "a cadence is already landing this transaction");
       return;
     }
+    // A3 (P1.1): RESOLVE RATHER THAN BLOCK. §6 asks for the camera to rest on the arriving work's
+    // own hang pose before the handoff, never after it — and until now `finish` only MEASURED that
+    // and logged "camera-not-rested" when it missed, with no branch between the reading and the
+    // unconditional handoff a line below it. A natural settle can still miss the exact hang pose by
+    // more than the tolerance below — most concretely on a passage the settle reaches through an
+    // earlier interruption's own cadence with no usable coverage door, which used to freeze the
+    // camera's own clock wherever the interruption caught it (fixed above, in `cadenceStart`) — so
+    // the same measurement that already exists here is turned into the actual gate: not resting no
+    // longer means "log it and hand the DOM over anyway", it means the camera keeps being driven
+    // home through the SAME envelope an interruption already resolves through (`cadenceStart`), and
+    // the handoff (inside `finish`, via `cadenceEnd`) waits for that resolution. The one comparison
+    // this reads — `camOff(...) <= CAM_REST_TOL` — is the exact one `finish` already made and the
+    // test suite already reads back (`tests/test_pass_hang.py`'s REST_TOL, the same 1e-6): no
+    // second threshold is invented for this gate.
+    var restAt = cur.hangPoseB || CAM_NEUTRAL;
+    var atRest = camOff(cur.lastPose || CAM_NEUTRAL, restAt) <= CAM_REST_TOL;
+    if (!atRest && cur.inst && cur.inst.manifest) {
+      cadenceStart(cur, "settle-rest", false, "docked");
+      return;
+    }
     finish("docked", null);
   }
   function fail(token, why) {
@@ -2658,14 +2678,14 @@
     return CURVES[named] || CURVES.smooth;
   }
 
-  function cadenceStart(rec, reason, immediate) {
+  function cadenceStart(rec, reason, immediate, landState) {
     var live = rec.lastHandles
              || handlesOf(rec, rec.primary, rec.lastProgress || 0, rec.lastSeconds || 0, 0);
     resolveOf(rec);
     var door = landingDoorOf(rec, live);
     var budget = immediate ? 0 : budgetOf(rec.cmd);
     rec.cadence = {
-      reason: reason, budget: budget, forced: !!immediate,
+      reason: reason, budget: budget, forced: !!immediate, landState: landState || "cancelled",
       door: door ? door.which : null, doorHandle: door ? door.handle : null,
       seconds: door ? door.seconds : undefined,
       from: live, to: door ? door.handles : live,
@@ -2680,8 +2700,20 @@
       // carrier and the flight are voices. So the second travels too, from where the interruption
       // caught the passage to the door's own second, and the remaining span of the crossing is
       // COMPRESSED into the cadence's budget — which is the shelf's own word for what this is.
-      fromSeconds: rec.lastSeconds || 0, toSeconds: door ? door.seconds : (rec.lastSeconds || 0),
-      fromProgress: rec.lastProgress || 0, toProgress: door ? 1 : (rec.lastProgress || 0),
+      //
+      // THE CAMERA'S OWN TARGET NEVER FREEZES, EVEN WITHOUT A DOOR (A3, P1.1). `door` answers for
+      // the CUE's own handles — a coverage door on a shared handle, which not every cue names — but
+      // the camera's target is `rec.hangPoseB`, read straight off the DOM and owed independently of
+      // whatever the cue's own doors say (§6: "the seam: exact A hang → one continuous passage →
+      // exact B hang", failLand:"arrive"). `anchorPose`'s spline already clamps at the passage's own
+      // full duration, so marching the clock there — rather than freezing it at wherever an
+      // interruption caught the passage — is what lets the camera actually rest on arrival even on a
+      // cue with no usable coverage door; the cue's own handles are unaffected, because a cadence
+      // frame always pins them to `c.to` directly (`playFrame`'s `hold`) rather than reading them off
+      // this clock.
+      fromSeconds: rec.lastSeconds || 0,
+      toSeconds: door ? door.seconds : (rec.duration > 0 ? rec.duration / 1000 : (rec.lastSeconds || 0)),
+      fromProgress: rec.lastProgress || 0, toProgress: 1,
       t0: performance.now(), landedInMs: null, ended: false, atDoor: null,
     };
     if (!door) {
@@ -2745,7 +2777,11 @@
     // `finish` acts on whatever stands in `cur`. Every other caller in this file checks first that
     // the record it means is still the one there; this one does too, so a landing that happened
     // inside the frame above can never be followed by a second landing of somebody else's pass.
-    if (cur === rec && !rec.docked) finish("cancelled", c.reason);
+    // `c.landState` is "cancelled" for every caller that always named it (an interruption, a
+    // supersede) and "docked" for the one that does not (A3's settle-rest resolve, below) — so a
+    // natural landing that only needed its camera driven the rest of the way home still reads back
+    // as the natural landing it was, rather than an interruption that never happened.
+    if (cur === rec && !rec.docked) finish(c.landState, c.reason);
   }
 
   // ---- the frame loop ----------------------------------------------------------------------------
@@ -3509,12 +3545,17 @@
     }
     if (got.lowered) logEvt("variant-lowered", cmd.gen, asked + " → " + variant + ": " + got.tried[0].over);
     var answered = false;
-    var budgetTimer = setTimeout(function () {
-      if (answered || cur !== rec) return;
-      answered = true;
-      logEvt("prepare-timeout", cmd.gen, "over " + budget + "ms");
-      declineCurrent(rec, "prepare timeout");
-    }, budget);
+    var budgetTimer = null;
+    // A5 (P1.1): the instrument's own prepare budget is armed once the pictures are actually ready
+    // to hand it, never before — see the note over `armSources(cmd).then(...)` below for why.
+    function armPrepareTimer() {
+      budgetTimer = setTimeout(function () {
+        if (answered || cur !== rec) return;
+        answered = true;
+        logEvt("prepare-timeout", cmd.gen, "over " + budget + "ms");
+        declineCurrent(rec, "prepare timeout");
+      }, budget);
+    }
 
     function onAnswer(res) {
       if (answered || cur !== rec) return;
@@ -3635,18 +3676,50 @@
 
     // The host owns every FrameSource and decodes both works during prepare, so an instrument that
     // takes a command receives sources already decoded (§4.1/§10.1).
+    //
+    // A5 (P1.1): THE PICTURES ARE WAITED FOR ON THEIR OWN CLOCK, never the instrument's compute
+    // budget. `prepareBudgetMs` (120ms by default) used to start the instant this record was made
+    // and govern BOTH halves of getting a crossing on screen — the instrument's own `prepare()`
+    // (local, compute-bound) AND `armSources`'s image decode (network-bound: `decodeOf` waits on
+    // `img.decode()`, which itself waits on the fetch) — so a newly-in-view photograph that simply
+    // had not finished downloading yet timed out exactly as a slow instrument would, and
+    // `declineCurrent` fell the crossing to the plain glide. The glide is a DOM-level crossfade of
+    // the two `<img>` elements themselves, so falling to it exposes whatever those elements are
+    // doing on their own — including the per-work loading plate `06-ground-load-doorwarm.js` arms
+    // on exactly this condition (a newly-in-view image still in flight), which is how a network
+    // wait for one photograph turned into visible "loading" chrome mid-route (the invariant this
+    // наряд's A5 is named for: no loading UI inside a live route).
+    //
+    // The fix holds instead of dropping: the wait for the pictures is bounded by the SAME outer
+    // arithmetic the transaction's own watchdog already answers to once running (`duration + slack`,
+    // both already-clamped values — no new numeric constant), so a genuinely stalled fetch still
+    // gives the crossing up rather than holding the door open forever, while an ordinary network
+    // wait — the common case this bug actually fired on — no longer races the instrument's own much
+    // shorter compute budget at all. The instrument's `prepareBudgetMs` starts only once the
+    // pictures are actually in hand, exactly as before for every score whose pictures were already
+    // warm (prewarm/preload already make that the common case, so this changes nothing there).
     if (inst.manifest) {
-      armSources(cmd).then(function (src) {
-        if (answered || cur !== rec) return;
-        rec.src = src;
-        ask();
-      }, function (e) {
+      var sourcesTimer = setTimeout(function () {
         if (answered || cur !== rec) return;
         answered = true;
-        clearTimeout(budgetTimer);
+        logEvt("sources-timeout", cmd.gen,
+               "the pictures had not finished decoding within " + (duration + slack) + "ms");
+        declineCurrent(rec, "sources timeout");
+      }, duration + slack);
+      armSources(cmd).then(function (src) {
+        clearTimeout(sourcesTimer);
+        if (answered || cur !== rec) return;
+        rec.src = src;
+        armPrepareTimer();
+        ask();
+      }, function (e) {
+        clearTimeout(sourcesTimer);
+        if (answered || cur !== rec) return;
+        answered = true;
         declineCurrent(rec, String((e && e.message) || e));
       });
     } else {
+      armPrepareTimer();
       ask();
     }
     return true;

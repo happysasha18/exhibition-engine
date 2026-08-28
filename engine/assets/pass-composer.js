@@ -1407,6 +1407,13 @@
   // ---------------------------------------------------------------------------------------
 
   function make(consts) {
+    // A4 (P1.1): the device's OWN measured frame pace, as `pass-layer.js`'s rolling frame-gap buffer
+    // last published it (`report().frames`, `{count, p95, p50}`) — read fresh off each request that
+    // carries one (`passageFor`, below) and held here between requests for whichever one did not
+    // (the layer not yet loaded, a prewarm guess built before it answered). `null` until a first
+    // reading exists, which is the honest answer for a cold visit: nothing measured yet, so nothing
+    // is asked to widen against.
+    var lastFramePace = null;
     var MANIFESTS = consts.manifests;
     var INSTRUMENTS = consts.instruments;
     // THE COLLECTION'S FLOORS AND THRESHOLDS ARE NO LONGER READ, and a settings record may go on
@@ -6545,6 +6552,24 @@
         var c = copy(cue);
         c.window = [r4(num(cue.window[0]) * duration / 1000.0),
                     r4(num(cue.window[1]) * duration / 1000.0)];
+        // A4 (P1.1): NO COLLAPSED ARRIVAL, as a VISUAL invariant rather than a typed minimum.
+        // `baseArrivalOpen` (above, where the arrival's own window fraction is decided) reads
+        // `r4(1 - locusFit*(1 - beforeAtR))`, which is exactly `1.0` at `locusFit === 0` — a
+        // `[1.0, 1.0]` window once converted to seconds here, a zero-length flash rather than a
+        // crossing. The fix widens the OPEN end down, never the close (the arrival always ends
+        // exactly at the pass's own end, and nothing about that changes), and only as far as it has
+        // to: the bound is the device's OWN measured frame gap (`lastFramePace.p95`, published by
+        // `pass-layer.js`'s rolling buffer) — the shortest span that could show ANY drawn frame of
+        // motion at all on THIS device right now — never a typed number of seconds. Where no
+        // reading exists yet (a cold visit, before the layer has drawn a frame) nothing widens:
+        // there is nothing measured to widen against, and a measurement ranks and parameterises —
+        // it never gates a crossing outright, so the honest answer is to leave the window as read.
+        if (c.id === "arrival" && lastFramePace && lastFramePace.p95 > 0) {
+          var arrivalMinSpan = lastFramePace.p95 / 1000;
+          if (c.window[1] - c.window[0] < arrivalMinSpan) {
+            c.window[0] = r4(Math.max(0, c.window[1] - arrivalMinSpan));
+          }
+        }
         c.window = [flt(c.window[0]), flt(c.window[1])];
         c.cast = actors.filter(function (a) {
           return (castOf[c.id] || []).indexOf(a.role) >= 0;
@@ -9325,6 +9350,11 @@
 
     function passageFor(request) {
       var req = request || {};
+      // A4: a fresh reading rides in on THIS request where the walk had one to give (the drawing
+      // layer registered and has drawn at least one frame); a request built before that — a
+      // prewarm guess, the composer's very first call this visit — carries none, and the last
+      // reading this composer instance ever saw stands in for it, which is `null` until one exists.
+      if (req.framePace && typeof req.framePace === "object") lastFramePace = req.framePace;
       var a = req.workRecordA, b = req.workRecordB;
       var role = req.routeRole === undefined || req.routeRole === null ? "middle" : req.routeRole;
       var direction = req.direction === "b-to-a" ? "b-to-a" : "a-to-b";

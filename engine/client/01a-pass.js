@@ -1919,6 +1919,13 @@
       buffer: { width: innerWidth, height: innerHeight, dpr: window.devicePixelRatio || 1,
                 orientation: innerWidth >= innerHeight ? "landscape" : "portrait",
                 quality: passGet("qualityTier") },
+      // A4 (P1.1): the drawing layer's OWN rolling frame-gap reading (`{count, p95, p50}`), as it
+      // stands on this device right now — read the same defensive way `passApply` already reads
+      // this same `report()` field, so a layer not yet registered hands the composer `null` (the
+      // honest "nothing measured yet") rather than a stale or invented number.
+      framePace: (passLayer && typeof passLayer.report === "function")
+        ? (function () { try { return passLayer.report().frames || null; } catch (e) { return null; } }())
+        : null,
     };
     // THE STATION THIS STEP IS, asked once and read twice. `routeRole` is the name the step asks
     // under and is left exactly as it was, so nothing downstream of it shifts. `routeFunction` is
@@ -2619,6 +2626,69 @@
                                             applied: v.applied || null })),
     };
     return row.applied;
+  }
+
+  // ---- P1.1/A2: ONE joined per-step diagnostic record -----------------------------------------
+  // Today a passage's own facts read back from two places a person has to join by hand: this file's
+  // own `passPassages` row (the plan — family, pivot, road, the score's own cues) and the drawing
+  // layer's `report()` (the run — camera rest, the resource grant, the render ladder's rung, frame
+  // timing, the cadence a landing walked through). This builds the one row that carries both halves
+  // under a single shape, so the diagnostics panel (19-verdict.js) and the export it drives both
+  // read this and nothing else — a number can never disagree between the two because there is only
+  // ever the one reading.
+  //
+  // `movedBy` and `bundles` are named here and left null/empty on purpose: P1.2 (the joint phrase
+  // planner, not yet built) is what will fill them — which WorkRecord dimension moved the choice,
+  // and every bundle the composer weighed beside the one it cast, each with its own reason for
+  // standing down. An empty answer today is the honest one; nothing here is invented to look fuller
+  // than what the composer actually read.
+  function passStepJoinedRecord(cmd) {
+    if (!cmd || !cmd.from || !cmd.to) return null;
+    const fromId = cmd.from.id, toId = cmd.to.id;
+    let row = null;
+    for (let i = passPassages.length - 1; i >= 0; i--) {
+      const r = passPassages[i];
+      if (cmd.score && (r.score === cmd.score || r.played === cmd.score)) { row = r; break; }
+    }
+    let rep = null;
+    try { rep = passLayer && passLayer.report ? passLayer.report() : null; } catch (e) {}
+    const scoreCues = (row && row.score && Array.isArray(row.score.cues)) ? row.score.cues : [];
+    let station = { role: null, fn: null };
+    try { station = passRouteStation(fromId, toId, null) || station; } catch (e) {}
+    const qualityTier = (cmd.params && cmd.params.qualityTier) ? cmd.params.qualityTier.base : null;
+    return {
+      from: fromId, to: toId,
+      // ROUTE ROLE/FUNCTION AND THE HARMONIC READING (charter shelf 15).
+      route: { role: station.role, function: station.fn },
+      road: row ? (row.road || null) : null,
+      family: row ? passFamilyOf(row.plan) : null,
+      pivot: row ? passPivotOf(row.plan) : null,
+      // INSTRUMENTS, VOICES, WINDOWS, LEVELS, HANDLES — one row per cue, the plan's own window and
+      // levels beside what the host resolved for it and what the instrument published back, read
+      // the same way `passApply` already joins them rather than a second copy of that arithmetic.
+      voices: scoreCues.map((c) => {
+        const live = ((rep && rep.stack) || []).filter((v) => v.id === c.id)[0] || null;
+        return { id: c.id, instrument: (c.instrument && c.instrument.id) || null,
+                 window: c.window || null, levels: c.levels || null,
+                 handles: live ? live.handles : null, applied: live ? live.applied : null };
+      }),
+      // CAMERA REST AND HANG (§6): the two boxes, the pose each end asks for, and how far the last
+      // pose actually stood from the one it was meant to rest on.
+      camera: { rest: rep ? rep.rest : null, hang: rep ? rep.hang : null,
+                pose: rep ? rep.camera : null },
+      // QUALITY TIER, RESOURCE GRANT, LADDER RUNG (§4.4/§7/shelf 19).
+      quality: { tier: qualityTier, grant: rep ? rep.grant : null, budget: rep ? rep.budget : null,
+                 ladder: rep && rep.pace ? { rung: rep.pace.rung, rungs: rep.pace.rungs,
+                                             scale: rep.pace.scale } : null },
+      // FRAME P95/P50, off the same rolling buffer the render ladder itself reads.
+      frames: rep ? rep.frames : null,
+      // CADENCE AND landedInMs — how a landing (natural or compressed) actually walked home.
+      cadence: rep ? rep.cadence : null,
+      landedInMs: (rep && rep.cadence) ? rep.cadence.landedInMs : null,
+      durationMs: Math.round(passCrossingMsOf(cmd)),
+      // P1.2's own room — left empty rather than fabricated (see the note above).
+      movedBy: null, bundles: [],
+    };
   }
 
   // Every setting resolves ONCE, at nav-start, and the result is frozen onto the command. A live
@@ -3592,6 +3662,12 @@
         // would build for two real elements, so a row can prove the two agree.
         passage: function (req) { return passComposer ? passComposer.passageFor(req) : null; },
         request: passRequestFor, applied: passApply, seed: passSeedFor,
+        // P1.1/A2: the one joined per-step record — route/harmonic reading, family/pivot, voices
+        // with their windows/levels/handles, camera rest and hang, quality/grant/ladder, frame
+        // p95/p50, cadence and landedInMs — read off ONE call rather than joined by hand across
+        // `report()` and the drawing layer's own `report()`. The panel (19-verdict.js) and the
+        // export it drives both call this and nothing else.
+        joined: passStepJoinedRecord,
         // The route's own dramaturgy, handed over the same way and for the same reason: a row that
         // judges the walk's roles needs the curve they were read off, and the report is a reading
         // rather than the thing itself. `role` answers for one edge exactly as the request does.
