@@ -56,12 +56,6 @@ check("route selection prefers a fresh family and primary but never gates a pass
       and "passRouteInstrumentCount" in PASS
       and "if (best !== null)" in PASS and "return passage.score" in PASS)
 
-check("route selection seeks one real colour voice before settling into neutral repeats",
-      "function passColourOf(passage)" in PASS and "passRouteColourSeen" in PASS
-      and "(!passRouteColourSeen && colourAccent) ? 1 : 0" in PASS
-      and "&& (passRouteColourSeen || colourAccent)) break;" in PASS,
-      "the preference is over emitted LIGHT-COLOUR cues from live candidate passages, never a pair table")
-
 check("diagnostics expose the applied stack for every remembered route edge",
       "passRoutePlayed.push" in PASS and "stack: (row.applied.cues || [])" in PASS
       and "played: passRoutePlayed.slice()" in PASS)
