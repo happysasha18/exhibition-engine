@@ -4309,6 +4309,100 @@
       return best;
     }
 
+    // ================================================================================================
+    // P1.3 — RECORD.SYMMETRY AND RECORD.MATTER, READ BY NO LINE BEFORE THIS PHASE (his 2026-08-28
+    // P1.3 brief, on top of P1.2's bundle planner above)
+    // ================================================================================================
+    //
+    // Both fields were computed and shipped on every WorkRecord and read nowhere in this file.
+    // `record.symmetry` is lab/build-workrecords-v1.py:115-265's own per-work formula off the
+    // wallpaper-group generators a photograph stands on — reflection axes with their own correlation
+    // (`reading`, never `diffScore`, which that file's own docstring says "sits near 0.8 for almost
+    // anything"), a rotational profile and its order, translation. `record.matter` is that builder's
+    // shelf-1 reading of what a photograph is MADE of and what it DEPICTS — the builder's own words:
+    // "the composer could not tell a photograph of water from a photograph of concrete" — carrying
+    // `materialVotes`/`substanceVotes`, the record's only vote-based confidence anywhere — a label
+    // kept only where a majority of the vision model's own repeated passes over that one photograph
+    // agreed on it.
+    //
+    // BOTH ENTER AS A CORROBORATION OF A FIT ALREADY ESTABLISHED BY STRUCTURE THIS FILE ALREADY
+    // READS, never as a new floor and never the reason a fit leaves zero. A fold/box bundle still
+    // needs `faces >= 2` before symmetry ever adds to it; a rings bundle still needs the arriving
+    // work's own radial subtype to be "ring" before rotation ever adds to it; the shared-ground genre
+    // still needs a near axis before matter ever adds to it. Symmetry or matter alone, on a pair that
+    // structure never qualified, changes nothing — so neither ever OBLIGES a box, a kaleidoscope or a
+    // shared ground into existence on its own (shelf 9: a measurement ranks, it never gates).
+    //
+    // THE CORROBORATION LAW HAS NO TUNING CONSTANT. A base reading and an independent supporting
+    // reading are each already in [0, 1]. The support may occupy only the base reading's own unused
+    // headroom, and only in proportion to the structure that gave it somewhere to stand:
+    //
+    //     base + base * (1 - base) * support
+    //
+    // So it is exactly the base where support is absent, exactly zero where structure supplied
+    // nothing, and never exceeds one. This is not a new strength chosen in this seat: the first
+    // `base` is the structural cause already ranked by the genre, `1 - base` is its measured free
+    // headroom, and `support` is the record's own correlation or vote confidence. It makes a
+    // corroborating reading audible without a copied 0.2-like policy knob that could silently turn
+    // a secondary signal into an invented threshold.
+    function corroboratedFit(baseFit, support) {
+      var base = readingOf(baseFit), evidence = readingOf(support);
+      return base + base * (1 - base) * evidence;
+    }
+
+    // THE STRONGEST MIRROR AXIS ONE WORK CARRIES — the reading a box-fold reaches for, since folding
+    // a solid out of a picture is folding it along its own strongest reflection. `reading` is the
+    // correlation lab/build-workrecords-v1.py:172-183 names as the one that discriminates; `diffScore`
+    // beside it is deliberately never read here, for the same reason that file gives.
+    function strongestReflection(work) {
+      var r = ((work || {}).symmetry || {}).reflection;
+      if (!r) return null;
+      var vals = [r.leftOntoRight, r.topOntoBottom, r.mainDiagonal, r.antiDiagonal]
+        .map(function (x) { return x && typeof x.reading === "number" ? x.reading : null; })
+        .filter(function (v) { return v !== null; });
+      return vals.length ? Math.max.apply(null, vals) : null;
+    }
+    // THE ROTATIONAL PROFILE'S OWN READING — the reading a kaleidoscope reaches for, since opening a
+    // rosette out of a picture turns it around its own rotational repeat. Left unclamped at the
+    // source (recipes.py's `pick_order` can read below zero on a work with no rotational repeat at
+    // all), so this reads it through `readingOf`, which floors a negative reading at zero rather than
+    // letting "carries no rotation" push a fit down below what the pair's own structure already gave.
+    function rotationReading(work) {
+      var rot = ((work || {}).symmetry || {}).rotation;
+      return rot && typeof rot.reading === "number" ? rot.reading : null;
+    }
+    // WHETHER TWO WORKS AGREE ON WHAT THEY ARE MADE OF OR DEPICT, weighted by how firmly each of the
+    // two agreed with itself — primary AND second material travel together in the WorkRecord, so a
+    // shared material can sit in either seat; `materialVotes`/`substanceVotes` are used directly as the
+    // confidence, the
+    // record's own and the only vote-based one anywhere in it. THE CAUSE IS THE AGREEMENT, NEVER THE
+    // WORD: this asks only whether the two works share a label, and never which label it is — reading
+    // the word itself and branching a genre on it would be exactly the hard "water implies liquid"
+    // rule shelf 9 forbids, so no word is ever tested, only equality between two records' own words.
+    function voteConfidence(votes) {
+      var v = Number(votes);
+      return (v === v && isFinite(v) && v > 0) ? clamp01(v / 3) : 0;
+    }
+    function matterAgreement(fromW, toW) {
+      var mFrom = (fromW || {}).matter || {}, mTo = (toW || {}).matter || {};
+      function materialSeats(m) {
+        return [m.material, m.materialSecond].filter(function (x, i, a) {
+          return !!x && a.indexOf(x) === i;
+        });
+      }
+      var fromMaterials = materialSeats(mFrom), toMaterials = materialSeats(mTo);
+      var sharedMaterials = fromMaterials.filter(function (m) { return toMaterials.indexOf(m) >= 0; });
+      var materialShare = sharedMaterials.length
+        ? Math.min(voteConfidence(mFrom.materialVotes), voteConfidence(mTo.materialVotes)) : 0;
+      var subFrom = mFrom.substance || [], subTo = mTo.substance || [];
+      var shared = subFrom.filter(function (s) { return subTo.indexOf(s) >= 0; });
+      var substanceShare = shared.length ? Math.max.apply(null, shared.map(function (s) {
+        return Math.min(voteConfidence((mFrom.substanceVotes || {})[s]),
+                         voteConfidence((mTo.substanceVotes || {})[s]));
+      })) : 0;
+      return clamp01(Math.max(materialShare, substanceShare));
+    }
+
     // EVERY GENRE THIS PAIR COULD CROSS ON, EACH WITH ITS OWN FIT.
     //
     // Nothing is qualified and nothing is disqualified. Each genre reads the two records, answers
@@ -4345,6 +4439,12 @@
         if (heldGround === null || num(all.per[m].min) > num(all.per[heldGround].min)) heldGround = m;
       }
       var nearAxis = heldGround === null ? null : travellingAxisOn(fromW, toW, heldGround, "near");
+      // P1.3 — `record.matter`/`record.substance` AS AN ADDITIONAL SHARED-GROUND CAUSE. What the
+      // two works are made of or depict is one more thing a pair can SHARE, beside the measure this
+      // genre already holds — read only where the axis above already gave this genre something to
+      // stand on, so agreeing on a material never by itself turns a genre this pair's structure gave
+      // nothing into a candidate.
+      var matterShare = matterAgreement(fromW, toW);
       if (nearAxis === null) {
         say("shared-ground", { ground: heldGround, free: null, axis: "near", miracle: false,
                                moves: 2 }, 0,
@@ -4352,12 +4452,17 @@
             + "no similar axis to run along");
       } else {
         var closeness = 1 - clamp01(num(nearAxis.delta));
+        var groundFit = num(all.per[heldGround].min) * closeness;
+        var groundWhy = "the pair holds " + heldGround + " at " + pyText(all.per[heldGround].min)
+          + " and their " + nearAxis.axis + " readings stand "
+          + pyText(nearAxis.delta) + " apart";
+        if (matterShare > 0) {
+          groundFit = corroboratedFit(groundFit, matterShare);
+          groundWhy += "; the two works agree on what they are made of or depict, held at "
+            + pyText(flt(r4(matterShare))) + " by their own vote confidence";
+        }
         say("shared-ground", { ground: heldGround, free: null, axis: "near", miracle: false,
-                               moves: 2 },
-            num(all.per[heldGround].min) * closeness,
-            "the pair holds " + heldGround + " at " + pyText(all.per[heldGround].min)
-            + " and their " + nearAxis.axis + " readings stand "
-            + pyText(nearAxis.delta) + " apart");
+                               moves: 2 }, groundFit, groundWhy);
       }
 
       // 2 and 3 · BUILT FROM HOW A RADIAL WORK IS MADE. The radial reading has to stand on BOTH
@@ -4370,14 +4475,32 @@
       var radialPair = Math.min(readingOf(rFrom.score), readingOf(rTo.score));
       var arrivesOnRings = rTo.subType === "ring";
       var radialFit = radialAxis === null ? 0 : radialPair;
-      say("kaleidoscope", { ground: null, free: "radial", axis: "radial", miracle: true, moves: 3 },
-          arrivesOnRings ? radialFit : 0,
-          arrivesOnRings
+      // P1.3 — `record.symmetry.rotation.reading` AS AN ADDITIONAL KALEIDOSCOPE CAUSE. Opening a
+      // rosette turns the picture around its own rotational repeat, so a pair that also reads
+      // strongly rotational by the wallpaper-group formula (never by the radial cut-line measure
+      // above, which is a different reading of a different thing) suits the road a little further —
+      // read only where `arrivesOnRings` already qualified the pair, so a strong rotation on a pair
+      // whose arriving work does not even read on rings never opens one by itself.
+      var kalFit = arrivesOnRings ? radialFit : 0;
+      var kalWhy = arrivesOnRings
             ? ("the arriving work reads radial at " + pyText(flt(r4(readingOf(rTo.score))))
                + " on rings and the pair holds radial at " + pyText(flt(r4(radialPair)))
                + ", so the rings open")
             : ("the arriving work's radial reading is on " + pyText(rTo.subType)
-               + " rather than on rings, so there is nothing to open"));
+               + " rather than on rings, so there is nothing to open");
+      if (arrivesOnRings) {
+        var rotFrom = rotationReading(fromW), rotTo = rotationReading(toW);
+        if (rotFrom !== null && rotTo !== null) {
+          var rotPair = clamp01(Math.min(readingOf(rotFrom), readingOf(rotTo)));
+          if (rotPair > 0) {
+            kalFit = corroboratedFit(kalFit, rotPair);
+            kalWhy += "; the pair's own rotational profile reads " + pyText(flt(r4(rotPair)))
+              + " on both works, so the wedges turn a little further open";
+          }
+        }
+      }
+      say("kaleidoscope", { ground: null, free: "radial", axis: "radial", miracle: true, moves: 3 },
+          kalFit, kalWhy);
       say("spin", { ground: null, free: "radial", axis: "radial", miracle: false, moves: 2 },
           arrivesOnRings ? 0 : radialFit,
           arrivesOnRings
@@ -4427,14 +4550,30 @@
       // is no solid, so a work that falls into no panel at all reads nothing here; everything else
       // is a reading.
       var faces = facesOf(fromW);
-      say("box-fold", { ground: "regions", free: null, axis: "far", miracle: true, mustFold: true,
-                        moves: 3 },
-          faces >= 2 ? readingOf(gFrom.score) : 0,
-          faces >= 2
+      var boxFit = faces >= 2 ? readingOf(gFrom.score) : 0;
+      var boxWhy = faces >= 2
             ? ("the departing work reads regions at "
                + pyText(flt(r4(readingOf(gFrom.score)))) + " over " + faces + " faces")
             : ("the departing work cuts into " + faces + " panels, so there is nothing to fold "
-               + "into a solid"));
+               + "into a solid");
+      // P1.3 — `record.symmetry.reflection` AS AN ADDITIONAL BOX-FOLD CAUSE. Folding a solid out of
+      // a picture is folding it along its own strongest reflection axis, so a pair that also reads
+      // strongly symmetric by the wallpaper-group formula suits the road a little further — read
+      // only where `faces >= 2` already qualified the departing work, so a strongly symmetric work
+      // with too few panels to fold never gets obliged into a box by symmetry alone.
+      if (faces >= 2) {
+        var reflFrom = strongestReflection(fromW), reflTo = strongestReflection(toW);
+        if (reflFrom !== null && reflTo !== null) {
+          var reflPair = clamp01(Math.min(readingOf(reflFrom), readingOf(reflTo)));
+          if (reflPair > 0) {
+            boxFit = corroboratedFit(boxFit, reflPair);
+            boxWhy += "; the pair's own strongest mirror axes read " + pyText(flt(r4(reflPair)))
+              + " on both works, so the fold holds a little further";
+          }
+        }
+      }
+      say("box-fold", { ground: "regions", free: null, axis: "far", miracle: true, mustFold: true,
+                        moves: 3 }, boxFit, boxWhy);
 
       // 7 · ALONG THE PAIR'S DISSIMILAR AXES, WITH THE MYSTERY IN THE MIDDLE. The distance between
       // the pair's widest two readings IS the fit — a pair standing far apart suits this genre and a
@@ -9971,7 +10110,16 @@
              resourceCeiling: RESOURCE_CEILING,
              bundleCap: BUNDLE_CAP,
              castForKindsRanked: castForKindsRanked,
-             dieAmong: dieAmong };
+             dieAmong: dieAmong,
+             // P1.3's own connection of `record.symmetry` and `record.matter`/`record.substance` —
+             // read by no line before this phase — into the genre fit this composer already ranks
+             // on, exposed exactly as read for the same reason the row above gives: a test needs the
+             // real fit arithmetic, not a retyped mirror of it.
+             genresFor: genresFor,
+             matterAgreement: matterAgreement,
+             strongestReflection: strongestReflection,
+             rotationReading: rotationReading,
+             corroboratedFit: corroboratedFit };
   }
 
   join({ version: COMPOSER_VERSION, make: make });

@@ -122,6 +122,10 @@ SUITES = [
     # P1.2 (2026-08-28) — the joint phrase planner's own five legality rules, its score and its
     # widened return, registered in the pass that wrote it.
     "pass_bundle",
+    # P1.3 (2026-08-28) — record.symmetry and record.matter/record.substance, read by no line
+    # before this phase, connected into genresFor's own ranking, registered in the pass that wrote
+    # it.
+    "pass_p13",
 ]
 
 
