@@ -4883,15 +4883,15 @@
 
     // THE SCORE — NEVER A GATE. Every bundle handed here already cleared all five rules above; this
     // only ranks what is left, per his 2026-08-28 sprint brief's own scoring words:
-    //   · a middle or culmination station rewards a bundle carrying an honest SECOND voice standing
-    //     on a structural level the ground does not itself already hold;
+    //   · a dominant station rewards a bundle carrying an honest SECOND voice standing on a
+    //     structural level the ground does not itself already hold;
     //   · where no honest second voice exists the one-voice bundle wins cleanly (nothing forces a
     //     second voice into existence to be rewarded for it);
     //   · a quiet-link bundle may stay simple and pays no penalty for staying simple;
     //   · structural colour is not the first voice surrendered when it carries the herald, the
     //     bridge (the travelling move) or the arrival — only when it merely rides along on the
     //     ground does it stand no taller than a lesser accompaniment.
-    function scoreBundle(g, t, a, colourOn, role, singsHere) {
+    function scoreBundle(g, t, a, colourOn, role, singsHere, routeFunction) {
       // VOICE COUNT IS THE DOMINANT TERM, AND DELIBERATELY SO. Every move this bundle carries was
       // already the sequential cast's own best-ranked answer for its slot, cleared by all five
       // legality rules two screens up — so among LEGAL bundles, one that keeps a move is never
@@ -4910,7 +4910,12 @@
         return lv.length > 0 && lv.every(function (l) { return groundLevels.indexOf(l) < 0; });
       }
       var secondVoice = (!!t && ownsADifferentLevel(t)) || (!!a && ownsADifferentLevel(a));
-      if ((role === "middle" || role === "culmination") && secondVoice) score += 10;
+      // The harmonic function already travels with every route request and drives the fill's
+      // suspension. The joint phrase answers to the same reading: a dominant asks a legal second
+      // voice to stand forward; tonic and subdominant may remain spare. These ten points are P1.2's
+      // existing second-voice preference, attached to its actual route function rather than the
+      // broad visual role that had stood in for it.
+      if (routeFunction === "dominant" && secondVoice) score += 10;
       if (colourOn && singsHere) {
         // WHO ACTUALLY SINGS LIGHT-COLOUR in this bundle — at most one voice can, by the levels law
         // — and whether that voice is the travelling move or the arrival (the herald/bridge/arrival
@@ -5117,7 +5122,7 @@
 
     // ---- composing one ordered pair ----
 
-    function compose(key, pair, fromW, toW, road, role, memory) {
+    function compose(key, pair, fromW, toW, road, role, memory, routeFunction) {
       var pivot = pivotOf(pair), kind = pivot.elementKind, i, stood = [];
       if (pivot.measure === "banding") {
         var fracs = [];
@@ -5654,7 +5659,7 @@
                 continue;
               }
               row.ok = true;
-              row.score = scoreBundle(bg, bt, ba, bc, role, bundleSingsHere);
+              row.score = scoreBundle(bg, bt, ba, bc, role, bundleSingsHere, routeFunction);
               considered.push(row);
               if (row.score > winnerScore) { winnerScore = row.score; ties = [row]; }
               else if (row.score === winnerScore) { ties.push(row); }
@@ -5865,6 +5870,9 @@
           : (travelInstr ? { kind: "surface" } : { kind: "none" }),
         budget: counts, intentKey: intentKey, road: road.id, role: role, passIndex: passIndex,
         rhythmShift: rhythmShift,
+        // The planner and the fill read one route function. Keeping it on the published spec
+        // makes the joint bundle decision inspectable with the camera suspension it shapes.
+        routeFunction: routeFunction,
         // WHETHER THIS CROSSING STILL SPENDS ITS COLOUR VOICE (the budget loop above). It travels
         // here so the score and the counts say the same thing: a crossing that gave the voice up
         // must not go on emitting a cue that owns LIGHT-COLOUR, or the plan's declared tier and the
@@ -5895,7 +5903,7 @@
         // diagnostic surface can read it back. None of it reaches a score.
         road: road.id, genre: road.id, roadWhy: road.why, genreFit: r4(road.fit === undefined ? 0
                                                                       : road.fit),
-        role: role, passIndex: passIndex,
+        role: role, routeFunction: routeFunction, passIndex: passIndex,
         capped: capped, miracleDecline: miracleDecline, castNotes: castNotes,
         // P1.2's own room, filled: the joint phrase planner's full ledger — the cap, how many
         // bundles this walk actually examined, every one with its own legal/refused reading and
@@ -9577,7 +9585,7 @@
       for (i3 = 0; i3 < chosen.order.length; i3++) {
         ran = chosen.order[i3];
         pair = pairOf(a, b, dir, seed, ran.free, ran.ground, !spendsAMiracle);
-        made = compose(key, pair, fromW, toW, ran, step, memory || null);
+        made = compose(key, pair, fromW, toW, ran, step, memory || null, stepFn);
         if (made[0] !== null) break;
         tried.push({ road: ran.id, why: made[1] });
       }
@@ -9657,6 +9665,11 @@
                weightShed: shed,
                overTheFence: SCORE_FENCE_BYTES ? tight.length > SCORE_FENCE_BYTES : false,
                shape: plan.shape, plan: filled, version: COMPOSER_VERSION,
+               // This is composition evidence, deliberately beside the score rather than inside
+               // it: the host needs the score to fit its byte fence, while the diagnostic surface
+               // needs the actual joint choices that produced it. `01a-pass.js` keeps this exact
+               // object on the passage row and never re-derives the ledger.
+               diagnostics: { routeFunction: stepFn, bundles: plan.bundles },
                // The derivation's own reading, for the diagnostic surface and for the walk's edge
                // record: which genre this passage ran on and how well it suited the pair, the whole
                // vocabulary ranked, what each genre read, and every shaping the crossing took.

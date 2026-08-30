@@ -329,6 +329,45 @@ else:
               "vs " + json.dumps(s_ground_broke) + "), so the row above is not measuring the "
               "herald/bridge/arrival read this plant removes")
 
+    # ========================================================================= P2 / route function
+    # `overlay` owns a level `beat` does not. The same legal two-voice phrase receives P1.2's
+    # existing ten-point second-voice preference at a dominant station and none at tonic; no density
+    # is forced at tonic just because the broad visual role happens to be called "middle".
+    dominant_voice = run("scoreBundle", ["beat", None, "overlay", False, "middle", False,
+                                           "dominant"])
+    tonic_voice = run("scoreBundle", ["beat", None, "overlay", False, "middle", False,
+                                        "tonic"])
+    check("P2 ROUTE FUNCTION · a dominant raises a legal distinct second voice over the same tonic phrase",
+          dominant_voice == tonic_voice + 10,
+          "dominant=" + json.dumps(dominant_voice) + ", tonic=" + json.dumps(tonic_voice))
+
+    dominant_broke = run("scoreBundle", ["beat", None, "overlay", False, "middle", False,
+                                          "dominant"],
+                         plants=[["if (routeFunction === \"dominant\" && secondVoice) score += 10;",
+                                  "if (false) score += 10;"]])
+    if isinstance(dominant_broke, dict) and dominant_broke.get("missed"):
+        skip("P2 ROUTE FUNCTION red-on-bug · removing the dominant bonus removes the lift",
+             "the route-function guard this plant names is not in the shipped source")
+    else:
+        check("P2 ROUTE FUNCTION red-on-bug · removing the dominant bonus removes the lift",
+              dominant_broke == tonic_voice,
+              "planted dominant=" + json.dumps(dominant_broke) + ", tonic=" + json.dumps(tonic_voice))
+
+    # The same function must reach the real composer entry and its diagnostic ledger, not only the
+    # exposed scorer used above. The fixture is two real WorkRecords; this names no pair table and
+    # asks one runtime composition directly.
+    pair_key = FIX["pair"]["a"] + "__" + FIX["pair"]["b"] + "__ab"
+    composed_dominant = run("scoreFor", [FIX["works"][FIX["pair"]["a"]],
+                                           FIX["works"][FIX["pair"]["b"]], "a-to-b",
+                                           FIX["seeds"][pair_key], "middle", None, [], None,
+                                           "dominant", None, [], []])
+    diag = composed_dominant.get("diagnostics", {}) if isinstance(composed_dominant, dict) else {}
+    ledger = diag.get("bundles") if isinstance(diag, dict) else None
+    check("P2 ROUTE FUNCTION · the runtime score carries its dominant reading and actual bundle ledger",
+          diag.get("routeFunction") == "dominant" and isinstance(ledger, dict)
+          and isinstance(ledger.get("considered"), list) and ledger.get("winner") is not None,
+          "runtime diagnostics=" + json.dumps(diag)[:800])
+
     # ========================================================================= RETURN VARIATION
     # The old formula read `dieAmong(seed, key + "|moves", 2)` — one die value regardless of
     # `passIndex` — so only `(passIndex + dieValue) % 2`'s own PARITY moved: EVERY odd return drew
@@ -383,7 +422,8 @@ else:
     # carries, so a reviewer moving this code keeps the sweep honest without hand-editing a line
     # range here.
     p12_start = RAW.index("P1.2 — THE JOINT PHRASE PLANNER'S OWN LEGALITY RULES")
-    p12_end = RAW.index("function scoreBundle(g, t, a, colourOn, role, singsHere) {", p12_start)
+    p12_end = RAW.index("function scoreBundle(g, t, a, colourOn, role, singsHere, routeFunction) {",
+                        p12_start)
     p12_end = RAW.index("\n    }\n", p12_end) + len("\n    }\n")
     p12_block = RAW[p12_start:p12_end]
     forbidden = ["pairTable", "pairCache", "allPairs", "ALL_PAIRS", "precompute",

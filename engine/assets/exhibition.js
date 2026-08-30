@@ -3236,11 +3236,9 @@
   // read this and nothing else — a number can never disagree between the two because there is only
   // ever the one reading.
   //
-  // `movedBy` and `bundles` are named here and left null/empty on purpose: P1.2 (the joint phrase
-  // planner, not yet built) is what will fill them — which WorkRecord dimension moved the choice,
-  // and every bundle the composer weighed beside the one it cast, each with its own reason for
-  // standing down. An empty answer today is the honest one; nothing here is invented to look fuller
-  // than what the composer actually read.
+  // The composer publishes the joint phrase ledger beside its score. This row copies that ledger as
+  // received: every legal/refused bundle and its reason remain the planner's own words, with no
+  // client-side reconstruction of why an edge took a particular density.
   function passStepJoinedRecord(cmd) {
     if (!cmd || !cmd.from || !cmd.to) return null;
     const fromId = cmd.from.id, toId = cmd.to.id;
@@ -3285,8 +3283,10 @@
       cadence: rep ? rep.cadence : null,
       landedInMs: (rep && rep.cadence) ? rep.cadence.landedInMs : null,
       durationMs: Math.round(passCrossingMsOf(cmd)),
-      // P1.2's own room — left empty rather than fabricated (see the note above).
-      movedBy: null, bundles: [],
+      movedBy: row && row.diagnostics ? (row.diagnostics.movedBy || null) : null,
+      // A synthetic command can have no composer row at all (the diagnostic dock's own empty
+      // state). That has no bundles rather than an invented one; a real row carries its ledger.
+      bundles: row && row.diagnostics ? (row.diagnostics.bundles || null) : [],
     };
   }
 
