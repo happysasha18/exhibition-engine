@@ -4139,7 +4139,11 @@
           window: [flt(windows[cueId][0]), flt(windows[cueId][1])],
           works: ["a", "b"],
           stack: stacks[cueId],
-          cameraAuthority: "stage",
+          // P3: camera authority is an instrument's declared surface capability. The composer
+          // names no effect: an instrument without the explicit own-surface declaration remains
+          // stage-held, while boxfold's declared carrier reports its pose directly to the host.
+          cameraAuthority: (((MANIFESTS[instr] || {}).surface || {}).cameraAuthority === "own")
+                            ? "own" : "stage",
           doors: { "in": { handle: "mix", value: 0, measured: true },
                    out: { handle: "mix", value: 1, measured: true } },
           tracks: tracksFor(instr, cueId),

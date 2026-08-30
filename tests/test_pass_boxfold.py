@@ -141,7 +141,7 @@ def box_cue(stack=0, levels_own=None, **statics):
         "levels": ["WORLD", "CELL"],
         "levelOwnership": levels_own or {"WORLD": "owns", "CELL": "owns"},
         "window": [0, DURATION_MS / 1000.0], "works": ["a", "b"], "stack": stack,
-        "cameraAuthority": "stage",
+        "cameraAuthority": "own",
         "doors": {"in": {"handle": "mix", "value": 0, "measured": True},
                   "out": {"handle": "mix", "value": 1, "measured": True}},
         "nodes": nodes, "tracks": tracks,
@@ -670,7 +670,11 @@ else:
                     and m["doors"]["out"]["handle"] == "mix" and m["doors"]["out"]["value"] == 1
                     and sorted(m["framings"]) == ["0", "1"]
                     and m["framings"]["0"] == {"coverCrop": CROP} == m["framings"]["1"]
-                    and m["camera"] == {"needs": "none", "authority": "stage"}
+                    and m["camera"] == {"needs": "none", "authority": "own"}
+                    and m["surface"] == {"type": "two-face-fold", "anchor": "measured-hang",
+                                         "tessellation": {"faces": 2}, "cameraAuthority": "own",
+                                         "entry": {"mix": 0, "work": "a", "pose": "flat"},
+                                         "exit": {"mix": 1, "work": "b", "pose": "flat"}}
                     and m["gl"] == {"preserveDrawingBuffer": False}
                     and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 20
                     and sorted(res) == ["lean", "rich", "standard"]
@@ -942,8 +946,8 @@ else:
                 br.evaluate("window.__hooks.docks.length = 0; window.__hooks.curtains.length = 0; 0")
                 took = js(br, "return window.__offer(%s, {});" % SCORE)
                 br.sleep(0.5)
-                mid = js(br, "return {state: window.__report().state, "
-                             "curtains: window.__hooks.curtains.slice()};")
+                mid = js(br, "var r = window.__report(); return {state: r.state, "
+                             "curtains: window.__hooks.curtains.slice(), camera: r.camera};")
                 idle(br)
                 end = js(br, "return {state: window.__report().state, "
                              "docks: window.__hooks.docks.slice(), "
@@ -961,13 +965,19 @@ else:
                              "tol: r.camTolerances};")
                 check(BROWSER_ROWS[19],
                       cam["camera"] and cam["camera"]["owner"] == "stage"
-                      and cam["handoffs"] == []
+                      and mid["camera"] and mid["camera"]["owner"] == "cue:box-main"
+                      and (abs(mid["camera"]["pose"]["panX"]) > 0.0001
+                           or abs(mid["camera"]["pose"]["panY"]) > 0.0001)
+                      and cam["handoffs"] and all(h["within"] for h in cam["handoffs"])
+                      and any(h["from"] == "cue:box-main" and h["to"] == "stage"
+                              for h in cam["handoffs"])
                       and cam["rest"] and cam["rest"]["rested"] is True
                       and cam["rest"]["off"] <= cam["tol"]["rest"],
-                      f"owner={cam['camera'] and cam['camera']['owner']} rest={cam['rest']} "
-                      f"handoffs={cam['handoffs']} tolerances={cam['tol']} — the box carries its own "
-                      f"perspective inside its own pass and asks the host's camera for nothing, so "
-                      f"the stage holds it for the whole pass")
+                      f"middle={mid['camera']} owner={cam['camera'] and cam['camera']['owner']} "
+                      f"rest={cam['rest']} handoffs={cam['handoffs']} tolerances={cam['tol']} — "
+                      f"the box publishes the pan its measured crease uses, the host applies that "
+                      f"pose through the owned window, every handoff is continuous, and the zeroed "
+                      f"door pose reaches rest")
 
                 # ---- §4.4b: the handles reach the picture ----------------------------------------
                 # READ AT THE MIDDLE OF THE HAND, and the reason is where the crease is. Over the
@@ -1182,9 +1192,10 @@ else:
                       and moved["shade"][1] > SEAM
                       # 4. THE CAMERA TRAVELS WITH TRUE PERSPECTIVE — whole: the two roads' own
                       # inverted projection agrees with the module's at both doors and six turns,
-                      # and the instrument asks the host's camera for nothing.
+                      # while the instrument supplies the host with its measured pan.
                       and all(mn <= ROADS for _, mn, _ in agree)
-                      and cam["camera"]["owner"] == "stage" and cam["handoffs"] == []
+                      and cam["camera"]["owner"] == "stage"
+                      and cam["handoffs"] and all(h["within"] for h in cam["handoffs"])
                       # 5. IT LANDS EXACTLY — whole: the walk above found no fault to refuse.
                       and not wrong,
                       f"the fold's place is `seam`, reading an outside measurement "
@@ -1195,8 +1206,8 @@ else:
                       f"{after['textures']}/{after['framebuffers']} after ten runs) — the host's "
                       f"half. `shade` moves the frame by {moved['shade'][1]} worst channel where the "
                       f"shadow lies, the two roads' own perspective agrees to "
-                      f"{max(mn for _, mn, _ in agree):.4f} of 255 worst case while asking the "
-                      f"host's camera for nothing, and the door walk above found nothing to refuse — "
+                      f"{max(mn for _, mn, _ in agree):.4f} of 255 worst case while its own camera "
+                      f"pose is applied by the host, and the door walk above found nothing to refuse — "
                       f"the instrument's own three, whole")
 
                 kept = sorted(p.name for p in SHOTS.glob("*.png"))

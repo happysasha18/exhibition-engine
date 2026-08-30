@@ -819,6 +819,17 @@
       return v;
     }
 
+    // THE SURFACE'S OWN CAMERA POSE. The box already reads the eye's lateral travel from the
+    // measured crease and its own perspective construction; `posed` publishes that travel as the
+    // two `cam` slide coordinates. They are zero at both doors because they ride the same sine
+    // window as the dip and the turn, so this is a surface pose the host can own without moving
+    // either exact hang. The carrier itself continues to travel through the measured DOM hang boxes;
+    // this pose is only the motion riding on that physical carrier, never a second seating.
+    function surfaceCameraPose(v) {
+      return { panX: Number(v.cam[2]) || 0, panY: Number(v.cam[3]) || 0,
+               logScale: 0, pitch: 0, yaw: 0, roll: 0, orbit: 0, tilt: 0, fov: null };
+    }
+
     var manifest = {
       id: "boxfold", api: 1, arity: 2,
       // The frame comes apart into the two faces of one solid, the turn carries the eye from the one
@@ -966,7 +977,13 @@
       drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
                 "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
                 "ramp", "slew", "oscillate", "node"],
-      camera: { needs: "none", authority: "stage" },
+      // The explicit surface contract P3 starts with. The two faces are one typed carrier, its
+      // anchor is the host's measured hang, and its local camera is the box's own crease travel.
+      // Entry and exit name the two exact door states the box already reads on its drawing buffer.
+      surface: { type: "two-face-fold", anchor: "measured-hang", tessellation: { faces: FACES },
+                 cameraAuthority: "own", entry: { mix: 0, work: "a", pose: "flat" },
+                 exit: { mix: 1, work: "b", pose: "flat" } },
+      camera: { needs: "none", authority: "own" },
       gl: { preserveDrawingBuffer: false },
       // WHAT THIS INSTRUMENT WRITES WHERE ITS OWN MATTER IS ABSENT (§7's coverage law, and the
       // per-instrument specification in docs/design/COVERAGE.md). It is absent nowhere. The crop is
@@ -1091,6 +1108,11 @@
           // door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
         };
+        // The host's authority handoff reads exactly this pose. It is a pure reading of the same
+        // box state the shader receives, so the host camera and the folded surface cannot drift
+        // onto two independently invented paths.
+        var surface = posed(pose);
+        if (st.reportPose) st.reportPose(surfaceCameraPose(surface));
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading is
         // taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00 decision
         // asks for. `request` is the travel a landing asks of the standing face — none — and
