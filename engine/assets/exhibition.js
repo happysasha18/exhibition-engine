@@ -1051,6 +1051,7 @@
     passRouteFamilyCount = Object.create(null);
     passRouteInstrumentCount = Object.create(null);
     passRouteWorldSeen = false;
+    passRouteColourSeen = false;
   }
   function passVisitSeed() {
     if (!passVisit) {
@@ -1734,6 +1735,16 @@
   let passRouteFamilyCount = Object.create(null);
   let passRouteInstrumentCount = Object.create(null);
   let passRouteWorldSeen = false;
+  // A route remembers whether the visitor has actually been given a light/colour voice.  This is
+  // route memory only: it never names a pair, changes a work record or requires a colour cue where
+  // the composed candidates have none.
+  let passRouteColourSeen = false;
+  function passColourOf(passage) {
+    const cues = passage && passage.score && Array.isArray(passage.score.cues)
+      ? passage.score.cues : [];
+    return cues.some((cue) => Array.isArray(cue && cue.levels)
+      && cue.levels.indexOf("LIGHT-COLOUR") >= 0);
+  }
   // The pivot as a thing rather than a strength: what the passage holds, without the number the
   // pair happens to hold it at. Two passes hold the same pivot when these three agree.
   function passPivotOf(plan) {
@@ -2934,6 +2945,7 @@
         ? "the family «" + fam + "» played last on this edge and is still cooling" : null;
       const repeatsFamily = !!routeLast && routeLast.family === fam;
       const repeatsPrimary = !!routeLast && routeLast.instrument === primary;
+      const colourAccent = passColourOf(got);
       // ---- THE ROLL RACE, SWEPT 2026-08-25 --------------------------------------------------------
       // WHAT STOOD HERE. Eight readings were multiplied by eight numbers — 2, 1, 3, 3, 2, 2, 3 and a
       // ×10 — and added into one score, and the largest score played. Not one of the eight comes from
@@ -2957,8 +2969,8 @@
       // WHAT STANDS NOW: THE READINGS IN A STATED ORDER, EACH AT ITS OWN SCALE. Nothing is weighted
       // and nothing is added, so no exchange rate is needed and none is invented. The candidates are
       // compared reading by reading, and the first reading that separates two of them decides — so a
-      // lower reading can never outweigh a higher one, whatever it holds. Eight numbers are replaced
-      // by no numbers at all: what replaces them is the ORDER, and every rank in it is derived.
+      // lower reading can never outweigh a higher one, whatever it holds. The numeric scorer is gone:
+      // what stands in its place is the ORDER, and every route-level preference is inspectable.
       //
       //   1 KIN to the pass this edge already played. The charter's amendment ranks it above the
       //     variety readings in its own sentence, and that is the whole of why it is first. On an
@@ -2988,12 +3000,15 @@
       //     «тот же эффект» is his own word for the thing, while a family is a name a composition
       //     gives its own pivot and nobody can see one». What a person can see outranks what nobody
       //     can, so the instrument stands above the family wherever both are read.
-      //   6 THE INSTRUMENT IS ONE THIS ROUTE HAS NOT SHOWN, and 7 the family is one it has not. The
+      //   6 THE FIRST LIGHT/COLOUR VOICE THIS ROUTE CAN ACTUALLY CARRY. This reads the emitted score,
+      //     not a named pair or a guessed palette: an eligible candidate is preferred until one lands;
+      //     when no candidate carries LIGHT-COLOUR, the rank is tied and the crossing remains free.
+      //   7 THE INSTRUMENT IS ONE THIS ROUTE HAS NOT SHOWN, and 8 the family is one it has not. The
       //     same two things as 4 and 5, read over the whole route instead of over the step just
       //     taken. Below them because a repeat the person walks straight into is the one they can
       //     see; a repeat some rooms back is the same thing at a distance. Instrument above family
       //     again, on the same sentence.
-      //   8 A SPATIAL SENTENCE THIS ROUTE HAS NOT OPENED — and this one is NOT derived. Ranks 1 to 7
+      //   9 A SPATIAL SENTENCE THIS ROUTE HAS NOT OPENED — and this one is NOT derived. Ranks 1 to 8
       //     each read a fact the charter or §4.8 names; this reads whether the passage is «a
       //     measured parquet ground or a camera-led tonic», and neither half comes off anything: the
       //     camera lead is a field of the score, but which instruments make a spatial sentence is a
@@ -3018,14 +3033,19 @@
         read.distance === null ? Infinity : read.distance,
         repeatsPrimary ? 0 : 1,
         repeatsFamily ? 0 : 1,
+        // The first light/colour voice a route can honestly carry is preferred over a second
+        // neutral option.  It still comes after the edge's own return and immediate-repeat laws;
+        // a route whose live candidates do not carry LIGHT-COLOUR simply keeps its best passage.
+        (!passRouteColourSeen && colourAccent) ? 1 : 0,
         passRouteInstrumentCount[primary] ? 0 : 1,
         passRouteFamilyCount[fam] ? 0 : 1,
         (!passRouteWorldSeen && worldAccent) ? 1 : 0,
       ];
       rolls.push({ seed: request.seed, family: fam, instrument: primary,
                    repeatsPrevious: repeatsFamily || repeatsPrimary,
+                   colour: colourAccent,
                    readings: readings.slice(), why: refused || cooledStood });
-      // THE TIE-BREAK IS A RULE AND NO LONGER AN ACCIDENT. Two candidates equal on all eight
+      // THE TIE-BREAK IS A RULE AND NO LONGER AN ACCIDENT. Two candidates equal on all nine
       // readings are candidates the walk can state no preference between, and the one already
       // leading stays. That is not «whichever was tried first» by chance: die 0's seed is
       // `passSeedFor(edge.key)`, the edge's own name struck once, and every later die is a RE-ROLL
@@ -3040,12 +3060,13 @@
       }
       // THE WALK STOPS ASKING when the roll stands at the best of every reading that CAN stand at
       // its best on this step — ranks 1 to 5. Those five are about this edge and the step just
-      // taken, so a candidate can top all of them on any route. Ranks 6 to 8 are about what the
+      // taken, so a candidate can top all of them on any route. Ranks 6 to 9 are about what the
       // whole route has already shown, and on a route that has already shown every family there is
       // no candidate left that could top them; a stopping rule that asked for those too would be a
       // rule that can never be satisfied, and the walk would burn every die to learn nothing.
       if (read.kin && !cooledStood && read.distance === null
-          && !repeatsFamily && !repeatsPrimary) break;
+          && !repeatsFamily && !repeatsPrimary
+          && (passRouteColourSeen || colourAccent)) break;
       // A roll that read as a replay is said at once, and not only where the last one does too: a
       // pass that was passed over because it read that way is exactly what a person looking at the
       // surface is trying to find.
@@ -3174,6 +3195,7 @@
                            // `stack`: a repeat instrument still stands in `stack`, it just is not
                            // the miracle a second time.
                            miracle: miracle,
+                           colour: passColourOf(row),
                            world: instrument === "parquet" || !!(row.score && row.score.camera
                                                                   && row.score.camera.lead) });
     passRouteFamilyCount[family] = (passRouteFamilyCount[family] || 0) + 1;
@@ -3181,6 +3203,7 @@
     if (instrument === "parquet" || (row.score && row.score.camera && row.score.camera.lead)) {
       passRouteWorldSeen = true;
     }
+    if (passColourOf(row)) passRouteColourSeen = true;
     passEdgePut();
     passMark("memory", cmd, edgeKey + " " + direction + " ×" + edge[direction].passCount);
     return edge[direction];
