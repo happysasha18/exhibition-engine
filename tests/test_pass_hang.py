@@ -172,7 +172,8 @@ check("PASS-HANG the geometry carries the layout's own crop, fit, radius and tra
 
 check("PASS-HANG one canvas plane carries the whole source between the two measured boxes",
       all(s in LAYER for s in ["function planeAt(", "rec.hangA", "rec.hangB",
-                               "function planeApply(", "c.style.left", "c.style.width"]),
+                               "function planeApply(", "c.style.left", "c.style.width",
+                               "c.style.borderRadius"]),
       "the carrier itself travels hang A → scene → hang B; an instrument's centre crop cannot "
       "masquerade as the work leaving the wall")
 

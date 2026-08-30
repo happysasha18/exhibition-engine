@@ -44,6 +44,13 @@ check("one passive host interaction signal carries pointer, tap and spring witho
       and interaction_region.count("passive: true") >= 4
       and 'kind: "touch"' in MOTION and 'kind: "wheel"' in MOTION and 'kind: "key"' in MOTION)
 
+COMPOSER = (ROOT / "engine/assets/pass-composer.js").read_text(encoding="utf-8")
+check("four fitting materials turn the passive hand signal into a bounded middle-only accompaniment",
+      'var pointerHandle = { weave: "press", parquet: "spin", planet: "turn",' in COMPOSER
+      and '{ source: "pointer", channel: "x" }' in COMPOSER
+      and 'at: 0, value: 0' in COMPOSER and 'at: 1, value: 0' in COMPOSER,
+      "interaction may alter a living middle but must add zero at both doors")
+
 check("route selection prefers a fresh family and primary but never gates a passage",
       "repeatsPrevious" in PASS and "passRouteFamilyCount" in PASS
       and "passRouteInstrumentCount" in PASS

@@ -1458,7 +1458,7 @@
   function planeAt(rec, seconds, art) {
     // The neutral: the whole frame, which is what the camera's own neutral pose means.
     var full = { x: 0, y: 0, w: cssW, h: cssH };
-    var e = rec.hangEdge || hangEdges(rec), door = 0, box = full;
+    var e = rec.hangEdge || hangEdges(rec), door = 0, box = full, radius = 0;
     function lerpBox(a, b, q) {
       return { x: a.x + (b.x - a.x) * q, y: a.y + (b.y - a.y) * q,
                w: a.w + (b.w - a.w) * q, h: a.h + (b.h - a.h) * q };
@@ -1466,9 +1466,11 @@
     if (rec.hangA && e.rise > 0 && seconds <= e.rise) {
       var qo = doorEase(seconds / e.rise);
       box = lerpBox(rec.hangA, full, qo); door = 1 - qo;
+      radius = (Number(rec.hangA.radius) || 0) * (1 - qo);
     } else if (rec.hangB && e.fall > 0 && seconds >= e.dur - e.fall) {
       var qi = doorEase((seconds - (e.dur - e.fall)) / e.fall);
       box = lerpBox(full, rec.hangB, qi); door = qi;
+      radius = (Number(rec.hangB.radius) || 0) * qi;
     }
     var fit = (door === 0 && art) ? camFit(art, rec.caps, box) : { over: 1, hold: 1, pose: art };
     if (fit.over !== 1) {
@@ -1476,7 +1478,7 @@
               w: box.w * fit.over, h: box.h * fit.over };
     }
     return { x: 0, y: 0, w: W, h: H, door: door, over: fit.over, hold: fit.hold, art: fit.pose,
-             cssX: box.x, cssY: box.y, cssW: box.w, cssH: box.h };
+             cssX: box.x, cssY: box.y, cssW: box.w, cssH: box.h, cssRadius: radius };
   }
 
   function planeApply(plane) {
@@ -1486,6 +1488,7 @@
     c.style.top = plane.cssY.toFixed(3) + "px";
     c.style.width = plane.cssW.toFixed(3) + "px";
     c.style.height = plane.cssH.toFixed(3) + "px";
+    c.style.borderRadius = Math.max(0, Number(plane.cssRadius) || 0).toFixed(3) + "px";
   }
 
   // A CAMERA-LED PASSAGE: the flight itself is the transition. A score declares it with
@@ -2313,6 +2316,24 @@
   function finish(landState, why) {
     var rec = cur;
     if (!rec || rec.docked) return;
+    // EVERY EXIT OWES THE SAME ARRIVING CAMERA DOOR.  A natural settle already starts a cadence
+    // when it notices this gap, but watchdog, deadline, context-loss and fail roads reach this
+    // one shared door directly.  They used to log an off-rest camera and hand the DOM over anyway.
+    // Give a drawable transaction the same short landing cadence before marking it docked; if a
+    // renderer is already gone, apply the exact arriving pose before the one-frame handoff.  Thus
+    // no exit can reveal B while the carrier still stands at an in-between camera pose.
+    var neededRest = rec.hangPoseB || CAM_NEUTRAL;
+    var restOff = camOff(rec.lastPose || CAM_NEUTRAL, neededRest);
+    if (restOff > CAM_REST_TOL) {
+      if (rec.inst && rec.inst.manifest && (!rec.cadence || rec.cadence.ended)) {
+        rec.cadence = null;
+        cadenceStart(rec, "finish-rest", false, landState);
+        return;
+      }
+      camApply(neededRest, rec.caps);
+      rec.lastPose = neededRest;
+      rec.camera = neededRest;
+    }
     rec.docked = true;
     clearTimeout(rec.watchdogT);
     clearTimeout(rec.deadlineT);
@@ -2322,7 +2343,7 @@
     // the work hangs in. The neutral pose is the special case of that, where the box is the whole
     // frame, so a transaction with no hang geometry reads exactly as it always did. The row reads
     // the POSE rather than the picture, and stays honest when the picture changes.
-    var restAt = rec.hangPoseB || CAM_NEUTRAL;
+    var restAt = neededRest;
     rec.rest = { off: +camOff(rec.lastPose || CAM_NEUTRAL, restAt).toFixed(9),
                  tol: CAM_REST_TOL, owner: rec.camOwner,
                  on: rec.hangPoseB ? "hang" : "neutral", hang: rec.hangB || null };

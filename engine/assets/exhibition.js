@@ -3900,9 +3900,14 @@
   // What IS held is the narrow window between that fetch starting and its script's own load event,
   // which a gesture can easily land inside on a visit's very first step. `passLayerPending` names
   // the window; `passLayerAwait` waits it out, bounded, before falling back to the plain glide.
-  // UNJUSTIFIED — how long a gesture waits for the drawing layer's own script to finish loading
-  // before it takes the plain glide instead. This file chose 350 ms and nothing measured it.
-  const PASS_LAYER_HOLD_MS = 350;
+  // FIRST-CROSSING AVAILABILITY DEADLINE.  The layer has already been requested when the visitor
+  // reaches a hang, so this is not a theatrical pause: it is the short, bounded chance for the
+  // request already in flight to become the renderer before the very first gesture is allowed to
+  // fall back.  A 350 ms window was shorter than a cold mobile script fetch and made the first
+  // crossing depend on network timing.  1200 ms is deliberately only an availability deadline;
+  // a successful load resolves immediately, while a hung/failing request still gives the walk its
+  // ordinary glide instead of trapping the visitor.
+  const PASS_LAYER_HOLD_MS = 1200;
   function passLayerPending(cmd) {
     // `cmd.reduced` dropped from this bail-out with the same word as `passVisualTakes` above: a
     // reduced-motion visitor's very first gesture is now worth waiting the same bounded window for,

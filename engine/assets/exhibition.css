@@ -33,6 +33,10 @@ html.js .ex-head{ display:none; }
 body.ex-live #ex-static{ display:none; }
 body.ex-live .ex-head{ display:none; }           /* the door/hang carry their own marks */
 body:not(.ex-live) .ex-stage{ display:none; }
+/* EX-PASS: while the renderer owns a crossing, the hanging DOM work must leave the visual stage.
+   The WebGL canvas is appended directly to body and remains visible; hiding this one covered layer
+   prevents the arriving still from reading through fragments of the passage as a second background. */
+body.ex-pass-curtain #ex-stage{ visibility:hidden; }
 /* EX-LOAD/EX-BOOT (INV-95): the cold-arrival loading breath — the exhibition's first paint, alive
    from near-instantly (a fast grace beat, not the old ~0.74s faint line) and holding a visible,
    continuously breathing line for however long the script's ride takes — a first paint standing as

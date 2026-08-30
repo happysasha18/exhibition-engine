@@ -4871,12 +4871,12 @@
     function surfaceHandoverLegal() { return { ok: true, why: null }; }
 
     // CAPABILITY. A BOUND ON WORK EXAMINED, NEVER ON QUALITY — a fact about the enumeration's own
-    // arithmetic, not a reading of any picture. Crossing every ranked ground/travel/arrival
-    // candidate against every colour setting is a small, fixed cross by construction — two ground
-    // candidates, travel present-or-not, arrival present-or-not, colour on-or-off is 16 at the very
-    // most — and this names the bound explicitly so it travels onto the diagnostic row (never a
-    // hidden constant) rather than being an accident of how many candidates happened to be offered.
-    var BUNDLE_CAP = 16;
+    // arithmetic, not a reading of any picture.  A slot may offer its first two genuinely ranked
+    // instruments plus silence: two grounds × three travel choices × three arrival choices × two
+    // colour states is 36.  The planner needs that small cross because a first-ranked travelling
+    // voice can collide with a first-ranked arrival while their second choices form the phrase.
+    // The cap is published onto diagnostics rather than hidden in enumeration order.
+    var BUNDLE_CAP = 36;
 
     // P1.2's own per-bundle re-derivation of `folds`/`world`/`foldsOn` — the same reading `compose`
     // took once, sequentially, for the stack the old cast happened to build (`folds` — does any of
@@ -5244,7 +5244,7 @@
       // built on the pair's own device pins the axis to the measure it is built on; the genre along
       // what the pair shares runs along their closest reading instead.
       var axis = travellingAxisOn(fromW, toW, pivot.measure, road.axis);
-      var travelInstr = null, travelDecline = null, tkind;
+      var travelInstr = null, travelDecline = null, tkind, travelRanked = [];
       if (axis === null && road.axis !== "far" && road.axis !== "near") {
         // The genre's own axis has gone out from under it — the ground took it. The pair still
         // crosses, on the widest axis it has, and the plan says the genre did not get its own.
@@ -5279,11 +5279,12 @@
         // the ground already owns is still excluded outright; an instrument sharing a level with the
         // ground that the ground's own window never touches at the SAME time as this candidate's own
         // window is not excluded at all — see the note over `castForKinds`.
-        var castTravel = castForKinds([tkind], fromW, toW,
-                                      !(ROLE_BUDGETS[role] || {}).miracle, pair.seed, key,
-                                      "travel", [pivotInstr], false, false, [pivotClashRecord],
-                                      travelWindowBound);
-        travelInstr = castTravel[0];
+        var castTravel = castForKindsRanked([tkind], fromW, toW,
+                                            !(ROLE_BUDGETS[role] || {}).miracle, pair.seed, key,
+                                            "travel", [pivotInstr], false, false, [pivotClashRecord],
+                                            travelWindowBound);
+        travelRanked = castTravel[0] || [];
+        travelInstr = travelRanked.length ? travelRanked[0].id : null;
         castNotes.travel = castTravel[1];
         if (travelInstr !== null && castTravel[2].indexOf(travelInstr) < 0) {
           stood.push("no instrument cuts on " + pyText(tkind) + ", so «" + travelInstr
@@ -5351,7 +5352,7 @@
       locusKind = arrivalPlan.locusKind;
       locus = arrivalPlan.locus;
       locusFit = arrivalPlan.fit;
-      var arrivalInstr = null;
+      var arrivalInstr = null, arrivalRanked = [];
       // ARRIVAL'S OWN WINDOW OPENS AT `1 - locusFit*(1 - beforeAtR)` — `locusFit` now carries
       // `arrivalPlan.fit`, the winning arrival's own reading, whichever of the five plays: `locusOf`'s
       // reading where CONDENSED wins, the texture reading where CRYSTALLIZED does, and so on — how
@@ -5401,12 +5402,14 @@
           clashForArrival.push({ levels: MANIFESTS[travelInstr].levels || [],
                                  window: travelWindowBound, folds: spendsTheMiracle(travelInstr) });
         }
-        var castArrival = castForKinds([], fromW, toW, !(ROLE_BUDGETS[role] || {}).miracle,
-                                       pair.seed, key, "arrival", [pivotInstr, travelInstr],
-                                       FILLS_THE_FRAME[pivotInstr]
-                                       || FILLS_THE_FRAME[travelInstr],
-                                       false, clashForArrival, arrivalWindowBound);
-        arrivalInstr = castArrival[0];
+        var castArrival = castForKindsRanked([], fromW, toW,
+                                             !(ROLE_BUDGETS[role] || {}).miracle,
+                                             pair.seed, key, "arrival", [pivotInstr, travelInstr],
+                                             FILLS_THE_FRAME[pivotInstr]
+                                             || FILLS_THE_FRAME[travelInstr],
+                                             false, clashForArrival, arrivalWindowBound);
+        arrivalRanked = castArrival[0] || [];
+        arrivalInstr = arrivalRanked.length ? arrivalRanked[0].id : null;
         castNotes.arrival = castArrival[1];
         if (arrivalInstr === null && castArrival[3]) {
           stood.push("every instrument that could condense the arrival would put a second live "
@@ -5614,18 +5617,45 @@
         if (fill1 && fill1 !== pivotInstr) groundCandidates.push(fill1);
       })();
 
-      // TRAVEL AND ARRIVAL CANDIDATES: play the instrument the sequential cast already ranked best
-      // for the slot's own window, or stand the slot down. Swapping in a DIFFERENT travelling or
-      // arriving instrument than the one already ranked best is P1.3's own room — WorkRecord signals
-      // narrowing which instrument wins a slot — never which VOICES a bundle carries, which is what
-      // this phase settles.
-      var travelCandidates = travelInstr !== null ? [travelInstr, null] : [null];
-      var arrivalCandidates = arrivalInstr !== null ? [arrivalInstr, null] : [null];
+      // TRAVEL AND ARRIVAL CANDIDATES: each slot carries the first two real readings from the
+      // existing ranked cast plus silence.  The old planner only crossed the head with silence,
+      // so a collision between two individually good heads could only be resolved by deleting a
+      // voice.  This remains a bounded choice among readings: the composer never invents a name or
+      // reaches into a pair table.
+      function slotCandidates(primary, ranked) {
+        var out = [];
+        function add(iid) { if (iid && out.indexOf(iid) < 0 && out.length < 2) out.push(iid); }
+        add(primary);
+        (ranked || []).forEach(function (row) { if (row && row.order < 8) add(row.id); });
+        out.push(null);
+        return out;
+      }
+      var travelCandidates = slotCandidates(travelInstr, travelRanked);
+      // Arrival's clash is conditional on the travelling voice that actually stands in THIS
+      // candidate bundle.  Ranking it once against travel's head would repeat the very error this
+      // planner is here to repair: an arrival that is silent beside the head may be the best legal
+      // arrival beside travel's second reading.  This helper reuses the same cast, window and
+      // miracle rules; it only delays the question until `tid` is known.
+      function arrivalCandidatesFor(tid) {
+        if (!(arrival === "CONDENSED" || arrival === "CRYSTALLIZED" || arrival === "PROPAGATED")) {
+          return [null];
+        }
+        var clash = [pivotClashRecord];
+        if (tid) clash.push({ levels: MANIFESTS[tid].levels || [], window: travelWindowBound,
+                              folds: spendsTheMiracle(tid) });
+        var rankedCast = castForKindsRanked([], fromW, toW, !roleBudget.miracle,
+                                            pair.seed, key, "arrival", [pivotInstr, tid],
+                                            FILLS_THE_FRAME[pivotInstr] || FILLS_THE_FRAME[tid],
+                                            false, clash, arrivalWindowBound);
+        var ranked = rankedCast[0] || [];
+        return slotCandidates(ranked.length ? ranked[0].id : null, ranked);
+      }
 
       var examined = 0, considered = [], ties = [], winnerScore = -1, gi, ti, ai, ci2, bg, bt, ba, bc;
       outerBundleLoop:
       for (gi = 0; gi < groundCandidates.length; gi++) {
         for (ti = 0; ti < travelCandidates.length; ti++) {
+          var arrivalCandidates = arrivalCandidatesFor(travelCandidates[ti]);
           for (ai = 0; ai < arrivalCandidates.length; ai++) {
             bg = groundCandidates[gi]; bt = travelCandidates[ti]; ba = arrivalCandidates[ai];
             // WHETHER THIS (ground, travel, arrival) EVEN HAS A COLOUR VOICE TO WEIGH, checked once
@@ -8927,6 +8957,43 @@
             ? { op: "static", value: pairv[1] }
             : { op: "static", value: pairv[1], note: noteFor(h, req, pairv[1], why) };
         });
+        // THE VISITOR MAY NUDGE A PASSAGE WITHOUT TAKING ITS NAVIGATION.  The product owns one
+        // passive pointer/touch signal on the frozen command; the renderer already reads it, but
+        // until this point no real score connected it to a visible handle.  These four companions
+        // are deliberately bounded, one per suitable material: a fabric presses, a parquet turns,
+        // a planet turns on its axis, and a live mirror wanders.  The authored crossing remains the
+        // base node.  A pointer only adds a small, damped nudge through a bell that is exactly zero
+        // at both cue doors, so touch, mouse and drag can make the middle answer while the two
+        // photographs still return pixel-exactly to their hangs.
+        var pointerHandle = { weave: "press", parquet: "spin", planet: "turn",
+                              livemirror: "drift" }[instr];
+        if (pointerHandle && c.tracks && c.tracks[pointerHandle]) {
+          var pointerNode = c.tracks[pointerHandle].node || (c.id + "-" + pointerHandle);
+          var pointerBase = pointerNode + "-authored";
+          if (nodes[pointerNode] && !nodes[pointerBase]) {
+            var pointerRange = HANDLE_SPECS[instr][pointerHandle];
+            var pointerAmount = flt(r4((num(pointerRange[1]) - num(pointerRange[0])) * 0.055));
+            var pointerNote = nodes[pointerNode].note;
+            nodes[pointerBase] = nodes[pointerNode];
+            nodes[pointerNode] = {
+              op: "clamp", min: pointerRange[0], max: pointerRange[1],
+              in: { op: "add", in: [
+                { node: pointerBase },
+                { op: "multiply", in: [
+                  { source: "pointer", channel: "x" },
+                  { op: "static", value: pointerAmount },
+                  { op: "spline", in: { source: "cueProgress" }, points: [
+                    { at: 0, value: 0 }, { at: 0.28, value: 1 },
+                    { at: 0.72, value: 1 }, { at: 1, value: 0 }
+                  ] }
+                ] }
+              ] },
+              note: pointerNote
+                ? pointerNote + "; a bounded pointer-x accompaniment opens only through the middle"
+                : "requested a bounded pointer-x accompaniment through the middle only"
+            };
+          }
+        }
         c.measuredHandles = measured;
         c.nodes = nodes;
         cues.push(c);
