@@ -746,6 +746,10 @@
       // Both doors frame alike: the crop the counter-motion's and the swell's headroom are paid for
       // with is a constant, while both travels die at either end.
       framings: { "0": { coverCrop: ZOOM }, "1": { coverCrop: ZOOM } },
+      surface: { type: "shoreline-reflection-field", anchor: "measured-hang",
+                 tessellation: { bands: 2, tideCells: "tideCells" }, cameraAuthority: "stage",
+                 entry: { mix: 0, work: "a", pose: "flat" },
+                 exit: { mix: 1, work: "b", pose: "flat" } },
       drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
                 "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
                 "ramp", "slew", "oscillate", "node"],

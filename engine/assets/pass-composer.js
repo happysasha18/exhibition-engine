@@ -1628,18 +1628,16 @@
       return { per: per };
     }
 
-    // THE FOUR INSTRUMENTS THAT FOLD THE SPACE A WORK LIVES IN — shelf 8's folded space, the same
-    // event shelf 6 says consumes the crossing's one miracle and never stacks. Naряд S-18
-    // (2026-08-27) moves this off the manifest's shared `levels` array on purpose: that array also
-    // carries shelf 17's own camera-ownership law, which several of these four handles genuinely
-    // still need (their handles are declared at the WORLD level there, and `ownTheLevels` reads
-    // that declaration to grant them the camera at all — stripping it would leave the fold itself
-    // undriven, not merely uncounted). What moves is only the READING of «is this a fold», onto
-    // the instrument's own identity — the box a picture folds into, the little world it curls into
-    // (charter shelf 8's own ontology shift), the plane a frame lies down into, and the landscape a
-    // frame opens into — kept here, beside the function it feeds, rather than smuggled through a
-    // field that answers a different law.
-    var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];
+    // THE INSTRUMENTS THAT FOLD THE SPACE A WORK LIVES IN — shelf 8's folded space, the same
+    // event shelf 6 says consumes the crossing's one miracle and never stacks. P3 gives a fold an
+    // explicit surface contract: a real carrier plus a WORLD declaration. Both facts are read from
+    // the manifest at runtime, so adding a lawful world surface reaches this register without a
+    // second identity list to maintain. A WORLD handle alone is not enough: it can name one axis of
+    // a different surface. A surface without WORLD remains a surface gesture such as parquet.
+    var WORLD_FOLD_INSTRUMENTS = Object.keys(MANIFESTS).filter(function (iid) {
+      var m = MANIFESTS[iid] || {}, surface = m.surface;
+      return !!surface && (m.levels || []).indexOf("WORLD") >= 0;
+    }).sort();
     function isWorldFold(iid) {
       return !!iid && WORLD_FOLD_INSTRUMENTS.indexOf(iid) >= 0;
     }

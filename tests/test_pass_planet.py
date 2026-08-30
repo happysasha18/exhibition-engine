@@ -470,9 +470,10 @@ if CONTRACT.exists():
 # THIS ROW MOVED INTO THE NODE SECTION BELOW TOO. Grepping the source for the sentence "the
 # vocabulary's SURFACE is the older and" only ever proved that sentence sits in the file; the row
 # now loads the REAL pass-composer.js through `vm`, the file that actually spends the crossing's
-# one miracle on a WORLD reading (`WORLD_FOLD_INSTRUMENTS`, `isWorldFold`, `spendsTheMiracle`), and
-# asks it whether "planet" stands among the instruments it folds — then asks the same question of
-# a copy of that file, held only in memory, with "planet" struck from the array literal.
+# one miracle on a declared WORLD surface (`WORLD_FOLD_INSTRUMENTS`, `isWorldFold`,
+# `spendsTheMiracle`), and asks it whether "planet" stands among the instruments it folds — then
+# asks the same question of a copy of that file, held only in memory, with planet excluded from the
+# derived predicate.
 
 # ---------------------------------------------------------------- the instrument as a pure function
 NODE_ROWS = [
@@ -600,20 +601,20 @@ for (let i = 0; i < ids.length; i++) {
 console.log(JSON.stringify({cues: cues, witness: witness}));
 """
 
-# THE COMPOSER'S OWN ARRAY, READ THROUGH REAL EXECUTION RATHER THAN GREPPED. `WORLD_FOLD_INSTRUMENTS`
-# (pass-composer.js) is what `isWorldFold`/`spendsTheMiracle` read, and `composer.worldFoldInstruments`
-# is that same array re-exposed on the module's own returned object (naряд S-18, 2026-08-27). The
-# mutation strikes "planet" from the literal, in a copy of the file held only in memory.
+# THE COMPOSER'S OWN DERIVATION, READ THROUGH REAL EXECUTION RATHER THAN GREPPED.
+# `WORLD_FOLD_INSTRUMENTS` (pass-composer.js) is what `isWorldFold`/`spendsTheMiracle` read, and
+# `composer.worldFoldInstruments` is that same derived array re-exposed on the module's own returned
+# object. The mutation excludes "planet" only in a copy of the file held in memory.
 FOLD_DRIVER = r"""
 "use strict";
 const fs = require("fs"), vm = require("vm");
 const [modulePath, fixturePath, mutate] = process.argv.slice(2);
 let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
 if (mutate === "1") {
-  const before = 'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];';
-  const after = 'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "tilt", "waterline"];';
+  const before = 'return !!surface && (m.levels || []).indexOf("WORLD") >= 0;';
+  const after = 'return iid !== "planet" && !!surface && (m.levels || []).indexOf("WORLD") >= 0;';
   if (source.indexOf(before) < 0) {
-    console.log(JSON.stringify({error: "the array literal was not found verbatim"}));
+    console.log(JSON.stringify({error: "the derived world-surface predicate was not found verbatim"}));
     process.exit(0);
   }
   source = source.split(before).join(after);

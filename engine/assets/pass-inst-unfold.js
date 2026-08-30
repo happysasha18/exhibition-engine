@@ -1173,6 +1173,10 @@
       // made the sheet the file cover-fitted and put the room the lean needs on the gate, which stands
       // at nothing at either end. So neither door is cropped and neither is upscaled.
       framings: { "0": { coverCrop: 1 }, "1": { coverCrop: 1 } },
+      surface: { type: "hinged-panel-sheet", anchor: "measured-hang",
+                 tessellation: { panels: "panels", field: "field" }, cameraAuthority: "stage",
+                 entry: { mix: 0, work: "a", pose: "flat" },
+                 exit: { mix: 1, work: "b", pose: "flat" } },
       drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
                 "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
                 "ramp", "slew", "oscillate", "node"],

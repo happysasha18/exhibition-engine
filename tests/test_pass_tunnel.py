@@ -848,7 +848,7 @@ def apart(p, work):
 
 
 # ---------------------------------------------------------------- the composer's own world-fold list
-# THE FOUR INSTRUMENTS `spendsTheMiracle` READS BY IDENTITY — engine/assets/pass-composer.js's own
+# THE WORLD SURFACES `spendsTheMiracle` DERIVES — engine/assets/pass-composer.js's own
 # `WORLD_FOLD_INSTRUMENTS`, which does NOT name tunnel. Read by REAL code execution in node rather
 # than by grepping the manifest's own prose beside it, the same `vm.createContext`/`vm.runInContext`
 # idiom test_pass_composed.py's own DRIVER uses: the real module is loaded in a sandboxed VM off a
@@ -1128,18 +1128,17 @@ else:
                       f"pass gets refused under the mutated ones")
 
                 # THE OTHER HALF OF THIS ROW IS NOT A TEXT MATCH FOR "spends no crossing's miracle" —
-                # it is pass-composer.js's own `WORLD_FOLD_INSTRUMENTS` array, read by REAL code
+                # it is pass-composer.js's own `WORLD_FOLD_INSTRUMENTS` derivation, read by REAL code
                 # execution in node (the same `vm.createContext`/`vm.runInContext` idiom
                 # test_pass_composed.py's own DRIVER uses), asserting "tunnel" is absent from the
-                # live list `spendsTheMiracle` reads by identity, and then mutating the built
-                # composer's own array literal to ADD "tunnel" and showing the composer's returned
+                # live list `spendsTheMiracle` reads, and then mutating the built
+                # composer's own predicate to drop the surface requirement and showing the returned
                 # `worldFoldInstruments` now carries it — a real execution proof that the composer's
                 # list is what decides this, not a grep for a sentence beside it.
                 world_fold_base = run_world_fold_driver()
                 world_fold_mutated = run_world_fold_driver(plants=[(
-                    'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];',
-                    'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline", '
-                    '"tunnel"];')])
+                    'return !!surface && (m.levels || []).indexOf("WORLD") >= 0;',
+                    'return iid === "tunnel" || (!!surface && (m.levels || []).indexOf("WORLD") >= 0);')])
                 world_fold_ok = (
                     node_available()
                     and "error" not in world_fold_base
@@ -1157,10 +1156,10 @@ else:
                       f"is the rings, which is where the two works meet. CELL CONTENT, TEXTURE and "
                       f"LIGHT-COLOUR are not claimed. The real composer, run in node, carries "
                       f"worldFoldInstruments={world_fold_base.get('worldFoldInstruments')} — "
-                      f"«tunnel» absent — and with the array literal planted to add it, carries "
+                      f"«tunnel» absent — and with the derived predicate planted to admit it, carries "
                       f"worldFoldInstruments={world_fold_mutated.get('worldFoldInstruments')}"
                       if node_available() else
-                      "levels=%s; no node on this machine to run the composer's own array — "
+                      "levels=%s; no node on this machine to run the composer's own derivation — "
                       "EXPECTED, pinned fail rather than a silent pass" % m["levels"])
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "

@@ -706,6 +706,10 @@
       // door carries is the counter-motion's own headroom, which is the 1.12 the module's contract
       // row records for it.
       framings: { "0": { coverCrop: CROP }, "1": { coverCrop: CROP } },
+      surface: { type: "receding-projective-plane", anchor: "measured-hang",
+                 tessellation: { columns: "columns" }, cameraAuthority: "stage",
+                 entry: { mix: 0, work: "a", pose: "flat" },
+                 exit: { mix: 1, work: "b", pose: "flat" } },
       drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
                 "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
                 "ramp", "slew", "oscillate", "node"],

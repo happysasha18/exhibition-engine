@@ -853,6 +853,10 @@
       // the module draws its tile square and stretches the picture into it — and it is what makes
       // the door law keepable on a frame that is not square.
       framings: { "0": { coverCrop: 1 }, "1": { coverCrop: 1 } },
+      surface: { type: "mirrored-tile-floor", anchor: "measured-hang",
+                 tessellation: { tiles: "tiles" }, cameraAuthority: "stage",
+                 entry: { mix: 0, work: "a", pose: "flat" },
+                 exit: { mix: 1, work: "b", pose: "flat" } },
       drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
                 "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
                 "ramp", "slew", "oscillate", "node"],

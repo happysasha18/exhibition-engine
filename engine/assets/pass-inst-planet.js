@@ -948,6 +948,10 @@
       // lab/data/module-contract.json publishes for this module's own two doors: «the flat end is
       // the plain cover-fit of the same texture unit, so both doors frame the picture alike».
       framings: { "0": { coverCrop: 1.0 }, "1": { coverCrop: 1.0 } },
+      surface: { type: "ring-curl-world", anchor: "measured-hang",
+                 tessellation: { wraps: 1 }, cameraAuthority: "stage",
+                 entry: { mix: 0, work: "a", pose: "flat" },
+                 exit: { mix: 1, work: "b", pose: "flat" } },
       drivers: ["progress", "cueProgress", "time", "velocity", "capability", "noise", "static",
                 "curve", "spline", "map", "add", "multiply", "mix", "clamp", "hold", "segment",
                 "ramp", "slew", "oscillate", "node"],
