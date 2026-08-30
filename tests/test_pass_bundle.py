@@ -26,6 +26,7 @@ exactly that rule's own guard — is applied and the violating case is shown to 
 proving the assertion actually depends on the rule's own code rather than on a name.
 """
 import json
+import copy
 import shutil
 import subprocess
 import sys
@@ -139,9 +140,52 @@ if not NODE:
         "RETURN VARIATION · the widened per-passIndex die no longer collapses to two alternating "
         "states",
         "STRUCTURE · the new P1.2 code names no cache or table keyed across pairs",
+        "P4 · shared directional guides gently strengthen an already viable box fold",
+        "P4 red-on-bug · removing the guide corroboration leaves its ranking unchanged",
     ):
         skip(_n, "node is not on this machine")
 else:
+    # ============================================================================ P4 / work guides
+    # Guides are part of each work's wire record, not a precomputed pair classification.  Start
+    # with a real fixture pair whose departing work already has panels, add the same high-confidence
+    # direction to both records, and ask the real composer for its candidates.  This proves that the
+    # optional guide can support an existing fold reading, while its absence still leaves the genre
+    # available; the plant then removes only the corroborating assignment.
+    p4_from = copy.deepcopy(FIX["works"][FIX["pair"]["a"]])
+    p4_to = copy.deepcopy(FIX["works"][FIX["pair"]["b"]])
+    p4_plain = run("genresFor", [p4_from, p4_to])
+    guide = {"edge": {"coherence": 1, "straightness": 1, "angleDeg": 0}}
+    p4_from["guides"] = copy.deepcopy(guide)
+    p4_to["guides"] = copy.deepcopy(guide)
+    p4_guided = run("genresFor", [p4_from, p4_to])
+
+    def box_fit(reading):
+        for genre in reading.get("genres", []):
+            if genre.get("id") == "box-fold":
+                return genre.get("fit"), genre.get("why", "")
+        return None, ""
+
+    p4_plain_fit, _p4_plain_why = box_fit(p4_plain)
+    p4_guided_fit, p4_guided_why = box_fit(p4_guided)
+    check("P4 · shared directional guides gently strengthen an already viable box fold",
+          isinstance(p4_plain_fit, (int, float)) and isinstance(p4_guided_fit, (int, float))
+          and p4_plain_fit > 0 and p4_guided_fit > p4_plain_fit
+          and "measured edge directions agree" in p4_guided_why,
+          "plain=%s guided=%s why=%s" % (p4_plain_fit, p4_guided_fit, p4_guided_why))
+
+    p4_broken = run("genresFor", [p4_from, p4_to], plants=[[
+        "boxFit = corroboratedFit(boxFit, guidePair);", "boxFit = boxFit;"
+    ]])
+    p4_broken_fit, _p4_broken_why = box_fit(p4_broken)
+    if p4_broken.get("missed"):
+        skip("P4 red-on-bug · removing the guide corroboration leaves its ranking unchanged",
+             "the corroborating assignment is not in the shipped source")
+    else:
+        check("P4 red-on-bug · removing the guide corroboration leaves its ranking unchanged",
+              p4_broken_fit == p4_plain_fit and p4_broken_fit != p4_guided_fit,
+              "plain=%s guided=%s planted=%s" %
+              (p4_plain_fit, p4_guided_fit, p4_broken_fit))
+
     # ================================================================================= RULE 1
     NO_MIRACLE = {"tier": "quiet", "miracle": False, "letters": 1}
     MAY_MIRACLE = {"tier": "middle", "miracle": True, "letters": 2}
