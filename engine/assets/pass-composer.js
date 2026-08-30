@@ -4404,6 +4404,15 @@
       })) : 0;
       return clamp01(Math.max(materialShare, substanceShare));
     }
+    // P4: a compact directional guide is optional evidence, never an admission rule.  Two works
+    // support a fold when both have coherent, straight edge fields whose dominant angles agree.
+    function guideAgreement(fromW, toW) {
+      var a = (((fromW || {}).guides || {}).edge || {}), b = (((toW || {}).guides || {}).edge || {});
+      if (![a.coherence, a.straightness, a.angleDeg, b.coherence, b.straightness, b.angleDeg]
+            .every(function (v) { return typeof v === "number" && isFinite(v); })) return 0;
+      var delta = Math.abs(((a.angleDeg - b.angleDeg + 90) % 180 + 180) % 180 - 90) / 90;
+      return clamp01(Math.min(a.coherence * a.straightness, b.coherence * b.straightness) * (1 - delta));
+    }
 
     // EVERY GENRE THIS PAIR COULD CROSS ON, EACH WITH ITS OWN FIT.
     //
@@ -4572,6 +4581,11 @@
             boxWhy += "; the pair's own strongest mirror axes read " + pyText(flt(r4(reflPair)))
               + " on both works, so the fold holds a little further";
           }
+        }
+        var guidePair = guideAgreement(fromW, toW);
+        if (guidePair > 0) {
+          boxFit = corroboratedFit(boxFit, guidePair);
+          boxWhy += "; their measured edge directions agree at " + pyText(flt(r4(guidePair)));
         }
       }
       say("box-fold", { ground: "regions", free: null, axis: "far", miracle: true, mustFold: true,
