@@ -97,9 +97,11 @@ check("PASS-API every exit from running ends in exactly one dock — finish() is
       "settle, fail, cancel and the watchdog must all resolve through the one function that docks")
 
 check("PASS-API the first crossing waits for an already-requested visual layer long enough to survive a cold mobile fetch",
-      "const PASS_LAYER_HOLD_MS = 1200" in SRC and "passLayerWaiters.push" in SRC,
+      "const PASS_LAYER_HOLD_MS = 1200" in SRC and "passLayerWaiters.push" in SRC
+      and "s.onerror = () => {\n        passLayerSet(null);" in SRC
+      and "} catch (e) {\n      passLayerSet(null);" in SRC,
       "the first gesture must wait for layer registration or the bounded availability deadline, "
-      "never race a 350 ms cold-script window")
+      "never race a 350 ms cold-script window; a definitive load failure drains that same wait")
 
 # The host takes the instrument's own reading and reads NOTHING in it. The five instruments agree on
 # one shape — `door`, `buffer`, `reads`, `request`, `applied`, `moved`, `unit`, `held`, `whyNo` — and

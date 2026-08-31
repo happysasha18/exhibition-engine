@@ -3509,9 +3509,19 @@
       const s = document.createElement("script");
       s.src = PASS_SRC;
       s.async = true;
-      s.onerror = () => { passState = "absent"; passNote(passRefusals, { what: "layer", name: PASS_SRC, why: "load failed" }); };
+      // A failed request is a definitive verdict, not a second hidden state.  In particular, a
+      // first gesture can be waiting in `passLayerAwait` while this error arrives; settle that
+      // same queue through `passLayerSet(null)` so it takes one named fallback rather than waiting
+      // for a stale availability timer after the browser already knows the layer will not land.
+      s.onerror = () => {
+        passLayerSet(null);
+        passNote(passRefusals, { what: "layer", name: PASS_SRC, why: "load failed" });
+      };
       document.head.appendChild(s);
-    } catch (e) { passState = "absent"; passNote(passRefusals, { what: "layer", name: PASS_SRC, why: "no door" }); }
+    } catch (e) {
+      passLayerSet(null);
+      passNote(passRefusals, { what: "layer", name: PASS_SRC, why: "no door" });
+    }
   }
 
   // The diagnostic surface: technical rows only — the register, the lifecycle, the refusals, the
