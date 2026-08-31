@@ -51,9 +51,9 @@ check("four fitting materials turn the passive hand signal into a bounded middle
       and 'at: 0, value: 0' in COMPOSER and 'at: 1, value: 0' in COMPOSER,
       "interaction may alter a living middle but must add zero at both doors")
 
-check("route selection reads a whole-passage scene and its expressive handles",
-      "function passSceneOf(passage)" in PASS and "function passRouteNovelty(scene)" in PASS
-      and '"control:" + key' in PASS and "passSetDistance(scene.controls" in PASS
+check("route selection prefers a fresh family and primary but never gates a passage",
+      "repeatsPrevious" in PASS and "passRouteFamilyCount" in PASS
+      and "passRouteInstrumentCount" in PASS
       and "if (best !== null)" in PASS and "return passage.score" in PASS)
 
 check("diagnostics expose the applied stack for every remembered route edge",

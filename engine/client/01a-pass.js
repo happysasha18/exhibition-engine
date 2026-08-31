@@ -449,6 +449,9 @@
     passViewerLingered = [];
     passViewerSkipped = [];
     passViewerStanding = null;
+    passRouteFamilyCount = Object.create(null);
+    passRouteInstrumentCount = Object.create(null);
+    passRouteWorldSeen = false;
   }
   function passVisitSeed() {
     if (!passVisit) {
@@ -1095,73 +1098,6 @@
     const i = cues[0] && cues[0].instrument;
     return i && i.id ? String(i.id) : null;
   }
-  // A passage is selected as a scene, rather than by one privileged instrument. The score already
-  // names the material reaching the eye: its voices, levels, camera and expressive handles. This
-  // extracts that live shape; no pair id, baked map or hand-written effect family enters it.
-  function passSceneOf(passage) {
-    const score = passage && passage.score;
-    const scene = { tokens: [], controls: [] };
-    if (!score || !Array.isArray(score.cues)) return scene;
-    const add = (into, token) => { if (token && into.indexOf(token) < 0) into.push(token); };
-    const bucket = (value, span) => {
-      if (!Number.isFinite(+value)) return "set";
-      if (!span || !(span.hi > span.lo)) return String(Math.round(+value * 4) / 4);
-      return String(Math.max(0, Math.min(4, Math.round(4 * ((+value - span.lo) / (span.hi - span.lo))))));
-    };
-    const plan = passage.plan || {};
-    add(scene.tokens, "road:" + String(passage.road || plan.road || "-"));
-    add(scene.tokens, "shape:" + String(passage.shape || plan.shape || "-"));
-    add(scene.tokens, "middle:" + String((plan.spec && plan.spec.middle && plan.spec.middle.kind) || "none"));
-    add(scene.tokens, "voices:" + String(score.cues.length));
-    add(scene.tokens, "camera:" + (score.camera && score.camera.lead ? "lead" : "carried"));
-    score.cues.forEach((cue) => {
-      const iid = cue && cue.instrument && cue.instrument.id ? String(cue.instrument.id) : null;
-      if (!iid) return;
-      add(scene.tokens, "instrument:" + iid);
-      (cue.levels || []).forEach((level) => add(scene.tokens, "level:" + String(level)));
-      Object.keys(cue.tracks || {}).sort().forEach((handle) => {
-        if (handle === "mix" || handle === "clock") return;
-        const track = cue.tracks[handle] || {};
-        const node = (cue.nodes || {})[track.node || (cue.id + "-" + handle)] || null;
-        const span = passHandleSpan(iid, handle);
-        const form = node && node.op ? String(node.op) : "driven";
-        let from = null, to = null;
-        if (node && node.op === "static") from = to = +node.value;
-        else if (node && node.op === "mix") { from = +node.a; to = +node.b; }
-        const key = iid + ":" + handle + ":" + form + ":"
-          + bucket(from, span) + ">" + bucket(to, span);
-        add(scene.controls, key);
-        add(scene.tokens, "control:" + key);
-      });
-    });
-    scene.tokens.sort(); scene.controls.sort();
-    return scene;
-  }
-  function passSetDistance(a, b) {
-    const aa = Array.isArray(a) ? a : [], bb = Array.isArray(b) ? b : [];
-    if (!aa.length && !bb.length) return 0;
-    let common = 0, i = 0, j = 0;
-    while (i < aa.length && j < bb.length) {
-      if (aa[i] === bb[j]) { common++; i++; j++; }
-      else if (aa[i] < bb[j]) i++; else j++;
-    }
-    return 1 - common / Math.max(1, aa.length + bb.length - common);
-  }
-  // A candidate opens territory when it is unlike its nearest predecessor. Scene form and control
-  // choreography travel separately, so a returning material can still reveal a different region of
-  // its own parameter space.
-  function passRouteNovelty(scene) {
-    const played = passRoutePlayed.map((step) => step && step.scene).filter(Boolean);
-    if (!played.length) return { local: 1, scene: 1, controls: 1 };
-    const last = played[played.length - 1];
-    let nearestScene = 1, nearestControls = 1;
-    played.forEach((before) => {
-      nearestScene = Math.min(nearestScene, passSetDistance(scene.tokens, before.tokens));
-      nearestControls = Math.min(nearestControls, passSetDistance(scene.controls, before.controls));
-    });
-    return { local: passSetDistance(scene.tokens, last.tokens), scene: nearestScene,
-             controls: nearestControls };
-  }
   let passRoutePlayed = [];
   // ---- THE VISIT'S OWN MEMORY OF ITSELF (charter shelf 16's fourth pipeline step) ----------------
   // The shelf's dice run in order: base weights, letter cooldowns, the day's weather, THE VIEWER'S
@@ -1196,6 +1132,9 @@
   let passViewerLingered = [];    // the letters of the passages it stayed with
   let passViewerSkipped = [];     // the letters of the passages it walked away from
   let passViewerStanding = null;  // the arrival now standing: when it landed, what it cost, its letters
+  let passRouteFamilyCount = Object.create(null);
+  let passRouteInstrumentCount = Object.create(null);
+  let passRouteWorldSeen = false;
   // The pivot as a thing rather than a strength: what the passage holds, without the number the
   // pair happens to hold it at. Two passes hold the same pivot when these three agree.
   function passPivotOf(plan) {
@@ -2293,14 +2232,14 @@
     // race were unreachable. The condition now bounds the race by the dice alone; what ENDS it early
     // is the two stated rules at the foot of the loop, which is what they were written for.
     let best = null, bestReadings = null, bestWhy = null, bestDrift = null, bestCooled = null;
-    let bestSeed = request.seed;
+    const routeLast = passRoutePlayed.length ? passRoutePlayed[passRoutePlayed.length - 1] : null;
     // A RETURN TRIES THE EDGE'S OWN HELD PASS FIRST, and takes it outright the moment it legally
     // casts (charter shelf 16, amended tonight: "a route's pressure toward variety ... never
     // outranks the kinship a return owes on an edge already walked ... owed on what is DRAWN — the
     // instrument, the gesture it makes and the level it makes it at"). Scoring the held die in the
-    // same race as the others is one of the two things that defeated it: route novelty exists to
-    // space two DIFFERENT edges apart, and scored the one die that is SUPPOSED to repeat as if it
-    // were the weakest option. So it is tried here, outside the race,
+    // same race as the others is one of the two things that defeated it: `repeatsFamily` and
+    // `repeatsPrimary` exist to space two DIFFERENT edges apart, and scored the one die that is
+    // SUPPOSED to repeat as if it were the weakest option. So it is tried here, outside the race,
     // and taken whenever the composer does not decline it; the scored dice below run unchanged for
     // a first crossing (`edge.memory` is null then) and, for a return, only as a fallback where the
     // held pass cannot legally cast.
@@ -2352,11 +2291,12 @@
         cooledStood = (edge.cooled && fam === edge.cooled)
           ? "the family «" + fam + "» played last on this edge and is still cooling" : null;
         rolls.push({ seed: request.seed, family: fam, instrument: primary,
-                     scene: passSceneOf(got), novelty: passRouteNovelty(passSceneOf(got)),
+                     repeatsPrevious: (!!routeLast && routeLast.family === fam)
+                                      || (!!routeLast && routeLast.instrument === primary),
                      why: refused || cooledStood });
         // The held pass ends the race before it starts — §4.8 takes it outright — so it carries no
         // readings of its own: there is nothing for it to be compared against.
-        best = got; bestReadings = null; bestWhy = refused; bestDrift = drifted; bestSeed = request.seed;
+        best = got; bestReadings = null; bestWhy = refused; bestDrift = drifted;
         bestCooled = cooledStood; heldTook = true;
       } else {
         request.walkMemory = liveWalk;
@@ -2378,6 +2318,13 @@
       if (got.declined) break;
       const fam = passFamilyOf(got.plan);
       const primary = passPrimaryOf(got);
+      // THE ONE INSTRUMENT NAME TYPED INTO A DECISION on this road, and it is the underived half of
+      // rank 8 below — see the note there, and `passRouteRemember`, which reads the same name to
+      // decide whether the route has opened a spatial sentence at all. It stands until his word says
+      // what a spatial sentence is; the manifests publish each instrument's own levels and do not
+      // agree with this name, so reading them would change the preference rather than ground it.
+      const worldAccent = primary === "parquet" || !!(got.score && got.score.camera
+                                                       && got.score.camera.lead);
       // THE DOOR BREATHES BEFORE THE PASS IS READ, because the drifted pass is the one that would
       // play: reading the composer's own numbers and then playing others would leave §4.8's two
       // readings measuring a pass no one ever sees.
@@ -2386,8 +2333,8 @@
       refused = read.why;
       cooledStood = (edge.cooled && fam === edge.cooled)
         ? "the family «" + fam + "» played last on this edge and is still cooling" : null;
-      const scene = passSceneOf(got);
-      const novelty = passRouteNovelty(scene);
+      const repeatsFamily = !!routeLast && routeLast.family === fam;
+      const repeatsPrimary = !!routeLast && routeLast.instrument === primary;
       // ---- THE ROLL RACE, SWEPT 2026-08-25 --------------------------------------------------------
       // WHAT STOOD HERE. Eight readings were multiplied by eight numbers — 2, 1, 3, 3, 2, 2, 3 and a
       // ×10 — and added into one score, and the largest score played. Not one of the eight comes from
@@ -2436,35 +2383,50 @@
       //     than any pass that is, so null ranks above every measured distance. That is what the
       //     retired ×10 was reaching for and it needs no number: the old clamp made null merely TIE
       //     with any distance past a tenth, which is a claim about a tenth that nothing supports.
-      //   4 THE NEXT SCENE is far from the immediately preceding scene: a distinct camera, level
-      //     structure, number of voices, material or parameter reading counts where it reaches the
-      //     emitted score. This is what keeps a visit from saying «the same effect again».
-      //   5 THE NEXT SCENE opens territory across the entire route: it is judged against its nearest
-      //     already-played scene, not against one privileged effect name or an arbitrary quota.
-      //   6 ITS EXPRESSIVE HANDLES occupy a region the route has not already spent. Handle identity,
-      //     node form and normalised range all come from the live score, so a material can return in
-      //     a different gesture without the director being told a list of effects.
+      //   4 THE INSTRUMENT DOES NOT REPEAT THE STEP JUST PLAYED, and 5 the family does not. The
+      //     amendment orders these two as well, in the same sentence: «That kinship is owed on what
+      //     is DRAWN — the instrument, the gesture it makes and the level it makes it at, because
+      //     «тот же эффект» is his own word for the thing, while a family is a name a composition
+      //     gives its own pivot and nobody can see one». What a person can see outranks what nobody
+      //     can, so the instrument stands above the family wherever both are read.
+      //   6 THE INSTRUMENT IS ONE THIS ROUTE HAS NOT SHOWN, and 7 the family is one it has not. The
+      //     same two things as 4 and 5, read over the whole route instead of over the step just
+      //     taken. Below them because a repeat the person walks straight into is the one they can
+      //     see; a repeat some rooms back is the same thing at a distance. Instrument above family
+      //     again, on the same sentence.
+      //   8 A SPATIAL SENTENCE THIS ROUTE HAS NOT OPENED — and this one is NOT derived. Ranks 1 to 7
+      //     each read a fact the charter or §4.8 names; this reads whether the passage is «a
+      //     measured parquet ground or a camera-led tonic», and neither half comes off anything: the
+      //     camera lead is a field of the score, but which instruments make a spatial sentence is a
+      //     name typed here. The instrument manifests do publish the levels each one works at, and
+      //     they do not agree with the name — `parquet` declares SURFACE and CELL, while `boxfold`
+      //     and `planet` are the two that declare WORLD — so reading the manifest would not preserve
+      //     this preference, it would replace it with a different one. It is left standing, and left
+      //     LAST, which is the whole of what can honestly be done with it: at the foot of the order
+      //     it can only separate two candidates that every derived reading above it read alike, and
+      //     it can no longer outrank the kinship it used to outrank on its own. What it needs is his
+      //     word on what a spatial sentence is, after which it can be read off the manifest like any
+      //     other fact about an instrument.
       //
       // NO CANDIDATE IS SCORED OUT OF THE RACE. Every reading is a preference and none is a fence:
       // the comparison only ever asks which of two candidates stands higher, so the worst-reading
       // candidate on every rank still plays where it is the only one. The race resolves for every
       // pair because the first roll takes the lead unconditionally and is only ever replaced by one
       // that stands strictly higher.
-      // The first three readings belong to this edge and preserve the return contract. The rest
-      // belong to the whole visit: a candidate opens territory when its scene and actual handle
-      // choreography are farther from the scenes the visitor has already watched.
       const readings = [
         read.kin ? 1 : 0,
         cooledStood ? 0 : 1,
         read.distance === null ? Infinity : read.distance,
-        novelty.local,
-        novelty.scene,
-        novelty.controls,
+        repeatsPrimary ? 0 : 1,
+        repeatsFamily ? 0 : 1,
+        passRouteInstrumentCount[primary] ? 0 : 1,
+        passRouteFamilyCount[fam] ? 0 : 1,
+        (!passRouteWorldSeen && worldAccent) ? 1 : 0,
       ];
       rolls.push({ seed: request.seed, family: fam, instrument: primary,
-                   scene: scene, novelty: novelty,
+                   repeatsPrevious: repeatsFamily || repeatsPrimary,
                    readings: readings.slice(), why: refused || cooledStood });
-      // THE TIE-BREAK IS A RULE AND NO LONGER AN ACCIDENT. Two candidates equal on all six
+      // THE TIE-BREAK IS A RULE AND NO LONGER AN ACCIDENT. Two candidates equal on all eight
       // readings are candidates the walk can state no preference between, and the one already
       // leading stays. That is not «whichever was tried first» by chance: die 0's seed is
       // `passSeedFor(edge.key)`, the edge's own name struck once, and every later die is a RE-ROLL
@@ -2475,10 +2437,16 @@
       // asks. `passRollBetter` is that rule, and it is strict on purpose.
       if (best === null || passRollBetter(readings, bestReadings)) {
         best = got; bestReadings = readings; bestWhy = refused; bestDrift = drifted;
-        bestCooled = cooledStood; bestSeed = request.seed;
+        bestCooled = cooledStood;
       }
-      // Every live candidate is considered. Stopping at the first clean die is how a route can
-      // repeatedly show one good-looking answer while leaving the rest of its vocabulary unseen.
+      // THE WALK STOPS ASKING when the roll stands at the best of every reading that CAN stand at
+      // its best on this step — ranks 1 to 5. Those five are about this edge and the step just
+      // taken, so a candidate can top all of them on any route. Ranks 6 to 8 are about what the
+      // whole route has already shown, and on a route that has already shown every family there is
+      // no candidate left that could top them; a stopping rule that asked for those too would be a
+      // rule that can never be satisfied, and the walk would burn every die to learn nothing.
+      if (read.kin && !cooledStood && read.distance === null
+          && !repeatsFamily && !repeatsPrimary) break;
       // A roll that read as a replay is said at once, and not only where the last one does too: a
       // pass that was passed over because it read that way is exactly what a person looking at the
       // surface is trying to find.
@@ -2488,9 +2456,11 @@
       // third would be the same waste again. Read off `rolls`' own length rather than `i`: on a
       // return whose held instrument declined, `heldStart` skips die 0 without a roll ever pushed
       // for it, so `i` and the array's own index no longer walk together.
+      if (rolls.length > 1
+          && rolls[rolls.length - 1].family === rolls[rolls.length - 2].family) break;
     }
     if (best !== null) { passage = best; refused = bestWhy; drifted = bestDrift;
-                         cooledStood = bestCooled; request.seed = bestSeed; }
+                         cooledStood = bestCooled; }
     // ONE RECORD CARRIES THE WHOLE PASSAGE: what was asked, what came back, and — written on later,
     // when the host reports — what the instrument applied on the buffer it drew on or the refusal it
     // named. `applied` is the runtime truth and it cannot be known before the frame is drawn.
@@ -2605,9 +2575,13 @@
                            // `stack`: a repeat instrument still stands in `stack`, it just is not
                            // the miracle a second time.
                            miracle: miracle,
-                           scene: passSceneOf(row),
                            world: instrument === "parquet" || !!(row.score && row.score.camera
                                                                   && row.score.camera.lead) });
+    passRouteFamilyCount[family] = (passRouteFamilyCount[family] || 0) + 1;
+    passRouteInstrumentCount[instrument] = (passRouteInstrumentCount[instrument] || 0) + 1;
+    if (instrument === "parquet" || (row.score && row.score.camera && row.score.camera.lead)) {
+      passRouteWorldSeen = true;
+    }
     passEdgePut();
     passMark("memory", cmd, edgeKey + " " + direction + " ×" + edge[direction].passCount);
     return edge[direction];
