@@ -3300,15 +3300,11 @@
   // itself failing — is judged once and does not change mid-visit; none of those are held here.
   // What IS held is the narrow window between that fetch starting and its script's own load event,
   // which a gesture can easily land inside on a visit's very first step. `passLayerPending` names
-  // the window; `passLayerAwait` waits it out, bounded, before falling back to the plain glide.
-  // FIRST-CROSSING AVAILABILITY DEADLINE.  The layer has already been requested when the visitor
-  // reaches a hang, so this is not a theatrical pause: it is the short, bounded chance for the
-  // request already in flight to become the renderer before the very first gesture is allowed to
-  // fall back.  A 350 ms window was shorter than a cold mobile script fetch and made the first
-  // crossing depend on network timing.  1200 ms is deliberately only an availability deadline;
-  // a successful load resolves immediately, while a hung/failing request still gives the walk its
-  // ordinary glide instead of trapping the visitor.
-  const PASS_LAYER_HOLD_MS = 1200;
+  // the window; `passLayerAwait` waits for the request's actual verdict.  An arbitrary timer here
+  // made the visitor's very first crossing depend on cache temperature: the walk glided after
+  // 1200 ms although the requested renderer was still on its way.  A script error is a real
+  // verdict and drains this same queue through `passLayerSet(null)`; a slow successful request is
+  // not a verdict and must not turn the authored passage into a DOM glide.
   function passLayerPending(cmd) {
     // `cmd.reduced` dropped from this bail-out with the same word as `passVisualTakes` above: a
     // reduced-motion visitor's very first gesture is now worth waiting the same bounded window for,
@@ -3320,8 +3316,7 @@
   function passLayerAwait(cmd, done) {
     if (!passLayerPending(cmd)) { done(false); return; }
     let rung = false;
-    const finishOnce = (ok) => { if (rung) return; rung = true; clearTimeout(t); done(ok); };
-    const t = setTimeout(() => finishOnce(false), PASS_LAYER_HOLD_MS);
+    const finishOnce = (ok) => { if (rung) return; rung = true; done(ok); };
     passLayerWaiters.push(() => finishOnce(!!passLayer));
   }
   // A layer that throws stands for the rest of the visit and is dropped only after several throws
