@@ -1761,6 +1761,78 @@
              named: !!h.banding };
   }
 
+  // The return judge needs the two ends a handle actually travels between.  Scores no longer use
+  // only literal `mix(a,b)` tracks: the composer frequently puts that journey through map/curve
+  // and spline nodes in order to make the middle breathe without breaking either door.  Reading
+  // only static and mix nodes made those handles invisible to the reverse-video check, precisely
+  // where the passage had acquired its nonlinear character.  This deliberately evaluates just
+  // progress=0 and progress=1, not a second renderer: a node depending on time, noise, pointer or
+  // remembered slew has no stable endpoint proof here and is honestly left out.
+  function passNodeEnds(spec, nodes, depth) {
+    if (spec === null || spec === undefined || depth > 32) return null;
+    if (typeof spec === "number" && Number.isFinite(spec)) return [spec, spec];
+    if (typeof spec !== "object") return null;
+    if (Number.isFinite(+spec.v) && spec.op === undefined && spec.node === undefined
+        && spec.source === undefined) return [+spec.v, +spec.v];
+    if (spec.node) return passNodeEnds((nodes || {})[spec.node], nodes, (depth || 0) + 1);
+    if (spec.source !== undefined) return spec.source === "progress" ? [0, 1] : null;
+    const op = spec.op;
+    function endsOf(x) { return passNodeEnds(x, nodes, (depth || 0) + 1); }
+    function num(x) {
+      if (typeof x === "number" && Number.isFinite(x)) return x;
+      return x && Number.isFinite(+x.v) ? +x.v : null;
+    }
+    if (op === "static") return Number.isFinite(+spec.value) ? [+spec.value, +spec.value] : null;
+    if (op === "curve") {
+      const e = endsOf(spec["in"]); if (!e) return null;
+      function curveAt(x) {
+        x = Math.max(0, Math.min(1, x));
+        if (spec.name === "linear") return x;
+        if (spec.name === "smooth") return x * x * (3 - 2 * x);
+        if (spec.name === "in") return x * x;
+        if (spec.name === "out") return 1 - (1 - x) * (1 - x);
+        return null;
+      }
+      const a = curveAt(e[0]), b = curveAt(e[1]);
+      return a === null || b === null ? null : [a, b];
+    }
+    if (op === "spline" || op === "hold" || op === "segment") {
+      const pts = spec.points;
+      if (!Array.isArray(pts) || !pts.length) return null;
+      const a = num(pts[0] && pts[0].value), b = num(pts[pts.length - 1] && pts[pts.length - 1].value);
+      return a === null || b === null ? null : [a, b];
+    }
+    if (op === "map") {
+      const e = endsOf(spec["in"]), f = spec.from || [0, 1], t = spec.to || [0, 1];
+      const f0 = num(f[0]), f1 = num(f[1]), t0 = num(t[0]), t1 = num(t[1]);
+      if (!e || f0 === null || f1 === null || t0 === null || t1 === null || f0 === f1) return null;
+      return [t0 + (t1 - t0) * ((e[0] - f0) / (f1 - f0)),
+              t0 + (t1 - t0) * ((e[1] - f0) / (f1 - f0))];
+    }
+    if (op === "add" || op === "multiply") {
+      if (!Array.isArray(spec["in"])) return null;
+      let a = op === "add" ? 0 : 1, b = a;
+      for (let i = 0; i < spec["in"].length; i++) {
+        const e = endsOf(spec["in"][i]); if (!e) return null;
+        if (op === "add") { a += e[0]; b += e[1]; }
+        else { a *= e[0]; b *= e[1]; }
+      }
+      return [a, b];
+    }
+    if (op === "mix") {
+      const a = endsOf(spec.a), b = endsOf(spec.b), t = endsOf(spec.t);
+      return (!a || !b || !t) ? null
+        : [a[0] + (b[0] - a[0]) * t[0], a[1] + (b[1] - a[1]) * t[1]];
+    }
+    if (op === "clamp") {
+      const e = endsOf(spec["in"]), lo = spec.min === undefined ? -Infinity : num(spec.min),
+            hi = spec.max === undefined ? Infinity : num(spec.max);
+      if (!e || lo === null || hi === null) return null;
+      return [Math.max(lo, Math.min(hi, e[0])), Math.max(lo, Math.min(hi, e[1]))];
+    }
+    return null;
+  }
+
   // WHAT A PASS LOOKED LIKE, in the few numbers a reversal can be read off: the cues in the order
   // they play, each with its instrument, its window as a fraction of the passage, and every handle
   // it drives with the two ends that handle travels between. A static handle's two ends are the
@@ -1778,11 +1850,9 @@
         if (name === "mix" || name === "clock" || room <= 0) return;
         const node = (c.nodes || {})[((c.tracks[name] || {}).node) || (c.id + "-" + name)];
         if (!node) return;
-        if (node.op === "static" && Number.isFinite(+node.value)) {
-          h[name] = [+node.value, +node.value];
-        } else if (node.op === "mix" && Number.isFinite(+node.a) && Number.isFinite(+node.b)) {
-          h[name] = [+node.a, +node.b];
-        } else return;
+        const ends = passNodeEnds(node, c.nodes || {}, 0);
+        if (!ends || !Number.isFinite(ends[0]) || !Number.isFinite(ends[1])) return;
+        h[name] = ends;
         room -= 1;
       });
       return { id: c.id, i: (c.instrument && c.instrument.id) || null,
