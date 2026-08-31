@@ -129,6 +129,11 @@ SUITES = [
     # Cause A (2026-08-31, V2-CONVERGENCE-PLAN-2026-08-31.md Phase 1) — the casting tier ladder
     # ranks instead of gating, registered in the pass that wrote it.
     "pass_cast_tiers",
+    # Cause B (2026-08-31/09-01, V2-CONVERGENCE-PLAN-2026-08-31.md Phase 2) — the fleet-wide,
+    # by-construction proof that a crop cancels at a real door (box-fold and hero's own repair),
+    # registered in the pass that wrote it. Reads RED as registered: droste's own row is left red on
+    # purpose, a genuine, owned finding (see the file's own docstring) rather than a regression.
+    "pass_door_invariant",
 ]
 
 

@@ -392,13 +392,16 @@
       return { w: 1, h: 1, drawn: false, given: false };
     }
 
-    // Cover-fit a work into the frame, and nothing beyond it: the same fit the host binds as
-    // `fitA`/`fitB`, spelled here because the pose's own geometry reads it too.
+    // Cover-fit a work into the frame, multiplied by the door's own crop, and nothing beyond it: the
+    // same fit the host binds as `fitA`/`fitB`, spelled here because the pose's own geometry reads it
+    // too. The host's own `seated` divides this back to identity as a real door is neared — the same
+    // channel every other cropped instrument in the fleet already uses — so `warp[0]` below carries
+    // only the STORY's own travel, normalised to 1 at the door, rather than the door's crop itself.
     function fit(iw, ih, w, h) {
       var fa = w / Math.max(h, 1);
       var ia = iw / Math.max(ih, 1);
-      if (ia > fa) return [fa / ia, 1, 0, 0];
-      return [1, ia / fa, 0, 0];
+      if (ia > fa) return [fa / ia * CROP_0, CROP_0, 0, 0];
+      return [CROP_0, ia / fa * CROP_0, 0, 0];
     }
 
     // ---- HOW MANY WEDGES THE WINDOW OPENS TO, AND WHOSE NUMBER THAT IS ------------------------------
@@ -501,8 +504,11 @@
       // THE FRAME'S OWN READING OF THE PICTURE (hero.js:447-452). The crop opens on almost the whole
       // photograph and pulls back once the folds have taken it over; a narrow frame keeps the full
       // height of a square source and takes a column out of it, and the sample point comes to the
-      // middle as the story opens.
-      var crop = (CROP_0 + CROP_PULL * ss(0.02, 0.52, s)) * (1 + 0.010 * Math.sin(t * 0.19) * lean);
+      // middle as the story opens. THE DOOR'S OWN SHARE of it now travels through `fit`/`seated`
+      // (above), so what rides here is only the STORY's own further pull, divided down to exactly 1
+      // at the door — the same total the two multiplied together always gave, everywhere but there.
+      var crop = ((CROP_0 + CROP_PULL * ss(0.02, 0.52, s)) / CROP_0)
+               * (1 + 0.010 * Math.sin(t * 0.19) * lean);
       var narrow = 1 - clamp01((af - 0.60) / 0.75);
       var open = ss(0.02, 0.50, s);
       var base = mix(mix(0.54, 0.50, narrow), 0.50, open);
@@ -525,8 +531,9 @@
       var fB = st.fitB || fit(st.bw || 1, st.bh || 1, grid.w, grid.h);
       var cx = clamp01(typeof st.centreX === "number" ? st.centreX : 0.5);
       var cy = clamp01(typeof st.centreY === "number" ? st.centreY : 0.5);
-      var cxF = clamp((cx - 0.5) * af / Math.max(fA[0] * CROP_0, 1e-6), -af / 2, af / 2);
-      var cyF = clamp((0.5 - cy) / Math.max(fA[1] * CROP_0, 1e-6), -0.5, 0.5);
+      // `fA` already carries the door's own crop (fit's own return, above) — not a second time here.
+      var cxF = clamp((cx - 0.5) * af / Math.max(fA[0], 1e-6), -af / 2, af / 2);
+      var cyF = clamp((0.5 - cy) / Math.max(fA[1], 1e-6), -0.5, 0.5);
       var cenx = (cxF + (px - 0.5) * 0.20) * lean;
       var ceny = (cyF + (0.5 - py) * 0.15) * lean;
 
@@ -639,12 +646,13 @@
         var qx = (pxi / W - 0.5) * af, qy = 0.5 - pyi / H;
         var got = uvAt(v, f, qx, qy);
         // the door's own framing, written from first principles: the plain cover fit about the
-        // picture's own middle, cropped by the crop the `framings` block publishes
-        var wx = 0.5 + (qx / af) * f[0] * CROP_0;
-        var wy = 0.5 - qy * f[1] * CROP_0;
+        // picture's own middle, cropped by the crop the `framings` block publishes — `f` (v.fitA)
+        // already carries that crop, since `fit` itself does now, so it stands here once and not twice
+        var wx = 0.5 + (qx / af) * f[0];
+        var wy = 0.5 - qy * f[1];
         // the departure, carried back into the frame's own units so it can be counted in points
-        var ex = (got[0] - wx) / Math.max(f[0] * CROP_0, 1e-6) * af;
-        var ey = (got[1] - wy) / Math.max(f[1] * CROP_0, 1e-6);
+        var ex = (got[0] - wx) / Math.max(f[0], 1e-6) * af;
+        var ey = (got[1] - wy) / Math.max(f[1], 1e-6);
         worst = Math.max(worst, Math.sqrt(ex * ex + ey * ey) * H / 2);
         walked++;
       }

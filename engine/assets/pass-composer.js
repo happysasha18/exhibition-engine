@@ -4912,9 +4912,31 @@
           + "fleet's own richest published budget of " + RESOURCE_CEILING[over]) };
     }
 
-    // RULE 5 — SURFACE HANDOVER. STUBBED, ON PURPOSE, PENDING P3. Which cue's own render surface a
-    // bundle hands to the next is P3's own contract to write; until it exists every bundle is legal
-    // by this rule, so nothing here refuses a bundle against a rule that has not been designed yet.
+    // RULE 5 — SURFACE HANDOVER. STILL STUBBED, AND THIS IS A RECORDED DEFECT RATHER THAN A REPAIR
+    // (Phase 2 revisited, 2026-09-01). What this rule OWES: refuse a bundle whose own cast
+    // instrument's declared framing cannot hand over cleanly to the stage hang pose — the general
+    // repair that would have refused box-fold's own defective bundle at plan time, before a visitor
+    // ever saw the seam, rather than relying on a downstream watchdog to clean up after the fact
+    // (docs/V2-CONVERGENCE-PLAN-2026-08-31.md, Phase 2, cause B). It does not do that yet. Nothing
+    // stands here that reads any of the crop-cancellation evidence Phase 2 actually produced — a
+    // legality rule refuses a bundle for a property OF THAT BUNDLE, and «a suite check happens to be
+    // red» is not something a bundle can be planted with to prove a red-on-bug row against, so a rule
+    // that read tests/test_pass_door_invariant.py's own verdict would not be testable by this file's
+    // own standard and was rejected on exactly that ground rather than shipped anyway.
+    //
+    // A NARROWER CANDIDATE WAS ALSO CHECKED AND IS PROVABLY VACUOUS: a rule comparing a bundle's own
+    // PLANNED doors against each instrument's DECLARED doors. All 27 manifests declare the identical
+    // `doors: {in: {handle: "mix", value: 0}, out: {handle: "mix", value: 1}}`, and this file's own
+    // bundle planner hardcodes that same pair for every instrument it plans against
+    // (pass-composer.js:4192-4193) — so a rule comparing the two could never once disagree with
+    // itself and could never fire, which is the exact vacuous-gate shape this project has reopened
+    // rows for twice before.
+    //
+    // WHAT WOULD ACTUALLY CLOSE THIS RULE: a property of the CAST INSTRUMENT alone, known before any
+    // bundle is planned, that is provably necessary and sufficient for identity-cancellation at a
+    // real door — not read off a suite's own pass/fail, and not vacuous against this file's own
+    // hardcoded door pair. No such property was found in this pass; the search and its two rejected
+    // candidates are recorded here for whoever writes it next.
     function surfaceHandoverLegal() { return { ok: true, why: null }; }
 
     // CAPABILITY. A BOUND ON WORK EXAMINED, NEVER ON QUALITY — a fact about the enumeration's own

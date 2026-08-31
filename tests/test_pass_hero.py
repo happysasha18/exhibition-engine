@@ -800,8 +800,12 @@ else:
                                 % json.dumps(fit_fallback))
                 fa_frame = VW / float(VH)
                 ia_frame = 1600 / 900.0
-                expect_fit = ([fa_frame / ia_frame, 1.0, 0.0, 0.0] if ia_frame > fa_frame
-                              else [1.0, ia_frame / fa_frame, 0.0, 0.0])
+                # `fit`'s own return now carries the door's own crop (CROP_0), the same channel the
+                # host's `seated` divides back to identity as a real door is neared — so the fallback
+                # this suite computes independently multiplies it in too, matching the file's own
+                # formula rather than the plain cover fit the file no longer returns unmultiplied.
+                expect_fit = ([fa_frame / ia_frame * CROP_0, CROP_0, 0.0, 0.0] if ia_frame > fa_frame
+                              else [CROP_0, ia_frame / fa_frame * CROP_0, 0.0, 0.0])
                 check(BROWSER_ROWS[19],
                       v_given["fitA"] == [0.61, 0.83, 0.0, 0.0]
                       and all(abs(a - b) < 1e-9 for a, b in zip(v_fallback["fitA"], expect_fit))

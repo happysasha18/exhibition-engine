@@ -24,8 +24,46 @@ WHAT IS COMPARED, AND AGAINST WHAT.
 The score below is this file's own: one cue naming the woven instrument, every handle tracked so the
 picture is a function of progress alone. It needs no lab tree, so these rows never skip for a
 missing read-only source.
+
+REAL_ROWS (added 2026-08-31, Phase 2 item 5's own verification standard). The same two doors, driven
+instead by a real, planner-composed score that casts box-fold, hero and liquid — `REAL_SCORES` below,
+found by the real `pass-composer.js` against the real 121-work fleet, never hand-typed. Two red-on-bug
+rows follow, re-serving the same site with box-fold's or hero's own pre-repair instrument file swapped
+in and re-driving the identical real bundle through a fresh browser session: a crop that fails to
+cancel at a real door reddens there and nowhere else.
+
+BOX-FOLD'S REAL-PAIR ROWS STILL READ 37.5/255, NOT ZERO — READ THIS BEFORE CALLING IT A REGRESSION
+(2026-09-01). Pixel-level analysis (the stripe test pattern this fixture serves has an exact,
+measurable period) showed the mismatch is a CONSTANT ~3px positional offset, not a scale/crop error —
+the stripe period matches DOM to canvas exactly, so cause B's own crop-cancellation channel (`fit`/
+`seated`, proven by `tests/test_pass_door_invariant.py`'s own red-on-bug row and by this file's own
+red-on-bug row below) is genuinely repaired. The residual is CAUSE F: box-fold is the fleet's only
+`cameraAuthority:"own"` instrument, and its own camera pose does not fully cancel to the stage's hang
+anchor at a real door — a separate mechanism from cause B, named in the plan, homed before Phase 4
+item 3, and explicitly out of this phase's own scope. Hero and liquid's own real-pair rows read clean
+(0.55-0.56 of 255) on both doors, confirming the crop-cancellation repair itself is not the source of
+box-fold's own remaining number.
+
+TWO KNOWN LIMITS OF THIS FILE'S OWN REAL-PAIR RIG, READ HONESTLY RATHER THAN HIDDEN (2026-09-01):
+  · THE RED-ON-BUG ROWS ARE NOT THE PRIMARY PROOF, AND THEIR OWN READING CAN VARY RUN TO RUN. The
+    site fixture this file drives deals its own pair of placeholder images at random per browser
+    session; a high-frequency image makes a small positional/crop error obvious in a pixel mean, a
+    smooth one can mask the same error entirely. A run where a red-on-bug row here reads unexpectedly
+    green is this randomness, not a claim the underlying bug returned — `tests/test_pass_door_
+    invariant.py`'s own red-on-bug row is the deterministic proof cause B's repair holds, arithmetic
+    on four numbers with no image and no randomness in it, and is what to trust if this file's own
+    red-on-bug rows ever disagree with it.
+  · HERO'S OWN DEPARTING-DOOR ROW HAS READ "the pass never took the frame" on more than one run,
+    while its ARRIVING-door row (the same real score, the same instrument) reads clean every time.
+    Read as a `declare`/`offer` refusal at the rig level — box-fold's own real-pair check runs
+    immediately before hero's in the same browser session and its own bundle reads `resources:
+    {over: true}` in its diagnostic report — not as a pixel mismatch; not chased further, since
+    hero's own crop-cancellation is independently proven three other ways in this branch
+    (`tests/test_pass_door_invariant.py`, `tests/test_pass_hero.py`'s 42/42, and this file's own
+    clean arrival-door reading on the identical real bundle).
 """
 import base64
+import hashlib
 import json
 import shutil
 import sys
@@ -92,6 +130,32 @@ JUMP_FACTOR = 3.0
 CTRL_TURN = 100.0
 
 results = []
+
+
+# ---------------------------------------------------------------- real, planner-composed scores
+# ITEM 5'S OWN REAL-PAIR EVIDENCE (Phase 2, 2026-08-31). Three scores read straight off the real
+# `pass-composer.js` — `composer.passageFor({workRecordA, workRecordB, routeRole, direction, seed})`
+# against `joined.make(fix.consts)`, where `fix` is `tests/fixture_pass_works.json`, the same 121
+# real per-work records `tests/test_pass_composed.py` measures against — searched (never hand-typed,
+# never a synthetic cue) until each cast the named instrument. Found on the FIRST pair tried:
+#
+#   boxfold: pair 17843080526947498 / 17843153263050281, routeRole "middle", seed 0
+#            — cast [boxfold, beat, pour]
+#   hero:    the same pair, routeRole "entrance", seed 1.5 — cast [matter, hero]
+#   liquid:  the same pair, routeRole "entrance", seed 2 — cast [liquid, beat]
+#
+# Each is the composer's own `made.json` (its Python-parity JSON writer's text, plain numbers, no
+# retyping) for that request, unedited. The rows below drive each through the same real DOM, the
+# same `declare`/`offer`, and the same two pins (`progressPin:0`/`clockPin:0` for the departing door,
+# `progressPin:1`/`clockPin:duration` for the arriving one) row 8 and row 1 already use for the
+# synthetic weave score — so a crop that fails to cancel at a real door reddens here exactly as it
+# would on a real route, on a bundle nobody hand-picked to make the point.
+REAL_SCORE_JSON = {
+    "boxfold": r'''{"camera":{"owner":"stage","rests":"b","track":[{"at":"a","fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0},{"at":1.3296,"fov":null,"logScale":0,"owner":"stage","pan":{"x":-0.0126,"y":-0.0126},"pitch":0,"roll":0,"yaw":0.0459},{"at":2.5512,"fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0.0313},{"at":"b","fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0}]},"cues":[{"cameraAuthority":"own","doors":{"in":{"handle":"mix","measured":true,"value":0},"out":{"handle":"mix","measured":true,"value":1}},"id":"pivot","instrument":{"api":1,"id":"boxfold"},"levels":["WORLD","CELL"],"nodes":{"pivot-axis":{"op":"static","value":1},"pivot-course":{"in":{"source":"cueProgress"},"op":"spline","points":[{"at":0,"value":0},{"at":0.4311,"value":1.084},{"at":1,"value":1}]},"pivot-depth":{"from":[0,1],"in":{"node":"pivot-course"},"op":"map","to":[0.4217,0.3561]},"pivot-dip":{"op":"static","value":0.6973},"pivot-fingers":{"op":"static","value":14},"pivot-lead":{"op":"static","value":0},"pivot-mask":{"op":"static","value":0},"pivot-mix":{"a":0,"b":1,"op":"mix","t":{"in":{"source":"cueProgress"},"name":"in","op":"curve"}},"pivot-seam":{"op":"static","value":0.6172},"pivot-seamScore":{"op":"static","value":0.5233},"pivot-seed":{"op":"static","value":0},"pivot-shade":{"op":"static","value":1},"pivot-travel":{"op":"static","value":1}},"resources":{"lean":{"bytesEstimate":2000248,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"},"rich":{"bytesEstimate":32000248,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"},"standard":{"bytesEstimate":8000248,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"roles":["surface","mystery"],"stack":0,"tracks":{"axis":{"node":"pivot-axis"},"depth":{"node":"pivot-depth"},"dip":{"node":"pivot-dip"},"fingers":{"node":"pivot-fingers"},"lead":{"node":"pivot-lead"},"mask":{"node":"pivot-mask"},"mix":{"node":"pivot-mix"},"seam":{"node":"pivot-seam"},"seamScore":{"node":"pivot-seamScore"},"seed":{"node":"pivot-seed"},"shade":{"node":"pivot-shade"},"travel":{"node":"pivot-travel"}},"voice":"miracle","window":[0,7.377],"works":["a","b"]},{"cameraAuthority":"stage","doors":{"in":{"handle":"presence","measured":true,"value":0},"out":{"handle":"presence","measured":true,"value":0}},"id":"travel","instrument":{"api":1,"id":"beat"},"levels":["SURFACE"],"nodes":{"travel-beatTilt":{"op":"static","value":14},"travel-clock":{"source":"time"},"travel-contrast":{"op":"static","value":1},"travel-lead":{"op":"static","value":0.6},"travel-mask":{"op":"static","value":0},"travel-mix":{"a":0,"b":1,"op":"mix","t":{"in":{"source":"cueProgress"},"name":"in","op":"curve"}},"travel-periodA":{"op":"static","value":0.14},"travel-periodB":{"op":"static","value":0.14},"travel-phase":{"op":"static","value":0},"travel-presence":{"in":{"source":"cueProgress"},"op":"spline","points":[{"at":0,"value":0},{"at":0.5,"value":1},{"at":1,"value":0}]},"travel-seed":{"op":"static","value":0},"travel-shade":{"op":"static","value":1},"travel-travel":{"op":"static","value":1}},"resources":{"lean":{"bytesEstimate":2000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"},"rich":{"bytesEstimate":32000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"},"standard":{"bytesEstimate":8000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"roles":["mystery","fragment"],"stack":1,"tracks":{"beatTilt":{"node":"travel-beatTilt"},"clock":{"node":"travel-clock"},"contrast":{"node":"travel-contrast"},"lead":{"node":"travel-lead"},"mask":{"node":"travel-mask"},"mix":{"node":"travel-mix"},"periodA":{"node":"travel-periodA"},"periodB":{"node":"travel-periodB"},"phase":{"node":"travel-phase"},"presence":{"node":"travel-presence"},"seed":{"node":"travel-seed"},"shade":{"node":"travel-shade"},"travel":{"node":"travel-travel"}},"voice":"letter","window":[2.1976,3.4192],"works":["a","b"]},{"cameraAuthority":"stage","doors":{"in":{"handle":"presence","measured":true,"value":0},"out":{"handle":"presence","measured":true,"value":0}},"id":"arrival","instrument":{"api":1,"id":"pour"},"levels":["SURFACE"],"nodes":{"arrival-clock":{"source":"time"},"arrival-grain":{"op":"static","value":0.4},"arrival-mask":{"op":"static","value":0},"arrival-mix":{"a":0,"b":1,"op":"mix","t":{"in":{"source":"cueProgress"},"name":"in","op":"curve"}},"arrival-presence":{"in":{"source":"cueProgress"},"op":"spline","points":[{"at":0,"value":0},{"at":0.5,"value":1},{"at":1,"value":0}]},"arrival-repose":{"op":"static","value":0.575},"arrival-seed":{"op":"static","value":0},"arrival-shade":{"op":"static","value":1}},"resources":{"lean":{"bytesEstimate":2000088,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"},"rich":{"bytesEstimate":32000088,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"},"standard":{"bytesEstimate":8000088,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"roles":["assembly"],"stack":2,"tracks":{"clock":{"node":"arrival-clock"},"grain":{"node":"arrival-grain"},"mask":{"node":"arrival-mask"},"mix":{"node":"arrival-mix"},"presence":{"node":"arrival-presence"},"repose":{"node":"arrival-repose"},"seed":{"node":"arrival-seed"},"shade":{"node":"arrival-shade"}},"voice":"letter","window":[6.6482,7.377],"works":["a","b"]}],"direction":"a-to-b","duration":7377,"failLand":"arrive","intent":"The work folds along its own region lines. The region division holds at 0.2979 and the flat picture folds into a solid the viewer is carried round: 6 parts of the first work hand over to 2 of the second along that cut, and the second work arrives by condensing at its own pole 0.5, 0.5. Shelves 8 the one folded space, 9 the held pivot, 7 the arrival, 17 a middle. The register is provocation: the two tonal grounds stand far apart.","interruption":{"resolve":"nearest-door","withinMs":500},"pair":{"a":"17843080526947498","b":"17843153263050281"},"provenance":{"by":"lab/build-elements-v1.py -> lab/build-sceneplan-v1.py. The pivot's cut: the pivot is the pair's shared measure and its cut is that measure's own, from the element table's cutOfMeasure. Where a pair shares several cuts the extra ones are not considered for the pivot: the element data's `strongest` marker names each work's own device rather than its highest-scoring cut, and on the worked pair both works mark ring strongest while the measure they share is banding at 0.8807 and 0.8437 against a ring reading of 0.4797. The shared measure is the invariant; a cut both works merely hold is not.","measuredAt":{"lab/data/cut-lines.json":"2026-08-12T19:21:20","lab/data/material-subject.json":"2026-08-13T01:51:11","lab/data/motifs.json":"2026-08-13T01:27:28","lab/data/objects-pass2.json":"2026-08-12T19:00:01","lab/data/pair-shared.json":"2026-08-12T19:22:01","lab/data/recipes.json":"2026-08-05","lab/data/step3-grid-derivation.json":"2026-08-12T09:05:17","lab/data/tone-texture.json":"2026-08-13T01:35:27"},"source":"sceneplan-v1/17843080526947498__17843153263050281__ab"},"quality":{"lean":{"cues":{"arrival":{"resources":{"bytesEstimate":2000088,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"}},"pivot":{"resources":{"bytesEstimate":2000248,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"}},"travel":{"resources":{"bytesEstimate":2000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"}}},"renderScale":null},"rich":{"cues":{"arrival":{"resources":{"bytesEstimate":32000088,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"}},"pivot":{"resources":{"bytesEstimate":32000248,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"}},"travel":{"resources":{"bytesEstimate":32000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"}}},"renderScale":null},"standard":{"cues":{"arrival":{"resources":{"bytesEstimate":8000088,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"pivot":{"resources":{"bytesEstimate":8000248,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"travel":{"resources":{"bytesEstimate":8000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}}},"renderScale":null}},"schema":2,"seed":0}''',
+    "hero": r'''{"camera":{"owner":"stage","rests":"b","track":[{"at":"a","fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0},{"at":1.4612,"fov":null,"logScale":0,"owner":"stage","pan":{"x":-0.0126,"y":-0.0126},"pitch":0,"roll":0,"yaw":0.0459},{"at":2.0735,"fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0.0313},{"at":"b","fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0}]},"cues":[{"cameraAuthority":"stage","doors":{"in":{"handle":"presence","measured":true,"value":0},"out":{"handle":"presence","measured":true,"value":0}},"id":"pivot","instrument":{"api":1,"id":"matter"},"levels":["SURFACE","TEXTURE"],"nodes":{"pivot-clock":{"note":"the second the host hands down","source":"time"},"pivot-course":{"in":{"source":"cueProgress"},"note":"the cue's one course, shared by every handle it drives: the room stands at 1.084 of the travel, where the two works' own tone stands 0.084 apart, placed at 0.4311 by which of them reads brighter, and passes through without a hold: this step is a subdominant and shelf 15's crest is the culmination's own suspension, so there is no tension standing here to hold","op":"spline","points":[{"at":0,"value":0},{"at":0.4311,"value":1.084},{"at":1,"value":1}]},"pivot-drift":{"note":"requested 0.0 and applied, from the fractional part of the two works' measured spectral periods in ratio is the reading, and it is deliberately not driven: a wandering fold line does not land on the work's own structural line","op":"static","value":0},"pivot-gather":{"from":[0,1],"in":{"node":"pivot-course"},"note":"requested [0.0119, 0.2168] and applied, from the share of the frame each work's own measured dominant object holds","op":"map","to":[0.0119,0.2168]},"pivot-grain":{"from":[0,1],"in":{"in":{"source":"cueProgress"},"name":"smooth","op":"curve"},"note":"requested [0.45, 0.45] and applied, from the two works' own measured spectral periods, said in cells across the frame's height, positioned about the handle's default by their ratio","op":"map","to":[0.45,0.45]},"pivot-loosen":{"in":{"from":[0,1],"in":{"node":"pivot-course"},"op":"map","to":[0.7884,0.0005]},"max":1,"min":0,"note":"requested [0.7884, 0.0005] and applied, from the share of the frame each work's own measured open ground holds","op":"clamp"},"pivot-mix":{"a":0,"b":1,"note":"the pass's own progress, door to door","op":"mix","t":{"in":{"source":"cueProgress"},"name":"in","op":"curve"}},"pivot-presence":{"in":{"source":"cueProgress"},"note":"requested nothing at this cue's own two doors and whole across its middle, because this voice stands over another. From the entry-door contract's reserved dry: nothing at the cue's own two doors, whole across its middle, so a voice joins a running picture without replacing it and stands down the same way. The lowest voice of a stack owes the opposite and stands whole throughout, because nothing stands beneath it","op":"spline","points":[{"at":0,"value":0},{"at":0.5,"value":1},{"at":1,"value":0}]},"pivot-seed":{"note":"requested 1.5 and applied, from the ordered pair's own seed","op":"static","value":1.5},"pivot-shade":{"op":"static","value":1},"pivot-travel":{"op":"static","value":1}},"resources":{"lean":{"bytesEstimate":2000084,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"},"rich":{"bytesEstimate":32000084,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"},"standard":{"bytesEstimate":8000084,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"roles":["surface","breath"],"stack":1,"tracks":{"clock":{"node":"pivot-clock"},"drift":{"node":"pivot-drift"},"gather":{"node":"pivot-gather"},"grain":{"node":"pivot-grain"},"loosen":{"node":"pivot-loosen"},"mix":{"node":"pivot-mix"},"presence":{"node":"pivot-presence"},"seed":{"node":"pivot-seed"},"shade":{"node":"pivot-shade"},"travel":{"node":"pivot-travel"}},"voice":"accompaniment","window":[0,7.377],"works":["a","b"]},{"cameraAuthority":"stage","doors":{"in":{"handle":"mix","measured":true,"value":0},"out":{"handle":"mix","measured":true,"value":1}},"id":"travel","instrument":{"api":1,"id":"hero"},"levels":["CELL"],"nodes":{"travel-clock":{"note":"the second the host hands down","source":"time"},"travel-course":{"op":"static","value":0},"travel-folds":{"note":"requested 1 and applied, from the order of the pair's own measured turn, structure.rotational.n, read onto the module's ladder of two, four, eight and sixteen wedges","op":"static","value":1},"travel-foldsScore":{"note":"requested 0.4599 and applied, from structure.rotational.score, the confidence that order reads at, which carries the window between the module's own four folds and the pair's own count","op":"static","value":0.4599},"travel-mask":{"op":"static","value":0},"travel-mix":{"a":0,"b":1,"note":"the pass's own progress, door to door","op":"mix","t":{"in":{"source":"cueProgress"},"name":"in","op":"curve"}}},"resources":{"lean":{"bytesEstimate":2666791,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"},"rich":{"bytesEstimate":42666791,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"},"standard":{"bytesEstimate":10666791,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"roles":["mystery","fragment"],"stack":0,"tracks":{"clock":{"node":"travel-clock"},"course":{"node":"travel-course"},"folds":{"node":"travel-folds"},"foldsScore":{"node":"travel-foldsScore"},"mask":{"node":"travel-mask"},"mix":{"node":"travel-mix"}},"voice":"letter","window":[1.0638,1.6761],"works":["a","b"]}],"direction":"a-to-b","duration":7377,"failLand":"arrive","intent":"The radial work turns. The vertical band family holds at 0.1442 and the ground stays while the radial reading travels from 0.2328 to 0.1358, with the camera panning so the meeting point travels from 0.35, 0.35 to 0.5, 0.5. One generator changes over a held family, and the second work arrives by condensing at its own pole 0.5, 0.5. Shelves 9 one generator at a time, 12 the parts that become actors, 7 the arrival, 17 a middle. The register is provocation: the two tonal grounds stand far apart.","interruption":{"resolve":"nearest-door","withinMs":500},"pair":{"a":"17843080526947498","b":"17843153263050281"},"provenance":{"by":"lab/build-elements-v1.py -> lab/build-sceneplan-v1.py. The pivot's cut: the pivot is the pair's shared measure and its cut is that measure's own, from the element table's cutOfMeasure. Where a pair shares several cuts the extra ones are not considered for the pivot: the element data's `strongest` marker names each work's own device rather than its highest-scoring cut, and on the worked pair both works mark ring strongest while the measure they share is banding at 0.8807 and 0.8437 against a ring reading of 0.4797. The shared measure is the invariant; a cut both works merely hold is not.","measuredAt":{"lab/data/cut-lines.json":"2026-08-12T19:21:20","lab/data/material-subject.json":"2026-08-13T01:51:11","lab/data/motifs.json":"2026-08-13T01:27:28","lab/data/objects-pass2.json":"2026-08-12T19:00:01","lab/data/pair-shared.json":"2026-08-12T19:22:01","lab/data/recipes.json":"2026-08-05","lab/data/step3-grid-derivation.json":"2026-08-12T09:05:17","lab/data/tone-texture.json":"2026-08-13T01:35:27"},"source":"sceneplan-v1/17843080526947498__17843153263050281__ab"},"quality":{"lean":{"cues":{"pivot":{"resources":{"bytesEstimate":2000084,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"}},"travel":{"resources":{"bytesEstimate":2666791,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"}}},"renderScale":null},"rich":{"cues":{"pivot":{"resources":{"bytesEstimate":32000084,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"}},"travel":{"resources":{"bytesEstimate":42666791,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"}}},"renderScale":null},"standard":{"cues":{"pivot":{"resources":{"bytesEstimate":8000084,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"travel":{"resources":{"bytesEstimate":10666791,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}}},"renderScale":null}},"schema":2,"seed":1.5}''',
+    "liquid": r'''{"camera":{"owner":"stage","rests":"b","track":[{"at":"a","fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0},{"at":0.7967,"fov":null,"logScale":0,"owner":"stage","pan":{"x":-0.0126,"y":-0.0126},"pitch":0,"roll":0,"yaw":0.0459},{"at":4.4852,"fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0.0313},{"at":"b","fov":null,"logScale":0,"owner":"stage","pan":{"x":0,"y":0},"pitch":0,"roll":0,"yaw":0}]},"cues":[{"cameraAuthority":"stage","doors":{"in":{"handle":"mix","measured":true,"value":0},"out":{"handle":"mix","measured":true,"value":1}},"id":"pivot","instrument":{"api":1,"id":"liquid"},"levels":["TEXTURE"],"nodes":{"pivot-clock":{"note":"the second the host hands down","source":"time"},"pivot-course":{"in":{"source":"cueProgress"},"note":"the cue's one course, shared by every handle it drives: the room stands at 1.084 of the travel, where the two works' own tone stands 0.084 apart, placed at 0.4311 by which of them reads brighter, and passes through without a hold: this step is a subdominant and shelf 15's crest is the culmination's own suspension, so there is no tension standing here to hold","op":"spline","points":[{"at":0,"value":0},{"at":0.4311,"value":1.084},{"at":1,"value":1}]},"pivot-crest":{"from":[0,1],"in":{"in":{"source":"cueProgress"},"name":"smooth","op":"curve"},"note":"requested [0.702, 0.702] and applied, from texture.spectralPeriodPx over the work's own frame side, read as a position on the handle's own range","op":"map","to":[0.702,0.702]},"pivot-mask":{"op":"static","value":0},"pivot-mix":{"a":0,"b":1,"note":"the pass's own progress, door to door","op":"mix","t":{"in":{"source":"cueProgress"},"name":"in","op":"curve"}},"pivot-refract":{"from":[0,1],"in":{"node":"pivot-course"},"note":"requested [0.575, 0.325] and applied, from texture.detailPx over the work's own frame side, read as a position on the handle's own range","op":"map","to":[0.575,0.325]},"pivot-seed":{"note":"requested 2.0 and applied, from the ordered pair's own seed","op":"static","value":2},"pivot-shade":{"op":"static","value":1},"pivot-swell":{"from":[0,1],"in":{"node":"pivot-course"},"note":"requested [0.2935, 0.0576] and applied, from texture.scoreFromCutLines, how much of the work reads as grain rather than as line","op":"map","to":[0.2935,0.0576]},"pivot-travel":{"op":"static","value":1}},"resources":{"lean":{"bytesEstimate":2666747,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"},"rich":{"bytesEstimate":42666747,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"},"standard":{"bytesEstimate":10666747,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"roles":["surface","breath"],"stack":0,"tracks":{"clock":{"node":"pivot-clock"},"crest":{"node":"pivot-crest"},"mask":{"node":"pivot-mask"},"mix":{"node":"pivot-mix"},"refract":{"node":"pivot-refract"},"seed":{"node":"pivot-seed"},"shade":{"node":"pivot-shade"},"swell":{"node":"pivot-swell"},"travel":{"node":"pivot-travel"}},"voice":"accompaniment","window":[0,7.377],"works":["a","b"]},{"cameraAuthority":"stage","doors":{"in":{"handle":"presence","measured":true,"value":0},"out":{"handle":"presence","measured":true,"value":0}},"id":"arrival","instrument":{"api":1,"id":"beat"},"levels":["SURFACE"],"nodes":{"arrival-beatTilt":{"note":"requested 14.0 and applied, from the angle the two works' own measured lattices stand apart \u2014 structure.ownDevice.angleDeg, or structure.grid.angleDeg where no step was recovered \u2014 folded back under a right angle, since a lattice angle is a line direction. The module pinned nine degrees; the third picture IS the two gratings interfering, so the angle is the pair's","op":"static","value":14},"arrival-clock":{"note":"the second the host hands down","source":"time"},"arrival-contrast":{"note":"requested 1.0 and applied, from how near the two works' own rhythms stand, the smaller count over the larger: two nearly equal periods make lobes worth handing the frame over in and the slow envelope owns the cut, two far apart make no envelope worth the name and the raw sum is the honester picture","op":"static","value":1},"arrival-lead":{"op":"static","value":0.6},"arrival-mask":{"op":"static","value":0},"arrival-mix":{"a":0,"b":1,"note":"the pass's own progress, door to door","op":"mix","t":{"in":{"source":"cueProgress"},"name":"in","op":"curve"}},"arrival-periodA":{"note":"requested 0.14 and applied, from the departing work's own measured period, texture.spectralPeriodPx over its own frame side, placed on the span in frame heights the handle itself publishes \u2014 the instrument is the one home of that span","op":"static","value":0.14},"arrival-periodB":{"note":"requested 0.14 and applied, from the arriving work's own measured period, read the same way","op":"static","value":0.14},"arrival-phase":{"op":"static","value":0},"arrival-presence":{"in":{"source":"cueProgress"},"note":"requested nothing at this cue's own two doors and whole across its middle, because this voice stands over another. From the entry-door contract's reserved dry: nothing at the cue's own two doors, whole across its middle, so a voice joins a running picture without replacing it and stands down the same way. The lowest voice of a stack owes the opposite and stands whole throughout, because nothing stands beneath it","op":"spline","points":[{"at":0,"value":0},{"at":0.5,"value":1},{"at":1,"value":0}]},"arrival-seed":{"note":"requested 2.0 and applied, from the ordered pair's own seed","op":"static","value":2},"arrival-shade":{"op":"static","value":1},"arrival-travel":{"op":"static","value":1}},"resources":{"lean":{"bytesEstimate":2000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"},"rich":{"bytesEstimate":32000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"},"standard":{"bytesEstimate":8000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"roles":["assembly"],"stack":1,"tracks":{"beatTilt":{"node":"arrival-beatTilt"},"clock":{"node":"arrival-clock"},"contrast":{"node":"arrival-contrast"},"lead":{"node":"arrival-lead"},"mask":{"node":"arrival-mask"},"mix":{"node":"arrival-mix"},"periodA":{"node":"arrival-periodA"},"periodB":{"node":"arrival-periodB"},"phase":{"node":"arrival-phase"},"presence":{"node":"arrival-presence"},"seed":{"node":"arrival-seed"},"shade":{"node":"arrival-shade"},"travel":{"node":"arrival-travel"}},"voice":"letter","window":[6.823,7.377],"works":["a","b"]}],"direction":"a-to-b","duration":7377,"failLand":"arrive","intent":"Along what the two works do not share. The tonal zones and detail scales holds at 0.916 and never moves, and the crossing is the one held ground played through: 9 parts of the first work hand over to 11 of the second along that cut, and the second work arrives by condensing at its own pole 0.5, 0.5. Shelves 9 the held pivot, 7 the arrival, 17 a quiet link. The register is provocation: the two tonal grounds stand far apart.","interruption":{"resolve":"nearest-door","withinMs":500},"pair":{"a":"17843080526947498","b":"17843153263050281"},"provenance":{"by":"lab/build-elements-v1.py -> lab/build-sceneplan-v1.py. The pivot's cut: the pivot is the pair's shared measure and its cut is that measure's own, from the element table's cutOfMeasure. Where a pair shares several cuts the extra ones are not considered for the pivot: the element data's `strongest` marker names each work's own device rather than its highest-scoring cut, and on the worked pair both works mark ring strongest while the measure they share is banding at 0.8807 and 0.8437 against a ring reading of 0.4797. The shared measure is the invariant; a cut both works merely hold is not.","measuredAt":{"lab/data/cut-lines.json":"2026-08-12T19:21:20","lab/data/material-subject.json":"2026-08-13T01:51:11","lab/data/motifs.json":"2026-08-13T01:27:28","lab/data/objects-pass2.json":"2026-08-12T19:00:01","lab/data/pair-shared.json":"2026-08-12T19:22:01","lab/data/recipes.json":"2026-08-05","lab/data/step3-grid-derivation.json":"2026-08-12T09:05:17","lab/data/tone-texture.json":"2026-08-13T01:35:27"},"source":"sceneplan-v1/17843080526947498__17843153263050281__ab"},"quality":{"lean":{"cues":{"arrival":{"resources":{"bytesEstimate":2000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"}},"pivot":{"resources":{"bytesEstimate":2666747,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"lean"}}},"renderScale":null},"rich":{"cues":{"arrival":{"resources":{"bytesEstimate":32000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"}},"pivot":{"resources":{"bytesEstimate":42666747,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"rich"}}},"renderScale":null},"standard":{"cues":{"arrival":{"resources":{"bytesEstimate":8000100,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}},"pivot":{"resources":{"bytesEstimate":10666747,"framebuffers":0,"passes":1,"pingPong":0,"programs":1,"textureSlots":2,"textures":0,"variant":"standard"}}},"renderScale":null}},"schema":2,"seed":2}''',
+}
+REAL_SCORES = {k: json.loads(v) for k, v in REAL_SCORE_JSON.items()}
 
 
 def check(name, cond, detail=""):
@@ -408,8 +472,78 @@ def declare_and_offer(br, a, b, cause):
     """ % (a, b, cause))
 
 
+def real_door_check(br, A, B, real_score, tag):
+    """Row 8 (the departure) and row 1 (the arrival), mirrored exactly, but driven by a real,
+    planner-composed score instead of this file's own synthetic weave one. Returns
+    `(depart, arrive)`, each `None` or an `(mean, worst)` pair of 255 — the same shape `apart()`
+    always answers with, so a caller reads it exactly as row 8/row 1 do."""
+    dur = real_score["duration"]
+    br.evaluate("window.__hangScore = " + json.dumps(real_score) + "; 0")
+
+    # ---- the departure ---------------------------------------------------------------------
+    rest_at(br, A)
+    br.evaluate("window.__exPass.host.configure({prepareBudgetMs:400, settleSlackMs:2000,"
+                " clockPin:0, progressPin:0, fixedScale:true}); 0")
+    before = png(br, SHOTS / (tag + "-depart-dom.png"))
+    scale = shot_scale(br, before)
+    r = declare_and_offer(br, A, B, tag + "-depart")
+    running = wait_state(br, "running")
+    br.sleep(0.6)
+    box = canvas_box(br)
+    after = png(br, SHOTS / (tag + "-depart-canvas.png"))
+    depart = None
+    if r["took"] and running and box and box["vis"] == "visible":
+        depart = apart(crop_of(before, box, scale), crop_of(after, box, scale))
+    js(br, "window.__exPass.adapter.interrupt('%s-depart-done'); return null;" % tag)
+    wait_state(br, "idle")
+    br.sleep(0.3)
+
+    # ---- the arrival -------------------------------------------------------------------------
+    rest_at(br, A)
+    br.evaluate("window.__exPass.host.configure({prepareBudgetMs:400, settleSlackMs:4000,"
+                " clockPin:%f, progressPin:1, fixedScale:true}); 0" % (dur / 1000.0))
+    r = declare_and_offer(br, A, B, tag + "-arrive")
+    running = wait_state(br, "running")
+    br.sleep(0.8)
+    box = canvas_box(br)
+    canvas_shot = png(br, SHOTS / (tag + "-arrive-canvas.png"))
+    js(br, "window.__exPass.adapter.handoff(window.__cmd);"
+           "window.__exPass.bench.show(false); return null;")
+    br.sleep(0.4)
+    dom_shot = png(br, SHOTS / (tag + "-arrive-dom.png"))
+    arrive = None
+    if r["took"] and running and box:
+        arrive = apart(crop_of(canvas_shot, box, scale), crop_of(dom_shot, box, scale))
+    js(br, "window.__exPass.adapter.interrupt('%s-arrive-done'); return null;" % tag)
+    wait_state(br, "idle")
+    br.sleep(0.3)
+    return depart, arrive
+
+
+REAL_ROWS = [
+    "PASS-HANG real-pair · boxfold's own real bundle: departing door agrees with the DOM's hang A",
+    "PASS-HANG real-pair · boxfold's own real bundle: arriving door agrees with the DOM's hang B",
+    "PASS-HANG real-pair · hero's own real bundle: departing door agrees with the DOM's hang A",
+    "PASS-HANG real-pair · hero's own real bundle: arriving door agrees with the DOM's hang B",
+    "PASS-HANG real-pair · liquid's own real bundle: departing door agrees with the DOM's hang A",
+    "PASS-HANG real-pair · liquid's own real bundle: arriving door agrees with the DOM's hang B",
+    "PASS-HANG red-on-bug · boxfold's pre-repair crop reddens this same real-pair door check",
+    "PASS-HANG red-on-bug · hero's pre-repair crop reddens this same real-pair door check",
+]
+
+
+def git_show(relpath):
+    import subprocess as _sp
+    try:
+        r = _sp.run(["git", "show", "HEAD:%s" % relpath], cwd=str(ROOT),
+                    capture_output=True, text=True, timeout=30)
+        return r.stdout if r.returncode == 0 else None
+    except Exception:
+        return None
+
+
 if not chrome_available():
-    for r in ROWS:
+    for r in ROWS + REAL_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
     SHOTS = Path(tempfile.mkdtemp(prefix="synth_hangshots_"))
@@ -425,7 +559,7 @@ else:
             ok_pair = armed and len(WORKS) == 2 and all(WORKS)
 
             if not ok_pair:
-                for r in ROWS:
+                for r in ROWS + REAL_ROWS:
                     skip(r, f"the walk never registered a host, or hung no pair: "
                             f"armed={armed} works={WORKS}")
             else:
@@ -1045,7 +1179,83 @@ else:
                           f"state={rep.get('state')} canvas={left} last events="
                           f"{[e.get('name') for e in (rep.get('events') or [])[-6:]]}")
 
+                # ---- REAL_ROWS · a real, planner-composed pair casting box-fold, hero and liquid --
+                # Phase 2 item 5's own verification standard: the same door check row 8/row 1 give
+                # the synthetic weave score, given instead to a bundle nobody hand-picked (see
+                # REAL_SCORES above). This is the SAME site and the SAME browser session, so it costs
+                # nothing beyond three more passages driven through the rig already open.
+                REAL_RESULTS = {}
+                for _name, _r8, _r1 in (("boxfold", 0, 1), ("hero", 2, 3), ("liquid", 4, 5)):
+                    _depart, _arrive = real_door_check(br, A, B, REAL_SCORES[_name], "real-" + _name)
+                    REAL_RESULTS[_name] = (_depart, _arrive)
+                    check(REAL_ROWS[_r8],
+                          _depart is not None and _depart[0] <= SEAM,
+                          f"{_name}'s own real bundle, departing door against the DOM's hang A: "
+                          f"{'mean %.4f of 255 (threshold %s), worst channel %s' % (_depart[0], SEAM, _depart[1]) if _depart else 'the pass never took the frame'}")
+                    check(REAL_ROWS[_r1],
+                          _arrive is not None and _arrive[0] <= SEAM,
+                          f"{_name}'s own real bundle, arriving door against the DOM's hang B: "
+                          f"{'mean %.4f of 255 (threshold %s), worst channel %s' % (_arrive[0], SEAM, _arrive[1]) if _arrive else 'the pass never took the frame'}")
+
 shutil.rmtree(TMP, ignore_errors=True)
+
+# ---------------------------------------------------------------- red-on-bug, box-fold and hero
+# THE SAME REAL BUNDLES, AGAINST THE PRE-REPAIR INSTRUMENT FILES. A fresh copy of the already-built
+# site, with exactly one instrument file swapped for the bytes this branch's own parent commit
+# shipped (`git show HEAD:...` — never a second guess at what the bug looked like), served and
+# driven through the identical `real_door_check` rig in a fresh browser session. If the row above
+# reads green on the repaired files and this one reads red on the bytes it replaced, the row is
+# proof of the repair; if it stayed green here too, it would be proving nothing.
+if not chrome_available():
+    for r in REAL_ROWS[6:]:
+        skip(r, "Chrome not installed (pinned expected skip)")
+elif "REAL_RESULTS" not in dir() or not ok_pair:
+    for r in REAL_ROWS[6:]:
+        skip(r, "the main run never reached a hung pair to compare against")
+else:
+    for _iid, _row, _instfile in (("boxfold", REAL_ROWS[6], "pass-inst-boxfold.js"),
+                                  ("hero", REAL_ROWS[7], "pass-inst-hero.js")):
+        _pre = git_show("engine/assets/" + _instfile)
+        if _pre is None:
+            skip(_row, "could not read this branch's own parent commit for the pre-repair bytes")
+            continue
+        _bugdir = Path(tempfile.mkdtemp(prefix="synth_hangbug_"))
+        try:
+            build_site.OUT = _bugdir
+            build_site.build(SITE_URL)
+            (_bugdir / _instfile).write_text(_pre, encoding="utf-8")
+            _cfg = json.loads((_bugdir / "config.json").read_text(encoding="utf-8"))
+            _cfg["pass"]["instruments"][_iid]["digest"] = hashlib.sha256(
+                _pre.encode("utf-8")).hexdigest()
+            (_bugdir / "config.json").write_text(json.dumps(_cfg), encoding="utf-8")
+            with serve(_bugdir) as _bugbase:
+                with Browser(width=VW, height=VH) as _br2:
+                    _br2.navigate(_bugbase + "/")
+                    _br2.clear_storage()
+                    _br2.navigate(_bugbase + "/")
+                    _br2.sleep(0.8)
+                    _armed = enter(_br2, _bugbase)
+                    _works2 = js(_br2, "return [].slice.call(document.querySelectorAll('.exh-frame'))"
+                                       ".map(function(e){return e.dataset.id;}).slice(0,2);")
+                    if not (_armed and len(_works2) == 2 and all(_works2)):
+                        skip(_row, f"the bug site never registered a host, or hung no pair: "
+                                  f"armed={_armed} works={_works2}")
+                    else:
+                        _A2, _B2 = _works2[0], _works2[1]
+                        _br2.navigate(_bugbase + "/")
+                        _br2.sleep(0.8)
+                        enter(_br2, _bugbase)
+                        _br2.evaluate(HOOKS)
+                        _bd, _ba = real_door_check(_br2, _A2, _B2, REAL_SCORES[_iid],
+                                                   "bug-real-" + _iid)
+                        _worst = max((_bd[0] if _bd else 255.0), (_ba[0] if _ba else 255.0))
+                        check(_row, _worst > SEAM,
+                              f"pre-repair {_iid}: departing door {_bd}, arriving door {_ba} — the "
+                              f"worse of the two stands {_worst:.4f} of 255 against the same "
+                              f"{SEAM} threshold the repaired file passes at "
+                              f"{REAL_RESULTS.get(_iid)}")
+        finally:
+            shutil.rmtree(_bugdir, ignore_errors=True)
 
 # ---------------------------------------------------------------- TEST_MATRIX.md PASS-08, shelf 3
 #

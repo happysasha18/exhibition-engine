@@ -165,6 +165,46 @@
     //     the whole of it; the module's own `edgesOf` is carried across line for line and simply runs
     //     in the shader instead of in the script. Eight numbers travel where twelve did, and the two
     //     descriptions of one quadrilateral can no longer disagree with each other.
+    /* THE ROOM THE TURN NEEDS, and why it is not a free number (box.js:259-271). A box turning about
+       its own centre does not cover a rectangular frame at every angle: mid-quarter the two visible
+       faces retreat from the frame's corners, worst around ten to twenty degrees into the turn, where
+       the far edge of the arriving face reaches only 0.74 of the frame's half-width at the deepest
+       perspective this instrument allows. The box is therefore built larger than the frame by exactly
+       the reciprocal of that worst case, with a margin for the camera's dip. MEASURED, not guessed: a
+       sweep of both axes, three perspectives, both dips and twenty-one places on the turn shows a
+       crop of 1.34 leaking a background wedge of 2.1 per cent of the frame at eighteen degrees into
+       the turn, and 1.48 leaking nothing at all anywhere. */
+    var BOX_CROP = 1.48;
+
+    /* AND THE ROOM THE CREASE'S OWN TRAVEL NEEDS ON TOP OF IT. This is the port's own number, and the
+       reason it exists is a gap in the module's own record: the crop above was measured for the TURN
+       ALONE, and the crease was moved onto the departing work's own region line afterwards
+       (box.js:300-328, the repair of 13.08) without the crop being read again. Carrying the camera's
+       slide over a box built for no slide opens the frame's own corners: at the far end of the
+       measurement's window the module leaves up to 0.60 of a frame half-extent of its corners bare
+       mid-turn, and it is a leak this engine cannot carry, because an instrument declaring it writes
+       no coverage stands at the bottom of a stack, where a bare point shows the cleared buffer and
+       not a dark corner.
+
+       WHAT THE NUMBER IS, AND HOW IT WAS READ. The crease's travel is bounded by the MEASUREMENT'S
+       own window: lab/cut-lines.py and the module's own `seamOf` search the middle half of the work
+       for the line, so a region line stands between a quarter and three quarters of the way across
+       and the camera's slide never exceeds half a frame half-extent. The room was then read the same
+       way the module read its own: both axes, five perspectives, three dips, five frame ratios from
+       a tall phone to a wide desk, a hundred places on the turn and the crease at either end of that
+       window. A room of 0.40 still leaves 0.014 of a frame half-extent of the corner bare at the
+       deepest camera and the biggest dip; 0.42 leaves nothing bare anywhere on the sweep. The whole
+       crop is the two rooms together, and it is what the doors' framing publishes: a landed face
+       stands the source cover-fit and centre-cropped by it. */
+    var SEAM_REACH = 0.25;
+    var SEAM_ROOM = 0.42;
+    var CROP = BOX_CROP + SEAM_ROOM;
+
+    // MOVED AHEAD OF `FRAG` (was declared with `CAM_FAR` and its neighbours, below): the shader
+    // source array below interpolates `CROP` into its own `FACECROP` constant at build time, and a
+    // `var` read before its assignment line runs is `undefined` — `CROP.toFixed` on that threw
+    // "Cannot read properties of undefined" the moment this file first loaded. `BOX_CROP`/`SEAM_ROOM`
+    // carry no other dependency, so the three stand here now and nowhere twice.
     var FRAG = [
       "precision highp float;",
       "varying vec2 vUv;",
@@ -214,6 +254,11 @@
       // is doing to the geometry.
       "const float SHADE = 0.34;",
       "const float REACH = 9.0;",
+      // THE FACE'S OWN CROP, READ BACK IN AT THE TEXTURE STEP. `fit`/`seated` (the host) divide this
+      // same number OUT of `uFitA`/`uFitB` as a real door is neared, so it has to be multiplied back
+      // in here — on the face's own uv, never on `uvA`/`uvB` themselves, which the judges' channel
+      // below publishes and which must keep reading the face's own place, crop or no crop.
+      "const float FACECROP = " + CROP.toFixed(6) + ";",
       // HOW MUCH OF THE JOINT'S ORDER THE SCORE'S DIE OWNS (box.js:185): six parts a plain ladder
       // along the crease, four parts the die. A whole ladder reads as a comb and a whole die reads as
       // noise; this is the module's own measured mixture, and because it is the SCORE's die and not
@@ -281,10 +326,16 @@
       "  float m = (dA - dB) * 0.5 + bite;",
       "  float cov = clamp(0.5 + m / px, 0.0, 1.0);",
       "  float onBox = clamp(0.5 + max(dA, dB) / px, 0.0, 1.0);",
+      // THE FACE'S OWN CROP, MULTIPLIED BACK IN. `uvA`/`uvB` above stand at the face's own place,
+      // crop or no crop — the judges' channel below reads them exactly as they are — but a face's
+      // SOURCE is read narrower by the room the turn needs, and that room is what `fitA`/`fitB` no
+      // longer carry once the host's own `seated` divides it back out near a real door.
+      "  vec2 tA = (uvA - 0.5) * FACECROP + 0.5;",
+      "  vec2 tB = (uvB - 0.5) * FACECROP + 0.5;",
       // COUNTER-MOTION along each face's own first axis, in opposite senses; both are nothing at a
       // landing, so a landed face is the picture its source carries.
-      "  vec3 colA = texture2D(uA, into(uvA + vec2(uTurn.y, 0.0), uFitA)).rgb;",
-      "  vec3 colB = texture2D(uB, into(uvB - vec2(uTurn.y, 0.0), uFitB)).rgb;",
+      "  vec3 colA = texture2D(uA, into(tA + vec2(uTurn.y, 0.0), uFitA)).rgb;",
+      "  vec3 colB = texture2D(uB, into(tB - vec2(uTurn.y, 0.0), uFitB)).rgb;",
       "  vec3 col = mix(colB, colA, cov);",
       // THE CONTACT SHADOW at the crease, on whichever face lies farther from the eye. The crease is
       // face A's own corner 0 to corner 3 — the same edge of the same solid the two faces share —
@@ -316,40 +367,8 @@
       return t * t * (3 - 2 * t);
     }
 
-    /* THE ROOM THE TURN NEEDS, and why it is not a free number (box.js:259-271). A box turning about
-       its own centre does not cover a rectangular frame at every angle: mid-quarter the two visible
-       faces retreat from the frame's corners, worst around ten to twenty degrees into the turn, where
-       the far edge of the arriving face reaches only 0.74 of the frame's half-width at the deepest
-       perspective this instrument allows. The box is therefore built larger than the frame by exactly
-       the reciprocal of that worst case, with a margin for the camera's dip. MEASURED, not guessed: a
-       sweep of both axes, three perspectives, both dips and twenty-one places on the turn shows a
-       crop of 1.34 leaking a background wedge of 2.1 per cent of the frame at eighteen degrees into
-       the turn, and 1.48 leaking nothing at all anywhere. */
-    var BOX_CROP = 1.48;
-
-    /* AND THE ROOM THE CREASE'S OWN TRAVEL NEEDS ON TOP OF IT. This is the port's own number, and the
-       reason it exists is a gap in the module's own record: the crop above was measured for the TURN
-       ALONE, and the crease was moved onto the departing work's own region line afterwards
-       (box.js:300-328, the repair of 13.08) without the crop being read again. Carrying the camera's
-       slide over a box built for no slide opens the frame's own corners: at the far end of the
-       measurement's window the module leaves up to 0.60 of a frame half-extent of its corners bare
-       mid-turn, and it is a leak this engine cannot carry, because an instrument declaring it writes
-       no coverage stands at the bottom of a stack, where a bare point shows the cleared buffer and
-       not a dark corner.
-
-       WHAT THE NUMBER IS, AND HOW IT WAS READ. The crease's travel is bounded by the MEASUREMENT'S
-       own window: lab/cut-lines.py and the module's own `seamOf` search the middle half of the work
-       for the line, so a region line stands between a quarter and three quarters of the way across
-       and the camera's slide never exceeds half a frame half-extent. The room was then read the same
-       way the module read its own: both axes, five perspectives, three dips, five frame ratios from
-       a tall phone to a wide desk, a hundred places on the turn and the crease at either end of that
-       window. A room of 0.40 still leaves 0.014 of a frame half-extent of the corner bare at the
-       deepest camera and the biggest dip; 0.42 leaves nothing bare anywhere on the sweep. The whole
-       crop is the two rooms together, and it is what the doors' framing publishes: a landed face
-       stands the source cover-fit and centre-cropped by it. */
-    var SEAM_REACH = 0.25;
-    var SEAM_ROOM = 0.42;
-    var CROP = BOX_CROP + SEAM_ROOM;
+    // BOX_CROP, SEAM_REACH, SEAM_ROOM and CROP now stand ahead of `FRAG`, above — `FRAG` itself
+    // reads `CROP` at build time and a `var` read before its own assignment line runs is `undefined`.
 
     /* THE CAMERA (box.js:273-278). Its distance is read in box half-widths and runs from a shallow
        eight — where the turn is nearly a fold — to a deep three, where the near corner is two thirds
@@ -445,15 +464,17 @@
       return (jj.j + jj.f) / Math.max(jj.n, 1);
     }
 
-    // Cover-fit a work into the frame, and nothing beyond it. A face's own two sides always stand in
-    // the frame's own ratio — the crop scales both by the same number and the axis swaps which of the
-    // two is which — so the seating a face asks for IS the plain cover fit into the frame, and the
-    // crop the doors publish is what the frame then sees of it.
+    // Cover-fit a work into the frame, divided by the box's own crop, and nothing beyond it. The box's
+    // own half-extents (below, `posed`) keep the FULL crop — that headroom is a rotation-coverage
+    // property this function cannot reach, since a face's world size never feeds back through here —
+    // so the shader's own texture-sampling step (`FACECROP`, the FRAG source below) restores it before
+    // a face reads its source, and the host's own `seated` divides THIS return back to identity as a
+    // real door is neared, the same channel every other cropped instrument in the fleet already uses.
     function fit(iw, ih, w, h) {
       var fa = w / Math.max(h, 1);
       var ia = iw / Math.max(ih, 1);
-      if (ia > fa) return [fa / ia, 1, 0, 0];
-      return [1, ia / fa, 0, 0];
+      if (ia > fa) return [fa / ia / CROP, 1 / CROP, 0, 0];
+      return [1 / CROP, ia / fa / CROP, 0, 0];
     }
 
     // The plain three-by-three inverse the module carries (box.js:385-394), returning the nine
@@ -594,7 +615,10 @@
       if (!invA) invA = [0, 0, 0, 0, 0, 0, 0, 0, 1];
       var only = (!invB || B.facing <= 0 || Math.abs(jj.f) < 1e-6) ? 1 : 0;
       if (!invB) invB = invA;
-      var off = AMP * win * clamp(typeof st.travel === "number" ? st.travel : 1, 0, 1);
+      // `off` rides `uTurn.y` straight into the face's own crop-multiplied texture coordinate
+      // (`tA`/`tB` in the shader, above `FACECROP`), so it is pre-multiplied by the same crop here —
+      // the physical travel `AMP` still bounds is unchanged, only the units it is added in are.
+      var off = AMP * CROP * win * clamp(typeof st.travel === "number" ? st.travel : 1, 0, 1);
       var fing = FING_MAX * clamp(st.lead, 0, 1) * win;
       var fingN = Math.round(clamp(typeof st.fingers === "number" ? st.fingers : FING_N, 3, 14));
       // THE CONTACT SHADOW'S GATE, out at every landing (box.js:695). It is walked up over the first
