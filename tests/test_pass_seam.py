@@ -93,6 +93,29 @@ diagnosed, not silently excepted:
     fold's canvas stand visible after the interruption. Not diagnosed past that: consistent in shape
     with cause C (the broader non-dock/timeout class the plan names as its own, separately-scoped
     diagnosis), not investigated further here since cause C is explicitly not this phase's work.
+
+    DIAGNOSED FURTHER, PHASE 3 (2026-09-01, cause G). This row stays red after Phase 3's own repair
+    below, and it is red for cause F alone now, not for a crash: `pass-composer.js:4184` always
+    writes a cue's `window` as a pair of `Flt`-tagged numbers (`valueOf` at `:66`), and `camEdge`
+    (`pass-layer.js:1048`) was the one window reader in that file that returned them unwrapped —
+    every sibling reader (`cueLiveAt`, `windowsMeet`, `metAcross`, the door-progress read in
+    `playFrame`) already wraps with `Number(...)`. `camEdge`'s return value is used nowhere except
+    `camPoseAt`'s handoff measurement, `+at.toFixed(4)`, a bare method call `valueOf` does not rescue
+    — so a real camera-authority handoff on box-fold, the fleet's only `cameraAuthority:"own"`
+    instrument, threw `TypeError: at.toFixed is not a function` inside `runFrame`'s own cadence-walk
+    call to `playFrame`, was caught and logged as `frame-threw`, and re-entered `finish`'s own cause-F
+    rest gate without ever drawing a cadence frame — a second, independent way to read "no cadence
+    frame was caught" on top of cause F's own genuine non-convergence. Reproduced live (stack trace:
+    `camPoseAt` → `playFrame` → `runFrame`) on real box-fold bundles driven through
+    `tests/dump_route_wire_fence.py` (Phase 6), fixed by wrapping `camEdge`'s return in `Number(...)`,
+    and reverified clean on the same instrument: no more `frame-threw`/`toFixed` events, and the
+    cause-F loop it used to crash inside of now resolves in one bounded cycle through the pass's own
+    watchdog instead of many. This file's OWN solo-pivot cadence row above never happened to cross
+    `camEdge`'s crashing branch (verified unchanged, byte-for-byte, before and after the fix — same
+    `box=None`, same non-crash shape), so its own continued redness is cause F's alone, unfixed and
+    correctly out of this phase's scope (its own item, before Phase 4 item 3). Cause G is therefore
+    not one mechanism but two stacked on box-fold: cause F's own non-convergence (open) and this
+    file's own `camEdge` crash (closed). Write-set: `engine/assets/pass-layer.js` only.
   · `hero`'s own travel(hero) enter/leave rows (up to 88.6% of pixels outside their own neighbourhood
     range) are a NEW finding this widening surfaces, not previously named in the plan: the composer
     cast hero — a `coverage.writes:false` instrument with no `presence`-style entry-door handle — into

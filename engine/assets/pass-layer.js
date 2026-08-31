@@ -1045,11 +1045,28 @@
   // its pose freezes and then jumps: resuming at the second the visitor has actually reached would
   // put a step into the flight, and a camera cut is the wipe under another name.
   // The second an owned window opens or closes — the instant a handoff is judged at.
+  //
+  // UNWRAPPED HERE, LIKE EVERY OTHER WINDOW READER IN THIS FILE (`cueLiveAt`, `windowsMeet`,
+  // `metAcross`, the door-progress read in `playFrame`). The composer always writes a cue's window
+  // as a pair of `Flt`-tagged numbers (`pass-composer.js:4184`'s `[flt(...), flt(...)]`), whose
+  // `valueOf` (`pass-composer.js:66`) makes them read correctly through arithmetic and comparison —
+  // which is why the callers that only ever compare or subtract a window edge never needed this —
+  // but a bare property access such as `.toFixed()` does not go through `valueOf` at all. The one
+  // caller here (`camPoseAt`'s handoff read, `+at.toFixed(4)`) does exactly that, so a real handoff
+  // on a real composed score — box-fold's own-camera window closing at the pass's own duration,
+  // the fleet's only `cameraAuthority:"own"` cue — threw `TypeError: at.toFixed is not a function`
+  // (found 2026-09-01, V2-CONVERGENCE-PLAN's cause G) the instant the running clock read a hair past
+  // that edge, which a landing cadence's own rest-check loop (cause F, already traced) routinely
+  // does. The throw fired inside `runFrame`, was caught as `frame-threw`, and re-entered `finish`'s
+  // own cause-F loop without ever drawing a cadence frame — "no cadence frame was caught."
   function camEdge(score, ownerName, entering) {
     var id = ownerName && ownerName.indexOf("cue:") === 0 ? ownerName.slice(4) : null;
     var cues = (score && score.cues) || [];
     for (var i = 0; i < cues.length; i++) {
-      if (cues[i].id === id) { var w = cues[i].window || [0, 0]; return entering ? w[0] : w[1]; }
+      if (cues[i].id === id) {
+        var w = cues[i].window || [0, 0];
+        return Number(entering ? w[0] : w[1]);
+      }
     }
     return null;
   }
