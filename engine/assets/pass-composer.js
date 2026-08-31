@@ -8852,6 +8852,29 @@
             var pSpan = HANDLE_SPECS[instr][h];
             var pFrom = appliedValue(instr, h, pSpan[0])[1];
             var pTo = appliedValue(instr, h, pSpan[1])[1];
+            // Some materials name a progress handle for a thing that may live only IN the room:
+            // the unfold's `field`, for example, opens its parquet plane through the middle but
+            // its manifest publishes `applied.shutAt: 0`, because either door must be a whole
+            // photograph.  The old generic progress branch faithfully ran every such handle from
+            // min to max, leaving the world fully open at the arriving door.  The instrument then
+            // quite rightly refused its exit and the host replaced the passage under the visitor.
+            // Read the declaration here rather than spelling out `field`: any future material that
+            // says it shuts at a door gets one smooth bell, zero at both endpoints and fully open
+            // in the room.  A normal progress handle keeps the existing one-way journey.
+            var pDecl = (MANIFESTS[instr].handles || {})[h] || {};
+            var shutAt = pDecl.applied && pDecl.applied.shutAt;
+            if (Number.isFinite(Number(shutAt))) {
+              var pShut = appliedValue(instr, h, shutAt)[1];
+              nodes[nodeName] = {
+                op: "spline", in: { source: "cueProgress" },
+                points: [{ at: flt(0.0), value: pShut },
+                         { at: flt(0.5), value: pTo },
+                         { at: flt(1.0), value: pShut }],
+                note: "requested the passage's own room on a handle its material says must shut "
+                    + "at both doors, from " + pyText(pShut) + " to " + pyText(pTo)
+                    + " and back, from " + why };
+              return;
+            }
             nodes[nodeName] = {
               op: "map",
               in: { op: "curve", name: "smooth", in: { source: "cueProgress" } },
