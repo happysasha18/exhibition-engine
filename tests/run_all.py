@@ -126,6 +126,9 @@ SUITES = [
     # before this phase, connected into genresFor's own ranking, registered in the pass that wrote
     # it.
     "pass_p13",
+    # Cause A (2026-08-31, V2-CONVERGENCE-PLAN-2026-08-31.md Phase 1) — the casting tier ladder
+    # ranks instead of gating, registered in the pass that wrote it.
+    "pass_cast_tiers",
 ]
 
 

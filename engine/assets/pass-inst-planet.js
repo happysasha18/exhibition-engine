@@ -848,6 +848,11 @@
       // coarser of the two, the contract table's WORLD is the module's own row, and the shelf that
       // names the sphere settles it. CELL, CELL CONTENT, TEXTURE and LIGHT-COLOUR are not claimed.
       levels: ["WORLD", "SURFACE"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key; the composer's own `INSTRUMENTS.cuts` carried «ring»
+      // with no line here to answer for it. The seam note just below names the same shape: «one
+      // photograph wrapped into a RING».
+      cuts: ["ring"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The strip this curl bends is one
       // photograph wrapped into a RING, and its two ends meet at a join the module itself never
       // closes to nothing — «a shut ring has no cut down it either» — so the join is glued by a

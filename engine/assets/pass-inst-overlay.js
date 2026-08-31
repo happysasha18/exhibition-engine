@@ -657,6 +657,19 @@
       // the grain: what this instrument owns is the light and the colour of the frame, and it is the
       // only instrument the settings record publishes that owns them.
       levels: ["LIGHT-COLOUR"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key; the composer's own `INSTRUMENTS.cuts` carried «band»,
+      // «field». `band` stands: this instrument's own fit function (`INSTRUMENT_SUITS.overlay`)
+      // reads the two works' colour worlds standing apart, the same reading `PIVOT_SHAPES
+      // ["shared-palette-region"]`'s own `colour_world` cut is built on. `field` does not survive
+      // the same check — see `pass-composer.js`'s own note on `field` at `KIND_OF_MEASURE`/
+      // `KIND_OF_AXIS` above `castForKindsRanked` (cause A, item 3): no measure this file or the
+      // composer publishes maps to it, so a kind named here could never be asked for by any ground
+      // or travelling candidate, whatever this instrument's own comments elsewhere call the whole-
+      // frame construction its `mix` dial walks. Naming a kind nothing can ever ask for is not a
+      // preference the die can rank low, the same shape cause A closed everywhere else in this
+      // file's own vocabulary; carrying it here would only restate the defect one file over.
+      cuts: ["band"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). One, and it is not a
       // cut of the frame into elements — the `levels` note above says rightly that nothing here cuts
       // the frame into cells, and a seam is a different question: not what elements the frame is

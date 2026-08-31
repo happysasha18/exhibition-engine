@@ -557,11 +557,20 @@
       //     point shows is decided by that point's own row coordinate against the travelling front,
       //     which is a strip cut and nothing else; the composer's `KIND_OF_MEASURE` reads the same
       //     kind out of a `banding` pivot.
-      //   · `field` — the plane itself. It is one surface carrying both works at once, and the
-      //     crossing is a change of how much of that one surface each of them owns, so the whole
-      //     frame is the element. It is the kind the double-exposure instrument declares, and this
-      //     is the second published instrument to cut on it.
-      cuts: ["strip", "field"],
+      //   · `field` WAS NAMED HERE AND IS RETIRED, 2026-08-31 (cause A, item 3). The paragraph
+      //     that stood in this place said what it means honestly — the plane itself, one surface
+      //     carrying both works at once, so the whole frame is the element — and nothing about the
+      //     effect it describes was wrong. What was wrong is that no measure this composer
+      //     publishes maps to it: not `KIND_OF_MEASURE`, not `PIVOT_SHAPES`, not `KIND_OF_AXIS`, so
+      //     a ground or a travelling candidate could never ask a pair for `field` and this
+      //     instrument's own claim to it could never be reached, cast, or ranked either way. Cause
+      //     A's own review found the same true of the double-exposure instrument's matching claim.
+      //     A kind nothing can ever ask for is not a preference the die ranks low, it is dead code
+      //     wearing the shape of a declaration, and this file's whole point since 2026-08-18 is
+      //     that a fact this small keeps one home rather than a second, silently-false one. The
+      //     effect itself is unchanged — the plane still carries both works and the front still
+      //     travels row by row — only the never-reachable second cut is gone.
+      cuts: ["strip"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The travelling front's own boundary —
       // `d = (front - st.y) / (2.0 * foot); cov = clamp(0.5 + d, 0.0, 1.0)` — crosses over inside a
       // band exactly `foot` wide, and `foot` is the projection's own Jacobian times half a buffer

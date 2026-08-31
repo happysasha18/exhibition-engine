@@ -628,6 +628,25 @@
       id: "gears", api: 1, arity: 2,
       roles: ["disassembly", "mystery", "assembly"],
       levels: ["SURFACE", "CELL"],
+      // THE FRAME'S OWN PARTITION (§8's `seams` block, pass-layer.js). Each wheel is cut into teeth
+      // by its own tooth count — a WEDGE of the wheel's own turn per tooth, the same primitive
+      // kaleidoscope's fold and studio's mirrors cut on — and the mesh line where the two rims meet
+      // hands off from one wedge to the next once per tooth, all the way round either wheel.
+      //
+      // MOVED HERE FROM AFTER `handles`, 2026-08-31 (cause A, item 5 — the reconciliation, second
+      // half). This line always published the right answer and the composer's own `INSTRUMENTS.
+      // cuts` still carried a stale `["ring", "wedge"]` beside it regardless, because the site's own
+      // harvester (`lab/work-readings-v1.py`, `read_manifests`) only reads `levels`/`roles`/`cuts`
+      // out of the text between `id:` and the start of the `handles` block — every other instrument
+      // in this fleet declares its `cuts` in that same stretch, and this file was the one exception,
+      // declaring it AFTER `handles`, where the harvester's own window never reached. So the manifest and the
+      // derived table were never actually compared: the harvester read this line as absent and fell
+      // back to a hand-typed row nobody had a reason to update. The fact was always right; only its
+      // position hid it from the one place that reads it. `pass-composer.js`'s own `CUTS_ON`, since
+      // the same date, reads the manifest directly and no longer consults that derived table at all
+      // — the position defect is fixed here so the two sides of the reconciliation agree at the
+      // engine's own JSON, not only inside this file's own runtime.
+      cuts: ["wedge"],
       params: { bandPeriod: [0.02, 1], ratio: [0, 1], size: [0.3, 8] },
       // EVERY handle a score can drive (§4.4b). The module ran its wheels on its own accumulating
       // clock and held its judges, its die and its flank as constants; all of them are published
@@ -785,11 +804,6 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/gears.js", commit: "e0f1b91" },
-      // THE FRAME'S OWN PARTITION (§8's `seams` block, pass-layer.js). Each wheel is cut into teeth
-      // by its own tooth count — a WEDGE of the wheel's own turn per tooth, the same primitive
-      // kaleidoscope's fold and studio's mirrors cut on — and the mesh line where the two rims meet
-      // hands off from one wedge to the next once per tooth, all the way round either wheel.
-      cuts: ["wedge"],
       // WHERE THIS INSTRUMENT HAS A SEAM. The mesh line's own die (`hash11(ti + uSeed)` in FRAG
       // above) rolls once per tooth and had NOTHING between one roll and the next: a point crossing
       // from one tooth into its neighbour met two unrelated rolls stitched edge to edge, a boundary

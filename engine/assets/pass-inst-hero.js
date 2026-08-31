@@ -744,6 +744,13 @@
       // light this instrument adds is the planet's own sky and rim, which belong to the reading
       // rather than to a field laid over one.
       levels: ["SURFACE", "CELL"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key, and the composer's own `INSTRUMENTS.cuts` carried
+      // «ring», «wedge» for this instrument with no line in this file to answer for it. Both are
+      // the seam block just below, whole: the window folds on the four angular mirrors (a wedge
+      // cut) AND the ring mirror that turns the wedges into courses, the same two boundaries
+      // kaleidoscope's own construction stands on.
+      cuts: ["ring", "wedge"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). There are two, since the window is cut
       // by two devices in one field: the four angular mirrors, and the mirror across a ring that turns
       // the wedges into courses. Both are HAIRLINE retouches, on the same construction kaleidoscope's

@@ -612,6 +612,12 @@
       // CELL CONTENT is not claimed either. A panel carries the work read at a reflected point, and
       // the reflection is the partition rather than a second thing happening inside a panel.
       levels: ["CELL"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key; the composer's own `INSTRUMENTS.cuts` carried «panel»
+      // with no line here to answer for it. The seam note just below says it directly: the fold
+      // is a reflection that makes «the two panels the fold makes», the same construction hero's
+      // and kaleidoscope's own folds stand on.
+      cuts: ["panel"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block) — and here it has none to declare. The
       // fold is a reflection about the crease, `q = p - (h + abs(h)) * n` in FRAG's own `folded`, and
       // at the crease itself `h` is nothing, so `q` equals `p` and the sampled point on either side of

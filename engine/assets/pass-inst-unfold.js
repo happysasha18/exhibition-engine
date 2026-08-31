@@ -1048,6 +1048,12 @@
       // moved. Either the two readings want two fields, or a handle's level wants to be free of the
       // instrument's own array.
       levels: ["CELL", "CELL CONTENT"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key; the composer's own `INSTRUMENTS.cuts` carried «panel»
+      // with no line here to answer for it. The seam note just below says the same thing directly:
+      // «the sheet cuts the frame into its own panels» — the fold `pass-composer.js`'s own history
+      // (above `castForKindsRanked`) says this instrument has cut on all along.
+      cuts: ["panel"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The sheet cuts the
       // frame into its own panels, and a panel meets its neighbour at their shared hinge. The shader
       // grows each face one point past its own hinge before it is tested — `pt = 1.0 / uRes.y` and

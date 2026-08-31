@@ -768,6 +768,12 @@
       // LIGHT-COLOUR are not claimed either: the fog, the cold tint and the hole are the module's own
       // depth cue on one surface rather than a voice over a field.
       levels: ["SURFACE", "CELL"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key; the composer's own `INSTRUMENTS.cuts` carried «ring»
+      // with no line here to answer for it. The paragraph just above already names it: «that is
+      // the cell the composer's `KIND_OF_MEASURE` reads out of a `radial` pivot», and the seam
+      // note right below is the same ring.
+      cuts: ["ring"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The RING is where one depth-ring hands
       // over to the next: the picture turns around at that edge and a cross-fade with the
       // neighbouring ring keeps the turn from showing as a seam. It is a HANDOVER ZONE and not an

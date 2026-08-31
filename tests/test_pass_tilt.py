@@ -352,14 +352,16 @@ check("PASS-TILT the plane's inverse travels as three rows and the shader rebuil
       "module bound — down to which element each of uInv[1] and uInv[2] names, which the pixel's own "
       "footprint reads")
 
-check("PASS-TILT the instrument declares what it cuts on, and it is the strip and the field",
-      'cuts: ["strip", "field"]' in REGION,
+check("PASS-TILT the instrument declares what it cuts on, and it is the strip alone",
+      'cuts: ["strip"]' in REGION,
       "the front is a row of the plane travelling toward the eye, which is a strip cut and the same "
-      "kind the composer's KIND_OF_MEASURE reads out of a banding pivot; and the plane itself is one "
-      "surface carrying both works, so the whole frame is the element — the field kind the "
-      "double-exposure instrument declares; a red-on-bug row further down renders synthetic works "
-      "that vary only by row and shows the front tracks that row, with both works standing on the "
-      "one surface at once")
+      "kind the composer's KIND_OF_MEASURE reads out of a banding pivot. `field` was retired here "
+      "2026-08-31 (cause A, item 3, V2-CONVERGENCE-PLAN-2026-08-31.md): no measure this composer "
+      "publishes maps to it, so a ground or a travelling candidate could never ask for it, and a "
+      "kind nothing can ever ask for is dead code wearing the shape of a declaration; the effect it "
+      "named — one surface carrying both works at once — is unchanged, only the never-reachable "
+      "second cut is gone; a red-on-bug row further down renders synthetic works that vary only by "
+      "row and shows the front tracks that row, with both works standing on the one surface at once")
 
 # WHAT A PAIR MUST READ IS WHAT A PAIR DOES READ. His words of 2026-08-18 09:51, 09:53 and 10:15: a
 # measurement ranks which genre suits and never admits or rejects, and a reading of a PAIR carries no
@@ -795,7 +797,7 @@ else:
                     all(k in m for k in need)
                     and m["id"] == "tilt" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
-                    and m["cuts"] == ["strip", "field"]
+                    and m["cuts"] == ["strip"]
                     and sorted(m["params"]) == ["horizon", "lead", "squeeze", "tilt"]
                     and len(m["handles"]) == 11
                     and sorted(m["handles"]) == sorted(HANDLES)

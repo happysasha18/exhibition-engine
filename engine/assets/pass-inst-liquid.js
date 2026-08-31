@@ -667,6 +667,16 @@
       // keep — and it cost something real, because a cue owns a level to the exclusion of every
       // other cue: claiming SURFACE here silenced whichever voice actually drove it.
       levels: ["TEXTURE"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key, and the composer's own `INSTRUMENTS.cuts` carried
+      // «band», «scale» — a copy this instrument's own fit function (`pass-composer.js`'s
+      // `INSTRUMENT_SUITS.liquid`) does not support: it reads the pair's `texture` measure alone,
+      // which `KIND_OF_MEASURE` reads as `scale`, and nothing here reads a banding family at all.
+      // `band` was the copy's own drift and is not carried over. The seam block just below
+      // names TILE and ISOLINE — its own words say plainly that neither is a cut of the frame into
+      // elements, so neither belongs here either; `scale` is the one kind this instrument's own
+      // reading actually answers for, the same one veil declares for the same construction.
+      cuts: ["scale"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). Two, and neither of
       // them is a cut of the frame into elements — the `levels` note above says rightly that nothing
       // here cuts the frame into parts, and a seam is a different question: not what elements the

@@ -1476,10 +1476,23 @@
     // Every published instrument names its own cuts, so a landing one joins the candidates by
     // arriving and no table here can shadow it. The order is settled so a pinned die reproduces a
     // choice exactly; which of the candidates plays is decided per pair, below.
+    //
+    // READ OFF `MANIFESTS`, NOT `INSTRUMENTS`, SINCE 2026-08-31 (cause A, item 5). `INSTRUMENTS` is
+    // a second table the site's own staging step builds beside the manifests, and a second table
+    // for one fact only ever agrees with the first by accident: eleven instrument files carried no
+    // `cuts` key of their own at all — this table was their only publisher — and `gears`, which did
+    // carry one, disagreed with it outright (`["wedge"]` here, `["ring", "wedge"]` there, and
+    // `pass-inst-gears.js`'s own seam block backs `wedge` alone: "unlike planet's wrap or tunnel's
+    // ring"). A manifest is hand-authored by the person who built the instrument; `INSTRUMENTS` is
+    // a derived copy, and a copy that can disagree with its own source is not a second home worth
+    // keeping. Every one of the eleven now carries its own `cuts` line, read against its own seam
+    // block and its own fit function rather than copied from the table this file no longer reads
+    // for this fact — the same repair `WORLD_FOLD_INSTRUMENTS` above already made for a different
+    // one. `INSTRUMENTS` stays in `consts` for the few facts that are genuinely its own (`api`,
+    // `levels`, resource ceilings), read at their own call sites below.
     var CUTS_ON = {};
-    Object.keys(INSTRUMENTS).sort().forEach(function (iid) {
-      if (!MANIFESTS[iid]) return;
-      (INSTRUMENTS[iid].cuts || []).forEach(function (kind) {
+    Object.keys(MANIFESTS).sort().forEach(function (iid) {
+      (MANIFESTS[iid].cuts || []).forEach(function (kind) {
         if (!CUTS_ON[kind]) CUTS_ON[kind] = [];
         if (CUTS_ON[kind].indexOf(iid) < 0) CUTS_ON[kind].push(iid);
       });
@@ -2570,45 +2583,79 @@
         // that the road played unfolded, so a thin passage still plays and still says why.
         if (mustFold && !(isFold && cuts)) continue;
         var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);
+        // TAKEN IS THE ONLY HARD WALL LEFT (2026-08-31, cause A, shelf 9). One instrument is one
+        // object with one pose, so a candidate this same crossing already cast elsewhere genuinely
+        // cannot also stand here — that is a fact about the host, not a reading of this pair, and
+        // order 8 stays its sentinel: the tier `slotCandidates` (below, at the joint bundle
+        // planner) still reads as "not a real alternative" via its own `row.order < 8`.
+        // MUST-FILL AND STANDS-ABOVE USED TO SHARE THAT SAME SENTINEL, which made the ground's own
+        // coverage preference ("an alpha-writing instrument can never be the ground") and the
+        // arrival's own frame preference ("a frame-filling instrument can never be the arrival")
+        // exactly as absolute as a candidate that is already playing another slot of this same
+        // crossing — the exact shape shelf 9 forbids a measurement from taking: "it ranks the
+        // genres of a crossing... it never decides whether a pair qualifies." Each is now a
+        // demotion the same size the other already used (+4, the room `base` already leaves free
+        // under 8), so a candidate either preference marks down still lands inside the range the
+        // roll below can actually reach, and reads through to `castForKinds`'s wrapper only where a
+        // genuinely better-suited candidate does not outweigh the demotion.
         var order = (taken.indexOf(iid) >= 0) ? 8
-          : ((mustFill && !FILLS_THE_FRAME[iid]) ? 8
-             : ((standsAbove && FILLS_THE_FRAME[iid]) ? base + 4 : base));
+          : base
+            + ((mustFill && !FILLS_THE_FRAME[iid]) ? 4 : 0)
+            + ((standsAbove && FILLS_THE_FRAME[iid]) ? 4 : 0);
         said.push({ instrument: iid, fit: answer[0] === null ? null : r4(answer[0]), cuts: cuts,
                     why: answer[1], order: order });
         tiers[order].push({ id: iid, fit: answer[0] });
       }
       // THE RANKED LIST ITSELF. `order` (0..8, the tier a candidate landed in above) rides on every
       // entry so a caller building a JOINT bundle (P1.2's own planner, below) can tell a genuinely
-      // ranked alternative (`order < 8`) from the last-resort tier that `taken`/`mustFill` failures
-      // land in — that tier is walked too, exactly as the old single-pick loop always fell through to
-      // it when nothing better stood, but nothing outside this function should ever reach for it as
-      // a real ALTERNATIVE.
-      var ranked = [];
-      for (i = 0; i < tiers.length; i++) {
+      // ranked alternative (`order < 8`) from the last-resort tier that `taken` failures land in —
+      // that tier is walked too, exactly as it always was when nothing better stood, but nothing
+      // outside this function should ever reach for it as a real ALTERNATIVE.
+      //
+      // EVERY TIER BELOW 8 NOW SHARES ONE ROLL (2026-08-31, cause A). Before today only the FIRST
+      // non-empty tier of 0..8 was ever rolled, and every tier behind it was walked purely to be
+      // LISTED, never drawn — which made every one-order demotion above (a fold under a no-miracle
+      // budget, the ground's cover preference, the arrival's frame preference) a TOTAL exclusion
+      // whenever any candidate at all stood in a better tier, whatever either pair's own reading
+      // said. The die now runs once over every soft tier's candidates together, and each
+      // candidate's own fit is weighted down by how many tiers it sits behind the best tier
+      // actually present FOR THIS PAIR — never to zero, the same law `coolOf`'s own comment states
+      // two screens up for the letter cooldown ("nothing is ever zero... a cooldown never empties a
+      // pool"), read here as a tier gap instead of a recency gap. So the best-suited candidate in
+      // the best tier present still holds the widest stretch of the weight — a demoted candidate
+      // needs a reading strong enough to outweigh its own gap — but a lower tier is no longer a
+      // wall: it can win.
+      var ranked = [], soft = [], k;
+      for (i = 0; i < 8; i++) {
         if (!tiers[i].length) continue;
-        var pool = rankUnread(tiers[i]);
-        if (!ranked.length) {
-          // THE WINNING TIER, AND ONLY THE WINNING TIER, ROLLS THE DIE — the same call this function
-          // has always made, over the same pool, with the same key. Its answer is this list's head.
-          var pick = dieWeighted(pool, seed, key + "|" + list.join("+") + "|" + slot, 1);
-          var pickedFit = 0;
-          pool.forEach(function (p) { if (p.id === pick) pickedFit = p.fit; });
-          ranked.push({ id: pick, fit: pickedFit, order: i });
-          pool.filter(function (p) { return p.id !== pick; })
-            .sort(function (x, y) {
-              return (Number(y.fit) || 0) - (Number(x.fit) || 0)
-                || (x.id < y.id ? -1 : (x.id > y.id ? 1 : 0));
-            })
-            .forEach(function (p) { ranked.push({ id: p.id, fit: p.fit, order: i }); });
-        } else {
-          // EVERY TIER BEHIND THE WINNING ONE IS STILL ORDERED — fit descending, id as the
-          // deterministic tie-break — but never rolled: only the single best tier's own winner is
-          // ever drawn by die, exactly as this function always drew it.
-          pool.slice().sort(function (x, y) {
-            return (Number(y.fit) || 0) - (Number(x.fit) || 0)
+        rankUnread(tiers[i]).forEach(function (p) { soft.push({ id: p.id, fit: p.fit, order: i }); });
+      }
+      if (soft.length) {
+        var bestOrderHere = soft.reduce(function (m, s) { return Math.min(m, s.order); }, 8);
+        var weighted = soft.map(function (s) {
+          return { id: s.id, fit: s.fit / (1 + (s.order - bestOrderHere)) };
+        });
+        var pick = dieWeighted(weighted, seed, key + "|" + list.join("+") + "|" + slot, 1);
+        var head = null;
+        for (k = 0; k < soft.length; k++) { if (soft[k].id === pick) { head = soft[k]; break; } }
+        ranked.push(head);
+        soft.filter(function (s) { return s.id !== pick; })
+          .sort(function (x, y) {
+            return x.order - y.order
+              || (Number(y.fit) || 0) - (Number(x.fit) || 0)
               || (x.id < y.id ? -1 : (x.id > y.id ? 1 : 0));
-          }).forEach(function (p) { ranked.push({ id: p.id, fit: p.fit, order: i }); });
-        }
+          })
+          .forEach(function (s) { ranked.push(s); });
+      }
+      // TIER 8 IS NEVER ROLLED, ONLY LISTED, exactly as every tier used to be behind the winner:
+      // a candidate already playing another slot of this crossing is walked here purely so the
+      // collision fallback (the comment over `avoid`, above) has something to fold into where the
+      // collection publishes nothing else at all.
+      if (tiers[8].length) {
+        rankUnread(tiers[8]).slice().sort(function (x, y) {
+          return (Number(y.fit) || 0) - (Number(x.fit) || 0)
+            || (x.id < y.id ? -1 : (x.id > y.id ? 1 : 0));
+        }).forEach(function (p) { ranked.push({ id: p.id, fit: p.fit, order: 8 }); });
       }
       // A COLLECTION WITH NO INSTRUMENT AT ALL is the one case with nothing to rank, and it is a
       // fact about the settings record rather than about the pair — UNLESS every candidate this
@@ -8998,16 +9045,35 @@
             var pointerAmount = flt(r4((num(pointerRange[1]) - num(pointerRange[0])) * 0.055));
             var pointerNote = nodes[pointerNode].note;
             nodes[pointerBase] = nodes[pointerNode];
+            // MARKED THE SAME WAY `appliedValue`'s OWN `tidy` MARKS A HANDLE'S BOUND, a few dozen
+            // lines above (2026-08-31, found chasing cause A's own test fallout): an integer where
+            // the manifest holds one, a marked float otherwise. This clamp is the one place a
+            // handle's raw published bound is written into a node without going through
+            // `appliedValue` first, and it went unmarked — weave's own `press` handle publishes a
+            // non-integer max (`PRESS = 1.30`, pass-inst-weave.js), so the ONE crossing that drives
+            // the pointer nudge through `press` (parquet's `spin`, planet's `turn` and livemirror's
+            // `drift` all publish whole-number bounds, so only `press` was ever exposed) reached
+            // `writeJsonTight` with a bare, unmarked 1.3 and the writer refused it outright. Not a
+            // new number — the same defect `appliedValue`'s `tidy` was written to close, missed at
+            // this one other place it was needed.
             nodes[pointerNode] = {
-              op: "clamp", min: pointerRange[0], max: pointerRange[1],
+              op: "clamp",
+              min: Number.isInteger(num(pointerRange[0])) ? num(pointerRange[0])
+                                                           : flt(num(pointerRange[0])),
+              max: Number.isInteger(num(pointerRange[1])) ? num(pointerRange[1])
+                                                           : flt(num(pointerRange[1])),
               in: { op: "add", in: [
                 { node: pointerBase },
                 { op: "multiply", in: [
                   { source: "pointer", channel: "x" },
                   { op: "static", value: pointerAmount },
+                  // `at` MARKED THE SAME WAY THE OTHER TWO SPLINES IN THIS FILE ALREADY MARK IT
+                  // (:8875, :8917 — `flt(0.0)`), found the same chase as the clamp bound just
+                  // above: 0.28 and 0.72 are this bell's own two turning points and neither is a
+                  // handle bound at all, so `appliedValue`'s repair never reached them either.
                   { op: "spline", in: { source: "cueProgress" }, points: [
-                    { at: 0, value: 0 }, { at: 0.28, value: 1 },
-                    { at: 0.72, value: 1 }, { at: 1, value: 0 }
+                    { at: 0, value: 0 }, { at: flt(0.28), value: 1 },
+                    { at: flt(0.72), value: 1 }, { at: 1, value: 0 }
                   ] }
                 ] }
               ] },

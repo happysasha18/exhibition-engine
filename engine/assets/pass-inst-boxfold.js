@@ -850,6 +850,14 @@
       // one thing this instrument writes over a picture, and it lies along a cell's own edge rather
       // than over a field.
       levels: ["WORLD", "CELL"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key: the composer's own `INSTRUMENTS.cuts` carried «panel»
+      // for this instrument, read off nowhere in this file, and the manifest is the one home a
+      // fact this small should ever have. `panel` is what the seam just below already says the
+      // crease is — the box's own finger joint splits the frame into the two faces the fold hinges
+      // between — so the declaration restates what this file already proves rather than adding a
+      // fact.
+      cuts: ["panel"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block). The crease between the two faces is a
       // PANEL edge — the box's own finger joint, where face A's coverage `dA` and face B's coverage
       // `dB` meet and the shader turns their difference into `cov` over exactly one point of the

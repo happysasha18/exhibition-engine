@@ -677,6 +677,12 @@
       // cost something real: an owner holds a level to the exclusion of every other cue, so
       // claiming SURFACE here silenced whichever voice actually drove it.
       levels: ["CELL"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key; the composer's own `INSTRUMENTS.cuts` carried «strip»
+      // with no line here to answer for it. This instrument's own fit function
+      // (`INSTRUMENT_SUITS.weave`) reads the pair's `banding` measure, which `KIND_OF_MEASURE`
+      // reads as `strip`, and the seam note just below calls the cells themselves «the ribbons».
+      cuts: ["strip"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The cells are the
       // ribbons, and within one ribbon the frame carries the departing work up to the ribbon's own
       // `dutyV`/`dutyH` mark and the arriving work past it — the boundary `covV = sqcov(cV, dutyV,

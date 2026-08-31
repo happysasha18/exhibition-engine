@@ -723,6 +723,20 @@
       // note for it reads «a named region is a thing in the picture», which is what this instrument
       // carries whole across an emptiness.
       cuts: ["region"],
+      // A REGION-GROUND PAIR HAS A REACHABLE TIER AGAIN, 2026-08-31 (cause A, item 4). This
+      // instrument is `region`'s only cutter and it writes coverage (the block below), so
+      // `FILLS_THE_FRAME[adrift]` reads false and `pass-composer.js`'s ground cast (the
+      // `mustFill` call at what was `:5170-5172`) used to mark every candidate like this one
+      // `order: 8` outright — a total exclusion, never rolled, so a `region`-ground pair fell
+      // through to one of the fifteen non-cutting fillers by default whatever this instrument's
+      // own reading of the pair said. Cause A's own mechanism repair (`castForKindsRanked`,
+      // `pass-composer.js` around `:2586-2604`) turned that exclusion into a same-size demotion
+      // (`+4`, inside the range the roll below `:2628` still reaches) shared with the arrival's
+      // matching frame preference — so this instrument now lands in a real, rollable tier on
+      // every `region`-ground pair rather than tier 8, and wins where its own fit outweighs the
+      // demotion. No second, `region`-specific change was needed: the bar it fell under was
+      // never a fact about `region`, only about writing coverage, and cause A's own rule (repair
+      // the mechanism, not the instance) already covers it.
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The cut is on two named
       // regions — the departing thing and the arriving thing — and a seam would be the boundary
       // where one region's content meets the other's. There is none to soften, because by this

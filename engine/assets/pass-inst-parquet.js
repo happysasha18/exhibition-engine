@@ -733,6 +733,13 @@
       // instrument out of reach of every step whose role has none to spend, which would be a large
       // consequence to draw from a word the table does not use.
       levels: ["SURFACE", "CELL"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key; the composer's own `INSTRUMENTS.cuts` carried «tile»
+      // with no line here to answer for it. The seam note just below and this instrument's own fit
+      // function (the two works' own cutting steps, `structure.grid.periodPx`/`ownDevice.stepPx`)
+      // both name the same floor of tiles, which `KIND_OF_MEASURE` reads off the `grid` measure as
+      // `tile` too.
+      cuts: ["tile"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). The floor is cut into
       // tiles, and the header above names the device that keeps a tile's own edge from reading as a
       // drawn line against its neighbour: "every tile flipped against the one beside it, so the

@@ -451,6 +451,14 @@
       // module (lab/CROSSING-BRIEF.md carries no `matter` row), so these two are derived and said to
       // be derived: one field runs over the whole frame at SURFACE, and its grain is the TEXTURE.
       levels: ["SURFACE", "TEXTURE"],
+      // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).
+      // This file never declared the key; the composer's own `INSTRUMENTS.cuts` carried «band»,
+      // «scale» with no line here to answer for it. Both check out independently: the header just
+      // below names the travelling threshold itself «a band of loosened matter», and this
+      // instrument's own fit function (`INSTRUMENT_SUITS.matter`) reads the pair's tonal and
+      // spectral bridge — exactly `PIVOT_SHAPES["tonal-and-spectral"]`'s own two element kinds,
+      // `band` and `scale`.
+      cuts: ["band", "scale"],
       // WHERE THIS INSTRUMENT HAS A SEAM (§8's `seams` block, pass-layer.js). It cuts the frame in
       // one place and the file's own header names it: "a band of loosened matter travels across the
       // frame with one work whole ahead of it and the other whole behind" (above, THE MATTER
