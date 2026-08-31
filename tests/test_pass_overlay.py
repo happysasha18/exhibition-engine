@@ -302,14 +302,15 @@ check("PASS-OVERLAY the three things the port decided for itself are named as th
 DECL = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 SPELT = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-OVERLAY every uniform the manifest declares is a uniform the shader spells, and no other",
-      DECL == SPELT and len(DECL) == 15,
+      DECL == SPELT and len(DECL) == 17,
       "the host looks every location up by the name the manifest declares and never by position "
       "(§7), so the two sets have to be one set: %d names, and they agree" % len(DECL)
       if DECL == SPELT else "declared but not spelled: %s; spelled but not declared: %s"
       % (sorted(DECL - SPELT), sorted(SPELT - DECL)))
 
 SOURCES = set(re.findall(r'type: "\w+", source: "([^"]+)"', REGION))
-CLOSED = {"textureA", "textureB", "fitA", "fitB", "resolution", "seconds"}
+CLOSED = {"textureA", "textureB", "sceneTexture", "sceneAvailable", "fitA", "fitB",
+          "resolution", "seconds"}
 outside = sorted(s for s in SOURCES
                  if s not in CLOSED and not s.startswith("frame:") and not s.startswith("handle:"))
 check("PASS-OVERLAY every uniform is sourced from inside the host's own closed set",
@@ -534,6 +535,7 @@ BROWSER_ROWS = [
     "PASS-OVERLAY the real transaction road: curtain up, one pass drawn, exactly one dock at the end",
     "PASS-OVERLAY a door the judges' channel spoils is refused on the real road, and the visitor still lands",
     "PASS-OVERLAY row 16 · the captures are kept as evidence",
+    "PASS-OVERLAY §4.4 · an upper exposure develops the lower live scene, not a second A/B blur",
 ]
 
 RED_ROWS = [
@@ -770,7 +772,11 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False, "readsChain": True}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 15
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 17
+                    and {u["name"]: u["source"] for u in m["passes"][0]["uniforms"]}.get("uScene")
+                        == "sceneTexture"
+                    and {u["name"]: u["source"] for u in m["passes"][0]["uniforms"]}.get("uSceneAvailable")
+                        == "sceneAvailable"
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -782,7 +788,8 @@ else:
                     and m["readiness"] == "production-ready"
                     and "overlay" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"thirteen handles, fifteen uniforms in one pass, both doors at a cover crop "
+                      f"thirteen handles, seventeen uniforms in one pass, including the host's "
+                      f"shared scene carrier, both doors at a cover crop "
                       f"of {m['framings']['0']['coverCrop']} — the plain cover fit, no crop and no "
                       f"upscale — resources declared for three tiers, and a coverage block that "
                       f"declares writes={m['coverage']['writes']}")
@@ -1111,6 +1118,40 @@ else:
              f"the project's own seam threshold of {ROADS}. Both roads run one fragment shader "
              f"through one rasteriser, so the residual is a difference of arithmetic")
           if tr else "the square bench never came up")
+
+    # ---- the shared carrier ---------------------------------------------------------------
+    # The top overlay is lawful only over a frame-filling ground.  At the middle it must read that
+    # already-transformed ground through `sceneTexture`; removing precisely that one read leaves
+    # the same stack, sources, handles and host, but turns the upper voice back into an independent
+    # A/B exposure.  The two frames therefore have to part by the project's own visible threshold.
+    def carrier_frame(tag):
+        def run(br):
+            taken = js(br, "return window.__offer(%s, {clock: 3.25, progress: 0.5});" % SCORE_OVER)
+            br.sleep(0.7)
+            rep = js(br, "return window.__report();")
+            br.evaluate("window.__show('host'); 0")
+            br.sleep(0.2)
+            shot = png(br, SHOTS / (tag + ".png"))
+            br.evaluate("window.__cancel('carrier bench'); 0")
+            idle(br)
+            return {"taken": taken, "report": rep, "shot": shot}
+        return run
+
+    carrier_live = on_bench(carrier_frame("carrier-live"))
+    carrier_blind_pack = PACK.replace(
+        '"  if (uSceneAvailable > 0.5) a = texture2D(uScene, vUv).rgb;",',
+        '"  // carrier deliberately bypassed by this red-on-bug bench;",', 1)
+    carrier_blind = on_bench(carrier_frame("carrier-blind"), pack_text=carrier_blind_pack)
+    carrier_gap = (diff(carrier_live["shot"], carrier_blind["shot"])
+                   if carrier_live and carrier_blind else (0.0, 0.0))
+    stack = ((carrier_live or {}).get("report") or {}).get("stack") or []
+    check(BROWSER_ROWS[16],
+          carrier_live and carrier_blind and carrier_live["taken"]["took"]
+          and len(stack) == 2 and carrier_gap[0] > SEAM,
+          (f"the real two-voice stack ran at its middle and the upper overlay read the lower "
+           f"scene: removing only that shader read changes the same frame by {carrier_gap[0]:.2f} "
+           f"of 255 (worst channel {carrier_gap[1]:.0f}), past the project's {SEAM:.0f} threshold")
+          if carrier_live and carrier_blind else "the two-voice carrier bench never completed")
 
     # ---- red-on-bug ------------------------------------------------------------------------------
     # 1. the door's own hold removed

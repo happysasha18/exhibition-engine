@@ -100,6 +100,13 @@
       "varying vec2 vUv;",
       "uniform sampler2D uA;",
       "uniform sampler2D uB;",
+      // When this exposure stands over another voice, the host supplies the actual frame that
+      // voice has already made.  This is the carrier of a crossing: the second voice develops
+      // the first voice's transformed matter, rather than both voices restarting from A/B and
+      // merely accumulating source-over blur.  It is unavailable to a ground voice, where this
+      // instrument remains its original two-work exposure.
+      "uniform sampler2D uScene;",
+      "uniform float uSceneAvailable;",
       // the seating of each work: how much of its own file the module's unit square carries
       "uniform vec4 uFitA;",
       "uniform vec4 uFitB;",
@@ -247,6 +254,12 @@
       "  vec2 eA = vec2(uSeam / (max(uLayerA.y, 1e-4) * m)) * cw;",
       "  vec2 eB = vec2(uSeam / (max(uLayerB.y, 1e-4) * m)) * cw;",
       "  vec3 a = pane(uA, uvA, uFitA, eA);",
+      // The copied scene is a framebuffer reading, already seated and oriented in the stage's
+      // coordinates.  It replaces the departing source only while a lower voice exists; at a
+      // door the upper overlay's own coverage is absent, and a one-voice overlay never asks for
+      // this branch.  Thus the carrier changes the middle event without weakening either exact
+      // picture door.
+      "  if (uSceneAvailable > 0.5) a = texture2D(uScene, vUv).rgb;",
       // THE SECOND WORK'S PALETTE ARRIVES BEFORE ITS FORMS (charter shelf 11, colour as herald): the
       // first stage of the dial carries that work read at its flattest, which is its colour with no
       // shape left in it, and the second stage grows its own picture into that colour. The flat
@@ -840,6 +853,8 @@
         uniforms: [
           { name: "uA", type: "sampler2D", source: "textureA" },
           { name: "uB", type: "sampler2D", source: "textureB" },
+          { name: "uScene", type: "sampler2D", source: "sceneTexture" },
+          { name: "uSceneAvailable", type: "float", source: "sceneAvailable" },
           { name: "uFitA", type: "vec4", source: "fitA" },
           { name: "uFitB", type: "vec4", source: "fitB" },
           { name: "uRes", type: "vec2", source: "resolution" },
