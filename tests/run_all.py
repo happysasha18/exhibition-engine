@@ -136,9 +136,14 @@ SUITES = [
     "pass_cast_tiers",
     # Cause B (2026-08-31/09-01, V2-CONVERGENCE-PLAN-2026-08-31.md Phase 2) — the fleet-wide,
     # by-construction proof that a crop cancels at a real door (box-fold and hero's own repair),
-    # registered in the pass that wrote it. Reads RED as registered: droste's own row is left red on
-    # purpose, a genuine, owned finding (see the file's own docstring) rather than a regression.
+    # registered in the pass that wrote it. Droste's own row was left red on purpose here until
+    # 2026-09-02, when its own crop-class bug (the same shape as cause B, in a file Phase 2 never
+    # looked at) was found and fixed — see tests/test_pass_door_orientation.py.
     "pass_door_invariant",
+    # 2026-09-02 — the orientation companion to pass_door_invariant: every instrument driven through
+    # a real portrait/landscape door, catching the axis-stretch class cause B's own fix never
+    # reached (droste, planet). Registered in the pass that wrote it.
+    "pass_door_orientation",
 ]
 
 
