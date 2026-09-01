@@ -1557,8 +1557,28 @@ else:
         br.key("ArrowDown")           # the one step that makes the client fetch pass-layer.js
         for _ in range(30):
             if br.evaluate("String(!!(window.__exPass && window.__exPass.host))") == "true":
-                return True
+                return frame_gone(br)
             br.sleep(0.2)
+        return False
+
+    def frame_gone(br, tries=25):
+        """Let the animation frame the walk's own step was declared in END before this file
+        declares anything of its own.
+
+        PASS-API §1.1 gives `declare` a same-frame lock: two declares inside one animation frame
+        make the second a refusal («second declare in one frame»), and the lock is released on the
+        `requestAnimationFrame` the first declare schedules. The step above IS a declare, and the
+        poll it is followed by can return on its very first read — the host registers the instant
+        pass-layer.js executes, which on a return visit is served from the browser's own cache — so
+        the rows below could put their programmatic declare into that same frame and be refused for
+        racing the walk rather than for anything they measure. Waiting for a frame to pass is the
+        exact fact the lock is keyed on, so nothing here is a guessed delay."""
+        br.evaluate("window.__frameGone = false;"
+                    "requestAnimationFrame(function () { window.__frameGone = true; }); 0")
+        for _ in range(tries):
+            if br.evaluate("String(!!window.__frameGone)") == "true":
+                return True
+            br.sleep(0.1)
         return False
 
     with serve(TMP) as base:
