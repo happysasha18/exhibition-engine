@@ -87,6 +87,237 @@ def skip(name, detail):
     results.append((name, "SKIP", detail))
 
 
+# ================================================================================================
+# THE LATTICE'S OWN PHASE, REAL DATA — Phase 9 of docs/V2-CONVERGENCE-PLAN-2026-08-31.md.
+#
+# `tiles` and `lattice` (proven in the browser rows below and by the §8 shape check) already show
+# the module reads a `phase` handle and applies it in the shader — that a plumbed handle moves the
+# picture. What none of that shows is that `pass-composer.js`'s own parquet branch ever HANDS the
+# instrument a real, work-measured phase on a real cast: the same gap the boxfold PARDON_I section
+# above closes for `seamScore`, closed here for `phase`.
+#
+# THE SEARCH IS OVER THE REAL 121-WORK FLEET, NEVER A HAND-PICKED PAIR. The cheap pre-filter
+# `genresFor` gives boxfold (a genre id of its own, `bf.fit > 0`) has no equivalent here — parquet
+# carries no genre id at all (`grep 'say("' pass-composer.js` names eight, none of them parquet) —
+# so the analogous cheap filter is read straight off the DATA rather than off a composer call: only
+# a departing work whose OWN `structure.grid.score` already clears `PARQUET_GRID_STRENGTH_FLOOR`
+# (pass-composer.js's own parquet branch, 0.016 — the top-quartile discriminating threshold
+# `lab/cut-lines.py --stats-only` reports for `grid` over the real fleet) can ever show a non-zero
+# phase, so only those works are worth the expensive `passageFor` call at all. 31 of 121 works clear
+# it. For each, in the fixture's own order, every other work is tried as the arriving end, over the
+# same role/function pairs and seeds the boxfold section above already uses.
+PHASE_COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
+PHASE_FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
+PHASE_GRID_STRENGTH_FLOOR = 0.016  # pass-composer.js's own PARQUET_GRID_STRENGTH_FLOOR
+
+PHASE_ROW = ("PASS-PARQUET phase · a real, planner-composed pair hands the instrument a non-zero "
+             "phase reading off the departing work's own measured grid, and the arriving work's "
+             "own weak reading falls back to nothing")
+PHASE_RED_ROW = ("PASS-PARQUET phase red-on-bug · gating the reading out drops the same real "
+                  "pair's own phase back to the regular lattice")
+
+PHASE_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+const plants = %(plants)s;
+
+let patched = source;
+const missed = [];
+for (const [from, to] of plants) {
+  if (patched.indexOf(from) < 0) { missed.push(from); continue; }
+  patched = patched.split(from).join(to);
+}
+if (missed.length) { console.log(JSON.stringify({missed: missed})); process.exit(0); }
+
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+try {
+  vm.runInContext(patched, sandbox, { filename: "pass-composer.js" });
+} catch (e) {
+  console.log(JSON.stringify({ error: String((e && e.stack) || e) }));
+  process.exit(0);
+}
+if (!joined) { console.log(JSON.stringify({ error: "the module joined nothing" })); process.exit(0); }
+const composer = joined.make(consts);
+
+const ids = Object.keys(works);
+const strong = ids.filter((id) => (((works[id].structure || {}).grid || {}).score || 0)
+                                   >= %(floor)s);
+const ROLE_FN = [["culmination", "dominant"], ["middle", "subdominant"], ["middle", "dominant"],
+                 ["opening", "tonic"]];
+const SEEDS = [0, 2, 4, 6];
+
+let found = null;
+outer:
+for (let i = 0; i < strong.length && !found; i++) {
+  const from = strong[i];
+  for (let j = 0; j < ids.length && !found; j++) {
+    const to = ids[j];
+    if (to === from) continue;
+    for (const [role, fn] of ROLE_FN) {
+      for (const seed of SEEDS) {
+        const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+                      seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+                      walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+        let made;
+        try { made = composer.passageFor(req); } catch (e) { continue; }
+        if (!made || made.declined || !made.plan) continue;
+        const cues = made.plan.cues || [];
+        const pq = cues.filter((c) => c.instrument.id === "parquet")[0];
+        if (!pq) continue;
+        const mh = pq.measuredHandles || {};
+        const phaseFrom = mh.phase && mh.phase[0] && mh.phase[0].v;
+        const phaseTo = mh.phase && mh.phase[1] && mh.phase[1].v;
+        if (typeof phaseFrom === "number") {
+          found = { from: from, to: to, seed: seed, role: role, fn: fn,
+                    phaseFrom: phaseFrom, phaseTo: phaseTo,
+                    gridPhaseFrom: (works[from].structure.grid || {}).phase,
+                    gridScoreFrom: (works[from].structure.grid || {}).score,
+                    gridScoreTo: ((works[to].structure || {}).grid || {}).score };
+          break outer;
+        }
+      }
+    }
+  }
+}
+console.log(JSON.stringify({ found: found }));
+"""
+
+
+def _phase_node_available():
+    return shutil.which("node") is not None
+
+
+if not _phase_node_available():
+    skip(PHASE_ROW, "node is not on this machine")
+    skip(PHASE_RED_ROW, "node is not on this machine")
+elif not (PHASE_COMPOSER.exists() and PHASE_FIXTURE_WORKS.exists()):
+    skip(PHASE_ROW, "the composer or its works fixture are not on this machine")
+    skip(PHASE_RED_ROW, "no real pair to replant")
+else:
+    _phase_source = PHASE_COMPOSER.read_text(encoding="utf-8").replace("@@NS@@", "")
+    _phase_fix_works = json.loads(PHASE_FIXTURE_WORKS.read_text(encoding="utf-8"))
+    _phase_tmp = Path(tempfile.mkdtemp(prefix="pass_parquet_phase_"))
+
+    def _run_phase(plants=None):
+        driver_text = PHASE_DRIVER % {
+            "source": json.dumps(_phase_source),
+            "consts": json.dumps(_phase_fix_works["consts"]),
+            "works": json.dumps(_phase_fix_works["works"]),
+            "plants": json.dumps(plants or []),
+            "floor": json.dumps(PHASE_GRID_STRENGTH_FLOOR),
+        }
+        driver_path = _phase_tmp / "driver.js"
+        driver_path.write_text(driver_text, encoding="utf-8")
+        proc = subprocess.run(["node", str(driver_path)], capture_output=True, text=True,
+                              timeout=180)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-1200:]}
+        lines = (proc.stdout or "").strip().splitlines()
+        if not lines:
+            return {"error": "the driver said nothing"}
+        return json.loads(lines[-1])
+
+    _phase_green = _run_phase()
+    _phase_found = _phase_green.get("found") if isinstance(_phase_green, dict) else None
+    _phase_ok = (isinstance(_phase_found, dict)
+                 and isinstance(_phase_found.get("phaseFrom"), (int, float))
+                 and isinstance(_phase_found.get("gridPhaseFrom"), (int, float))
+                 and abs(_phase_found["phaseFrom"] - _phase_found["gridPhaseFrom"]) < 1e-3
+                 and _phase_found.get("gridScoreFrom", 0) >= PHASE_GRID_STRENGTH_FLOOR)
+    check(PHASE_ROW, _phase_ok,
+          ("real pair %s→%s (seed %s, role %s/%s): the departing work's own gridScore=%s clears "
+           "the %s floor and its own measured gridPhase=%s reaches the instrument's own phase "
+           "handle as %s (arriving work's gridScore=%s, its own end of the handle reads %s)"
+           % (_phase_found.get("from"), _phase_found.get("to"), _phase_found.get("seed"),
+              _phase_found.get("role"), _phase_found.get("fn"), _phase_found.get("gridScoreFrom"),
+              PHASE_GRID_STRENGTH_FLOOR, _phase_found.get("gridPhaseFrom"),
+              _phase_found.get("phaseFrom"), _phase_found.get("gridScoreTo"),
+              _phase_found.get("phaseTo"))
+           if isinstance(_phase_found, dict) else
+           "the real 121-work fleet's own passageFor search cast parquet with a real phase reading "
+           "on no real pair at all, searching every work whose own grid score clears the floor as "
+           "the departing end: " + json.dumps(_phase_green)))
+
+    if not isinstance(_phase_found, dict):
+        skip(PHASE_RED_ROW, "no real pair found above to replant")
+    else:
+        _phase_plant = [[
+            "var phaseFrom = mf.gridScore >= PARQUET_GRID_STRENGTH_FLOOR ? mf.gridPhase : 0;\n"
+            "          var phaseTo = mt.gridScore >= PARQUET_GRID_STRENGTH_FLOOR ? mt.gridPhase : 0;",
+            "var phaseFrom = 0;\n          var phaseTo = 0;",
+        ]]
+        _phase_red = _run_phase(plants=_phase_plant)
+        if _phase_red.get("missed"):
+            skip(PHASE_RED_ROW, "the lines this plant names are not in the shipped source")
+        else:
+            _phase_red_found = (_phase_red.get("found")
+                                if isinstance(_phase_red, dict) else None)
+            # THE SAME PAIR, RE-ASKED DIRECTLY rather than re-searched: this plant zeroes `phase`
+            # for every pair alike, so it can never change which pair or bundle wins (it touches
+            # only a handle's own numeric value, never a legality rule or a fit score) — the search
+            # above already proved that once for `seamScore`'s own sibling row, and re-searching
+            # here would only re-spend the same proof. What is asked instead is the one question
+            # this plant can actually answer: replayed on the exact real request that was found
+            # above, does `phase` still carry the picture's own reading, or has it gone to nothing?
+            _phase_replay_driver = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+const plants = %(plants)s;
+const from = %(from)s, to = %(to)s, seed = %(seed)s, role = %(role)s, fn = %(fn)s;
+
+let patched = source;
+for (const [f, t] of plants) { patched = patched.split(f).join(t); }
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+vm.runInContext(patched, sandbox, { filename: "pass-composer.js" });
+const composer = joined.make(consts);
+const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+              seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+              walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+const made = composer.passageFor(req);
+const pq = (made.plan.cues || []).filter((c) => c.instrument.id === "parquet")[0];
+const mh = (pq && pq.measuredHandles) || {};
+console.log(JSON.stringify({
+  phaseFrom: mh.phase && mh.phase[0] && mh.phase[0].v,
+  phaseTo: mh.phase && mh.phase[1] && mh.phase[1].v,
+}));
+"""
+            _replay_text = _phase_replay_driver % {
+                "source": json.dumps(_phase_source),
+                "consts": json.dumps(_phase_fix_works["consts"]),
+                "works": json.dumps(_phase_fix_works["works"]),
+                "plants": json.dumps(_phase_plant),
+                "from": json.dumps(_phase_found["from"]), "to": json.dumps(_phase_found["to"]),
+                "seed": json.dumps(_phase_found["seed"]), "role": json.dumps(_phase_found["role"]),
+                "fn": json.dumps(_phase_found["fn"]),
+            }
+            _replay_path = _phase_tmp / "replay.js"
+            _replay_path.write_text(_replay_text, encoding="utf-8")
+            _replay_proc = subprocess.run(["node", str(_replay_path)], capture_output=True,
+                                          text=True, timeout=60)
+            _replayed = (json.loads(_replay_proc.stdout.strip().splitlines()[-1])
+                        if _replay_proc.returncode == 0 and _replay_proc.stdout.strip() else
+                        {"error": (_replay_proc.stderr or "")[-800:]})
+            check(PHASE_RED_ROW,
+                  _replayed.get("phaseFrom") == 0,
+                  "the same real request replayed (from=%s to=%s seed=%s role=%s/%s): shipped "
+                  "phase=%s (the departing work's own measured %s), gated out phase=%s — which is "
+                  "today's regular lattice and the fallback shelf 21 requires, not a refused "
+                  "crossing"
+                  % (_phase_found["from"], _phase_found["to"], _phase_found["seed"],
+                     _phase_found["role"], _phase_found["fn"], _phase_found["phaseFrom"],
+                     _phase_found["gridPhaseFrom"], _replayed.get("phaseFrom")))
+
+
 DIE = 4.91016            # the die lab/data/scores' own weave score carries, so every suite rolls one
 DURATION_MS = 6500
 WITHIN_MS = 500
@@ -102,7 +333,7 @@ def _static(v):
 
 
 def parquet_cue(stack=0, levels_own=None, **statics):
-    """The cue, with a track for every one of the eight handles (§4.4b)."""
+    """The cue, with a track for every one of the nine handles (§4.4b)."""
     P = {"tiles": 5, "depth": 1, "lattice": 0, "spin": 5.85, "shade": 1, "seed": DIE, "mask": 0}
     P.update(statics)
     nodes = {"p-mix": {"source": "progress"}}
@@ -210,16 +441,17 @@ check("PASS-PARQUET the instrument creates no element, no loop and no listener",
       "rebuild timer and runs its own rAF clock; all of it stayed in the lab"
       if not held else "the instrument's region holds " + ", ".join(held))
 
-HANDLES = ["mix", "tiles", "depth", "lattice", "spin", "shade", "seed", "mask"]
+HANDLES = ["mix", "tiles", "depth", "lattice", "phase", "spin", "shade", "seed", "mask"]
 absent = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-PARQUET every handle the instrument publishes is a handle a score can drive",
-      not absent and len(HANDLES) == 8,
-      "§4.4b: eight handles. The dial, which carries the whole passage; the module's own lattice — "
-      "how many tiles stand across the floor and the angle it is cut at — with how deep the room "
-      "goes and how far the floor turns across the passage; the module's own light; the score's "
-      "die; and the judges' channel. The module's `turn` becomes `spin` and rides the dial rather "
-      "than a clock, and its pointer, its drift and its breath are published by neither, for the "
-      "reason the module itself gives: while a score holds the pose the hand is off the floor"
+      not absent and len(HANDLES) == 9,
+      "§4.4b: nine handles. The dial, which carries the whole passage; the module's own lattice — "
+      "how many tiles stand across the floor, the angle it is cut at and, since Phase 9 "
+      "(2026-09-01), where its own boundaries fall — with how deep the room goes and how far the "
+      "floor turns across the passage; the module's own light; the score's die; and the judges' "
+      "channel. The module's `turn` becomes `spin` and rides the dial rather than a clock, and its "
+      "pointer, its drift and its breath are published by neither, for the reason the module "
+      "itself gives: while a score holds the pose the hand is off the floor"
       if not absent else "these are published nowhere: " + ", ".join(absent))
 
 # "PASS-PARQUET no clock and no roll of its own reaches the picture" moved below the bench helpers
@@ -786,8 +1018,8 @@ else:
                     all(k in m for k in need)
                     and m["id"] == "parquet" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
-                    and sorted(m["params"]) == ["depth", "lattice", "spin", "tiles"]
-                    and len(m["handles"]) == 8
+                    and sorted(m["params"]) == ["depth", "lattice", "phase", "spin", "tiles"]
+                    and len(m["handles"]) == 9
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -796,7 +1028,7 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 9
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 10
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -807,7 +1039,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "parquet" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"eight handles, nine uniforms in one pass, both doors at the plain cover fit "
+                      f"nine handles, ten uniforms in one pass, both doors at the plain cover fit "
                       f"of {m['framings']['0']['coverCrop']}, resources declared for three tiers "
                       f"with a byte estimate of {res['standard']['bytesEstimate']}, and a coverage "
                       f"block reading «{m['coverage']['how'][:120]}…»")
