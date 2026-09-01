@@ -39,6 +39,7 @@ one file. That is exactly the class his word of 19:21 bans from the product path
 below holds that none of it reaches the bake.
 """
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -740,14 +741,29 @@ else:
                         # own register and usually carries a different family, and no second die is
                         # needed. The row therefore measures the law and prints which of the two
                         # branches this run took, instead of reddening on the branch it did not.
+                        #
+                        # THE OTHER BRANCH NO LONGER ASSERTS A DIE COUNT (2026-09-01, Phase 5).
+                        # It used to read `len(rolls) == 1` where the cooled family did not come
+                        # up — «the first clean die ends the race» — which was never the law this
+                        # row names, only an incidental fact about the stopping rule that stood at
+                        # the time. Phase 5 retired that stop: on an edge met outside the visit
+                        # window `passEdgeJudge` has no recorded pass to read, so it answers kin
+                        # for every candidate and null for every distance, and a stop asking for
+                        # those would fire on die 0 of every such edge and collapse the race to a
+                        # single die — which is the defect the 2026-08-25 sweep already repaired
+                        # once (`tests/test_pass_roll.py` R11 proves it by construction). What the
+                        # law actually says is read instead: the pool is never emptied, so a
+                        # crossing still plays, and the race stays inside the dice the walk allows.
                         rolls = m.get("rolls") or []
+                        dice = int(re.search(r"dice:\s*(\d+)", SRC).group(1))
                         cooled_came_up = any(r.get("why") and "still cooling" in r["why"]
                                              for r in rolls)
                         check(BROWSER_ROWS[8],
                               stale["hasScore"] and stale["request"]["sessionMemory"] is None
                               and m.get("cooled") == old["family"]
                               and m.get("passes") == 0
-                              and (len(rolls) > 1 if cooled_came_up else len(rolls) == 1),
+                              and 1 <= len(rolls) <= dice
+                              and (len(rolls) > 1 if cooled_came_up else True),
                               f"nothing crossed; the family «{m.get('cooled')}» is cooling and the "
                               f"pass count starts again at {m.get('passes')}; the crossing still "
                               f"plays ({'a score' if stale['hasScore'] else 'no score'}). "
@@ -756,7 +772,8 @@ else:
                                  f"emptied" if cooled_came_up else
                                  f"The first die of {len(rolls)} carried the family "
                                  f"«{rolls[0].get('family') if rolls else None}», which is not the "
-                                 f"cooled one, so no second die was needed"))
+                                 f"cooled one, so no second die was owed — the race rolled "
+                                 f"{len(rolls)} of the {dice} the walk allows"))
 
                         # 9 · the record survives a reload --------------------------------
                         enter(br, base, "diagnostics:on,familySeed:4242")

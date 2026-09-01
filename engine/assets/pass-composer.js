@@ -1875,6 +1875,31 @@
       // off that same count. The charter's own words for the alternative stand in that branch: a
       // bridge playing only one work's structure reads as artificial. So a fabric IS only as woven
       // as its thinner end, and the reading says what the picture does.
+      //
+      // ---- WHAT THE MIN COSTS, PUT IN FIGURES SO IT CAN BE ARGUED WITH (2026-09-01, the V2
+      // convergence plan's Phase 5 item 4). The reasoning above is kept and the `min` is NOT
+      // changed — a file's own stated reason is not overruled on a hunch, and this one names a
+      // mechanism (`nMul`, the travelling strip count) that genuinely needs both ends. What was
+      // missing is the price, and the price is real:
+      //
+      //   · `structure.banding.score` is the ONLY measurement weave reads (`pass-inst-weave.js`'s
+      //     own `suits.reads`), so banding is the single ground on which weave can out-rank anything.
+      //   · `wind` (this same register, above) reads THE SAME TWO NUMBERS and takes the stronger:
+      //     `(max(sa, sb) + across) / 2`.
+      //   · `livemirror` (below) takes a max over SIX numbers — radial, banding and regions on both
+      //     works — so it can beat weave on banding and on two families weave cannot read at all.
+      //
+      // `suitsPair`'s answer is the WEIGHT OF A LOTTERY TICKET in `dieWeighted`, not an admission
+      // test, so the gap is a cast-rate gap and not a refusal. For two readings over one span,
+      // E[min] is a third and E[max] is two thirds — a 2:1 ticket-size gap in weave's disfavour on
+      // every pair, permanently, against two rivals that share its tier.
+      //
+      // WHOEVER WRITES PHASE 10'S TALLY: report weave's own cast rate BESIDE `wind`'s and
+      // `livemirror`'s, by name, rather than reporting weave alone. Weave read 0 casts in 72
+      // crossings on the Phase 0 baseline — but so did `livemirror`, so that baseline cannot show
+      // the rivalry at all, and a bare "weave is rare" line would be a number nobody can act on.
+      // Three rates side by side is a number he can act on, and this is the one item in the plan
+      // where his eye is the better instrument.
       weave: function (a, b) {
         var sa = readingOf(((a.structure || {}).banding || {}).score);
         var sb = readingOf(((b.structure || {}).banding || {}).score);

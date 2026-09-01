@@ -51,10 +51,34 @@ check("four fitting materials turn the passive hand signal into a bounded middle
       and 'at: 0, value: 0' in COMPOSER and 'at: 1, value: 0' in COMPOSER,
       "interaction may alter a living middle but must add zero at both doors")
 
-check("route selection prefers a fresh family and primary but never gates a passage",
-      "repeatsPrevious" in PASS and "passRouteFamilyCount" in PASS
-      and "passRouteInstrumentCount" in PASS
-      and "if (best !== null)" in PASS and "return passage.score" in PASS)
+check("route selection reads a whole-passage scene and its expressive handles, and still gates "
+      "no passage",
+      "function passSceneOf(passage)" in PASS and "function passRouteNovelty(scene)" in PASS
+      and '"control:" + key' in PASS and "passSetDistance(scene.controls" in PASS
+      and "if (best !== null)" in PASS and "return passage.score" in PASS,
+      "the readings come off the emitted score — no instrument or family NAME reaches the order")
+
+check("the route seeks one real colour voice before settling for a second neutral passage",
+      "function passColourOf(passage)" in PASS and "passRouteColourSeen" in PASS
+      and "(!passRouteColourSeen && colourAccent) ? 1 : 0" in PASS
+      and "passRouteColourSeen = true" in PASS,
+      "the preference is over emitted LIGHT-COLOUR cues of live candidates, never a pair table, "
+      "and it is a rank rather than a floor")
+
+check("the crossing's whole race is held to the composer's own bundle cap, read off its ledger",
+      "examinedInRace >= examinedCap" in PASS
+      and "got.diagnostics ? got.diagnostics.bundles : null" in PASS
+      and "examinedCap = +ledger.cap" in PASS
+      and not [ln for ln in PASS.split("\n")
+               if "examinedCap =" in ln and "ledger.cap" not in ln and "= null" not in ln],
+      "the bound reuses the number the composer publishes; the client never assigns the cap from "
+      "anything but that ledger, so a second copy of it cannot drift")
+
+check("the winning die's own seed is what leaves the race, not the last die's",
+      "let bestSeed = request.seed;" in PASS and "request.seed = bestSeed; }" in PASS
+      and "bestCooled = cooledStood; bestSeed = request.seed;" in PASS,
+      "the edge records this seed and a return replays it — the last die is not the winner once "
+      "the clean-die stop is gone")
 
 check("diagnostics expose the applied stack for every remembered route edge",
       "passRoutePlayed.push" in PASS and "stack: (row.applied.cues || [])" in PASS

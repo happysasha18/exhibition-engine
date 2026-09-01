@@ -20,23 +20,26 @@ WHAT THIS MEASURES, and how it is anchored.
   verbatim from the BUILT client (`engine/assets/exhibition.js`) and executed in node. Nothing of
   the rule is re-typed here.
 
-  THE SPAN, NOT A SAMPLE. Seven of the eight readings a candidate carries are facts — each is 0 or
-  1 — so every combination of them is 128 candidates, and this file runs all of them against all of
-  them. The eighth, the mirror distance, is a number; it is driven at the ends and the interior of
-  its own span, including the null reading the layer maps to «further from the mirror than any
-  measured pass». No pair of photographs is involved in any row, and nothing is counted over a
-  collection.
+  THE SPAN, NOT A SAMPLE. Three of the seven readings a candidate carries are facts — kin, not
+  cooling, and the route's first colour voice — each 0 or 1, so every combination of them is 8.
+  Three more are the route novelties (`passRouteNovelty`): Jaccard distances, so each is bounded in
+  0…1 by construction and is driven at both ends and the middle of that span. The seventh, the
+  mirror distance, is unbounded above; it is driven at the ends and the interior of its own span,
+  including the null reading the layer maps to «further from the mirror than any measured pass».
+  No pair of photographs is involved in any row, and nothing is counted over a collection.
 
-  THE RETIRED FORMULA IS RUN TOO. The weighted sum that stood until 2026-08-25 is typed out ONCE,
-  in `old_score` below, with its provenance in the docstring there — not as a rule this file
-  believes, but as the thing row R4 convicts. Convicting it needs it runnable.
+  THE RETIRED FORMULA IS RUN TOO, on its own reading vector. The weighted sum that stood until
+  2026-08-25 is typed out ONCE, in `old_score` below, with its provenance in the docstring there —
+  not as a rule this file believes, but as the thing row R4 convicts. It read the eight readings the
+  order carried BEFORE 2026-09-01, so R4 drives both it and the shipped rule over that older vector;
+  convicting it needs it runnable against what it actually ran against.
 
 Rows:
   R1  the rule travels as one block of the shipped client, and the race's loop header with it
   R2  the rule is a strict order: no candidate outranks itself, two candidates never each outrank
       the other, and any three that rank in a chain rank the same way end to end
-  R3  the charter's own rank: over EVERY combination of the seven facts and every distance driven,
-      no reading below kinship can lift a candidate above a kin one
+  R3  the charter's own rank: over EVERY combination of the three facts, every novelty driven and
+      every distance driven, no reading below kinship can lift a candidate above a kin one
   R4  the retired weighted sum broke exactly that rank, and the run says by how many combinations
   R5  a candidate at the worst of every reading still plays where it is the only one — a preference
       ranks and never refuses
@@ -46,6 +49,15 @@ Rows:
       starts — the loop header, run over every combination of its own controls
   R8  red-on-bug · the loop header reverted to `best === null`: the race ends after one die again
   R9  red-on-bug · the order reverted to a weighted sum: the charter's rank breaks again
+  R10 the crossing's bundle budget bounds the race: over every combination of the loop's controls
+      the whole race plans at most two compositions' worth of bundles, against the eight an
+      unbounded race can ask for
+  R12 the route's colour guarantee stands where it can actually decide a pair, and the count says
+      so: under a continuous novelty reading it fires only on an exact tie of a distance, which is
+      the inert placement `d4d21ed` used for it under two booleans
+  R11 red-on-bug · the retired clean-die stop restored: on an edge met for the FIRST time — where
+      kin is true and the distance null for every candidate by construction — the race ends after
+      one die again, which is the 2026-08-25 defect returning under a different name
 
 node is a hard dependency (the rule is the test) — its absence FAILS, never skips. The source tree
 is never written to; every copy runs in a temporary file that is removed afterwards.
@@ -102,27 +114,42 @@ if not NODE:
     report_and_exit()
 
 # ---------------------------------------------------------------- the candidates
-# THE WHOLE SPAN OF THE SEVEN FACTS. Each reading a candidate carries is 1 where the thing it is a
-# preference about holds and 0 where it does not, and the layer never adds one to another, so the
-# space of fact-candidates is exactly every combination of the seven.
-FACTS = list(itertools.product([0, 1], repeat=7))
-# …and the eighth reading, the mirror distance, driven over its own span. It is a mean of
-# non-negative ratios, so 0 is the floor — a literal mirror of the pass this edge already played —
-# and it has no ceiling. `null` is `passMirrorDistance` saying the two cannot be read as mirrors at
-# all, which the layer ranks above every measured distance; it travels here as the same Infinity the
-# layer uses. The two interior values straddle the tenth the retired ×10 clamp turned on.
+# THE WHOLE SPAN OF THE THREE FACTS. Each of these readings is 1 where the thing it is a preference
+# about holds and 0 where it does not, and the layer never adds one to another, so the space of
+# fact-candidates is exactly every combination of the three.
+FACTS = list(itertools.product([0, 1], repeat=3))
+# THE THREE NOVELTIES, over their own span. `passSetDistance` returns 1 - |A∩B| / |A∪B|, which is
+# bounded in 0…1 for every pair of token sets that exist — 0 where the two scenes name exactly the
+# same things, 1 where they share nothing — so both ends and the middle are the whole span, not a
+# sample of it.
+NOVELTIES = [0.0, 0.5, 1.0]
+# …and the mirror distance, driven over its own span. It is a mean of non-negative ratios, so 0 is
+# the floor — a literal mirror of the pass this edge already played — and it has no ceiling. `null`
+# is `passMirrorDistance` saying the two cannot be read as mirrors at all, which the layer ranks
+# above every measured distance; it travels here as the same Infinity the layer uses. The two
+# interior values straddle the tenth the retired ×10 clamp turned on.
 DISTANCES = [0.0, 0.05, 0.1, 1.0, "Infinity"]
 
 
-def vector(facts, dist):
-    """A candidate's eight readings in the order the layer compares them: kin, not cooling, the
-    mirror distance, the instrument not repeating the step just played, the family not repeating it,
-    the instrument new to this route, the family new to it, a spatial sentence not yet opened."""
-    kin, cooled, rep_i, rep_f, new_i, new_f, world = facts
-    return [kin, cooled, dist, rep_i, rep_f, new_i, new_f, world]
+def vector(facts, dist, local, scene, controls):
+    """A candidate's seven readings in the order the layer compares them: kin, not cooling, the
+    mirror distance, the route's first colour voice, how far this scene stands from the step just
+    played, how far it stands from its nearest already-played scene, and how far its handle
+    choreography stands from the nearest already spent."""
+    kin, cooled, colour = facts
+    return [kin, cooled, dist, colour, local, scene, controls]
 
 
-CANDIDATES = [vector(f, d) for f in FACTS for d in DISTANCES]
+CANDIDATES = [vector(f, d, lo, sc, co)
+              for f in FACTS for d in DISTANCES
+              for lo in NOVELTIES for sc in NOVELTIES for co in NOVELTIES]
+
+# THE ORDER AS IT STOOD BEFORE 2026-09-01, kept for row R4 alone: eight readings, seven of them
+# facts. The retired weighted sum below was written against exactly this vector, so convicting it
+# has to drive it over this vector and never over the one that stands.
+OLD_FACTS = list(itertools.product([0, 1], repeat=7))
+OLD_CANDIDATES = [[f[0], f[1], d, f[2], f[3], f[4], f[5], f[6]]
+                  for f in OLD_FACTS for d in DISTANCES]
 
 DRIVER = r"""
 'use strict';
@@ -205,9 +232,9 @@ check("R2 EX-ROLL the rule is a strict order — no candidate outranks itself, n
 check("R3 EX-ROLL no reading below kinship can lift a candidate above a kin one — the charter's "
       "«it never outranks the kinship a return owes on an edge already walked»",
       not GOT["kinBeaten"],
-      "over every ordered pair of the %d candidates — every combination of the seven facts against "
-      "every other, at each driven distance — %d where a candidate that is not kin stands above one "
-      "that is" % (GOT["n"], len(GOT["kinBeaten"])))
+      "over every ordered pair of the %d candidates — every combination of the three facts against "
+      "every other, at each driven novelty and each driven distance — %d where a candidate that is "
+      "not kin stands above one that is" % (GOT["n"], len(GOT["kinBeaten"])))
 
 
 # ---------------------------------------------------------------- R4: the retired sum, convicted
@@ -229,17 +256,20 @@ def old_score(v):
         + (3 * world)
 
 
-inversions = [(a, b) for a in CANDIDATES for b in CANDIDATES
+OLD_GOT, whyOld = run_js(DRIVER.replace("__RULE__", RULE)
+                               .replace("__CANDIDATES__", json.dumps(OLD_CANDIDATES)), "old")
+inversions = [(a, b) for a in OLD_CANDIDATES for b in OLD_CANDIDATES
               if a[0] == 0 and b[0] == 1 and old_score(a) > old_score(b)]
 alone = [(a, b) for a, b in inversions
          if [a[i] for i in (1, 3, 4, 5, 6)] == [b[i] for i in (1, 3, 4, 5, 6)] and a[7] > b[7]]
 check("R4 EX-ROLL the retired weighted sum broke that rank — a candidate that is not kin outscored "
       "a kin one, and the underived world reading did it on its own",
-      bool(inversions) and bool(alone) and not GOT["kinBeaten"],
-      "over the same %d candidates the retired sum puts a non-kin candidate above a kin one in %d "
-      "ordered pairs, %d of them on the world reading alone with every other fact equal; the rule "
-      "that stands does it in %d"
-      % (len(CANDIDATES), len(inversions), len(alone), len(GOT["kinBeaten"])))
+      bool(inversions) and bool(alone) and bool(OLD_GOT) and not OLD_GOT["kinBeaten"],
+      "over the %d candidates of the vector that sum actually ran on, the retired sum puts a "
+      "non-kin candidate above a kin one in %d ordered pairs, %d of them on the world reading alone "
+      "with every other fact equal; the rule that stands, run over that same vector, does it in %s"
+      % (len(OLD_CANDIDATES), len(inversions), len(alone),
+         len(OLD_GOT["kinBeaten"]) if OLD_GOT else whyOld))
 
 # ---------------------------------------------------------------- R5/R6: never refuses, resolves
 check("R5 EX-ROLL a candidate at the worst of every reading still plays where it is the only one — "
@@ -256,63 +286,176 @@ check("R6 EX-ROLL the race resolves for every pair — the first roll leads unco
 # ---------------------------------------------------------------- R7/R8: the loop header
 # The race's own control flow, with the body reduced to what decides iteration and the header
 # lifted verbatim from the built client. Run over every combination of the controls the loop reads.
+#
+# THE STOPS THE MODEL CARRIES. `3b8cb45` removed BOTH of the race's early stops on 2026-08-30 and
+# was reverted the same night; Phase 5 re-landed its novelty order with ONE of them kept — the
+# repeated-family stop, which reads what the dice are doing and is untouched by the new order — and
+# added the crossing's own bundle budget, which the family stop cannot substitute for because it
+# depends on what the dice happen to land on and can decline to fire at all. The three shapes are
+# modelled side by side: `shipped` (family stop + budget), `unbounded` (`3b8cb45` as it landed,
+# neither), and `clean` (the retired clean-die stop restored on top of the shipped shape). `cap` is
+# the composer's own BUNDLE_CAP and `perDie` is what one composition actually spends against it.
 LOOP = r"""
 'use strict';
-function race(headerKind, dice, heldStart, heldTook, declinedAt, cleanAt, sameFamilyAt) {
+function race(headerKind, stops, dice, heldStart, heldTook, declinedAt, cleanAt, sameFamilyAt,
+              perDie, cap) {
   const PASS_EDGE = { dice: dice };
-  let best = null, tried = 0;
+  let best = null, tried = 0, examined = 0;
   const cond = (i) => headerKind === "shipped" ? (!heldTook && i < PASS_EDGE.dice)
                                                : (best === null && i < PASS_EDGE.dice);
   for (let i = heldStart; cond(i); i++) {
     tried++;
+    examined += perDie;
     if (declinedAt === i) break;
     if (best === null || true) best = i;
-    if (cleanAt === i) break;
-    if (sameFamilyAt === i) break;
+    // The retired clean-die stop, modelled only for the shape that restores it.
+    if (stops === "clean" && cleanAt === i) break;
+    if (stops !== "unbounded" && sameFamilyAt === i) break;
+    if (stops !== "unbounded" && examined >= cap) break;
   }
-  return { tried: tried, best: best };
+  return { tried: tried, best: best, examined: examined };
 }
+const CAP = 36;
 const out = {};
-["shipped", "reverted"].forEach(function (kind) {
-  let most = 0, everRanAfterHeld = false, alwaysResolved = true;
+[["shipped", "shipped"], ["reverted", "shipped"], ["shipped", "unbounded"],
+ ["shipped", "clean"]].forEach(function (pair) {
+  const headerKind = pair[0], stops = pair[1];
+  const name = headerKind === "reverted" ? "reverted" : stops;
+  let most = 0, everRanAfterHeld = false, alwaysResolved = true, mostExamined = 0;
+  let mostOnFirstEdge = 0;
   for (let dice = 1; dice <= 8; dice++) {
     for (let heldStart = 0; heldStart <= 1; heldStart++) {
       for (let held = 0; held <= 1; held++) {
         for (let d = -1; d < dice; d++) {
           for (let c = -1; c < dice; c++) {
             for (let s = -1; s < dice; s++) {
-              const r = race(kind, dice, heldStart, !!held, d, c, s);
-              if (held && r.tried > 0) everRanAfterHeld = true;
-              if (!held && heldStart < dice && r.best === null && d !== heldStart) {
-                alwaysResolved = false;
+              // Every composition spends between one bundle and the whole cap.
+              for (let p = 1; p <= CAP; p++) {
+                const r = race(headerKind, stops, dice, heldStart, !!held, d, c, s, p, CAP);
+                if (held && r.tried > 0) everRanAfterHeld = true;
+                if (!held && heldStart < dice && r.best === null && d !== heldStart) {
+                  alwaysResolved = false;
+                }
+                if (r.tried > most) most = r.tried;
+                if (r.examined > mostExamined) mostExamined = r.examined;
+                // AN EDGE MET FOR THE FIRST TIME. `passEdgeJudge` has no recorded pass to read
+                // there, so it answers kin for every candidate and its distance is null for every
+                // candidate: the clean-die condition's first three terms hold on EVERY die by
+                // construction, and its last two terms no longer exist. `cleanAt` is therefore the
+                // first die rolled, whatever that die landed on.
+                const f = race(headerKind, stops, dice, heldStart, !!held, d, heldStart, s, p, CAP);
+                if (!held && f.tried > mostOnFirstEdge) mostOnFirstEdge = f.tried;
               }
-              if (r.tried > most) most = r.tried;
             }
           }
         }
       }
     }
   }
-  out[kind] = { most: most, everRanAfterHeld: everRanAfterHeld, alwaysResolved: alwaysResolved };
+  out[name] = { most: most, everRanAfterHeld: everRanAfterHeld, alwaysResolved: alwaysResolved,
+                mostExamined: mostExamined, mostOnFirstEdge: mostOnFirstEdge, cap: CAP };
 });
 process.stdout.write(JSON.stringify(out));
 """
 LOOPS, why2 = run_js(LOOP, "loop")
 SHIPPED = (LOOPS or {}).get("shipped") or {}
 REVERTED = (LOOPS or {}).get("reverted") or {}
+UNBOUNDED = (LOOPS or {}).get("unbounded") or {}
+CLEAN = (LOOPS or {}).get("clean") or {}
+CAP = SHIPPED.get("cap")
 check("R7 EX-ROLL the race can reach every die the walk allows, and a held pass still ends it "
       "before it starts",
       SHIPPED.get("most") == 8 and SHIPPED.get("everRanAfterHeld") is False
       and SHIPPED.get("alwaysResolved") is True,
       "over every combination of the loop's own controls — any die count to 8, either opening, a "
-      "held pass or none, and a decline, a clean read or a repeated family at any position — the "
-      "race reaches %s dice at most, rolls %s die after a held pass took, and always names a winner"
+      "held pass or none, a decline or a repeated family at any position, and every per-composition "
+      "bundle spend from 1 to the cap — the race reaches %s dice at most, rolls %s die after a held "
+      "pass took, and always names a winner"
       % (SHIPPED.get("most"), "a" if SHIPPED.get("everRanAfterHeld") else "no"))
 check("R8 EX-ROLL red-on-bug · the loop header reverted to «best === null»: the race ends after one "
       "die again, whatever the walk allows",
       REVERTED.get("most") == 1 and SHIPPED.get("most") == 8,
       "with the header reverted the race reaches %s die at most where the walk allows 8; with the "
       "header that stands, %s" % (REVERTED.get("most"), SHIPPED.get("most")))
+
+# ------------------------------------------------- R10: the crossing's own bundle budget bounds it
+check("R10 EX-ROLL the crossing's bundle budget bounds the whole race at two compositions' worth, "
+      "against the eight an unbounded race asks for",
+      bool(SHIPPED) and bool(UNBOUNDED)
+      and SHIPPED.get("mostExamined") <= 2 * CAP
+      and UNBOUNDED.get("mostExamined") == 8 * CAP,
+      "over every combination of the loop's controls and every per-composition spend from 1 to the "
+      "cap (%s): the race that stands plans at most %s bundles for one crossing; with both stops "
+      "removed as `3b8cb45` landed them, %s — %s×the cap"
+      % (CAP, SHIPPED.get("mostExamined"), UNBOUNDED.get("mostExamined"),
+         (UNBOUNDED.get("mostExamined") or 0) // (CAP or 1)))
+
+# ------------------------- R12: the colour rank is placed where it can fire, and the proof is a count
+# WHAT THIS ROW CONVICTS. `d4d21ed` put the route's colour guarantee UNDER two booleans — «the
+# instrument does not repeat the step just played» and «the family does not» — and under two
+# booleans a rank is reached constantly, because two candidates tie on a boolean all the time. The
+# readings that replaced those two are CONTINUOUS Jaccard distances, which separate almost every
+# pair of candidates they are handed, and a boolean placed under a continuous reading is not a weak
+# preference but an inert one. This counts how often the colour rank actually DECIDES a pair — is
+# the first rank at which two candidates differ — under both placements, on the edge where a route's
+# first colour voice is decided: an edge met for the FIRST time, where `passEdgeJudge` answers kin
+# for every candidate and null for every distance, so ranks 1 to 3 tie by construction.
+FINE = [i / 19.0 for i in range(20)]   # the novelty span, driven finely enough that exact ties are rare
+ABOVE = [[1, 1, "Infinity", c, lo, 0.5, 0.5] for c in (0, 1) for lo in FINE]
+BELOW = [[1, 1, "Infinity", lo, c, 0.5, 0.5] for c in (0, 1) for lo in FINE]
+DECIDES = r"""
+'use strict';
+__RULE__
+function decidedAt(a, b) {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return i;
+  return -1;
+}
+const out = {};
+[["above", __ABOVE__, 3], ["below", __BELOW__, 4]].forEach(function (row) {
+  const name = row[0], at = row[2];
+  const C = row[1].map(function (v) {
+    return v.map(function (x) { return x === "Infinity" ? Infinity : x; });
+  });
+  let differ = 0, decided = 0;
+  for (let a = 0; a < C.length; a++) {
+    for (let b = 0; b < C.length; b++) {
+      if (a === b) continue;
+      if (C[a][at] === C[b][at]) continue;   // the pairs whose COLOUR reading differs at all
+      differ++;
+      // The rule itself must agree the pair is separable, and the colour rank must be where it
+      // separates: every rank above it equal, and this the first that is not.
+      if (decidedAt(C[a], C[b]) === at
+          && (passRollBetter(C[a], C[b]) || passRollBetter(C[b], C[a]))) decided++;
+    }
+  }
+  out[name] = { differ: differ, decided: decided };
+});
+process.stdout.write(JSON.stringify(out));
+"""
+DEC, whyDec = run_js(DECIDES.replace("__RULE__", RULE)
+                            .replace("__ABOVE__", json.dumps(ABOVE))
+                            .replace("__BELOW__", json.dumps(BELOW)), "decides")
+AB = (DEC or {}).get("above") or {}
+BE = (DEC or {}).get("below") or {}
+check("R12 EX-ROLL red-on-bug · the route's colour guarantee under a continuous reading is inert, "
+      "and above it decides every pair it is meant to",
+      bool(DEC) and AB.get("decided") == AB.get("differ") and AB.get("differ") > 0
+      and BE.get("decided") < AB.get("decided") / 10.0,
+      "on a first-time edge, over every ordered pair of candidates whose colour reading differs: "
+      "with the rank where it stands the colour reading decides %s of %s; placed under the "
+      "scene-novelty reading as `d4d21ed` placed it under its own two booleans, %s of %s — it can "
+      "only fire on an exact tie of a continuous distance"
+      % (AB.get("decided"), AB.get("differ"), BE.get("decided"), BE.get("differ")))
+
+# ---------------------------------- R11: red on bug, the retired clean-die stop on a first-time edge
+check("R11 EX-ROLL red-on-bug · the retired clean-die stop restored: on an edge met for the FIRST "
+      "time the race ends after one die again — the 2026-08-25 defect under a different name",
+      bool(CLEAN) and CLEAN.get("mostOnFirstEdge") == 1
+      and SHIPPED.get("mostOnFirstEdge") == 8,
+      "on a first-time edge `passEdgeJudge` answers kin for every candidate and null for every "
+      "distance, so the restored condition holds on the first die by construction: the race reaches "
+      "%s die at most where the walk allows 8. With that stop retired, %s"
+      % (CLEAN.get("mostOnFirstEdge"), SHIPPED.get("mostOnFirstEdge")))
 
 # ---------------------------------------------------------------- R9: red on bug, the order
 SUM = RULE.replace("if (now[i] > was[i]) return true;\n      if (now[i] < was[i]) return false;",
