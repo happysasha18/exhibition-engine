@@ -5508,9 +5508,9 @@
       // had fallen silent. Travel played start to finish, then arrival played start to finish: the
       // step sequencer shelf 18 bans by name («playing whole operations one after another, each from
       // start to finish, is banned»), and its positive half asks for the opposite — «several
-      // operations are alive at once while parameters travel». It was on 541 of the 1661 real
-      // three-voice crossings this collection composes, some by several seconds inside a passage a few
-      // seconds long.
+      // operations are alive at once while parameters travel». This was real and present in the
+      // shipped composer — `tests/test_pass_step_sequencer.py`'s own real-data sweep found it, some
+      // pairs by several seconds inside a passage a few seconds long.
       //
       // THE FAR END IS NOW THE TRAVELLING MOVE'S OWN CLOSE wherever a travelling voice plays —
       // `travelWindowBound[1]`, the number travel's own window has already published two dozen lines
