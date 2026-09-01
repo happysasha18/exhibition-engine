@@ -9329,10 +9329,27 @@
     style.textContent =
       "#ex-verdict{position:fixed;right:12px;" +
       "top:calc(env(safe-area-inset-top,0px) + 58px);z-index:2147483647;" +
+      // THE VIEWPORT IS THE WRONG CEILING, and it was the ceiling until 2026-09-01. The docking
+      // above trimmed the panel's own fixed rows to clear the picture, and then let the STEP LIST
+      // grow to the bottom of the screen: with `flex:1 1 auto` on `.exv-list` and the whole
+      // viewport allowed here, the panel reached the picture again as soon as a walk landed enough
+      // crossings to fill it — which is every real walk, and which is why the byte-compare this
+      // suite runs over the arriving work's own box read the panel's own rows as the difference
+      // between the two roads. The ceiling is not a number this file can type: where the gap ends
+      // is the hung picture's own top edge, and that moves with the viewport, the safe area, the
+      // frame's aspect and the layout. So it is MEASURED, in `verdictFit` below, and this rule
+      // carries only the fallback for the instant before the first measurement lands.
       "max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)" +
       " - 58px - 12px);display:flex;flex-direction:column;" +
       "background:rgba(20,20,20,.92);color:#fff;font:12px/1.4 system-ui,sans-serif;" +
-      "padding:8px;border-radius:8px;max-width:280px;box-shadow:0 1px 3px rgba(0,0,0,.4)}" +
+      // THE EDGE IS PAINTED INSIDE THE PANEL'S OWN BOX. An outer shadow is by definition ink
+      // outside that box, and the box now ends exactly at the picture's own top edge — so however
+      // narrow the blur is trimmed to, it lands on the picture, and the byte-compare over the
+      // arriving work's box reads it (2026-09-01: three rows deep across the panel's own columns,
+      // the last of this row's difference once the height was bounded). `inset` keeps the edge the
+      // shadow was there to draw and paints none of it outside.
+      "padding:8px;border-radius:8px;max-width:280px;" +
+      "box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}" +
       "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word;flex:none}" +
       "#ex-verdict .exv-note{width:100%;box-sizing:border-box;margin-bottom:6px;padding:4px;" +
       "flex:none}" +
@@ -9408,6 +9425,39 @@
     panel.appendChild(list);
     document.body.appendChild(panel);
 
+    // THE PANEL STOPS WHERE THE PICTURE STARTS. Its own docking comment above states the rule —
+    // it lives in the gap between the top chrome and the hung work's frame and never reaches into
+    // the picture — and this is the reading that keeps it. The floor is the top edge of the
+    // nearest hung picture standing BELOW the panel's own top; where the walk is scrolled so that
+    // no picture's top edge falls below it (the work fills the frame, or the walk has run past its
+    // last one), there is no picture edge to stop at and the stylesheet's own viewport ceiling
+    // stands. Nothing is typed here: both numbers are read off the two boxes themselves.
+    function verdictFit() {
+      let floor = null;
+      try {
+        const top = panel.getBoundingClientRect().top;
+        const imgs = (stage || document).querySelectorAll(".exh-frame img.work");
+        for (let i = 0; i < imgs.length; i++) {
+          const t = imgs[i].getBoundingClientRect().top;
+          if (t > top && (floor === null || t < floor)) floor = t;
+        }
+        if (floor !== null) panel.style.maxHeight = (floor - top) + "px";
+        else panel.style.maxHeight = "";
+      } catch (e) { panel.style.maxHeight = ""; }
+    }
+
+    // THE PICTURE MOVES UNDER A FIXED PANEL, so the reading is re-taken whenever it can have moved
+    // — the walk scrolls between landings, and a turn or a resize re-lays every frame. Coalesced
+    // onto one frame so a scroll writes the height once per paint rather than once per event.
+    let verdictFitQueued = false;
+    function verdictRefit() {
+      if (verdictFitQueued) return;
+      verdictFitQueued = true;
+      requestAnimationFrame(() => { verdictFitQueued = false; verdictFit(); });
+    }
+    addEventListener("scroll", verdictRefit, { passive: true });
+    addEventListener("resize", verdictRefit);
+
     function verdictShowPending() {
       panel.hidden = false;
       panel.dataset.pending = verdictPending ? "1" : "0";
@@ -9415,6 +9465,7 @@
         ? verdictPending.from + " → " + verdictPending.to
           + (verdictPending.road ? " · " + verdictPending.road : "")
         : "";
+      verdictFit();
     }
 
     function verdictRecord(label) {
@@ -9521,8 +9572,10 @@
       el.appendChild(detail);
       el.addEventListener("click", () => {
         el.dataset.open = el.dataset.open === "1" ? "0" : "1";
+        verdictFit();
       });
       list.appendChild(el);
+      verdictFit();                        // the list just grew — re-read where the picture starts
     }
 
     function verdictOnDock(cmd) {
