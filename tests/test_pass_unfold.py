@@ -581,8 +581,15 @@ else:
             "          }",
             "          if (false) {}",
         ]]
-        _uf_red = _run_unfold(plants=_uf_plant)
-        if _uf_red.get("missed"):
+        # WHETHER THE PLANT'S OWN TEXT IS IN THE SHIPPED SOURCE, checked directly in Python rather
+        # than by running the full node search a second time with the plant applied: once the fix
+        # is neutered, `parquetPhase` never sets again on any real pair, so that search would have
+        # to exhaust the whole real fleet before answering — the same cost the green row above
+        # pays once, spent here for nothing this cheaper check does not already answer. Found
+        # rebasing this sweep: with the fixture regenerated (see above), the green search now
+        # completes in under a second, but the red-on-bug leg still called the expensive path.
+        _uf_missed = [f for f, t in _uf_plant if f not in _uf_source]
+        if _uf_missed:
             skip(UNFOLD_PHASE_RED_ROW, "the lines this plant names are not in the shipped source")
         else:
             _uf_replay_driver = r"""
@@ -1010,7 +1017,14 @@ else:
                     and m["id"] == "unfold" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
                     and sorted(m["params"]) == ["depth", "panels", "shade", "stagger", "tilt"]
-                    and len(m["handles"]) == 11
+                    # 12, not 11: Phase 9's own sweep (docs/V2-CONVERGENCE-PLAN-2026-08-31.md,
+                    # 2026-09-01) added `parquetPhase` to this instrument's handles alongside
+                    # `parquetPeriod`/`parquetTurn` — the charter's «cut along its own lines»
+                    # clause, continued from parquet's own construction. This count is read off
+                    # the registered instrument, not asserted from memory: mix, clock, tilt,
+                    # shade, depth, stagger, panels, field, parquetPeriod, parquetTurn,
+                    # parquetPhase, mask.
+                    and len(m["handles"]) == 12
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -1019,7 +1033,10 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 13
+                    # 14, not 13, for the same reason as the handle count above: the same sweep
+                    # added `uParquetPhase` (source: frame:parquetPhase) as this pass's own
+                    # fourteenth uniform.
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 14
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2

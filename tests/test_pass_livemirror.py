@@ -397,9 +397,23 @@ for (let i = 0; i < ids.length && !found; i++) {
         const lm = cues.filter((c) => c.instrument.id === "livemirror")[0];
         if (!lm) continue;
         const mh = lm.measuredHandles || {};
-        const cxFrom = mh.centreX && mh.centreX[0] && mh.centreX[0].v;
-        const cyFrom = mh.centreY && mh.centreY[0] && mh.centreY[0].v;
-        const axisFrom = mh.axis && mh.axis[0] && mh.axis[0].v;
+        // centreX/centreY/axis are SCALAR handles here (one shared reading for the pair, never a
+        // travelling [from, to] pair of ends), so the value the composer hands back is either a
+        // bare number (axis: `tidy()` leaves an integer unwrapped) or a marked float object
+        // ({v: number}, `pass-composer.js`'s own `Flt`) — never an array. Reading `mh.centreX[0]`
+        // (this row's own first version, matching `phase`'s TWO-ended shape a few files over)
+        // indexed into an object that carries no "0" key at all, so `cxFrom`/`cyFrom` came back
+        // `undefined` on every real pair the search tried and the row could never pass — found
+        // rebasing this sweep onto `origin/main` and fixed here, not a defect in the reading
+        // itself (`pass-composer.js`'s own branch), only in how this row read its result back.
+        function scalarOf(v) {
+          if (typeof v === "number") return v;
+          if (v && typeof v.v === "number") return v.v;
+          return undefined;
+        }
+        const cxFrom = scalarOf(mh.centreX);
+        const cyFrom = scalarOf(mh.centreY);
+        const axisFrom = scalarOf(mh.axis);
         if (typeof cxFrom !== "number" || typeof cyFrom !== "number") continue;
         const rlx = (((works[from].structure || {}).regions || {}).line || {}).x || {};
         const rly = (((works[from].structure || {}).regions || {}).line || {}).y || {};
@@ -510,9 +524,16 @@ const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to
 const made = composer.passageFor(req);
 const lm = (made.plan.cues || []).filter((c) => c.instrument.id === "livemirror")[0];
 const mh = (lm && lm.measuredHandles) || {};
+// Same scalar shape as the search driver above (a bare number or a marked-float {v: number}
+// object, never an array) — read the same way, for the same reason.
+function scalarOf(v) {
+  if (typeof v === "number") return v;
+  if (v && typeof v.v === "number") return v.v;
+  return undefined;
+}
 console.log(JSON.stringify({
-  cx: mh.centreX && mh.centreX[0] && mh.centreX[0].v,
-  cy: mh.centreY && mh.centreY[0] && mh.centreY[0].v,
+  cx: scalarOf(mh.centreX),
+  cy: scalarOf(mh.centreY),
 }));
 """
             _lm_replay_text = _lm_replay_driver % {
