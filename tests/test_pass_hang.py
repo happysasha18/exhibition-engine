@@ -32,35 +32,34 @@ rows follow, re-serving the same site with box-fold's or hero's own pre-repair i
 in and re-driving the identical real bundle through a fresh browser session: a crop that fails to
 cancel at a real door reddens there and nowhere else.
 
-BOX-FOLD'S REAL-PAIR ROWS STILL READ 37.5/255, NOT ZERO — READ THIS BEFORE CALLING IT A REGRESSION
-(2026-09-01). Pixel-level analysis (the stripe test pattern this fixture serves has an exact,
-measurable period) showed the mismatch is a CONSTANT ~3px positional offset, not a scale/crop error —
-the stripe period matches DOM to canvas exactly, so cause B's own crop-cancellation channel (`fit`/
-`seated`, proven by `tests/test_pass_door_invariant.py`'s own red-on-bug row and by this file's own
-red-on-bug row below) is genuinely repaired. The residual is CAUSE F: box-fold is the fleet's only
-`cameraAuthority:"own"` instrument, and its own camera pose does not fully cancel to the stage's hang
-anchor at a real door — a separate mechanism from cause B, named in the plan, homed before Phase 4
-item 3, and explicitly out of this phase's own scope. Hero and liquid's own real-pair rows read clean
-(0.55-0.56 of 255) on both doors, confirming the crop-cancellation repair itself is not the source of
-box-fold's own remaining number.
+BOX-FOLD'S REAL-PAIR ROWS READ 37.5/255 UNTIL 2026-09-02, AND WHAT THAT ACTUALLY WAS. The reading was
+diagnosed on 2026-09-01 as a CONSTANT ~3px positional offset — the stripe test pattern this fixture
+serves has an exact, measurable period, and the period matched DOM to canvas exactly, ruling out a
+scale or crop error and clearing cause B's own crop-cancellation channel. The offset itself was then
+laid at cause F's door, box-fold being the fleet's only `cameraAuthority:"own"` instrument.
 
-TWO KNOWN LIMITS OF THIS FILE'S OWN REAL-PAIR RIG, READ HONESTLY RATHER THAN HIDDEN (2026-09-01):
-  · THE RED-ON-BUG ROWS ARE NOT THE PRIMARY PROOF, AND THEIR OWN READING CAN VARY RUN TO RUN. The
-    site fixture this file drives deals its own pair of placeholder images at random per browser
-    session; a high-frequency image makes a small positional/crop error obvious in a pixel mean, a
-    smooth one can mask the same error entirely. A run where a red-on-bug row here reads unexpectedly
-    green is this randomness, not a claim the underlying bug returned — `tests/test_pass_door_
-    invariant.py`'s own red-on-bug row is the deterministic proof cause B's repair holds, arithmetic
-    on four numbers with no image and no randomness in it, and is what to trust if this file's own
-    red-on-bug rows ever disagree with it.
-  · HERO'S OWN DEPARTING-DOOR ROW HAS READ "the pass never took the frame" on more than one run,
-    while its ARRIVING-door row (the same real score, the same instrument) reads clean every time.
-    Read as a `declare`/`offer` refusal at the rig level — box-fold's own real-pair check runs
-    immediately before hero's in the same browser session and its own bundle reads `resources:
-    {over: true}` in its diagnostic report — not as a pixel mismatch; not chased further, since
-    hero's own crop-cancellation is independently proven three other ways in this branch
-    (`tests/test_pass_door_invariant.py`, `tests/test_pass_hero.py`'s 42/42, and this file's own
-    clean arrival-door reading on the identical real bundle).
+BOTH READINGS WERE ARTEFACTS OF THE PICTURE THE FIXTURE DEALS. The synthetic work is a diagonal
+stripe on the rule `(x + y) % 20 < 4`, and every point of it depends on x + y ALONE — so the pattern
+cannot tell a picture from its own transpose, and a reflection about the anti-diagonal reads back as
+a pure shift of x + y. Re-measured on 2026-09-02 with a two-axis ramp in place of the stripe, the
+frame's four corners came back (1,1), (1,0), (0,1), (0,0) against a DOM standing at (0,0), (1,0),
+(0,1), (1,1): box-fold's landed face carried the work REFLECTED ABOUT ITS OWN ANTI-DIAGONAL, and only
+where the composer drives `axis` at 1, the crease lying flat. The three pixels were 126 - s wrapped
+into the stripe's own period of 20, exactly. Repaired in `pass-inst-boxfold.js` — the picture is
+pasted onto the face by which way the crease lies, the same decision `posed`'s own `pt` already made
+about the geometry — and proven by arithmetic, no image and no browser in it, in
+`tests/test_pass_boxfold.py`'s own flat-door row and its red-on-bug beside it. Both doors here now
+read 0.56-0.61 of 255, the same number hero and liquid give.
+
+A LIMIT OF THIS FILE'S OWN RED-ON-BUG RIG, READ HONESTLY RATHER THAN HIDDEN. The site fixture deals
+its own pair of placeholder images at random per browser session; a high-frequency image makes a
+small positional error obvious in a pixel mean, a smooth one can mask the same error entirely, and —
+as the paragraph above records at some cost — a symmetric one can disguise what KIND of error it is.
+A run where a red-on-bug row here reads unexpectedly green is that randomness, not a claim the
+underlying bug returned: `tests/test_pass_door_invariant.py`'s own red-on-bug row (arithmetic on four
+numbers) and `tests/test_pass_boxfold.py`'s own flat-door red-on-bug (the doors read against their
+own source files, on the bench's fixed photographs) are the deterministic proofs, and are what to
+trust if this file's own red-on-bug rows ever disagree with them.
 """
 import base64
 import hashlib

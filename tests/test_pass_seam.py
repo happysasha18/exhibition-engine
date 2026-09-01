@@ -77,67 +77,37 @@ twenty-one 🔶 for exactly this reason: nothing here photographs their seam on 
 closing that gap for any one of them is its own future phase's work, not a claim this file is
 entitled to make today.
 
-WHAT THE REAL-PAIR ROWS FOUND, READ HONESTLY RATHER THAN SWEPT (2026-09-01). Real bundles surface
-real defects a hand-typed score cannot, and four of the fifteen new rows read red on this branch's
-own repaired files. Each is diagnosed as far as this phase's own scope reaches and left exactly that
-diagnosed, not silently excepted:
-  · `boxfold`'s own curtain and frame-given-back rows (172 of 255) are CAUSE F — the same residual
-    `tests/test_pass_hang.py`'s own real-pair rows measure (there, 37.5/255 on a different crop): box-
-    fold is the fleet's only `cameraAuthority:"own"` instrument, and its own camera pose does not
-    fully cancel to the stage's hang anchor at a real door. Named in the plan, homed before Phase 4
-    item 3, explicitly out of Phase 2's own scope (cause B, the crop bypass this phase repairs, is a
-    different mechanism and IS fixed — see the INV-DOOR and red-on-bug rows this file's own siblings
-    carry).
-  · `boxfold`'s own cadence row reads "no cadence frame was caught" rather than a pixel mismatch — the
-    40-iteration, 2-second catch window this file and `test_pass_hang.py` both use never saw box-
-    fold's canvas stand visible after the interruption. Not diagnosed past that: consistent in shape
-    with cause C (the broader non-dock/timeout class the plan names as its own, separately-scoped
-    diagnosis), not investigated further here since cause C is explicitly not this phase's work.
+WHAT THE REAL-PAIR ROWS FOUND, READ HONESTLY RATHER THAN SWEPT. Real bundles surface real defects a
+hand-typed score cannot, and the 2026-08-31 widening opened five red rows on this file's own repaired
+tree. All five are closed on 2026-09-02 and what each of them actually was is written down here,
+because three of the five were diagnosed wrong first and the wrong diagnoses cost two nights.
 
-    DIAGNOSED FURTHER, PHASE 3 (2026-09-01, cause G). This row stays red after Phase 3's own repair
-    below, and it is red for cause F alone now, not for a crash: `pass-composer.js:4184` always
-    writes a cue's `window` as a pair of `Flt`-tagged numbers (`valueOf` at `:66`), and `camEdge`
-    (`pass-layer.js:1048`) was the one window reader in that file that returned them unwrapped —
-    every sibling reader (`cueLiveAt`, `windowsMeet`, `metAcross`, the door-progress read in
-    `playFrame`) already wraps with `Number(...)`. `camEdge`'s return value is used nowhere except
-    `camPoseAt`'s handoff measurement, `+at.toFixed(4)`, a bare method call `valueOf` does not rescue
-    — so a real camera-authority handoff on box-fold, the fleet's only `cameraAuthority:"own"`
-    instrument, threw `TypeError: at.toFixed is not a function` inside `runFrame`'s own cadence-walk
-    call to `playFrame`, was caught and logged as `frame-threw`, and re-entered `finish`'s own cause-F
-    rest gate without ever drawing a cadence frame — a second, independent way to read "no cadence
-    frame was caught" on top of cause F's own genuine non-convergence. Reproduced live (stack trace:
-    `camPoseAt` → `playFrame` → `runFrame`) on real box-fold bundles driven through
-    `tests/dump_route_wire_fence.py` (Phase 6), fixed by wrapping `camEdge`'s return in `Number(...)`,
-    and reverified clean on the same instrument: no more `frame-threw`/`toFixed` events, and the
-    cause-F loop it used to crash inside of now resolves in one bounded cycle through the pass's own
-    watchdog instead of many. This file's OWN solo-pivot cadence row above never happened to cross
-    `camEdge`'s crashing branch (verified unchanged, byte-for-byte, before and after the fix — same
-    `box=None`, same non-crash shape), so its own continued redness is cause F's alone, unfixed and
-    correctly out of this phase's scope (its own item, before Phase 4 item 3). Cause G is therefore
-    not one mechanism but two stacked on box-fold: cause F's own non-convergence (open) and this
-    file's own `camEdge` crash (closed). Write-set: `engine/assets/pass-layer.js` only.
-  · `hero`'s own travel(hero) enter/leave rows (up to 88.6% of pixels outside their own neighbourhood
-    range) are a NEW finding this widening surfaces, not previously named in the plan: the composer
-    cast hero — a `coverage.writes:false` instrument with no `presence`-style entry-door handle — into
-    a role whose own window (1.06 s to 1.68 s) is narrower than the crossing's own duration (7.377 s),
-    and the diagnostic stack reads `hero` as the actual bottom of the stack for that window rather
-    than `matter` (the cue named "pivot" by the composer's own id, which is NOT the same thing as
-    which voice the placement rules actually seat at the bottom). A `writes:false` instrument has no
-    way to draw partial presence, so its own entry and exit are necessarily a hard cut rather than a
-    fade — whether that is a legitimate wipe this engine already has a name for, or a gap in how the
-    bundle planner seats a ground-capable instrument into a sub-duration window, is a pass-composer.js
-    question this phase's write-set (pass-inst-hero.js only, for hero) cannot answer. Reported, not
-    fixed.
-  · `liquid`'s own cadence row (210 of 255, 27.1% of pixels) is the one lead this phase's own liquid
-    investigation found: liquid's SCHEDULED doors (this file's curtain/arrival rows, and both of
-    `test_pass_hang.py`'s real-pair rows) read clean, ruling out its envelope math (`wet`/`life`
-    gating) and its coverage/displacement math (`cov`, `disp`) as broken AT A TRUE, SCHEDULED door —
-    both were read in the shader source and checked arithmetically, and both are exact at `mix` = 0 or
-    1. The defect surfaces only under an INTERRUPTED cadence landing, which is a narrower and more
-    specific clue than "content not settled at the door" — whether the interruption-resolve path
-    leaves `mix` short of the door it visually resolves the camera to is the next question, and this
-    phase did not chase it into `pass-layer.js`'s own cadence/interruption code, which is outside this
-    phase's write-set.
+  · `boxfold`'s curtain, its frame-given-back and its cadence all read 172 of 255, and all three were
+    ONE defect: with the crease lying flat, box-fold pasted the picture onto the face by a rule that
+    took no account of which way the crease lies, so a landed face stood the work reflected about its
+    own anti-diagonal. It was read as cause F — an own-camera pose failing to cancel to the hang
+    anchor — because the fixture's own stripe picture depends on x + y alone and cannot tell a
+    reflection from a shift. Repaired in `pass-inst-boxfold.js`, proven by arithmetic and by
+    `tests/test_pass_boxfold.py`'s own flat-door red-on-bug.
+
+  · `hero`'s two travel(hero) door rows read up to 176 of 255 over 91.6 per cent of the frame, and
+    that was neither hero's defect nor the host's: the composer had seated hero — an instrument that
+    fills the frame and publishes no `presence` — at stack 0 with a window of 0.6 s inside a 7.4 s
+    passage. Outside a floor voice's own window there is no floor, so the host draws whichever voice
+    comes first with blending disabled and the cue that declared itself ABOVE the ground is drawn AS
+    the ground with its own presence never read; the picture then changes wholesale at the ground's
+    window edges. Repaired at its source in `pass-composer.js` (`placeTheStack`: the ground is the
+    pivot, the one cue whose window runs the whole passage), which over the 121-work fleet closed the
+    same defect on 71 of 1200 composed passages across ten instruments.
+
+  · `boxfold`'s cadence reading "no cadence frame was caught" was cause G, `camEdge` returning an
+    unwrapped `Flt` into `+at.toFixed(4)`, and it was closed on 2026-09-01 in `pass-layer.js`.
+
+  · `liquid`'s cadence read 210 of 255 while its scheduled doors read clean. Its own bundle was
+    re-derived on 2026-09-02 (see the note above `REAL_SCORE_JSON`) and the row reads 0 of 255 with
+    the cadence landing on door «out»; nothing in `pass-inst-liquid.js` or the host's interruption
+    path was changed for it, so what the old reading was is not settled here — only that it does not
+    reproduce on a bundle today's composer emits.
 """
 import base64
 import json
