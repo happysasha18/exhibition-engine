@@ -138,7 +138,7 @@ BROWSER_ROWS = [
     "PASS-API row 24 · a second declare inside one frame is refused with its reason",
     "PASS-API row 1  · dock happens exactly once, keyed on generation and destination",
     "PASS-API the chained A→B→C case: the middle work does not dock under the last generation",
-    "PASS-API row 4  · decline before takeover casts the last resort, not the glide",
+    "PASS-API row 4  · a null score declines before the layer, on a real step (Phase 3c, cause C)",
     "PASS-API row 3  · a superseding input cancels the running transaction and the second declares cleanly",
     "PASS-API row 2/26 · a stale/foreign-token settle changes nothing",
     "PASS-API row 26 · a foreign token with no transaction in flight changes nothing",
@@ -293,6 +293,30 @@ def cleanup(br):
     br.evaluate("window.__exPass.host.configure({prepareBudgetMs:120, settleSlackMs:300})")
 
 
+def declare_and_offer(br, a_idx, b_idx, cause):
+    """A real declare, handed straight to `window.__exPass.layer().offer(...)` — the same seam
+    rows 13/14 already drive through, and the one this whole file's `window.__exPass.test`
+    instrument needs (2026-09-01, V2-CONVERGENCE-PLAN-2026-08-31 Phase 3c, cause C's real
+    mechanism): this site configures no composer, so every real declared step here carries
+    `cmd.score === null`, and `passOffer` (`engine/client/01a-pass.js`) now declines a null-score
+    command before it ever reaches the layer — the fix row 5/BROWSER_ROWS[5] itself proves. A real
+    `br.key("ArrowDown")` no longer reaches `window.__exPass.test` at all for that reason; calling
+    the layer directly, with the adapter's own real `dock`/`glide`/`curtain`/`mark`, drives the
+    exact same host state machine the test instrument's `mode(...)` controls, unchanged by the
+    higher gate a real gesture now stops at first. Returns the destination id and generation the
+    command carries, read off the command itself rather than a `nav-start` mark this road never
+    fires (that mark belongs to `passStart`, the real-navigation road this helper does not take)."""
+    return js(br, """
+      const els=[...document.querySelectorAll('.exh-frame, .exh-fin')];
+      const cmd=window.__exPass.adapter.declare({fromEl:els[%d], toEl:els[%d],
+                                                 kind:'step', cause:'%s'});
+      window.__exPass.layer().offer(cmd, {dock:window.__exPass.adapter.dock,
+        glide:window.__exPass.adapter.glide, curtain:window.__exPass.adapter.curtain,
+        mark:window.__exPass.adapter.mark});
+      return {to: cmd && cmd.to ? cmd.to.id : null, gen: cmd ? cmd.gen : null};
+    """ % (a_idx, b_idx, cause))
+
+
 if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
@@ -379,22 +403,43 @@ else:
                 check(BROWSER_ROWS[4], ok, f"result={r}")
                 br.sleep(0.1)
 
-                # 5 · decline before takeover: the default test instrument declines, so the funnel
-                # (2026-08-24, engine/assets/pass-layer.js "THE LAST RESORT") casts its own real,
-                # canvas-drawing instrument rather than leaving the walk to glide with no renderer —
-                # the walk still moves the same real step, but now through exactly one canvas, never
-                # the full curtain (the last resort is a plain wipe between the two works, not a
-                # takeover of the whole frame).
-                br.evaluate("window.__exPass.test.reset()")   # mode defaults to 'decline'
+                # 5 · a null score declines before the layer, on a real step (2026-09-01,
+                # V2-CONVERGENCE-PLAN-2026-08-31 Phase 3c, cause C's real mechanism). This site never
+                # configures a composer (see this file's own top-of-file note — rows 1-6/23-28 need no
+                # score at all), so every real step here composes none: `cmd.score` is null. Until
+                # this fix, `passOffer` (`engine/client/01a-pass.js`) handed a null-score command to
+                # `passLayer.offer` regardless of that, which reached the diagnostics probe
+                # (`pass-layer.js`'s `pick()`, "no score: only the diagnostics probe can take a
+                # command") and, once the probe declined, fell through to the funnel's own last
+                # resort — a real crossing with no camera or handle track, invisible to a poll-based
+                # observer, which is the exact mechanism the plan doc's own Phase 3c traces cause C's
+                # non-dock/timeout reads to. `passOffer` now gates on `cmd.score` immediately after
+                # its two holds, so a real step composing no score never reaches the layer at all: the
+                # walk takes its own plain glide instead, marked `"visual-declined"`, the same as the
+                # two comments in `01a-pass.js` already promised. The probe/last-resort path itself is
+                # untouched and still real — `test_pass_weave.py`'s WALK_ROWS[3] exercises it directly
+                # through `window.__exPass.layer().offer(...)`, the same seam this row used to drive
+                # through a real step; this row now proves the higher gate that keeps a real gesture
+                # from ever reaching that seam with nothing composed.
+                br.evaluate("window.__exPass.test.reset()")   # mode defaults to 'decline'; kept armed
+                                                                # for the direct-layer seam above, moot
+                                                                # for a real step since the gate now
+                                                                # declines before the probe is ever asked
                 room(br)
                 y0 = int(br.evaluate("String(Math.round(scrollY))") or 0)
+                events_before = int(br.evaluate("String(window.__exPass.report().events.length)") or 0)
                 br.key("ArrowDown")
                 br.sleep(1.2)
                 y1 = int(br.evaluate("String(Math.round(scrollY))") or 0)
                 curtained = br.evaluate("String(document.body.classList.contains('ex-pass-curtain'))")
                 canvases = br.evaluate("String(document.querySelectorAll('canvas').length)")
-                check(BROWSER_ROWS[5], y1 > y0 and curtained == "false" and canvases == "1",
-                      f"scroll {y0}->{y1} curtained={curtained} canvases={canvases}")
+                declined = br.evaluate(
+                    "String(window.__exPass.report().events.slice(%d).filter("
+                    "function(e){return e.name === 'visual-declined' "
+                    "&& (e.why || '').indexOf('no score composed') === 0;}).length)" % events_before)
+                check(BROWSER_ROWS[5],
+                      y1 > y0 and curtained == "false" and canvases == "0" and declined == "1",
+                      f"scroll {y0}->{y1} curtained={curtained} canvases={canvases} declined={declined}")
                 cleanup(br)
 
                 # 6 · a superseding input cancels the RUNNING transaction (the host's own record,
@@ -407,10 +452,12 @@ else:
                                           # sets a mode and takes the step it actually means to test
                 br.evaluate("window.__exPass.test.mode('never')")   # holds 'running' until cancelled
                 room(br)
-                br.key("ArrowDown")
+                declare_and_offer(br, 0, 1, "row6-first")   # a null-score real step no longer
+                                                             # reaches window.__exPass.test on its
+                                                             # own (Phase 3c) — driven directly
                 br.sleep(0.3)
                 mid = jhost(br)
-                br.key("ArrowDown")
+                declare_and_offer(br, 1, 2, "row6-second")   # the superseding gesture
                 br.sleep(0.3)
                 after = jhost(br)
                 names = [e["name"] for e in after["events"]]
@@ -428,7 +475,7 @@ else:
                 br.evaluate("window.__exPass.host.configure({prepareBudgetMs:120, settleSlackMs:4000})")
                 br.evaluate("window.__exPass.test.mode('stale')")
                 room(br)
-                br.key("ArrowDown")
+                declare_and_offer(br, 0, 1, "row7-stale")
                 br.sleep(0.3)
                 rep = jhost(br)
                 stale = [e for e in rep["events"] if e["name"] == "stale-settle"]
@@ -449,8 +496,7 @@ else:
                 # the visitor left.
                 br.evaluate("window.__exPass.test.mode('fail')")
                 room(br)
-                g0 = br.evaluate("String(window.__exPass.report().events.length)")
-                br.key("ArrowDown")
+                declared = declare_and_offer(br, 0, 1, "row9-fail")
                 ok = False
                 for _ in range(15):
                     st = br.evaluate("window.__exPass.host.report().state")
@@ -459,12 +505,12 @@ else:
                         break
                     br.sleep(0.05)
                 rep = jhost(br)
-                # the destination this gesture actually declared — read from the bundle's own
-                # nav-start mark, never guessed from DOM order (several real steps have already
-                # moved the walk on by the time this row runs)
-                dest = js(br, "const evs=window.__exPass.report().events;"
-                             "const st=evs.slice(%s).find(e=>e.name==='nav-start');"
-                             "return st ? st.to : null;" % g0)
+                # the destination this gesture actually declared — read straight off the command
+                # `declare_and_offer` handed the layer, never guessed from DOM order. Until Phase 3c
+                # this was read off the bundle's own `nav-start` mark, which only the real-navigation
+                # road (`passStart`) ever fires — the direct-layer seam this row now drives through
+                # does not pass through it, so the command's own `to` is the one honest source left.
+                dest = declared["to"]
                 share = br.evaluate("(document.querySelector('.ex-share')||{}).dataset ? "
                                     "(document.querySelector('.ex-share').dataset.share||'') : ''")
                 curtained = br.evaluate("String(document.body.classList.contains('ex-pass-curtain'))")
@@ -483,7 +529,7 @@ else:
                 br.evaluate("window.__exPass.host.configure({prepareBudgetMs:20, settleSlackMs:20})")
                 br.evaluate("window.__exPass.test.mode('never')")
                 room(br)
-                br.key("ArrowDown")
+                declare_and_offer(br, 0, 1, "row10-watchdog")
                 fired = False
                 for _ in range(40):
                     rep = jhost(br)
@@ -501,7 +547,7 @@ else:
                 br.reload()
                 reload_and_prime(br)
                 br.evaluate("window.__exPass.test.reset(); window.__exPass.test.mode('take')")
-                br.key("ArrowDown")
+                declare_and_offer(br, 0, 1, "row11-instant")
                 br.sleep(0.4)
                 rep = jhost(br)
                 names = [e["name"] for e in rep["events"]]
@@ -522,7 +568,7 @@ else:
                 br.evaluate("window.__exPass.host.configure({prepareBudgetMs:120, settleSlackMs:4000})")
                 br.evaluate("window.__exPass.test.mode('never')")
                 room(br)
-                br.key("ArrowDown")
+                declare_and_offer(br, 0, 1, "row12-inert")
                 br.sleep(0.3)
                 hidden = br.evaluate("document.getElementById('ex-stage').getAttribute('aria-hidden')")
                 inert = br.evaluate("String(document.getElementById('ex-stage').inert)")
@@ -921,20 +967,28 @@ else:
                           f"pixel delta {max_mid_note:.1f} of 255, noted but not gated on (timing "
                           f"jitter between two separate navigations moves an in-motion frame)")
 
-                    # RED-ON-BUG. Three real, currently-shipped guards stand between
+                    # RED-ON-BUG. Four real, currently-shipped guards stand between
                     # visualLayer:off and a drawn pass, and this file's own instrumentation
-                    # showed all three are load-bearing on the first attempt at this row — bypassing
+                    # showed all four are load-bearing on the first attempt at this row — bypassing
                     # only the layer's own FETCH gate (`passOpen`) still left the command declined
-                    # (`visual-declined`) by the separate per-command gate. All three, together, are
+                    # (`visual-declined`) by the separate per-command gate. All four, together, are
                     # what the guarantee above actually stands on:
                     #   engine/assets/exhibition.js `passComposerOpen` / `passOpen` — the two fetch
                     #   gates, each `if (passGet("visualLayer") !== "pass") return;`
                     #   engine/assets/exhibition.js `passVisualTakes` — the per-command gate,
                     #   `if (cmd.params.visualLayer.base !== "pass") { ...; return false; }`
+                    #   engine/assets/exhibition.js `passOffer` — the null-score gate added
+                    #   2026-09-01 (V2-CONVERGENCE-PLAN-2026-08-31 Phase 3c, cause C's real
+                    #   mechanism): `if (!cmd.score) { ...; return false; }`. This site configures
+                    #   no composer, so `cmd.score` is null for every real step regardless of
+                    #   `visualLayer` — this guard alone would already hold the guarantee below, and
+                    #   the row bypasses it too so a regression in any ONE of the four still catches.
                     GUARD_FETCH = 'if (passGet("visualLayer") !== "pass") return;'
                     GUARD_TAKE = 'if (cmd.params.visualLayer.base !== "pass") {'
+                    GUARD_SCORE = 'if (!cmd.score) {'
                     exh_js = (TMP / "exhibition.js").read_text(encoding="utf-8")
-                    if exh_js.count(GUARD_FETCH) != 2 or GUARD_TAKE not in exh_js:
+                    if (exh_js.count(GUARD_FETCH) != 2 or GUARD_TAKE not in exh_js
+                            or exh_js.count(GUARD_SCORE) != 1):
                         skip(CONTROL_ROW,
                              "the guard text was not found verbatim (as expected) in the built "
                              "bundle")
@@ -943,6 +997,7 @@ else:
                         _shutil2.copytree(TMP, MUT_TMP, dirs_exist_ok=True)
                         mutated = exh_js.replace(GUARD_FETCH, "if (false) return;")
                         mutated = mutated.replace(GUARD_TAKE, "if (false) {", 1)
+                        mutated = mutated.replace(GUARD_SCORE, "if (false) {", 1)
                         (MUT_TMP / "exhibition.js").write_text(mutated, encoding="utf-8")
                         with serve(MUT_TMP) as mut_base:
                             mut_run = _sample(mut_base, "diagnostics:on,visualLayer:off", "mut")
@@ -952,7 +1007,7 @@ else:
                         else:
                             broke = mut_run["canvases"] != base_run["canvases"]
                             check(CONTROL_ROW, broke,
-                                  "with all three visualLayer guards bypassed, visualLayer:off "
+                                  "with all four visualLayer guards bypassed, visualLayer:off "
                                   "drew " + str(mut_run["canvases"]) + " canvas element(s) during "
                                   "the same step against a baseline of "
                                   + str(base_run["canvases"]) + " — if these still read equal, "

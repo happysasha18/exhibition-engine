@@ -237,6 +237,19 @@ def enter(br):
     for _ in range(30):
         if br.evaluate("String(!!(window.__exPass && window.__exPass.host))") == "true":
             br.evaluate(HOOKS)
+            # THE STAGE ITSELF, WARMED HERE RATHER THAN LEFT TO THE STEP ABOVE (2026-09-01,
+            # V2-CONVERGENCE-PLAN-2026-08-31 Phase 3c, cause C's real mechanism). This site
+            # configures no composer, so the ArrowDown just taken carries a null score; until this
+            # fix that null-score command still reached `passLayer.offer`, and casting SOMETHING
+            # for it (even the funnel's own last resort) was what created the canvas and sized
+            # `cssW`/`cssH` (`stageResize`) as a side effect — which is what every row below reads
+            # off `window.__exPass.bench.camApplied`/`.quad`, neither of which ever declares a
+            # command of its own. `passOffer` now declines a null-score command before the layer is
+            # ever asked, so that side effect no longer happens on its own; `bench.make()` is the
+            # diagnostics surface built for exactly this (pass-layer.js's own comment: "the
+            # diagnostics-only hand a conformance row draws one frame with"), and calling it
+            # directly is more honest than leaning on an offer's own by-product to do it.
+            br.evaluate("window.__exPass.bench.make()")
             return True
         br.sleep(0.2)
     return False

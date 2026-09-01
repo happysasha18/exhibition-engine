@@ -4120,6 +4120,29 @@
     // by the record hold on its own next pass, with no second idea of what waiting means.
     if (passComposerHold(cmd)) return true;
     if (passRecordsHold(cmd)) return true;
+    // A STEP WITH NO SCORE HAS ALREADY BEEN GIVEN EVERY CHANCE TO WAIT FOR ONE, by the two holds
+    // just above — a composer still on the wire or a records wave still in flight both return
+    // `true` and never reach this line. Reaching here with `cmd.score` still null means the compose
+    // was ATTEMPTED and came back with nothing: the composer declined the pair outright
+    // (`passComposeFor`'s own "one of the two works carries no record on this walk"), or its entry
+    // threw. Two comments in this file already promise what happens next — `passRecordsAskFor`'s own
+    // "a crossing declared before a wave lands finds its record simply missing, which is the walk's
+    // own glide" and `passComposeFor`'s "the one road left to the glide from here" — but nothing
+    // enforced it: `passLayer.offer` cannot tell a genuine decline from an ordinary empty cast and
+    // answers it the same way, by casting its own always-available last-resort instrument
+    // (`pass-layer.js`'s `lastResortCast`) instead of declining. That cast carries no camera track
+    // and no handle track (there was never a real score to build one from), so it settles inside a
+    // frame or two — fast enough that a poll-based observer sampling for "the renderer took it" can
+    // miss the whole thing, which is the mechanism behind the non-dock/timeout reads
+    // `docs/V2-CONVERGENCE-PLAN-2026-08-31.md` Phase 3c traces to a stale last-passage record (no
+    // new row was ever pushed to `passPassages`, because every road through `passComposeFor` that
+    // returns null does so before its own `passNote(passPassages, passage)` line). Declining here,
+    // before the layer is ever asked, is what actually delivers the glide the comments above already
+    // describe.
+    if (!cmd.score) {
+      passMark("visual-declined", cmd, "no score composed for this pair — the walk's own glide");
+      return false;
+    }
     try {
       const took = passLayer.offer(cmd, { dock: dock, glide: glide, curtain: curtain, mark: passMark,
                                     hangGeometry: hangGeometry, handoff: handoff }) === true;
