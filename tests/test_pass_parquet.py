@@ -96,24 +96,24 @@ def skip(name, detail):
 # instrument a real, work-measured phase on a real cast: the same gap the boxfold PARDON_I section
 # above closes for `seamScore`, closed here for `phase`.
 #
-# THE SEARCH IS OVER THE REAL 121-WORK FLEET, NEVER A HAND-PICKED PAIR. The cheap pre-filter
-# `genresFor` gives boxfold (a genre id of its own, `bf.fit > 0`) has no equivalent here — parquet
-# carries no genre id at all (`grep 'say("' pass-composer.js` names eight, none of them parquet) —
-# so the analogous cheap filter is read straight off the DATA rather than off a composer call: only
-# a departing work whose OWN `structure.grid.score` already clears `PARQUET_GRID_STRENGTH_FLOOR`
-# (pass-composer.js's own parquet branch, 0.016 — the top-quartile discriminating threshold
-# `lab/cut-lines.py --stats-only` reports for `grid` over the real fleet) can ever show a non-zero
-# phase, so only those works are worth the expensive `passageFor` call at all. 31 of 121 works clear
-# it. For each, in the fixture's own order, every other work is tried as the arriving end, over the
-# same role/function pairs and seeds the boxfold section above already uses.
+# THE SEARCH IS OVER THE REAL 121-WORK FLEET, NEVER A HAND-PICKED PAIR. No cheap pre-filter is
+# read off the DATA: an earlier draft of this section filtered departing candidates by
+# `structure.grid.score` clearing a threshold read off this collection's own score distribution
+# (the top quartile of the 121-work fleet) — struck on his review before landing, the same session.
+# Shelf 20 bars any statistic or distribution computed across the photographs from calibrating
+# engine behaviour, and shelf 21's own test settles it without argument: a quartile of 121 works'
+# own scores could and did exist before any pair in front of it was known, however it was arrived
+# at. `phase` now reads on exactly the condition `tilesFrom`/`tilesTo` (pass-composer.js's own
+# parquet branch) already read on — `gridCount > 0`, whatever the work's own grid measured — so
+# every work in the fixture is a candidate departing end, in the fixture's own order, with every
+# other work tried as the arriving end, over the same role/function pairs and seeds the boxfold
+# section above already uses.
 PHASE_COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
 PHASE_FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
-PHASE_GRID_STRENGTH_FLOOR = 0.016  # pass-composer.js's own PARQUET_GRID_STRENGTH_FLOOR
 
-PHASE_ROW = ("PASS-PARQUET phase · a real, planner-composed pair hands the instrument a non-zero "
-             "phase reading off the departing work's own measured grid, and the arriving work's "
-             "own weak reading falls back to nothing")
-PHASE_RED_ROW = ("PASS-PARQUET phase red-on-bug · gating the reading out drops the same real "
+PHASE_ROW = ("PASS-PARQUET phase · a real, planner-composed pair hands the instrument each work's "
+             "own measured phase reading, unconditionally — no fleet-derived floor")
+PHASE_RED_ROW = ("PASS-PARQUET phase red-on-bug · removing the reading drops the same real "
                   "pair's own phase back to the regular lattice")
 
 PHASE_DRIVER = r"""
@@ -145,16 +145,14 @@ if (!joined) { console.log(JSON.stringify({ error: "the module joined nothing" }
 const composer = joined.make(consts);
 
 const ids = Object.keys(works);
-const strong = ids.filter((id) => (((works[id].structure || {}).grid || {}).score || 0)
-                                   >= %(floor)s);
 const ROLE_FN = [["culmination", "dominant"], ["middle", "subdominant"], ["middle", "dominant"],
                  ["opening", "tonic"]];
 const SEEDS = [0, 2, 4, 6];
 
 let found = null;
 outer:
-for (let i = 0; i < strong.length && !found; i++) {
-  const from = strong[i];
+for (let i = 0; i < ids.length && !found; i++) {
+  const from = ids[i];
   for (let j = 0; j < ids.length && !found; j++) {
     const to = ids[j];
     if (to === from) continue;
@@ -172,12 +170,17 @@ for (let i = 0; i < strong.length && !found; i++) {
         const mh = pq.measuredHandles || {};
         const phaseFrom = mh.phase && mh.phase[0] && mh.phase[0].v;
         const phaseTo = mh.phase && mh.phase[1] && mh.phase[1].v;
-        if (typeof phaseFrom === "number") {
+        // ONLY A PAIR WHERE BOTH ENDS CARRY A REAL GRID, so the row shows the reading reaching
+        // BOTH sides of a real cast, not one end alone.
+        const gcFrom = (((works[from].structure || {}).grid || {}).periodPx || 0) > 0;
+        const gcTo = (((works[to].structure || {}).grid || {}).periodPx || 0) > 0;
+        if (typeof phaseFrom === "number" && typeof phaseTo === "number" && gcFrom && gcTo) {
           found = { from: from, to: to, seed: seed, role: role, fn: fn,
                     phaseFrom: phaseFrom, phaseTo: phaseTo,
                     gridPhaseFrom: (works[from].structure.grid || {}).phase,
+                    gridPhaseTo: (works[to].structure.grid || {}).phase,
                     gridScoreFrom: (works[from].structure.grid || {}).score,
-                    gridScoreTo: ((works[to].structure || {}).grid || {}).score };
+                    gridScoreTo: (works[to].structure.grid || {}).score };
           break outer;
         }
       }
@@ -209,7 +212,6 @@ else:
             "consts": json.dumps(_phase_fix_works["consts"]),
             "works": json.dumps(_phase_fix_works["works"]),
             "plants": json.dumps(plants or []),
-            "floor": json.dumps(PHASE_GRID_STRENGTH_FLOOR),
         }
         driver_path = _phase_tmp / "driver.js"
         driver_path.write_text(driver_text, encoding="utf-8")
@@ -226,29 +228,31 @@ else:
     _phase_found = _phase_green.get("found") if isinstance(_phase_green, dict) else None
     _phase_ok = (isinstance(_phase_found, dict)
                  and isinstance(_phase_found.get("phaseFrom"), (int, float))
+                 and isinstance(_phase_found.get("phaseTo"), (int, float))
                  and isinstance(_phase_found.get("gridPhaseFrom"), (int, float))
+                 and isinstance(_phase_found.get("gridPhaseTo"), (int, float))
                  and abs(_phase_found["phaseFrom"] - _phase_found["gridPhaseFrom"]) < 1e-3
-                 and _phase_found.get("gridScoreFrom", 0) >= PHASE_GRID_STRENGTH_FLOOR)
+                 and abs(_phase_found["phaseTo"] - _phase_found["gridPhaseTo"]) < 1e-3)
     check(PHASE_ROW, _phase_ok,
-          ("real pair %s→%s (seed %s, role %s/%s): the departing work's own gridScore=%s clears "
-           "the %s floor and its own measured gridPhase=%s reaches the instrument's own phase "
-           "handle as %s (arriving work's gridScore=%s, its own end of the handle reads %s)"
+          ("real pair %s→%s (seed %s, role %s/%s): both works' own measured phase reach the "
+           "instrument unconditionally — departing gridPhase=%s (score %s) as %s, arriving "
+           "gridPhase=%s (score %s) as %s, no floor read on either"
            % (_phase_found.get("from"), _phase_found.get("to"), _phase_found.get("seed"),
-              _phase_found.get("role"), _phase_found.get("fn"), _phase_found.get("gridScoreFrom"),
-              PHASE_GRID_STRENGTH_FLOOR, _phase_found.get("gridPhaseFrom"),
-              _phase_found.get("phaseFrom"), _phase_found.get("gridScoreTo"),
+              _phase_found.get("role"), _phase_found.get("fn"), _phase_found.get("gridPhaseFrom"),
+              _phase_found.get("gridScoreFrom"), _phase_found.get("phaseFrom"),
+              _phase_found.get("gridPhaseTo"), _phase_found.get("gridScoreTo"),
               _phase_found.get("phaseTo"))
            if isinstance(_phase_found, dict) else
            "the real 121-work fleet's own passageFor search cast parquet with a real phase reading "
-           "on no real pair at all, searching every work whose own grid score clears the floor as "
-           "the departing end: " + json.dumps(_phase_green)))
+           "on no real pair at all, searching every work as the departing end: "
+           + json.dumps(_phase_green)))
 
     if not isinstance(_phase_found, dict):
         skip(PHASE_RED_ROW, "no real pair found above to replant")
     else:
         _phase_plant = [[
-            "var phaseFrom = mf.gridScore >= PARQUET_GRID_STRENGTH_FLOOR ? mf.gridPhase : 0;\n"
-            "          var phaseTo = mt.gridScore >= PARQUET_GRID_STRENGTH_FLOOR ? mt.gridPhase : 0;",
+            "var phaseFrom = mf.gridCount > 0 ? mf.gridPhase : 0;\n"
+            "          var phaseTo = mt.gridCount > 0 ? mt.gridPhase : 0;",
             "var phaseFrom = 0;\n          var phaseTo = 0;",
         ]]
         _phase_red = _run_phase(plants=_phase_plant)
@@ -310,9 +314,9 @@ console.log(JSON.stringify({
             check(PHASE_RED_ROW,
                   _replayed.get("phaseFrom") == 0,
                   "the same real request replayed (from=%s to=%s seed=%s role=%s/%s): shipped "
-                  "phase=%s (the departing work's own measured %s), gated out phase=%s — which is "
-                  "today's regular lattice and the fallback shelf 21 requires, not a refused "
-                  "crossing"
+                  "phase=%s (the departing work's own measured %s), reading removed phase=%s — "
+                  "which is today's regular lattice and the fallback shelf 21 requires, not a "
+                  "refused crossing"
                   % (_phase_found["from"], _phase_found["to"], _phase_found["seed"],
                      _phase_found["role"], _phase_found["fn"], _phase_found["phaseFrom"],
                      _phase_found["gridPhaseFrom"], _replayed.get("phaseFrom")))

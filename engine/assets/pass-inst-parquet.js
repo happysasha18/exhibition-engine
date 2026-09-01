@@ -845,9 +845,11 @@
         // number reads the same offset whatever `tiles` itself comes out to.
         phase: { min: 0, max: 1, def: 0, unit: "a share of one tile",
                  reads: "structure.grid.phase — where the work's own strongest measured repeat "
-                      + "falls, gated on structure.grid.score in pass-composer.js's own parquet "
-                      + "branch: below that floor this handle is left at nothing, which is "
-                      + "today's regular lattice and not a fourth reading",
+                      + "falls, read in pass-composer.js's own parquet branch on exactly the "
+                      + "condition tiles/lattice already read on (the work's grid measured at "
+                      + "all), never on a floor read off the score: shelf 9's own law is that a "
+                      + "measurement ranks and never gates, so a weak reading moves this handle "
+                      + "exactly as a weak reading already moves tiles/lattice",
                  applied: { restsAt: "both doors",
                             why: "scaled by the same envelope `lattice` already rides (`open`), "
                                + "so it is exactly nothing wherever `lattice` is, and the door law "

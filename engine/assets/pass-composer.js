@@ -6179,17 +6179,19 @@
         deviceAngleDeg: Number((st.ownDevice || {}).angleDeg) || 0,
         gridPeriodPx: Number((st.grid || {}).periodPx) || 0,
         gridAngleDeg: Number((st.grid || {}).angleDeg) || 0,
-        // HOW STRONGLY THE WORK SUPPORTS BEING CUT ON THIS GRID, and WHERE that grid's own repeat
-        // falls — Phase 9 of docs/V2-CONVERGENCE-PLAN-2026-08-31.md, added 2026-09-01. `gridScore`
-        // is `lab/cut-lines.py measure_grid`'s own off-DC spectral-power ratio, the same reading
-        // that measure's own discrimination table is built from; `gridPhase` is a SHARE of
-        // `gridPeriodPx` (not a pixel count), the offset of the picture's own strongest repeat from
-        // the frame's own top-left corner, read along `gridAngleDeg`'s own direction. Together
-        // they are what lets parquet's lattice (its own branch below) land ON the picture's own
-        // lines instead of merely at their spacing and turn — period and angle alone, which this
-        // record already carried, said a lattice of this count and this turn fits; they never said
-        // where that lattice's own boundaries should fall.
-        gridScore: Number((st.grid || {}).score) || 0,
+        // WHERE the grid's own repeat falls — Phase 9 of docs/V2-CONVERGENCE-PLAN-2026-08-31.md,
+        // added 2026-09-01. A SHARE of `gridPeriodPx` (not a pixel count), the offset of the
+        // picture's own strongest repeat from the frame's own top-left corner, read along
+        // `gridAngleDeg`'s own direction. Together with the two lines above it is what lets
+        // parquet's lattice (its own branch below) land ON the picture's own lines instead of
+        // merely at their spacing and turn — period and angle alone, which this record already
+        // carried, said a lattice of this count and this turn fits; they never said where that
+        // lattice's own boundaries should fall. Read and applied on exactly the same condition
+        // `gridCount`/`gridAngleDeg` already are (`gridCount > 0` in the parquet branch below) —
+        // no separate strength floor: shelf 9's own law is that a measurement ranks, never gates,
+        // and a threshold read off this collection's own score distribution (tried once during
+        // this phase's own work, then removed on his review) is exactly the shelf 20/21 violation
+        // that law exists to forbid — a number that could and did exist before any pair was known.
         gridPhase: Number((st.grid || {}).phase) || 0,
         frameSide: side,
         // how confidently the work's own device was recovered — how legibly its making reads
@@ -7647,24 +7649,22 @@
           // never answered — a lattice built from spacing and turn alone can still land its own
           // seam in the middle of a window instead of on the mullion between two.
           //
-          // GATED ON THE GRID'S OWN SCORE, PER WORK, AND FALLING BACK WHERE IT IS NOT. `gridScore`
-          // is the same off-DC spectral-power ratio lab/cut-lines.py's own discrimination table
-          // already measures every one of the 121 works against. Its NAIVE round threshold (0.08,
-          // that file's own NAIVE_THRESHOLDS.grid) claims not one of them — this measure's peaks
-          // sit far lower than banding's or radial's by construction — so what is read here is the
-          // DISCRIMINATING threshold that file's own `--stats-only` computes in a naive guess's
-          // place exactly when the naive guess does not fit the collection's own distribution: the
-          // top quartile of the real 121-work fleet, 0.016, measured 2026-09-01 (`python3
-          // lab/cut-lines.py --stats-only` in the tlvphotos tree). Below it a work's own grid peak
-          // reads closer to this measure's own noise floor than to a real repeat, so `phase` is
-          // left at nothing on that end of the pair rather than fed a reading nobody would trust —
-          // which is today's regular lattice (phase 0, the value every work carried before this
-          // reading existed) and never «no crossing», shelf 21's own last line. The gate is read
-          // PER WORK, independently, exactly as `tilesFrom`/`tilesTo` and `latFrom`/`latTo` above
-          // are each read one work at a time.
-          var PARQUET_GRID_STRENGTH_FLOOR = 0.016;
-          var phaseFrom = mf.gridScore >= PARQUET_GRID_STRENGTH_FLOOR ? mf.gridPhase : 0;
-          var phaseTo = mt.gridScore >= PARQUET_GRID_STRENGTH_FLOOR ? mt.gridPhase : 0;
+          // READ ON THE SAME CONDITION `tilesFrom`/`tilesTo` ABOVE ALREADY READ ON — `gridCount >
+          // 0`, whatever the work's own grid measured, and nothing more. A first pass of this
+          // branch gated `phase` on `gridScore` clearing a threshold read off this collection's own
+          // score distribution (the top quartile of the real 121-work fleet) — struck on his
+          // review: shelf 20 bars any statistic or distribution computed across the photographs
+          // from calibrating engine behaviour, and shelf 21's own test settles it without argument
+          // — a quartile of 121 works' own scores could and did exist before any pair in front of
+          // it was known, however it was arrived at or how well it seemed to split the collection.
+          // Shelf 9 already carries the fix this file uses everywhere else for exactly this
+          // shape of problem — a measurement RANKS, it never GATES (Phase 1's own tier-ladder
+          // repair, cause A) — so `phase` reads here precisely where `tiles`/`lattice` already do,
+          // weak or strong alike; a noisy low-score reading is no different in kind from the
+          // regular lattice's own angle/count already being whatever the FFT peak found, however
+          // weak, which this file has never gated either.
+          var phaseFrom = mf.gridCount > 0 ? mf.gridPhase : 0;
+          var phaseTo = mt.gridCount > 0 ? mt.gridPhase : 0;
           if (mf.gridCount > 0 || mt.gridCount > 0) {
             wanted.phase = [flt(r4(phaseFrom)), flt(r4(phaseTo))];
           }
