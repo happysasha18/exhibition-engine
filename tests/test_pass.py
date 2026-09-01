@@ -465,6 +465,19 @@ else:
             # it. The handoff then places the walk at the very same offset, so no threshold is
             # crossed and no second report ever comes. With the record left uncorrected the next
             # turn honours the departing work.
+            #
+            # THE CROSSING IS DRIVEN UNDER REDUCED MOTION, WHICH IS THE ONLY ROAD ON THIS BAKE THAT
+            # PUTS A SCORE ON A STEP. `passOffer` declines a scoreless command before the layer is
+            # ever asked (Phase 3c, 2026-08-31 — «no score composed for this pair, the walk's own
+            # glide»), and this suite's site carries no `pass.records.route`, so every ordinary step
+            # here composes nothing and no host is ever offered anything: the stub below would take
+            # no command at all and the row would read as a walk that never crossed. Reduced motion
+            # composes `passReducedScore` from the direction alone, needing no record and no
+            # composer file, so the step reaches the stub exactly as any scored step would. Row 17
+            # below already drives the stub this way for the same reason. What this row measures —
+            # where the walk rests after a device change lands mid-crossing — reads nothing about
+            # motion preference, so the vehicle changes and the law does not.
+            br.emulate_media(prefers_reduced_motion="reduce")
             enter(br, base, "diagnostics:on,visualLayer:pass")
             br.key("ArrowDown")                     # the step that fetches the picture's own file
             br.sleep(1.8)
