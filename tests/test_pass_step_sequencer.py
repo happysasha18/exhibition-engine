@@ -22,14 +22,21 @@ file could compose (4 seeds each, capped for run time), of the crossings that ca
 move and an arrival, 541 of 1661 — a third — open the arrival only after the travelling move has
 already closed, some by several seconds inside a passage a few seconds long: `travel` plays start to
 finish, falls silent, and only then does `arrival` begin. That is the step sequencer, present on real
-data, today, in the shipped composer — not a defect this file invents to prove itself. Silencing this
-row (weakening the assertion until it is green) would be exactly the failure item 1 above was built to
-stop happening again to shelf 7; this row is written to red on that real condition and stay red until
-`arrivalOpenBase`'s own derivation (`pass-composer.js`, the block feeding `cueWindows`) is repaired to
-guarantee the overlap the charter asks for — a repair this phase's own write-set does not reach (an
-enforcer for a promise, per this phase's own title, not a rewrite of the timing derivation the promise
-is a promise about). The row's own detail names every violating pair so the repair has a real list to
-work from rather than a percentage.
+data, in the shipped composer — not a defect this file invents to prove itself. Silencing this row
+(weakening the assertion until it is green) would be exactly the failure item 1 above was built to
+stop happening again to shelf 7; the row was written to red on that real condition and stay red until
+`arrivalOpenBase`'s own derivation (`pass-composer.js`, the block feeding `cueWindows`) guaranteed the
+overlap the charter asks for. The row's own detail names every violating pair, so the repair had a
+real list to work from rather than a percentage.
+
+THE REPAIR LANDED THE SAME DAY, and the assertion below is untouched by it. `baseArrivalOpen` read
+`1 - locusFit*(1 - beforeAtR)`: an unconfident arrival waited near `1.0`, the pass's own end, which
+says nothing about the voice it has to share the passage with. Its far end is now the travelling
+move's own close (`travelWindowBound[1]`) wherever a travelling voice plays, so both ends of the room
+the arrival's confidence moves through are travel's own window and the two are alive together by
+construction. The count this row reads went 541 → 0 over the same sweep, on 1642 three-voice crossings
+rather than 1661 — the nineteen are pairs whose arrival and travelling voices share a level and now
+genuinely meet in time, which the levels law (shelf 17) settles at the cast.
 """
 import json
 import subprocess
@@ -133,20 +140,34 @@ def main():
         check(ROW_OVERLAP, len(gaps) == 0,
               f"{got['threeVoice']} real three-voice crossings composed (of {got['examined']} "
               f"ordered pair/seed combinations examined); {len(gaps)} open the arrival only after "
-              f"the travelling move already closed — a real, currently-unrepaired step-sequencer "
-              f"gap this row now names rather than leaving invisible; first 3: "
+              f"the travelling move already closed — the step-sequencer gap this row names, which "
+              f"stood at 541 of 1661 until the arrival's own open was bounded by the travelling "
+              f"move's own close; first 3: "
               + json.dumps(gaps[:3]))
 
     # ---- red on bug: a copy of the composer with the arrival's own open forced past the travel's
     # close on every crossing that carries both — proving this row catches the class of defect it
     # names, independent of whether the shipped code above happens to clear it on a given pair.
+    #
+    # THE PLANT HAS TO TOUCH THE NUMBER THE PUBLISHED WINDOW IS BUILT FROM, AND FOR ONE DAY IT DID
+    # NOT (2026-09-01, found while the repair above was landing). It moved `arrivalOpenAtR` and
+    # `arrivalWindowBound` alone — and those two feed the CAST: the levels-law clash test and the
+    # bundle planner's own colour entries, nothing else. What `cueWindows` composes the arrival's
+    # actual window from is `baseArrivalOpen`, carried onto the spec as `arrivalOpenBase`. So the
+    # planted copy published exactly the windows the shipped copy did, and the count this row read
+    # back was the shipped defect (541 of 1661, a third) rather than anything the plant had done —
+    # a row that would have gone on passing with the plant deleted altogether. It now moves
+    # `baseArrivalOpen` itself and rebuilds the cast bound from it the way the composer does, so
+    # the copy really does open its arrival after the travelling move has closed.
     src = COMPOSER.read_text(encoding="utf-8")
     needle = "var arrivalWindowBound = [arrivalOpenAtR, 1.0];"
     if needle not in src:
         check(ROW_REDBUG, False, "the plant found nothing to change")
         return
     plant_line = ("var arrivalWindowBound = [arrivalOpenAtR, 1.0]; "
-                  "arrivalOpenAtR = Math.min(0.999, Math.max(arrivalOpenAtR, beforeAtR + 0.9)); "
+                  "baseArrivalOpen = Math.min(0.999, Math.max(baseArrivalOpen, beforeAtR + 0.9)); "
+                  "arrivalOpenAtR = r4(baseArrivalOpen "
+                  "- R * Math.max(0, baseArrivalOpen - beforeAtR)); "
                   "arrivalWindowBound = [arrivalOpenAtR, 1.0];")
     mutated = src.replace(needle, plant_line, 1)
     planted = HERE / "_step_sequencer_planted.js"
@@ -159,7 +180,8 @@ def main():
         check(ROW_REDBUG, False, f"the planted driver failed: {err2}")
         return
     check(ROW_REDBUG, got2["threeVoice"] > 0 and len(got2["gaps"]) > 0,
-          f"with the arrival's own open forced 0.9s past the room the travelling move already "
+          f"with the arrival's own open forced 0.9 of the pass past the room the travelling move "
+          f"already "
           f"established, {len(got2['gaps'])} of {got2['threeVoice']} three-voice crossings among "
           f"the first {got2['examined']} pair/seed combinations now open their arrival after the "
           f"travelling move has closed")

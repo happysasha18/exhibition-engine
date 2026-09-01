@@ -5489,15 +5489,51 @@
       locus = arrivalPlan.locus;
       locusFit = arrivalPlan.fit;
       var arrivalInstr = null, arrivalRanked = [];
-      // ARRIVAL'S OWN WINDOW OPENS AT `1 - locusFit*(1 - beforeAtR)` — `locusFit` now carries
-      // `arrivalPlan.fit`, the winning arrival's own reading, whichever of the five plays: `locusOf`'s
-      // reading where CONDENSED wins, the texture reading where CRYSTALLIZED does, and so on — how
-      // confidently the arrival that will actually play reads. A confidently-read arrival can open as early as the room
-      // already established allows (`beforeAtR`, above: travel's own worst-case open where travel
-      // plays, pivot's otherwise); an unconfident one waits near the `1.0` it always closes at. Its
-      // own worst-case-shifted open, `arrivalOpenAtR`, is built the same way travel's was — see the
-      // note over `R` above — and is what the levels-law exclusion below is checked against.
-      var baseArrivalOpen = r4(1 - locusFit * (1 - beforeAtR));
+      // ARRIVAL'S OWN WINDOW OPENS INSIDE THE ROOM THE VOICE BEFORE IT IS ALIVE IN. `locusFit` now
+      // carries `arrivalPlan.fit`, the winning arrival's own reading, whichever of the five plays:
+      // `locusOf`'s reading where CONDENSED wins, the texture reading where CRYSTALLIZED does, and so
+      // on — how confidently the arrival that will actually play reads. A confidently-read arrival can
+      // open as early as the room already established allows (`beforeAtR`, above: travel's own
+      // worst-case open where travel plays, pivot's otherwise); an unconfident one waits at the far
+      // end of that room. Its own worst-case-shifted open, `arrivalOpenAtR`, is built the same way
+      // travel's was — see the note over `R` above — and is what the levels-law exclusion below is
+      // checked against.
+      //
+      // WHERE THAT FAR END IS, AND WHY IT MOVED (2026-09-01, shelf 18). It was `1.0`, the pass's own
+      // end, and `1.0` is the one moment in the passage that says nothing about the voice the arrival
+      // has to share the passage with. So an unconfident arrival waited for the whole pass, and on a
+      // pair whose travelling move had already carried its axis as far as the two works' own gap goes
+      // and handed its level back — travel's close is `travelOpenBase + reach*(1 - travelOpenBase)`,
+      // which sits early whenever that gap is small — the arrival opened AFTER the travelling voice
+      // had fallen silent. Travel played start to finish, then arrival played start to finish: the
+      // step sequencer shelf 18 bans by name («playing whole operations one after another, each from
+      // start to finish, is banned»), and its positive half asks for the opposite — «several
+      // operations are alive at once while parameters travel». It was on 541 of the 1661 real
+      // three-voice crossings this collection composes, some by several seconds inside a passage a few
+      // seconds long.
+      //
+      // THE FAR END IS NOW THE TRAVELLING MOVE'S OWN CLOSE wherever a travelling voice plays —
+      // `travelWindowBound[1]`, the number travel's own window has already published two dozen lines
+      // up, read here at the moment the arrival is composed and nowhere else. Both ends of the room
+      // the arrival's confidence moves through are then the travelling voice's own window: its
+      // worst-case open at one end, its close at the other. An arrival placed anywhere in that room is
+      // alive while the travelling move still travels BY CONSTRUCTION — not because the two readings
+      // happened to land in a lucky order — which is what the charter asks for, and the reading that
+      // places it is unchanged: confidence still opens it early, an unconfident arrival still waits as
+      // late as the room allows. Where NO travelling voice plays there is no such room, the far end
+      // stays the pass's own end and `beforeAtR` is pivot's own open at 0, so this line composes
+      // `1 - locusFit` — the identical number it always did for a two-voice crossing.
+      //
+      // NOTHING ELSE MOVES. The close stays at `1.0` (the arrival ends when the pass ends, always),
+      // the travelling move's own window is untouched at both ends, and `cueWindows`'s shift only ever
+      // moves an open EARLIER — so a window that opens before travel's close on the fresh pass opens
+      // before it on every return pass this edge ever plays. The one shape this cannot give an overlap
+      // to is a travelling voice whose own window is a single instant (`reach` at nothing and the
+      // shift at nothing together, so its open and its close are one number): there is no interior to
+      // open in, and the arrival opens at the handoff. That is travel's own window collapsing, not the
+      // arrival's placement, and no pair in this collection composes one.
+      var arrivalRoomEnd = travelInstr !== null && travelWindowBound ? travelWindowBound[1] : 1.0;
+      var baseArrivalOpen = r4(arrivalRoomEnd - locusFit * (arrivalRoomEnd - beforeAtR));
       var arrivalOpenAtR = r4(baseArrivalOpen - R * Math.max(0, baseArrivalOpen - beforeAtR));
       var arrivalWindowBound = [arrivalOpenAtR, 1.0];
       // THREE OF THE FIVE CAST AN INSTRUMENT (P2 of the 2026-08-27 review). CONDENSED always did;
@@ -7252,9 +7288,13 @@
                     r4(num(cue.window[1]) * duration / 1000.0)];
         // A4 (P1.1): NO COLLAPSED ARRIVAL, as a VISUAL invariant rather than a typed minimum.
         // `baseArrivalOpen` (above, where the arrival's own window fraction is decided) reads
-        // `r4(1 - locusFit*(1 - beforeAtR))`, which is exactly `1.0` at `locusFit === 0` — a
-        // `[1.0, 1.0]` window once converted to seconds here, a zero-length flash rather than a
-        // crossing. The fix widens the OPEN end down, never the close (the arrival always ends
+        // the far end of the room the arrival's own confidence moves through, which is exactly where
+        // `locusFit === 0` puts it — the pass's own end where no travelling voice plays, and since
+        // 2026-09-01 (shelf 18, the note beside the derivation itself) the travelling move's own
+        // close where one does. The first of those is a `[1.0, 1.0]` window once converted to seconds
+        // here, a zero-length flash rather than a crossing; the second is a window that opens where
+        // the travelling voice hands over and can be as short as what is left of the pass after it.
+        // The fix widens the OPEN end down, never the close (the arrival always ends
         // exactly at the pass's own end, and nothing about that changes), and only as far as it has
         // to: the bound is the device's OWN measured frame gap (`lastFramePace.p95`, published by
         // `pass-layer.js`'s rolling buffer) — the shortest span that could show ANY drawn frame of
