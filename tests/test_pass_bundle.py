@@ -178,14 +178,29 @@ else:
         "boxFit = corroboratedFit(boxFit, guidePair);", "boxFit = boxFit;"
     ]])
     p4_broken_fit, _p4_broken_why = box_fit(p4_broken)
+
+    # The fixture's own works now carry real, measured `guides.edge` data of their own — `p4_plain`
+    # above already reads a small (non-zero) guide corroboration baked into that real data, so it is
+    # no longer the right target for "corroboration fully removed". The right target is a pair with
+    # no guide reading AT ALL (support=0, under which corroboratedFit is a no-op by construction —
+    # see the docstring on corroboratedFit above `base + base * (1 - base) * 0 == base`), so the
+    # planted (no-op) line and a genuinely guideless pair must land on the exact same fit.
+    p4_from_noguide = copy.deepcopy(FIX["works"][FIX["pair"]["a"]])
+    p4_to_noguide = copy.deepcopy(FIX["works"][FIX["pair"]["b"]])
+    p4_from_noguide.pop("guides", None)
+    p4_to_noguide.pop("guides", None)
+    p4_noguide = run("genresFor", [p4_from_noguide, p4_to_noguide])
+    p4_noguide_fit, _p4_noguide_why = box_fit(p4_noguide)
+
     if p4_broken.get("missed"):
         skip("P4 red-on-bug · removing the guide corroboration leaves its ranking unchanged",
              "the corroborating assignment is not in the shipped source")
     else:
         check("P4 red-on-bug · removing the guide corroboration leaves its ranking unchanged",
-              p4_broken_fit == p4_plain_fit and p4_broken_fit != p4_guided_fit,
-              "plain=%s guided=%s planted=%s" %
-              (p4_plain_fit, p4_guided_fit, p4_broken_fit))
+              p4_broken_fit == p4_noguide_fit and p4_broken_fit != p4_guided_fit,
+              "noguide=%s guided=%s planted=%s (plain, with the fixture's own small real guide "
+              "reading baked in, was %s)" %
+              (p4_noguide_fit, p4_guided_fit, p4_broken_fit, p4_plain_fit))
 
     # ================================================================================= RULE 1
     NO_MIRACLE = {"tier": "quiet", "miracle": False, "letters": 1}
