@@ -1646,8 +1646,29 @@
     var anchor = anchorPose(rec, tSec);
     rec.lastAnchor = anchor;
     var stagePose = camCompose(anchor, track, rec.carry, carryWeight(rec, tSec));
+    // AN OWN CUE HOLDS THE SAME SLOT THE SCORE'S TRACK HOLDS, and it is the slot ON TOP of the
+    // anchor, never instead of it. What an instrument reports through `reportPose` is a CSS
+    // transform on the carrier — the very thing `camApply` writes and `art` below carries — and the
+    // carrier is already standing on the work's own hang box, because `planeApply` puts it there
+    // physically. So the residual is the own pose and the pose AS APPLIED is anchor + residual +
+    // carry, composed exactly as the stage road composes its track.
+    //
+    // REPLACING THE STAGE POSE OUTRIGHT IS WHAT MADE AN OWN CUE FAIL TO REST (2026-09-01,
+    // V2-CONVERGENCE-PLAN's cause F). `rec.lastPose` is what `finish` and `settle` judge against the
+    // arriving work's own hang pose; with the anchor replaced rather than composed, an own cue's
+    // reading was its bare residual — near zero at a door — while the bar was the full hang pose off
+    // the frame's centre. The gate therefore fired at every real door, on the fleet's one
+    // `cameraAuthority:"own"` instrument and on no other, and its remedy laid the hang on a canvas
+    // the plane had already hung. Composed here, an own cue at rest reads what a stage cue at rest
+    // reads: the anchor, and nothing on top of it.
+    //
+    // A CUE THAT STOPS REPORTING STILL HANDS AUTHORITY BACK AT ITS LAST POSE — `rec.ownPose` is
+    // sticky (`reportPose` only ever writes it), so the fallback below is reached only by a cue that
+    // has not reported at all, and there the residual the stage was holding an instant ago is the
+    // continuous one to hold. That is the same fallback `art` already used.
+    var ownArt = rec.ownPose || track;
     var pose = stagePose;
-    if (owner !== "stage") pose = rec.ownPose || rec.lastPose || stagePose;
+    if (owner !== "stage") pose = camCompose(anchor, ownArt, rec.carry, carryWeight(rec, tSec));
     // THE HANDOFF ITSELF, MEASURED. §6: at a handoff instant the two poses must agree within a
     // stated tolerance. What is compared is therefore the pose the OUTGOING authority reads at this
     // instant against the pose the INCOMING one reads at the same instant — never this frame against
@@ -1662,11 +1683,19 @@
         var edge = camEdge(score, owner === "stage" ? rec.camOwner : owner, owner !== "stage");
         var at = edge === null ? tSec : edge;
         // Measured on the pose as APPLIED, anchor and carry included, so the two authorities are
-        // compared on the same footing rather than one of them reading a bare track.
-        var there = camCompose(anchorPose(rec, at),
-                               camStagePose(score, camStageClock(score, at), durationSec, null),
-                               rec.carry, carryWeight(rec, at));
-        var off = camOff(there, rec.ownPose || there);
+        // compared on the same footing rather than one of them reading a bare track. BOTH SIDES
+        // CARRY THE ANCHOR, or the reading is the anchor rather than the discontinuity: until
+        // 2026-09-01 the stage side was composed here and the own side was the instrument's bare
+        // residual, so at a window edge standing at a real hang the row read the whole hang pose as
+        // a jump. Box-fold's own window closes at the pass's own last second, where the anchor IS
+        // the arriving hang — which is why the fleet's one own-camera instrument was the only one
+        // whose handoff row moved. The residual is what the two authorities can actually disagree
+        // about, and composing both onto one anchor is what leaves only that in the number.
+        var anchorAt = anchorPose(rec, at), carryAt = carryWeight(rec, at);
+        var trackAt = camStagePose(score, camStageClock(score, at), durationSec, null);
+        var there = camCompose(anchorAt, trackAt, rec.carry, carryAt);
+        var here = camCompose(anchorAt, rec.ownPose || trackAt, rec.carry, carryAt);
+        var off = camOff(there, here);
         rec.handoffs.push({ at: +at.toFixed(4), from: rec.camOwner, to: owner,
                             off: +off.toFixed(9), within: off <= CAM_HANDOFF_TOL });
         if (off > CAM_HANDOFF_TOL) {
@@ -1681,7 +1710,7 @@
     // DOM rectangles; applying the anchor as a CSS transform as well would move it twice. The
     // score's witness-camera accompaniment remains continuous on top of that physical carrier.
     return { owner: owner, pose: pose, stage: stagePose,
-             art: owner === "stage" ? track : (rec.ownPose || track) };
+             art: owner === "stage" ? track : ownArt };
   }
 
   // ================================================================================================
@@ -2341,12 +2370,29 @@
     // no exit can reveal B while the carrier still stands at an in-between camera pose.
     var neededRest = rec.hangPoseB || CAM_NEUTRAL;
     var restOff = camOff(rec.lastPose || CAM_NEUTRAL, neededRest);
+    // THE LANDING IS FLOWN AGAIN UNTIL IT RESTS, and that repetition is a convergence rather than a
+    // loop: `cadenceEnd` calls this function, each flight leaves the camera nearer the arriving
+    // door than the one before it, and the reading below is re-taken on a pose that has actually
+    // moved. It terminates because the reading improves. What made it NOT terminate was cause F's
+    // own reading defect (2026-09-01): an own-camera cue's `lastPose` was its bare residual while
+    // the bar was the full hang pose, so no amount of flying could ever close a distance the
+    // measurement was not measuring — the seam suite read that as "no cadence frame was caught",
+    // and box-fold's real crossings as never docking. Repaired at the source, in `camPoseAt`.
+    // Capping the attempts here instead was tried on 2026-09-01 and reverted: it lands a stage cue
+    // short of its own door, which is the thing this road exists to prevent.
     if (restOff > CAM_REST_TOL) {
       if (rec.inst && rec.inst.manifest && (!rec.cadence || rec.cadence.ended)) {
         rec.cadence = null;
         cadenceStart(rec, "finish-rest", false, landState);
         return;
       }
+      // THIS ROAD IS REACHED ONLY WHERE NO FRAME CAN BE DRAWN — a renderer already gone, or a
+      // landing cadence already flown. The plane is then standing wherever the last drawn frame
+      // left it, which is not the arriving box, and the instrument's own seating has not been
+      // cancelled either, so the arriving hang genuinely has to be laid on in CSS here: it is the
+      // only carrier left. It is NOT the double-application cause F named — that was the rest
+      // READING, repaired in `camPoseAt` above, which used to send box-fold down this road at every
+      // real door while its plane already stood on the box. Left exactly as it was.
       camApply(neededRest, rec.caps);
       rec.lastPose = neededRest;
       rec.camera = neededRest;
