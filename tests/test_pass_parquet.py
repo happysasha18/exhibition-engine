@@ -584,12 +584,16 @@ check("PASS-PARQUET each handle names the measurement it reads, or says there is
 # ---- THE REAL "one miracle per crossing" MECHANISM, read by executing pass-composer.js -----------
 # WHERE THIS INSTRUMENT'S `levels` (no "WORLD") ACTUALLY MEETS THE CROSSING. The manifest's prose
 # says WORLD is not claimed; the mechanism that prose describes lives entirely in
-# engine/assets/pass-composer.js's own WORLD_FOLD_INSTRUMENTS array (isWorldFold/spendsTheMiracle
-# read it by identity) and its verbatim re-export as composer.worldFoldInstruments. A row that only
-# found the prose sentence in this file would pass even if that array had drifted to include
-# "parquet"; this loads the REAL composer, in Node, exactly the way tests/test_pass_composed.py's
-# own driver already does, and plants the mutation into a COPY of its source the same way that
-# driver's `PLANTS` env var already does — never touching the file on disk.
+# engine/assets/pass-composer.js's own WORLD_FOLD_INSTRUMENTS (isWorldFold/spendsTheMiracle read it
+# by identity) and its re-export as composer.worldFoldInstruments. Since P3.2 (2026-08-30) that
+# register is DERIVED at runtime rather than written out: an instrument folds the world when its own
+# manifest carries both a real carrier (`surface`) and a WORLD declaration in `levels`. parquet
+# carries the surface and does NOT claim WORLD, which is exactly the fact this row is about. A row
+# that only found the prose sentence in this file would pass even if the derivation had drifted to
+# admit "parquet"; this loads the REAL composer, in Node, exactly the way
+# tests/test_pass_composed.py's own driver already does, and plants the mutation the row's own claim
+# names — «WORLD» added to parquet's own `levels` in a COPY of the consts held in memory, never
+# touching the file or the fixture on disk.
 COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
 COMPOSED_FIXTURE = ROOT / "tests" / "fixture_pass_composed.json"
 
@@ -597,21 +601,20 @@ WORLD_FOLD_DRIVER = r"""
 "use strict";
 const fs = require("fs"), vm = require("vm");
 const [modulePath, fixturePath] = process.argv.slice(2);
-const plants = JSON.parse(process.env.PLANTS || "[]");
-let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
-for (const [from, to] of plants) {
-  if (source.indexOf(from) < 0) {
-    console.log(JSON.stringify({error: "the plant found nothing to change: " + from}));
-    process.exit(0);
-  }
-  source = source.split(from).join(to);
-}
+const claimWorld = process.env.CLAIM_WORLD === "1";
+const source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
 let joined = null;
 const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
 vm.createContext(sandbox);
 vm.runInContext(source, sandbox, {filename: "pass-composer.js"});
 if (!joined) { console.log(JSON.stringify({error: "the module joined nothing"})); process.exit(0); }
 const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+const mp = fix.consts.manifests.parquet;
+if (!mp || !mp.surface) {
+  console.log(JSON.stringify({error: "parquet's own manifest carries no surface to read"}));
+  process.exit(0);
+}
+if (claimWorld && (mp.levels || []).indexOf("WORLD") < 0) mp.levels = (mp.levels || []).concat(["WORLD"]);
 const composer = joined.make(fix.consts);
 console.log(JSON.stringify({
   worldFoldInstruments: composer.worldFoldInstruments,
@@ -627,12 +630,12 @@ def node_available():
         return False
 
 
-def world_fold_run(plants=()):
+def world_fold_run(claim_world=False):
     d = Path(tempfile.mkdtemp(prefix="synth_worldfold_"))
     try:
         driver_path = d / "driver.js"
         driver_path.write_text(WORLD_FOLD_DRIVER, encoding="utf-8")
-        env = dict(os.environ, PLANTS=json.dumps(list(plants)))
+        env = dict(os.environ, CLAIM_WORLD="1" if claim_world else "0")
         proc = subprocess.run(["node", str(driver_path), str(COMPOSER), str(COMPOSED_FIXTURE)],
                               capture_output=True, text=True, env=env, timeout=120)
         if proc.returncode != 0:
@@ -1049,13 +1052,11 @@ else:
                       f"block reading «{m['coverage']['how'][:120]}…»")
 
                 # WORLD not claimed is proved against the real mechanism it would spend: the
-                # composer's own WORLD_FOLD_INSTRUMENTS array, executed in Node, never in text.
+                # composer's own WORLD_FOLD_INSTRUMENTS, derived in Node from the real manifests,
+                # never read out of the file's text.
                 real_fold = world_fold_run() if node_available() else {"error": "node is not installed"}
-                mut_fold = world_fold_run(plants=[[
-                    'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];',
-                    'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline", '
-                    '"parquet"];',
-                ]]) if node_available() else {"error": "node is not installed"}
+                mut_fold = (world_fold_run(claim_world=True) if node_available()
+                            else {"error": "node is not installed"})
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE", "CELL"]
                       and "parquet" not in (real_fold.get("worldFoldInstruments") or [])
@@ -1066,12 +1067,14 @@ else:
                       f"SURFACE is the one plane and its mirrored field; CELL is the tiles, which is "
                       f"the element the composer's KIND_OF_MEASURE reads out of a grid pivot. WORLD "
                       f"is not claimed, proved against the real mechanism that word would spend: "
-                      f"pass-composer.js's own WORLD_FOLD_INSTRUMENTS is "
+                      f"pass-composer.js's own WORLD_FOLD_INSTRUMENTS — derived at runtime from "
+                      f"every manifest carrying both a real surface and a WORLD declaration — is "
                       f"{real_fold.get('worldFoldInstruments')}, executed in Node, and does not "
-                      f"carry «parquet»; planting «parquet» into that same array in a copy of the "
-                      f"real file and asking the same composer.worldFoldInstruments answers true — "
-                      f"the array is what isWorldFold/spendsTheMiracle read by identity, so this is "
-                      f"the whole of what claiming WORLD would cost")
+                      f"carry «parquet», whose surface is real and whose levels stop short of the "
+                      f"word; adding «WORLD» to parquet's own levels in a copy of the consts held in "
+                      f"memory and asking the same composer.worldFoldInstruments answers true — "
+                      f"that register is what isWorldFold/spendsTheMiracle read by identity, so this "
+                      f"is the whole of what claiming WORLD would cost")
 
                 w = int(br.evaluate("String(window.__exPass.bench.make() && "
                                     "document.querySelector('canvas').width)"))
