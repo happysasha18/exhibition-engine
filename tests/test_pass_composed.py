@@ -2801,7 +2801,11 @@ const HARD = {
             worlds: twoWorlds(p), declined: p.declined || null};
   };
   out.oneSlot = {
-    levels: at("17871374341154614", "18143298391216802", "middle"),
+    // THE PAIR CHANGED, 2026-09-02: the old pair's own arrival locks to CRYSTALLIZED -> pour under
+    // `ARRIVAL_WANTS_INSTRUMENT`, and pour declares no WORLD level, so the scenario this row proves
+    // — a world ground taking a world arrival beside it — was unreachable on that pair no matter
+    // which gate the plant struck. This pair puts a world-declaring arrival within reach instead.
+    levels: at("17851032816649277", "18218859922151519", "middle"),
     swap: at("17843153263050281", "17856720509033958", "middle")
   };
 }
@@ -4299,7 +4303,16 @@ else:
             (NODE_ROWS[22],
              [["        genre.fit = clamp01(fit);", "        genre.fit = 1;"]],
              lambda g: g["route"]["spread"] != got["route"]["spread"]),
-            (NODE_ROWS[23], [["if (fits) break;", "break;"]],
+            # RETARGETED 2026-09-01. `compose`'s old budget loop (`if (fits) break;`) is gone with
+            # the shrink-one-fixed-stack shape P1.2 replaced (the comment over `bundleTierLegal`
+            # above names the same move) — the tier budget is now RULE 3, an entry condition asked
+            # once of a whole joint bundle rather than a loop's own exit test. The line that plays
+            # its old part is the joint bundle loop's own gate on `check3` (`bundleTierLegal`'s
+            # verdict): removed, a bundle whose voices overrun its role's own tier still wins the
+            # bundle loop and is scored and placed, which is the same overrun the old plant produced.
+            (NODE_ROWS[23],
+             [["              if (!check3.ok) { row.why = check3.why; considered.push(row); continue; }",
+               "              if (false) { row.why = check3.why; considered.push(row); continue; }"]],
              lambda g: (g["roles"]["quiet link"].get("budget") or {}).get("letters", 0) > 1
              or (g["roles"]["quiet link"].get("budget") or {}).get("miracles", 0) > 0
              or g["roles"]["quiet link"].get("duration", 0) > 4000),
@@ -4326,12 +4339,21 @@ else:
             # source line along as context: `source.split(from).join(to)` matches the exact text
             # including that second line, and `registerOf`'s own occurrence is followed by
             # different text (`pool.push({ name: "apparition"`), so it never matches and stands.
+            # RETARGETED 2026-09-01. Gutting the whole `if (arrival === "CONDENSED" || ...)` block
+            # with `if (false)` now crashes rather than reddens: `ARRIVAL_WANTS_INSTRUMENT` (the
+            # CRYSTALLIZED/PROPAGATED handle-narrowing map P2 of the 2026-08-27 review added) is
+            # declared INSIDE that same block and the joint bundle planner's own
+            # `arrivalCandidatesFor` (added by P1.2, 2026-08-28) reads it unconditionally further
+            # down the same function — so disabling the block never leaves the map assigned and the
+            # read throws `TypeError: Cannot read properties of undefined`. The shape this row needs
+            # — no instrument cast for the arrival — does not need the whole block struck, only its
+            # own final assignment: `arrivalInstr` pinned to null undoes exactly the "three of the
+            # five cast an instrument" repair the row is proving, leaves `ARRIVAL_WANTS_INSTRUMENT`
+            # and everything else in the block intact, and the second plant line below is unchanged.
             (NODE_ROWS[24], [["LED_ROLES.indexOf(step) >= 0", "true"],
-                             ["      if (arrival === \"CONDENSED\" || arrival === \"CRYSTALLIZED\" "
-                              "|| arrival === \"PROPAGATED\") {\n        // THE ARRIVING WORK "
-                              "CONDENSES, AND THE INSTRUMENT THAT CONDENSES IT IS CAST like every",
-                              "      if (false) {\n        // THE ARRIVING WORK CONDENSES, AND THE "
-                              "INSTRUMENT THAT CONDENSES IT IS CAST like every"],
+                             ["        arrivalInstr = arrivalRanked.length ? arrivalRanked[0].id : "
+                              "null;",
+                              "        arrivalInstr = null;"],
                              ["      var axis = travellingAxisOn(fromW, toW, pivot.measure, "
                               "road.axis);",
                               "      var axis = null;"]],
@@ -4417,32 +4439,54 @@ else:
             # instrument alone; the law is about spending the crossing's one miracle, and three
             # instruments now publish the WORLD level. So the row reads both — a fold at a
             # no-miracle role, and any WORLD cue at one — and either moving reddens the plant.
+            #
+            # A FIFTH PLACE JOINED THE FOUR, 2026-09-01: P1.2's joint bundle planner (2026-08-28)
+            # added RULE 1 (`bundleWorldLegal`, the `check1` gate in the outer bundle loop) as an
+            # independent, final legality check on every candidate bundle — «the bundle spends the
+            # crossing's one impossible event at a role shelf 17 gives no miracle» is now asked
+            # there too, after the four older guards, so leaving it standing proved it alone at every
+            # corner size just as the fourth once did. Added as a fifth sub-plant, same shape as the
+            # other four: the gate's own `continue` struck.
             (NODE_ROWS[30],
              [["        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);",
                "        var base = (cuts ? 0 : 2);"],
               ["        } else if (spendsTheMiracle(travelInstr) && !(ROLE_BUDGETS[role] || {}).miracle) {",
                "        } else if (false) {"],
               ["        pool = pool.filter(function (r) { return !r.mustFold; });", ""],
-              ["        if (noMiracle && spendsTheMiracle(iid)) continue;", ""]],
+              ["        if (noMiracle && spendsTheMiracle(iid)) continue;", ""],
+              ["              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }",
+               "              if (false) { row.why = check1.why; considered.push(row); continue; }"]],
              lambda g: sum(g["sweep"]["folded"][r] + g["sweep"]["worldCue"][r]
                            for r in ("entrance", "quiet link", "return")) > 0),
             # ONE INSTRUMENT PER KIND, RESTORED IN A COPY — the rule an earlier lane repaired. With
             # the candidates on a kind cut back to the first of them, and the ranking's second and
             # third orders of preference removed with it, an instrument travels to every visitor and
             # can never be chosen.
+            #
+            # RETARGETED 2026-09-01, DOWN TO THE TWO PLANTS THE ROW'S OWN SENTENCE ABOVE ACTUALLY
+            # NAMES. `tiers.length` (a first-non-empty-tier loop) and the name-fallback assignment
+            # `arrivalInstr = castArrival[0]` are both gone from the file, not moved: P1.2's
+            # 2026-08-31 rewrite (`castForKindsRanked`'s own comment, "EVERY TIER BELOW 8 NOW SHARES
+            # ONE ROLL") replaced the tier walk with a `soft` array built by looping every tier 0..7
+            # and weight-rolling across all of them together, and the 2026-08-27 P2 review struck the
+            # name-fallback outright (`grep '"matter"'` over this file finds no fallback of that
+            # shape left anywhere — the sequential path picks `arrivalRanked[0].id`, not a name). The
+            # fourth sub-plant (`fill1`) belongs to a third mechanism entirely — the joint bundle
+            # planner's own ground fill-swap candidate, P1.2, 2026-08-28 — that the row's own
+            # sentence above never names and the standing row this one guards (NODE_ROWS[3], "every
+            # instrument that travels to a visitor can actually be chosen") never mentions either; it
+            # is dropped rather than re-targeted at speculation. What is left: cut CUTS_ON back to
+            # its first entry per kind (unchanged, still the exact line), and restore "only the first
+            # non-empty tier is ever rolled" by breaking the `soft`-building loop after its first hit
+            # — the two defects the row's own comment names, verified together to strand several
+            # instruments unchosen over the same 24-pair corner every other plant here walks.
             (NODE_ROWS[32],
              [["        if (CUTS_ON[kind].indexOf(iid) < 0) CUTS_ON[kind].push(iid);",
                "        if (!CUTS_ON[kind].length) CUTS_ON[kind].push(iid);"],
-              ["      for (i = 0; i < tiers.length; i++) {\n        if (tiers[i].length) {",
-               "      for (i = 0; i < 1; i++) {\n        if (tiers[i].length) {"],
-              # THE ARRIVAL HANDED TO A NAME AGAIN, which is the state this lane removed: the slot
-              # went to «matter» whenever «matter» was free, with no fit read and no die rolled, and
-              # every other instrument reached the arrival only through a fallback that then dropped
-              # the voice on a collision. Restoring it here is what makes the row's own sentence
-              # true again — an instrument travels to every visitor and can never be chosen.
-              ["        arrivalInstr = castArrival[0];",
-               "        arrivalInstr = MANIFESTS.matter ? \"matter\" : castArrival[0];"],
-              ["          if (fill1 && fill1 !== pivotInstr) {", "          if (false) {"]],
+              ["        rankUnread(tiers[i]).forEach(function (p) { soft.push({ id: p.id, "
+               "fit: p.fit, order: i }); });",
+               "        rankUnread(tiers[i]).forEach(function (p) { soft.push({ id: p.id, "
+               "fit: p.fit, order: i }); });\n        break;"]],
              lambda g: [i for i in g["sweep"]["cast"] if not g["sweep"]["chosen"].get(i)]),
             # THE GROUND GATED ON THE COLLECTION'S TOP QUARTILE AGAIN — the shape this lane removed.
             # Both works clearing a measure's top quartile happens on about 6 per cent of pairs for
@@ -4526,23 +4570,35 @@ else:
             # world-declaring instruments go on folding the space a work lives in while being voiced
             # ordinary letters — the slot unspent, and a second impossible thing free to stand beside
             # the first.
+            #
+            # RETARGETED 2026-09-01. `compose`'s own `folds`/`foldsOn` locals are gone — the joint
+            # bundle planner (P1.2, 2026-08-28) reads both off `bundleFoldsAndWorld`'s own returned
+            # `folds`/`foldsOn` fields instead, and that function is where the `spendsTheMiracle`
+            # reads this plant reverts now actually stand (`bundleFolds`/`foldsOnHere`, four screens
+            # above `scoreBundle`). Same two readings, same revert, the identifiers moved with the
+            # function.
             (NODE_ROWS[55],
-             [["      var folds = spendsTheMiracle(pivotInstr) || spendsTheMiracle(travelInstr)\n"
-               "        || spendsTheMiracle(arrivalInstr);",
-               '      var folds = pivotInstr === "boxfold" || travelInstr === "boxfold"\n'
-               '        || arrivalInstr === "boxfold";'],
-              ['        foldsOn = spendsTheMiracle(pivotInstr) ? "pivot"\n'
-               '          : (spendsTheMiracle(travelInstr) ? "travel"\n'
-               '             : (spendsTheMiracle(arrivalInstr) ? "arrival" : null));',
-               '        foldsOn = pivotInstr === "boxfold" ? "pivot"\n'
-               '          : (travelInstr === "boxfold" ? "travel"\n'
-               '             : (arrivalInstr === "boxfold" ? "arrival" : null));']],
+             [["      var bundleFolds = spendsTheMiracle(g) || (!!t && spendsTheMiracle(t))\n"
+               "        || (!!a && spendsTheMiracle(a));",
+               '      var bundleFolds = g === "boxfold" || (!!t && t === "boxfold")\n'
+               '        || (!!a && a === "boxfold");'],
+              ['      var foldsOnHere = spendsTheMiracle(g) ? "pivot"\n'
+               '        : ((t && spendsTheMiracle(t)) ? "travel" : ((a && spendsTheMiracle(a)) '
+               '? "arrival" : null));',
+               '      var foldsOnHere = g === "boxfold" ? "pivot"\n'
+               '        : ((t && t === "boxfold") ? "travel" : ((a && a === "boxfold") '
+               '? "arrival" : null));']],
              lambda g: sum(g["sweep"]["worldNotVoiced"].values()) > 0),
             # THE NUDGE AND THE THREE FOLLOW-UP GATES, ALL REMOVED. `castForKinds`'s one-order demote
             # is a ranking nudge and the three gates — one per cast slot — are the bound. The row
             # above proves the gates carry the law with the nudge gone; this proves they are what
             # carries it, by taking them away under the same conditions and watching a step that may
             # spend no miracle open a world.
+            #
+            # A FIFTH GATE JOINED THE FOUR, 2026-09-01, THE SAME ONE ROW NODE_ROWS[30] NAMES ABOVE:
+            # the joint bundle planner's own RULE 1 (`check1`/`bundleWorldLegal`) refuses the same
+            # bundle a fifth time, after the four sequential-cast guards this plant already struck,
+            # so it needs striking too.
             (NODE_ROWS[57],
              [["        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);",
                "        var base = (cuts ? 0 : 2);"],
@@ -4554,16 +4610,26 @@ else:
                "        } else if (false) {"],
               ["        if (arrivalInstr !== null && spendsTheMiracle(arrivalInstr)\n"
                "            && !(ROLE_BUDGETS[role] || {}).miracle) {",
-               "        if (false) {"]],
+               "        if (false) {"],
+              ["              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }",
+               "              if (false) { row.why = check1.why; considered.push(row); continue; }"]],
              lambda g: sum(g["sweep"]["worldsCast"][r]
                            for r in ("entrance", "quiet link", "return")) > 0),
             # THE FIRST OF THE TWO ROADS TO A SECOND WORLD: the levels test at a cast. Its older
             # clause excludes a candidate only where EVERY level it declares is already claimed, so a
             # world instrument carrying a second level of its own walks straight past it and stands
             # beside a world ground. The named pair is the one that reaches for the slot that way.
+            #
+            # A FIFTH PLACE JOINED THE FOUR, 2026-09-01, THE SAME ONE THE OTHER TWO WORLD-CLAUSE ROWS
+            # NAME ABOVE: the joint bundle planner's own RULE 1 (`check1`/`bundleWorldLegal`) refuses
+            # the same bundle downstream of this older per-slot clause, so weakening the clause alone
+            # no longer lets the violation reach `oneSlot`'s own reading — RULE 1 catches it first.
+            # Struck alongside it, same as the other two rows.
             (NODE_ROWS[59],
              [['          if (everyLevelTaken || (worldTaken && spendsTheMiracle(iid))) {',
-               "          if (everyLevelTaken) {"]],
+               "          if (everyLevelTaken) {"],
+              ["              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }",
+               "              if (false) { row.why = check1.why; considered.push(row); continue; }"]],
              lambda g: g["oneSlot"]["levels"]["worlds"] > 1),
             # THE SECOND ROAD TO A SECOND WORLD HAD A ROW HERE AND IT IS RETIRED, WITH ITS REASON.
             # It planted out the ground swap's own gate and read a named pair that then seated a
