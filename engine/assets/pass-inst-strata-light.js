@@ -630,6 +630,13 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door — the
+      // claim, not yet the fact. `feelOf` hinges its two pieces at FEEL_C = 0.37, off the middle,
+      // so the two slopes at the join are not forced equal the way a point-symmetric mirror forces
+      // them, and the roll call below reads a real speed step there. Declared here so the roll call
+      // reaches it and reports what it finds; repairing the hinge is core logic and outside this
+      // phase's write-set (curve declaration only for the fleet's remaining instruments).
+      feelClass: "monotone",
       voice: voiceAt,
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the parting-by-light instrument needs both works" };

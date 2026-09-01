@@ -918,6 +918,12 @@
       values: values,
       fit: fit,
       feel: feelMix,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 2): monotone, door to door. `feelMix`
+      // is point-symmetric about its own middle (a mirrored exponential, `curve.family` above), so
+      // its two halves meet at equal slope by construction and it is already continuous — this
+      // phase's work is the declaration and not a repair: the roll call now reaches this instrument
+      // and reads it already passing.
+      feelClass: "monotone",
       feelExposure: feelExposure,
       feelPresence: feelPresence,
       prepare: function (o) {

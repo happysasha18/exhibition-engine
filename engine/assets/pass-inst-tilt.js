@@ -292,8 +292,13 @@
     // four parts the score's die. That split is the ORDER LAW itself (the woven study's fifth
     // property, half deterministic and half seeded), not a quantity a photograph sets.
     //
-    // THE RESPONSE CURVE — FEEL_D0 0.05, FEEL_C 0.4, FEEL_K1 −0.9, FEEL_K2 1.5. Temporal, and
-    // measured on the module's own felt change rather than on any pair. Carried digit for digit.
+    // THE RESPONSE CURVE — FEEL_D0 0.05 stays a pinned scalar; the closed form it used to gate
+    // (FEEL_C 0.4, FEEL_K1 -0.9, FEEL_K2 1.5) is gone from this file as of Phase 7 (2026-09-01),
+    // sampled at twenty-one shares into FEEL_Q instead — an array, outside this sweep's own
+    // scalar-constant shape, the same way every other table-carrying instrument's FEEL_Q already
+    // stands. Temporal, and measured on the module's own felt change rather than on any pair; the
+    // table is read digit for digit at its own twenty-one points (test_pass_tilt.py), not textually
+    // against the closed form's four raw constants any longer.
     //
     // COLS_MIN 1 AND COLS_MAX 24 are the PORT'S OWN, and they are the only numbers in this file
     // nobody measured. One column is a straight front; twenty-four on a phone frame is a column
@@ -314,19 +319,62 @@
        ends — lab/data/module-contract-new.json's own `dial.deadBand` for this module — and between
        them a two-piece exponential hinged at 0.4 of one half, k1 = −0.9 below the knee and k2 = 1.5
        above it, mirrored about the middle because a whole work stands at either end. The port
-       re-derives nothing. */
-    var FEEL_D0 = 0.05, FEEL_C = 0.4, FEEL_K1 = -0.9, FEEL_K2 = 1.5;
-    function feelLog(x, k) {
-      return Math.abs(k) < 1e-6 ? x : (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
+       re-derives nothing of the module's own shape.
+
+       HOW A TABLE IS READ BETWEEN TWO OF ITS OWN POINTS (Phase 7, 2026-09-01, same repair as
+       S-20 — tests/test_pass_feel.py). Read the closed form straight, this curve's own VALUE is
+       right everywhere and its SPEED steps twice: once at the hinge, u = 0.5, where the two pieces
+       of `feelKnee` meet at different rates (the knee is not at C = 0.5, so a mirror about the
+       middle does not put the two slopes at the join equal — measured, the dial ran 1.35 of the
+       dial a unit of the hand on one side of the hinge against a step at the other), and once at
+       each dead band's own edge, where the value stood perfectly still and then left at the ramp's
+       whole speed at once. Both are the same defect S-20 already carried out of `matter`, `beat`,
+       `gears`, `gates`, `adrift` and `waterline`: a closed form is a smooth reading of the module's
+       measured felt change, and evaluating it in four literal pieces invents corners the reading
+       never had.
+
+       THE REPAIR is the same one, carried over rather than re-invented: the closed form is SAMPLED
+       at twenty-one evenly spaced shares of its own domain (`FEEL_Q`, below — the same twenty-one
+       points a real measurement would report, since the closed form was already a real
+       measurement's own fit) and read back with the Fritsch–Carlson spline `pass-inst-adrift.js`
+       carries (`tangentsOf`/`table`, copied here character for character). The spline passes
+       through all twenty-one exactly, so the module's own measured shape moves not one digit; what
+       changed is only the line drawn between its points, and its own dead band is read the same
+       way `adrift`'s is — `table`'s own `d0` argument holds the curve flat under 0.05 and over
+       0.95 and rests it there with a zero tangent, so it leaves the dead band at the dead band's
+       own rate: nothing. */
+    var FEEL_D0 = 0.05;
+    var FEEL_Q = [0, 0.0555, 0.1019, 0.1406, 0.173, 0.2, 0.2301, 0.2708, 0.3258, 0.3999, 0.5,
+                  0.6001, 0.6742, 0.7292, 0.7699, 0.8, 0.827, 0.8594, 0.8981, 0.9445, 1];
+    var FEEL_TANGENTS = [];
+    function tangentsOf(q) {
+      var t, n, h, d, m, i, a, b, s;
+      for (t = 0; t < FEEL_TANGENTS.length; t++) {
+        if (FEEL_TANGENTS[t][0] === q) return FEEL_TANGENTS[t][1];
+      }
+      n = q.length; h = 1 / (n - 1); d = []; m = [];
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      FEEL_TANGENTS.push([q, m]);
+      return m;
     }
-    function feelKnee(u) {
-      return u <= 0.5 ? FEEL_C * feelLog(2 * u, FEEL_K1)
-                      : FEEL_C + (1 - FEEL_C) * feelLog(2 * u - 1, FEEL_K2);
+    function table(q, d0, u) {
+      var x = clamp(d0 > 0 ? (clamp(u, 0, 1) - d0) / (1 - 2 * d0) : clamp(u, 0, 1), 0, 1);
+      var n = q.length, h = 1 / (n - 1), m = tangentsOf(q);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * q[i] + (s3 - 2 * s2 + s) * h * m[i]
+           + (3 * s2 - 2 * s3) * q[i + 1] + (s3 - s2) * h * m[i + 1];
     }
-    function feelOf(u) {
-      var x = clamp((u - FEEL_D0) / (1 - 2 * FEEL_D0), 0, 1);
-      return x <= 0.5 ? 0.5 * feelKnee(2 * x) : 1 - 0.5 * feelKnee(2 - 2 * x);
-    }
+    function feelOf(u) { return table(FEEL_Q, FEEL_D0, u); }
 
     // The inverse of a three by three, the module's own (tilt.js:178-187).
     function inv3(m) {
@@ -613,7 +661,11 @@
       // are held at the one level this instrument occupies rather than a level it does not declare —
       // named here and in this port's report.
       handles: {
-        mix: { min: 0, max: 1, def: 0, level: null },
+        // THE KNOTS ON THE MANIFEST (Phase 7, item 3a): the same twenty-one points `feelOf` reads,
+        // published where a bench can find them without reading the source, so the roll call needs
+        // no hand-typed map of which file's own table answers which handle.
+        mix: { min: 0, max: 1, def: 0, level: null,
+               curve: { knots: FEEL_Q, band: FEEL_D0, applied: true } },
         // THE LEAN. Its two ends are the module's own words: nothing at all is the carrier switched
         // off and the crossing walking a flat picture; whole is TILT_MAX at mid-passage, the most
         // these photographs' window grids survive before the far rows stop resolving.
@@ -810,6 +862,9 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door — the
+      // same law the repair above exists to satisfy.
+      feelClass: "monotone",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the leaning instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

@@ -507,6 +507,19 @@
 
     // THE REFUSAL, worded the way the host's own manifest refusals read: what is wrong, in this
     // instrument's own measured numbers, on the grid it was measured on.
+    // PHASE 7, ITEM 5 — RE-ANCHOR CHECKED, NO CHANGE NEEDED, AND THE SENSITIVITY IS VERIFIED RATHER
+    // THAN ASSUMED. `mapReadOf`'s `fitv` (line 501, `st.fitA`/`st.fitB`) is the host's own seating,
+    // read straight through with no crop of this file's own standing between them — ruling out
+    // hero's own class of bug, a second crop multiplied in only inside `fit()` that never cancelled
+    // through `seated`. Unlike the fold-collapse instruments (`kaleidoscope`, `tunnel` — where the
+    // door reading's own comparison cancels to zero at a door regardless of the framing, because
+    // both sides of it are built from the SAME framing), this one is not merely dial-gated to
+    // nothing: `sx`/`sy` (line 466) divide the sample by `cov`/`z` on their own, independent of
+    // `dial`, so a wrong `fitv` genuinely moves the bound the `outside` count is read against.
+    // Planting an oversized `fitA` ([2, 2, 0, 0] against the real [1, 1, 0, 0]) into a throwaway
+    // copy and reading `values()` at `mix: 0` reds `doorWhyNo` — "8 of the 26 points this reading
+    // walked... read past the departing work's own border" — confirming this row would catch a real
+    // seating fault, not only a fold that failed to close.
     function doorWhyNoOf(read) {
       if (!read) return null;
       var g = read.grid, door = read.want ? "the entry" : "the exit";
@@ -836,6 +849,10 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): identity-because-no-travel.
+      // `feelOf` at livemirror.js:323 is the raw dial, clamped and nothing else — a written "no"
+      // rather than a silence, and the generic law asks nothing of a curve that was never claimed.
+      feelClass: "identity",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the live-mirror instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

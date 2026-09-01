@@ -1001,6 +1001,18 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, but not door to door —
+      // `feelOf` bakes its own dead band into the OUTPUT rather than holding flat at the input's
+      // edge (comment above), so it reads 0.06 at mix 0 and 0.94 at mix 1 by construction, and the
+      // ends law is asked of THESE numbers rather than of 0 and 1. `feelEnds` publishes them so the
+      // roll call reads the instrument's own claim instead of assuming the fleet's usual door.
+      // Continuity is a separate question: `feelOf` hinges its own two pieces at FEEL_C = 0.43, off
+      // the middle, so the roll call below reads a real speed step at the join. Declared here so
+      // the roll call reaches it and reports what it finds; repairing the hinge is core logic and
+      // outside this phase's write-set (curve declaration only for the fleet's remaining
+      // instruments).
+      feelClass: "monotone",
+      feelEnds: [feelOf(0), feelOf(1)],
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the woven instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

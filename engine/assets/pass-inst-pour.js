@@ -817,6 +817,13 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door — the
+      // claim, not yet the fact. `feelOf` holds flat under FEEL_D0 and past 1 - FEEL_D0 and leaves
+      // each dead band at the ramp's own nonzero speed at once, the same edge S-20 already closed
+      // for `matter`/`beat`/`gears`/`gates`/`adrift`/`waterline`/`tilt`. Declared here so the roll
+      // call reaches it and reports what it finds; repairing the edge is core logic and outside
+      // this phase's write-set (curve declaration only for the fleet's remaining instruments).
+      feelClass: "monotone",
       heapAt: heapAt,
       // ONE COLUMN'S OWN TRAVEL AT A POSE, handed out beside the heap's own surface and for the
       // same reason: a reading that walks the very order the shader draws rather than a second

@@ -958,6 +958,11 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): excursion, deliberately. `feelOf`
+      // rides a triangle across the hand (hero.js above) so the story opens and closes on the same
+      // door — it is nothing at both ends and whole at the middle, so it turns back by construction
+      // and the monotone law is not asked of it. The generic law reads it for continuity alone.
+      feelClass: "excursion",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the fold-window-planet instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

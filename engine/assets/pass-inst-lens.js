@@ -767,6 +767,13 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): excursion, deliberately.
+      // `reachOf` (lens.js above) is exactly nothing across the two dead bands at either end of the
+      // hand and whole across the middle third — a plateau, not a door-to-door ramp — so it neither
+      // starts at 0 nor ends at 1 by way of a straight monotone climb, and turns back is not even
+      // the right word: it is flat, then rises, then flat again. The monotone law is not asked of
+      // it. The generic law reads it for continuity alone.
+      feelClass: "excursion",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the glass instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

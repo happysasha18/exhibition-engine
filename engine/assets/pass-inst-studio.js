@@ -738,6 +738,10 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door.
+      // `feelOf` mirrors `feelHalf` point-symmetrically about its own middle, so the two halves
+      // meet at equal slope by construction and it is already continuous.
+      feelClass: "monotone",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the darkroom instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

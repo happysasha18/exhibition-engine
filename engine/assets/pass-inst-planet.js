@@ -1047,6 +1047,13 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): identity-because-no-travel.
+      // `feelOf` at planet.js:509 answers the raw dial's own progress, clamped and nothing else —
+      // the module's own measured curl curve (`feel(u)`, FEEL_K = 1.45, above) is a private detail
+      // of how curl amount reads inside a phase, not the published contract, so this is a written
+      // "no" rather than a silence, and the generic law asks nothing of a curve that was never
+      // claimed.
+      feelClass: "identity",
       // WHAT A PAIR READS, as a function rather than as a sentence. A composer holding two work
       // records asks this and gets back a fit between nothing and whole with the reason in the
       // works' own numbers — never a yes or a no. A fit of nothing is playable and ranks last.

@@ -524,6 +524,26 @@
                cross: 0.5 * slope / g.h };
     }
 
+    // THE REFUSAL, worded the way the host's own manifest refusals read: what is wrong, in this
+    // instrument's own measured numbers, on the grid it was measured on (Phase 7, item 5 — this
+    // instrument carried the measurement above, `doorReadOf`, and a bare boolean, `doorWhole`, but no
+    // `doorWhyNo` string: every other instrument in the fleet turns its own door reading into a
+    // refusal a bench or a suite can read, and this file never did. The comment above `doorGridOf`
+    // already proves the case never fires on any buffer a browser hands out — this function is that
+    // proof made into code, so a future change that DOES let the crossover past its own margin reds
+    // here rather than passing silently for want of anywhere to say so).
+    function doorWhyNoOf(read) {
+      if (!read || read.cross <= read.margin) return null;
+      var g = read.grid, door = read.want ? "the entry" : "the exit";
+      var work = read.want ? "departing" : "arriving";
+      return door + " door leaks: on a " + g.w + " x " + g.h + (g.drawn ? " buffer" : " frame")
+           + " the field's own steepest slope is " + read.slope.toFixed(4) + ", so the tide's own "
+           + "mask crosses over inside " + read.cross.toFixed(4) + " of the field against the "
+           + read.margin.toFixed(4) + " its own margin leaves at a door, and the waterline is drawn "
+           + "across the " + work + " work's own frame, where " + door + " door's own law asks for "
+           + "that work whole, no line drawn across it";
+    }
+
     // THE NUMBERS OF ONE FRAME (waterline.js:456-484). Everything the shader gets beyond the seating
     // of the two works is a pure function of the pose, and the door reading rides beside them.
     function values(st) {
@@ -578,6 +598,7 @@
       v.doorMargin = read ? read.margin : null;
       v.doorCross = read ? read.cross : null;
       v.doorWhole = read ? read.cross <= read.margin : null;
+      v.doorWhyNo = doorWhyNoOf(read);
       return v;
     }
 
@@ -681,7 +702,11 @@
       handles: {
         // `mix` is the crossing's own dial and `clock` the module's own time; neither drives a
         // structural level of the picture.
-        mix: { min: 0, max: 1, def: 0, level: null },
+        // THE KNOTS ON THE MANIFEST (Phase 7, item 3a): the same twenty-one points `feelOf` reads,
+        // published where a bench can find them without reading the source, so the roll call needs
+        // no hand-typed map of which file's own table answers which handle.
+        mix: { min: 0, max: 1, def: 0, level: null,
+               curve: { knots: CURVES.dial, band: DIAL_D0, applied: true } },
         clock: { min: 0, max: 14, def: 0, level: null },
         // The waterline is the world's own horizon: where its axis stands.
         line: { min: 0, max: 1, def: 0.5,
@@ -851,6 +876,8 @@
       values: values,
       fit: fit,
       feel: function (u) { return feelOf(u, 0); },
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door.
+      feelClass: "monotone",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the waterline instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

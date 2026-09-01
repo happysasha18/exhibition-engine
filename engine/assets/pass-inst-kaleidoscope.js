@@ -586,6 +586,21 @@
 
     // THE REFUSAL, worded the way the host's own manifest refusals read: what is wrong, in this
     // instrument's own measured numbers, on the grid it was measured on.
+    // PHASE 7, ITEM 5 — RE-ANCHOR CHECKED, NO CHANGE NEEDED, AND THE REASON IS SAID EXACTLY. `f` in
+    // `sampleReadOf` (line 514, `v.fitA`/`v.fitB`) is `st.fitA`/`st.fitB` read straight through
+    // (line 463) — the host's own seating, with nowhere in this file that recomputes a crop of its
+    // own for it to disagree with. That rules out hero's OWN class of bug (a second crop, multiplied
+    // in only inside `fit()`, that never cancelled through `seated` — so hero's old proof was
+    // checking a number the door's own truth had already left behind).
+    //
+    // WHAT `offPx` ACTUALLY GUARDS, SAID PLAINLY RATHER THAN OVERSTATED. At a real door `v.fold[0]`
+    // is exactly 0 (`sin(pi * 0)`), and `uv = flat + (w − flat) · fold[0]` collapses to `flat`
+    // identically WHATEVER `f` holds — planting a wrong `fitA` into a throwaway copy and reading
+    // `values()` at `mix: 0` confirms `offPx` stays exactly 0 regardless. So this row is not, and
+    // structurally cannot be, a check that the SEATING itself is right — it is a check that the FOLD
+    // itself reaches exactly nothing at a door, which is the fault class this instrument actually
+    // has room to carry. There is no seating fault a re-anchor could catch here because there is no
+    // place in this file `f` could go wrong.
     function doorWhyNoOf(read) {
       if (!read) return null;
       var g = read.grid, door = read.which ? "the exit" : "the entry";
@@ -917,6 +932,10 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): identity-because-no-travel.
+      // `feelOf` at kaleidoscope.js:644 is the raw dial, clamped and nothing else — a written "no"
+      // rather than a silence, and the generic law asks nothing of a curve that was never claimed.
+      feelClass: "identity",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the kaleidoscope needs both works: the fold "
                                                  + "carries one photograph into the other" };

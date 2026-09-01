@@ -496,7 +496,11 @@
       // and `clock` is the module's own time, neither a structural level; `seed` is the score's die;
       // `shade` and `travel` are the two judge channels named in this file's own handles comment.
       handles: {
-        mix: { min: 0, max: 1, def: 0, level: null },
+        // THE KNOTS ON THE MANIFEST (Phase 7, item 3a): the same twenty-one points `feelOf` reads,
+        // published where a bench can find them without reading the source, so the roll call needs
+        // no hand-typed map of which file's own table answers which handle.
+        mix: { min: 0, max: 1, def: 0, level: null,
+               curve: { knots: FEEL_Q, band: FEEL_D0, applied: true } },
         clock: { min: 0, max: 14, def: 0, level: null },
         loosen: { min: 0, max: 1, def: 0.6, level: "SURFACE" },
         drift: { min: 0, max: 1, def: 0.45, level: "SURFACE" },
@@ -631,6 +635,10 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door — nought
+      // at the near door, one at the far, and never turns back, which is what the ends and monotone
+      // rows below already hold it to.
+      feelClass: "monotone",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the matter instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

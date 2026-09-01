@@ -705,6 +705,20 @@
 
     // THE REFUSAL, worded the way the host's own manifest refusals read: what is wrong, in this
     // instrument's own measured numbers, on the grid it was measured on.
+    // PHASE 7, ITEM 5 — RE-ANCHOR CHECKED, NO CHANGE NEEDED, AND THE REASON IS SAID EXACTLY. `fit`
+    // in `readAt` (line 637, `v.fitA`/`v.fitB`) is `st.fitA`/`st.fitB` read straight through
+    // (line 569-570), the host's own seating, with no crop of this file's own to disagree with it —
+    // ruling out hero's OWN class of bug, a second crop multiplied in only inside `fit()` that never
+    // cancelled through `seated`.
+    //
+    // WHAT `offX`/`offY` ACTUALLY GUARD, SAID PLAINLY RATHER THAN OVERSTATED. At a real door
+    // `v.ring[3]` (the wall's own mixing gate) is exactly 0, and `drawn = flat + (wallAt − flat) ·
+    // ring[3]` collapses to `flat` identically WHATEVER `fit` holds — planting a wrong `fitA` into a
+    // throwaway copy and reading `values()` at `mix: 0` confirms `offX`/`offY` stay exactly 0
+    // regardless. So this row is not, and structurally cannot be, a check that the seating itself is
+    // right — it is a check that the corridor wall's own gate reaches exactly nothing at a door,
+    // which is the fault class this instrument actually has room to carry. There is no seating fault
+    // a re-anchor could catch here because there is no place in this file `fit` could go wrong.
     function doorWhyNoOf(read) {
       if (!read) return null;
       var g = read.grid, door = read.want ? "the exit" : "the entry";
@@ -958,6 +972,13 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door — the
+      // claim, not yet the fact. `feelOf` holds flat under FEEL_D0 and past 1 - FEEL_D0 and leaves
+      // each dead band at the ramp's own nonzero speed at once, the same edge S-20 already closed
+      // for `matter`/`beat`/`gears`/`gates`/`adrift`/`waterline`/`tilt`. Declared here so the roll
+      // call reaches it and reports what it finds; repairing the edge is core logic and outside
+      // this phase's write-set (curve declaration only for the fleet's remaining instruments).
+      feelClass: "monotone",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the corridor instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

@@ -1107,6 +1107,8 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door.
+      feelClass: "monotone",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the box instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

@@ -247,20 +247,55 @@ check("PASS-TILT the shader carries no version header of its own",
       "#version" not in REGION and "#version" not in LABTXT,
       "so the host's translator stamps the one header this shader needs and no second one arrives")
 
-# The response curve, read out of the lab module and out of the built file. A port that re-derived it
-# would differ here by a digit.
-CURVE = [("FEEL_D0 = 0.05", "the dead band at either end, the module's own and its contract row's"),
-         ("FEEL_C = 0.4", "the knee, at four tenths of one half"),
-         ("FEEL_K1 = -0.9", "the exponent below the knee"),
-         ("FEEL_K2 = 1.5", "and above it")]
-missing_curve = ([c for c, _ in CURVE if c not in LABTXT]
-                 + [c for c, _ in CURVE if c not in REGION])
+# The response curve, read out of the lab module's own closed form and out of the built file's
+# measured table (Phase 7, 2026-09-01 — S-20's own repair carried one file further, tests/
+# test_pass_feel.py: the closed form held its dead band flat and left it at the ramp's own full
+# speed at once, the exact defect class S-20 already carried out of six other instruments, so the
+# port now reads a TABLE sampled from the same closed form, digit for digit at the sample points,
+# through the same Fritsch-Carlson spline those six already use — not the closed form's four raw
+# constants any longer). A port that re-derived the SHAPE, rather than sampling the module's own
+# formula, would differ here by more than floating point.
+LAB_CURVE = {"d0": 0.05, "c": 0.4, "k1": -0.9, "k2": 1.5}
+missing_curve = [c for c in ("FEEL_D0 = 0.05", "FEEL_C = 0.4", "FEEL_K1 = -0.9", "FEEL_K2 = 1.5")
+                 if c not in LABTXT]
+
+
+def lab_feel_log(x, k):
+    import math
+    return x if abs(k) < 1e-6 else (math.exp(k * x) - 1) / (math.exp(k) - 1)
+
+
+def lab_ramp_of(x, c=LAB_CURVE["c"], k1=LAB_CURVE["k1"], k2=LAB_CURVE["k2"]):
+    def knee(u):
+        return c * lab_feel_log(2 * u, k1) if u <= 0.5 else c + (1 - c) * lab_feel_log(2 * u - 1, k2)
+    return 0.5 * knee(2 * x) if x <= 0.5 else 1 - 0.5 * knee(2 - 2 * x)
+
+
+def _numbers(text, pattern):
+    m = re.search(pattern, text)
+    return [float(x) for x in re.findall(r"-?\d+\.?\d*", m.group(1))] if m else []
+
+
+port_q = _numbers(REGION, r"FEEL_Q = \[([^\]]+)\]")
+lab_q = [lab_ramp_of(i / 20) for i in range(21)]
+worst_q = max((abs(a - b) for a, b in zip(port_q, lab_q)), default=1)
+# THE BAR IS THE TABLE'S OWN PRINTED PRECISION, NOT A NUMBER CHOSEN FOR THIS ROW. Every table the
+# fleet carries — this one included — is written to four decimal places (matter's own FEEL_Q reads
+# the same way: `0.1994, 0.2488, ...`), so the largest a faithfully-rounded sample can differ from
+# the closed form it was rounded FROM is half of the last printed place, 5e-5. A port that
+# re-derived the shape rather than sampling it would miss by far more than rounding.
+ROUND_HALF_ULP = 0.5 * 10 ** -4
 check("PASS-TILT the response curve is carried digit for digit out of the lab module",
-      not missing_curve
-      and "(Math.exp(k * x) - 1) / (Math.exp(k) - 1)" in LABTXT
-      and "(Math.exp(k * x) - 1) / (Math.exp(k) - 1)" in REGION,
-      "; ".join("%s — %s" % (c, why) for c, why in CURVE) if not missing_curve
-      else "these differ: " + ", ".join(missing_curve))
+      not missing_curve and len(port_q) == 21 and worst_q < ROUND_HALF_ULP
+      and "FEEL_D0 = 0.05" in REGION,
+      ("the port's own twenty-one-point table answers the lab module's own closed form "
+       "(FEEL_D0 = 0.05, FEEL_C = 0.4, FEEL_K1 = -0.9, FEEL_K2 = 1.5) at each of the twenty-one "
+       "shares the table samples it at, worst %.2e against the table's own printed precision of "
+       "%.1e — the shape did not move, only the line drawn between two of its own points did"
+       % (worst_q, ROUND_HALF_ULP)
+       if not missing_curve and len(port_q) == 21 and worst_q < ROUND_HALF_ULP
+       else "these differ: missing %s, %d of 21 shares read, worst %.2e against a bar of %.1e"
+            % (missing_curve, len(port_q), worst_q, ROUND_HALF_ULP)))
 
 # Each constant as the LAB module spells it and as the PORT spells it. The two are the same string
 # everywhere but one: the front's overtravel is a bare literal in the module and a NAMED constant in
@@ -306,8 +341,13 @@ check("PASS-TILT every constant stands at the number the lab module gives it",
 # holds that set against the list the file reasons about, so a number typed into the file tomorrow
 # without a reason reds this. Beside it, the four pinned numbers that bound a handle's own range are
 # read where a COMPOSER can see them: on the handle's `applied` block and in `framings`, not in prose.
+# FEEL_C/FEEL_K1/FEEL_K2 left this set 2026-09-01 (Phase 7): the closed form they fed is gone from
+# this file, replaced by FEEL_Q, a twenty-one-point table — an array literal, which this sweep's
+# own regex (`\s*=\s*[-\d(]`, a scalar's own shape) does not and should not catch, the same way
+# every other table-carrying instrument's own FEEL_Q/FEEL_MIX/CURVES table already stands outside
+# this class of row. FEEL_D0, the dead band, is still a bare scalar and stays pinned.
 PINNED = {"TILT_MAX", "CAM_FAR", "CAM_NEAR", "AMP", "CROP", "COLS", "COLS_MIN", "COLS_MAX",
-          "MARGIN", "ZOOM_CAP", "FEEL_D0", "FEEL_C", "FEEL_K1", "FEEL_K2"}
+          "MARGIN", "ZOOM_CAP", "FEEL_D0"}
 declared_const = set(re.findall(r"\b([A-Z][A-Z0-9_]{2,})\s*=\s*[-\d(]", REGION))
 PINNED_BLOCK = (SOURCE_TEXT.split("WHAT STAYS PINNED, AND WHY EACH ONE DOES")[-1]
                 .split("function fit(")[0])
@@ -319,14 +359,17 @@ published = ("degreesAtMidPassageWhenWhole: TILT_MAX" in REGION
              and "columns: { min: COLS_MIN, max: COLS_MAX, def: COLS" in REGION)
 check("PASS-TILT every number the instrument still pins carries the reason it is not a handle",
       declared_const == PINNED and not unreasoned and published,
-      "fourteen named constants stand in the built artifact and every one of them is reasoned about "
-      "by name. ONE of the module's constants became a handle — COLS, the nine columns the front "
-      "breaks into, which is a count of divisions across the frame and the one thing here a work "
-      "record measures. The rest are a handle's own published RANGE (CAM_FAR/CAM_NEAR on `squeeze`, "
-      "AMP on `travel`, and CROP in `framings`, each read here where a composer sees it rather than "
-      "in prose), the door law's own slack (MARGIN), a stop that never fires (ZOOM_CAP), the "
-      "response curve measured on the module rather than on a pair (the four FEEL numbers), or the "
-      "port's own two (COLS_MIN/COLS_MAX). TILT_MAX stays pinned because the module measured ONE "
+      "eleven named constants stand in the built artifact and every one of them is reasoned about "
+      "by name (down from fourteen, 2026-09-01: FEEL_C/FEEL_K1/FEEL_K2 left this sweep when the "
+      "closed form they fed was sampled into FEEL_Q, a table this row's own scalar-shaped regex "
+      "does not and should not catch — see the row above). ONE of the module's constants became a "
+      "handle — COLS, the nine columns the front breaks into, which is a count of divisions across "
+      "the frame and the one thing here a work record measures. The rest are a handle's own "
+      "published RANGE (CAM_FAR/CAM_NEAR on `squeeze`, AMP on `travel`, and CROP in `framings`, "
+      "each read here where a composer sees it rather than in prose), the door law's own slack "
+      "(MARGIN), a stop that never fires (ZOOM_CAP), the response curve's own dead band, measured "
+      "on the module rather than on a pair (FEEL_D0), or the port's own two (COLS_MIN/COLS_MAX). "
+      "TILT_MAX stays pinned because the module measured ONE "
       "point of that axis and no second one, so a ceiling handle would need a number nobody "
       "measured and a ceiling bounded at the measured point is `tilt` under a second name — and the "
       "reading behind it, the pair's own repeat, already reaches the picture through `squeeze`"

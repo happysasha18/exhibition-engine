@@ -936,6 +936,12 @@
       values: values,
       fit: fit,
       feel: feel,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 2): monotone, door to door. `feel`
+      // above is the floor's own lean curve — MEASURED by the module and carried whole (parquet.js
+      // comment above), already continuous by construction (a single exponential, no hinge, no
+      // dead band), so this phase's work is the declaration and not a repair: the roll call now
+      // reaches this instrument and reads it already passing.
+      feelClass: "monotone",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the mirror-floor instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };

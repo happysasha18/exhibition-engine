@@ -1145,15 +1145,28 @@
       readiness: "production-ready",
     };
 
+    // The hand's own curve, at the one kind and the one `live` the manifest's `feel` publishes: the
+    // DEPARTING layer's, "stripes", the reading a host or a bench takes off this entry.
+    var feelStripes = function (u) { return feelOf("stripes", u, FEEL.stripes.live); };
+
     var live = false;
     return {
       name: "grid-colour",
       manifest: manifest,
       values: values,
       fit: fit,
-      // The hand's own curve. The kind decides it, so the reading a host or a bench takes off this
-      // entry is the DEPARTING layer's — the one whose cut the near door stands at.
-      feel: function (u) { return feelOf("stripes", u, FEEL.stripes.live); },
+      feel: feelStripes,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, but not door to door —
+      // `feelStripes` is `live * [the hinge curve]`, and `live` here is "stripes"'s own measured
+      // fade rather than 1, so the published curve does not reach the far door at a whole 1.
+      // `feelEnds` publishes the two numbers it actually reaches so the roll call reads the
+      // instrument's own claim instead of assuming the fleet's usual door. Continuity is a separate
+      // question: the hinge curve is off-centre (FEEL.stripes.c is not 0.5 for this kind), so the
+      // roll call below reads a real speed step at the join. Declared here so the roll call reaches
+      // it and reports what it finds; repairing the hinge is core logic and outside this phase's
+      // write-set (curve declaration only for the fleet's remaining instruments).
+      feelClass: "monotone",
+      feelEnds: [feelStripes(0), feelStripes(1)],
       // read by a bench that has to put the two roads at ONE raw dial, since this port derives the
       // curve's far end per frame and the lab module carries a constant
       feelOf: feelOf,

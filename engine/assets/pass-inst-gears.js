@@ -690,7 +690,11 @@
         // NO LEVEL: `mix`/`clock` are the fleet's own dial and the module's own time; `dial` already
         // reads its own door (`open: true`), so the composer drives it at no level; `seed` is the
         // score's die and `shade`/`travel` are the fleet's judge channels.
-        mix: { min: 0, max: 1, def: 0, level: null },
+        // THE KNOTS ON THE MANIFEST (Phase 7, item 3a): the same twenty-one points `feelOf` reads,
+        // published where a bench can find them without reading the source, so the roll call needs
+        // no hand-typed map of which file's own table answers which handle.
+        mix: { min: 0, max: 1, def: 0, level: null,
+               curve: { knots: FEEL_Q, band: FEEL_D0, applied: true } },
         clock: { min: 0, max: 14, def: 0, level: null },
         dial: { min: 0, max: 1, def: 0, open: true, level: null },
         // `size` is rounded to whole teeth and moves in whole rungs of the multiplier k both wheels'
@@ -841,6 +845,8 @@
       values: values,
       fit: fit,
       feel: feelOf,
+      // WHAT THIS INSTRUMENT'S `feel` PROMISES (Phase 7, item 3b): monotone, door to door.
+      feelClass: "monotone",
       prepare: function (o) {
         if (!o.sources) return { take: false, why: "the meshing instrument needs both works" };
         if (!o.cue) return { take: false, why: "no cue names it" };
