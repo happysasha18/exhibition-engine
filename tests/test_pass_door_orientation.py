@@ -30,16 +30,28 @@ renderer's own last frame against the DOM's own picture over the renderer's own 
 project's seam threshold of 6 of 255, which is the same comparison `tests/test_pass_hang.py` makes
 for three instruments and the same threshold.
 
-WHAT IS STILL OPEN, NAMED HERE RATHER THAN LEFT TO BE REDISCOVERED. Three instruments still read
-over the seam at the same door and none was chased in the pass that wrote this file. `gates`
-declares `coverage.writes: false` — a ground, which owes the whole-work door law — and misses it by
-the same mechanism the two repairs answered: its `seatOf` reads `st.fitA` off the frame state, and
-that is the instrument's own `fit` BEFORE the host's `seated` cancels it, so at a door the gate's
-leaves are placed against a crop that is no longer in the picture. `gears` and `overlay` declare
-`coverage.writes: true` — absence voices, whose door law is their own absence and not this equation
-— so the row below is a reading of them and not a verdict, though overlay's own door prose claims
-the plain cover fit its 17.8-of-255 contradicts. All three stand in their own row, so the
-fleet-wide row stays a real gate on the twenty-four that are exact.
+WHAT THIS FILE'S FIRST WRITING GOT WRONG ABOUT GATES AND GEARS (2026-09-02). It read both of them
+over the seam and named a cause in its own prose: `gates`'s `seatOf` reading `st.fitA` off the
+frame state, which is the instrument's own `fit` before the host's `seated` cancels it. That was
+never the cause and neither instrument was ever at fault. What reddened them was THIS FILE'S OWN
+SCORE. `score_for` was handed every handle carrying a numeric default, held at that default, and
+both instruments declare `dial` — the travelled number each derives from `mix` through its own
+measured response curve — with `open: true`, which says exactly that a score naming no track for it
+leaves the instrument doing the deriving. Named as a static rest of 0, `dial` OVERRODE `mix` and
+pinned both passes at their ENTRY door for the whole run, so the frame photographed at the arriving
+door was the DEPARTING work drawn into the arriving work's own box — a portrait file stretched
+across a landscape hang, which is the very picture this file was written to catch and which it here
+produced itself. With `open: true` handles left untracked and not one byte of either instrument
+moved, gates and gears read 0.75 and 0.75 of 255 at the same door, level with the twenty-four this
+file already judged. Both stand in the fleet-wide row now, and the pinned score is driven on
+purpose in a row of its own so the line that repairs it cannot go quiet.
+
+WHAT IS STILL OPEN, NAMED HERE RATHER THAN LEFT TO BE REDISCOVERED. `overlay` still reads over the
+seam at the same door and was not chased in the pass that wrote this file. It declares
+`coverage.writes: true` — an absence voice, whose door law is its own absence and not this
+whole-work equation — so the row below is a reading of it and not a verdict, though overlay's own
+door prose claims the plain cover fit that reading contradicts. It stands in its own row, so the
+fleet-wide row stays a real gate on the twenty-six that are exact.
 
 WHAT IS JUDGED, AND WHAT IS ONLY REPORTED. The ARRIVING door is judged. The departing one is read
 and printed beside it but not judged, and that is measured rather than cautious: driving the
@@ -307,9 +319,14 @@ def pick_pair(ids, shapes):
     return None
 
 
-def drive(site, shapes, only=None, shots=None):
+def drive(site, shapes, only=None, shots=None, pin_open=False):
     """Every instrument the record names, driven through both real doors on a mixed-orientation
-    pair. Answers {name: (depart, arrive)} where each is `(mean, worst)` of 255 or None."""
+    pair. Answers {name: (depart, arrive)} where each is `(mean, worst)` of 255 or None.
+
+    `pin_open` puts the score back the way this file first wrote it — every handle carrying a
+    numeric default held at that default, an `open: true` handle included. It exists for one row,
+    and the reason it is a row rather than a deleted mistake stands at A HANDLE THE INSTRUMENT
+    DERIVES FOR ITSELF below."""
     out = {}
     with serve(site) as base, Browser(width=VW, height=VH) as br:
         br.set_viewport(VW, VH)
@@ -343,8 +360,29 @@ def drive(site, shapes, only=None, shots=None):
         for n in names:
             handles = {}
             for h, spec in ((manifests.get(n) or {}).get("handles") or {}).items():
-                if isinstance(spec, dict) and isinstance(spec.get("def"), (int, float)):
-                    handles[h] = spec["def"]
+                if not (isinstance(spec, dict) and isinstance(spec.get("def"), (int, float))):
+                    continue
+                # A HANDLE THE INSTRUMENT DERIVES FOR ITSELF IS LEFT UNTRACKED, and that is what
+                # «every other handle held at the rest its own manifest declares» has to mean once
+                # a manifest declares `open: true` on one. That word says the instrument works the
+                # number out from another handle unless a score names a track for it — `gates` and
+                # `gears` both carry it on `dial`, the travelled number each derives from `mix`
+                # through its own measured response curve, and `weave` carries it on `turn` and
+                # `bal`. Naming such a handle at its own rest does NOT hold the instrument still at
+                # a rest: it overrides the walk. Both gates and gears read `dial` first and fall
+                # back to `mix` only where no track named it, so the score this file first wrote —
+                # `dial` static at 0 while `mix` walked the pass's own progress — pinned both at
+                # their ENTRY door for the whole run, and the frame photographed at the arriving
+                # door was the DEPARTING work drawn into the arriving work's own box.
+                #
+                # MEASURED 2026-09-02, on this file's own pair and door, with no instrument byte
+                # moved: 28.31 and 28.31 of 255 with the handle pinned, 0.75 and 0.75 with this one
+                # line in place, against a control (`lens`) that read 0.75 either way. The row
+                # named RED_SCORE below drives the pinned score on purpose, so a line that stopped
+                # mattering would be caught rather than quietly kept.
+                if spec.get("open") is True and not pin_open:
+                    continue
+                handles[h] = spec["def"]
             sc = score_for(n, handles)
             if js(br, "return window.__exPass.bench.scoreWhyNo(%s);" % json.dumps(sc)):
                 out[n] = (None, None)
@@ -393,6 +431,8 @@ def drive(site, shapes, only=None, shots=None):
 ROW = "PASS-DOOR-ORIENT · %s's arriving door stands the whole work on a mixed-orientation pair"
 RED = ("PASS-DOOR-ORIENT red-on-bug · %s's pre-repair seating reddens the same door on the same "
        "pair")
+RED_SCORE = ("PASS-DOOR-ORIENT red-on-bug · the pre-repair score, pinning the handle gates derives "
+             "for itself, reddens the same door on the same pair")
 
 if not chrome_available():
     for n in ("every instrument", "droste", "planet"):
@@ -406,11 +446,14 @@ else:
             skip(ROW % "every instrument", "the walk never handed the renderer a frame")
         else:
             a, ash, b, bsh = got.pop("__pair__")
-            # THE THREE STILL OVER THE SEAM, HELD APART AS THEIR OWN ROW rather than folded into
-            # the fleet-wide one — the same shape `tests/test_pass_door_invariant.py` used for
-            # droste until this branch repaired it. Naming them keeps the fleet-wide row a real
-            # gate on the twenty-four that are exact, and keeps the three from being rediscovered.
-            OPEN = ("gates", "gears", "overlay")
+            # THE ONE STILL OVER THE SEAM, HELD APART AS ITS OWN ROW rather than folded into the
+            # fleet-wide one — the same shape `tests/test_pass_door_invariant.py` used for droste
+            # until this branch repaired it. `gates` and `gears` stood here until 2026-09-02 and
+            # stand in the fleet-wide row now: neither ever carried a seating fault, and what
+            # reddened them was this file's own score pinning the `dial` each declares `open: true`
+            # (A HANDLE THE INSTRUMENT DERIVES FOR ITSELF, in `drive` above). Naming what is left
+            # keeps the fleet-wide row a real gate on the twenty-six that are exact.
+            OPEN = ("overlay",)
             over = {n: round(v[1][0], 2) for n, v in got.items()
                     if v[1] is not None and v[1][0] > SEAM}
             unread = [n for n, v in got.items() if v[1] is None]
@@ -420,31 +463,54 @@ else:
             check(ROW % "every instrument",
                   not fleet_over,
                   "%d instruments driven through a real arriving door, %s(%s) -> %s(%s), at a "
-                  "%dx%d frame. Over the %.1f-of-255 seam, outside the three held apart in the row "
+                  "%dx%d frame. Over the %.1f-of-255 seam, outside the one held apart in the row "
                   "below: %s. The worst of the rest read %.2f on %s. Unread (the pass never took "
                   "the frame, which is the rig and not a seating): %s. The departing door, read "
                   "but not judged, stood at %s."
                   % (len(got), a, ash, b, bsh, VW, VH, SEAM, fleet_over or "none",
                      worst[0], worst[1], unread or "none",
                      {n: (round(v[0][0], 2) if v[0] else None) for n, v in sorted(got.items())}))
-            # RECORDED, NOT SILENCED. Each of the three carries the same shape the two repairs
-            # answered — a seating read where the host's own cancellation cannot reach it — and none
-            # was chased in this pass. `gates` declares `coverage.writes: false`, so it owes the
-            # whole-work door law and does not answer it: its `seatOf` reads `st.fitA` off the frame
-            # state, which is the instrument's own `fit` BEFORE `seated` cancels it, so at a door the
-            # gate's leaves are placed against a crop that is no longer there. `gears` and `overlay`
-            # both declare `coverage.writes: true` — absence voices, whose door law is their own
-            # absence and not this equation — so this row is a reading rather than a verdict on them,
-            # and overlay's own door prose claims the plain cover fit that the number contradicts.
-            check(ROW % "the three still open",
+            # RECORDED, NOT SILENCED. `overlay` declares `coverage.writes: true` — an absence
+            # voice, whose door law is its own absence and not this whole-work equation — so this
+            # row is a reading rather than a verdict on it, and it was not chased in this pass. Its
+            # own door prose claims the plain cover fit that the number contradicts, which is the
+            # part of it that is worth a look and is left named here rather than acted on.
+            check(ROW % "the one still open",
                   not [n for n in OPEN if n in over],
                   "held apart and left standing: %s of 255 against the %.1f threshold the other %d "
-                  "pass at. gates owes the law and misses it (`seatOf` reads the frame state's own "
-                  "`fitA`, which is `fit` before `seated` cancels it); gears and overlay declare "
-                  "coverage.writes: true, so the law exempts them by principle and this is a "
-                  "reading of them rather than a verdict"
+                  "pass at. overlay declares coverage.writes: true, so the law exempts it by "
+                  "principle — as test_pass_door_invariant.py already exempts it — and this is a "
+                  "reading of it rather than a verdict, though its own door prose claims the plain "
+                  "cover fit the number contradicts"
                   % ({n: over[n] for n in OPEN if n in over} or "none", SEAM,
                      len(got) - len(over)))
+
+            # ---- red-on-bug: the score this file first wrote ----------------------------------
+            # THE REPAIR THIS BRANCH MADE IS THIS FILE'S OWN — no instrument byte moved — so it is
+            # proved the way the two file repairs below are proved: by driving the identical door
+            # with the pre-repair score put back and reading it red. `gates` is the instrument
+            # driven because `dial` is the handle that score pinned and because it is the row the
+            # branch was opened on; `gears` reddens by the same line and needs no second browser to
+            # say so.
+            site3, shapes3 = bake()
+            shots3 = Path(tempfile.mkdtemp(prefix="synth_doororient_prescore_"))
+            try:
+                back = drive(site3, shapes3, only={"gates"}, shots=shots3, pin_open=True)
+                row = (back or {}).get("gates")
+                now = got.get("gates")
+                check(RED_SCORE,
+                      bool(row) and row[1] is not None and row[1][0] > SEAM,
+                      "gates driven with `dial` held at its own rest of 0 while `mix` walked the "
+                      "pass's own progress, arriving door against the DOM's own picture: %s of "
+                      "255, against the same %.1f-of-255 threshold the same unmoved file passes "
+                      "at %s once the handle it declares `open: true` is left untracked"
+                      % (("%.2f" % row[1][0]) if row and row[1]
+                         else "the pass never took the frame",
+                         SEAM,
+                         ("%.2f" % now[1][0]) if now and now[1] else "-"))
+            finally:
+                shutil.rmtree(shots3, ignore_errors=True)
+                shutil.rmtree(site3, ignore_errors=True)
 
             # ---- red-on-bug: the same door, on the bytes each repair replaced ------------------
             # The substitution is made on the BUILT file the site actually serves, so what is driven
