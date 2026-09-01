@@ -241,6 +241,33 @@
       "uniform vec2 uJoint;",
       // The score's die, which decides four parts in ten of the joint's order.
       "uniform float uSeed;",
+      // WHICH WAY THE CREASE LIES, and it is a fact the TEXTURE STEP needs and the geometry above
+      // already had. A face's own square is parameterised (s, t): `s` runs ACROSS the turn's plane —
+      // the direction the two faces travel — and `t` runs ALONG the crease. `posed`'s own `pt` lays
+      // those two on the screen the way the crease asks: with the crease upright, `s` runs across the
+      // frame and `t` up it; with the crease FLAT, they change places, `s` running up the frame and
+      // `t` across it. That swap is the turn's own geometry and it is right.
+      //
+      // WHAT WENT WITH IT AND SHOULD NOT HAVE. The picture was pasted onto the face by one fixed
+      // rule — its columns along `s`, its rows along `t` — so with the crease flat a landed face
+      // stood the work REFLECTED ABOUT ITS OWN ANTI-DIAGONAL: the frame's top-left corner read the
+      // source's bottom-right, its bottom-right read the source's top-left, and the other two stood
+      // still. Read straight off the map on 2026-09-02, with no image and no browser in it, and
+      // measured against the walk's own DOM at both real doors of a real composed bundle at 34 of
+      // 255 on the mean and 176 on the worst channel — his own «прыгает… не соединяется гладко» at
+      // the moment the renderer takes the frame, since the DOM hangs the work and the first drawn
+      // frame hands back its mirror. Every real bundle the composer casts this instrument into with
+      // `axis` at 1 carried it; `axis` at 0 was exact, which is why nothing in this file's own suite
+      // ever saw it — the instrument's own door reading walks its faces' CORNERS over the buffer and
+      // never asks where inside the source a face reads, so a mirrored picture passes it whole.
+      //
+      // THE RULE THE PASTING FOLLOWS NOW. The picture's rows run ACROSS THE SCREEN and its columns
+      // DOWN IT, whichever of the face's own two axes happens to lie which way — which is the only
+      // reading under which «at either door the frame is the work its source carries» is true, and
+      // the same reading the `framings` block below publishes. So the face's own pair is put in
+      // screen order here, before the uv is taken, and the finger joint below goes on reading the
+      // crease's own axis (`stA.y`) exactly as it did.
+      "uniform float uFlat;",
       // The judges' channel: the face map as colour.
       "uniform float uMask;",
       // WHAT THE BOX STANDS AGAINST where neither face reaches. The crop below is measured so that
@@ -308,8 +335,13 @@
       "  vec2 stB = onFace(uInvB0, uInvB1, uInvB2, pp);",
       // st.y runs UP the frame and an image's rows run DOWN it, so the row coordinate is turned over
       // here, or the face stands on its head
-      "  vec2 uvA = vec2(stA.x * 0.5 + 0.5, 0.5 - stA.y * 0.5);",
-      "  vec2 uvB = vec2(stB.x * 0.5 + 0.5, 0.5 - stB.y * 0.5);",
+      // The face's own pair put in SCREEN order — across the frame first, up it second — which with
+      // the crease flat is the pair the other way round. See `uFlat` above for why the picture is
+      // pasted this way and what it read before.
+      "  vec2 scA = uFlat > 0.5 ? stA.yx : stA;",
+      "  vec2 scB = uFlat > 0.5 ? stB.yx : stB;",
+      "  vec2 uvA = vec2(scA.x * 0.5 + 0.5, 0.5 - scA.y * 0.5);",
+      "  vec2 uvB = vec2(scB.x * 0.5 + 0.5, 0.5 - scB.y * 0.5);",
       "  float dA = inside(uQuadA0, uQuadA1, sp);",
       "  float dB = mix(inside(uQuadB0, uQuadB1, sp), -1e9, uTurn.x);",
       // THE FINGER JOINT. The crease is displaced back and forth along its own length, finger by
@@ -332,10 +364,16 @@
       // longer carry once the host's own `seated` divides it back out near a real door.
       "  vec2 tA = (uvA - 0.5) * FACECROP + 0.5;",
       "  vec2 tB = (uvB - 0.5) * FACECROP + 0.5;",
-      // COUNTER-MOTION along each face's own first axis, in opposite senses; both are nothing at a
-      // landing, so a landed face is the picture its source carries.
-      "  vec3 colA = texture2D(uA, into(tA + vec2(uTurn.y, 0.0), uFitA)).rgb;",
-      "  vec3 colB = texture2D(uB, into(tB - vec2(uTurn.y, 0.0), uFitB)).rgb;",
+      // COUNTER-MOTION ACROSS THE TURN'S OWN PLANE — the face's `s` axis, the direction the two
+      // faces travel — in opposite senses; both are nothing at a landing, so a landed face is the
+      // picture its source carries. It is written here in the picture's own coordinates, so which of
+      // them carries `s` follows the crease exactly as the uv above does: with the crease upright it
+      // is the first, and with the crease flat it is the second, and negated, because the second
+      // coordinate runs DOWN the picture while `s` runs UP the frame. The travel that reaches the
+      // face is the same physical travel either way; only the coordinate it is written in changes.
+      "  vec2 ride = uFlat > 0.5 ? vec2(0.0, -uTurn.y) : vec2(uTurn.y, 0.0);",
+      "  vec3 colA = texture2D(uA, into(tA + ride, uFitA)).rgb;",
+      "  vec3 colB = texture2D(uB, into(tB - ride, uFitB)).rgb;",
       "  vec3 col = mix(colB, colA, cov);",
       // THE CONTACT SHADOW at the crease, on whichever face lies farther from the eye. The crease is
       // face A's own corner 0 to corner 3 — the same edge of the same solid the two faces share —
@@ -640,6 +678,11 @@
         cam: [aspect, dip, slide[0], slide[1]],
         turn: [only, off, A.depth <= B.depth ? 1 : 0, guard],
         joint: [fing, fingN],
+        // WHICH WAY THE CREASE LIES, handed to the texture step. `pt` above already lays the face's
+        // own two axes on the screen by this same decision; the picture has to be pasted on the face
+        // by it too, or a landed face stands the work reflected about its own anti-diagonal. The
+        // whole argument is at `uFlat` in FRAG.
+        flat: flat ? 1 : 0,
         seed: seedFrom(st.seed),
         // read on the diagnostic surface, bound to no uniform: what the hand came to, and the two
         // numbers the works themselves own
@@ -1056,6 +1099,7 @@
           { name: "uTurn", type: "vec4", source: "frame:turn" },
           { name: "uJoint", type: "vec2", source: "frame:joint" },
           { name: "uSeed", type: "float", source: "frame:seed" },
+          { name: "uFlat", type: "float", source: "frame:flat" },
           { name: "uMask", type: "float", source: "handle:mask" },
         ],
       }],
