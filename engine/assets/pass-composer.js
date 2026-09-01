@@ -505,6 +505,20 @@
     bandPeriod: ["measured", "the pivot's own period as a fraction of frame height"],
     centreX: ["measured", "the midpoint of the two measured radial centres"],
     centreY: ["measured", "the midpoint of the two measured radial centres"],
+    // LIVEMIRROR'S OWN TWO, SCOPED — Phase 9's own sweep, 2026-09-01. The bare rows above are the
+    // radial-centre midpoint every other centred instrument (kaleidoscope, tunnel, droste, planet,
+    // the glass) still reads unchanged; this instrument's fold line is straight rather than radial,
+    // so its own row names the structural-line reading it takes instead — the midpoint of both
+    // works' own `structure.regions.line.{x,y}.at` on the axis the fold actually stands on, with the
+    // radial-centre midpoint as the fallback where neither work carries a readable line.
+    "livemirror.centreX": ["measured", "structure.regions.line.x.at, the midpoint of both works' own "
+                                       + "reading where the fold stands vertical (mode 0) and either "
+                                       + "carries one; the midpoint of the two measured radial "
+                                       + "centres where neither does"],
+    "livemirror.centreY": ["measured", "structure.regions.line.y.at, the midpoint of both works' own "
+                                       + "reading where the fold stands horizontal (mode 1) and "
+                                       + "either carries one; the midpoint of the two measured "
+                                       + "radial centres where neither does"],
     shade: ["module-rest", "a judge channel the module rests at 1"],
     travel: ["module-rest", "a judge channel the module rests at 1"],
     glint: ["module-rest", "a judge channel the mirror rests at its own 0.62, the brightness of "
@@ -743,6 +757,12 @@
     field: ["progress", "the passage's own travel, one envelope for the plane and the parquet"],
     parquetPeriod: ["measured", "structure.ownDevice.stepPx over the work's own frame side"],
     parquetTurn: ["measured", "structure.ownDevice.angleDeg, the angle that step was cut at"],
+    // Phase 9's own sweep (2026-09-01) — the same repair `parquet.phase` makes, on the made work's
+    // own reading rather than a pair's: this continuation is that instrument's construction carried
+    // past the sheet's own edge, so the same real gap applies to it.
+    parquetPhase: ["measured", "structure.grid.phase — the made work's own strongest measured "
+                               + "repeat, as a share of one period, read on exactly the condition "
+                               + "parquetPeriod/parquetTurn already read on (made.gridCount > 0)"],
     // THE UNFOLD'S OTHER THREE. Its manifest now travels in the composer's own constants — the
     // settings record carries every instrument the composer CAN cast, not only the ones it casts
     // today — so the register names them, and the day a kind maps to this instrument a score for it
@@ -886,8 +906,30 @@
                            + "step was recovered — folded back under a right angle, since a lattice "
                            + "angle is a line direction. The module pinned nine degrees; the third "
                            + "picture IS the two gratings interfering, so the angle is the pair's"],
-    phase: ["unmeasured", "where in its own cycle each grating starts. Nothing in a work record "
-                          + "bears on it: a record carries a period and an angle and no phase"],
+    // SCOPED, Phase 9's own sweep (2026-09-01) — this row used to stand bare as `phase`, which
+    // `sourceOf`'s own fallback (`HANDLE_SOURCE[iid + "." + handle] || HANDLE_SOURCE[handle]`)
+    // handed to EVERY instrument publishing a handle named `phase` and no scoped row of its own —
+    // parquet included, the instant its own `phase` handle was wired to a real reading a few
+    // screens up. A parquet phase track's own note therefore read «Nothing in a work record bears
+    // on it: a record carries a period and an angle and no phase» beside a value this same file
+    // had just read off `structure.grid.phase` — a false provenance claim on a real reading,
+    // caught in this sweep rather than by a future no-taste audit. Scoping this row to `beat` is
+    // the fix; `parquet.phase`'s own row stands a few lines below it.
+    "beat.phase": ["unmeasured", "where in its own cycle each grating starts. This instrument's "
+                                 + "own two periods read texture.spectralPeriodPx (a few rows up), "
+                                 + "the radially-averaged spectrum lab/step1-tone-texture.py builds "
+                                 + "it from, which discards direction and origin by construction — "
+                                 + "unlike structure.grid's own 2D FFT peak bin, a radial average "
+                                 + "has no phase to read whatever a future record adds. Read as an "
+                                 + "interference-envelope dial rather than a per-work position: the "
+                                 + "manifest's own comment names it as walking the two gratings' "
+                                 + "DIFFERENCE from a lobe to the gap between two, charter shelf 9's "
+                                 + "class of a score's own word rather than a photograph's"],
+    "parquet.phase": ["measured", "structure.grid.phase — where the work's own strongest measured "
+                                  + "repeat falls, as a share of one period, read on exactly the "
+                                  + "condition tiles/lattice already read on (gridCount > 0, "
+                                  + "whatever the work's own grid measured) — Phase 9 of "
+                                  + "docs/V2-CONVERGENCE-PLAN-2026-08-31.md, 2026-09-01"],
     "beat.lead": ["unmeasured", "how far apart the lobes' own moments are set. It is charter shelf "
                                 + "13's stagger on this instrument's own time axis, and the count "
                                 + "it would be taken on is already spent on the two periods, so "
@@ -7487,6 +7529,30 @@
           // defined over: monotone in the angle, onto the handle's own range, and again with a
           // quarter turn standing where a quarter turn belongs instead of back at nothing.
           wanted.tilt = flt(r4(clamp01((Math.abs(angle) % 180.0) / 180.0)));
+          // WHERE THE FLOOR'S OWN LATTICE LANDS — Phase 9's own sweep of
+          // docs/V2-CONVERGENCE-PLAN-2026-08-31.md, item 4 (2026-09-01). `parquetPeriod` and
+          // `parquetTurn` above already answer «how many, and which way» off the made work's own
+          // device or grid; this is «where», the charter's own «cut along its own lines» clause,
+          // and the one thing those two never answered — this continuation is the mirror floor's
+          // own construction carried past its edge (this file's own header), so it is the same real
+          // gap parquet's own `phase` closed a few phases up, in the same file.
+          //
+          // READ ON EXACTLY THE CONDITION `parquetPeriod`/`parquetTurn` ABOVE ALREADY READ ON FOR
+          // THIS SAME WORK — `made.gridCount > 0`, whatever that work's own grid measured, and
+          // nothing more — never on a floor read off the score: shelf 9's own law is that a
+          // measurement ranks, it never gates, and a threshold read off this collection's own score
+          // distribution is exactly the shelf 20/21 violation Phase 9's own first landing was
+          // caught making and struck before it shipped.
+          //
+          // `made.gridPhase` IS READ EVEN WHERE THE STEP ITSELF FELL BACK TO THE DEVICE (`stepPx`
+          // above preferring `deviceStepPx`), and that is not an inconsistency: the grid's own phase
+          // describes where THAT measurement's own repeat falls regardless of which of the two
+          // readings ended up setting the period, exactly as parquet's own branch reads `gridPhase`
+          // on `gridCount > 0` alone, independent of whether `tiles`/`lattice` themselves used the
+          // grid or fell back to the device.
+          if (made.gridCount > 0) {
+            wanted.parquetPhase = flt(r4(clamp01(made.gridPhase)));
+          }
           // HOW DEEP A ROOM THE SHEET OPENS INTO, and it is the one handle here that reads BOTH
           // works. The five above read one work by design — the making being revealed is one work's
           // — and that is why this branch, which has stood since the unfold landed, still played
@@ -7978,9 +8044,49 @@
           // way about.
           var mx = fromP.ends.banding;
           if (mx !== undefined && mx !== null) wanted.axis = num(mx[2]) ? 0 : 1;
-          // WHERE THE FOLD STANDS: the midpoint of the two works' own measured radial centres, which
-          // is the line his standing verdict on this effect asks the fold to land on.
+          // WHERE THE FOLD STANDS, AND THIS IS PHASE 9'S OWN SECOND REPAIR (the sweep his word of
+          // 2026-09-01 asked for, item 4, after the parquet-only landing). It stood on
+          // `centreOfThePair` — the midpoint of the two works' own measured RADIAL centres — which
+          // is the reading built for a picture that turns about a point (kaleidoscope, tunnel,
+          // droste, planet, the glass), and this instrument does not turn about a point: it folds
+          // along a straight line. The vocabulary table's own condition on this effect names the
+          // narrower, exacter thing — «fold lines must land on the work's own structural lines» —
+          // and the work's own structural line, for a straight fold, is exactly what
+          // `structure.regions.line.{x,y}.at` already measures: where the picture falls into two
+          // regions along a given axis, the same reading boxfold's own crease reads a few branches
+          // up, for the identical reason.
+          //
+          // WHICH LINE TO READ IS NOT THE CROSSING/ALONG INVERSION `axis` ABOVE TAKES. `axis` picks
+          // which way the fold lies relative to the banding, and that inversion is settled; this is
+          // a plainer question — a vertical fold line (mode 0, the shader's `d = abs(p.x)`, its
+          // position set by `at.x`) stands at a share ACROSS the frame, which is exactly what the
+          // record's own `x` line answers («x a line upright at that share across» — the record's
+          // own words); a horizontal fold (mode 1, `d = abs(p.y)`, position `at.y`) reads the `y`
+          // line the same way. `wanted.axis` set two lines up already says which mode this pair
+          // casts, so it says which line to read too.
+          //
+          // ONE SHARED POSITION DRIVES BOTH WORKS' FOLD ACROSS THE WHOLE HAND — the shader's
+          // `uFold.xy` seats both `folded(uA,...)` and `folded(uB,...)` alike — so the reading stays
+          // a reading OF THE PAIR, not of one work, exactly as `centreOfThePair` already held: the
+          // midpoint of both works' own line shares on the axis the fold actually stands on, in
+          // place of the midpoint of both works' own radial centres. A work carrying no readable
+          // line on that axis (`NaN`, the record's own honest silence) leaves its own share out of
+          // the average rather than pulling it toward the frame's middle; a pair where NEITHER work
+          // carries one falls back whole to the radial-centre midpoint that stood here before —
+          // shelf 21's own fallback law, never a branch that ends in nothing measured.
           centreOfThePair(wanted);
+          var lmFlat = num(wanted.axis) >= 0.5;
+          var lmAtF = lmFlat ? mf.regionLineYAt : mf.regionLineXAt;
+          var lmHowF = lmFlat ? mf.regionLineYExplains : mf.regionLineXExplains;
+          var lmAtT = lmFlat ? mt.regionLineYAt : mt.regionLineXAt;
+          var lmHowT = lmFlat ? mt.regionLineYExplains : mt.regionLineXExplains;
+          var lmHaveF = lmAtF === lmAtF && lmHowF === lmHowF;
+          var lmHaveT = lmAtT === lmAtT && lmHowT === lmHowT;
+          if (lmHaveF || lmHaveT) {
+            var lmShare = lmHaveF && lmHaveT ? (lmAtF + lmAtT) / 2 : (lmHaveF ? lmAtF : lmAtT);
+            if (lmFlat) wanted.centreY = flt(r4(clamp01(lmShare)));
+            else wanted.centreX = flt(r4(clamp01(lmShare)));
+          }
           // SHELF 7'S PROPAGATED ARRIVAL, WHERE IT REACHES PIXELS — «в зеркальных копиях дальняя
           // меняется первой», of the mirrored copies the far one changes first (наряд S-06). This
           // is the one instrument of the fleet that makes mirrored copies of a work, so it is the

@@ -52,6 +52,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -242,15 +243,16 @@ check("PASS-UNFOLD the instrument creates no element, no loop and no listener",
       if not held else "the instrument's region holds " + ", ".join(held))
 
 HANDLES = ["mix", "clock", "tilt", "shade", "depth", "stagger", "panels", "mask",
-           "field", "parquetPeriod", "parquetTurn"]
+           "field", "parquetPeriod", "parquetTurn", "parquetPhase"]
 absent = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-UNFOLD every handle the instrument publishes is a handle a score can drive",
       not absent,
-      "§4.4b: eleven handles. The dial and the second the host hands down, the module's own five "
-      "declared params, the judges' channel, and the three that open the world the sheet unfolds "
-      "into — how far it stands open, the parquet's own period and the turn of its lattice. The "
-      "module's `pace` is published by neither, for the reason the module itself gives: a handle a "
-      "score can walk without moving the picture is noise in the score"
+      "§4.4b: twelve handles. The dial and the second the host hands down, the module's own five "
+      "declared params, the judges' channel, and the four that open the world the sheet unfolds "
+      "into — how far it stands open, the parquet's own period, the turn of its lattice and (Phase "
+      "9's own sweep, 2026-09-01) where the lattice's own tile edge lands. The module's `pace` is "
+      "published by neither, for the reason the module itself gives: a handle a score can walk "
+      "without moving the picture is noise in the score"
       if not absent else "these are published nowhere: " + ", ".join(absent))
 
 # ---- the response curves, measured 2026-08-17 ----------------------------------------------------
@@ -441,6 +443,197 @@ check("PASS-UNFOLD the provenance names the file the port was read from, and the
       bool(sha) and sha == declared_sha and 'commit: "4c7dfe4"' in REGION,
       f"the module is tracked, so the commit it was read at is named beside the digest of its bytes, "
       f"and the file still weighs to {sha[:16]}…")
+
+# ================================================================================================
+# THE FLOOR'S OWN PHASE, REAL DATA — Phase 9's own sweep of docs/V2-CONVERGENCE-PLAN-2026-08-31.md,
+# item 4 (his word of 2026-09-01, «не только паркет читает линии картинки»). `parquetPeriod` and
+# `parquetTurn`'s own rows (checked above) show the manifest names a real measurement; they do not
+# show `pass-composer.js`'s own unfold branch ever HANDS the instrument a real phase on a real cast
+# — the same gap the parquet phase section of tests/test_pass_parquet.py closes for that instrument,
+# closed here for this one because the continuation is that instrument's own construction, carried
+# past the sheet's own edge (this file's own header).
+#
+# THE SEARCH IS OVER THE REAL 121-WORK FLEET, NEVER A HAND-PICKED PAIR, and reads no fleet
+# statistic: the branch under test reads on exactly `made.gridCount > 0`, the same condition
+# `parquetPeriod`/`parquetTurn` already read on, whatever the made work's own grid measured.
+UNFOLD_COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
+UNFOLD_FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
+
+UNFOLD_PHASE_ROW = ("PASS-UNFOLD parquetPhase · a real, planner-composed pair hands the "
+                     "instrument the made work's own measured phase reading, unconditionally")
+UNFOLD_PHASE_RED_ROW = ("PASS-UNFOLD parquetPhase red-on-bug · removing the reading drops the "
+                         "same real pair's own phase back to the regular floor")
+
+UNFOLD_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+const plants = %(plants)s;
+
+let patched = source;
+const missed = [];
+for (const [from, to] of plants) {
+  if (patched.indexOf(from) < 0) { missed.push(from); continue; }
+  patched = patched.split(from).join(to);
+}
+if (missed.length) { console.log(JSON.stringify({missed: missed})); process.exit(0); }
+
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+try {
+  vm.runInContext(patched, sandbox, { filename: "pass-composer.js" });
+} catch (e) {
+  console.log(JSON.stringify({ error: String((e && e.stack) || e) }));
+  process.exit(0);
+}
+if (!joined) { console.log(JSON.stringify({ error: "the module joined nothing" })); process.exit(0); }
+const composer = joined.make(consts);
+
+const ids = Object.keys(works);
+const ROLE_FN = [["culmination", "dominant"], ["middle", "subdominant"], ["middle", "dominant"],
+                 ["opening", "tonic"]];
+const SEEDS = [0, 2, 4, 6];
+
+let found = null;
+outer:
+for (let i = 0; i < ids.length && !found; i++) {
+  const from = ids[i];
+  for (let j = 0; j < ids.length && !found; j++) {
+    const to = ids[j];
+    if (to === from) continue;
+    for (const [role, fn] of ROLE_FN) {
+      for (const seed of SEEDS) {
+        const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+                      seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+                      walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+        let made;
+        try { made = composer.passageFor(req); } catch (e) { continue; }
+        if (!made || made.declined || !made.plan) continue;
+        const cues = made.plan.cues || [];
+        const uf = cues.filter((c) => c.instrument.id === "unfold")[0];
+        if (!uf) continue;
+        const mh = uf.measuredHandles || {};
+        const ph = mh.parquetPhase && mh.parquetPhase.v;
+        if (typeof ph !== "number") continue;
+        found = { from: from, to: to, seed: seed, role: role, fn: fn, phase: ph };
+        break outer;
+      }
+    }
+  }
+}
+console.log(JSON.stringify({ found: found }));
+"""
+
+
+def _unfold_node_available():
+    return shutil.which("node") is not None
+
+
+if not _unfold_node_available():
+    skip(UNFOLD_PHASE_ROW, "node is not on this machine")
+    skip(UNFOLD_PHASE_RED_ROW, "node is not on this machine")
+elif not (UNFOLD_COMPOSER.exists() and UNFOLD_FIXTURE_WORKS.exists()):
+    skip(UNFOLD_PHASE_ROW, "the composer or its works fixture are not on this machine")
+    skip(UNFOLD_PHASE_RED_ROW, "no real pair to replant")
+else:
+    _uf_source = UNFOLD_COMPOSER.read_text(encoding="utf-8").replace("@@NS@@", "")
+    _uf_fix_works = json.loads(UNFOLD_FIXTURE_WORKS.read_text(encoding="utf-8"))
+    _uf_tmp = Path(tempfile.mkdtemp(prefix="pass_unfold_phase_"))
+
+    def _run_unfold(plants=None):
+        driver_text = UNFOLD_DRIVER % {
+            "source": json.dumps(_uf_source),
+            "consts": json.dumps(_uf_fix_works["consts"]),
+            "works": json.dumps(_uf_fix_works["works"]),
+            "plants": json.dumps(plants or []),
+        }
+        driver_path = _uf_tmp / "driver.js"
+        driver_path.write_text(driver_text, encoding="utf-8")
+        proc = subprocess.run(["node", str(driver_path)], capture_output=True, text=True,
+                              timeout=600)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-1200:]}
+        lines = (proc.stdout or "").strip().splitlines()
+        if not lines:
+            return {"error": "the driver said nothing"}
+        return json.loads(lines[-1])
+
+    _uf_green = _run_unfold()
+    _uf_found = _uf_green.get("found") if isinstance(_uf_green, dict) else None
+    check(UNFOLD_PHASE_ROW, isinstance(_uf_found, dict),
+          ("real pair %s→%s (seed %s, role %s/%s): the made work's own measured phase reached the "
+           "instrument unconditionally as %s"
+           % (_uf_found.get("from"), _uf_found.get("to"), _uf_found.get("seed"),
+              _uf_found.get("role"), _uf_found.get("fn"), _uf_found.get("phase"))
+           if isinstance(_uf_found, dict) else
+           "the real 121-work fleet's own passageFor search cast unfold with a real phase reading "
+           "on no real pair at all: " + json.dumps(_uf_green)))
+
+    if not isinstance(_uf_found, dict):
+        skip(UNFOLD_PHASE_RED_ROW, "no real pair found above to replant")
+    else:
+        _uf_plant = [[
+            "          if (made.gridCount > 0) {\n"
+            "            wanted.parquetPhase = flt(r4(clamp01(made.gridPhase)));\n"
+            "          }",
+            "          if (false) {}",
+        ]]
+        _uf_red = _run_unfold(plants=_uf_plant)
+        if _uf_red.get("missed"):
+            skip(UNFOLD_PHASE_RED_ROW, "the lines this plant names are not in the shipped source")
+        else:
+            _uf_replay_driver = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+const plants = %(plants)s;
+const from = %(from)s, to = %(to)s, seed = %(seed)s, role = %(role)s, fn = %(fn)s;
+
+let patched = source;
+for (const [f, t] of plants) { patched = patched.split(f).join(t); }
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+vm.runInContext(patched, sandbox, { filename: "pass-composer.js" });
+const composer = joined.make(consts);
+const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+              seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+              walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+const made = composer.passageFor(req);
+const uf = (made.plan.cues || []).filter((c) => c.instrument.id === "unfold")[0];
+const mh = (uf && uf.measuredHandles) || {};
+console.log(JSON.stringify({ phase: mh.parquetPhase && mh.parquetPhase.v }));
+"""
+            _uf_replay_text = _uf_replay_driver % {
+                "source": json.dumps(_uf_source),
+                "consts": json.dumps(_uf_fix_works["consts"]),
+                "works": json.dumps(_uf_fix_works["works"]),
+                "plants": json.dumps(_uf_plant),
+                "from": json.dumps(_uf_found["from"]), "to": json.dumps(_uf_found["to"]),
+                "seed": json.dumps(_uf_found["seed"]), "role": json.dumps(_uf_found["role"]),
+                "fn": json.dumps(_uf_found["fn"]),
+            }
+            _uf_replay_path = _uf_tmp / "replay.js"
+            _uf_replay_path.write_text(_uf_replay_text, encoding="utf-8")
+            _uf_replay_proc = subprocess.run(["node", str(_uf_replay_path)], capture_output=True,
+                                             text=True, timeout=120)
+            _uf_replayed = (json.loads(_uf_replay_proc.stdout.strip().splitlines()[-1])
+                           if _uf_replay_proc.returncode == 0 and _uf_replay_proc.stdout.strip()
+                           else {"error": (_uf_replay_proc.stderr or "")[-800:]})
+            check(UNFOLD_PHASE_RED_ROW,
+                  _uf_replayed.get("phase") in (0, None) and _uf_replayed.get("phase") != _uf_found["phase"],
+                  "the same real request replayed (from=%s to=%s seed=%s role=%s/%s): shipped "
+                  "parquetPhase=%s (the made work's own measured phase), reading removed "
+                  "parquetPhase=%s — the regular floor, and the fallback shelf 21 requires, not a "
+                  "refused crossing"
+                  % (_uf_found["from"], _uf_found["to"], _uf_found["seed"], _uf_found["role"],
+                     _uf_found["fn"], _uf_found["phase"], _uf_replayed.get("phase")))
+
 
 # ---------------------------------------------------------------- browser rows
 

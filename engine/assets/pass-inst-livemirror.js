@@ -40,8 +40,10 @@
   // brief for this port, and it is why the module's own wandering line is not what a score gets. The
   // module drifts its line across the mount on two incommensurate sines because it lives on a page
   // with a pointer and nothing else to read; an instrument in this engine is handed the pair's own
-  // measured centre and stands the fold there. The wander survives as `drift`, resting at nothing,
-  // so the module's own life is reachable and is never the default.
+  // measured structural line — `structure.regions.line.{x,y}.at`, the same reading boxfold's own
+  // crease reads, in place of the radial-centre midpoint this port first stood the fold at, corrected
+  // Phase 9's own sweep (2026-09-01) — and stands the fold there. The wander survives as `drift`,
+  // resting at nothing, so the module's own life is reachable and is never the default.
   //
   // WHY IT STANDS HERE. It cuts on PANELS — the fold lines partition the frame into two or four
   // mirrored panels — which is the kind the composer's own census counts 1 296 declined pairs
@@ -691,20 +693,25 @@
                 level: "CELL" },
         // WHERE THE FOLD STANDS. His standing verdict on this effect in one pair of handles. The
         // module's line is placed by a pointer and wanders on its own when nobody holds it; here it
-        // is placed by the pair's own measured centre and stands there.
+        // is placed by the pair's own measured structural line on the axis the fold actually stands
+        // on — `structure.regions.line.{x,y}.at`, the same reading boxfold's own crease reads — and
+        // falls back to the pair's own measured radial centre where neither work carries one.
         centreX: { min: 0, max: 1, def: 0.5,
                    unit: "where across the frame the upright fold stands",
-                   reads: "the midpoint of the two works' measured radial centres, "
-                        + "structure.radial.centre — the place the collection's own reading says "
-                        + "both works are built around, which is the line a mirror fold has to land "
-                        + "on for the reflection to read as the work's own and not as a line drawn "
-                        + "over it",
+                   reads: "structure.regions.line.x.at — the midpoint of the two works' own "
+                        + "measured structural line on this axis, the place their own picture "
+                        + "falls into two regions, so a vertical fold lands on the line a mirror "
+                        + "fold has to land on for the reflection to read as the work's own and "
+                        + "not as a line drawn over it. Falls back to the midpoint of the two "
+                        + "works' measured radial centres, structure.radial.centre, where neither "
+                        + "work carries a readable line on this axis",
                    applied: { roomAtTheEdge: LINE_EDGE },
                    level: "CELL" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "where down the frame the flat fold stands",
-                   reads: "the midpoint of the two works' measured radial centres, "
-                        + "structure.radial.centre, read on the other axis",
+                   reads: "structure.regions.line.y.at, read the same way as centreX on the other "
+                        + "axis, with the same radial-centre fallback where neither work carries a "
+                        + "readable line",
                    applied: { roomAtTheEdge: LINE_EDGE },
                    level: "CELL" },
         // THE MIRROR'S OWN LIFE, ON ONE ENVELOPE (charter shelf 5: properties that belong to one

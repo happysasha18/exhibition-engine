@@ -44,6 +44,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -324,6 +325,223 @@ check("PASS-LIVEMIRROR the port's own one number of the travel is named as the p
       "absent from lab/effects/livemirror.js, is the port's own addition rather than the module's. "
       "What HOLD actually does to a rendered frame is measured below, by mutation, rather than "
       "asserted here from a comment")
+
+# ================================================================================================
+# WHERE THE FOLD STANDS, REAL DATA — Phase 9's own sweep of docs/V2-CONVERGENCE-PLAN-2026-08-31.md,
+# item 4 (his word of 2026-09-01, «не только паркет читает линии картинки»). The checks above show
+# the manifest NAMES a measurement for `centreX`/`centreY`; they do not show `pass-composer.js`'s own
+# livemirror branch ever hands the instrument a real, work-measured structural line on a real cast —
+# the same gap the parquet phase section of tests/test_pass_parquet.py closes for `phase`.
+#
+# THE SEARCH IS OVER THE REAL 121-WORK FLEET, NEVER A HAND-PICKED PAIR, and reads no fleet statistic:
+# the branch under test takes any pair where either work's own `structure.regions.line` reads a real
+# number, whatever it is — no floor, no percentile, the same shelf 20/21 discipline the parquet
+# section's own comment states.
+MIRROR_COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
+MIRROR_FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
+
+MIRROR_LINE_ROW = ("PASS-LIVEMIRROR fold line · a real, planner-composed pair hands the instrument "
+                    "the pair's own measured structural-line reading, not the radial-centre midpoint")
+MIRROR_LINE_RED_ROW = ("PASS-LIVEMIRROR fold line red-on-bug · removing the structural-line reading "
+                        "drops the same real pair's own fold place back to the radial-centre midpoint")
+
+MIRROR_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+const plants = %(plants)s;
+
+let patched = source;
+const missed = [];
+for (const [from, to] of plants) {
+  if (patched.indexOf(from) < 0) { missed.push(from); continue; }
+  patched = patched.split(from).join(to);
+}
+if (missed.length) { console.log(JSON.stringify({missed: missed})); process.exit(0); }
+
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+try {
+  vm.runInContext(patched, sandbox, { filename: "pass-composer.js" });
+} catch (e) {
+  console.log(JSON.stringify({ error: String((e && e.stack) || e) }));
+  process.exit(0);
+}
+if (!joined) { console.log(JSON.stringify({ error: "the module joined nothing" })); process.exit(0); }
+const composer = joined.make(consts);
+
+const ids = Object.keys(works);
+const ROLE_FN = [["culmination", "dominant"], ["middle", "subdominant"], ["middle", "dominant"],
+                 ["opening", "tonic"]];
+const SEEDS = [0, 2, 4, 6];
+
+let found = null;
+outer:
+for (let i = 0; i < ids.length && !found; i++) {
+  const from = ids[i];
+  for (let j = 0; j < ids.length && !found; j++) {
+    const to = ids[j];
+    if (to === from) continue;
+    for (const [role, fn] of ROLE_FN) {
+      for (const seed of SEEDS) {
+        const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+                      seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+                      walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+        let made;
+        try { made = composer.passageFor(req); } catch (e) { continue; }
+        if (!made || made.declined || !made.plan) continue;
+        const cues = made.plan.cues || [];
+        const lm = cues.filter((c) => c.instrument.id === "livemirror")[0];
+        if (!lm) continue;
+        const mh = lm.measuredHandles || {};
+        const cxFrom = mh.centreX && mh.centreX[0] && mh.centreX[0].v;
+        const cyFrom = mh.centreY && mh.centreY[0] && mh.centreY[0].v;
+        const axisFrom = mh.axis && mh.axis[0] && mh.axis[0].v;
+        if (typeof cxFrom !== "number" || typeof cyFrom !== "number") continue;
+        const rlx = (((works[from].structure || {}).regions || {}).line || {}).x || {};
+        const rly = (((works[from].structure || {}).regions || {}).line || {}).y || {};
+        const rlxT = (((works[to].structure || {}).regions || {}).line || {}).x || {};
+        const rlyT = (((works[to].structure || {}).regions || {}).line || {}).y || {};
+        // A PAIR WHERE THE READ AXIS'S OWN LINE IS A REAL NUMBER ON AT LEAST ONE SIDE, so the row
+        // shows the reading actually reaching the handle rather than falling through to the
+        // fallback on every pair alike.
+        const flat = axisFrom >= 0.5;
+        const haveLine = flat ? (typeof rly.at === "number" || typeof rlyT.at === "number")
+                               : (typeof rlx.at === "number" || typeof rlxT.at === "number");
+        if (!haveLine) continue;
+        found = { from: from, to: to, seed: seed, role: role, fn: fn,
+                  axis: axisFrom, cx: cxFrom, cy: cyFrom,
+                  lineXFrom: rlx.at, lineYFrom: rly.at, lineXTo: rlxT.at, lineYTo: rlyT.at,
+                  radialCxFrom: ((works[from].structure || {}).radial || {}).centre,
+                  radialCxTo: ((works[to].structure || {}).radial || {}).centre };
+        break outer;
+      }
+    }
+  }
+}
+console.log(JSON.stringify({ found: found }));
+"""
+
+
+def _mirror_node_available():
+    return shutil.which("node") is not None
+
+
+if not _mirror_node_available():
+    skip(MIRROR_LINE_ROW, "node is not on this machine")
+    skip(MIRROR_LINE_RED_ROW, "node is not on this machine")
+elif not (MIRROR_COMPOSER.exists() and MIRROR_FIXTURE_WORKS.exists()):
+    skip(MIRROR_LINE_ROW, "the composer or its works fixture are not on this machine")
+    skip(MIRROR_LINE_RED_ROW, "no real pair to replant")
+else:
+    _lm_source = MIRROR_COMPOSER.read_text(encoding="utf-8").replace("@@NS@@", "")
+    _lm_fix_works = json.loads(MIRROR_FIXTURE_WORKS.read_text(encoding="utf-8"))
+    _lm_tmp = Path(tempfile.mkdtemp(prefix="pass_livemirror_line_"))
+
+    def _run_mirror(plants=None):
+        driver_text = MIRROR_DRIVER % {
+            "source": json.dumps(_lm_source),
+            "consts": json.dumps(_lm_fix_works["consts"]),
+            "works": json.dumps(_lm_fix_works["works"]),
+            "plants": json.dumps(plants or []),
+        }
+        driver_path = _lm_tmp / "driver.js"
+        driver_path.write_text(driver_text, encoding="utf-8")
+        proc = subprocess.run(["node", str(driver_path)], capture_output=True, text=True,
+                              timeout=600)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-1200:]}
+        lines = (proc.stdout or "").strip().splitlines()
+        if not lines:
+            return {"error": "the driver said nothing"}
+        return json.loads(lines[-1])
+
+    _lm_green = _run_mirror()
+    _lm_found = _lm_green.get("found") if isinstance(_lm_green, dict) else None
+    check(MIRROR_LINE_ROW, isinstance(_lm_found, dict),
+          ("real pair %s→%s (seed %s, role %s/%s, axis %s): the composer's own livemirror branch "
+           "handed the instrument centreX=%s centreY=%s, read off the pair's own "
+           "structure.regions.line — departing line x/y=%s/%s, arriving x/y=%s/%s"
+           % (_lm_found.get("from"), _lm_found.get("to"), _lm_found.get("seed"),
+              _lm_found.get("role"), _lm_found.get("fn"), _lm_found.get("axis"),
+              _lm_found.get("cx"), _lm_found.get("cy"), _lm_found.get("lineXFrom"),
+              _lm_found.get("lineYFrom"), _lm_found.get("lineXTo"), _lm_found.get("lineYTo"))
+           if isinstance(_lm_found, dict) else
+           "the real 121-work fleet's own passageFor search cast livemirror with a real "
+           "structural-line reading on no real pair at all: " + json.dumps(_lm_green)))
+
+    if not isinstance(_lm_found, dict):
+        skip(MIRROR_LINE_RED_ROW, "no real pair found above to replant")
+    else:
+        _lm_plant = [[
+            "          if (lmHaveF || lmHaveT) {\n"
+            "            var lmShare = lmHaveF && lmHaveT ? (lmAtF + lmAtT) / 2 : (lmHaveF ? lmAtF : lmAtT);\n"
+            "            if (lmFlat) wanted.centreY = flt(r4(clamp01(lmShare)));\n"
+            "            else wanted.centreX = flt(r4(clamp01(lmShare)));\n"
+            "          }",
+            "          if (false) {}",
+        ]]
+        _lm_red = _run_mirror(plants=_lm_plant)
+        if _lm_red.get("missed"):
+            skip(MIRROR_LINE_RED_ROW, "the lines this plant names are not in the shipped source")
+        else:
+            _lm_replay_driver = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+const plants = %(plants)s;
+const from = %(from)s, to = %(to)s, seed = %(seed)s, role = %(role)s, fn = %(fn)s;
+
+let patched = source;
+for (const [f, t] of plants) { patched = patched.split(f).join(t); }
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+vm.runInContext(patched, sandbox, { filename: "pass-composer.js" });
+const composer = joined.make(consts);
+const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+              seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+              walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+const made = composer.passageFor(req);
+const lm = (made.plan.cues || []).filter((c) => c.instrument.id === "livemirror")[0];
+const mh = (lm && lm.measuredHandles) || {};
+console.log(JSON.stringify({
+  cx: mh.centreX && mh.centreX[0] && mh.centreX[0].v,
+  cy: mh.centreY && mh.centreY[0] && mh.centreY[0].v,
+}));
+"""
+            _lm_replay_text = _lm_replay_driver % {
+                "source": json.dumps(_lm_source),
+                "consts": json.dumps(_lm_fix_works["consts"]),
+                "works": json.dumps(_lm_fix_works["works"]),
+                "plants": json.dumps(_lm_plant),
+                "from": json.dumps(_lm_found["from"]), "to": json.dumps(_lm_found["to"]),
+                "seed": json.dumps(_lm_found["seed"]), "role": json.dumps(_lm_found["role"]),
+                "fn": json.dumps(_lm_found["fn"]),
+            }
+            _lm_replay_path = _lm_tmp / "replay.js"
+            _lm_replay_path.write_text(_lm_replay_text, encoding="utf-8")
+            _lm_replay_proc = subprocess.run(["node", str(_lm_replay_path)], capture_output=True,
+                                             text=True, timeout=120)
+            _lm_replayed = (json.loads(_lm_replay_proc.stdout.strip().splitlines()[-1])
+                           if _lm_replay_proc.returncode == 0 and _lm_replay_proc.stdout.strip() else
+                           {"error": (_lm_replay_proc.stderr or "")[-800:]})
+            _lm_changed = (_lm_replayed.get("cx") != _lm_found.get("cx")
+                          or _lm_replayed.get("cy") != _lm_found.get("cy"))
+            check(MIRROR_LINE_RED_ROW, _lm_changed,
+                  "the same real request replayed (from=%s to=%s seed=%s role=%s/%s): shipped "
+                  "centreX=%s centreY=%s (the pair's own measured structural line), reading removed "
+                  "centreX=%s centreY=%s (the radial-centre midpoint, today's pre-fix behaviour) — "
+                  "a real change on a real pair, not the same number twice"
+                  % (_lm_found["from"], _lm_found["to"], _lm_found["seed"], _lm_found["role"],
+                     _lm_found["fn"], _lm_found["cx"], _lm_found["cy"], _lm_replayed.get("cx"),
+                     _lm_replayed.get("cy")))
+
 
 # ---------------------------------------------------------------- browser rows
 

@@ -155,6 +155,13 @@
       // in radians, the parquet's own period as a share of the sheet, and the turn of its lattice.
       // Every one of the four is nothing at nothing, which is what makes the door exact.
       "uniform vec4 uField;",
+      // WHERE THE FLOOR'S OWN LATTICE LANDS — Phase 9's own sweep (2026-09-01), the same repair
+      // pass-inst-parquet.js's own `uPhase` made to the mirror floor, carried here because this
+      // continuation is the identical construction: `structure.grid.periodPx`/`.angleDeg` above
+      // already say how many tiles and which way they turn, never where a tile's own edge stands.
+      // A phase of nothing (both doors, and any work whose own lines this pair's cast did not
+      // trust) leaves the floor exactly where it always stood.
+      "uniform float uParquetPhase;",
       // THE ROOM THE LEAN NEEDS, and the room the CORNER needs on top of it (unfold.js:42, :47). Both
       // are the module's own numbers and both are nothing at either door, because nothing leans and
       // nothing turns there.
@@ -373,7 +380,13 @@
       "      float ct = cos(uField.w), stt = sin(uField.w);",
       "      vec2 rq = vec2(c0.x * ct + c0.y * stt, -c0.x * stt + c0.y * ct) + SZ * 0.5;",
       "      vec2 P = SZ * max(uField.z, 0.05);",
-      "      vec2 fq = folded(rq, P);",
+      // uParquetPhase SHIFTS THE FLOOR along rq.x alone — the axis the turn above just rotated the
+      // lattice ONTO, which is the axis perpendicular to the picture's own measured lines (`uField.w`
+      // already carries that work's own measured line direction, the same turn `pass-inst-
+      // parquet.js`'s own `uLat.w` carries). rq.y runs ALONG those lines, where a single measured
+      // family names no natural offset and is left at `folded`'s own middle-tile convention, the
+      // identical split parquet's own `uPhase` fix makes.
+      "      vec2 fq = folded(rq - vec2(uParquetPhase * P.x, 0.0), P);",
       "      wcol = pane(tex, fq, SZ);",
       // DEPTH, THE ONE THING THAT MAKES A PLANE READ AS A PLANE. What is far takes the world's own
       // light; without it the parquet is a flat pattern however the plane is tipped.
@@ -721,6 +734,11 @@
                 typeof st.parquetPeriod === "number"
                   ? clamp(st.parquetPeriod, TILE_MIN, TILE_MAX) : TILE_DEF,
                 (typeof st.parquetTurn === "number" ? st.parquetTurn : 0) * DEG],
+        // WHERE THE FLOOR'S OWN LATTICE LANDS, a share of one tile — Phase 9's own sweep
+        // (2026-09-01), the same handle parquet's own `phase` publishes, read here because this
+        // continuation is that instrument's construction carried across (this file's own header,
+        // "the sheet opens past its own edges into a parquet that continues without end").
+        parquetPhase: typeof st.parquetPhase === "number" ? clamp(st.parquetPhase, 0, 1) : 0,
         // read on the diagnostic surface, bound to no uniform: what the hand came to
         fold: fold, cross: cross, aY: aY, aX: aX, four: four ? 1 : 0, flatDeg: flatDeg,
         mask: clamp(st.mask, 0, 1),
@@ -1164,6 +1182,20 @@
                             + "structure.grid.angleDeg, the direction the work's own lattice "
                             + "varies along, where no device was derived",
                        level: "CELL" },
+        // WHERE THE FLOOR'S OWN LATTICE LANDS, Phase 9's own sweep of
+        // docs/V2-CONVERGENCE-PLAN-2026-08-31.md (added 2026-09-01) — the charter's own «cut along
+        // its own lines» clause (lab/CROSSING-BRIEF.md:204-207), the one thing `parquetPeriod` and
+        // `parquetTurn` above never answered: they say how many tiles and which way they turn, not
+        // where a tile's own edge stands. The same repair pass-inst-parquet.js's own `phase` handle
+        // makes, carried here because the construction is that instrument's, continued.
+        parquetPhase: { min: 0, max: 1, def: 0, unit: "a share of one tile",
+                        reads: "structure.grid.phase — where the made work's own strongest "
+                             + "measured repeat falls, read in pass-composer.js's own unfold "
+                             + "branch on exactly the condition parquetPeriod/parquetTurn already "
+                             + "read on for the same work (gridCount > 0), never on a floor read "
+                             + "off the score: shelf 9's own law is that a measurement ranks and "
+                             + "never gates",
+                        level: "CELL" },
         // The judges' own panel-map channel: it drives no structural level.
         mask: { min: 0, max: 1, def: 0,
                 applied: { readAtADoor: { points: DOOR_HOLD, readOn: "the drawing buffer",
@@ -1204,8 +1236,8 @@
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
       neutralPose: { mix: 0, tilt: 0.5, shade: 1, depth: 0.5, stagger: 0.34, panels: 1, mask: 0,
-                     field: 0, parquetPeriod: TILE_DEF, parquetTurn: 0, cameraTilt: 0,
-                     t: 0, reduced: false, cssWidth: 1000, cssHeight: 1000 },
+                     field: 0, parquetPeriod: TILE_DEF, parquetTurn: 0, parquetPhase: 0,
+                     cameraTilt: 0, t: 0, reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
         program: "unfold", vert: VERT, frag: FRAG, position: "aPos",
         uniforms: [
@@ -1222,6 +1254,7 @@
           { name: "uCrease", type: "vec4", source: "frame:crease" },
           { name: "uMask", type: "float", source: "handle:mask" },
           { name: "uField", type: "vec4", source: "frame:field" },
+          { name: "uParquetPhase", type: "float", source: "frame:parquetPhase" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -1298,6 +1331,7 @@
           // The world, straight to the pose. A score that names none of the three leaves the sheet
           // closed on itself, which is the module's own frame.
           field: h.field, parquetPeriod: h.parquetPeriod, parquetTurn: h.parquetTurn,
+          parquetPhase: h.parquetPhase,
           // THE CAMERA'S OWN TILT AND BOTH WORKS' SEATING, as the host hands them down since
           // 2026-08-17. The tilt is taken off the plane's attitude so the two do not double; the
           // seating lets the door's own reading walk the sheet the shader will actually build,
