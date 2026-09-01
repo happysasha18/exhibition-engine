@@ -3816,6 +3816,37 @@
 
     // ---- the stack, the levels, the camera ----
 
+    // THE GROUND IS THE PIVOT, AND IT IS THE PIVOT'S WINDOW THAT SAYS SO. `cueWindows` above fixes
+    // the pivot's own window at `[0.0, 1.0]` on its first line, before any branch — charter shelf 4,
+    // the pair's invariant shared part, held throughout — while travel's and arrival's are read off
+    // the pair and open somewhere inside it. `mustFill`'s own note two thousand lines up already
+    // states the consequence in as many words: «the pivot is the one cue whose window can ever
+    // promise that for the WHOLE pass; a passage that gives the ground to anything else is a
+    // passage the law cannot hold for its own opening or its own close». Until 2026-09-02 that
+    // stood as an argument for a CAST PREFERENCE and nothing read it here, so this function went on
+    // handing the ground to whichever cue's instrument happened to fill the frame.
+    //
+    // WHAT THAT COST, COUNTED RATHER THAN ARGUED. Over the 121-work fleet, both directions and every
+    // route role — 1200 composed passages — 71 of them (5.9 per cent) seated a cue other than the
+    // pivot as the ground, and the ground's own window was shorter than the passage in ALL 71 of
+    // them, across ten different instruments (unfold 21, studio 20, gates 7, lens 6, livemirror 6,
+    // box-fold 4, hero 2, droste 2, kaleidoscope 2, parquet 1). The worst of them gave the floor a
+    // window of 0.04 s inside a 7.1 s passage. Outside that window there is no floor at all: the
+    // host draws whichever voice comes first with blending DISABLED (`drawPose`'s own `else`
+    // branch), so the cue that DECLARED itself above the ground is silently drawn AS the ground, its
+    // own `presence` never read, and at each of the real ground's window edges the picture changes
+    // wholesale between two frames. Measured live on the composer's own hero bundle: `drew` goes
+    // 1 → 2 across the edge and the frame's own centre goes [198,111,79] → [82,153,199], one
+    // photograph to another, which `tests/test_pass_seam.py`'s two hero door rows read at 176 of 255
+    // over 91.6 per cent of the frame.
+    //
+    // SO THE LAW IS READ HERE NOW. A plan whose ground would be anything but the pivot is refused,
+    // in the same shape as the two refusals beside it — and the bundle planner's own ground swap
+    // (`groundCandidates`, which already asks `bestFilling` for a frame-filling instrument to give
+    // the PIVOT) is exactly the road that answers this refusal, so a pair whose first pick lands
+    // here composes a bundle that holds the law rather than declining.
+    var GROUND_CUE = CUE_IDS[0];
+
     function placeTheStack(order, instrumentOf) {
       var i, stacks = {}, ground = [], named = [], rest = [];
       if (order.length < 2) {
@@ -3834,6 +3865,13 @@
       if (ground.length > 1) {
         return [null, "the stack has two grounds: more than one cue fills the frame whole, and "
                 + "everything beneath the upper one would be drawn and never seen — " + namedText];
+      }
+      if (ground[0] !== GROUND_CUE) {
+        return [null, "the stack's ground would be «" + ground[0] + "», which plays only part of "
+                + "the passage: «" + GROUND_CUE + "» is the one cue whose window runs from the "
+                + "first instant to the last, so any other cue given the ground leaves the frame "
+                + "standing on the cleared buffer outside its own window, and the voice above it is "
+                + "drawn as the ground there with its own presence never read — " + namedText];
       }
       for (i = 0; i < order.length; i++) if (order[i] !== ground[0]) rest.push(order[i]);
       stacks[ground[0]] = 0;

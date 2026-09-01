@@ -508,7 +508,7 @@ check("PASS-BOXFOLD the port's own one number is named as its own, and it is the
 
 check("PASS-BOXFOLD the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "uQuad" not in LAYER and "uInv" not in LAYER,
-      "this instrument declares twenty uniforms, of which five are shared with the woven one. The "
+      "this instrument declares twenty-one uniforms, of which five are shared with the woven one. "
       "host reads the manifest")
 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
@@ -635,6 +635,26 @@ BROWSER_ROWS = [
     "PASS-BOXFOLD the judges' handle's published door contract is the boundary just measured",
     "PASS-BOXFOLD the five pardon conditions divide the way the file says, and the split is real",
 ]
+
+# THE DOOR ROWS ABOVE ALL STAND AT `axis` 0 — the crease upright — because `box_cue`'s and
+# `fixture_pass_boxfold.html`'s own default pose does, and every door row in this file has since it
+# was written. The handle has TWO values, both of them enum steps a score drives (`axis: {min: 0,
+# max: 1, kind: "enum", step: 1}`), and the composer drives the other one on every real bundle whose
+# pivot reads a banding axis running the other way. This row stands the same two doors at `axis` 1.
+#
+# WHAT IT CAUGHT (2026-09-02). With the crease FLAT, `posed`'s own `pt` puts the face's two axes on
+# the screen the other way round — `s`, across the turn's plane, runs UP the frame and `t`, along the
+# crease, runs ACROSS it — and the shader pasted the picture onto the face by one fixed rule
+# regardless, so a landed face stood the work REFLECTED ABOUT ITS OWN ANTI-DIAGONAL. Every row above
+# passed through it: the box's own door reading walks its faces' CORNERS over the buffer and never
+# asks where inside the source a face reads, the two-roads rows compare this port against the lab
+# module which pastes it the same way, and no door row was ever taken at this axis. The walk's own
+# DOM read it at 34 of 255 on the mean and 176 on the worst channel at both real doors
+# (`tests/test_pass_hang.py`'s real-pair rows), which is what sent it here.
+FLAT_DOOR_ROW = ("PASS-BOXFOLD row 7  · with the crease lying FLAT, both doors still stand the work "
+                 "the right way up, measured against their own files")
+FLAT_DOOR_RED_ROW = ("PASS-BOXFOLD red-on-bug · pasting the picture on the face by one fixed rule "
+                     "mirrors both flat-crease doors about the anti-diagonal")
 
 RED_ROWS = [
     "PASS-BOXFOLD red-on-bug · the room the crease's travel needs removed: the frame stops being covered",
@@ -820,11 +840,38 @@ def host_shot(br, at, tag):
     return png(br, SHOTS / (tag + ".png"))
 
 
+def _bench_grid(br):
+    c = "document.querySelector('canvas[aria-hidden]')"
+    return (int(br.evaluate("String(%s.width)" % c)), int(br.evaluate("String(%s.height)" % c)))
+
+
+def flat_doors(br, w, h):
+    """BOTH DOORS WITH THE CREASE LYING FLAT, each against its own file.
+
+    `axis` is an enum handle of two steps and a score drives both; every other door row in this file
+    stands at the first. This walks the second and reads the same comparison — the door against the
+    whole source file, cover-fitted into the frame and centre-cropped by the box's own crop, which is
+    what the `framings` block publishes and which the crease's own direction cannot change: with the
+    crease flat the box's two half-extents change places with each other AND so does the frame's own
+    pair, so the frame still sees exactly the middle 1/CROP of the face either way.
+
+    The axis is put back where it was found, so nothing downstream reads a bench this row moved."""
+    crease(br)
+    br.evaluate("window.__param('axis', 1); 0")
+    br.sleep(0.45)
+    out = {}
+    for tag, at, src in (("flat-door-0", 0.0, PHOTOS[0]), ("flat-door-1", 1.0, PHOTOS[1])):
+        out[tag] = apart(host_shot(br, at, tag), work_in_the_frame(src, w, h))
+    br.evaluate("window.__param('axis', 0); 0")
+    br.sleep(0.35)
+    return out
+
+
 if not chrome_available():
-    for r in BROWSER_ROWS + RED_ROWS:
+    for r in BROWSER_ROWS + RED_ROWS + [FLAT_DOOR_ROW, FLAT_DOOR_RED_ROW]:
         skip(r, "Chrome not installed (pinned expected skip)")
 elif missing:
-    for r in BROWSER_ROWS + RED_ROWS:
+    for r in BROWSER_ROWS + RED_ROWS + [FLAT_DOOR_ROW, FLAT_DOOR_RED_ROW]:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
 else:
     shutil.rmtree(SHOTS, ignore_errors=True)
@@ -834,14 +881,14 @@ else:
         with Browser(width=VW, height=VH) as br:
             br.navigate(base + "/index.html")
             if not ready(br):
-                for r in BROWSER_ROWS:
+                for r in BROWSER_ROWS + [FLAT_DOOR_ROW]:
                     check(r, False, "the bench never came up: "
                          + br.evaluate("JSON.stringify(window.__errs||[])"))
             elif not js(br, "return !!window.__exPass.bench.manifest('boxfold');"):
                 why = js(br, "var e = window.__host.report().events.filter(function(x){"
                              "return x.name === 'manifest-refused';});"
                              "return e.length ? e[e.length - 1].why : null;")
-                for r in BROWSER_ROWS:
+                for r in BROWSER_ROWS + [FLAT_DOOR_ROW]:
                     check(r, False, "the host registered no «box» instrument: " + str(why))
             else:
                 SCORE = json.dumps(box_score())
@@ -871,7 +918,7 @@ else:
                                          "entry": {"mix": 0, "work": "a", "pose": "flat"},
                                          "exit": {"mix": 1, "work": "b", "pose": "flat"}}
                     and m["gl"] == {"preserveDrawingBuffer": False}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 20
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 21
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -883,7 +930,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "boxfold" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"twelve handles, twenty uniforms in one pass, both doors at a cover crop of "
+                      f"twelve handles, twenty-one uniforms in one pass, both doors at a cover crop of "
                       f"{m['framings']['0']['coverCrop']} — the room the turn needs plus the room "
                       f"the crease's travel needs — resources declared for three tiers with a byte "
                       f"estimate of {res['standard']['bytesEstimate']}, and a coverage block reading "
@@ -947,6 +994,19 @@ else:
                         f"module handed a matrix, because the host binds neither a matrix nor an "
                         f"array of lines. The module is served with its crop levelled to the port's "
                         f"own and nothing else changed")
+
+                # ---- the same two doors, with the crease lying FLAT ------------------------------
+                flat = flat_doors(br, w, h)
+                check(FLAT_DOOR_ROW,
+                      all(mn <= SEAM for mn, _ in flat.values()),
+                      "; ".join(f"{t} against its own file at the cover crop of {CROP}: mean "
+                                f"{mn:.4f} of 255 (threshold {SEAM}), worst channel {mx}"
+                                for t, (mn, mx) in sorted(flat.items()))
+                      + ". Which way the crease lies decides which of the face's own two axes runs "
+                        "across the frame and which runs up it; the picture is pasted onto the face "
+                        "by that same decision, so a landed face stands the work the right way up "
+                        "either way. Pasted by one fixed rule instead, both of these doors stand it "
+                        "mirrored about its own anti-diagonal, which the red-on-bug row below reads")
 
                 # ---- §7: the frame is covered, read off the face map ------------------------------
                 maps = []
@@ -1505,11 +1565,38 @@ else:
           f"against the project's own seam threshold of {SEAM}. The module's own judged run reads "
           f"the shadow as worth 40.0 channels of the frame where it lies")
 
+    # ---- 4. the picture pasted on the face by one fixed rule -------------------------------------
+    # The face's own square is (s, t) — `s` across the turn's plane, `t` along the crease — and
+    # `posed`'s `pt` lays those two on the SCREEN by which way the crease lies. The picture has to be
+    # pasted onto the face by the same decision, or a landed face stands the work turned. Reverted in
+    # the served bytes to the one fixed rule this file carried until 2026-09-02, and the number that
+    # moves is both flat-crease doors against their own files.
+    FLAT_SWAP = '"  vec2 scA = uFlat > 0.5 ? stA.yx : stA;",'
+    base_flat = on_bench(lambda b: flat_doors(b, *_bench_grid(b)))
+    bug = PACK.replace(FLAT_SWAP, '"  vec2 scA = stA;",', 1)
+    bug = bug.replace('"  vec2 scB = uFlat > 0.5 ? stB.yx : stB;",', '"  vec2 scB = stB;",', 1)
+    bug_flat = on_bench(lambda b: flat_doors(b, *_bench_grid(b)), pack_text=bug)
+    check(FLAT_DOOR_RED_ROW,
+          bug != PACK and base_flat is not None and bug_flat is not None
+          and all(mn <= SEAM for mn, _ in base_flat.values())
+          and all(mn > SEAM for mn, _ in bug_flat.values()),
+          "with the pasting following the crease, "
+          + "; ".join(f"{t} stands {mn:.4f} of 255 from its own file"
+                      for t, (mn, _) in sorted(base_flat.items()))
+          + "; with it pasted by one fixed rule instead, "
+          + "; ".join(f"{t} stands {mn:.4f} of 255 (worst channel {mx})"
+                      for t, (mn, mx) in sorted(bug_flat.items()))
+          + f", against the project's own seam threshold of {SEAM}. What the second reading is, "
+            "said exactly: the work reflected about its own anti-diagonal — the frame's top-left "
+            "corner reading the source's bottom-right and its bottom-right reading the source's "
+            "top-left, the other two standing still — which is a mirrored photograph and not the "
+            "work at all")
+
 
 shutil.rmtree(TMP, ignore_errors=True)
 
 ran = {name for name, _, _ in results}
-for name in BROWSER_ROWS + RED_ROWS:
+for name in BROWSER_ROWS + RED_ROWS + [FLAT_DOOR_ROW, FLAT_DOOR_RED_ROW]:
     if name not in ran:
         check(name, False, "the row never ran")
 
