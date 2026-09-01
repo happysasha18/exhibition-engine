@@ -593,6 +593,17 @@ if (!(CAMERA_POINT_CAP > 0) || !(DOLLY_CAP > 0)) {
 // rather than against its own documented fallback. The fixture predates the field; handing it here
 // is the same value by the same road, not a second one.
 fix.consts.intentFenceChars = INTENT_CAP;
+// AND THE BYTE FENCE BESIDE IT, BY THE SAME ROAD AND FOR A HARDER REASON (2026-09-01). The prose
+// fence's absence from the fixture only meant a longer line; the byte fence's absence means
+// `fitTheWeight` returns on its own first line — «a score with no fence published is left exactly
+// as it was composed» — so the composer under test sheds NOTHING, and the fence row measures a
+// composer that was never asked to fit. The fixture carried `scoreFenceBytes` until 2e68cb0 wrote
+// it out truncated; 090e8e9 repaired the truncation and restored `pair` and `expectedTight` but not
+// this field, and the row went red on 42 unfitted scores with the engine untouched. Handing it in
+// from the client closes that for good: this suite can no longer measure a fenceless composer,
+// whatever a frozen fixture happens to carry, and the number is the client's own exactly as the
+// prose fence above is.
+fix.consts.scoreFenceBytes = BYTE_CAP;
 
 // EACH HANDLE'S OWN STRUCTURAL LEVEL, CARRIED IN FROM THE INSTRUMENT'S OWN FILE. A handle declares
 // the level it drives in the manifest its own file registers, which is the one home of that fact;
@@ -4711,6 +4722,7 @@ def enter(br, base, pass_arg=None, step=False):
 
 def js(br, body):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % body))
+
 
 
 # ---------------------------------------------------------------- EX-PASS-RECORDS: the route itself
