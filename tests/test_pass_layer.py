@@ -46,6 +46,7 @@ green above proves nothing.
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -66,6 +67,191 @@ def check(name, cond, detail=""):
 
 def skip(name, detail):
     results.append((name, "SKIP", detail))
+
+
+# ================================================================================================
+# REAL-DATA CAMLED-vs-WORLD COLLISION (V2-CONVERGENCE-PLAN-2026-08-31 Phase 4, item 3). Charter
+# shelf 17 opens its own voice list with the camera, and its levels law allows one active voice per
+# structural level, the world being the camera's own — so a score that declares `camera.lead` and
+# then gives a cue the world level is asking for two voices on one level. The host refuses this
+# before the command is taken (`scoreWhyNo`'s own `camLed(s)` block, `pass-layer.js` — "A LED FLIGHT
+# SPENDS THE WORLD VOICE..." above the code cited at the sprint brief's `:1935-1942`, offset a few
+# lines by drift since). No file in this tree drove a REAL composed passage through this check
+# before this section: `tests/test_pass_drivers.py`'s own `worldClash`/`worldFine` rows
+# (`bench.scoreWhyNo(...)`, `ROWS[24]`) proved the rule holds, entirely on a hand-typed synthetic cue
+# (`{id: "floor", instrument: {id: "weave"}, levels: [...]}`) — real proof of the CODE, no proof any
+# REAL composed score the planner actually builds ever reaches this exact branch. This drives the
+# real 121-work fleet's own composer to find a genuinely camera-led real score (never hand-picked),
+# feeds its own real `score.cues` — not a cue built from scratch — to the host's own real
+# `scoreWhyNo`, and only then adds the WORLD level the composer's own levels law already keeps this
+# real cue from ever carrying on its own (shelf 9: a lawful composer never manufactures the
+# violation itself — the host's refusal is the backstop for a score a corrupted or hand-built
+# request could still send it, which is exactly what this proves against real cue shapes).
+_CAMLED_ROW = ("PASS-LAYER real-data camLed/WORLD · a real camera-led score's own real cue, given "
+               "the world level, is refused by the host before the command is taken")
+_CAMLED_RED_ROW = ("PASS-LAYER real-data camLed/WORLD red-on-bug · disabling the camLed branch "
+                    "lets that same real collision through silently")
+
+_CAMLED_COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
+_CAMLED_FIXTURE_COMPOSED = ROOT / "tests" / "fixture_pass_composed.json"
+_CAMLED_FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
+
+_CAMLED_SEARCH_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, { filename: "pass-composer.js" });
+const composer = joined.make(consts);
+const ids = Object.keys(works);
+// LED_ROLES, shelf 15/17's own two homes for a camera-led passage — never a name typed here beyond
+// the composer's own published `routeRoles()`, cross-checked against the two the docstring cites.
+const LED_ROLES = ["quiet link", "return"];
+let found = null;
+outer:
+for (let i = 0; i < ids.length && !found; i++) {
+  for (let j = 0; j < ids.length && !found; j++) {
+    if (i === j) continue;
+    for (const role of LED_ROLES) {
+      const req = { workRecordA: works[ids[i]], workRecordB: works[ids[j]], direction: "a-to-b",
+                    seed: 0, routeRole: role, cameraState: null,
+                    walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+      let made;
+      try { made = composer.passageFor(req); } catch (e) { continue; }
+      if (!made || made.declined || !made.score || !made.score.camera) continue;
+      if (made.score.camera.lead === true) {
+        found = { from: ids[i], to: ids[j], seed: 0, role: role,
+                  score: { duration: made.score.duration, camera: made.score.camera,
+                           cues: made.score.cues } };
+        break outer;
+      }
+    }
+  }
+}
+console.log(JSON.stringify({ found: found }));
+"""
+
+
+def _camled_node_available():
+    return shutil.which("node") is not None
+
+
+def _camled_search():
+    driver_text = _CAMLED_SEARCH_DRIVER % {
+        "source": json.dumps(_CAMLED_COMPOSER.read_text(encoding="utf-8").replace("@@NS@@", "")),
+        "consts": json.dumps(json.loads(
+            _CAMLED_FIXTURE_COMPOSED.read_text(encoding="utf-8"))["consts"]),
+        "works": json.dumps(json.loads(
+            _CAMLED_FIXTURE_WORKS.read_text(encoding="utf-8"))["works"]),
+    }
+    tmp_dir = Path(tempfile.mkdtemp(prefix="pass_layer_camled_"))
+    driver_path = tmp_dir / "search.js"
+    driver_path.write_text(driver_text, encoding="utf-8")
+    proc = subprocess.run(["node", str(driver_path)], capture_output=True, text=True, timeout=120)
+    if proc.returncode != 0:
+        return {"error": (proc.stderr or "").strip()[-1200:]}
+    lines = (proc.stdout or "").strip().splitlines()
+    if not lines:
+        return {"error": "the search driver said nothing"}
+    return json.loads(lines[-1])
+
+
+_CAMLED_BENCH_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+let source = fs.readFileSync(process.argv[2], "utf8").replace(/@@NS@@/g, "");
+const plantIt = process.argv[3] === "1";
+const PLANT_FROM = "if (camLed(s)) {";
+const PLANT_TO = "if (false) {";
+if (plantIt) {
+  if (source.indexOf(PLANT_FROM) < 0) { console.log(JSON.stringify({missed: true})); process.exit(0); }
+  source = source.split(PLANT_FROM).join(PLANT_TO);
+}
+let host = null;
+const sandbox = { window: { devicePixelRatio: 1, innerWidth: 390, innerHeight: 844,
+                            __Pass: {}, __PassLayer: (h) => { host = h; } },
+                  performance: { now: () => 0 }, console: console, document: undefined };
+sandbox.window.performance = sandbox.performance;
+vm.createContext(sandbox);
+try {
+  vm.runInContext(source, sandbox, { filename: "pass-layer.js" });
+} catch (e) {
+  console.log(JSON.stringify({ error: String((e && e.stack) || e) }));
+  process.exit(0);
+}
+const bench = sandbox.window.__Pass.bench;
+if (!bench || typeof bench.scoreWhyNo !== "function") {
+  console.log(JSON.stringify({ error: "the built host published no scoreWhyNo" }));
+  process.exit(0);
+}
+const score = JSON.parse(process.argv[4]);
+const baseline = bench.scoreWhyNo(score);
+const collided = JSON.parse(JSON.stringify(score));
+collided.cues[0].levels = (collided.cues[0].levels || []).concat(["WORLD"]);
+const collision = bench.scoreWhyNo(collided);
+console.log(JSON.stringify({ baseline: baseline, collision: collision, collidedCueId: collided.cues[0].id }));
+"""
+
+
+def _camled_bench_run(plant_it):
+    tmp_dir = Path(tempfile.mkdtemp(prefix="pass_layer_camled_bench_"))
+    driver_path = tmp_dir / "bench.js"
+    driver_path.write_text(_CAMLED_BENCH_DRIVER, encoding="utf-8")
+    proc = subprocess.run(["node", str(driver_path), str(LAYER_PATH), "1" if plant_it else "0",
+                           json.dumps(_camled_score)],
+                          capture_output=True, text=True, timeout=60)
+    if proc.returncode != 0:
+        return {"error": (proc.stderr or "").strip()[-1200:]}
+    lines = (proc.stdout or "").strip().splitlines()
+    if not lines:
+        return {"error": "the bench driver said nothing"}
+    return json.loads(lines[-1])
+
+
+if not _camled_node_available():
+    skip(_CAMLED_ROW, "node is not on this machine")
+    skip(_CAMLED_RED_ROW, "node is not on this machine")
+elif not (_CAMLED_COMPOSER.exists() and _CAMLED_FIXTURE_COMPOSED.exists()
+          and _CAMLED_FIXTURE_WORKS.exists() and LAYER_PATH.exists()):
+    skip(_CAMLED_ROW, "the composer, the host, or the real fixtures are not on this machine")
+    skip(_CAMLED_RED_ROW, "no real led score to replant against")
+else:
+    _camled_found = _camled_search().get("found")
+    if not isinstance(_camled_found, dict):
+        skip(_CAMLED_ROW, "the real 121-work fleet's own search cast no camera-led score at all")
+        skip(_CAMLED_RED_ROW, "no real led score found above to replant")
+    else:
+        _camled_score = _camled_found["score"]
+        _camled_green = _camled_bench_run(plant_it=False)
+        _base_ok = _camled_green.get("baseline") is None
+        _collision_why = _camled_green.get("collision")
+        _collision_ok = (isinstance(_collision_why, str)
+                         and "world level" in _collision_why
+                         and ("«" + _camled_green.get("collidedCueId", "") + "»") in _collision_why)
+        check(_CAMLED_ROW,
+              _base_ok and _collision_ok,
+              "real led pair %s→%s (seed %s, role %s): the planner's own real score casts %s "
+              "(cameraAuthority aside, levels=%s); scoreWhyNo reads it as-composed as %s, and with "
+              "WORLD added onto that same real cue's own levels reads %s"
+              % (_camled_found["from"], _camled_found["to"], _camled_found["seed"],
+                 _camled_found["role"], [c["instrument"]["id"] for c in _camled_score["cues"]],
+                 [c["levels"] for c in _camled_score["cues"]], json.dumps(_camled_green.get("baseline")),
+                 json.dumps(_collision_why)))
+
+        _camled_red = _camled_bench_run(plant_it=True)
+        if _camled_red.get("missed"):
+            skip(_CAMLED_RED_ROW, "the line this plant names is not in the shipped source")
+        else:
+            check(_CAMLED_RED_ROW,
+                  _camled_red.get("collision") is None,
+                  "" if _camled_red.get("collision") is None else
+                  "even with the camLed branch disabled, the same real collision still reads: "
+                  + json.dumps(_camled_red.get("collision")))
 
 
 # ---------------------------------------------------------------- extracting the real shader source

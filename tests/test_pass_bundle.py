@@ -36,6 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "engine" / "assets" / "pass-composer.js"
 FIXTURE = ROOT / "tests" / "fixture_pass_composed.json"
+FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
 
 results = []
 
@@ -411,6 +412,272 @@ else:
           diag.get("routeFunction") == "dominant" and isinstance(ledger, dict)
           and isinstance(ledger.get("considered"), list) and ledger.get("winner") is not None,
           "runtime diagnostics=" + json.dumps(diag)[:800])
+
+    # ============================================================================================
+    # REAL-DATA PROOF, ONE SEARCH SERVING BOTH P1.2 items 1 and 2 (V2-CONVERGENCE-PLAN-2026-08-31
+    # Phase 4). Everything above proves each rule and the score with hand-typed instrument ids and
+    # hand-typed cue records — real proof the CODE holds the rule, no proof any REAL pair the planner
+    # actually composes ever exercises it. This block runs the real, full `passageFor` entry over the
+    # real 121-work fleet (`tests/fixture_pass_works.json`, never a hand-picked pair) and reads its
+    # own `diagnostics.bundles.considered`/`.winner` — the joint planner's own ledger, at
+    # `pass-composer.js`'s "THE FULL LEDGER, NEVER HIDDEN" comment — for a real candidate each rule
+    # actually refused or actually won.
+    #
+    # THE SEARCH SUPPLIES ROUTEROLE/ROUTEFUNCTION THE WAY A LIVE ROUTE STEP DOES (Phase 6's own
+    # finding, carried into this phase's brief): a station always states both together
+    # (`engine/client/01a-pass.js:2010-2011`), and `routeRole` alone can flip which bundle wins
+    # outright, so a search that only varies `workRecordA`/`workRecordB`/`seed` finds a DIFFERENT
+    # result than what is actually live-cast for the same pair/seed. `cameraState` is left at its
+    # cold-visit `null`: `pass-composer.js` reads it onto the diagnostic echo alone and touches no
+    # legality or scoring decision with it (`grep cameraState engine/assets/pass-composer.js`), so a
+    # DOM-derived pose has nothing to add to a search over what the COMPOSER decides.
+    REAL_SEARCH_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, { filename: "pass-composer.js" });
+const composer = joined.make(consts);
+
+const ids = Object.keys(works);
+// Every role/function pairing a live route station can actually send together (shelf 15's own map,
+// `FUNCTION_OF_ROLE` in pass-composer.js, plus "middle"'s own crest exception it already reads).
+const ROLE_FN = [["entrance", "subdominant"], ["quiet link", "tonic"], ["middle", "subdominant"],
+                 ["middle", "dominant"], ["culmination", "dominant"], ["return", "tonic"]];
+const SEEDS = [0, 3];
+
+const goals = { colourPromo: null, rule1: null, rule2: null, rule3: null, rule4: null };
+let neverFiresHandover = true;
+
+outer:
+for (let i = 0; i < ids.length; i++) {
+  for (let j = 0; j < ids.length; j++) {
+    if (i === j) continue;
+    const from = ids[i], to = ids[j];
+    for (const [role, fn] of ROLE_FN) {
+      for (const seed of SEEDS) {
+        const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+                      seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+                      walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+        let made;
+        try { made = composer.passageFor(req); } catch (e) { continue; }
+        if (!made || made.declined || !made.plan || !made.diagnostics
+            || !made.diagnostics.bundles) continue;
+        const bundles = made.diagnostics.bundles;
+        const winner = bundles.winner;
+        if (!goals.colourPromo && winner && winner.ok && winner.colour === true) {
+          const g = winner.ground, t = winner.travel, a = winner.arrival;
+          const levelsOf = (iid) => (iid && consts.manifests[iid]
+            && consts.manifests[iid].levels) || [];
+          const singer = [t, a, g].filter((iid) => iid
+            && levelsOf(iid).indexOf("LIGHT-COLOUR") >= 0)[0];
+          if (singer && singer !== g) {
+            goals.colourPromo = { from: from, to: to, seed: seed, role: role, fn: fn,
+                                   winner: winner, singer: singer };
+          }
+        }
+        if (!goals.rule4 && winner && winner.ok && (winner.travel || winner.arrival)) {
+          goals.rule4 = { from: from, to: to, seed: seed, role: role, fn: fn, winner: winner };
+        }
+        for (const row of bundles.considered || []) {
+          if (!row.why) continue;
+          if (row.why.indexOf("handover") >= 0) neverFiresHandover = false;
+          if (!goals.rule1 && (row.why.indexOf("impossible event") >= 0
+                               || row.why.indexOf("no miracle") >= 0)) {
+            goals.rule1 = { from: from, to: to, seed: seed, role: role, fn: fn, row: row };
+          }
+          if (!goals.rule2 && row.why.indexOf("would own nothing free") >= 0) {
+            goals.rule2 = { from: from, to: to, seed: seed, role: role, fn: fn, row: row };
+          }
+          if (!goals.rule3 && row.why.indexOf("does not take letters") >= 0) {
+            goals.rule3 = { from: from, to: to, seed: seed, role: role, fn: fn, row: row };
+          }
+        }
+      }
+      if (goals.colourPromo && goals.rule1 && goals.rule2 && goals.rule3 && goals.rule4) break outer;
+    }
+  }
+}
+console.log(JSON.stringify({ goals: goals, neverFiresHandover: neverFiresHandover }));
+"""
+
+    def real_search():
+        if not FIXTURE_WORKS.exists():
+            return {"error": "tests/fixture_pass_works.json is not on this machine"}
+        fix_works = json.loads(FIXTURE_WORKS.read_text(encoding="utf-8"))
+        driver_text = REAL_SEARCH_DRIVER % {
+            "source": json.dumps(RAW),
+            "consts": json.dumps(FIX["consts"]),
+            "works": json.dumps(fix_works["works"]),
+        }
+        driver_path = TMP / "bundle-real-search.js"
+        driver_path.write_text(driver_text, encoding="utf-8")
+        proc = subprocess.run(["node", str(driver_path)], capture_output=True, text=True,
+                              timeout=180)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-1200:]}
+        lines = (proc.stdout or "").strip().splitlines()
+        if not lines:
+            return {"error": "the search driver said nothing"}
+        return json.loads(lines[-1])
+
+    if not FIXTURE_WORKS.exists():
+        for _n in (
+            "REAL DATA · item 1 — a real planner-composed pair casts structural colour on travel "
+            "or arrival",
+            "REAL DATA red-on-bug · reverting the +6/+1 split on that same real bundle collapses "
+            "the two",
+            "REAL DATA · item 2 RULE 1 — a real composed candidate is refused for spending the "
+            "one miracle at a role shelf 17 gives none",
+            "REAL DATA · item 2 RULE 2 — a real composed candidate is refused because a voice "
+            "owns nothing free",
+            "REAL DATA · item 2 RULE 3 — a real composed candidate is refused past its role's own "
+            "tier/letter ceiling",
+            "REAL DATA · item 2 RULE 4 — a real composed winner's own cast clears the fleet's "
+            "richest published resource budget",
+            "REAL DATA · item 2 RULE 5 — across every real candidate this search considered, the "
+            "still-stubbed surface-handover check never once refuses one",
+        ):
+            skip(_n, "tests/fixture_pass_works.json is not on this machine")
+    else:
+        _search = real_search()
+        _goals = _search.get("goals") if isinstance(_search, dict) else None
+        if not isinstance(_goals, dict):
+            for _n in (
+                "REAL DATA · item 1 — a real planner-composed pair casts structural colour on "
+                "travel or arrival",
+                "REAL DATA red-on-bug · reverting the +6/+1 split on that same real bundle "
+                "collapses the two",
+                "REAL DATA · item 2 RULE 1 — a real composed candidate is refused for spending "
+                "the one miracle at a role shelf 17 gives none",
+                "REAL DATA · item 2 RULE 2 — a real composed candidate is refused because a "
+                "voice owns nothing free",
+                "REAL DATA · item 2 RULE 3 — a real composed candidate is refused past its "
+                "role's own tier/letter ceiling",
+                "REAL DATA · item 2 RULE 4 — a real composed winner's own cast clears the "
+                "fleet's richest published resource budget",
+                "REAL DATA · item 2 RULE 5 — across every real candidate this search "
+                "considered, the still-stubbed surface-handover check never once refuses one",
+            ):
+                skip(_n, "the real search itself failed: " + json.dumps(_search)[:800])
+        else:
+            # ---- item 1: the +6/+1 herald/bridge/arrival promotion, on a real found bundle -------
+            promo = _goals.get("colourPromo")
+            if not promo:
+                skip("REAL DATA · item 1 — a real planner-composed pair casts structural colour "
+                     "on travel or arrival",
+                     "the search found no real pair whose composed winner carries colour off the "
+                     "ground")
+                skip("REAL DATA red-on-bug · reverting the +6/+1 split on that same real bundle "
+                     "collapses the two", "no real pair found above to replant")
+            else:
+                w = promo["winner"]
+                g_id, t_id, a_id = w["ground"], w["travel"], w["arrival"]
+                role, fn = promo["role"], promo["fn"]
+                real_leads = run("scoreBundle", [g_id, t_id, a_id, True, role, True, fn])
+                real_ground = run("scoreBundle", [promo["singer"],
+                                                    g_id if promo["singer"] != g_id else t_id,
+                                                    a_id, True, role, True, fn])
+                real_ok = (isinstance(real_leads, int) and isinstance(real_ground, int)
+                          and real_leads - real_ground == 5)
+                check("REAL DATA · item 1 — a real planner-composed pair casts structural colour "
+                      "on travel or arrival",
+                      real_ok,
+                      "real pair %s→%s (seed %s, role %s/%s): the planner's own winner casts "
+                      "ground=%s travel=%s arrival=%s colour=on, singer=«%s» (not the ground); "
+                      "scoreBundle reads %s carrying colour off the ground and %s with the same "
+                      "singer swapped onto it — the gap should be exactly 5 (6 vs 1)"
+                      % (promo["from"], promo["to"], promo["seed"], role, fn, g_id, t_id, a_id,
+                         promo["singer"], real_leads, real_ground))
+                real_leads_broke = run("scoreBundle", [g_id, t_id, a_id, True, role, True, fn],
+                                       plants=PLANT_SCORE)
+                real_ground_broke = run("scoreBundle",
+                                        [promo["singer"], g_id if promo["singer"] != g_id else t_id,
+                                         a_id, True, role, True, fn], plants=PLANT_SCORE)
+                if isinstance(real_leads_broke, dict) and real_leads_broke.get("missed"):
+                    skip("REAL DATA red-on-bug · reverting the +6/+1 split on that same real "
+                         "bundle collapses the two",
+                         "the line this plant names is not in the shipped source")
+                else:
+                    collapsed_real = (real_leads_broke == real_ground_broke)
+                    check("REAL DATA red-on-bug · reverting the +6/+1 split on that same real "
+                          "bundle collapses the two", collapsed_real,
+                          "" if collapsed_real else
+                          "even reverted to +1/+1 the same real bundle's two readings still "
+                          "differ (" + json.dumps(real_leads_broke) + " vs "
+                          + json.dumps(real_ground_broke) + ")")
+
+            # ---- item 2: one real-pair-driven witness per named legality rule -------------------
+            r1 = _goals.get("rule1")
+            check("REAL DATA · item 2 RULE 1 — a real composed candidate is refused for spending "
+                  "the one miracle at a role shelf 17 gives none",
+                  isinstance(r1, dict) and r1.get("row", {}).get("ok") is False,
+                  ("real pair %s→%s (seed %s, role %s): the planner's own real candidate ground=%s "
+                   "travel=%s arrival=%s was refused, why=%s"
+                   % (r1["from"], r1["to"], r1["seed"], r1["role"], r1["row"]["ground"],
+                      r1["row"]["travel"], r1["row"]["arrival"], r1["row"]["why"]))
+                  if isinstance(r1, dict) else
+                  "the search found no real candidate this rule ever refused")
+
+            r2 = _goals.get("rule2")
+            check("REAL DATA · item 2 RULE 2 — a real composed candidate is refused because a "
+                  "voice owns nothing free",
+                  isinstance(r2, dict) and r2.get("row", {}).get("ok") is False,
+                  ("real pair %s→%s (seed %s, role %s): the planner's own real candidate ground=%s "
+                   "travel=%s arrival=%s was refused, why=%s"
+                   % (r2["from"], r2["to"], r2["seed"], r2["role"], r2["row"]["ground"],
+                      r2["row"]["travel"], r2["row"]["arrival"], r2["row"]["why"]))
+                  if isinstance(r2, dict) else
+                  "the search found no real candidate this rule ever refused")
+
+            r3 = _goals.get("rule3")
+            check("REAL DATA · item 2 RULE 3 — a real composed candidate is refused past its "
+                  "role's own tier/letter ceiling",
+                  isinstance(r3, dict) and r3.get("row", {}).get("ok") is False,
+                  ("real pair %s→%s (seed %s, role %s): the planner's own real candidate ground=%s "
+                   "travel=%s arrival=%s was refused, why=%s"
+                   % (r3["from"], r3["to"], r3["seed"], r3["role"], r3["row"]["ground"],
+                      r3["row"]["travel"], r3["row"]["arrival"], r3["row"]["why"]))
+                  if isinstance(r3, dict) else
+                  "the search found no real candidate this rule ever refused")
+
+            # RULE 4 never refuses on this fleet's own real manifests (the rule's own comment says
+            # so — every real cast stands well under the fleet's richest published budget), so its
+            # real-data witness is a real WINNING cast's own ids run straight through the exposed
+            # rule, in place of the literal ['boxfold'] the synthetic RULE 4 rows above hand-type.
+            r4 = _goals.get("rule4")
+            if not r4:
+                skip("REAL DATA · item 2 RULE 4 — a real composed winner's own cast clears the "
+                     "fleet's richest published resource budget",
+                     "the search found no real legal winner with a travel or arrival voice")
+            else:
+                w4 = r4["winner"]
+                real_ids = [iid for iid in (w4["ground"], w4["travel"], w4["arrival"]) if iid]
+                r4_out = run("bundleResourcesLegal", [real_ids])
+                check("REAL DATA · item 2 RULE 4 — a real composed winner's own cast clears the "
+                      "fleet's richest published resource budget",
+                      r4_out.get("ok") is True,
+                      "bundleResourcesLegal(%s), the real planner's own winning cast for %s→%s "
+                      "(seed %s, role %s), read %s"
+                      % (json.dumps(real_ids), r4["from"], r4["to"], r4["seed"], r4["role"],
+                         json.dumps(r4_out)))
+
+            # RULE 5 is still the Phase-2-revisited stub (`function surfaceHandoverLegal() { "
+            # "return { ok: true, why: null }; }`) — what it DOES, proved on real data, is refuse
+            # nothing: across every real candidate this whole search's own ledger considered (every
+            # role/function/pair/seed tried above), no `why` ever named a surface-handover refusal.
+            check("REAL DATA · item 2 RULE 5 — across every real candidate this search considered, "
+                  "the still-stubbed surface-handover check never once refuses one",
+                  _goals is not None and bool(_search.get("neverFiresHandover")),
+                  "" if _search.get("neverFiresHandover") else
+                  "a real candidate's own why-string named a surface-handover refusal, which the "
+                  "shipped stub can never produce — re-check that RULE 5 is still the stub this "
+                  "row assumes")
 
     # ========================================================================= RETURN VARIATION
     # The old formula read `dieAmong(seed, key + "|moves", 2)` — one die value regardless of

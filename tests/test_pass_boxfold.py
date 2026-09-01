@@ -58,6 +58,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -113,6 +114,200 @@ def check(name, cond, detail=""):
 
 def skip(name, detail):
     results.append((name, "SKIP", detail))
+
+
+# ================================================================================================
+# PARDON CONDITION (i), REAL DATA — «the fold on the departing work's own measured region line».
+#
+# Everything above and below this block proves the INSTRUMENT's own three conditions by feeding it
+# hand-typed handle values (`SEAM_AT`/`SEAM_SCORE`, the module's own judged-run numbers) through the
+# browser fixture — real proof that the handle READS an outside measurement, never a frame constant,
+# but no proof that the COMPOSER, given a real WorkRecord, ever actually HANDS it one. The
+# 2026-08-19 audit found that second half unearned: the region-line reading was stripped before
+# records reached the engine, and `pass-composer.js` handed `boxfold` a written zero on every cast —
+# an un-pardoned instrument playing under a pardon nobody was still owed. It is now genuinely
+# repaired (`pass-composer.js`'s own `wanted.seam`/`wanted.seamScore`, read off
+# `structure.regions.line.{x,y}.{at,explains}`) but nothing asserted it: this section does.
+#
+# THE SEARCH IS OVER THE REAL 121-WORK FLEET, NEVER A HAND-PICKED PAIR (the standing rule this
+# project holds every phase to). For each departing work in the fixture's own order, the real,
+# exposed `genresFor` cheaply ranks every arriving work for a box-fold fit before the far more
+# expensive full `passageFor` is ever called on the survivors — the same two-phase economy
+# `dump_route_wire_fence.py` uses for its own 27-instrument hunt. `routeRole`/`routeFunction` travel
+# on every request exactly as a live route step supplies them (a route step's own station always
+# states both together, `engine/client/01a-pass.js:2010-2011`), restricted here to the roles shelf
+# 17 actually grants a miracle — box-fold cannot be cast at all under a role with none. `cameraState`
+# is left at its cold-visit `null`: `pass-composer.js` reads it onto the diagnostic echo alone
+# (`grep cameraState engine/assets/pass-composer.js`) and touches no legality or handle decision
+# with it, so a DOM-derived pose has nothing to add to a search over what the COMPOSER hands the
+# instrument.
+PARDON_I_COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
+PARDON_I_FIXTURE_COMPOSED = ROOT / "tests" / "fixture_pass_composed.json"
+PARDON_I_FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
+PARDON_I_SEAM_FLOOR = 0.20  # pass-inst-boxfold.js's own SEAM_FLOOR — the module's own gate
+
+PARDON_I_ROW = ("PASS-BOXFOLD pardon (i) · a real, planner-composed pair hands the instrument a "
+                "non-zero, above-floor seamScore reading off the departing work's own region line")
+PARDON_I_RED_ROW = ("PASS-BOXFOLD pardon (i) red-on-bug · restoring the written zero drops the "
+                     "same real pair's own seamScore back to it")
+
+PARDON_I_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+const plants = %(plants)s;
+
+let patched = source;
+const missed = [];
+for (const [from, to] of plants) {
+  if (patched.indexOf(from) < 0) { missed.push(from); continue; }
+  patched = patched.split(from).join(to);
+}
+if (missed.length) { console.log(JSON.stringify({missed: missed})); process.exit(0); }
+
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+try {
+  vm.runInContext(patched, sandbox, { filename: "pass-composer.js" });
+} catch (e) {
+  console.log(JSON.stringify({ error: String((e && e.stack) || e) }));
+  process.exit(0);
+}
+if (!joined) { console.log(JSON.stringify({ error: "the module joined nothing" })); process.exit(0); }
+const composer = joined.make(consts);
+
+const ids = Object.keys(works);
+// Only the two roles shelf 17 grants a miracle to — box-fold cannot be cast under any other.
+const ROLE_FN = [["culmination", "dominant"], ["middle", "subdominant"], ["middle", "dominant"]];
+const SEEDS = [0, 2, 4, 6];
+
+let found = null;
+outer:
+for (let i = 0; i < ids.length && !found; i++) {
+  const from = ids[i];
+  // PHASE A, CHEAP: rank every arriving work for a box-fold fit before the expensive call below.
+  const candidates = [];
+  for (let j = 0; j < ids.length; j++) {
+    if (i === j) continue;
+    let g;
+    try { g = composer.genresFor(works[from], works[ids[j]]); } catch (e) { continue; }
+    const bf = (g.genres || []).filter((x) => x.id === "box-fold")[0];
+    if (bf && bf.fit > 0) candidates.push(ids[j]);
+  }
+  // PHASE B: only the survivors of phase A ever reach the real, full planner.
+  for (let ci = 0; ci < candidates.length && !found; ci++) {
+    const to = candidates[ci];
+    for (const [role, fn] of ROLE_FN) {
+      for (const seed of SEEDS) {
+        const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+                      seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+                      walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+        let made;
+        try { made = composer.passageFor(req); } catch (e) { continue; }
+        if (!made || made.declined || !made.plan) continue;
+        const cues = made.plan.cues || [];
+        const box = cues.filter((c) => c.instrument.id === "boxfold")[0];
+        if (!box) continue;
+        const mh = box.measuredHandles || {};
+        const seamScore = mh.seamScore && mh.seamScore.v;
+        const seamAt = mh.seam && mh.seam.v;
+        if (typeof seamScore === "number") {
+          found = { from: from, to: to, seed: seed, role: role, fn: fn,
+                    seamAt: seamAt, seamScore: seamScore };
+          break outer;
+        }
+      }
+    }
+  }
+}
+console.log(JSON.stringify({ found: found }));
+"""
+
+
+def _pardon_i_node_available():
+    return shutil.which("node") is not None
+
+
+if not _pardon_i_node_available():
+    skip(PARDON_I_ROW, "node is not on this machine")
+    skip(PARDON_I_RED_ROW, "node is not on this machine")
+elif not (PARDON_I_COMPOSER.exists() and PARDON_I_FIXTURE_COMPOSED.exists()
+          and PARDON_I_FIXTURE_WORKS.exists()):
+    skip(PARDON_I_ROW, "the composer or its fixtures are not on this machine")
+    skip(PARDON_I_RED_ROW, "no real pair to replant")
+else:
+    _pardon_i_source = PARDON_I_COMPOSER.read_text(encoding="utf-8").replace("@@NS@@", "")
+    _pardon_i_fix_composed = json.loads(PARDON_I_FIXTURE_COMPOSED.read_text(encoding="utf-8"))
+    _pardon_i_fix_works = json.loads(PARDON_I_FIXTURE_WORKS.read_text(encoding="utf-8"))
+    _pardon_i_tmp = Path(tempfile.mkdtemp(prefix="pass_boxfold_pardon_"))
+
+    def _run_pardon_i(plants=None):
+        driver_text = PARDON_I_DRIVER % {
+            "source": json.dumps(_pardon_i_source),
+            "consts": json.dumps(_pardon_i_fix_composed["consts"]),
+            "works": json.dumps(_pardon_i_fix_works["works"]),
+            "plants": json.dumps(plants or []),
+        }
+        driver_path = _pardon_i_tmp / "driver.js"
+        driver_path.write_text(driver_text, encoding="utf-8")
+        proc = subprocess.run(["node", str(driver_path)], capture_output=True, text=True,
+                              timeout=120)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-1200:]}
+        lines = (proc.stdout or "").strip().splitlines()
+        if not lines:
+            return {"error": "the driver said nothing"}
+        return json.loads(lines[-1])
+
+    _pardon_i_green = _run_pardon_i()
+    _pardon_i_found = (_pardon_i_green.get("found")
+                       if isinstance(_pardon_i_green, dict) else None)
+    check(PARDON_I_ROW,
+          isinstance(_pardon_i_found, dict)
+          and isinstance(_pardon_i_found.get("seamScore"), (int, float))
+          and _pardon_i_found["seamScore"] >= PARDON_I_SEAM_FLOOR,
+          ("real pair %s→%s (seed %s, role %s/%s): seam=%s seamScore=%s against the module's own "
+           "floor of %s"
+           % (_pardon_i_found.get("from"), _pardon_i_found.get("to"), _pardon_i_found.get("seed"),
+              _pardon_i_found.get("role"), _pardon_i_found.get("fn"), _pardon_i_found.get("seamAt"),
+              _pardon_i_found.get("seamScore"), PARDON_I_SEAM_FLOOR)
+           if isinstance(_pardon_i_found, dict) else
+           "the real 121-work fleet's own genresFor/passageFor search cast box-fold on no real "
+           "pair at all: " + json.dumps(_pardon_i_green)))
+
+    if not isinstance(_pardon_i_found, dict):
+        skip(PARDON_I_RED_ROW, "no real pair found above to replant")
+    else:
+        _pardon_i_plant = [[
+            "wanted.seamScore = flt(r4(clamp01(seamHow)));",
+            "wanted.seamScore = flt(0);",
+        ]]
+        _pardon_i_red = _run_pardon_i(plants=_pardon_i_plant)
+        if _pardon_i_red.get("missed"):
+            skip(PARDON_I_RED_ROW, "the line this plant names is not in the shipped source")
+        else:
+            _pardon_i_red_found = (_pardon_i_red.get("found")
+                                   if isinstance(_pardon_i_red, dict) else None)
+            _pardon_i_same_pair = (
+                isinstance(_pardon_i_red_found, dict)
+                and _pardon_i_red_found.get("from") == _pardon_i_found.get("from")
+                and _pardon_i_red_found.get("to") == _pardon_i_found.get("to")
+                and _pardon_i_red_found.get("seed") == _pardon_i_found.get("seed"))
+            check(PARDON_I_RED_ROW,
+                  _pardon_i_same_pair and _pardon_i_red_found.get("seamScore") == 0,
+                  "the same search, deterministic and unaffected by this plant (it touches only "
+                  "the handle's own numeric value, never which pair or bundle wins), found %s→%s "
+                  "again; shipped seamScore=%s, planted back to the written zero seamScore=%s"
+                  % (_pardon_i_red_found.get("from") if isinstance(_pardon_i_red_found, dict)
+                     else None,
+                     _pardon_i_red_found.get("to") if isinstance(_pardon_i_red_found, dict)
+                     else None,
+                     _pardon_i_found.get("seamScore"),
+                     _pardon_i_red_found.get("seamScore") if isinstance(_pardon_i_red_found, dict)
+                     else None))
 
 
 DIE = 4.91016            # the die lab/data/scores' own weave score carries, so every suite rolls one

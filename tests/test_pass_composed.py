@@ -5657,6 +5657,181 @@ else:
                               f"landed ({hurt['after']['composer']}); with the hold in place the "
                               f"same crossing ended with {now['after']['scored']}")
 
+
+# ================================================================================================
+# REAL-DATA CAMERA HANDOFF (V2-CONVERGENCE-PLAN-2026-08-31 Phase 4, item 3). The inventory this
+# phase's brief carries found the composer's own `cameraAuthority` field — P3's declared-surface
+# capability, comment above `pass-composer.js:4187-4191` — never once read by this file: a `grep
+# cameraAuthority tests/test_pass_composed.py` before this section landed matched nothing. What the
+# field states is a HANDOFF — camera control passes from the stage's own track to the one cast cue
+# whose instrument declares its own surface pose (`boxfold` is the one shipped carrier today), and
+# back — and no test anywhere in this file asked a real composed plan whether that handoff actually
+# happened. This searches the real 121-work fleet (never a hand-picked pair) for a real winning
+# plan that casts an own-authority instrument, and proves two things a silent regression could break
+# without any other row here noticing: the cast own-authority cue is actually marked `"own"`, and
+# every other cue sharing that same real plan is left `"stage"` — one authority handed to one voice,
+# never asserted, never assumed.
+_HANDOFF_ROW = ("EX-COMPOSED real-data camera handoff · a real composed plan hands "
+                "cameraAuthority to its one own-authority instrument and leaves every other cue "
+                "stage-held")
+_HANDOFF_RED_ROW = ("EX-COMPOSED real-data camera handoff red-on-bug · collapsing the declared-"
+                     "surface read to always stage silently erases that same real handoff")
+_HANDOFF_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [modulePath, worksPath] = process.argv.slice(2);
+const plants = JSON.parse(process.env.HANDOFF_PLANTS || "[]");
+let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
+const missed = [];
+for (const [from, to] of plants) {
+  if (source.indexOf(from) < 0) { missed.push(from); continue; }
+  source = source.split(from).join(to);
+}
+if (missed.length) { console.log(JSON.stringify({missed: missed})); process.exit(0); }
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, { filename: "pass-composer.js" });
+const consts = JSON.parse(fs.readFileSync(process.env.HANDOFF_FIXTURE, "utf8")).consts;
+const composer = joined.make(consts);
+const works = JSON.parse(fs.readFileSync(worksPath, "utf8")).works;
+const ids = Object.keys(works);
+// Own-authority instruments declare it on their own manifest (P3's own reading) — never a name
+// typed here; a future carrier joins this search automatically.
+const ownIds = Object.keys(consts.manifests).filter((iid) =>
+  ((consts.manifests[iid].surface || {}).cameraAuthority) === "own");
+
+function cast(from, to, seed, role, fn) {
+  const req = { workRecordA: works[from], workRecordB: works[to], direction: "a-to-b",
+               seed: seed, routeRole: role, routeFunction: fn, cameraState: null,
+               walkMemory: [], walkGenres: [], walkMiracles: [], framePace: null };
+  let made;
+  try { made = composer.passageFor(req); } catch (e) { return null; }
+  if (!made || made.declined || !made.plan) return null;
+  return made.plan.cues || [];
+}
+
+// REPLAY: the green run's own found (from, to, seed, role, fn), handed back in rather than
+// re-searched — the plant below touches only the field's own value, never which pair or bundle
+// wins, so re-composing the SAME real request is the direct proof and an exhaustive re-search
+// under a plant that (by construction) can never again satisfy the search's own stopping
+// condition would otherwise never terminate inside this fleet's own 121*120*6*2 request space.
+const replay = process.env.HANDOFF_REPLAY ? JSON.parse(process.env.HANDOFF_REPLAY) : null;
+if (replay) {
+  const cues = cast(replay.from, replay.to, replay.seed, replay.role, replay.fn);
+  console.log(JSON.stringify({
+    replayed: cues ? cues.map((c) => ({ id: c.id, instrument: c.instrument.id,
+                                        cameraAuthority: c.cameraAuthority })) : null,
+    ownIds: ownIds,
+  }));
+} else {
+  const ROLE_FN = [["entrance", "subdominant"], ["quiet link", "tonic"], ["middle", "subdominant"],
+                   ["middle", "dominant"], ["culmination", "dominant"], ["return", "tonic"]];
+  const SEEDS = [0, 3];
+  let found = null;
+  outer:
+  for (let i = 0; i < ids.length && !found; i++) {
+    for (let j = 0; j < ids.length && !found; j++) {
+      if (i === j) continue;
+      const from = ids[i], to = ids[j];
+      for (const [role, fn] of ROLE_FN) {
+        for (const seed of SEEDS) {
+          const cues = cast(from, to, seed, role, fn);
+          if (!cues) continue;
+          const ownCue = cues.filter((c) => ownIds.indexOf(c.instrument.id) >= 0
+                                            && c.cameraAuthority === "own")[0];
+          if (!ownCue) continue;
+          found = { from: from, to: to, seed: seed, role: role, fn: fn,
+                    cues: cues.map((c) => ({ id: c.id, instrument: c.instrument.id,
+                                             cameraAuthority: c.cameraAuthority })) };
+          break outer;
+        }
+      }
+    }
+  }
+  console.log(JSON.stringify({ found: found, ownIds: ownIds }));
+}
+"""
+
+def _handoff_node_available():
+    try:
+        return subprocess.run(["node", "--version"], capture_output=True).returncode == 0
+    except Exception:
+        return False
+
+
+def _handoff_run(plants=None, replay=None):
+    handoff_dir = Path(tempfile.mkdtemp(prefix="pass_composed_handoff_"))
+    driver_path = handoff_dir / "handoff-driver.js"
+    driver_path.write_text(_HANDOFF_DRIVER, encoding="utf-8")
+    env = dict(os.environ, HANDOFF_PLANTS=json.dumps(list(plants or [])),
+              HANDOFF_FIXTURE=str(FIXTURE))
+    if replay is not None:
+        env["HANDOFF_REPLAY"] = json.dumps(replay)
+    proc = subprocess.run(["node", str(driver_path), str(MODULE), str(WORKS)],
+                          capture_output=True, text=True, env=env, timeout=180)
+    if proc.returncode != 0:
+        return {"error": (proc.stderr or "").strip()[-1200:]}
+    lines = (proc.stdout or "").strip().splitlines()
+    if not lines:
+        return {"error": "the handoff driver said nothing"}
+    return json.loads(lines[-1])
+
+
+if not _handoff_node_available():
+    skip(_HANDOFF_ROW, "node is not on this machine")
+    skip(_HANDOFF_RED_ROW, "node is not on this machine")
+elif not (MODULE.exists() and FIXTURE.exists() and WORKS.exists()):
+    skip(_HANDOFF_ROW, "the composer or its fixtures are not on this machine")
+    skip(_HANDOFF_RED_ROW, "no real pair to replant")
+else:
+    _handoff_green = _handoff_run()
+    _handoff_found = (_handoff_green.get("found")
+                      if isinstance(_handoff_green, dict) else None)
+    _own_ids = _handoff_green.get("ownIds") if isinstance(_handoff_green, dict) else None
+    if isinstance(_handoff_found, dict):
+        _others_stage = all(c["cameraAuthority"] == "stage" for c in _handoff_found["cues"]
+                            if c["instrument"] not in (_own_ids or []))
+        _owner_cue = [c for c in _handoff_found["cues"] if c["cameraAuthority"] == "own"]
+    else:
+        _others_stage = False
+        _owner_cue = []
+    check(_HANDOFF_ROW,
+          isinstance(_handoff_found, dict) and len(_owner_cue) == 1 and _others_stage,
+          ("real pair %s→%s (seed %s, role %s/%s): the planner's own real winning plan casts %s, "
+           "cameraAuthority %s"
+           % (_handoff_found["from"], _handoff_found["to"], _handoff_found["seed"],
+              _handoff_found["role"], _handoff_found["fn"],
+              [c["instrument"] for c in _handoff_found["cues"]],
+              {c["id"]: c["cameraAuthority"] for c in _handoff_found["cues"]}))
+          if isinstance(_handoff_found, dict) else
+          ("the real 121-work fleet's own search cast no own-authority instrument (%s) on any "
+           "real pair at all" % (_own_ids,)))
+
+    if not isinstance(_handoff_found, dict):
+        skip(_HANDOFF_RED_ROW, "no real pair found above to replant")
+    else:
+        _handoff_plant = [['? "own" : "stage",', '? "stage" : "stage",']]
+        _handoff_replay = {"from": _handoff_found["from"], "to": _handoff_found["to"],
+                           "seed": _handoff_found["seed"], "role": _handoff_found["role"],
+                           "fn": _handoff_found["fn"]}
+        _handoff_red = _handoff_run(plants=_handoff_plant, replay=_handoff_replay)
+        if _handoff_red.get("missed"):
+            skip(_HANDOFF_RED_ROW, "the line this plant names is not in the shipped source")
+        else:
+            _replayed = (_handoff_red.get("replayed")
+                        if isinstance(_handoff_red, dict) else None)
+            _replayed_owns = ([c for c in _replayed if c["cameraAuthority"] == "own"]
+                              if isinstance(_replayed, list) else None)
+            check(_HANDOFF_RED_ROW,
+                  isinstance(_replayed, list) and not _replayed_owns,
+                  ("re-composing the exact same real request under the plant reads %s — the "
+                   "handoff this row's green above proved is now silently gone"
+                   % json.dumps(_replayed))
+                  if isinstance(_replayed, list) else
+                  "re-composing the exact same real request under the plant produced no plan at "
+                  "all: " + json.dumps(_handoff_red))
+
 import shutil  # noqa: E402
 shutil.rmtree(TMP, ignore_errors=True)
 
