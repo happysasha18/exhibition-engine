@@ -4392,13 +4392,23 @@ else:
             # instrument alone; the law is about spending the crossing's one miracle, and three
             # instruments now publish the WORLD level. So the row reads both — a fold at a
             # no-miracle role, and any WORLD cue at one — and either moving reddens the plant.
+            #
+            # A FIFTH PLACE JOINED THE FOUR, 2026-09-01: P1.2's joint bundle planner (2026-08-28)
+            # added RULE 1 (`bundleWorldLegal`, the `check1` gate in the outer bundle loop) as an
+            # independent, final legality check on every candidate bundle — «the bundle spends the
+            # crossing's one impossible event at a role shelf 17 gives no miracle» is now asked
+            # there too, after the four older guards, so leaving it standing proved it alone at every
+            # corner size just as the fourth once did. Added as a fifth sub-plant, same shape as the
+            # other four: the gate's own `continue` struck.
             (NODE_ROWS[30],
              [["        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);",
                "        var base = (cuts ? 0 : 2);"],
               ["        } else if (spendsTheMiracle(travelInstr) && !(ROLE_BUDGETS[role] || {}).miracle) {",
                "        } else if (false) {"],
               ["        pool = pool.filter(function (r) { return !r.mustFold; });", ""],
-              ["        if (noMiracle && spendsTheMiracle(iid)) continue;", ""]],
+              ["        if (noMiracle && spendsTheMiracle(iid)) continue;", ""],
+              ["              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }",
+               "              if (false) { row.why = check1.why; considered.push(row); continue; }"]],
              lambda g: sum(g["sweep"]["folded"][r] + g["sweep"]["worldCue"][r]
                            for r in ("entrance", "quiet link", "return")) > 0),
             # ONE INSTRUMENT PER KIND, RESTORED IN A COPY — the rule an earlier lane repaired. With
@@ -4537,6 +4547,11 @@ else:
             # above proves the gates carry the law with the nudge gone; this proves they are what
             # carries it, by taking them away under the same conditions and watching a step that may
             # spend no miracle open a world.
+            #
+            # A FIFTH GATE JOINED THE FOUR, 2026-09-01, THE SAME ONE ROW NODE_ROWS[30] NAMES ABOVE:
+            # the joint bundle planner's own RULE 1 (`check1`/`bundleWorldLegal`) refuses the same
+            # bundle a fifth time, after the four sequential-cast guards this plant already struck,
+            # so it needs striking too.
             (NODE_ROWS[57],
              [["        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);",
                "        var base = (cuts ? 0 : 2);"],
@@ -4548,16 +4563,26 @@ else:
                "        } else if (false) {"],
               ["        if (arrivalInstr !== null && spendsTheMiracle(arrivalInstr)\n"
                "            && !(ROLE_BUDGETS[role] || {}).miracle) {",
-               "        if (false) {"]],
+               "        if (false) {"],
+              ["              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }",
+               "              if (false) { row.why = check1.why; considered.push(row); continue; }"]],
              lambda g: sum(g["sweep"]["worldsCast"][r]
                            for r in ("entrance", "quiet link", "return")) > 0),
             # THE FIRST OF THE TWO ROADS TO A SECOND WORLD: the levels test at a cast. Its older
             # clause excludes a candidate only where EVERY level it declares is already claimed, so a
             # world instrument carrying a second level of its own walks straight past it and stands
             # beside a world ground. The named pair is the one that reaches for the slot that way.
+            #
+            # A FIFTH PLACE JOINED THE FOUR, 2026-09-01, THE SAME ONE THE OTHER TWO WORLD-CLAUSE ROWS
+            # NAME ABOVE: the joint bundle planner's own RULE 1 (`check1`/`bundleWorldLegal`) refuses
+            # the same bundle downstream of this older per-slot clause, so weakening the clause alone
+            # no longer lets the violation reach `oneSlot`'s own reading — RULE 1 catches it first.
+            # Struck alongside it, same as the other two rows.
             (NODE_ROWS[59],
              [['          if (everyLevelTaken || (worldTaken && spendsTheMiracle(iid))) {',
-               "          if (everyLevelTaken) {"]],
+               "          if (everyLevelTaken) {"],
+              ["              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }",
+               "              if (false) { row.why = check1.why; considered.push(row); continue; }"]],
              lambda g: g["oneSlot"]["levels"]["worlds"] > 1),
             # THE SECOND ROAD TO A SECOND WORLD HAD A ROW HERE AND IT IS RETIRED, WITH ITS REASON.
             # It planted out the ground swap's own gate and read a named pair that then seated a
