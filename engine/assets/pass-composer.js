@@ -7782,13 +7782,14 @@
           // seam in the middle of a window instead of on the mullion between two.
           //
           // READ ON THE SAME CONDITION `tilesFrom`/`tilesTo` ABOVE ALREADY READ ON — `gridCount >
-          // 0`, whatever the work's own grid measured, and nothing more. A first pass of this
-          // branch gated `phase` on `gridScore` clearing a threshold read off this collection's own
-          // score distribution (the top quartile of the real 121-work fleet) — struck on his
-          // review: shelf 20 bars any statistic or distribution computed across the photographs
-          // from calibrating engine behaviour, and shelf 21's own test settles it without argument
-          // — a quartile of 121 works' own scores could and did exist before any pair in front of
-          // it was known, however it was arrived at or how well it seemed to split the collection.
+          // 0`, whatever the work's own grid measured, and nothing more. THE FLOOR THAT STOOD HERE
+          // IS GONE (2026-09-01, on his review). A first pass of this branch gated `phase` on
+          // `gridScore` clearing a cut taken from where the photographs' own scores fell against
+          // each other — struck: shelf 20 bars any statistic computed across the photographs from
+          // calibrating engine behaviour, and shelf 21's own test settles it without argument,
+          // since a cut arrived at by ranking the photographs against one another could and did
+          // exist before either picture in front of the engine was known, however it was arrived
+          // at or how well it seemed to sort them.
           // Shelf 9 already carries the fix this file uses everywhere else for exactly this
           // shape of problem — a measurement RANKS, it never GATES (Phase 1's own tier-ladder
           // repair, cause A) — so `phase` reads here precisely where `tiles`/`lattice` already do,
