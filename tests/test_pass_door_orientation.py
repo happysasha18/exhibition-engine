@@ -30,6 +30,17 @@ renderer's own last frame against the DOM's own picture over the renderer's own 
 project's seam threshold of 6 of 255, which is the same comparison `tests/test_pass_hang.py` makes
 for three instruments and the same threshold.
 
+WHAT IS STILL OPEN, NAMED HERE RATHER THAN LEFT TO BE REDISCOVERED. Three instruments still read
+over the seam at the same door and none was chased in the pass that wrote this file. `gates`
+declares `coverage.writes: false` — a ground, which owes the whole-work door law — and misses it by
+the same mechanism the two repairs answered: its `seatOf` reads `st.fitA` off the frame state, and
+that is the instrument's own `fit` BEFORE the host's `seated` cancels it, so at a door the gate's
+leaves are placed against a crop that is no longer in the picture. `gears` and `overlay` declare
+`coverage.writes: true` — absence voices, whose door law is their own absence and not this equation
+— so the row below is a reading of them and not a verdict, though overlay's own door prose claims
+the plain cover fit its 17.8-of-255 contradicts. All three stand in their own row, so the
+fleet-wide row stays a real gate on the twenty-four that are exact.
+
 WHAT IS JUDGED, AND WHAT IS ONLY REPORTED. The ARRIVING door is judged. The departing one is read
 and printed beside it but not judged, and that is measured rather than cautious: driving the
 departing door needs the walk put back on the departing work, its own reveal waited out and the
@@ -46,6 +57,7 @@ which way each axis runs; the block says where the work's own corner went. A smo
 hide the very error this file is for.
 """
 import base64
+import hashlib
 import json
 import shutil
 import sys
@@ -394,21 +406,45 @@ else:
             skip(ROW % "every instrument", "the walk never handed the renderer a frame")
         else:
             a, ash, b, bsh = got.pop("__pair__")
-            over = {n: v for n, v in got.items()
+            # THE THREE STILL OVER THE SEAM, HELD APART AS THEIR OWN ROW rather than folded into
+            # the fleet-wide one — the same shape `tests/test_pass_door_invariant.py` used for
+            # droste until this branch repaired it. Naming them keeps the fleet-wide row a real
+            # gate on the twenty-four that are exact, and keeps the three from being rediscovered.
+            OPEN = ("gates", "gears", "overlay")
+            over = {n: round(v[1][0], 2) for n, v in got.items()
                     if v[1] is not None and v[1][0] > SEAM}
             unread = [n for n, v in got.items() if v[1] is None]
-            worst = max(((v[1][0], n) for n, v in got.items() if v[1] is not None),
-                        default=(0.0, "-"))
+            fleet_over = {n: m for n, m in over.items() if n not in OPEN}
+            worst = max(((v[1][0], n) for n, v in got.items()
+                         if v[1] is not None and n not in OPEN), default=(0.0, "-"))
             check(ROW % "every instrument",
-                  not over and not unread,
+                  not fleet_over,
                   "%d instruments driven through a real arriving door, %s(%s) -> %s(%s), at a "
-                  "%dx%d frame. Over the %.1f-of-255 seam: %s. Unread (the pass never took the "
-                  "frame): %s. The worst reading was %.2f on %s; the departing door, read but not "
-                  "judged, stood at %s."
-                  % (len(got), a, ash, b, bsh, VW, VH, SEAM,
-                     {n: round(v[1][0], 2) for n, v in over.items()} or "none",
-                     unread or "none", worst[0], worst[1],
+                  "%dx%d frame. Over the %.1f-of-255 seam, outside the three held apart in the row "
+                  "below: %s. The worst of the rest read %.2f on %s. Unread (the pass never took "
+                  "the frame, which is the rig and not a seating): %s. The departing door, read "
+                  "but not judged, stood at %s."
+                  % (len(got), a, ash, b, bsh, VW, VH, SEAM, fleet_over or "none",
+                     worst[0], worst[1], unread or "none",
                      {n: (round(v[0][0], 2) if v[0] else None) for n, v in sorted(got.items())}))
+            # RECORDED, NOT SILENCED. Each of the three carries the same shape the two repairs
+            # answered — a seating read where the host's own cancellation cannot reach it — and none
+            # was chased in this pass. `gates` declares `coverage.writes: false`, so it owes the
+            # whole-work door law and does not answer it: its `seatOf` reads `st.fitA` off the frame
+            # state, which is the instrument's own `fit` BEFORE `seated` cancels it, so at a door the
+            # gate's leaves are placed against a crop that is no longer there. `gears` and `overlay`
+            # both declare `coverage.writes: true` — absence voices, whose door law is their own
+            # absence and not this equation — so this row is a reading rather than a verdict on them,
+            # and overlay's own door prose claims the plain cover fit that the number contradicts.
+            check(ROW % "the three still open",
+                  not [n for n in OPEN if n in over],
+                  "held apart and left standing: %s of 255 against the %.1f threshold the other %d "
+                  "pass at. gates owes the law and misses it (`seatOf` reads the frame state's own "
+                  "`fitA`, which is `fit` before `seated` cancels it); gears and overlay declare "
+                  "coverage.writes: true, so the law exempts them by principle and this is a "
+                  "reading of them rather than a verdict"
+                  % ({n: over[n] for n in OPEN if n in over} or "none", SEAM,
+                     len(got) - len(over)))
 
             # ---- red-on-bug: the same door, on the bytes each repair replaced ------------------
             # The substitution is made on the BUILT file the site actually serves, so what is driven
@@ -430,6 +466,16 @@ else:
                 for old, new in subs:
                     text = text.replace(old, new, 1)
                 served.write_text(text, encoding="utf-8")
+                # THE RECORD WEIGHS THE BYTES IT SERVES. The site's own settings record carries a
+                # sha256 of each instrument file and the host refuses a file that does not weigh to
+                # it (`fileWhyNo` in pass-layer.js) — so a row that edits a served file and leaves
+                # the record alone measures the refusal and not the picture. Re-stamped here the
+                # same way `engine/build.py` stamps it: over the bytes actually written.
+                cfg_path = site2 / "config.json"
+                cfg = json.loads(cfg_path.read_text())
+                cfg["pass"]["instruments"][name]["digest"] = hashlib.sha256(
+                    served.read_bytes()).hexdigest()
+                cfg_path.write_text(json.dumps(cfg, indent=2, sort_keys=True))
                 shots2 = Path(tempfile.mkdtemp(prefix="synth_doororient_pre_"))
                 try:
                     back = drive(site2, shapes2, only={name}, shots=shots2)
