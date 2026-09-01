@@ -79,7 +79,6 @@ PHOTOS = [Path("/Users/sashaabramovich/tlvphotos/lab/photos/towers.jpg"),
 
 SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844          # the phone frame every instrument suite measures on
-SEAM = 6.0                 # the same visual-change seam the door and hang suites use
 
 # ---- the composed passage's own numbers, read off the score the site serialises -----------------
 #
@@ -371,6 +370,20 @@ HEAD_WHY = ""
 # commit that touched the host and use its first parent.  This keeps the proof meaningful after
 # cherry-picks and merge commits, while an uncommitted follow-up still compares against the last
 # committed carrier boundary.
+#
+# WHAT THIS ANCHOR IS FOR, AND THE ONE WAY IT HAS ALREADY GONE WRONG. It slides: it always names the
+# most recent committed change to the host, so row 2 below reads «the one-cue picture did not move
+# across that change» — a pixel regression guard on every edit to this file, one edit at a time.
+# The ONE commit that may fail it is a commit that means to move the picture, and on 2026-08-20
+# (bb50f5c, the full-source carrier) row 2 was flipped to demand a difference instead of forbidding
+# one. That flip belonged to that commit alone and was never taken back, so from the next edit of
+# pass-layer.js onward the row demanded that EVERY change to this file move the one-cue picture, and
+# it passed only for as long as they happened to. The fifteenth such edit, 0a49f5c — a camEdge crash
+# fix — did not, and the row read exactly 0.000000 at all three instants: the guard's own green,
+# reported as a failure. The sense is back to the guard's. A commit that deliberately moves this
+# picture inverts row 2 for itself and RESTORES IT IN THE SAME COMMIT; what the carrier itself does —
+# hang A → scene → hang B, no cloned DOM image, no opacity bridge — is proven by name in
+# tests/test_pass_hang.py, which is where a claim about the carrier's own behaviour belongs.
 CARRIER_COMMIT = subprocess.run(
     ["git", "rev-list", "-1", "HEAD", "--", "engine/assets/pass-layer.js"],
     cwd=str(ROOT), capture_output=True, check=True, text=True).stdout.strip()
@@ -515,7 +528,7 @@ check("PASS-STACK the camera counts as one accompaniment in the tier budget",
 BROWSER_ROWS = [
     "PASS-STACK row 1  · three cues play, each drawing inside its window and nothing outside it",
     "PASS-STACK row 1  · a cue outside its window draws nothing and holds at its own door",
-    "PASS-STACK row 2  · the full-source carrier deliberately supersedes HEAD's cropped canvas",
+    "PASS-STACK row 2  · a one-cue score draws what the arrangement at HEAD drew, to the pixel",
     "PASS-STACK row 3  · draw order follows `stack`, and the line order where no `stack` is named",
     "PASS-STACK row 4  · the levels law is enforced where the plan is authored",
     "PASS-STACK row 5  · the tier budget is reckoned and recorded and refuses nothing, with the "
@@ -924,10 +937,9 @@ else:
             check(BROWSER_ROWS[2], False, "one of the two benches never came up")
         else:
             offs = [diff(p, q) for p, q in zip(pair["before"], pair["after"])]
-            check(BROWSER_ROWS[2], all(m > SEAM for m, _ in offs),
-                  "the carrier now moves the whole canvas box hang→scene→hang, so it MUST differ "
-                  "from HEAD's fullscreen centre crop; PASS-HANG separately gates both endpoints "
-                  "against the live DOM. Differences: "
+            check(BROWSER_ROWS[2], all(m == 0.0 and x == 0 for m, x in offs),
+                  "one cue, three instants of the same score, drawn by the file as it stood at HEAD "
+                  "and by the file the stack was built into: "
                   + ", ".join("%.1fs mean %.6f worst %d" % (s, m, x)
                               for s, (m, x) in zip((0.0, 1.5, 3.0), offs)))
         shutil.rmtree(OLD, ignore_errors=True)
