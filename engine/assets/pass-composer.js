@@ -3845,6 +3845,9 @@
     // (`groundCandidates`, which already asks `bestFilling` for a frame-filling instrument to give
     // the PIVOT) is exactly the road that answers this refusal, so a pair whose first pick lands
     // here composes a bundle that holds the law rather than declining.
+    // DERIVED — the score's own first cue id, read off `CUE_IDS` rather than typed, and it is a
+    // name and not a quantity. Which cue it names is settled by `cueWindows`'s own first line, which
+    // fixes that cue's window at the whole passage before any branch runs.
     var GROUND_CUE = CUE_IDS[0];
 
     function placeTheStack(order, instrumentOf) {
