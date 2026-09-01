@@ -43,19 +43,18 @@ that changes its own coverage declaration re-scopes this file by itself. `overla
 exactly this principle (`pass-inst-overlay.js`'s own manifest declares `coverage: {writes: true}`),
 not because its own `fit` was re-read and excused.
 
-`droste` DECLARES `coverage: {writes: false}` — it is a ground, obliged to answer this law, and it
-does not: its own `fit` (`pass-inst-droste.js:473-478`) reads `Sw = max(frameAspect, sourceAspect)`
-and returns `[1/Sw, sourceAspect/Sw, 0, 0]`, up to 2.16× off the law's own `cover(aspect)/c` on the
-wide-source case measured here. THIS IS A GENUINE FINDING, LEFT RED ON PURPOSE, NOT EXEMPTED AND NOT
-SILENCED. Phase 1 (cause A) lifted the tier-ladder gate that had barred droste from casting at all,
-so it is back in the castable arsenal — correctly, that repair was general and droste was never the
-instance it was written against — but nothing has yet read whether droste's own door survives a real
-crossing, and this file's own six-case check says its `fit` does not answer the shared law any
-correctly-behaving ground already does. Its owner is the deferred re-anchoring work Phase 2's own
-scope excludes by name (`docs/V2-CONVERGENCE-PLAN-2026-08-31.md`'s "do not attempt to re-anchor the
-other 24 instruments' own door proofs") — this row is what hands that phase a citation instead of a
-rediscovery, and reading it green by excepting droste the way `overlay` is excepted would have hidden
-exactly the fact Phase 1's own repair needs on record: a castable instrument with an unproven door.
+`droste` DECLARES `coverage: {writes: false}` — it is a ground, obliged to answer this law — and
+until 2026-09-01 it did not: its own `fit` read `Sw = max(frameAspect, sourceAspect)` and returned
+`[1/Sw, sourceAspect/Sw, 0, 0]`, up to 2.16× off the law's own `cover(aspect)/c` on the wide-source
+case measured here. That was not a stylistic difference. The shader multiplied the frame's own ratio
+back in on the flat read, so the two together WERE the plain cover fit at the whole frame and no
+picture anywhere looked wrong — but a real DOOR is where the host drives `fit` toward `[1, 1]` to
+cancel a seating (`seated`, pass-layer.js's `drawPose`), and a ratio the shader applies after that
+cancellation has nothing left to cancel it. Driven through a real door on a real 450x900 work in a
+1000x900 frame, the picture stood 1.20 times too wide and exactly the right height. The ratio now
+lives in `fit`, where `seated` reaches it, and the shader's flat read multiplies nothing on top; the
+spiral's own coordinate is untouched. This is box-fold and hero's own crop class (cause B) in a third
+file — `pass-inst-planet.js` was a fourth, repaired the same day the same way.
 
 WHAT THIS FILE DOES NOT PROVE. That `fit` answers the law says nothing about whether an instrument's
 OWN shader routes its texture sampling through `uFitA` at all in the way this law assumes cancels —
@@ -265,10 +264,14 @@ else:
            % (len(EXEMPT), sorted(r.get("id", f) for f, r in EXEMPT.items()), EXEMPT_REASON)
            if not err else "driver: %s" % err))
 
-    # THIS ROW IS EXPECTED TO STAY RED, ON PURPOSE. droste declares `coverage.writes: false` — a
-    # ground, obliged to answer the shared law — and it does not, so the row asserting that it does
-    # is left standing and genuinely fails, rather than being folded into an "excepted" list the way
-    # overlay is. A red row here is the recorded finding; the detail names its own owner.
+    # REPAIRED 2026-09-01, AND THIS ROW IS ITS PROOF. droste declares `coverage.writes: false` — a
+    # ground, obliged to answer the shared law — and until this date it did not: its `fit` answered
+    # the module's own `flatTexel`, the seating read in the frame's own HEIGHT, and its shader
+    # multiplied the frame's ratio back in. The two together are the plain cover fit at the whole
+    # frame, which is why nothing here or on a screen showed it; what the arrangement could not do is
+    # answer a real DOOR, where the host drives `fit` toward [1, 1] and the shader's own ratio then
+    # stood alone. The ratio now lives in `fit`, where `seated` can divide it back out, and this row
+    # reads green on the same six aspect cases it used to miss on all six.
     droste_row = rows.get(DROSTE_FILE, {})
     droste_bad = mismatches(droste_row) if droste_row else [("error", "no reading for droste")]
     droste_worst = max((abs(rd["fit"][0] / max(cover(*rd["case"])[0], 1e-9))
@@ -276,16 +279,12 @@ else:
                         if "error" not in rd and cover(*rd["case"])[0] > 1e-9), default=0.0)
     check("PASS-DOOR-INV droste's own fit divides the plain cover fit by its declared crop",
           not err and droste_row.get("writesCoverage") is False and not droste_bad,
-          ("EXPECTED TO FAIL — a recorded, owned finding, not a regression to chase in this phase. "
-           "droste declares coverage.writes: false (a ground, obliged to answer the law) and its own "
-           "`fit` misses it on %d of %d cases, up to a %.2f× mismatch on the widest case: %s. "
-           "Genuinely castable since Phase 1's tier-ladder repair (cause A) lifted the gate that used "
-           "to bar it, and genuinely unverified at its own door since nothing has re-anchored its "
-           "`fit` to the shared law — left red rather than excepted the way overlay is, because "
-           "excepting it would have hidden the one fact Phase 1's own repair needs on record: a "
-           "castable instrument with an unproven door. Owner: the deferred re-anchoring work "
-           "docs/V2-CONVERGENCE-PLAN-2026-08-31.md's Phase 2 names out of its own scope (\"do not "
-           "attempt to re-anchor the other 24 instruments' own door proofs\")"
+          ("droste declares coverage.writes: false (a ground, obliged to answer the law) and its own "
+           "`fit` misses it on %d of %d cases; the widest case stands at %.2f× the plain cover fit "
+           "(1.00 is the law): %s. Before the 2026-09-01 repair this read 6 of 6 and 2.16× — the "
+           "seating was the module's own `flatTexel`, read in the frame's own height, with the "
+           "shader multiplying that ratio back in, so the host's own `seated` had nothing to cancel "
+           "and a real door left the work stretched along one axis by the frame's ratio"
            % (len(droste_bad), len(CASES), droste_worst, droste_bad)
            if not err else "driver: %s" % err))
 

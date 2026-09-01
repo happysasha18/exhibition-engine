@@ -152,7 +152,17 @@
       // THE FLAT DOOR'S OWN SCALE, in picture units per device pixel, one number per axis and one
       // pair per work. Handed in already cover-fitted to the frame the host gave this pass, so the
       // shader carries no frame-shape reasoning of its own and the door holds at any shape.
-      "uniform vec4  uFlatPP;",            // A.x, A.y, B.x, B.y
+      "uniform vec4  uFlatPP;",            // A.x, A.y, B.x, B.y — this file's own cover fit, per point
+      // THE SEATING THE HOST HANDS, and the flat door reads THIS and not the pair above. `uFitA` is
+      // this file's own `fit` as the host's `seated` has cancelled it (pass-layer.js's `drawPose`):
+      // the plain cover fit while a passage owns the frame, and identity as it comes down onto a real
+      // hang. `uFlatPP` is the same cover fit worked out a second time in the script, which the
+      // cancellation can never reach — so a real door went on drawing the frame-shaped crop, and on a
+      // portrait work in a landscape frame that is the top and the bottom of the photograph cut away
+      // and the surviving band squeezed back into the work's tall box. Box-fold and hero's own crop
+      // class (cause B), in this file.
+      "uniform vec4  uFitA;",
+      "uniform vec4  uFitB;",
       // THE CUT — the row of the photograph the two works change over at, the footprint that row
       // travels inside one point of the buffer, and the row the sky wash is read at.
       "uniform vec4  uCut;",               // tau, footprint, skyRow, unused
@@ -206,8 +216,15 @@
       // picture in sharp focus, never two renderings of it laid over each other. The curl geometry
       // itself is never pushed toward zero to reach the flat door; the coordinate mix alone carries
       // the walk to flat.
-      "  vec2 uvFlatA = clamp(vec2(0.5 + P.x * uFlatPP.x, 0.5 - P.y * uFlatPP.y), 0.0, 1.0);",
-      "  vec2 uvFlatB = clamp(vec2(0.5 + P.x * uFlatPP.z, 0.5 - P.y * uFlatPP.w), 0.0, 1.0);",
+      // READ OFF THE HOST'S OWN SEATING, so a real door cancels it (see `uFitA` above). `P` is the
+      // buffer measured from its own middle, so `P / uRes` is the frame's own unit square about its
+      // centre and the seating multiplies it exactly as every other ground of this fleet seats a
+      // work. The row runs the other way because the host uploads its sources unflipped.
+      "  vec2 fp = P / uRes;",
+      "  vec2 ppA = uFitA.xy / uRes;",
+      "  vec2 ppB = uFitB.xy / uRes;",
+      "  vec2 uvFlatA = clamp(vec2(0.5 + fp.x * uFitA.x, 0.5 - fp.y * uFitA.y), 0.0, 1.0);",
+      "  vec2 uvFlatB = clamp(vec2(0.5 + fp.x * uFitB.x, 0.5 - fp.y * uFitB.y), 0.0, 1.0);",
       "",
       // analytic derivatives: automatic ones break across the atan seam. The flat door reads a
       // plain, constant screen-to-picture scale (no seam at all), and its own gradient travels
@@ -217,10 +234,10 @@
       "  vec2  gs = vec2(k * d.y, -k * d.x);",
       "  float gv = uGamma * pow(max(t, 2e-3), uGamma - 1.0) * abs(uCrop.y - uCrop.x) / (uD * uS);",
       "  vec2  gvv = gv * d / r;",
-      "  vec2  gxA = mix(vec2(uFlatPP.x, 0.0), vec2(gs.x, gvv.x), uWorld);",
-      "  vec2  gyA = mix(vec2(0.0, uFlatPP.y), vec2(gs.y, gvv.y), uWorld);",
-      "  vec2  gxB = mix(vec2(uFlatPP.z, 0.0), vec2(gs.x, gvv.x), uWorld);",
-      "  vec2  gyB = mix(vec2(0.0, uFlatPP.w), vec2(gs.y, gvv.y), uWorld);",
+      "  vec2  gxA = mix(vec2(ppA.x, 0.0), vec2(gs.x, gvv.x), uWorld);",
+      "  vec2  gyA = mix(vec2(0.0, ppA.y), vec2(gs.y, gvv.y), uWorld);",
+      "  vec2  gxB = mix(vec2(ppB.x, 0.0), vec2(gs.x, gvv.x), uWorld);",
+      "  vec2  gyB = mix(vec2(0.0, ppB.y), vec2(gs.y, gvv.y), uWorld);",
       "  vec2  cur0 = uv(sA, v), cur1 = uv(sB, v);",
       "  vec3 colA = mix(textureGrad(uA, mix(uvFlatA, cur0, uWorld), gxA, gyA).rgb,",
       "                  textureGrad(uA, mix(uvFlatA, cur1, uWorld), gxA, gyA).rgb, uu);",
@@ -594,10 +611,23 @@
       var rFar = Math.sqrt(farX * farX + farY * farY);
       var atm = Math.max(Math.min(1.25 * R, 0.55 * Math.max(W, H) / S), (rFar - R) / ATM_REACH);
 
-      // THE FLAT DOOR AT ANY FRAME SHAPE. The door owes the work itself, cover-fitted, in whatever
-      // frame the host hands: kCover is the width the WHOLE file would be drawn at, taken as the
-      // LARGER of what each axis demands, so the file covers the frame on both axes and the frame's
-      // own shape decides which axis is cropped. The clamp in the shader is a guard, not a fit.
+      // THE FLAT DOOR AT ANY FRAME SHAPE, AND THE SHADER NO LONGER READS THIS. The door owes the
+      // work itself, cover-fitted, in whatever frame the host hands, and kCover is the width the
+      // WHOLE file would be drawn at, taken as the LARGER of what each axis demands. That is the
+      // plain cover fit, arithmetically the same one this file's own `fit` publishes — but worked
+      // out a SECOND time, in the script, where the host's own crop cancellation cannot reach it.
+      // `seated` (pass-layer.js's `drawPose`) drives `fit` toward identity as a passage comes down
+      // onto a real hang, so the whole work spans the work's own box there; a seating computed here
+      // never saw that, and at a real door this instrument went on drawing the frame-shaped cover
+      // crop. On a PORTRAIT work in a landscape frame that is the top and the bottom of the
+      // photograph cut away and the surviving band squeezed back into the work's tall box —
+      // measured 2026-09-01 on a real door, a real 450x900 work and a 1000x900 frame: the flat read
+      // showed 0.45 of the file's own height, and the marker standing in the work's own top-left
+      // corner was not in the frame at all. Box-fold and hero's crop class (cause B), in this file.
+      //
+      // The shader now reads `uFitA`/`uFitB` — this file's own `fit` as the host has cancelled it —
+      // and these four numbers stay on the diagnostic surface alone, where a reader can compare the
+      // seating this file would have worked out against the one the host actually handed.
       var kA = Math.max(W, H / Math.max(iaA, 1e-6));
       var kB = Math.max(W, H / Math.max(iaB, 1e-6));
       var flatPP = [1 / kA, 1 / (kA * iaA), 1 / kB, 1 / (kB * iaB)];
@@ -1004,6 +1034,8 @@
           { name: "uCrop", type: "vec2", source: "frame:crop" },
           { name: "uWorld", type: "float", source: "frame:world" },
           { name: "uFlatPP", type: "vec4", source: "frame:flatPP" },
+          { name: "uFitA", type: "vec4", source: "fitA" },
+          { name: "uFitB", type: "vec4", source: "fitB" },
           { name: "uCut", type: "vec4", source: "frame:cut" },
           { name: "uShade", type: "float", source: "handle:shade" },
           { name: "uMask", type: "float", source: "handle:mask" },

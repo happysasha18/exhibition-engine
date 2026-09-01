@@ -369,13 +369,13 @@ check("PASS-PLANET the crop and the horizon are read off the work, on the module
 
 check("PASS-PLANET the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "uGeom" not in LAYER and "uFlatPP" not in LAYER,
-      "this instrument declares twelve uniforms, of which three are shared with every other "
+      "this instrument declares fourteen uniforms, of which five are shared with every other "
       "instrument. The host reads the manifest")
 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ +(u\w+);', REGION))
 check("PASS-PLANET the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 12,
+      declared == spelled and len(declared) == 14,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}. "
       f"The module handed its shader fourteen loose scalars; the host binds four types and no more, "
@@ -1233,6 +1233,11 @@ def boundary_width(br, frag_src, vert_src, tau, cut_foot, W=200, H=200):
         gl.uniform2f(loc('uCrop'), 0.0, 1.0);
         gl.uniform1f(loc('uWorld'), 0.0);
         gl.uniform4f(loc('uFlatPP'), 0.002, 0.002, 0.002, 0.002);
+        // the flat door's own seating, which the shader reads in place of uFlatPP since the
+        // 2026-09-01 crop-class repair: the same numbers this bench always meant by them,
+        // said as the share of the source the frame spans rather than as a per-point scale
+        gl.uniform4f(loc('uFitA'), 0.002 * W, 0.002 * H, 0, 0);
+        gl.uniform4f(loc('uFitB'), 0.002 * W, 0.002 * H, 0, 0);
         gl.uniform4f(loc('uCut'), %r, %r, 0.5, 0.0);
         gl.uniform1f(loc('uShade'), 1.0);
         gl.uniform1f(loc('uMask'), 1.0);
@@ -1320,7 +1325,7 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1.0} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False, "readsChain": True}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 12
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 14
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -1333,7 +1338,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "planet" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"nine handles, twelve uniforms in one pass, both doors at a cover crop of "
+                      f"nine handles, fourteen uniforms in one pass, both doors at a cover crop of "
                       f"{m['framings']['0']['coverCrop']} — the module's own contract row publishes "
                       f"exactly that, «the flat end is the plain cover-fit of the same texture "
                       f"unit, so both doors frame the picture alike» — levels {m['levels']}, "

@@ -223,10 +223,17 @@
       // the flat door, and the flat point is read off the frame's own middle, so no wandering centre
       // touches the door.
       "  vec2 vp = (uv - 0.5) * vec2(aspect, 1.0);",
-      "  vec2 flatA = vec2(0.5) + vp * uFitA.xy;",
-      "  vec2 flatB = vec2(0.5) + vp * uFitB.xy;",
-      "  vec2 gxA = vec2(uFitA.x / uRes.y, 0.0), gyA = vec2(0.0, uFitA.y / uRes.y);",
-      "  vec2 gxB = vec2(uFitB.x / uRes.y, 0.0), gyB = vec2(0.0, uFitB.y / uRes.y);",
+      // THE FLAT POINT IS READ IN THE FRAME'S OWN UNIT SQUARE, never in `vp`. `vp` carries the
+      // frame's ratio, which the spiral's geometry needs and the flat door must not see: the
+      // seating the host hands is already the plain cover fit and is already cancelled toward
+      // identity at a real door, so a second ratio here would leave the work stretched along one
+      // axis by exactly that ratio at both doors (see `fit` below). The spiral above keeps `vp`.
+      "  vec2 fp = uv - 0.5;",
+      "  vec2 flatA = vec2(0.5) + fp * uFitA.xy;",
+      "  vec2 flatB = vec2(0.5) + fp * uFitB.xy;",
+      // one point of the buffer, in each work's own texture coordinate, on the flat read's own map
+      "  vec2 gxA = vec2(uFitA.x / uRes.x, 0.0), gyA = vec2(0.0, uFitA.y / uRes.y);",
+      "  vec2 gxB = vec2(uFitB.x / uRes.x, 0.0), gyB = vec2(0.0, uFitB.y / uRes.y);",
       "  float d = uForm.z;",
 
       // WHICH WORK THIS POINT CARRIES. The ring is a place in log-radius, so it is an annulus about
@@ -463,18 +470,26 @@
       return clamp((clamp(u, 0, 1) - WIND_HOLD) / Math.max(1 - 2 * WIND_HOLD, 1e-9), 0, 1);
     }
 
-    // COVER-FIT A WORK INTO THE FRAME, IN THE FRAME'S OWN HEIGHT, which is the module's own
-    // `flatTexel` and not the plain uv-space cover fit the other instruments of this engine carry
-    // (droste.js:330-335). The difference is the space it is read in: this shader measures the frame
-    // in its own height — the same `vp` the spiral is written in — so the frame's ratio is already
-    // in the coordinate the fit multiplies, and a fit that carried the ratio a second time would
-    // squeeze the picture by it twice. The picture's short side fills the frame's short side, so a
-    // door draws the file and nothing else, and `framings` publishes a crop of 1.
+    // COVER-FIT A WORK INTO THE FRAME, THE PLAIN UV-SPACE ONE EVERY OTHER GROUND OF THIS FLEET
+    // CARRIES, and that is a repair rather than a style. This file used to answer the module's own
+    // `flatTexel` instead — the fit read in the frame's own HEIGHT (droste.js:330-335), the same
+    // `vp` the spiral is written in — and let the shader's own `vp` carry the frame's ratio on top
+    // of it. The two together are exactly the plain cover fit at the WHOLE FRAME, so nothing looked
+    // wrong there; what the arrangement could not do is answer a real DOOR. The host cancels a
+    // seating to identity by driving `fit` toward [1, 1] as a passage nears a real hang
+    // (pass-layer.js's `seated`), and a shader that multiplies the frame's ratio in AFTER that
+    // cancellation lands on [aspect, 1] instead of [1, 1) — the work stretched along one axis
+    // alone, by the frame's own ratio, at both doors. It is the same crop-class bug box-fold and
+    // hero carried (cause B): a seating the host's own channel cannot reach. Measured 2026-09-01 on
+    // a real door, a real 450x900 work and a 1000x900 frame: the picture stood 1.20 times too wide
+    // and exactly the right height. So the ratio now lives HERE, where `seated` can divide it back
+    // out, and the flat read below multiplies nothing on top of it. `framings` publishes a crop of
+    // 1 as it always did; the spiral's own coordinate keeps its `vp` and is untouched.
     function fit(iw, ih, w, h) {
-      var fw = w / Math.max(h, 1);                 // the frame, in its own height
-      var ta = iw / Math.max(ih, 1);               // the picture, same unit
-      var Sw = Math.max(fw, ta);                   // the picture, cover-fitted
-      return [1 / Sw, ta / Sw, 0, 0];
+      var fa = w / Math.max(h, 1);
+      var ia = iw / Math.max(ih, 1);
+      if (ia > fa) return [fa / ia, 1, 0, 0];
+      return [1, ia / fa, 0, 0];
     }
 
     // ---- THE DOOR THE INSTRUMENT READS FOR ITSELF --------------------------------------------------
