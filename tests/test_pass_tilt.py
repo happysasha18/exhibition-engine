@@ -873,36 +873,39 @@ else:
 
                 # ---- the level, and the miracle it spends ---------------------------------------
                 # THE MECHANISM READ IN THE REAL COMPOSER RATHER THAN IN A COMMENT NAMING IT.
-                # pass-composer.js carries a hardcoded WORLD_FOLD_INSTRUMENTS array driving
-                # `isWorldFold`/`spendsTheMiracle`, and re-exposes it as `worldFoldInstruments` on
-                # the object `make()` returns. The Node driver runs the REAL file and confirms
-                # «tilt» stands in it, then strikes «tilt» from that one array literal in memory
-                # (the file on disk is never touched) and confirms the same composer's own
-                # `worldFoldInstruments` no longer carries it — a real code-execution proof that
-                # declaring the WORLD level actually spends the crossing's miracle mechanism.
+                # `isWorldFold`/`spendsTheMiracle` read pass-composer.js's own
+                # WORLD_FOLD_INSTRUMENTS, which since P3.2 (2026-08-30) is DERIVED at runtime from
+                # each instrument's own manifest — a real carrier (`surface`) plus a WORLD
+                # declaration in `levels` — and re-exposed as `worldFoldInstruments` on the object
+                # `make()` returns. So the mutation this row plants is the row's own claim made
+                # literal: the REAL file is loaded unchanged twice, and the second time «WORLD» is
+                # struck from tilt's own `levels` in the consts handed to `make()` (a copy held in
+                # memory; neither the file nor the fixture on disk is touched). If the same composer
+                # then no longer carries «tilt», the WORLD declaration IS what spends the miracle.
                 DRIVER_MIRACLE = r"""
 "use strict";
 const fs = require("fs"), vm = require("vm");
 const [modulePath, fixturePath] = process.argv.slice(2);
-function loadMade(src) {
+const real = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
+function loadMade(strikeWorld) {
   let joined = null;
   const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
   vm.createContext(sandbox);
-  vm.runInContext(src, sandbox, {filename: "pass-composer.js"});
+  vm.runInContext(real, sandbox, {filename: "pass-composer.js"});
   if (!joined) return null;
   const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+  const mt = fix.consts.manifests.tilt;
+  if (strikeWorld) mt.levels = (mt.levels || []).filter((l) => l !== "WORLD");
   return joined.make(fix.consts);
 }
-const real = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
-const ANCHOR = 'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "tilt", "waterline"];';
-const REPLACED = 'var WORLD_FOLD_INSTRUMENTS = ["boxfold", "planet", "waterline"];';
-if (real.indexOf(ANCHOR) < 0) {
-  console.log(JSON.stringify({error: "the row's own anchor text was not found in the real composer"}));
+const fixCheck = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
+if (!fixCheck.consts.manifests.tilt
+    || (fixCheck.consts.manifests.tilt.levels || []).indexOf("WORLD") < 0) {
+  console.log(JSON.stringify({error: "tilt's own manifest no longer declares WORLD at all"}));
   process.exit(0);
 }
-const madeReal = loadMade(real);
-const mutated = real.split(ANCHOR).join(REPLACED);
-const madeMutant = loadMade(mutated);
+const madeReal = loadMade(false);
+const madeMutant = loadMade(true);
 console.log(JSON.stringify({
   realHas: !!madeReal && madeReal.worldFoldInstruments.indexOf("tilt") >= 0,
   realList: madeReal && madeReal.worldFoldInstruments,
@@ -921,11 +924,13 @@ console.log(JSON.stringify({
                           and miracle.get("mutantHas") is False,
                           f"levels={m['levels']}, carried from lab/data/module-contract-new.json's "
                           f"own `tilt` row rather than derived. Run for real: pass-composer.js's own "
-                          f"WORLD_FOLD_INSTRUMENTS reads {miracle.get('realList')}, «tilt» among "
-                          f"them, which is what `isWorldFold`/`spendsTheMiracle` read by identity; "
-                          f"with «tilt» struck from that one array in memory the same composer's "
-                          f"`worldFoldInstruments` reads {miracle.get('mutantList')} and no longer "
-                          f"carries it — declaring WORLD really does spend the crossing's one "
+                          f"WORLD_FOLD_INSTRUMENTS — derived at runtime from every manifest that "
+                          f"carries both a real surface and a WORLD declaration — reads "
+                          f"{miracle.get('realList')}, «tilt» among them, which is what "
+                          f"`isWorldFold`/`spendsTheMiracle` read by identity; with «WORLD» struck "
+                          f"from tilt's own `levels` in a copy of the consts held in memory the same "
+                          f"composer's `worldFoldInstruments` reads {miracle.get('mutantList')} and "
+                          f"no longer carries it — declaring WORLD really does spend the crossing's one "
                           f"miracle, folding the space a work lives in is a world act that consumes "
                           f"the slot and never stacks, and a role given no miracle cannot be carried "
                           f"by this instrument at all")
