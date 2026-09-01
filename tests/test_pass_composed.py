@@ -2809,18 +2809,35 @@ const HARD = {
 // ---- SHELF 6'S ONE SLOT, READ OFF THE WALK RATHER THAN THE MANIFEST (naряд S-18) --------------
 // His word of 2026-08-26 20:17: a miracle is a wow, a concept, it is subjective, and repeated it
 // stops being one. `spendsTheMiracle` no longer answers the same way for the same instrument on
-// every walk that ever casts it; it answers by what THIS walk has already played. The named pair
-// is `oneSlot.levels` above, reused because it already puts two world-declaring instruments within
-// reach of one crossing at once — the levels test above proves only one of them ever stands; this
-// proves WHICH one changes once the walk has already spent it, over a synthetic nine-step walk of
-// the same edge, threading `walkMiracles` forward exactly as `01a-pass.js`'s `passWalkMiracles`
-// does: the fold each step actually voiced `"miracle"`, most recent first.
+// every walk that ever casts it; it answers by what THIS walk has already played. The row watches a
+// synthetic nine-step walk of ONE edge, threading `walkMiracles` forward exactly as
+// `01a-pass.js`'s `passWalkMiracles` does: the fold each step actually voiced `"miracle"`, most
+// recent first.
+//
+// WHICH EDGE, AND WHY IT HAD TO CHANGE (2026-09-01). This read `oneSlot.levels`'s own pair at a
+// middle, reused because THAT row's law needed a pair putting two world-declaring instruments
+// within reach of one cast. Between then and now the cast became a joint bundle planner (P1.2,
+// 431a10c), which enumerates whole `{ground, travel, arrival, colour}` bundles instead of filling
+// slots one at a time — and over that pair's own bundle set exactly ONE world fold, «planet», is
+// ever a candidate at all. So the walk it drew could only ever show the first half of the law: the
+// fold spends the slot once and never again. The second half — the freed slot taken by ANOTHER fold
+// in the same crossing — had nothing on that pair to be taken by, and the row read silence as a
+// breach when what it had actually run out of was a second candidate.
+//
+// The edge below is named for the property the law needs and the old one no longer has: TWO folds
+// stand among the bundles this crossing considers. `foldsWithinReach` reads that off the composer's
+// own published bundle ledger (`diagnostics.bundles.considered`, the planner's own record of what
+// it weighed) rather than asserting it in prose, so the day this pair carries one fold again the
+// row says exactly that instead of quietly going vacuous. What it shows: step 1 voices «planet»,
+// step 2 hands the freed slot to «tilt», and steps 3 to 9 — both spent — voice no miracle at all,
+// which is the law's own «and never again» made visible on the same edge.
 {
-  const a = "17871374341154614", b = "18143298391216802";
+  const a = "17843154031050281", b = "17875807656492721";
   const wa = works.works[a], wb = works.works[b];
   const seed = die(a + "__" + b + "__ab");
   let walkMiracles = [];
   const steps = [];
+  const foldsWithinReach = [];
   for (let i = 0; i < 9; i++) {
     const req = {workRecordA: wa, workRecordB: wb, direction: "a-to-b", seed: seed,
                  routeRole: "middle"};
@@ -2829,6 +2846,16 @@ const HARD = {
     const cues = p.score ? p.score.cues.map((c) => ({id: c.id, instrument: c.instrument.id,
                                                      voice: c.voice})) : null;
     const miracle = cues ? (cues.find((c) => c.voice === "miracle") || null) : null;
+    // EVERY FOLD THIS CROSSING COULD HAVE CAST, off the planner's own ledger of the bundles it
+    // weighed — the slot cannot be handed on to a fold that was never a candidate, so this is the
+    // precondition the law's second half rests on and it is read rather than assumed.
+    ((((p.diagnostics || {}).bundles || {}).considered) || []).forEach((bn) => {
+      [bn.ground, bn.travel, bn.arrival].forEach((iid) => {
+        if (iid && SPENDS_THE_MIRACLE.indexOf(iid) >= 0 && foldsWithinReach.indexOf(iid) < 0) {
+          foldsWithinReach.push(iid);
+        }
+      });
+    });
     steps.push({walkMiracles: walkMiracles.slice(), declined: p.declined || null, cues: cues,
                miracle: miracle ? miracle.instrument : null});
     if (miracle) walkMiracles = [miracle.instrument].concat(walkMiracles);
@@ -2840,6 +2867,7 @@ const HARD = {
   steps.forEach((s) => { if (s.miracle) miracleVoicedCount[s.miracle] = (miracleVoicedCount[s.miracle] || 0) + 1; });
   out.miracleRarity = {
     steps: steps,
+    foldsWithinReach: foldsWithinReach.slice().sort(),
     distinctFolds: Object.keys(miracleVoicedCount).sort(),
     repeats: Object.keys(miracleVoicedCount).filter((id) => miracleVoicedCount[id] > 1)
   };
@@ -3521,12 +3549,16 @@ else:
         rr_bad = [s for s in mr["steps"] if s["declined"]]
         rr_first = mr["steps"][0]["miracle"] if mr["steps"] else None
         rr_second = mr["steps"][1]["miracle"] if len(mr["steps"]) > 1 else None
+        rr_reach = mr.get("foldsWithinReach") or []
         check(ROW_MIRACLE_RARITY,
-              not rr_bad and len(mr["steps"]) == 9 and rr_first is not None
+              not rr_bad and len(mr["steps"]) == 9 and len(rr_reach) >= 2
+              and rr_first is not None
               and rr_second is not None and rr_second != rr_first and not mr["repeats"],
-              f"nine steps of one edge, walkMiracles threaded forward: step 1 voices «{rr_first}» "
-              f"the miracle; with «{rr_first}» now in the walk's own history step 2 no longer voices "
-              f"it and voices «{rr_second}» instead — a different fold takes the freed slot in the "
+              f"nine steps of one edge, walkMiracles threaded forward. The crossing's own bundle "
+              f"ledger puts {len(rr_reach)} fold(s) within reach of it ({', '.join(rr_reach) or 'none'}), "
+              f"which is what a freed slot can be handed on TO; step 1 voices «{rr_first}» the "
+              f"miracle; with «{rr_first}» now in the walk's own history step 2 no longer voices it "
+              f"and voices «{rr_second}» instead — a different fold takes the freed slot in the "
               f"same crossing; over all nine steps {len(mr['distinctFolds'])} distinct fold(s) were "
               f"ever the miracle ({', '.join(mr['distinctFolds'])}) and none twice: {mr['repeats'] or 'none'}"
               + (f"; steps that declined: {rr_bad}" if rr_bad else ""))
