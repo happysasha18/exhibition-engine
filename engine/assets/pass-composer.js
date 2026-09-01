@@ -5503,9 +5503,29 @@
                                              || FILLS_THE_FRAME[travelInstr],
                                              false, clashForArrival, arrivalWindowBound);
         arrivalRanked = castArrival[0] || [];
+        // A MODE THAT NAMES ONE INSTRUMENT'S OWN HANDLE CAN ONLY REACH IT THROUGH THAT INSTRUMENT
+        // (shelf 7, the 2026-08-31 repair). CRYSTALLIZED speaks only through pour's own
+        // `arrival`/`seedPlace` handles and PROPAGATED only through livemirror's own `propagate`
+        // handle — each is the one branch in this file that reads `arrival.mode` for that name.
+        // The ranking above reads every candidate's GENERAL fit for this pair, which has nothing
+        // to do with which one can carry THIS mode's own word, so the die was landing on whichever
+        // instrument merely suited the pair best and the named arrival played with no handle
+        // behind it — the walk artifact's own «reached» count, `tests/pass_arrival_walk.txt`.
+        // Narrowing to the instrument the mode is written for is not a new rule: it is the same
+        // fact `arrival.mode ===` already hardwires four times in this file, read here before the
+        // pick instead of after it.
+        var ARRIVAL_WANTS_INSTRUMENT = { CRYSTALLIZED: "pour", PROPAGATED: "livemirror" };
+        var arrivalWantsOnly = ARRIVAL_WANTS_INSTRUMENT[arrival];
+        if (arrivalWantsOnly) {
+          arrivalRanked = arrivalRanked.filter(function (r) { return r.id === arrivalWantsOnly; });
+        }
         arrivalInstr = arrivalRanked.length ? arrivalRanked[0].id : null;
         castNotes.arrival = castArrival[1];
-        if (arrivalInstr === null && castArrival[3]) {
+        if (arrivalInstr === null && arrivalWantsOnly) {
+          stood.push("«" + arrival + "» names «" + arrivalWantsOnly + "»'s own handle, and this "
+                     + "crossing cannot cast «" + arrivalWantsOnly + "» for the arrival slot, so "
+                     + "the arrival plays named and the work carries over unaltered");
+        } else if (arrivalInstr === null && castArrival[3]) {
           stood.push("every instrument that could condense the arrival would put a second live "
                      + "voice on a level the ground or the travelling move already owns at the same "
                      + "moment, so the arrival stands down and the work carries over unaltered");
@@ -5742,6 +5762,16 @@
                                             FILLS_THE_FRAME[pivotInstr] || FILLS_THE_FRAME[tid],
                                             false, clash, arrivalWindowBound);
         var ranked = rankedCast[0] || [];
+        // THE SAME NARROWING THE SEQUENTIAL CAST ABOVE APPLIES, read again here because the joint
+        // bundle planner ranks its own candidates from a fresh, un-narrowed call rather than reusing
+        // `arrivalRanked` — a candidate this planner offers the bundle loop that cannot carry
+        // CRYSTALLIZED's or PROPAGATED's own handle is a candidate that, once the loop's own quality
+        // weighing prefers it over the mode-correct one for reasons that have nothing to do with the
+        // mode reaching a handle, reproduces the exact «reached: 0» this file's own comment above
+        // already names. Filtering it out of the OFFERED candidates, not just the sequential pick,
+        // is what keeps every arrival the bundle loop can choose one that actually plays the mode.
+        var wantsOnly = ARRIVAL_WANTS_INSTRUMENT[arrival];
+        if (wantsOnly) ranked = ranked.filter(function (r) { return r.id === wantsOnly; });
         return slotCandidates(ranked.length ? ranked[0].id : null, ranked);
       }
 
@@ -5808,19 +5838,30 @@
         }
       }
 
-      // A TIE AMONG EQUALLY-SCORED LEGAL BUNDLES IS WHERE A RETURN IS FREE TO BREATHE, widening the
-      // same `passIndex`-seeded die the arrival-order flip above now uses: a fresh pass always takes
-      // the first tied bundle this walk's own order examined, and a return draws among the tied set
-      // deterministically off its own pass index instead, so a walk returning to one edge again and
-      // again is not stuck replaying whichever tie the enumeration happened to meet first, forever.
-      // Reading a wide die (1009) and only THEN reducing it onto the tied set's own size sidesteps
-      // the same low-bit degeneracy the note above names — asking `dieAmong` directly for a die the
-      // size of a small tied set (as small as 2) would read next to nothing but the key's own
-      // trailing digit.
+      // A TIE AMONG EQUALLY-SCORED LEGAL BUNDLES DRAWS ON THE SAME `passIndex`-SEEDED DIE EVERY
+      // PASS, FRESH OR RETURN (shelf 7, the 2026-08-31 repair). This used to read
+      // `passIndex ? dieAmong(...) : 0` — a JS truthiness check, and a fresh pass's own
+      // `passIndex` is the number 0, which is falsy. So every first visit to an edge fell through
+      // to `ties[0]`, THE FIRST TIED BUNDLE THIS WALK'S OWN ENUMERATION ORDER EXAMINED, never the
+      // die — not because a fresh pass was meant to answer differently from a return (nothing
+      // above asks for that; the comment this replaced only wanted a RETURN not to replay the same
+      // tie forever), but because 0 reads as "no pass index" in an `if`. Enumeration tries
+      // `groundCandidates x travelCandidates x arrivalCandidates`, real travel before travel-less,
+      // so wherever a byte-budget or a level clash forced a choice between keeping the travelling
+      // move and keeping the arrival — both legal, both scoring the same `voicesPresent*100` this
+      // function's own comment says a kept move is never outscored by a dropped one — the tie
+      // always broke toward travel, never toward the arrival, on every fresh pass, for no reason
+      // this scorer states: the exact shape of shelf 7's own «reached: 0» finding. `dieAmong`
+      // already reads `passIndex` INTO its own key (`key + "|bundle|" + passIndex`), so a fresh
+      // pass (index 0) and a return (index 1, 2, ...) draw from different keys on their own; the
+      // truthiness gate added nothing the key did not already carry, and only cost the fresh pass
+      // its own fair draw. Reading a wide die (1009) and only THEN reducing it onto the tied set's
+      // own size sidesteps the same low-bit degeneracy the note over the arrival-order flip above
+      // names — asking `dieAmong` directly for a die the size of a small tied set (as small as 2)
+      // would read next to nothing but the key's own trailing digit.
       var winner = null;
       if (ties.length > 1) {
-        winner = ties[passIndex
-          ? dieAmong(pair.seed, key + "|bundle|" + passIndex, 1009) % ties.length : 0];
+        winner = ties[dieAmong(pair.seed, key + "|bundle|" + passIndex, 1009) % ties.length];
       } else if (ties.length === 1) {
         winner = ties[0];
       } else {

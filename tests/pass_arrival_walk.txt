@@ -13,37 +13,37 @@ step  1  17843080526947498 -> 17843153263050281
 
 step  2  17843153263050281 -> 17843154031050281
          arrival: CONDENSED (pole)  seeded at 0.5 of the frame's width, 0.5 of its height
-         cast:    grid-colour ["assembly"]
+         cast:    no instrument of its own
          reached: no handle — the mode is named on the plan and no instrument of this crossing carries it
 
 step  3  17843154031050281 -> 17843162890050281
          arrival: CONDENSED (pole)  seeded at 0.35 of the frame's width, 0.4 of its height
-         cast:    matter ["assembly"]
+         cast:    strata-light ["assembly"]
          reached: no handle — the mode is named on the plan and no instrument of this crossing carries it
 
 step  4  17843162890050281 -> 17844074752085724
          arrival: CONDENSED (gate)  seeded at 0.5 of the frame's width, 0.5 of its height
-         cast:    strata-light ["disassembly", "assembly"]
+         cast:    matter ["disassembly", "assembly"]
          reached: no handle — the mode is named on the plan and no instrument of this crossing carries it
 
 step  5  17844074752085724 -> 17844263084971788
          arrival: CONDENSED (gate)  seeded at 0.5 of the frame's width, 0.5 of its height
-         cast:    matter ["assembly"]
+         cast:    strata-light ["assembly"]
          reached: no handle — the mode is named on the plan and no instrument of this crossing carries it
 
 step  6  17844263084971788 -> 17845467199690102
          arrival: PROPAGATED (none)
-         cast:    tilt ["assembly"]
+         cast:    no instrument of its own
          reached: no handle — the mode is named on the plan and no instrument of this crossing carries it
 
 step  7  17845467199690102 -> 17847744487144891
          arrival: CONDENSED (gate)  seeded at 0.5 of the frame's width, 0.5 of its height
-         cast:    strata-light ["assembly"]
+         cast:    overlay ["assembly"]
          reached: no handle — the mode is named on the plan and no instrument of this crossing carries it
 
 step  8  17847744487144891 -> 17850338341064288
          arrival: PROPAGATED (none)
-         cast:    grid-colour ["disassembly", "assembly"]
+         cast:    no instrument of its own
          reached: no handle — the mode is named on the plan and no instrument of this crossing carries it
 
 step  9  17850338341064288 -> 17851032816649277

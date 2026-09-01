@@ -1897,6 +1897,21 @@
     // «another family — the «two axes changed» rule is the key change». A key has two axes, the
     // matter family and the palette world, so a progression returning in a key that moved on one
     // axis alone is the return the viewer can name — «а! ну да», the shelf's own recorded failure.
+    //
+    // AMENDED (Phase 8, 2026-09-01, deliberate narrowing, recorded rather than silently widened).
+    // The charter's own five axes are matter, level, colour, tempo, direction; what a key reads
+    // here is two of those five (matter, colour/palette) — the shipped law is «two of the key's own
+    // two axes», not «two of the charter's five». This is not an oversight standing in for the
+    // charter's ask: level, tempo and direction are readings THIS FILE has no table for yet — a
+    // "level" axis needs the same kind of matter table `passMatterOf` already gives matter, and
+    // none of the three has one. Reading two of five honestly on three unread axes would mean
+    // treating "unread" as "unchanged," which understates how often the allusion law's own
+    // condition is actually met rather than overstating it — the safer direction for a ban, but
+    // still not what the charter asked for, and asking the five-axis table to make it readable is
+    // itself a matter table, deferred above and outside this phase's write-set. So two of two is
+    // what today's readings support, written down as a scope reduction rather than pretended to be
+    // five: the day a level/tempo/direction table lands, this comment is the marker to widen the
+    // check back to what shelf 15 actually asks for.
     // Both axes apart is the case the shelf is after, and it is read off the two keys themselves.
     //
     // WHY THE OPENING RUN. Two eras are rarely the same length — the walk deals a fresh hang every
