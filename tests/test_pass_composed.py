@@ -2790,7 +2790,11 @@ const HARD = {
             worlds: twoWorlds(p), declined: p.declined || null};
   };
   out.oneSlot = {
-    levels: at("17871374341154614", "18143298391216802", "middle"),
+    // THE PAIR CHANGED, 2026-09-02: the old pair's own arrival locks to CRYSTALLIZED -> pour under
+    // `ARRIVAL_WANTS_INSTRUMENT`, and pour declares no WORLD level, so the scenario this row proves
+    // — a world ground taking a world arrival beside it — was unreachable on that pair no matter
+    // which gate the plant struck. This pair puts a world-declaring arrival within reach instead.
+    levels: at("17851032816649277", "18218859922151519", "middle"),
     swap: at("17843153263050281", "17856720509033958", "middle")
   };
 }
