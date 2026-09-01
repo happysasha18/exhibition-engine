@@ -291,12 +291,15 @@ else:
 
     # ---------------------------------------------------------------- red-on-bug
     # THE PROOF THAT THIS LAW WOULD HAVE CAUGHT CAUSE B BEFORE A VISITOR EVER SAW IT: the pre-repair
-    # `fit` for box-fold and hero, read off this branch's own parent commit — never a second guess at
-    # what the bug looked like, the actual bytes this repair replaced.
+    # `fit` for box-fold and hero, read off 8cc4537^ — the commit immediately before 8cc4537 ("Phase 2,
+    # partial: box-fold and hero's crop-class bug (cause B) fixed and verified"), which is the commit
+    # that fixed both files. Never a second guess at what the bug looked like — the actual bytes that
+    # commit replaced.
+    PRE_REPAIR_COMMIT = "8cc4537^"
     import subprocess as _sp
     def git_show(path):
         try:
-            r = _sp.run(["git", "show", "HEAD:%s" % path], cwd=str(ROOT),
+            r = _sp.run(["git", "show", "%s:%s" % (PRE_REPAIR_COMMIT, path)], cwd=str(ROOT),
                         capture_output=True, text=True, timeout=30)
             return r.stdout if r.returncode == 0 else None
         except Exception:
@@ -306,7 +309,8 @@ else:
     pre_hero = git_show("engine/assets/pass-inst-hero.js")
     if pre_box is None or pre_hero is None:
         skip("PASS-DOOR-INV red-on-bug · box-fold and hero's pre-repair fit fails this same law",
-             "could not read this branch's own parent commit for the pre-repair bytes")
+             "could not read %s for the pre-repair bytes (cause B's fix commit, 8cc4537, "
+             "must be reachable from this checkout)" % PRE_REPAIR_COMMIT)
     else:
         planted = run_node(DRIVER, {"pass-inst-boxfold.js": pre_box, "pass-inst-hero.js": pre_hero})
         prows = {} if isinstance(planted, dict) else {r["file"]: r for r in planted}
