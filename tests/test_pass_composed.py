@@ -4756,6 +4756,27 @@ def js(br, body):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % body))
 
 
+def frame_gone(br, tries=25):
+    """Let the animation frame a walk's own step was declared in END before another step is taken.
+
+    PASS-API §1.1 gives `declare` a same-frame lock: two declares inside one animation frame make
+    the second a refusal («second declare in one frame»), and the lock is released on the
+    `requestAnimationFrame` the first declare schedules. A keystroke IS a declare, and the polls a
+    row puts after one can every one of them return on their first read — `js()` costs no frame and
+    a loop that breaks at once costs no sleep — so a row's SECOND keystroke can land inside the
+    first one's frame and be refused for racing the walk rather than for anything the row measures.
+    Read live off the refusal ring 2026-09-01, on the wave-and-wire row below: the row's own step
+    never reached the wire at all and its «the step did not hold» read was that refusal wearing the
+    law's clothes. Waiting for a frame to pass is the exact fact the lock is keyed on, so nothing
+    here is a guessed delay; the same repair `tests/test_pass_weave.py` took for the same class."""
+    br.evaluate("window.__frameGone = false;"
+                "requestAnimationFrame(function () { window.__frameGone = true; }); 0")
+    for _ in range(tries):
+        if br.evaluate("String(!!window.__frameGone)") == "true":
+            return True
+        br.sleep(0.1)
+    return False
+
 
 # ---------------------------------------------------------------- EX-PASS-RECORDS: the route itself
 #
@@ -5499,6 +5520,14 @@ else:
                                          " state: r.composer.state, holds: r.records.holds,"
                                          " layer: !!window.__exPass.layer(),"
                                          " passages: window.__exPass.passages().length};")
+                        # …AND THE WARM-UP STEP'S OWN FRAME IS LET GO OF FIRST (2026-09-01). Both
+                        # polls above break on their first read whenever the layer and the composer
+                        # are already in hand, and `js()` costs no frame — so the keystroke below
+                        # could land inside the warm-up step's own animation frame and be refused by
+                        # `declare`'s same-frame lock («second declare in one frame», read live off
+                        # the refusal ring). The row then measured a step that was never declared and
+                        # called it a step that did not hold. See `frame_gone` for the lock itself.
+                        frame_gone(br4)
                         br4.key("ArrowDown")           # THE STEP: declared with its records in flight
                         held = {}
                         for _ in range(20):
