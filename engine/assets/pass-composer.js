@@ -3826,19 +3826,20 @@
     // stood as an argument for a CAST PREFERENCE and nothing read it here, so this function went on
     // handing the ground to whichever cue's instrument happened to fill the frame.
     //
-    // WHAT THAT COST, COUNTED RATHER THAN ARGUED. Over the 121-work fleet, both directions and every
-    // route role — 1200 composed passages — 71 of them (5.9 per cent) seated a cue other than the
-    // pivot as the ground, and the ground's own window was shorter than the passage in ALL 71 of
-    // them, across ten different instruments (unfold 21, studio 20, gates 7, lens 6, livemirror 6,
-    // box-fold 4, hero 2, droste 2, kaleidoscope 2, parquet 1). The worst of them gave the floor a
-    // window of 0.04 s inside a 7.1 s passage. Outside that window there is no floor at all: the
+    // WHAT THAT COST, FOUND RATHER THAN ARGUED. A real search across the fleet found this
+    // reachable — seating a cue other than the pivot as the ground, on a real request, whose own
+    // window is shorter than the passage — and it names no fraction of anything: the search only
+    // has to find the shape once for it to be a live defect, since a passage with a ground window
+    // shorter than the passage is wrong on its own terms wherever it happens. The worst pair found
+    // gave the floor a window of 0.04 s inside a 7.1 s passage. Outside that window there is no
+    // floor at all: the
     // host draws whichever voice comes first with blending DISABLED (`drawPose`'s own `else`
     // branch), so the cue that DECLARED itself above the ground is silently drawn AS the ground, its
     // own `presence` never read, and at each of the real ground's window edges the picture changes
     // wholesale between two frames. Measured live on the composer's own hero bundle: `drew` goes
     // 1 → 2 across the edge and the frame's own centre goes [198,111,79] → [82,153,199], one
     // photograph to another, which `tests/test_pass_seam.py`'s two hero door rows read at 176 of 255
-    // over 91.6 per cent of the frame.
+    // over most of the frame.
     //
     // SO THE LAW IS READ HERE NOW. A plan whose ground would be anything but the pivot is refused,
     // in the same shape as the two refusals beside it — and the bundle planner's own ground swap
