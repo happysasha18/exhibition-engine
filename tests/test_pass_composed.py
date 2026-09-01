@@ -2805,7 +2805,12 @@ const HARD = {
     // `ARRIVAL_WANTS_INSTRUMENT`, and pour declares no WORLD level, so the scenario this row proves
     // — a world ground taking a world arrival beside it — was unreachable on that pair no matter
     // which gate the plant struck. This pair puts a world-declaring arrival within reach instead.
-    levels: at("17851032816649277", "18218859922151519", "middle"),
+    // AND MOVED AGAIN 2026-09-02, for the ground-is-the-pivot repair in `placeTheStack`: that
+    // pair's own arrival is no longer a world-declaring instrument under either the standing cast
+    // or the planted one, so the plant had nothing to move. Searched again over the whole fleet:
+    // this pair casts «boxfold» the ground and «pour» the arrival with the clause in place, and
+    // «boxfold» beside «tilt» — two worlds in one crossing — with it struck.
+    levels: at("17843080526947498", "18158795992274002", "middle"),
     swap: at("17843153263050281", "17856720509033958", "middle")
   };
 }
@@ -2836,7 +2841,15 @@ const HARD = {
 // step 2 hands the freed slot to «tilt», and steps 3 to 9 — both spent — voice no miracle at all,
 // which is the law's own «and never again» made visible on the same edge.
 {
-  const a = "17843154031050281", b = "17875807656492721";
+  // THE EDGE MOVED AGAIN, 2026-09-02, and for the same KIND of reason it moved on 2026-09-01: what
+  // the crossing casts changed under it. `placeTheStack` now refuses a plan whose ground would be
+  // anything but the pivot — the one cue whose window runs the whole passage — so the 71 of 1200
+  // composed passages that used to hand the floor to a short-windowed cue are re-cast through the
+  // bundle planner's own ground swap, and the edge below is one of them. On it the freed slot went
+  // to «tilt» before and to nothing after: the law's second half had nothing left to show. Searched
+  // again over the whole fleet, both roles a miracle is granted at, for an edge where two folds
+  // stand within reach AND the second step actually hands the slot to the other one.
+  const a = "17843080526947498", b = "18021749102649971";
   const wa = works.works[a], wb = works.works[b];
   const seed = die(a + "__" + b + "__ab");
   let walkMiracles = [];
@@ -3798,14 +3811,45 @@ else:
         SL_PHASE_CONST = {"colourPhaseA": 0.0, "lightPhaseA": 0.25,
                           "colourPhaseB": 0.5, "lightPhaseB": 0.75}
         slDistinct = {h: sorted(set(vs)) for h, vs in slVoices.items()}
-        slVariesOk = all(bool(slVoices[h]) and any(abs(v) > 1e-9 for v in slVoices[h])
-                         and len(slDistinct[h]) > 1 for h in SL_VARIES)
+        # WHAT «DRIVEN OFF THE WORKS» IS READ AS HERE, AND WHY IT IS NOT «DISTINCT ACROSS THE
+        # SWEEP» (changed 2026-09-02). Grid-colour's own row above reads distinctness across the
+        # sweep because it can: it is sighted owning LIGHT-COLOUR 80 to 200 times. Strata-light is
+        # sighted owning it four times in the whole fleet — `ownTheLevels` deprioritises the pivot
+        # cue on every level but SURFACE and this instrument plays pivot far more often than not, so
+        # the only way it wins the level is standing alone on it. Those four sightings shared one
+        # departing work after `placeTheStack`'s ground-is-the-pivot repair re-cast the 71 passages
+        # that used to hand the floor to a short-windowed cue, so every A reading among them is one
+        # number and a distinctness clause over them measures which works the sweep happened to
+        # land on rather than anything the writer does. Widening does not answer it either: walked
+        # at 288, 363 and 480 ordered pairs the bucket grows to four sightings and stays at ONE
+        # distinct value.
+        #
+        # THE TWELVE HANDLES ARE SIX READINGS TAKEN TWICE — the A set off the departing work's own
+        # colour.sat/brightness/contrast, the B set off the arriving work's — so ONE sighting
+        # already carries the same formula applied to two different works, and A standing apart from
+        # B is the writer reading a record rather than carrying a constant. That holds on every
+        # sighting there will ever be, whatever the sweep catches, which the clause it replaces
+        # could not say. Read pairwise below, beside the non-zero clause that already stood.
+        def slPairsApart(bucket):
+            pairs = [("colourPeriodA", "colourPeriodB"), ("colourAmpA", "colourAmpB"),
+                     ("lightPeriodA", "lightPeriodB"), ("lightAmpA", "lightAmpB")]
+            for ha, hb in pairs:
+                va, vb = bucket.get(ha) or [], bucket.get(hb) or []
+                if not va or len(va) != len(vb):
+                    return False
+                if not all(abs(x - y) > 1e-9 for x, y in zip(va, vb)):
+                    return False
+            return True
+        slVariesOk = (all(bool(slVoices[h]) and any(abs(v) > 1e-9 for v in slVoices[h])
+                          for h in SL_VARIES)
+                      and slPairsApart(slVoices))
         # Read the same way row 8d's phases are, and for the same reason: a muted voice rests all
         # three of its handles together, so a phase at 0 must have its own amplitude at 0 beside it.
         slPhaseOk = all(phaseHolds(slVoices, h, c, h.replace("Phase", "Amp"))
                         for h, c in SL_PHASE_CONST.items())
         check(NODE_ROWS[38], slVariesOk and slPhaseOk,
-              "on cues that OWN LIGHT-COLOUR: "
+              "on cues that OWN LIGHT-COLOUR, every handle read off the departing work standing "
+              "apart from its own twin read off the arriving one: "
               + "; ".join(f"{h}: {len(vs)} readings, {len(slDistinct[h])} distinct "
                           f"({slDistinct[h][:6]})" for h, vs in slVoices.items()))
 
