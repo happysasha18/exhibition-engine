@@ -2362,6 +2362,20 @@
   function finish(landState, why) {
     var rec = cur;
     if (!rec || rec.docked) return;
+    // A WALK STILL GOING GETS ITS DOOR BEFORE THE CURTAIN DROPS, WHICHEVER ROAD ARRIVED HERE. The
+    // road below reads "a landing cadence already flown" and then applies the arriving pose in CSS —
+    // which is right for a cadence that HAS flown and wrong for one still in the air, because it
+    // hands the DOM the frame at whatever value the envelopes had reached. `cadenceLand` draws the
+    // one frame that stands ON the door and writes the landing down; the caller's own `landState`
+    // then carries on below, so a watchdog still reads back as a watchdog and a lost context as a
+    // lost context. `cadenceEnd` is deliberately not called: it would dock this record a second
+    // time under the cadence's own name.
+    if (rec.cadence && !rec.cadence.ended) {
+      cadenceLand(rec, why || landState);
+      // The door frame is a real frame, so an instrument may refuse its own door from inside it and
+      // land the transaction there and then (`st.fail`). Nothing is left for this call to do.
+      if (rec.docked) return;
+    }
     // EVERY EXIT OWES THE SAME ARRIVING CAMERA DOOR.  A natural settle already starts a cadence
     // when it notices this gap, but watchdog, deadline, context-loss and fail roads reach this
     // one shared door directly.  They used to log an off-rest camera and hand the DOM over anyway.
@@ -2567,8 +2581,34 @@
     try { rec.hooks.glide(rec.cmd); } catch (e) {}
   }
 
+  // A TRANSACTION THAT IS LANDING HAS NOT STOPPED, AND THE WATCHDOG'S QUESTION IS WHETHER IT STOPPED.
+  // The watchdog is armed once, at the pass's own duration plus the settle slack, and it used to fire
+  // straight into `fail` whatever the transaction was doing. An interruption that arrives near the end
+  // of a slow pass therefore raced it: the cadence began, the watchdog fired a few hundred
+  // milliseconds later, and `fail` → `finish` docked the visit UNDERNEATH a walk that was still going
+  // — the cadence's own deadline cleared, `landedInMs` left null, `ended` left false, and the curtain
+  // dropped on a half-walked picture. That is a cut of exactly the kind the seam rows exist to catch,
+  // and it read as one: `tests/test_pass_seam.py`'s liquid cadence row measured the abandoned walk
+  // against the DOM it was handed to at 240 of 255 over 95 per cent of the frame.
+  //
+  // `settle` already refuses to act inside a cadence, in those words — "ONCE A CADENCE HAS BEGUN IT
+  // OWNS THE LANDING, ended or not" — and this is the same law on the other road. The watchdog waits
+  // instead, and what it waits for is not a new number: `cadenceStart` set a real-time `setTimeout`
+  // for the cadence's own budget, which `budgetOf` clamps and which runs off the wall clock rather
+  // than off the frame loop, so the cadence lands within that budget whatever the frame rate is doing.
+  // Re-arming for the SAME budget puts the watchdog strictly behind that deadline — by then the
+  // landing has docked the record and this returns at its first line — and leaves the liveness
+  // guarantee intact for the case the deadline somehow did not answer.
   function watchdogFire(rec) {
     if (cur !== rec || rec.docked) return;
+    var c = rec.cadence;
+    if (c && !c.ended) {
+      logEvt("watchdog-waits", rec.cmd.gen,
+             "a cadence is landing this transaction on door «" + (c.door || "none")
+             + "»; the watchdog re-arms behind the cadence's own " + c.budget + " ms budget");
+      rec.watchdogT = setTimeout(function () { watchdogFire(rec); }, c.budget);
+      return;
+    }
     logEvt("watchdog", rec.cmd.gen, "no settle");
     fail(rec.cmd.gen, "no settle");
   }
@@ -2847,8 +2887,15 @@
              progress: c.fromProgress + (c.toProgress - c.fromProgress) * e };
   }
 
-  function cadenceEnd(rec, why) {
-    if (!rec.cadence || rec.cadence.ended) return;
+  // THE LANDING ITSELF, WITHOUT THE DOCK THAT NORMALLY FOLLOWS IT. `cadenceEnd` below is this plus
+  // the dock, and it is the road a cadence takes when it reaches its own end. This half stands on its
+  // own because `finish` needs it too: an exit road that force-lands a transaction while a cadence is
+  // STILL WALKING owes that cadence its door before the curtain drops, and it owes it under its OWN
+  // land state rather than the cadence's — so it cannot call `cadenceEnd`, which would dock the
+  // transaction a second time under a different name. Split out rather than written twice, so the
+  // door frame, the `atDoor` reading and the cleared deadline can never drift apart between the two
+  // callers.
+  function cadenceLand(rec, why) {
     var c = rec.cadence;
     c.ended = true;
     c.landedInMs = Math.round(performance.now() - c.t0);
@@ -2872,6 +2919,12 @@
     });
     clearTimeout(rec.deadlineT);
     logEvt("cadence-end", rec.cmd.gen, why + " in " + c.landedInMs + " ms");
+  }
+
+  function cadenceEnd(rec, why) {
+    if (!rec.cadence || rec.cadence.ended) return;
+    var c = rec.cadence;
+    cadenceLand(rec, why);
     // `finish` acts on whatever stands in `cur`. Every other caller in this file checks first that
     // the record it means is still the one there; this one does too, so a landing that happened
     // inside the frame above can never be followed by a second landing of somebody else's pass.
