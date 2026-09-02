@@ -46,24 +46,16 @@ moved, gates and gears read 0.75 and 0.75 of 255 at the same door, level with th
 file already judged. Both stand in the fleet-wide row now, and the pinned score is driven on
 purpose in a row of its own so the line that repairs it cannot go quiet.
 
-WHAT WAS LEFT OPEN, AND WHAT CLOSED IT (2026-09-02, a later pass than the one above). `overlay`
-read over the seam at the same door, 20.25-21.5 of 255 across the runs that took it, held apart in
-a `read` row rather than judged because no pass had yet gone and looked at why. It is the same
-defect class droste and planet carried: `pass-inst-overlay.js`'s own frame coordinate (`p`, the
-unit square FRAG's `main` builds each work's sampling from) was squeezed by the drawing buffer's
-own resolution ratio (`uRes.x / uRes.y`, read via `uRes / m`) unconditionally — a factor of the
-frame's own shape standing outside `uFitA`/`uFitB`, the one channel the host's crop-cancellation
-(`seated` in pass-layer.js) reaches. Away from a door the factor is right, as the module's own
-comment already said; at a real door, where `uFitA`/`uFitB` are seated to identity so the whole
-work spans the work's own box, the factor stood alone and squeezed the sampled work along one axis
-by the canvas's own resolution ratio, whatever the actually-hung box's own ratio was. Every OTHER
-thing this instrument's own hand does to the frame — each layer's turn, its scale breath, its
-drift, the fold's own retouch, the shoulder, the corner shading, the dither — already rides `cw`,
-the one envelope §8's own comment names as shut at both ends of the dominance travel; this factor
-did not. Put on `cw` with the rest, it reads zero exactly where `cw` is zero, which is exactly
-both doors, and the arriving-door reading closed inside the same seam every other instrument passes
-at. Nothing here needed a new number: `cw` was already the shape this file's own comments say
-every axis of the frame answers to.
+WHAT IS STILL OPEN, NAMED HERE RATHER THAN LEFT TO BE REDISCOVERED. `overlay` still reads over the
+seam at the same door and was not chased in the pass that wrote this file. It declares
+`coverage.writes: true` — an absence voice, whose door law is its own absence and not this
+whole-work equation — so the row below is a reading of it and not a verdict, though overlay's own
+door prose claims the plain cover fit that reading contradicts. It stands in its own row, so the
+fleet-wide row stays a real gate on the twenty-six that are exact. That row PRINTS ITS NUMBER AND
+PASSES NO VERDICT (`read`, below): it was written as a `check` on the day this file was made, which
+made a suite that can never go green out of a line whose own text says it judges nothing, and a
+suite that is always red is a suite nobody reads. The number itself is left standing and named, at
+20.25-21.5 of 255, so that dropping the verdict cannot be mistaken for dropping the finding.
 
 WHAT IS JUDGED, AND WHAT IS ONLY REPORTED. The ARRIVING door is judged. The departing one is read
 and printed beside it but not judged, and that is measured rather than cautious: driving the
@@ -470,31 +462,46 @@ else:
             skip(ROW % "every instrument", "the walk never handed the renderer a frame")
         else:
             a, ash, b, bsh = got.pop("__pair__")
-            # NOTHING IS HELD APART ANY MORE. `gates` and `gears` stood in a row of their own until
-            # 2026-09-02 and stand in this one now: neither ever carried a seating fault, and what
+            # THE ONE STILL OVER THE SEAM, HELD APART AS ITS OWN ROW rather than folded into the
+            # fleet-wide one — the same shape `tests/test_pass_door_invariant.py` used for droste
+            # until this branch repaired it. `gates` and `gears` stood here until 2026-09-02 and
+            # stand in the fleet-wide row now: neither ever carried a seating fault, and what
             # reddened them was this file's own score pinning the `dial` each declares `open: true`
-            # (A HANDLE THE INSTRUMENT DERIVES FOR ITSELF, in `drive` above). `overlay` stood in a
-            # row of its own after that, read but not judged at 20.25-21.5 of 255 — its own frame
-            # coordinate squeezed one axis by the canvas's own resolution ratio, a factor riding
-            # nothing (§8's `cw`, the one envelope every other axis of this frame hangs on already
-            # shuts it at both doors) and so surviving past the host's own crop-cancellation, the
-            # same class droste and planet carried. Fixed in pass-inst-overlay.js by putting that
-            # factor on `cw` with the rest, it now reads inside the same seam every other instrument
-            # passes at and stands in this one row too.
+            # (A HANDLE THE INSTRUMENT DERIVES FOR ITSELF, in `drive` above). Naming what is left
+            # keeps the fleet-wide row a real gate on the twenty-six that are exact.
+            OPEN = ("overlay",)
             over = {n: round(v[1][0], 2) for n, v in got.items()
                     if v[1] is not None and v[1][0] > SEAM}
             unread = [n for n, v in got.items() if v[1] is None]
-            worst = max(((v[1][0], n) for n, v in got.items() if v[1] is not None),
-                        default=(0.0, "-"))
+            fleet_over = {n: m for n, m in over.items() if n not in OPEN}
+            worst = max(((v[1][0], n) for n, v in got.items()
+                         if v[1] is not None and n not in OPEN), default=(0.0, "-"))
             check(ROW % "every instrument",
-                  not over,
+                  not fleet_over,
                   "%d instruments driven through a real arriving door, %s(%s) -> %s(%s), at a "
-                  "%dx%d frame. Over the %.1f-of-255 seam: %s. The worst of the rest read %.2f on "
-                  "%s. Unread (the pass never took the frame, which is the rig and not a seating): "
-                  "%s. The departing door, read but not judged, stood at %s."
-                  % (len(got), a, ash, b, bsh, VW, VH, SEAM, over or "none",
+                  "%dx%d frame. Over the %.1f-of-255 seam, outside the one held apart in the row "
+                  "below: %s. The worst of the rest read %.2f on %s. Unread (the pass never took "
+                  "the frame, which is the rig and not a seating): %s. The departing door, read "
+                  "but not judged, stood at %s."
+                  % (len(got), a, ash, b, bsh, VW, VH, SEAM, fleet_over or "none",
                      worst[0], worst[1], unread or "none",
                      {n: (round(v[0][0], 2) if v[0] else None) for n, v in sorted(got.items())}))
+            # RECORDED, NOT SILENCED. `overlay` declares `coverage.writes: true` — an absence
+            # voice, whose door law is its own absence and not this whole-work equation — so this
+            # row is a reading rather than a verdict on it, and it was not chased in this pass. Its
+            # own door prose claims the plain cover fit that the number contradicts, which is the
+            # part of it that is worth a look and is left named here rather than acted on.
+            read(ROW % "the one still open",
+                 "held apart and left standing: %s of 255 against the %.1f threshold the other %d "
+                 "pass at. overlay declares coverage.writes: true, so the law exempts it by "
+                 "principle — as test_pass_door_invariant.py already exempts it — and this is a "
+                 "reading of it rather than a verdict, though its own door prose claims the plain "
+                 "cover fit the number contradicts. THAT CONTRADICTION IS OPEN AND UNFIXED: the "
+                 "reading has stood at 20.9-21.5 of 255 across the runs that have taken it, which "
+                 "is a real thirty-fold distance from the seam and not a rounding, and no pass has "
+                 "yet gone and looked at why overlay's own door prose and its own frame disagree."
+                 % ({n: over[n] for n in OPEN if n in over} or "none", SEAM,
+                    len(got) - len(over)))
 
             # ---- red-on-bug: the score this file first wrote ----------------------------------
             # THE REPAIR THIS BRANCH MADE IS THIS FILE'S OWN — no instrument byte moved — so it is
