@@ -916,97 +916,51 @@ else:
                     # ---- handoff 6 · the cadence lands on a door -------------------------
                     # THE CADENCE WALKS IN REAL TIME while the pinned clock holds the passage's own
                     # second still, so the frame the cadence lands on cannot be pinned into place.
-                    # It is caught instead: the canvas is photographed repeatedly while the cadence
-                    # runs and the LAST shot taken while the canvas still stood is the one compared.
                     #
-                    # THE COST OF THAT WAS ARGUED HERE AND THE ARGUMENT IS WRONG (measured
-                    # 2026-09-02). It used to read: the cadence walks on `smooth`, whose slope at
-                    # its own end is zero, so the picture's motion over the last poll interval is
-                    # second order and vanishes beside the step a jump would make. The loop's
-                    # `break` fires on the poll AFTER the canvas has gone, so the last SUCCESSFUL
-                    # capture is a whole poll interval short of the handover — and the rows below
-                    # now measure how far the picture travels over exactly that interval, by
-                    # keeping the last two frames and reading one against the other. On a quiet
-                    # machine it is 118, 120, 165, 171, 172, 176, 176, 176 and 234 of 255. The
-                    # motion is not second order; it is most of the picture, and the frame this
-                    # bench compares is not the frame the cadence landed on.
+                    # FIXED 2026-09-02 (was: caught by photographing the canvas repeatedly from
+                    # Python over CDP every 50ms while the cadence ran, and comparing the LAST
+                    # successfully-polled shot — which could be caught up to a whole poll interval
+                    # BEFORE the true landing frame, while the camera was still visibly moving. On a
+                    # quiet machine that read excess up to 234 of 255 against a floor of 0, and worse
+                    # under a loaded parallel run_all, because load stretches the poll interval).
                     #
-                    # WHAT THAT MAKES THE ROWS. The bar is the bench's own floor, and that floor is
-                    # measured in row 0 by photographing ONE PINNED INSTANT TWICE — a picture that
-                    # is not moving at all, which reads 0. Holding a comparison whose own noise runs
-                    # to ~170 of 255 against a bar of 0 is not a strict gate, it is a coin: across
-                    # seventeen solo runs of this file the same rows read excess 0 with the canvas
-                    # moving 176, and excess 1, 4, 5, 7, 99 with it moving 176, 176, 172, 234. Seven
-                    # of the seventeen were green throughout. Nothing in that spread is a seam, and
-                    # the «worst excess 201 of 255» seen in a full parallel run_all is the same coin
-                    # landing worse, because parallel load stretches the poll interval.
-                    #
-                    # THIS IS NOT FIXED. Photographing the landed frame needs the handover held, or
-                    # the last frame read off the renderer rather than off a screenshot poll, and
-                    # either is a change to how this whole real-pair family measures. What is done
-                    # here is to stop the reds being mistakable for a product seam: every cadence
-                    # row now prints the canvas's own motion over the same interval beside the
-                    # excess it is judging, so the noise is on the page next to the signal.
+                    # The capture now happens IN THE BROWSER instead of being polled from outside —
+                    # see the comment above `CADENCE_CAPTURE_HOOK`/`arm_cadence_capture`/
+                    # `read_cadence_capture` for the full mechanism and why both the pixels and the
+                    # element's own style are read. There is no polling interval left for a landing
+                    # to be missed by, so there is no timing race left to produce noise.
                     rest_at(br, A)
                     br.evaluate("window.__exPass.host.configure({clockPin:null, progressPin:null,"
                                 " prepareBudgetMs:400, settleSlackMs:2000}); 0")
                     solo = score(within=2000)
                     solo["cues"] = [ground_cue(DUR / 1000.0)]
+                    arm_cadence_capture(br)
                     r6 = offer(br, A, B, "seam-cadence", solo)
                     running = wait_state(br, "running")
                     br.sleep(CUT_AT)
                     js(br, "window.__exPass.host.cancel('seam-cadence'); return null;")
-                    last_canvas, last_box, prev_canvas = None, None, None
-                    handed, shot = False, 0
-                    pair = [SHOTS / "cadence-canvas-a.png", SHOTS / "cadence-canvas-b.png"]
-                    for i in range(40):
-                        bx = canvas_box(br)
-                        if not bx or bx["vis"] != "visible":
-                            handed = True
-                            break
-                        last_box = bx
-                        prev_canvas = last_canvas
-                        last_canvas = png(br, pair[shot % 2])
-                        shot += 1
-                        br.sleep(0.05)
                     wait_state(br, "idle")
                     br.sleep(0.5)
+                    last_canvas, last_box = read_cadence_capture(br, SHOTS, "cadence")
                     cadence_dom = png(br, SHOTS / "cadence-dom.png")
                     rep6 = js(br, "var r = window.__exPass.host.report();"
                                   "return {cadence: r.cadence, state: r.state};")
                     if not (r6["took"] and running and last_canvas and last_box):
                         check(ROWS[7], False, f"no cadence frame was caught: {r6} "
-                                              f"running={running} box={last_box} "
-                                              f"first-look={canvas_box(br)} "
-                                              f"report={rep6}")
+                                              f"running={running} box={last_box} report={rep6}")
                     else:
                         e = cropped_excess(last_canvas, cadence_dom, last_box, scale, SHOTS,
                                            "cadence")
                         cad = rep6.get("cadence") or {}
-                        move = (cropped_excess(prev_canvas, last_canvas, last_box, scale, SHOTS,
-                                               "cadence-move")
-                                if prev_canvas else None)
                         check(ROWS[7], e["worst"] <= bar,
-                              f"[canvas moved {move['worst'] if move else None} of 255 over the "
-                              f"last poll interval] "
                               f"the cadence landed on door «{cad.get('door')}» in "
-                              f"{cad.get('landedInMs')} ms; its last frame against the DOM it "
-                              f"handed to, over the rect the renderer claimed {e.get('size')}: "
-                              f"worst excess {e['worst']} of 255 against the bench's floor of "
-                              f"{bar}, {e['share'] * 100:.4f}% of pixels outside their own "
-                              f"neighbourhood range"
-                              f"; the capture loop stopped because "
-                              + ("the canvas had handed over (the frame compared IS the last one "
-                                 "it stood for)"
-                                 if handed else
-                                 "IT RAN OUT OF ITS OWN FORTY POLLS while the canvas was still "
-                                 "standing — so the frame compared is a MID-FLIGHT frame and the "
-                                 "excess below is the cadence's own remaining travel, not a seam")
-                              + ("; over the last poll interval the CANVAS ITSELF moved by "
-                                 f"{move['worst']} of 255 on {move['share'] * 100:.4f}% of pixels"
-                                 if move else
-                                 "; only one frame was caught, so whether the picture had stopped "
-                                 "moving cannot be said"))
+                              f"{cad.get('landedInMs')} ms; its last frame — the pixels and the "
+                              f"transform `cadenceLand` left on the canvas the instant it logged "
+                              f"its own door row, not polled from outside — against the DOM it "
+                              f"handed to, over the rect claimed {e.get('size')}: worst excess "
+                              f"{e['worst']} of 255 against the bench's floor of {bar}, "
+                              f"{e['share'] * 100:.4f}% of pixels outside their own neighbourhood "
+                              f"range")
 
                     # ---- REAL_ROWS · item 5's own widening ---------------------------------
                     # The same handoffs above, given instead to real, planner-composed bundles that
