@@ -227,14 +227,29 @@
       "}",
 
       "void main(){",
+      "  float dom = uDial.x, wet = uDial.y, sw = uDial.z, cw = uDial.w;",
       // THE SQUARE COVERS THE FRAME'S LONGER SIDE, and each work is seated inside the square by its
       // own two sides. The module's own line read the frame instead and pulled back on a tall one;
       // the seating the host already computes is the reading of the photograph that line was
       // standing in for, so it is asked for here. See THE THREE THINGS THE PORT HAD TO DECIDE.
+      //
+      // `doorQ` READS THE HOST'S OWN DOOR STATE, NOT THIS INSTRUMENT'S. `uFitA`/`uFitB` are what
+      // `seated` (pass-layer.js's `drawPose`) already answers toward identity as a real door is
+      // reached and hands straight through everywhere else — including a bare bench draw with no
+      // door simulated at all (`door` defaults to 0 there), where they carry the real, un-seated
+      // crop `fit` below computes. `seated`'s own third and fourth places are plain multiples of
+      // its `q` (no `+1`, unlike the first two), so `fit` hands back a constant 1 there and this
+      // reads the exact fraction of the door `seated` is already applying, for free. Multiplying
+      // `p`'s own frame-shape factor by that SAME fraction — rather than by `cw`, this instrument's
+      // own composite envelope, which is shut at a bench draw's own dominance extremes too but does
+      // not mean a door is being seated there (the bench never simulates one, so `uFitA`/`uFitB`
+      // still carry the real crop) — keeps `p` and `fit.xy` reading the same door at every point of
+      // the travel: both exactly one where nothing is being seated, both exactly the frame's own
+      // shape cancelled where a real door has seated the crop away.
+      "  float doorQ = uFitA.z;",
       "  float m = max(uRes.x, uRes.y);",
-      "  vec2 p = (vUv - 0.5) * uRes / m;",
+      "  vec2 p = (vUv - 0.5) * mix(vec2(1.0), uRes / m, doorQ);",
       "  float t = uTime;",
-      "  float dom = uDial.x, wet = uDial.y, sw = uDial.z, cw = uDial.w;",
 
       // bottom layer — slow, one way; its own travel comes alive with the envelope and rests
       // wherever the envelope rests, where the frame holds the photograph the file carries
@@ -439,10 +454,17 @@
     // plain cover fit of the work into the frame at every frame shape, which is why `framings`
     // publishes a crop of 1 at both doors. The module asked for no seating and stretched a work that
     // was not square; this is the reading of the photograph that stood in for.
+    //
+    // THE THIRD AND FOURTH PLACES ARE A SENTINEL, NOT A SEATING. `pass-layer.js`'s own `seated`
+    // (in `drawPose`) treats a fit vector's first two places and its last two differently — the
+    // first two move toward 1 as a door is reached, the last two move toward 0, plainly, with no
+    // added 1 — so a constant 1 here comes back exactly `doorQ` in FRAG's `main`, the fraction of
+    // the door already being seated, for the one place besides `uFitA.xy`/`uFitB.xy` itself that
+    // this instrument's own shared frame coordinate needs to read the same door on.
     function fit(iw, ih, w, h) {
       var ia = iw / Math.max(ih, 1);
-      if (!(ia > 0)) return [1, 1, 0, 0];
-      return [Math.min(1, 1 / ia), Math.min(1, ia), 0, 0];
+      if (!(ia > 0)) return [1, 1, 1, 1];
+      return [Math.min(1, 1 / ia), Math.min(1, ia), 1, 1];
     }
 
     // ---- THE DOOR THE INSTRUMENT READS FOR ITSELF ------------------------------------------------
