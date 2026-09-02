@@ -166,6 +166,11 @@ PIXEL_ROWS = [
     "visualLayer:off no longer draws the plain glide alone",
 ]
 
+# A separate list for the same reason PIXEL_ROWS is: BROWSER_ROWS's own fixed indices never shift.
+MECH_ROWS = [
+    "PASS-API §2.5 · the cadence's door frame gets a real browser frame before the canvas hides",
+]
+
 # THE FOLD BENCH. A hand-made command of exactly the shape the bundle freezes, carrying a score whose
 # one cue names the host's OWN last-resort instrument — registered unconditionally, so this bench
 # needs no instrument file and no lab module — with the two doors §2.5 walks between named on that
@@ -320,7 +325,7 @@ def declare_and_offer(br, a_idx, b_idx, cause):
 if not chrome_available():
     for r in BROWSER_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
-    for r in PIXEL_ROWS:
+    for r in PIXEL_ROWS + MECH_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
     with serve(TMP) as base:
@@ -328,7 +333,7 @@ else:
             if not arm_host(br, base):
                 for r in BROWSER_ROWS:
                     skip(r, "pass-layer.js never registered a host in this build")
-                for r in PIXEL_ROWS:
+                for r in PIXEL_ROWS + MECH_ROWS:
                     skip(r, "pass-layer.js never registered a host in this build")
             else:
                 # 0 · declare refuses an absent destination
@@ -661,6 +666,45 @@ else:
                           " gen: c1.gen};")
                 br.sleep(0.7)
                 mid = jhost(br)
+                # ---- mechanism check · the door frame must be PRESENTED before the canvas hides --
+                # `cadenceLand` (inside `finish`) draws the cadence's last ("door") frame, then in
+                # the SAME synchronous call `finish` hides the canvas (`stageShow(false)`). A browser
+                # only composites the DOM/canvas state that stood at the END of a task, so a draw
+                # immediately followed by a hide, in one task, is never given a frame of its own —
+                # whatever the previous, still-flying tick had drawn is the last thing a visitor
+                # actually sees. Proven here against the real fold below (the same one row 15/16
+                # already reads), by counting real `requestAnimationFrame` ticks between the
+                # `cadence-end` log row for gen 9101 (the instant the door frame is drawn) and the
+                # instant the canvas actually goes hidden. No threshold, no magnitude — a hide at the
+                # same tick as the draw is the bug; a hide at any later tick is the fix.
+                js(br, """
+                  window.__rafTicks = 0;
+                  var _raf = window.requestAnimationFrame;
+                  window.requestAnimationFrame = function (cb) {
+                    return _raf.call(window, function (t) { window.__rafTicks++; return cb(t); });
+                  };
+                  window.__doorTick = null;
+                  var _push = Array.prototype.push;
+                  Array.prototype.push = function (row) {
+                    if (row && row.name === "cadence-end" && row.gen === 9101
+                        && window.__doorTick === null) {
+                      window.__doorTick = window.__rafTicks;
+                    }
+                    return _push.apply(this, arguments);
+                  };
+                  window.__hideTick = null;
+                  window.__mo = new MutationObserver(function () {
+                    var c = document.querySelector("canvas");
+                    if (c && getComputedStyle(c).visibility === "hidden"
+                        && window.__hideTick === null) {
+                      window.__hideTick = window.__rafTicks;
+                    }
+                  });
+                  window.__mo.observe(document.body, {attributes: true,
+                                                       attributeFilter: ["style"],
+                                                       subtree: true, childList: true});
+                  return null;
+                """)
                 r2 = js(br, "var c2 = window.__foldCmd(9102, 500);"
                            "var took = window.__exPass.host.offer(c2, window.__foldHooks) === true;"
                            "var rep = window.__exPass.host.report();"
@@ -696,6 +740,19 @@ else:
                       f"running={mid.get('state')}/{mid.get('gen')} cadence={cad[-1:]} "
                       f"end={end[-1:]} spent={spent}ms — the score's own budget is 500 ms, so a "
                       f"walked envelope spends it and a one-frame placement spends none of it")
+
+                mech = js(br, "return {doorTick: window.__doorTick, hideTick: window.__hideTick};")
+                if not envelope:
+                    skip(MECH_ROWS[0], f"the fold above never walked an envelope to land a door "
+                                        f"frame on: end={end[-1:]}")
+                else:
+                    check(MECH_ROWS[0],
+                          mech.get("doorTick") is not None and mech.get("hideTick") is not None
+                          and mech["hideTick"] > mech["doorTick"],
+                          f"door tick {mech.get('doorTick')}, hide tick {mech.get('hideTick')} — a "
+                          f"hide at the same tick as the draw means the browser never composited "
+                          f"the door frame at all: the last thing the visitor saw was whatever the "
+                          f"previous, still-in-flight frame had drawn")
 
                 # The held command's own two facts: it was HELD (named on the host's surface, with
                 # the folding crossing still the one on the stage), and it was TAKEN with nothing
