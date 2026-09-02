@@ -64,6 +64,9 @@ GLIDE_ROWS = [
     "EX-GLIDE/INV-84 one arrow press advances exactly one frame (already guarded, held here)",
     "EX-GLIDE/INV-84 a finger swipe rides the CALM clock at every force — a gentle, a firm and a "
     "hard swipe settle within 60ms of each other, each landing exactly one frame",
+    "EX-GLIDE/INV-84 a trackpad swipe that STRADDLES the door ceremony's own end (the walk's first "
+    "busy→interactive moment, once per visit) still advances EXACTLY one frame — never swallowed, "
+    "never overshot (his live report 2026-09-02)",
 ]
 # INV-85
 ZOOM_ROWS = [
@@ -315,6 +318,44 @@ else:
               all(t > 0 for t in times) and spread <= TOUCH_SPREAD_MS and one_frame,
               " · ".join(f"{r[0]}: {r[1]}ms frame {r[2]} off {r[3]}" for r in sw)
               + f" — spread {spread}ms (want ≤{TOUCH_SPREAD_MS}ms, each frame 1 centered ≤2)")
+
+        # 5 · the FIRST gesture of a fresh visit: a real door pick (never `room()`'s localStorage
+        #     bypass — that skips the ceremony this row exists to cross), then a trackpad burst that
+        #     STARTS before the ceremony's own `busy` lock lifts and CONTINUES after it does — the one
+        #     moment every visit crosses this boundary. `wheelWalkStep`'s burst-boundary state used to
+        #     be fed and mutated by every event, including the ones the ceremony blocks, with no reset
+        #     of its own (unlike the touch pager's `tY = null` at a blocked touchstart) — so the fresh
+        #     step this gesture was owed got spent on a discarded event, and the decaying tail almost
+        #     never re-arms on its own: the visitor's first gesture came back silently swallowed.
+        # a realistic decaying trackpad burst, long enough (~230ms) to reliably span the boundary
+        # whatever CDP/scheduling slop lands on either side of it (a short flick can land wholly on
+        # one side or the other and prove nothing about the straddle itself).
+        STRADDLE_BURST = [90, 260, 480, 560, 500, 380, 260, 170, 110, 70, 44, 28, 30, 18, 22, 12,
+                          14, 8, 9, 5, 6, 3, 4, 2]
+        STRADDLE_GAP_MS = 10
+        DOOR_TEMPO = 0.3
+        BUSY_END_MS = round(1.93 * DOOR_TEMPO * 1000)   # the ceremony's own fixed cerAfter fractions
+        LEAD_MS = max(0, BUSY_END_MS - 150)              # start ~150ms before the boundary, run ~230ms
+        with Browser(width=1280, height=900) as br:
+            br.navigate(base + "/")
+            br.evaluate(f"localStorage.setItem('ex-tempo','{DOOR_TEMPO}')")
+            br.evaluate("sessionStorage.clear()")
+            br.reload()
+            for _ in range(60):
+                br.sleep(0.05)
+                if br.evaluate("document.querySelectorAll('.exd-window').length") > 0:
+                    break
+            br.click(".exd-window", settle=0)             # the real pick — fires the real ceremony
+            br.sleep(LEAD_MS / 1000.0)
+            br.evaluate(
+                "(()=>{const ds=%s,gap=%d;ds.forEach((d,i)=>setTimeout(()=>{"
+                "dispatchEvent(new WheelEvent('wheel',{deltaY:d,cancelable:true,bubbles:true}));"
+                "},i*gap));})()" % (json.dumps(STRADDLE_BURST), STRADDLE_GAP_MS))
+            br.sleep(len(STRADDLE_BURST) * STRADDLE_GAP_MS / 1000.0 + 1.5)
+            f1, o1 = cur(br), off(br)
+            check(GLIDE_ROWS[5], f1 == 1 and abs(o1) <= 2,
+                  f"landed frame {f1} off {o1} (want EXACTLY frame 1 — 0 is swallowed, >1 is "
+                  f"overshot; lead {LEAD_MS}ms into a {BUSY_END_MS}ms ceremony)")
 
         # ---- INV-85 (desktop trackpad pinch = ctrl+wheel; the split) ----------------
         # 4 · ctrl+wheel pinch-OUT over a walk work opens #ex-zoom and scales it up
