@@ -99,6 +99,7 @@
   var WIN_DROP = 45, WIN_RAISE = 120, KEEP = 240;
 
   var stage = null;          // {canvas, gl, vao, quad, texA, texB, sceneTex, programs}
+  var stageGen = 0;          // bumped by every canvas reveal, read by `stageHideAfterPresent`
   var stepIx = 0, W = 1, H = 1, cssW = 1, cssH = 1, dpr = 1;
   var times = [], changes = 0, sinceChange = 0, lastAt = 0;
   // The census (§7). `stage` counts what the host holds for everyone; `grant` counts what was created
@@ -184,12 +185,32 @@
 
   function stageShow(on) {
     if (!stage) return;
+    if (on) stageGen++;
     stage.canvas.style.visibility = on ? "visible" : "hidden";
     if (!on) {
       stage.canvas.style.transform = "";
       stage.canvas.style.left = "0"; stage.canvas.style.top = "0";
       stage.canvas.style.width = "100%"; stage.canvas.style.height = "100%";
     }
+  }
+
+  // THE DOOR FRAME NEEDS ITS OWN BROWSER FRAME BEFORE THE CURTAIN DROPS. `cadenceLand` draws the
+  // cadence's last frame — the one that stands ON the door — synchronously inside `finish`, and
+  // hiding the canvas in that SAME task (as the old code did, right there) means a browser never
+  // composites that draw at all: a browser only paints what a task leaves standing at its end, so
+  // the door frame is skipped outright and whatever the previous, still-flying rAF tick had drawn
+  // is the last thing a visitor actually sees. Waiting one more `requestAnimationFrame` lets that
+  // draw be presented before the hide. The generation check guards the one real race this opens:
+  // "the held command takes the stage the instant the fold lets go of it" (`finish`, below) can
+  // start a NEW pass on this same shared canvas, synchronously, before this callback fires — and
+  // that new pass's own reveal must not be undone by a hide meant for the pass it replaced.
+  function stageHideAfterPresent(caps) {
+    var gen = stageGen;
+    requestAnimationFrame(function () {
+      if (stageGen !== gen) return;
+      stageShow(false);
+      camApply(null, caps);
+    });
   }
 
   function stageResize() {
@@ -2464,8 +2485,7 @@
       if (rec.hooks.handoff) rec.hooks.handoff(rec.cmd);
       else rec.hooks.curtain(false);
     } catch (e) {}
-    stageShow(false);
-    camApply(null, rec.caps);
+    stageHideAfterPresent(rec.caps);
     try { rec.hooks.dock(rec.cmd); } catch (e) {}
     try { rec.hooks.mark("host-" + landState, rec.cmd, why || null); } catch (e) {}
     // EVERY instrument of the stack releases what it was granted, in draw order.

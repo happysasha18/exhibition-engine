@@ -283,16 +283,25 @@ check("PASS-HANG the first frame is drawn before the canvas is shown",
       LAYER.index("playFrame(rec, 0, 0, 0, null)") < LAYER.index("stageShow(true)"),
       "showing an unpainted canvas puts one frame of its clear colour between the walk and the pass")
 
-# Read inside `finish`'s OWN region: `handoff` and `stageShow(false)` both appear elsewhere in the
-# file (the under-cover placement, and the context-loss road), so a whole-file index would compare
-# two lines that have nothing to do with the landing.
+# Read inside `finish`'s OWN region: `handoff` appears elsewhere in the file too (the under-cover
+# placement), so a whole-file index would compare two lines that have nothing to do with the
+# landing. The hide and the transform-clear are read inside `stageHideAfterPresent`'s own region —
+# `finish` only ever schedules that pair, it never calls either of them directly, so the door frame
+# `cadenceLand` drew just before gets a real browser frame before the canvas actually goes away.
 FINISH = LAYER.split("function finish(")[1].split("function settle(")[0]
-check("PASS-HANG the handoff reveals the DOM before it releases the canvas, and fades nothing",
+HIDE_AFTER_PRESENT = LAYER.split("function stageHideAfterPresent(")[1].split("\n  }\n")[0]
+check("PASS-HANG the handoff reveals the DOM before the canvas is even scheduled to release",
       'im.style.transition = "none"' in BUNDLE and "function handoff(cmd, place)" in BUNDLE
-      and FINISH.index("hooks.handoff(rec.cmd)") < FINISH.index("stageShow(false)")
-      < FINISH.index("camApply(null"),
-      "no opacity transition, no generic fade, and no frame that draws neither picture — and the "
-      "transform is cleared only once the canvas is gone")
+      and "hooks.handoff(rec.cmd)" in FINISH and "stageHideAfterPresent(rec.caps)" in FINISH
+      and FINISH.index("hooks.handoff(rec.cmd)") < FINISH.index("stageHideAfterPresent(rec.caps)"),
+      "no opacity transition, no generic fade — the DOM is revealed before the canvas's release is "
+      "even scheduled")
+check("PASS-HANG the canvas hides and its transform clears together, only once presented",
+      "requestAnimationFrame(" in HIDE_AFTER_PRESENT
+      and HIDE_AFTER_PRESENT.index("stageShow(false)") < HIDE_AFTER_PRESENT.index("camApply(null"),
+      "the hide and the transform-clear stand inside the SAME deferred callback, so a browser "
+      "frame is guaranteed between the door frame's draw and the hide, and the transform is still "
+      "cleared only once the canvas is gone — no frame that draws neither picture")
 
 check("PASS-HANG the chrome is revealed once, after the landing, with its parts named",
       "function chromeReveal(" in BUNDLE and BUNDLE.count("chromeReveal(cmd);") == 1
@@ -326,6 +335,9 @@ ROWS = [
     "PASS-HANG row A3 · that resolution still lands exactly once, and the handoff carries the "
     "resolved pose rather than the one the interruption caught",
 ]
+
+DOOR_PRESENT_ROW = ("PASS-HANG row A3, mechanism · the cadence's door frame gets a real browser "
+                     "frame before the canvas hides")
 
 HOOKS = """window.HOOKS = function () {
   var A = window.__exPass.adapter;
@@ -562,7 +574,7 @@ def git_show(relpath):
 
 
 if not chrome_available():
-    for r in ROWS + REAL_ROWS:
+    for r in ROWS + REAL_ROWS + [DOOR_PRESENT_ROW]:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
     SHOTS = Path(tempfile.mkdtemp(prefix="synth_hangshots_"))
@@ -578,7 +590,7 @@ else:
             ok_pair = armed and len(WORKS) == 2 and all(WORKS)
 
             if not ok_pair:
-                for r in ROWS + REAL_ROWS:
+                for r in ROWS + REAL_ROWS + [DOOR_PRESENT_ROW]:
                     skip(r, f"the walk never registered a host, or hung no pair: "
                             f"armed={armed} works={WORKS}")
             else:
@@ -1162,6 +1174,46 @@ else:
                 # alongside, in `cadenceStart`: that field now marches to the passage's true end the
                 # same way `toSeconds` already did). A busy CI machine reproduces the deadline road by
                 # its own real load; this row does not manufacture a synthetic stand-in for that load.
+                #
+                # THE SAME LANDING, WATCHED FOR A DIFFERENT DEFECT (mechanism row, below): this
+                # interruption is the one real, no-held-command road that both (a) starts a real
+                # landing cadence (the camera is nowhere near the hang, exactly what this row was
+                # built to force) and (b) actually hides the canvas at the end — unlike a fold/swipe,
+                # which hands the canvas straight to the command that superseded it and never hides
+                # it at all. `cadenceLand` (inside `finish`) draws the cadence's last frame — the one
+                # standing ON the door — then in the same synchronous call used to hide the canvas
+                # right there; a browser only composites what a task leaves standing at its end, so
+                # that draw was skipped outright. Watched here by counting real
+                # `requestAnimationFrame` ticks between the `cadence-end` log row (the door frame's
+                # own draw) and the instant the canvas actually goes hidden. No threshold, no
+                # magnitude — a hide at the same tick as the draw is the bug; any later tick is fixed.
+                js(br, """
+                  window.__rafTicks = 0;
+                  var _raf = window.requestAnimationFrame;
+                  window.requestAnimationFrame = function (cb) {
+                    return _raf.call(window, function (t) { window.__rafTicks++; return cb(t); });
+                  };
+                  window.__doorTick = null;
+                  var _push = Array.prototype.push;
+                  Array.prototype.push = function (row) {
+                    if (row && row.name === "cadence-end" && window.__doorTick === null) {
+                      window.__doorTick = window.__rafTicks;
+                    }
+                    return _push.apply(this, arguments);
+                  };
+                  window.__hideTick = null;
+                  window.__mo = new MutationObserver(function () {
+                    var c = document.querySelector("canvas");
+                    if (c && getComputedStyle(c).visibility === "hidden"
+                        && window.__hideTick === null) {
+                      window.__hideTick = window.__rafTicks;
+                    }
+                  });
+                  window.__mo.observe(document.body, {attributes: true,
+                                                       attributeFilter: ["style"],
+                                                       subtree: true, childList: true});
+                  return null;
+                """)
                 js(br, "window.__exPass.adapter.interrupt('a3-nodoor'); return null;")
                 landed = wait_state(br, "idle", tries=200)
                 br.sleep(0.2)
@@ -1178,6 +1230,7 @@ else:
                           f"the interruption never reached a landing to measure: "
                           f"took={got['took']} running={running} landed={landed}")
                     check(ROWS[14], False, "no landing to measure — see the row above")
+                    skip(DOOR_PRESENT_ROW, "no landing to measure — see the row above")
                 else:
                     check(ROWS[13],
                           rest.get("rested") is True and rest.get("on") == "hang" and near,
@@ -1197,6 +1250,15 @@ else:
                                                           (rep.get("events") or [])[-6:]],
                           f"state={rep.get('state')} canvas={left} last events="
                           f"{[e.get('name') for e in (rep.get('events') or [])[-6:]]}")
+                    mech = js(br, "return {doorTick: window.__doorTick,"
+                                  " hideTick: window.__hideTick};")
+                    check(DOOR_PRESENT_ROW,
+                          mech.get("doorTick") is not None and mech.get("hideTick") is not None
+                          and mech["hideTick"] > mech["doorTick"],
+                          f"door tick {mech.get('doorTick')}, hide tick {mech.get('hideTick')} — a "
+                          f"hide at the same tick as the draw means the browser never composited "
+                          f"the door frame at all: the last thing the visitor saw was whatever the "
+                          f"previous, still-in-flight frame had drawn")
 
                 # ---- REAL_ROWS · a real, planner-composed pair casting box-fold, hero and liquid --
                 # Phase 2 item 5's own verification standard: the same door check row 8/row 1 give
