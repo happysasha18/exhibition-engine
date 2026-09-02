@@ -302,6 +302,29 @@ check("PASS-HANG the canvas hides and its transform clears together, only once p
       "the hide and the transform-clear stand inside the SAME deferred callback, so a browser "
       "frame is guaranteed between the door frame's draw and the hide, and the transform is still "
       "cleared only once the canvas is gone — no frame that draws neither picture")
+# A SINGLE deferred rAF only guarantees a paint between the draw and the hide when `finish` itself
+# ran INSIDE a running requestAnimationFrame callback (that callback's own render opportunity paints
+# before the next one, where the lone scheduled hide runs). `finish` is also reached from a plain
+# task with no rAF of its own — the cadence's own deadline timer, a zero-budget interruption, a
+# watchdog, a lost context — where the next render opportunity runs the newly-scheduled hide FIRST
+# and paints only once, so a single rAF there hides the canvas before the one paint that could have
+# shown the door frame ever happens. A live tick count cannot prove this reliably (measured: a
+# transaction still running its own per-frame rAF loop when interrupted lets an uncontrolled,
+# machine-load-dependent number of unrelated ticks through the same counter — the one-tick signal a
+# single-vs-double rAF difference would otherwise leave gets swallowed by that noise). The count
+# is exact and noise-free read off the source instead: `stageHideAfterPresent`'s own body nests a
+# SECOND requestAnimationFrame inside the first, and the hide/transform-clear pair stands only
+# inside that inner one.
+HIDE_INNER = HIDE_AFTER_PRESENT.split("requestAnimationFrame(", 2)
+check("PASS-HANG the hide waits two browser frames, not one, so a finish() reached from a plain "
+      "task still gets its door frame presented",
+      len(HIDE_INNER) == 3
+      and HIDE_INNER[2].index("stageShow(false)") < HIDE_INNER[2].index("camApply(null"),
+      "a lone deferred rAF only presents the door frame when finish() itself ran inside a running "
+      "rAF tick; reached from a plain task (the deadline timer, a zero-budget interruption, a "
+      "watchdog, a lost context) it would hide the canvas before the one paint that could have "
+      "shown the frame ever happens, so the hide and the transform-clear must stand behind a SECOND, "
+      "nested requestAnimationFrame")
 
 check("PASS-HANG the chrome is revealed once, after the landing, with its parts named",
       "function chromeReveal(" in BUNDLE and BUNDLE.count("chromeReveal(cmd);") == 1
@@ -338,6 +361,24 @@ ROWS = [
 
 DOOR_PRESENT_ROW = ("PASS-HANG row A3, mechanism · the cadence's door frame gets a real browser "
                      "frame before the canvas hides")
+
+# `finish` is not always reached from inside a running requestAnimationFrame callback: a cadence
+# whose score gives it a zero interruption budget lands through `cadenceStart`'s own synchronous
+# `cadenceEnd(rec, "at once")` road (`budget <= 0` in pass-layer.js) instead of a later
+# `setTimeout`/rAF tick — the same "plain task, not a running rAF" shape the real deadline-timer
+# road has, without needing to race a real timer. `stageHideAfterPresent` must still guarantee a
+# browser frame between the door draw and the hide there: a single `requestAnimationFrame` is only
+# sufficient when the draw already happened INSIDE a running rAF tick (that tick's own render
+# opportunity paints before the NEXT one, where the single scheduled hide runs) — from a plain task,
+# the very next render opportunity runs the newly-scheduled hide FIRST and only then paints once, so
+# a single rAF would hide the canvas before the one paint that could have shown the door frame ever
+# happens. Read as a tick COUNT rather than an ordering: one rAF elapsing between the draw and the
+# hide is the old, insufficient road (red here); two is what a task-originated `finish` needs.
+DOOR_PRESENT_TASK_ROW = ("PASS-HANG mechanism · the door frame still gets a real browser frame when "
+                         "finish() lands from a plain task, not a running requestAnimationFrame tick")
+
+MIDFLIGHT_ROW = ("PASS-HANG mechanism · a transaction whose SECOND frame (the first real "
+                  "requestAnimationFrame tick) already reads progress:1 still gets a real cadence")
 
 HOOKS = """window.HOOKS = function () {
   var A = window.__exPass.adapter;
@@ -574,7 +615,7 @@ def git_show(relpath):
 
 
 if not chrome_available():
-    for r in ROWS + REAL_ROWS + [DOOR_PRESENT_ROW]:
+    for r in ROWS + REAL_ROWS + [DOOR_PRESENT_ROW, DOOR_PRESENT_TASK_ROW, MIDFLIGHT_ROW]:
         skip(r, "Chrome not installed (pinned expected skip)")
 else:
     SHOTS = Path(tempfile.mkdtemp(prefix="synth_hangshots_"))
@@ -590,7 +631,7 @@ else:
             ok_pair = armed and len(WORKS) == 2 and all(WORKS)
 
             if not ok_pair:
-                for r in ROWS + REAL_ROWS + [DOOR_PRESENT_ROW]:
+                for r in ROWS + REAL_ROWS + [DOOR_PRESENT_ROW, DOOR_PRESENT_TASK_ROW, MIDFLIGHT_ROW]:
                     skip(r, f"the walk never registered a host, or hung no pair: "
                             f"armed={armed} works={WORKS}")
             else:
@@ -1259,6 +1300,133 @@ else:
                           f"hide at the same tick as the draw means the browser never composited "
                           f"the door frame at all: the last thing the visitor saw was whatever the "
                           f"previous, still-in-flight frame had drawn")
+
+                    # ---- mechanism, task road · a zero-budget interruption lands `finish` from a --
+                    # ---- plain task, never from a running requestAnimationFrame tick -------------
+                    # `budgetOf` reads the score's own `interruption.withinMs`; at 0, `cadenceStart`
+                    # takes its `budget <= 0` road and calls `cadenceEnd(rec, "at once")` SYNCHRONOUSLY
+                    # — no `setTimeout`, no rAF — from wherever the interruption itself was called,
+                    # which here is this row's own `adapter.interrupt(...)`, a plain script task. This
+                    # is the same shape the real deadline timer, the watchdog and a lost context all
+                    # have, without needing to race a real timer to reach it.
+                    zerobudget = score()
+                    zerobudget["interruption"] = {"withinMs": 0, "resolve": "nearest-door"}
+                    rest_at(br, A)
+                    br.evaluate("window.__exPass.host.configure({clockPin:null, progressPin:null,"
+                                " prepareBudgetMs:400, settleSlackMs:2000, fixedScale:true}); 0")
+                    br.evaluate("window.__hangScoreSaved2 = window.__hangScore;"
+                                "window.__hangScore = " + json.dumps(zerobudget) + "; 0")
+                    got2 = declare_and_offer(br, A, B, "door-present-task")
+                    running2 = wait_state(br, "running")
+                    br.sleep(DUR * 0.35 / 1000.0)   # mid-flight: camera off rest, same as row A3
+                    js(br, """
+                      window.__rafTicks = 0;
+                      var _raf = window.requestAnimationFrame;
+                      window.requestAnimationFrame = function (cb) {
+                        return _raf.call(window, function (t) { window.__rafTicks++; return cb(t); });
+                      };
+                      window.__doorTick = null;
+                      var _push = Array.prototype.push;
+                      Array.prototype.push = function (row) {
+                        if (row && row.name === "cadence-end" && window.__doorTick === null) {
+                          window.__doorTick = window.__rafTicks;
+                        }
+                        return _push.apply(this, arguments);
+                      };
+                      window.__hideTick = null;
+                      window.__mo = new MutationObserver(function () {
+                        var c = document.querySelector("canvas");
+                        if (c && getComputedStyle(c).visibility === "hidden"
+                            && window.__hideTick === null) {
+                          window.__hideTick = window.__rafTicks;
+                        }
+                      });
+                      window.__mo.observe(document.body, {attributes: true,
+                                                           attributeFilter: ["style"],
+                                                           subtree: true, childList: true});
+                      return null;
+                    """)
+                    js(br, "window.__exPass.adapter.interrupt('door-present-task-cut'); return null;")
+                    landed2 = wait_state(br, "idle", tries=200)
+                    br.evaluate("window.__hangScore = window.__hangScoreSaved2; 0")
+                    mech2 = js(br, "return {doorTick: window.__doorTick, hideTick: window.__hideTick};")
+                    # A LIVE tick count cannot tell a single deferred rAF from a double one here: the
+                    # transaction is still RUNNING its own per-frame rAF loop for the ~840 ms this row
+                    # waits before interrupting it, and the CDP round trip between resetting the
+                    # counter and firing the interrupt already lets an uncontrolled, machine-load-
+                    # dependent number of unrelated ticks through (measured directly: the SAME single-
+                    # rAF code that this row exists to catch read a "clean" delta of 2 on one run and
+                    # a real fix read 8 on another — the noise swallows the one-tick signal this row
+                    # is supposed to be reading). So `hideTick > doorTick` is read here only as the
+                    # weak, still-true fact that SOME deferral happens on this road too; the actual
+                    # single-vs-double proof is structural, below, where the count is exact and the
+                    # noise has nowhere to hide.
+                    if not (got2["took"] and running2 and landed2):
+                        skip(DOOR_PRESENT_TASK_ROW,
+                             f"the zero-budget interruption never reached a landing to measure: "
+                             f"took={got2['took']} running={running2} landed={landed2}")
+                    else:
+                        check(DOOR_PRESENT_TASK_ROW,
+                              mech2.get("doorTick") is not None and mech2.get("hideTick") is not None
+                              and mech2["hideTick"] > mech2["doorTick"],
+                              f"door tick {mech2.get('doorTick')}, hide tick {mech2.get('hideTick')} "
+                              f"— the zero-budget interruption (the same 'plain task, not a running "
+                              f"rAF tick' shape the real deadline timer has) still defers the hide "
+                              f"past the draw")
+
+                # ---- mechanism · the SECOND frame overshooting progress:1 must still get a cadence -
+                # `start`'s own SYNCHRONOUS kick-off call to `runFrame` (before this transaction has
+                # ever self-scheduled a real `requestAnimationFrame`) reads `progress` a handful of
+                # statements after `rec.t0` is stamped — a tiny positive fraction, not exactly the
+                # door, satisfying `progress > 0 && progress < 1`. The real bug this row proves is
+                # about the transaction's SECOND call — its first genuine rAF tick, the first chance
+                # `midflightSeen` could ever be read as a real mid-flight fact. Racing a real display
+                # refresh to land that overshoot (a tiny `duration`) proved unreliable — headless
+                # Chrome's own frame pacing is not a fixed 16 ms, so the race sometimes lands on a
+                # LATER, genuinely mid-flight frame instead, which is not a bug. Forced instead,
+                # deterministically: EVERY `requestAnimationFrame` callback from here on is handed a
+                # timestamp far past any real duration — not just the transaction's own self-schedule,
+                # because at least one OTHER caller (an unrelated animation this walk already has
+                # running) shares the same queue, and forcing only "the first call after this point"
+                # was found to force THAT one instead, on the wrong callback entirely (found by
+                # logging which call actually got forced: two callbacks matured in the very same
+                # browser frame, and the transaction's own was the second, unforced one). Forcing
+                # every call is safe here because nothing else in this row reads a real timestamp.
+                rest_at(br, A)
+                br.evaluate("window.__exPass.host.configure({clockPin:null, progressPin:null,"
+                            " prepareBudgetMs:400, settleSlackMs:2000, fixedScale:true}); 0")
+                # Installing the hook and triggering the transaction in the SAME evaluate call matters:
+                # two separate round trips leave a real gap of browser-side wall-clock time between
+                # them, in which anything else on the page that happens to call
+                # `requestAnimationFrame` first would consume the one forced call before this
+                # transaction's own kick-off ever reaches it.
+                got3 = js(br, """
+                  var _raf = window.requestAnimationFrame;
+                  window.requestAnimationFrame = function (cb) {
+                    return _raf.call(window, function (t) { cb(t + 1e7); });
+                  };
+                  var A = document.querySelector('.exh-frame[data-id="%s"]');
+                  var B = document.querySelector('.exh-frame[data-id="%s"]');
+                  var cmd = window.__exPass.adapter.declare({fromEl:A, toEl:B, dir:1, span:100,
+                                                             kind:'step', cause:'midflight-forced',
+                                                             velocity:0, score: window.__hangScore || null});
+                  window.__cmd = cmd;
+                  var took = cmd ? window.__exPass.layer().offer(cmd, window.HOOKS()) : false;
+                  return {got: !!cmd, took: took, gen: cmd ? cmd.gen : null};
+                """ % (A, B))
+                landed3 = wait_state(br, "idle", tries=200)
+                rep3 = js(br, "return window.__exPass.host.report();")
+                if not (got3["took"] and landed3):
+                    skip(MIDFLIGHT_ROW,
+                         f"the forced-overshoot transaction never reached a landing to measure: "
+                         f"took={got3['took']} landed={landed3}")
+                else:
+                    check(MIDFLIGHT_ROW, rep3.get("cadence") is not None,
+                          f"cadence={rep3.get('cadence')}, state={rep3.get('state')} — a null "
+                          f"cadence here means the transaction's own second call (its first real "
+                          f"rAF tick) already read progress:1 and fell straight through to the "
+                          f"instrument's own settle(), never having been given the chance a "
+                          f"genuinely mid-flight frame would have earned it")
 
                 # ---- REAL_ROWS · a real, planner-composed pair casting box-fold, hero and liquid --
                 # Phase 2 item 5's own verification standard: the same door check row 8/row 1 give

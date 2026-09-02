@@ -199,17 +199,37 @@
   // hiding the canvas in that SAME task (as the old code did, right there) means a browser never
   // composites that draw at all: a browser only paints what a task leaves standing at its end, so
   // the door frame is skipped outright and whatever the previous, still-flying rAF tick had drawn
-  // is the last thing a visitor actually sees. Waiting one more `requestAnimationFrame` lets that
-  // draw be presented before the hide. The generation check guards the one real race this opens:
-  // "the held command takes the stage the instant the fold lets go of it" (`finish`, below) can
-  // start a NEW pass on this same shared canvas, synchronously, before this callback fires — and
-  // that new pass's own reveal must not be undone by a hide meant for the pass it replaced.
+  // is the last thing a visitor actually sees.
+  //
+  // TWO `requestAnimationFrame`s, NOT ONE — because `finish` is not always called from inside a
+  // running rAF callback. When it IS (the cadence reaching its own envelope end, inside `runFrame`'s
+  // own tick), a single rAF suffices: the browser runs every due rAF callback for a frame and only
+  // then paints once, so a hide scheduled for the NEXT rAF still leaves the just-drawn frame
+  // standing, on its own, for the paint that closes THIS tick. But `finish` is also reached from a
+  // plain `setTimeout` task with no rAF of its own — the cadence's own deadline timer, a watchdog, a
+  // lost context, `cancel`/`fail` from outside. There, the draw happens in a task that is not itself
+  // due for a render; the NEXT render opportunity runs every rAF callback due for it FIRST and only
+  // paints once all of them are done — so a single rAF scheduled from that task would hide the
+  // canvas before that same opportunity's one paint, and the door frame drawn in the timer task
+  // would never be shown at all, exactly the bug this function exists to close. Waiting one rAF
+  // further before hiding guarantees a paint lands in between regardless of which kind of task drew
+  // the door frame: the first rAF's own render opportunity paints the still-visible door frame (new
+  // to the timer road, already true on the rAF road since nothing there needed the extra tick), and
+  // only the SECOND rAF actually hides it.
+  //
+  // The generation check guards the one real race this opens: "the held command takes the stage the
+  // instant the fold lets go of it" (`finish`, below) can start a NEW pass on this same shared
+  // canvas, synchronously, before either callback fires — and that new pass's own reveal must not be
+  // undone by a hide meant for the pass it replaced.
   function stageHideAfterPresent(caps) {
     var gen = stageGen;
     requestAnimationFrame(function () {
       if (stageGen !== gen) return;
-      stageShow(false);
-      camApply(null, caps);
+      requestAnimationFrame(function () {
+        if (stageGen !== gen) return;
+        stageShow(false);
+        camApply(null, caps);
+      });
     });
   }
 
@@ -3486,12 +3506,25 @@
       // never a magnitude compared against one. A pinned bench clock (`pinProgress`) is untouched:
       // pinning stands for a test naming the exact instant it wants photographed, not for a
       // passage that was actually away.
+      //
+      // `rec.frames > 1` EXCLUDES `start`'s OWN SYNCHRONOUS KICK-OFF CALL (the one `start` makes
+      // directly, before this function has ever self-scheduled via `requestAnimationFrame`). That
+      // call reads `now` only a handful of statements after `rec.t0` was stamped, so its own
+      // `progress` is some tiny positive fraction rather than exactly the door — enough to satisfy
+      // `progress > 0 && progress < 1` and mark `midflightSeen` true before a single real
+      // `requestAnimationFrame` tick has ever run this transaction. Once true, nothing clears it, so
+      // the very race this guard exists for (a LATER real tick arriving so late it already reads
+      // `progress: 1`) always found `midflightSeen` already true and fell straight through to
+      // `settle()`, exactly as before this guard was written — `rec.frames` is 1 on that one
+      // synchronous call and only 2 or more on a call this function's own `requestAnimationFrame`
+      // actually scheduled, so this is the same fact the guard already reads, aimed at the one call
+      // it was never meant to answer for.
       if (pinProgress === null && progress >= 1 && !rec.midflightSeen && rec.duration > 0
           && rec.inst && rec.inst.manifest) {
         cadenceStart(rec, "reached its door with no frame ever drawn between them", false, "docked");
         return;
       }
-      if (progress > 0 && progress < 1) rec.midflightSeen = true;
+      if (rec.frames > 1 && progress > 0 && progress < 1) rec.midflightSeen = true;
       rec.lastSeconds = seconds;
       rec.lastProgress = progress;
       placeUnderCover(rec, seconds);
