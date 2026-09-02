@@ -1060,37 +1060,23 @@ else:
                         br.evaluate("window.__exPass.host.configure({clockPin:null, "
                                     "progressPin:null, prepareBudgetMs:400, "
                                     "settleSlackMs:2000}); 0")
+                        # Same in-browser capture as the solo cadence row above
+                        # (`arm_cadence_capture` / `read_cadence_capture`) — see the comment there
+                        # for why this replaces polling the canvas from Python.
                         _rpivot = _rsc["cues"][0]
                         _rsolo = dict(_rsc)
                         _rsolo["cues"] = [_rpivot]
                         _rsolo["interruption"] = {"withinMs": 2000, "resolve": "nearest-door"}
+                        arm_cadence_capture(br)
                         _rr6 = offer(br, A, B, "real-" + _name + "-cadence", _rsolo)
                         _rrunning = wait_state(br, "running")
                         br.sleep(min(CUT_AT, _rdur / 2))
                         js(br, "window.__exPass.host.cancel('real-%s-cadence'); return null;"
                            % _name)
-                        # THE LAST TWO FRAMES ARE BOTH KEPT, so the row can say whether a residual
-                        # against the DOM is the picture STILL MOVING over the last poll interval
-                        # or the landed picture genuinely differing from the DOM. Photographing one
-                        # frame cannot tell those apart, and they are a bench limit and a product
-                        # seam respectively. They alternate between two files because `png` writes
-                        # to the path it is handed.
-                        _rlast_canvas, _rlast_box, _rprev_canvas = None, None, None
-                        _rhanded, _rshot = False, 0
-                        _rpair = [SHOTS / (_name + "-cadence-canvas-a.png"),
-                                  SHOTS / (_name + "-cadence-canvas-b.png")]
-                        for _ in range(40):
-                            _bx = canvas_box(br)
-                            if not _bx or _bx["vis"] != "visible":
-                                _rhanded = True
-                                break
-                            _rlast_box = _bx
-                            _rprev_canvas = _rlast_canvas
-                            _rlast_canvas = png(br, _rpair[_rshot % 2])
-                            _rshot += 1
-                            br.sleep(0.05)
                         wait_state(br, "idle")
                         br.sleep(0.5)
+                        _rlast_canvas, _rlast_box = read_cadence_capture(br, SHOTS,
+                                                                         _name + "-cadence")
                         _rcadence_dom = png(br, SHOTS / (_name + "-cadence-dom.png"))
                         _rrep6 = js(br, "var r = window.__exPass.host.report();"
                                         "return {cadence: r.cadence, state: r.state};")
@@ -1103,35 +1089,15 @@ else:
                             _re = cropped_excess(_rlast_canvas, _rcadence_dom, _rlast_box, scale,
                                                  SHOTS, _name + "-cadence")
                             _rcad = _rrep6.get("cadence") or {}
-                            _rmove = (cropped_excess(_rprev_canvas, _rlast_canvas, _rlast_box,
-                                                     scale, SHOTS, _name + "-cadence-move")
-                                      if _rprev_canvas else None)
                             check(_row, _re["worst"] <= bar,
-                                  f"[canvas moved {_rmove['worst'] if _rmove else None} of 255 "
-                                  f"over the last poll interval] "
                                   f"{_name}'s own real bundle: the cadence landed on door "
                                   f"«{_rcad.get('door')}» in {_rcad.get('landedInMs')} ms; its "
-                                  f"last frame against the DOM it handed to, worst excess "
+                                  f"last frame — the pixels and the transform `cadenceLand` left on "
+                                  f"the canvas the instant it logged its own door row, not polled "
+                                  f"from outside — against the DOM it handed to, worst excess "
                                   f"{_re['worst']} of 255 against the bench's floor of {bar}, "
                                   f"{_re['share'] * 100:.4f}% of pixels outside their own "
-                                  f"neighbourhood range"
-                                  f"; the capture loop stopped because "
-                                  + ("the canvas had handed over (the frame compared IS the last "
-                                     "one it stood for)"
-                                     if _rhanded else
-                                     "IT RAN OUT OF ITS OWN FORTY POLLS while the canvas was still "
-                                     "standing — so the frame compared is a MID-FLIGHT frame and "
-                                     "the excess below is the cadence's own remaining travel, not "
-                                     "a seam")
-                                  + ("; over the last poll interval the CANVAS ITSELF moved by "
-                                     f"{_rmove['worst']} of 255 on "
-                                     f"{_rmove['share'] * 100:.4f}% of pixels — a residual at or "
-                                     "above the excess against the DOM means the picture had not "
-                                     "stopped when it was photographed, which is this bench's "
-                                     "reach and not a seam"
-                                     if _rmove else
-                                     "; only one frame was caught, so whether the picture had "
-                                     "stopped moving cannot be said"))
+                                  f"neighbourhood range")
                         js(br, "window.__exPass.adapter.interrupt('%s-doors-done'); "
                                "return null;" % _name)
                         wait_state(br, "idle")
