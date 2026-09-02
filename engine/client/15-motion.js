@@ -369,25 +369,55 @@
   function wheelWalkStep(s, st) {
     const mag = Math.abs(s.dy);
     const gap = st.lastT == null ? Infinity : s.t - st.lastT;
-    st.fresh = gap >= WHEEL_IDLE_MS;                   // the idle boundary read off timestamps — the setTimeout twin in the listener resets state on true idle
+    // A raw time gap ALONE cannot tell "the finger genuinely lifted, this is a new gesture" apart
+    // from "the SAME decaying momentum tail just had one event-DELIVERY gap": e.timeStamp is the
+    // real hardware capture time, so under main-thread backpressure (the busiest stretch of a
+    // visit is the door ceremony's own synchronous DOM/layout work — exactly the first gesture's
+    // own window) several real events can be coalesced/queued and dispatched back-to-back once the
+    // thread frees up, each still carrying its true, WIDELY-spaced capture timestamp — so the gap
+    // read here crosses WHEEL_IDLE_MS even though the OS never stopped sending events and the
+    // external `wheelIdle` timer (real wall-clock silence between DISPATCHES) never got a chance to
+    // fire in between to reset `lastT` itself. Read that gap through the SAME law CREST_RATIO/
+    // REARM_RATIO already hold a re-arm to: a momentum tail only ever FALLS, so a magnitude that
+    // still fits where the OLD envelope would have decayed to by now is the SAME gesture
+    // continuing, gap or no gap — a "fresh" burst needs `lastT == null` (no state to decay against
+    // — a real reset already happened, or this is the very first event) OR a genuine CLIMB over
+    // that decay, the same onset signature a re-arm already demands. Without this, a momentum tail
+    // chopped by delivery gaps into several apparent "fresh" bursts each steps once on its own —
+    // one continuous swipe read as several (his live report 2026-09-02: one swipe, ~4 frames).
+    // The decayed threshold alone is not enough: it keeps shrinking toward zero the LONGER the gap
+    // runs, so past some width almost any nonzero tail remnant "clears" it — exactly backwards, since
+    // a longer stall makes a continuing tail's own remnant SMALLER, never a reason to trust it more.
+    // A momentum tail is also, sample to sample, non-increasing except at a genuine re-swipe onset
+    // (`rises` below reads the same fact) — so a real climb also has to beat the last RAW sample
+    // taken, not just a since-decayed projection of it; a delivery-gapped remnant that is smaller
+    // than (or equal to) what came in right before the gap never was a climb, whatever the gap did
+    // to the envelope in between. Known narrow residual: a delivery gap landing during the first one
+    // or two events of a swipe's OWN rise (still genuinely climbing toward its own peak) still reads
+    // as fresh — real momentum is climbing there too, so this reads identically to a new gesture from
+    // magnitude and raw-previous-sample alone. Far less likely in practice than a gap in the tail
+    // (the rise is a handful of samples over a few tens of ms; the ceremony's own busy stretch runs
+    // long after it, over the tail's own much longer decay).
+    const decayedEnv = st.lastT == null ? 0 : st.env * Math.pow(0.5, gap / ENV_HALF_MS);
+    st.fresh = st.lastT == null
+      || (gap >= WHEEL_IDLE_MS && mag >= st.prev && mag >= decayedEnv * REARM_RATIO);
     let step = 0;
     if (st.fresh) {
       step = s.dy > 0 ? 1 : -1;                        // a fresh burst always steps once
       st.env = mag; st.peak = mag; st.crested = false; st.stepT = s.t; st.prev = mag; st.rises = 0;
     } else {
-      const env = st.env * Math.pow(0.5, gap / ENV_HALF_MS);       // the envelope, decayed toward the tail at NOW
       if (mag > st.peak) st.peak = mag;
       if (!st.crested && st.peak > 0 && mag <= st.peak * CREST_RATIO) st.crested = true;
       st.rises = (mag > st.prev) ? st.rises + 1 : 0;               // consecutive climbing events — momentum never climbs
       // a re-swipe onset is a DENSE climb (the finger's own cadence) that clears the decayed tail; a sparse
       // far-tail ripple climbs across wide gaps where the envelope has itself decayed to the live value, so
       // the ratio alone degenerates there — the tight-gap gate is what tells the two apart (INV-84).
-      const onset = st.crested && st.rises >= RISE_RUN && gap <= RISE_GAP_MS && mag >= env * REARM_RATIO;
+      const onset = st.crested && st.rises >= RISE_RUN && gap <= RISE_GAP_MS && mag >= decayedEnv * REARM_RATIO;
       if (mag > 0 && s.t - st.stepT >= STEP_MIN_MS && onset) {
         step = s.dy > 0 ? 1 : -1;                      // a deliberate SECOND swipe — re-armed
         st.env = mag; st.peak = mag; st.crested = false; st.stepT = s.t; st.rises = 0;
       } else {
-        st.env = Math.max(env, mag);                   // ride the stream: attack to the live value, else follow the tail down
+        st.env = Math.max(decayedEnv, mag);            // ride the stream: attack to the live value, else follow the tail down
       }
       st.prev = mag;
     }
