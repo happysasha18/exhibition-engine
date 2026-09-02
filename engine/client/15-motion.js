@@ -413,11 +413,25 @@
       // our own inspect layer instead of dropping it: the browser still never viewport-zooms, and the
       // gesture drives the app zoom. A plain wheel stays the walk — the split is clean.
       if (wheelMode === "zoom") { e.preventDefault(); pinchWheel(e); return; }
+      // EX-GLIDE first-gesture fix (his live report, 2026-09-02): `wheelWalkStep` above just ran and
+      // spent this event's verdict on `wheelS` — its "fresh" step if this opened a burst, or a tick
+      // toward a re-arm if not — but a face standing (the door ceremony) or the walk not yet owning
+      // input means that verdict can NEVER be acted on: it is simply dropped below, same as the
+      // touch pager drops an ignored touch. The touch pager marks that with `tY = null` at its own
+      // touchstart so the NEXT touch starts clean; `wheelS` had no such reset, so a trackpad swipe
+      // straddling this boundary (started before the walk could act, still moving once it can — the
+      // one moment every visit crosses it: the door ceremony ending into the walk) kept its state —
+      // the fresh step it was owed already spent on a discarded event, and the decaying tail that
+      // follows almost never re-arms on its own (the re-arm gate wants a real death then a real
+      // climb — the signature of a SECOND swipe, not the only one). The visitor's first gesture came
+      // back silently swallowed. Resetting `lastT` makes the next wheel event this device can act on
+      // genuinely fresh again, the touch pager's own guarantee.
       if (faceStands()) {                              // EX-CHROME: rest the walk's input behind a face
+        wheelS.lastT = null;
         if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // the face's own scroll / chrome stays native
         e.preventDefault(); return;                    // the overflow cut is gone — the rest holds the walk
       }
-      if (!walkOwnsInput()) return;
+      if (!walkOwnsInput()) { wheelS.lastT = null; return; }
       if (e.target && e.target.closest
           && e.target.closest("#ex-side, #ex-quiz-card, #ex-gift-card")) return;  // overlay scrolls
       e.preventDefault();                              // the walk is paginated, not free
