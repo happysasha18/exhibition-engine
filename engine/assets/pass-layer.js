@@ -2894,6 +2894,29 @@
       fromProgress: rec.lastProgress || 0, toProgress: 1,
       t0: performance.now(), landedInMs: null, ended: false, atDoor: null,
     };
+    // EVERY OTHER VOICE OWES THE SAME WALK THE PRIMARY GETS, not a jump-cut. The entry-door contract
+    // (`standsOver`, above) requires a voice standing over another to be ABSENT at its own door — but
+    // absent-by-the-cadence's-own-budget and absent-in-this-frame are two different laws, and only the
+    // primary's `from`/`to` were ever frozen here for `cadenceHandles` to walk. A colour-carrying
+    // accompaniment that was visible the instant before the cadence started was, until this, handed
+    // its door value outright on the walk's very first frame and held there — the miracle arriving
+    // smoothly over up to two seconds while its accompaniment had already vanished. `cadenceFrom`/
+    // `cadenceTo` freeze the same way `from`/`to` do above, so `cadenceHandles` below can walk them on
+    // the identical shared clock and the same per-handle envelope this voice's own cue names.
+    var doorSide = (door ? door.which : null) || "out";
+    rec.voices.forEach(function (v) {
+      if (v === rec.primary) return;
+      // `v.lastHandles` MUST be read before `doorHandles` is called below: `doorHandles` computes
+      // its reading through `handlesOf`, and `handlesOf` writes `v.lastHandles` as a side effect
+      // (the same side effect `cadenceStart`'s own primary `live` above is careful to capture into
+      // a local before `landingDoorOf` can touch it) — read in the other order, `vFrom` would be
+      // handed the door's own value a second time instead of what this voice actually stood at.
+      var vFrom = v.lastHandles;
+      var vTo = doorHandles(rec, v, doorSide);
+      v.cadenceFrom = vFrom || vTo;
+      v.cadenceTo = vTo;
+      v.cadenceWalked = null;
+    });
     if (!door) {
       logEvt("cadence-no-door", rec.cmd.gen,
              "the cue names no pair of doors on one handle; the handles hold where they stand");
@@ -2916,6 +2939,20 @@
       var a = c.from[k], b = c.to[k];
       if (typeof a !== "number" || typeof b !== "number") { out[k] = b; return; }
       out[k] = a + (b - a) * envelopeFor(cue, k)(u);
+    });
+    // Every other voice walks on this same shared `u`, each on the envelope ITS OWN cue names for
+    // the handle in question — the same mechanism above, extended past the one voice it used to be
+    // frozen to. `playFrame` reads `v.cadenceWalked` in place of the instant door snap it used to
+    // reach for.
+    rec.voices.forEach(function (v) {
+      if (v === rec.primary || !v.cadenceTo) return;
+      var vOut = {};
+      Object.keys(v.cadenceTo).forEach(function (k) {
+        var a = v.cadenceFrom[k], b = v.cadenceTo[k];
+        vOut[k] = (typeof a !== "number" || typeof b !== "number") ? b
+                : a + (b - a) * envelopeFor(v.cue, k)(u);
+      });
+      v.cadenceWalked = vOut;
     });
     // The passage's own second and its own progress, carried on `smooth` — the curve a handle the
     // cue says nothing about already walks on, and the second is exactly such a thing: no cue names
@@ -2941,7 +2978,11 @@
     c.landedInMs = Math.round(performance.now() - c.t0);
     // ONE LAST FRAME, ON THE DOOR ITSELF, so the picture the curtain drops on is the door and not
     // wherever the envelope had reached when the deadline arrived. This is what makes the host's
-    // force-end at the deadline a landing rather than a cut.
+    // force-end at the deadline a landing rather than a cut. A DEADLINE CAN LAND SHORT OF `u === 1`
+    // (the same race A3's own note above lives by), so every other voice's own walk is dropped here
+    // rather than reused — `playFrame`'s fallback then reads its door outright, exactly, the same way
+    // it always has for this one frame.
+    rec.voices.forEach(function (v) { v.cadenceWalked = null; });
     if (rec.inst && rec.inst.manifest && !rec.docked) {
       try { playFrame(rec, c.seconds === undefined ? (rec.lastSeconds || 0) : c.seconds,
                       c.toProgress === undefined ? (rec.lastProgress || 0) : c.toProgress,
@@ -3052,7 +3093,14 @@
       live.push(v.cue && v.cue.id);
       var slowed = halve && odd && v !== rec.primary && v.paceHandles;
       var handles = (hold && v === rec.primary) ? hold
-                  : (hold ? doorHandles(rec, v, (rec.cadence && rec.cadence.door) || "out")
+                  // WALKED, NOT SNAPPED (see `cadenceStart`'s `cadenceFrom`/`cadenceTo` and
+                  // `cadenceHandles`): a cadence frame used to hand every non-primary voice its door
+                  // value outright, the instant the cadence began, while the primary walked there
+                  // smoothly over the cadence's own budget. `v.cadenceWalked` is that same walk, run
+                  // for this voice; the door-value fallback stays for the one frame that wants it
+                  // exactly — the cadence's own landing frame (`cadenceLand` clears it first) — and
+                  // for a voice the cadence never framed a walk for at all.
+                  : (hold ? (v.cadenceWalked || doorHandles(rec, v, (rec.cadence && rec.cadence.door) || "out"))
                           : (slowed ? v.paceHandles
                                     : handlesOf(rec, v, progress, seconds, dt)));
       // WRITTEN DOWN BEFORE THE INSTRUMENT IS ASKED, for the same reason the frame's own handles
