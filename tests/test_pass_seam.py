@@ -836,10 +836,35 @@ else:
                     # second still, so the frame the cadence lands on cannot be pinned into place.
                     # It is caught instead: the canvas is photographed repeatedly while the cadence
                     # runs and the LAST shot taken while the canvas still stood is the one compared.
-                    # What that costs is bounded by the envelope itself — the cadence walks on
-                    # `smooth`, whose slope at its own end is zero, so the picture's motion over the
-                    # last poll interval is second order in it and vanishes beside the step a jump
-                    # would make.
+                    #
+                    # THE COST OF THAT WAS ARGUED HERE AND THE ARGUMENT IS WRONG (measured
+                    # 2026-09-02). It used to read: the cadence walks on `smooth`, whose slope at
+                    # its own end is zero, so the picture's motion over the last poll interval is
+                    # second order and vanishes beside the step a jump would make. The loop's
+                    # `break` fires on the poll AFTER the canvas has gone, so the last SUCCESSFUL
+                    # capture is a whole poll interval short of the handover — and the rows below
+                    # now measure how far the picture travels over exactly that interval, by
+                    # keeping the last two frames and reading one against the other. On a quiet
+                    # machine it is 118, 120, 165, 171, 172, 176, 176, 176 and 234 of 255. The
+                    # motion is not second order; it is most of the picture, and the frame this
+                    # bench compares is not the frame the cadence landed on.
+                    #
+                    # WHAT THAT MAKES THE ROWS. The bar is the bench's own floor, and that floor is
+                    # measured in row 0 by photographing ONE PINNED INSTANT TWICE — a picture that
+                    # is not moving at all, which reads 0. Holding a comparison whose own noise runs
+                    # to ~170 of 255 against a bar of 0 is not a strict gate, it is a coin: across
+                    # seventeen solo runs of this file the same rows read excess 0 with the canvas
+                    # moving 176, and excess 1, 4, 5, 7, 99 with it moving 176, 176, 172, 234. Seven
+                    # of the seventeen were green throughout. Nothing in that spread is a seam, and
+                    # the «worst excess 201 of 255» seen in a full parallel run_all is the same coin
+                    # landing worse, because parallel load stretches the poll interval.
+                    #
+                    # THIS IS NOT FIXED. Photographing the landed frame needs the handover held, or
+                    # the last frame read off the renderer rather than off a screenshot poll, and
+                    # either is a change to how this whole real-pair family measures. What is done
+                    # here is to stop the reds being mistakable for a product seam: every cadence
+                    # row now prints the canvas's own motion over the same interval beside the
+                    # excess it is judging, so the noise is on the page next to the signal.
                     rest_at(br, A)
                     br.evaluate("window.__exPass.host.configure({clockPin:null, progressPin:null,"
                                 " prepareBudgetMs:400, settleSlackMs:2000}); 0")
@@ -849,13 +874,18 @@ else:
                     running = wait_state(br, "running")
                     br.sleep(CUT_AT)
                     js(br, "window.__exPass.host.cancel('seam-cadence'); return null;")
-                    last_canvas, last_box = None, None
+                    last_canvas, last_box, prev_canvas = None, None, None
+                    handed, shot = False, 0
+                    pair = [SHOTS / "cadence-canvas-a.png", SHOTS / "cadence-canvas-b.png"]
                     for i in range(40):
                         bx = canvas_box(br)
                         if not bx or bx["vis"] != "visible":
+                            handed = True
                             break
                         last_box = bx
-                        last_canvas = png(br, SHOTS / "cadence-canvas.png")
+                        prev_canvas = last_canvas
+                        last_canvas = png(br, pair[shot % 2])
+                        shot += 1
                         br.sleep(0.05)
                     wait_state(br, "idle")
                     br.sleep(0.5)
@@ -871,13 +901,30 @@ else:
                         e = cropped_excess(last_canvas, cadence_dom, last_box, scale, SHOTS,
                                            "cadence")
                         cad = rep6.get("cadence") or {}
+                        move = (cropped_excess(prev_canvas, last_canvas, last_box, scale, SHOTS,
+                                               "cadence-move")
+                                if prev_canvas else None)
                         check(ROWS[7], e["worst"] <= bar,
+                              f"[canvas moved {move['worst'] if move else None} of 255 over the "
+                              f"last poll interval] "
                               f"the cadence landed on door «{cad.get('door')}» in "
                               f"{cad.get('landedInMs')} ms; its last frame against the DOM it "
                               f"handed to, over the rect the renderer claimed {e.get('size')}: "
                               f"worst excess {e['worst']} of 255 against the bench's floor of "
                               f"{bar}, {e['share'] * 100:.4f}% of pixels outside their own "
-                              f"neighbourhood range")
+                              f"neighbourhood range"
+                              f"; the capture loop stopped because "
+                              + ("the canvas had handed over (the frame compared IS the last one "
+                                 "it stood for)"
+                                 if handed else
+                                 "IT RAN OUT OF ITS OWN FORTY POLLS while the canvas was still "
+                                 "standing — so the frame compared is a MID-FLIGHT frame and the "
+                                 "excess below is the cadence's own remaining travel, not a seam")
+                              + ("; over the last poll interval the CANVAS ITSELF moved by "
+                                 f"{move['worst']} of 255 on {move['share'] * 100:.4f}% of pixels"
+                                 if move else
+                                 "; only one frame was caught, so whether the picture had stopped "
+                                 "moving cannot be said"))
 
                     # ---- REAL_ROWS · item 5's own widening ---------------------------------
                     # The same handoffs above, given instead to real, planner-composed bundles that
@@ -986,13 +1033,25 @@ else:
                         br.sleep(min(CUT_AT, _rdur / 2))
                         js(br, "window.__exPass.host.cancel('real-%s-cadence'); return null;"
                            % _name)
-                        _rlast_canvas, _rlast_box = None, None
+                        # THE LAST TWO FRAMES ARE BOTH KEPT, so the row can say whether a residual
+                        # against the DOM is the picture STILL MOVING over the last poll interval
+                        # or the landed picture genuinely differing from the DOM. Photographing one
+                        # frame cannot tell those apart, and they are a bench limit and a product
+                        # seam respectively. They alternate between two files because `png` writes
+                        # to the path it is handed.
+                        _rlast_canvas, _rlast_box, _rprev_canvas = None, None, None
+                        _rhanded, _rshot = False, 0
+                        _rpair = [SHOTS / (_name + "-cadence-canvas-a.png"),
+                                  SHOTS / (_name + "-cadence-canvas-b.png")]
                         for _ in range(40):
                             _bx = canvas_box(br)
                             if not _bx or _bx["vis"] != "visible":
+                                _rhanded = True
                                 break
                             _rlast_box = _bx
-                            _rlast_canvas = png(br, SHOTS / (_name + "-cadence-canvas.png"))
+                            _rprev_canvas = _rlast_canvas
+                            _rlast_canvas = png(br, _rpair[_rshot % 2])
+                            _rshot += 1
                             br.sleep(0.05)
                         wait_state(br, "idle")
                         br.sleep(0.5)
@@ -1008,13 +1067,35 @@ else:
                             _re = cropped_excess(_rlast_canvas, _rcadence_dom, _rlast_box, scale,
                                                  SHOTS, _name + "-cadence")
                             _rcad = _rrep6.get("cadence") or {}
+                            _rmove = (cropped_excess(_rprev_canvas, _rlast_canvas, _rlast_box,
+                                                     scale, SHOTS, _name + "-cadence-move")
+                                      if _rprev_canvas else None)
                             check(_row, _re["worst"] <= bar,
+                                  f"[canvas moved {_rmove['worst'] if _rmove else None} of 255 "
+                                  f"over the last poll interval] "
                                   f"{_name}'s own real bundle: the cadence landed on door "
                                   f"«{_rcad.get('door')}» in {_rcad.get('landedInMs')} ms; its "
                                   f"last frame against the DOM it handed to, worst excess "
                                   f"{_re['worst']} of 255 against the bench's floor of {bar}, "
                                   f"{_re['share'] * 100:.4f}% of pixels outside their own "
-                                  f"neighbourhood range")
+                                  f"neighbourhood range"
+                                  f"; the capture loop stopped because "
+                                  + ("the canvas had handed over (the frame compared IS the last "
+                                     "one it stood for)"
+                                     if _rhanded else
+                                     "IT RAN OUT OF ITS OWN FORTY POLLS while the canvas was still "
+                                     "standing — so the frame compared is a MID-FLIGHT frame and "
+                                     "the excess below is the cadence's own remaining travel, not "
+                                     "a seam")
+                                  + ("; over the last poll interval the CANVAS ITSELF moved by "
+                                     f"{_rmove['worst']} of 255 on "
+                                     f"{_rmove['share'] * 100:.4f}% of pixels — a residual at or "
+                                     "above the excess against the DOM means the picture had not "
+                                     "stopped when it was photographed, which is this bench's "
+                                     "reach and not a seam"
+                                     if _rmove else
+                                     "; only one frame was caught, so whether the picture had "
+                                     "stopped moving cannot be said"))
                         js(br, "window.__exPass.adapter.interrupt('%s-doors-done'); "
                                "return null;" % _name)
                         wait_state(br, "idle")
