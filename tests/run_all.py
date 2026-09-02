@@ -144,6 +144,10 @@ SUITES = [
     # a real portrait/landscape door, catching the axis-stretch class cause B's own fix never
     # reached (droste, planet). Registered in the pass that wrote it.
     "pass_door_orientation",
+    # 2026-09-02 — PASS-VOICE-DOOR-SNAP: a non-primary voice interrupted mid-cadence used to snap to
+    # its door in the walk's own first frame instead of walking there like the primary, registered
+    # in the pass that wrote it.
+    "pass_voice_cadence_walk",
 ]
 
 
