@@ -25,9 +25,10 @@ cold visit, `framePace: null`) widens nothing, which is the honest answer.
 
 WHAT THIS FILE MEASURES. It runs the shipped composer directly (Node's `vm`, the same technique
 `tests/dump_pass_arrival_walk.py` already uses to run it outside a browser) over the real 121-work
-fixture collection, hunting real pairs and seeds whose arrival window collapses to under 20ms with
+fixture collection, hunting real pairs and seeds whose arrival window collapses to under the very
+frame gap the fix would act on (`COLLAPSE_UNDER_MS` below, which is that gap and nothing else) with
 NO frame-pace reading supplied — the naturally-occurring defect, not a fabricated one — and then
-re-composes each one WITH a stated frame pace and checks the arrival's own span widened to at least
+re-composes the worst one WITH a stated frame pace and checks the arrival's own span widened to at least
 that measured gap, its open end only, its close end untouched. The collapse is a property of the
 pair, so this file never manufactures one — but a sweep that comes back empty is this row GOING
 SILENT, not a green, and it is read below as a red (see the note over the sweep's own no-hit branch).
@@ -41,8 +42,9 @@ what is left above it), which lifted the pair this row used to catch — `178431
 gap sits on an ODD seed, so the stride read straight past it and the row skipped three rows without
 one number changing in this file. The sweep now reads every seed the instruments' own manifests
 declare (`seed: {min: 0, max: 8}` in `pass-inst-parquet.js`, `pass-inst-weave.js`, and their
-siblings) rather than a stride across that span, and it finds a real collapse inside the first
-hundred combinations.
+siblings) rather than a stride across that span, and it reads the whole cap keeping the NARROWEST
+window it saw rather than stopping at the first — see the note over the sweep itself for why the
+first one in reach is too thin a case to hang this row on.
 """
 import json
 import subprocess
