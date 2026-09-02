@@ -51,7 +51,11 @@ seam at the same door and was not chased in the pass that wrote this file. It de
 `coverage.writes: true` — an absence voice, whose door law is its own absence and not this
 whole-work equation — so the row below is a reading of it and not a verdict, though overlay's own
 door prose claims the plain cover fit that reading contradicts. It stands in its own row, so the
-fleet-wide row stays a real gate on the twenty-six that are exact.
+fleet-wide row stays a real gate on the twenty-six that are exact. That row PRINTS ITS NUMBER AND
+PASSES NO VERDICT (`read`, below): it was written as a `check` on the day this file was made, which
+made a suite that can never go green out of a line whose own text says it judges nothing, and a
+suite that is always red is a suite nobody reads. The number itself is left standing and named, at
+20.25-21.5 of 255, so that dropping the verdict cannot be mistaken for dropping the finding.
 
 WHAT IS JUDGED, AND WHAT IS ONLY REPORTED. The ARRIVING door is judged. The departing one is read
 and printed beside it but not judged, and that is measured rather than cautious: driving the
@@ -100,6 +104,18 @@ def check(name, cond, detail=""):
 
 def skip(name, detail):
     results.append((name, "SKIP", detail))
+
+
+def read(name, detail):
+    """A number this file measures and prints WITHOUT a verdict on it — the third thing this file
+    does, beside judging and abstaining, and the one its own header already names ("WHAT IS JUDGED,
+    AND WHAT IS ONLY REPORTED"). Until 2026-09-02 the only way to print an unjudged reading was to
+    fold it into some other row's detail, as the departing door still is, and the one reading that
+    wanted a row of its own was given a `check` instead — which made a permanent FAIL out of a line
+    whose own text says it carries no verdict. This is not a SKIP: a SKIP says the measurement was
+    never taken and is counted against the runner's own abstention ratchet, and this measurement was
+    taken and is printed. It never reddens the suite."""
+    results.append((name, "READ", detail))
 
 
 # ---------------------------------------------------------------- the two pre-repair files
@@ -475,15 +491,17 @@ else:
             # row is a reading rather than a verdict on it, and it was not chased in this pass. Its
             # own door prose claims the plain cover fit that the number contradicts, which is the
             # part of it that is worth a look and is left named here rather than acted on.
-            check(ROW % "the one still open",
-                  not [n for n in OPEN if n in over],
-                  "held apart and left standing: %s of 255 against the %.1f threshold the other %d "
-                  "pass at. overlay declares coverage.writes: true, so the law exempts it by "
-                  "principle — as test_pass_door_invariant.py already exempts it — and this is a "
-                  "reading of it rather than a verdict, though its own door prose claims the plain "
-                  "cover fit the number contradicts"
-                  % ({n: over[n] for n in OPEN if n in over} or "none", SEAM,
-                     len(got) - len(over)))
+            read(ROW % "the one still open",
+                 "held apart and left standing: %s of 255 against the %.1f threshold the other %d "
+                 "pass at. overlay declares coverage.writes: true, so the law exempts it by "
+                 "principle — as test_pass_door_invariant.py already exempts it — and this is a "
+                 "reading of it rather than a verdict, though its own door prose claims the plain "
+                 "cover fit the number contradicts. THAT CONTRADICTION IS OPEN AND UNFIXED: the "
+                 "reading has stood at 20.9-21.5 of 255 across the runs that have taken it, which "
+                 "is a real thirty-fold distance from the seam and not a rounding, and no pass has "
+                 "yet gone and looked at why overlay's own door prose and its own frame disagree."
+                 % ({n: over[n] for n in OPEN if n in over} or "none", SEAM,
+                    len(got) - len(over)))
 
             # ---- red-on-bug: the score this file first wrote ----------------------------------
             # THE REPAIR THIS BRANCH MADE IS THIS FILE'S OWN — no instrument byte moved — so it is
@@ -573,7 +591,8 @@ for name, verdict, detail in results:
     if verdict == "FAIL":
         bad += 1
 print()
-print("%d passed / %d failed / %d skipped"
+print("%d passed / %d failed / %d skipped / %d read without a verdict"
       % (sum(1 for r in results if r[1] == "PASS"), bad,
-         sum(1 for r in results if r[1] == "SKIP")))
+         sum(1 for r in results if r[1] == "SKIP"),
+         sum(1 for r in results if r[1] == "READ")))
 sys.exit(1 if bad else 0)

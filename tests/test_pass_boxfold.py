@@ -1200,9 +1200,45 @@ else:
                 idle(br, nap=0.05)
                 br.evaluate("window.__hooks.docks.length = 0; window.__hooks.curtains.length = 0; 0")
                 took = js(br, "return window.__offer(%s, {});" % SCORE)
-                br.sleep(0.5)
-                mid = js(br, "var r = window.__report(); return {state: r.state, "
-                             "curtains: window.__hooks.curtains.slice(), camera: r.camera};")
+                # THE PAN IS READ AT THE PASS'S OWN MIDDLE, NOT AT HALF A SECOND OF WALL CLOCK.
+                #
+                # WHAT THIS FIXED (2026-09-02). This block used to be `sleep(0.5)` and one reading,
+                # and the row below asked that reading for a pan over a typed 0.0001. The pass is
+                # DURATION_MS = 6500 long, so half a second is 7.7% of it — and the pan the box
+                # publishes is `slide[0]` in pass-inst-boxfold.js, which is
+                # `(seam.at - 0.5) * 2 * win * aspect` over `win = sin(PI * jj.f)`: the instrument's
+                # own single sine over the quarter, ZERO AT BOTH DOORS by its own construction and
+                # steepest exactly where the old reading was taken. Quiet-machine runs read 3.33,
+                # 3.34, 3.38 and 3.39e-4 there, so the typed bar sat about 3.4x under the reading;
+                # one loaded run read 6.08e-5 and went red. Solving the same sine back gives an
+                # amplitude near 1.4e-3, so the old row reddened whenever the pass had advanced less
+                # than about 2.3% — 148ms of its own clock — by the time the wall clock had spent
+                # 500ms. The loaded reading works out at 90ms of pass clock: a first-frame stall,
+                # measured by the row as a camera fault. Nothing about the camera was wrong on that
+                # run — its rest read off 0 EXACTLY, `rested` true, and all three handoffs 0 and
+                # within — so a wider tolerance would have been a wider bar on the wrong quantity.
+                #
+                # Walking the pass and keeping the LARGEST pan removes the machine from the reading.
+                # The sine is stationary at its own peak, so a sample near the middle reads the full
+                # amplitude however slow the machine is, and a sample that misses the exact peak
+                # misses it by the square of a small number. A pan that never leaves rest still
+                # reads zero, which is the fault this row is for.
+                walk, peak = None, 0.0
+                for _tick in range(int(DURATION_MS / 250) + 4):
+                    br.sleep(0.25)
+                    r = js(br, "var r = window.__report(); return {state: r.state, "
+                               "curtains: window.__hooks.curtains.slice(), camera: r.camera};")
+                    if r["state"] != "running":
+                        break
+                    # The row above this one reads `mid` for the curtain and the running state, and
+                    # it read them at half a second before this walk replaced the single sleep. That
+                    # instant is kept exactly, so the walk adds the peak without moving anything the
+                    # other row already stood on.
+                    if walk is None and _tick >= 1:
+                        walk = r
+                    p = (r["camera"] or {}).get("pose") or {}
+                    peak = max(peak, abs(p.get("panX") or 0.0), abs(p.get("panY") or 0.0))
+                mid = walk or r
                 idle(br)
                 end = js(br, "return {state: window.__report().state, "
                              "docks: window.__hooks.docks.slice(), "
@@ -1221,14 +1257,22 @@ else:
                 check(BROWSER_ROWS[19],
                       cam["camera"] and cam["camera"]["owner"] == "stage"
                       and mid["camera"] and mid["camera"]["owner"] == "cue:box-main"
-                      and (abs(mid["camera"]["pose"]["panX"]) > 0.0001
-                           or abs(mid["camera"]["pose"]["panY"]) > 0.0001)
+                      # THE BAR IS THE HOST'S OWN REST TOLERANCE, read off `camTolerances` rather
+                      # than typed here. It is the number the host itself uses to decide a pose has
+                      # stopped moving (`CAM_REST_TOL` in pass-layer.js), so a pan whose whole
+                      # travel stays under it is a pan the host would call at rest — which is
+                      # exactly the fault this clause is for, and the only bar this row can state
+                      # without inventing one. The peak actually read is printed beside it, so a
+                      # real loss of amplitude is visible even while the row stays green.
+                      and peak > cam["tol"]["rest"]
                       and cam["handoffs"] and all(h["within"] for h in cam["handoffs"])
                       and any(h["from"] == "cue:box-main" and h["to"] == "stage"
                               for h in cam["handoffs"])
                       and cam["rest"] and cam["rest"]["rested"] is True
                       and cam["rest"]["off"] <= cam["tol"]["rest"],
                       f"middle={mid['camera']} owner={cam['camera'] and cam['camera']['owner']} "
+                      f"the largest pan the walk read through the whole pass={peak:.8f}, against "
+                      f"the host's own rest bar of {cam['tol']['rest']} — "
                       f"rest={cam['rest']} handoffs={cam['handoffs']} tolerances={cam['tol']} — "
                       f"the box publishes the pan its measured crease uses, the host applies that "
                       f"pose through the owned window, every handoff is continuous, and the zeroed "
