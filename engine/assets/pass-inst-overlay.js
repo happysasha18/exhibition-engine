@@ -227,14 +227,26 @@
       "}",
 
       "void main(){",
+      "  float dom = uDial.x, wet = uDial.y, sw = uDial.z, cw = uDial.w;",
       // THE SQUARE COVERS THE FRAME'S LONGER SIDE, and each work is seated inside the square by its
       // own two sides. The module's own line read the frame instead and pulled back on a tall one;
       // the seating the host already computes is the reading of the photograph that line was
       // standing in for, so it is asked for here. See THE THREE THINGS THE PORT HAD TO DECIDE.
+      //
+      // HELD ON THE SAME ENVELOPE AS EVERY OTHER AXIS OF THIS FRAME. `cw` is shut at both ends of
+      // the dominance travel — the dry door and the whole-exposure door alike — and every other
+      // thing this instrument's own hand does to the frame already rides it (each layer's turn,
+      // scale breath and drift; the fold's own retouch; the shoulder, the corner shading and the
+      // dither). This factor did not, so it stood alone at a real DOOR, where the host's own
+      // crop-cancellation runs through `uFitA`/`uFitB` (seated toward identity as the plane reaches
+      // the wall) and reaches nothing else: the frame's own ratio survived the cancellation and
+      // squeezed one axis of the sampled work by it, at both doors, which is the whole of what the
+      // arriving-door reading measured. Riding `cw` here closes it the same way the rest of the
+      // frame's own hand already closes: nothing of it stands where `cw` is shut.
       "  float m = max(uRes.x, uRes.y);",
-      "  vec2 p = (vUv - 0.5) * uRes / m;",
+      "  vec2 ff = mix(vec2(1.0), uRes / m, cw);",
+      "  vec2 p = (vUv - 0.5) * ff;",
       "  float t = uTime;",
-      "  float dom = uDial.x, wet = uDial.y, sw = uDial.z, cw = uDial.w;",
 
       // bottom layer — slow, one way; its own travel comes alive with the envelope and rests
       // wherever the envelope rests, where the frame holds the photograph the file carries
