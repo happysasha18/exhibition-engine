@@ -233,19 +233,22 @@
       // the seating the host already computes is the reading of the photograph that line was
       // standing in for, so it is asked for here. See THE THREE THINGS THE PORT HAD TO DECIDE.
       //
-      // HELD ON THE SAME ENVELOPE AS EVERY OTHER AXIS OF THIS FRAME. `cw` is shut at both ends of
-      // the dominance travel — the dry door and the whole-exposure door alike — and every other
-      // thing this instrument's own hand does to the frame already rides it (each layer's turn,
-      // scale breath and drift; the fold's own retouch; the shoulder, the corner shading and the
-      // dither). This factor did not, so it stood alone at a real DOOR, where the host's own
-      // crop-cancellation runs through `uFitA`/`uFitB` (seated toward identity as the plane reaches
-      // the wall) and reaches nothing else: the frame's own ratio survived the cancellation and
-      // squeezed one axis of the sampled work by it, at both doors, which is the whole of what the
-      // arriving-door reading measured. Riding `cw` here closes it the same way the rest of the
-      // frame's own hand already closes: nothing of it stands where `cw` is shut.
+      // `doorQ` READS THE HOST'S OWN DOOR STATE, NOT THIS INSTRUMENT'S. `uFitA`/`uFitB` are what
+      // `seated` (pass-layer.js's `drawPose`) already answers toward identity as a real door is
+      // reached and hands straight through everywhere else — including a bare bench draw with no
+      // door simulated at all (`door` defaults to 0 there), where they carry the real, un-seated
+      // crop `fit` below computes. `seated`'s own third and fourth places are plain multiples of
+      // its `q` (no `+1`, unlike the first two), so `fit` hands back a constant 1 there and this
+      // reads the exact fraction of the door `seated` is already applying, for free. Multiplying
+      // `p`'s own frame-shape factor by that SAME fraction — rather than by `cw`, this instrument's
+      // own composite envelope, which is shut at a bench draw's own dominance extremes too but does
+      // not mean a door is being seated there (the bench never simulates one, so `uFitA`/`uFitB`
+      // still carry the real crop) — keeps `p` and `fit.xy` reading the same door at every point of
+      // the travel: both exactly one where nothing is being seated, both exactly the frame's own
+      // shape cancelled where a real door has seated the crop away.
+      "  float doorQ = uFitA.z;",
       "  float m = max(uRes.x, uRes.y);",
-      "  vec2 ff = mix(vec2(1.0), uRes / m, cw);",
-      "  vec2 p = (vUv - 0.5) * ff;",
+      "  vec2 p = (vUv - 0.5) * mix(vec2(1.0), uRes / m, doorQ);",
       "  float t = uTime;",
 
       // bottom layer — slow, one way; its own travel comes alive with the envelope and rests
@@ -451,10 +454,17 @@
     // plain cover fit of the work into the frame at every frame shape, which is why `framings`
     // publishes a crop of 1 at both doors. The module asked for no seating and stretched a work that
     // was not square; this is the reading of the photograph that stood in for.
+    //
+    // THE THIRD AND FOURTH PLACES ARE A SENTINEL, NOT A SEATING. `pass-layer.js`'s own `seated`
+    // (in `drawPose`) treats a fit vector's first two places and its last two differently — the
+    // first two move toward 1 as a door is reached, the last two move toward 0, plainly, with no
+    // added 1 — so a constant 1 here comes back exactly `doorQ` in FRAG's `main`, the fraction of
+    // the door already being seated, for the one place besides `uFitA.xy`/`uFitB.xy` itself that
+    // this instrument's own shared frame coordinate needs to read the same door on.
     function fit(iw, ih, w, h) {
       var ia = iw / Math.max(ih, 1);
-      if (!(ia > 0)) return [1, 1, 0, 0];
-      return [Math.min(1, 1 / ia), Math.min(1, ia), 0, 0];
+      if (!(ia > 0)) return [1, 1, 1, 1];
+      return [Math.min(1, 1 / ia), Math.min(1, ia), 1, 1];
     }
 
     // ---- THE DOOR THE INSTRUMENT READS FOR ITSELF ------------------------------------------------
