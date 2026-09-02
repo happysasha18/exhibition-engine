@@ -430,6 +430,88 @@ def canvas_box(br):
                   " iw:innerWidth, ih:innerHeight, vis:c.style.visibility};")
 
 
+# ---- the cadence's own landed frame, read off the renderer rather than polled from outside -------
+# `cadenceLand` (engine/assets/pass-layer.js) draws the door frame with `playFrame(...)` and then, a
+# few lines later in the SAME synchronous call, logs `logEvt("cadence-end", ...)` — which is
+# `log.push(row)` into the private array `window.__exPass.host.report().events` reads. This hooks
+# `Array.prototype.push` to watch for that one row the same way `tests/test_pass_hang.py` already
+# does for its own mechanism rows, and the instant it fires copies the canvas's pixels synchronously,
+# in that same task, before the browser has any chance to clear or recomposite the WebGL drawing
+# buffer (this stage's context is created with `preserveDrawingBuffer: false`, so a copy any later
+# than this exact window is not reliable). The copy is a plain 2D `<canvas>` the hook draws the live
+# canvas into with `drawImage` — synchronous, exact, and no PNG encode/decode round trip that could
+# read back a different value than what the compositor actually painted.
+#
+# TWO THINGS ARE HELD, NOT ONE, AND BOTH MATTER. `camApply` (pass-layer.js) never draws the camera
+# into the picture at all — "one transform on the host's own canvas, above every pixel the instrument
+# drew" — pan, scale, rotation and the curtain's own grow/shrink toward a work's own resting box are
+# all a plain CSS `transform` set on the canvas ELEMENT, layered on top of whatever the WebGL buffer
+# holds. So the copied pixels alone are the untransformed picture, at the buffer's own full size, with
+# none of that framing in it — comparing them directly against a screenshot of the transformed,
+# on-screen DOM would be comparing two different geometries and would read a fixed, non-zero excess on
+# every run, not a seam. What is held is therefore the pixel copy AND the live canvas's own
+# `style.cssText`, which carries that transform (and its origin, its position, its size) as text.
+# `read_cadence_capture`, below, gives the frozen copy that same inline style and lets the browser's
+# own layout apply the same transform a second time, then photographs it with the ordinary CDP
+# screenshot every other row already uses — so the frame this bench compares is reconstructed with
+# the same framing the visitor saw, and the existing box/screenshot comparison every other row
+# already uses needs no change at all.
+CADENCE_CAPTURE_HOOK = """
+  window.__cadenceLandCanvas = null;
+  window.__cadenceLandCss = null;
+  if (!window.__cadencePushHooked) {
+    window.__cadencePushHooked = true;
+    var _push = Array.prototype.push;
+    Array.prototype.push = function (row) {
+      if (row && row.name === "cadence-end" && window.__cadenceLandCanvas === null) {
+        try {
+          var c = document.querySelector('canvas');
+          if (c) {
+            var copy = document.createElement('canvas');
+            copy.width = c.width;
+            copy.height = c.height;
+            copy.getContext('2d').drawImage(c, 0, 0);
+            window.__cadenceLandCanvas = copy;
+            window.__cadenceLandCss = c.style.cssText;
+          }
+        } catch (e) {}
+      }
+      return _push.apply(this, arguments);
+    };
+  }
+"""
+
+
+def arm_cadence_capture(br):
+    """Reset the capture and (idempotently) install the hook above. Called once per cadence row,
+    right before the offer that will trigger it, so a row never reads a capture a previous row left
+    behind."""
+    js(br, CADENCE_CAPTURE_HOOK + "return null;")
+
+
+def read_cadence_capture(br, shots, tag):
+    """Give the hook's frozen canvas copy the live canvas's own captured inline style — same CSS
+    transform, so it lands in the same place on screen — attach it to the page, and photograph it
+    with the ordinary CDP screenshot every other row already uses, reading its own
+    `getBoundingClientRect()` as the box. Both come back in the same shape `png()`/`canvas_box()`
+    already hand every other row: a screenshot path and a `{x,y,w,h}` box in CSS pixels. `(None,
+    None)` if the cadence never landed (or landed before the hook was armed)."""
+    ok = js(br, "return !!(window.__cadenceLandCanvas && window.__cadenceLandCss);")
+    if not ok:
+        return None, None
+    box = js(br, "var c = window.__cadenceLandCanvas;"
+                 "c.id = '__cadenceLandCanvas';"
+                 "c.style.cssText = window.__cadenceLandCss;"
+                 "document.body.appendChild(c);"
+                 "var b = c.getBoundingClientRect();"
+                 "return {x: b.left, y: b.top, w: b.width, h: b.height};")
+    path = png(br, shots / (tag + "-land.png"))
+    js(br, "var c = document.getElementById('__cadenceLandCanvas');"
+           "if (c && c.parentNode) c.parentNode.removeChild(c);"
+           "window.__cadenceLandCanvas = null; return null;")
+    return path, box
+
+
 def shot_scale(br, path):
     from PIL import Image
     return Image.open(path).size[0] / float(br.evaluate("String(innerWidth)"))
