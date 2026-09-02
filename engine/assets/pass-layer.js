@@ -3462,6 +3462,36 @@
         if (walk.u >= 1) cadenceEnd(rec, "on its own envelope");
         return;
       }
+      // A RACE `cancel` CANNOT WIN BY ITSELF (found under load, `tests/test_pass_seam.py`'s own
+      // liquid real-pair cadence row reading `cadence: null` — not late, not cut short, never
+      // started). `st.settle` (every `pass-inst-*.js`'s own `if (st.progress >= 1 && !st.pinned)
+      // st.settle(st.token)`) fires from INSIDE this same frame the moment `progress` first reads
+      // 1, and it is reachable from here whether or not this transaction has drawn a single LIVE
+      // frame before it. `progress` is read off the wall clock (`now - rec.t0`) rather than off
+      // frames drawn, on purpose (A5's own reasoning: a late frame catches up rather than replaying
+      // in slow motion) — but a `requestAnimationFrame` callback can itself arrive arbitrarily late
+      // (a backgrounded tab, this file's own render thread starved by whatever else the process is
+      // doing), and when the FIRST live frame back from such a gap already reads `progress: 1`, the
+      // transaction reaches its own door in one step with no frame ever having stood between the
+      // two — which is exactly the jump this whole cadence machinery exists to smooth over for an
+      // interruption, and `cancel` has no way to win a race against a `requestAnimationFrame`
+      // callback that the browser was already about to run: once both are queued, which one the
+      // browser runs first is not this file's to decide.
+      //
+      // So the door is walked here instead of asked for: a transaction that reaches `progress: 1`
+      // having never drawn a frame strictly between its own two doors is landed through the SAME
+      // cadence an explicit interruption gets (`landState: "docked"`, the one `settle`'s own
+      // off-rest branch already uses for a natural landing that still owes its camera a flight) —
+      // not a new number: `midflightSeen` is a fact this record already has the frames to answer,
+      // never a magnitude compared against one. A pinned bench clock (`pinProgress`) is untouched:
+      // pinning stands for a test naming the exact instant it wants photographed, not for a
+      // passage that was actually away.
+      if (pinProgress === null && progress >= 1 && !rec.midflightSeen && rec.duration > 0
+          && rec.inst && rec.inst.manifest) {
+        cadenceStart(rec, "reached its door with no frame ever drawn between them", false, "docked");
+        return;
+      }
+      if (progress > 0 && progress < 1) rec.midflightSeen = true;
       rec.lastSeconds = seconds;
       rec.lastProgress = progress;
       placeUnderCover(rec, seconds);
@@ -3703,7 +3733,10 @@
                 // the two boxes, the pose each asks for, the flight's own edges, and the carry a
                 // reframe leaves behind — all null until prepare has read them
                 hangA: null, hangB: null, hangPoseA: null, hangPoseB: null, hangEdge: null,
-                lastAnchor: null, carry: null, carryFrom: 0, placed: false };
+                lastAnchor: null, carry: null, carryFrom: 0, placed: false,
+                // whether any LIVE frame has ever been drawn strictly between the two doors
+                // (0 < progress < 1) — see `runFrame`'s own note over the check that reads it
+                midflightSeen: false };
     cur = rec;
     logEvt("offer", cmd.gen, instrumentsOf(voices).map(function (x) { return x.name; }).join(" + ")
                              + " at " + variant + (got.lowered ? " (lowered from " + asked + ")" : ""));
