@@ -150,6 +150,22 @@ SCRUB_REACCEL = vcadence(
     [7, 9, 8, 10, 9, 7, 5, 4, 3, 6, 10, 7, 4],
     [18, 18, 20, 22, 26, 30, 34, 32, 28, 20, 16, 22, 28])
 
+# His live report (2026-09-02): one swipe read as SEVERAL steps on the visit's own busiest stretch —
+# the door ceremony's synchronous DOM/layout work (creating ten .exh-frame elements, style recalc,
+# the crossing veil) can coalesce/delay wheel-event DELIVERY under main-thread backpressure, so a
+# stream the OS never actually paused can still show one wide GAP between two DISPATCHED events —
+# each still carries its own true, widely-spaced capture timestamp, so the gap read off timestamps
+# alone crosses WHEEL_IDLE_MS even though no real 150ms of silence ever happened and the external
+# `wheelIdle` timer never got a chance to fire between them. BUMPY_ONE's own tail, with ONE such gap
+# (160ms) landing where the tail has already decayed low: the event after it is still small — no real
+# climb — so it is the SAME gesture continuing, gap or no gap. ONE step, never two.
+_bumpy_gaps = [12] * 33
+_bumpy_gaps[24] = 160                                # the coalesced/delayed delivery, well into the tail
+DELIVERY_GAP_TAIL = vcadence(
+    [5, 16, 42, 98, 145, 126, 99, 108, 82, 66, 71, 53, 44, 37, 40, 31,
+     26, 22, 24, 18, 15, 12, 21, 14, 10, 8, 7, 5, 4, 4, 3, 3, 2, 2],
+    _bumpy_gaps)
+
 
 def scaled(samples, k):
     """the SAME finger at a different macOS trackpad-speed setting: |deltaY| scales, time does not"""
@@ -172,6 +188,7 @@ CASES = {
     "drag_release": DRAG_RELEASE,
     "drag_reaccel_dense": DRAG_REACCEL_DENSE,
     "scrub_reaccel": SCRUB_REACCEL,
+    "delivery_gap_tail": DELIVERY_GAP_TAIL,
 }
 for name in list(CASES):
     CASES[name + "@x2"] = scaled(CASES[name], 2.0)
@@ -193,6 +210,7 @@ WANT = {
     "drag_release": [1],
     "drag_reaccel_dense": [1],
     "scrub_reaccel": [1],
+    "delivery_gap_tail": [1],
 }
 
 # ---------------------------------------------------------------- replay in node
@@ -257,6 +275,9 @@ if STEPS is not None:
          "drag_reaccel_dense"),
         ("WHL17 EX-GLIDE a gentle scrub that eases then re-accelerates dense -> ONE step",
          "scrub_reaccel"),
+        ("WHL18 EX-GLIDE a decaying tail with one COALESCED delivery gap (>=150ms, never a real "
+         "pause) -> ONE step, not a phantom second gesture",
+         "delivery_gap_tail"),
     ]
     for title, key in rows:
         check(title, STEPS.get(key) == WANT[key],
