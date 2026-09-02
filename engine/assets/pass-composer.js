@@ -5573,7 +5573,8 @@
       // to is a travelling voice whose own window is a single instant (`reach` at nothing and the
       // shift at nothing together, so its open and its close are one number): there is no interior to
       // open in, and the arrival opens at the handoff. That is travel's own window collapsing, not the
-      // arrival's placement, and no pair in this collection composes one.
+      // arrival's placement — a fact about that one pair's own two windows, not a claim about how
+      // often it happens.
       var arrivalRoomEnd = travelInstr !== null && travelWindowBound ? travelWindowBound[1] : 1.0;
       var baseArrivalOpen = r4(arrivalRoomEnd - locusFit * (arrivalRoomEnd - beforeAtR));
       var arrivalOpenAtR = r4(baseArrivalOpen - R * Math.max(0, baseArrivalOpen - beforeAtR));
