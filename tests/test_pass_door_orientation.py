@@ -46,24 +46,26 @@ moved, gates and gears read 0.75 and 0.75 of 255 at the same door, level with th
 file already judged. Both stand in the fleet-wide row now, and the pinned score is driven on
 purpose in a row of its own so the line that repairs it cannot go quiet.
 
-WHAT WAS LEFT OPEN, AND WHAT CLOSED IT (2026-09-02, a later pass than the one above). `overlay`
-read over the seam at the same door, 20.25-21.5 of 255 across the runs that took it, held apart in
-a `read` row rather than judged because no pass had yet gone and looked at why. It is the same
-defect class droste and planet carried: `pass-inst-overlay.js`'s own frame coordinate (`p`, the
-unit square FRAG's `main` builds each work's sampling from) was squeezed by the drawing buffer's
-own resolution ratio (`uRes.x / uRes.y`, read via `uRes / m`) unconditionally — a factor of the
-frame's own shape standing outside `uFitA`/`uFitB`, the one channel the host's crop-cancellation
-(`seated` in pass-layer.js) reaches. Away from a door the factor is right, as the module's own
-comment already said; at a real door, where `uFitA`/`uFitB` are seated to identity so the whole
-work spans the work's own box, the factor stood alone and squeezed the sampled work along one axis
-by the canvas's own resolution ratio, whatever the actually-hung box's own ratio was. Every OTHER
-thing this instrument's own hand does to the frame — each layer's turn, its scale breath, its
-drift, the fold's own retouch, the shoulder, the corner shading, the dither — already rides `cw`,
-the one envelope §8's own comment names as shut at both ends of the dominance travel; this factor
-did not. Put on `cw` with the rest, it reads zero exactly where `cw` is zero, which is exactly
-both doors, and the arriving-door reading closed inside the same seam every other instrument passes
-at. Nothing here needed a new number: `cw` was already the shape this file's own comments say
-every axis of the frame answers to.
+WHAT WAS LEFT OPEN, AND WHAT CLOSED IT (2026-09-02, a later pass than the one above, itself
+corrected once — see below). `overlay` read over the seam at the same door, 20.25-21.5 of 255
+across the runs that took it, held apart in a `read` row rather than judged because no pass had yet
+gone and looked at why. It is the same defect class droste and planet carried: `pass-inst-
+overlay.js`'s own frame coordinate (`p`, the coordinate FRAG's `main` builds each work's sampling
+from) was squeezed by the drawing buffer's own resolution ratio (`uRes.x / uRes.y`, read via
+`uRes / m`) unconditionally — a factor of the frame's own shape standing outside `uFitA`/`uFitB`,
+the one channel the host's crop-cancellation (`seated` in pass-layer.js's `drawPose`) reaches. A
+first repair rode that factor on `cw` (this instrument's own composite envelope) instead, which
+closed this file's own row but reddened a REAL one, `tests/test_pass_overlay.py`'s row 7: that
+suite drives the instrument straight off the bench, with no door simulated at all (`drawPose`'s own
+`door` defaults to 0), where `uFitA`/`uFitB` carry the real, un-seated crop throughout — including
+at the bench's own dominance extremes, where `cw` reads zero same as at a real door but the crop is
+not seated away. Gating `p`'s own factor on `cw` there desynced it from `uFitA`/`uFitB`, which
+still expected it, and stretched the very thing meant to be fixed. The repair that actually closes
+both suites drops that factor from `p` entirely — FRAG's `main` now reads `p` plain — and folds the
+frame's own ratio into `fit` itself, combined with the work's own, the same road droste's and
+planet's own `fit` already take: `seated` already cancels exactly what `fit` returns toward
+identity at a real door and hands it straight through everywhere else, a bench draw included, so
+nothing needed gating on anything this file's own hand computes.
 
 WHAT IS JUDGED, AND WHAT IS ONLY REPORTED. The ARRIVING door is judged. The departing one is read
 and printed beside it but not judged, and that is measured rather than cautious: driving the
