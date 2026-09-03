@@ -101,7 +101,7 @@
   // added to that row later joins the class by standing there (2026-07-27, the about link). Naming
   // `.more` and `.back` one by one is what left the series pill and the room's back button dead
   // under a finger, with the consistency test sharing the code's own blind spot.
-  const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.quiz-opt,.exl-cur,.exl-item," +
+  const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.exsnd-calm,.quiz-opt,.exl-cur,.exl-item," +
     ".exd-window,#ex-gift-card .gift-yes,#ex-gift-card .gift-no," +
     ".ex-series,.exs-back,.ex-quiz-chip,.exh-fin .row > *";
   let _pressEl = null;
@@ -200,6 +200,7 @@
   const DOORDEALT_KEY = "@@NS@@.doordealt";              // works the diverse door has dealt this round (EX-DOOR-3/INV-75)
   const LANG_KEY = "@@NS@@.lang";                        // the guest's chosen tongue (EX-LANG)
   const SND_KEY = "@@NS@@.sound";                         // the ambient player's on/off + volume (EX-SOUND)
+  const CALM_KEY = "@@NS@@.calm";                          // the calm switch, S-33 variant C — persists like SND_KEY, not per tab
   const BEEN_KEY = "@@NS@@.been";                         // EX-RETURN: this browser has walked the exhibition before
   const LAST_KEY = "@@NS@@.last";                        // EX-PULSE/INV-79: this browser's last-visit timestamp (return_gap); EX-RETURN reuses it for the welcome-back window
   const EXITS_KEY = "@@NS@@.exits";                      // EX-RETURN/INV-78: count of real walk→door exits (the farewell waits for the 2nd)
@@ -450,6 +451,7 @@
     try { localStorage.removeItem(EXITS_KEY); } catch (e) {}    // the exit counter resets (EX-RETURN/INV-78 — the farewell starts over)
     try { localStorage.removeItem(SOLO_KEY); } catch (e) {}     // the hour's one-work asks reset (EX-STORY-FILL/INV-107 — forgetting is whole)
     try { localStorage.removeItem(SND_KEY); } catch (e) {}      // the museum forgets the sound choice (EX-SOUND)
+    try { localStorage.removeItem(CALM_KEY); } catch (e) {}     // the calm choice forgets too (S-33 — forgetting is whole)
     try { sessionStorage.removeItem(QUIZ_STAGE_KEY); } catch (e) {}   // EX-QUIZ-FLOW (INV-69): the stage wipes with the walk
     const q = new URLSearchParams(location.search);
     q.delete("reset");
@@ -494,6 +496,10 @@
   const A11Y_QUIZ_EN = "a question";
   const A11Y_PHOTO_EN = "photograph";
   const SOUND_GREET_EN = "music";           // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue (a plain invitation, no question mark)
+  // S-33 variant C (docs/design/2026-09-classic-immersive-passage.md): the switch's label, "calm",
+  // is the proposal's own word choice, used throughout its text — pending his word on the open
+  // question of what it should be called (the doc names the collision with «меньше движения»).
+  const CALM_EN = "calm";
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
@@ -726,6 +732,32 @@
       history.replaceState(history.state, "",
         location.pathname + (rest ? "?" + rest : "") + location.hash);
     } catch (e) {}
+  })();
+
+  // EX-CALM (S-33 proposal, variant C, docs/design/2026-09-classic-immersive-passage.md §"C"):
+  // a per-visitor "calm" switch, offered from inside the sound tray (98-sound.js), that quiets the
+  // crossing. It persists like the sound choice — CALM_KEY, localStorage, not per tab — rather than
+  // living only in the pass session store; on boot the remembered preference is folded into that
+  // SAME session rung `?pass=visualLayer:off` already writes above, so `visualLayer` still has only
+  // ONE read road anywhere it is checked (line 84's register, PASS_ORDER's "session" source at line
+  // 20). Unversioned: 98-sound.js's {v:VER} pattern reads VER from `data.version`
+  // (02-kinship-orderings.js), assigned only after this file has already run at boot, so that
+  // pattern is not reachable this early — a plain on/off flag needs no version to stay meaningful.
+  function passCalmGet() {
+    try { return !!JSON.parse(localStorage.getItem(CALM_KEY) || "null"); } catch (e) { return false; }
+  }
+  function passCalmSet(on) {
+    try { localStorage.setItem(CALM_KEY, JSON.stringify(!!on)); } catch (e) {}
+    const put = passSession();
+    if (on) put.visualLayer = "off"; else delete put.visualLayer;
+    try { sessionStorage.setItem(PASS_KEY, JSON.stringify(put)); } catch (e) {}
+  }
+  (function calmBoot() {
+    if (!passCalmGet()) return;
+    const put = passSession();
+    if (put.visualLayer !== undefined) return;   // an explicit ?pass= override this load wins
+    put.visualLayer = "off";
+    try { sessionStorage.setItem(PASS_KEY, JSON.stringify(put)); } catch (e) {}
   })();
 
   // One value, checked. Returns {ok, value, why}. A refused value never reaches the walk; the
@@ -9682,6 +9714,9 @@
     box.innerHTML =
       '<div class="exsnd-tray">' +
         '<span class="exsnd-cred">' + artistHtml + titleHtml + linkHtml + '</span>' +
+        // EX-CALM (S-33 variant C): the calm switch, riding the SAME tray as sound rather than a
+        // fifth pinned corner (variant A's cost, declined) — see 01a-pass.js's passCalmGet/Set.
+        '<button class="exsnd-calm" type="button" aria-pressed="false"></button>' +
         '<input class="exsnd-vol" type="range" min="0" max="1" step="0.01" value="0.3"' +
           ' aria-label="' + (SNDT.a11y_volume || A11Y_VOLUME_EN) + '">' +
       '</div>' +
@@ -9699,6 +9734,19 @@
 
     const btn = box.querySelector(".exsnd-btn");
     const vol = box.querySelector(".exsnd-vol");
+
+    // EX-CALM (S-33 variant C): reads/writes the SAME rung `?pass=visualLayer:off` already writes
+    // (01a-pass.js), so no second road exists anywhere `visualLayer` is checked. A flip takes effect
+    // on the visit's NEXT step — no reload, nothing carried, the walk keeps its own place (08-
+    // plaque-caption-io.js's per-frame marker is untouched by this).
+    const calmBtn = box.querySelector(".exsnd-calm");
+    calmBtn.textContent = SNDT.calm || CALM_EN;
+    calmBtn.setAttribute("aria-pressed", passCalmGet() ? "true" : "false");
+    calmBtn.addEventListener("click", () => {
+      const on = calmBtn.getAttribute("aria-pressed") !== "true";
+      calmBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      passCalmSet(on);
+    });
 
     // The player STREAMS: a single <audio> element (preload none, native loop) plays as soon as the
     // first fragments arrive and fetches the rest on the fly, so the press is answered at once — no

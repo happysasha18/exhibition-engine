@@ -35,6 +35,9 @@
     box.innerHTML =
       '<div class="exsnd-tray">' +
         '<span class="exsnd-cred">' + artistHtml + titleHtml + linkHtml + '</span>' +
+        // EX-CALM (S-33 variant C): the calm switch, riding the SAME tray as sound rather than a
+        // fifth pinned corner (variant A's cost, declined) — see 01a-pass.js's passCalmGet/Set.
+        '<button class="exsnd-calm" type="button" aria-pressed="false"></button>' +
         '<input class="exsnd-vol" type="range" min="0" max="1" step="0.01" value="0.3"' +
           ' aria-label="' + (SNDT.a11y_volume || A11Y_VOLUME_EN) + '">' +
       '</div>' +
@@ -52,6 +55,19 @@
 
     const btn = box.querySelector(".exsnd-btn");
     const vol = box.querySelector(".exsnd-vol");
+
+    // EX-CALM (S-33 variant C): reads/writes the SAME rung `?pass=visualLayer:off` already writes
+    // (01a-pass.js), so no second road exists anywhere `visualLayer` is checked. A flip takes effect
+    // on the visit's NEXT step — no reload, nothing carried, the walk keeps its own place (08-
+    // plaque-caption-io.js's per-frame marker is untouched by this).
+    const calmBtn = box.querySelector(".exsnd-calm");
+    calmBtn.textContent = SNDT.calm || CALM_EN;
+    calmBtn.setAttribute("aria-pressed", passCalmGet() ? "true" : "false");
+    calmBtn.addEventListener("click", () => {
+      const on = calmBtn.getAttribute("aria-pressed") !== "true";
+      calmBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      passCalmSet(on);
+    });
 
     // The player STREAMS: a single <audio> element (preload none, native loop) plays as soon as the
     // first fragments arrive and fetches the rest on the fly, so the press is answered at once — no

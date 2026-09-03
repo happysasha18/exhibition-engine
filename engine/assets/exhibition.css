@@ -658,6 +658,16 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
 .exsnd-cred a{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
   text-decoration:none; border-bottom:1px solid transparent; }
 .exsnd-cred a:hover, .exsnd-cred a:focus-visible{ color:var(--muted-2); border-bottom-color:var(--muted-2); }
+/* S-33 variant C: the calm switch, styled like the sound button's own pressed/rest states so the
+   tray reads as one control family rather than a settings panel bolted on */
+.exsnd-calm{ font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted-2); background:transparent; border:1px solid var(--hair); border-radius:999px;
+  padding:0 12px; height:28px; min-width:44px; flex:none; cursor:pointer; white-space:nowrap;
+  transition:color calc(.3s*var(--tempo)) var(--ease), border-color calc(.3s*var(--tempo)) var(--ease); }
+.exsnd-calm:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
+@media (hover:hover){ .exsnd-calm:hover{ color:var(--ink); border-color:var(--muted-2); } }
+.exsnd-calm[aria-pressed="true"]{ color:var(--accent);
+  border-color:color-mix(in srgb, var(--accent) 40%, transparent); }
 /* the volume slider — ≥44px touch target, thin visible track */
 .exsnd-vol{ -webkit-appearance:none; appearance:none; width:78px; height:44px; background:transparent;
   cursor:pointer; touch-action:none; }

@@ -1,0 +1,14 @@
+records answer hook bound: True
+moment1: entered walk=True
+moment1: swipe with calm OFF -> canvas 0->1, frame 17994945094661841->17976478873258940, verdict={'at': 3711, 'name': 'visual-passed', 'gen': 2, 'kind': 'step', 'cause': 'step', 'from': '17994945094661841', 'to': '17976478873258940', 'why': None} PASS=True
+moment1 console tail: 
+moment2: tray opacity=0.968579 calm label='calm'
+moment2: after flip aria-pressed=true localStorage tlv.calm=true
+moment2: swipe with calm ON -> frame 17976478873258940->18201718942174037 (a real advance), verdict={'at': 9236, 'name': 'visual-declined', 'gen': 3, 'kind': 'step', 'cause': 'step', 'from': '17976478873258940', 'to': '18201718942174037', 'why': 'visualLayer is not set to pass'} (want visual-declined) PASS=True
+moment2 console tail: 
+moment2b: calm toggled off (aria-pressed=false); frame before/after the bare toggle: 18201718942174037 == 18201718942174037 PASS=True
+moment2b: swipe with calm OFF again -> canvas takes it -> verdict={'at': 10917, 'name': 'visual-passed', 'gen': 4, 'kind': 'step', 'cause': 'step', 'from': '18201718942174037', 'to': '18083437520477697', 'why': None} PASS=True
+moment3: before reload, place=18107046247834616 localStorage tlv.calm=true
+moment3: after reload, place=18107046247834616 session pass rung={"visualLayer":"off"} PASS place-restored=True calm-remembered=True
+moment3: after ?reset, localStorage tlv.calm=None session pass rung=None PASS=True
+moment3 console tail: 
