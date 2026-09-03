@@ -85,6 +85,16 @@
     if (!bench || !bench.make()) { window.__errs.push("the host raised no stage"); return; }
     bench.pair(imgs[0], imgs[1]);
 
+    // WHAT SEAM THIS BENCH HANDS THE INSTRUMENT (§8's `seams` block). Left alone the pose carries
+    // the width the HOST answers on the buffer bound this instant, which is what a running
+    // transaction hands out of `frameState` and what a visitor's eye meets. Pinned to null the pose
+    // carries none and the instrument falls back to the private number its own file kept from
+    // before the shared move; pinned to an object it carries exactly that number. Those are the
+    // readings PLAN.md row S-85 compares on the pixels, at one pose on one buffer.
+    var seamPin;
+    window.__seamPin = function (v) { seamPin = v; return seamPin === undefined ? "host" : seamPin; };
+    window.__seams = function () { return bench.seams("planet", {}); };
+
     var def = null;
     (window.LAB.effects || []).forEach(function (e) { if (e.id === "planet") def = e; });
     if (!def) { window.__errs.push("the lab module registered no «planet» effect"); return; }
@@ -157,6 +167,11 @@
       var host = document.querySelector("canvas[aria-hidden]");
       return { mix: hand, clock: clockAt, curl: P.curl, depth: P.depth, dip: P.dip, turn: P.turn,
                gather: P.gather, shade: shadeAt, mask: maskAt, reduced: false,
+               // THE HOST'S OWN SEAM, ON THIS BUFFER (§8's `seams` block). A running transaction
+               // hands this on every frame out of `frameState`; a bench hands a pose, so until this
+               // line the bench drew the number this instrument's file falls back to and the shared
+               // move went unshot.
+               seam: seamPin === undefined ? bench.seams("planet", {}) : seamPin,
                cssWidth: innerWidth, cssHeight: innerHeight,
                bufWidth: host ? host.width : innerWidth,
                bufHeight: host ? host.height : innerHeight,

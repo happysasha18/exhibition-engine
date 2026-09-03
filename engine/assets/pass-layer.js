@@ -4722,6 +4722,16 @@
         });
       },
       manifest: function (id) { return instruments[id] ? instruments[id].manifest : null; },
+      // §8's `seams` block, answered on the buffer this stage is bound at — the same `seamsOf` a
+      // running frame calls out of `frameState`, with the transaction spared. A bench hands a POSE
+      // rather than offering a command, so nothing on that road could reach an instrument's seam:
+      // every bench frame drew the number the instrument's own file falls back to before any host
+      // has answered, and the shared move was never once photographed. With this a row can hand the
+      // seam the host would hand and shoot the picture a visitor's eye actually meets on this
+      // buffer, which is where PLAN.md row S-85 asks the equality to stand.
+      seams: function (id, handles) {
+        return instruments[id] ? seamsOf(instruments[id], handles || {}) : null;
+      },
       // The numbers of one frame, read without drawing it: the same pure function the draw calls.
       values: function (id, pose) { return instruments[id] ? instruments[id].values(pose) : null; },
       register: function (inst) { return register(inst); },

@@ -51,6 +51,7 @@ to the browser and writes the site record with the digest of the bytes actually 
 tree is never written to.
 """
 import base64
+import datetime
 import hashlib
 import json
 import os
@@ -75,6 +76,10 @@ MODULE = LAB / "effects" / "planet.js"
 SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844          # the phone frame lab/carrier-check.py measures on
 SEAM = 6.0                 # the project's seam threshold, 6 of 255 (TRANSITION-STAGE-V0 §1)
+# THE RESHOOT PLAN.md ROW S-85 NAMES. The three instruments the shared seam move repaired are
+# photographed again on the reading that now reaches them, under one path with the date and the
+# commit of the run beside them, so the row's evidence can be found without reading this file.
+RESHOOT = ROOT / "tests" / "captures" / "s05-reshoot"
 FAR = 40.0                 # further than this from a file and it is a different work
 BACKGROUND = (0x08, 0x08, 0x0a)
 SPREAD = 10.0
@@ -933,6 +938,7 @@ BROWSER_ROWS = [
     "PASS-PLANET what the host's missing mipmap chain costs this picture, measured",
     "PASS-PLANET row 16 · the captures are kept as evidence",
     "PASS-PLANET the two works meet at a hard cut and never at a dissolve",
+    "PASS-PLANET S-85   · the wrap-seam's width comes off the host, on the buffer the frame is drawn on",
 ]
 
 RED_ROWS = [
@@ -940,6 +946,7 @@ RED_ROWS = [
     "PASS-PLANET red-on-bug · the cut removed: the arriving work never arrives and the exit door is refused",
     "PASS-PLANET red-on-bug · the finish let onto the flat door: both doors part from their own files",
     "PASS-PLANET red-on-bug · the cut widened to a dissolve spreads the transition band across the frame",
+    "PASS-PLANET red-on-bug · S-85: the wrap-seam read back off the file's own retired number",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -1150,6 +1157,25 @@ def cut_map(br, at, tag):
     p = png(br, SHOTS / ("map-" + tag + ".png"))
     br.evaluate("window.__mask(0); 0")
     return p
+
+
+def reshoot(src, name, note):
+    """One frame of the S-85 reshoot, kept under the row's own path with the run's date and commit.
+    The note is written beside the frames rather than into them, so a reader can see WHICH reading
+    each shot stands on and on which buffer without opening a test file."""
+    RESHOOT.mkdir(parents=True, exist_ok=True)
+    dst = RESHOOT / ("planet-" + name + ".png")
+    shutil.copy2(src, dst)
+    note = dict(note)
+    note["at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    try:
+        note["commit"] = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                                        capture_output=True, text=True,
+                                        timeout=20).stdout.strip() or None
+    except Exception:
+        note["commit"] = None
+    (RESHOOT / "planet.json").write_text(json.dumps(note, indent=1), encoding="utf-8")
+    return dst
 
 
 def host_shot(br, at, tag):
@@ -1818,6 +1844,72 @@ else:
                 "picture gains the module's own filtering with no edit here")
     else:
         check(BROWSER_ROWS[24], False, "the bench never came up for the two-filter reading")
+
+    # ---- S-85 · the seam is the HOST'S number, on the buffer this frame is drawn on -------------
+    # PLAN.md row S-85, and the owner's decision of 2026-09-03: the equality stands at the buffer the
+    # frame is drawn at, because that is the frame a visitor's eye meets. Until this row the bench
+    # handed no `seams` at all, so every frame ever photographed here stood on this file's own `SEAM`
+    # — the number it kept from before the shared move — and the move itself was never once shot. The
+    # bench hands it now, and what is proved is an EQUIVALENCE rather than a bare equality: the
+    # picture moves if and only if the number does.
+    seam_old = float(re.search(r"var SEAM = ([0-9.]+);", PACK).group(1))
+
+    def seam_walk(br):
+        host = js(br, "return window.__seams();")["ring"]
+        scale = js(br, "var c = document.querySelector('canvas[aria-hidden]');"
+                       "return c ? c.width / Math.max(window.innerWidth, 1) : null;")
+
+        def shot(pin, tag):
+            br.evaluate("window.__seamPin(%s); 0" % pin)
+            br.sleep(0.1)
+            return host_shot(br, 0.5, tag)
+
+        a = shot("undefined", "s85-host")
+        b = shot(json.dumps({"ring": host}), "s85-by-hand")
+        c = shot(json.dumps({"ring": seam_old}), "s85-retired")
+        br.evaluate("window.__seamPin(undefined); 0")
+        return {"host": host, "scale": scale, "shots": [a, b, c]}
+
+    sw = on_bench(seam_walk, lab_text=LAB_LEVELLED)
+    if sw is None:
+        check(BROWSER_ROWS[27], False, "the bench never came up for the seam reshoot")
+    else:
+        d_hand = diff(sw["shots"][0], sw["shots"][1])[0]
+        d_old, x_old = diff(sw["shots"][0], sw["shots"][2])
+        same_number = abs(sw["host"] - seam_old) < 1e-12
+        note = {"instrument": "planet",
+                "seam": {"kind": "ring", "unit": "a share of one repeat's own span"},
+                "bufferPointsPerCssPixel": sw["scale"], "hostAnswers": sw["host"],
+                "fileRetired": seam_old, "apartOf255": round(d_old, 4),
+                "shots": ["planet-host.png", "planet-retired.png"]}
+        reshoot(sw["shots"][0], "host", note)
+        reshoot(sw["shots"][2], "retired", note)
+        check(BROWSER_ROWS[27],
+              d_hand == 0.0 and ((d_old == 0.0) == same_number),
+              f"on the buffer this frame is drawn on — {sw['scale']} buffer point(s) per CSS pixel "
+              f"— §8's `seams` block answers this instrument's wrap-seam with {sw['host']}, and the "
+              f"number its own file falls back to before any host has answered is {seam_old}. "
+              f"Handed that same width by hand the frame is the host's frame to the pixel "
+              f"({d_hand} of 255), so the width is the WHOLE of what the host hands and the picture "
+              f"is a function of it; handed the file's retired number instead the frame stands "
+              f"{d_old:.2f} of 255 away (worst channel {x_old}). The picture moves exactly when the "
+              f"number does, which is what makes the seam the host's to answer and no longer this "
+              f"file's to keep. The reshoot stands under {RESHOOT.relative_to(ROOT)}")
+
+        # ---- S-85 red-on-bug · the width read back off the file's own retired number -------------
+        # The plant PLAN.md row S-85 names: leave the width read from the old constant.
+        bug = PACK.replace("var seam = num(st.seam && st.seam.ring, SEAM);", "var seam = SEAM;", 1)
+        planted = on_bench(lambda b: host_shot(b, 0.5, "red-seam-reverted"),
+                           pack_text=bug, lab_text=LAB_LEVELLED)
+        gap = None if planted is None else diff(sw["shots"][0], planted)
+        check(RED_ROWS[4],
+              bug != PACK and gap is not None and gap[0] > 0,
+              f"with the instrument's own read reverted to the number its file kept from before the "
+              f"shared move, the same pose on the same buffer parts by {gap[0]:.4f} of 255 (worst "
+              f"channel {gap[1]}) from the shipped frame — so the row above is held up by the "
+              f"host's answer actually reaching the picture and not by the two numbers happening to "
+              f"agree" if gap is not None else
+              f"the proof did not run (planted={bug != PACK})")
 
     kept = sorted(p.name for p in SHOTS.glob("*.png"))
     check(BROWSER_ROWS[25],

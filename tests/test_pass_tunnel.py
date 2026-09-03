@@ -42,6 +42,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   path — never a silent pass.
 """
 import base64
+import datetime
 import hashlib
 import math
 import json
@@ -67,6 +68,10 @@ MODULE = LAB / "effects" / "tunnel.js"
 SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844          # the phone frame lab/carrier-check.py measures on
 SEAM = 6.0                 # the project's seam threshold, 6 of 255 (TRANSITION-STAGE-V0 §1)
+# THE RESHOOT PLAN.md ROW S-85 NAMES. The three instruments the shared seam move repaired are
+# photographed again on the reading that now reaches them, under one path with the date and the
+# commit of the run beside them, so the row's evidence can be found without reading this file.
+RESHOOT = ROOT / "tests" / "captures" / "s05-reshoot"
 FAR = 40.0                 # further than this from a file and it is a different work
 BACKGROUND = (0x08, 0x08, 0x0a)
 SPREAD = 10.0
@@ -771,6 +776,7 @@ BROWSER_ROWS = [
     "PASS-TUNNEL the corridor is WALKED on the drawing buffer at both doors, and what it read is published",
     "PASS-TUNNEL a door the judges' channel spoils is refused on the real road, and the visitor still lands",
     "PASS-TUNNEL row 16 · the captures are kept as evidence",
+    "PASS-TUNNEL S-85   · the ring-join's width comes off the host, on the buffer the frame is drawn on",
 ]
 
 RED_ROWS = [
@@ -780,6 +786,7 @@ RED_ROWS = [
     "PASS-TUNNEL red-on-bug · the contact shade at the meeting ring removed",
     "PASS-TUNNEL red-on-bug · DOOR_SLIP/DOOR_SHOW tightened past what the real door clears",
     "PASS-TUNNEL red-on-bug · the fit the doors are cover-fitted by reserves headroom",
+    "PASS-TUNNEL red-on-bug · S-85: the ring-join read back off the file's own retired number",
 ]
 
 # ROWS THAT RUN INSIDE THE MAIN BENCH BLOCK BUT ARE NOT ADDRESSED BY INDEX (BROWSER_ROWS[n]) — named
@@ -809,6 +816,25 @@ def diff(p, q):
         return 255.0, 255.0
     st = ImageStat.Stat(ImageChops.difference(a, c))
     return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
+
+
+def reshoot(src, name, note):
+    """One frame of the S-85 reshoot, kept under the row's own path with the run's date and commit.
+    The note is written beside the frames rather than into them, so a reader can see WHICH reading
+    each shot stands on and on which buffer without opening a test file."""
+    RESHOOT.mkdir(parents=True, exist_ok=True)
+    dst = RESHOOT / ("tunnel-" + name + ".png")
+    shutil.copy2(src, dst)
+    note = dict(note)
+    note["at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    try:
+        note["commit"] = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                                        capture_output=True, text=True,
+                                        timeout=20).stdout.strip() or None
+    except Exception:
+        note["commit"] = None
+    (RESHOOT / "tunnel.json").write_text(json.dumps(note, indent=1), encoding="utf-8")
+    return dst
 
 
 def standing(p):
@@ -1503,6 +1529,60 @@ else:
                          (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
                          leaked["drew"]))
 
+                # ---- S-85 · the seam is the HOST'S number, on the buffer this frame is drawn on --
+                # PLAN.md row S-85, and the owner's decision of 2026-09-03: the equality stands at
+                # the buffer the frame is drawn at, because that is the frame a visitor's eye meets.
+                # Until this row the bench handed no `seams` at all, so every frame ever photographed
+                # here stood on `RING_JOIN_FALLBACK` — the number this file kept from before the
+                # shared move — and the move itself was never once shot. The bench hands it now, and
+                # what is proved is an EQUIVALENCE rather than a bare equality: the picture moves if
+                # and only if the number does. Three shots at one pose on one buffer — the host's own
+                # answer, that same number typed in by this row, and the file's retired one.
+                seam_host = js(br, "return window.__seams();")["ring"]
+                seam_old = float(re.search(r"var RING_JOIN_FALLBACK = ([0-9.]+);", PACK).group(1))
+                seam_scale = js(br, "var c = document.querySelector('canvas[aria-hidden]');"
+                                    "return c ? c.width / Math.max(window.innerWidth, 1) : null;")
+
+                def seam_shot(pin, tag):
+                    br.evaluate("window.__seamPin(%s); 0" % pin)
+                    br.sleep(0.1)
+                    out = host_shot(br, 0.5, tag)[1]
+                    return out
+
+                s_host = seam_shot("undefined", "s85-host")
+                s_hand = seam_shot(json.dumps({"ring": seam_host}), "s85-by-hand")
+                s_old = seam_shot(json.dumps({"ring": seam_old}), "s85-retired")
+                br.evaluate("window.__seamPin(undefined); 0")
+                d_hand = diff(s_host, s_hand)[0]
+                d_old, x_old = diff(s_host, s_old)
+                same_number = abs(seam_host - seam_old) < 1e-12
+                reshoot(s_host, "host", {"instrument": "tunnel",
+                                         "seam": {"kind": "ring", "unit": "a share of one repeat's "
+                                                  "own span"},
+                                         "bufferPointsPerCssPixel": seam_scale,
+                                         "hostAnswers": seam_host, "fileRetired": seam_old,
+                                         "apartOf255": round(d_old, 4),
+                                         "shots": ["tunnel-host.png", "tunnel-retired.png"]})
+                reshoot(s_old, "retired", {"instrument": "tunnel",
+                                           "seam": {"kind": "ring", "unit": "a share of one "
+                                                    "repeat's own span"},
+                                           "bufferPointsPerCssPixel": seam_scale,
+                                           "hostAnswers": seam_host, "fileRetired": seam_old,
+                                           "apartOf255": round(d_old, 4),
+                                           "shots": ["tunnel-host.png", "tunnel-retired.png"]})
+                check(BROWSER_ROWS[21],
+                      d_hand == 0.0 and ((d_old == 0.0) == same_number),
+                      f"on the buffer this frame is drawn on — {seam_scale} buffer point(s) per CSS "
+                      f"pixel — §8's `seams` block answers this instrument's ring-join with "
+                      f"{seam_host}, and the number its own file falls back to before any host has "
+                      f"answered is {seam_old}. Handed that same width by hand the frame is the "
+                      f"host's frame to the pixel ({d_hand} of 255), so the width is the WHOLE of "
+                      f"what the host hands and the picture is a function of it; handed the file's "
+                      f"retired number instead the frame stands {d_old:.2f} of 255 away (worst "
+                      f"channel {x_old}). The picture moves exactly when the number does, which is "
+                      f"what makes the seam the host's to answer and no longer this file's to keep. "
+                      f"The reshoot stands under {RESHOOT.relative_to(ROOT)}")
+
                 kept = sorted(p.name for p in SHOTS.glob("*.png"))
                 check(BROWSER_ROWS[20],
                       len(kept) >= 30 and all((SHOTS / k).stat().st_size > 1000 for k in kept),
@@ -1714,6 +1794,29 @@ else:
           f"{bug_gap[0] if bug_gap else '?'} of 255 apart. So the crop=1 claim is carried by the "
           f"function that actually draws the door, not by the manifest's own declared number"
           if (fit_gap and bug_gap) else "the proof did not run")
+
+    # ---- 6. S-85 · the ring-join read back off the file's own retired number ----------------------
+    # The plant PLAN.md row S-85 names: leave the width read from the old constant. The instrument's
+    # own line takes the host's answer where one arrives and stands on `RING_JOIN_FALLBACK` where
+    # none does; reverted in the served bytes it stands on the constant whatever the host answers,
+    # which is the state the shared move was built to end. On the buffer this bench draws at, the two
+    # numbers are not the same number, so the equality the row above holds breaks and the frame moves.
+    base_seam = on_bench(lambda b: frame_at(b, 0.5, "red-seam-standing"))
+    bug = PACK.replace(
+        'var seam = (st.seam && typeof st.seam.ring === "number") ? st.seam.ring '
+        ': RING_JOIN_FALLBACK;',
+        'var seam = RING_JOIN_FALLBACK;', 1)
+    bug_seam = on_bench(lambda b: frame_at(b, 0.5, "red-seam-reverted"), pack_text=bug)
+    seam_gap = None if (base_seam is None or bug_seam is None) else diff(base_seam, bug_seam)
+    check(RED_ROWS[5],
+          bug != PACK and seam_gap is not None and seam_gap[0] > 0,
+          f"with the instrument's own read reverted to the number its file kept from before the "
+          f"shared move, the same pose on the same buffer parts by {seam_gap[0]:.4f} of 255 (worst "
+          f"channel {seam_gap[1]}) from the shipped frame — so the row above is held up by the "
+          f"host's answer actually reaching the picture and not by the two numbers happening to "
+          f"agree" if seam_gap is not None else
+          f"the proof did not run (planted={bug != PACK})")
+
 
 shutil.rmtree(TMP, ignore_errors=True)
 

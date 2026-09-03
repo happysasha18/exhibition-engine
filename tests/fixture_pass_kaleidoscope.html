@@ -96,6 +96,15 @@
     // the host draws is the pose the module drew and never a guess at it.
     var P = { wedges: 8, twist: 0.55, rings: 1, reach: 0.30 };
     var hand = 0, maskAt = 0, clockAt = 0, shadeAt = 1;
+    // WHAT SEAM THIS BENCH HANDS THE INSTRUMENT (§8's `seams` block). Left alone the pose carries
+    // the width the HOST answers on the buffer bound this instant, which is what a running
+    // transaction hands out of `frameState` and what a visitor's eye meets. Pinned to null the pose
+    // carries none and the instrument falls back to the private number its own file kept from
+    // before the shared move; pinned to an object it carries exactly that number. Those are the
+    // readings PLAN.md row S-85 compares on the pixels, at one pose on one buffer.
+    var seamPin;
+    window.__seamPin = function (v) { seamPin = v; return seamPin === undefined ? "host" : seamPin; };
+    window.__seams = function () { return bench.seams("kaleidoscope", { wedges: P.wedges, rings: P.rings }); };
     // THE FOLD'S CENTRE, on both roads at once. The port reads it from the works; the module's own
     // two anchor numbers are pinned to it by the bench's own served copy, so the two roads stand at
     // ONE centre. The handle is measured DOWN the picture and the module reads UP, which is the one
@@ -178,6 +187,13 @@
       return { mix: hand, clock: clockAt, centreX: CX, centreY: CY,
                wedges: P.wedges, twist: P.twist, rings: P.rings, reach: P.reach,
                shade: shadeAt, mask: maskAt, reduced: false,
+               // THE HOST'S OWN SEAM, ON THIS BUFFER (§8's `seams` block). A running transaction
+               // hands this on every frame out of `frameState`; a bench hands a pose, so until this
+               // line the bench drew the number this instrument's file falls back to and the shared
+               // move went unshot. `__seamPin` swaps the reading without touching anything else,
+               // so a row can shoot both readings at one pose on one buffer.
+               seam: seamPin === undefined
+                 ? bench.seams("kaleidoscope", { wedges: P.wedges, rings: P.rings }) : seamPin,
                cssWidth: innerWidth, cssHeight: innerHeight,
                bufWidth: W, bufHeight: H,
                aw: imgs[0].naturalWidth, ah: imgs[0].naturalHeight,

@@ -50,12 +50,14 @@ WHAT IS COMPARED, AND AGAINST WHAT.
   path — never a silent pass.
 """
 import base64
+import datetime
 import hashlib
 import json
 import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -74,6 +76,10 @@ MODULE = LAB / "effects" / "kaleidoscope.js"
 SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844          # the phone frame lab/carrier-check.py measures on
 SEAM = 6.0                 # the project's seam threshold, 6 of 255 (TRANSITION-STAGE-V0 §1)
+# THE RESHOOT PLAN.md ROW S-85 NAMES. The three instruments the shared seam move repaired are
+# photographed again on the reading that now reaches them, under one path with the date and the
+# commit of the run beside them, so the row's evidence can be found without reading this file.
+RESHOOT = ROOT / "tests" / "captures" / "s05-reshoot"
 FAR = 40.0                 # further than this from a file and it is a different work
 BACKGROUND = (0x08, 0x08, 0x0a)
 SPREAD = 10.0
@@ -653,6 +659,7 @@ BROWSER_ROWS = [
     "PASS-KAL row 16 · the captures are kept as evidence",
     "PASS-KAL the doors hold still under a moved clock, which is why no turn handle is published",
     "PASS-KAL the judges' handle publishes what the door is read against, and that nothing is held",
+    "PASS-KAL S-85   · the crease's width comes off the host, at both buffers the frame is drawn on",
 ]
 
 RED_ROWS = [
@@ -660,6 +667,7 @@ RED_ROWS = [
     "PASS-KAL red-on-bug · the crease's retouch removed: the fold's own edges stand hard again",
     "PASS-KAL red-on-bug · his ceiling on the repeats removed: a score reaches past what he allowed",
     "PASS-KAL red-on-bug · the finish's gating on the fold removed: the door stops being its own file",
+    "PASS-KAL red-on-bug · S-85: the crease read back off the file's own retired number",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -889,6 +897,25 @@ def roads(br, at, tag):
     pm = png(br, SHOTS / (tag + "-module.png"))
     br.evaluate("window.__show('host'); 0")
     return r, ph, pm
+
+
+def reshoot(src, name, note):
+    """One frame of the S-85 reshoot, kept under the row's own path with the run's date and commit.
+    The note is written beside the frames rather than into them, so a reader can see WHICH reading
+    each shot stands on and on which buffer without opening a test file."""
+    RESHOOT.mkdir(parents=True, exist_ok=True)
+    dst = RESHOOT / ("kaleidoscope-" + name + ".png")
+    shutil.copy2(src, dst)
+    note = dict(note)
+    note["at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    try:
+        note["commit"] = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                                        capture_output=True, text=True,
+                                        timeout=20).stdout.strip() or None
+    except Exception:
+        note["commit"] = None
+    (RESHOOT / "kaleidoscope.json").write_text(json.dumps(note, indent=1), encoding="utf-8")
+    return dst
 
 
 def host_shot(br, at, tag, **params):
@@ -1309,6 +1336,83 @@ else:
                       f"the picture's own roughness; the red-on-bug row below takes the retouch out "
                       f"and the same reading climbs")
 
+                # ---- S-85 · the seam is the HOST'S number, at the buffer the frame is drawn on ---
+                # PLAN.md row S-85, and the owner's decision of 2026-09-03: the equality stands at
+                # the buffer the frame is drawn at, because that is the frame a visitor's eye meets.
+                # Until this row the bench handed no `seams` at all, so every frame ever photographed
+                # here stood on `SOFT_POINTS` — the number this file kept from before the shared move
+                # — and the move itself was never once shot.
+                #
+                # THIS INSTRUMENT IS THE ONE WHOSE RETIRED NUMBER THE SHARED MOVE DID NOT CHANGE, so
+                # it is the one that can carry the criterion's own equality on the pixels: at ONE
+                # buffer point per CSS pixel the host answers 1.5 and the file's retired number was
+                # 1.5, and the frames are identical — the seam came off the file and the picture
+                # landed exactly where it was. At TWO points per CSS pixel, which is what a retina
+                # visitor's eye meets, the host answers wider and the picture legitimately moves,
+                # which is the whole of what the shared move was for. Both buffers are walked, and
+                # the row holds the EQUIVALENCE across them: the picture moves exactly when the
+                # number does.
+                seam_old = float(re.search(r"var SOFT_POINTS = ([0-9.]+);", PACK).group(1))
+                seam_walk = []
+
+                def seam_shot(pin, tag):
+                    br.evaluate("window.__seamPin(%s); 0" % pin)
+                    br.sleep(0.1)
+                    return host_shot(br, 0.5, tag, wedges=8, twist=0, rings=1, reach=0.30)
+
+                for _dsf in (1, 2):
+                    br._cmd("Emulation.setDeviceMetricsOverride", width=VW, height=VH,
+                            deviceScaleFactor=_dsf, mobile=False)
+                    br.sleep(0.3)
+                    js(br, "window.__resize(); return 1;")
+                    br.sleep(0.4)
+                    _host = js(br, "return window.__seams();")
+                    _scale = js(br, "var c = document.querySelector('canvas[aria-hidden]');"
+                                    "return c ? c.width / Math.max(window.innerWidth, 1) : null;")
+                    _a = seam_shot("undefined", "s85-host-x%d" % _dsf)
+                    _b = seam_shot(json.dumps(_host), "s85-by-hand-x%d" % _dsf)
+                    _c = seam_shot(json.dumps({"wedge": seam_old, "ring": seam_old}),
+                                   "s85-retired-x%d" % _dsf)
+                    br.evaluate("window.__seamPin(undefined); 0")
+                    seam_walk.append({"dsf": _dsf, "scale": _scale, "host": _host["wedge"],
+                                      "hand": diff(_a, _b)[0], "old": diff(_a, _c),
+                                      "shots": [_a, _c]})
+                br._cmd("Emulation.clearDeviceMetricsOverride")
+                br.sleep(0.3)
+                js(br, "window.__resize(); return 1;")
+                br.sleep(0.4)
+
+                seam_ok = all(w["hand"] == 0.0
+                              and ((w["old"][0] == 0.0) == (abs(w["host"] - seam_old) < 1e-12))
+                              for w in seam_walk)
+                _note = {"instrument": "kaleidoscope",
+                         "seams": [{"kind": "wedge", "unit": "points of the drawing buffer"},
+                                   {"kind": "ring", "unit": "points of the drawing buffer"}],
+                         "fileRetired": seam_old,
+                         "buffers": [{"bufferPointsPerCssPixel": w["scale"],
+                                      "hostAnswers": w["host"],
+                                      "apartOf255": round(w["old"][0], 4)} for w in seam_walk],
+                         "shots": ["kaleidoscope-host-x1.png", "kaleidoscope-retired-x1.png",
+                                   "kaleidoscope-host-x2.png", "kaleidoscope-retired-x2.png"]}
+                for w in seam_walk:
+                    reshoot(w["shots"][0], "host-x%d" % w["dsf"], _note)
+                    reshoot(w["shots"][1], "retired-x%d" % w["dsf"], _note)
+                check(BROWSER_ROWS[27], seam_ok and len(seam_walk) == 2,
+                      "the number this file kept before the shared move is "
+                      + str(seam_old) + " points of the drawing buffer, and §8's `seams` block "
+                      "answers it on the buffer the frame is drawn on: "
+                      + "; ".join(
+                          f"at {w['scale']} point(s) per CSS pixel the host answers {w['host']}, the "
+                          f"same width handed by hand draws the host's frame to the pixel "
+                          f"({w['hand']} of 255) and the file's retired number draws one "
+                          f"{w['old'][0]:.2f} of 255 away (worst channel {w['old'][1]})"
+                          for w in seam_walk)
+                      + f". At the one-point buffer the two numbers ARE one number and the frame "
+                        f"lands exactly where it was — the seam came off the file and the picture "
+                        f"did not move; at the two-point buffer, which is what a retina visitor's "
+                        f"eye meets, it moves, which is what the shared move was for. The reshoot "
+                        f"stands under {RESHOOT.relative_to(ROOT)}")
+
                 shot_count = len(list(SHOTS.glob("*.png")))
                 check(BROWSER_ROWS[24], shot_count >= 20,
                       f"{shot_count} captures under {SHOTS.relative_to(ROOT)}")
@@ -1328,7 +1432,16 @@ else:
         "vec2 mirrorInto(vec2 uv){ return uv; }", 1)
 
     # 2 · THE CREASE'S RETOUCH REMOVED — his В9 word reverted to the module's own hard fold.
-    NO_SOFT = PACK.replace("var SOFT_POINTS = 1.5;", "var SOFT_POINTS = 0;", 1)
+    # THE WIDTH IS TAKEN OUT WHEREVER IT NOW COMES FROM. Zeroing `SOFT_POINTS` alone stopped moving
+    # the picture the day the bench began handing §8's `seams` block (PLAN.md row S-85): the constant
+    # is only what this file falls back to before any host has answered, and on a bench that answers
+    # it is never read at all. A plant that changes a number nothing reads proves nothing, so the two
+    # lines the width actually reaches the shader through are zeroed beside it.
+    NO_SOFT = PACK.replace("var SOFT_POINTS = 1.5;", "var SOFT_POINTS = 0;", 1).replace(
+        "var softWedgePts = num(st.seam && st.seam.wedge, SOFT_POINTS);",
+        "var softWedgePts = 0;", 1).replace(
+        "var softRingPts = num(st.seam && st.seam.ring, SOFT_POINTS);",
+        "var softRingPts = 0;", 1)
 
     # 3 · HIS CEILING ON THE RADIAL REPEAT REMOVED, back to the module's own 5.
     NO_CAP = PACK.replace("RINGS_MAX = 2", "RINGS_MAX = 5", 1)
@@ -1451,6 +1564,44 @@ else:
                       f"from glass-drum.jpg against {b:.2f} shipped, on a bar of {SEAM}: the gamma, "
                       f"the boost and the vignette stand at full strength where the door's own law "
                       f"asks for the photograph its file carries")
+
+            # ---- 5 · S-85 · the crease read back off the file's own retired number ---------------
+            # The plant PLAN.md row S-85 names: leave a seam's width read from the old constant. The
+            # instrument's own two lines take the host's answer where one arrives and stand on
+            # `SOFT_POINTS` where none does; reverted in the served bytes they stand on the constant
+            # whatever the host answers. It is shot at the TWO-point buffer, because that is the
+            # buffer where the host's answer and the retired number are two different numbers — at
+            # the one-point buffer they are one number and there is nothing for a plant to move,
+            # which is exactly what the standing row above prints.
+            NO_HOST_SEAM = PACK.replace(
+                "var softWedgePts = num(st.seam && st.seam.wedge, SOFT_POINTS);",
+                "var softWedgePts = SOFT_POINTS;", 1).replace(
+                "var softRingPts = num(st.seam && st.seam.ring, SOFT_POINTS);",
+                "var softRingPts = SOFT_POINTS;", 1)
+
+            def probe_dense(tag):
+                def go(br):
+                    br._cmd("Emulation.setDeviceMetricsOverride", width=VW, height=VH,
+                            deviceScaleFactor=2, mobile=False)
+                    br.sleep(0.3)
+                    js(br, "window.__resize(); return 1;")
+                    br.sleep(0.4)
+                    return one_pose(br, 0.5, tag, wedges=8, twist=0, rings=1, reach=0.30)
+                return go
+
+            seam_base = on_bench(probe_dense("red-seam-standing"))
+            seam_bug = on_bench(probe_dense("red-seam-reverted"), NO_HOST_SEAM)
+            seam_gap = None if (seam_base is None or seam_bug is None) else diff(seam_base, seam_bug)
+            check(RED_ROWS[4],
+                  NO_HOST_SEAM != PACK and seam_gap is not None and seam_gap[0] > 0,
+                  f"on a two-point buffer the host answers this instrument's crease wider than the "
+                  f"number its file kept from before the shared move; with the instrument's own two "
+                  f"reads reverted to that constant the same pose parts by {seam_gap[0]:.4f} of 255 "
+                  f"(worst channel {seam_gap[1]}) from the shipped frame — so the standing row above "
+                  f"is held up by the host's answer actually reaching the picture and not by the two "
+                  f"numbers happening to agree at one screen"
+                  if seam_gap is not None else
+                  f"the proof did not run (planted={NO_HOST_SEAM != PACK})")
 
 # ---------------------------------------------------------------- report
 fails = [r for r in results if r[1] == "FAIL"]
