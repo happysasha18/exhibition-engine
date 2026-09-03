@@ -374,11 +374,15 @@ BROWSER_ROWS = [
     "PASS-GATES row 16 · the captures are kept as evidence",
     "PASS-GATES §4.4b  · the fleet's judges' channel draws this instrument's own cut, and rests at nothing",
     "PASS-GATES the pinned numbers of the sweep are live, and bind at the numbers they are named at",
+    "PASS-GATES S-94    · the door instant's own moved/held pair travels together: this instrument "
+    "never holds, so it never moves either",
 ]
 
 RED_ROWS = [
     "PASS-GATES red-on-bug · the teeth left biting at the far door: the exit door stops being one work",
     "PASS-GATES red-on-bug · the seating removed: the measured slot lands where nothing measured it",
+    "PASS-GATES red-on-bug · the file-to-frame seating delta published as `moved` again: the pair "
+    "comes apart at a real door",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -991,6 +995,39 @@ else:
                          f"slot may stand or how wide it may be, and driving the width from voidShare "
                          f"would re-make the confusion the module's own `facing` term was added to fix"))
 
+                # ---- S-94: THE PASSAGE RECORD'S OWN moved/held PAIR, THROUGH A REAL DOOR ---------
+                # `test_pass_composed.py`'s BROWSER_ROWS[5] judges `bool(a.get("moved")) ==
+                # bool(a.get("held"))` on whatever `reportApplied` record the visit's own die
+                # happened to cast that run — a lucky cast for this instrument and an unlucky one for
+                # the bug S-94 found: `waterline`/`hero` publish a literal `moved: 0` beside
+                # `held: null` and never break the law, so the row only reddens on a run whose die
+                # cast `gates` at that door, and a live wall-clock `day` moves the cast run to run.
+                # This row asks the same question of the same channel, but takes it through THIS
+                # instrument's own bench (`window.__offer`, pinned clock and progress, no composer,
+                # no die) — reachable on every single run rather than on whichever the day's roll
+                # picks.
+                pair_reads = []
+                for at, label in ((0, "in"), (1, "out")):
+                    js(br, "return window.__offer(%s, {clock: 1.5, progress: %r});" % (SCORE_JSON, at))
+                    br.sleep(0.9)
+                    row = js(br, "var s = window.__report().stack || []; "
+                                 "var g = s.filter(function(v){return v.instrument === 'gates';})[0]; "
+                                 "return (g || {}).applied || null;")
+                    pair_reads.append((label, row))
+                    br.evaluate("window.__cancel('S-94 door pair'); 0")
+                    idle(br)
+                check(BROWSER_ROWS[25],
+                      len(pair_reads) == 2
+                      and all(row and row.get("door") == label
+                              and bool(row.get("moved")) == bool(row.get("held"))
+                              for label, row in pair_reads),
+                      "; ".join(f"door {label}: moved={row and row.get('moved')!r}, "
+                                f"held={row and row.get('held')!r}" for label, row in pair_reads)
+                      + " — this instrument's own comment over `values` says it has no hold to give "
+                        "at either door ('there is no neighbouring slot this instrument could "
+                        "honestly move to'), and the record now says the same in `moved`: both read "
+                        "falsy at both doors, on every run, cast or no cast")
+
                 kept = sorted(p.name for p in SHOTS.glob("*.png"))
                 check(BROWSER_ROWS[22],
                       len(kept) >= 20 and all((SHOTS / k).stat().st_size > 1000 for k in kept),
@@ -1085,6 +1122,47 @@ else:
           f"— the file's own share read as if it were the frame's — and the frame moves by "
           f"{moved2[0] if moved2[0] is None else round(moved2[0], 4)} of 255 (worst channel "
           f"{moved2[1]}), against a seam threshold of {SEAM}")
+
+    # RED 3 — THE FILE-TO-FRAME SEATING DELTA PUBLISHED AS `moved` AGAIN (S-94). Restored to what
+    # this file did before S-94: the passage record's `moved` field carries a real, near-always-
+    # nonzero geometry number (`v.slot - v.slotInFile`, how far the cover fit re-seated the slot)
+    # this instrument never held away from, while `held` stays `null` beside it — the exact defect
+    # PLAN row S-94 found live, hiding behind the die: `test_pass_composed.py`'s own row only reddens
+    # on a run whose cast happens to land on `gates`. This bench forces the door instead of waiting
+    # for one.
+    def door_pair_reader(br):
+        out = []
+        for at, label in ((0, "in"), (1, "out")):
+            js(br, "return window.__offer(%s, {clock: 1.5, progress: %r});" % (SCORE_JSON, at))
+            br.sleep(0.9)
+            row = js(br, "var s = window.__report().stack || []; "
+                         "var g = s.filter(function(v){return v.instrument === 'gates';})[0]; "
+                         "return (g || {}).applied || null;")
+            out.append((label, row))
+            br.evaluate("window.__cancel('S-94 red-on-bug'); 0")
+        return out
+
+    bug3 = REGION.replace(
+        'moved: 0, unit: "frame widths",',
+        'moved: v.slot - v.slotInFile, unit: "frame widths",', 1)
+    base3 = on_bench(door_pair_reader)
+    red3 = on_bench(door_pair_reader, pack_text=bug3)
+
+    def _pair_law(reads):
+        return bool(reads) and all(row and bool(row.get("moved")) == bool(row.get("held"))
+                                    for _, row in reads)
+
+    def _fmt(reads):
+        return "; ".join(f"door {l}: moved={r and r.get('moved')!r}, held={r and r.get('held')!r}"
+                          for l, r in (reads or []))
+
+    check(RED_ROWS[2],
+          bug3 != REGION and base3 and red3 and _pair_law(base3) and not _pair_law(red3),
+          f"with the repair standing: {_fmt(base3)}. With the file-to-frame seating delta published "
+          f"as `moved` again: {_fmt(red3)} — a real, near-always-nonzero geometry number sits beside "
+          f"`held: null`, and `bool(moved) == bool(held)` breaks at a real door, the exact shape "
+          f"`test_pass_composed.py`'s passage-record law catches, forced here rather than left to a "
+          f"lucky cast")
 
 shutil.rmtree(TMP, ignore_errors=True)
 

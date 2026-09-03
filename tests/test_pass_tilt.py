@@ -665,6 +665,8 @@ BROWSER_ROWS = [
     "PASS-TILT row 16 · the captures are kept as evidence",
     "PASS-TILT the door is read on the DRAWING BUFFER, and the column count applied is published",
     "PASS-TILT a door the judges' channel opens is refused on the real road, and the visitor still lands",
+    "PASS-TILT S-94    · the door instant's own moved/held pair travels together: this instrument "
+    "never holds, so it never moves either",
 ]
 
 RED_ROWS = [
@@ -673,6 +675,8 @@ RED_ROWS = [
     "PASS-TILT red-on-bug · a term reads real elapsed time: two takes of one held pose part company",
     "PASS-TILT red-on-bug · the boundary reads the column instead of the row: a hard wipe appears "
     "where neither work carries one",
+    "PASS-TILT red-on-bug · the column-rounding delta published as `moved` again: the pair comes "
+    "apart at a real door",
 ]
 
 missing = [str(p) for p in ([MODULE] + PHOTOS) if not p.exists()]
@@ -1285,6 +1289,37 @@ console.log(JSON.stringify({
                          (leaked["refused"] or ["nothing refused"])[0], leaked["state"],
                          leaked["drew"]))
 
+                # ---- S-94: THE PASSAGE RECORD'S OWN moved/held PAIR, THROUGH A REAL DOOR ---------
+                # The same class of check as pass-inst-gates.js's own (S-94): `columns` is a
+                # continuous handle rounded to a whole count before the shader ever sees it
+                # (`colsRounded`), and this instrument has no search away from a leaking door either
+                # — `held` is hardcoded `null`. A score whose `columns` is not already whole
+                # (`9.6`, so `colsRounded` is a real 0.4 rather than a coincidental zero) forces the
+                # bug S-94 fixed to be checkable on every run, through this instrument's own bench
+                # rather than through the composer's die.
+                frac_score = json.dumps(tilt_score(columns=9.6))
+                pair_reads = []
+                for at, label in ((0, "in"), (1, "out")):
+                    js(br, "return window.__offer(%s, {clock: 0, progress: %r});" % (frac_score, at))
+                    br.sleep(0.9)
+                    row = js(br, "var s = window.__report().stack || []; "
+                                 "var g = s.filter(function(v){return v.instrument === 'tilt';})[0]; "
+                                 "return (g || {}).applied || null;")
+                    pair_reads.append((label, row))
+                    br.evaluate("window.__cancel('S-94 door pair'); 0")
+                    idle(br)
+                check(BROWSER_ROWS[23],
+                      len(pair_reads) == 2
+                      and all(row and row.get("door") == label
+                              and bool(row.get("moved")) == bool(row.get("held"))
+                              for label, row in pair_reads),
+                      "; ".join(f"door {label}: moved={row and row.get('moved')!r}, "
+                                f"held={row and row.get('held')!r}" for label, row in pair_reads)
+                      + " — a score asking for 9.6 columns rounds to 10 before the shader ever sees "
+                        "it, a real 0.4-column delta this instrument has no hold to answer for, and "
+                        "the record now says so in `moved` too: both read falsy at both doors, on "
+                        "every run, cast or no cast")
+
                 kept = sorted(p.name for p in SHOTS.glob("*.png"))
                 check(BROWSER_ROWS[20],
                       len(kept) >= 25 and all((SHOTS / k).stat().st_size > 1000 for k in kept),
@@ -1511,6 +1546,46 @@ console.log(JSON.stringify({
                   % (boundary_base[0], boundary_base[1], boundary_base[2], boundary_bug[0]))
     finally:
         shutil.rmtree(ROW_PHOTOS_DIR, ignore_errors=True)
+
+    # FIVE · THE COLUMN-ROUNDING DELTA PUBLISHED AS `moved` AGAIN (S-94). Restored to what this file
+    # did before S-94: the passage record's `moved` field carries `colsRounded` (`cols - colsWanted`,
+    # a real, near-always-nonzero rounding delta) rather than 0, while `held` stays `null` beside it
+    # — the same class of defect PLAN row S-94 found live in pass-inst-gates.js, hiding behind the
+    # die.
+    def door_pair_reader(br):
+        frac_score = json.dumps(tilt_score(columns=9.6))
+        out = []
+        for at, label in ((0, "in"), (1, "out")):
+            js(br, "return window.__offer(%s, {clock: 0, progress: %r});" % (frac_score, at))
+            br.sleep(0.9)
+            row = js(br, "var s = window.__report().stack || []; "
+                         "var g = s.filter(function(v){return v.instrument === 'tilt';})[0]; "
+                         "return (g || {}).applied || null;")
+            out.append((label, row))
+            br.evaluate("window.__cancel('S-94 red-on-bug'); 0")
+        return out
+
+    bug5 = REGION.replace(
+        'moved: 0, unit: "columns",',
+        'moved: v.colsRounded, unit: "columns",', 1)
+    base5 = on_bench(door_pair_reader)
+    red5 = on_bench(door_pair_reader, pack_text=bug5)
+
+    def _pair_law(reads):
+        return bool(reads) and all(row and bool(row.get("moved")) == bool(row.get("held"))
+                                    for _, row in reads)
+
+    def _fmt(reads):
+        return "; ".join(f"door {l}: moved={r and r.get('moved')!r}, held={r and r.get('held')!r}"
+                          for l, r in (reads or []))
+
+    check(RED_ROWS[4],
+          bug5 != REGION and base5 and red5 and _pair_law(base5) and not _pair_law(red5),
+          f"with the repair standing: {_fmt(base5)}. With the column-rounding delta published as "
+          f"`moved` again: {_fmt(red5)} — a real, near-always-nonzero rounding number sits beside "
+          f"`held: null`, and `bool(moved) == bool(held)` breaks at a real door, the exact shape "
+          f"`test_pass_composed.py`'s passage-record law catches, forced here rather than left to a "
+          f"lucky cast")
 
 shutil.rmtree(TMP, ignore_errors=True)
 
