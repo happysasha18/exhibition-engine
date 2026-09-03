@@ -896,8 +896,14 @@
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. `request` is
         // the slot the score handed in, as a share of the FILE; `applied` is where that slot landed
-        // in the frame once the host's own cover fit had carried it there; `moved` is the two read
-        // against each other, in frame widths along the gate's own axis.
+        // in the frame once the host's own cover fit had carried it there. `moved`/`held` are the
+        // passage record's own pair (S-94): `held` names a leak the request would have drawn that
+        // this instrument moved AWAY FROM to avoid, and this instrument never does that — its own
+        // comment over `values` above says so: "There is no HOLD beside it and none is invented ...
+        // there is no neighbouring slot this instrument could honestly move to." So `moved` reads
+        // 0 rather than the file-to-frame seating delta (`v.slot - v.slotInFile`, always nonzero by
+        // construction and answering a different question: how the cover fit re-seated the slot,
+        // never whether a door leak was dodged) — the pair travels together, both quiet.
         if (dial === 0 || dial === 1) {
           var v = values(pose);
           if (st.reportApplied) {
@@ -905,7 +911,7 @@
               door: dial === 0 ? "in" : "out",
               buffer: [pose.bufWidth, pose.bufHeight],
               reads: "slot", request: v.slotInFile, applied: v.slot,
-              moved: v.slot - v.slotInFile, unit: "frame widths",
+              moved: 0, unit: "frame widths",
               held: null, whyNo: v.doorWhyNo,
             });
           }

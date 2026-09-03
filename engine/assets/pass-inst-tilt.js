@@ -918,11 +918,18 @@
         if ((h.mix === 0 || h.mix === 1) && !absent) {
           var v = values(pose);
           if (st.reportApplied) {
+            // `moved`/`held` are the passage record's own pair (S-94, the same class as the gate
+            // instrument's identical fix): `held` names a leak the request would have drawn that
+            // this instrument moved AWAY FROM, and this instrument has no such search — `cols` is
+            // simply `colsWanted` rounded to a whole count before the shader ever sees it, never a
+            // retry away from a leaking door. `colsRounded` (`cols - colsWanted`) answers a
+            // different question — how far the rounding carried the count — and is not a hold
+            // either, so `moved` reads 0 and travels with `held: null`, both quiet.
             st.reportApplied({
               door: h.mix === 0 ? "in" : "out",
               buffer: [pose.bufWidth, pose.bufHeight],
               reads: "columns", request: v.colsRequest, applied: v.cols,
-              moved: v.colsRounded, unit: "columns",
+              moved: 0, unit: "columns",
               held: null, whyNo: v.doorWhyNo,
             });
           }
