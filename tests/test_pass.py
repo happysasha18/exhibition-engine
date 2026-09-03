@@ -111,12 +111,14 @@ BROWSER_ROWS = [
     "EX-PASS reduced motion plays the charter's pardoned floor rather than refusing the layer",
     "EX-PASS the walk's rest record follows the dock: the turn after a crossing holds the arriving work",
     "EX-PASS a second gesture while a renderer holds the command chains to the NEXT frame",
-    "EX-PASS the pardoned floor names one voice, no miracle and no camera flight, at the quiet "
-    "tier's own duration floor",
+    "EX-PASS the pardoned floor plays ONE named voice — `reduced-floor` on `@host/last-resort` — "
+    "no miracle and no camera flight, at the quiet tier's own duration floor",
     "EX-PASS the composer's file still never reaches a reduced visit, even one whose floor plays",
     "EX-PASS the register names nothing the settings record already owns, so real refusals stand",
     "EX-PASS RED-ON-BUG · reverting the pardon (charter shelf 19, naряд S-08) makes reduced motion "
     "refuse the layer again",
+    "EX-PASS RED-ON-BUG · swapping the calm floor's one voice for another instrument moves what a "
+    "reduced visit plays, so the row above reads the voice and not merely the count",
 ]
 
 # A HOST THAT TAKES THE COMMAND AND HOLDS IT, registered through the seam's own door — the same
@@ -564,11 +566,19 @@ else:
                 cues = score.get("cues") or []
                 camera = score.get("camera") or {}
                 voices = [c.get("voice") for c in cues]
+                # S-89 (2026-09-03): the row now names the VOICE ITSELF, not just how many there
+                # are. The charter's pardon is specific — shelf 18's bans list pardons the bare
+                # alpha crossfade «as the reduced-motion grammar», and the host's own last-resort
+                # instrument is what draws it. Counting cues let any single voice pass here, so the
+                # decision the charter actually made was untested: a floor drawn by some other
+                # instrument would have read green. Row 21 below plants exactly that swap.
+                played = [(c.get("id"), (c.get("instrument") or {}).get("id")) for c in cues]
                 check(BROWSER_ROWS[17],
                       got.get("active") is True and len(cues) == 1 and voices == ["letter"]
+                      and played == [("reduced-floor", "@host/last-resort")]
                       and not camera.get("lead") and not camera.get("track")
                       and score.get("duration") == 2000,
-                      f"active={got.get('active')} cues={voices} camera={camera} "
+                      f"active={got.get('active')} cues={voices} played={played} camera={camera} "
                       f"duration={score.get('duration')}")
 
                 # 18 · the same crossing never asked for the composer's own file (EX-COMPOSED's law
@@ -634,7 +644,10 @@ else:
             brx.key("ArrowDown")
             brx.sleep(0.6)
             got = json.loads(brx.evaluate(
-                "JSON.stringify({active: !!(window.__stub && window.__stub.active)})"))
+                "JSON.stringify({active: !!(window.__stub && window.__stub.active), "
+                "played: (window.__stub && window.__stub.cmd && window.__stub.cmd.score) "
+                "? window.__stub.cmd.score.cues.map(function (c) "
+                "{ return [c.id, (c.instrument || {}).id]; }) : null})"))
             got["door"] = door
             return got
 
@@ -665,6 +678,32 @@ else:
           f"with naряд S-08's two lines in place a reduced visit's layer took the crossing "
           f"({now}); reverted to the pre-S-08 text the same visit's door read "
           f"{hurt.get('door')!r} and active={hurt.get('active')}")
+
+    # 21 · RED-ON-BUG for row 17's NAMED voice (S-89, 2026-09-03). Row 20 proves the pardon is
+    # reachable at all; this one proves the row above reads WHICH voice draws it. The one cue's
+    # instrument is swapped for another registered id in a COPY of the built artifact — never the
+    # source tree, never git — and the row passes when the answer MOVES: with the floor as built a
+    # reduced visit plays `reduced-floor` on `@host/last-resort`, the instrument the charter's own
+    # bans list pardons by name; swapped, the same visit plays some other voice and row 17's read
+    # no longer matches. Without this, "one cue" was the whole test and any single voice passed.
+    SWAP = JS.replace('id: "reduced-floor", voice: "letter", instrument: { id: "@host/last-resort" },',
+                      'id: "reduced-floor", voice: "letter", instrument: { id: "@host/veil" },',
+                      1)
+    swap_moved = SWAP != JS
+    SWAP_DIR = Path(tempfile.mkdtemp(prefix="synth_pass_swap_"))
+    shutil.copytree(TMP, SWAP_DIR, dirs_exist_ok=True)
+    (SWAP_DIR / "exhibition.js").write_text(SWAP, encoding="utf-8")
+    with serve(SWAP_DIR) as base_swap:
+        swapped = stub_gets_offered(base_swap)
+    shutil.rmtree(SWAP_DIR, ignore_errors=True)
+
+    # The swapped read is named OUTRIGHT, not merely required to differ: a swap that broke the
+    # score altogether would also "differ", and would have let this row pass for the wrong reason.
+    check(BROWSER_ROWS[21],
+          swap_moved and now.get("played") == [["reduced-floor", "@host/last-resort"]]
+          and swapped.get("played") == [["reduced-floor", "@host/veil"]],
+          f"as built the calm visit plays {now.get('played')}; with the one voice swapped it plays "
+          f"{swapped.get('played')} (the swap reached the artifact: {swap_moved})")
 
 # ---------------------------------------------------------------- report
 import shutil  # noqa: E402
