@@ -473,4 +473,115 @@ check("R9 EX-ROLL red-on-bug · the order reverted to a sum of the readings: the
       "kin one; with the order that stands, %d"
       % (len(rows9["kinBeaten"]) if rows9 else why9, len(GOT["kinBeaten"])))
 
+# ------------------------------------------------- R13/R14: the handle reading carries no ladder
+# `PLAN.md` row S-65, adversarial-review finding 17. A `bucket` helper used to cut every expressive
+# handle into FIVE steps of its own declared span before the handle reached a scene token, and that
+# 5 was a build-time constant with no derivation written anywhere — a number that existed before the
+# two pictures did, deciding rank 7 and through it which crossing plays. It is gone; the rank reads
+# the real number. These two rows prove the reading that replaced it orders correctly over its own
+# span, and that the ladder's return is caught.
+#
+# THE SPAN, NOT A SAMPLE, exactly as R2/R3 above. A control entry is a handle's identity plus the
+# two normalised numbers it travels between, so a pair of entries carrying the same key is a point
+# of the unit square in each of `from` and `to`; the rows drive both coordinates across the whole of
+# [0, 1] at a fixed stride and check the properties the rank depends on — bounds, agreement with the
+# older name-only reading where two settings coincide, and monotonicity.
+CTRL_HEAD = "  function passControlAgreement(a, b) {"
+CTRL_END = "\n  function passRouteNovelty(scene) {"
+CTRL = None
+if CTRL_HEAD in BUNDLE and CTRL_END in BUNDLE:
+    _s = BUNDLE.index(CTRL_HEAD)
+    CTRL = BUNDLE[_s:BUNDLE.index(CTRL_END, _s)]
+
+CTRL_DRIVER = r"""
+'use strict';
+__CTRL__
+const STEP = 0.05;
+const out = {n: 0, outOfRange: 0, jaccardAgrees: 0, jaccardDiffers: 0, nonMonotone: 0,
+             collapsed: 0, sampled: 0};
+const ctl = (key, from, to) => ({key: key, measured: true, from: from, to: to});
+// TWO SCENES SHARING ONE HANDLE, driven over the whole unit square in that handle's own travel.
+for (let f = 0; f <= 1.0001; f += STEP) {
+  for (let t = 0; t <= 1.0001; t += STEP) {
+    const fx = Math.min(1, f), tx = Math.min(1, t);
+    const a = [ctl("i:h:mix", 0.5, 0.5)];
+    const d = passControlDistance(a, [ctl("i:h:mix", fx, tx)]);
+    out.n++;
+    if (!(d >= 0 && d <= 1)) out.outOfRange++;
+    // WHERE THE TWO SETTINGS COINCIDE the reading must be the plain Jaccard distance the name-only
+    // reading gives — 0 for one shared key out of one — so nothing about the rank's shape moved
+    // when the ladder went.
+    if (Math.abs(fx - 0.5) < 1e-9 && Math.abs(tx - 0.5) < 1e-9) {
+      if (Math.abs(d) < 1e-12) out.jaccardAgrees++; else out.jaccardDiffers++;
+    }
+    // MONOTONE: moving the handle further from its counterpart never lowers the distance.
+    if (fx > 0.5 + 1e-9) {
+      const closer = passControlDistance(a, [ctl("i:h:mix", fx - STEP, tx)]);
+      out.sampled++;
+      if (d < closer - 1e-12) out.nonMonotone++;
+    }
+    // AND IT SEPARATES WHAT A FIVE-RUNG LADDER ROUNDED TOGETHER: two settings inside one rung of
+    // the retired quantization (a fifth of the span) must not read as the same thing.
+    if (Math.abs(fx - 0.5) > 1e-9 && Math.abs(fx - 0.5) < 0.125) {
+      if (Math.abs(passControlDistance(a, [ctl("i:h:mix", fx, 0.5)])) < 1e-12) out.collapsed++;
+    }
+  }
+}
+// A HANDLE WHOSE MANIFEST BANDS ITS NUMBERS INTO NAMES has no scale to be near on, and two
+// different names are simply two different things whatever the arithmetic between them says.
+const named = (v) => ({key: "i:axis:static", measured: false, from: v, to: v});
+out.namedSame = passControlDistance([named(0)], [named(0)]);
+out.namedApart = passControlDistance([named(0)], [named(1)]);
+out.namedNearlySame = passControlDistance([named(0)], [named(0.01)]);
+// DISJOINT AND EMPTY, the two ends `passSetDistance` itself is defined at.
+out.disjoint = passControlDistance([ctl("i:h:mix", 0, 1)], [ctl("j:k:mix", 0, 1)]);
+out.empty = passControlDistance([], []);
+console.log(JSON.stringify(out));
+"""
+
+if CTRL is None:
+    check("R13 EX-ROLL the handle reading travels as a block of the shipped client", False,
+          "passControlAgreement/passControlDistance missing from engine/assets/exhibition.js")
+    check("R14 EX-ROLL red-on-bug · the retired five-rung ladder planted back", False,
+          "no reading to plant a ladder in front of")
+    report_and_exit()
+
+CTRL_GOT, ctl_why = run_js(CTRL_DRIVER.replace("__CTRL__", CTRL), "controls")
+check("R13 EX-ROLL rank 7 reads the handle's own real number: bounded in 0…1, equal to the "
+      "name-only Jaccard distance wherever two settings coincide, monotone in how far apart they "
+      "stand, and carrying no step a value is rounded onto (S-65)",
+      bool(CTRL_GOT) and CTRL_GOT["outOfRange"] == 0 and CTRL_GOT["nonMonotone"] == 0
+      and CTRL_GOT["jaccardAgrees"] == 1 and CTRL_GOT["jaccardDiffers"] == 0
+      and CTRL_GOT["collapsed"] == 0 and CTRL_GOT["empty"] == 0 and CTRL_GOT["disjoint"] == 1
+      and CTRL_GOT["namedSame"] == 0 and CTRL_GOT["namedApart"] == 1
+      and CTRL_GOT["namedNearlySame"] == 1,
+      ("%s points of one shared handle's own unit square driven, %s of them against a nearer "
+       "neighbour: %s left 0…1, %s read a further setting as nearer, %s collapsed two settings a "
+       "fifth of the span apart into one; two scenes sharing nothing read %s, a banded handle "
+       "reads %s at the same name and %s at a name 0.01 away"
+       % (CTRL_GOT["n"], CTRL_GOT["sampled"], CTRL_GOT["outOfRange"], CTRL_GOT["nonMonotone"],
+          CTRL_GOT["collapsed"], CTRL_GOT["disjoint"], CTRL_GOT["namedSame"],
+          CTRL_GOT["namedNearlySame"]))
+      if CTRL_GOT else "node said: %s" % (ctl_why or ""))
+
+# ---- R14 red-on-bug: the retired ladder planted back in front of the two numbers. `bucket`'s own
+# arithmetic, `Math.round(4 * x) / 4` over a value already normalised into [0, 1], applied to each
+# end before they are compared — which is exactly what the shipped code did until 2026-09-03. Under
+# it every pair of settings inside one rung reads as the same thing, so the finest of the three
+# novelty readings goes blind over a fifth of every handle's span at a time.
+LADDER = CTRL.replace(
+    "      return 1 - Math.min(1, Math.abs(x - y));",
+    "      return 1 - Math.min(1, Math.abs(Math.round(4 * x) / 4 - Math.round(4 * y) / 4));")
+LADDER_GOT, ladder_why = (run_js(CTRL_DRIVER.replace("__CTRL__", LADDER), "ladder")
+                          if LADDER != CTRL else (None, "the reading's own line did not match"))
+check("R14 EX-ROLL red-on-bug · the retired five-rung ladder planted back in front of the two "
+      "numbers: settings the shipped reading tells apart collapse into one token again, and rank 7 "
+      "goes blind a fifth of a span at a time",
+      bool(LADDER_GOT) and LADDER_GOT["collapsed"] > 0
+      and bool(CTRL_GOT) and CTRL_GOT["collapsed"] == 0,
+      "with the ladder planted, %s of the driven points read two settings inside one rung as the "
+      "same thing; with the reading that stands, %s"
+      % (LADDER_GOT["collapsed"] if LADDER_GOT else ladder_why,
+         CTRL_GOT["collapsed"] if CTRL_GOT else "—"))
+
 report_and_exit()

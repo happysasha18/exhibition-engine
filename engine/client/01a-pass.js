@@ -1119,24 +1119,23 @@
   // visit, from the score this crossing just composed, and nothing is stored for a later pair to
   // reuse.
   //
-  // WHAT IS STILL CHOSEN BEFORE THE TWO PICTURES ARE KNOWN, SAID RATHER THAN COVERED BY THE SENTENCE
-  // ABOVE (adversarial-review finding 17, read 2026-09-03). `bucket` below quantizes every
-  // expressive handle into five steps of its own declared span, and that 5 is a build-time constant
-  // with no derivation written anywhere. It decides when two settings count as the same scene token,
-  // which decides the Jaccard distances at ranks 5 to 7, which decides which crossing plays. Shelf
-  // 21's own test is «could this value have existed before the two pictures were known», and this
-  // one could and did — so the shelf is NOT answered by construction here, on that axis, and the
-  // sentence above must not be read as saying it is. Deriving the step count from the handle's own
-  // declared span, or removing the quantization, is `PLAN.md`'s own row S-65.
+  // THE LADDER THAT USED TO STAND HERE IS GONE (adversarial-review finding 17, `PLAN.md` row S-65,
+  // struck 2026-09-03). A `bucket` helper cut every expressive handle into five steps of its own
+  // declared span before the handle reached a token, and that 5 was a build-time constant with no
+  // derivation written anywhere: it decided when two settings counted as the same thing, which
+  // decided the distances at ranks 5 to 7, which decided which crossing plays. Shelf 21's own test
+  // is «could this value have existed before the two pictures were known», and that one could and
+  // did. Nothing replaces it, because nothing has to: a rank that reads a real number needs no
+  // rungs to stand on. A handle's identity — its instrument, its name, the form of the node driving
+  // it — is what a TOKEN carries, and the numbers it travels between ride beside it untouched, read
+  // by `passControlDistance` at the one rank that asks how far apart two settings actually are.
   function passSceneOf(passage) {
     const score = passage && passage.score;
     const scene = { tokens: [], controls: [] };
     if (!score || !Array.isArray(score.cues)) return scene;
-    const add = (into, token) => { if (token && into.indexOf(token) < 0) into.push(token); };
-    const bucket = (value, span) => {
-      if (!Number.isFinite(+value)) return "set";
-      if (!span || !(span.hi > span.lo)) return String(Math.round(+value * 4) / 4);
-      return String(Math.max(0, Math.min(4, Math.round(4 * ((+value - span.lo) / (span.hi - span.lo))))));
+    const add = (into, token) => {
+      if (token && into.indexOf(token) < 0) { into.push(token); return true; }
+      return false;
     };
     const plan = passage.plan || {};
     add(scene.tokens, "road:" + String(passage.road || plan.road || "-"));
@@ -1158,13 +1157,27 @@
         let from = null, to = null;
         if (node && node.op === "static") from = to = +node.value;
         else if (node && node.op === "mix") { from = +node.a; to = +node.b; }
-        const key = iid + ":" + handle + ":" + form + ":"
-          + bucket(from, span) + ">" + bucket(to, span);
-        add(scene.controls, key);
-        add(scene.tokens, "control:" + key);
+        // MEASURED OR NAMED, AND THE MANIFEST SAYS WHICH. A handle that declares a real span and
+        // does not band its numbers into names travels on a scale, so its value is carried as the
+        // position it holds on that handle's OWN span — the manifest's `min` and `max`, and no
+        // number of this file's own. A handle that declares no span, or whose `banding` says its
+        // numbers name states rather than measure an amount (`passHandleSpan` above), has no scale
+        // to be near on, so its value is carried as it stands and only ever compared for equality.
+        const measured = !!(span && span.hi > span.lo && !span.named);
+        const at = (v) => {
+          if (!Number.isFinite(+v)) return null;
+          return measured ? Math.max(0, Math.min(1, (+v - span.lo) / (span.hi - span.lo))) : +v;
+        };
+        const key = iid + ":" + handle + ":" + form;
+        // The token dedupes the identity, and the control rides on that same answer, so one handle
+        // of one cue enters each list exactly once and both lists stay in step.
+        if (add(scene.tokens, "control:" + key)) {
+          scene.controls.push({ key: key, measured: measured, from: at(from), to: at(to) });
+        }
       });
     });
-    scene.tokens.sort(); scene.controls.sort();
+    scene.tokens.sort();
+    scene.controls.sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
     return scene;
   }
   // Jaccard distance between two sorted token sets: 0 where the two scenes name exactly the same
@@ -1180,6 +1193,40 @@
     }
     return 1 - common / Math.max(1, aa.length + bb.length - common);
   }
+  // HOW NEAR TWO READINGS OF THE SAME HANDLE STAND, in [0, 1]. A measured handle agrees to exactly
+  // the degree its two values are close on the handle's own declared span — the real number, no
+  // ladder in front of it. A named or span-less handle has no scale to be near on, so its two
+  // readings either say the same thing or they do not. An end the node never gives is `null`, and
+  // two nulls are the same absence.
+  function passControlAgreement(a, b) {
+    const near = (x, y) => {
+      if (x === null || y === null || !a.measured || !b.measured) return x === y ? 1 : 0;
+      return 1 - Math.min(1, Math.abs(x - y));
+    };
+    return (near(a.from, b.from) + near(a.to, b.to)) / 2;
+  }
+  // THE SAME JACCARD DISTANCE `passSetDistance` TAKES OVER NAMES, softened over the numbers a
+  // SHARED handle actually travels between. Where every shared handle sits at exactly the same
+  // setting each agreement is 1 and this returns `1 - |A∩B| / |A∪B|` — the older reading exactly,
+  // so nothing about the rank's shape changed when the ladder went. Where they sit apart it falls
+  // off continuously instead of stepping, so two settings a five-rung ladder rounded into one
+  // token are now told apart in proportion to how far apart they really are. Bounded by
+  // construction: each agreement lies in [0, 1], so the sum is at most |A∩B|, which is at most
+  // |A∪B|, so the quotient lies in [0, 1] and the distance with it. Monotone by construction:
+  // moving one shared handle further from its counterpart lowers exactly one agreement term and
+  // nothing else, so the distance rises and never falls. Both lists are sorted on `key` by
+  // `passSceneOf`, so the intersection is one merge walk and no set object is built.
+  function passControlDistance(a, b) {
+    const aa = Array.isArray(a) ? a : [], bb = Array.isArray(b) ? b : [];
+    if (!aa.length && !bb.length) return 0;
+    let agree = 0, common = 0, i = 0, j = 0;
+    while (i < aa.length && j < bb.length) {
+      if (aa[i].key === bb[j].key) {
+        agree += passControlAgreement(aa[i], bb[j]); common++; i++; j++;
+      } else if (aa[i].key < bb[j].key) i++; else j++;
+    }
+    return 1 - agree / Math.max(1, aa.length + bb.length - common);
+  }
   // A candidate opens territory when it is unlike its nearest predecessor. Scene form and control
   // choreography travel separately, so a returning material can still reveal a different region of
   // its own parameter space.
@@ -1190,7 +1237,7 @@
     let nearestScene = 1, nearestControls = 1;
     played.forEach((before) => {
       nearestScene = Math.min(nearestScene, passSetDistance(scene.tokens, before.tokens));
-      nearestControls = Math.min(nearestControls, passSetDistance(scene.controls, before.controls));
+      nearestControls = Math.min(nearestControls, passControlDistance(scene.controls, before.controls));
     });
     return { local: passSetDistance(scene.tokens, last.tokens), scene: nearestScene,
              controls: nearestControls };

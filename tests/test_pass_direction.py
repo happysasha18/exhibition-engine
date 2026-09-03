@@ -54,9 +54,14 @@ check("four fitting materials turn the passive hand signal into a bounded middle
 check("route selection reads a whole-passage scene and its expressive handles, and still gates "
       "no passage",
       "function passSceneOf(passage)" in PASS and "function passRouteNovelty(scene)" in PASS
-      and '"control:" + key' in PASS and "passSetDistance(scene.controls" in PASS
-      and "if (best !== null)" in PASS and "return passage.score" in PASS,
-      "the readings come off the emitted score — no instrument or family NAME reaches the order")
+      and '"control:" + key' in PASS and "passControlDistance(scene.controls" in PASS
+      and "if (best !== null)" in PASS and "return passage.score" in PASS
+      # ROW S-65: the handle's own number reaches the rank with nothing rounding it on the way.
+      # `bucket` was the five-rung ladder that stood here until 2026-09-03, and `Math.round(4 *`
+      # was its arithmetic; neither may return to this file under any name.
+      and "const bucket = (value, span)" not in PASS and "Math.round(4 *" not in PASS,
+      "the readings come off the emitted score — no instrument or family NAME reaches the order, "
+      "and no step a value is rounded onto stands between the score and the rank")
 
 check("the route seeks one real colour voice before settling for a second neutral passage",
       "function passColourOf(passage)" in PASS and "passRouteColourSeen" in PASS
