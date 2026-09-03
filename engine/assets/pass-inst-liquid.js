@@ -34,7 +34,7 @@
   // is already the second photograph, and as the swell rises the second work floods down the flanks
   // into the troughs until the whole surface is the arriving work and the water settles flat.
   //
-  // WHERE IT STANDS ON THE CHARTER'S SHELF. `lab/CROSSING-BRIEF.md`'s vocabulary table carries a
+  // WHERE IT STANDS ON THE CHARTER'S SHELF. `lab/CROSSING-HISTORY.md`'s vocabulary table carries a
   // `liquid` row, and it is one of the two rows in that table that name no crossing:
   //
   //     | liquid | жидкая поверхность | оживление + garnish | TEXTURE | unused yet; his liquid
@@ -374,7 +374,7 @@
        widest and the narrowest. */
     var WAVE_REACH = 2.0, SPREAD_REACH = 2.0;
 
-    /* THE RESPONSE CURVE OF `crest` (liquid.js:391-410, DARKROOM-DRAFT D2, his word 08-08 17:57),
+    /* THE RESPONSE CURVE OF `crest` (liquid.js:391-410, SPEC.md Requirement 40, criterion 10, his word 08-08 17:57),
        carried digit for digit. A two-piece logarithm hinged AT THE HANDLE'S OWN NEUTRAL, which is
        the module's own spacing — so the door lands to the pixel wherever it stands. The hinge sits
        where the CHANGE divides rather than at the middle of the hand's travel: crowding the crests
@@ -653,7 +653,7 @@
       // The departing work loosens onto the swell, the middle is water carrying two photographs at
       // once, and the arriving work settles flat.
       roles: ["disassembly", "mystery", "assembly"],
-      // TEXTURE, AND THAT IS THE WHOLE OF IT. `lab/CROSSING-BRIEF.md`'s vocabulary table publishes
+      // TEXTURE, AND THAT IS THE WHOLE OF IT. `lab/CROSSING-HISTORY.md`'s vocabulary table publishes
       // exactly this level for this module. The water bends the picture's own material and splits
       // its colour at the bend; nothing here cuts the frame into parts. WORLD is not claimed either:
       // the eye never leaves the glass, and this instrument asks the host's camera for nothing.

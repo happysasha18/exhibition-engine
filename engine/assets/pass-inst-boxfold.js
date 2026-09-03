@@ -53,7 +53,7 @@
   // THE FIVE-CONDITION PARDON, AND WHICH OF THE FIVE THIS FILE ANSWERS
   // ------------------------------------------------------------------------------------------------
   // The charter convicts the screen-as-cube-face turn by name and pardons the box in the same
-  // sentence, under five conditions (lab/CROSSING-BRIEF.md, the keeper list's own amendment of
+  // sentence, under five conditions (lab/CROSSING-HISTORY.md, the keeper list's own amendment of
   // 12.08 23:43 and 23:49). Each is answered by a measurement rather than by argument, and each has
   // an owner. The instrument answers three of them whole, one with the composer, and one with the
   // host.

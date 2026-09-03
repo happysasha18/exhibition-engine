@@ -1062,7 +1062,7 @@ else:
                       and "parquet" not in (real_fold.get("worldFoldInstruments") or [])
                       and real_fold.get("hasParquet") is False
                       and mut_fold.get("hasParquet") is True,
-                      f"levels={m['levels']}, which is the row lab/CROSSING-BRIEF.md's own "
+                      f"levels={m['levels']}, which is the row lab/CROSSING-HISTORY.md's own "
                       f"vocabulary table carries for this module rather than a reading made here. "
                       f"SURFACE is the one plane and its mirrored field; CELL is the tiles, which is "
                       f"the element the composer's KIND_OF_MEASURE reads out of a grid pivot. WORLD "

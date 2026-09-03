@@ -5,7 +5,7 @@ Run: python3 tests/test_pass_tunnel.py
 Root: his word of 2026-08-18 08:52 after walking the live route — «переходы очень однообразные: у
 тебя дофига эффектов и ты сделал все очень топорно» — and the charter's own vocabulary row for this
 module: «tunnel | коридор | переход (mystery middle) | SURFACE | approved; псевдо-тоннель В24 cut —
-the real corridor with interaction stays» (lab/CROSSING-BRIEF.md). The composer has named a
+the real corridor with interaction stays» (lab/CROSSING-HISTORY.md). The composer has named a
 `corridor` among its three polar worlds since stage 0 and had no instrument to play it with; this is
 that instrument. docs/design/PASS-API-V1.md §7 (GPU and resources), §8 (the manifest) and §9's
 conformance rows 7, 9, 10, 13, 14, 15, 16 and 22 are what this file makes real, together with §7's
@@ -1148,7 +1148,7 @@ else:
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE", "CELL"] and world_fold_ok,
                       f"levels={m['levels']}, and the source of that reading is his own standing "
-                      f"verdict on this module in lab/CROSSING-BRIEF.md's vocabulary table, which "
+                      f"verdict on this module in lab/CROSSING-HISTORY.md's vocabulary table, which "
                       f"carries the level in the same row: SURFACE. Shelf 17's levels law keeps "
                       f"WORLD for the camera and gives SURFACE «floor, cylinder, ribbon», so a "
                       f"corridor is a surface — which is why this instrument spends no crossing's "

@@ -5,7 +5,7 @@ Run: python3 tests/test_pass_planet.py
 Root: his word of 2026-08-18 08:52 after walking the live route — «переходы очень однообразные: у
 тебя дофига эффектов и ты сделал все очень топорно» — and his 08:58 «перенеси ВЕСЬ арсенал». The lab
 holds 23 effect modules and the engine held six instruments; this is the port of lab/effects/planet.js,
-whose own standing verdict in lab/CROSSING-BRIEF.md's vocabulary reads «approved; curl is the
+whose own standing verdict in lab/CROSSING-HISTORY.md's vocabulary table reads «approved; curl is the
 раскладушка axis for radial works». docs/design/PASS-API-V1.md §7 (GPU and resources), §8 (the
 manifest) and §9's conformance rows 7, 9, 10, 13, 14, 15, 16 and 22 are what this file makes real,
 together with §7's coverage law of 12:40. The lifecycle rows stay in tests/test_pass_api.py.
@@ -14,7 +14,7 @@ WHAT THE INSTRUMENT DOES, so a reader knows what the rows below are about. The d
 curls until its two ends meet and closes into a small round world standing in its own sky. The
 arriving photograph rises out of that world's own centre — where the picture's rows collapse to a
 point — and floods outward ring by ring until it owns the world. Then the world uncurls and the
-arriving photograph stands flat. That shape is the charter's own shelf 8: «flat → world → flat», with
+arriving photograph stands flat. That shape is SPEC.md's own Requirement 20 (shelf 8): «flat → world → flat», with
 «B enters through the singular locus».
 
 WHAT IS COMPARED, AND AGAINST WHAT.

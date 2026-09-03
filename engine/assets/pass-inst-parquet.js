@@ -390,7 +390,7 @@
     var SPIN_DEF = 5.85;
     var SPIN_MAX = 30;
 
-    /* THE RESPONSE CURVE OF THE FLOOR'S OWN LEAN (DARKROOM-DRAFT D2, the equal-felt-change law;
+    /* THE RESPONSE CURVE OF THE FLOOR'S OWN LEAN (SPEC.md Requirement 40, criterion 10, the equal-felt-change law;
        parquet.js:293-320). MEASURED by the module and carried whole, family and fitted number both.
        The floor is nearly still while the eye stands over it and bolts as the eye pitches toward
        grazing, which is the perspective itself: the picture a plane throws grows as 1/cos of the
@@ -404,7 +404,7 @@
       return (Math.exp(FEEL_K * clamp(u, 0, 1)) - 1) / (Math.exp(FEEL_K) - 1);
     }
 
-    /* THE RESPONSE CURVE OF THE ARRIVAL (DARKROOM-DRAFT D2 again; parquet.js:243-267). MEASURED
+    /* THE RESPONSE CURVE OF THE ARRIVAL (SPEC.md Requirement 40, criterion 10 again; parquet.js:243-267). MEASURED
        FIRST and then fitted, and the measurement decided the family: this handle does not take the
        lean's curve just because it stands in the same module. The front's road is a TRAPEZIUM —
        nothing is in flight at either end, the population of turning sheets grows over the first
@@ -734,7 +734,7 @@
       // The floor comes up out of the flat photograph, the room changes hands tile by tile while it
       // stands open, and it lays back down with the second work standing whole.
       roles: ["disassembly", "mystery", "assembly"],
-      // WHERE THIS STANDS ON THE CHARTER'S SHELF. The vocabulary table of lab/CROSSING-BRIEF.md
+      // WHERE THIS STANDS ON THE CHARTER'S SHELF. The vocabulary table of lab/CROSSING-HISTORY.md
       // carries this module by name with its level already read — SURFACE+CELL — and that row is
       // carried here rather than re-decided:
       //   · SURFACE — the whole frame is one plane carrying one field, the mirrored lattice, and
@@ -839,7 +839,7 @@
                    level: "CELL" },
         // WHERE THE LATTICE'S OWN BOUNDARIES FALL, Phase 9 of
         // docs/V2-CONVERGENCE-PLAN-2026-08-31.md (added 2026-09-01) — the charter's own «cut along
-        // its own lines» clause (lab/CROSSING-BRIEF.md:204-207), and the one thing `tiles` and
+        // its own lines» clause (SPEC.md Requirement 10, criterion 4), and the one thing `tiles` and
         // `lattice` never answered: they say how many tiles and which way the lattice turns, not
         // where a tile's own edge stands. A SHARE of one tile, not a pixel count, so the same
         // number reads the same offset whatever `tiles` itself comes out to.

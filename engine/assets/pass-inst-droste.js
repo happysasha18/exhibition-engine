@@ -53,7 +53,7 @@
   // pair is handed over rather than swept for in advance (his word of 2026-08-18 09:01).
   //
   // WHERE IT STANDS ON THE CHARTER'S SHELF. SURFACE, and that is his own standing verdict:
-  // lab/CROSSING-BRIEF.md's vocabulary table carries «droste · внутрь себя · переход + vista ·
+  // lab/CROSSING-HISTORY.md's vocabulary table carries «droste · внутрь себя · переход + vista ·
   // SURFACE · approved; conformal-with-rotation is its named deep end». The named deep end is the
   // shear this port carries whole. Shelf 8 lists the log-spiral among the projection worlds, and a
   // world-level claim would spend the crossing's one miracle; the table is the dated verdict and the
@@ -617,7 +617,7 @@
       // middle, and the arriving work unwinds whole.
       roles: ["disassembly", "mystery", "assembly"],
       // WHERE THIS STANDS ON THE CHARTER'S SHELF: SURFACE, his own standing verdict in the
-      // vocabulary table of lab/CROSSING-BRIEF.md. The whole frame becomes one wound surface; no
+      // vocabulary table of lab/CROSSING-HISTORY.md. The whole frame becomes one wound surface; no
       // cell of it lives a life of its own, the copies being the same surface at other scales. CELL
       // is not claimed for that reason, and WORLD is not claimed because the table does not.
       levels: ["SURFACE"],

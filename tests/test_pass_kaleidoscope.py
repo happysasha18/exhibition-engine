@@ -12,7 +12,7 @@ ground to stand a stack on. docs/design/PASS-API-V1.md §7 (GPU and resources), 
 §7's coverage law. The lifecycle rows stay in tests/test_pass_api.py and are untouched.
 
 HIS THREE STANDING WORDS ON THIS EFFECT, and where each is measured here. The charter's vocabulary
-table (lab/CROSSING-BRIEF.md) reads «approved; wedge seams need retouch (В9); rings>2 washes to
+table (lab/CROSSING-HISTORY.md) reads «approved; wedge seams need retouch (В9); rings>2 washes to
 milk».
 
   · APPROVED — so the mathematics is carried digit for digit, and the constants row below reads BOTH

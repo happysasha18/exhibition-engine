@@ -443,7 +443,7 @@ check("PASS-OVERLAY the provenance weighs to the file it was carried from",
 
 # ---------------------------------------------------------------- the composed-passage mechanism
 #
-# SHELF 17'S LAW BINDS A COMPOSED PASSAGE, NOT THE REGISTRY (lab/CROSSING-BRIEF.md:394-400): "one
+# SHELF 17'S LAW BINDS A COMPOSED PASSAGE, NOT THE REGISTRY (SPEC.md Requirement 29, criterion 11): "one
 # active voice per structural level ... Two voices on one level read as noise." The registry may
 # legitimately carry several instruments that CAN claim LIGHT-COLOUR — grid-colour, strata-light,
 # strata-scale and studio all do today, beside this one — and that is not the noise the law names;
@@ -827,7 +827,7 @@ else:
                       m["levels"] == ["LIGHT-COLOUR"] and "overlay" in mine and len(mine) >= 2
                       and levels_ok,
                       f"lab/data/module-contract.json records this module's level as LIGHT-COLOUR "
-                      f"and the vocabulary table of lab/CROSSING-BRIEF.md carries the same word "
+                      f"and the vocabulary table of lab/CROSSING-HISTORY.md carries the same word "
                       f"beside his standing verdict, so the reading is carried rather than "
                       f"re-decided. The registry today lets {len(mine)} instruments claim it — "
                       f"{mine} — and the charter's own words bind a COMPOSED PASSAGE rather than the "

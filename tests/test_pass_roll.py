@@ -3,12 +3,13 @@
 
 Run: python3 tests/test_pass_roll.py
 
-Root: charter shelf 20 (`lab/CROSSING-BRIEF.md` in the tlvphotos tree) — «A number that shapes
+Root: charter shelf 20 (`SPEC.md` Requirement 32, in the tlvphotos tree) — «A number that shapes
 behaviour comes from a picture's own record, from the dramaturgy of the walk, or from the session
 … and never from a tally over the collection», and «EVERY CLAIM IS PROVED FROM THE FORMULA'S OWN
 CONSTRUCTION — its bounds, its clamps, the monotonicity of how it combines, the definition and the
 range of each field it reads — and where the arithmetic takes numbers with known spans it is checked
-over the whole span rather than over a sample.» And shelf 15's amendment of 2026-08-24 evening,
+over the whole span rather than over a sample.» And shelf 15's amendment of 2026-08-24 evening
+(`lab/CROSSING-HISTORY.md`),
 which is what orders the readings: «a route's pressure toward variety is a preference among edges
 met for the FIRST time, and it never outranks the kinship a return owes on an edge already walked
 … That kinship is owed on what is DRAWN — the instrument, the gesture it makes and the level it

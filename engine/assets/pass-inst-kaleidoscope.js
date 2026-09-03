@@ -49,7 +49,7 @@
   // ------------------------------------------------------------------------------------------------
   // HIS THREE STANDING WORDS ON THIS EFFECT, AND WHAT EACH COST
   // ------------------------------------------------------------------------------------------------
-  // lab/CROSSING-BRIEF.md's vocabulary table carries his verdict on every effect. This one reads:
+  // lab/CROSSING-HISTORY.md's vocabulary table carries his verdict on every effect. This one reads:
   // «approved; wedge seams need retouch (В9); rings>2 washes to milk», at level SURFACE. Three
   // words, and each is answered here by a number rather than by an intention.
   //
@@ -719,7 +719,7 @@
                   + "rings, since rings are what open into a rosette and spokes turn instead" },
       // WHERE THIS STANDS ON THE CHARTER'S SHELF. Two records answer, and they answer differently, so
       // both are carried and the reading is said to be derived from the pair of them.
-      //   · SURFACE — lab/CROSSING-BRIEF.md's vocabulary table, which is his own standing verdict:
+      //   · SURFACE — lab/CROSSING-HISTORY.md's vocabulary table, which is his own standing verdict:
       //     the whole frame's coordinate is remapped at once and what happens happens to the picture
       //     as a surface.
       //   · CELL — lab/data/module-contract.json's own row for this module: the wedge is a cell, and

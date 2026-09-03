@@ -2,7 +2,7 @@
 """EX-HARMONY — the ordering grammar of the walk: keys, functions, modulation, cadences.
 Run: python3 tests/test_pass_harmony.py
 
-Root: charter shelf 15 (`lab/CROSSING-BRIEF.md` in the tlvphotos tree), «THE HARMONIC LAYER». Its
+Root: charter shelf 15 (`SPEC.md` Requirement 27, in the tlvphotos tree), «THE HARMONIC LAYER». Its
 own words: every station of the walk carries a FUNCTION relative to the current KEY, and a key is a
 region of the collection's space — a matter family plus a palette world. Tonic is home, the eye
 settles; subdominant is motion away, preparation; dominant is tension that demands resolution, and

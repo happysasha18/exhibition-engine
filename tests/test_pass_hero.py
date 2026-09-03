@@ -5,7 +5,7 @@ Run: python3 tests/test_pass_hero.py
 Root: his word of 2026-08-18 08:52 after walking the live route — «переходы очень однообразные: у тебя
 дофига эффектов и ты сделал все очень топорно» — and 08:58, «перенеси ВЕСЬ арсенал и пересобери
 проход». The lab holds 23 effect modules and the engine held six instruments. This is
-`lab/effects/hero.js` carried across, and it is the module lab/CROSSING-BRIEF.md's vocabulary table
+`lab/effects/hero.js` carried across, and it is the module lab/CROSSING-HISTORY.md's vocabulary table
 records as «hero · fold-window-planet · ready story · multi · scroll-driven; unused in crossings yet»
 — the one entry in that table whose role is a whole STORY. docs/design/PASS-API-V1.md §7 (GPU and
 resources), §8 (the manifest) and §9's conformance rows 7, 9, 10, 13, 14, 15, 16 and 22 are what this

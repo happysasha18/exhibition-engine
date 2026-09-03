@@ -2,7 +2,7 @@
 """EX-ROUTE — the walk's own dramaturgy: what a step of the route is FOR, and how it is read.
 Run: python3 tests/test_pass_route.py
 
-Root: charter shelf 15 (`lab/CROSSING-BRIEF.md` in the tlvphotos tree) — the route's five names are
+Root: charter shelf 15 (`SPEC.md` Requirement 27, in the tlvphotos tree) — the route's five names are
 entrance, quiet link, middle, culmination and return, and they are the IMAGE of the shelf's three
 harmonic functions: a tonic the eye settles in, a subdominant that moves away and prepares, and a
 dominant whose tension demands resolution. Unit brief:

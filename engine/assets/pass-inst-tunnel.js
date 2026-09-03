@@ -35,7 +35,7 @@
   // the eye and the corridor is built of the second work alone. The corridor then closes back into a
   // flat picture, and what stands in the frame is the arriving work whole.
   //
-  // WHERE IT STANDS ON THE CHARTER'S SHELF. lab/CROSSING-BRIEF.md's vocabulary table carries his own
+  // WHERE IT STANDS ON THE CHARTER'S SHELF. lab/CROSSING-HISTORY.md's vocabulary table carries his own
   // standing verdict on this module: «tunnel | коридор | переход (mystery middle) | SURFACE |
   // approved; псевдо-тоннель В24 cut — the real corridor with interaction stays». Two things follow
   // and both are obeyed here. Its ROLE is the mystery middle of a crossing, which is what the three
@@ -80,7 +80,7 @@
   // ------------------------------------------------------------------------------------------------
   // IS THE RING A WIPE? THE THREE-PART TEST, ANSWERED ON ALL THREE COUNTS
   // ------------------------------------------------------------------------------------------------
-  // lab/CROSSING-BRIEF.md's ban list convicts THE WIPE only where ALL THREE of its counts convict:
+  // SPEC.md Requirement 30 (shelf 18)'s ban list convicts THE WIPE only where ALL THREE of its counts convict:
   // «(a) the boundary is imposed from outside the works' structure, AND (b) the two images never
   // interact, AND (c) the gesture reads as a quotation from television's vocabulary». A boundary
   // that travels across a frame has to answer that test out loud, so:
@@ -770,7 +770,7 @@
       // and the corridor closes on that work standing whole.
       roles: ["disassembly", "mystery", "assembly"],
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is carried rather than derived:
-      // lab/CROSSING-BRIEF.md's vocabulary table records his own standing verdict on this module with
+      // lab/CROSSING-HISTORY.md's vocabulary table records his own standing verdict on this module with
       // its level in the same row — SURFACE.
       //   · SURFACE — the flat frame becomes a cylinder the eye falls down. Shelf 17's levels law
       //     keeps WORLD for the camera and gives SURFACE «floor, cylinder, ribbon», so a corridor is

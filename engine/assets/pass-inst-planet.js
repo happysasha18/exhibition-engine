@@ -36,7 +36,7 @@
   // ring by ring until it owns the whole world and the departing one survives only as the light
   // around it. Then the world uncurls, and the arriving photograph stands flat in the frame.
   //
-  // THAT SHAPE IS THE CHARTER'S OWN, NOT AN INVENTION. lab/CROSSING-BRIEF.md shelf 8 — ontology
+  // THAT SHAPE IS THE CHARTER'S OWN, NOT AN INVENTION. SPEC.md Requirement 20 (shelf 8) — ontology
   // shift and projection worlds — names the sphere among its worlds and writes the passage down in
   // four words: «flat → world → flat», with «B enters through the singular locus». The singular
   // locus of this world is its centre, and that is where the arriving work enters. The shelf also
@@ -375,7 +375,7 @@
     var TURN_REACH = 1.1;
     var HORIZON_REACH = 0.5;
 
-    /* THE RESPONSE CURVE OF THE DIAL (DARKROOM-DRAFT D2, his word 08-08 17:57, planet.js:383-399):
+    /* THE RESPONSE CURVE OF THE DIAL (SPEC.md Requirement 40, criterion 10, his word 08-08 17:57, planet.js:383-399):
        equal movements of the hand produce equal felt change across the whole travel. Measured by
        walking the raw dial in steps of 0.02 and reading the mean channel distance between
        neighbouring frames — the flat photograph curls into a world fast at the start and slowly at

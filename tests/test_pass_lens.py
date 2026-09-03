@@ -10,7 +10,7 @@ docs/design/PASS-API-V1.md §7 (GPU and resources), §8 (the manifest) and §9's
 
 HIS OWN STANDING VERDICT ON THIS EFFECT, AND WHAT THIS SUITE HAS TO ANSWER FOR IT.
 
-  lab/CROSSING-BRIEF.md's vocabulary table records `lens` as «блуждающая линза · оживление
+  lab/CROSSING-HISTORY.md's vocabulary table records `lens` as «блуждающая линза · оживление
   (gallery) · CELL · mouse-mapping feature PARKED (his 09:42 «отдельная фича»)». It is recorded as an
   ОЖИВЛЕНИЕ and not as a ПЕРЕХОД, and the module's own dial is the lens's REACH rather than a
   passage. So this port cannot make the module's dial into `mix`, and what it does instead — one

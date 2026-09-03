@@ -305,7 +305,7 @@
     // wholly lost to white or to black.
     var LIGHT_CEILING = 0.9;
 
-    // THE RESPONSE CURVE (DARKROOM-DRAFT D2, his word of 2026-08-08 17:57), carried digit for digit
+    // THE RESPONSE CURVE (SPEC.md Requirement 40, criterion 10, his word of 2026-08-08 17:57), carried digit for digit
     // out of the module (strata-scale.js:421-441). Equal movements of the hand produce equal felt
     // change; the family is a two-piece exponential hinged at the MEASURED median of the felt change,
     // c = 0.47, with the plain logarithm on each side fixed by its own ends, k1 = 1.2 below the knee

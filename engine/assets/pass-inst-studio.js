@@ -39,12 +39,16 @@
   // through the chain, never between two different works. That is the whole of the gap this port has
   // to close, and closing it is this port's own addition, said plainly below.
   //
-  // WHERE IT STANDS IN THE CHARTER. `lab/CROSSING-BRIEF.md`'s vocabulary table carries a bare row —
-  // `| studio | — | — | — | unused |` (CROSSING-BRIEF.md:493) — naming no role, no level and no
-  // verdict, unlike `shatter`'s row two lines below it, which carries a DATED WORD, "OUT by his 10:28
-  // word; returns only on his call" (CROSSING-BRIEF.md:492). `studio`'s row carries no date and
-  // stands nowhere in the document's own PARKED section (CROSSING-BRIEF.md:517-531, which lists
-  // shatter's own vocabulary by name at 524 and says nothing of studio). "Unused" is a STATUS, not an
+  // WHERE IT STANDS IN THE CHARTER. `lab/CROSSING-HISTORY.md`'s vocabulary table carries a bare row —
+  // `| studio | — | — | — | unused |` (CROSSING-HISTORY.md:1507) — naming no role, no level and no
+  // verdict, unlike `shatter`, which carries a DATED WORD, "parked by his 10:28 word" (his 10:28 word;
+  // returns only on his call — CROSSING-HISTORY.md:444). `shatter` no longer holds a row of its own in
+  // that table at all: it was struck from the vocabulary entirely by the 2026-08-19 standing decision
+  // that a dropped effect is erased rather than named as excluded, so the comparison now stands between
+  // a bare row and no row. `studio`'s row carries no date and stands nowhere naming it parked (whose
+  // home moved in the 2026-09-03 fold and has not been located as a section by that name — the closest
+  // surviving list, SPEC.md Requirement 1 criterion 7's parked-work bullets, does not name shatter
+  // either). "Unused" is a STATUS, not an
   // order: the same word sits beside `liquid` ("unused yet") and `hero` ("unused in crossings yet"),
   // both of which this arsenal has since ported. The owner's word of 2026-08-18 23:21 — every
   // instrument but the shards belongs in the arsenal — finds no dated word here to collide with, and

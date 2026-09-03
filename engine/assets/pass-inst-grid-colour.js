@@ -40,7 +40,7 @@
   // the work that has arrived.
   //
   // WHY IT STANDS HERE. The charter's own reading of this module: THE GRID IS A BRIDGE, NOT A
-  // DECORATION (lab/CROSSING-BRIEF.md, The model — the bridge computes both structures). The module
+  // DECORATION (SPEC.md Requirement 8 — the bridge computes both structures). The module
   // is the only one in the lab that is handed BOTH works' measured grids and walks between them, and
   // it is the only one that cuts on a work's own COLOUR as well as on its geometry. Its contract row
   // in lab/data/module-contract.json carries it at level CELL+LIGHT-COLOUR with both doors written
@@ -437,7 +437,7 @@
        at. It is published on the `countFrom`/`countTo` handles as an applied fact. */
     var RING_MAX = 96;
 
-    /* THE RESPONSE CURVE (DARKROOM-DRAFT D2, his word 08-08 17:57: equal movements of the hand
+    /* THE RESPONSE CURVE (SPEC.md Requirement 40, criterion 10, his word 08-08 17:57: equal movements of the hand
        produce equal felt change), and ONE CURVE PER KIND OF CUT — which is the module's own finding
        rather than a convenience (grid-colour.js:181-235). Measured raw, strips spend everything by
        0.55 of the dial and nothing after, tiles and bands likewise, while RINGS travel almost to the

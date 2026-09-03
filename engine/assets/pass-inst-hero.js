@@ -41,7 +41,7 @@
   // two pictures. That is the module's own first sentence and it is the reason this instrument is
   // lawful under the charter's parameter-travel law.
   //
-  // WHERE IT STANDS IN THE CHARTER. lab/CROSSING-BRIEF.md's vocabulary table records it as
+  // WHERE IT STANDS IN THE CHARTER. lab/CROSSING-HISTORY.md's vocabulary table records it as
   // «hero · fold-window-planet · ready story · multi · scroll-driven; unused in crossings yet». It is
   // the only entry in that table whose role is a whole STORY rather than a переход or an оживление,
   // and this port is what makes the story a crossing: the same table gives `planet` and
@@ -315,7 +315,7 @@
     var STORY_WINDOW = 0.54;
     var STORY_SPAN = 0.80;
 
-    /* THE MODULE'S OWN MEASURED RESPONSE CURVE (hero.js:338-362, DARKROOM-DRAFT D2, his word of
+    /* THE MODULE'S OWN MEASURED RESPONSE CURVE (hero.js:338-362, SPEC.md Requirement 40, criterion 10, his word of
        08-08 17:57): equal movements of the hand produce equal felt change. A two-piece exponential
        hinged at the MEDIAN of the felt change — c = 0.61 is that median, measured by walking the raw
        dial in steps of 0.02 and reading the mean channel distance between neighbouring frames — with

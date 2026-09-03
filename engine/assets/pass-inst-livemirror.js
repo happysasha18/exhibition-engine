@@ -35,7 +35,7 @@
   // work opens back out of its own mirror and stands whole.
   //
   // HIS STANDING VERDICT ON THIS EFFECT, and the one condition it carries.
-  // lab/CROSSING-BRIEF.md's vocabulary table, the row `livemirror | зеркальный сгиб | both | CELL`:
+  // lab/CROSSING-HISTORY.md's vocabulary table, the row `livemirror | зеркальный сгиб | both | CELL`:
   // «approved; fold lines must land on the work's own structural lines». That sentence is the whole
   // brief for this port, and it is why the module's own wandering line is not what a score gets. The
   // module drifts its line across the mount on two incommensurate sines because it lives on a page
@@ -310,7 +310,7 @@
     var HOLD = 0.08;
     var SHUT_IN = 0.5 - HOLD / 2, SHUT_OUT = 0.5 + HOLD / 2;
 
-    /* THE RESPONSE CURVE (DARKROOM-DRAFT D2, his word 08-08 17:57) IS THE IDENTITY HERE, and that is
+    /* THE RESPONSE CURVE (SPEC.md Requirement 40, criterion 10, his word 08-08 17:57) IS THE IDENTITY HERE, and that is
        a measured result carried across rather than an omission (livemirror.js:288-294). Walking the
        raw dial in steps of 0.02 and reading the mean channel distance between neighbouring frames —
        the same measurement every door of this engine uses — gives 29.9 channels at the slowest step
@@ -614,7 +614,7 @@
       // mirrored and neither is legible as itself, and the second opens back out of the mirror.
       roles: ["disassembly", "mystery", "assembly"],
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is CARRIED rather than re-decided:
-      // lab/CROSSING-BRIEF.md's vocabulary table records this module's level as CELL, and that row
+      // lab/CROSSING-HISTORY.md's vocabulary table records this module's level as CELL, and that row
       // is his own standing verdict. The fold lines partition the frame into mirrored panels and the
       // motion is what happens to those panels.
       //
@@ -680,7 +680,7 @@
         // WHICH FOLD. The module's own `mode`, with its four names. The module rebuilds nothing when
         // the mode changes and neither does this, so the handle is a plain number a score can hold
         // or step and the frame answers it at once. It rests at BOTH, which is his own taste-
-        // approved vista state for this effect (lab/CROSSING-BRIEF.md, the vista presets of 08-08
+        // approved vista state for this effect (TASTE.md, the vista presets of 08-08
         // 11:39: «livemirror both/stairwell/drift on»).
         axis: { min: 0, max: 3, def: 2, kind: "enum", step: 1,
                 names: { "0": "the fold stands upright", "1": "the fold lies flat",

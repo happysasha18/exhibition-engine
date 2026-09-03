@@ -7860,7 +7860,7 @@
           // THE FLOOR'S OWN PHASE — Phase 9 of docs/V2-CONVERGENCE-PLAN-2026-08-31.md, added
           // 2026-09-01. `tiles` and `lattice` above already answer «how many, and which way» off
           // the work's own measured grid; this is «where», which is the charter's own «cut along
-          // its own lines» clause (CROSSING-BRIEF.md:204-207) and the one thing those two handles
+          // its own lines» clause (SPEC.md Requirement 10, criterion 4) and the one thing those two handles
           // never answered — a lattice built from spacing and turn alone can still land its own
           // seam in the middle of a window instead of on the mullion between two.
           //

@@ -399,7 +399,7 @@
       return typeof s === "number" && isFinite(s) && s > 0 ? s : SEAM_POINTS;
     }
 
-    /* THE RESPONSE CURVES OF THIS MODULE'S THREE HANDLES (DARKROOM-DRAFT D2, his word 08-08 17:57),
+    /* THE RESPONSE CURVES OF THIS MODULE'S THREE HANDLES (SPEC.md Requirement 40, criterion 10, his word 08-08 17:57),
        carried digit for digit from overlay.js:300-352: equal movements of the hand produce equal felt
        change. Every number was measured by walking the raw handle in steps of 0.02 and reading the
        mean channel distance between neighbouring frames.
@@ -674,7 +674,7 @@
       roles: ["disassembly", "mystery", "assembly"],
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is carried rather than re-decided.
       // lab/data/module-contract.json records this module's level as LIGHT-COLOUR, and the
-      // vocabulary table of lab/CROSSING-BRIEF.md carries the same word beside his standing verdict.
+      // vocabulary table of lab/CROSSING-HISTORY.md carries the same word beside his standing verdict.
       // Nothing here cuts the frame into cells that move, nothing claims a world and nothing touches
       // the grain: what this instrument owns is the light and the colour of the frame, and it is the
       // only instrument the settings record publishes that owns them.

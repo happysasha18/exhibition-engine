@@ -6,7 +6,7 @@ Root: his word of 2026-08-18 08:52, after walking the live route — «пере�
 тебя дофига эффектов и ты сделал все очень топорно». The lab holds 23 effect modules and the engine
 held six instruments; this is one of them ported, so the composer has something more to cast. The
 brief is docs/immersive/briefs/reports/lanes/PORT-common.md in the tlvphotos tree, and the artistic
-law is lab/CROSSING-BRIEF.md, whose vocabulary table carries his own standing verdict on this effect:
+law is lab/CROSSING-HISTORY.md, whose vocabulary table carries his own standing verdict on this effect:
 «droste · внутрь себя · переход + vista · SURFACE · approved; conformal-with-rotation is its named
 deep end».
 
@@ -649,7 +649,7 @@ else:
                       f"levels={m['levels']}, cuts={m['cuts']}, read off the manifest "
                       f"bench.manifest() actually hands back rather than grepped off a comment "
                       f"citing the charter's shelf. The level is his own standing "
-                      f"verdict in the vocabulary table of lab/CROSSING-BRIEF.md — «droste · внутрь "
+                      f"verdict in the vocabulary table of lab/CROSSING-HISTORY.md — «droste · внутрь "
                       f"себя · переход + vista · SURFACE» — and the cut is what the picture is made "
                       f"of: the copies are annuli about the work's own measured centre and the two "
                       f"works exchange on one of them. What a pair must read stands on the manifest "

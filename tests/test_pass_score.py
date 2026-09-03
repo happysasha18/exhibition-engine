@@ -5,7 +5,7 @@ Run: python3 tests/test_pass_score.py
 
 Root: `docs/design/PASS-API-V1.md` §4.4 and §4.4a — the score's allow-list, the thirteen fields a
 cue may hold, and the four §4.4/§4.7 call plan-only (`cast`, `levelOwnership`, `measuredHandles`,
-`returnOf`). And charter shelf 20 (`lab/CROSSING-BRIEF.md` in the tlvphotos tree): «A number that
+`returnOf`). And charter shelf 20 (`SPEC.md` Requirement 32, in the tlvphotos tree): «A number that
 shapes behaviour comes from a picture's own record, from the dramaturgy of the walk, or from the
 session … and never from a tally over the collection.»
 

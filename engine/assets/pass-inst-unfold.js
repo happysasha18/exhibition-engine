@@ -1184,7 +1184,7 @@
                        level: "CELL" },
         // WHERE THE FLOOR'S OWN LATTICE LANDS, Phase 9's own sweep of
         // docs/V2-CONVERGENCE-PLAN-2026-08-31.md (added 2026-09-01) — the charter's own «cut along
-        // its own lines» clause (lab/CROSSING-BRIEF.md:204-207), the one thing `parquetPeriod` and
+        // its own lines» clause (SPEC.md Requirement 10, criterion 4), the one thing `parquetPeriod` and
         // `parquetTurn` above never answered: they say how many tiles and which way they turn, not
         // where a tile's own edge stands. The same repair pass-inst-parquet.js's own `phase` handle
         // makes, carried here because the construction is that instrument's, continued.

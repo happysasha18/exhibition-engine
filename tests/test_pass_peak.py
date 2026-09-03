@@ -2,7 +2,7 @@
 """EX-PASS shelf 5, THE CONJUROR — the content swap sits at the plan's own motion peak.
 Run: python3 tests/test_pass_peak.py
 
-The charter's shelf 5 (lab/CROSSING-BRIEF.md) names two corollaries it calls enforceable at plan
+The charter's shelf 5 (SPEC.md Requirement 17) names two corollaries it calls enforceable at plan
 level, and this file measures the second of them:
 
     the CONJUROR (the content swap sits at the plan's motion peak, computable as argmax of summed

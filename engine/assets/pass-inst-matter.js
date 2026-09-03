@@ -448,7 +448,7 @@
       // class: the first work comes apart into the material and the second gathers out of it.
       roles: ["disassembly", "mystery", "assembly"],
       // READ OFF THE MODULE'S OWN CONSTRUCTION. The vocabulary table publishes no level for this
-      // module (lab/CROSSING-BRIEF.md carries no `matter` row), so these two are derived and said to
+      // module (lab/CROSSING-HISTORY.md carries no `matter` row), so these two are derived and said to
       // be derived: one field runs over the whole frame at SURFACE, and its grain is the TEXTURE.
       levels: ["SURFACE", "TEXTURE"],
       // WHAT THIS INSTRUMENT CUTS ON, ADDED 2026-08-31 (cause A, item 5 — the reconciliation).

@@ -234,7 +234,7 @@
     // nine tenths, so the matter under it is never wholly lost to white or to black.
     var LIGHT_CEILING = 0.9;
 
-    // THE RESPONSE CURVE (DARKROOM-DRAFT D2, his word of 2026-08-08 17:57), carried digit for digit
+    // THE RESPONSE CURVE (SPEC.md Requirement 40, criterion 10, his word of 2026-08-08 17:57), carried digit for digit
     // out of the module (strata-light.js:335-355). Equal movements of the hand produce equal felt
     // change. The raw travel runs downhill — 169 channels in the first tenth against 25 in the last
     // — because the bright stratum and the dark one leave together and the frame empties, so the

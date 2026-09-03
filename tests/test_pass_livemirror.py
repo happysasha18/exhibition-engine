@@ -6,7 +6,7 @@ Root: his word of 2026-08-18 08:52 after walking the live route — the transiti
 because the lab holds twenty-three effect modules and the engine held six instruments — and his 08:58
 «перенеси ВЕСЬ арсенал». lab/effects/livemirror.js is the module this file carries across.
 
-HIS STANDING VERDICT ON THIS EFFECT is one line of lab/CROSSING-BRIEF.md's vocabulary table:
+HIS STANDING VERDICT ON THIS EFFECT is one line of lab/CROSSING-HISTORY.md's vocabulary table:
 «livemirror | зеркальный сгиб | both | CELL | approved; fold lines must land on the work's own
 structural lines». Every row below about WHERE the fold stands is that sentence measured.
 
@@ -263,7 +263,7 @@ check("PASS-LIVEMIRROR his standing verdict is answered: the fold's place is a h
       and 'centreY: { min: 0, max: 1, def: 0.5,' in REGION
       and "structure.radial.centre" in REGION
       and "fold lines land on the work's own lines" in REGION,
-      "lab/CROSSING-BRIEF.md's vocabulary table carries «livemirror | зеркальный сгиб | both | CELL "
+      "lab/CROSSING-HISTORY.md's vocabulary table carries «livemirror | зеркальный сгиб | both | CELL "
       "| approved; fold lines must land on the work's own structural lines». The module places its "
       "line with a pointer and drifts it on two incommensurate sines when nobody holds it; here the "
       "place is `centreX`/`centreY`, reading the two works' own measured radial centres, and the "
@@ -896,7 +896,7 @@ else:
                       m["levels"] == ["CELL"] and m["register"] == "spectacle"
                       and m["camera"] == {"needs": "none", "authority": "stage"},
                       f"levels={m['levels']}, register={m['register']!r}, camera={m['camera']!r}. "
-                      f"The reading is CARRIED and not re-decided: lab/CROSSING-BRIEF.md's "
+                      f"The reading is CARRIED and not re-decided: lab/CROSSING-HISTORY.md's "
                       f"vocabulary table records this module's level as CELL, and that row is his "
                       f"own standing verdict. WORLD is not claimed, and the registered instrument's "
                       f"own manifest — read live off the running host, not a heading in the file — "

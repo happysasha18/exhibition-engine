@@ -35,7 +35,7 @@
   // ------------------------------------------------------------------------------------------------
   // HIS OWN STANDING VERDICT ON THIS EFFECT, AND WHAT IT COSTS THE PORT
   // ------------------------------------------------------------------------------------------------
-  // lab/CROSSING-BRIEF.md's vocabulary table records `lens` as «блуждающая линза · оживление
+  // lab/CROSSING-HISTORY.md's vocabulary table records `lens` as «блуждающая линза · оживление
   // (gallery) · CELL · mouse-mapping feature PARKED (his 09:42 «отдельная фича»)». Two things follow
   // and both are answered here rather than argued away:
   //
@@ -579,7 +579,7 @@
       // The glass opens over the departing work and folds it, the fold is the whole frame while the
       // two works change hands under it, and the arriving work is left standing whole.
       roles: ["disassembly", "mystery", "assembly"],
-      // WHERE THIS STANDS ON THE CHARTER'S SHELF. lab/CROSSING-BRIEF.md's vocabulary table records
+      // WHERE THIS STANDS ON THE CHARTER'S SHELF. lab/CROSSING-HISTORY.md's vocabulary table records
       // this module at CELL and this port keeps that reading rather than growing it:
       //   · SURFACE — the fold is one map over one surface, and the plane it reads is the work
       //     continued past its own edge. Nothing here stands in a space with a camera in it.

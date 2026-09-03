@@ -12,7 +12,7 @@ coverage law of 12:40. The lifecycle rows stay in tests/test_pass_api.py and are
 
 THE FIVE CONDITIONS THE BOX IS PARDONED UNDER, and where each is measured here.
 
-  lab/CROSSING-BRIEF.md convicts «the screen-as-cube-face turn» by name and returns the box to the
+  lab/CROSSING-HISTORY.md convicts «the screen-as-cube-face turn» by name and returns the box to the
   keeper list in the same breath, under five conditions. The rows below measure the three the
   instrument answers whole and the one it answers with the composer; the fifth — faces carrying live
   pictures re-read every drawn frame — is the host's, and what is measured of it here is that this
