@@ -1097,10 +1097,24 @@
   // resolution re-bases the bar with it. The bar stays ONE number across every CAM_KEYS entry
   // (pan alongside `logScale`/`pitch`/`yaw`/`roll`, as `camOff` already compares them), so a
   // rotation or a scale is still held to a position-sized bar; that mixed-unit shape is
-  // `camOff`'s own and this row does not change it. Before a canvas is bound `W = H = 1`, so the
-  // bar reads a full pan-width and no handoff measured before a pass runs is ever flagged — the
-  // same silent-pass shape the un-derived 1e-3 had for the same case.
-  function camHandoffTol() { return Math.max(1 / W, 1 / H); }
+  // `camOff`'s own and this row does not change it.
+  //
+  // WHERE NO BUFFER IS BOUND THE DERIVATION HAS NO INPUT, and `W = H = 1` is the sentinel
+  // `stageInit` sets before `stageResize` measures a window — not a one-point picture. Taking
+  // `Math.max(1/W, 1/H)` there returns 1.0, a whole pan-width, and NOTHING can stand outside a bar
+  // that wide: a handoff moving the pose by half a frame reads `within: true`. That is not the
+  // silent-pass shape the un-derived 1e-3 had — 1e-3 flagged the same half-frame — and this
+  // sentence said otherwise until plan row S-101 (2026-09-04) read it off
+  // `tests/test_pass_drivers.py` §6, which drives this file under plain Node with no canvas.
+  // Unbound, the reading is not a picture at all. Both sides of a handoff are the same pose put
+  // through the same `camCompose`, so two authorities that agree are separated by floating point
+  // and nothing else — which is the very claim CAM_REST_TOL above already carries and owns, so the
+  // unbound bar IS that bar rather than a second copy of it. A drawing buffer genuinely one point
+  // wide would land here too, and rightly: one point of a one-point buffer is the whole frame, a
+  // bar that measures nothing.
+  function camHandoffTol() {
+    return (W > 1 || H > 1) ? Math.max(1 / W, 1 / H) : CAM_REST_TOL;
+  }
 
   // `pass-composer.js` boxes every composed float in its own `Flt` wrapper (a plain object whose
   // `valueOf` returns the number, so ordinary arithmetic and `Number(...)` already see through it —
