@@ -129,6 +129,32 @@
     } catch (e) {}
   })();
 
+  // EX-CALM (S-33 proposal, variant C, docs/design/2026-09-classic-immersive-passage.md §"C"):
+  // a per-visitor "calm" switch, offered from inside the sound tray (98-sound.js), that quiets the
+  // crossing. It persists like the sound choice — CALM_KEY, localStorage, not per tab — rather than
+  // living only in the pass session store; on boot the remembered preference is folded into that
+  // SAME session rung `?pass=visualLayer:off` already writes above, so `visualLayer` still has only
+  // ONE read road anywhere it is checked (line 84's register, PASS_ORDER's "session" source at line
+  // 20). Unversioned: 98-sound.js's {v:VER} pattern reads VER from `data.version`
+  // (02-kinship-orderings.js), assigned only after this file has already run at boot, so that
+  // pattern is not reachable this early — a plain on/off flag needs no version to stay meaningful.
+  function passCalmGet() {
+    try { return !!JSON.parse(localStorage.getItem(CALM_KEY) || "null"); } catch (e) { return false; }
+  }
+  function passCalmSet(on) {
+    try { localStorage.setItem(CALM_KEY, JSON.stringify(!!on)); } catch (e) {}
+    const put = passSession();
+    if (on) put.visualLayer = "off"; else delete put.visualLayer;
+    try { sessionStorage.setItem(PASS_KEY, JSON.stringify(put)); } catch (e) {}
+  }
+  (function calmBoot() {
+    if (!passCalmGet()) return;
+    const put = passSession();
+    if (put.visualLayer !== undefined) return;   // an explicit ?pass= override this load wins
+    put.visualLayer = "off";
+    try { sessionStorage.setItem(PASS_KEY, JSON.stringify(put)); } catch (e) {}
+  })();
+
   // One value, checked. Returns {ok, value, why}. A refused value never reaches the walk; the
   // caller falls back and the report says so, so a bad setting is visible instead of silent.
   function passCheck(d, v) {

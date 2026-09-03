@@ -100,7 +100,7 @@
   // added to that row later joins the class by standing there (2026-07-27, the about link). Naming
   // `.more` and `.back` one by one is what left the series pill and the room's back button dead
   // under a finger, with the consistency test sharing the code's own blind spot.
-  const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.quiz-opt,.exl-cur,.exl-item," +
+  const PRESS_SEL = ".ex-share,#ex-zoom .exz-btn,.exsnd-btn,.exsnd-calm,.quiz-opt,.exl-cur,.exl-item," +
     ".exd-window,#ex-gift-card .gift-yes,#ex-gift-card .gift-no," +
     ".ex-series,.exs-back,.ex-quiz-chip,.exh-fin .row > *";
   let _pressEl = null;
@@ -199,6 +199,7 @@
   const DOORDEALT_KEY = "@@NS@@.doordealt";              // works the diverse door has dealt this round (EX-DOOR-3/INV-75)
   const LANG_KEY = "@@NS@@.lang";                        // the guest's chosen tongue (EX-LANG)
   const SND_KEY = "@@NS@@.sound";                         // the ambient player's on/off + volume (EX-SOUND)
+  const CALM_KEY = "@@NS@@.calm";                          // the calm switch, S-33 variant C — persists like SND_KEY, not per tab
   const BEEN_KEY = "@@NS@@.been";                         // EX-RETURN: this browser has walked the exhibition before
   const LAST_KEY = "@@NS@@.last";                        // EX-PULSE/INV-79: this browser's last-visit timestamp (return_gap); EX-RETURN reuses it for the welcome-back window
   const EXITS_KEY = "@@NS@@.exits";                      // EX-RETURN/INV-78: count of real walk→door exits (the farewell waits for the 2nd)

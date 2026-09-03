@@ -26,6 +26,7 @@
     try { localStorage.removeItem(EXITS_KEY); } catch (e) {}    // the exit counter resets (EX-RETURN/INV-78 — the farewell starts over)
     try { localStorage.removeItem(SOLO_KEY); } catch (e) {}     // the hour's one-work asks reset (EX-STORY-FILL/INV-107 — forgetting is whole)
     try { localStorage.removeItem(SND_KEY); } catch (e) {}      // the museum forgets the sound choice (EX-SOUND)
+    try { localStorage.removeItem(CALM_KEY); } catch (e) {}     // the calm choice forgets too (S-33 — forgetting is whole)
     try { sessionStorage.removeItem(QUIZ_STAGE_KEY); } catch (e) {}   // EX-QUIZ-FLOW (INV-69): the stage wipes with the walk
     const q = new URLSearchParams(location.search);
     q.delete("reset");
@@ -70,6 +71,10 @@
   const A11Y_QUIZ_EN = "a question";
   const A11Y_PHOTO_EN = "photograph";
   const SOUND_GREET_EN = "music";           // EX-SOUND-GREET (INV-101): first-visit greeting, source tongue (a plain invitation, no question mark)
+  // S-33 variant C (docs/design/2026-09-classic-immersive-passage.md): the switch's label, "calm",
+  // is the proposal's own word choice, used throughout its text — pending his word on the open
+  // question of what it should be called (the doc names the collision with «меньше движения»).
+  const CALM_EN = "calm";
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
