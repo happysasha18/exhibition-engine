@@ -102,7 +102,7 @@ def _static(v):
 
 
 def parquet_cue(stack=0, levels_own=None, **statics):
-    """The cue, with a track for every one of the eight handles (§4.4b)."""
+    """The cue, with a track for every one of the nine handles (§4.4b)."""
     P = {"tiles": 5, "depth": 1, "lattice": 0, "spin": 5.85, "shade": 1, "seed": DIE, "mask": 0}
     P.update(statics)
     nodes = {"p-mix": {"source": "progress"}}
@@ -210,16 +210,17 @@ check("PASS-PARQUET the instrument creates no element, no loop and no listener",
       "rebuild timer and runs its own rAF clock; all of it stayed in the lab"
       if not held else "the instrument's region holds " + ", ".join(held))
 
-HANDLES = ["mix", "tiles", "depth", "lattice", "spin", "shade", "seed", "mask"]
+HANDLES = ["mix", "tiles", "depth", "lattice", "phase", "spin", "shade", "seed", "mask"]
 absent = [h for h in HANDLES if ("%s: { min" % h) not in REGION]
 check("PASS-PARQUET every handle the instrument publishes is a handle a score can drive",
-      not absent and len(HANDLES) == 8,
-      "§4.4b: eight handles. The dial, which carries the whole passage; the module's own lattice — "
-      "how many tiles stand across the floor and the angle it is cut at — with how deep the room "
-      "goes and how far the floor turns across the passage; the module's own light; the score's "
-      "die; and the judges' channel. The module's `turn` becomes `spin` and rides the dial rather "
-      "than a clock, and its pointer, its drift and its breath are published by neither, for the "
-      "reason the module itself gives: while a score holds the pose the hand is off the floor"
+      not absent and len(HANDLES) == 9,
+      "§4.4b: nine handles. The dial, which carries the whole passage; the module's own lattice — "
+      "how many tiles stand across the floor, the angle it is cut at and, since Phase 9 "
+      "(2026-09-01), where its own boundaries fall — with how deep the room goes and how far the "
+      "floor turns across the passage; the module's own light; the score's die; and the judges' "
+      "channel. The module's `turn` becomes `spin` and rides the dial rather than a clock, and its "
+      "pointer, its drift and its breath are published by neither, for the reason the module "
+      "itself gives: while a score holds the pose the hand is off the floor"
       if not absent else "these are published nowhere: " + ", ".join(absent))
 
 # "PASS-PARQUET no clock and no roll of its own reaches the picture" moved below the bench helpers
@@ -786,8 +787,8 @@ else:
                     all(k in m for k in need)
                     and m["id"] == "parquet" and m["api"] == 1 and m["arity"] == 2
                     and m["roles"] == ["disassembly", "mystery", "assembly"]
-                    and sorted(m["params"]) == ["depth", "lattice", "spin", "tiles"]
-                    and len(m["handles"]) == 8
+                    and sorted(m["params"]) == ["depth", "lattice", "phase", "spin", "tiles"]
+                    and len(m["handles"]) == 9
                     and all(set(h) >= {"min", "max", "def"} for h in m["handles"].values())
                     and m["neutrals"] == {"a": 0, "b": 1}
                     and m["doors"]["in"]["handle"] == "mix" and m["doors"]["in"]["value"] == 0
@@ -796,7 +797,7 @@ else:
                     and m["framings"]["0"] == {"coverCrop": 1} == m["framings"]["1"]
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["gl"] == {"preserveDrawingBuffer": False}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 9
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 10
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -807,7 +808,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "parquet" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"eight handles, nine uniforms in one pass, both doors at the plain cover fit "
+                      f"nine handles, ten uniforms in one pass, both doors at the plain cover fit "
                       f"of {m['framings']['0']['coverCrop']}, resources declared for three tiers "
                       f"with a byte estimate of {res['standard']['bytesEstimate']}, and a coverage "
                       f"block reading «{m['coverage']['how'][:120]}…»")

@@ -147,6 +147,10 @@
       // THE ARRIVAL: how far the front has come, the die the tiles' own moments are scattered by,
       // the crop a tile shows of the picture, and the weight of this floor's own light.
       "uniform vec4 uArr;",
+      // WHERE THE LATTICE'S OWN BOUNDARIES FALL — Phase 9 (2026-09-01), a share of one tile along
+      // the lattice's own turn, so the seam between two tiles lands on the picture's own repeat
+      // instead of merely at its spacing and turn.
+      "uniform float uPhase;",
       // The judges' channel: the tile map as colour.
       "uniform float uMask;",
       // ---- the module's own numbers, carried digit for digit ------------------------------------
@@ -232,7 +236,15 @@
       // WHICH TILE, AND WHERE INSIDE IT. The lattice is counted FROM THE MIDDLE TILE — the half
       // period below is the whole of that — so the tile the dry door stands on is the identity tile
       // and carries the photograph the way it was taken (parquet.js:440-447).
-      "  vec2 t = (r + P * 0.5) / P;",
+      //
+      // uPhase SHIFTS THAT COUNT — Phase 9 (2026-09-01) — along r.x alone, the axis `r` above just
+      // turned the lattice onto, which is the axis PERPENDICULAR to the picture's own measured
+      // lines (the direction its repeat travels in; `uLat.w`, the same turn, already carries that
+      // work's own measured line direction). r.y runs ALONG those lines, where a single measured
+      // family names no natural offset, so it is left at the middle-tile convention untouched. A
+      // phase of nothing (both doors, and any work whose own lines this pair's cast did not trust)
+      // leaves this identical to the line above, unchanged.
+      "  vec2 t = (r + P * 0.5 - vec2(uPhase * P.x, 0.0)) / P;",
       "  vec2 idx = floor(t);",
       "  vec2 loc = t - idx;",
       // THE MIRROR: every second column flipped across, every second row flipped down. This is one
@@ -496,6 +508,11 @@
       // ride the opening, so at either door the lattice stands square and neither can move a door.
       var lat = ((typeof st.lattice === "number" ? st.lattice : 0)
                  + (typeof st.spin === "number" ? st.spin : SPIN_DEF) * dial) * open * DEG;
+      // WHERE THE LATTICE'S OWN BOUNDARIES FALL — Phase 9 (2026-09-01). A share of one tile, RIDING
+      // THE SAME OPENING `lat` ABOVE ALREADY DOES, for the identical reason: at either door the
+      // envelope is nothing whatever this multiplies it by, so the lattice stands square, unturned
+      // AND unshifted, and neither handle can move a door.
+      var phase = (typeof st.phase === "number" ? st.phase : 0) * open;
       var arrive = arriveAt(dial);
       return {
         pose: [open, Math.cos(pitch), Math.sin(pitch), eye],
@@ -503,6 +520,7 @@
         arr: [arrive, typeof st.seed === "number" ? st.seed : 0,
               1 / (1 + (1 / CROP - 1) * open),
               clamp(typeof st.shade === "number" ? st.shade : 1, 0, 1)],
+        phase: phase,
         // read on the diagnostic surface, bound to no uniform: what the hand came to
         open: open, pitchDeg: PITCH_MAX * open, tiles: n, zoom: zoom, arrive: arrive,
         aspect: aspect, eye: eye, horizon: eye / Math.max(Math.tan(pitch), 1e-9),
@@ -759,7 +777,8 @@
       // tiles stand across the floor, so widening or narrowing the lattice never changes what a tile
       // and its neighbour agree on at the edge between them.
       seams: [{ kind: "tile", of: null, unit: "points of the drawing buffer" }],
-      params: { tiles: [TILES_MIN, TILES_MAX], depth: [0, 1], lattice: [0, 180], spin: [0, SPIN_MAX] },
+      params: { tiles: [TILES_MIN, TILES_MAX], depth: [0, 1], lattice: [0, 180], phase: [0, 1],
+                spin: [0, SPIN_MAX] },
       // WHAT THIS INSTRUMENT SHOWS BESIDES A CROSSING (his 19:13 word, the second register). A work
       // laid out as a mirrored floor of itself is the work's own cutting device carried on: the
       // lattice repeats at the step the work was cut at and turns at the angle it was cut at, and
@@ -818,6 +837,22 @@
                         + "structure.ownDevice.angleDeg where the work carries no grid angle, "
                         + "which is nothing on 117 of the 121 and is named second for that reason",
                    level: "CELL" },
+        // WHERE THE LATTICE'S OWN BOUNDARIES FALL, Phase 9 of
+        // docs/V2-CONVERGENCE-PLAN-2026-08-31.md (added 2026-09-01) — the charter's own «cut along
+        // its own lines» clause (lab/CROSSING-BRIEF.md:204-207), and the one thing `tiles` and
+        // `lattice` never answered: they say how many tiles and which way the lattice turns, not
+        // where a tile's own edge stands. A SHARE of one tile, not a pixel count, so the same
+        // number reads the same offset whatever `tiles` itself comes out to.
+        phase: { min: 0, max: 1, def: 0, unit: "a share of one tile",
+                 reads: "structure.grid.phase — where the work's own strongest measured repeat "
+                      + "falls, gated on structure.grid.score in pass-composer.js's own parquet "
+                      + "branch: below that floor this handle is left at nothing, which is "
+                      + "today's regular lattice and not a fourth reading",
+                 applied: { restsAt: "both doors",
+                            why: "scaled by the same envelope `lattice` already rides (`open`), "
+                               + "so it is exactly nothing wherever `lattice` is, and the door law "
+                               + "the port's own doors comment keeps is untouched" },
+                 level: "CELL" },
         spin: { min: 0, max: SPIN_MAX, def: SPIN_DEF, unit: "degrees across the whole passage",
                 reads: "nothing in this tree bears on it. The module turns its floor on a clock at "
                      + "the taste-approved vista preset's own rate, and this engine hands an "
@@ -885,7 +920,7 @@
                      + "door where any of them stands off the floor" },
       // The neutral pose is the ENTRY DOOR — `mix` at 0, the value the `doors` block above names —
       // so the frame keys the host reads off it at registration include the door's own record.
-      neutralPose: { mix: 0, tiles: TILES_DEF, depth: 1, lattice: 0, spin: SPIN_DEF,
+      neutralPose: { mix: 0, tiles: TILES_DEF, depth: 1, lattice: 0, phase: 0, spin: SPIN_DEF,
                      shade: 1, seed: 0, mask: 0,
                      reduced: false, cssWidth: 1000, cssHeight: 1000 },
       passes: [{
@@ -899,6 +934,7 @@
           { name: "uPose", type: "vec4", source: "frame:pose" },
           { name: "uLat", type: "vec4", source: "frame:lat" },
           { name: "uArr", type: "vec4", source: "frame:arr" },
+          { name: "uPhase", type: "float", source: "frame:phase" },
           { name: "uMask", type: "float", source: "handle:mask" },
         ],
       }],
@@ -958,8 +994,8 @@
         if (!live) return;
         var h = st.handles;
         var pose = {
-          mix: h.mix, tiles: h.tiles, depth: h.depth, lattice: h.lattice, spin: h.spin,
-          shade: h.shade, seed: h.seed, mask: h.mask, reduced: st.reduced,
+          mix: h.mix, tiles: h.tiles, depth: h.depth, lattice: h.lattice, phase: h.phase,
+          spin: h.spin, shade: h.shade, seed: h.seed, mask: h.mask, reduced: st.reduced,
           cssWidth: st.viewport.w, cssHeight: st.viewport.h,
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the geometry is built for
           // the frame the host is about to bind as `uRes` and the door is read on it rather than on

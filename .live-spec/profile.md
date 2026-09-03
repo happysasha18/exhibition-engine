@@ -14,6 +14,19 @@ Mode/trust move only on the owner's word (INV-9).
   `.venv/bin/python tests/run_all.py` (27 suites; one pinned compose CH6 skip at 1280px is expected).
   This host still NEVER pushes on this record alone during an adoption run — the adoption commit stays
   local (worker discipline).
+- `revert.states-its-reason: required` — A REVERT OF SUBSTANTIVE WORK STATES ITS REASON, in the commit
+  message, in the revert's own words. `git revert`'s boilerplate ("Revert «…». This reverts commit …")
+  says only what was undone and never why, and a bare revert is indistinguishable from an accident:
+  the next reader cannot tell a repair from a regression, and the work has to be re-derived from
+  scratch before anyone can decide whether it should stand. One sentence closes that — what went
+  wrong, and what would have to be true to land it again. This binds the revert alone, not the
+  original commit, and it is a rule about the MESSAGE and never a gate on the act: reverting fast is
+  often right, and saying why costs a line. Written 2026-09-01 on the V2 convergence plan's Phase 5
+  item 3, after two substantive breadth commits (`3b8cb45`, `d4d21ed`) were reverted the same night
+  with git boilerplate and no stated reason, and a later phase had to re-read both diffs to work out
+  whether either should come back. (The plan named "the engine's own contributing norms" as the home
+  for this rule; no such document exists in this tree, and this file is where the sibling rule
+  `push.self-certify` already stands, so it lands here.)
 - `remote: exists` — origin = github.com/happysasha18/exhibition-engine, PRIVATE. The public-visibility
   flip waits on the owner's explicit word (recorded in NEXT_STEPS lane 1 and the run journal).
 

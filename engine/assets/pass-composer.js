@@ -1875,6 +1875,31 @@
       // off that same count. The charter's own words for the alternative stand in that branch: a
       // bridge playing only one work's structure reads as artificial. So a fabric IS only as woven
       // as its thinner end, and the reading says what the picture does.
+      //
+      // ---- WHAT THE MIN COSTS, PUT IN FIGURES SO IT CAN BE ARGUED WITH (2026-09-01, the V2
+      // convergence plan's Phase 5 item 4). The reasoning above is kept and the `min` is NOT
+      // changed — a file's own stated reason is not overruled on a hunch, and this one names a
+      // mechanism (`nMul`, the travelling strip count) that genuinely needs both ends. What was
+      // missing is the price, and the price is real:
+      //
+      //   · `structure.banding.score` is the ONLY measurement weave reads (`pass-inst-weave.js`'s
+      //     own `suits.reads`), so banding is the single ground on which weave can out-rank anything.
+      //   · `wind` (this same register, above) reads THE SAME TWO NUMBERS and takes the stronger:
+      //     `(max(sa, sb) + across) / 2`.
+      //   · `livemirror` (below) takes a max over SIX numbers — radial, banding and regions on both
+      //     works — so it can beat weave on banding and on two families weave cannot read at all.
+      //
+      // `suitsPair`'s answer is the WEIGHT OF A LOTTERY TICKET in `dieWeighted`, not an admission
+      // test, so the gap is a cast-rate gap and not a refusal. For two readings over one span,
+      // E[min] is a third and E[max] is two thirds — a 2:1 ticket-size gap in weave's disfavour on
+      // every pair, permanently, against two rivals that share its tier.
+      //
+      // WHOEVER WRITES PHASE 10'S TALLY: report weave's own cast rate BESIDE `wind`'s and
+      // `livemirror`'s, by name, rather than reporting weave alone. Weave read 0 casts in 72
+      // crossings on the Phase 0 baseline — but so did `livemirror`, so that baseline cannot show
+      // the rivalry at all, and a bare "weave is rare" line would be a number nobody can act on.
+      // Three rates side by side is a number he can act on, and this is the one item in the plan
+      // where his eye is the better instrument.
       weave: function (a, b) {
         var sa = readingOf(((a.structure || {}).banding || {}).score);
         var sb = readingOf(((b.structure || {}).banding || {}).score);
@@ -6179,6 +6204,18 @@
         deviceAngleDeg: Number((st.ownDevice || {}).angleDeg) || 0,
         gridPeriodPx: Number((st.grid || {}).periodPx) || 0,
         gridAngleDeg: Number((st.grid || {}).angleDeg) || 0,
+        // HOW STRONGLY THE WORK SUPPORTS BEING CUT ON THIS GRID, and WHERE that grid's own repeat
+        // falls — Phase 9 of docs/V2-CONVERGENCE-PLAN-2026-08-31.md, added 2026-09-01. `gridScore`
+        // is `lab/cut-lines.py measure_grid`'s own off-DC spectral-power ratio, the same reading
+        // that measure's own discrimination table is built from; `gridPhase` is a SHARE of
+        // `gridPeriodPx` (not a pixel count), the offset of the picture's own strongest repeat from
+        // the frame's own top-left corner, read along `gridAngleDeg`'s own direction. Together
+        // they are what lets parquet's lattice (its own branch below) land ON the picture's own
+        // lines instead of merely at their spacing and turn — period and angle alone, which this
+        // record already carried, said a lattice of this count and this turn fits; they never said
+        // where that lattice's own boundaries should fall.
+        gridScore: Number((st.grid || {}).score) || 0,
+        gridPhase: Number((st.grid || {}).phase) || 0,
         frameSide: side,
         // how confidently the work's own device was recovered — how legibly its making reads
         deviceConfidence: Number((st.ownDevice || {}).confidence) || 0,
@@ -7627,6 +7664,34 @@
           // measurement the folding instrument's perspective is placed by.
           if (mf.tunnel > 0 || mt.tunnel > 0) {
             wanted.depth = [flt(r4(clamp01(mf.tunnel))), flt(r4(clamp01(mt.tunnel)))];
+          }
+          // THE FLOOR'S OWN PHASE — Phase 9 of docs/V2-CONVERGENCE-PLAN-2026-08-31.md, added
+          // 2026-09-01. `tiles` and `lattice` above already answer «how many, and which way» off
+          // the work's own measured grid; this is «where», which is the charter's own «cut along
+          // its own lines» clause (CROSSING-BRIEF.md:204-207) and the one thing those two handles
+          // never answered — a lattice built from spacing and turn alone can still land its own
+          // seam in the middle of a window instead of on the mullion between two.
+          //
+          // GATED ON THE GRID'S OWN SCORE, PER WORK, AND FALLING BACK WHERE IT IS NOT. `gridScore`
+          // is the same off-DC spectral-power ratio lab/cut-lines.py's own discrimination table
+          // already measures every one of the 121 works against. Its NAIVE round threshold (0.08,
+          // that file's own NAIVE_THRESHOLDS.grid) claims not one of them — this measure's peaks
+          // sit far lower than banding's or radial's by construction — so what is read here is the
+          // DISCRIMINATING threshold that file's own `--stats-only` computes in a naive guess's
+          // place exactly when the naive guess does not fit the collection's own distribution: the
+          // top quartile of the real 121-work fleet, 0.016, measured 2026-09-01 (`python3
+          // lab/cut-lines.py --stats-only` in the tlvphotos tree). Below it a work's own grid peak
+          // reads closer to this measure's own noise floor than to a real repeat, so `phase` is
+          // left at nothing on that end of the pair rather than fed a reading nobody would trust —
+          // which is today's regular lattice (phase 0, the value every work carried before this
+          // reading existed) and never «no crossing», shelf 21's own last line. The gate is read
+          // PER WORK, independently, exactly as `tilesFrom`/`tilesTo` and `latFrom`/`latTo` above
+          // are each read one work at a time.
+          var PARQUET_GRID_STRENGTH_FLOOR = 0.016;
+          var phaseFrom = mf.gridScore >= PARQUET_GRID_STRENGTH_FLOOR ? mf.gridPhase : 0;
+          var phaseTo = mt.gridScore >= PARQUET_GRID_STRENGTH_FLOOR ? mt.gridPhase : 0;
+          if (mf.gridCount > 0 || mt.gridCount > 0) {
+            wanted.phase = [flt(r4(phaseFrom)), flt(r4(phaseTo))];
           }
         } else if (instr === "lens") {
           // THE FOUR GLASS HANDLES. Without this branch all four stand at the module's own rests —
