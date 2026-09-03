@@ -148,6 +148,9 @@ SUITES = [
     # its door in the walk's own first frame instead of walking there like the primary, registered
     # in the pass that wrote it.
     "pass_voice_cadence_walk",
+    # 2026-09-03 — S-31: the route-wire fence (tests/dump_route_wire_fence.py, 27de269) shipped
+    # standalone, never through this one gate command. Registered in the pass that wired it in.
+    "route_wire_fence",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A
