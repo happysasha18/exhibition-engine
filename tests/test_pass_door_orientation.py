@@ -165,6 +165,30 @@ PRE_REPAIR = {
     ],
 }
 
+# A PLANT THE NAMED FRAME PUTS OUT OF REACH, AND WHY THAT IS THE FRAME'S DOING AND NOT A WEAKENING
+# (S-91/S-96, 2026-09-04). Every defect this file catches is one factor of THE FRAME'S OWN SHAPE
+# standing outside `uFitA`/`uFitB`, the one channel the host's crop-cancellation reaches — and this
+# file's own header already states the condition under which such a factor is worth nothing: "a
+# seating that is wrong by the frame's ratio on a portrait work is wrong by nothing at all on a
+# square one at a square frame". S-91 named the frame the WORK'S OWN BOX rather than the browser
+# window, which makes the frame's ratio the work's ratio at every door, for every work.
+#
+# That closes exactly one of the three plants below, and by construction rather than by measurement.
+# `planet`'s pre-repair line samples through `uFlatPP` — the cover fit the instrument's own script
+# works out for itself against the frame — where the repair samples through `uFitA`/`uFitB`. Cover-
+# fitting a work into a box of its own aspect is identity, so under the named frame the script's own
+# fit IS the host's, and the two lines compute one picture: driven, they read 0.28 and 0.28 of 255
+# on the same pair at the same door.
+#
+# `droste` (25.14) and `overlay` (26.60) are untouched and still separate against the same threshold,
+# because neither reads the frame that way — droste's plant also reverts its seating to the module's
+# own `flatTexel`, and overlay's rides the DRAWING BUFFER's resolution ratio, which the frame does
+# not make identity. So the class this file exists for keeps two live red-on-bug plants and the
+# judged fleet row over 27 instruments is unchanged at 6.0 of 255. What `planet`'s row asks now is
+# the true statement in its place, and it is not vacuous: it reds the day the frame stops being the
+# work's own box, which is the very change S-91 landed.
+COINCIDES_WITH_FRAME = {"planet"}
+
 
 def marker(w, h, path, tint):
     x = np.linspace(0, 1, w)[None, :].repeat(h, 0)
@@ -471,6 +495,14 @@ def drive(site, shapes, only=None, shots=None, pin_open=False):
 ROW = "PASS-DOOR-ORIENT · %s's arriving door stands the whole work on a mixed-orientation pair"
 RED = ("PASS-DOOR-ORIENT red-on-bug · %s's pre-repair seating reddens the same door on the same "
        "pair")
+# THE ONE PLANT THE NAMED FRAME PUTS OUT OF REACH (S-91/S-96, 2026-09-04). See COINCIDES_WITH_FRAME
+# below: the frame is now the work's own box, and `planet`'s pre-repair seating is the cover fit its
+# own script works out against the frame — cover-fitting a work into its own box is identity, so
+# that fit and the one the repair installed compute the same picture. The row keeps the same
+# substitution, the same door, the same pair and the same 6.0-of-255 threshold, and asks the thing
+# that is now true of them instead of the thing that was true of the window.
+SAME = ("PASS-DOOR-ORIENT · %s's pre-repair seating and the shipped one compute one and the same "
+        "door, because the frame is the work's own box")
 RED_SCORE = ("PASS-DOOR-ORIENT red-on-bug · the pre-repair score, pinning the handle gates derives "
              "for itself, reddens the same door on the same pair")
 
@@ -576,15 +608,29 @@ else:
                     back = drive(site2, shapes2, only={name}, shots=shots2)
                     row = (back or {}).get(name)
                     now = got.get(name)
-                    check(RED % name,
-                          bool(row) and row[1] is not None and row[1][0] > SEAM,
-                          "pre-repair %s, arriving door against the DOM's own picture: %s of 255, "
-                          "against the same %.1f-of-255 threshold the shipped file passes at %s"
-                          % (name,
-                             ("%.2f" % row[1][0]) if row and row[1]
-                             else "the pass never took the frame",
-                             SEAM,
-                             ("%.2f" % now[1][0]) if now and now[1] else "-"))
+                    took = bool(row) and row[1] is not None and now is not None and now[1] is not None
+                    if name in COINCIDES_WITH_FRAME:
+                        check(SAME % name,
+                              took and abs(row[1][0] - now[1][0]) <= SEAM and row[1][0] <= SEAM,
+                              "pre-repair %s, arriving door against the DOM's own picture: %s of "
+                              "255, where the shipped file reads %s — the two seatings stand "
+                              "within the same %.1f of 255 this file judges every door by, which "
+                              "is what one picture computed two ways looks like. The day the frame "
+                              "stops being the work's own box they part again and this reds"
+                              % (name,
+                                 ("%.2f" % row[1][0]) if took else "the pass never took the frame",
+                                 ("%.2f" % now[1][0]) if took else "-", SEAM))
+                    else:
+                        check(RED % name,
+                              took and row[1][0] > SEAM,
+                              "pre-repair %s, arriving door against the DOM's own picture: %s of "
+                              "255, against the same %.1f-of-255 threshold the shipped file "
+                              "passes at %s"
+                              % (name,
+                                 ("%.2f" % row[1][0]) if row and row[1]
+                                 else "the pass never took the frame",
+                                 SEAM,
+                                 ("%.2f" % now[1][0]) if now and now[1] else "-"))
                 finally:
                     shutil.rmtree(shots2, ignore_errors=True)
                     shutil.rmtree(site2, ignore_errors=True)

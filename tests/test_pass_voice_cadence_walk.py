@@ -200,11 +200,43 @@ READ_VOICES = """
     if (v.id === 'arrival') m = v;
     if (v.id === 'pivot') p = v;
   });
+  var c = rep.cadence;
   return {state: rep.state,
-          cadence: !!rep.cadence, ended: rep.cadence ? rep.cadence.ended : null,
+          cadence: !!c, ended: c ? c.ended : null,
+          // THE CADENCE'S OWN ELAPSED FRACTION, read from the host's own two numbers rather than
+          // timed from outside — `cadenceHandles` walks every voice on exactly this `u` (S-96,
+          // 2026-09-04; see `sample_inside_the_walk` below for why a wall-clock sample is not a
+          // reading of it). Same clock on both sides: `t0` is a `performance.now()` stamp taken in
+          // the page, and this expression is evaluated in that same page.
+          u: (c && c.budget > 0)
+               ? Math.max(0, Math.min(1, (performance.now() - c.t0) / c.budget)) : null,
+          budget: c ? c.budget : null,
           mLive: m ? !!m.live : null, mPresence: (m && m.handles) ? m.handles.presence : null,
           pMix: (p && p.handles) ? p.handles.mix : null};
 """
+# HOW FAR INTO THE CADENCE A SAMPLE MAY STAND AND STILL BE A READING OF THE WALK (S-96, 2026-09-04).
+# The mismatch this file measures is the distance between one voice walking its own door distance on
+# the shared `u` and one snapped to its door outright, so on the pre-repair line it reads about
+# `1 - envelope(u)` — which goes to zero as `u` goes to one, for a reason that has nothing to do with
+# the defect: BOTH readings are "fully at the door" by then. A sample taken at `u = 1` therefore
+# cannot separate the two builds however loud the bug is, and that is exactly what a wall-clock
+# sample degenerates into on a machine where one CDP round trip outlasts the cadence's own budget.
+# The frame branch met that (both builds read mismatch 0.0000 with the primary at 1.0000 of its own
+# door distance). The sample is anchored on the cadence's own `u` now, so a reading that arrived too
+# late is REFUSED and says so rather than passing row 1 and failing row 3 on one dead instant.
+#
+# 0.4 is not a threshold on the measurement — it is where the sample must stand. `CURVES.smooth` at
+# 0.4 has travelled about a third, so a snapped voice stands about two thirds away from a walked one
+# there: comfortably over the 0.3 the pre-repair row must exceed and the 0.1 the repaired one must
+# stay under, with both bars left exactly where they were.
+U_SAMPLE = 0.4
+# AND THE EARLIEST IT MAY STAND, for the reason spelt out in `measure_snap` below: until the first
+# cadence FRAME is drawn, `report()` carries the door values `cadenceStart` wrote into every voice's
+# `lastHandles` as a side effect of working out where its door is, and a sample in that gap reads
+# both builds identically. 0.08 of the score's own 500 ms budget is 40 ms — between two and five
+# frames at any rate a browser draws at, and a twelfth of the way into a walk this row samples up to
+# 0.4 of. Not a threshold on the measurement: neither the 0.1 nor the 0.3 below moves.
+U_FRAMES = 0.08
 
 
 def measure_snap(br, base, tag):
@@ -276,22 +308,38 @@ def measure_snap(br, base, tag):
                      " pMix:(p&&p.handles)?p.handles.mix:null, mLive:m?!!m.live:null};"
                      "window.__exPass.adapter.interrupt('%s-mid'); return before;" % tag)
 
-    # The EARLIEST reading that actually reflects a drawn cadence frame — not the latest reachable
-    # one: the bug this row exists to catch is at its most visible in the cadence's own first
-    # frames (his own report was "sometimes", not "at the very end"), and `arrival`'s own presence
-    # asymptotically converges toward the primary's own fraction as u approaches 1 even on the
-    # pre-repair line (both readings are heading toward "fully at the door" by then), which would
-    # quietly hide the mismatch behind a late sample. A handful of small waits, not one guessed
-    # delay, rides out whatever CDP round-trip and scheduling jitter a real, possibly loaded
-    # machine adds; the first one that lands inside a live, unlanded cadence is kept.
-    after = None
-    for step in (0.0, 0.005, 0.01, 0.02, 0.03):
-        if step:
-            br.sleep(step)
+    # THE READING IS ANCHORED ON THE CADENCE'S OWN ELAPSED FRACTION, at both ends (S-96, 2026-09-04).
+    # The bug this row exists to catch is at its most visible in the cadence's own early frames — his
+    # own report was "sometimes", not "at the very end" — and both readings converge on "fully at the
+    # door" as `u` approaches 1 even on the pre-repair line, so a late sample hides the mismatch. The
+    # upper end was always the stated intent; what it used to be enforced by was a handful of small
+    # wall-clock waits, and that is what came apart.
+    #
+    # THE LOWER END IS THE ONE THIS ROW WAS MISSING, and it is not about waiting long enough — it is
+    # about what `report()` is reading. `cadenceStart` computes each voice's `cadenceTo` by calling
+    # `doorHandles(rec, v, ...)`, and `handlesOf` inside it writes `v.lastHandles` AS A SIDE EFFECT
+    # (that file says so itself, right there, which is why it captures `vFrom` first). So between
+    # `cadenceStart` returning and the first cadence FRAME being drawn, `report().stack[].handles`
+    # carries the DOOR value for every voice on both builds — the repaired one included, because
+    # nothing has yet been drawn through `cadenceWalked`. A sample landing in that gap reads
+    # "everything at its door" and cannot tell the two builds apart: on the frame branch it read
+    # u=0.0008 with the primary at 1.0000 of its own door distance, on the repaired build, which is
+    # the repaired build's own signature for the bug. That gap is one frame wide, so the sample now
+    # stands at U_FRAMES or later: several frames in at any rate a browser actually draws at, and
+    # still far inside the walk.
+    after, seen = None, []
+    for _ in range(60):
         st = js(br, READ_VOICES)
-        if st["cadence"] and st["ended"] is False and st["mLive"]:
+        seen.append(st["u"])
+        if not (st["cadence"] and st["ended"] is False and st["mLive"] and st["u"] is not None):
+            br.sleep(0.01)
+            continue
+        if st["u"] < U_FRAMES:
+            br.sleep(0.01)
+            continue
+        if st["u"] <= U_SAMPLE:
             after = st
-            break
+        break
 
     # A second `interrupt()` while a cadence is already running is a no-op (`cancel`'s own
     # `if (cur.cadence) { ...; return; }`, no `immediate` flag) — so this just waits out the
@@ -304,11 +352,14 @@ def measure_snap(br, base, tag):
     if not (before["mLive"] and before["mPresence"] is not None and before["pMix"] is not None):
         return None, f"the pre-interrupt reading was incomplete: {before}"
     if after is None:
-        return None, "no reading caught the accompaniment still live inside an unlanded cadence"
+        return None, ("no reading caught the accompaniment still live inside an unlanded cadence "
+                      f"between u={U_FRAMES} and u={U_SAMPLE} of the cadence's own budget; the "
+                      f"elapsed fractions this run could reach were {seen}")
     if after["mPresence"] is None or after["pMix"] is None:
         return None, f"the post-interrupt reading was incomplete: {after}"
     return {"pres_before": before["mPresence"], "pres_after": after["mPresence"],
             "mix_before": before["pMix"], "mix_after": after["pMix"],
+            "u": after["u"], "budget": after["budget"],
             "landed": landed, "pres_at_rest": at_rest}, None
 
 
@@ -345,8 +396,9 @@ else:
                           / max(reading["pres_before"], 1e-9))
         mismatch = abs(companion_frac - primary_frac)
         check(ROW_MECH, mismatch < 0.1,
-              f"primary walked {primary_frac:.4f} of its own door distance, the accompaniment "
-              f"{companion_frac:.4f} of its own — mismatch {mismatch:.4f}, presence "
+              f"sampled at u={reading['u']:.4f} of the cadence's own {reading['budget']} ms "
+              f"budget: primary walked {primary_frac:.4f} of its own door distance, the "
+              f"accompaniment {companion_frac:.4f} of its own — mismatch {mismatch:.4f}, presence "
               f"{reading['pres_before']:.4f} -> {reading['pres_after']:.4f}, mix "
               f"{reading['mix_before']:.4f} -> {reading['mix_after']:.4f}")
 
@@ -374,8 +426,10 @@ else:
                           / max(reading["pres_before"], 1e-9))
         mismatch = abs(companion_frac - primary_frac)
         check(ROW_BUG, mismatch > 0.3,
-              f"primary walked {primary_frac:.4f} of its own door distance, the accompaniment "
-              f"{companion_frac:.4f} of its own — mismatch {mismatch:.4f} — reproduced against "
+              f"sampled at u={reading['u']:.4f} of the cadence's own {reading['budget']} ms "
+              f"budget: primary walked {primary_frac:.4f} of its own door distance, the "
+              f"accompaniment {companion_frac:.4f} of its own — mismatch {mismatch:.4f} — "
+              f"reproduced against "
               f"the exact pre-repair line iff this mismatch stands well over the 0.1 the "
               f"repaired build must read under")
 
