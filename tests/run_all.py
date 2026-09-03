@@ -150,6 +150,20 @@ SUITES = [
     "pass_voice_cadence_walk",
 ]
 
+# EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A
+# suite that reds with no entry here is a surprise, and a surprise reds the whole run — that is
+# S-26's third arm: a list of expected-red rows with a reason for each, so a row outside the list
+# going red is the thing that must not pass in silence.
+#
+# The comments in SUITES above once named five suites red on purpose the night they were
+# registered (2026-08-25): `pass_lawful` (its own four laws, until Phase 8's enforcement landed),
+# `pass_score` / `pass_cover` / `pass_palette` (found unregistered by check_roster(), and would
+# have shipped the same way), and `pass_droste` (left red on purpose until its crop-class bug was
+# found and fixed on 2026-09-02). Run individually on 2026-09-03, all five now pass — the repairs
+# those comments point to have since landed — so nothing is named here right now. Add a suite here,
+# with its own one-line reason, the day it ships red on purpose again.
+EXPECTED_RED = {}
+
 
 def check_roster():
     """Gate INV-5r, in code: SUITES names exactly the `test_*.py` files in tests/.
@@ -277,6 +291,30 @@ def check_skip_ratchet(total_skips):
     return True
 
 
+def check_expected_red(failed):
+    """S-26's third arm: compare this run's actually-red suites against EXPECTED_RED above.
+
+    A suite in `failed` with no entry in EXPECTED_RED is a surprise regression — this run must not
+    report green over it, so it is refused, naming the surprise. A suite named in EXPECTED_RED that
+    came back green is only good news: it is printed so the entry can be retired, but it never
+    fails the run on its own — expected-red suites already keep the run from going green on the
+    account of their own row; nothing further is owed for one of them turning green.
+
+    Returns True when this run may go green on this account, False when a surprise red stands.
+    """
+    surprises = [n for n in failed if n not in EXPECTED_RED]
+    stale = [n for n in EXPECTED_RED if n not in failed]
+    for n in stale:
+        print(f"\nnote · {n} is in EXPECTED_RED ({EXPECTED_RED[n]}) but came back green this run "
+              f"— consider removing it from EXPECTED_RED")
+    if surprises:
+        print(f"\ngate · {len(surprises)} suite(s) went red with no reason named in EXPECTED_RED: "
+              f"{', '.join(surprises)}. Either fix them, or name each in EXPECTED_RED with why it "
+              f"is red on purpose.")
+        return False
+    return True
+
+
 def ordered_suites():
     """Queue order: longest-first, from the last FULL run's recorded durations in
     tests/suite_timings.json. A suite absent from the record (never timed, e.g. brand new)
@@ -378,7 +416,13 @@ def main():
     total_skips = sum(skips.values())
     ratchet_ok = check_skip_ratchet(total_skips)
 
-    sys.exit(1 if (failed or not ratchet_ok) else 0)
+    # EXPECTED_RED runs last, same reason as the skip ratchet: it reads what every suite already
+    # reported of itself. A suite named in EXPECTED_RED keeps this run from going green on the
+    # account of its own row without also being a fresh SystemExit-worthy surprise — only a red
+    # suite with NO entry there is.
+    expected_red_ok = check_expected_red(failed)
+
+    sys.exit(1 if (not expected_red_ok or not ratchet_ok) else 0)
 
 
 if __name__ == "__main__":
