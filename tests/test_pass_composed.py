@@ -2208,6 +2208,31 @@ let handedMax = 0, handedShort = 0, handedN = 0, handedRoadKept = 0;
 out.handed = {cap: 300, max: handedMax, shortened: handedShort, composed: handedN,
               roadKept: handedRoadKept, own: out.sweep.maxIntent};
 
+// 9b · A SETTINGS RECORD CARRYING NO FENCE IS NOT FITTED AT ALL (S-72). What stood beside the read
+//      field was `|| 600` — the number the client happened to apply the day the line was written —
+//      so a record built before the field existed was measured against a bound nobody in the
+//      composer derived, silently. Absence is a refusal to measure now, the way the byte fence has
+//      always refused (`if (!SCORE_FENCE_BYTES) return null`), and the behaviour that answers a
+//      silent record is NAMED here rather than left to be discovered: every line stands exactly as
+//      composed and nothing is given up. The plant that reddens this row puts a fallback back.
+const silentConsts = Object.assign({}, fix.consts);
+delete silentConsts.intentFenceChars;
+const silent = joined.make(silentConsts);
+let silentMax = 0, silentShort = 0, silentN = 0;
+{
+  for (const [xi, yi] of SPOT) {
+    const wa = works.works[xi], wb = works.works[yi];
+    const dir = xi < yi ? "a-to-b" : "b-to-a";
+    const key = wa.id + "__" + wb.id + "__" + (dir === "a-to-b" ? "ab" : "ba");
+    const p = silent.passageFor({workRecordA: wa, workRecordB: wb, direction: dir, seed: die(key)});
+    if (!p.json) continue;
+    silentN++;
+    if (p.score.intent.length > silentMax) silentMax = p.score.intent.length;
+    if ((p.plan.intentDropped || []).length) silentShort++;
+  }
+}
+out.silent = {max: silentMax, shortened: silentShort, composed: silentN};
+
 // 10 · WHAT THE ENTRY DOES WITH A REQUEST IT CANNOT READ AS SENT. Three of these were refusals by
 //      name until 2026-08-18 and each cost the visitor a whole crossing for a field; they are
 //      defaults now, and what could not be read stands on the request under `unread` so a walk
@@ -4243,6 +4268,18 @@ else:
               f"{h['shortened']} of {h['composed']} lines and its longest ran {h['max']}; on the "
               f"number the client actually applies its longest runs {h['own']}")
 
+        # --- S-72 · a record with no fence is not measured against one of the engine's own --------
+        s = got["silent"]
+        check("EX-COMPOSED a settings record carrying no intent fence is not fitted against a "
+              "number of the engine's own",
+              s["composed"] > 0 and s["shortened"] == 0 and s["max"] > 0,
+              f"with `intentFenceChars` taken out of the composer's own constants — which is the "
+              f"shape of a settings record built before the client published the field — "
+              f"{s['shortened']} of {s['composed']} lines gave anything up and the longest ran "
+              f"{s['max']}. Absence of the field is a refusal to measure and not a substitution: "
+              f"the same {s['composed']} pairs handed a cap of {h['cap']} shortened {h['shortened']} "
+              f"of them, and the plant below puts a fallback back and reds this row")
+
         # --- row 10 · THE ROW THIS LANE STANDS ON --------------------------------------------------
         # His word of 2026-08-18 09:51: any two photographs in the world get a crossing, always. It
         # is proved on RECORDS rather than on a collection — a collection is a sample and a record is
@@ -4468,6 +4505,16 @@ else:
               ["if (line.length > INTENT_FENCE_CHARS && fields.roadPhrase) {", "if (false) {"],
               ["      if (line.length > INTENT_FENCE_CHARS) {", "      if (false) {"]],
              lambda g: g["handed"]["max"] > g["handed"]["cap"]),
+            # THE FALLBACK PUT BACK (S-72). A number beside the read field is exactly the defect the
+            # row above it names: a settings record that publishes no fence is then measured against
+            # a bound of the engine's own, and every line over that bound gives up a clause without
+            # anyone having asked for a bound at all. The plant is deliberately a SMALL fallback, so
+            # what it proves is that the branch is reachable rather than that some particular number
+            # came back.
+            ("EX-COMPOSED red-on-bug · a fallback beside the read fence measures a silent record",
+             [["var INTENT_FENCE_CHARS = consts.intentFenceChars;",
+               "var INTENT_FENCE_CHARS = consts.intentFenceChars || 120;"]],
+             lambda g: g["silent"]["shortened"] > 0),
             # THE FOLD'S TWO LAWS, each proved by taking its own reading away. The first is read off
             # the instrument's own manifest — an instrument declaring the WORLD level folds the
             # space — so removing that reading is removing the law.

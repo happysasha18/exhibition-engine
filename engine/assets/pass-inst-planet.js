@@ -343,6 +343,8 @@
     }
     function num(v, d) { var n = +v; return n === n ? n : d; }
 
+    // CAPABILITY — arithmetic, and nothing about any picture: the radians in one whole turn.
+    // Settled once for the five files that carry it (S-71, 2026-09-03).
     var TAU = 2 * Math.PI;
 
     /* THE NARROWEST CROSS-DISSOLVE where the two ends of the curled strip meet, so a shut ring has
@@ -382,11 +384,15 @@
        the end, 76.1 channels in the first tenth against 24.9 in the last, a spread of 3.1. The
        family is logarithmic because curling is felt in RATIOS of the sphere's radius; a and b are
        fixed by the two doors and k = 1.45 is the one fitted number. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_K = 1.45;
 
     /* THE HORIZON'S OWN CURVE (planet.js:340-366): a two-piece logarithm hinged AT THE MIDDLE,
        because the middle of that handle is a DOOR — it is where the module stands on its own, and a
        curve that moved it would move the module's own picture. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_H_C = 0.5, FEEL_H_K1 = 0.85, FEEL_H_K2 = 0.65;
 
     /* THE MODULE'S OWN THREE PHOTOGRAPHS AND WHAT IT DID WITH THEM (planet.js:28-37). This table is

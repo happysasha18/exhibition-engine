@@ -210,6 +210,8 @@
       "}",
     ].join("\n");
 
+    // CAPABILITY — arithmetic, and nothing about any picture: the radians in one whole turn.
+    // Settled once for the five files that carry it (S-71, 2026-09-03).
     var TAU = Math.PI * 2;
 
     function smoothstep(a, b, x) {
@@ -253,6 +255,8 @@
     // A two-piece exponential hinged at the median of the felt change of one half, mirrored about the
     // middle because a whole work stands at either end. The dead bands at either end are what make
     // both doors exact: at mix 0 the duty is a whole 1 and at mix 1 a whole 0.
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.06, FEEL_C = 0.43, FEEL_K1 = -1.6, FEEL_K2 = 1.8;
     function feelLog(x, k) {
       return Math.abs(k) < 1e-6 ? x : (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
@@ -443,11 +447,18 @@
     // How far the ribbons may stand off the hang and the door still be the hanging picture: half a
     // point of the grid the shader samples on, which is the width inside which a sample stays in
     // the buffer pixel it started in.
+    // CAPABILITY — half a point of the grid the shader samples on, which is the width inside
+    // which a sample cannot leave the buffer pixel it started in. A fact about sampling (S-71,
+    // 2026-09-03).
     var DOOR_SLIP = 0.5;
     // How much of the other work a door may draw and still BE the hanging picture: half a level of
     // 255, which is under what the frame itself can carry. The charter's own door bar is 6 of 255
     // over the canvas rect (the tolerance every suite here already uses); half a level is an eighth
     // of that at one point, so a reading under it cannot be a leak anybody could photograph.
+    // CAPABILITY — a fact about the frame's own eight bits rather than about pictures: half of
+    // one level of 255 is under the smallest difference the buffer can carry, so a door reading
+    // at this bar is reading something the frame could not have shown. Settled once for the nine
+    // files that carry it (S-71, 2026-09-03).
     var DOOR_SHOW = 0.5 / 255;
     // How many points of the grid one walk reads along each axis. The open share stands in every
     // band of the set, so a walk that visits one point in every few finds it as surely as a walk

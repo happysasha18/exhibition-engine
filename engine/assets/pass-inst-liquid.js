@@ -382,6 +382,8 @@
        against 14 at the open one, and a band of 2.58 falls to 1.31. THE HINGE IS WHY THIS HANDLE'S
        DEFAULT IS 0.702 AND NOT A HALF: `feelCrest(0.702)` is exactly 0.5, which is the spacing the
        module ships. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_C_U0 = 0.702, FEEL_C_K1 = 0.59, FEEL_C_K2 = 0.91;
     function feelLog(x, k) {
       return Math.abs(k) < 1e-6 ? x : (Math.exp(k * x) - 1) / (Math.exp(k) - 1);

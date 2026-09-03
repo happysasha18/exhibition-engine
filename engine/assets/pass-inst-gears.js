@@ -36,6 +36,8 @@
   // and the version a host was told to load cannot drift apart without the build noticing.
   var INSTRUMENT_VERSION = "1.0.0";
 
+  // CAPABILITY — arithmetic, and nothing about any picture: the radians in one whole turn.
+  // Settled once for the five files that carry it (S-71, 2026-09-03).
   var TAU = Math.PI * 2;
 
   // ================================================================================================
@@ -208,6 +210,8 @@
     // stand in a ratio of small whole numbers — that is what makes the mesh close on itself — so the
     // handle does not slide through the reals: it steps through this ladder. The `ratio` handle is a
     // place on the ladder and is rounded to a rung before any count is taken from it.
+    // CAPABILITY — which whole-number ratios close a mesh on itself, which is arithmetic and true
+    // of any two gear counts anywhere (S-71, 2026-09-03).
     var RATIOS = [[1, 1], [3, 4], [2, 3], [1, 2], [2, 5], [1, 3], [1, 4]];
 
     // THE TANGENTIAL SWEEP, in frame heights, and the crop that pays for it. The sweep is bounded
@@ -234,6 +238,8 @@
     // shares (how it is read BETWEEN two of them is the block below, and it is the port's own
     // answer, not the module's). Half the whole change stands at 0.28 of the travel,
     // which is why no two-piece logarithm fits it.
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.05;
     var FEEL_Q = [0, 0.0272, 0.0544, 0.0815, 0.1084, 0.1348, 0.1608, 0.1869, 0.214, 0.244,
                   0.2807, 0.3286, 0.3865, 0.4545, 0.545, 0.6185, 0.6926, 0.7607, 0.8211,

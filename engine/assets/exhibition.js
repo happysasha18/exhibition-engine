@@ -1196,8 +1196,11 @@
   let passRecordsRetryCount = Object.create(null);
   // UNJUSTIFIED — how many times a work record is asked for again, and how long the first wait is.
   // Both were chosen here and nothing measured either.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too few tries or too short a first wait
+  // and a momentary failure leaves a work unheld for the visit; too many or too long and a route
+  // that is genuinely down is hammered while the visitor waits.
   const RECORDS_RETRY_MAX = 3, RECORDS_RETRY_BASE_MS = 1500;
   // WHICH IDS ARE STILL ON THE WIRE AT THIS INSTANT (2026-08-25). `passRecordsAsked` cannot answer
   // that: it says an id has been asked for AND heard back about, so it reads the same for «the answer
@@ -1554,40 +1557,63 @@
   const PASS_EDGE = {
     // UNJUSTIFIED — how long a visit's own window stands open. Half an hour was chosen here and no
     // reading of any visitor's own walk stands behind it.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too short and a visitor who paused
+    // reads as a new one, so the walk forgets the families it has already spent; too long and
+    // yesterday's visit shapes today's.
     visitWindowSeconds: 1800,
     // UNJUSTIFIED — how long a family stays cooled once a visit has spent it. A day was chosen here
     // and nothing measured it.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too short and a family plays again
+    // before it has been missed; too long and a collection of few families runs out of anything
+    // left to play.
     cooldownSeconds: 86400,
     // UNJUSTIFIED — how far a repeated pass may drift inside its own family. A quarter was chosen
     // here and nothing measured it.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too wide and a repeated pass stops
+    // being recognisably the same family; too narrow and a walked-back edge plays what the
+    // visitor has just seen.
     driftSpan: 0.25,
     // UNJUSTIFIED — the pass count past which the drift opens at all. Three was chosen here and
     // nothing measured it.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too low and a second crossing of one
+    // edge already looks unlike the first; too high and a visitor walking an edge again and again
+    // gets the same crossing every time.
     driftOpensOver: 3,
     // UNJUSTIFIED — how many tries the return's own die is given. The sentence above says plainly
     // that eight is not a measured floor: it was raised until a miss this seat kept seeing stopped
     // being seen, over runs of one fixed two-work fixture, which is a reading of that fixture and
     // not of the collection.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too few and an honest repeated crossing
+    // lands on the pass just played; too many and the search spends time on an edge a visitor
+    // walks back over. The sentence above says outright that eight was raised until a miss
+    // stopped being seen over nineteen runs of one fixture, which is a reading of that fixture
+    // rather than of anything a visitor does.
     dice: 8,
     // UNJUSTIFIED — how many edge records the browser's own store keeps. Sixty-four was chosen here
     // and nothing measured it.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too few and a visit long enough to walk
+    // many edges forgets its own earliest ones; too many and the browser's own store carries rows
+    // nothing will ever read.
     keep: 64,
     // UNJUSTIFIED — how many handles of a pass the trace carries. Forty-eight was chosen here and
     // nothing measured it.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too few and the trace a diagnosis reads
+    // is missing the handle that moved; too many and one record grows past what the store will
+    // hold.
     traceHandles: 48,
   };
   let passEdgeRows = null, passEdgeStorage = "unread";
@@ -2956,8 +2982,12 @@
   // moves in one place and the two never drift apart the way two separately-guessed numbers would.
   // UNJUSTIFIED — how many steps ahead the prewarm looks. His brief names a span rather than a
   // count, and this file took the upper edge of it; nothing measured where the edge should stand.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too few and the file a gesture needs is
+  // still on the wire when the gesture comes; too many and the walk fetches files for steps a
+  // visitor never takes. His brief names «the current/next 2-3 steps», a span rather than a
+  // count, and this is its upper edge.
   const PASS_PREWARM_STEPS = 3;
   const passPrewarmed = Object.create(null);
   function passPrewarmEdge(fromId, toId) {
@@ -4078,8 +4108,12 @@
   // UNJUSTIFIED — how long each part of the walk's own chrome waits before it comes back. The six
   // waits were chosen here and nothing measured any of them; a score may name its own in their
   // place, which moves who chose them and not whether anything did.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: a wait too short and a part of the chrome
+  // comes back over a crossing that has not finished; too long and the walk stands stripped after
+  // the picture has landed. A score may name its own in their place, which moves who chose them
+  // and not whether anything measured them.
   const PASS_CHROME_MS = { plaque: 0, counter: 0, share: 90, sound: 90, series: 140, focus: 0 };
   function chromeReveal(cmd) {
     if (!cmd || !cmd.to) return;
@@ -4392,8 +4426,11 @@
   let passOfferThrows = 0;
   // UNJUSTIFIED — how many times the layer's own `offer` may throw in a row before this file stops
   // asking it. Three was chosen here and nothing measured it.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too few and one transient throw stops the
+  // file asking for crossings a visitor would have got; too many and a layer that is broken is
+  // asked again on every gesture for the rest of the visit.
   const PASS_OFFER_THROW_MAX = 3;
   function passOffer(cmd) {
     // THE TWO HOLDS, IN THE ORDER THE WALK ACTUALLY NEEDS THEM. The composer's own file comes first

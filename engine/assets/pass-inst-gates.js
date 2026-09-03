@@ -31,6 +31,8 @@
   // and the version a host was told to load cannot drift apart without the build noticing.
   var INSTRUMENT_VERSION = "1.0.0";
 
+  // CAPABILITY — arithmetic, and nothing about any picture: the radians in one whole turn.
+  // Settled once for the five files that carry it (S-71, 2026-09-03).
   var TAU = Math.PI * 2;
 
   // ================================================================================================
@@ -350,6 +352,8 @@
     // own answer, not the module's). The DEAD BANDS of 0.055 at either end are what
     // hold a whole picture whole: the dial stands at exactly 0 across the first band and at exactly 1
     // across the last, so a door is a door to the pixel.
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.055;
     var FEEL_Q = [0, 0.0261, 0.0525, 0.0792, 0.1064, 0.1341, 0.1631, 0.1947, 0.2286, 0.2648,
                   0.3029, 0.3408, 0.3813, 0.425, 0.4732, 0.5261, 0.5854, 0.6535, 0.7377, 0.8523,

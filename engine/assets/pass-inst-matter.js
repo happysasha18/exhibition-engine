@@ -206,6 +206,8 @@
     // values crowd the middle and thin to nothing at both ends, so the curve stands nearly vertical
     // at both ends and nearly flat across the middle. Carried here digit for digit; the port
     // re-derives nothing.
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.05;
     var FEEL_Q = [0, 0.1994, 0.2488, 0.2852, 0.3168, 0.3454, 0.372, 0.3972, 0.4215, 0.4454,
                   0.469, 0.4925, 0.5162, 0.5405, 0.5657, 0.5923, 0.621, 0.653, 0.6902,

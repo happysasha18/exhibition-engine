@@ -6,7 +6,6 @@
     "pass-inst-adrift.js": [
       "DEPART",
       "DRAG",
-      "FEEL_D0",
       "FLIGHT_OF_VOID",
       "FRONT_FROM",
       "FRONT_MARGIN",
@@ -20,7 +19,6 @@
       "AMP",
       "BEAT_TILT",
       "DOOR_HOLD",
-      "FEEL_D0",
       "MARGIN",
       "P_MIN",
       "TILT_MIN",
@@ -28,17 +26,12 @@
     ],
     "pass-inst-boxfold.js": [
       "AMP",
-      "AXU",
       "BOX_CROP",
       "CAM_FAR",
-      "CORNERS",
-      "DOOR_SHOW",
       "EASE_P",
-      "FACES",
       "FEEL_D0",
       "FING_MAX",
       "FING_N",
-      "NRM",
       "SEAM_FLOOR",
       "SEAM_REACH",
       "SEAM_ROOM"
@@ -46,10 +39,7 @@
     "pass-inst-droste.js": [
       "CENTRE_REACH",
       "DIVE_SPAN",
-      "DOOR_SHOW",
-      "GUARD",
       "SEAM_SHARE",
-      "TAU",
       "TURN_DEF",
       "WELL",
       "WIND_HOLD"
@@ -57,26 +47,20 @@
     "pass-inst-gates.js": [
       "DOOR_READ",
       "DRIFT_MAX",
-      "FEEL_D0",
       "MOTIF_BAND",
       "PRESS_MAX",
       "SEATED_MIN",
       "SLOT_AT_MIN",
       "SLOT_MIN",
-      "TAU",
       "ZOOM"
     ],
     "pass-inst-gears.js": [
       "AMP",
-      "FEEL_D0",
-      "RATIOS",
       "SEAM_TOOTH_FALLBACK",
-      "TAU",
       "TOOTH_MIN",
       "ZOOM"
     ],
     "pass-inst-grid-colour.js": [
-      "DEG",
       "FALLBACK_COUNT",
       "LEAD_IN",
       "RING_MAX"
@@ -85,9 +69,6 @@
       "CHANGE_FROM",
       "CHANGE_TO",
       "CROP_0",
-      "DIAL_D0",
-      "DOOR_SHOW",
-      "FEEL_D0",
       "RING_REST",
       "STORY_SPAN",
       "STORY_WINDOW",
@@ -95,7 +76,6 @@
     ],
     "pass-inst-kaleidoscope.js": [
       "CLOCK_MAX",
-      "DOOR_SHOW",
       "REACH_MIN",
       "RINGS_MIN",
       "ROT_RATE",
@@ -106,8 +86,6 @@
       "WEDGES_MIN"
     ],
     "pass-inst-lens.js": [
-      "DOOR_SHOW",
-      "FEEL_D0",
       "HOLD_IN",
       "POWER_REST",
       "RIM_ROOM",
@@ -115,7 +93,6 @@
       "WEDGES_N"
     ],
     "pass-inst-liquid.js": [
-      "FEEL_C_U0",
       "FEEL_D0",
       "KX",
       "KY",
@@ -133,7 +110,6 @@
     "pass-inst-livemirror.js": [
       "BREATH",
       "DEPTH_REST",
-      "DOOR_SHOW",
       "GLINT_REST",
       "HOLD",
       "LINE_EDGE",
@@ -143,7 +119,6 @@
     ],
     "pass-inst-matter.js": [
       "AMP",
-      "FEEL_D0",
       "GRAIN_MIN",
       "LADDER",
       "MARGIN",
@@ -152,9 +127,7 @@
     ],
     "pass-inst-overlay.js": [
       "CURVE_BANDS",
-      "DEG",
       "EDGE",
-      "FEEL_S",
       "MIX_BASE",
       "MIX_PERIOD_DEF",
       "PERIOD_MIN",
@@ -165,10 +138,7 @@
       "ARRIVE_W",
       "BASE_X",
       "CROP",
-      "DEG",
-      "DOOR_SHOW",
       "EYE_D_LONG",
-      "FEEL_K",
       "HORIZON_ROOM",
       "RISE",
       "SPIN_DEF",
@@ -180,14 +150,11 @@
       "ATM_REACH",
       "CROP_LO",
       "CUT_ROOM",
-      "FEEL_H_C",
-      "FEEL_K",
       "FIG_LO",
       "GAMMA_LO",
       "HORIZON_REACH",
       "POLE_FROM",
       "SEAM",
-      "TAU",
       "TURN_REACH"
     ],
     "pass-inst-pour.js": [
@@ -199,18 +166,15 @@
       "SLOPE_MIN"
     ],
     "pass-inst-strata-light.js": [
-      "FEEL_C",
       "LIGHT_CEILING",
       "MASK_CELLS",
       "TRAVEL"
     ],
     "pass-inst-strata-scale.js": [
-      "FEEL_C",
       "LIGHT_CEILING",
       "TRAVEL"
     ],
     "pass-inst-studio.js": [
-      "FEEL_K",
       "LOOK_CON",
       "LOOK_SAT"
     ],
@@ -219,7 +183,6 @@
       "COLS",
       "COLS_MIN",
       "CROP",
-      "FEEL_D0",
       "MARGIN",
       "TILT_MAX",
       "ZOOM_CAP"
@@ -238,8 +201,6 @@
       "Z0"
     ],
     "pass-inst-unfold.js": [
-      "DEG",
-      "DOOR_SHOW",
       "EDGE_JS",
       "FLAT_DEG",
       "FLUTTER_DIP",
@@ -264,7 +225,6 @@
       "BASE_OUT",
       "CELL_SPAN",
       "DARK_BASE",
-      "DIAL_D0",
       "LINE_REACH",
       "MARGIN",
       "SPREAD_MAX",
@@ -273,11 +233,7 @@
     "pass-inst-weave.js": [
       "AMP",
       "BAL_WHOLE",
-      "DOOR_SHOW",
-      "DOOR_SLIP",
       "DOOR_WALK",
-      "FEEL_D0",
-      "TAU",
       "WAVE_MAX",
       "WAVE_PERIOD_DEF",
       "WAVE_PERIOD_MIN",

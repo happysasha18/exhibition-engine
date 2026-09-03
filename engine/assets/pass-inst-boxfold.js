@@ -458,14 +458,23 @@
     /* THE FACES THE JOURNEY RUNS OVER. Two, and the reason is the header's: a cue carries an ordered
        pair, so two works are what stand on the faces, and an odd journey would land the visitor back
        on the departing work. The number is pinned rather than published as a handle. */
+    // DERIVED — read off the crossing itself: a cue carries an ordered pair, so two works stand
+    // on the faces, and an odd journey would land the visitor back on the departing work (S-71,
+    // 2026-09-03).
     var FACES = 2;
 
     // Face i's outward normal and first axis at rest, in the plane the turn happens in (box.js:499):
     // (n, u): (z, x) -> (-x, z) -> (-z, -x) -> (x, -z); the second face is the one that comes to the
     // front as the turn advances.
+    // CAPABILITY — the geometry of a square, carried from the module (box.js:499). Unit vectors,
+    // not magnitudes: no picture could answer them (S-71, 2026-09-03).
     var NRM = [[0, 1], [-1, 0], [0, -1], [1, 0]];
+    // CAPABILITY — the geometry of a square, carried from the module (box.js:499). Unit vectors,
+    // not magnitudes: no picture could answer them (S-71, 2026-09-03).
     var AXU = [[1, 0], [0, 1], [-1, 0], [0, -1]];
     // the face's own square, walked in the order the shader reads its two carriers in
+    // CAPABILITY — the four corners of the unit square, walked in the order the shader reads its
+    // two carriers in. Geometry, not a magnitude (S-71, 2026-09-03).
     var CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
 
     // The score's die, read the way the module reads it, so one seeded score draws one picture
@@ -759,6 +768,10 @@
     // How much of the face map may stand in the frame at a door and it still BE the photograph: half
     // a level of 255, under anything the frame itself can carry. The charter's own door bar is 6 of
     // 255 over the canvas rect, and half a level is an eighth of that at one point.
+    // CAPABILITY — a fact about the frame's own eight bits rather than about pictures: half of
+    // one level of 255 is under the smallest difference the buffer can carry, so a door reading
+    // at this bar is reading something the frame could not have shown. Settled once for the nine
+    // files that carry it (S-71, 2026-09-03).
     var DOOR_SHOW = 0.5 / 255;
 
     // The four straight edges of a screen quad and the least signed distance to them — FRAG's own

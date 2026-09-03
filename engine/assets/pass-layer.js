@@ -36,20 +36,35 @@
   if (typeof join !== "function") return;
 
   // ---- the three ranges of contract §2.5 — a legal value must read differently from a hang -------
-  // UNJUSTIFIED — the longest a transaction may run. Fourteen seconds is the contract's own §2.5
-  // bound, written there rather than here, and no measurement of any pair stands behind it.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
-  var DURATION_MIN = 0, DURATION_MAX = 14000;
+  // CAPABILITY — the floor of a legal duration, and it is the contract's own: §2.5 makes
+  // `duration: 0` a legal instant transition, so nothing below nothing is legal and there is no
+  // magnitude here to measure.
+  //
+  // ITS CEILING IS NOT DECLARED HERE ANY MORE (S-70, 2026-09-03). `DURATION_MAX` stood beside this
+  // line as a typed 14000 — a second copy of the top of shelf 17's longest band, which this very
+  // file publishes twelve hundred lines below in `TIERS`. Two copies of one fact drift, and the
+  // composer's own ceiling had already been moved onto the tier table for exactly that reason
+  // (`TRANSACTION_MS`, guarded by `tests/test_pass_static.py` row 2). The ceiling is now read off
+  // `TIERS` where the table stands, so the bound this host clamps a duration to and the band the
+  // score was written for are one number by construction.
+  var DURATION_MIN = 0, DURATION_MAX;
   // UNJUSTIFIED — how long the host waits for every instrument of a score to answer `prepare`. Four
   // hundred milliseconds was chosen when this seam was built and nobody has measured it since.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too small and a legitimately slow prepare
+  // is cut off and its instrument never draws; too large and a visitor waits on a silent
+  // instrument before anything moves. It bounds a testing seam rather than a live visit —
+  // `prepareBudgetMs` is what a visit actually waits — so being wrong costs a wrong reading in a
+  // diagnosis before it costs a crossing.
   var PREPARE_MIN = 0, PREPARE_MAX = 400;
   // UNJUSTIFIED — how far past its own duration a transaction may run before the watchdog ends it.
   // Two seconds was chosen beside the budget above and stands on nothing measured.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too small and the watchdog ends a
+  // transaction that was about to land; too large and a hung crossing holds the frame well past
+  // the point a visitor reads it as broken.
   var SLACK_MIN = 0, SLACK_MAX = 2000;
   function clampNum(n, lo, hi) {
     n = Number(n);
@@ -90,8 +105,13 @@
   // full-screen pass never sees back.
   // UNJUSTIFIED — the rungs the render scale steps through. Five of them, at these five widths,
   // were chosen in lab/gl-carrier.js and carried here unchanged; nobody measured which five.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: a rung too far apart from the next and
+  // the ladder drops the frame further than the device needed; too close and it spends frames
+  // walking rungs that change nothing. The five are the shared carrier's own, carried here
+  // unchanged, and being wrong costs a frame either softer than the device could have carried or
+  // still over the bar after a step.
   var STEPS = [1.0, 0.85, 0.72, 0.60, 0.50];
   // CAPABILITY — a fact about the machine: past two device pixels to the point, a full-screen pass
   // spends memory and fill it never sees back on any display this walk runs on.
@@ -101,13 +121,21 @@
   var P95_DROP = 33;
   // UNJUSTIFIED — the bar below which the ladder climbs back. It was chosen under the drop bar so
   // the two do not chatter against each other, and nothing measured where it should stand.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too near the drop bar and the ladder
+  // chatters between two rungs, changing the resolution a visitor sees every second or two; too
+  // far under it and a device that has recovered draws at half width for the rest of the visit.
   var P95_RAISE = 22;
   // UNJUSTIFIED — how many frame gaps a step down and a step up are each read over, and how many
   // the recorder keeps. All three were chosen in lab/gl-carrier.js and nothing measured them.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: a window too short and one slow frame
+  // walks the ladder; too long and a device that has been dropping frames for seconds still draws
+  // at full width. `KEEP` carries a floor that is not taste — it must hold at least `WIN_RAISE`
+  // gaps or the raise window never fills — and above that floor what it sets is the width of the
+  // percentile `report` prints, so being wrong there costs a diagnosis rather than a crossing.
   var WIN_DROP = 45, WIN_RAISE = 120, KEEP = 240;
 
   var stage = null;          // {canvas, gl, vao, quad, texA, texB, sceneTex, programs}
@@ -1047,8 +1075,11 @@
   // UNJUSTIFIED — the lens a turn is seen through where a score names none. This file chose 0.9
   // radians because it is the angle a room is ordinarily photographed at; no photograph of this
   // collection was measured for it, and none was consulted.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too narrow and a turn the score names
+  // flattens back toward the affine squash this lens exists to prevent; too wide and the room
+  // bends at the frame's edges in a way no photograph of this collection shows.
   var CAM_TURN_FOV = 0.9;
   // The pose rests on the arriving work within this much. The check READS THE POSE rather than the
   // picture, so the number is a computation tolerance and not a matter of taste: a spline evaluated
@@ -1061,8 +1092,13 @@
   // UNJUSTIFIED — how far two camera authorities may stand apart across the instant one hands to
   // the other. This file chose a thousandth; nobody measured how far apart a person can see them
   // stand, and the number is a thousand times the arithmetic bar above it rather than a reading.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too tight and the diagnostic surface
+  // reports a jump at every handoff where two authorities agree to everything but arithmetic, so
+  // a real jump is lost among false ones; too loose and a discontinuity a visitor can see passes
+  // as continuous. The reading that would settle it is one point of the drawing buffer carried
+  // into the pose's own normalised units, and this file does not take it.
   var CAM_HANDOFF_TOL = 1e-3;
 
   // `pass-composer.js` boxes every composed float in its own `Flt` wrapper (a plain object whose
@@ -1493,8 +1529,11 @@
   // share of the pass at either end, and the whole middle stands at the neutral pose.
   // UNJUSTIFIED — the share of a passage the rise and the fall each take where the score names no
   // seconds for them. This file chose 0.18 and nothing measured it.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too large and the crossing itself is
+  // squeezed between two long ramps and the middle has no room to play; too small and the passage
+  // leaves its hang so fast the departing work snaps out of place instead of rising out of it.
   var HANG_SHARE = 0.18;
   function hangEdges(rec) {
     var cam = (rec.cmd && rec.cmd.score && rec.cmd.score.camera) || {}, h = cam.hang || {};
@@ -1893,12 +1932,27 @@
     { name: "culmination", lo: 9, hi: 14, lettersLo: 2, lettersHi: 3, accompaniments: 3,
       miraclesLo: 1, miraclesHi: 1 },
   ];
+  // THE §2.5 CEILING, READ OFF THE TABLE ABOVE (S-70). The longest a transaction may run is the top
+  // of shelf 17's longest band, and the band table is the one home of that fact in this file. The
+  // assignment stands here rather than beside `DURATION_MIN` because that is where the table it
+  // reads stands; every reader of `DURATION_MAX` is inside a function called long after this line
+  // runs. The only number written here is the thousand milliseconds in a second, which is the unit
+  // the table is in against the unit the clamp is in; no magnitude is typed, and a band table that
+  // moves re-bases the host's clamp by itself.
+  TIERS.forEach(function (band) {
+    if (DURATION_MAX === undefined || band.hi * 1000 > DURATION_MAX) DURATION_MAX = band.hi * 1000;
+  });
   // UNJUSTIFIED — the most of a passage that may carry no cue at all. The crossing charter's
   // seventeenth shelf sets the third, and the charter says of it in as many words that the tier
   // numbers beside it were written by an agent in `ae2b5da` on 2026-08-08 at 15:59 and that nobody
   // measured them. It is carried here rather than chosen here, and it stands on nothing.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too large and a passage may stand with no
+  // voice for long enough to read as a stall; too small and a score whose tier the charter allows
+  // is refused a silence it was written for. It is carried from shelf 17, where the charter
+  // itself records that an agent wrote it in `ae2b5da` on 2026-08-08 and nobody measured it, so
+  // the taste is the charter's and this file's copy of it is the second home.
   var HELD_MAX = 1 / 3;
 
   // The seconds of the pass some cue's window covers, with the overlaps merged so a second under
@@ -2760,8 +2814,13 @@
   // UNJUSTIFIED — the longest a cadence may take to walk to its door. The nineteenth shelf asks
   // for about seven hundred milliseconds and this file chose two seconds as the outer clamp; no
   // measurement of a person watching one stands behind either figure.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too small and an envelope is cut off
+  // mid-travel and the picture jumps at the door the cadence was walking to; too large and a
+  // visitor who asked for the next crossing waits on the one they interrupted. The nineteenth
+  // shelf asks for about seven hundred milliseconds and this is the outer clamp above it, so two
+  // unmeasured figures stand here rather than one.
   var CADENCE_MIN = 0, CADENCE_MAX = 2000;
 
   function budgetOf(cmd) {
@@ -3627,8 +3686,11 @@
   // UNJUSTIFIED — how long a request may neither land nor fail before the visit reads it as a
   // broken connection. This file chose twenty-five seconds; nothing measured it, and the sentence
   // above says only what the number is FOR, which is not the same as what it should be.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too small and a slow but living network
+  // is read as broken and the visit gives up on a crossing it would have got; too large and a
+  // visit behind a dead socket pulses at the visitor for that long before anything says so.
   var DEAD_AIR_MS = 25000;
   var offeredGen = 0;
   var awaiting = null;      // the command held while its files cross the network, and its own gen
@@ -4400,8 +4462,11 @@
   }
   // UNJUSTIFIED — how many times an instrument file is asked for again, and how long the first
   // wait is. Both were chosen here and nothing measured either.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-70
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+  // home with the cost of it being wrong said out loud: too few tries or too short a first wait
+  // and a momentary failure poisons an instrument for the whole visit; too many or too long and a
+  // genuinely broken address holds the crossing while the visitor waits on it.
   var INST_RETRY_MAX = 3, INST_RETRY_BASE_MS = 1500;
   function instRetryEligible(f) {
     return !!f && f.state === "refused" && !f.permanent && f.attempts < INST_RETRY_MAX

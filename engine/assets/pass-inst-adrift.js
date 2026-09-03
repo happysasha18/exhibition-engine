@@ -371,6 +371,8 @@
     // assertion rather than an empty cell: the raw parameter is already even, measured at 1.1, 1.5
     // and 1.4 of raw band against the arsenal's ceiling of 2.5. The grain's table is fitted on the
     // geometric ladder, where equal movements of the hand are equal ratios of cell size.
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.05;
     var FEEL_MIX = [0, 0.0812, 0.1349, 0.181, 0.2261, 0.2721, 0.3227, 0.379, 0.4387, 0.4927, 0.544,
                     0.5984, 0.6482, 0.6913, 0.7325, 0.7726, 0.8142, 0.8559, 0.8978, 0.9424, 1];

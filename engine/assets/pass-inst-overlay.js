@@ -351,6 +351,8 @@
       "}",
     ].join("\n");
 
+    // CAPABILITY — arithmetic, and nothing about any picture: the radians in one degree. Settled
+    // once for the four files that carry it (S-71, 2026-09-03).
     var DEG = Math.PI / 180;
 
     // A handle a score left undriven reaches here as nothing at all, and a number that is not a
@@ -423,6 +425,8 @@
        of the travel are the region's own soft edge arriving and closing. FAMILY: the same plain S,
        s = 0.91, with a dead band of 0.02 at either end where the frame does not move at all. The band
        falls from 2.77 to 1.51. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_S = 0.65, FEEL_MIX_K = 1.65, FEEL_PRES_S = 0.91, FEEL_PRES_D = 0.02;
     var CURVE_BANDS = { exposure: [3.45, 1.62], mix: [6.34, 1.84], presence: [2.77, 1.51] };
     var CURVE_MEASURED_ON = "the drawn frame's own mean channel distance between neighbouring "

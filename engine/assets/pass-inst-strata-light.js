@@ -242,6 +242,8 @@
     // family is a two-piece exponential hinged at the MEASURED median of the felt change: c = 0.37
     // is that median, and on each side of it the curve is the plain logarithm the other modules
     // carry with its two ends fixed by its own side. The port re-derives nothing.
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_C = 0.37, FEEL_K1 = -0.2, FEEL_K2 = 2.2;
     function feelLog(x, k) {
       return Math.abs(k) < 1e-6 ? x : (Math.exp(k * x) - 1) / (Math.exp(k) - 1);

@@ -314,6 +314,8 @@
        Here that band is spent at the DOORS instead, where a door needs exactly nothing rather than
        nearly nothing, and the curve runs over what is left. So the module's two numbers cross over
        unchanged and each is doing what it was measured to do. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.14, FEEL_G = 0.42;
 
     /* THE ARC THE REACH RIDES, and it is the port's own — the module has no passage to shape.
@@ -499,6 +501,10 @@
     var DOOR_SLIP = 0.5;         // points of the grid: half a point, inside which a sample cannot move
     // How much of the judges' channel may stand in the frame at a door and it still BE the
     // photograph: half a level of 255, an eighth of the charter's own 6-of-255 door bar at one point.
+    // CAPABILITY — a fact about the frame's own eight bits rather than about pictures: half of
+    // one level of 255 is under the smallest difference the buffer can carry, so a door reading
+    // at this bar is reading something the frame could not have shown. Settled once for the nine
+    // files that carry it (S-71, 2026-09-03).
     var DOOR_SHOW = 0.5 / 255;
 
     function doorReadOf(v, st) {

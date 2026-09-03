@@ -340,6 +340,8 @@
     // THE RESPONSE CURVE (studio.js:839-845), carried digit for digit — the one number this port
     // reads at a NEW argument (the there-and-back triangle, "THE PORT'S OWN ADDITION" above) rather
     // than at `mix` straight, and not one digit of the curve itself moved for that.
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_K = 3.55;
     function feelHalf(u) { return (Math.exp(FEEL_K * u) - 1) / (Math.exp(FEEL_K) - 1); }
     function feelOf(u) {

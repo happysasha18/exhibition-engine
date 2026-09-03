@@ -310,6 +310,8 @@
       t = t < 0 ? 0 : t > 1 ? 1 : t;
       return t * t * (3 - 2 * t);
     }
+    // CAPABILITY — arithmetic, and nothing about any picture: the radians in one whole turn.
+    // Settled once for the five files that carry it (S-71, 2026-09-03).
     var TAU = Math.PI * 2;
 
     /* THE COPIES ARE CUT FROM A FALL OF FORTY (droste.js:291-294). One repeat is the log of the
@@ -338,6 +340,8 @@
        nearer the throat than a ten-millionth of the frame's own height. That is where the ring's
        travel ends, and it is the module's number rather than one this port chose — which is what
        makes the exit door whole at the frame's exact middle, where the radius runs to nothing. */
+    // CAPABILITY — the module's own guard on a squared radius (droste.js:41), which is a bound on
+    // arithmetic at a singular point rather than a reading of any picture (S-71, 2026-09-03).
     var GUARD = 1e-7;
 
     /* THE CENTRE'S OWN REACH (droste.js:256). A named centre is an OFFSET on the module's own
@@ -518,6 +522,10 @@
     //
     // How much of the other work may stand in the frame at a door and it still BE the photograph:
     // half a level of 255, an eighth of the charter's own door bar of 6 of 255 taken at one point.
+    // CAPABILITY — a fact about the frame's own eight bits rather than about pictures: half of
+    // one level of 255 is under the smallest difference the buffer can carry, so a door reading
+    // at this bar is reading something the frame could not have shown. Settled once for the nine
+    // files that carry it (S-71, 2026-09-03).
     var DOOR_SHOW = 0.5 / 255;
 
     // THE FRAME, WALKED AT THE BUFFER'S OWN SAMPLE POINTS: its four corners, where the ring has the

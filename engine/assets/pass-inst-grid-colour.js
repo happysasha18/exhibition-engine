@@ -414,6 +414,8 @@
       "}",
     ].join("\n");
 
+    // CAPABILITY — arithmetic, and nothing about any picture: the radians in one degree. Settled
+    // once for the four files that carry it (S-71, 2026-09-03).
     var DEG = Math.PI / 180;
 
     function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }

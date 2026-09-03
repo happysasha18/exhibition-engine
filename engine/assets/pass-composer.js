@@ -410,8 +410,13 @@
   // half was chosen by this seat. What it has to satisfy is only that it be positive, so the limit
   // holds and the map stays monotone; every positive value satisfies that equally, and the number
   // that would be right is a property of the buffer the composer cannot see.
-  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-  // the derivation or the removal lands there.
+  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one home
+  // with the cost of it being wrong said out loud: too small and pairs whose door framings stand at
+  // very different ratios all arrive at nearly one approach, so the camera stops reading the pair at
+  // all past a modest ratio; too large and the approach asks the frame for more magnification than
+  // the buffer's own oversampling can carry and the picture softens at the door. The bound that
+  // would be right is the buffer's, and this file cannot see it.
   var DOLLY_CAP = 0.5;
   // WHAT LEFT THIS BLOCK ON 2026-08-18, and it is one sweep rather than eight repairs. His word of
   // 09:57: a number this project computed and gave a name to, with no requirement of his behind it,
@@ -1497,14 +1502,20 @@
     // FALLBACK for a settings record built before that line landed; it is the number the client
     // applies today, and a record that carries the field overrides it without argument.
     //
-    // UNJUSTIFIED, and precisely in its second half. The VALUE comes from the client and belongs to
-    // it, which is a derivation; the `|| 600` beside it does not. That fallback stands for a
-    // settings record built before the field existed, and 600 is the number the client happens to
-    // apply today rather than anything this file can read — so a record published without the field
-    // is measured against a number nobody here derived.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-72 owns it, and
-    // the derivation or the removal lands there.
-    var INTENT_FENCE_CHARS = consts.intentFenceChars || 600;
+    // DERIVED — the client's own cap, read off the settings record, which the engine's bake fills
+    // from the served client's `PASS_LIMITS` literal. The number is the client's and this file only
+    // measures against it.
+    //
+    // THE `|| 600` IS GONE (S-72, 2026-09-03), AND ABSENCE IS NOW A REFUSAL RATHER THAN A
+    // SUBSTITUTION. What stood after the `||` was a settings record's missing field answered with a
+    // number typed here — the value the client happened to apply on the day the line was written —
+    // so a record built before the field existed was measured against a bound nobody in this file
+    // derived, silently. A record that does not carry the field is a record this file has nothing to
+    // say about, and it now says so by not measuring: the line stands as it was written and the
+    // fitting below does not run. That is the shape `SCORE_FENCE_BYTES` already has where it stands
+    // above — `if (!SCORE_FENCE_BYTES) return null` — and the two fences now answer a silent record
+    // the same way rather than one refusing and one inventing.
+    var INTENT_FENCE_CHARS = consts.intentFenceChars;
 
     var HANDLE_SPECS = {};
     var FILLS_THE_FRAME = {};
@@ -3016,8 +3027,12 @@
     // UNJUSTIFIED. Everything above argues the number's SHAPE — that it must stay under one so the
     // day never empties a pool — and an argument about a shape is not a derivation of a value. This
     // seat chose 0.35 and nothing measured it; every value under one satisfies the shape equally.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too large and one hour of the day
+    // empties a ground pool the pair's own strongest reading had already won, so what a visitor
+    // sees is the clock's crossing rather than the two pictures'; too small and the day is
+    // declared in the plan and never heard in the frame.
     var WEATHER_AMP = 0.35;
     function weatherBiasOf(item) {
       if (!item || !item.kind) return 1;
@@ -6770,8 +6785,13 @@
     // UNJUSTIFIED. It is carried from the lab's own assembler word for word, and it was unmeasured
     // there: nothing in that file derives the fifth either. Carrying a number faithfully is not the
     // same as deriving it, and this line says which of the two happened.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too large and an accompanying voice
+    // beats faster than the layer it rides on, which reads as a flutter rather than a pulse; too
+    // small and the voice stands still and the plan declares one nobody can see. It is one fifth
+    // by the lab's own arithmetic — a beat of a layer against a layer at two-thirds overlap — so
+    // what is unmeasured here is that overlap and not this quotient.
     var BEAT_DIAL = 0.2;
 
     // VOICE_SHARE — how much of a work's own measure becomes a voice's loudness. Carried from
@@ -6779,8 +6799,13 @@
     // ВКУСА, поднято в отчёте" — a quarter is a number of taste, raised in a report rather than
     // measured. It is carried here as that same admitted number, not re-derived as if it were one.
     // UNJUSTIFIED, on the lab's own admission quoted above.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too large and an accompanying voice is
+    // louder than the measure of the work it was drawn from, so the voice becomes the subject;
+    // too small and its peak falls under the one step of 255 the lab measured as the floor of
+    // what is seen, and a declared and unseeable voice is what that same lab calls an empty
+    // claim.
     var VOICE_SHARE = 0.25;
 
     // WHEN A VOICE IS SEEN, AND IT IS THE LAB'S OWN MEASUREMENT — the second pass of
@@ -6902,12 +6927,28 @@
     // arithmetic and about nothing else: two periods standing at one of these repeat together, and
     // that is true of any two periods anywhere.
     var VOICE_RATIOS = [1 / 1, 1 / 2, 1 / 3, 1 / 4, 1 / 5, 2 / 3, 2 / 5, 3 / 4, 3 / 5, 4 / 5];
-    // UNJUSTIFIED — how near a ratio has to stand to one of those before it counts as that ratio.
-    // It is carried from the lab, unmeasured there, and nothing here derives it: what it has to
-    // satisfy is only that it be smaller than the gaps between the ratios above, and many values are.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
-    var VOICE_RATIO_BAND = 0.05;
+    // DERIVED — read off `VOICE_RATIOS` itself, and the derivation is the requirement the old
+    // sentence stated and then did not apply. A band exists so a period standing NEAR one of the
+    // ratios above counts as that ratio; for that to mean anything the bands around two neighbouring
+    // ratios must not run into each other, or a period nudged out of one lands inside the next and
+    // «near 3/4» and «near 4/5» name the same place. The largest band that keeps them apart is half
+    // the smallest gap between neighbouring ratios, measured in the log the way `voicesAligned`
+    // measures — the centres are ±log(v), so the gaps are read over their absolute values.
+    //
+    // THE CARRIED 0.05 DID NOT SATISFY IT (S-69, 2026-09-03). The lab's number worked out to a
+    // log band of 0.0488 while the smallest gap — 3/4 against 4/5, log(16/15) — is 0.0645, so those
+    // two bands overlapped by construction, on every pair, in either direction. The derived band is
+    // 0.0328, which is that gap halved, and nothing is typed: a ratio added to or taken out of the
+    // ladder above re-bases it by itself. Composing the fixture's own pairs both ways with the old
+    // number and with this one writes byte-identical passages, so what changed is the guarantee
+    // rather than any crossing.
+    var VOICE_RATIO_BAND = (function () {
+      var at = [], i, gap = Infinity;
+      for (i = 0; i < VOICE_RATIOS.length; i++) at.push(Math.abs(Math.log(VOICE_RATIOS[i])));
+      at.sort(function (x, y) { return x - y; });
+      for (i = 1; i < at.length; i++) if (at[i] - at[i - 1] < gap) gap = at[i] - at[i - 1];
+      return Math.exp(gap / 2) - 1;
+    }());
 
     // aligned(p, q) — whether two periods sit within the band of one of the small-integer ratios
     // above, measured in the log so the answer does not depend on which of the two is divided by
@@ -6976,8 +7017,13 @@
     // is only that it be positive, so the map is monotone in the ratio and lands on the handle's own
     // default where the ratio is one; every positive value satisfies that equally, and this seat
     // picked four.
-    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
-    // the derivation or the removal lands there.
+    // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
+    // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
+    // home with the cost of it being wrong said out loud: too small and every pair standing wider
+    // apart than that ratio lands on the same end of every travelling handle, so two pairs a
+    // person can tell apart get one crossing; too large and no pair reaches a handle's own ends
+    // and every crossing sits near its default. It is the most consequential of them: one number
+    // sets how far every travelling handle in this file moves.
     var OCTAVES_PER_SPAN = 4;
 
     // WHERE A READING STANDS IN ONE HANDLE'S OWN RANGE, READ OFF ONTO ANOTHER'S. Two handles of one
@@ -9976,7 +10022,12 @@
       // a person can most afford to lose — the pass count, then the genre's own opening — and where
       // it still runs long it is TRIMMED at a word with an ellipsis. What was given up stands on the
       // plan, so a shortened line can always be read back to what it lost.
+      //
+      // A RECORD CARRYING NO FENCE IS NOT FITTED AT ALL (S-72). The cap belongs to the client and
+      // arrives in the settings record; a record without it is one this file has nothing to measure
+      // against, so the line stands as written rather than being cut to a number typed here.
       var dropped = [], line = fill(tpl.intent, fields);
+      if (!INTENT_FENCE_CHARS) return [line, dropped];
       if (line.length > INTENT_FENCE_CHARS && fields.returnPhrase) {
         fields.returnPhrase = "";
         dropped.push("returnPhrase");

@@ -287,6 +287,8 @@
        dozen. The curve races the hand through the notch. The rate was measured on the lab's own pair
        at the module's default handles, so another pair shifts the curve a little and the honest
        re-fit is another run of the same measurement. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.055;
     var FEEL_Q = [0, 0.0556, 0.1101, 0.1589, 0.2019, 0.2412, 0.2794, 0.3185, 0.3596, 0.403,
                   0.4501, 0.5068, 0.5589, 0.6043, 0.6496, 0.6908, 0.7323, 0.7759, 0.8249,

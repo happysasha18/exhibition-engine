@@ -322,6 +322,8 @@
        k1 = 0.4 below the knee and k2 = 1.4 above, and a dead band of 0.02 at the near end where the
        frame does not move at all. Carried digit for digit and applied where the module applies it, so
        that one number handed to this instrument and to the module puts both at one pose. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.02, FEEL_C = 0.61, FEEL_K1 = 0.4, FEEL_K2 = 1.4;
     function feelLog(x, k) {
       return Math.abs(k) < 1e-6 ? x : (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
@@ -338,6 +340,8 @@
        of it, and the frame is the photograph untouched for the first seven-odd hundredths of the hand
        because `lean` does not leave nothing until s passes 0.03 — but it is what makes the two ends
        of the dial flat rather than merely slow. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var DIAL_D0 = 0.02;
 
     /* WHERE THE ARRIVING WORK COMES IN, as a share of the outward leg. The module changes its third
@@ -599,6 +603,10 @@
     var DOOR_SLIP = 0.5;    // points of the grid: half a point, inside which a sample cannot move
     // How much of the judges' channel may stand in the frame at a door and it still BE the photograph:
     // half a level of 255, an eighth of the charter's own door bar of 6 of 255 at one point.
+    // CAPABILITY — a fact about the frame's own eight bits rather than about pictures: half of
+    // one level of 255 is under the smallest difference the buffer can carry, so a door reading
+    // at this bar is reading something the frame could not have shown. Settled once for the nine
+    // files that carry it (S-71, 2026-09-03).
     var DOOR_SHOW = 0.5 / 255;
 
     // WHERE ONE POINT OF THE FRAME FALLS ON THE DEPARTING SOURCE, under the pose the shader is about

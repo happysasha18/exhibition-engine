@@ -502,6 +502,10 @@
     // door and it still BE the photograph: half a level of 255, under anything the frame can carry.
     // The charter's own door bar is 6 of 255 over the canvas rect, and half a level is an eighth of
     // that at one point.
+    // CAPABILITY — a fact about the frame's own eight bits rather than about pictures: half of
+    // one level of 255 is under the smallest difference the buffer can carry, so a door reading
+    // at this bar is reading something the frame could not have shown. Settled once for the nine
+    // files that carry it (S-71, 2026-09-03).
     var DOOR_SHOW = 0.5 / 255;
 
     // THE SAMPLE POINT, WALKED ON THE BUFFER THE SHADER WILL SAMPLE ON. The walk takes the buffer's

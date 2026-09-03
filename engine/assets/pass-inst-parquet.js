@@ -340,6 +340,8 @@
       "}",
     ].join("\n");
 
+    // CAPABILITY — arithmetic, and nothing about any picture: the radians in one degree. Settled
+    // once for the four files that carry it (S-71, 2026-09-03).
     var DEG = Math.PI / 180;
 
     function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -399,6 +401,8 @@
        because the raw travel is slow at the start. The module measured a band of 5.62 raw and 1.98
        with the curve in force. Both ends are exact — feel(0) is 0 and feel(1) is 1 — so no door
        moves. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_K = -2.9;
     function feel(u) {
       return (Math.exp(FEEL_K * clamp(u, 0, 1)) - 1) / (Math.exp(FEEL_K) - 1);
@@ -566,6 +570,10 @@
     // How much of the tile map may stand in the frame at a door and it still BE the photograph: half
     // a level of 255, under anything the frame itself can carry. The charter's own door bar is 6 of
     // 255 over the canvas rect, and half a level is an eighth of that at one point.
+    // CAPABILITY — a fact about the frame's own eight bits rather than about pictures: half of
+    // one level of 255 is under the smallest difference the buffer can carry, so a door reading
+    // at this bar is reading something the frame could not have shown. Settled once for the nine
+    // files that carry it (S-71, 2026-09-03).
     var DOOR_SHOW = 0.5 / 255;
 
     // The grid the door is read on, and which of the two it is. `drawn` says which one the sentence

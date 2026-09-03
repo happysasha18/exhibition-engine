@@ -343,6 +343,8 @@
        way `adrift`'s is — `table`'s own `d0` argument holds the curve flat under 0.05 and over
        0.95 and rests it there with a zero tangent, so it leaves the dead band at the dead band's
        own rate: nothing. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var FEEL_D0 = 0.05;
     var FEEL_Q = [0, 0.0555, 0.1019, 0.1406, 0.173, 0.2, 0.2301, 0.2708, 0.3258, 0.3999, 0.5,
                   0.6001, 0.6742, 0.7292, 0.7699, 0.8, 0.827, 0.8594, 0.8981, 0.9445, 1];

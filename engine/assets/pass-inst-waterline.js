@@ -338,6 +338,8 @@
 
        DEAD BANDS of 0.055 at both ends of the dial: the hand is SPENT there, the dial stands at
        exactly its door across the band, and a whole work is whole to the pixel. */
+    // DERIVED — the module's own measured response curve, carried digit for digit, and the block
+    // above names the module, the lines and the measurement it came off (S-71, 2026-09-03).
     var DIAL_D0 = 0.055;
     var CURVES = {
       dial: [0, 0.063, 0.1182, 0.1817, 0.2459, 0.301, 0.356, 0.4088, 0.4694, 0.544, 0.5867, 0.6232,
