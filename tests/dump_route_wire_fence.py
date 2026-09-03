@@ -69,6 +69,19 @@ about the suite's own green, but it IS an acceptance gate about the ROUTE (item 
 names the charter law a crossing broke, the same way `drive_route_wire.py`'s own gate at its tail
 already does, so a person or a CI step that runs it deliberately gets a real red on a real regression.
 
+WHERE THE PLANNED VOICES GO (S-68). Since 2026-09-03 the report also prints breadth twice — what the
+composer CAST for the route, and what actually drew — beside a census placing every cast voice that
+never drew at the stage that dropped it, using the host's own give-up names (`no-instrument`,
+`score-refused`, `score-shed`, `plan-lightened`, `resources-declined`, `joy-floor`) plus the one case
+no event can name, a voice standing in the stack that no frame ever drew. The row that asked for this
+was measuring a third of the cast never reaching the eye — 8.58 planned against 5.92 live per route
+(`~/tlvphotos/docs/evidence/2026-09-03-phase10-rerun/README.md` finding 4). On this drive that census
+reads ZERO at every stage: every voice the composer cast drew a frame, and the whole distance between
+the two numbers is that the older reading asked `stack[].live` AFTER the landing, which by
+`report`'s own contract is the last frame's `cueLiveAt` and so answers "was this voice still playing
+when the crossing docked", not "did it play". `stack[].played` is the field that answers the second
+question; see the note in `voice_census` for why the flight trace cannot stand in for it.
+
 Run: python3 tests/dump_route_wire_fence.py
 Writes tests/route_wire_fence.txt beside its stdout. Exits 1 on any wire-fence failure (a `recovered`
 crossing, a camera that never rested, a handoff outside tolerance, a dock the renderer never took
@@ -436,6 +449,81 @@ def emergency_cast(crossing):
     return False
 
 
+# ------------------------------------------------------------ WHERE THE PLANNED VOICES GO (S-68)
+# The наряд's own question, answered as a class rather than a list of pairs: of the instruments the
+# composer CAST for a crossing, which reached the visitor's eye, and for the ones that did not, WHICH
+# STAGE dropped them. Every name below is a stage this host already publishes for itself — the event
+# names `pass-layer.js` logs at each give-up (`no-instrument`, `score-shed`, `score-refused`,
+# `plan-lightened`, `resources-declined`, `joy-floor`) plus the two the stack itself can answer
+# without any event (a voice standing in the stack that no observed frame ever drew, and a voice that
+# DID draw but whose window had closed before the passage landed). Nothing here is a threshold and
+# nothing is invented: each row is a count of crossings×instruments falling in one stage.
+DROP_STAGES = ("no-instrument", "score-refused", "score-shed", "plan-lightened",
+               "resources-declined", "joy-floor", "in-stack-never-drew")
+
+
+def voice_census(crossing, events):
+    """One crossing's planned voices, each placed at the stage that dropped it.
+
+    `events` is the slice of the host's own event log this crossing appended — the whole log is a
+    128-row ring shared by the visit, so the caller diffs it rather than this reading the log twice.
+
+    THE TWO PLAYED READINGS ARE BOTH TAKEN, side by side, because they are not the same question.
+    `terminalLive` is what `layerReport.stack[].live` says once the passage has landed — and that
+    field is, by `pass-layer.js:3166`'s own assignment, the LAST FRAME's `cueLiveAt(cue, seconds)`,
+    i.e. whether the voice's window was still open at the instant the crossing docked. `everLive` is
+    whether any observed frame of the flight had it drawing. A voice whose score window closes before
+    the landing reads live under the second and dead under the first, having actually played."""
+    passage = crossing.get("passage") or {}
+    cues = passage.get("cues") or []
+    planned = {c.get("instrument") for c in cues if c.get("instrument")}
+    terminal = crossing.get("layerReport") or {}
+    terminal_stack = terminal.get("stack") or []
+    terminal_live = {r.get("instrument") for r in terminal_stack if r.get("live") and r.get("instrument")}
+    # THE PASSAGE-LONG READING COMES OFF THE HOST, NOT OFF THIS FILE'S SAMPLING. Two reasons, both
+    # measured on this drive rather than supposed. The flight is polled every FLIGHT_TICK_SLEEP
+    # seconds, so a voice whose window is shorter than one tick plays in full between two samples and
+    # appears nowhere in the trace — a reading built from the trace is a lower bound with the
+    # sampler's own rate baked into it. And the trace is not even a lower bound of THIS crossing:
+    # `report()` serves `lastRun.stack` whenever no transaction is running (`pass-layer.js:4205`), so
+    # every tick taken before this crossing's own command is armed carries the PREVIOUS crossing's
+    # frozen voices — a first draft of this census unioned those in and credited crossing 3 with two
+    # instruments crossing 2 had played. `pass-layer.js` publishes `stack[].played` for exactly this
+    # question, written by the same `cueLiveAt` predicate `live` is written by and never cleared, so
+    # both readings below come off ONE stack, this crossing's own, and differ only in whether they
+    # ask about the whole passage or about its last frame.
+    ever_live = set(terminal_live) | {r.get("instrument") for r in terminal_stack
+                                      if r.get("played") and r.get("instrument")}
+    in_stack = {r.get("instrument") for r in terminal_stack if r.get("instrument")}
+    names = {e.get("name") for e in events}
+    # priority order: the earliest stage that could have taken the voice out is the one credited,
+    # which is the same "top-priority category per crossing" discipline the Phase 10 tally uses.
+    if "no-instrument" in names:
+        why = "no-instrument"
+    elif "score-refused" in names:
+        why = "score-refused"
+    elif "score-shed" in names:
+        why = "score-shed"
+    elif "plan-lightened" in names:
+        why = "plan-lightened"
+    elif "resources-declined" in names:
+        why = "resources-declined"
+    elif "joy-floor" in names:
+        why = "joy-floor"
+    else:
+        why = None
+    drops = {}
+    for name in sorted(planned - ever_live):
+        if name in in_stack:
+            drops[name] = "in-stack-never-drew"
+        else:
+            drops[name] = why or "in-stack-never-drew"
+    return {"planned": sorted(planned), "everLive": sorted(ever_live),
+            "terminalLive": sorted(terminal_live),
+            "windowClosedBeforeLanding": sorted(ever_live - terminal_live),
+            "drops": drops}
+
+
 def crossing_failures(label, crossing):
     """The acceptance gate — `drive_route_wire.py`'s own bottom section, copied (item 5: a
     `recovered` outcome names the charter law it broke, never a bare timeout)."""
@@ -588,6 +676,7 @@ def main():
                     break
                 br.sleep(0.2)
 
+            events_seen = 0
             for i, plan in enumerate(slot_plan):
                 label = "crossing %d (%s→%s)" % (i + 1, plan["from"], plan["to"])
                 say("driving %s (searched for %s)" % (label, plan["searchedFor"] or "—"))
@@ -595,6 +684,11 @@ def main():
                 cast = sorted({c.get("instrument") for c in (result.get("passage") or {}).get("cues", [])
                                if c.get("instrument")})
                 reached.update(cast)
+                # the host's own log is one 128-row ring for the whole visit; this crossing's own
+                # rows are the ones appended since the previous read (pass-layer.js:77-82).
+                all_events = (result.get("layerReport") or {}).get("events") or []
+                fresh = all_events[events_seen:] if len(all_events) >= events_seen else all_events
+                events_seen = len(all_events)
                 crossing_fail = crossing_failures(label, result)
                 failures_all.extend(crossing_fail)
                 outcomes.append({
@@ -603,6 +697,7 @@ def main():
                     "clean": not crossing_fail,
                     "failures": crossing_fail,
                     "emergency": emergency_cast(result),
+                    "census": voice_census(result, fresh),
                 })
 
     # ------------------------------------------------------------ the report, pass_arrival_walk.txt's
@@ -624,6 +719,16 @@ def main():
         lines.append("         actually cast: %s" % (", ".join(row["cast"]) if row["cast"] else "(no instrument)"))
         lines.append("         docked: %s   renderer owned it: %s   wire-clean: %s"
                      % (row["docked"], row["rendererObserved"], row["clean"]))
+        c = row["census"]
+        lines.append("         played (any frame): %s"
+                     % (", ".join(c["everLive"]) if c["everLive"] else "(none)"))
+        lines.append("         live at the landing: %s"
+                     % (", ".join(c["terminalLive"]) if c["terminalLive"] else "(none)"))
+        if c["windowClosedBeforeLanding"]:
+            lines.append("         played, window closed before the landing: %s"
+                         % ", ".join(c["windowClosedBeforeLanding"]))
+        for name, stage in sorted(c["drops"].items()):
+            lines.append("         cast but never drawn: %s — %s" % (name, stage))
         for f in row["failures"]:
             lines.append("         RED — " + f)
         lines.append("")
@@ -636,6 +741,54 @@ def main():
     lines.append("emergency-fallback share (host's own last-resort instrument actually played): "
                  "%d of %d (%.1f%%)" % (emergency_n, len(outcomes),
                                         100.0 * emergency_n / len(outcomes) if outcomes else 0.0))
+    # ------------------------------------------------------------ BREADTH, PLANNED AND PLAYED, AND
+    # WHERE THE DIFFERENCE GOES (наряд S-68). Both readings on one line, then the stage-by-stage
+    # census of every planned voice that never reached the eye. The route reading is the whole hand's
+    # own distinct-name count — the same "distinct instrument names across a whole route" method
+    # Phase 5 introduced and every phase since reproduced.
+    route_planned, route_ever, route_terminal = set(), set(), set()
+    stage_tally = {k: 0 for k in DROP_STAGES}
+    window_closed = 0
+    n_over = 0                      # crossings where the passage-long reading beats the landing one
+    sum_planned = sum_ever = sum_terminal = 0
+    for row in outcomes:
+        c = row["census"]
+        route_planned |= set(c["planned"])
+        route_ever |= set(c["everLive"])
+        route_terminal |= set(c["terminalLive"])
+        sum_planned += len(c["planned"])
+        sum_ever += len(c["everLive"])
+        sum_terminal += len(c["terminalLive"])
+        window_closed += len(c["windowClosedBeforeLanding"])
+        if len(c["everLive"]) > len(c["terminalLive"]):
+            n_over += 1
+        for stage in c["drops"].values():
+            stage_tally[stage] = stage_tally.get(stage, 0) + 1
+    n = len(outcomes) or 1
+    # THE TWO READINGS SIDE BY SIDE, FROM THE ONE DRIVE (наряд S-68: the run prints both breadths
+    # itself). The per-crossing means are what a hand-to-hand comparison can be made on — the route
+    # union below depends on which six edges this particular visit dealt, so it moves between runs
+    # for reasons that have nothing to do with the engine.
+    lines.append("breadth per crossing (mean over %d) — planned %.2f; played %.2f (any frame of the "
+                 "flight, `stack[].played`); played %.2f (still live at the landing, "
+                 "`stack[].live`, the reading finding 4 took)"
+                 % (len(outcomes), sum_planned / float(n), sum_ever / float(n),
+                    sum_terminal / float(n)))
+    lines.append("breadth over the whole dealt route (distinct names) — planned %d; played %d; "
+                 "live at the landing %d"
+                 % (len(route_planned), len(route_ever), len(route_terminal)))
+    lines.append("crossings where a voice played and its window had closed before the landing — the "
+                 "whole distance between the two readings: %d of %d (%d voice(s))"
+                 % (n_over, len(outcomes), window_closed))
+    lines.append("planned voices that never drew a frame, by the stage that dropped them "
+                 "(%d crossings):" % len(outcomes))
+    total_drops = sum(stage_tally.values())
+    for stage in DROP_STAGES:
+        lines.append("  %-22s %d" % (stage, stage_tally.get(stage, 0)))
+    for stage in sorted(set(stage_tally) - set(DROP_STAGES)):
+        lines.append("  %-22s %d" % (stage, stage_tally[stage]))
+    lines.append("  %-22s %d" % ("TOTAL", total_drops))
+    lines.append("")
     lines.append("instruments reached: %d of %d" % (len(reached), len(INSTRUMENTS)))
     for name in INSTRUMENTS:
         if name in reached:

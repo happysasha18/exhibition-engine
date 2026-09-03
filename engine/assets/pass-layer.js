@@ -2212,7 +2212,7 @@
     if (!cues.length) {
       if (!probe) return null;
       return [{ cue: null, inst: probe, said: {}, driverState: {}, lastHandles: null,
-                applied: null, live: true, stack: 0, line: 0 }];
+                applied: null, live: true, played: true, stack: 0, line: 0 }];
     }
     var rows = stackOrder(cues), out = [];
     for (var i = 0; i < rows.length; i++) {
@@ -2220,7 +2220,9 @@
       if (!instruments[id]) { logEvt("no-instrument", cmd.gen, String(id)); continue; }
       out.push({ cue: rows[i].cue, inst: instruments[id], said: {}, driverState: {},
                  lastHandles: null, applied: null,
-                 live: false, stack: rows[i].stack, line: rows[i].line });
+                 // `live` is an instant and `played` is the whole passage — see `runFrame`'s own
+                 // note where both are written, and `report`'s where both are published.
+                 live: false, played: false, stack: rows[i].stack, line: rows[i].line });
     }
     if (!out.length) return null;
     return out;
@@ -2552,7 +2554,7 @@
                 hang: hangRow(rec),
                 stack: (rec.voices || []).map(function (v) {
                   return { id: v.cue ? v.cue.id : null, instrument: v.inst.name, stack: v.stack,
-                           line: v.line, live: !!v.live,
+                           line: v.line, live: !!v.live, played: !!v.played,
                            window: v.cue ? (v.cue.window || null) : null,
                            levels: v.cue ? (v.cue.levels || null) : null,
                            handles: v.lastHandles || null,
@@ -3163,7 +3165,18 @@
     for (var i = 0; i < rec.voices.length; i++) {
       var v = rec.voices[i];
       var on = cueLiveAt(v.cue, judge);
+      // WHAT PLAYED IS NOT WHAT IS PLAYING. `live` is this instant's answer and nothing more — the
+      // voice's own window, judged against the passage's own second — and it is the field that gets
+      // frozen into `lastRun` when the crossing lands. A voice whose score window closes before the
+      // landing is therefore reported dead by a reader who asks after the landing, having drawn for
+      // as long as its own window said. Every breadth reading taken off this host since Phase 5 read
+      // it that way and counted such a voice as silent, which is how "the composer plans about eight
+      // and about six play" was measured; on the drive that found it, every planned voice actually
+      // drew. `played` is the passage-long fact the same predicate answers, written once and never
+      // cleared, so a reader asking WHETHER A VOICE REACHED THE EYE has a field that answers that
+      // question rather than the neighbouring one.
       v.live = on;
+      if (on) v.played = true;
       if (!on) {
         // Held at its own door: the entry door before its window opens, the exit door after it
         // closes. Nothing is drawn, and the handles a reader sees are the door's own numbers.
@@ -4197,7 +4210,7 @@
       // run-time truth, readable against each other on one row.
       stack: cur ? cur.voices.map(function (v) {
         return { id: v.cue ? v.cue.id : null, instrument: v.inst.name, stack: v.stack,
-                 line: v.line, live: !!v.live,
+                 line: v.line, live: !!v.live, played: !!v.played,
                  window: v.cue ? (v.cue.window || null) : null,
                  levels: v.cue ? (v.cue.levels || null) : null,
                  handles: v.lastHandles || null,
