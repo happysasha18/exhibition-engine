@@ -114,6 +114,9 @@ BROWSER_ROWS = [
     "EX-MEMORY a storage that will not open says so, and the visitor still lands",
     "EX-MEMORY the store stays bounded: the youngest records stand and the rest go",
     "EX-MEMORY ?reset forgets the edges walked, the way it forgets everything else",
+    "EX-MEMORY an INTERRUPTED passage leaves the same record a passage that ran to its own cadence "
+    "leaves — the edge counts as walked and the letter's cooldown is spent — while one cut before "
+    "any instrument was cast leaves neither",
 ]
 
 
@@ -223,6 +226,39 @@ STUB = """
   });
   return {no: false};
 """
+
+# THE SAME STUB, WITH THE HOST'S OWN EXIT WIRED (2026-09-03, plan row S-78). `STUB` above leaves
+# `cancel` empty, which is enough for every row that docks by hand; the interrupt row cannot, because
+# what it measures is what a CUT leaves behind, and a cut reaches the walk only through the host.
+#
+# WHAT THIS STANDS IN FOR, EXACTLY. `interrupt()` (01a-pass.js) calls the host's `cancel` and then
+# ends the walk's own bookkeeping. The shipped host answers that call by exhaling to the door it was
+# travelling to and then running `finish` — its single exit from `running` — which does the handoff
+# and then the dock, in that order (pass-layer.js). That the exhale lands, and lands exactly once
+# whether the passage played out or was cut, is `tests/test_pass_phone.py:63,80`'s own subject and is
+# not re-proven here. What is proven here is the half no row reads: given that landing, what the
+# walk WROTE. So the stub does the two calls `finish` does and nothing else — no cadence, no
+# envelopes, no decision of its own. `instrument` is the one thing that varies between the row's two
+# legs, because Requirement 28 criterion 19 says that is what decides both writes.
+STUB_CUT = """
+  if (!window.__exPassLayer) return {no: true};
+  window.__exPassLayer({
+    offer: function () { return true; },
+    report: function () { return {active: false, instrument: %s,
+                                  census: {buffer: '800x600', dpr: 1},
+                                  stack: %s}; },
+    cancel: function () {
+      var cmd = window.__cmd;
+      if (!cmd) return;
+      try { window.__exPass.adapter.handoff(cmd); } catch (e) {}
+      window.__exPass.adapter.dock(cmd);
+    },
+    resize: function () {}
+  });
+  return {no: false};
+"""
+STUB_CUT_DREW = STUB_CUT % ("'stub'", "[{id: 'pivot', instrument: 'stub', handles: {}}]")
+STUB_CUT_DREW_NOT = STUB_CUT % ("null", "[]")
 
 DECLARE = """
   var A = document.querySelector('.exh-frame[data-id="%s"]');
@@ -922,6 +958,104 @@ else:
                                   before_reset["has"] and not gone["has"],
                                   f"the browser held records before the wipe: "
                                   f"{before_reset['has']}; it holds them after: {gone['has']}")
+
+                            # 14 · what an INTERRUPTED passage leaves behind -----------------
+                            # SPEC Requirement 28, case "What an interrupted crossing leaves
+                            # behind" (criteria 17–19, written 2026-09-03 by plan row S-75), and
+                            # this is plan row S-78, the row those criteria's own GAP note names.
+                            #
+                            # The criteria say three things and this row reads all three back off
+                            # the walk rather than deriving them from how the engine is built:
+                            #   17 · both writes happen at the landing and nowhere earlier;
+                            #   18 · a cut passage leaves the SAME record a whole one leaves —
+                            #        the edge counts as walked, the letter's cooldown is spent;
+                            #   19 · what decides both is whether an instrument actually DREW,
+                            #        never how long the passage lasted or how it ended.
+                            #
+                            # The two writes are read where they are read in earnest, not off a
+                            # private accessor. The edge record is `memory.all()`, the same store
+                            # rows 0 and 1 above measure. The cooldown is read off the NEXT
+                            # request's `walkMemory` — the very list `passComposeFor`'s `coolOf`
+                            # weighs a candidate letter by — so «the cooldown was spent» is read
+                            # as the composer itself would read it, and not as a field named
+                            # cooldown sitting somewhere.
+                            #
+                            # THE FIRST LEG is a passage cut in flight by a product surface. The
+                            # second is the older half of criterion 19: a passage whose host cast
+                            # no instrument played the walk's own glide and was no crossing, so
+                            # the same cut must leave the edge unwalked and the letter uncooled.
+                            # It is that half the gate on `row.applied.instrument` holds
+                            # (01a-pass.js, `passEdgeRemember`), and pulling the gate reddens it.
+                            legs = {}
+                            for leg, stub in (("drew", STUB_CUT_DREW),
+                                              ("drew-not", STUB_CUT_DREW_NOT)):
+                                enter(br, base, "diagnostics:on,familySeed:4242")
+                                wait_ready(br)
+                                pair5, _ = shown_pair(br, recorded)
+                                if len(pair5) < 2 or js(br, stub).get("no"):
+                                    legs[leg] = None
+                                    continue
+                                C, D = pair5[0], pair5[1]
+                                edge5 = "__".join(sorted([C, D]))
+                                cut = declare(br, C, D, "cut-" + leg)
+                                # THE CUT ITSELF, and nothing docked by hand: the row must reach
+                                # the landing the way a visitor swiping away reaches it.
+                                js(br, "window.__exPass.adapter.interrupt('swiped-away');"
+                                       "return {ok: true};")
+                                br.sleep(0.6)
+                                after = js(br, """
+                                  var r = window.__exPass.report();
+                                  var played = (r.route && r.route.played) || [];
+                                  var last = played.length ? played[played.length - 1] : null;
+                                  return {edges: Object.keys(
+                                            window.__exPass.memory.all() || {}),
+                                          docks: r.events.filter(function (e) {
+                                            return e.name === 'dock'; }).length,
+                                          played: played.length,
+                                          letter: last ? (last.instrument || null) : null,
+                                          genre: last ? (last.genre || null) : null};
+                                """)
+                                # THE COOLDOWN, READ THE WAY THE COMPOSER READS IT: the next
+                                # request the walk builds carries `walkMemory`, and a letter
+                                # standing in it is a letter this walk has already spent.
+                                nxt = declare(br, D, C, "after-" + leg)
+                                legs[leg] = dict(after, edge=edge5, scored=cut["hasScore"],
+                                                 walkMemory=(nxt["request"] or {})
+                                                 .get("walkMemory") or [])
+                            drew, blank = legs.get("drew"), legs.get("drew-not")
+                            if not drew or not blank:
+                                skip(BROWSER_ROWS[14],
+                                     "this hang showed fewer than two recorded works, or asked "
+                                     "for no picture layer")
+                            else:
+                                cooled = (drew["letter"] in drew["walkMemory"]
+                                          or drew["genre"] in drew["walkMemory"])
+                                check(BROWSER_ROWS[14],
+                                      # the passage that drew and was cut: both writes stand
+                                      drew["scored"] and drew["edge"] in drew["edges"]
+                                      and drew["played"] == 1 and cooled
+                                      # and the one that never cast an instrument: neither does
+                                      and blank["scored"] and blank["edge"] not in blank["edges"]
+                                      and blank["played"] == 0
+                                      and not blank["walkMemory"],
+                                      "cut mid-flight after an instrument drew: the walk docked "
+                                      "%d time(s), the edge «%s» %s the store, the letter «%s» "
+                                      "(genre «%s») %s the cooldown list the next request carries "
+                                      "(%s). Cut before any instrument was cast: docked %d "
+                                      "time(s), edge %s the store, %d step(s) on the route, "
+                                      "cooldown list %s."
+                                      % (drew["docks"], drew["edge"],
+                                         "stands in" if drew["edge"] in drew["edges"]
+                                         else "is ABSENT from",
+                                         drew["letter"], drew["genre"],
+                                         "stands in" if cooled else "is ABSENT from",
+                                         json.dumps(drew["walkMemory"], ensure_ascii=False)[:160],
+                                         blank["docks"],
+                                         "is absent from" if blank["edge"] not in blank["edges"]
+                                         else "STANDS IN",
+                                         blank["played"],
+                                         json.dumps(blank["walkMemory"],
+                                                    ensure_ascii=False)[:160]))
 
 import shutil  # noqa: E402
 shutil.rmtree(TMP, ignore_errors=True)

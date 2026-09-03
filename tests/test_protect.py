@@ -101,14 +101,47 @@ check("EX-PROTECT enjoy string in locale cache (all langs) + worker schema inclu
       not missing_enjoy and enjoy_in_schema,
       f"missing_enjoy={missing_enjoy} schema_has_enjoy={enjoy_in_schema}")
 
-# 2 · CSS: img.work carries the soft-deter properties
+# 2 · CSS: img.work carries the soft-deter properties, and the axis reading EX-HANG owes
+# EVERY READING HERE IS TAKEN INSIDE img.work's OWN BLOCK (2026-09-03, plan row S-79). Until today
+# each of these was a substring search over the whole 800-line file, so `touch-action:pan-x pan-y`
+# read green off the BODY rule at line 19 no matter what img.work carried — the row named one
+# selector and asserted another. Slicing the block first is what makes the row bite on img.work.
 css_src = (ROOT / "engine" / "assets" / "exhibition.css").read_text(encoding="utf-8")
-css_ok = ("user-select:none" in css_src
-          and "-webkit-user-drag:none" in css_src
-          and "-webkit-touch-callout:none" in css_src
-          and "touch-action:pan-x pan-y" in css_src)
-check("EX-PROTECT CSS: img.work carries user-select/user-drag/touch-callout:none + touch-action:pan-x pan-y",
-      css_ok, f"css_src snippet not found (see exhibition.css img.work block)")
+
+
+def css_block(selector):
+    """Every rule this selector opens, each from its selector to the `}` that closes it, joined.
+    All of them and not the first: `.exh-frame img.work` opens two — the deter block and the
+    reduced-motion override — and a reading that takes whichever comes first answers about the
+    wrong one."""
+    out, at = [], css_src.find(selector + "{")
+    while at >= 0:
+        end = css_src.find("}", at)
+        out.append(css_src[at:end + 1] if end > 0 else css_src[at:])
+        at = css_src.find(selector + "{", at + 1)
+    return "\n".join(out)
+
+
+work_block = css_block(".exh-frame img.work")
+body_block = css_block("body")
+css_ok = ("user-select:none" in work_block
+          and "-webkit-user-drag:none" in work_block
+          and "-webkit-touch-callout:none" in work_block
+          # THE AXIS READING (SPEC Requirement 38, "Where the axis law reaches" — EX-HANG bound).
+          # `pan-y` and not `pan-x pan-y`: the page keeps the vertical (travel between works) and
+          # the work claims the horizontal (travel within one work). It is still narrower than
+          # `pan-x pan-y`, so INV-49's pinch and double-tap refusal stands on the work unchanged.
+          and "touch-action:pan-y" in work_block
+          and "touch-action:pan-x pan-y" not in work_block)
+check("EX-PROTECT CSS: img.work carries user-select/user-drag/touch-callout:none, and its axis "
+      "reading is touch-action:pan-y — the page's vertical kept, the work's horizontal claimed",
+      css_ok, f"img.work's own block reads: {' '.join(work_block.split())[:400]}")
+
+# 2b · the body class rule keeps BOTH axes, and that is EX-SERIES's exemption rather than an oversight
+check("EX-PROTECT CSS: the body class rule still yields both axes, so the series side room keeps "
+      "the sideways lane its dated exemption names (EX-SERIES, INV-88)",
+      "touch-action:pan-x pan-y" in body_block,
+      f"body's own block reads: {' '.join(body_block.split())[:400]}")
 
 # 3 · JS: enjoyLine, onGrab, contextmenu/dragstart/gesturestart/gesturechange all present
 js_src = (ROOT / "engine" / "assets" / "exhibition.js").read_text(encoding="utf-8")
@@ -144,7 +177,7 @@ check("EX-PROTECT viewport: the meta pins scale to 1 (maximum-scale=1 + user-sca
 #   - the volume slider + share button keep native touch (not hijacked by the swipe)
 #   - a pinch that drops back to one finger re-takes the paginated walk (no native fly-through)
 css_src = (ROOT / "engine" / "assets" / "exhibition.css").read_text(encoding="utf-8")
-audit_ok = ("touch-action:pan-xpan-y" in css_src.replace(" ", "")   # body-level class rule kills double-tap too
+audit_ok = ("touch-action:pan-xpan-y" in body_block.replace(" ", "")   # the body class rule kills double-tap too
             and 'if (wheelMode === "zoom") { e.preventDefault(); pinchWheel(e); return; }' in js_src
             and "#ex-sound, .ex-share" in js_src
             and (lambda s: s is not None and "touchcancel" in s)(zoom_layer_slice(js_src))
@@ -278,6 +311,9 @@ BROWSER_ROWS = [
     "long edge is exactly 800 px — the real file the browser wrote, measured on disk",
     "EX-PROTECT-RES (INV-56) a work already shown smaller than the cap is saved at its own size — the "
     "cap shrinks a grab, it never enlarges one",
+    "EX-HANG the axis law on the hang: a sideways drag on the work reaches THE WORK and is never "
+    "taken for a pan of the browser's own, while an up-and-down drag travels to THE PAGE — and both "
+    "still meet the pinch refusal",
 ]
 
 # ---- EX-PROTECT-RES (INV-56): what the visitor actually carries home -----------------------------
@@ -353,6 +389,68 @@ GIFT = ("(()=>{const g=document.getElementById('ex-gift-card');"
         "return g&&!g.hidden?(g.querySelector('.gift-line')||{}).textContent||'':null;})()")
 AT_DOOR = "document.body.classList.contains('ex-door')"
 FRAME_IDS = "Array.from(document.querySelectorAll('.exh-frame')).map(f=>f.dataset.id)"
+
+
+# ---- EX-HANG's axis reading, driven by a real finger ---------------------------------------------
+# The phone frame the hang's axis law is read on: one work fills the frame, which is the shape
+# Requirement 38's case "Where the axis law reaches" says the law binds.
+VW_TOUCH, VH_TOUCH = 390, 844
+
+# The counter is hung at the WINDOW in capture, the same place and the same passive way the walk's
+# own normalised hand signal listens, so what it counts is what the signal would have received.
+COUNT_POINTERS = """
+  window.__axis = {moves: 0, cancel: 0, up: 0};
+  ['pointermove', 'pointercancel', 'pointerup'].forEach(function (t) {
+    addEventListener(t, function () {
+      window.__axis[t === 'pointermove' ? 'moves' : t === 'pointercancel' ? 'cancel' : 'up'] += 1;
+    }, {capture: true, passive: true});
+  });
+  return true;
+"""
+
+
+def work_centre(br):
+    box = br.evaluate("(()=>{const w=document.querySelector('.exh-frame img.work');if(!w)return '';"
+                      "const r=w.getBoundingClientRect();"
+                      "return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2});})()")
+    return json.loads(box) if box else None
+
+
+def drag_on_work(br, dx, dy, steps=8):
+    """One finger, laid on the photograph and drawn `steps` times by (dx, dy). Hands back how many
+    pointer moves the page received and whether the browser took the gesture away mid-drag."""
+    br.evaluate("(function(){%s})()" % COUNT_POINTERS.replace("return true;", ""))
+    at = work_centre(br)
+    if not at:
+        return {"moves": 0, "cancel": 0, "up": 0}
+    x, y = at["x"], at["y"]
+    br._cmd("Input.dispatchTouchEvent", type="touchStart", touchPoints=[{"x": x, "y": y}])
+    for i in range(1, steps + 1):
+        br._cmd("Input.dispatchTouchEvent", type="touchMove",
+                touchPoints=[{"x": x + dx * i, "y": y + dy * i}])
+        br.sleep(0.03)
+    br._cmd("Input.dispatchTouchEvent", type="touchEnd", touchPoints=[])
+    br.sleep(0.4)
+    return json.loads(br.evaluate("JSON.stringify(window.__axis)"))
+
+
+def pinch_scale(br):
+    """Two fingers spread apart on the photograph, and the viewport's own scale afterwards. The
+    refusal INV-49 was written for is this number staying at 1."""
+    at = work_centre(br)
+    if not at:
+        return 1.0
+    x, y = at["x"], at["y"]
+    br._cmd("Input.dispatchTouchEvent", type="touchStart",
+            touchPoints=[{"x": x - 30, "y": y, "id": 1}, {"x": x + 30, "y": y, "id": 2}])
+    for i in range(1, 9):
+        br._cmd("Input.dispatchTouchEvent", type="touchMove",
+                touchPoints=[{"x": x - 30 - i * 12, "y": y, "id": 1},
+                             {"x": x + 30 + i * 12, "y": y, "id": 2}])
+        br.sleep(0.03)
+    br._cmd("Input.dispatchTouchEvent", type="touchEnd", touchPoints=[])
+    br.sleep(0.5)
+    return float(br.evaluate("String((window.visualViewport && window.visualViewport.scale) || 1)"))
 
 
 def enter(br, base):
@@ -444,6 +542,52 @@ else:
             check(BROWSER_ROWS[6],
                   dims == (320, 200),
                   detail)
+
+        # 7 · EX-HANG's axis reading, driven by real touch (2026-09-03, plan row S-79) ------------
+        #
+        # WHAT THIS MEASURES, AND WHY IT IS NOT A STYLE READ. `getComputedStyle` would answer
+        # `pan-y` off the declaration the CSS row above already holds, and prove nothing about what
+        # the browser then DOES with a finger. What the law is about is who receives a sideways drag
+        # on a photograph, and the browser answers that by taking the gesture or by leaving it:
+        #
+        #   · it takes it — the drag matches an axis the element yielded — and two moves in it fires
+        #     `pointercancel` and delivers nothing further. The walk's normalised hand signal
+        #     (`passInteraction`, exhibition.js) reads `pointermove`, so a cancelled pointer is a
+        #     making axis that reaches no instrument. This is what `pan-x pan-y` did.
+        #   · it leaves it — the drag crosses no axis the element yielded — and every `pointermove`
+        #     of the run arrives, closed by `pointerup`. This is the horizontal the work now owns.
+        #
+        # The three legs are one visit each, because a drag changes where the page stands.
+        with Browser(width=VW_TOUCH, height=VH_TOUCH) as br:
+            enter(br, base)
+            br.touch(True, 2)
+            side = drag_on_work(br, dx=-18, dy=0)
+            enter(br, base)
+            br.touch(True, 2)
+            before_y = float(br.evaluate("String(window.scrollY)"))
+            down = drag_on_work(br, dx=0, dy=-18)
+            after_y = float(br.evaluate("String(window.scrollY)"))
+            enter(br, base)
+            br.touch(True, 2)
+            scale = pinch_scale(br)
+            check(BROWSER_ROWS[7],
+                  # the work's horizontal: every move of the run lands on the work, uncancelled
+                  side["moves"] >= 5 and side["cancel"] == 0
+                  # the page's vertical: the drag travels the walk between works — the door axis,
+                  # exactly as before. What carries it is the walk's own paginated swipe rather
+                  # than a browser pan, which is why the read is the travel and not a cancelled
+                  # pointer: a work's height is what one such drag is worth.
+                  and after_y > before_y + VH_TOUCH * 0.5
+                  # and the pinch the whole declaration was written for is still refused
+                  and abs(scale - 1.0) < 0.01,
+                  "sideways on the work: %d pointermove(s), %d pointercancel(s) — the work %s the "
+                  "making axis. Up-and-down: the page travelled %.0f px of a %d px work (%d "
+                  "pointercancel(s)) — the page %s the door axis. A two-finger spread left the "
+                  "viewport at scale %.3f."
+                  % (side["moves"], side["cancel"],
+                     "owns" if side["cancel"] == 0 else "never receives",
+                     after_y - before_y, VH_TOUCH, down["cancel"],
+                     "owns" if after_y > before_y + VH_TOUCH * 0.5 else "does not own", scale))
 
 shutil.rmtree(TMP, ignore_errors=True)
 

@@ -206,8 +206,18 @@ body.ex-cross-cap .exh-capzone{ opacity:0 !important; }
   /* EX-PROTECT (INV-49): the soft deter — no text-select drag, no ghost drag-image,
      no iOS long-press save sheet; a casual grab meets the gracious line, not the raw save */
   user-select:none; -webkit-user-select:none; -webkit-user-drag:none; -webkit-touch-callout:none;
-  /* no pinch-zoom to magnify/lift the work — pan (scroll) still passes through */
-  touch-action:pan-x pan-y;
+  /* EX-HANG's axis reading (SPEC Requirement 38, case "Where the axis law reaches" — bound).
+     The PAGE owns the vertical: `pan-y` leaves the walk's travel between works to the browser's own
+     pan, exactly as before. The WORK owns the horizontal: dropping `pan-x` is what claims it. That
+     is not a style preference — with `pan-x` present the browser takes a sideways drag on the
+     photograph for a pan of its own and fires `pointercancel` two moves in, so the walk's normalised
+     hand signal (`passInteraction`, exhibition.js) dies mid-drag and the making axis reaches no
+     instrument. Without it the same drag delivers its whole run of `pointermove`s to the work.
+     EX-PROTECT (INV-49) is untouched: `pan-y` is narrower than `pan-x pan-y`, so pinch-zoom and
+     double-tap zoom stay refused here, and the body class rule that refuses them on EVERY face
+     (line 19) keeps its own `pan-x pan-y` — the series side room walks its lane sideways
+     (EX-SERIES/INV-88, exempt 2026-09-03) and must keep the browser's horizontal pan. */
+  touch-action:pan-y;
   transition:opacity var(--d-reveal) var(--ease); }
 .exh-frame.seen img.work{ opacity:1; }
 /* N7-A11Y (INV-102, B3): the walk work stays keyboard-focusable.  The current work is already
