@@ -9,6 +9,14 @@ The product of this sweep is not this document. It is the state the three files 
 named constant carrying its own verdict where it stands.** `tests/test_pass_static.py` reds on every
 one that does not, so the class stays closed rather than closed once.
 
+**The road grew on 2026-09-03 and the three files above are now a third of it.** The row read those
+three while all 27 `engine/assets/pass-inst-*.js` stood outside it, so a bare threshold inside an
+instrument — `SEAM_FLOOR = 0.20` in boxfold — was invisible to the very row cited against it. The
+population is now every `engine/assets/pass-*.js` plus `engine/client/01a-pass.js`. The 236 constants
+that stood unread in the instruments that day are named one by one in `tests/static_unread.json`,
+owned by one plan row; that list may only shrink, and a number arriving after that day is not on it
+and reds. This document's tables cover the three original files and do not yet cover the fleet.
+
 ---
 
 ## Why a verdict and not a repair list
@@ -37,16 +45,25 @@ the four, so nobody has to re-litigate it.
 chosen, by whom, and that it stands on nothing. `DOLLY_CAP`'s own comment already does this; the rest
 do not.
 
-An UNJUSTIFIED mark is not a defect to be fixed before the file may ship. It is the truth said out
-loud, which is what stops the number reading as measured. Several of these numbers should go on
-standing exactly as they are — with a sentence.
+**What UNJUSTIFIED bought until 2026-09-03, and what it buys now.** This document used to say the
+mark was not a defect to be fixed before the file may ship — the truth said out loud, and several of
+these numbers should go on standing exactly as they are. That is half right and it was read as the
+whole. Shelf 21's own test refuses a value that could have existed before the two pictures were
+known; a number nobody measured and nothing derives is precisely that value, so the sentence
+admitting it is refused cannot be what admits it. Twenty of them stood on that pardon.
+
+So the word no longer stands alone. It stands where the sentence beside it also names the plan row
+that owns the number, and the derivation or the removal lands in that row. The truth is still said
+out loud — it is now said somewhere a person reads, with a date and an owner, instead of only in a
+comment nobody re-opens. `tests/test_pass_static.py` reds on an UNJUSTIFIED naming no row.
 
 ---
 
 ## The convention the row checks
 
-One of the three words, in capitals, in the comment block standing immediately above the declaration.
-The row asks nothing more: no format, no tag, no registry, no new file. A word in a sentence.
+One of the three words, in capitals, in the comment block standing immediately above the declaration,
+and a plan row id beside UNJUSTIFIED. The row asks nothing more: no format, no tag. A word in a
+sentence, and for the banned case a name to answer for it.
 
 ```js
     // UNJUSTIFIED — how much the day's weather may narrow a ground's own reading. This seat chose

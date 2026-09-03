@@ -1,0 +1,297 @@
+{
+  "what": "Every named constant on the pass road that stands today with no verdict beside it. Being listed here is not a pardon: it is the record of what was unread on the day the row's reach grew from three files to the whole road, so a number arriving after that day cannot arrive unannounced. Nothing may be added to this list.",
+  "owner": "S-71 in ~/tlvphotos/PLAN.md",
+  "shrinks": "A name leaves this list the moment its constant carries DERIVED, CAPABILITY or an UNJUSTIFIED that names the plan row owning it. tests/test_pass_static.py reds on a name that stands here and no longer needs to.",
+  "files": {
+    "pass-inst-adrift.js": [
+      "DEPART",
+      "DRAG",
+      "FEEL_D0",
+      "FLIGHT_OF_VOID",
+      "FRONT_FROM",
+      "FRONT_MARGIN",
+      "GRAIN_MIN",
+      "LADDER_JS",
+      "NOISE_SLOPE",
+      "SEAM_FULL",
+      "SHUT"
+    ],
+    "pass-inst-beat.js": [
+      "AMP",
+      "BEAT_TILT",
+      "DOOR_HOLD",
+      "FEEL_D0",
+      "MARGIN",
+      "P_MIN",
+      "TILT_MIN",
+      "ZOOM"
+    ],
+    "pass-inst-boxfold.js": [
+      "AMP",
+      "AXU",
+      "BOX_CROP",
+      "CAM_FAR",
+      "CORNERS",
+      "DOOR_SHOW",
+      "EASE_P",
+      "FACES",
+      "FEEL_D0",
+      "FING_MAX",
+      "FING_N",
+      "NRM",
+      "SEAM_FLOOR",
+      "SEAM_REACH",
+      "SEAM_ROOM"
+    ],
+    "pass-inst-droste.js": [
+      "CENTRE_REACH",
+      "DIVE_SPAN",
+      "DOOR_SHOW",
+      "GUARD",
+      "SEAM_SHARE",
+      "TAU",
+      "TURN_DEF",
+      "WELL",
+      "WIND_HOLD"
+    ],
+    "pass-inst-gates.js": [
+      "DOOR_READ",
+      "DRIFT_MAX",
+      "FEEL_D0",
+      "MOTIF_BAND",
+      "PRESS_MAX",
+      "SEATED_MIN",
+      "SLOT_AT_MIN",
+      "SLOT_MIN",
+      "TAU",
+      "ZOOM"
+    ],
+    "pass-inst-gears.js": [
+      "AMP",
+      "FEEL_D0",
+      "RATIOS",
+      "SEAM_TOOTH_FALLBACK",
+      "TAU",
+      "TOOTH_MIN",
+      "ZOOM"
+    ],
+    "pass-inst-grid-colour.js": [
+      "DEG",
+      "FALLBACK_COUNT",
+      "LEAD_IN",
+      "RING_MAX"
+    ],
+    "pass-inst-hero.js": [
+      "CHANGE_FROM",
+      "CHANGE_TO",
+      "CROP_0",
+      "DIAL_D0",
+      "DOOR_SHOW",
+      "FEEL_D0",
+      "RING_REST",
+      "STORY_SPAN",
+      "STORY_WINDOW",
+      "WANDER_X"
+    ],
+    "pass-inst-kaleidoscope.js": [
+      "CLOCK_MAX",
+      "DOOR_SHOW",
+      "REACH_MIN",
+      "RINGS_MIN",
+      "ROT_RATE",
+      "SOFT_POINTS",
+      "SWAP_HALF",
+      "SWAP_UNDER",
+      "TWIST_MIN",
+      "WEDGES_MIN"
+    ],
+    "pass-inst-lens.js": [
+      "DOOR_SHOW",
+      "FEEL_D0",
+      "HOLD_IN",
+      "POWER_REST",
+      "RIM_ROOM",
+      "TWIST_REST",
+      "WEDGES_N"
+    ],
+    "pass-inst-liquid.js": [
+      "FEEL_C_U0",
+      "FEEL_D0",
+      "KX",
+      "KY",
+      "LIFE_REDUCED",
+      "MARGIN",
+      "RATE",
+      "REDUCED_T",
+      "SA",
+      "SEAM_FOLD_POINTS",
+      "SEED_SPAN",
+      "SLOW",
+      "SLOWPH",
+      "WAVE_REACH"
+    ],
+    "pass-inst-livemirror.js": [
+      "BREATH",
+      "DEPTH_REST",
+      "DOOR_SHOW",
+      "GLINT_REST",
+      "HOLD",
+      "LINE_EDGE",
+      "LINE_X",
+      "LINE_Y",
+      "SHUT_IN"
+    ],
+    "pass-inst-matter.js": [
+      "AMP",
+      "FEEL_D0",
+      "GRAIN_MIN",
+      "LADDER",
+      "MARGIN",
+      "NOISE_SLOPE",
+      "SEAM_POINTS"
+    ],
+    "pass-inst-overlay.js": [
+      "CURVE_BANDS",
+      "DEG",
+      "EDGE",
+      "FEEL_S",
+      "MIX_BASE",
+      "MIX_PERIOD_DEF",
+      "PERIOD_MIN",
+      "SCALE_MIN",
+      "SEAM_POINTS"
+    ],
+    "pass-inst-parquet.js": [
+      "ARRIVE_W",
+      "BASE_X",
+      "CROP",
+      "DEG",
+      "DOOR_SHOW",
+      "EYE_D_LONG",
+      "FEEL_K",
+      "HORIZON_ROOM",
+      "RISE",
+      "SPIN_DEF",
+      "SPIN_MAX",
+      "SPREAD",
+      "TILES_MIN"
+    ],
+    "pass-inst-planet.js": [
+      "ATM_REACH",
+      "CROP_LO",
+      "CUT_ROOM",
+      "FEEL_H_C",
+      "FEEL_K",
+      "FIG_LO",
+      "GAMMA_LO",
+      "HORIZON_REACH",
+      "POLE_FROM",
+      "SEAM",
+      "TAU",
+      "TURN_REACH"
+    ],
+    "pass-inst-pour.js": [
+      "COLS_MIN",
+      "FEEL_D0",
+      "GRAIN_MIN",
+      "MARGIN",
+      "SEED_SPAN",
+      "SLOPE_MIN"
+    ],
+    "pass-inst-strata-light.js": [
+      "FEEL_C",
+      "LIGHT_CEILING",
+      "MASK_CELLS",
+      "TRAVEL"
+    ],
+    "pass-inst-strata-scale.js": [
+      "FEEL_C",
+      "LIGHT_CEILING",
+      "TRAVEL"
+    ],
+    "pass-inst-studio.js": [
+      "FEEL_K",
+      "LOOK_CON",
+      "LOOK_SAT"
+    ],
+    "pass-inst-tilt.js": [
+      "AMP",
+      "COLS",
+      "COLS_MIN",
+      "CROP",
+      "FEEL_D0",
+      "MARGIN",
+      "TILT_MAX",
+      "ZOOM_CAP"
+    ],
+    "pass-inst-tunnel.js": [
+      "ACT",
+      "CROP_MIN",
+      "FAR_REACH",
+      "FEEL_D0",
+      "HOLE",
+      "MARGIN",
+      "REPS_DEF",
+      "RING_JOIN_FALLBACK",
+      "SPEED_TOP",
+      "TWIST_TOP",
+      "Z0"
+    ],
+    "pass-inst-unfold.js": [
+      "DEG",
+      "DOOR_SHOW",
+      "EDGE_JS",
+      "FLAT_DEG",
+      "FLUTTER_DIP",
+      "HOLD",
+      "NEAR_JS",
+      "PITCH_MAX",
+      "SHUT_IN",
+      "TILE_DEF"
+    ],
+    "pass-inst-veil.js": [
+      "BODIES_MIN",
+      "DEPTH_MARGIN",
+      "FEEL_D0",
+      "FLOOR",
+      "GAP_MIN",
+      "SEED_SPAN",
+      "SLAB_SHARE",
+      "WEIGHT_MIN",
+      "WIND_RATE"
+    ],
+    "pass-inst-waterline.js": [
+      "BASE_OUT",
+      "CELL_SPAN",
+      "DARK_BASE",
+      "DIAL_D0",
+      "LINE_REACH",
+      "MARGIN",
+      "SPREAD_MAX",
+      "ZOOM"
+    ],
+    "pass-inst-weave.js": [
+      "AMP",
+      "BAL_WHOLE",
+      "DOOR_SHOW",
+      "DOOR_SLIP",
+      "DOOR_WALK",
+      "FEEL_D0",
+      "TAU",
+      "WAVE_MAX",
+      "WAVE_PERIOD_DEF",
+      "WAVE_PERIOD_MIN",
+      "WAVE_STRAIGHT",
+      "WLOW"
+    ],
+    "pass-inst-wind.js": [
+      "BODY_MIN",
+      "FEEL_D0",
+      "LAG_MAX",
+      "MARGIN",
+      "REACH",
+      "ROWS_MIN",
+      "SEED_SPAN"
+    ]
+  }
+}

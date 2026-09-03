@@ -21,14 +21,37 @@ words:
                or the sentence says what it would read and where the derivation stands.
   CAPABILITY   it is a fact about the machine, the format, the browser or the arithmetic rather than
                about pictures. The sentence says which, so nobody has to re-litigate it.
-  UNJUSTIFIED  nobody measured it and nothing derives it. The sentence says plainly that it was
-               chosen, by whom, and that it stands on nothing — which is what `DOLLY_CAP`'s own
-               comment already does and what the rest do not.
+  UNJUSTIFIED  nobody measured it and nothing derives it — which by the shelf's own test is the
+               banned case, not a permitted one. So the word alone is not an answer. It stands only
+               where the sentence beside it also names the plan row that owns the number, and the
+               derivation or the removal lands in that row.
 
-Row one reds on every named constant whose comment carries none of the three. It is written against
-SOURCE TEXT, and that is said out loud: there is no behaviour to ask, because a number with no
-sentence beside it computes exactly what the same number with a sentence computes. That is precisely
-why nothing caught any of them.
+WHAT CHANGED ON 2026-09-03, AND WHY. The word `UNJUSTIFIED` was a passing verdict on its own, so a
+number that stood on nothing satisfied this row by saying so, and twenty of them did. A value the
+shelf refuses cannot be admitted by the sentence admitting it is refused. The word now buys one
+thing only: named, dated ownership somewhere a person reads. An `UNJUSTIFIED` naming no row reds.
+
+Row one reds on every named constant whose comment carries none of the three, and on every
+`UNJUSTIFIED` standing on its own word. It is written against SOURCE TEXT, and that is said out loud:
+there is no behaviour to ask, because a number with no sentence beside it computes exactly what the
+same number with a sentence computes. That is precisely why nothing caught any of them.
+
+WHAT THIS ROW CANNOT DO, said here rather than left for a reader to discover. It reads sentences. A
+comment saying DERIVED is a claim about the code, not a proof of it, and this row does not open the
+derivation and check it. So it cannot carry a criterion promising that a value IS refused where it
+could have existed before the two pictures were known — no gate reading comments can. What it can
+carry, and does, is that no number stands on this road unannounced and no number stands on the
+shelf's own word for banned without an owner. SPEC.md's criteria were re-hung on 2026-09-03 to say
+exactly that much and to mark the rest [GAP].
+
+THE REACH, which is the other half of what changed. This row read three files — the composer, the
+layer and the client — while all 27 `pass-inst-*.js` stood outside it, so a bare threshold inside an
+instrument (`SEAM_FLOOR = 0.20` in boxfold) was invisible to the very row the spec cited against it.
+The population is now every `engine/assets/pass-*.js` plus `engine/client/01a-pass.js`. The 236
+constants that stood there unread on the day the reach grew are named one by one in
+`tests/static_unread.json` and owned by one plan row; that list may only shrink, and a constant
+arriving after that day is not on it and reds. The walk's other client files and `exhibition.js` are
+outside this road and this row does not pretend otherwise.
 
 WHAT COUNTS AS A NAMED CONSTANT ON THIS ROAD, and the definition is the row's whole scope: a
 module-scope declaration whose name is in capitals and whose value carries a digit, plus every
@@ -51,19 +74,23 @@ one home. It reds if the two ever drift.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ROAD = [ROOT / "engine" / "assets" / "pass-composer.js",
-        ROOT / "engine" / "assets" / "pass-layer.js",
-        ROOT / "engine" / "client" / "01a-pass.js"]
-MODULE = ROOT / "engine" / "assets" / "pass-composer.js"
+ASSETS = ROOT / "engine" / "assets"
+ROAD = sorted(ASSETS.glob("pass-*.js")) + [ROOT / "engine" / "client" / "01a-pass.js"]
+MODULE = ASSETS / "pass-composer.js"
 FIXTURE = ROOT / "tests" / "fixture_pass_composed.json"
+UNREAD = ROOT / "tests" / "static_unread.json"
 
 VERDICTS = ("DERIVED", "CAPABILITY", "UNJUSTIFIED")
+# The plan row that owns a number standing on nothing. Any row id in the sentence answers it; this
+# row cannot open ~/tlvphotos/PLAN.md from here, so what it holds is that an owner is named at all.
+OWNER = re.compile(r"\bS-\d+\b")
 
 results = []
 
@@ -130,27 +157,59 @@ def constants_of(path):
     return lines, out
 
 
-unmarked, marked = [], 0
-for path in ROAD:
-    lines, consts = constants_of(path)
-    for n, name, value in consts:
-        text, named = verdict_above(lines, n)
-        if named:
-            marked += 1
-        else:
-            unmarked.append((path.name, n, name, "no sentence at all" if not text.strip()
-                             else "a sentence that names no verdict"))
+def road_verdicts(files, unread):
+    """The row's whole predicate, held apart so the plant below is judged by this very code.
 
-check("STATIC · every named constant on the composition road carries its own verdict",
-      not unmarked,
-      "" if not unmarked else
+    unmarked  a constant carrying no verdict at all and not standing in the unread census.
+    unowned   a constant marked UNJUSTIFIED whose sentence names no plan row to own it.
+    stale     a name the census still pardons that no longer needs pardoning — gone from the file,
+              or now carrying a verdict. The list may only shrink, and this is what makes it.
+    """
+    unmarked, unowned, marked, naked = [], [], 0, {}
+    for path in files:
+        lines, consts = constants_of(path)
+        listed = set(unread.get(path.name, []))
+        naked[path.name] = set()
+        for n, name, value in consts:
+            text, named = verdict_above(lines, n)
+            if "UNJUSTIFIED" in named and not OWNER.search(text):
+                unowned.append((path.name, n, name))
+                marked += 1
+                continue
+            if named:
+                marked += 1
+                continue
+            naked[path.name].add(name)
+            if name not in listed:
+                unmarked.append((path.name, n, name, "no sentence at all" if not text.strip()
+                                 else "a sentence that names no verdict"))
+    # Only over the files actually read, so the predicate says the same thing about one file as it
+    # says about the whole road and the plant below can be handed a single file.
+    stale = sorted(f + "  " + nm for f, names in unread.items() if f in naked
+                   for nm in names if nm not in naked[f])
+    return unmarked, unowned, stale, marked
+
+
+census = json.loads(UNREAD.read_text(encoding="utf-8"))["files"]
+unmarked, unowned, stale, marked = road_verdicts(ROAD, census)
+
+check("STATIC · every named constant on the pass road answers for itself, and no number stands on "
+      "the shelf's own word for banned without an owner",
+      not unmarked and not unowned and not stale,
+      "" if not (unmarked or unowned or stale) else
       ("charter shelf 21 asks of every value whether it could have existed before the two pictures "
-       "in front of it were known. A number with no verdict beside it reads as measured, which is "
-       "the mechanism behind every defect found on this road. Each of these needs one of "
-       + ", ".join(VERDICTS) + " in the sentence above it — see docs/design/STATIC-SWEEP.md for the "
-       "verdict this sweep gives each:\n"
-       + "\n".join("        " + f + ":" + str(n) + "  " + name.ljust(30) + "  — " + why
-                   for f, n, name, why in unmarked)))
+       "in front of it were known. A number with no verdict beside it reads as measured, and a "
+       "number marked UNJUSTIFIED is one the shelf refuses — the word says so — so neither may "
+       "stand alone. Each needs one of " + ", ".join(VERDICTS) + " in the sentence above it, and an "
+       "UNJUSTIFIED needs the plan row that owns it named there too.\n"
+       + ("      arriving unannounced — no verdict, and not in tests/static_unread.json:\n"
+          + "\n".join("        " + f + ":" + str(n) + "  " + name.ljust(30) + "  — " + why
+                      for f, n, name, why in unmarked) + "\n" if unmarked else "")
+       + ("      standing on nothing with nobody owning it — UNJUSTIFIED naming no plan row:\n"
+          + "\n".join("        " + f + ":" + str(n) + "  " + name for f, n, name in unowned)
+          + "\n" if unowned else "")
+       + ("      pardoned by tests/static_unread.json and no longer needing it; take the name out "
+          "of that file:\n" + "\n".join("        " + s for s in stale) if stale else "")))
 
 # ---------------------------------------------------------------- row 2: one number, one home
 #
@@ -538,10 +597,56 @@ else:
                       "declaration and nothing about the population")
         _shutil.rmtree(mute, ignore_errors=True)
 
+# ------------------------------------ row 9: row one, run against a number planted in an instrument
+#
+# WHY THIS ROW EXISTS. Row one was green for months over two defects at once, and neither could have
+# reddened it. Its population was three files, so `SEAM_FLOOR = 0.20` inside `pass-inst-boxfold.js`
+# — a bare threshold in an instrument, named in a review as exactly what shelf 21 forbids — stood
+# outside it entirely. And `UNJUSTIFIED` passed on its own word, so twenty numbers that stand on
+# nothing satisfied it by saying so. A green from a row like that says nothing about the tree.
+#
+# So the repair is not judged by row one coming out green — a row that examines nobody comes out
+# green too. It is judged by handing the SAME predicate a copy of an instrument with a number planted
+# in it and watching it name that number. Both shapes of the defect are planted: a number arriving
+# with no sentence at all, and a number arriving with the shelf's own word for banned and no owner.
+# The file on disk is never touched; a copy is made, edited and read.
+NAME9 = "STATIC · row one reds on a number planted into an instrument"
+HOST = ASSETS / "pass-inst-boxfold.js"
+ANCHOR = "    var SEAM_FLOOR = 0.20;"
+PLANT = ("    var PLANTED_BARE = 0.37;\n"
+         "    // UNJUSTIFIED — planted by this row. Nothing derives it and no plan row owns it.\n"
+         "    var PLANTED_LOOSE = 0.41;\n")
+host_text = HOST.read_text(encoding="utf-8")
+if ANCHOR not in host_text:
+    check(NAME9, False, "the plant found no anchor to sit above in «" + HOST.name + "»; re-pin it")
+else:
+    plot = TMP / "planted"
+    plot.mkdir(exist_ok=True)
+    seeded = plot / HOST.name
+    seeded.write_text(host_text.replace(ANCHOR, PLANT + ANCHOR, 1), encoding="utf-8")
+    p_unmarked, p_unowned, p_stale, _ = road_verdicts([seeded], census)
+    caught_bare = [name for f, n, name, why in p_unmarked if name == "PLANTED_BARE"]
+    caught_loose = [name for f, n, name in p_unowned if name == "PLANTED_LOOSE"]
+    other = ([name for f, n, name, why in p_unmarked if not name.startswith("PLANTED_")]
+             + [name for f, n, name in p_unowned if not name.startswith("PLANTED_")])
+    ok9 = caught_bare and caught_loose and not other and not p_stale
+    check(NAME9, bool(ok9),
+          ("both planted numbers are named by the same predicate the shipped road is judged by — "
+           "`PLANTED_BARE` for arriving with no sentence at all, `PLANTED_LOOSE` for standing on "
+           "UNJUSTIFIED with no plan row owning it — and the file's own 15 constants, every one of "
+           "them recorded unread, are not named. So what reddens the row is the number that "
+           "arrived, not the population it arrived into") if ok9 else
+          ("a number planted into " + HOST.name + " did not red row one's own predicate. bare: "
+           + (", ".join(caught_bare) or "not caught") + "; unowned: "
+           + (", ".join(caught_loose) or "not caught")
+           + ("; it also named numbers already standing in the file: " + ", ".join(other)
+              if other else "")
+           + ("; stale census entries: " + ", ".join(p_stale) if p_stale else "")))
+    shutil.rmtree(plot, ignore_errors=True)
+
 # ---------------------------------------------------------------- report
-print("EX-PASS · shelf 21 over every named constant on the composition road")
-for p in ROAD:
-    print("  road: " + str(p))
+print("EX-PASS · shelf 21 over every named constant on the pass road")
+print("  road: " + str(len(ROAD)) + " files — engine/assets/pass-*.js and engine/client/01a-pass.js")
 print("")
 worst = 0
 for name, verdict, detail in results:
@@ -552,8 +657,9 @@ for name, verdict, detail in results:
     if verdict == "FAIL":
         worst = 1
 print("")
-print("  " + str(marked) + " named constants already carry a verdict, "
-      + str(len(unmarked)) + " do not")
+print("  " + str(marked) + " named constants carry a verdict; "
+      + str(sum(len(v) for v in census.values())) + " stand unread in tests/static_unread.json and "
+      "are owned by one plan row; " + str(len(unmarked)) + " answer for themselves in neither way")
 print("  " + str(sum(1 for r in results if r[1] == "PASS")) + " pass, "
       + str(sum(1 for r in results if r[1] == "FAIL")) + " fail, "
       + str(sum(1 for r in results if r[1] == "SKIP")) + " skip")

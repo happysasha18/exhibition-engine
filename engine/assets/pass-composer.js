@@ -410,6 +410,8 @@
   // half was chosen by this seat. What it has to satisfy is only that it be positive, so the limit
   // holds and the map stays monotone; every positive value satisfies that equally, and the number
   // that would be right is a property of the buffer the composer cannot see.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+  // the derivation or the removal lands there.
   var DOLLY_CAP = 0.5;
   // WHAT LEFT THIS BLOCK ON 2026-08-18, and it is one sweep rather than eight repairs. His word of
   // 09:57: a number this project computed and gave a name to, with no requirement of his behind it,
@@ -1500,6 +1502,8 @@
     // settings record built before the field existed, and 600 is the number the client happens to
     // apply today rather than anything this file can read — so a record published without the field
     // is measured against a number nobody here derived.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-72 owns it, and
+    // the derivation or the removal lands there.
     var INTENT_FENCE_CHARS = consts.intentFenceChars || 600;
 
     var HANDLE_SPECS = {};
@@ -2991,6 +2995,8 @@
     // UNJUSTIFIED. Everything above argues the number's SHAPE — that it must stay under one so the
     // day never empties a pool — and an argument about a shape is not a derivation of a value. This
     // seat chose 0.35 and nothing measured it; every value under one satisfies the shape equally.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     var WEATHER_AMP = 0.35;
     function weatherBiasOf(item) {
       if (!item || !item.kind) return 1;
@@ -6687,6 +6693,8 @@
     // UNJUSTIFIED. It is carried from the lab's own assembler word for word, and it was unmeasured
     // there: nothing in that file derives the fifth either. Carrying a number faithfully is not the
     // same as deriving it, and this line says which of the two happened.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     var BEAT_DIAL = 0.2;
 
     // VOICE_SHARE — how much of a work's own measure becomes a voice's loudness. Carried from
@@ -6694,6 +6702,8 @@
     // ВКУСА, поднято в отчёте" — a quarter is a number of taste, raised in a report rather than
     // measured. It is carried here as that same admitted number, not re-derived as if it were one.
     // UNJUSTIFIED, on the lab's own admission quoted above.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     var VOICE_SHARE = 0.25;
 
     // WHEN A VOICE IS SEEN, AND IT IS THE LAB'S OWN MEASUREMENT — the second pass of
@@ -6818,6 +6828,8 @@
     // UNJUSTIFIED — how near a ratio has to stand to one of those before it counts as that ratio.
     // It is carried from the lab, unmeasured there, and nothing here derives it: what it has to
     // satisfy is only that it be smaller than the gaps between the ratios above, and many values are.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     var VOICE_RATIO_BAND = 0.05;
 
     // aligned(p, q) — whether two periods sit within the band of one of the small-integer ratios
@@ -6887,6 +6899,8 @@
     // is only that it be positive, so the map is monotone in the ratio and lands on the handle's own
     // default where the ratio is one; every positive value satisfies that equally, and this seat
     // picked four.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     var OCTAVES_PER_SPAN = 4;
 
     // WHERE A READING STANDS IN ONE HANDLE'S OWN RANGE, READ OFF ONTO ANOTHER'S. Two handles of one

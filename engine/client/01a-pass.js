@@ -597,6 +597,8 @@
   let passRecordsRetryCount = Object.create(null);
   // UNJUSTIFIED — how many times a work record is asked for again, and how long the first wait is.
   // Both were chosen here and nothing measured either.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   const RECORDS_RETRY_MAX = 3, RECORDS_RETRY_BASE_MS = 1500;
   // WHICH IDS ARE STILL ON THE WIRE AT THIS INSTANT (2026-08-25). `passRecordsAsked` cannot answer
   // that: it says an id has been asked for AND heard back about, so it reads the same for «the answer
@@ -953,26 +955,40 @@
   const PASS_EDGE = {
     // UNJUSTIFIED — how long a visit's own window stands open. Half an hour was chosen here and no
     // reading of any visitor's own walk stands behind it.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     visitWindowSeconds: 1800,
     // UNJUSTIFIED — how long a family stays cooled once a visit has spent it. A day was chosen here
     // and nothing measured it.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     cooldownSeconds: 86400,
     // UNJUSTIFIED — how far a repeated pass may drift inside its own family. A quarter was chosen
     // here and nothing measured it.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     driftSpan: 0.25,
     // UNJUSTIFIED — the pass count past which the drift opens at all. Three was chosen here and
     // nothing measured it.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     driftOpensOver: 3,
     // UNJUSTIFIED — how many tries the return's own die is given. The sentence above says plainly
     // that eight is not a measured floor: it was raised until a miss this seat kept seeing stopped
     // being seen, over runs of one fixed two-work fixture, which is a reading of that fixture and
     // not of the collection.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+    // the derivation or the removal lands there.
     dice: 8,
     // UNJUSTIFIED — how many edge records the browser's own store keeps. Sixty-four was chosen here
     // and nothing measured it.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+    // the derivation or the removal lands there.
     keep: 64,
     // UNJUSTIFIED — how many handles of a pass the trace carries. Forty-eight was chosen here and
     // nothing measured it.
+    // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+    // the derivation or the removal lands there.
     traceHandles: 48,
   };
   let passEdgeRows = null, passEdgeStorage = "unread";
@@ -2294,6 +2310,8 @@
   // moves in one place and the two never drift apart the way two separately-guessed numbers would.
   // UNJUSTIFIED — how many steps ahead the prewarm looks. His brief names a span rather than a
   // count, and this file took the upper edge of it; nothing measured where the edge should stand.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   const PASS_PREWARM_STEPS = 3;
   const passPrewarmed = Object.create(null);
   function passPrewarmEdge(fromId, toId) {
@@ -3414,6 +3432,8 @@
   // UNJUSTIFIED — how long each part of the walk's own chrome waits before it comes back. The six
   // waits were chosen here and nothing measured any of them; a score may name its own in their
   // place, which moves who chose them and not whether anything did.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   const PASS_CHROME_MS = { plaque: 0, counter: 0, share: 90, sound: 90, series: 140, focus: 0 };
   function chromeReveal(cmd) {
     if (!cmd || !cmd.to) return;
@@ -3726,6 +3746,8 @@
   let passOfferThrows = 0;
   // UNJUSTIFIED — how many times the layer's own `offer` may throw in a row before this file stops
   // asking it. Three was chosen here and nothing measured it.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   const PASS_OFFER_THROW_MAX = 3;
   function passOffer(cmd) {
     // THE TWO HOLDS, IN THE ORDER THE WALK ACTUALLY NEEDS THEM. The composer's own file comes first

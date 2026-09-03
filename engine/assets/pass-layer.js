@@ -38,12 +38,18 @@
   // ---- the three ranges of contract §2.5 — a legal value must read differently from a hang -------
   // UNJUSTIFIED — the longest a transaction may run. Fourteen seconds is the contract's own §2.5
   // bound, written there rather than here, and no measurement of any pair stands behind it.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var DURATION_MIN = 0, DURATION_MAX = 14000;
   // UNJUSTIFIED — how long the host waits for every instrument of a score to answer `prepare`. Four
   // hundred milliseconds was chosen when this seam was built and nobody has measured it since.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var PREPARE_MIN = 0, PREPARE_MAX = 400;
   // UNJUSTIFIED — how far past its own duration a transaction may run before the watchdog ends it.
   // Two seconds was chosen beside the budget above and stands on nothing measured.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var SLACK_MIN = 0, SLACK_MAX = 2000;
   function clampNum(n, lo, hi) {
     n = Number(n);
@@ -84,6 +90,8 @@
   // full-screen pass never sees back.
   // UNJUSTIFIED — the rungs the render scale steps through. Five of them, at these five widths,
   // were chosen in lab/gl-carrier.js and carried here unchanged; nobody measured which five.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var STEPS = [1.0, 0.85, 0.72, 0.60, 0.50];
   // CAPABILITY — a fact about the machine: past two device pixels to the point, a full-screen pass
   // spends memory and fill it never sees back on any display this walk runs on.
@@ -93,9 +101,13 @@
   var P95_DROP = 33;
   // UNJUSTIFIED — the bar below which the ladder climbs back. It was chosen under the drop bar so
   // the two do not chatter against each other, and nothing measured where it should stand.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var P95_RAISE = 22;
   // UNJUSTIFIED — how many frame gaps a step down and a step up are each read over, and how many
   // the recorder keeps. All three were chosen in lab/gl-carrier.js and nothing measured them.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var WIN_DROP = 45, WIN_RAISE = 120, KEEP = 240;
 
   var stage = null;          // {canvas, gl, vao, quad, texA, texB, sceneTex, programs}
@@ -1035,6 +1047,8 @@
   // UNJUSTIFIED — the lens a turn is seen through where a score names none. This file chose 0.9
   // radians because it is the angle a room is ordinarily photographed at; no photograph of this
   // collection was measured for it, and none was consulted.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+  // the derivation or the removal lands there.
   var CAM_TURN_FOV = 0.9;
   // The pose rests on the arriving work within this much. The check READS THE POSE rather than the
   // picture, so the number is a computation tolerance and not a matter of taste: a spline evaluated
@@ -1047,6 +1061,8 @@
   // UNJUSTIFIED — how far two camera authorities may stand apart across the instant one hands to
   // the other. This file chose a thousandth; nobody measured how far apart a person can see them
   // stand, and the number is a thousand times the arithmetic bar above it rather than a reading.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+  // the derivation or the removal lands there.
   var CAM_HANDOFF_TOL = 1e-3;
 
   // `pass-composer.js` boxes every composed float in its own `Flt` wrapper (a plain object whose
@@ -1477,6 +1493,8 @@
   // share of the pass at either end, and the whole middle stands at the neutral pose.
   // UNJUSTIFIED — the share of a passage the rise and the fall each take where the score names no
   // seconds for them. This file chose 0.18 and nothing measured it.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+  // the derivation or the removal lands there.
   var HANG_SHARE = 0.18;
   function hangEdges(rec) {
     var cam = (rec.cmd && rec.cmd.score && rec.cmd.score.camera) || {}, h = cam.hang || {};
@@ -1879,6 +1897,8 @@
   // seventeenth shelf sets the third, and the charter says of it in as many words that the tier
   // numbers beside it were written by an agent in `ae2b5da` on 2026-08-08 at 15:59 and that nobody
   // measured them. It is carried here rather than chosen here, and it stands on nothing.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-69 owns it, and
+  // the derivation or the removal lands there.
   var HELD_MAX = 1 / 3;
 
   // The seconds of the pass some cue's window covers, with the overlaps merged so a second under
@@ -2740,6 +2760,8 @@
   // UNJUSTIFIED — the longest a cadence may take to walk to its door. The nineteenth shelf asks
   // for about seven hundred milliseconds and this file chose two seconds as the outer clamp; no
   // measurement of a person watching one stands behind either figure.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var CADENCE_MIN = 0, CADENCE_MAX = 2000;
 
   function budgetOf(cmd) {
@@ -3605,6 +3627,8 @@
   // UNJUSTIFIED — how long a request may neither land nor fail before the visit reads it as a
   // broken connection. This file chose twenty-five seconds; nothing measured it, and the sentence
   // above says only what the number is FOR, which is not the same as what it should be.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var DEAD_AIR_MS = 25000;
   var offeredGen = 0;
   var awaiting = null;      // the command held while its files cross the network, and its own gen
@@ -4376,6 +4400,8 @@
   }
   // UNJUSTIFIED — how many times an instrument file is asked for again, and how long the first
   // wait is. Both were chosen here and nothing measured either.
+  // Nothing derives it, so it is not left standing on its own word: plan row S-70 owns it, and
+  // the derivation or the removal lands there.
   var INST_RETRY_MAX = 3, INST_RETRY_BASE_MS = 1500;
   function instRetryEligible(f) {
     return !!f && f.state === "refused" && !f.permanent && f.attempts < INST_RETRY_MAX
