@@ -612,7 +612,11 @@ else:
 # The file on disk is never touched; a copy is made, edited and read.
 NAME9 = "STATIC · row one reds on a number planted into an instrument"
 HOST = ASSETS / "pass-inst-boxfold.js"
-ANCHOR = "    var SEAM_FLOOR = 0.20;"
+# THE ANCHOR MOVED on 2026-09-03. It used to be `SEAM_FLOOR = 0.20` — the very number this row's
+# own header names as what stood outside row one — and S-67 struck it out of the instrument, so the
+# plant now sits above the dead bands instead. Which constant it sits above never mattered: what the
+# row reads is whether the predicate names the number that ARRIVED.
+ANCHOR = "    var FEEL_D0 = 0.05;"
 PLANT = ("    var PLANTED_BARE = 0.37;\n"
          "    // UNJUSTIFIED — planted by this row. Nothing derives it and no plan row owns it.\n"
          "    var PLANTED_LOOSE = 0.41;\n")
@@ -633,7 +637,7 @@ else:
     check(NAME9, bool(ok9),
           ("both planted numbers are named by the same predicate the shipped road is judged by — "
            "`PLANTED_BARE` for arriving with no sentence at all, `PLANTED_LOOSE` for standing on "
-           "UNJUSTIFIED with no plan row owning it — and the file's own 15 constants, every one of "
+           "UNJUSTIFIED with no plan row owning it — and the file's own constants, every one of "
            "them recorded unread, are not named. So what reddens the row is the number that "
            "arrived, not the population it arrived into") if ok9 else
           ("a number planted into " + HOST.name + " did not red row one's own predicate. bare: "

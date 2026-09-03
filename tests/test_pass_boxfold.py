@@ -144,10 +144,10 @@ def skip(name, detail):
 PARDON_I_COMPOSER = ROOT / "engine" / "assets" / "pass-composer.js"
 PARDON_I_FIXTURE_COMPOSED = ROOT / "tests" / "fixture_pass_composed.json"
 PARDON_I_FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
-PARDON_I_SEAM_FLOOR = 0.20  # pass-inst-boxfold.js's own SEAM_FLOOR — the module's own gate
 
-PARDON_I_ROW = ("PASS-BOXFOLD pardon (i) · a real, planner-composed pair hands the instrument a "
-                "non-zero, above-floor seamScore reading off the departing work's own region line")
+PARDON_I_ROW = ("PASS-BOXFOLD pardon (i) · a real, planner-composed pair hands the instrument the "
+                "departing work's own measured region line and its own reading of it, "
+                "unconditionally — no floor read off any collection")
 PARDON_I_RED_ROW = ("PASS-BOXFOLD pardon (i) red-on-bug · restoring the written zero drops the "
                      "same real pair's own seamScore back to it")
 
@@ -215,8 +215,16 @@ for (let i = 0; i < ids.length && !found; i++) {
         const seamScore = mh.seamScore && mh.seamScore.v;
         const seamAt = mh.seam && mh.seam.v;
         if (typeof seamScore === "number") {
-          found = { from: from, to: to, seed: seed, role: role, fn: fn,
-                    seamAt: seamAt, seamScore: seamScore };
+          // WHICH AXIS THE CREASE RUNS ALONG, read exactly as pass-composer.js's own box-fold
+          // branch reads it: `axis` at or above a half is the engine's `flat`, which box.js
+          // measures down the frame (`y`); below it the reading is across (`x`).
+          const ax = typeof mh.axis === "number" ? mh.axis
+                   : (mh.axis && typeof mh.axis.v === "number" ? mh.axis.v : 0);
+          const line = (((works[from].structure || {}).regions || {}).line) || {};
+          const own = (ax >= 0.5 ? line.y : line.x) || {};
+          found = { from: from, to: to, seed: seed, role: role, fn: fn, axis: ax,
+                    seamAt: seamAt, seamScore: seamScore,
+                    ownAt: own.at, ownExplains: own.explains };
           break outer;
         }
       }
@@ -265,15 +273,23 @@ else:
     _pardon_i_green = _run_pardon_i()
     _pardon_i_found = (_pardon_i_green.get("found")
                        if isinstance(_pardon_i_green, dict) else None)
+    _pardon_i_ok = (
+        isinstance(_pardon_i_found, dict)
+        and isinstance(_pardon_i_found.get("seamScore"), (int, float))
+        and isinstance(_pardon_i_found.get("ownExplains"), (int, float))
+        and isinstance(_pardon_i_found.get("ownAt"), (int, float))
+        and abs(_pardon_i_found["seamScore"] - _pardon_i_found["ownExplains"]) < 1e-3
+        # and the place is the work's own too, carried across whole
+        and abs(_pardon_i_found["seamAt"] - _pardon_i_found["ownAt"]) < 1e-3)
     check(PARDON_I_ROW,
-          isinstance(_pardon_i_found, dict)
-          and isinstance(_pardon_i_found.get("seamScore"), (int, float))
-          and _pardon_i_found["seamScore"] >= PARDON_I_SEAM_FLOOR,
-          ("real pair %s→%s (seed %s, role %s/%s): seam=%s seamScore=%s against the module's own "
-           "floor of %s"
+          _pardon_i_ok,
+          ("real pair %s→%s (seed %s, role %s/%s, axis %s): the departing work's own measured line "
+           "at %s explaining %s reaches the instrument as seam=%s seamScore=%s — carried whole, "
+           "with nothing standing between the reading and the crease"
            % (_pardon_i_found.get("from"), _pardon_i_found.get("to"), _pardon_i_found.get("seed"),
-              _pardon_i_found.get("role"), _pardon_i_found.get("fn"), _pardon_i_found.get("seamAt"),
-              _pardon_i_found.get("seamScore"), PARDON_I_SEAM_FLOOR)
+              _pardon_i_found.get("role"), _pardon_i_found.get("fn"), _pardon_i_found.get("axis"),
+              _pardon_i_found.get("ownAt"), _pardon_i_found.get("ownExplains"),
+              _pardon_i_found.get("seamAt"), _pardon_i_found.get("seamScore"))
            if isinstance(_pardon_i_found, dict) else
            "the real 121-work fleet's own genresFor/passageFor search cast box-fold on no real "
            "pair at all: " + json.dumps(_pardon_i_green)))
@@ -463,8 +479,6 @@ CONSTANTS = [
     ("var FING_MAX = 0.09;", "var FING_MAX = 0.09;", "how deep the finger joint bites"),
     ("var FING_N = 7;", "var FING_N = 7;",
      "how many fingers stand along the crease, until a score names the work's own"),
-    ("var SEAM_FLOOR = 0.20;", "var SEAM_FLOOR = 0.20;",
-     "how far a work must fall into two regions before its best line counts as a seam at all"),
     ("var FEEL_D0 = 0.05;", "var FEEL_D0 = 0.05;",
      "the dead bands at either end of the hand, where the box stands exactly landed"),
     ("Math.pow(clamp(f, 0, 1), EASE_P)", "Math.pow(clamp(f, 0, 1), EASE_P)",
@@ -556,20 +570,24 @@ check("PASS-BOXFOLD the coverage is declared, and the frame it fills is the reas
 check("PASS-BOXFOLD the crease's own handle publishes the measurement it reads",
       'reads: "structure.regions from lab/cut-lines.py' in REGION
       and "structure.regions.line.<axis>.explains from the same file" in REGION
-      and 'applied: { floor: SEAM_FLOOR }' in REGION
+      and 'applied: { whereNoLineWasFound: "the box\'s own edge" }' in REGION
+      and "SEAM_FLOOR" not in REGION
       and "structure.grid.countFrom over the departing work's own frame side" in REGION,
-      # THE GATE'S OWN FIELD WAS NAMED WRONG until 2026-08-26 and this row carried the wrong name
-      # with it. The handle published `structure.regions.score`, which the record does carry, but
-      # `SEAM_FLOOR` was calibrated against the per-axis `line.<axis>.explains` reading and against
-      # no other — the floor's own table lists four works explaining 0.89, 0.48, 0.28 and 0.03,
-      # which are those readings, while `score` on the fixture's own first work stands at 0.7401
-      # against a line explaining 0.6054. The floor did not move; the name did. (A tally over the
-      # collection stood in this sentence too and is gone: it is the one thing the standing rules
-      # forbid a row to argue from.)
+      # THE READING'S OWN FIELD WAS NAMED WRONG until 2026-08-26 and this row carried the wrong name
+      # with it: the handle published `structure.regions.score`, which the record does carry, while
+      # what the crease reads is the per-axis `line.<axis>.explains` — on the fixture's own first
+      # work `score` stands at 0.7401 against a line explaining 0.6054. AND UNTIL 2026-09-03 the
+      # reading stood behind a floor, struck with S-67: a work whose line explained less than a
+      # fifth was refused its own crease, and that fifth was read off where the handful of
+      # photographs the lab pages carry happened to split into the ones with a line and the ones
+      # without — a number that could and did exist before either picture was known, which shelf 20
+      # bars and shelf 21 settles. This row now reads the absence of that floor as well as the
+      # presence of the two readings.
       "the fold's PLACE is `seam`, reading structure.regions — the line along the turn's own "
-      "direction that best splits the departing work's columns into two groups; its gate is "
-      "`seamScore`, reading how much of that difference the line explains, against the module's "
-      "own floor of 0.20. The fold's SHAPE is "
+      "direction that best splits the departing work's columns into two groups; beside it stands "
+      "`seamScore`, reading how much of that difference the line explains, which ranks and gates "
+      "nothing: only a work carrying no line at all leaves the crease on the box's own edge. "
+      "The fold's SHAPE is "
       "`fingers`, reading the same measured repeat grid-colour derives its count from. Both halves "
       "of the boundary are the work's, which is the whole of the charter's pardon")
 
@@ -1326,6 +1344,12 @@ else:
                 crease(br, SEAM_AT, 0.0)
                 on_edge = [host_shot(br, at, "crease-off-%03d" % round(at * 100))
                            for at in (0.0, 0.38, 0.5, 0.62, 1.0)]
+                # THE OTHER BRANCH, READ AND NOT ONLY PHOTOGRAPHED. A work carrying no region line
+                # at all hands no reading, and the instrument says so out loud rather than folding
+                # on a place it invented. This and the frames above are the two branches of the one
+                # question `seamPlaceOf` asks since S-67 struck its floor: did the measure find a
+                # line in THIS work — never how that work's reading stands against any collection.
+                no_line_read = js(br, "window.__mix(0.5); return window.__values();")
                 crease_moved = [diff(a, b)[0] for a, b in zip(on_line, on_edge)]
                 crease(br, SEAM_AT, SEAM_SCORE)
                 seam_read = js(br, "window.__mix(0.5); return window.__values();")
@@ -1333,11 +1357,15 @@ else:
                       crease_moved[0] <= 0.02 and crease_moved[4] <= 0.02
                       and min(crease_moved[1:4]) > 1.0
                       and seam_read["seamMeasured"] is True
-                      and abs(seam_read["seamAt"] - SEAM_AT) < 1e-9,
+                      and abs(seam_read["seamAt"] - SEAM_AT) < 1e-9
+                      and no_line_read["seamMeasured"] is False
+                      and abs(no_line_read["seamAt"] - 0.5) < 1e-9,
                       f"the departing work falls into two regions at {SEAM_AT} across the frame, and "
-                      f"that split explains {SEAM_SCORE} of how its columns differ — over the "
-                      f"module's own floor of 0.20, so it counts as a seam and the fold is placed on "
-                      f"it. Putting the crease back on the box's own edge moves the frame by "
+                      f"that split explains {SEAM_SCORE} of how its columns differ, so the fold is "
+                      f"placed on it — however faintly a line reads, a line is what the crease "
+                      f"follows. A work carrying no line hands nothing, and the instrument answers "
+                      f"with the box's own edge and says the place is not measured. The two branches "
+                      f"part on the frame: putting the crease back on the box's own edge moves it by "
                       + ", ".join("%.4f" % x for x in crease_moved[1:4])
                       + f" of 255 through the turn and by {crease_moved[0]:.5f} and "
                         f"{crease_moved[4]:.5f} at the two doors. The module's own judged run reads "
