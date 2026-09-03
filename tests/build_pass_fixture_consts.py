@@ -195,6 +195,17 @@ def build_cast(reader):
     """The two halves of the `consts` block that describe the cast, as the reader answers them."""
     manifests = json.loads(json.dumps(reader.MANIFESTS))
     instruments = json.loads(json.dumps(reader.INSTRUMENTS))
+    # `port` and `cutsFrom` are the reader's absolute path into THIS checkout's
+    # engine/assets/pass-inst-<id>.js. This tree is routinely worked from sibling worktrees with
+    # different directory names, and the absolute path is a fact about where the run happened to
+    # sit, not about the instrument — so it is rewritten relative to ROOT before it is frozen or
+    # compared. Without this, two checkouts of the identical commit read as a drifted cast.
+    root_prefix = str(ROOT) + os.sep
+    for entry in instruments.values():
+        if isinstance(entry.get("port"), str) and entry["port"].startswith(root_prefix):
+            entry["port"] = entry["port"][len(root_prefix):]
+        if isinstance(entry.get("cutsFrom"), str):
+            entry["cutsFrom"] = entry["cutsFrom"].replace(root_prefix, "")
     gaps, surplus = [], set()
     for iid, entry in sorted(manifests.items()):
         for name, spec in sorted((entry.get("handles") or {}).items()):
