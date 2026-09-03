@@ -1156,16 +1156,25 @@ else:
                 js(br, "return window.__offer(%s, {clock: 1.5, progress: 0});" % SCORE)
                 br.sleep(0.7)
                 real_road = png(br, SHOTS / "plane-door-real.png")
-                # The host raises its own canvas position:fixed above everything; the lab module's
-                # stands absolute inside #moduleStage. The fixed one is the frame a visitor sees.
+                # The host raises its own canvas inside a position:fixed FRAME element and the lab
+                # module's stands absolute inside #moduleStage, so the host's is the one whose own
+                # parent is fixed. Until S-91 (2026-09-03) the host's canvas was itself the fixed
+                # element and was found by that; since the frame a passage plays in became the
+                # work's own box rather than the window, the fixed element is the frame around it.
+                # THE FRAME IS ALSO WHAT THIS ROW COMPARES AGAINST. It asks that at a door the plane
+                # hands the buffer over whole — one buffer point to one point of the frame — and the
+                # frame is the rectangle the layer was given, which is now named rather than assumed
+                # to be the window.
                 box = js(br, "var cs = document.querySelectorAll('canvas'), k = null;"
                              "for (var i = 0; i < cs.length; i++) "
-                             "  if (getComputedStyle(cs[i]).position === 'fixed') k = cs[i];"
+                             "  if (cs[i].parentNode && getComputedStyle(cs[i].parentNode).position"
+                             "      === 'fixed') k = cs[i];"
                              "if (!k) return null;"
                              "var r = k.getBoundingClientRect();"
-                             "return {bufW: k.width, bufH: k.height, x: r.x, y: r.y,"
-                             " w: r.width, h: r.height, frameW: window.innerWidth,"
-                             " frameH: window.innerHeight};")
+                             "var f = k.parentNode.getBoundingClientRect();"
+                             "return {bufW: k.width, bufH: k.height, x: r.x - f.x, y: r.y - f.y,"
+                             " w: r.width, h: r.height, frameW: f.width,"
+                             " frameH: f.height};")
                 br.evaluate("window.__cancel('plane at a door row'); 0")
                 idle(br)
                 roads_mn, roads_mx = diff(bench_road, real_road)
