@@ -368,10 +368,14 @@
     var FAR_REACH = 0.5, RIBS_REACH = 2.0;
     var Z0 = 0.35;
 
-    /* THE DEAD BANDS AT EITHER END OF THE HAND. Over the first and last five hundredths of the dial
-       the corridor stands exactly flat: the hand is spent there and the standing work is the picture
-       its source carries, to the point. This is the folding instrument's own number and the same
-       law — what makes a door a door and not a checkpoint. */
+    // THE DEAD BANDS AT EITHER END OF THE HAND. Over the first and last five hundredths of the dial
+    // the corridor stands exactly flat: the hand is spent there and the standing work is the
+    // picture its source carries, to the point — what makes a door a door and not a checkpoint.
+    //
+    // UNJUSTIFIED — a local copy of the one home, pass-inst-boxfold.js:458 (plan row S-82,
+    // 2026-09-03); a pass-inst-*.js file is independently loaded and version-pinned (PASS-API-V1
+    // §1.2) with no shared runtime to read that file's value from, so this literal is kept in
+    // sync by hand rather than by construction.
     var FEEL_D0 = 0.05;
 
     /* THE THREE ACTS, as shares of what is left of the dial after the dead bands. A third opens the

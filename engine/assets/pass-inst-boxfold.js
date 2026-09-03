@@ -438,11 +438,23 @@
        instrument stands at until a score names the work's own. */
     var FING_N = 7;
 
-    /* THE DEAD BANDS AT EITHER END OF THE HAND (box.js:481). Over the first and last five hundredths
-       of the hand the box stands exactly landed: the hand is spent there and the standing face is the
-       picture its source carries, to the point. Everything that moves through a quarter — the turn,
-       the camera's dip, the crease's slide, the counter-motion and the joint's bite — is nothing
-       inside these bands, which is what makes a door a door and not a checkpoint. */
+    // THE DEAD BANDS AT EITHER END OF THE HAND (box.js:481). Over the first and last five hundredths
+    // of the hand the box stands exactly landed: the hand is spent there and the standing face is the
+    // picture its source carries, to the point. Everything that moves through a quarter — the turn,
+    // the camera's dip, the crease's slide, the counter-motion and the joint's bite — is nothing
+    // inside these bands, which is what makes a door a door and not a checkpoint.
+    //
+    // UNJUSTIFIED — nothing measured 0.05 itself; it was chosen, not derived. OWNED, ONE HOME FOR
+    // THE FLEET (plan row S-82, 2026-09-03): liquid, pour, tunnel, veil and wind carry this same
+    // value, and each used to claim in its own words that it was "the number every instrument of
+    // this engine uses" without naming where that claim was settled — a copy claim, not a
+    // measurement. This file is now that one home. The five others still carry their own literal,
+    // because a pass-inst-*.js file is independently loaded and version-pinned (PASS-API-V1 §1.2)
+    // with no shared runtime state to read this from; each now names this file and line as its
+    // source and stays a hand-kept copy until a wire change publishes the value through the
+    // manifest contract instead (named in docs/evidence/2026-09-03-s69-s72-constants.md). Too
+    // small a dead band and a "landed" work still visibly creeps at the door; too large and the
+    // middle of the hand loses the fraction of the fold it should carry the motion.
     var FEEL_D0 = 0.05;
 
     /* THE FACES THE JOURNEY RUNS OVER. Two, and the reason is the header's: a cue carries an ordered

@@ -29,7 +29,6 @@
       "BOX_CROP",
       "CAM_FAR",
       "EASE_P",
-      "FEEL_D0",
       "FING_MAX",
       "FING_N",
       "SEAM_REACH",
@@ -74,7 +73,6 @@
       "WANDER_X"
     ],
     "pass-inst-kaleidoscope.js": [
-      "CLOCK_MAX",
       "REACH_MIN",
       "RINGS_MIN",
       "ROT_RATE",
@@ -92,7 +90,6 @@
       "WEDGES_N"
     ],
     "pass-inst-liquid.js": [
-      "FEEL_D0",
       "KX",
       "KY",
       "LIFE_REDUCED",
@@ -158,7 +155,6 @@
     ],
     "pass-inst-pour.js": [
       "COLS_MIN",
-      "FEEL_D0",
       "GRAIN_MIN",
       "MARGIN",
       "SEED_SPAN",
@@ -190,7 +186,6 @@
       "ACT",
       "CROP_MIN",
       "FAR_REACH",
-      "FEEL_D0",
       "HOLE",
       "MARGIN",
       "REPS_DEF",
@@ -212,7 +207,6 @@
     "pass-inst-veil.js": [
       "BODIES_MIN",
       "DEPTH_MARGIN",
-      "FEEL_D0",
       "FLOOR",
       "GAP_MIN",
       "SEED_SPAN",
@@ -241,7 +235,6 @@
     ],
     "pass-inst-wind.js": [
       "BODY_MIN",
-      "FEEL_D0",
       "LAG_MAX",
       "MARGIN",
       "REACH",

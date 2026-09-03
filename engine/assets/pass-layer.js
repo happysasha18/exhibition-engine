@@ -1089,17 +1089,18 @@
   var CAM_REST_TOL = 1e-6;
   // A handoff between two authorities is continuous within this much, measured on the pose across
   // the handoff frame. Normalised pan and radians share one bar.
-  // UNJUSTIFIED — how far two camera authorities may stand apart across the instant one hands to
-  // the other. This file chose a thousandth; nobody measured how far apart a person can see them
-  // stand, and the number is a thousand times the arithmetic bar above it rather than a reading.
-  // OWNED TASTE, RECORDED AS OWNED RATHER THAN OPEN (plan row S-81, 2026-09-03). Plan row S-69
-  // named it; nothing measures it and nothing in this tree derives it, so it stays here as one
-  // home with the cost of it being wrong said out loud: too tight and the diagnostic surface
-  // reports a jump at every handoff where two authorities agree to everything but arithmetic, so
-  // a real jump is lost among false ones; too loose and a discontinuity a visitor can see passes
-  // as continuous. The reading that would settle it is one point of the drawing buffer carried
-  // into the pose's own normalised units, and this file does not take it.
-  var CAM_HANDOFF_TOL = 1e-3;
+  // DERIVED — one point of the drawing buffer, carried into the pose's own normalised units (plan
+  // row S-82, 2026-09-03; named as the settling reading in plan row S-69). `panX`/`panY` are
+  // normalised by CSS width/height (`hangPoseOf`, above), and the buffer is `W = cssW * dpr * s`
+  // (§this file's own `bindCanvas`/`changeStep`), so one raster pixel is exactly `1/W` of `panX`
+  // and `1/H` of `panY` by construction — nothing is typed, and a device drawing at a different
+  // resolution re-bases the bar with it. The bar stays ONE number across every CAM_KEYS entry
+  // (pan alongside `logScale`/`pitch`/`yaw`/`roll`, as `camOff` already compares them), so a
+  // rotation or a scale is still held to a position-sized bar; that mixed-unit shape is
+  // `camOff`'s own and this row does not change it. Before a canvas is bound `W = H = 1`, so the
+  // bar reads a full pan-width and no handoff measured before a pass runs is ever flagged — the
+  // same silent-pass shape the un-derived 1e-3 had for the same case.
+  function camHandoffTol() { return Math.max(1 / W, 1 / H); }
 
   // `pass-composer.js` boxes every composed float in its own `Flt` wrapper (a plain object whose
   // `valueOf` returns the number, so ordinary arithmetic and `Number(...)` already see through it —
@@ -1794,9 +1795,10 @@
         var there = camCompose(anchorAt, trackAt, rec.carry, carryAt);
         var here = camCompose(anchorAt, rec.ownPose || trackAt, rec.carry, carryAt);
         var off = camOff(there, here);
+        var handoffTol = camHandoffTol();
         rec.handoffs.push({ at: +at.toFixed(4), from: rec.camOwner, to: owner,
-                            off: +off.toFixed(9), within: off <= CAM_HANDOFF_TOL });
-        if (off > CAM_HANDOFF_TOL) {
+                            off: +off.toFixed(9), within: off <= handoffTol });
+        if (off > handoffTol) {
           logEvt("camera-handoff-jump", rec.cmd.gen,
                  rec.camOwner + " → " + owner + " moves the pose by " + off.toFixed(6));
         }
@@ -4258,7 +4260,7 @@
       hang: cur ? hangRow(cur) : (lastRun ? lastRun.hang : null),
       handoffs: cur ? cur.handoffs : (lastRun ? lastRun.handoffs : []),
       cadence: cur ? cur.cadence : (lastRun ? lastRun.cadence : null),
-      camTolerances: { rest: CAM_REST_TOL, handoff: CAM_HANDOFF_TOL },
+      camTolerances: { rest: CAM_REST_TOL, handoff: camHandoffTol() },
       // WHAT THE CARRIER HAD TO DO TO KEEP THE FRAME WHOLE at the last frame drawn: how many frames
       // wide it stood, how much of the pose it could carry at that width, and the widest it is ever
       // allowed to stand. A picture that looks tighter than the plan asked for reads back to these.
@@ -4895,7 +4897,7 @@
                        cssW * k / 2, cssH * k / 2, { w: cssW, h: cssH });
       },
       frame: function () { return { w: cssW, h: cssH, buffer: [W, H] }; },
-      camTolerances: function () { return { rest: CAM_REST_TOL, handoff: CAM_HANDOFF_TOL }; },
+      camTolerances: function () { return { rest: CAM_REST_TOL, handoff: camHandoffTol() }; },
       ladder: function (ms, frames) {
         var t = 1e6;
         for (var i = 0; i < frames; i++) { t += ms; noteFrame(t); }

@@ -302,10 +302,15 @@
        One law, one number, read in three instruments' own units. */
     var MARGIN = 0.10;
 
-    /* THE DEAD BANDS AT EITHER END OF THE HAND, the number every instrument of this engine uses.
-       Over the first and last five hundredths of the dial nothing has poured and nothing has
-       heaped: the hand is spent there and the standing work is the picture its source carries, to
-       the point. That is what makes a door a door and not a checkpoint. */
+    // THE DEAD BANDS AT EITHER END OF THE HAND. Over the first and last five hundredths of the
+    // dial nothing has poured and nothing has heaped: the hand is spent there and the standing
+    // work is the picture its source carries, to the point. That is what makes a door a door and
+    // not a checkpoint.
+    //
+    // UNJUSTIFIED — a local copy of the one home, pass-inst-boxfold.js:458 (plan row S-82,
+    // 2026-09-03); a pass-inst-*.js file is independently loaded and version-pinned (PASS-API-V1
+    // §1.2) with no shared runtime to read that file's value from, so this literal is kept in
+    // sync by hand rather than by construction.
     var FEEL_D0 = 0.05;
 
     /* NO RESPONSE CURVE IS CARRIED, and that is a fact about this instrument rather than an

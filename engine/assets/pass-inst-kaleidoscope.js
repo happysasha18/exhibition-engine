@@ -303,8 +303,18 @@
       return ROT_RATE * t + (ROT_AMP / ROT_W) * (1.0 - Math.cos(ROT_W * t));
     }
 
-    /* HOW LONG A SECOND A SCORE MAY HAND IN. §2.5's transaction bound, in seconds — the same ceiling
-       the meshing and material instruments publish on their own clock handles. */
+    // HOW LONG A SECOND A SCORE MAY HAND IN. §2.5's transaction bound, in seconds — the same
+    // ceiling pass-composer.js reads off its own tier table into TRANSACTION_MS and
+    // pass-layer.js reads off its own tier table into DURATION_MAX (S-70, 2026-09-03).
+    //
+    // UNJUSTIFIED — a third typed copy of that same 14, not derived from either. OWNED, ONE HOME
+    // NOT AVAILABLE HERE (plan row S-82, 2026-09-03): this file is a version-pinned,
+    // independently-loaded instrument (PASS-API-V1 §1.2 — "the host owns... the clock... and the
+    // transaction; the instrument owns the picture"), so it carries no import of the composer's
+    // or the layer's module scope and cannot read either derivation. A shared home would need the
+    // host to publish this bound through the manifest contract itself, which is the wire change
+    // named in docs/evidence/2026-09-03-s69-s72-constants.md and not done here. If §2.5 ever
+    // moves, this file is the one place besides the two derivations that must be told by hand.
     var CLOCK_MAX = 14;
 
     /* ---- THE PORT'S OWN THREE NUMBERS -------------------------------------------------------- */
