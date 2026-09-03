@@ -617,6 +617,11 @@
       // The work folds onto its own mirror, the two works exchange while the frame is wholly
       // mirrored and neither is legible as itself, and the second opens back out of the mirror.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH ARRIVAL MODE WANTS THIS INSTRUMENT (plan row S-83, 2026-09-03). PROPAGATED names a
+      // copy propagating, which is what this instrument's own `propagate` handle plays — the
+      // composer used to carry this as one entry of a table it kept about two instruments by name
+      // (`ARRIVAL_WANTS_INSTRUMENT`); the fact is this instrument's own and now stands here.
+      arrivalWants: "PROPAGATED",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is CARRIED rather than re-decided:
       // lab/CROSSING-HISTORY.md's vocabulary table records this module's level as CELL, and that row
       // is his own standing verdict. The fold lines partition the frame into mirrored panels and the

@@ -579,6 +579,12 @@
       // The departing work comes apart into a material, the middle is a frame carrying matter in the
       // air with a gap behind it, and the arriving work gathers out of what has landed.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH ARRIVAL MODE WANTS THIS INSTRUMENT (plan row S-83, 2026-09-03). CRYSTALLIZED names a
+      // seed crystallizing out of what has landed, which is what this instrument's own `arrival`
+      // and `seedPlace` handles play — the composer used to carry this as one entry of a table it
+      // kept about two instruments by name (`ARRIVAL_WANTS_INSTRUMENT`); the fact is this
+      // instrument's own and now stands here.
+      arrivalWants: "CRYSTALLIZED",
       // READ OFF THIS INSTRUMENT'S OWN CONSTRUCTION, and said to be read rather than published:
       // there is no lab module for a pour, so no vocabulary table carries a row for it.
       //   · SURFACE — one field runs over the whole frame, the heap's own height, and its value at a

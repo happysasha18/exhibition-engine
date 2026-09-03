@@ -1465,6 +1465,17 @@
     var lastFramePace = null;
     var MANIFESTS = consts.manifests;
     var INSTRUMENTS = consts.instruments;
+    // WHICH INSTRUMENT'S OWN HANDLE AN ARRIVAL MODE SPEAKS THROUGH, READ OFF THE MANIFESTS
+    // (plan row S-83, 2026-09-03). This table used to stand typed here by hand, naming two
+    // instruments it had no other way to reach; now it is built once, over whichever instruments
+    // this collection ships, from each one's own `arrivalWants` declaration — `pour` says
+    // CRYSTALLIZED, `livemirror` says PROPAGATED, and an instrument that declares none of the
+    // three cast modes (CONDENSED, CRYSTALLIZED, PROPAGATED) simply adds no entry.
+    var ARRIVAL_WANTS_INSTRUMENT = {};
+    Object.keys(MANIFESTS).forEach(function (iid) {
+      var wants = MANIFESTS[iid].arrivalWants;
+      if (wants) ARRIVAL_WANTS_INSTRUMENT[wants] = iid;
+    });
     // THE COLLECTION'S FLOORS AND THRESHOLDS ARE NO LONGER READ, and a settings record may go on
     // carrying them. `consts.floors` held ten typed numbers — a cut-line floor per measure and a
     // «tight» floor for three of them — and `consts.thresholds` seven more, each of them a cut taken
@@ -5588,10 +5599,10 @@
       // only through pour's `arrival`/`seedPlace` and PROPAGATED only through livemirror's
       // `propagate` — each is the one branch in this file that reads `arrival.mode` for that name,
       // and both the sequential cast and the joint bundle planner below read this same one line
-      // rather than each carrying its own copy of the fact. It is still a table standing in this
-      // file, which `PLAN.md` row S-66 also asks to move into the two instruments' own manifests;
-      // that half needs the site's own manifest harvest to carry a new field and lands on its own.
-      var ARRIVAL_WANTS_INSTRUMENT = { CRYSTALLIZED: "pour", PROPAGATED: "livemirror" };
+      // rather than each carrying its own copy of the fact. `ARRIVAL_WANTS_INSTRUMENT` is built
+      // once, above, off the instruments' own `arrivalWants` manifests (plan row S-83, 2026-09-03)
+      // — the table this file used to keep by hand about two instruments named here no longer
+      // stands in this file at all.
       // ARRIVAL'S OWN WINDOW OPENS INSIDE THE ROOM THE VOICE BEFORE IT IS ALIVE IN. `locusFit` now
       // carries `arrivalPlan.fit`, the winning arrival's own reading, whichever of the five plays:
       // `locusOf`'s reading where CONDENSED wins, the texture reading where CRYSTALLIZED does, and so
