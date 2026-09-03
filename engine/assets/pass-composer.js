@@ -10188,7 +10188,19 @@
                // it: the host needs the score to fit its byte fence, while the diagnostic surface
                // needs the actual joint choices that produced it. `01a-pass.js` keeps this exact
                // object on the passage row and never re-derives the ledger.
-               diagnostics: { routeFunction: stepFn, bundles: plan.bundles },
+               // WHAT THE TWO COOLINGS ACTUALLY DIVIDED BY on this composition, published because
+               // the separation between them is a WIRING fact and a wiring fact is answered by what
+               // the composition read, never by a sentence about it (naряд S-19). A road cools off
+               // the walk's own roads (`roadPlayedDistinct`, `coolOfRoad`) and a letter off the
+               // mixed list a step's stack also stands in (`walkPlayedDistinct`, `coolOf`); the two
+               // vocabularies can share a spelling, so telling them apart after they are flattened
+               // into one list is not sound and the second channel is the repair. These two lengths
+               // are the two pools' own sizes, which is what the floor `(k + 1) / (n + 1)` divides
+               // by in each — so a run that hands one mixed list and one roads-only list says here,
+               // in numbers, which of them each cooling read.
+               diagnostics: { routeFunction: stepFn, bundles: plan.bundles,
+                              cooling: { roadPool: roadPlayedDistinct.length,
+                                         letterPool: walkPlayedDistinct.length } },
                // The derivation's own reading, for the diagnostic surface and for the walk's edge
                // record: which genre this passage ran on and how well it suited the pair, the whole
                // vocabulary ranked, what each genre read, and every shaping the crossing took.

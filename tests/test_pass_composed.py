@@ -521,18 +521,24 @@ NODE_ROWS = [
     "1/9 however many instruments the same walk has cast",
     "EX-COMPOSED a fold spends the crossing's one miracle the first time a walk plays it and never "
     "again, freeing the slot for another fold in the same crossing",
+    "EX-COMPOSED red-on-bug · the miracle read off the static mark again: the same fold spends it "
+    "twice on one nine-step walk",
+    "EX-COMPOSED red-on-bug · one shared cooling pool given back to roads and letters: a road's own "
+    "floor divides by the mixed list again",
 ]
 # THE ROWS THIS FILE READS BY NAME rather than by position. Every row above is addressed by its
 # index, which is fine while the list only ever grows at the end — and it stopped being fine the
 # moment two rows landed there in one night: the first took `NODE_ROWS[-1]` and the second silently
 # took it away. A name cannot be taken away by a neighbour.
-ROW_ENTRY_DOOR = NODE_ROWS[-7]
-ROW_HARMONIC = NODE_ROWS[-6]
-ROW_COST = NODE_ROWS[-5]
-ROW_DAY = NODE_ROWS[-4]
-ROW_COOLDOWN_ARITH = NODE_ROWS[-3]
-ROW_ROAD_POOL = NODE_ROWS[-2]
-ROW_MIRACLE_RARITY = NODE_ROWS[-1]
+ROW_ENTRY_DOOR = NODE_ROWS[-9]
+ROW_HARMONIC = NODE_ROWS[-8]
+ROW_COST = NODE_ROWS[-7]
+ROW_DAY = NODE_ROWS[-6]
+ROW_COOLDOWN_ARITH = NODE_ROWS[-5]
+ROW_ROAD_POOL = NODE_ROWS[-4]
+ROW_MIRACLE_RARITY = NODE_ROWS[-3]
+ROW_MIRACLE_RARITY_RED = NODE_ROWS[-2]
+ROW_ROAD_POOL_RED = NODE_ROWS[-1]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
 # change before the module is loaded, which is how every red-on-bug row below is run: the repair is
@@ -2178,11 +2184,19 @@ const roadEcho = composer.passageFor({
 });
 const echoedMixed = (roadEcho.request && roadEcho.request.walkMemory) || [];
 const echoedRoad = (roadEcho.request && roadEcho.request.walkGenres) || [];
+// AND WHAT THE TWO COOLINGS ACTUALLY DIVIDED BY, off the composition's own diagnostics rather than
+// off the request it was handed: the echo above shows the two lists reached the composer apart, and
+// this shows the two coolings READ them apart. It is the reading a plant can move — restoring one
+// shared pool for roads and letters puts both numbers on the mixed list at once — where the echo and
+// the source grep cannot be moved by any plant at all.
+const roadCooling = ((roadEcho.diagnostics || {}).cooling) || {};
 out.roadPool = {
   mixedLen: echoedMixed.length,
   mixedDistinct: new Set(echoedMixed).size,
   roadLen: echoedRoad.length,
   roadDistinct: new Set(echoedRoad).size,
+  roadPoolRead: roadCooling.roadPool,
+  letterPoolRead: roadCooling.letterPool,
   floorAtEight: composer.coolFactor(0, 8),
   floorAtMixed: composer.coolFactor(0, echoedMixed.length || 1),
 };
@@ -2882,10 +2896,18 @@ const HARD = {
   // count over 1 anywhere names the repeat.
   const miracleVoicedCount = {};
   steps.forEach((s) => { if (s.miracle) miracleVoicedCount[s.miracle] = (miracleVoicedCount[s.miracle] || 0) + 1; });
+  // THE COUNT THE RUN PRINTS FOR ITSELF, and it is the number the row is judged on: how many times
+  // over these nine steps the strongest strong move played AS THE MIRACLE. Rarity is the whole law
+  // here, so what the run has to hand back is a count and not a verdict — the row reads it against
+  // one and prints it either way, which is what makes the planted run below legible.
+  const mostVoiced = Object.keys(miracleVoicedCount)
+    .reduce((n, id) => Math.max(n, miracleVoicedCount[id]), 0);
   out.miracleRarity = {
     steps: steps,
     foldsWithinReach: foldsWithinReach.slice().sort(),
     distinctFolds: Object.keys(miracleVoicedCount).sort(),
+    voicedCount: miracleVoicedCount,
+    mostVoiced: mostVoiced,
     repeats: Object.keys(miracleVoicedCount).filter((id) => miracleVoicedCount[id] > 1)
   };
 }
@@ -3567,11 +3589,19 @@ else:
         rr_first = mr["steps"][0]["miracle"] if mr["steps"] else None
         rr_second = mr["steps"][1]["miracle"] if len(mr["steps"]) > 1 else None
         rr_reach = mr.get("foldsWithinReach") or []
+        # THE RUN PRINTS THE COUNT ITSELF and the row reads it against one. `mostVoiced` is the
+        # largest number of times any one strong move played the miracle over these nine steps —
+        # the whole of what rarity means here said as a number, so the row can be read without
+        # taking its own prose on trust and the planted run below moves a number rather than a word.
+        rr_counts = ", ".join(f"«{k}» {v}×" for k, v in sorted(mr["voicedCount"].items())) or "none"
         check(ROW_MIRACLE_RARITY,
               not rr_bad and len(mr["steps"]) == 9 and len(rr_reach) >= 2
               and rr_first is not None
-              and rr_second is not None and rr_second != rr_first and not mr["repeats"],
-              f"nine steps of one edge, walkMiracles threaded forward. The crossing's own bundle "
+              and rr_second is not None and rr_second != rr_first
+              and mr["mostVoiced"] <= 1 and not mr["repeats"],
+              f"nine steps of one edge, walkMiracles threaded forward. THE STRONG MOVE PLAYED THE "
+              f"MIRACLE AT MOST {mr['mostVoiced']} TIME(S) OVER THE NINE STEPS ({rr_counts}), "
+              f"against the law's own one. The crossing's own bundle "
               f"ledger puts {len(rr_reach)} fold(s) within reach of it ({', '.join(rr_reach) or 'none'}), "
               f"which is what a freed slot can be handed on TO; step 1 voices «{rr_first}» the "
               f"miracle; with «{rr_first}» now in the walk's own history step 2 no longer voices it "
@@ -3579,6 +3609,29 @@ else:
               f"same crossing; over all nine steps {len(mr['distinctFolds'])} distinct fold(s) were "
               f"ever the miracle ({', '.join(mr['distinctFolds'])}) and none twice: {mr['repeats'] or 'none'}"
               + (f"; steps that declined: {rr_bad}" if rr_bad else ""))
+
+        # --- row 5e red-on-bug · the static mark restored, and the same walk spends twice --------
+        # THE PLANT IS THE DEFECT ITSELF, put back in one line: `spendsTheMiracle` reading the
+        # instrument's own standing declaration and nothing about this walk — which is how it read
+        # before naряд S-18 moved the count onto the walk's own history. On the same nine steps of
+        # the same edge, the same fold is then free to be the miracle again, and the count the run
+        # prints for itself climbs past one. What this row proves is that the row above is held up
+        # by the reading and not by the edge: an edge whose second step simply never casts a fold
+        # would pass the row above with the reading struck out, and this shows it does not.
+        _rr_red = node_run(plants=[["return isWorldFold(iid) && walkMiracles.indexOf(iid) < 0;",
+                                    "return isWorldFold(iid);"]], sweep=1)
+        _rr_red_mr = (_rr_red.get("miracleRarity") or {}) if isinstance(_rr_red, dict) else {}
+        _rr_red_counts = ", ".join(f"«{k}» {v}×"
+                                   for k, v in sorted((_rr_red_mr.get("voicedCount") or {}).items()))
+        check(ROW_MIRACLE_RARITY_RED,
+              bool(_rr_red_mr) and _rr_red_mr.get("mostVoiced", 0) > 1,
+              f"with the walk's own history struck out of `spendsTheMiracle` and the standing "
+              f"declaration read alone, the same nine steps of the same edge give "
+              f"{_rr_red_mr.get('mostVoiced')} play(s) of one strong move as the miracle "
+              f"({_rr_red_counts or 'none'}) against the shipped run's {mr['mostVoiced']} — so the "
+              f"row above is held up by the reading of the walk and by nothing else"
+              + (f"; the planted run failed: {_rr_red.get('error')}"
+                 if isinstance(_rr_red, dict) and _rr_red.get("error") else ""))
 
         # --- row 5a · the length is composed from the pair, inside its tier's own band ----------
         # BOTH HALVES ARE PROVED BY CONSTRUCTION, not by sampling pairs. The band's own half is
@@ -4123,15 +4176,45 @@ else:
         check(ROW_ROAD_POOL,
               rp["mixedLen"] == 35 and rp["mixedDistinct"] == 35
               and rp["roadLen"] == 8 and rp["roadDistinct"] == 8
+              and rp["roadPoolRead"] == 8 and rp["letterPoolRead"] == 35
               and abs(rp["floorAtEight"] - 1 / 9) < 1e-9
               and rp["floorAtMixed"] < rp["floorAtEight"] / 3
               and PICK_GENRE_READS_ROAD,
               f"a request naming eight roads and twenty-seven instruments in one {rp['mixedLen']}"
               f"-entry `walkMemory` echoes back a `walkGenres` of {rp['roadDistinct']} distinct "
-              f"entries, never {rp['mixedDistinct']}: the floor for a road just played is fixed at "
+              f"entries, never {rp['mixedDistinct']}, and the composition's own diagnostics say the "
+              f"two coolings then DIVIDED by {rp['roadPoolRead']} and {rp['letterPoolRead']} "
+              f"respectively — the road off the roads, the letter off the mixed list. So the floor "
+              f"for a road just played is fixed at "
               f"{rp['floorAtEight']:.4f} (1/9), not the {rp['floorAtMixed']:.4f} (~1/36) the mixed "
               f"pool his report measured would give it, and `pickGenre`'s own source names "
               f"«road» rather than the mixed pool's «1»: {road_wiring_note}.")
+
+        # --- row 8j-3 red-on-bug · the one shared pool given back -------------------------------
+        # THE PLANT IS THE DEFECT HIS NIGHT RUN FOUND, put back in one line: the road channel's own
+        # pool set to the letters' mixed one, which is what a road cooled off before `walkGenres`
+        # rode the wire as a second channel. The row above then has nothing left holding it up — the
+        # request echo still shows two lists arriving apart and `pickGenre`'s source still names
+        # «road», both untouched by any plant — so what has to move is the number the composition
+        # itself publishes about what it divided by, and it does: the road's floor goes back onto
+        # the mixed list's own length, near a thirty-sixth where the design says a ninth.
+        _rp_red = node_run(plants=[["roadPlayedDistinct = dedupeMostRecent("
+                                    "Array.isArray(roadPlayed) ? roadPlayed : []);",
+                                    "roadPlayedDistinct = walkPlayedDistinct;"]], sweep=1)
+        _rp_red_rp = (_rp_red.get("roadPool") or {}) if isinstance(_rp_red, dict) else {}
+        check(ROW_ROAD_POOL_RED,
+              bool(_rp_red_rp)
+              and _rp_red_rp.get("roadPoolRead") == _rp_red_rp.get("letterPoolRead") == 35
+              and _rp_red_rp.get("roadLen") == 8,
+              f"with the roads-only pool struck out and the mixed one put back in its place, the "
+              f"same request — the same eight roads still arriving apart from the same twenty-seven "
+              f"instruments — has its ROAD cooling divide by "
+              f"{_rp_red_rp.get('roadPoolRead')} instead of {rp['roadPoolRead']}, which is the "
+              f"floor near a thirty-sixth his night run measured, against the ninth the design "
+              f"claims. Nothing else about the request moved: `walkGenres` still arrives "
+              f"{_rp_red_rp.get('roadLen')} entries long"
+              + (f"; the planted run failed: {_rp_red.get('error')}"
+                 if isinstance(_rp_red, dict) and _rp_red.get("error") else ""))
 
         # --- row 8k · THE LEVEL THE CARRYING AXIS CLEARS (charter shelf 2 with shelf 17) ----------
         # His 2026-08-24 word watching the live route: the camera's movement does not visibly read
