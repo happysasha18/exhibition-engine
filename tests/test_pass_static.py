@@ -690,10 +690,22 @@ HOST = ASSETS / "pass-inst-boxfold.js"
 # own header names as what stood outside row one — and S-67 struck it out of the instrument, so the
 # plant now sits above the dead bands instead. Which constant it sits above never mattered: what the
 # row reads is whether the predicate names the number that ARRIVED.
-ANCHOR = "    var FEEL_D0 = 0.05;"
+# THE ANCHOR IS THE COMMENT'S OWN FIRST LINE, NOT THE DECLARATION (S-82, 2026-09-03). FEEL_D0
+# itself now carries a real `//` verdict comment (its own dead band is one home for the fleet,
+# plan row S-82) directly above it, with no code line between comment and declaration — real
+# code never has one there either, since that gap is exactly what makes the comment FEEL_D0's own
+# to `verdict_above`. Sitting the plant between that comment and FEEL_D0 (the old anchor) would
+# split them and make FEEL_D0 itself read naked; sitting it directly under the comment with no
+# firewall would let `PLANTED_BARE` walk up through FEEL_D0's own contiguous `//` run and inherit
+# its verdict. Anchoring above the comment's own first line and firewalling the plant off with a
+# blank line leaves FEEL_D0's comment-declaration pair untouched either way, which is what
+# "which constant it sits above never mattered" actually requires once that constant has a
+# comment of its own.
+ANCHOR = "    // THE DEAD BANDS AT EITHER END OF THE HAND (box.js:481)."
 PLANT = ("    var PLANTED_BARE = 0.37;\n"
          "    // UNJUSTIFIED — planted by this row. Nothing derives it and no plan row owns it.\n"
-         "    var PLANTED_LOOSE = 0.41;\n")
+         "    var PLANTED_LOOSE = 0.41;\n"
+         "\n")
 host_text = HOST.read_text(encoding="utf-8")
 if ANCHOR not in host_text:
     check(NAME9, False, "the plant found no anchor to sit above in «" + HOST.name + "»; re-pin it")
