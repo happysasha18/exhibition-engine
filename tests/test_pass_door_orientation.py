@@ -61,11 +61,16 @@ suite drives the instrument straight off the bench, with no door simulated at al
 at the bench's own dominance extremes, where `cw` reads zero same as at a real door but the crop is
 not seated away. Gating `p`'s own factor on `cw` there desynced it from `uFitA`/`uFitB`, which
 still expected it, and stretched the very thing meant to be fixed. The repair that actually closes
-both suites drops that factor from `p` entirely — FRAG's `main` now reads `p` plain — and folds the
-frame's own ratio into `fit` itself, combined with the work's own, the same road droste's and
-planet's own `fit` already take: `seated` already cancels exactly what `fit` returns toward
-identity at a real door and hands it straight through everywhere else, a bench draw included, so
-nothing needed gating on anything this file's own hand computes.
+both suites keeps the factor on `p` and rides it on the HOST'S own door signal instead of on `cw`:
+`fit` returns a constant 1 in its third and fourth places, which `seated` treats as plain multiples
+of its own `q` (no `+1`, unlike the first two), so FRAG's `main` reads that fraction straight back
+as `uFitA.z` — `doorQ` — and writes `p = (vUv - 0.5) * mix(vec2(1.0), uRes / m, doorQ)`. `p` and
+`fit.xy` then read the SAME door everywhere: the factor is identity where a real door has seated
+the crop away, and the original unconditional factor where nothing is being seated, a bare bench
+draw at a dominance extreme included. No new number, and nothing gated on anything this file's own
+hand computes. (Written down here because this header briefly claimed a third repair that was never
+made — that the factor was dropped from `p` and folded into `fit` — while the shipped file carried
+this one; corrected 2026-09-03 against the bytes, with the plant below now standing behind it.)
 
 WHAT IS JUDGED, AND WHAT IS ONLY REPORTED. The ARRIVING door is judged. The departing one is read
 and printed beside it but not judged, and that is measured rather than cautious: driving the
@@ -148,6 +153,15 @@ PRE_REPAIR = {
          "vec2 uvFlatA = clamp(vec2(0.5 + P.x * uFlatPP.x, 0.5 - P.y * uFlatPP.y), 0.0, 1.0);"),
         ("vec2 uvFlatB = clamp(vec2(0.5 + fp.x * uFitB.x, 0.5 - fp.y * uFitB.y), 0.0, 1.0);",
          "vec2 uvFlatB = clamp(vec2(0.5 + P.x * uFlatPP.z, 0.5 - P.y * uFlatPP.w), 0.0, 1.0);"),
+    ],
+    # overlay: the shared frame coordinate's own frame-shape factor went back to standing outside
+    # the door — unconditional, as it was before 2026-09-02, so it survives past the host's own
+    # crop-cancellation (`seated` in pass-layer.js) and squeezes the sampled work along one axis at
+    # a real door. `doorQ` is left computed and unused by this substitution, which is the whole
+    # point of it: the fix was never the reading, it was riding `p` on it.
+    "overlay": [
+        ("vec2 p = (vUv - 0.5) * mix(vec2(1.0), uRes / m, doorQ);",
+         "vec2 p = (vUv - 0.5) * uRes / m;"),
     ],
 }
 
@@ -480,9 +494,11 @@ else:
             # coordinate squeezed one axis by the canvas's own resolution ratio, a factor riding
             # nothing (§8's `cw`, the one envelope every other axis of this frame hangs on already
             # shuts it at both doors) and so surviving past the host's own crop-cancellation, the
-            # same class droste and planet carried. Fixed in pass-inst-overlay.js by putting that
-            # factor on `cw` with the rest, it now reads inside the same seam every other instrument
-            # passes at and stands in this one row too.
+            # same class droste and planet carried. Fixed in pass-inst-overlay.js by riding that
+            # factor on the host's own door signal (`doorQ`, read back off `fit`'s sentinel third
+            # place as `uFitA.z` — see the header), it now reads inside the same seam every other
+            # instrument passes at and stands in this one row too, with a red-on-bug row of its own
+            # below beside droste's and planet's.
             over = {n: round(v[1][0], 2) for n, v in got.items()
                     if v[1] is not None and v[1][0] > SEAM}
             unread = [n for n, v in got.items() if v[1] is None]
