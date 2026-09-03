@@ -57,6 +57,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "engine" / "assets" / "pass-composer.js"
+# THE ROLL'S OWN SOURCE FRAGMENT IS SWEPT TOO (adversarial-review finding 19, 2026-09-03). Shelf 20
+# binds a rule's argument wherever the rule lives, and the roll that orders the candidates lives in
+# the client, not in the composer — so a tally standing as a rank's justification survived R4 for as
+# long as R4 read one file. `engine/client/01a-pass.js` is the fragment `assemble_client.py` joins
+# into the served `exhibition.js`; the fragment is the edited copy, so it is the one read here.
+ROLL = ROOT / "engine" / "client" / "01a-pass.js"
 CONTRACT = ROOT / "docs" / "design" / "PASS-API-V1.md"
 FIXTURE = ROOT / "tests" / "fixture_pass_composed.json"
 WORKS = ROOT / "tests" / "fixture_pass_works.json"
@@ -671,17 +677,18 @@ def sweep(path, only_comments):
     return hits
 
 
-comp_hits = sweep(MODULE, True)
+comp_hits = ([(MODULE.name, n, why, rule) for n, why, rule in sweep(MODULE, True)]
+             + [(ROLL.name, n, why, rule) for n, why, rule in sweep(ROLL, True)])
 doc_hits = sweep(CONTRACT, False)
 
-check("R4 · no tally over the collection argues for a rule in the composer",
+check("R4 · no tally over the collection argues for a rule in the composer or in the roll",
       not comp_hits,
-      "" if not comp_hits else
+      ("both files read clean: " + MODULE.name + " and " + ROLL.name) if not comp_hits else
       ("charter shelf 20 binds comments as much as code. Each line below stands a count over the "
        "photographs where an argument from the formula's own construction belongs — the tallies "
        "themselves are not reprinted here:\n"
-       + "\n".join("        " + MODULE.name + ":" + str(n) + "  in `" + rule + "`  — " + why
-                   for n, why, rule in comp_hits)))
+       + "\n".join("        " + f + ":" + str(n) + "  in `" + rule + "`  — " + why
+                   for f, n, why, rule in comp_hits)))
 
 check("R4 · no tally over the collection argues for a rule in the contract",
       not doc_hits,

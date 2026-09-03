@@ -1111,9 +1111,9 @@
   // WHERE A SCORE COMES FROM. It is DERIVED, here, at the instant the walk casts the pair, from the
   // two works' own records. His word of 2026-08-17 19:21: the collection grows to thousands of works
   // and nothing on the product path may scale with the number of pairs. A table of pairs is
-  // quadratic in the collection — 121 works are already 10 558 ordered pairs — while a record per
-  // work is linear, and the whole living collection's records weigh 33 000 B gzipped where the pair
-  // rows they replace weighed 1 862 611 B.
+  // quadratic in the collection where a record per work is linear, so the table's own weight grows
+  // as the square of what the walk can afford to carry however few or many works the collection
+  // holds — the reason is the exponent, not any size the collection happens to stand at today.
   //
   // WHAT LEFT WITH THE TABLE. Three roads used to answer for a pair's score, and all three are gone:
   // `pass.scores` keyed by ordered pair, the delivery pack read through pass-reader.js, and
@@ -1697,9 +1697,20 @@
   }
   // A passage is read as a SCENE, rather than by one privileged instrument name. The score already
   // names the material reaching the eye: its voices, levels, camera and expressive handles. This
-  // extracts that live shape; no pair id, baked map or hand-written effect family enters it, so
-  // charter shelf 21 is answered by construction — the scene is derived at the visit, from the
-  // score this crossing just composed, and nothing is stored for a later pair to reuse.
+  // extracts that live shape; no pair id, baked map or hand-written effect family enters it, so on
+  // shelf 21's STORAGE-AND-NAMING axis the answer is by construction — the scene is derived at the
+  // visit, from the score this crossing just composed, and nothing is stored for a later pair to
+  // reuse.
+  //
+  // WHAT IS STILL CHOSEN BEFORE THE TWO PICTURES ARE KNOWN, SAID RATHER THAN COVERED BY THE SENTENCE
+  // ABOVE (adversarial-review finding 17, read 2026-09-03). `bucket` below quantizes every
+  // expressive handle into five steps of its own declared span, and that 5 is a build-time constant
+  // with no derivation written anywhere. It decides when two settings count as the same scene token,
+  // which decides the Jaccard distances at ranks 5 to 7, which decides which crossing plays. Shelf
+  // 21's own test is «could this value have existed before the two pictures were known», and this
+  // one could and did — so the shelf is NOT answered by construction here, on that axis, and the
+  // sentence above must not be read as saying it is. Deriving the step count from the handle's own
+  // declared span, or removing the quantization, is `PLAN.md`'s own row S-65.
   function passSceneOf(passage) {
     const score = passage && passage.score;
     const scene = { tokens: [], controls: [] };
@@ -3196,10 +3207,9 @@
       //     on a boolean constantly. The readings that replaced those two are CONTINUOUS: a Jaccard
       //     distance over token sets, which separates almost every pair of candidates it is handed.
       //     A boolean placed under a continuous reading is not a weak preference, it is an inert
-      //     one — it can only fire on an exact tie that essentially never occurs. Landing it there
-      //     and driving 12 real routes measured exactly that: routes carrying a colour voice went
-      //     8 of 12 to 4 of 12, the guarantee's own number moving the WRONG WAY while its rank sat
-      //     below a reading that never let it speak. Above them it fires where it must and nowhere
+      //     one — it can only fire on an exact tie that essentially never occurs. So a colour rank
+      //     seated under the two Jaccard readings is a rank that can never speak, whatever the
+      //     collection happens to contain. Above them it fires where it must and nowhere
       //     else: ranks 1 to 3 all tie by construction on an edge met for the first time (there is
       //     no recorded pass, so `passEdgeJudge` answers kin for everyone and its distance is null
       //     for everyone), so this is the first rank that can separate anything there, and a route's

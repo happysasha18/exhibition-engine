@@ -5046,6 +5046,17 @@
     // real door — not read off a suite's own pass/fail, and not vacuous against this file's own
     // hardcoded door pair. No such property was found in this pass; the search and its two rejected
     // candidates are recorded here for whoever writes it next.
+    //
+    // THE SECOND CLASS THIS STUB WAS SAID TO OWE, AND WHERE IT ACTUALLY WENT (adversarial-review
+    // finding 8, read 2026-09-03). The convergence plan folded a second class into this stub on
+    // 2026-09-01: cause H, a frame-filling instrument that publishes no `presence` seated at stack 0
+    // for a window shorter than the passage, so outside that window the frame stands on the cleared
+    // buffer and the voice above it is drawn AS the ground with its own presence never read. That
+    // class is CLOSED, and not here. `placeTheStack` above (`pass-composer.js:3873`) refuses any
+    // plan whose ground is not `GROUND_CUE` — the one cue whose window runs from the first instant
+    // to the last — so a short-window ground cannot be planned at all, and a legality rule refusing
+    // one afterwards would be vacuous by the same test that struck the doors-agreement candidate.
+    // This stub therefore owes ONE class, the door-handoff one above, and no longer two.
     function surfaceHandoverLegal() { return { ok: true, why: null }; }
 
     // CAPABILITY. A BOUND ON WORK EXAMINED, NEVER ON QUALITY — a fact about the enumeration's own

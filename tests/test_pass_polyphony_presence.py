@@ -24,9 +24,20 @@ WHAT THIS FILE FOUND ON REAL DATA. `scoreBundle`'s OWN dominant/second-voice pre
 fixture: removing it changes not one winner across 1999 real culmination-role crossings, because the
 `voicesPresent * 100` term this same function's comment calls «the dominant term» already decides
 every one of those cases outright — the `+10` only ever mattered among bundles ALREADY tied on voice
-count, which the dominant term makes rare. This is not the bug shelf 4 names (the presence law
-already holds structurally, checked below); it is a separate, minor finding, left in the code as
-found rather than removed here, since a dead ten points scores no crossing wrong.
+count, which the dominant term makes rare. This is not the bug shelf 4 names; it is a separate, minor
+finding, left in the code as found rather than removed here, since a dead ten points scores no
+crossing wrong.
+
+WHAT THE ROW BELOW PROVES, AND WHAT IT DOES NOT (adversarial-review findings 6 and 29, read
+2026-09-03). It proves that no crossing seats fewer voices than a LEGAL alternative its own ledger
+offered — a per-crossing claim, true or false one crossing at a time, with no population averaged
+over. It does NOT prove that a second voice actually plays, because a crossing whose ledger offered
+no two-voice bundle at all clears this row untouched. Those are two claims and this file answers one
+of them; a real drive is what answers the other, and on 2026-09-03 one read 2 of 4 culmination-role
+crossings carrying a second live voice (`~/tlvphotos/docs/evidence/2026-09-03-phase10-rerun/`), a
+sample far too small to settle anything. An earlier draft of this docstring said the presence law
+«already holds structurally» off this row's own zero count: that is a tally standing in for a proof
+by construction, which is the word this project's own definition of done forbids off a count.
 """
 import json
 import subprocess

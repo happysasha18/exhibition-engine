@@ -352,6 +352,22 @@ console.log(JSON.stringify(out));
 SMOOTH_LIMIT, BREAK_LIMIT = 0.5, 1.0
 BAR = (SMOOTH_LIMIT + BREAK_LIMIT) / 2
 
+# THE ONE SLACK THE THREE EXACTNESS ROWS BELOW ALLOW, AND WHERE IT COMES FROM (adversarial-review
+# finding 21, 2026-09-03). Three rows ask a curve to answer a number the manifest itself already
+# carries — a knot of its own measured table, the raw hand back for a written "no", its own declared
+# end. Each of those is an EXACT question: any difference the arithmetic did not force is a real
+# discrepancy, so the only slack owed is what evaluating `feel()` in doubles costs. A double carries
+# 2.22e-16 of relative error per rounding and `feel()` spends a small, bounded number of operations
+# on a value inside [0, 1], so a few thousand of those roundings is already far past anything the
+# curve can accumulate; 1e-12 is that, and it is this file's own bound from before `2e2dc49` (Phase
+# 7) widened it a thousandfold to 1e-9 with no reason stated and no derivation written. Nothing was
+# load-bearing at either width — the worst reading the whole fleet produces is around 4e-16 — which
+# is exactly why the width had to come back to a number with a source rather than stay at one
+# without. It is not the table's own print precision: `test_pass_tilt.py`'s `ROUND_HALF_ULP` reads a
+# table PRINTED to four decimals against a value ported from elsewhere, where half the last printed
+# decimal is the right bound; here the curve interpolates those very knots, so it owes them exactly.
+ARITHMETIC_SLACK = 1e-12
+
 JUDGED = sorted(n for n in CARRIERS if n not in EXCEPTED)
 
 if not node_available():
@@ -417,7 +433,7 @@ else:
             continue
         kf = r["knotFidelity"]
         knot_rows.append((n, kf["worst"]))
-        if kf["worst"] > 1e-9:
+        if kf["worst"] > ARITHMETIC_SLACK:
             knot_bad.append((n, "share %d is off by %g" % (kf["at"], kf["worst"])))
     check("PASS-FEEL every repaired curve still passes through the measurement's own points",
           bool(knot_rows) and not knot_bad,
@@ -517,7 +533,7 @@ else:
     # monotone law on an honest identity reads as spurious breakage rather than as a pass) — it is
     # simply whether the curve IS the raw hand, everywhere, which `idErr` (the driver's own largest
     # |feel(u) - u|) answers directly.
-    id_bad = [(n, frows[n]["idErr"]) for n in IDENTITY if frows[n]["idErr"] > 1e-9]
+    id_bad = [(n, frows[n]["idErr"]) for n in IDENTITY if frows[n]["idErr"] > ARITHMETIC_SLACK]
     check("PASS-FEEL every identity-declared feel() reads the raw hand exactly, everywhere",
           not ferr and IDENTITY and not id_bad,
           ("%s each answer their own argument back, to floating point and no further, over twenty "
@@ -543,7 +559,8 @@ else:
             clean_bad.append((n, "continuity ×%.3f" % r.get("halving", -1)))
         elif r["backwards"]:
             clean_bad.append((n, "turned back %d times" % r["backwards"]))
-        elif abs(r["ends"]["at0"] - want_ends[0]) > 1e-9 or abs(r["ends"]["at1"] - want_ends[1]) > 1e-9:
+        elif (abs(r["ends"]["at0"] - want_ends[0]) > ARITHMETIC_SLACK
+              or abs(r["ends"]["at1"] - want_ends[1]) > ARITHMETIC_SLACK):
             clean_bad.append((n, "ends %s, wanted %s" % (r["ends"], want_ends)))
     check("PASS-FEEL every monotone analytic curve declared clean is continuous, monotone, and "
           "stands at its own declared ends",
@@ -644,7 +661,7 @@ else:
             got = run_node(DRIVER, {ALL_SRC[idn].name: planted_id_src})
             prow = None if isinstance(got, dict) else next(
                 (r for r in got if r["file"] == ALL_SRC[idn].name), None)
-            if not prow or prow["idErr"] <= 1e-9:
+            if not prow or prow["idErr"] <= ARITHMETIC_SLACK:
                 id_plant_bad.append("planted %s and the identity row did not catch it (idErr %s)"
                                      % (idn, prow["idErr"] if prow else "driver error"))
 

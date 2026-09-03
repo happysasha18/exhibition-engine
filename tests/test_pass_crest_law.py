@@ -39,12 +39,28 @@ never given a zero door»), which is a different, already-understood shape and n
 concern. Every plan with two or more live cues is where the crest law actually applies, and every
 one of those this file could compose from the real 121-work fixture is walked.
 
-WHAT A FREEZE IS, WITHOUT A TYPED THRESHOLD. At each of a fixed number of evenly spaced instants
-across the plan's own real duration, this file reads the `mix` value of every cue whose own window
-covers that instant and joins them into one signature. Two ADJACENT instants whose signatures are
-BYTE-IDENTICAL are two moments in which nothing this passage plays moved at all — no percentage, no
-band, no fraction is chosen; the law is «no LIVE surface ever freezes», so any one such repeat is
-already the violation, whatever else happens either side of it.
+WHAT A FREEZE IS, AND NO SHARE OF THE COLLECTION DECIDES IT. At each of a fixed number of evenly
+spaced instants across the plan's own real duration, this file reads the `mix` value of every cue
+whose own window covers that instant and joins them into one signature. Two ADJACENT instants whose
+signatures are BYTE-IDENTICAL are two moments in which nothing this passage plays moved at all. No
+percentage, no share and no rate over the crossings decides the verdict: the law is «no LIVE surface
+ever freezes», so any ONE such repeat is already the violation, whatever else happens either side of
+it and however few or many crossings carry one.
+
+THE TWO NUMBERS THIS FILE DOES CHOOSE, SAID OUT LOUD RATHER THAN LEFT IN THE CODE (adversarial-review
+finding 22, 2026-09-03; an earlier draft of this paragraph claimed the file chose none, and the code
+below chose two).
+
+  · `Number(r.v.toFixed(6))` — the door dial is read to six decimals before two instants are compared.
+    That is a band, one part in a million of a dial whose whole range is [0, 1], and it errs in the
+    only direction a check may err: rounding makes two instants MORE likely to read identical, so it
+    can over-report a freeze and can never hide one. A green row is therefore not weakened by it.
+
+  · `SAMPLES = 60` — the walk's own resolution. This one errs the other way and so it bounds what a
+    green row may be said to prove: a freeze that opens and closes entirely between two adjacent
+    instants is not seen. So this row's green reads «no freeze at sixty instants across the passage»,
+    never «no freeze». It is a floor on detection, not a threshold on the law, and the law itself
+    still needs no number: one repeat is one violation.
 """
 import json
 import subprocess
