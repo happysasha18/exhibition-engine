@@ -151,6 +151,11 @@ SUITES = [
     # 2026-09-03 — S-31: the route-wire fence (tests/dump_route_wire_fence.py, 27de269) shipped
     # standalone, never through this one gate command. Registered in the pass that wired it in.
     "route_wire_fence",
+    # 2026-09-03 — S-73: fourteen instruments' declared `reads:` lines, each of them proven until
+    # now by grepping the same sentence back out of the built file. One driver varies every declared
+    # measurement across two real works and reads which handle and which fit actually answer.
+    # Registered in the pass that wrote it.
+    "pass_reads",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A
