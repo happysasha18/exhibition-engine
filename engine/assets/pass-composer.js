@@ -2746,6 +2746,27 @@
       return [r[0].length ? r[0][0].id : null, r[1], r[2], r[3]];
     }
 
+    // ONE NAMED INSTRUMENT LIFTED TO THE HEAD OF A RANKED CAST, and nothing else moved. A stable
+    // partition: the rows carrying `wanted` keep their own order and come first, every other row
+    // keeps its own order and follows. It is a PREFERENCE and not a wall — the tail is still there
+    // for the caller to fall back on — which is the shape shelf 9 asks of every reading in this
+    // file, and the shape the arrival's own mode narrowing did not have until 2026-09-03.
+    //
+    // WHY THIS IS PROVABLY NO LOSS TO THE CROSSINGS THAT PLAYED THE WANTED INSTRUMENT BEFORE. Where
+    // `wanted` stands anywhere in `ranked`, the head of the returned list is the FIRST row carrying
+    // it — exactly the row a filter down to `wanted` would have left standing at index 0, since a
+    // filter preserves order too. So every caller that reads the head reads the same id it read
+    // before, on every pair, at every seed. Where `wanted` stands nowhere, a filter returned the
+    // empty list and this returns `ranked` unchanged: the caller gets the best road it can actually
+    // cast rather than none.
+    function preferInstrument(ranked, wanted) {
+      var rows = ranked || [];
+      if (!wanted) return rows;
+      var first = [], rest = [];
+      rows.forEach(function (r) { (r && r.id === wanted ? first : rest).push(r); });
+      return first.concat(rest);
+    }
+
     // The one key both directions of an edge roll the ground on.
     function groundKeyOf(a, b) {
       return a.id < b.id ? (a.id + "__" + b.id) : (b.id + "__" + a.id);
@@ -5548,6 +5569,14 @@
       locus = arrivalPlan.locus;
       locusFit = arrivalPlan.fit;
       var arrivalInstr = null, arrivalRanked = [];
+      // WHICH INSTRUMENT'S OWN HANDLE AN ARRIVAL MODE SPEAKS THROUGH. CRYSTALLIZED reaches pixels
+      // only through pour's `arrival`/`seedPlace` and PROPAGATED only through livemirror's
+      // `propagate` — each is the one branch in this file that reads `arrival.mode` for that name,
+      // and both the sequential cast and the joint bundle planner below read this same one line
+      // rather than each carrying its own copy of the fact. It is still a table standing in this
+      // file, which `PLAN.md` row S-66 also asks to move into the two instruments' own manifests;
+      // that half needs the site's own manifest harvest to carry a new field and lands on its own.
+      var ARRIVAL_WANTS_INSTRUMENT = { CRYSTALLIZED: "pour", PROPAGATED: "livemirror" };
       // ARRIVAL'S OWN WINDOW OPENS INSIDE THE ROOM THE VOICE BEFORE IT IS ALIVE IN. `locusFit` now
       // carries `arrivalPlan.fit`, the winning arrival's own reading, whichever of the five plays:
       // `locusOf`'s reading where CONDENSED wins, the texture reading where CRYSTALLIZED does, and so
@@ -5652,17 +5681,29 @@
         // Narrowing to the instrument the mode is written for is not a new rule: it is the same
         // fact `arrival.mode ===` already hardwires four times in this file, read here before the
         // pick instead of after it.
-        var ARRIVAL_WANTS_INSTRUMENT = { CRYSTALLIZED: "pour", PROPAGATED: "livemirror" };
+        // A RANK, NEVER A WALL (adversarial-review finding 18, `PLAN.md` row S-66, 2026-09-03).
+        // The line here was a `.filter`, and a filter is the one shape shelf 9 forbids a reading to
+        // take: a crossing whose two photographs simply cannot carry «pour» or «livemirror» in the
+        // arrival slot — the instrument already spoken for by the ground or the travelling move, or
+        // walled out by the levels law — lost its arrival ENTIRELY and the work carried over
+        // unaltered, when the collection stood full of instruments that could have condensed it.
+        // The narrowing itself is right and stays: the mode's own word reaches pixels through one
+        // instrument's own handle and nowhere else. What changes is its force. The wanted
+        // instrument is lifted to the head of the ranking, so it wins wherever it can be cast at
+        // all — every crossing that played it before plays it still, by construction, because a
+        // stable partition never reorders what it does not promote and the head of the promoted
+        // group is the same row the filter used to leave standing alone. And where it cannot be
+        // cast, the ranking behind it is no longer thrown away: the arrival takes its best
+        // available road instead of standing down.
         var arrivalWantsOnly = ARRIVAL_WANTS_INSTRUMENT[arrival];
-        if (arrivalWantsOnly) {
-          arrivalRanked = arrivalRanked.filter(function (r) { return r.id === arrivalWantsOnly; });
-        }
+        arrivalRanked = preferInstrument(arrivalRanked, arrivalWantsOnly);
         arrivalInstr = arrivalRanked.length ? arrivalRanked[0].id : null;
         castNotes.arrival = castArrival[1];
-        if (arrivalInstr === null && arrivalWantsOnly) {
+        if (arrivalInstr !== null && arrivalWantsOnly && arrivalInstr !== arrivalWantsOnly) {
           stood.push("«" + arrival + "» names «" + arrivalWantsOnly + "»'s own handle, and this "
                      + "crossing cannot cast «" + arrivalWantsOnly + "» for the arrival slot, so "
-                     + "the arrival plays named and the work carries over unaltered");
+                     + "the arrival is condensed by «" + arrivalInstr + "» instead and the mode "
+                     + "plays named");
         } else if (arrivalInstr === null && castArrival[3]) {
           stood.push("every instrument that could condense the arrival would put a second live "
                      + "voice on a level the ground or the travelling move already owns at the same "
@@ -5888,29 +5929,65 @@
       // planner is here to repair: an arrival that is silent beside the head may be the best legal
       // arrival beside travel's second reading.  This helper reuses the same cast, window and
       // miracle rules; it only delays the question until `tid` is known.
+      //
+      // AND IT IS ASKED ONCE PER TRAVELLING CANDIDATE AND KEPT. The loop below asks the same `tid`
+      // again for every ground candidate, and the question after this one asks every `tid` before
+      // the loop starts, so the same cast would otherwise run several times over for one answer.
+      // Nothing survives this crossing: the map is a local of the passage being composed and is
+      // keyed by a travelling voice of that same passage, never by a pair.
+      var arrivalRankedByTravel = {};
+      function arrivalRankedFor(tid) {
+        var ck = tid ? String(tid) : " silent";
+        if (!Object.prototype.hasOwnProperty.call(arrivalRankedByTravel, ck)) {
+          var clash = [pivotClashRecord];
+          if (tid) clash.push({ levels: MANIFESTS[tid].levels || [], window: travelWindowBound,
+                                folds: spendsTheMiracle(tid) });
+          var rankedCast = castForKindsRanked([], fromW, toW, !roleBudget.miracle,
+                                              pair.seed, key, "arrival", [pivotInstr, tid],
+                                              FILLS_THE_FRAME[pivotInstr] || FILLS_THE_FRAME[tid],
+                                              false, clash, arrivalWindowBound);
+          arrivalRankedByTravel[ck] = rankedCast[0] || [];
+        }
+        return arrivalRankedByTravel[ck];
+      }
+      // CAN ANY BUNDLE THIS CROSSING IS ABLE TO BUILD REACH THE MODE'S OWN INSTRUMENT FOR THE
+      // ARRIVAL? Asked once, over every travelling voice the loop may stand, BEFORE the loop runs —
+      // and this is the whole of `PLAN.md` row S-66's repair, so it is worth saying why it cannot be
+      // asked any later.
+      //
+      // THE NARROWING ITSELF IS RIGHT AND STAYS. A candidate offered to the bundle loop that cannot
+      // carry CRYSTALLIZED's or PROPAGATED's own handle is a candidate the loop's own quality
+      // weighing may prefer for reasons that have nothing to do with the mode reaching a handle,
+      // which reproduces the exact «reached: 0» this file's own comment above already names.
+      //
+      // WHAT WAS WRONG WAS ITS FORCE. It stood as a bare `.filter`, so a crossing whose two
+      // photographs simply cannot carry that instrument in the arrival slot was handed silence for
+      // every bundle it could build: the arrival was LOST, not demoted, and the work carried over
+      // unaltered while the collection stood full of instruments that could have condensed it.
+      //
+      // AND WHY THE QUESTION IS ASKED OF THE WHOLE CROSSING RATHER THAN OF ONE BRANCH. Asked branch
+      // by branch — «did THIS travelling voice leave the wanted instrument standing» — the fallback
+      // opens bundles that put the mode's own instrument in the TRAVELLING slot, or spend it on the
+      // ground, and hand the arrival to a mode-blind one; such a bundle carries more voices, and
+      // more voices is what the loop's scorer rewards, so it outscores the mode-correct bundle that
+      // was winning before. Driven over the same 5000 pair/seed fleet
+      // `tests/test_pass_step_sequencer.py` drives, that cost 24 crossings the mode-correct arrival
+      // they already had. Asked of the crossing, the two answers never mix: where ANY bundle can
+      // serve the mode, every branch narrows exactly as it did before and no bundle this loop
+      // weighs has changed at all; only where NO bundle can serve it does the tail open, and there
+      // the crossing had nothing to lose.
+      var arrivalWants = ARRIVAL_WANTS_INSTRUMENT[arrival];
+      var arrivalWantsReachable = !!arrivalWants && travelCandidates.some(function (tid) {
+        return arrivalRankedFor(tid).some(function (r) { return r && r.id === arrivalWants; });
+      });
       function arrivalCandidatesFor(tid) {
         if (!(arrival === "CONDENSED" || arrival === "CRYSTALLIZED" || arrival === "PROPAGATED")) {
           return [null];
         }
-        var clash = [pivotClashRecord];
-        if (tid) clash.push({ levels: MANIFESTS[tid].levels || [], window: travelWindowBound,
-                              folds: spendsTheMiracle(tid) });
-        var rankedCast = castForKindsRanked([], fromW, toW, !roleBudget.miracle,
-                                            pair.seed, key, "arrival", [pivotInstr, tid],
-                                            FILLS_THE_FRAME[pivotInstr] || FILLS_THE_FRAME[tid],
-                                            false, clash, arrivalWindowBound);
-        var ranked = rankedCast[0] || [];
-        // THE SAME NARROWING THE SEQUENTIAL CAST ABOVE APPLIES, read again here because the joint
-        // bundle planner ranks its own candidates from a fresh, un-narrowed call rather than reusing
-        // `arrivalRanked` — a candidate this planner offers the bundle loop that cannot carry
-        // CRYSTALLIZED's or PROPAGATED's own handle is a candidate that, once the loop's own quality
-        // weighing prefers it over the mode-correct one for reasons that have nothing to do with the
-        // mode reaching a handle, reproduces the exact «reached: 0» this file's own comment above
-        // already names. Filtering it out of the OFFERED candidates, not just the sequential pick,
-        // is what keeps every arrival the bundle loop can choose one that actually plays the mode.
-        var wantsOnly = ARRIVAL_WANTS_INSTRUMENT[arrival];
-        if (wantsOnly) ranked = ranked.filter(function (r) { return r.id === wantsOnly; });
-        return slotCandidates(ranked.length ? ranked[0].id : null, ranked);
+        var ranked = arrivalRankedFor(tid);
+        var offered = (arrivalWants && arrivalWantsReachable)
+          ? ranked.filter(function (r) { return r.id === arrivalWants; }) : ranked;
+        return slotCandidates(offered.length ? offered[0].id : null, offered);
       }
 
       var examined = 0, considered = [], ties = [], winnerScore = -1, gi, ti, ai, ci2, bg, bt, ba, bc;

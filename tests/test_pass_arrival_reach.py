@@ -70,6 +70,11 @@ def skip(name, detail):
 ROW_REACH = "PASS-ARRIVAL-REACH a full walk of the real collection's own order reaches an " \
             "instrument handle at least once (naряд S-06, «reached: 0 of N» is the regression)"
 ROW_MODES = "PASS-ARRIVAL-REACH more than one arrival mode plays across that same walk"
+ROW_STOOD = "PASS-ARRIVAL-REACH a crossing that cannot cast the instrument its arrival mode speaks " \
+            "through plays its best available arrival instead of standing down (наряд S-66, the " \
+            "narrowing is a demotion and not a filter)"
+ROW_REDBUG = "PASS-ARRIVAL-REACH RED-ON-BUG · the hard filter planted back: the arrivals that " \
+             "stood down for want of one named instrument stand down again"
 
 # The identical driver `tests/dump_pass_arrival_walk.py` runs, unmodified, so this row proves
 # exactly what that artifact would report were it walked over the whole collection instead of the
@@ -103,8 +108,11 @@ const CARRIERS = {
 };
 function unwrap(v) { return (v && typeof v === "object" && "v" in v) ? v.v : v; }
 
+// WHICH INSTRUMENT EACH MODE SPEAKS THROUGH, the same one line pass-composer.js carries. Read here
+// only to say which steps row S-66 is about; nothing below narrows anything by it.
+const WANTS = {CRYSTALLIZED: "pour", PROPAGATED: "livemirror"};
 const ids = Object.keys(works);
-const out = {modes: {}, reached: 0, named: 0};
+const out = {modes: {}, reached: 0, named: 0, wanting: 0, wantingVoiced: 0, wantingSilent: 0};
 const played = [], genres = [], miracles = [];
 for (let i = 0; i < steps && i + 1 < ids.length; i++) {
   const from = ids[i], to = ids[i + 1];
@@ -133,6 +141,14 @@ for (let i = 0; i < steps && i + 1 < ids.length; i++) {
   const mode = arr.mode || null;
   if (mode) { out.modes[mode] = (out.modes[mode] || 0) + 1; out.named++; }
   if (drove.length) out.reached++;
+  // ROW S-66's OWN COUNT. A step whose arrival mode names one instrument's own handle either casts
+  // SOME instrument for the arrival slot or stands with the work carrying over unaltered. Under the
+  // hard filter that stood until 2026-09-03 the second was the only outcome wherever the named
+  // instrument could not be cast, whatever else the collection published.
+  if (mode && WANTS[mode]) {
+    out.wanting++;
+    if (cues.some((c) => c.id === "arrival")) out.wantingVoiced++; else out.wantingSilent++;
+  }
   if (plan) {
     const letters = cues.map((c) => c.instrument.id);
     played.unshift.apply(played, letters);
@@ -144,33 +160,56 @@ console.log(JSON.stringify(out));
 """
 
 
+def walk(module_path, steps):
+    """The one driver above, run over one copy of the composer. The source tree is never written to:
+    a planted copy lives in a temporary file and is removed afterwards."""
+    driver = HERE / "_arrival_reach_driver.js"
+    driver.write_text(DRIVER, encoding="utf-8")
+    try:
+        proc = subprocess.run(
+            ["node", str(driver), str(module_path), str(FIXTURE), str(WORKS), str(steps)],
+            capture_output=True, text=True, timeout=300)
+    finally:
+        driver.unlink(missing_ok=True)
+    if proc.returncode != 0:
+        return None, (proc.stderr or proc.stdout)[-800:]
+    got = json.loads(proc.stdout.strip().splitlines()[-1])
+    if got.get("error"):
+        return None, got["error"]
+    return got, None
+
+
+# THE PLANT (rule 8) — the two narrowings put back the way they stood until 2026-09-03: a bare
+# `.filter` at each site, throwing the ranking away rather than reading it. Both halves of the
+# repair are undone together, because either alone leaves the other still handing the arrival its
+# second best and the count this row watches would not return.
+PLANTS = [
+    ("        arrivalRanked = preferInstrument(arrivalRanked, arrivalWantsOnly);",
+     "        if (arrivalWantsOnly) { arrivalRanked = arrivalRanked.filter("
+     "function (r) { return r.id === arrivalWantsOnly; }); }"),
+    ("        var offered = (arrivalWants && arrivalWantsReachable)\n"
+     "          ? ranked.filter(function (r) { return r.id === arrivalWants; }) : ranked;",
+     "        var offered = arrivalWants\n"
+     "          ? ranked.filter(function (r) { return r.id === arrivalWants; }) : ranked;"),
+]
+
+
 def main():
     if not MODULE.exists() or not WORKS.exists() or not FIXTURE.exists():
         skip(ROW_REACH, "the composer or the fixture is not on this machine")
         skip(ROW_MODES, "no walk to read modes off")
+        skip(ROW_STOOD, "no walk to read the arrival's own stand-down off")
+        skip(ROW_REDBUG, "no composer to plant the hard filter into")
         return
 
-    driver = HERE / "_arrival_reach_driver.js"
-    driver.write_text(DRIVER, encoding="utf-8")
-    try:
-        works = json.loads(WORKS.read_text(encoding="utf-8"))["works"]
-        steps = max(0, len(works) - 1)
-        proc = subprocess.run(
-            ["node", str(driver), str(MODULE), str(FIXTURE), str(WORKS), str(steps)],
-            capture_output=True, text=True, timeout=300)
-    finally:
-        driver.unlink(missing_ok=True)
-
-    if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout)[-800:]
-        check(ROW_REACH, False, f"the driver failed: {detail}")
+    works = json.loads(WORKS.read_text(encoding="utf-8"))["works"]
+    steps = max(0, len(works) - 1)
+    got, err = walk(MODULE, steps)
+    if err:
+        check(ROW_REACH, False, f"the driver failed: {err}")
         skip(ROW_MODES, "the walk itself failed — see the row above")
-        return
-
-    got = json.loads(proc.stdout.strip().splitlines()[-1])
-    if got.get("error"):
-        check(ROW_REACH, False, got["error"])
-        skip(ROW_MODES, "the module never joined — see the row above")
+        skip(ROW_STOOD, "the walk itself failed — see the row above")
+        skip(ROW_REDBUG, "the walk itself failed — see the row above")
         return
 
     modes = got.get("modes", {})
@@ -181,6 +220,38 @@ def main():
     check(ROW_MODES, len(modes) > 1,
           f"{len(modes)} distinct arrival mode(s) played over the same walk: "
           + ", ".join(sorted(modes)))
+
+    # ---- row S-66 and its plant. The shipped composer demotes; the planted one filters.
+    src = MODULE.read_text(encoding="utf-8")
+    planted, missed = src, [needle for needle, _ in PLANTS if needle not in src]
+    for needle, was in PLANTS:
+        planted = planted.replace(needle, was)
+    if missed:
+        skip(ROW_STOOD, "the narrowing's own lines did not match: " + "; ".join(missed))
+        skip(ROW_REDBUG, "nothing to plant — see the row above")
+        return
+    tmp = HERE / "_arrival_reach_planted.js"
+    tmp.write_text(planted, encoding="utf-8")
+    try:
+        hard, err = walk(tmp, steps)
+    finally:
+        tmp.unlink(missing_ok=True)
+    if err:
+        skip(ROW_STOOD, f"the planted walk failed: {err}")
+        skip(ROW_REDBUG, "the planted walk failed — see the row above")
+        return
+
+    check(ROW_STOOD, got["wantingSilent"] < hard["wantingSilent"],
+          f"over the same walk, {got['wanting']} steps name an arrival mode that speaks through one "
+          f"instrument's own handle; {got['wantingSilent']} of them stand with no arrival voice at "
+          f"all, against {hard['wantingSilent']} under the hard filter — "
+          f"{hard['wantingSilent'] - got['wantingSilent']} crossings that carried the work over "
+          f"unaltered now play their best available arrival instead")
+    check(ROW_REDBUG, hard["wantingSilent"] > got["wantingSilent"]
+          and hard["wantingVoiced"] < got["wantingVoiced"],
+          f"with both narrowings reverted to the `.filter` that stood until 2026-09-03, "
+          f"{hard['wantingVoiced']} of {hard['wanting']} named steps cast any arrival at all; with "
+          f"the demotion that stands, {got['wantingVoiced']} of {got['wanting']}")
 
 
 main()
