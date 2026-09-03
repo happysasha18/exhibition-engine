@@ -716,14 +716,14 @@
                        + "middle half of the work, so the reading is placed on it in the unit it is "
                        + "already in"],
     // AND THIS ROW NAMES `.explains` AND NOT `regions.score`, which is the substantive half of the
-    // repair. `SEAM_FLOOR` in the instrument was calibrated against the between-versus-within
-    // column reading and against no other quantity. `regions.score` is the share of frame the large
-    // regions cover — a different quantity that happens to share the same 0..1 range — so pointing
-    // the floor at it would open a gate on grounds nobody measured, on every pair, silently.
+    // repair. The instrument reads the between-versus-within column reading and no other quantity.
+    // `regions.score` is the share of frame the large regions cover — a different quantity that
+    // happens to share the same 0..1 range — so handing it here would publish one measurement under
+    // another's name, on every pair, silently.
     seamScore: ["measured", "structure.regions.line.<axis>.explains — how cleanly that line divides "
                             + "the picture, the between-versus-within reading of the work's own "
-                            + "columns at that place. It is handed with the instrument's own floor "
-                            + "UNAPPLIED, so the gate stays where the gate lives"],
+                            + "columns at that place. It ranks and gates nothing: the instrument's "
+                            + "own floor on it was struck 2026-09-03 (S-67)"],
     mask: ["module-rest", "a judge channel the module rests shut"],
     // THE WAVED RIBBON AND THE PARQUET, from the instruments lane's own manifests. No template names
     // these yet; the rows stand so a score that names them can be written, and so the register keeps
@@ -7574,10 +7574,14 @@
           // branch wrote no axis at all the instrument's own default of nought stands, which is below
           // a half, so the X reading is the one that answers — the same fallback, read the same way.
           //
-          // THE FLOOR IS NOT APPLIED HERE. `explains` is handed as the record measured it and the
-          // instrument's own `SEAM_FLOOR` decides what to do with it, which is where that gate has
-          // always lived: a floor applied on this side would be this file deciding a question the
-          // module publishes an answer to.
+          // NO FLOOR STANDS ON EITHER SIDE OF THIS. `explains` is handed as the record measured it,
+          // and the instrument places the crease on the line whatever that reading comes out to.
+          // The instrument used to hold a floor here — a fifth, read off where the lab pages' own
+          // handful of photographs happened to split — struck 2026-09-03 with S-67, the same strike
+          // the parquet lattice's own score floor took: shelf 20 bars a reading taken across the
+          // photographs from calibrating behaviour, and shelf 9's own law is that a measurement
+          // ranks and never gates. The only question either side asks is the one below, about the
+          // work itself.
           //
           // AND A WORK CARRYING NO LINE LEAVES BOTH HANDLES ALONE, so the crease stands at the box's
           // own edge exactly as it did before the record carried a line — the module's own default,

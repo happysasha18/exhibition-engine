@@ -63,13 +63,13 @@
   //      carries the crease onto that line, and rests that slide at every landing. WHERE the line
   //      stands is a measurement of the work, and no instrument may take it: reading it means
   //      drawing the picture into a scratch surface and counting, which §1.2's fence forbids here.
-  //      So the place arrives as a handle — `seam`, with `seamScore` as its gate — and the handle
+  //      So the place arrives as a handle — `seam`, with `seamScore` beside it — and the handle
   //      publishes the measurement it reads: `structure.regions` from lab/cut-lines.py, whose
-  //      `line.<axis>.at` is the place and whose `line.<axis>.explains` is the gate — that second
-  //      reading, and not the record's own `regions.score`, is what the floor was calibrated
-  //      against. Below the floor the crease stays where the
-  //      box's own edge puts it and the reading says so out loud, rather than passing a made-up
-  //      number off as the work's own.
+  //      `line.<axis>.at` is the place and whose `line.<axis>.explains` says how plainly that line
+  //      divides the picture. Neither is a gate: a work that carries a line folds on it however
+  //      faintly it reads, and a work that carries none leaves the crease where the box's own edge
+  //      puts it, with the reading saying so out loud rather than passing a made-up number off as
+  //      the work's own.
   //   2. THE FACES CARRY LIVE PICTURES RE-READ EVERY DRAWN FRAME — the host's. The module re-read a
   //      live source into its texture on every frame it drew, so whatever another module was drawing
   //      on a face was playing on that face. Here the two faces are the host's own two source
@@ -438,16 +438,6 @@
        instrument stands at until a score names the work's own. */
     var FING_N = 7;
 
-    /* HOW FAR A WORK MUST FALL INTO TWO REGIONS before its best line counts as a seam at all
-       (box.js:300-328): the split must explain a fifth of how the work's own columns differ from one
-       another. Measured on the six photographs the lab pages carry, that separates them into the ones
-       with a line and the ones without — glassgrid splits at 0.62 explaining 0.89, pink-grid at 0.29
-       explaining 0.48, cluster at 0.34 explaining 0.28, while towers, a single repeating facade,
-       explains 0.03 and has no seam at all. Below the floor the crease stays where the box's own edge
-       puts it and the reading says so out loud, rather than passing a made-up number off as the
-       work's own. */
-    var SEAM_FLOOR = 0.20;
-
     /* THE DEAD BANDS AT EITHER END OF THE HAND (box.js:481). Over the first and last five hundredths
        of the hand the box stands exactly landed: the hand is spent there and the standing face is the
        picture its source carries, to the point. Everything that moves through a quarter — the turn,
@@ -545,12 +535,26 @@
     // handed in by the score, which is where every other measured number in this engine already comes
     // from.
     //
-    // BELOW THE FLOOR THE CREASE GOES BACK TO THE BOX'S OWN EDGE, and the reading says so. A work
-    // that does not fall into two regions has no line to put a fold on, and inventing one would be
-    // the convicted gesture with a number painted on it.
+    // A WORK THAT CARRIES NO LINE PUTS THE CREASE BACK ON THE BOX'S OWN EDGE, and the reading says
+    // so. The question asked here is a fact about the work in front of the box and nothing else —
+    // did the measure find a region line in it at all — which is exactly the condition the composer
+    // hands both these handles on (`pass-composer.js`'s own box-fold branch writes `seam` and
+    // `seamScore` together, or writes neither, so a score above nothing IS the work's own line
+    // having been found). A first version of this reading gated instead on the score clearing a
+    // fixed floor of a fifth, a number read off the handful of photographs the lab pages carry by
+    // seeing where they happened to split into the ones with a line and the ones without — struck
+    // 2026-09-03 (S-67), the same strike the parquet lattice's own score floor took two days
+    // earlier: charter shelf 20 bars any reading taken across the photographs from calibrating
+    // engine behaviour, and shelf 21 settles it without argument — a split of a lab page's own
+    // scores could and did exist before either picture in front of the box was known. Shelf 9
+    // carries the repair this engine uses everywhere else for this shape: a measurement RANKS, it
+    // never GATES. So a faint line moves the crease exactly as a plain one does, no differently
+    // from `fingers` and `dip` two handles up, whose own readings this instrument has never gated
+    // either; what the score still does is publish how plainly the line reads, which is a fact and
+    // not a verdict.
     function seamPlaceOf(st) {
       var score = typeof st.seamScore === "number" ? clamp(st.seamScore, 0, 1) : 0;
-      if (score >= SEAM_FLOOR) {
+      if (score > 0) {
         // The place is held inside the window the measurement itself searches — the middle half of
         // the work — because that is where a region line can be found and because the box is built
         // with room for exactly that travel and no more.
@@ -559,7 +563,7 @@
                  score: score, measured: true, from: "the departing work's own region line" };
       }
       return { at: 0.5, score: score, measured: false,
-               from: "the box's own edge — the work's region split stands under the floor" };
+               from: "the box's own edge — the work carries no region line to fold along" };
     }
 
     // ---- the grid one frame is drawn on ------------------------------------------------------------
@@ -994,7 +998,7 @@
                      + "measurement's own search window — cut-lines.py looks for the line in the "
                      + "middle half of the work — and the box is built with room for exactly that "
                      + "travel and no more",
-                applied: { restsAt: "every landing", belowTheFloor: "the box's own edge",
+                applied: { restsAt: "every landing", whereNoLineWasFound: "the box's own edge",
                            roomInTheCrop: SEAM_ROOM },
                 level: "CELL" },
         seamScore: { min: 0, max: 1, def: 0,
@@ -1003,19 +1007,20 @@
                      // THIS SENTENCE NAMED THE WRONG FIELD until 2026-08-26. It read
                      // `structure.regions.score`, which the record does carry — but that is a
                      // different quantity from the one the `unit` two lines above describes and the
-                     // one `SEAM_FLOOR` was set against. The floor's own calibration lists four
-                     // works explaining 0.89, 0.48, 0.28 and 0.03, and those are the per-axis
-                     // `explains` readings; the same record's `score` stands elsewhere entirely (on
-                     // the fixture's own first work, `score` is 0.7401 while the line explains
-                     // 0.1402 across and 0.6054 down). So the gate was published against a number
-                     // it was never calibrated on. The floor has not moved and no behaviour changes
-                     // here: what is corrected is the name the handle publishes for what it reads.
+                     // one the reading is taken in. The same record's `score` stands elsewhere
+                     // entirely (on the fixture's own first work, `score` is 0.7401 while the line
+                     // explains 0.1402 across and 0.6054 down), so the handle was published against
+                     // a number it never read. And until 2026-09-03 this row carried a floor: a
+                     // work whose line explained less than a fifth was refused its own crease. That
+                     // floor was struck with S-67 — see `seamPlaceOf` above for the argument — so
+                     // what this handle publishes now is a reading and no verdict.
                      reads: "structure.regions.line.<axis>.explains from the same file — the axis "
-                          + "being the one the crease runs along — which is the gate: a work whose "
-                          + "line explains less of the difference between its own columns than the "
-                          + "floor has no region line to fold along, and the crease goes back to "
-                          + "the box's own edge with the reading saying so",
-                     applied: { floor: SEAM_FLOOR },
+                          + "being the one the crease runs along — how much of the difference "
+                          + "between the work's own columns its best line explains. It ranks and "
+                          + "never gates: a work carrying a line folds on it however faintly the "
+                          + "line reads, and only a work carrying no line at all leaves the crease "
+                          + "on the box's own edge, with the reading saying so",
+                     applied: { whereNoLineWasFound: "the box's own edge" },
                      level: "CELL" },
         shade: { min: 0, max: 1, def: 1, unit: "the contact shadow's own weight",
                  applied: { depthAtTheCrease: 0.34, pointsOfReach: 9, restsAt: "every landing" },
