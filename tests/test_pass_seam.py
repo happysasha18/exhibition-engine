@@ -459,6 +459,7 @@ def canvas_box(br):
 CADENCE_CAPTURE_HOOK = """
   window.__cadenceLandCanvas = null;
   window.__cadenceLandCss = null;
+  window.__cadenceLandParent = null;
   if (!window.__cadencePushHooked) {
     window.__cadencePushHooked = true;
     var _push = Array.prototype.push;
@@ -473,6 +474,13 @@ CADENCE_CAPTURE_HOOK = """
             copy.getContext('2d').drawImage(c, 0, 0);
             window.__cadenceLandCanvas = copy;
             window.__cadenceLandCss = c.style.cssText;
+            // WHERE IT HANGS IS PART OF WHAT IT LOOKED LIKE. Since S-91 (2026-09-03) the layer's
+            // canvas is positioned inside a frame element rather than fixed to the window, so its
+            // own inline `left`/`top` are that frame's coordinates. Re-attached to the body the
+            // copy would land at those coordinates against the page instead, in a different place
+            // and with no crop, and the comparison below would read a region the passage never
+            // painted. Remembering the parent puts the copy back exactly where the live one stood.
+            window.__cadenceLandParent = c.parentNode || document.body;
           }
         } catch (e) {}
       }
@@ -502,7 +510,7 @@ def read_cadence_capture(br, shots, tag):
     box = js(br, "var c = window.__cadenceLandCanvas;"
                  "c.id = '__cadenceLandCanvas';"
                  "c.style.cssText = window.__cadenceLandCss;"
-                 "document.body.appendChild(c);"
+                 "(window.__cadenceLandParent || document.body).appendChild(c);"
                  "var b = c.getBoundingClientRect();"
                  "return {x: b.left, y: b.top, w: b.width, h: b.height};")
     path = png(br, shots / (tag + "-land.png"))
