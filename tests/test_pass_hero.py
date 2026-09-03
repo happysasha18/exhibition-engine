@@ -404,14 +404,15 @@ check("PASS-HERO the coverage is declared, and the total map is the reason",
 # THE GEOMETRY-FROM-THE-WORK CLASS. His 19:13 word lifted to the class at 19:21: every geometric and
 # temporal parameter names the measurement of the photograph it reads.
 check("PASS-HERO every geometric handle publishes the measurement of the work it reads",
-      'reads: "structure.radial.centre' in REGION
+      'reads: "motifs.radialCentre, and structure.radial.centre' in REGION
       and 'reads: "structure.rotational.n' in REGION
       and 'reads: "structure.rotational.score' in REGION
       and 'reads: "structure.polar.planet' in REGION
       and 'reads: "structure.ownDevice.stepPx over the work' in REGION
       and "each work's own measured radial score" in REGION
       and "applied: { atNothing: \"the module's own four folds\"," in REGION,
-      "the folds turn about `structure.radial.centre`, the place the collection measures a work's "
+      "the folds turn about `motifs.radialCentre`, and `structure.radial.centre` where a work "
+      "carries no motif — the place the collection measures a work's "
       "radial reading about; the window is cut at `structure.rotational.n`, the order of the pair's "
       "own turn, CARRIED there by `structure.rotational.score` rather than gated by it; the far "
       "end of the arc is placed by "

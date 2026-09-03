@@ -1153,18 +1153,29 @@
     // rests at the number the port names as the module's own (studio.js's own opening pose and its
     // own declared defaults) and says so rather than hiding it, exactly as gates' own `jamb`/
     // `teeth`/`swing` do for the same reason.
-    "studio.panX": ["measured", "the midpoint of the two works' own measured radial centres, "
-                                + "structure.radial.centre — the same reading hero's centreX and "
+    // THE HOUSE THE FILL ACTUALLY READS, NOT ITS TWIN. `centreOfThePair` below takes these off
+    // `measuredParts()`'s `radialCx`/`radialCy`, which read `motifs.radialCentre` FIRST and fall
+    // back to `structure.radial.centre` only where a work carries no motif. Every one of the
+    // collection's records carries the motif, so a note naming the raw house alone named a reading
+    // the fill never reached — and unlike the `reads:` sentences beside them, THESE FOUR REACH A
+    // VISITOR, on the cue's own written record. Both houses are named here in the order the fill
+    // reads them (PLAN.md S-93; the rule is S-86's, in tests/test_pass_reads.py's own header).
+    "studio.panX": ["measured", "the midpoint of the two works' own measured radial centres — "
+                                + "motifs.radialCentre, and structure.radial.centre where a work "
+                                + "carries no motif — the same reading hero's centreX and "
                                 + "livemirror's fold both read, here spent on the crop's own pan"],
-    "studio.panY": ["measured", "the midpoint of the two works' own measured radial centres, "
-                                + "structure.radial.centre — the same reading hero's centreY and "
+    "studio.panY": ["measured", "the midpoint of the two works' own measured radial centres — "
+                                + "motifs.radialCentre, and structure.radial.centre where a work "
+                                + "carries no motif — the same reading hero's centreY and "
                                 + "livemirror's fold both read, here spent on the crop's own pan"],
-    "studio.foldX": ["measured", "the midpoint of the two works' own measured radial centres, "
-                                 + "structure.radial.centre — the same reading livemirror's own fold "
-                                 + "reads, here spent on the mirror operation's own fold line"],
-    "studio.foldY": ["measured", "the midpoint of the two works' own measured radial centres, "
-                                 + "structure.radial.centre — the same reading livemirror's own fold "
-                                 + "reads, here spent on the mirror operation's own fold line"],
+    "studio.foldX": ["measured", "the midpoint of the two works' own measured radial centres — "
+                                 + "motifs.radialCentre, and structure.radial.centre where a work "
+                                 + "carries no motif — the same reading livemirror's own fold falls "
+                                 + "back to, here spent on the mirror operation's own fold line"],
+    "studio.foldY": ["measured", "the midpoint of the two works' own measured radial centres — "
+                                 + "motifs.radialCentre, and structure.radial.centre where a work "
+                                 + "carries no motif — the same reading livemirror's own fold falls "
+                                 + "back to, here spent on the mirror operation's own fold line"],
     "studio.kalN": ["measured", "structure.rotational.n, the pair's own measured rotational order, "
                                 + "snapped onto the kaleidoscope operation's own count — the same "
                                 + "reading kaleidoscope's own wedges handle reads"],
@@ -7459,8 +7470,10 @@
         wantedInto.centreX = flt(r4(clamp01(cx)));
         wantedInto.centreY = flt(r4(clamp01(cy)));
       }
-      // THE CAMERA'S OWN CENTRE OF A SINGLE WORK — `structure.radial.centre` (measuredParts()'s
-      // `radialCx`/`radialCy`) where the work reads as radial at all (`radialScore > 0`), else the
+      // THE CAMERA'S OWN CENTRE OF A SINGLE WORK — `motifs.radialCentre`, and
+      // `structure.radial.centre` where a work carries no motif (measuredParts()'s `radialCx`/
+      // `radialCy` read the two houses in that order) — where the work reads as radial at all
+      // (`radialScore > 0`), else the
       // centre of `structure.dominantObject.bbox` (measuredParts()'s `figureCx`/`figureCy`) where
       // that box is a real reading (`figureShare > 0`, since an absent box collapses to [0,0,0,0]
       // and a figureShare of exactly zero). Neither present answers null, which the caller below
@@ -9692,7 +9705,8 @@
         // the whole flight answers to rather than five this file would otherwise have to invent.
         var camBound = DOLLY_CAP;
 
-        // PAN — toward the pivot's own centre. `structure.radial.centre` where the work has one
+        // PAN — toward the pivot's own centre. `motifs.radialCentre`, and `structure.radial.centre`
+        // where a work carries no motif, where the work has one at all
         // (measuredParts()'s own `radialScore` says whether it does), otherwise the centre of
         // `structure.dominantObject.bbox` (measuredParts()'s own `figureShare` says whether that
         // box is real rather than the record's [0,0,0,0] absence). A work with neither contributes

@@ -4,7 +4,7 @@ Run: python3 tests/test_pass_reads.py
 
 WHAT THIS FILE IS FOR.
 
-  Fourteen instruments declare, in a `reads: "..."` line in their own source, which measurement of a
+  Nineteen instruments declare, in a `reads: "..."` line in their own source, which measurement of a
   photograph their geometric handle answers to, and which measurements their `suits:` fit ranks on.
   Until this file, every SPEC criterion standing on those declarations was proven by grepping the
   same line back out of the built text — `'reads: "structure.polar.tunnel' in REGION` and its
@@ -60,8 +60,17 @@ FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
 # The fourteen the sweep of 2026-09-03 found standing on a grep of their own `reads:` line
 # (docs/evidence/2026-09-03-textual-anchors.md; PLAN.md S-73). `tilt` is in the list because the
 # fleet row has to hold the instrument the mechanism came from too.
+#
+# AND THE FIVE PLAN.md S-93 ADDED, for the reason S-86 left them out. The membership rule was never
+# «a SPEC criterion greps this file»; it was only where the sweep had looked. S-86 found the twin
+# defect below standing unrepaired in `hero`, `studio`, `tunnel`, `lens` and `livemirror` and could
+# not touch them, because a declaration this file does not walk is a sentence nothing can prove. The
+# list is what the run reaches, so widening the list is what a repair there costs. Nothing else is
+# needed to reach them: they are ordinary instruments, cast by the same `passageFor`, and the seat
+# walk, the donor search and the control all read them exactly as they read the first fourteen.
 INSTRUMENTS = ["liquid", "pour", "veil", "waterline", "wind", "overlay", "boxfold", "matter",
-               "strata-light", "strata-scale", "kaleidoscope", "weave", "planet", "tilt"]
+               "strata-light", "strata-scale", "kaleidoscope", "weave", "planet", "tilt",
+               "hero", "studio", "tunnel", "lens", "livemirror"]
 
 # The roots a work record actually carries (tests/fixture_pass_works.json). A `reads:` sentence that
 # opens with one of these names a field; one that does not is prose about a die, a handover or the
@@ -342,6 +351,39 @@ function castingFor(instrument, want) {
   return seats;
 }
 
+// A SEAT WHERE THE HANDLE WAS ACTUALLY DRIVEN, when the wide walk never saw it move off one value.
+// The walk above takes the FIRST seats the fixture offers, which all come from the collection's own
+// first works, and a handle whose fill branch is gated on something rare is never driven on any of
+// them. `tunnel`'s `ribs` is the case that taught this: it is filled only where BOTH works were cut
+// as rings, eight of the 121 records are, and of the 56 ordered pairs those eight make exactly ONE
+// casts the corridor — at fixture positions 119 and 70, about 14,350 pairs into a walk that stops
+// at forty. So this scans the whole ordered-pair space for a seat publishing a DIFFERENT node for
+// this one handle, and the declared reading is then varied there.
+//
+// IT EXCUSES NOTHING. A handle wired to no measurement publishes the same node on every seat, so
+// this scan ends empty and the reading is still reported unanswered — the scan either finds a seat
+// where the fill ran, and tests the declaration honestly there, or proves there is no such seat.
+// It is paid only by a handle already about to be called unread; every reading that answers on the
+// first seats pays nothing.
+function seatWhereDriven(instrument, handle, from) {
+  const base = cueOf(instrument, works.works[from.a], works.works[from.b], from.dir);
+  const was = base ? JSON.stringify(nodeOf(base, handle)) : null;
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = 0; j < ids.length; j++) {
+      if (i === j) continue;
+      for (const dir of ["a-to-b", "b-to-a"]) {
+        const cue = cueOf(instrument, works.works[ids[i]], works.works[ids[j]], dir);
+        if (!cue) continue;
+        const n = nodeOf(cue, handle);
+        if (n !== undefined && JSON.stringify(n) !== was) {
+          return {a: ids[i], b: ids[j], dir: dir, cue: cue.id};
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function cueOf(instrument, A, B, dir) {
   let p;
   try {
@@ -472,6 +514,11 @@ for (const entry of plan) {
           if (wide === null) wide = castingFor(id, WIDE_SEATS);
           if (wide.length > seat.length) r = moveTest(id, wide, h.handle, h.field);
         }
+        if (!r.moved && !r.noField && !r.presence) {
+          // Still standing after forty seats: look for one where this handle was driven at all.
+          const driven = seatWhereDriven(id, h.handle, seat[0]);
+          if (driven) r = moveTest(id, [driven], h.handle, h.field);
+        }
         rec.handles.push(Object.assign({handle: h.handle, field: h.field}, r));
       }
       // THE CONTROL. One measurement the instrument's whole file never names, varied the same way:
@@ -499,8 +546,9 @@ console.log(JSON.stringify(out));
 """
 
 # ---------------------------------------------------------------- the rows
-FLEET_ROW = ("PASS-READS the fleet's own declared readings are the fourteen instruments the sweep "
-             "found standing on a grep, and every one is walked")
+FLEET_ROW = ("PASS-READS the fleet's own declared readings are the nineteen instruments this file "
+             "walks — the fourteen the sweep found standing on a grep and the five S-93 added — "
+             "and every one is walked")
 
 if parse_error:
     check(FLEET_ROW, False, parse_error)
@@ -626,8 +674,9 @@ else:
     repaired = sorted(set(UNANSWERED) - unanswered)
     check("PASS-READS no declared reading of the fleet answers to nothing",
           isinstance(got, dict) and not fresh and not repaired,
-          "every declared reading of the fourteen either moves the handle or the fit it names, or "
-          "is skipped by name with its own reason; the six of 2026-09-03 were closed by S-86"
+          "every declared reading of the nineteen either moves the handle or the fit it names, or "
+          "is skipped by name with its own reason; the six of 2026-09-03 were closed by S-86 and "
+          "the five instruments outside its reach were brought inside it by S-93"
           if not fresh and not repaired else
           ("unrecorded and unanswered: %s; " % ", ".join("%s %s ← %s" % k for k in fresh)
            if fresh else "")

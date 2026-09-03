@@ -575,17 +575,25 @@
         cropOn: { min: 0, max: 1, def: 1, level: "TEXTURE" },
         zoom: { min: 0.30, max: 3.20, def: 1.15, level: "TEXTURE" },
         panX: { min: -0.30, max: 0.30, def: 0,
-                reads: "the midpoint of the two works' own measured radial centres, "
-                     + "structure.radial.centre — the same construction hero's centreX reads",
+                reads: "the midpoint of the two works' own measured radial centres — "
+                     + "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                     + "motif — the same construction hero's centreX reads",
                 level: "TEXTURE" },
         panY: { min: -0.30, max: 0.30, def: 0,
-                reads: "the midpoint of the two works' own measured radial centres, "
-                     + "structure.radial.centre — the same construction hero's centreY reads",
+                reads: "the midpoint of the two works' own measured radial centres — "
+                     + "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                     + "motif — the same construction hero's centreY reads",
                 level: "TEXTURE" },
         twirlOn: { min: 0, max: 1, def: 0, level: "TEXTURE" },
         twirlAmt: { min: -4, max: 4, def: 1.4,
-                    reads: "structure.polar.twirl, how strongly the pair's own making already winds — "
-                         + "the same reading kaleidoscope's own twist handle reads",
+                    reads: "nothing of either photograph, and the composer's own note table for this "
+                         + "handle has said so since it was written. The pair's measured winding "
+                         + "says how strongly their making already turns but carries no SIGN, this "
+                         + "handle's span runs either way about the same amount of turn, and no "
+                         + "reading says which way a visitor's hand would have gone — so it rests "
+                         + "at the module's own default rather than at a direction this port would "
+                         + "have to choose. The manifest claimed the winding reading until PLAN.md "
+                         + "S-93; the fill never read it and the two documents now agree",
                     level: "TEXTURE" },
         polarOn: { min: 0, max: 1, def: 1, level: "TEXTURE" },
         polarSpread: { min: 0.30, max: 0.95, def: 0.62,
@@ -597,12 +605,14 @@
         mirrorMode: { min: 0, max: 2, def: 0, kind: "count", applied: { roundedToAWholeMode: true },
                       level: "TEXTURE" },
         foldX: { min: -0.50, max: 0.50, def: -0.06,
-                 reads: "the midpoint of the two works' own measured radial centres, "
-                      + "structure.radial.centre — the same construction livemirror's own fold reads",
+                 reads: "the midpoint of the two works' own measured radial centres — "
+                      + "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                      + "motif — the same construction livemirror's own fold falls back to",
                  level: "TEXTURE" },
         foldY: { min: -0.50, max: 0.50, def: 0,
-                 reads: "the midpoint of the two works' own measured radial centres, "
-                      + "structure.radial.centre — the same construction livemirror's own fold reads",
+                 reads: "the midpoint of the two works' own measured radial centres — "
+                      + "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                      + "motif — the same construction livemirror's own fold falls back to",
                  level: "TEXTURE" },
         kalOn: { min: 0, max: 1, def: 0, level: "TEXTURE" },
         kalN: { min: 3, max: 16, def: 8, kind: "count", applied: { roundedToAWholeCount: true },
@@ -727,13 +737,17 @@
       // rings for the endless zoom, a lattice for the tile — so the reading ranks a pair by how much
       // of that vocabulary the two works carry, and a pair carrying none of it still plays at the
       // module's own opening pose.
-      suits: { reads: ["structure.rotational", "structure.polar", "structure.grid",
-                       "structure.radial"],
+      suits: { reads: ["structure.rotational", "structure.polar", "structure.radial"],
                how: "the operations read best on a pair whose own structure already carries a "
-                  + "rotational order, a little-world reading, a measured lattice or a radial centre "
-                  + "— the vocabulary the kaleidoscope, the planet, the tile and the fold turn on — so "
-                  + "the fit ranks how much of that vocabulary the two works carry between them, and a "
-                  + "pair carrying none of it still plays at the module's own opening pose" },
+                  + "rotational order, a little-world reading or a radial centre — the vocabulary "
+                  + "the kaleidoscope, the planet and the fold turn on — so the fit ranks how much "
+                  + "of that vocabulary the two works carry between them, and a pair carrying none "
+                  + "of it still plays at the module's own opening pose. The fit's fourth term asks "
+                  + "whether either work carries a measured lattice at all, and structure.grid was "
+                  + "declared here for it until PLAN.md S-93: every one of the collection's records "
+                  + "carries a lattice in both of its houses, so that term stands at one on every "
+                  + "pair and ranks none of them. It is a constant the average carries, not a "
+                  + "reading the fit ranks on, and the list names only what ranks" },
       readiness: "production-ready",
     };
 

@@ -415,7 +415,8 @@ check("PASS-LENS every geometric handle publishes the measurement of the work it
       'reads: "structure.rotational.n, the work\'s own measured rotational order' in REGION
       and 'reads: "structure.polar.twirl, the work\'s own measured twirl' in REGION
       and "structure.ownDevice.stepPx" in REGION
-      and "the midpoint of the two measured radial centres, structure.radial.centre" in REGION,
+      and "the midpoint of the two measured radial centres — motifs.radialCentre," in REGION
+      and "and structure.radial.centre where a work carries no motif" in REGION,
       "the wedge count reads the work's own measured rotational order, so the fold repeats as often "
       "as the work itself does; the twist reads the work's own measured twirl, so a work that turns "
       "about its own middle is wound and one that does not is barely touched; the magnification "

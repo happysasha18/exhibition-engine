@@ -818,17 +818,19 @@
         // point rather than a repeating unit.
         centreX: { min: 0, max: 1, def: 0.5,
                    unit: "where the corridor's far point stands across the frame",
-                   reads: "the midpoint of the two works' own measured radial centres, "
-                        + "structure.radial.centre — the place each photograph's own structure "
-                        + "turns about, so the corridor falls toward what the picture is already "
-                        + "about",
+                   reads: "the midpoint of the two works' own measured radial centres — "
+                        + "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif, named in the order the composer reads them — the place each "
+                        + "photograph's own structure turns about, so the corridor falls toward "
+                        + "what the picture is already about",
                    applied: { reach: FAR_REACH,
                               restsAt: "the module's own wandering vanishing point at that second" },
                    level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "where the corridor's far point stands up the frame",
-                   reads: "the midpoint of the two works' own measured radial centres, "
-                        + "structure.radial.centre, read on the other axis",
+                   reads: "the midpoint of the two works' own measured radial centres — "
+                        + "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — read on the other axis",
                    applied: { reach: FAR_REACH,
                               restsAt: "the module's own wandering vanishing point at that second" },
                    level: "SURFACE" },
@@ -844,10 +846,14 @@
                  level: "SURFACE" },
         // The rings' own spacing: CELL.
         ribs: { min: 0, max: 1, def: 0.5, unit: "how far apart the corridor's rings stand",
-                reads: "the departing work's own measured ring repeat — structure.ownDevice.count "
-                     + "where that work was cut as rings, and the work's own ring set's measured "
-                     + "grain otherwise. The rings stand at even RATIOS of depth, so this handle "
-                     + "moves the spacing in ratios too",
+                reads: "both works' own measured ring repeat — structure.ownDevice.count, and only "
+                     + "where BOTH were cut as rings, which the composer's fill requires and which "
+                     + "the collection makes rare: eight of its records were cut as rings and one "
+                     + "ordered pair of those eight casts this instrument at all, so on every other "
+                     + "pair the handle rests at the module's own spacing. The sentence claimed the "
+                     + "departing work alone, with that work's ring grain otherwise, until PLAN.md "
+                     + "S-93; the fill has never read a grain here. The rings stand at even RATIOS "
+                     + "of depth, so this handle moves the spacing in ratios too",
                 applied: { reach: RIBS_REACH, restsAt: "the module's own spacing, TAU over the "
                                                      + "angular repeats" },
                 level: "CELL" },

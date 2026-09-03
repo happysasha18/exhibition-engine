@@ -413,8 +413,8 @@ check("PASS-TUNNEL the coverage is declared, and the map it draws is the reason"
 # EVERY GEOMETRIC PARAMETER NAMES THE MEASUREMENT IT READS. His 19:13 word, lifted to the class at
 # 19:21. This is the row that holds the whole class law for this instrument.
 READS = [
-    ("centreX", "structure.radial.centre"),
-    ("centreY", "structure.radial.centre, read on the other axis"),
+    ("centreX", "motifs.radialCentre, and structure.radial.centre"),
+    ("centreY", "motif — read on the other axis"),
     ("depth", "structure.polar.tunnel"),
     ("ribs", "structure.ownDevice.count"),
     ("spokes", "structure.rotational.n"),

@@ -521,7 +521,8 @@
 
       // WHERE THE FOLDS TURN, AND WHOSE PLACE IT IS. The module let a visitor's pointer steer the
       // centre; a crossing has no visitor's hand on it, and the place the folds belong is the point of
-      // the picture the collection already measures — `structure.radial.centre`, which arrives as
+      // the picture the collection already measures — `motifs.radialCentre`, and
+      // `structure.radial.centre` where a work carries no motif, which arrives as
       // `centreX`/`centreY`. That point is carried into the frame through the door's own framing, so
       // the folds turn about the very place of the photograph the measurement names, standing where
       // that place stands in the frame. The module's own «off to one side» constant is what it wrote
@@ -816,15 +817,18 @@
                  level: null },
         centreX: { min: 0, max: 1, def: 0.5,
                    unit: "where along the picture's own width the folds turn",
-                   reads: "structure.radial.centre — the place lab/step1 measures a work's own radial "
-                        + "reading about, taken as the midpoint of the two works' own centres, which "
-                        + "is the same measurement the meshing instrument's own centre reads. The "
-                        + "module let a visitor's pointer steer this place; a crossing has no hand on "
-                        + "it and the work's own measured centre is where the folds belong",
+                   reads: "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — the place lab/step1 measures a work's own radial reading about, "
+                        + "taken as the midpoint of the two works' own centres, which is the same "
+                        + "measurement the meshing instrument's own centre reads. The two houses are "
+                        + "named in the order the composer reads them. The module let a visitor's "
+                        + "pointer steer this place; a crossing has no hand on it and the work's own "
+                        + "measured centre is where the folds belong",
                    level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "where down the picture's own height the folds turn",
-                   reads: "structure.radial.centre, the same measurement read on the other axis",
+                   reads: "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — the same measurement read on the other axis",
                    level: "SURFACE" },
         folds: { min: 1, max: 4, def: 4, kind: "enum", step: 1,
                  names: { "1": "two wedges", "2": "four wedges", "3": "eight wedges",

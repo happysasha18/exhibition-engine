@@ -712,8 +712,10 @@
                         + "falls into two regions, so a vertical fold lands on the line a mirror "
                         + "fold has to land on for the reflection to read as the work's own and "
                         + "not as a line drawn over it. Falls back to the midpoint of the two "
-                        + "works' measured radial centres, structure.radial.centre, where neither "
-                        + "work carries a readable line on this axis",
+                        + "works' measured radial centres — motifs.radialCentre, and "
+                        + "structure.radial.centre where a work carries no motif, named in the "
+                        + "order the composer reads them — where neither work carries a readable "
+                        + "line on this axis",
                    applied: { roomAtTheEdge: LINE_EDGE },
                    level: "CELL" },
         centreY: { min: 0, max: 1, def: 0.5,

@@ -650,10 +650,13 @@
                 names: { "0": "kaleidoscope", "1": "swirl", "2": "magnify" },
                 unit: "which glass the pair is seen through",
                 reads: "the two works' own measured polar and rotational readings — "
-                     + "structure.rotational.n and .score for the mirrored wedges, "
-                     + "structure.polar.twirl for the wound glass, whichever of the two reads "
-                     + "loudest, and the plain magnification only where neither reading stands at "
-                     + "all, which is a fact about the pair and not a bar it failed to clear",
+                     + "structure.rotational.score for the mirrored wedges, structure.polar.twirl "
+                     + "for the wound glass, whichever of the two reads loudest, and the plain "
+                     + "magnification only where neither reading stands at all, which is a fact "
+                     + "about the pair and not a bar it failed to clear. The ORDER is what this "
+                     + "handle reads, never the count: structure.rotational.n stood in this "
+                     + "sentence until PLAN.md S-93 and the choice of glass has never read it — "
+                     + "that is the neighbouring `wedges` handle's own reading",
                 level: "SURFACE" },
         wedges: { min: WEDGES_LO, max: WEDGES_HI, def: WEDGES_N, kind: "enum", step: 1,
                   unit: "how many mirrored wedges the disc folds into",
@@ -676,12 +679,16 @@
                       + "what it stands at until a score names the pair's",
                  level: "SURFACE" },
         centreX: { min: 0, max: 1, def: 0.5, unit: "where across the frame the glass rests",
-                   reads: "the midpoint of the two measured radial centres, structure.radial.centre "
-                        + "— the point the two works' own structure turns about",
+                   reads: "the midpoint of the two measured radial centres — motifs.radialCentre, "
+                        + "and structure.radial.centre where a work carries no motif, named in the "
+                        + "order the composer reads them — the point the two works' own structure "
+                        + "turns about",
                    level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5, unit: "where down the frame the glass rests",
-                   reads: "the midpoint of the two measured radial centres, structure.radial.centre "
-                        + "— the point the two works' own structure turns about",
+                   reads: "the midpoint of the two measured radial centres — motifs.radialCentre, "
+                        + "and structure.radial.centre where a work carries no motif, named in the "
+                        + "order the composer reads them — the point the two works' own structure "
+                        + "turns about",
                    level: "SURFACE" },
         shade: { min: 0, max: 1, def: 1, unit: "the glass's own weight — its lift, its inner shade "
                                             + "and its two hairlines",
