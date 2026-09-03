@@ -579,12 +579,19 @@ CONTRACT = LAB / "data" / "module-contract.json"
 CONTRACT_ROW = (json.loads(CONTRACT.read_text(encoding="utf-8"))["modules"].get("kaleidoscope")
                 if CONTRACT.exists() else None)
 
-# THE CHARTER'S OWN VOCABULARY TABLE ROW FOR THIS MODULE, PARSED RATHER THAN QUOTED. Read straight
-# out of lab/CROSSING-BRIEF.md, never off this file's own header comment naming the same word.
-CHARTER = LAB / "CROSSING-BRIEF.md"
+# THE CHARTER'S OWN VOCABULARY ROW FOR THIS MODULE, PARSED RATHER THAN QUOTED. lab/CROSSING-BRIEF.md
+# shrank to a one-line pointer on 2026-09-03 (S-52: "the charter and the two drafts fold into the
+# product documents"); its own pipe-table vocabulary row for this module moved into SPEC.md, then
+# S-53 converted that whole section from a table into one prose bullet per instrument under
+# "Requirement 35: The vocabulary — the thirteen instruments" ("... at surface level ..." rather
+# than a table cell reading "SURFACE"). Read straight out of that bullet, never off this file's own
+# header comment naming the same word.
+CHARTER = LAB.parent / "SPEC.md"
 CHARTER_TEXT = CHARTER.read_text(encoding="utf-8") if CHARTER.exists() else ""
-_CHARTER_ROW_M = re.search(r"\|\s*kaleidoscope\s*\|[^|\n]*\|[^|\n]*\|\s*([A-Z]+)\s*\|", CHARTER_TEXT)
-_charter_level = _CHARTER_ROW_M.group(1) if _CHARTER_ROW_M else None
+_CHARTER_ROW_M = re.search(r"^\s*-\s*`kaleidoscope`.*$", CHARTER_TEXT, re.M)
+CHARTER_ROW = _CHARTER_ROW_M.group(0) if _CHARTER_ROW_M else None
+_CHARTER_LEVEL_M = re.search(r"at (\w+) level", CHARTER_ROW) if CHARTER_ROW else None
+_charter_level = _CHARTER_LEVEL_M.group(1).upper() if _CHARTER_LEVEL_M else None
 
 check("PASS-KAL the crossing's own shape is named as the port's, and the exchange's width is derived",
       "var SWAP_UNDER = 0.9;" in REGION
@@ -958,7 +965,7 @@ else:
                       and bool(CONTRACT_ROW) and CONTRACT_ROW.get("level") == "CELL"
                       and m["camera"]["needs"] == "none",
                       f"levels={m['levels']}, read off two INDEPENDENT real records rather than one "
-                      f"doubled: lab/CROSSING-BRIEF.md's own vocabulary table row for this module "
+                      f"doubled: SPEC.md's own vocabulary row for this module (Requirement 35) "
                       f"reads level {_charter_level!r} — the whole frame's coordinate is remapped at "
                       f"once — and lab/data/module-contract.json's own row reads level "
                       f"{CONTRACT_ROW.get('level')!r}, the wedge being a cell; two different files, "

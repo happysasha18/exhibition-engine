@@ -507,7 +507,15 @@ BAND_ROWS = [
 # fires a timer a little late and the frame that draws the door is scheduled after it, so the
 # measured landing is allowed this much past the budget. It is a scheduling number, not a pacing
 # one — the pacing number is `withinMs` and it belongs to the score.
-LAND_SLACK_MS = 100
+#
+# 100ms was sized for a lone Chrome. tests/run_all.py's own default (`--jobs 8`) is eight suites'
+# worth of Chrome sharing this host's CPU, and that is the scheduling delay this slack exists to
+# absorb — not a rare edge case but the runner's ordinary mode. Reproduced here 2026-09-03 by
+# running this suite alongside seven others: a lone run lands at 508-581ms; the same run under that
+# contention landed once at 601ms (101ms over the old 100ms slack) and a full-gate run on this
+# machine the same day recorded landings to 635ms (135ms over). 200ms covers both with headroom
+# without touching `withinMs`, the number the score itself paces by.
+LAND_SLACK_MS = 200
 
 WALK_ROWS = [
     "PASS-WEAVE the walk reads the pair's own score and freezes it onto the command",

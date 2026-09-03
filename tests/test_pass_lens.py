@@ -232,9 +232,16 @@ LABTXT = MODULE.read_text(encoding="utf-8") if MODULE.exists() else ""
 # THE CHARTER'S OWN ROW FOR THIS MODULE — read from the governing document itself rather than
 # trusted from this file's own comment about it, so a row proving the classification checks it
 # against the ground truth and not against a paraphrase of itself.
-CHARTER_PATH = LAB / "CROSSING-BRIEF.md"
+#
+# lab/CROSSING-BRIEF.md shrank to a one-line pointer on 2026-09-03 (S-52: "the charter and the two
+# drafts fold into the product documents"); its own pipe-table vocabulary row for this module moved
+# into SPEC.md, then S-53 converted that whole section from a table into one prose bullet per
+# instrument under "Requirement 35: The vocabulary — the thirteen instruments". The Russian role
+# word «оживление» is stated there in its English translation, "standing life" — the same word this
+# section uses for every instrument of that role, not a paraphrase invented here.
+CHARTER_PATH = LAB.parent / "SPEC.md"
 CHARTER_TEXT = CHARTER_PATH.read_text(encoding="utf-8") if CHARTER_PATH.exists() else ""
-_charter_m = re.search(r"^\|\s*lens\s*\|.*\|\s*$", CHARTER_TEXT, re.M)
+_charter_m = re.search(r"^\s*-\s*`lens`.*$", CHARTER_TEXT, re.M)
 CHARTER_ROW = _charter_m.group(0) if _charter_m else None
 
 
@@ -431,8 +438,8 @@ POINTER_ABSENT = ("getImageData" not in REGION and "pointer" not in REGION
 # hands" already takes on the real running instrument two hundred lines below; this row reads that
 # same walk under its own name so the claim is proved once and cited twice rather than reworded.
 
-CHARTER_LENS_OK = bool(CHARTER_ROW) and "оживление" in CHARTER_ROW and "CELL" in CHARTER_ROW \
-    and "PARKED" in CHARTER_ROW
+CHARTER_LENS_OK = (bool(CHARTER_ROW) and "standing life" in CHARTER_ROW
+                    and "cell level" in CHARTER_ROW and "parked" in CHARTER_ROW)
 # "A REACH IS NOT A PASSAGE" is proved as arithmetic, not asserted as prose: at a hand of 0.20 and of
 # 0.80 — well inside the ramp, far from either door — a plain passage would carry the two works
 # 20 and 80 per cent of the way across; this instrument's own `handover` reading at those same two
@@ -855,8 +862,8 @@ else:
 
                 check(BROWSER_ROWS[1],
                       m["levels"] == ["SURFACE", "CELL"] and "WORLD" not in m["levels"]
-                      and CHARTER_ROW is not None and "CELL" in CHARTER_ROW,
-                      "the charter's own vocabulary table (lab/CROSSING-BRIEF.md) records this "
+                      and CHARTER_ROW is not None and "cell level" in CHARTER_ROW,
+                      "the charter's own vocabulary (SPEC.md, Requirement 35) records this "
                       "module's row as «%s», and the registered manifest's own `levels` agrees with "
                       "that row rather than with a comment about it: SURFACE because the fold is one "
                       "map over one surface, CELL because the kaleidoscope partitions the disc into "
@@ -983,8 +990,8 @@ else:
                 verdict_ok = CHARTER_LENS_OK and passage_gap[0.20] > 0.15 and passage_gap[0.80] > 0.15
                 check(BROWSER_ROWS[24],
                       verdict_ok,
-                      "lab/CROSSING-BRIEF.md's own row records this module as «оживление» at CELL "
-                      "with its mouse-mapping feature parked — read from the charter itself above, "
+                      "SPEC.md's own vocabulary row records this module as standing life at cell "
+                      "level with its mouse-mapping feature parked — read from the charter itself above, "
                       "not paraphrased. What that costs the port is read as arithmetic: at a hand of "
                       "0.20 a plain passage would have carried the two works 20%% of the way across; "
                       "this instrument's own `handover` reads %.4f there and %.4f at a hand of 0.80 "
