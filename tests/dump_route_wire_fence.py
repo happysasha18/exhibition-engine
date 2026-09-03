@@ -411,6 +411,31 @@ def fly_and_capture(br):
             "passage": passage, "layerReport": layer_report, "liveLayerTrace": live_layer_trace}
 
 
+EMERGENCY_CUE_ID = "last-resort"   # pass-layer.js's own `mergeLastResort`/`lastResortCast`: the
+                                    # rescued cue is always named this, at RENDER time — never as an
+                                    # event name (see `emergency_cast` below for why the old check
+                                    # here never fired)
+
+
+def emergency_cast(crossing):
+    """WHETHER THE HOST'S OWN EMERGENCY INSTRUMENT ACTUALLY PLAYED (S-30, наряд: the run must print
+    this share itself). `pass-layer.js`'s `logEvt` names, enumerated in full
+    (`grep -on 'logEvt("[a-zA-Z0-9-]*"'`), never include the literal string "last-resort" — the
+    rescue is signalled only by the CUE the host merges in
+    (`cues: [{ id: "last-resort", instrument: { id: inst.name }, ... }]`, `pass-layer.js`'s
+    `lastResortCast`), which shows up in a live frame's own `stack`, never in the terminal event
+    list. The acceptance gate below used to check the event names for this string and could never
+    match it — a dead check standing in for a class of failure the events alone cannot name, the
+    same class 2026-09-01's adversarial review flagged (finding 1/2: a real rescue that shares no
+    other forbidden event gets counted as `clean`/`recovered`/`overlap-not-live` instead). Reading
+    the cue id off the live trace is the one place this ever actually surfaces."""
+    for tick in crossing.get("liveLayerTrace") or []:
+        for voice in tick.get("stack") or []:
+            if voice.get("id") == EMERGENCY_CUE_ID and voice.get("live"):
+                return True
+    return False
+
+
 def crossing_failures(label, crossing):
     """The acceptance gate — `drive_route_wire.py`'s own bottom section, copied (item 5: a
     `recovered` outcome names the charter law it broke, never a bare timeout)."""
@@ -437,11 +462,15 @@ def crossing_failures(label, crossing):
     if not (terminal.get("stack") or []):
         failures.append(label + ": renderer docked with no actual applied stack")
     terminal_names = {e.get("name") for e in (terminal.get("events") or [])}
-    forbidden = sorted(n for n in ("last-resort", "resources-declined", "prepare-timeout", "recovered")
+    forbidden = sorted(n for n in ("resources-declined", "prepare-timeout", "recovered")
                        if n in terminal_names)
     if forbidden:
         failures.append(label + ": terminal fallback " + ", ".join(forbidden)
                                  + " (seam-law failure: the fallback ran, not merely a timeout)")
+    if emergency_cast(crossing) and "last-resort" not in forbidden:
+        failures.append(label + ": terminal fallback last-resort (seam-law failure: the host's own "
+                                 "emergency instrument played, read off the live stack's cue id "
+                                 "rather than off an event name that this host never publishes)")
     cues = (crossing.get("passage") or {}).get("cues") or []
     observed = {tuple(row) for row in [list(p) for p in sorted(
         observed_live_overlap(crossing.get("liveLayerTrace") or []))]}
@@ -573,6 +602,7 @@ def main():
                     "docked": result.get("docked"), "rendererObserved": result.get("rendererObserved"),
                     "clean": not crossing_fail,
                     "failures": crossing_fail,
+                    "emergency": emergency_cast(result),
                 })
 
     # ------------------------------------------------------------ the report, pass_arrival_walk.txt's
@@ -598,6 +628,14 @@ def main():
             lines.append("         RED — " + f)
         lines.append("")
     lines.append("-" * 78)
+    # THE EMERGENCY-FALLBACK SHARE, PRINTED BY THE RUN ITSELF (наряд S-30: this number is never
+    # asserted from a prior evidence folder — it is read straight off `emergency_cast`, this run's
+    # own live-stack cue check, so a person reading this file's own stdout has the number rather
+    # than a claim about it).
+    emergency_n = sum(1 for row in outcomes if row["emergency"])
+    lines.append("emergency-fallback share (host's own last-resort instrument actually played): "
+                 "%d of %d (%.1f%%)" % (emergency_n, len(outcomes),
+                                        100.0 * emergency_n / len(outcomes) if outcomes else 0.0))
     lines.append("instruments reached: %d of %d" % (len(reached), len(INSTRUMENTS)))
     for name in INSTRUMENTS:
         if name in reached:
