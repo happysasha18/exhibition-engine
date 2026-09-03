@@ -74,38 +74,25 @@ PATH_RE = re.compile(r"\b(?:%s)\.[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*
 CONTROL_POOL = ["colour.brightness", "colour.contrast", "colour.sat", "palette.hueConcentration",
                 "palette.colourfulness", "luminance.level"]
 
-# THE FIVE READINGS THIS RUN COULD NOT MAKE ANSWER, FOUND 2026-09-03 — the row's own finding, and
-# the whole reason a grep was never enough. Each was varied across two real works, on every pair of
-# the 121 the fixture will cast, by value and by removing the reading altogether, and the handle or
-# the fit named by the declaration never moved. Beside each one is what the composer actually reads,
-# with the line it reads it on, established by reading that branch rather than by guessing.
+# NO READING OF THE FLEET ANSWERS TO NOTHING. The run of 2026-09-03 (PLAN.md S-73) found six that
+# did, and PLAN.md S-86 closed all six the same day — three of them by moving the sentence onto the
+# house the code reads, one by striking a name the code never read, one by striking a leftover, and
+# one by widening this file's own seat walk to a seat where the handle is actually driven. What each
+# one became is in docs/evidence/2026-09-03-reads-answer.md in the site repo, with the reason.
 #
-# THE ROW HOLDS THIS SET EXACTLY, both ways. A sixth unanswered reading — the plant of PLAN.md
-# rule 8, or a real regression — reddens it by name. One that starts answering reddens it too, so
-# the ledger has to shrink the day the wiring or the sentence is repaired. Repair is PLAN.md S-76.
-UNANSWERED = {
-    ("pour", "`seedPlace`", "texture.reliefCentreDetailX"):
-        "the composer drives `seedPlace` only where the arrival crystallized on a grain-seed locus "
-        "(pass-composer.js:8742-8745), and no pair the fixture casts reaches that gate, so this "
-        "door never varies the reading at all",
-    ("pour", "the fit", "texture.spectralPeriodPx"):
-        "the composer's own `pour` fit reads `structure.regions.score` and `tonalSpectral(a, b)"
-        ".spectral`, and `tonalSpectral` (pass-composer.js:3092-3099) is built out of "
-        "`texture.detailPx` — the spectral PERIOD is named by the manifest and read by nothing",
-    ("veil", "the fit", "texture.scoreFromCutLines"):
-        "the composer's own `veil` fit reads `measures.texture`, which carries the same reading "
-        "under a second name in every record — so the declared path is a twin of the read one, "
-        "never the read one",
-    ("veil", "the fit", "structure.polar.tunnel"):
-        "the composer's own `veil` fit reads `measures.texture` and `texture.detailPx` and no "
-        "polar field whatever, so the corridor reading the manifest names bears on nothing",
-    ("kaleidoscope", "`centreX`", "structure.radial.centre"):
-        "the centre reaches the cue through `measuredParts().radialCx` (pass-composer.js:6323), "
-        "which reads `motifs.radialCentre` FIRST and falls back to `structure.radial.centre` — and "
-        "every one of the 121 records carries the motif, so the declared path is never reached",
-    ("kaleidoscope", "`centreY`", "structure.radial.centre"):
-        "the same, through `radialCy` (pass-composer.js:6325)",
-}
+# THE RULE THE THREE RENAMES SHARE, and the reason they were renames rather than rewirings. A work
+# record carries several of its readings TWICE, once raw and once digested — `texture`
+# `scoreFromCutLines` beside `measures.texture`, `structure.radial.centre` beside
+# `motifs.radialCentre`. Where a reading has two houses, THE DECLARATION NAMES THE HOUSE THE CODE
+# READS, and names the twin only as the twin. Naming the other house does not make a declaration
+# false, which is why a grep never caught these; it makes it UNPROVABLE, and that is worse, because
+# a run that varies the unread house sees the handle stand still and cannot tell a wrong wiring from
+# a second name for one number. Rewiring the code onto the raw house instead would have been the
+# larger change and the wrong one: the digest is what the composer deliberately ranks on.
+#
+# THE ROW HOLDS THIS SET EXACTLY, both ways. Any unanswered reading — the plant of PLAN.md rule 8,
+# or a real regression — reddens it by name, and there is now no entry here for one to hide behind.
+UNANSWERED = {}
 
 results = []
 
@@ -267,6 +254,10 @@ const plan = JSON.parse(fs.readFileSync(planPath, "utf8"));
 const composer = composerJoined.make(fix.consts);
 const ids = Object.keys(works.works);
 const SEED = 3.3;
+// How far the walk widens before it will call a declared reading unread — see the note at the
+// handle loop below. Forty is where the pour's `seedPlace` answers (it moves on seat 35); it is a
+// reach, not a threshold, and nothing passes or fails on the number itself.
+const WIDE_SEATS = 40;
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
@@ -465,9 +456,23 @@ for (const entry of plan) {
     if (!seat.length) {
       rec.noCast = true;
     } else {
+      // A HANDLE IS NOT CALLED UNREAD UNTIL THE WALK HAS LOOKED HARD. Four seats is what a reading
+      // that answers needs; a handle driven only under a BRANCH of the fill needs a seat where that
+      // branch ran. The pour's `seedPlace` is the case that taught this: the composer sets it only
+      // where the arrival crystallized on a grain-seed locus, about a third of the pour's seats do,
+      // and none of the first four did — so a genuinely wired reading read as unwired. The walk
+      // therefore widens, and only for a handle about to be reported as standing still: the 66 that
+      // answer on the first seats pay nothing, and the control below keeps its four seats, because
+      // a control that has to be hunted for over forty is not a control. `seedPlace` answers on
+      // seat 35, side B, which is the ARRIVING work its own sentence names.
+      let wide = null;
       for (const h of entry.handles) {
-        rec.handles.push(Object.assign({handle: h.handle, field: h.field},
-                                       moveTest(id, seat, h.handle, h.field)));
+        let r = moveTest(id, seat, h.handle, h.field);
+        if (!r.moved && !r.noField && !r.presence) {
+          if (wide === null) wide = castingFor(id, WIDE_SEATS);
+          if (wide.length > seat.length) r = moveTest(id, wide, h.handle, h.field);
+        }
+        rec.handles.push(Object.assign({handle: h.handle, field: h.field}, r));
       }
       // THE CONTROL. One measurement the instrument's whole file never names, varied the same way:
       // no handle of the instrument may answer to it. Reported per handle that does.
@@ -612,15 +617,17 @@ else:
           "%d declared readings varied through a real run; %d printed as SKIP with the reason on "
           "the instrument's own row above — a reading that names no measurement, a field the "
           "fixture's 121 records do not carry, or one that cannot be moved without recasting the "
-          "passage; %d unanswered, each named on its own instrument's row"
-          % (proven, skipped_readings + unvariable_total, len(unanswered)))
+          "passage; %s"
+          % (proven, skipped_readings + unvariable_total,
+             "none unanswered" if not unanswered
+             else "%d unanswered, each named on its own instrument's row" % len(unanswered)))
 
     fresh = sorted(unanswered - set(UNANSWERED))
     repaired = sorted(set(UNANSWERED) - unanswered)
-    check("PASS-READS the unanswered readings are exactly the six this file records, no more and "
-          "no fewer",
+    check("PASS-READS no declared reading of the fleet answers to nothing",
           isinstance(got, dict) and not fresh and not repaired,
-          "the six of 2026-09-03 stand, each with what the composer reads in their place"
+          "every declared reading of the fourteen either moves the handle or the fit it names, or "
+          "is skipped by name with its own reason; the six of 2026-09-03 were closed by S-86"
           if not fresh and not repaired else
           ("unrecorded and unanswered: %s; " % ", ".join("%s %s ← %s" % k for k in fresh)
            if fresh else "")

@@ -775,17 +775,27 @@
         // anchored its wander on two numbers chosen by eye for its own two photographs; the anchor
         // here is the pair's own measured radial centre, which is the very place the works turn
         // about, and the module's wander rides on it unchanged.
+        // THE CENTRE IS DECLARED IN THE HOUSE THE FILL ACTUALLY READS IT FROM. A record carries the
+        // point a work turns about twice — as `motifs.radialCentre` and as `structure.radial.centre`
+        // — and `measuredParts()`'s own `radialCx`/`radialCy` read the motif FIRST, falling back to
+        // the radial reading only where a work carries no motif. Every work of this collection
+        // carries the motif, so naming the fallback made the sentence unprovable: a run that varies
+        // `structure.radial.centre` sees this handle stand still and cannot tell a wrong wiring from
+        // a second name for one number. Both houses are named now, in the order the code reads them,
+        // which is the rule tests/test_pass_reads.py's own header states for every such twin.
         centreX: { min: 0, max: 1, def: 0.5,
                    unit: "across the picture, from its left edge",
-                   reads: "structure.radial.centre — the midpoint of the two works' own measured "
-                        + "radial centres, which is the point the fold is built around",
+                   reads: "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — the midpoint of the two works' own measured radial centres, "
+                        + "which is the point the fold is built around",
                    applied: { wanderRidesOn: "the module's own driftX" },
                    level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "down the picture, from its top edge, the way every place in a work "
                        + "record is measured",
-                   reads: "structure.radial.centre — the midpoint of the two works' own measured "
-                        + "radial centres",
+                   reads: "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — the midpoint of the two works' own measured radial centres, read "
+                        + "on the other axis",
                    applied: { wanderRidesOn: "the module's own driftY",
                               turnedOverOnce: "the fold reads up the picture" },
                    level: "SURFACE" },

@@ -801,7 +801,14 @@
       // the composer, which is the one place holding both records; what stands here is the
       // instrument's own statement of WHAT IT READS, which is the fact this file owns. A fit of
       // nothing is never a refusal — it ranks last and plays where nothing ranks higher.
-      suits: { reads: ["structure.regions.score", "texture.spectralPeriodPx", "texture.detailPx"],
+      // WHAT THE FIT READS IS THE DETAIL SCALE, NOT THE SPECTRAL PERIOD. This list named
+      // `texture.spectralPeriodPx` beside `texture.detailPx` until PLAN.md S-86, and the composer's
+      // own `pour` fit never read it: it reads `structure.regions.score` and
+      // `tonalSpectral(a, b).spectral`, which is built out of `texture.detailPx` alone. The period
+      // is a real reading this instrument uses elsewhere — `grain` declares it and answers to it —
+      // but it bears on the RANKING nowhere, and the `how` sentence below has always said «detail
+      // scales» rather than periods. The name came off the list, and nothing came in to blur it.
+      suits: { reads: ["structure.regions.score", "texture.detailPx"],
                how: "a pour needs a picture that will let go in pieces and a material to heap: the "
                   + "departing work's own region line says how plainly it comes apart into streams, "
                   + "and the two works' detail scales say whether the material that falls is the "

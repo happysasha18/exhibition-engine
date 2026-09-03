@@ -622,7 +622,19 @@
       // arithmetic runs in the composer, and what stands here is the instrument's own statement of
       // WHAT IT READS. A fit of nothing is never a refusal — it ranks last and plays where nothing
       // ranks higher.
-      suits: { reads: ["texture.scoreFromCutLines", "texture.detailPx", "structure.polar.tunnel"],
+      // THE GRAIN READING IS DECLARED IN THE HOUSE THE FIT ACTUALLY READS IT FROM. Every record
+      // carries this one number twice — raw as `texture.scoreFromCutLines` and digested as
+      // `measures.texture` — and the composer's own `veil` fit reads the digest. Naming the raw
+      // twin made the sentence unprovable rather than false, which is the worse of the two: a run
+      // that varies the raw house sees the fit stand still and cannot tell a wrong wiring from a
+      // second name. The rule the fleet now follows is in tests/test_pass_reads.py's own header —
+      // a declaration names the house the code reads, and the twin is named only as the twin.
+      //
+      // AND THE CORRIDOR CAME OFF. `structure.polar.tunnel` stood third here until PLAN.md S-86
+      // and the fit read no polar field whatever. It is a real reading of this instrument — the
+      // `depth` handle declares it and answers to it — but it never ranked a pair, and the `how`
+      // sentence below never claimed it did.
+      suits: { reads: ["measures.texture", "texture.detailPx"],
                how: "a veil is only worth watching where a work has something to lose to it: the "
                   + "two works' own grain readings say how much material the coarsening can take "
                   + "away, and how far apart their detail scales stand says whether coming forward "

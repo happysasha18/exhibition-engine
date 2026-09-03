@@ -490,13 +490,22 @@ check("PASS-KAL the instrument declares what it READS of a pair, and no floor an
 
 # THE FOLD'S CENTRE, AND THE MEASUREMENT IT READS. His 19:13 word, lifted to the class at 19:21:
 # every geometric parameter names the measurement of the work it reads.
+#
+# THE CENTRE NAMES BOTH ITS HOUSES, IN THE ORDER THE CODE READS THEM (PLAN.md S-86). This row asked
+# for `reads: "structure.radial.centre` until then, and the fill has always read `motifs.radialCentre`
+# first through `measuredParts()`'s own `radialCx`/`radialCy`, falling back to the radial reading only
+# where a work carries no motif — which no work of this collection does. The grep passed on a
+# sentence that named only the house never reached; `tests/test_pass_reads.py` varies both houses
+# through a real run and is what actually proves this one, so what stands here is the sentence's own
+# shape and not the proof.
 check("PASS-KAL every geometric handle publishes the measurement it reads",
-      'reads: "structure.radial.centre' in REGION
+      'reads: "motifs.radialCentre, and structure.radial.centre where a work carries no ' in REGION
       and "structure.polar.twirl" in REGION
       and "structure.ownDevice.count" in REGION
       and "structure.ownDevice.stepPx" in REGION
       and "the work's own measured rotational order" in REGION,
-      "the fold's CENTRE reads structure.radial.centre, the point the works turn about; its LEAN "
+      "the fold's CENTRE reads motifs.radialCentre, and structure.radial.centre where a work "
+      "carries no motif — the point the works turn about; its LEAN "
       "reads structure.polar.twirl, how strongly the work's own making reads as a twirl; its RADIAL "
       "REPEAT reads structure.ownDevice.count, the repeats the work itself carries; its SAMPLE WIDTH "
       "reads structure.ownDevice.stepPx over the work's own frame side; and its WEDGE COUNT reads "
