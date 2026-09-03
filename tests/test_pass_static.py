@@ -507,8 +507,25 @@ else:
         handles_map = fleet.get("handles", {})
         expected = sorted(fleet["names"])
         missing6, malformed = seam_verdict(fleet)
-        check(NAME6, not missing6 and not malformed,
-              "" if not (missing6 or malformed) else
+        # THE COUNT THE ROW PRINTS FOR ITSELF (naряд S-05): how many instruments cut the frame —
+        # those whose own `cuts` block names anything at all — against how many declare where the
+        # cut is. The second can never be the smaller of the two, because the population asked is
+        # the WHOLE fleet and an instrument with no boundary answers `seams: []` out loud; a cutting
+        # module standing silent would be counted here as well as caught above. Printed on a green
+        # run as much as on a red one, so the fact does not have to be re-derived by hand.
+        cuts_map = fleet.get("cuts", {})
+        cutting = sorted(n for n in expected if cuts_map.get(n))
+        declaring = sorted(n for n in expected if isinstance(seams_map.get(n), list))
+        naming = sorted(n for n in declaring if seams_map.get(n))
+        check(NAME6, not missing6 and not malformed and len(declaring) >= len(cutting),
+              (str(len(declaring)) + " seam declarations against " + str(len(cutting))
+               + " modules that cut the frame — their own `cuts` block names a kind — so no cutting "
+               "module stands silent. " + str(len(naming)) + " of the declarations name a boundary "
+               "and where it is (" + ", ".join(naming) + "); the remaining "
+               + str(len(declaring) - len(naming)) + " say they have none, out loud and with the "
+               "reason in their own file, which is an answer and not a silence ("
+               + ", ".join(n for n in declaring if n not in naming) + ")")
+              if not (missing6 or malformed) else
               ("every one of the " + str(len(expected)) + " instruments the registry loads is asked "
                "where it cuts the frame — a non-empty `manifest.seams` with a kind and a unit the "
                "host reads, or an empty list said outright with the reason in the file, which is "
@@ -530,15 +547,23 @@ else:
         # its own shader. The count stands in this row's own words at every run, so it cannot rot
         # unnoticed, and the names are printed rather than summarised.
         NAME7 = "STATIC · no instrument reads a seam width the host was never asked for"
-        readers, declared_names = [], []
-        for n in expected:
-            path = ROOT / "engine" / "assets" / ("pass-inst-" + n + ".js")
-            body = path.read_text(encoding="utf-8") if path.exists() else ""
-            if "st.seams" in body or "state.seams" in body:
-                readers.append(n)
-            if seams_map.get(n):
-                declared_names.append(n)
-        unpublished = sorted(set(readers) - set(declared_names))
+
+        def seam_reader_verdict(f, assets_dir):
+            """The row's own predicate, held apart for the same reason `seam_verdict` above is: the
+            planted run below is judged by this very code and not by a second description of it."""
+            declared_of = f.get("seams", {})
+            reads, declares = [], []
+            for nm in f.get("names", []):
+                path = Path(assets_dir) / ("pass-inst-" + nm + ".js")
+                body = path.read_text(encoding="utf-8") if path.exists() else ""
+                if "st.seams" in body or "state.seams" in body:
+                    reads.append(nm)
+                if declared_of.get(nm):
+                    declares.append(nm)
+            return sorted(set(reads) - set(declares)), reads, declares
+
+        unpublished, readers, declared_names = seam_reader_verdict(fleet,
+                                                                   ROOT / "engine" / "assets")
         paper = sorted(set(declared_names) - set(readers))
         check(NAME7, not unpublished,
               ("these instruments read `st.seams` back at render time and their manifests declare "
@@ -550,6 +575,55 @@ else:
               + " declare a seam and draw their own softening in their own shaders, so the "
                 "declaration tells a reader where the boundary is and does not yet set its width: "
               + ", ".join(paper))
+
+        # ------------------------------- row 7b: row 7, run against a reader whose declaration went
+        #
+        # WHY THIS ROW EXISTS (naряд S-05). Row 7 is the gate that catches a file spending a seam
+        # width nobody published, and until this row it had never been shown to catch anything: the
+        # shipped fleet has no such file, so the row's green says only that today's tree is clean —
+        # the same silence row 8 exists to break for row 6. The plant is the defect itself: an
+        # instrument that DOES read `st.seams` back at render time keeps that read and loses its
+        # declaration, which is exactly the shape row 7 is written against — the host then answers
+        # `null`, the file falls silently back to its own private constant, and §8's declaration is
+        # gone by the back door with every other row in this file still green.
+        #
+        # THE READER PLANTED IS «tunnel», one of the three softenings naряд S-05 moved onto the
+        # host's own shared travel (kaleidoscope's crease, planet's wrap, tunnel's ring-join), so
+        # what the plant models is a real regression on a real repair rather than a made-up file.
+        # The asset tree is copied and the copy edited; the file on disk is never touched.
+        NAME7B = "STATIC · the row above reds when a file reads a seam width it never declared"
+        READER = "tunnel"
+        rmute = TMP / "undeclared-reader-fleet"
+        if rmute.exists():
+            shutil.rmtree(rmute)
+        shutil.copytree(ROOT / "engine" / "assets", rmute)
+        rtarget = rmute / ("pass-inst-" + READER + ".js")
+        rtext = rtarget.read_text(encoding="utf-8")
+        rcut = 'seams: [{ kind: "ring", of: null, unit: "a share of one repeat\'s own span" }],'
+        if rcut not in rtext:
+            check(NAME7B, False,
+                  "the plant found no declaration to take out of «" + READER + "»; re-pin it")
+        else:
+            rtarget.write_text(rtext.replace(rcut, "", 1), encoding="utf-8")
+            rmuted = subprocess.run(["node", str(FLEET_PATH), str(rmute)],
+                                    capture_output=True, text=True, timeout=300)
+            if rmuted.returncode != 0:
+                check(NAME7B, False, (rmuted.stderr or "").strip()[-400:])
+            else:
+                rbug = json.loads(rmuted.stdout.strip().splitlines()[-1])
+                r_unpublished, r_readers, r_declared = seam_reader_verdict(rbug, rmute)
+                check(NAME7B,
+                      r_unpublished == [READER] and not unpublished
+                      and READER in r_readers and len(rbug["names"]) == len(expected),
+                      "with «" + READER + "»'s own declaration taken out of a copy of the asset "
+                      "tree — its render-time read of `st.seams` left exactly where it was — the "
+                      "same predicate that passes the shipped fleet names it: "
+                      + (", ".join(r_unpublished) if r_unpublished else "nobody")
+                      + ". It stands over the same " + str(len(rbug["names"])) + " instruments "
+                      "either way and still counts " + str(len(r_readers)) + " readers, so what "
+                      "reddens the row is the declaration that went and nothing about the "
+                      "population it went from")
+        shutil.rmtree(rmute, ignore_errors=True)
 
         # ---------------------------------------- row 8: the row above, run against a silent file
         #
