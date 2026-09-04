@@ -114,6 +114,13 @@ _snd_cfg["exhibition"]["sound_credit"] = {
 }
 _snd_cfg_path.write_text(json.dumps(_snd_cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
+# SND6 needs a real work id to hold on the wire — the same door-pool-first pick test_ladder.py
+# reads its own PICK off, so a walk seeded with it reliably plates its first frame.
+SND_DATA = json.loads((TMP_SND / "exhibition_data.json").read_text(encoding="utf-8"))
+SND_VER = str(SND_DATA["version"])
+SND_PICK = SND_DATA["door"]["pool"][0]["id"]
+SND_WALK = json.dumps({"v": SND_VER, "pick": SND_PICK, "shown": 10})
+
 # ---------------------------------------------------------------- snippets shared with test_share.py / test_quiz_pick.py
 IN_VIEW = ("(()=>{const f=[...document.querySelectorAll('.exh-frame')].find(f=>{"
            "const r=f.getBoundingClientRect();"
@@ -194,6 +201,8 @@ SND_ROWS = [
     "SND-RETRACT the ambient player retracts under the gift card (not pressable)",
     "SND-RETRACT the ambient player retracts under the question card (not pressable)",
     "SND-RETRACT INV-77 the ambient player retracts during the zoom too",
+    "SND-RETRACT EX-LOAD-2 the ambient player retracts under the walk's own loading frame too",
+    "SND-RETRACT EX-RETURN the ambient player retracts while the farewell line stands too",
 ]
 
 
@@ -1191,6 +1200,64 @@ else:
             retracted, snd = snd_retracted(br)
             check(SND_ROWS[4], fired == "ok" and zoom_open and no_face and retracted,
                   f"fired={fired!r} zoom_open={zoom_open} no_covering_face={no_face} snd={snd}")
+
+        # SND6 — EX-LOAD-2 (INV-72): the walk's OWN loading frame (the tone plate a picture still
+        # crossing the wire wears) is the ex-crossing/ex-cross-cap sibling for the in-walk wait
+        # (exhibition.css:552-557 already retracts #ex-sound under body.ex-loading-frame, beside
+        # the door/side/gift/quiz-card rule above); this is the same pressability proof SND1-5 run,
+        # aimed at the state test_ladder.py's EX-LOAD-FRAME row raises: the first walk frame's
+        # picture held on the wire past the ladder's grace.
+        HOLD = {"match": str(SND_PICK), "delay": 3.0}
+        with serve(TMP_SND, hold=HOLD) as snd_hold_base:
+            with Browser(width=1280, height=900) as br:
+                br.navigate("about:blank")
+                br.navigate(snd_hold_base + "/")
+                br.evaluate(f"localStorage.setItem('ex.exhibition', {json.dumps(SND_WALK)})")
+                br.evaluate("localStorage.setItem('ex-tempo','1')")
+                br.reload()
+                frame_on = False
+                for _ in range(40):                       # poll past the grace, image held 3.0s
+                    br.sleep(0.1)
+                    if br.evaluate("document.body.classList.contains('ex-loading-frame')"):
+                        frame_on = True
+                        break
+                retracted, snd = snd_retracted(br)
+                check(SND_ROWS[5], frame_on and retracted,
+                      f"loading_frame_stood={frame_on} snd={snd}")
+
+        # SND7 — EX-RETURN (INV-78): the farewell / returning-visitor line (#exd-more, "there is
+        # more") draws INSIDE the re-opened door, which SND1 already proves faceSync covers whole —
+        # this row aims the same probe at the state where that line itself is actually showing: the
+        # SECOND walk→door exit this session (00-prelude.js's FAREWELL_MIN_EXITS=2 — the line stays
+        # silent on the first exit, its own declared device), never a made-up threshold.
+        with Browser(width=1280, height=900) as br:
+            br.navigate(snd_base + "/")
+            first_exit = reach_reopened_door(br)          # exit #1 — exits=1, still under the line's own bound
+            reentered = False
+            if first_exit:
+                br.click(".exd-window:nth-child(1)", settle=1.0)   # back into the walk through any window
+                for _ in range(30):
+                    br.sleep(0.1)
+                    if not br.evaluate("document.body.classList.contains('ex-door')"):
+                        reentered = True
+                        break
+            second_exit = False
+            more_shown = False
+            if reentered:
+                br.evaluate(
+                    "document.getElementById('exh-fin')?.scrollIntoView({behavior:'instant'})")
+                br.sleep(0.5)
+                if br.evaluate("!!document.getElementById('ex-return')"):
+                    br.click("#ex-return", settle=1.2)     # exit #2 — exits=2, the line's own bound
+                    second_exit = br.evaluate("document.body.classList.contains('ex-door')")
+                    more_shown = br.evaluate(
+                        "(()=>{const m=document.getElementById('exd-more');"
+                        "return !!m && !m.hidden && m.textContent.trim()!=='';})()")
+            retracted, snd = snd_retracted(br)
+            check(SND_ROWS[6],
+                  first_exit and reentered and second_exit and more_shown and retracted,
+                  f"first_exit={first_exit} reentered={reentered} second_exit={second_exit} "
+                  f"farewell_line_shown={more_shown} snd={snd}")
 
         # ============ EX-COMPOSE / INV-67 — the caption's OWN controls under every covering face ============
         # The series pill and the question chip live inside #exh-cap and carry pointer-events:auto
