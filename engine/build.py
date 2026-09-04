@@ -992,7 +992,7 @@ def copy_exhibition_assets():
     # once per visit at the walk's first landing, on a walk whose settings record actually carries
     # the per-work records it reads. A bake without it simply serves none, the bundle's fetch answers
     # 404, the refusal lands on the diagnostic surface and every crossing keeps the walk's own glide.
-    for _name in ("pass-layer.js", "pass-hand.js", "pass-composer.js",
+    for _name in ("pass-layer.js", "pass-hand.js", "pass-hand-gestures.js", "pass-composer.js",
                   "darkroom-measure.js", "darkroom.js"):
         _p = client_asset(_name)
         if not _p.exists():

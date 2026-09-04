@@ -436,7 +436,7 @@
       clearTimeout(wheelIdle);
       wheelIdle = setTimeout(() => { wheelPeak = 0; wheelMode = null; wheelS.lastT = null; }, WHEEL_IDLE_MS);
       const step = wheelWalkStep({ t: e.timeStamp, dy: e.deltaY }, wheelS);
-      if (wheelS.fresh) { wheelMode = e.ctrlKey ? "zoom" : "walk"; wheelPeak = 0; }
+      if (wheelS.fresh) { wheelMode = e.ctrlKey ? "zoom" : e.shiftKey ? "hand" : "walk"; wheelPeak = 0; }
       // INV-85 / EX-PROTECT: the browser's own ctrl-wheel (viewport) zoom is refused on EVERY ctrl+wheel.
       // The old blunt guard was `if (e.ctrlKey) { e.preventDefault(); return; }` — a flat refusal. INV-85
       // KEEPS that preventDefault (in the "zoom" branch just below) but now HANDS the same ctrl+wheel to

@@ -57,6 +57,7 @@ SUITES = [
     "pass_verdict",
     "pass_layer",
     "pass_hand",
+    "pass_gestures",
     "pass_boxfold",
     "pass_droste",
     "pass_planet",
