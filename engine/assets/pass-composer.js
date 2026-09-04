@@ -2992,10 +2992,13 @@
       return HUE_WHEEL.indexOf(String(name === undefined || name === null ? "" : name));
     }
     // THE SHORTEST SIGNED TURN FROM ONE SEAT TO ANOTHER, in radians, and `null` where either work
-    // names no hue at all. The wheel is eight names round, so one seat is a quarter of a half turn;
-    // the turn is taken the short way about and carries the SIGN the pair supplies — from the
-    // departing work's own hue toward the arriving work's — which is the reading
-    // `HANDLE_SOURCE`'s own row for `studio.hue` said no measurement could give until this line.
+    // names no hue at all — a seat neither work stands on has nothing to measure a turn between.
+    // The wheel is eight names round, so one seat is a quarter of a half turn; the turn is taken
+    // the short way about and carries the SIGN the pair supplies — from the departing work's own
+    // hue toward the arriving work's — which is the reading `HANDLE_SOURCE`'s own row for
+    // `studio.hue` said no measurement could give until this line. THE NULL IS NOT A REFUSAL: the
+    // darkroom's own colour operation (`fillPlan`'s studio branch below) reads a null turn at
+    // zero and plays regardless, on the look its own handle — `colLook` — carries instead.
     function hueTurn(fromSeat, toSeat) {
       if (!(fromSeat >= 0) || !(toSeat >= 0)) return null;
       var d = ((toSeat - fromSeat) % HUE_WHEEL.length + HUE_WHEEL.length) % HUE_WHEEL.length;
@@ -6526,8 +6529,10 @@
         // above, the alphabet the day's own bias already reads). `palette.hues` is the record's own
         // ordered list and its first name is the hue the work reads as; a work whose own colour
         // reading named none carries an empty list, and `hueSeat` answers −1 for it rather than
-        // standing that work at red. This is the reading the darkroom's own colour operation turns
-        // on: a turn needs a hue at each end, and the record says outright which works have one.
+        // standing that work at red. This is the reading the darkroom's own colour TURN reads: a
+        // turn needs a hue at each end, and where either work lacks one the turn itself is zero —
+        // the record says which works have a hue to turn between, and nothing here says whether
+        // the colour operation plays at all, which is `colOn`'s own question and never this one's.
         leadHue: hueSeat(((work.palette || {}).hues || [])[0]),
         // THE TONE a work parts at, off `luminance.level` (lab/build-workrecords-v1.py, itself
         // lab/analyze/recipes.py:551-613 colour_stats()'s median luminance, a port of `measure(image)`
@@ -9116,15 +9121,18 @@
           // or another cue owns LIGHT-COLOUR beside this one, all three stay unset and the
           // manifest's own rest stands: the operation off, no turn, the module's own look.
           if (ownsLevelOf(cue, "studio", "colOn")) {
-            // WHETHER THE COLOUR OPERATION STANDS ON AT ALL, and it is the record's own answer
-            // rather than a floor on a reading. `palette.hues` names the hue a work reads as, and a
-            // hue TURN needs a hue at each end: where both works name one there is a turn to make
-            // and the operation plays, where either names none there is nothing to turn and it
-            // rests. This is the same shape `gates`' own `slotAxis` takes off `motifs.gateAxis` — a
-            // discrete handle answered by a discrete fact the record already carries, never by a
-            // cut point chosen here.
+            // WHETHER THE COLOUR OPERATION STANDS ON AT ALL — and the record never says no. Where
+            // this cue owns the level (the gate above) the operation always plays: a hue TURN needs
+            // a hue at each end, and where either work names none there is nothing to turn, so the
+            // turn itself reads zero below (`stTurn === null ? 0 : stTurn`) — but the operation is
+            // not only the turn. Its own LOOK (`colLook` below — saturation and contrast) reads
+            // `colourfulness`, a coordinate every work carries whether or not it named a hue, so a
+            // grey work still moves the frame through its own look. Gating `colOn` itself on
+            // whether a turn exists was the same admission test shelf 20 already forbids on
+            // `palette.rung` above (:3203-3229) — a work that never named a hue is not this file's
+            // to exclude from a step this collection already cast it into.
             var stTurn = hueTurn(mf.leadHue, mt.leadHue);
-            wanted.colOn = stTurn === null ? 0 : 1;
+            wanted.colOn = 1;
             // HOW FAR ROUND THE WHEEL, and which way. `hueTurn` takes the short way about and keeps
             // the pair's own sign — from the departing work's hue toward the arriving work's — so
             // the objection the old register row recorded («no reading says which way round the
