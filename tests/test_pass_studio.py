@@ -807,20 +807,32 @@ else:
                 # `if (uColOn > 0.5)` is the only thing standing between a written handle and the
                 # picture. The third says the operation is worth switching on even where the two
                 # works name the SAME hue and there is no turn to make — the look alone moves it.
+                #
+                # THE FOURTH IS THE POSE S-106 ACTUALLY WRITES for a pair where one work names no
+                # hue at all: `colOn` 1, `hue` 0 (there is nothing to turn between), `colLook` 0 —
+                # the composer's own sweep prints this exact triple for such a pair. Without this
+                # reading, `rest`/`turned`/`lifted` above prove the operation reaches the picture
+                # through a turn or through the RICH look, never through the DRAINED look at zero
+                # turn — which is the one combination a hue-less pair can ever ask for, and the
+                # promise this row makes is exactly that this combination moves the frame too.
                 col_off = drew("colour-off", {"colOn": 0, "hue": 3.14159, "colLook": 0})
                 col_on = drew("colour-on", {"colOn": 1, "hue": 3.14159, "colLook": 0})
                 col_noturn = drew("colour-on-no-turn", {"colOn": 1, "hue": 0, "colLook": 1})
+                col_noturn_drained = drew("colour-on-no-turn-drained", {"colOn": 1, "hue": 0, "colLook": 0})
                 rest = diff(base_shot, col_off)
                 turned = diff(base_shot, col_on)
                 lifted = diff(base_shot, col_noturn)
+                drained = diff(base_shot, col_noturn_drained)
                 check(BROWSER_ROWS[18],
-                      rest == (0.0, 0) and turned[1] > SEAM and lifted[1] > SEAM,
+                      rest == (0.0, 0) and turned[1] > SEAM and lifted[1] > SEAM and drained[1] > SEAM,
                       f"the same turn and look handed with the operation resting move the frame by "
                       f"{rest[0]} at {rest[1]}; switched on, a turn of 3.14159 radians into the "
                       f"drained look moves it by {turned[0]:.4f} of 255 on the mean and {turned[1]} "
                       f"at its strongest point; switched on with no turn at all the rich look alone "
                       f"moves it by {lifted[0]:.4f} on the mean and {lifted[1]} at its strongest "
-                      f"point (threshold {SEAM})")
+                      f"point; switched on with no turn and the drained look — the pose a pair where "
+                      f"one work names no hue actually writes — moves it by {drained[0]:.4f} on the "
+                      f"mean and {drained[1]} at its strongest point (threshold {SEAM})")
 
                 fA = m["framings"]["0"]["coverCrop"]
                 fB = m["framings"]["1"]["coverCrop"]
