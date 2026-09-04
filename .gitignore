@@ -8,3 +8,5 @@ __pycache__/
 # A suite's kept captures (§9 row 16). They stay on disk after a run, where the row that counts them
 # reads them; each run writes them afresh, and eleven megabytes of that belongs outside the history.
 tests/captures/
+# Every full run rewrites this file (S-61); a clean tree can't hold it under version control.
+tests/suite_timings.json
