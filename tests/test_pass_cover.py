@@ -189,8 +189,14 @@ HOOKS = """window.HOOKS = function () {
 MARK = (255, 0, 255)
 MARK_CSS = """
   var st = document.createElement('style');
+  // `body` carries its own `transition:background var(--d-ground) var(--ease)`
+  // (exhibition.css) — the ambient ground-colour fade, unrelated to the pass system. Overriding
+  // `background` alone still lets the browser animate the swap from body's live ground tint to
+  // this marker across that transition's own duration (measured live at 2.295s) rather than
+  // applying it at once, so a fixed short wait below can catch it still mid-fade and read a
+  // near-magenta a pixel-exact comparison misses. `transition:none` here removes the race itself.
   st.textContent = 'html, body, .exh-frame, .exh-fin, #ex-stage {'
-                 + ' background: rgb(255,0,255) !important; }'
+                 + ' background: rgb(255,0,255) !important; transition: none !important; }'
                  + ' .exh-frame img.work, .exh-fin img { visibility: hidden !important; }';
   document.head.appendChild(st);
   return true;
@@ -207,11 +213,25 @@ def js(br, expr):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % expr))
 
 
-def marker_share(path):
-    """The share of the frame still carrying the marker — pixels nothing drew over."""
+def marker_share(path, box=None):
+    """The share of the frame still carrying the marker — pixels nothing drew over.
+
+    `box`, when given, restricts the read to the canvas's OWN rect (CSS px, DPR 1 on this site,
+    so it maps straight onto the screenshot's pixels) — the region a passage actually claims,
+    which S-91 shrank from the whole window to the work's own hang box. The whole-viewport read
+    stays the right one for proving the marker was on screen at all (the row that hides the
+    canvas and asks whether magenta is visible anywhere), but "did the frame get left bare" is
+    a claim about the canvas's own box, not about the room around it that a passage was never
+    asked to paint over."""
     from PIL import Image
     import numpy as np
     a = np.asarray(Image.open(path).convert("RGB")).astype(np.int16)
+    if box:
+        x0 = max(0, int(round(box["x"])))
+        y0 = max(0, int(round(box["y"])))
+        x1 = min(a.shape[1], int(round(box["x"] + box["w"])))
+        y1 = min(a.shape[0], int(round(box["y"] + box["h"])))
+        a = a[y0:y1, x0:x1]
     hit = (a[:, :, 0] == MARK[0]) & (a[:, :, 1] == MARK[1]) & (a[:, :, 2] == MARK[2])
     return round(float(hit.mean()), 6)
 
@@ -538,9 +558,19 @@ else:
                       return {took: cmd ? window.__exPass.layer().offer(cmd, window.HOOKS()) : false};
                     """ % (json.dumps(score(tr)), A, B))
                     running = wait_state(br, "running")
+                    # THE FRAME, READ ONCE. S-91 made "the frame" the work's own hang box rather
+                    # than the window — the fixed `frameEl` the canvas travels inside, which crops
+                    # a grown carrier with its own `overflow:hidden` (pass-layer.js `stageMake`).
+                    # That element, not the canvas's own (pose-grown, and clipped) rect, is the
+                    # box this row's "no pixel of the frame unpainted" claim is about.
+                    frame_rect = js(br, "var c = document.querySelector('canvas');"
+                                        "var f = c && c.parentElement;"
+                                        "if (!f) return null;"
+                                        "var b = f.getBoundingClientRect();"
+                                        "return {x: b.left, y: b.top, w: b.width, h: b.height};")
                     br.sleep(1.0)
                     shot = png(br, SHOTS / "capped.png")
-                    painted = marker_share(shot)
+                    painted = marker_share(shot, box=frame_rect)
                     js(br, "window.__exPass.bench.show(false); return null;")
                     br.sleep(0.4)
                     bare = png(br, SHOTS / "bare.png")
