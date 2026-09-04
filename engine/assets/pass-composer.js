@@ -1734,18 +1734,21 @@
       return !!iid && WORLD_FOLD_INSTRUMENTS.indexOf(iid) >= 0;
     }
 
-    // AN INSTRUMENT THAT FOLDS THE SPACE A WORK LIVES IN SPENDS THE CROSSING'S ONE MIRACLE — THE
-    // FIRST TIME THIS WALK PLAYS IT. His word of 2026-08-26 20:17: a miracle is a wow, a concept,
-    // it is subjective, and «если много раз повторяется то уже не чудо» — repeated, it stops being
-    // one. So this no longer reads a mark true for the instrument's whole life on the site: it
-    // reads `walkMiracles`, this composition's own reading of what the walk has already played
-    // (set by `scoreFor`, exactly as `walkPlayed` is, from `01a-pass.js`'s `passWalkMiracles`). The
-    // first time a fold plays on a walk it is the miracle; every repeat is an ordinary letter, and
-    // the slot it no longer spends is free for another move in the same crossing. `isWorldFold`
-    // above is unaffected by any of this — a road built around the fold (`mustFold`) still finds
-    // the instrument that fold IS, whether or not this walk has already spent the miracle on it.
+    // A FOLD SPENDS THE CROSSING'S ONE MIRACLE — THE FIRST TIME THIS WALK PLAYS ANY FOLD AT ALL.
+    // His word of 2026-08-26 20:17: a miracle is a wow, a concept, it is subjective, and «если много
+    // раз повторяется то уже не чудо» — repeated, it stops being one. The strong move is a CLASS —
+    // folding the space a work lives in — never one instrument's own name, so the question this asks
+    // of `walkMiracles` (this composition's own reading of what the walk has already played, set by
+    // `scoreFor`, exactly as `walkPlayed` is, from `01a-pass.js`'s `passWalkMiracles`) is whether the
+    // walk has played the miracle AT ALL, not whether this particular instrument did. Read by name
+    // (`indexOf(iid)`), the same fold restated under a different instrument on the same walk would
+    // still count as a second wow — 2026-09-04 naряд S-18, the remaining half of the criterion. The
+    // first fold anywhere on a walk is the miracle; every fold after it, whichever instrument plays
+    // it, is an ordinary letter. `isWorldFold` above is unaffected by any of this — a road built
+    // around the fold (`mustFold`) still finds the instrument that fold IS, whether or not this walk
+    // has already spent its one miracle.
     function spendsTheMiracle(iid) {
-      return isWorldFold(iid) && walkMiracles.indexOf(iid) < 0;
+      return isWorldFold(iid) && walkMiracles.length === 0;
     }
 
     // Every instrument this collection publishes that cuts on a kind, in one settled order.
