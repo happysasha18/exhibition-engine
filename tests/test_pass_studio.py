@@ -36,6 +36,7 @@ WHAT IS COMPARED, AND AGAINST WHAT.
 """
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -79,6 +80,27 @@ def skip(name, detail):
 
 INSTRUMENT_TEXT = INSTRUMENT.read_text(encoding="utf-8")
 COMPOSER_TEXT = COMPOSER.read_text(encoding="utf-8")
+
+# THE COLOUR VOICE'S OWN WHEEL, read off the composer file rather than retyped — the same eight
+# names `hueTurn` (pass-composer.js:2999-3004) takes its short-way turn between, off the same
+# `HUE_WHEEL` (:2987) this pins to. Independently working out the turn a pair OUGHT to write, off
+# these two functions ported here, is what "proved by construction" below means: the row does not
+# trust the sweep's own number, it recomputes the one that number should be and compares.
+_wheel = re.search(r'var HUE_WHEEL = \[(.*?)\];', COMPOSER_TEXT)
+HUE_WHEEL = re.findall(r'"(\w+)"', _wheel.group(1)) if _wheel else []
+
+
+def hue_seat(name):
+    return HUE_WHEEL.index(name) if name in HUE_WHEEL else -1
+
+
+def turn_between(seat_a, seat_b):
+    if seat_a < 0 or seat_b < 0:
+        return None
+    d = (seat_b - seat_a) % len(HUE_WHEEL)
+    if d > len(HUE_WHEEL) / 2:
+        d -= len(HUE_WHEEL)
+    return d * 2 * math.pi / len(HUE_WHEEL)
 
 # ---------------------------------------------------------------- static rows, read off the files
 
@@ -240,62 +262,66 @@ for (let i = 0; i < ids.length; i++) {
   }
 }
 
-// ---- THE COLOUR VOICE, ON THE SAME REAL PAIRS AND ON THE ONE STEP THAT CAN AFFORD IT -----------
+// ---- THE COLOUR VOICE, PROVED ON ONE PAIR PER CASE THE FIXTURE'S OWN RECORDS CAN PUT A WORK TO ---
 // This instrument declares LIGHT-COLOUR and is only ever cast as the GROUND, and shelf 17 counts
 // the camera, the ground and the colour voice in one column: at a quiet link the camera alone
 // fills the ceiling of one, and at a middle the camera and the ground fill the ceiling of two, so
 // the colour voice stands down and `ownedTracks` takes the operation's three handles off the cue.
 // A CULMINATION is the step whose ceiling of three leaves room for it — and the walk really names
 // one (`01a-pass.js`: a dominant standing as the route's crest reads as a culmination) — so the
-// sweep below asks the composer for that step and reads what the colour operation actually gets.
-// Nothing about the budget is touched here; the sweep asks the road that can pay for the voice.
-let colCasts = 0, colOwns = 0, colOn = 0, colOff = 0;
-const turns = {}, looks = {}, colSample = [];
-let ct = 0;
-colour:
-for (let i = 0; i < ids.length; i++) {
-  for (let j = 0; j < ids.length; j++) {
-    if (i === j) continue;
-    ct++;
-    let res;
-    try {
-      res = composer.passageFor({ workRecordA: works[ids[i]], workRecordB: works[ids[j]],
-                                   direction: "a-to-b", seed: ((i * 31 + j * 7) % 100) / 12.5,
-                                   routeRole: "culmination" });
-    } catch (e) { continue; }
-    if (res.declined) continue;
-    const cue = (res.score.cues || []).find((c) => c.instrument.id === "studio");
-    if (!cue) continue;
-    colCasts++;
-    if ((cue.levels || []).indexOf("LIGHT-COLOUR") >= 0) colOwns++;
-    const t = cue.tracks || {}, n = cue.nodes || {};
-    if (!t.colOn) continue;
-    const on = Number((n[t.colOn.node] || {}).value);
-    const turn = Number((n[(t.hue || {}).node] || {}).value);
-    const look = Number((n[(t.colLook || {}).node] || {}).value);
-    if (on === 1) {
-      colOn++;
-      turns[turn.toFixed(4)] = (turns[turn.toFixed(4)] || 0) + 1;
-      looks[look] = (looks[look] || 0) + 1;
-      if (colSample.length < 5) {
-        colSample.push({ a: ids[i], b: ids[j], colOn: on, hue: turn, colLook: look,
-                          note: String((n[t.colOn.node] || {}).note || "").slice(0, 60) });
-      }
-    } else { colOff++; }
-    if (ct >= 6000) break colour;
+// search below asks the composer for that step and reads what the colour operation actually gets.
+// Nothing about the budget is touched here; the search asks the road that can pay for the voice.
+//
+// SPEC requirement 12, "what the collection may never decide", forbids a criterion formulated as a
+// count over the collection — a share of its pairs, a frequency of outcome over a sample. So this
+// does not sweep the corpus and tally an on/off split; it SELECTS, by a property each work's own
+// record carries (`palette.hues` named a hue, or named none), the first real castable pair of each
+// of the three cases the record can put a work to, and reads that one pair's own written handles.
+// Selecting a work by a property its own record carries is the record answering; counting how many
+// works in this fixture carry it would not be, and nothing below counts that.
+const hueOf = (id) => ((works[id].palette || {}).hues || [])[0] || null;
+const named = ids.filter((id) => hueOf(id));
+const unnamed = ids.filter((id) => !hueOf(id));
+
+function firstCast(fromList, toList, wantDifferentHue) {
+  for (const a of fromList) {
+    for (const b of toList) {
+      if (a === b) continue;
+      if (wantDifferentHue && hueOf(a) === hueOf(b)) continue;
+      let res;
+      try {
+        res = composer.passageFor({ workRecordA: works[a], workRecordB: works[b],
+                                     direction: "a-to-b", seed: 0.5, routeRole: "culmination" });
+      } catch (e) { continue; }
+      if (res.declined) continue;
+      const cue = (res.score.cues || []).find((c) => c.instrument.id === "studio");
+      if (!cue) continue;
+      if ((cue.levels || []).indexOf("LIGHT-COLOUR") < 0) continue;
+      const t = cue.tracks || {}, n = cue.nodes || {};
+      if (!t.colOn) continue;
+      return { a, b, leadHueA: hueOf(a), leadHueB: hueOf(b),
+               colOn: Number((n[t.colOn.node] || {}).value),
+               hue: Number((n[(t.hue || {}).node] || {}).value),
+               colLook: Number((n[(t.colLook || {}).node] || {}).value),
+               note: String((n[t.colOn.node] || {}).note || "").slice(0, 60) };
+    }
   }
+  return null;
 }
+
+const bothNamed = firstCast(named, named, true);
+const oneNamed = firstCast(named, unnamed, false) || firstCast(unnamed, named, false);
+const noneNamed = firstCast(unnamed, unnamed, false);
 
 console.log(JSON.stringify({ total, declined, studioCasts, errors,
                               instrumentCount: Object.keys(manifests).length,
                               sample: seenHandleSets.slice(0, 6),
-                              colour: { tried: ct, casts: colCasts, owns: colOwns,
-                                        on: colOn, off: colOff,
-                                        turns: turns, looks: looks, sample: colSample } }));
+                              colour: { bothNamed, oneNamed, noneNamed } }));
 """
 
-COLOUR_ROW = ("PASS-STUDIO the score really turns the colour operation on — `colOn` reads 1 on real "
-              "pairs, with the turn and the look reading differently pair to pair")
+COLOUR_ROW = ("PASS-STUDIO the colour operation plays by construction and not by the record's own "
+              "luck — two named hues turn short-side, one named hue still plays at a zero turn "
+              "through its own look, and no named hue at all is the same case")
 
 DRIVER_PATH = Path(tempfile.mkdtemp(prefix="synth_studio_driver_")) / "driver.js"
 DRIVER_PATH.write_text(DRIVER, encoding="utf-8")
@@ -345,25 +371,39 @@ else:
           f"measured panX/kalN/tileN/polarSpread across those casts: {json.dumps(sample)}"
           if not SWEEP.get("error") else "the sweep could not run: " + str(SWEEP.get("error")))
 
-    # THE NINTH OPERATION, ON THE SAME REAL PAIRS. The row above proves the six geometric readings
-    # move pair to pair; this one proves the colour operation is switched on at all. It reads three
-    # things off the sweep and every one of them has to hold: the score OWNS the level the three
-    # handles declare on some real pair, `colOn` is written 1 on some of those, and the turn it
-    # writes is not one number repeated — a colour voice that played the same turn on every pair
-    # would be the sameness his word of 2026-08-18 15:13 names, in a new place.
+    # THE NINTH OPERATION, PROVED BY CONSTRUCTION. The row above proves the six geometric readings
+    # move pair to pair; this one proves the colour operation plays regardless of what the two
+    # works' own records happen to carry. SPEC requirement 12 forbids proving it by a count over the
+    # collection — a share of pairs cast, a frequency of on against off — so this reads three real
+    # pairs the driver SELECTED by a property their own records carry (not tallied), one per case
+    # the record can put a work to, and checks each against a turn worked out independently here,
+    # off the composer's own `HUE_WHEEL` and the same short-way arithmetic `hueTurn` carries
+    # (pass-composer.js:2999-3004) — so the row does not trust the sweep's own number, it recomputes
+    # the one that number ought to be from the two works' own named hues and compares.
     col = SWEEP.get("colour", {}) if not SWEEP.get("error") else {}
-    turns = col.get("turns", {})
-    looks = col.get("looks", {})
+    cases = [("both name a hue, and two different ones", col.get("bothNamed")),
+             ("one names a hue and the other names none", col.get("oneNamed")),
+             ("neither work names a hue", col.get("noneNamed"))]
+    gaps = [label for label, pair in cases if pair is None]
+    ok = not SWEEP.get("error") and not gaps
+    parts = []
+    if ok:
+        for label, pair in cases:
+            want = turn_between(hue_seat(pair["leadHueA"]), hue_seat(pair["leadHueB"]))
+            got = pair["hue"]
+            turn_ok = (want is None and got == 0) or (want is not None and math.isclose(got, want, abs_tol=1e-3))
+            on_ok = pair["colOn"] == 1
+            ok = ok and turn_ok and on_ok
+            parts.append(
+                f"{label} ({pair['a']}→{pair['b']}, leadHue {pair['leadHueA']!r}→{pair['leadHueB']!r}): "
+                f"colOn={pair['colOn']}, hue={got:.4f} rad (independently worked out as "
+                f"{'null (no hue to turn between)' if want is None else round(want, 4)}), "
+                f"colLook={pair['colLook']}")
     check(COLOUR_ROW,
-          bool(col) and col.get("owns", 0) > 0 and col.get("on", 0) > 0 and len(turns) > 1,
-          f"over {col.get('tried', 0)} real ordered pairs at a culmination step studio was cast "
-          f"{col.get('casts', 0)} times, owned LIGHT-COLOUR on {col.get('owns', 0)} of them, and the "
-          f"score turned the colour operation ON for {col.get('on', 0)} and left it off for "
-          f"{col.get('off', 0)} (the pairs where one of the two works names no hue of its own, so "
-          f"there is no turn to make); the turns it "
-          f"wrote, in radians: {json.dumps(turns)}; the looks: {json.dumps(looks)}; a sample: "
-          f"{json.dumps(col.get('sample', []))}"
-          if col else "the sweep could not run: " + str(SWEEP.get("error")))
+          ok,
+          "; ".join(parts) if not gaps and not SWEEP.get("error")
+          else ("gap in the fixture, named rather than invented: no castable pair for: "
+                + "; ".join(gaps) if gaps else "the sweep could not run: " + str(SWEEP.get("error"))))
 
 shutil.rmtree(DRIVER_PATH.parent, ignore_errors=True)
 
