@@ -156,6 +156,9 @@ SUITES = [
     # measurement across two real works and reads which handle and which fit actually answer.
     # Registered in the pass that wrote it.
     "pass_reads",
+    # DR-5 (2026-09-04): the darkroom's in-browser analyser port (busyness, lines, mirror axis).
+    # Registered by the seat at DR-5's accept step.
+    "darkroom_measure",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A
