@@ -459,6 +459,24 @@ def wait_state(br, want, tries=80):
     return False
 
 
+def wait_hide_tick(br, tries=100, nap=0.02):
+    """Poll `__hideTick` until the canvas actually went hidden, instead of sleeping a fixed span
+    (S-104 is retiring every hard-coded pause in the suite's own wall time). `state` reaches
+    "idle" synchronously inside `finish`, before `stageHideAfterPresent`'s two chained
+    `requestAnimationFrame`s have had a chance to run, so a fixed sleep after `wait_state(...,
+    "idle")` races the real condition — see the two rows that read this. Gives up after `tries`
+    short steps (2s ceiling at the defaults) and returns the last read, `hideTick` possibly still
+    None; the caller's own `check()` reports that plainly, same as it already does for every
+    other reason this road can fail."""
+    v = {"doorTick": None, "hideTick": None}
+    for _ in range(tries):
+        v = js(br, "return {doorTick: window.__doorTick, hideTick: window.__hideTick};")
+        if v.get("hideTick") is not None:
+            return v
+        br.sleep(nap)
+    return v
+
+
 def enter(br, base):
     if br.evaluate("String(!!document.querySelector('.exd-window'))") == "true":
         br.click(".exd-window", settle=1.4)
@@ -1257,7 +1275,10 @@ else:
                 """)
                 js(br, "window.__exPass.adapter.interrupt('a3-nodoor'); return null;")
                 landed = wait_state(br, "idle", tries=200)
-                br.sleep(0.2)
+                # ROWS[14] below reads the canvas's own `vis` off `canvas_box`, and DOOR_PRESENT_ROW
+                # reads `__hideTick` — both need the hide to have actually landed, which `state`
+                # reaching "idle" does not guarantee (see `wait_hide_tick`'s own comment).
+                wait_hide_tick(br)
                 rep = js(br, "return window.__exPass.host.report();")
                 br.evaluate("window.__hangScore = window.__hangScoreSaved; 0")
                 hang = rep.get("hang") or {}
@@ -1348,8 +1369,8 @@ else:
                     """)
                     js(br, "window.__exPass.adapter.interrupt('door-present-task-cut'); return null;")
                     landed2 = wait_state(br, "idle", tries=200)
+                    mech2 = wait_hide_tick(br)
                     br.evaluate("window.__hangScore = window.__hangScoreSaved2; 0")
-                    mech2 = js(br, "return {doorTick: window.__doorTick, hideTick: window.__hideTick};")
                     # A LIVE tick count cannot tell a single deferred rAF from a double one here: the
                     # transaction is still RUNNING its own per-frame rAF loop for the ~840 ms this row
                     # waits before interrupting it, and the CDP round trip between resetting the
