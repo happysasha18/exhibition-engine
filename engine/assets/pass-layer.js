@@ -939,7 +939,11 @@
         var p = ctx.pointer;
         if (!p) return nov("the source «pointer» has no normalised host signal on this command");
         var ch = spec.channel || "energy";
-        if (ch === "x" || ch === "y" || ch === "dx" || ch === "dy" || ch === "energy") {
+        var PTR_CHANNELS = ["x", "y", "dx", "dy", "energy"];
+        // THE HAND'S OWN CHANNELS (EX-HAND) — `passInteraction.pointer` (01a-pass.js) already
+        // carries `down` and `taps` beside x/y/dx/dy/energy; a score reads them the same numeric way.
+        var PTR_HAND_CHANNELS = ["down", "taps"];
+        if (PTR_CHANNELS.indexOf(ch) !== -1 || PTR_HAND_CHANNELS.indexOf(ch) !== -1) {
           return okv(Number(p[ch]) || 0);
         }
         if (ch === "active") return okv(p.active ? 1 : 0);

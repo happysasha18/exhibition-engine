@@ -3390,6 +3390,14 @@
   // covers every road between two works; the picture layer declines it by kind, so the eye still
   // sees an instant land. A jump with no destination is refused by declare and lands nothing.
   function passJump(toEl, cause, fromEl) {
+    // THE HAND'S OWN FILE IS ASKED FOR HERE (EX-HAND), never behind `passLandGate`: that gate opens
+    // only while `visualLayer` reads "pass" (08-plaque-caption-io.js:129), and the hand has nothing
+    // to do with the drawing layer's own setting. `passJump` is the one place every road onto the
+    // walk already passes through — the door's own first hang, a restored visit, a series return,
+    // a hash/rotate/recentre landing — so this is the earliest unconditional "the walk has a work
+    // now" moment, whatever road brought the visit here. Guarded on `passHandAsked`, so every call
+    // after the first is a no-op.
+    passHandOpen();
     const cmd = declare({ fromEl: fromEl || null, toEl: toEl || null, dir: 1, span: 0,
                           kind: "jump", cause: cause, velocity: 0 });
     if (cmd) passLandNow();
@@ -3907,6 +3915,64 @@
     }
   }
 
+  // The hand overlay ships as its OWN file too (EX-HAND, Requirement 38 criterion 9) — the same
+  // classic-script-plus-namespaced-receiver shape PASS_SRC below uses, fetched once the walk lands.
+  // Unlike the drawing layer it needs no capability probe and no setting: it carries no picture of
+  // its own, only the attach/detach bookkeeping of which work, if any, a touch currently stands on.
+  const PASS_HAND_SRC = "pass-hand.js";
+  let passHand = null, passHandAsked = false, passHandLastEl = null;
+  function passHandSet(h) {
+    passHand = (h && typeof h.attach === "function" && typeof h.detach === "function"
+                && typeof h.report === "function") ? h : null;
+  }
+  function passHandOpen() {
+    if (passHandAsked) return;
+    passHandAsked = true;
+    try {
+      window.__@@NS@@PassHand = passHandSet;
+      const s = document.createElement("script");
+      s.src = PASS_HAND_SRC;
+      s.async = true;
+      s.onerror = () => { passHandSet(null); };
+      document.head.appendChild(s);
+    } catch (e) { passHandSet(null); }
+  }
+  function passHandWorkFor(img) {
+    const frame = img.closest(".exh-frame");
+    const id = frame && frame.dataset && frame.dataset.id;
+    return (id != null && byId[id]) || null;
+  }
+  // THE REACH (Requirement 38 criterion 9): the window/capture listeners above (pointerdown et al.)
+  // already cover the whole document, so the reach cannot be narrowed by WHERE this binds — only by
+  // WHAT it accepts. Testing for a real walk work and refusing everything else is what keeps the
+  // threshold window, the quiz chip, the share control, the sound tray and the series room all
+  // outside, without one exclusion written for each of them. EX-ZOOM needs no exception written in
+  // here either: its own layer covers the full viewport with pointer-events:auto the instant it
+  // stands (#ex-zoom.show, inset:0), so a real press during zoom always lands on ITS OWN elements —
+  // never back through to the covered `.exh-frame img.work` — and the target test excludes it same
+  // as any other foreign element, by construction rather than by a second flag.
+  addEventListener("pointerdown", (e) => {
+    const img = e.target.closest && e.target.closest(".exh-frame img.work");
+    if (!img) return;
+    const w = passHandWorkFor(img);
+    if (!w) return;
+    passHandLastEl = img;
+    if (passHand) passHand.attach(img, w);
+  }, { capture: true, passive: true });
+  // EX-ZOOM covers the very same picture with its own face, in its own file (never edited here): the
+  // hand steps off while it stands and returns the instant it clears, without waiting for a fresh
+  // press. `document.body`'s `ex-zoom` class is that layer's own already-shipped signal — set
+  // synchronously with `zoomOpen` itself (12-zoom-inspect-grab.js) — so observing it needs no change
+  // to that file and no poll of any kind.
+  new MutationObserver(() => {
+    if (!passHand) return;
+    if (document.body.classList.contains("ex-zoom")) { passHand.detach(); return; }
+    if (passHandLastEl && document.body.contains(passHandLastEl)) {
+      const w = passHandWorkFor(passHandLastEl);
+      if (w) passHand.attach(passHandLastEl, w);
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+
   // The drawing layer ships as its OWN file, fetched the first time a walk wants it: this bundle
   // carries the door and none of the picture. One request per visit, one capability probe, and
   // every refusal on the diagnostic surface. The walk keeps gliding throughout — the layer joins a
@@ -4143,6 +4209,7 @@
                    reframe: reframe, curtain: curtain, mark: passMark,
                    hangGeometry: hangGeometry, handoff: handoff, chromeReveal: chromeReveal },
         layer: function () { return passLayer; },
+        hand: function () { return passHand; },
       };
     } catch (e) {}
   }
