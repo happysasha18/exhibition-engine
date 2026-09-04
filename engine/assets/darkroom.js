@@ -143,3 +143,30 @@ function darkroomBenchOffers(record, chain, manifests) {
 
   return offered;
 }
+
+// RESIST — Requirement 41 criterion 7: "The room shall measure output busyness live and stiffen
+// the gesture near the cliff, so the hand feels the edge of taste as elastic resistance; clamps
+// and warnings shall never appear." `busyness` is read through engine/assets/darkroom-measure.js's
+// own `busyness(frame)` (darkroom-measure.js:84-91, a fraction in [0, 1]) — this file measures
+// nothing a second way; the number handed to `resist` is that call's own return value.
+//
+// A clamp returns a boundary; this returns a shrinking fraction of the travel the hand offered
+// instead — `travel / (1 + b)`. At `b = 0` the divisor is 1 and the hand meets no resistance at
+// all; as `b` climbs toward its own top of 1 the divisor climbs toward 2 and no further, so the
+// returned travel is always a strictly positive multiple of `travel` — never zero, never past the
+// travel the hand itself offered, and (one positive number times `travel`) never the same for two
+// different travels at one busyness reading either.
+function resist(travel, busyness) {
+  var b = typeof busyness === "number" && isFinite(busyness) ? Math.max(0, Math.min(1, busyness)) : 0;
+  return travel / (1 + b);
+}
+
+// THE EXPONENTIAL EASE — Requirement 34 criterion 4's form, `k = 1 - exp(-dt/tau)`, is why a live
+// input never snaps to its target (Requirement 40 criterion 11: "every change shall pass through
+// envelopes, so nothing ever snaps"). `tau` is the caller's own time constant — criterion 4 names
+// 0.09s under the hand and 0.5s free — carried as a parameter here rather than chosen inside this
+// function, since which one applies is a fact about the gesture's state, not about the ease.
+function darkroomEase(current, target, dt, tau) {
+  var k = 1 - Math.exp(-dt / tau);
+  return current + (target - current) * k;
+}
