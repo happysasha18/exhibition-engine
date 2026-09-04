@@ -167,6 +167,7 @@
       "uniform float uGuardE;",    // the arrival edge's shadow gate: nothing at either door
       "uniform float uGuardL;",    // and the waterline's own
       "uniform float uSeed;",
+      "uniform float uSeamPts;",   // §8's `seams` block: the band boundary's hairline, in points of the drawing buffer
       "const float TAU = 6.28318530718;",
 
       // The sample is pushed by at most uOff + the swell's comb, and the cover-fit was pulled in
@@ -199,7 +200,7 @@
       // p.x is measured in frame HEIGHTS, so a wavelength means the same thing whichever way it
       // is measured and one pixel is the same length on both axes
       "  float px = uv.x * uAspect;",
-      "  float h = 1.0 / max(uRes.y, 1.0);",
+      "  float h = uSeamPts / max(uRes.y, 1.0);",
 
       // --- the surface, and its own movement -------------------------------------------------
       "  float w1 = sin(TAU * (px * 2.10 + uTime * 0.083));",
@@ -593,7 +594,14 @@
         // THE MODULE'S OWN CLOCK, WHICH IS THE HOST'S. Every motion of the water is a pure function
         // of the second handed in, so a seeded score repeats to the pixel. Reduced motion stands the
         // second still and stops nothing else.
-        time: st.reduced ? 0 : (Number(st.t) || 0)
+        time: st.reduced ? 0 : (Number(st.t) || 0),
+        // THE BAND BOUNDARY'S OWN HAIRLINE (§8's `seams` block, pass-layer.js), off the host's own
+        // `seams` reading. Only the host knows what every instrument declaring a hairline retouch
+        // is holding its own crease to, so it answers once and this file carries the number rather
+        // than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet — the same one buffer point the boundary always read before this seam was
+        // connected.
+        seamPts: (st.seam && typeof st.seam.line === "number") ? st.seam.line : 1.0,
       };
       var read = doorReadOf(v, st);
       v.doorGrid = read ? read.grid : null;
@@ -826,6 +834,7 @@
           { name: "uGuardE", type: "float", source: "frame:guardE" },
           { name: "uGuardL", type: "float", source: "frame:guardL" },
           { name: "uSeed", type: "float", source: "handle:seed" },
+          { name: "uSeamPts", type: "float", source: "frame:seamPts" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -913,6 +922,11 @@
           // same `fit` the draw calls. The waterline's whole derivation stands on it.
           fitAy: st.fitA ? st.fitA[1] : 1 / ZOOM,
           fitBy: st.fitB ? st.fitB[1] : 1 / ZOOM,
+          // THE BAND BOUNDARY'S OWN HAIRLINE, off the host's own `seams` reading (§8's `seams`
+          // block). Only the host knows what every instrument declaring a hairline retouch is
+          // holding its own crease to, so it answers once and this file carries the number rather
+          // than choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT READ. The reading is taken on the buffer this frame
         // is drawn on, so it is the run-time truth his 18:00 decision asks for. Nothing is held back

@@ -270,6 +270,7 @@
       "uniform float uFlat;",
       // The judges' channel: the face map as colour.
       "uniform float uMask;",
+      "uniform float uSeamPts;",    // §8's `seams` block: the crease's hairline, in points of the drawing buffer
       // WHAT THE BOX STANDS AGAINST where neither face reaches. The crop below is measured so that
       // this is drawn on no point of the frame at any angle of the turn; it is here because a
       // picture that quietly drew nothing would be worse than one that draws something a reading can
@@ -330,7 +331,7 @@
       // height and slide taken out, which is the space the two maps are written in
       "  vec2 sp = vec2((vUv.x - 0.5) * 2.0 * uCam.x, (0.5 - vUv.y) * 2.0);",
       "  vec2 pp = vec2(sp.x - uCam.z, sp.y - uCam.y - uCam.w);",
-      "  float px = 2.0 / max(uRes.y, 1.0);",     // one point of the drawing buffer, in frame units
+      "  float px = uSeamPts * 2.0 / max(uRes.y, 1.0);",     // the crease's hairline, in frame units
       "  vec2 stA = onFace(uInvA0, uInvA1, uInvA2, pp);",
       "  vec2 stB = onFace(uInvB0, uInvB1, uInvB2, pp);",
       // st.y runs UP the frame and an image's rows run DOWN it, so the row coordinate is turned over
@@ -721,6 +722,13 @@
         stand: jj.f >= 0.5 ? jj.j + 1 : jj.j,
         landedCorners: landedCornersOf(m, side, flat),
         grid: grid,
+        // THE CREASE'S OWN HAIRLINE (§8's `seams` block, pass-layer.js), off the host's own
+        // `seams` reading. Only the host knows what every instrument declaring a hairline retouch
+        // is holding its own crease to, so it answers once and this file carries the number rather
+        // than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet — the same point of the drawing buffer `px` always read before this seam
+        // was connected (`px` itself carries the frame-unit doubling, below).
+        seamPts: (st.hostSeam && typeof st.hostSeam.panel === "number") ? st.hostSeam.panel : 1.0,
       };
     }
 
@@ -1131,6 +1139,7 @@
           { name: "uSeed", type: "float", source: "frame:seed" },
           { name: "uFlat", type: "float", source: "frame:flat" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uSeamPts", type: "float", source: "frame:seamPts" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -1215,6 +1224,10 @@
           // step, so it moves while a pass plays and each door is read on the grid standing at that
           // door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE CREASE'S OWN HAIRLINE, off the host's own `seams` reading (§8's `seams` block). Named
+          // `hostSeam` rather than `seam` because `seam` above already carries the crease-position
+          // handle (`h.seam`) — the two are unrelated numbers travelling the same pose.
+          hostSeam: st.seams,
         };
         // The host's authority handoff reads exactly this pose. It is a pure reading of the same
         // box state the shader receives, so the host camera and the folded surface cannot drift

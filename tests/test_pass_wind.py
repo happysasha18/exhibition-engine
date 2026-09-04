@@ -114,14 +114,28 @@ check("PASS-WIND the envelope lands on exactly nothing at both doors, in floatin
       "frame width — so a door that asks for still air would be refused by its own instrument on a "
       "pose that is correct. This window is built out of the dial itself and lands on exactly zero")
 
+# THE ROW'S REAL GUARD: not that the cov line's bytes never move, but that the crossover width
+# reads off a name (S-05's `uSeamPts`, the host's own `seams` reading) rather than a number this
+# file chose for itself, on top of the source-point read and the displacement split.
+wind_cov_m = re.search(r"float cov = clamp\(0\.5 \+ \(front - alongS\) / \(([^)]+)\), 0\.0, 1\.0\);",
+                        BUILT)
+wind_cov_denom = wind_cov_m.group(1) if wind_cov_m else None
+wind_cov_bare = bool(wind_cov_denom) and re.fullmatch(r"[\s*0-9.]+",
+                                                        wind_cov_denom.replace("band", ""))
+wind_cov_ok = (wind_cov_denom is not None and "band" in wind_cov_denom
+               and "uSeamPts" in wind_cov_denom and not wind_cov_bare)
 check("PASS-WIND the change of hands rides the gust's own front",
       "float alongS = dot(src - 0.5, dir) + 0.5;" in BUILT
-      and "float cov = clamp(0.5 + (front - alongS) / band, 0.0, 1.0);" in BUILT
+      and wind_cov_ok
       and "vec2 disp = nrm * push + dir * (DOWNWIND * push);" in BUILT,
-      "the boundary is read at the SOURCE point rather than at the output one, so it is bent by the "
-      "very air that bends the picture — the displacement carries a third of itself along the row, "
-      "which is what moves the boundary as well as the rows. The wind IS the handover rather than "
-      "decoration over a dissolve")
+      ("the boundary is read at the SOURCE point rather than at the output one, so it is bent by "
+       "the very air that bends the picture — the displacement carries a third of itself along the "
+       "row, which is what moves the boundary as well as the rows. The crossover's own width reads "
+       "the host's `seams` answer (`uSeamPts`, cov denominator «%s») rather than a point this file "
+       "picked for itself. The wind IS the handover rather than decoration over a dissolve"
+       % wind_cov_denom) if wind_cov_ok
+      else f"cov denominator: {wind_cov_denom!r}; bare number (own constant crept back in): "
+           f"{wind_cov_bare}")
 
 check("PASS-WIND nothing is drawn between two rows",
       "float share = KEEP + (1.0 - KEEP) * h11(rj);" in BUILT
@@ -156,7 +170,7 @@ check("PASS-WIND the manifest leaves the drawing buffer unpreserved",
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', BUILT))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', BUILT))
 check("PASS-WIND the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 9,
+      declared == spelled and len(declared) == 10,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -737,7 +751,7 @@ else:
         # plain two-photograph crossfade, and nothing else in the frame moved to cause the
         # difference the row below measures.
         p4 = plant("flat-cov",
-                   [('float cov = clamp(0.5 + (front - alongS) / band, 0.0, 1.0);',
+                   [('float cov = clamp(0.5 + (front - alongS) / (band * uSeamPts), 0.0, 1.0);',
                      'float cov = clamp(0.5 + (front - 0.5) * 3.0, 0.0, 1.0);')])
         if p4 is None:
             check(BROWSER_ROWS[10], False, "the plant found nothing to change")

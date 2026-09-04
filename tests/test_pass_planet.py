@@ -283,8 +283,11 @@ CONSTANTS = [
     ("Math.max(Math.min(1.25 * R, 0.55 * Math.max(W, H) / S)",
      "Math.max(Math.min(1.25 * R, 0.55 * Math.max(W, H) / S)",
      "the wash's own floor, so a half-rolled strip keeps the reach it always had"),
-    ("gl.uniform1f(U.uSeam, 0.14);", "var SEAM = 0.14;",
-     "the narrowest cross-dissolve, so a shut ring has no cut down it either"),
+    ("gl.uniform1f(U.uSeam, 0.14);", "var SEAM = 0.125;",
+     "the narrowest cross-dissolve, so a shut ring has no cut down it either — S-99 (2026-09-04) "
+     "moved the port's own fallback off the module's 0.14 onto the shared 0.125 the host answers "
+     "with (SEAM_HANDOVER_CSS_SHARE, pass-layer.js), the same eighth tunnel's own ring-join now "
+     "falls back to; the module's own literal is unmoved because there is no host to answer it"),
     ("float fold(float x){ x = mod(abs(x), 2.0); return x > 1.0 ? 2.0 - x : x; }",
      "float fold(float x){ x = mod(abs(x), 2.0); return x > 1.0 ? 2.0 - x : x; }",
      "the fold past either end, so nothing streaks out of the join"),
@@ -1896,19 +1899,27 @@ else:
               f"number does, which is what makes the seam the host's to answer and no longer this "
               f"file's to keep. The reshoot stands under {RESHOOT.relative_to(ROOT)}")
 
-        # ---- S-85 red-on-bug · the width read back off the file's own retired number -------------
-        # The plant PLAN.md row S-85 names: leave the width read from the old constant.
-        bug = PACK.replace("var seam = num(st.seam && st.seam.ring, SEAM);", "var seam = SEAM;", 1)
+        # ---- S-85 red-on-bug · the instrument ignores the host and reads its own number -----------
+        # S-99 (2026-09-04) moved SEAM itself onto the same 0.125 the host answers with, so reverting
+        # to `var seam = SEAM;` no longer plants a visible defect — the two numbers now agree by
+        # construction, not by coincidence. What this row has to catch is the CLASS — the read
+        # ignoring the host at all — so the plant hardcodes a width that is deliberately half the
+        # host's own answer rather than SEAM's own (now-shared) value, and the row measures that gap.
+        BUG_SEAM = 0.125 * 0.5
+        bug = PACK.replace("var seam = num(st.seam && st.seam.ring, SEAM);",
+                            "var seam = %r;" % BUG_SEAM, 1)
         planted = on_bench(lambda b: host_shot(b, 0.5, "red-seam-reverted"),
                            pack_text=bug, lab_text=LAB_LEVELLED)
         gap = None if planted is None else diff(sw["shots"][0], planted)
         check(RED_ROWS[4],
               bug != PACK and gap is not None and gap[0] > 0,
-              f"with the instrument's own read reverted to the number its file kept from before the "
-              f"shared move, the same pose on the same buffer parts by {gap[0]:.4f} of 255 (worst "
-              f"channel {gap[1]}) from the shipped frame — so the row above is held up by the "
-              f"host's answer actually reaching the picture and not by the two numbers happening to "
-              f"agree" if gap is not None else
+              f"with the instrument's own read replaced by a width held to half the host's own "
+              f"answer ({BUG_SEAM} against the host's 0.125 — a gap held by construction rather "
+              f"than by SEAM's own current value, since S-99 moved SEAM onto that same 0.125), the "
+              f"same pose on the same buffer parts by {gap[0]:.4f} of 255 (worst channel {gap[1]}) "
+              f"from the shipped frame — so the row above is held up by the host's answer actually "
+              f"reaching the picture and not by two numbers that happen to agree"
+              if gap is not None else
               f"the proof did not run (planted={bug != PACK})")
 
     kept = sorted(p.name for p in SHOTS.glob("*.png"))

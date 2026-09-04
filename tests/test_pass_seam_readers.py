@@ -70,12 +70,15 @@ ROW_NO_NEW = "PASS-SEAM-READERS no instrument beyond the known fifteen has grown
 # width to receive. That document also records the defect this set cannot see: `seamsOf` keys its
 # output by `kind` alone, and the key `ring` carries two incompatible units across the fleet.
 KNOWN_UNREAD = {
-    "beat", "boxfold", "droste", "gates", "grid-colour", "hero", "lens", "parquet", "studio",
-    "tilt", "unfold", "veil", "waterline", "weave", "wind",
+    "droste", "hero", "parquet", "studio", "tilt", "weave",
 }
-# The seven that already read their own declaration back — a positive fact, checked the same way,
-# so a regression here (one of these losing its own `.seams` reference) reds too.
-KNOWN_READ = {"gears", "kaleidoscope", "matter", "overlay", "planet", "liquid", "tunnel"}
+# The seven that already read their own declaration back, plus the nine S-05 connected to
+# `seamHairlineOf()` (`beat`, `boxfold`, `gates`, `grid-colour`, `lens`, `unfold`, `veil`,
+# `waterline`, `wind`) — a positive fact, checked the same way, so a regression here (one of these
+# losing its own `.seams` reference) reds too.
+KNOWN_READ = {"gears", "kaleidoscope", "matter", "overlay", "planet", "liquid", "tunnel",
+              "beat", "boxfold", "gates", "grid-colour", "lens", "unfold", "veil", "waterline",
+              "wind"}
 
 
 def declares_nonempty_seams(text):

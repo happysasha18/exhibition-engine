@@ -349,7 +349,7 @@
 
     /* THE NARROWEST CROSS-DISSOLVE where the two ends of the curled strip meet, so a shut ring has
        no cut down it either. planet.js:554 carried this digit for digit as 0.14 when this port was
-       first written, and that is still the fallback below where no host has answered yet.
+       first written.
 
        IT NOW TRAVELS ON THE HOST'S OWN SEAM (§8's `seams` block, pass-layer.js), and moving it there
        changed the number. The 0.14 was the module's own typed literal, fixed regardless of how the
@@ -360,7 +360,11 @@
        to be close. The difference between 0.14 and 0.125 is inside the crossing's own seam
        threshold, which is what the two-roads row below still measures against the module untouched.
     */
-    var SEAM = 0.14;
+    // S-99, seat's word of 2026-09-04: the fallback now stands at the same 0.125 the host answers
+    // with (SEAM_HANDOVER_CSS_SHARE, pass-layer.js), not a second number beside it. The two frames'
+    // own difference (0.06 of 255) was inside the seam threshold and nobody had said 0.14 was
+    // changing; PLAN.md row S-99 said it.
+    var SEAM = 0.125;
 
     /* HOW FAR THE SKY WASH REACHES, AT ANY FRAME SHAPE (planet.js:323-337). The wash is what keeps
        the world standing in its own light instead of in a black box, and its reach is READ OFF THE

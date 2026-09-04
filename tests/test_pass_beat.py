@@ -303,8 +303,8 @@ check("PASS-BEAT every constant stands at the number the lab module gives it",
       else "these differ: " + ", ".join(missing_const or ["the lab module is absent"]))
 
 # THE SHADER, LINE FOR LINE. The module's own fragment shader is an array of string literals; every
-# one of them is looked for verbatim in the built instrument. Three lines are known to differ and
-# they are listed here with their reasons — a fourth difference reddens this row rather than passing
+# one of them is looked for verbatim in the built instrument. Four lines are known to differ and
+# they are listed here with their reasons — a fifth difference reddens this row rather than passing
 # unnoticed, which is what «carried character for character» has to mean to be worth saying.
 CHANGED = {
     "uniform float uAspect;":
@@ -314,13 +314,19 @@ CHANGED = {
     "  gl_FragColor = vec4(col, 1.0);":
         "the module had no stack to lie under and wrote a flat alpha; §7's coverage law asks for "
         "the arriving work's own share, which is the mask the shader already built: `1.0 - cov`",
+    "  float h = 1.0 / max(uRes.y, 1.0);":
+        "S-05: the strip cut's hairline used to stand at a bare one point of the drawing buffer; "
+        "it now reads the host's own `seams` measurement (`uSeamPts`, §8's `seams` block, "
+        "pass-layer.js) so the retouch holds one CSS-constant width across device pixel ratios "
+        "instead of thinning as the buffer gets denser",
 }
 # THE FIFTH ADDED LINE AND THE FOURTH'S NEW SHAPE arrived with the entry-door contract on
 # 2026-08-25 (docs/design/ENTRY-DOOR.md). `uPresence` is the reserved dry every instrument that may
 # stand OVER another now declares: at nothing it draws no pixel anywhere, so a voice can join a
 # running picture without replacing it, and at whole — where it rests — it draws exactly what it
 # always drew. The alpha the port already wrote is gated by it, which is the whole of the change to
-# this shader's mathematics: nothing else in the line moved.
+# this shader's mathematics: nothing else in the line moved. `uSeamPts` and the new `h` it feeds
+# (S-05, above) are the seventh and eighth added lines.
 ADDED = ["  float uAspect = uRes.x / max(uRes.y, 1.0);",
          "uniform float uMask;",
          "  col = mix(col, vec3(cov), uMask);",
@@ -375,7 +381,7 @@ check("PASS-BEAT the host binds uniforms by declared name, never by position or 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-BEAT the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 17,
+      declared == spelled and len(declared) == 18,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -591,7 +597,7 @@ else:
                     and abs(zoom - ZOOM) < 1e-12
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["coverage"]["writes"] is True
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 17
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 18
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -604,7 +610,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "beat" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"twelve handles, sixteen uniforms in one pass, the crop {zoom} the "
+                      f"twelve handles, seventeen uniforms in one pass, the crop {zoom} the "
                       f"counter-motion's headroom is paid for with, cuts {m.get('cuts')}, resources "
                       f"declared for three tiers with a byte estimate of "
                       f"{res['standard']['bytesEstimate']}, and the lab commit "
@@ -735,7 +741,7 @@ else:
                 # ---- the two manifest refusals ---------------------------------------------------
                 STUB = ("{dial:0,tau:-1.06,spread:0.54,kA:[0,14.7],kB:[1.02,6.45],"
                         "lobes:7,periodA:0.0677,periodB:0.1531,phase:[0,0],dphase:0,"
-                        "contrast:0.82,off:0,guard:0}")
+                        "contrast:0.82,off:0,guard:0,seamPts:1.5}")
                 r = js(br, """
                   var m = JSON.parse(JSON.stringify(window.__exPass.bench.manifest('beat')));
                   m.gl.preserveDrawingBuffer = true;

@@ -176,6 +176,7 @@
       "uniform vec2 uHand;",
       // The judges' channel: the glass map as colour.
       "uniform float uMask;",
+      "uniform float uSeamRing;",    // §8's `seams` block: the ring's hairline, in points of the drawing buffer
       "",
       "const float TAU = 6.28318530718;",
       // THE KALEIDOSCOPE'S OWN THREE NUMBERS (lens.js:77-79). The fold reaches 2.30 times its own
@@ -266,14 +267,14 @@
       // weight is nothing, so a rim of no radius cannot leave one lit speck standing at the glass's
       // own middle.
       "  float w = clamp(uHand.y, 0.0, 1.0);",
-      "  float ins = w * (1.0 - smoothstep(R - px, R + px, r));",
+      "  float ins = w * (1.0 - smoothstep(R - uSeamRing, R + uSeamRing, r));",
       "  col *= mix(1.0, LIFT, ins);",
       "  float sh = (1.0 - smoothstep(0.0, SHADE_R * px, R - r)) * ins;",
       "  col *= 1.0 - SHADE_D * sh;",
       // the bezel: a light hairline just inside the rim and a dark one just outside, so the rim stays
       // legible over a bright picture and over a dark one
-      "  float lit  = w * (1.0 - smoothstep(0.0, HAIR * px, abs(r - (R - HAIR_IN * px))));",
-      "  float dark = w * (1.0 - smoothstep(0.0, HAIR * px, abs(r - (R + HAIR_OUT * px))));",
+      "  float lit  = w * (1.0 - smoothstep(0.0, HAIR * uSeamRing, abs(r - (R - HAIR_IN * uSeamRing))));",
+      "  float dark = w * (1.0 - smoothstep(0.0, HAIR * uSeamRing, abs(r - (R + HAIR_OUT * uSeamRing))));",
       "  col = mix(col, LIT, lit * 0.80);",
       "  col = mix(col, DARK, dark * 0.60);",
       "",
@@ -425,6 +426,13 @@
         centre: [cx, cy], holdIn: HOLD_IN, holdOut: HOLD_OUT, band: FEEL_D0, rimRoom: RIM_ROOM,
         mask: clamp(num(st.mask, 0), 0, 1),
         grid: grid,
+        // THE RING'S OWN HAIRLINE (§8's `seams` block, pass-layer.js), off the host's own `seams`
+        // reading. Only the host knows what every instrument declaring a hairline retouch is
+        // holding its own crease to, so it answers once and this file carries the number rather
+        // than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet — the same one point `px` alone always stood for at the rim's own edge
+        // before this seam was connected.
+        seamRing: (st.seam && typeof st.seam.ring === "number") ? st.seam.ring : 1.0,
       };
     }
 
@@ -744,6 +752,7 @@
           { name: "uGlass", type: "vec4", source: "frame:glass" },
           { name: "uHand", type: "vec2", source: "frame:hand" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uSeamRing", type: "float", source: "frame:seamRing" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -814,6 +823,10 @@
           // frame the host is about to bind as `uRes` and read on it rather than on the CSS frame
           // around it.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE RING'S OWN HAIRLINE, off the host's own `seams` reading (§8's `seams` block). Only
+          // the host knows what every instrument declaring a hairline retouch is holding its own
+          // crease to, so it answers once and this file carries the number rather than choosing it.
+          seam: st.seams,
         };
         var v = values(pose);
         if (h.mix === 0 || h.mix === 1) {

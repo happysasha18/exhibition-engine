@@ -1795,26 +1795,30 @@ else:
           f"function that actually draws the door, not by the manifest's own declared number"
           if (fit_gap and bug_gap) else "the proof did not run")
 
-    # ---- 6. S-85 · the ring-join read back off the file's own retired number ----------------------
-    # The plant PLAN.md row S-85 names: leave the width read from the old constant. The instrument's
-    # own line takes the host's answer where one arrives and stands on `RING_JOIN_FALLBACK` where
-    # none does; reverted in the served bytes it stands on the constant whatever the host answers,
-    # which is the state the shared move was built to end. On the buffer this bench draws at, the two
-    # numbers are not the same number, so the equality the row above holds breaks and the frame moves.
+    # ---- 6. S-85 · the ring-join ignores the host and reads its own number ------------------------
+    # S-99 (2026-09-04) moved RING_JOIN_FALLBACK itself onto the same 0.125 the host answers with, so
+    # reverting to `var seam = RING_JOIN_FALLBACK;` no longer plants a visible defect — the two
+    # numbers now agree by construction, not by coincidence. What this row has to catch is the
+    # CLASS — the read ignoring the host at all — so the plant hardcodes a width deliberately half
+    # the host's own answer rather than RING_JOIN_FALLBACK's own (now-shared) value, and the row
+    # measures that gap.
     base_seam = on_bench(lambda b: frame_at(b, 0.5, "red-seam-standing"))
+    BUG_SEAM = 0.125 * 0.5
     bug = PACK.replace(
         'var seam = (st.seam && typeof st.seam.ring === "number") ? st.seam.ring '
         ': RING_JOIN_FALLBACK;',
-        'var seam = RING_JOIN_FALLBACK;', 1)
+        "var seam = %r;" % BUG_SEAM, 1)
     bug_seam = on_bench(lambda b: frame_at(b, 0.5, "red-seam-reverted"), pack_text=bug)
     seam_gap = None if (base_seam is None or bug_seam is None) else diff(base_seam, bug_seam)
     check(RED_ROWS[5],
           bug != PACK and seam_gap is not None and seam_gap[0] > 0,
-          f"with the instrument's own read reverted to the number its file kept from before the "
-          f"shared move, the same pose on the same buffer parts by {seam_gap[0]:.4f} of 255 (worst "
-          f"channel {seam_gap[1]}) from the shipped frame — so the row above is held up by the "
-          f"host's answer actually reaching the picture and not by the two numbers happening to "
-          f"agree" if seam_gap is not None else
+          f"with the instrument's own read replaced by a width held to half the host's own answer "
+          f"({BUG_SEAM} against the host's 0.125 — a gap held by construction rather than by "
+          f"RING_JOIN_FALLBACK's own current value, since S-99 moved it onto that same 0.125), the "
+          f"same pose on the same buffer parts by {seam_gap[0]:.4f} of 255 (worst channel "
+          f"{seam_gap[1]}) from the shipped frame — so the row above is held up by the host's "
+          f"answer actually reaching the picture and not by two numbers that happen to agree"
+          if seam_gap is not None else
           f"the proof did not run (planted={bug != PACK})")
 
 

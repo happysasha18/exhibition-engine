@@ -162,6 +162,7 @@
       "uniform float uDrift;",      // its slow travel along the slot, on the handed second
       "uniform float uGuard;",      // the contact shadow's gate: nothing at either door
       "uniform float uMask;",       // the judges' channel: this instrument's own cut as colour
+      "uniform float uSeamPts;",    // §8's `seams` block: the gate edge's hairline, in points of the drawing buffer
 
       // Every sample is a frame coordinate pushed by at most the squeeze and the drift, and the
       // cover-fit was pulled in by exactly that much (ZOOM in the script below), so a push always
@@ -195,7 +196,7 @@
       "  float b = mix(uv.x, uv.y, uVert);",
       "  float resA = mix(uRes.y, uRes.x, uVert);",
       "  float resB = mix(uRes.x, uRes.y, uVert);",
-      "  float hA = 1.0 / max(resA, 1.0);",
+      "  float hA = uSeamPts / max(resA, 1.0);",
       "  float hB = 1.0 / max(resB, 1.0);",
 
       // COVERAGE OVER THE PIXEL'S OWN FOOTPRINT. Across the gate the edge is a straight line and the
@@ -470,6 +471,13 @@
         // read on the diagnostic surface, bound to no uniform: what the handles came to
         dial: d, half: f.half, reach: reach,
         slotInFile: f.inFile, halfInFile: f.halfInFile, seating: f.seating,
+        // THE GATE EDGE'S OWN HAIRLINE (§8's `seams` block, pass-layer.js), off the host's own
+        // `seams` reading. Only the host knows what every instrument declaring a hairline retouch
+        // is holding its own crease to, so it answers once and this file carries the number rather
+        // than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet — the same point of the drawing buffer `hA` always read before this seam
+        // was connected.
+        seamPts: (st.seam && typeof st.seam.line === "number") ? st.seam.line : 1.0,
       };
     }
 
@@ -796,6 +804,7 @@
           { name: "uGuard", type: "float", source: "frame:guard" },
           { name: "uSeed", type: "float", source: "handle:seed" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uSeamPts", type: "float", source: "frame:seamPts" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -893,6 +902,11 @@
           // so the gate opens where the measurement says the work's own gate stands rather than where
           // a cover fit was guessed at.
           fitA: st.fitA, fitB: st.fitB,
+          // THE GATE EDGE'S OWN HAIRLINE, off the host's own `seams` reading (§8's `seams` block).
+          // Only the host knows what every instrument declaring a hairline retouch is holding its
+          // own crease to, so it answers once and this file carries the number rather than choosing
+          // it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. `request` is
         // the slot the score handed in, as a share of the FILE; `applied` is where that slot landed
