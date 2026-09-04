@@ -2361,14 +2361,28 @@
   // the score, the site record and the register's default, in that order, and says on the frozen
   // command which rung won (`source`). Any rung but `default` is a word somebody said, and a word
   // outranks the measurement. `default` is nobody having said anything, and it yields.
+  //
+  // AND THE DEVICE'S OWN CEILING HOLDS OVER BOTH (plan row S-110). A named setting outranks the
+  // frame-pace ladder because a pace is a reading of how this visit is going and a word is a
+  // request; the ceiling is neither. It is what the graphics processor has published about itself
+  // (`deviceCeiling` below, beside the budget rows it compares against), and a rung past it is a
+  // rung nothing on this machine can be granted — the same kind of fact as `DPR_CAP`, applied the
+  // same way. So it is taken last and it lowers only: a device declaring the richest row takes
+  // whatever the two readings above already decided, unchanged.
   function variantOf(cmd) {
     var t = cmd && cmd.params && cmd.params.qualityTier;
     var name = t ? t.base : "standard";
     if (name !== "rich" && name !== "lean") name = "standard";
-    if (t && t.source && t.source !== "default") return name;
-    var ix = VARIANTS.indexOf(name);
-    if (ix < 0) ix = VARIANTS.indexOf("standard");
-    return VARIANTS[Math.max(0, ix - stepIx)];
+    var asked;
+    if (t && t.source && t.source !== "default") {
+      asked = name;
+    } else {
+      var ix = VARIANTS.indexOf(name);
+      if (ix < 0) ix = VARIANTS.indexOf("standard");
+      asked = VARIANTS[Math.max(0, ix - stepIx)];
+    }
+    return VARIANTS[Math.min(VARIANTS.indexOf(asked),
+                             VARIANTS.indexOf(deviceCeiling().variant))];
   }
 
   // THE LADDER'S MIDDLE STEP: the accompaniment at 30 while the miracle keeps 60 (charter shelf 19).
@@ -2428,11 +2442,11 @@
   // None of these numbers is an artistic law: no row here says what a passage should look like, and
   // no plan is shaped by one.
   //
-  // AUTOMATIC TIER SELECTION STAYS DISABLED until real-device evidence supports it. The variant is
-  // read from the qualityTier SETTING (variantOf, just above) and from nothing else — the host
-  // measures no device and picks no tier on a visitor's behalf. What the host does do is lower a
-  // variant that will not fit and record the reason, which is arithmetic against the rows below and
-  // needs no reading of the device at all.
+  // THE DEVICE IS NOW READ, AND WHAT IT IS READ WITH IS ITS OWN DECLARATION (plan row S-110). The
+  // paragraph that stood here said automatic tier selection was disabled because the host measured
+  // no device. `readDevice`/`ceilingFor` below take the reading, once at load and held for the
+  // visit; the rows below are what the reading is compared against and every one of them is
+  // unmoved by that.
   //
   // What is built here is the road that reads these numbers, and moving a row moves no line of it.
   var VARIANTS = ["lean", "standard", "rich"];
@@ -2444,6 +2458,85 @@
     rich: { textures: 8, textureSlots: 16, framebuffers: 4, pingPong: 2, programs: 8, passes: 8,
             bytesEstimate: 100663296 },
   };
+
+  // ---- what this device declares about itself, and the ceiling that follows (plan row S-110) -----
+  //
+  // HIS WORD OF 04.09.2026 16:03: read the processor while the page loads and set the complexity of
+  // a crossing from what was read. The other half of it already stood — every instrument declares
+  // its own cost per variant (row S-14) — and nothing read the machine those costs would be spent
+  // on, so the ceiling a bundle was held against was the fleet's own richest published row for a
+  // phone and for a desk alike.
+  //
+  // EVERY NUMBER IN THE READING IS ONE THE DEVICE ITSELF WROTE DOWN, and each lands in a field the
+  // budget rows above are already written in, so the ceiling is a comparison and needs no threshold
+  // of its own:
+  //
+  //   · textureSlots  — `MAX_TEXTURE_IMAGE_UNITS`, the graphics processor's own count of the
+  //     textures one fragment shader may sample at once. It is the same count a manifest's
+  //     `textureSlots` declares it will spend.
+  //   · textures      — `MAX_COMBINED_TEXTURE_IMAGE_UNITS`, the same count across the whole
+  //     pipeline, which is how many texture objects the device will hold bound at one instant.
+  //   · bytesEstimate — `MAX_TEXTURE_SIZE` squared, four bytes to the texel. The square is the
+  //     largest single target this device declares it will accept, and four bytes is the size of a
+  //     texel in the one format every target on this stage is made in (`gl.RGBA`,
+  //     `gl.UNSIGNED_BYTE`, `makeTex` and `ensureSceneTexture` above). So it is a FLOOR under this
+  //     device's own texture memory, stated by the device, in the bytes a budget row asks for.
+  //
+  // WHAT IS NOT READ, AND WHY. `navigator.hardwareConcurrency` counts cores, and nothing an
+  // instrument declares is counted in cores — the conversion would be a number nobody wrote down.
+  // Nothing here times anything: a clock reading would be this file measuring the device instead of
+  // asking it, and the frame-gap ladder (`stepIx`) already owns what a clock can say.
+  //
+  // A FIELD THE DEVICE DECLARES NOTHING FOR IS NOT JUDGED — framebuffers, ping-pong pairs, programs
+  // and passes have no published limit — so the reading refuses nothing on their account.
+  var BYTES_PER_TEXEL = 4;
+  function readDevice() {
+    // The canvas is never attached and the context is dropped the moment the numbers are out of it,
+    // so the stage this host draws on is untouched: a visit that draws still counts one canvas and
+    // one context, and a visit that declines draws no canvas into the document at all.
+    var canvas, gl;
+    try {
+      canvas = document.createElement("canvas");
+      gl = canvas.getContext("webgl2");
+    } catch (e) { gl = null; }
+    if (!gl) return {};
+    var side = Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)) || 0;
+    var out = { textureSlots: Number(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS)) || 0,
+                textures: Number(gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS)) || 0,
+                bytesEstimate: BYTES_PER_TEXEL * side * side,
+                maxTextureSize: side };
+    var lose = gl.getExtension("WEBGL_lose_context");
+    if (lose) { try { lose.loseContext(); } catch (e) {} }
+    return out;
+  }
+
+  // THE RICHEST PUBLISHED ROW THIS READING COVERS, and the leanest row is the floor rather than a
+  // refusal: a device that covers not even `lean` plays `lean`, because a crossing simpler than the
+  // fleet's own floor is what §7's floor grammar already is, and no device is left with nothing.
+  function ceilingFor(reading) {
+    reading = reading || {};
+    for (var i = VARIANTS.length - 1; i > 0; i--) {
+      var row = BUDGET[VARIANTS[i]], fits = true;
+      for (var k = 0; k < RES_KEYS.length; k++) {
+        var have = reading[RES_KEYS[k]];
+        if (typeof have === "number" && have < row[RES_KEYS[k]]) { fits = false; break; }
+      }
+      if (fits) return VARIANTS[i];
+    }
+    return VARIANTS[0];
+  }
+
+  // ONCE PER VISIT. The reading is taken the first time it is asked for — the walk asks the instant
+  // this file registers, which is while the page is still loading — and held for the rest of the
+  // visit. Asking again per crossing would spend on measuring what the measuring is there to save,
+  // and the answer cannot change: nothing below is a pace, a frame time or anything else that moves
+  // under a visitor's hands.
+  var deviceRead = null;
+  function deviceCeiling() {
+    if (deviceRead === null) deviceRead = readDevice();
+    var variant = ceilingFor(deviceRead);
+    return { variant: variant, budget: BUDGET[variant], reading: deviceRead };
+  }
 
   // What ONE cue declares at a variant. A cue may carry its own per-variant map, or one flat record
   // naming the variant it stands for; carrying neither, the instrument's manifest answers for it.
@@ -4325,6 +4418,9 @@
       // census below is judged against
       grant: cur ? cur.grant : (lastRun ? lastRun.grant : null),
       budgets: BUDGET,
+      // ROW S-110's reading, on the surface a person reads a thin picture back from: what this
+      // device declared about itself and which published row that lands it on.
+      device: deviceCeiling(),
       // §7's census, both halves side by side on the one surface
       census: { canvases: census.canvases, contexts: census.contexts, textures: census.textures,
                 buffers: census.buffers, framebuffers: census.framebuffers,
@@ -4369,6 +4465,11 @@
     contextLost: contextLost, contextRestored: contextRestored,
     settle: settle, fail: fail, register: register, configure: configure, report: report,
     prewarmInstruments: prewarmInstruments,
+    // WHAT THIS DEVICE MAY BE ASKED FOR AT ALL (plan row S-110), read once at load and held for the
+    // visit. The walk puts it on every compose request the way it already puts the frame pace
+    // there, and the composer holds each candidate bundle's summed declaration against this row
+    // instead of against the fleet's own richest.
+    deviceCeiling: deviceCeiling,
     // THE NAMES THIS HOST CAN ACTUALLY CAST, off the site's own record — the P2/P3 skew's real fix
     // (2026-08-24, named as a follow-up: the composer's own castable set should read from this
     // instead of its separately baked copy; wiring the composer to consume it is outside this file
@@ -4874,6 +4975,10 @@
         return cueDeclares(cue, instruments[instrumentId], variant || "standard");
       },
       budgets: function () { return BUDGET; },
+      // Row S-110's own two halves, read as data: the ceiling a STATED reading lands on, with no
+      // device in the room and no clock touched, and the reading this machine actually declared.
+      ceilingFor: function (reading) { return ceilingFor(reading || {}); },
+      deviceCeiling: function () { return deviceCeiling(); },
       camera: function (score, tSec, ownPose) {
         var rec = { cmd: { score: score, gen: 0 }, duration: (score.duration || 0),
                     said: {}, handoffs: [], camOwner: null, lastPose: null, ownPose: ownPose || null };

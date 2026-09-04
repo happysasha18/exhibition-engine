@@ -170,6 +170,9 @@ SUITES = [
     # EX-HAND U5 (2026-09-04): the hand as unfold's clock — the progress profile the hand drives.
     # Registered by the seat at the merge of U1/U3/U5 into main.
     "pass_hand_profile",
+    # S-110 (2026-09-05): the device is read once while the page loads, and the row it publishes is
+    # the ceiling a crossing is cast under. Registered in the pass that wrote it.
+    "pass_device",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A

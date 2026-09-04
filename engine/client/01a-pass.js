@@ -2216,6 +2216,13 @@
       framePace: (passLayer && typeof passLayer.report === "function")
         ? (function () { try { return passLayer.report().frames || null; } catch (e) { return null; } }())
         : null,
+      // ROW S-110: what this machine published about itself, taken once while the page loaded
+      // (`passLayerSet` asks for it the instant the drawing layer registers) and answered from that
+      // one reading for the rest of the visit. It names the richest published budget row this
+      // device covers, and the composer holds every candidate bundle against that row instead of
+      // against the fleet's own richest — so a weaker machine is cast a simpler crossing, and a
+      // machine that publishes the richest row is cast exactly what it was cast before.
+      deviceCeiling: passDeviceCeiling(),
     };
     // THE STATION THIS STEP IS, asked once and read twice. `routeRole` is the name the step asks
     // under and is left exactly as it was, so nothing downstream of it shifts. `routeFunction` is
@@ -3680,12 +3687,25 @@
   // Whoever is waiting for the layer script to land (`passLayerAwait`, below) rather than for a
   // real decline. Drained the instant `passLayerSet` runs, whichever way it lands.
   let passLayerWaiters = [];
+  // ROW S-110: the device's own published ceiling, asked of the drawing layer, which takes the
+  // reading once and holds it for the visit. Read the same defensive way the frame pace is: a layer
+  // that is not registered, or one built before this row landed, answers `null` — the honest
+  // "nothing was read" — and the composer then stands on the fleet's own richest published row,
+  // exactly as every device did before this.
+  function passDeviceCeiling() {
+    if (!passLayer || typeof passLayer.deviceCeiling !== "function") return null;
+    try { return passLayer.deviceCeiling() || null; } catch (e) { return null; }
+  }
   // PASS-API §12: the renderer's own file registers the HOST here — a registry taking one
   // instrument, exposing offer/resize/cancel/report. The seam's old {name, run} shape is gone with
   // the single run(cmd, done) entry point it belonged to (§0, "Where it stands").
   function passLayerSet(layer) {
     passLayer = (layer && typeof layer.offer === "function") ? layer : null;
     passState = passLayer ? "registered" : "absent";
+    // THE READING IS TAKEN HERE, WHILE THE PAGE IS STILL LOADING — his word of 04.09.2026 16:03
+    // asks for it at the loading, and the layer registers as its own file lands, well before the
+    // first gesture. Every later ask is answered off this one reading.
+    passDeviceCeiling();
     passWireCastable();          // the P2/P3 follow-up: either half landing tries the hand-off again
     const q = passLayerWaiters; passLayerWaiters = [];
     q.forEach((fn) => { try { fn(); } catch (e) {} });

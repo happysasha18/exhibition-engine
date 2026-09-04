@@ -1474,6 +1474,13 @@
     // reading exists, which is the honest answer for a cold visit: nothing measured yet, so nothing
     // is asked to widen against.
     var lastFramePace = null;
+    // ROW S-110: what the machine in front of the person declared it can be asked for, as
+    // `pass-layer.js`'s `deviceCeiling` published it — `{variant, budget, reading}`, taken once
+    // while the page loaded and held for the visit. It rides in on the request the same road the
+    // frame pace does and is held here between requests that carry none (a prewarm guess built
+    // before the drawing layer registered). `null` until one arrives, and `null` means the fleet's
+    // own richest published row stands, which is what stood for every device before this.
+    var deviceCeiling = null;
     var MANIFESTS = consts.manifests;
     var INSTRUMENTS = consts.instruments;
     // WHICH INSTRUMENT'S OWN HANDLE AN ARRIVAL MODE SPEAKS THROUGH, READ OFF THE MANIFESTS
@@ -5066,29 +5073,52 @@
                  + " accompaniments=" + countedAccs) };
     }
 
-    // RULE 4 — THE DECLARED RESOURCE PEAK AGAINST A DEVICE-INDEPENDENT CEILING, mirroring
-    // `peakDeclared`/`grantVariant` (pass-layer.js:2202-2284): sum what each cast instrument's own
-    // manifest declares and hold it against the fleet's own most generous published budget
-    // (`RESOURCE_CEILING`, DERIVED — every one of its own fields is `BUDGET.rich` copied verbatim
-    // from that same table, never a second measurement of its own). Composition runs ahead of any
-    // one visitor's device, so this is not the finer, viewer-specific lightening `grantVariant`
-    // still owns alone at render time (which may still lower a bundle this rule passes) — it is the
-    // one thing composition itself can already know: a bundle no device could ever be granted, at
-    // any variant, is not a real candidate to weigh in the first place.
+    // RULE 4 — THE DECLARED RESOURCE PEAK AGAINST THE CEILING THIS DEVICE PUBLISHED, mirroring
+    // `peakDeclared`/`grantVariant` (pass-layer.js): sum what each cast instrument's own manifest
+    // declares at the rung this visitor's machine will actually play, and hold that sum against the
+    // published budget row for the same rung.
+    //
+    // WHAT THIS RULE HELD AGAINST BEFORE ROW S-110, AND WHY IT COULD NOT STAY. The row was the
+    // fleet's own most generous published budget (`RESOURCE_CEILING`, DERIVED — every one of its
+    // own fields is `BUDGET.rich` copied verbatim from that same table, never a second measurement
+    // of its own), and it stood for a phone and for a desk alike, because nothing anywhere read the
+    // machine. His word of 04.09.2026 16:03 asks for the other half: read the processor while the
+    // page loads and set the complexity of a crossing from what was read. `pass-layer.js`'s own
+    // `deviceCeiling` takes that reading and names the richest published row the device covers; the
+    // walk puts it on the request; this rule is where it decides WHICH INSTRUMENTS ARE CAST AT ALL.
+    // At `lean` the published row grants four texture slots, two programmes and two passes, so a
+    // three-voice bundle is refused and a two-voice one stands — and one voice clears the leanest
+    // row alone, so a weak device is never left with no crossing.
+    //
+    // THE RUNG AND THE ROW MOVE TOGETHER. A device held to `lean` will draw at `lean`
+    // (`variantOf`), so what this rule sums is each instrument's own `lean` declaration rather than
+    // its `rich` one — reading a cost the visit will never pay would refuse bundles the device can
+    // in fact carry. On a device that publishes the richest row, both halves read exactly what they
+    // read before this row landed.
+    //
+    // IT IS STILL NOT THE FINER LIGHTENING `grantVariant` OWNS AT RENDER TIME, which may lower a
+    // bundle this rule passes: this is what composition can know before a frame is drawn, and that
+    // is what a real stack costs on the buffer it lands on.
     var RESOURCE_CEILING = { textures: 8, textureSlots: 16, framebuffers: 4, pingPong: 2,
                              programs: 8, passes: 8, bytesEstimate: 100663296 };
     function bundleResourcesLegal(instrIds) {
+      var ceiling = (deviceCeiling && deviceCeiling.budget) || RESOURCE_CEILING;
+      var variant = (deviceCeiling && deviceCeiling.variant) || "rich";
       var sum = { textures: 0, textureSlots: 0, framebuffers: 0, pingPong: 0, programs: 0,
                   passes: 0, bytesEstimate: 0 };
       var keys = Object.keys(sum), over = null;
       instrIds.filter(function (iid) { return !!iid; }).forEach(function (iid) {
-        var r = resourcesBlock(iid, "rich");
+        var r = resourcesBlock(iid, variant);
         keys.forEach(function (k) { sum[k] += Number(r[k]) || 0; });
       });
-      keys.forEach(function (k) { if (over === null && sum[k] > RESOURCE_CEILING[k]) over = k; });
+      keys.forEach(function (k) {
+        if (over === null && sum[k] > (Number(ceiling[k]) || 0)) over = k;
+      });
       return { ok: over === null, why: over === null ? null
-        : ("the bundle declares " + sum[over] + " " + over + " summed across its cast, past the "
-          + "fleet's own richest published budget of " + RESOURCE_CEILING[over]) };
+        : ("the bundle declares " + sum[over] + " " + over + " summed across its cast at «"
+          + variant + "», past the " + (deviceCeiling ? "«" + variant + "» budget this device "
+          + "published a ceiling of " : "fleet's own richest published budget of ")
+          + ceiling[over]) };
     }
 
     // RULE 5 — SURFACE HANDOVER. STILL STUBBED, AND THIS IS A RECORDED DEFECT RATHER THAN A REPAIR
@@ -10516,6 +10546,11 @@
       // prewarm guess, the composer's very first call this visit — carries none, and the last
       // reading this composer instance ever saw stands in for it, which is `null` until one exists.
       if (req.framePace && typeof req.framePace === "object") lastFramePace = req.framePace;
+      // ROW S-110: the same road, for the reading that was taken once at load. A request carrying
+      // one replaces what this composer instance held; a request carrying none leaves the last one
+      // standing, because a visit's device does not change under it.
+      if (req.deviceCeiling && typeof req.deviceCeiling === "object"
+          && req.deviceCeiling.budget) deviceCeiling = req.deviceCeiling;
       var a = req.workRecordA, b = req.workRecordB;
       var role = req.routeRole === undefined || req.routeRole === null ? "middle" : req.routeRole;
       var direction = req.direction === "b-to-a" ? "b-to-a" : "a-to-b";
