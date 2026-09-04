@@ -236,29 +236,39 @@ def frag_lines(txt):
     return out
 
 
-# THE TWO LINES THE FLEET'S JUDGES' CHANNEL ADDS, and the only two in the shader that are not the
-# lab module's. The row below takes them out and holds the remainder against the module character for
-# character, so a third added line — or one of the module's own quietly rewritten — reddens it.
-FLEET_MASK = ["uniform float uMask;",
-              "  col = mix(col, vec3(covL, covR, 0.0), uMask);"]
+# THE LINES THE FLEET'S JUDGES' CHANNEL ADDS, and S-05's own rewrite of the gate edge's hairline —
+# every line in the shader that is not the lab module's own, unmoved. ADDED are pure insertions
+# (no lab counterpart, order not asked of them); REWRITES replaces one lab line with the port's own
+# at the SAME position, named with its reason. Anything else that differs — a quietly rewritten lab
+# line, or a stray line neither list names — reddens this row: the row's real guard is that every
+# divergence from the lab module is a NAMED, deliberate one, not that the bytes never move at all.
+ADDED = ["uniform float uMask;",
+         "  col = mix(col, vec3(covL, covR, 0.0), uMask);",
+         "uniform float uSeamPts;"]
+REWRITES = {
+    "  float hA = 1.0 / max(resA, 1.0);":
+        ("  float hA = uSeamPts / max(resA, 1.0);",
+         "S-05: the gate edge's hairline used to stand at a bare one point of the drawing buffer; "
+         "it now reads the host's own `seams` measurement (`uSeamPts`, §8's `seams` block, "
+         "pass-layer.js) so the retouch holds one CSS-constant width across device pixel ratios"),
+}
 lab_frag = frag_lines(LABTXT)
 port_frag = frag_lines(SOURCE_TEXT)
-port_own = [line for line in port_frag if line not in FLEET_MASK]
-frag_same = (bool(lab_frag) and lab_frag == port_own
-             and all(a in port_frag for a in FLEET_MASK)
-             and len(port_frag) == len(lab_frag) + 2)
-check("PASS-GATES the shader is the lab module's own, character for character, but for the two lines "
-      "the fleet's judges' channel adds",
+expected_from_lab = [REWRITES[ln][0] if ln in REWRITES else ln for ln in lab_frag]
+port_own = [line for line in port_frag if line not in ADDED]
+frag_same = (bool(lab_frag) and expected_from_lab == port_own
+             and all(a in port_frag for a in ADDED)
+             and len(port_frag) == len(lab_frag) + len(ADDED))
+check("PASS-GATES the shader is the lab module's own, character for character, but for the named "
+      "additions and rewrites",
       frag_same,
-      f"{len(port_own)} of the module's own lines, none of them rewritten, and exactly two added: "
-      f"«{FLEET_MASK[0]}» and «{FLEET_MASK[1]}». Every other port in this farm had to redo one line "
-      f"besides — the frame's aspect, which a lab module computes from its own drawing buffer and an "
-      f"instrument has to derive from the size the host binds. This shader never reads an aspect: it "
-      f"works in the frame's own uv from end to end, so not one character of the module's own moved"
+      f"{len(port_own)} lines answering for the module's own {len(lab_frag)}, of which "
+      f"{len(REWRITES)} stand rewritten by name; and exactly {len(ADDED)} added: "
+      f"«{'», «'.join(ADDED)}». " + "; ".join(reason for _, reason in REWRITES.values())
       if frag_same else
-      f"lab {len(lab_frag)} lines, port {len(port_frag)} of which {len(port_own)} are not the fleet's "
-      f"two; first difference at "
-      f"{next((i for i, (a, b) in enumerate(zip(lab_frag, port_own)) if a != b), 'the length')}")
+      f"lab {len(lab_frag)} lines, port {len(port_frag)} of which {len(port_own)} are not the "
+      f"named additions; first difference at "
+      f"{next((i for i, (a, b) in enumerate(zip(expected_from_lab, port_own)) if a != b), 'the length')}")
 
 
 def numbers(text, pattern):
@@ -334,7 +344,7 @@ check("PASS-GATES the host binds uniforms by declared name, never by position or
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-GATES the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 16,
+      declared == spelled and len(declared) == 17,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -556,7 +566,7 @@ else:
                     and m["cuts"] == ["panel"]
                     and m["coverage"]["writes"] is False
                     and sorted(m["suits"]["reads"]) == ["motifs.gateGap", "motifs.measured"]
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 16
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 17
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -567,7 +577,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "gates" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"fifteen handles of which one is open, sixteen uniforms in one pass, the crop "
+                      f"fifteen handles of which one is open, seventeen uniforms in one pass, the crop "
                       f"{zoom} the squeeze and the drift are paid for with, a cut on {m['cuts']}, an "
                       f"alpha that is the constant 1 (coverage.writes={m['coverage']['writes']}, so a "
                       f"cue of this instrument may stand at the bottom of a stack), and a `suits` "
@@ -760,7 +770,7 @@ else:
 
                 # ---- the two manifest refusals ---------------------------------------------------
                 STUB = ("values:function(){return {vert:1,slot:0.5,open:[0,0],bite:0,teeth:9,"
-                        "swing:0,press:0,drift:0,guard:0};},"
+                        "swing:0,press:0,drift:0,guard:0,seamPts:1.5};},"
                         "fit:function(){return [1,1,0,0];},"
                         "prepare:function(){return {take:false};}, start:function(){},"
                         "frame:function(){}")

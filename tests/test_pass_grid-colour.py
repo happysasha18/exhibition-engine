@@ -277,13 +277,13 @@ check("PASS-GRID every constant stands at the number the lab module gives it",
 
 check("PASS-GRID the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "gl.uniform4fv(U.uCutA" not in LAYER,
-      "every one of this instrument's fourteen uniforms is bound from the manifest; the host holds "
+      "every one of this instrument's seventeen uniforms is bound from the manifest; the host holds "
       "no list of its names")
 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-GRID the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 15,
+      declared == spelled and len(declared) == 18,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 
@@ -576,7 +576,7 @@ else:
                     and m["coverage"]["writes"] is True
                     and m["applied"]["flow"]["departing"] == "out"
                     and m["applied"]["flow"]["arriving"] == "in"
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 15
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 18
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -588,7 +588,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "grid-colour" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"twenty-three handles, fourteen uniforms in one pass, the plain cover fit at "
+                      f"twenty-three handles, seventeen uniforms in one pass, the plain cover fit at "
                       f"both doors, four cuts declared, coverage written where the cut is open, the "
                       f"pair's own order spent on the module's `flow`, and the lab commit "
                       f"{m['provenance']['commit']}")
@@ -1057,7 +1057,8 @@ else:
                 # ---- the two manifest refusals ---------------------------------------------------
                 STUB = ("values:function(){return {cutA:[0,0,1,0],cutB:[0,0,1,0],"
                         "gridA:[10,1,0,8],gridB:[10,1,0,8],spanA:[1,1,1,1],spanB:[1,1,1,1],"
-                        "voiceA:[1,0],voiceB:[1,0]};},"
+                        "voiceA:[1,0],voiceB:[1,0],"
+                        "seamLine:1.5,seamRing:1.5,seamTile:1.5};},"
                         "fit:function(){return [1,1,0,0];},"
                         "prepare:function(){return {take:false};}, start:function(){}, "
                         "frame:function(){}")

@@ -522,7 +522,7 @@ check("PASS-BOXFOLD the port's own one number is named as its own, and it is the
 
 check("PASS-BOXFOLD the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "uQuad" not in LAYER and "uInv" not in LAYER,
-      "this instrument declares twenty-one uniforms, of which five are shared with the woven one. "
+      "this instrument declares twenty-two uniforms, of which five are shared with the woven one. "
       "host reads the manifest")
 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
@@ -936,7 +936,7 @@ else:
                                          "entry": {"mix": 0, "work": "a", "pose": "flat"},
                                          "exit": {"mix": 1, "work": "b", "pose": "flat"}}
                     and m["gl"] == {"preserveDrawingBuffer": False}
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 21
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 22
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -948,7 +948,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "boxfold" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"twelve handles, twenty-one uniforms in one pass, both doors at a cover crop of "
+                      f"twelve handles, twenty-two uniforms in one pass, both doors at a cover crop of "
                       f"{m['framings']['0']['coverCrop']} — the room the turn needs plus the room "
                       f"the crease's travel needs — resources declared for three tiers with a byte "
                       f"estimate of {res['standard']['bytesEstimate']}, and a coverage block reading "

@@ -16,7 +16,8 @@ WHAT IS COMPARED, AND AGAINST WHAT.
 
   The one thing that decides whether this is a crossfade in weather's clothing: that the two works
   are never weighed against each other. A row reads the shader for the only mix it may carry — the
-  one-buffer-point crossover — and a row measures that a work standing at a door has EXACTLY nothing
+  host-measured crossover (S-05: the host's own `seams` reading, not a point this file picked for
+  itself) — and a row measures that a work standing at a door has EXACTLY nothing
   in front of it while the other has all four sheets.
 
   The red-on-bug rows. Each serves a COPY of the built instrument file with one rule changed and
@@ -114,14 +115,27 @@ check("PASS-VEIL the works' travel is derived from the stack rather than typed a
       "reach of 1.5 gaps plus a slab plus a margin puts a work in front of every sheet at one door "
       "and behind every sheet at the other — at every spread a score can name")
 
+# THE ROW'S REAL GUARD: not that this exact formula's bytes never move, but that (a) there is
+# exactly one blend between the two works and (b) its crossover reads the WIDTH off a name rather
+# than a number this file chose for itself — S-05 moved that width onto the host's own `seams`
+# reading (`uSeamPts`), so a bare literal creeping back into the denominator is what this row now
+# has to catch, not a formatting change to the line that carries it.
+cov_m = re.search(r"float cov = clamp\(0\.5 \+ \(tB - tA\) / \(([^)]+)\), 0\.0, 1\.0\);", BUILT)
+cov_denom = cov_m.group(1) if cov_m else None
+cov_bare_number = bool(cov_denom) and re.fullmatch(r"[\s*0-9.]+", cov_denom.replace("band", ""))
+one_blend = BUILT.count("mix(colB, colA, cov)") == 1
+cov_ok = one_blend and cov_denom is not None and "band" in cov_denom and "uSeamPts" in cov_denom \
+         and not cov_bare_number
 check("PASS-VEIL the two works are never weighed against each other",
-      BUILT.count("mix(colB, colA, cov)") == 1
-      and "float cov = clamp(0.5 + (tB - tA) / band, 0.0, 1.0);" in BUILT,
-      "the ban this instrument came nearest to is the alpha crossfade as the arrival. There is "
-      "exactly one mix between the two works in the whole shader and its weight is the coverage — "
-      "which is 0 or 1 everywhere but inside a one-point crossover read off the two thicknesses' "
-      "own analytic gradient. What travels with the dial is a DEPTH, and this file publishes no "
-      "opacity to travel instead")
+      cov_ok,
+      ("the ban this instrument came nearest to is the alpha crossfade as the arrival. There is "
+       "exactly one mix between the two works in the whole shader and its weight is the coverage — "
+       "which is 0 or 1 everywhere but inside a crossover read off the two thicknesses' own "
+       "analytic gradient, `band`, WIDENED BY THE HOST'S OWN `seams` READING (`uSeamPts` reads "
+       "«%s») rather than a point this file picked for itself. What travels with the dial is a "
+       "DEPTH, and this file publishes no opacity to travel instead" % cov_denom) if cov_ok
+      else f"one blend: {one_blend}; cov denominator: {cov_denom!r}; "
+           f"bare number (own constant crept back in): {cov_bare_number}")
 
 check("PASS-VEIL the veil writes no colour of its own anywhere",
       "DEEPEST * clamp(tA, 0.0, 1.0)" in BUILT and "DEEPEST * clamp(tB, 0.0, 1.0)" in BUILT
@@ -150,7 +164,7 @@ check("PASS-VEIL the coverage is declared, with the mechanism that pays for it",
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', BUILT))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', BUILT))
 check("PASS-VEIL the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 9,
+      declared == spelled and len(declared) == 10,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 

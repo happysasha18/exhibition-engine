@@ -334,7 +334,7 @@ check("PASS-WATERLINE the host binds uniforms by declared name, never by positio
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-WATERLINE the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 19,
+      declared == spelled and len(declared) == 20,
       f"{len(declared)} declared, {len(spelled)} spelled. The module's own `uAspect` is the one "
       f"uniform that did not come over — the host owns the buffer and already binds its size, so "
       f"the aspect is derived from `uRes` inside the shader — and `uCells` is the one the port "
@@ -583,7 +583,7 @@ else:
                     and abs(zoom - ZOOM) < 1e-12
                     and m["camera"] == {"needs": "none", "authority": "stage"}
                     and m["coverage"]["writes"] is False
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 19
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 20
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -595,7 +595,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "waterline" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"eighteen handles, nineteen uniforms in one pass, the crop {zoom} the "
+                      f"eighteen handles, twenty uniforms in one pass, the crop {zoom} the "
                       f"counter-motion and the swell are paid for with, the cut «band», the two "
                       f"levels WORLD and SURFACE read off the module's own header, an alpha of a "
                       f"constant 1 (coverage.writes={m['coverage']['writes']}), resources for three "
@@ -732,7 +732,7 @@ else:
                 # a refusal about the wrong uniform, which is a row proving nothing.
                 NEUTRAL = ("{dial:0,line:1.04,lineA:0.5,lineB:0.5,way:0,tau:-0.05,lead:0.62,"
                            "spread:0.154,dep:1.2,swell:0.45,comb:0.45,open:0,off:0,guardE:0,"
-                           "guardL:0,time:0,cells:[19,8]}")
+                           "guardL:0,time:0,cells:[19,8],seamPts:1.5}")
                 r = js(br, """
                   var m = JSON.parse(JSON.stringify(window.__exPass.bench.manifest('waterline')));
                   m.gl.preserveDrawingBuffer = true;

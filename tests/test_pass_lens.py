@@ -380,7 +380,7 @@ check("PASS-LENS the host binds uniforms by declared name, never by position or 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
 spelled = set(re.findall(r'uniform \w+ (u\w+);', REGION))
 check("PASS-LENS the manifest's declared names and the shader's own names are one set",
-      declared == spelled and len(declared) == 9,
+      declared == spelled and len(declared) == 10,
       f"{len(declared)} declared, {len(spelled)} spelled; "
       f"declared only: {sorted(declared - spelled)}; spelled only: {sorted(spelled - declared)}")
 

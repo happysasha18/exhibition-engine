@@ -352,7 +352,7 @@ check("PASS-UNFOLD the module holds no shader at all, and the shape this port ga
       "panel's own two coordinates and the perspective divides once, so the map from a panel to the "
       "frame is a homography and is invertible: this port's shader solves the two-by-two system that "
       "says where on each panel a point of the frame falls, keeps the panels the point lands on, and "
-      "takes the one nearest the eye. One pass, twelve uniforms, no second slot"
+      "takes the one nearest the eye. One pass, thirteen uniforms, no second slot"
       % ", ".join(("getContext", "createShader", "gl_FragColor", "precision", "uniform"))
       if not lab_gl else "the module already holds " + ", ".join(lab_gl))
 
@@ -417,7 +417,7 @@ check("PASS-UNFOLD the port's own one number is named as its own, and it is the 
 
 check("PASS-UNFOLD the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "uTurn" not in LAYER and "uCrease" not in LAYER,
-      "this instrument declares thirteen uniforms, of which five are shared with the woven one. The "
+      "this instrument declares fourteen uniforms, of which five are shared with the woven one. The "
       "host reads the manifest")
 
 declared = set(re.findall(r'\{ name: "(u\w+)", type:', REGION))
@@ -1035,8 +1035,10 @@ else:
                     and m["gl"] == {"preserveDrawingBuffer": False}
                     # 14, not 13, for the same reason as the handle count above: the same sweep
                     # added `uParquetPhase` (source: frame:parquetPhase) as this pass's own
-                    # fourteenth uniform.
-                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 14
+                    # fourteenth uniform. 15, not 14, since S-05 (2026-09-04): the panel's own
+                    # hairline retouch now reads `uSeamPts` (source: frame:seamPts) off the host's
+                    # own `seams` block instead of a bare buffer-point literal.
+                    and len(m["passes"]) == 1 and len(m["passes"][0]["uniforms"]) == 15
                     and sorted(res) == ["lean", "rich", "standard"]
                     and all("bytesEstimate" in res[v] and res[v]["programs"] == 1
                             and res[v]["passes"] == 1 and res[v]["textureSlots"] == 2
@@ -1048,7 +1050,7 @@ else:
                     and m["readiness"] == "production-ready"
                     and "unfold" in js(br, "return window.__host.report().registered;"))
                 check(BROWSER_ROWS[0], shape,
-                      f"eight handles, twelve uniforms in one pass, both doors at the plain cover "
+                      f"eight handles, thirteen uniforms in one pass, both doors at the plain cover "
                       f"fit of {m['framings']['0']['coverCrop']}, resources declared for three tiers "
                       f"with a byte estimate of {res['standard']['bytesEstimate']}, and a coverage "
                       f"block reading «{m['coverage']['how']}»")
