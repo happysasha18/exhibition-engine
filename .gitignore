@@ -10,3 +10,6 @@ __pycache__/
 tests/captures/
 # Every full run rewrites this file (S-61); a clean tree can't hold it under version control.
 tests/suite_timings.json
+
+# Written by every suite run, like tests/suite_timings.json above it: machine output, never source.
+tests/route_wire_fence.txt
