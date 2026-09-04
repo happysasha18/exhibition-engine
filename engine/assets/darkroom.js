@@ -170,3 +170,92 @@ function darkroomEase(current, target, dt, tau) {
   var k = 1 - Math.exp(-dt / tau);
   return current + (target - current) * k;
 }
+
+// ENGAGE — shelf 17's one-owner-per-level law (pass-composer.js:3994's `ownTheLevels`), felt as a
+// hand's own action rather than the crossing's plan. `ownTheLevels` arbitrates who owns a level
+// once, over a whole scored passage, already built; this is the same arbitration at the moment a
+// person reaches for a new instrument in a live darkroom session, where the answer is not "who
+// owns it" but "what happens to the instrument that is about to lose it" — and Requirement 40
+// criterion 11 answers that: it never snaps, it eases (`darkroomEase`, above — no second ease is
+// written here).
+//
+// STATE IS THE CALLER'S OWN RECORD OF WHAT IS ENGAGED, carried in and back out rather than kept
+// here: a plain `{ instrumentId: { handle: value, ... }, ... }` map, the smallest shape that
+// answers "what is engaged, and at what handle values" — everything `engage` needs to know what to
+// walk back, and nothing it would otherwise have to keep of its own between calls.
+//
+// A LEVEL IS READ THE ONE PLACE THIS FLEET DECLARES IT: a handle's own `level` field on its own
+// manifest (e.g. pass-inst-livemirror.js:687-728), never a second table kept here — the same field
+// `ownTheLevels`'s own `levelOf` reads (pass-composer.js:4245-4248). `level: null` claims no level
+// and answers to no exchange, exactly as `levelOf` already treats it.
+//
+// dt/tau are Requirement 34 criterion 4's own pair for a change nobody's hand is driving live —
+// "0.5s free" — since this walk-back runs while the hand has moved on to the newly engaged
+// instrument, not while it holds the one being walked back. Kept local to the function, like every
+// other constant this file's own extracted-function tests read (darkroom.js is extracted by
+// balanced braces per function; a module-level var here would be invisible to that extraction).
+function engage(instrumentId, state, manifests) {
+  var ENGAGE_DT = 1 / 60;
+  var ENGAGE_TAU = 0.5;
+  state = state || {};
+  manifests = manifests || {};
+  var manifest = manifests[instrumentId] || {};
+  var handles = manifest.handles || {};
+
+  function levelOf(m, handle) {
+    var spec = m && m.handles && m.handles[handle];
+    return (spec && spec.level) || null;
+  }
+
+  // A HANDLE CLAIMS A LEVEL ONLY WHEN IT DECLARES ONE — `level: null` (or no `level` at all) is not
+  // itself a level two handles can share; it is the fleet's own idiom for "answers to no ownership
+  // at all" (pass-composer.js:4245-4248's `levelOf`). One place decides that, so nothing downstream
+  // re-decides it a second way.
+  function isRealLevel(lv) { return !!lv; }
+
+  // THE LEVELS THIS INSTRUMENT DECLARES AT ALL — the union of every one of its own handles' `level`,
+  // read off its manifest, `level: null` entries dropped as claiming nothing.
+  var incomingLevels = [];
+  Object.keys(handles).forEach(function (h) {
+    var lv = handles[h] && handles[h].level;
+    if (isRealLevel(lv) && incomingLevels.indexOf(lv) < 0) incomingLevels.push(lv);
+  });
+
+  // A copy, never the caller's own object — `engage` hands back the next state rather than mutating
+  // the one it was given.
+  var next = {};
+  Object.keys(state).forEach(function (iid) {
+    next[iid] = {};
+    Object.keys(state[iid] || {}).forEach(function (h) { next[iid][h] = state[iid][h]; });
+  });
+
+  // WALK BACK EVERY ALREADY-ENGAGED HANDLE STANDING ON A LEVEL THE NEWLY ENGAGED INSTRUMENT ALSO
+  // DECLARES — one ease step per call, so a session driving `engage` every frame the collision
+  // stands feels the handle travel down to its own manifest's `def` rather than land there at once.
+  if (incomingLevels.length) {
+    Object.keys(next).forEach(function (iid) {
+      if (iid === instrumentId) return;
+      var otherManifest = manifests[iid] || {};
+      Object.keys(next[iid]).forEach(function (h) {
+        var lv = levelOf(otherManifest, h);
+        if (!isRealLevel(lv) || incomingLevels.indexOf(lv) < 0) return;
+        var spec = otherManifest.handles[h];
+        var def = spec && typeof spec.def === "number" ? spec.def : next[iid][h];
+        next[iid][h] = darkroomEase(next[iid][h], def, ENGAGE_DT, ENGAGE_TAU);
+      });
+    });
+  }
+
+  // A FIRST ENGAGEMENT STARTS AT REST — every handle this instrument declares, at its own
+  // manifest's `def`, the same rest every neutral pose in this fleet already means. Re-engaging an
+  // instrument already in state leaves its own current values exactly where they stood.
+  if (!next[instrumentId]) {
+    next[instrumentId] = {};
+    Object.keys(handles).forEach(function (h) {
+      var d = handles[h] && handles[h].def;
+      next[instrumentId][h] = typeof d === "number" ? d : 0;
+    });
+  }
+
+  return next;
+}
