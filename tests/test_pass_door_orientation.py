@@ -372,9 +372,24 @@ def enter(br):
 
 
 def pick_pair(ids, shapes):
+    """The pair a real crossing plays on, drawn from two DOM-ADJACENT frames — declare()'s own
+    walk-forward contract, kept intact throughout. Preference order: a portrait+landscape pair
+    first, the strongest exercise any frame-ratio-carrying seating gets; failing that, any
+    differing pair whose ARRIVING work (`b`, the second of the two — the door this file judges)
+    is not square. A square arriving door has an aspect of 1, which cancels any factor riding
+    the frame's own ratio by accident and not by repair: droste's pre-repair plant (PRE_REPAIR
+    below) rides exactly such a factor, and on a landscape->square pick it read 0.00, identical
+    to the shipped file, purely because the one square size this suite hangs happened to be the
+    arriving work — not because the plant's bug was gone. Only once neither of those exists does
+    this fall back to any differing pair at all, so a catalog offering nothing else still
+    crosses."""
     for i in range(len(ids) - 1):
         a, b = ids[i], ids[i + 1]
         if {shapes.get(a), shapes.get(b)} == {"portrait", "landscape"}:
+            return a, b
+    for i in range(len(ids) - 1):
+        a, b = ids[i], ids[i + 1]
+        if shapes.get(a) != shapes.get(b) and shapes.get(b) != "square":
             return a, b
     for i in range(len(ids) - 1):
         a, b = ids[i], ids[i + 1]
