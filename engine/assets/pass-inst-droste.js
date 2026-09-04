@@ -702,15 +702,18 @@
         centreX: { min: 0, max: 1, def: 0.5,
                    unit: "where the spiral's throat stands across the frame, as an offset on the "
                        + "module's own wander",
-                   reads: "the work's own measured radial centre, the collection's `radial.centreX`",
+                   reads: "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — the work's own measured radial centre, taken as the midpoint of "
+                        + "the two works' own centres, across-frame axis",
                    applied: { reach: CENTRE_REACH, restsOn: "the module's own wander" },
                    level: "SURFACE" },
         centreY: { min: 0, max: 1, def: 0.5,
                    unit: "where the throat stands up the frame, as an offset on that same wander",
-                   reads: "the work's own measured radial centre, the collection's `radial.centreY`. "
-                        + "The module publishes only the across-frame half of this pair; the other "
-                        + "half is the port's, in the module's own idiom, because a measured centre "
-                        + "has two coordinates and a handle for one of them would read half of it",
+                   reads: "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — the same measurement read on the other axis. The module publishes "
+                        + "only the across-frame half of this pair; the other half is the port's, in "
+                        + "the module's own idiom, because a measured centre has two coordinates and "
+                        + "a handle for one of them would read half of it",
                    applied: { reach: CENTRE_REACH, restsOn: "the module's own wander" },
                    level: "SURFACE" },
         shade: { min: 0, max: 1, def: 1,

@@ -70,7 +70,7 @@ FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
 # walk, the donor search and the control all read them exactly as they read the first fourteen.
 INSTRUMENTS = ["liquid", "pour", "veil", "waterline", "wind", "overlay", "boxfold", "matter",
                "strata-light", "strata-scale", "kaleidoscope", "weave", "planet", "tilt",
-               "hero", "studio", "tunnel", "lens", "livemirror"]
+               "hero", "studio", "tunnel", "lens", "livemirror", "droste", "gears"]
 
 # The roots a work record actually carries (tests/fixture_pass_works.json). A `reads:` sentence that
 # opens with one of these names a field; one that does not is prose about a die, a handover or the

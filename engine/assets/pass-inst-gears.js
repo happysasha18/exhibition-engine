@@ -711,8 +711,15 @@
                            heldWholeAtADoor: { rungs: DOOR_HOLD, readOn: "the drawing buffer",
                                                reads: "sizeRequest" } },
                 level: "CELL" },
-        centreX: { min: 0, max: 1, def: 0.5, level: "SURFACE" },
-        centreY: { min: 0, max: 1, def: 0.5, level: "SURFACE" },
+        centreX: { min: 0, max: 1, def: 0.5,
+                   reads: "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — the midpoint of the two works' own measured radial centres, "
+                        + "across-frame axis",
+                   level: "SURFACE" },
+        centreY: { min: 0, max: 1, def: 0.5,
+                   reads: "motifs.radialCentre, and structure.radial.centre where a work carries no "
+                        + "motif — the same measurement read on the other axis",
+                   level: "SURFACE" },
         bandPeriod: { min: 0.02, max: 1, def: 1 / 6, level: "CELL" },
         ratio: { min: 0, max: 1, def: 0.5, kind: "enum", step: 1 / (RATIOS.length - 1),
                  rungs: RATIOS, level: "CELL" },
