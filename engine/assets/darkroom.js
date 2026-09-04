@@ -14,7 +14,57 @@
 // a different, static, per-instrument declaration from pass-composer.js's own `INSTRUMENT_SUITS`,
 // which is a set of hand-written fit functions over a PAIR of records for the crossing; this bench
 // reads only the manifest's own field-path list, against the one record in front of it.)
-function darkroomBenchOffers(record, chain, manifests) {
+// THE PREDICATE FOR "DOES THIS INSTRUMENT SPEND THE ROOM'S MIRACLE SLOT" — the same derivation
+// pass-composer.js's own `isWorldFold` reads (pass-composer.js:1729-1735): a manifest carrying a
+// real `surface` and naming WORLD among its own `levels`. Read fresh off the manifests handed in
+// here, every call, so a manifest that changes its own surface/levels declaration changes this
+// answer with no second, hand-typed list of instrument ids anywhere in this file.
+function isSlotSpendingInstrument(instrumentId, manifests) {
+  var m = (manifests || {})[instrumentId];
+  return !!(m && m.surface && (m.levels || []).indexOf("WORLD") >= 0);
+}
+
+// THE ROOM'S ONE MIRACLE SLOT — one per making, spent either by opening the room's own recursion
+// (the pinch past the frame, modelled here only as a state the caller sets — not built in this
+// unit) or by engaging an instrument `isSlotSpendingInstrument` answers true for. State is the
+// caller's own record, carried in and back out, the same idiom `engage`'s own `state` already
+// uses: `{ spent: bool, spentBy: "recursion" | <instrumentId> | null }`.
+function darkroomSlotState() {
+  return { spent: false, spentBy: null };
+}
+
+// Engaging an instrument spends the slot once, attributed to that instrument — a slot already
+// spent, or an instrument that does not fold space, leaves the slot exactly as it stood.
+function darkroomSlotAfterEngage(slot, instrumentId, manifests) {
+  slot = slot || darkroomSlotState();
+  if (slot.spent) return slot;
+  if (!isSlotSpendingInstrument(instrumentId, manifests)) return slot;
+  return { spent: true, spentBy: instrumentId };
+}
+
+// Unwinding an instrument (unengaging it, or walking its handle back to its own declared neutral)
+// returns the slot only when that instrument is the one holding it spent — unwinding any other
+// instrument, or one that never spent the slot, leaves it exactly as it stood.
+function darkroomSlotAfterUnwind(slot, instrumentId) {
+  slot = slot || darkroomSlotState();
+  if (slot.spentBy === instrumentId) return darkroomSlotState();
+  return slot;
+}
+
+// Opening the recursion spends the slot, attributed to "recursion" rather than an instrument id
+// (no manifest declares it — it is the room's own state); closing it returns the slot only when
+// the recursion is the one holding it spent.
+function darkroomSlotAfterRecursion(slot, open) {
+  slot = slot || darkroomSlotState();
+  if (open) {
+    if (slot.spent) return slot;
+    return { spent: true, spentBy: "recursion" };
+  }
+  if (slot.spentBy === "recursion") return darkroomSlotState();
+  return slot;
+}
+
+function darkroomBenchOffers(record, chain, manifests, slot) {
   record = record || {};
   manifests = manifests || {};
   chain = (chain || []).map(function (step) {
@@ -97,11 +147,19 @@ function darkroomBenchOffers(record, chain, manifests) {
   function isGrainBearing(m) { return !!(m && m.handles && m.handles.grain); }
   var structuralStepDone = chain.length > 0;
 
+  // THE MIRACLE SLOT, IF SPENT, WITHHOLDS EVERY OTHER SLOT-SPENDING INSTRUMENT — absence, never a
+  // refusal: a visitor meets no rule as a blocking error, the instrument is simply missing from
+  // this list. The instrument already holding the slot spent stays offered (re-engaging it, or
+  // reaching its own handles, is not a second spend).
+  var slotSpent = !!(slot && slot.spent);
+  var slotSpentBy = slot && slot.spentBy;
+
   var ids = Object.keys(manifests).sort();
   var offered = ids.filter(function (id) {
     var m = manifests[id];
     if (isGrainBearing(m) && !structuralStepDone) return false;
     if (wouldStackPattern(m)) return false;
+    if (slotSpent && id !== slotSpentBy && isSlotSpendingInstrument(id, manifests)) return false;
     return true;
   });
 

@@ -77,6 +77,43 @@ extracted source (tests/test_pass_matter.py:358-364's rule — the file on disk 
     row 9 reds, because gates.shade and livemirror's own null-level handles now count as the same
     level and trigger an exchange.
 
+ADDED FOR THE ROOM'S ONE MIRACLE SLOT (`isSlotSpendingInstrument`, `darkroomSlotState`,
+`darkroomSlotAfterEngage`, `darkroomSlotAfterUnwind`, `darkroomSlotAfterRecursion`, and
+`darkroomBenchOffers`'s own added fourth `slot` parameter, all in engine/assets/darkroom.js): one
+slot per making, spent by engaging an instrument that folds space (`isSlotSpendingInstrument` —
+the same derivation pass-composer.js's own `isWorldFold` reads at pass-composer.js:1729-1735: a
+manifest carrying a real `surface` and naming WORLD among its own `levels`, read fresh off the
+manifests every call, no second hardcoded list) or by opening the room's own recursion (not built
+in this unit — modelled only as the boolean `darkroomSlotAfterRecursion`'s own caller passes).
+While the slot stands spent, `darkroomBenchOffers` withholds every OTHER slot-spending instrument
+from its own returned list — absence, never a refusal or a message, since a visitor should meet no
+rule as a blocking error. Run against the REAL fleet, the same concatenated `pass-inst-*.js` idiom
+as the rows above.
+
+Five rows:
+  10. engaging a slot-spending instrument (`boxfold`) spends a fresh slot once, attributed to it.
+  11. while the slot stands spent, `darkroomBenchOffers`'s own returned list excludes every OTHER
+      slot-spending instrument (checked against a baseline call on an unspent slot, so the
+      exclusion is a real subtraction, not a vacuous one) — the spender itself stays offered.
+  12. unwinding the spender returns the slot (`spent: false, spentBy: null`), and the other fold
+      reappears on the bench, identical to the baseline.
+  13. `isSlotSpendingInstrument`'s own answer set equals `isWorldFold`'s, walked instrument by
+      instrument over the real 27-instrument fleet, against `boxfold`/`planet`/`tilt`/`waterline`
+      — a ground truth read off the shipped files by inspection (this test's own comment), never a
+      second copy the predicate itself reads back.
+  14. neither `livemirror` nor `studio` (the room's own first-visit kit) spends the slot by
+      engaging it alone; opening the recursion does.
+
+PLANTED DEFECTS for the miracle slot, each a text mutation applied to a throwaway in-memory copy
+of the extracted source (tests/test_pass_matter.py:358-364's rule — the file on disk is never
+touched):
+  - strip `darkroomBenchOffers`'s own slot-spend filter (`if (slotSpent && ...) return false;` ->
+    `if (false) return false;`), so a second slot-spending instrument is never withheld while the
+    slot stands spent: row 11 reds.
+  - make `darkroomSlotAfterRecursion` spend nothing on open (returns the slot unchanged instead of
+    `{ spent: true, spentBy: "recursion" }`): row 14's own recursion-half reds — the slot still
+    stands open after the recursion is opened.
+
 Run: python3 tests/test_darkroom_taste.py
 """
 import json
@@ -141,6 +178,7 @@ INST_PATHS = sorted(INST_DIR.glob("pass-inst-*.js"))
 FLEET_SRC = "\n".join(
     p.read_text(encoding="utf-8").replace("@@NS@@", "") for p in INST_PATHS
 )
+FLEET_SIZE = len(INST_PATHS)
 
 TMP = Path(tempfile.mkdtemp(prefix="darkroom_taste_"))
 DRIVER_PATH = TMP / "darkroom-taste-driver.js"
@@ -275,6 +313,111 @@ ENGAGE_NULL_LEVEL_SCRIPT = (
 )
 
 
+# ------------------------------------------------------------------ rows 10-14: the miracle slot
+#
+# THE ROOM'S ONE MIRACLE SLOT (engine/assets/darkroom.js): spent once per making, either by
+# engaging an instrument `isSlotSpendingInstrument` answers true for — the same derivation
+# pass-composer.js's own `isWorldFold` reads (pass-composer.js:1729-1735: a manifest carrying a
+# real `surface` and naming WORLD among its own `levels`) — or by opening the room's own recursion
+# (not built in this unit; modelled only as the boolean `darkroomSlotAfterRecursion`'s own caller
+# passes). `darkroomSlotState`/`darkroomSlotAfterEngage`/`darkroomSlotAfterUnwind`/
+# `darkroomSlotAfterRecursion` and the wired `darkroomBenchOffers(record, chain, manifests, slot)`
+# are all extracted the same way as every other function in this file — the REAL, currently
+# shipped bodies, run against the REAL fleet (FLEET_SRC, above).
+SLOT_SRC = "\n".join(extract_function(DARKROOM_SOURCE, name) for name in (
+    "isSlotSpendingInstrument", "darkroomSlotState", "darkroomSlotAfterEngage",
+    "darkroomSlotAfterUnwind", "darkroomSlotAfterRecursion",
+))
+BENCH_SRC = extract_function(DARKROOM_SOURCE, "darkroomBenchOffers")
+
+SLOT_DRIVER_PATH = TMP / "darkroom-slot-driver.js"
+
+
+def run_slot(script_src, slot_src=None, bench_src=None):
+    """Builds the REAL fleet from the REAL pass-inst-*.js files (same idiom as
+    tests/test_darkroom_bench.py's own `run`), then runs `script_src` with the slot functions,
+    `darkroomBenchOffers` and `FLEET` (instrument id -> manifest) in scope. `slot_src`/`bench_src`
+    default to the real, current sources — pass a mutated throwaway copy for a planted-defect run."""
+    slot_src = SLOT_SRC if slot_src is None else slot_src
+    bench_src = BENCH_SRC if bench_src is None else bench_src
+    driver = (
+        "\"use strict\";\n"
+        "var FLEET = {};\n"
+        "var window = { __PassInstrument: function (p) {\n"
+        "  if (p && p.instrument && p.instrument.name) { FLEET[p.instrument.name] = p.instrument.manifest; }\n"
+        "} };\n"
+        + FLEET_SRC + "\n"
+        + slot_src + "\n"
+        + bench_src + "\n"
+        + script_src + "\n"
+    )
+    SLOT_DRIVER_PATH.write_text(driver, encoding="utf-8")
+    proc = subprocess.run(["node", str(SLOT_DRIVER_PATH)], capture_output=True, text=True, timeout=120)
+    if proc.returncode != 0:
+        return {"error": (proc.stderr or "").strip()[-2000:]}
+    lines = (proc.stdout or "").strip().splitlines()
+    if not lines:
+        return {"error": "the driver said nothing"}
+    return json.loads(lines[-1])
+
+
+# WORLD_FOLD_NAMES: grepped once, by hand, against the real shipped pass-inst-*.js files (the same
+# spot-check idiom tests/test_darkroom_bench.py's own row 2 comment uses) — exactly `boxfold`,
+# `planet`, `tilt` and `waterline` declare both a real `surface` and WORLD among their own
+# `levels`; every other one of the fleet's 27 files declares neither, or one without the other.
+# This is the ground truth row 13 walks the real predicate against — a fact read off the shipped
+# files by inspection, never a copy the predicate itself reads back (darkroom.js's own
+# `isSlotSpendingInstrument` never sees this set; it re-derives its answer from each manifest
+# every call).
+WORLD_FOLD_NAMES = {"boxfold", "planet", "tilt", "waterline"}
+FIRST_VISIT_KIT = ("livemirror", "studio")
+NON_SPENDING_STRUCTURAL_STEP = "hero"  # any structural instrument outside WORLD_FOLD_NAMES, only
+                                        # to clear the grain rule's chain-length gate — irrelevant
+                                        # to the slot rows themselves, same role ["hero"] plays in
+                                        # tests/test_darkroom_bench.py's own row 4.
+
+SLOT_ENGAGE_SCRIPT = (
+    "var slot = darkroomSlotAfterEngage(darkroomSlotState(), 'boxfold', FLEET);\n"
+    "console.log(JSON.stringify({ spent: slot.spent, spentBy: slot.spentBy }));\n"
+)
+
+SLOT_BENCH_BASELINE_SCRIPT = (
+    "var offered = darkroomBenchOffers({}, [" + json.dumps(NON_SPENDING_STRUCTURAL_STEP) + "], "
+    "FLEET, darkroomSlotState());\n"
+    "console.log(JSON.stringify({ offered: offered }));\n"
+)
+
+SLOT_BENCH_SPENT_SCRIPT = (
+    "var slot = { spent: true, spentBy: 'boxfold' };\n"
+    "var offered = darkroomBenchOffers({}, [" + json.dumps(NON_SPENDING_STRUCTURAL_STEP) + "], "
+    "FLEET, slot);\n"
+    "console.log(JSON.stringify({ offered: offered }));\n"
+)
+
+SLOT_UNWIND_SCRIPT = (
+    "var slot = darkroomSlotAfterUnwind({ spent: true, spentBy: 'boxfold' }, 'boxfold');\n"
+    "var offered = darkroomBenchOffers({}, [" + json.dumps(NON_SPENDING_STRUCTURAL_STEP) + "], "
+    "FLEET, slot);\n"
+    "console.log(JSON.stringify({ spent: slot.spent, spentBy: slot.spentBy, offered: offered }));\n"
+)
+
+SLOT_PREDICATE_WALK_SCRIPT = (
+    "var out = {};\n"
+    "Object.keys(FLEET).forEach(function (id) { out[id] = isSlotSpendingInstrument(id, FLEET); });\n"
+    "console.log(JSON.stringify({ answers: out }));\n"
+)
+
+SLOT_FIRST_VISIT_SCRIPT = (
+    "var results = {};\n"
+    + json.dumps(FIRST_VISIT_KIT) + ".forEach(function (id) {\n"
+    "  var slot = darkroomSlotAfterEngage(darkroomSlotState(), id, FLEET);\n"
+    "  results[id] = slot.spent;\n"
+    "});\n"
+    "var recursionSlot = darkroomSlotAfterRecursion(darkroomSlotState(), true);\n"
+    "console.log(JSON.stringify({ firstVisit: results, recursionSpent: recursionSlot.spent }));\n"
+)
+
+
 def main():
     if not node_available():
         print("SKIP: node not available")
@@ -391,6 +534,84 @@ def main():
         print("row 9 (level: null never exchanged): shade untouched=%s, sibling CELL handle moved=%s"
               % (shade_untouched, teeth_moved))
 
+    # -------------------------------------------------------------- rows 10-14: the miracle slot
+    got10 = run_slot(SLOT_ENGAGE_SCRIPT)
+    row10_ok = False
+    if "error" in got10:
+        check("taste/slot-runs", False, got10["error"])
+        print("SLOT FAILED TO RUN: %s" % got10["error"])
+    else:
+        row10_ok = got10["spent"] is True and got10["spentBy"] == "boxfold"
+        check("taste/slot-engage-spends-once", row10_ok,
+              "fresh slot + engage('boxfold') -> spent=%r spentBy=%r" % (got10["spent"], got10["spentBy"]))
+        print("row 10 (engaging a fold spends the slot once): spent=%r spentBy=%r"
+              % (got10["spent"], got10["spentBy"]))
+
+    others = WORLD_FOLD_NAMES - {"boxfold"}
+    baseline = run_slot(SLOT_BENCH_BASELINE_SCRIPT)
+    spent = run_slot(SLOT_BENCH_SPENT_SCRIPT)
+    row11_ok = False
+    if "error" in baseline or "error" in spent:
+        check("taste/slot-bench-runs", False, "%r / %r" % (baseline, spent))
+        print("SLOT BENCH FAILED TO RUN: %r / %r" % (baseline, spent))
+    else:
+        # Sanity first: an unspent slot actually offers the other three folds, so the exclusion
+        # checked next is a real subtraction from the bench's list, never a vacuous one.
+        baseline_has_others = others <= set(baseline["offered"])
+        spent_excludes_others = not (others & set(spent.get("offered", others)))
+        spent_keeps_spender = "boxfold" in spent.get("offered", [])
+        row11_ok = baseline_has_others and spent_excludes_others and spent_keeps_spender
+        check("taste/slot-spent-excludes-other-spenders", row11_ok,
+              "baseline offered %r has %r=%s; spent offered %r excludes %r=%s, keeps spender=%s"
+              % (baseline["offered"], others, baseline_has_others, spent["offered"], others,
+                 spent_excludes_others, spent_keeps_spender))
+        print("row 11 (slot spent excludes every OTHER fold, absent not refused): %s" % row11_ok)
+
+    unwound = run_slot(SLOT_UNWIND_SCRIPT)
+    row12_ok = False
+    if "error" in unwound:
+        check("taste/slot-unwind-runs", False, unwound["error"])
+        print("SLOT UNWIND FAILED TO RUN: %s" % unwound["error"])
+    else:
+        row12_ok = (unwound["spent"] is False and unwound["spentBy"] is None
+                    and others <= set(unwound.get("offered", [])))
+        check("taste/slot-unwind-returns-slot", row12_ok,
+              "unwind('boxfold') -> spent=%r spentBy=%r, offered reincludes %r=%s"
+              % (unwound["spent"], unwound["spentBy"], others,
+                 others <= set(unwound.get("offered", []))))
+        print("row 12 (unwinding the spender returns the slot, the other fold reappears): %s"
+              % row12_ok)
+
+    walked = run_slot(SLOT_PREDICATE_WALK_SCRIPT)
+    row13_ok = False
+    if "error" in walked:
+        check("taste/slot-predicate-runs", False, walked["error"])
+        print("SLOT PREDICATE FAILED TO RUN: %s" % walked["error"])
+    else:
+        answers = walked["answers"]
+        mismatches = [iid for iid, ans in answers.items() if ans != (iid in WORLD_FOLD_NAMES)]
+        row13_ok = (not mismatches and len(answers) == FLEET_SIZE
+                    and all(answers.get(name) is True for name in WORLD_FOLD_NAMES))
+        check("taste/slot-predicate-matches-world-fold-answer-set", row13_ok,
+              "%d/%d instruments matched isWorldFold's own answer set, mismatches=%r"
+              % (len(answers) - len(mismatches), len(answers), mismatches))
+        print("row 13 (predicate answer set == isWorldFold's, walked over %d instruments): "
+              "mismatches=%r" % (len(answers), mismatches))
+
+    firstvisit = run_slot(SLOT_FIRST_VISIT_SCRIPT)
+    row14_ok = False
+    if "error" in firstvisit:
+        check("taste/slot-first-visit-runs", False, firstvisit["error"])
+        print("SLOT FIRST-VISIT FAILED TO RUN: %s" % firstvisit["error"])
+    else:
+        kit_free = all(firstvisit["firstVisit"][iid] is False for iid in FIRST_VISIT_KIT)
+        row14_ok = kit_free and firstvisit["recursionSpent"] is True
+        check("taste/slot-first-visit-kit-free-recursion-spends", row14_ok,
+              "engaging %r leaves the slot free (spent=%r), opening the recursion spends it (spent=%r)"
+              % (FIRST_VISIT_KIT, firstvisit["firstVisit"], firstvisit["recursionSpent"]))
+        print("row 14 (livemirror/studio never spend it alone; opening the recursion does): %s"
+              % row14_ok)
+
     # ------------------------------------------------------------ planted defects, throwaway only
     #
     # Each mutation is applied to a throwaway in-memory copy of RESIST_SRC/EASE_SRC; the file on
@@ -460,6 +681,31 @@ def main():
           % (d5.get("beforeShade"), d5.get("afterShade")))
     print("defect 5 (engage treats level: null as real): row 9 reds=%s" % d5_row9_red)
 
+    # Defect 6: strip the slot-spend filter out of darkroomBenchOffers, so a second slot-spending
+    # instrument is never withheld while the slot stands spent — row 11 reds.
+    defect6_src = plant(
+        BENCH_SRC,
+        "if (slotSpent && id !== slotSpentBy && isSlotSpendingInstrument(id, manifests)) return false;",
+        "if (false) return false;")
+    d6 = run_slot(SLOT_BENCH_SPENT_SCRIPT, bench_src=defect6_src)
+    d6_row11_red = "error" not in d6 and bool(others & set(d6.get("offered", [])))
+    check("defect/slot-filter-dropped reds row 11 (spent excludes other spenders)", d6_row11_red,
+          "spent offered=%r under the dropped filter" % d6)
+    print("defect 6 (bench's slot filter dropped): row 11 reds=%s" % d6_row11_red)
+
+    # Defect 7: make the recursion spend nothing — darkroomSlotAfterRecursion returns the slot
+    # unchanged on open instead of marking it spent. Row 14's own recursion-half reds: the slot
+    # still stands open after the recursion is opened.
+    defect7_src = plant(
+        SLOT_SRC,
+        'return { spent: true, spentBy: "recursion" };',
+        "return slot;")
+    d7 = run_slot(SLOT_FIRST_VISIT_SCRIPT, slot_src=defect7_src)
+    d7_row14_red = "error" not in d7 and d7.get("recursionSpent") is False
+    check("defect/recursion-spends-nothing reds row 14 (recursion half)", d7_row14_red,
+          "recursionSpent=%r under the dropped spend, slot stands open" % d7.get("recursionSpent"))
+    print("defect 7 (recursion spends nothing): row 14 reds=%s" % d7_row14_red)
+
     # Confirmation: with all defects removed (i.e. against the real, unmutated source), the same
     # rows stand green again — the exact same calls already made above, at the top of this run.
     clean_row2_ok = row2_ok
@@ -467,13 +713,19 @@ def main():
     clean_row5_ok = row5_ok if "error" not in up and "error" not in down else False
     clean_row6_ok, clean_row7_ok = row6_ok, row7_ok
     clean_row8_ok, clean_row9_ok = row8_ok, row9_ok
+    clean_row10_ok, clean_row11_ok = row10_ok, row11_ok
+    clean_row12_ok, clean_row13_ok, clean_row14_ok = row12_ok, row13_ok, row14_ok
     clears = (clean_row2_ok and clean_row3_ok and clean_row5_ok
-              and clean_row6_ok and clean_row7_ok and clean_row8_ok and clean_row9_ok)
+              and clean_row6_ok and clean_row7_ok and clean_row8_ok and clean_row9_ok
+              and clean_row10_ok and clean_row11_ok and clean_row12_ok and clean_row13_ok
+              and clean_row14_ok)
     check("defect/all clear once removed", clears,
-          "row2=%s row3=%s row5=%s row6=%s row7=%s row8=%s row9=%s"
+          "row2=%s row3=%s row5=%s row6=%s row7=%s row8=%s row9=%s row10=%s row11=%s row12=%s "
+          "row13=%s row14=%s"
           % (clean_row2_ok, clean_row3_ok, clean_row5_ok,
-             clean_row6_ok, clean_row7_ok, clean_row8_ok, clean_row9_ok))
-    print("all defects removed: rows 2, 3, 5, 6, 7, 8 and 9 green again=%s" % clears)
+             clean_row6_ok, clean_row7_ok, clean_row8_ok, clean_row9_ok,
+             clean_row10_ok, clean_row11_ok, clean_row12_ok, clean_row13_ok, clean_row14_ok))
+    print("all defects removed: rows 2, 3, 5-14 green again=%s" % clears)
 
     print()
     print_results()
