@@ -519,10 +519,11 @@ NODE_ROWS = [
     "EX-COMPOSED a road's own cooldown reads a pool of the walk's eight roads and never the mixed "
     "pool a visit's instruments also stand in, so the floor for a road just played stays fixed at "
     "1/9 however many instruments the same walk has cast",
-    "EX-COMPOSED a fold spends the crossing's one miracle the first time a walk plays it and never "
-    "again, freeing the slot for another fold in the same crossing",
-    "EX-COMPOSED red-on-bug · the miracle read off the static mark again: the same fold spends it "
-    "twice on one nine-step walk",
+    "EX-COMPOSED a fold spends the whole walk's one miracle the first time it plays, and no fold "
+    "after it — the same one or a different one — ever plays the miracle again on that walk",
+    "EX-COMPOSED red-on-bug · the miracle counted by the instrument's own name again: two "
+    "different folds each spend the walk's one miracle once, instead of the walk spending it once "
+    "total",
     "EX-COMPOSED red-on-bug · one shared cooling pool given back to roads and letters: a road's own "
     "floor divides by the mixed list again",
 ]
@@ -2856,29 +2857,25 @@ const HARD = {
 
 // ---- SHELF 6'S ONE SLOT, READ OFF THE WALK RATHER THAN THE MANIFEST (naряд S-18) --------------
 // His word of 2026-08-26 20:17: a miracle is a wow, a concept, it is subjective, and repeated it
-// stops being one. `spendsTheMiracle` no longer answers the same way for the same instrument on
-// every walk that ever casts it; it answers by what THIS walk has already played. The row watches a
-// synthetic nine-step walk of ONE edge, threading `walkMiracles` forward exactly as
-// `01a-pass.js`'s `passWalkMiracles` does: the fold each step actually voiced `"miracle"`, most
-// recent first.
+// stops being one — and his word of 2026-09-04: the strong move is a CLASS, not one instrument's
+// name, so `spendsTheMiracle` answers by whether THIS WALK has voiced the miracle at all, never by
+// whether this particular instrument did. The row watches a synthetic nine-step walk of ONE edge,
+// threading `walkMiracles` forward exactly as `01a-pass.js`'s `passWalkMiracles` does: the fold
+// each step actually voiced `"miracle"`, most recent first.
 //
-// WHICH EDGE, AND WHY IT HAD TO CHANGE (2026-09-01). This read `oneSlot.levels`'s own pair at a
-// middle, reused because THAT row's law needed a pair putting two world-declaring instruments
-// within reach of one cast. Between then and now the cast became a joint bundle planner (P1.2,
-// 431a10c), which enumerates whole `{ground, travel, arrival, colour}` bundles instead of filling
-// slots one at a time — and over that pair's own bundle set exactly ONE world fold, «planet», is
-// ever a candidate at all. So the walk it drew could only ever show the first half of the law: the
-// fold spends the slot once and never again. The second half — the freed slot taken by ANOTHER fold
-// in the same crossing — had nothing on that pair to be taken by, and the row read silence as a
-// breach when what it had actually run out of was a second candidate.
-//
-// The edge below is named for the property the law needs and the old one no longer has: TWO folds
-// stand among the bundles this crossing considers. `foldsWithinReach` reads that off the composer's
-// own published bundle ledger (`diagnostics.bundles.considered`, the planner's own record of what
-// it weighed) rather than asserting it in prose, so the day this pair carries one fold again the
-// row says exactly that instead of quietly going vacuous. What it shows: step 1 voices «planet»,
-// step 2 hands the freed slot to «tilt», and steps 3 to 9 — both spent — voice no miracle at all,
-// which is the law's own «and never again» made visible on the same edge.
+// WHICH EDGE, AND WHY IT HAD TO CHANGE (2026-09-01, 2026-09-02). This read `oneSlot.levels`'s own
+// pair at a middle, reused because THAT row's law needed a pair putting two world-declaring
+// instruments within reach of one cast. Between then and now the cast became a joint bundle planner
+// (P1.2, 431a10c), which enumerates whole `{ground, travel, arrival, colour}` bundles instead of
+// filling slots one at a time, and the edge moved again under `placeTheStack`'s own ground-swap
+// (2026-09-02) — both times chasing the same property: TWO folds standing among the bundles the
+// crossing considers, so the RED-ON-BUG plant below has a second, different fold free to take a
+// private miracle of its own under the bug it plants. `foldsWithinReach` reads that off the
+// composer's own published bundle ledger (`diagnostics.bundles.considered`) rather than asserting it
+// in prose, so the day this pair carries one fold again the row says exactly that instead of quietly
+// going vacuous. What the SHIPPED reading shows: step 1 voices a fold the miracle, and steps 2
+// through 9 — the walk's own history no longer empty — voice no miracle at all, whichever fold they
+// go on to cast.
 {
   // THE EDGE MOVED AGAIN, 2026-09-02, and for the same KIND of reason it moved on 2026-09-01: what
   // the crossing casts changed under it. `placeTheStack` now refuses a plan whose ground would be
@@ -2921,10 +2918,14 @@ const HARD = {
   // count over 1 anywhere names the repeat.
   const miracleVoicedCount = {};
   steps.forEach((s) => { if (s.miracle) miracleVoicedCount[s.miracle] = (miracleVoicedCount[s.miracle] || 0) + 1; });
-  // THE COUNT THE RUN PRINTS FOR ITSELF, and it is the number the row is judged on: how many times
-  // over these nine steps the strongest strong move played AS THE MIRACLE. Rarity is the whole law
-  // here, so what the run has to hand back is a count and not a verdict — the row reads it against
-  // one and prints it either way, which is what makes the planted run below legible.
+  // THE COUNT THE RUN PRINTS FOR ITSELF, and it is the number the row is judged on. The law's own
+  // subject is the WALK, not any one instrument's name — «сколько раз сильный ход сыграл чудом» —
+  // so what the row reads against one is the TOTAL number of times any fold voiced the miracle over
+  // these nine steps, summed across every distinct fold, never the largest count any single name
+  // reached (that let two different folds each spend their own "first time" on one walk and still
+  // read as zero repeats). `mostVoiced` and `repeats` stay — the names are useful in the message —
+  // but neither judges the row any more.
+  const totalMiracles = steps.filter((s) => s.miracle).length;
   const mostVoiced = Object.keys(miracleVoicedCount)
     .reduce((n, id) => Math.max(n, miracleVoicedCount[id]), 0);
   out.miracleRarity = {
@@ -2932,6 +2933,7 @@ const HARD = {
     foldsWithinReach: foldsWithinReach.slice().sort(),
     distinctFolds: Object.keys(miracleVoicedCount).sort(),
     voicedCount: miracleVoicedCount,
+    totalMiracles: totalMiracles,
     mostVoiced: mostVoiced,
     repeats: Object.keys(miracleVoicedCount).filter((id) => miracleVoicedCount[id] > 1)
   };
@@ -3601,60 +3603,68 @@ else:
               + (f"; crossings carrying two: {stacked_roles}" if stacked_roles else "")
               + (f"; the two named pairs: {doors}" if doors else ""))
 
-        # --- row 5e · the miracle is a reading of the walk, not a mark an effect keeps for life ---
-        # Naряд S-18 (2026-08-27), his word of 2026-08-26 20:17: a miracle is a wow, a concept, it
-        # is subjective, and repeated it stops being one. Nine steps of the SAME edge, the walk's
-        # own `walkMiracles` threaded forward exactly as `01a-pass.js` would thread it: step 1 casts
-        # a fold and voices it the miracle; every step after names that same fold in its own walk
-        # history, so the slot it no longer spends is free, and this collection's own second
-        # world-declaring instrument (excluded from standing beside the first by the very levels-law
-        # row just above) takes it instead — a second fold, once, and never again either.
+        # --- row 5e · the miracle is a reading of the WALK, never of one instrument's own name ----
+        # Naряд S-18, his word of 2026-08-26 20:17: a miracle is a wow, a concept, it is subjective,
+        # and repeated it stops being one — and his word of 2026-09-04: the strong move is a CLASS,
+        # not one instrument's name, so the budget is one miracle per walk, full stop, never one
+        # miracle per distinct fold that happens to play on it. Nine steps of the SAME edge, the
+        # walk's own `walkMiracles` threaded forward exactly as `01a-pass.js` would thread it: step 1
+        # casts a fold and voices it the miracle; from then on `walkMiracles` is non-empty, so no
+        # step after it — whichever fold it casts, the same one or a different one — ever voices the
+        # miracle again; it plays as an ordinary letter instead.
         mr = got["miracleRarity"]
         rr_bad = [s for s in mr["steps"] if s["declined"]]
         rr_first = mr["steps"][0]["miracle"] if mr["steps"] else None
-        rr_second = mr["steps"][1]["miracle"] if len(mr["steps"]) > 1 else None
+        rr_after = [s["miracle"] for s in mr["steps"][1:] if s["miracle"]]
         rr_reach = mr.get("foldsWithinReach") or []
-        # THE RUN PRINTS THE COUNT ITSELF and the row reads it against one. `mostVoiced` is the
-        # largest number of times any one strong move played the miracle over these nine steps —
-        # the whole of what rarity means here said as a number, so the row can be read without
-        # taking its own prose on trust and the planted run below moves a number rather than a word.
+        # THE RUN PRINTS THE COUNT ITSELF and the row reads it against one. `totalMiracles` is the
+        # TOTAL number of times any fold at all played the miracle over these nine steps — the whole
+        # of what rarity means here said as a number, so the row can be read without taking its own
+        # prose on trust and the planted run below moves a number rather than a word. The per-name
+        # breakdown (`mostVoiced`, the per-fold counts) rides along in the message only — it no
+        # longer judges the row, because a walk where two DIFFERENT folds each played the miracle
+        # once used to read as zero repeats and pass, which is the gap this row now closes.
         rr_counts = ", ".join(f"«{k}» {v}×" for k, v in sorted(mr["voicedCount"].items())) or "none"
         check(ROW_MIRACLE_RARITY,
               not rr_bad and len(mr["steps"]) == 9 and len(rr_reach) >= 2
-              and rr_first is not None
-              and rr_second is not None and rr_second != rr_first
-              and mr["mostVoiced"] <= 1 and not mr["repeats"],
-              f"nine steps of one edge, walkMiracles threaded forward. THE STRONG MOVE PLAYED THE "
-              f"MIRACLE AT MOST {mr['mostVoiced']} TIME(S) OVER THE NINE STEPS ({rr_counts}), "
-              f"against the law's own one. The crossing's own bundle "
-              f"ledger puts {len(rr_reach)} fold(s) within reach of it ({', '.join(rr_reach) or 'none'}), "
-              f"which is what a freed slot can be handed on TO; step 1 voices «{rr_first}» the "
-              f"miracle; with «{rr_first}» now in the walk's own history step 2 no longer voices it "
-              f"and voices «{rr_second}» instead — a different fold takes the freed slot in the "
-              f"same crossing; over all nine steps {len(mr['distinctFolds'])} distinct fold(s) were "
-              f"ever the miracle ({', '.join(mr['distinctFolds'])}) and none twice: {mr['repeats'] or 'none'}"
+              and rr_first is not None and not rr_after
+              and mr["totalMiracles"] <= 1,
+              f"nine steps of one edge, walkMiracles threaded forward. THE WALK PLAYED THE MIRACLE "
+              f"A TOTAL OF {mr['totalMiracles']} TIME(S) OVER THE NINE STEPS ({rr_counts}), against "
+              f"the law's own one. The crossing's own bundle ledger puts {len(rr_reach)} fold(s) "
+              f"within reach of it ({', '.join(rr_reach) or 'none'}); step 1 voices «{rr_first}» the "
+              f"miracle; with the walk's own history no longer empty, none of steps 2 through 9 "
+              f"voice a miracle at all — {rr_after or 'none'} did — whichever fold they cast plays "
+              f"as an ordinary letter instead"
               + (f"; steps that declined: {rr_bad}" if rr_bad else ""))
 
-        # --- row 5e red-on-bug · the static mark restored, and the same walk spends twice --------
-        # THE PLANT IS THE DEFECT ITSELF, put back in one line: `spendsTheMiracle` reading the
-        # instrument's own standing declaration and nothing about this walk — which is how it read
-        # before naряд S-18 moved the count onto the walk's own history. On the same nine steps of
-        # the same edge, the same fold is then free to be the miracle again, and the count the run
-        # prints for itself climbs past one. What this row proves is that the row above is held up
-        # by the reading and not by the edge: an edge whose second step simply never casts a fold
-        # would pass the row above with the reading struck out, and this shows it does not.
-        _rr_red = node_run(plants=[["return isWorldFold(iid) && walkMiracles.indexOf(iid) < 0;",
-                                    "return isWorldFold(iid);"]], sweep=1)
+        # --- row 5e red-on-bug · counted by the instrument's own name again, not by the walk ------
+        # THE PLANT IS THIS SESSION'S OWN DEFECT, put back in one line: `spendsTheMiracle` asking
+        # whether THIS instrument already played (`walkMiracles.indexOf(iid) < 0`) rather than
+        # whether the walk played the miracle at all (`walkMiracles.length === 0`) — which is how it
+        # read before this naряд's second pass, and which still holds a row green because reading by
+        # name gives every distinct fold its own private "first time" on the same walk. On the same
+        # nine steps of the same edge that gives two, not one: this collection's own second
+        # world-declaring instrument gets a private miracle of its own the moment the first one has
+        # already spent its name's slot. This is a different defect from the one naряд S-18's first
+        # pass (2026-08-27) closed — reading no walk history at all — which would have climbed past
+        # two; this plant stays at exactly two, confirming the row reddens on the walk-vs-name
+        # question and not on the older, already-closed one.
+        _rr_red = node_run(plants=[["return isWorldFold(iid) && walkMiracles.length === 0;",
+                                    "return isWorldFold(iid) && walkMiracles.indexOf(iid) < 0;"]],
+                           sweep=1)
         _rr_red_mr = (_rr_red.get("miracleRarity") or {}) if isinstance(_rr_red, dict) else {}
         _rr_red_counts = ", ".join(f"«{k}» {v}×"
                                    for k, v in sorted((_rr_red_mr.get("voicedCount") or {}).items()))
         check(ROW_MIRACLE_RARITY_RED,
-              bool(_rr_red_mr) and _rr_red_mr.get("mostVoiced", 0) > 1,
-              f"with the walk's own history struck out of `spendsTheMiracle` and the standing "
-              f"declaration read alone, the same nine steps of the same edge give "
-              f"{_rr_red_mr.get('mostVoiced')} play(s) of one strong move as the miracle "
-              f"({_rr_red_counts or 'none'}) against the shipped run's {mr['mostVoiced']} — so the "
-              f"row above is held up by the reading of the walk and by nothing else"
+              bool(_rr_red_mr) and _rr_red_mr.get("totalMiracles", 0) == 2,
+              f"with `spendsTheMiracle` counted by the instrument's own name again "
+              f"(`walkMiracles.indexOf(iid) < 0`) rather than by the walk "
+              f"(`walkMiracles.length === 0`), the same nine steps of the same edge give "
+              f"{_rr_red_mr.get('totalMiracles')} total play(s) of the miracle "
+              f"({_rr_red_counts or 'none'}) against the shipped run's {mr['totalMiracles']} — two "
+              f"distinct folds, each once, still reddens the row above even though neither name "
+              f"repeats — so the row is held up by the reading of the walk and by nothing else"
               + (f"; the planted run failed: {_rr_red.get('error')}"
                  if isinstance(_rr_red, dict) and _rr_red.get("error") else ""))
 
