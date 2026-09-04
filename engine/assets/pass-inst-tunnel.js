@@ -396,9 +396,10 @@
        declares this join a HANDOVER ZONE, a real cross-dissolve and not an antialiasing retouch, and
        the host answers with one part in eight of the one ring the join is spent on — 0.125, the same
        share planet's own wrap-seam now rounds its edge with. `RING_JOIN_FALLBACK` is only where this
-       file stands before any host has answered, and it keeps the number this port shipped with
-       — 0.10 — so a reader who never sees a host-driven frame still finds the join softened. */
-    var RING_JOIN_FALLBACK = 0.10;
+       file stands before any host has answered, and S-99 (seat's word of 2026-09-04) moved it to
+       that same 0.125 rather than leaving the port's own 0.10 beside it — the frames' own difference
+       (0.21 of 255) was inside the seam threshold and nobody had said 0.10 was changing. */
+    var RING_JOIN_FALLBACK = 0.125;
 
     /* THE CROP'S OWN TWO SIDES, and whose numbers they are (tunnel.js:143). The module carries two
        rectangles typed for two named photographs; his 19:13 word, lifted to the class at 19:21,
