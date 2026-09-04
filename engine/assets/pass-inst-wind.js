@@ -131,6 +131,7 @@
       // flutter: the fine tremor the clock carries, already through the same envelope.
       "uniform vec4 uJudge;",
       "uniform float uMask;",
+      "uniform float uSeamPts;",     // §8's `seams` block: the gust front's hairline, in points of the drawing buffer
       // HOW FAR THE AIR MAY PUSH A ROW AT THE FULLEST GUST, in frame widths, and how much of that
       // push runs ALONG the row rather than across it. The first is under a twelfth of the frame —
       // a row leans, it never leaves its own place — and the second is a third, which is what bends
@@ -183,7 +184,7 @@
       // own and no step either.
       "  float alongS = dot(src - 0.5, dir) + 0.5;",
       "  float band = max(length(vec2(dir.x / max(uRes.x, 1.0), dir.y / max(uRes.y, 1.0))), 1e-6);",
-      "  float cov = clamp(0.5 + (front - alongS) / band, 0.0, 1.0);",
+      "  float cov = clamp(0.5 + (front - alongS) / (band * uSeamPts), 0.0, 1.0);",
       "  vec3 colA = texture2D(uA, into(src, uFitA)).rgb;",
       "  vec3 colB = texture2D(uB, into(src, uFitB)).rgb;",
       "  vec3 col = mix(colA, colB, cov);",
@@ -341,6 +342,13 @@
         mask: clamp(typeof st.mask === "number" ? st.mask : 0, 0, 1),
         gustAsked: clamp(gust, 0, 1),
         grid: gridOf(st),
+        // THE GUST FRONT'S OWN HAIRLINE (§8's `seams` block, pass-layer.js), off the host's own
+        // `seams` reading. Only the host knows what every instrument declaring a hairline retouch
+        // is holding its own crease to, so it answers once and this file carries the number rather
+        // than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet — the same one buffer point the front always read before this seam was
+        // connected.
+        seamPts: (st.seam && typeof st.seam.line === "number") ? st.seam.line : 1.0,
       };
       return v;
     }
@@ -629,6 +637,7 @@
           { name: "uGust", type: "vec4", source: "frame:gust" },
           { name: "uJudge", type: "vec4", source: "frame:judge" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uSeamPts", type: "float", source: "frame:seamPts" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -711,6 +720,11 @@
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
           // buffer the host is about to bind as `uRes` rather than on the CSS frame around it.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE GUST FRONT'S OWN HAIRLINE, off the host's own `seams` reading (§8's `seams` block).
+          // Only the host knows what every instrument declaring a hairline retouch is holding its
+          // own crease to, so it answers once and this file carries the number rather than
+          // choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. `request` is
         // the gust length the score asked for and `applied` the one this grid could keep a whole

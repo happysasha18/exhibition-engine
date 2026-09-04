@@ -147,6 +147,10 @@
       // The judges' channel: the cut map as colour.
       "uniform float uMask;",
       "uniform float uPresence;",  // the entry-door contract's reserved dry
+      // §8's `seams` block: the three cuts' own hairline overlap, in points of the drawing buffer
+      "uniform float uSeamLine;",
+      "uniform float uSeamRing;",
+      "uniform float uSeamTile;",
       // ---- the module's own numbers, carried digit for digit -------------------------------------
       // HOW MANY COLOURS MAKE THE BANDS CUT (grid-colour.js:109, BAND_COUNT). Five, because that is
       // what a work's measured palette carries.
@@ -226,11 +230,11 @@
       // ---- STRIPES: strips stacked across the picture, each walking its own line ------------------
       "  if (kind < 0.5) {",
       "    float a = dot(p, U);",
-      "    float areaMax = (s + 2.0) * spanV;",
+      "    float areaMax = (s + 2.0 * uSeamLine) * spanV;",
       "    float band = diag + s;",
       "    for (int i = 1; i >= 0; i--) {",
       "      float k = floor(a / s) + float(i);",
-      "      float a0 = k * s - 1.0, a1 = (k + 1.0) * s + 1.0;",
+      "      float a0 = k * s - uSeamLine, a1 = (k + 1.0) * s + uSeamLine;",
       "      if (a < a0 || a > a1) continue;",
       "      float dirn = (mod(k, 2.0) < 0.5 ? 1.0 : -1.0) * sgn;",
       "      float u = localAt(dial, ovl(a0, a1, -spanU * 0.5, spanU * 0.5) * spanV, areaMax, stag);",
@@ -262,7 +266,7 @@
       "    for (int i = 0; i < 98; i++) {",
       "      float k = float(i);",
       "      if (k * stp >= rMax + stp) break;",
-      "      float r0 = k * stp, r1 = (k + 1.0) * stp + 1.0, rm = (r0 + r1) * 0.5;",
+      "      float r0 = k * stp, r1 = (k + 1.0) * stp + uSeamRing, rm = (r0 + r1) * 0.5;",
       "      float dirn = (mod(k, 2.0) < 0.5 ? -1.0 : 1.0) * sgn;",
       "      if (r0 <= 0.0) dirn = -1.0;",
       "      float reach = dirn < 0.0 ? rm : max(0.0, rm * ((halfD + stp) / max(r0, 1e-6) - 1.0));",
@@ -285,26 +289,26 @@
       // walked.
       "  if (kind < 2.5) {",
       "    float a = dot(p, U), b = dot(p, V);",
-      "    float areaMax = (s + 2.0) * (s + 2.0);",
+      "    float areaMax = (s + 2.0 * uSeamTile) * (s + 2.0 * uSeamTile);",
       "    for (int ik = 1; ik >= 0; ik--) {",
       "      float k = floor(a / s) + float(ik);",
-      "      float a0 = k * s - 1.0, a1 = (k + 1.0) * s + 1.0;",
+      "      float a0 = k * s - uSeamTile, a1 = (k + 1.0) * s + uSeamTile;",
       "      if (a < a0 || a > a1) continue;",
       "      float ou = ovl(a0, a1, -spanU * 0.5, spanU * 0.5);",
       "      if (ou <= 0.0) continue;",
       "      bool got = false; float bj = -1e9; vec2 bq = p;",
-      "      float uInt = localAt(dial, ou * (s + 2.0), areaMax, stag);",
+      "      float uInt = localAt(dial, ou * (s + 2.0 * uSeamTile), areaMax, stag);",
       "      for (int sg = 0; sg < 2; sg++) {",
       "        float dsign = sg == 0 ? 1.0 : -1.0;",
       "        float off = dsign * R * uInt;",
       "        float bb = b - off;",
       "        for (int ij = 1; ij >= 0; ij--) {",
       "          float j = floor(bb / s) + float(ij);",
-      "          float b0 = j * s - 1.0, b1 = (j + 1.0) * s + 1.0;",
+      "          float b0 = j * s - uSeamTile, b1 = (j + 1.0) * s + uSeamTile;",
       "          if (bb < b0 || bb > b1) continue;",
       "          float dirn = (mod(k + j, 2.0) < 0.5 ? 1.0 : -1.0) * sgn;",
       "          if (abs(dirn - dsign) > 0.5) continue;",
-      "          if (ovl(b0, b1, -spanV * 0.5, spanV * 0.5) < s + 2.0 - 0.001) continue;",
+      "          if (ovl(b0, b1, -spanV * 0.5, spanV * 0.5) < s + 2.0 * uSeamTile - 0.001) continue;",
       "          vec2 qq = p - off * V;",
       "          if (abs(qq.x) > half2.x || abs(qq.y) > half2.y) continue;",
       "          if (j <= bj) continue;",
@@ -315,9 +319,9 @@
       "      for (int e = 0; e < 6; e++) {",
       "        float jb = e < 3 ? floor((-spanV * 0.5) / s) : floor((spanV * 0.5) / s);",
       "        float j = jb + float(e < 3 ? e - 1 : e - 4);",
-      "        float b0 = j * s - 1.0, b1 = (j + 1.0) * s + 1.0;",
+      "        float b0 = j * s - uSeamTile, b1 = (j + 1.0) * s + uSeamTile;",
       "        float ov = ovl(b0, b1, -spanV * 0.5, spanV * 0.5);",
-      "        if (ov <= 0.0 || ov >= s + 2.0 - 0.001) continue;",
+      "        if (ov <= 0.0 || ov >= s + 2.0 * uSeamTile - 0.001) continue;",
       "        float dirn = (mod(k + j, 2.0) < 0.5 ? 1.0 : -1.0) * sgn;",
       "        float off = dirn * R * localAt(dial, ou * ov, areaMax, stag);",
       "        float bb = b - off;",
@@ -706,6 +710,16 @@
         satA: satA, satB: satB, lightA: lightA, lightB: lightB,
         reachA: LA.reach, reachB: LB.reach, radiusA: LA.radius, radiusB: LB.radius,
         stepA: LA.step, stepB: LB.step,
+        // THE THREE CUTS' OWN HAIRLINE OVERLAP (§8's `seams` block, pass-layer.js), off the host's
+        // own `seams` reading. Only the host knows what every instrument declaring a hairline
+        // retouch is holding its own crease to, so it answers once and this file carries the number
+        // rather than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet — the same one buffer pixel the strip, ring and tile loops always grew by
+        // before this seam was connected. `p` above is already measured in buffer pixels
+        // (`vUv * uRes - uRes * 0.5`), so no further scaling is needed.
+        seamLine: num(st.seam && st.seam.line, 1.0),
+        seamRing: num(st.seam && st.seam.ring, 1.0),
+        seamTile: num(st.seam && st.seam.tile, 1.0),
         // HOW MUCH FRAME THE LAST PIECE HAS LEFT TO CROSS at the far end of its own line, in points
         // of this grid. It is negative or nothing where the piece is out, and positive where the
         // line is too short to carry it out at all — which is the one door this instrument's own
@@ -1101,6 +1115,9 @@
           { name: "uVoiceA", type: "vec2", source: "frame:voiceA" },
           { name: "uVoiceB", type: "vec2", source: "frame:voiceB" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uSeamLine", type: "float", source: "frame:seamLine" },
+          { name: "uSeamRing", type: "float", source: "frame:seamRing" },
+          { name: "uSeamTile", type: "float", source: "frame:seamTile" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -1210,6 +1227,11 @@
           // seating rather than two guesses at one.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
           fitA: st.fitA, fitB: st.fitB,
+          // THE THREE CUTS' OWN HAIRLINE OVERLAP, off the host's own `seams` reading (§8's `seams`
+          // block). Only the host knows what every instrument declaring a hairline retouch is
+          // holding its own crease to, so it answers once and this file carries the number rather
+          // than choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. `request` is
         // the travel a door asks of the leaving layer's last piece — all of it, and no more — and

@@ -134,6 +134,7 @@
       // ax, ay: which way the wind carries them. run: how far it has carried them.
       "uniform vec4 uAir;",
       "uniform float uMask;",
+      "uniform float uSeamPts;",     // §8's `seams` block: the isoline's hairline, in points of the drawing buffer
       // HOW THIN A SHEET IS WHERE IT IS THINNEST. Not nothing, and that is the whole of why the
       // doors are exact: a sheet with a hole in it would let the far work through at the door.
       "const float FLOOR = 0.22;",
@@ -194,7 +195,7 @@
       // boundary carries no fade of its own and no step either.
       "  vec2 gp = vec2(gd.x / max(uRes.x, 1.0) * aspect, gd.y / max(uRes.y, 1.0));",
       "  float band = max(length(gp), 1e-6);",
-      "  float cov = clamp(0.5 + (tB - tA) / band, 0.0, 1.0);",
+      "  float cov = clamp(0.5 + (tB - tA) / (band * uSeamPts), 0.0, 1.0);",
       // HOW DEEP EACH WORK LOOKS. Its own thickness spends the level of the chain it is read at, so
       // a work with nothing in front of it is read at the sharpest copy — its file, to the point.
       "  vec3 colA = texture2D(uA, into(uv, uFitA), DEEPEST * clamp(tA, 0.0, 1.0)).rgb;",
@@ -343,6 +344,13 @@
         floor: FLOOR, coverCrop: 1,
         mask: clamp(typeof st.mask === "number" ? st.mask : 0, 0, 1),
         grid: gridOf(st),
+        // THE ISOLINE'S OWN HAIRLINE (§8's `seams` block, pass-layer.js), off the host's own
+        // `seams` reading. Only the host knows what every instrument declaring a hairline retouch
+        // is holding its own crease to, so it answers once and this file carries the number rather
+        // than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet — the same one point of the drawing buffer the crossover always read before
+        // this seam was connected.
+        seamPts: (st.seam && typeof st.seam.isoline === "number") ? st.seam.isoline : 1.0,
       };
       var read = doorReadOf(v, st);
       v.doorGrid = read ? read.grid : null;
@@ -590,6 +598,7 @@
           { name: "uStack", type: "vec4", source: "frame:stack" },
           { name: "uAir", type: "vec4", source: "frame:air" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uSeamPts", type: "float", source: "frame:seamPts" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -689,6 +698,11 @@
           // THE GRID THE SHADER WILL SAMPLE ON, carried into the pose so the door is read on the
           // buffer the host is about to bind as `uRes` rather than on the CSS frame around it.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE ISOLINE'S OWN HAIRLINE, off the host's own `seams` reading (§8's `seams` block).
+          // Only the host knows what every instrument declaring a hairline retouch is holding its
+          // own crease to, so it answers once and this file carries the number rather than
+          // choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. Nothing is
         // ever walked back here — no grid decides this instrument's doors — so the request and the

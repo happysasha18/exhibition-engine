@@ -151,6 +151,7 @@
       "uniform vec4 uCrease;",
       // the judges' handle: the panel map as colour
       "uniform float uMask;",
+      "uniform float uSeamPts;",     // §8's `seams` block: the panel's hairline, in points of the drawing buffer
       // THE WORLD THE SHEET OPENS INTO: how far it has opened, the plane's own attitude to the eye
       // in radians, the parquet's own period as a share of the sheet, and the turn of its lattice.
       // Every one of the four is nothing at nothing, which is what makes the door exact.
@@ -238,7 +239,7 @@
       // ONE WORK'S SHEET, WHOLE. Everything below is the module's own render() read backwards.
       "vec3 sheet(sampler2D tex, vec4 fit, out vec3 judge){",
       "  float aspect = uRes.x / max(uRes.y, 1.0);",
-      "  float pt = 1.0 / max(uRes.y, 1.0);",
+      "  float pt = uSeamPts / max(uRes.y, 1.0);",
       // the sheet, cover-fitted over the frame: the seating the host applied, read backwards
       "  vec2 SZ = vec2(aspect / max(fit.x, 1e-4), 1.0 / max(fit.y, 1e-4));",
       "  float four = step(0.5, uForm.z);",
@@ -744,6 +745,13 @@
         // read on the diagnostic surface, bound to no uniform: what the hand came to
         fold: fold, cross: cross, aY: aY, aX: aX, four: four ? 1 : 0, flatDeg: flatDeg,
         mask: clamp(st.mask, 0, 1),
+        // THE PANEL'S OWN HAIRLINE (§8's `seams` block, pass-layer.js), off the host's own `seams`
+        // reading. Only the host knows what every instrument declaring a hairline retouch is
+        // holding its own crease to, so it answers once and this file carries the number rather
+        // than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet — the same point of the drawing buffer `pt` always read before this seam
+        // was connected.
+        seamPts: (st.seam && typeof st.seam.panel === "number") ? st.seam.panel : 1.0,
       };
     }
 
@@ -1261,6 +1269,7 @@
           { name: "uMask", type: "float", source: "handle:mask" },
           { name: "uField", type: "vec4", source: "frame:field" },
           { name: "uParquetPhase", type: "float", source: "frame:parquetPhase" },
+          { name: "uSeamPts", type: "float", source: "frame:seamPts" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -1351,6 +1360,10 @@
           // host settles it from the device ratio and its own resolution step, so it moves while a
           // pass plays and each door is read on the grid standing at that door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE PANEL'S OWN HAIRLINE, off the host's own `seams` reading (§8's `seams` block). Only
+          // the host knows what every instrument declaring a hairline retouch is holding its own
+          // crease to, so it answers once and this file carries the number rather than choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00

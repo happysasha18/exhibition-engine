@@ -98,6 +98,7 @@
       "uniform float uOff;",        // counter-motion, frame heights
       "uniform float uGuard;",      // the contact shadow's gate: nothing at either door
       "uniform float uMask;",
+      "uniform float uSeamPts;",    // §8's `seams` block: the strip cut's hairline, in points of the drawing buffer
       "uniform float uPresence;",  // the entry-door contract's reserved dry       // the judges' channel: the coverage in place of the picture
       "const float PI = 3.14159265359;",
 
@@ -119,7 +120,7 @@
       // p is measured in frame HEIGHTS on both axes, so a period means the same thing whichever
       // way the grating lies and one pixel is the same length whichever way it is measured.
       "  vec2 p = vec2(uv.x * uAspect, uv.y);",
-      "  float h = 1.0 / max(uRes.y, 1.0);",
+      "  float h = uSeamPts / max(uRes.y, 1.0);",
 
       "  float eA = dot(uKA, p) + uPhase.x;",      // the two fields, in cycles
       "  float eB = dot(uKB, p) + uPhase.y;",
@@ -416,6 +417,13 @@
         off: travel * clamp(num(st.travel, 1), 0, 1),
         // the shadow's gate: nothing at either door, where one work stands whole
         guard: clamp(num(st.shade, 1), 0, 1) * smoothstep(0, 0.09, d) * smoothstep(1, 0.91, d),
+        // THE STRIP CUT'S OWN HAIRLINE (§8's `seams` block, pass-layer.js), off the host's own
+        // `seams` reading. Only the host knows what every instrument declaring a hairline retouch
+        // is holding its own crease to, so it answers once and this file carries the number rather
+        // than choosing it; `1.0` is only the value this file falls back to where no host has
+        // answered yet (manifest registration, before any frame has been asked for) — the same
+        // point of the drawing buffer the shader always read before this seam was connected.
+        seamPts: num(st.seam && st.seam.line, 1.0),
       };
     }
 
@@ -779,6 +787,7 @@
           { name: "uGuard", type: "float", source: "frame:guard" },
           { name: "uSeed", type: "float", source: "handle:seed" },
           { name: "uMask", type: "float", source: "handle:mask" },
+          { name: "uSeamPts", type: "float", source: "frame:seamPts" },
         ],
       }],
       // The instrument allocates nothing of its own: it spends the two source-texture slots the host
@@ -864,6 +873,11 @@
           // host settles it from the device ratio and its own resolution step, so it moves while a
           // pass plays and each door is read on the grid standing at that door's own instant.
           bufWidth: st.viewport.bufferW, bufHeight: st.viewport.bufferH,
+          // THE STRIP CUT'S OWN HAIRLINE, off the host's own `seams` reading (§8's `seams` block).
+          // Only the host knows what every instrument declaring a hairline retouch is holding its
+          // own crease to, so it answers once and this file carries the number rather than
+          // choosing it.
+          seam: st.seams,
         };
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading
         // is taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00
