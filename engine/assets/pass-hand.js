@@ -262,6 +262,32 @@
     return { mix: lean.value, tilt: attend.y * tiltAmp };
   }
 
+  // ---- the hand as clock (Requirement 40 criteria 1, 9, 10 — unit U5) ----------------------------
+  // A SECOND, SEPARATE ROAD FROM THE CHART LAW ABOVE, never wired to it and never called from any
+  // listener in this file: `lean`'s R/8 ceiling (Requirement 38 c1) is the shipped walk's own drag
+  // and stands exactly as U3 left it. This is a pure, stateless response curve — hand position in,
+  // progress out — that a caller (a conformance row today; the darkroom's own drive tomorrow) uses
+  // to drive `unfold`'s progress pin (`pass-layer.js` `configure({progressPin})`) across its FULL
+  // declared range. Nothing here reaches into `pass-layer.js` or any `pass-inst-*.js`; the curve is
+  // read off and written into those files only by whatever calls `clockCurve`.
+  //
+  // THE CURVE IS THIS FILE'S OWN, drawn from criterion 10's own general law — "perception is
+  // logarithmic in many dimensions" — never from `unfold`'s own internal fold response, which this
+  // file never reads: there is no such reading anywhere in this file, on purpose, since the room's
+  // own profile (criterion 9's own gap) has nothing proven yet to borrow from the crossing's side.
+  var CLOCK_K = 15;   // the log's own compression — a plain constant of this curve, not a measurement
+  function clockCurve(u) {
+    u = clamp(+u || 0, 0, 1);
+    return Math.log(1 + CLOCK_K * u) / Math.log(1 + CLOCK_K);
+  }
+  // Criterion 9's own five facts, published once and read back whole: unipolar (the clock never
+  // runs backward), logarithmic (the curve above), the declared 0..1 range progress itself already
+  // carries, and a neutral that is also where the hand leaves it at rest — the "in" door `unfold`'s
+  // own manifest already names for `mix`.
+  var CLOCK_PROFILE = { polarity: "unipolar", curve: "logarithmic",
+                         range: { min: 0, max: 1 }, neutral: 0, resting: 0 };
+  function clockProfile() { return CLOCK_PROFILE; }
+
   function report() {
     loadManifest();
     var t = now();
@@ -296,5 +322,6 @@
   }
 
   join({ attach: attach, detach: detach, report: report, resetPhase: resetPhase, setGain: setGain,
-         handleSpan: passHandleSpan, ringFreq: RING_FREQ });
+         handleSpan: passHandleSpan, ringFreq: RING_FREQ,
+         clockCurve: clockCurve, clockProfile: clockProfile });
 })();
