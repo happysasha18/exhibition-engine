@@ -14,7 +14,7 @@ right question, and it kills one wrong answer that had already been written into
 A plan written earlier the same night proposed connecting `droste` and `studio` first, on the reasoning
 that their fixed handover shares (`0.20` and `0.18`) never shrink as more copies share a turn, while
 the host's shared `seamHandoverOf(count)` does. Adversarial review falsified it at
-`engine/assets/pass-layer.js:3202`:
+`engine/assets/pass-layer.js:3387`:
 
 ```js
 var count = s.of && handles && handles[s.of] !== undefined ? handles[s.of] : 1;
@@ -26,8 +26,8 @@ var count = s.of && handles && handles[s.of] !== undefined ? handles[s.of] : 1;
 never with copy count.
 
 Both files say so themselves, and said so before the plan was written.
-`pass-inst-droste.js:634-635`: *"`of` names no handle because the width is a share of one copy and
-does not depend on how many copies the dive holds."* `pass-inst-studio.js:523-525` makes the same
+`pass-inst-droste.js:642-643`: *"`of` names no handle because the width is a share of one copy and
+does not depend on how many copies the dive holds."* `pass-inst-studio.js:529-531` makes the same
 statement for the ring.
 
 So connecting `droste` and `studio` is not a repair of a share that fails to shrink. It is a flat
@@ -44,14 +44,14 @@ which is the opposite of what connecting it was supposed to buy.
 
 ### Eleven carry a flat constant, and the decision is S-99's own question (class B)
 
-`beat` (`1.0 / uRes.y`, `:428`, `:579`) · `boxfold` (`2.0 / max(uRes.y, 1.0)`, `:333`, declaration
-`:932-937`) · `gates` (`hA = 1.0 / resA`, `:637-638`) · `grid-colour` (four separate literal `1.0`s in
+`beat` (`1.0 / uRes.y`, `:430`, `:581`) · `boxfold` (`2.0 / max(uRes.y, 1.0)`, `:333`, declaration
+`:957-968`) · `gates` (`hA = 1.0 / resA`, `:641-642`) · `grid-colour` (four separate literal `1.0`s in
 the shader's loop bounds, `:233`, `:291`, `:303`, `:318`) · `lens` (`:269`, `:275-276`) · `unfold`
-(`pt = 1.0 / uRes.y`, `:1077`) · `veil` (`:463-470`) · `waterline` (`:628-635`) · `wind` (`:498-506`)
+(`pt = 1.0 / uRes.y`, `:1083`) · `veil` (`:463-470`) · `waterline` (`:630-637`) · `wind` (`:502-510`)
 — nine hairlines against the host's `seamHairlineOf()`, which clamps to `[1, 3]`.
 
-Plus `droste` (`SEAM_SHARE = 0.20`, `:325`, used `:444`) and `studio` (`gSeam = smoothstep(0.82, 1.0,
-x - k)`, `:206`, consumed `:305-310`) — two handover shares against `seamHandoverOf()`, which clamps to
+Plus `droste` (`SEAM_SHARE = 0.20`, `:327`, used `:448`) and `studio` (`gSeam = smoothstep(0.82, 1.0,
+x - k)`, `:210`, consumed `:305-314`) — two handover shares against `seamHandoverOf()`, which clamps to
 `[0.01, 0.2]`.
 
 `veil`, `waterline` and `wind` belong here rather than with the formula cases: each states in its own
@@ -70,7 +70,7 @@ on frames, with both numbers printed.
 
 ### Two are a design question rather than a wiring job (class C)
 
-`tilt` — `foot = max(abs(dtdy) * px * 0.5, 1e-6)` (`:143`, declaration `:625-636`); the width scales
+`tilt` — `foot = max(abs(dtdy) * px * 0.5, 1e-6)` (`:143`, declaration `:624-636`); the width scales
 with the plane's own projection Jacobian.
 `weave` — `wV = 0.5 * (nV * warpD(uv.x, 2.0, phV) / uRes.x + abs(dEdgeV) / uRes.y)` (`:164-165`); built
 from the wandering edge's own slope, on two axes.
@@ -81,9 +81,9 @@ what it multiplies is design.
 ### One must not be connected as it stands (class D)
 
 `hero` holds its two seams at 5 and 7 buffer points on purpose — `fw` at `:239`, `rw` at `:247`, and
-the same two literals again JS-side in the door reading at `:614` and `:625`. The shared hairline
+the same two literals again JS-side in the door reading at `:623` and `:634`. The shared hairline
 clamps to `[1, 3]`, so a direct substitution would shrink a crease this instrument's own file argues
-needs to be wide. Its declaration at `:770-775` already records both widths, both formulas and the
+needs to be wide. Its declaration at `:771-784` already records both widths, both formulas and the
 `of: null` reasoning, so there is nothing here to write down that is not written.
 
 ### One has no width to hand back (class E)
@@ -95,7 +95,7 @@ for the host to spend. Its declaration asks for a retouch that cannot exist.
 
 ## The one real defect neither the measurement nor the plan found
 
-`seamsOf` keys its output by `kind` alone and attaches no unit (`pass-layer.js:3203`,
+`seamsOf` keys its output by `kind` alone and attaches no unit (`pass-layer.js:3388`,
 `out[s.kind] = ...`). Across the fleet the key `ring` carries two incompatible units:
 
 | instrument | what `ring` means | value at one buffer point per CSS pixel |
