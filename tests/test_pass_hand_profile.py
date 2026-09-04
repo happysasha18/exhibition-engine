@@ -88,7 +88,11 @@ ROWS = [
 
 # ---------------------------------------------------------------- bake once, the drawing layer on
 build_site.SITE_CONFIG = dict(build_site.SITE_CONFIG)
-build_site.SITE_CONFIG["pass"] = {"visualLayer": "pass", "diagnostics": "on"}
+# The manifests block is what a real site's staging step publishes and the engine's synthetic bake
+# carries none of; `pass-hand.js` reads a declared span through the host's reader of that very
+# record, so the suite hands it over, read off the instrument's own file rather than typed in.
+build_site.SITE_CONFIG["pass"] = {"visualLayer": "pass", "diagnostics": "on",
+                                   "composer": build_site.manifest_block("unfold")}
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_pass_hand_profile_"))
 build_site.OUT = TMP
@@ -369,20 +373,41 @@ else:
             idled = False
             if running and mid_p is not None:
                 br.evaluate("window.__exPass.host.configure({progressPin: %r}); 0" % mid_p)
+                # A pin lands on the next DRAWN frame, so `mix` is read once one has gone by. Read on
+                # the same round-trip it returns the previous frame's value, which here is the
+                # straight-line drive's last step (1.0) rather than the pin.
+                wait_for(br, "(()=>Math.abs(window.__exPass.host.report().handles.mix - %r)"
+                             " < 1e-6)()" % mid_p, timeout=8.0)
                 start_mix = float(br.evaluate("window.__exPass.host.report().handles.mix"))
+                # THE RELEASE IS RECORDED IN THE PAGE, one entry per drawn frame, rather than polled
+                # from here. Each poll costs a CDP round-trip and the whole release cadence is the
+                # exhale's own ~700 ms budget: on a host running eight suites at once — which is
+                # tests/run_all.py's own `--jobs 8` default — the first round-trip landed after the
+                # cadence had already ended, so the loop read `state` once, found it no longer
+                # running, and reported no cadence and no sample at all (measured 2026-09-04: rows 3
+                # and 4 red under the full gate with samples_n=0, both green standalone). The
+                # recorder is armed BEFORE the release, runs on the page's own frame clock, and
+                # stops itself the frame the transaction leaves `running`, so what it reads is every
+                # frame the cadence drew rather than whatever a round-trip happened to catch.
+                br.evaluate("""(()=>{
+                  window.__hpRec = { cadence: null, mixes: [], done: false };
+                  var tick = function () {
+                    var rep = window.__exPass.host.report();
+                    if (rep.cadence && !window.__hpRec.cadence) window.__hpRec.cadence = rep.cadence;
+                    if (rep.handles && typeof rep.handles.mix === 'number')
+                      window.__hpRec.mixes.push(rep.handles.mix);
+                    if (rep.state !== 'running') { window.__hpRec.done = true; return; }
+                    requestAnimationFrame(tick);
+                  };
+                  requestAnimationFrame(tick);
+                })(); 0""")
                 br.evaluate("window.__exPass.host.configure({progressPin: null}); "
                             "window.__exPass.host.cancel('hand release'); 0")
-                for _ in range(800):
-                    rep = host_report(br)
-                    if rep.get("cadence") and cadence_seen is None:
-                        cadence_seen = rep["cadence"]
-                    if rep.get("state") != "running":
-                        break
-                    h = rep.get("handles")
-                    if h and "mix" in h:
-                        samples.append(float(h["mix"]))
-                idled = bool(wait_for(br, "(()=>window.__exPass.host.report().state==='idle')()",
-                                       timeout=8.0))
+                idled = bool(wait_for(br, "(()=>window.__exPass.host.report().state==='idle'"
+                                          " && window.__hpRec.done === true)()", timeout=8.0))
+                rec = json.loads(br.evaluate("JSON.stringify(window.__hpRec)")) or {}
+                cadence_seen = rec.get("cadence")
+                samples = [float(m) for m in (rec.get("mixes") or [])]
                 final_rep = host_report(br)
                 final_cadence = final_rep.get("cadence")
                 h = final_rep.get("handles")

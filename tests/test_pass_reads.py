@@ -121,6 +121,17 @@ def node_available():
         return False
 
 
+# THE DRIVER'S OWN CEILING, SIZED FOR THE GATE THAT RUNS IT RATHER THAN FOR A LONE RUN. This driver
+# is CPU-bound: it walks nineteen instruments through a real composer in one node process. A lone run
+# of this suite measured 570 s on 2026-09-04. tests/run_all.py's own default is `--jobs 8`, so under
+# the gate that same work shares the host with seven other suites, and at 900 s it was killed there
+# while passing standalone minutes later — the whole suite reported red on a cap, with no instrument
+# actually failing. The ceiling is therefore the lone-run cost against the gate's own job count,
+# 570 s x 8, both numbers read off what is already written down: this suite's own measured duration
+# and run_all.py's declared default. A driver that truly hangs still ends here rather than never.
+NODE_TIMEOUT_S = 570 * 8
+
+
 def run_node(driver_text, args=()):
     """Runs `driver_text` under a real `node` in a throwaway directory and returns the parsed JSON of
     its last stdout line, or an {"error": ...} dict naming what went wrong — so a row that could not
@@ -129,7 +140,7 @@ def run_node(driver_text, args=()):
     try:
         (d / "driver.js").write_text(driver_text, encoding="utf-8")
         proc = subprocess.run(["node", str(d / "driver.js")] + [str(a) for a in args],
-                              capture_output=True, text=True, timeout=900)
+                              capture_output=True, text=True, timeout=NODE_TIMEOUT_S)
         if proc.returncode != 0:
             return {"error": (proc.stderr or "").strip()[-400:]}
         lines = proc.stdout.strip().splitlines()

@@ -85,3 +85,37 @@ def build(site_url, ga_id="", enable=None, display_max=None):
         site_config=SITE_CONFIG,
         display_max=display_max,
     )
+
+
+def manifest_block(*instrument_ids):
+    """`pass.composer.manifests` for the named instruments, read off their own served files.
+
+    The engine's synthetic bake carries no `pass.composer` block: the manifests a real site's
+    settings record holds are written there by the site's own staging step
+    (`~/tlvphotos-site/lab/work-readings-v1.py` `read_manifests`), which reads each instrument file
+    and publishes every handle's declared `min`, `max` and `def`. A client-side reader of that
+    record — `passHandleSpan` (engine/client/01a-pass.js:1358) — therefore answers on a real site
+    and answers nothing here, so a suite that needs a declared span has to hand the bake the same
+    fact the site would.
+
+    This reads it the one way that keeps a single home for it: off the instrument's own file, at the
+    moment of the bake, with nothing typed in. Only `min` and `max` are published, because that is
+    all a span is; a suite needing more fields adds them here rather than typing a number.
+    """
+    import re as _re
+    manifests = {}
+    for iid in instrument_ids:
+        path = _ENGINE_ROOT / "engine" / "assets" / ("pass-inst-%s.js" % iid)
+        if not path.exists():
+            continue
+        src = path.read_text(encoding="utf-8")
+        at = src.find('id: "%s", api' % iid)
+        if at < 0:
+            continue
+        handles = {}
+        for name, lo, hi in _re.findall(
+                r"\b(\w+)\s*:\s*\{\s*min\s*:\s*(-?[0-9.]+)\s*,\s*max\s*:\s*(-?[0-9.]+)", src[at:]):
+            handles[name] = {"min": float(lo), "max": float(hi)}
+        if handles:
+            manifests[iid] = {"handles": handles}
+    return {"manifests": manifests}

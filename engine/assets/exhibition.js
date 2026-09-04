@@ -4529,6 +4529,17 @@
   function passHandSet(h) {
     passHand = (h && typeof h.attach === "function" && typeof h.detach === "function"
                 && typeof h.report === "function") ? h : null;
+    // THE HAND READS A DECLARED HANDLE SPAN THROUGH THIS FILE'S OWN READER. Every instrument's
+    // manifest already stands in the collection's settings record (`passHandleSpan` above reads it
+    // at :1358), and that record is on every visit's bill anyway, so the hand needs no request of
+    // its own. Its first shape fetched `pass-inst-unfold.js` for two numbers, which put an
+    // INSTRUMENT file on the wire for every drawing visit whose score names none — the very thing
+    // tests/test_pass_pack.py's "a drawing visit fetches the host, then only the instruments its own
+    // score names" refuses. Feature-detected, so a hand file older than this hand-off simply never
+    // asks and keeps whatever road it had.
+    if (passHand && typeof passHand.host === "function") {
+      try { passHand.host({ handleSpan: passHandleSpan }); } catch (e) {}
+    }
   }
   function passHandOpen() {
     if (passHandAsked) return;

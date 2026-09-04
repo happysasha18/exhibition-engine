@@ -53,6 +53,14 @@ def wait_for(br, expr, timeout=6.0, step=0.05):
 
 
 # ---------------------------------------------------------------- bake once
+# THE SETTINGS RECORD CARRIES UNFOLD'S MANIFEST, the way a real site's does. `pass-hand.js` reads a
+# handle's declared span through the host's own reader (`passHandleSpan`, engine/client/01a-pass.js
+# :1358), which answers out of `pass.composer.manifests` — written on a real site by its own staging
+# step and absent from the engine's synthetic bake unless a suite hands it over. `manifest_block`
+# reads it off the instrument's own file, so R is still never typed in here.
+build_site.SITE_CONFIG = dict(build_site.SITE_CONFIG)
+build_site.SITE_CONFIG["pass"] = {"composer": build_site.manifest_block("unfold")}
+
 TMP = Path(tempfile.mkdtemp(prefix="synth_pass_hand_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)

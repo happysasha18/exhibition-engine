@@ -13,11 +13,9 @@
 //
 // U3 ADDS THE VOICE AND THE SIX VERBS (Requirement 37 case "the band"; Requirement 38 case "the six
 // verbs" and case "the chart law"). This file runs outside 01a-pass.js's own closure — it cannot
-// call that file's `passHandleSpan` directly — so it reads the same fact that function reads (a
-// handle's declared `min`/`max`) off the instrument's OWN served file, `pass-inst-unfold.js`, which
-// ships beside this one in every bake. Nobody types the span in here; it is read off the manifest
-// text at runtime, the same two fields (`min`, `max`) `passHandleSpan` itself reads
-// (engine/client/01a-pass.js:1358-1368).
+// call that file's `passHandleSpan` directly — so the client hands that very function over at join
+// (`host` below), and a handle's declared `min`/`max` is read through it, out of the settings record
+// the walk already holds. Nobody types the span in here and this file fetches nothing of its own.
 //
 // THERE IS NO SURFACE THAT RENDERS A STANDING WORK YET (the drawing layer only ever plays a
 // crossing) — this file plays no pixel. What it computes is reported on `report()`, the one surface
@@ -40,34 +38,38 @@
     attached = null;
   }
 
-  // ---- the manifest span, read off the instrument's own file, never typed in --------------------
-  var INSTRUMENT_FILE = "pass-inst-unfold.js";
-  var manifestPromise = null;
-  var manifest = null;   // { tilt: {lo,hi,span}|null, mix: {lo,hi,span}|null } once loaded
-  function readHandle(text, name) {
-    var re = new RegExp("\\b" + name + "\\s*:\\s*\\{\\s*min\\s*:\\s*([0-9.]+)\\s*,\\s*max\\s*:\\s*([0-9.]+)");
-    var m = re.exec(text);
-    if (!m) return null;
-    var lo = +m[1], hi = +m[2];
-    return { lo: lo, hi: hi, span: hi - lo };
+  // ---- the manifest span, read through the host's own reader, never fetched and never typed in ---
+  // A handle's declared `min`/`max` lives in the collection's SETTINGS RECORD, under
+  // `pass.composer.manifests`, which this bundle's own `passHandleSpan` reads
+  // (engine/client/01a-pass.js:1358-1368) out of a file the walk already holds. The client hands
+  // that reader over at join (`host` below, called from `passHandSet`), so this file asks for
+  // nothing of its own.
+  //
+  // WHY IT IS NOT READ OFF THE INSTRUMENT'S OWN FILE. The first shape fetched `pass-inst-unfold.js`
+  // and read the two fields out of its text. That put an INSTRUMENT file on the wire for every
+  // drawing visit, including one whose score names no instrument at all, and the walk's own law is
+  // that a visit pays for the instruments its own passage names — measured 2026-09-04 at the merge
+  // into main, where tests/test_pass_pack.py's "a drawing visit fetches the host, then only the
+  // instruments its own score names" went red naming that very file. The settings record carries
+  // the same two numbers and is already on the visit's bill.
+  var hostSpan = null;
+  function host(api) {
+    hostSpan = (api && typeof api.handleSpan === "function") ? api.handleSpan : null;
   }
-  function loadManifest() {
-    if (manifestPromise) return manifestPromise;
-    manifestPromise = fetch(INSTRUMENT_FILE).then(function (r) { return r.text(); })
-      .then(function (text) {
-        manifest = { tilt: readHandle(text, "tilt"), mix: readHandle(text, "mix") };
-      })
-      .catch(function () { manifest = { tilt: null, mix: null }; });
-    return manifestPromise;
-  }
-  // passHandleSpan("unfold", handle) — the same two fields 01a-pass.js:1358-1368 reads, read here
-  // off the instrument's own served text because this file runs outside that closure.
+  // passHandleSpan("unfold", handle) — asked of the host each time rather than cached, so a settings
+  // record that lands after this file does is never missed, and a handle the record does not carry
+  // reads as absent rather than as a span of zero pretending to be measured.
   function passHandleSpan(instrument, handle) {
-    if (instrument !== "unfold" || !manifest) return null;
-    return manifest[handle] || null;
+    if (instrument !== "unfold" || !hostSpan) return null;
+    var h = null;
+    try { h = hostSpan(instrument, handle); } catch (e) { h = null; }
+    if (!h || !isFinite(+h.lo) || !isFinite(+h.hi)) return null;
+    return { lo: +h.lo, hi: +h.hi, span: +h.hi - +h.lo };
   }
-  loadManifest();   // asked for the moment this file runs, so a first drag never races the fetch
-
+  function handSpan(handle) {
+    var s = passHandleSpan("unfold", handle);
+    return s ? s.span : 0;
+  }
   // ---- the reach: one hit-test, the same one the host applies before it ever calls attach() -----
   var TARGET_SEL = ".exh-frame img.work";
   function pick(e) { return e.target && e.target.closest ? e.target.closest(TARGET_SEL) : null; }
@@ -88,7 +90,7 @@
     return ((t - breath.t0) / period) % 1;
   }
   function breathAmplitude() {
-    var span = manifest && manifest.tilt ? manifest.tilt.span : 0;
+    var span = handSpan("tilt");
     return span / 32;   // Requirement 37 c1 — "a thirty-second of a letter's full crossing travel"
   }
   function breathValue(t) {
@@ -140,7 +142,6 @@
   }
 
   function tick() {
-    loadManifest();   // idempotent — the one fetch this file ever makes
     var t = now();
     if (!attend._t) attend._t = t;
     var dt = Math.max(0, (t - attend._t) / 1000);
@@ -174,7 +175,7 @@
   }
 
   function leanCap() {
-    var span = manifest && manifest.mix ? manifest.mix.span : 0;
+    var span = handSpan("mix");
     return span / 8;   // Requirement 38 c1 lean — "a gain of at most an eighth of the full travel"
   }
 
@@ -275,10 +276,11 @@
   // logarithmic in many dimensions" — never from `unfold`'s own internal fold response, which this
   // file never reads: there is no such reading anywhere in this file, on purpose, since the room's
   // own profile (criterion 9's own gap) has nothing proven yet to borrow from the crossing's side.
-  // the log's own compression, drawn so equal hand steps read equal real screen change — measured
-  // against a straight-line drive in tests/test_pass_hand_profile.py row 2 (a small search around
-  // this constant, K=1..25, found 4 the clearest, most robust margin over the straight line; 15
-  // — the prior, un-measured constant — actually loses to the straight line under that same bench)
+  // DERIVED — the log's own compression, drawn so equal hand steps read equal real screen change.
+  // The derivation stands in tests/test_pass_hand_profile.py row 2, which measures this curve
+  // against a straight-line drive on real captured frames: a search across K=1..25 found 4 the
+  // clearest, most robust margin over the straight line, and 15 — the prior, un-measured constant —
+  // loses to the straight line under that same bench.
   var CLOCK_K = 4;
   function clockCurve(u) {
     u = clamp(+u || 0, 0, 1);
@@ -293,7 +295,6 @@
   function clockProfile() { return CLOCK_PROFILE; }
 
   function report() {
-    loadManifest();
     var t = now();
     var handles = handHandles();
     var ringElapsed = ring.kind ? (t - ring.startedAt) : null;
@@ -302,7 +303,7 @@
       verb: lastVerb,
       kind: kind,
       tilt: {
-        span: manifest ? manifest.tilt : null,
+        span: passHandleSpan("unfold", "tilt"),
         breathAmplitude: breathAmplitude(),
         breathValue: breathValue(t),
         phase: breathPhase(t),
@@ -326,6 +327,6 @@
   }
 
   join({ attach: attach, detach: detach, report: report, resetPhase: resetPhase, setGain: setGain,
-         handleSpan: passHandleSpan, ringFreq: RING_FREQ,
+         host: host, handleSpan: passHandleSpan, ringFreq: RING_FREQ,
          clockCurve: clockCurve, clockProfile: clockProfile });
 })();
