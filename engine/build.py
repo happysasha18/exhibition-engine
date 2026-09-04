@@ -17,6 +17,7 @@ import datetime
 import hashlib
 import html
 import json
+import os
 import re
 import shutil
 import sys
@@ -1177,7 +1178,17 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # directly (not assemble_client.main()) skips its argparse, which would otherwise collide
     # with this script's own CLI args. Idempotent — a bake over unchanged fragments writes back
     # the same bytes — so every bake, test or deploy, always serves its own fragments fresh.
-    assemble_client.OUT_PATH.write_text(assemble_client.assemble(), encoding="utf-8")
+    # WRITTEN THROUGH A NEIGHBOUR AND MOVED INTO PLACE, because this path is shared and this line
+    # runs in every bake. A site gate runs eight suites at once (tests/run_all.py's own `--jobs 8`)
+    # and each of them bakes against the one engine checkout, so several processes rewrite this file
+    # at the same moment while others read it — `pass_capabilities()` reads it a few lines below.
+    # A plain write truncates first, so a reader landing inside that window gets a short file and
+    # the bake dies saying the bundle declares no PASS_LIMITS.bytes, which happened on 2026-09-05
+    # under the site gate while the same suite passed alone. Every writer writes the same bytes
+    # (the assembly is idempotent), so a rename makes the read see one whole version or the other.
+    _fresh = assemble_client.OUT_PATH.with_name(assemble_client.OUT_PATH.name + ".fresh-%d" % os.getpid())
+    _fresh.write_text(assemble_client.assemble(), encoding="utf-8")
+    os.replace(_fresh, assemble_client.OUT_PATH)
     global GA_ID, OUT, ROOT, CREATOR, SITE_NAME, ROOT_TITLE, ROOT_DESCRIPTION
     global COLLECTION_NAME, LOADING_LINE, COPYRIGHT, COPYRIGHT_NO_ABOUT
     global _ENGINE_ASSETS, _INSTANCE_ASSETS, _NAMESPACE
