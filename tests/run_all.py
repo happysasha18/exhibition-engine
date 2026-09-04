@@ -159,6 +159,12 @@ SUITES = [
     # DR-5 (2026-09-04): the darkroom's in-browser analyser port (busyness, lines, mirror axis).
     # Registered by the seat at DR-5's accept step.
     "darkroom_measure",
+    # DR-6 (2026-09-04): the darkroom's bench, which instruments a work's own matter affords.
+    # Registered by the seat at DR-6's accept step.
+    "darkroom_bench",
+    # DR-7/8/9 (2026-09-04): the darkroom's taste — resistance, instrument exchange, one miracle.
+    # Registered by the seat at DR-9's accept step (the file DR-7 opened, DR-8 and DR-9 extended).
+    "darkroom_taste",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A
