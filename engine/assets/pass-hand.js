@@ -275,7 +275,11 @@
   // logarithmic in many dimensions" — never from `unfold`'s own internal fold response, which this
   // file never reads: there is no such reading anywhere in this file, on purpose, since the room's
   // own profile (criterion 9's own gap) has nothing proven yet to borrow from the crossing's side.
-  var CLOCK_K = 15;   // the log's own compression — a plain constant of this curve, not a measurement
+  // the log's own compression, drawn so equal hand steps read equal real screen change — measured
+  // against a straight-line drive in tests/test_pass_hand_profile.py row 2 (a small search around
+  // this constant, K=1..25, found 4 the clearest, most robust margin over the straight line; 15
+  // — the prior, un-measured constant — actually loses to the straight line under that same bench)
+  var CLOCK_K = 4;
   function clockCurve(u) {
     u = clamp(+u || 0, 0, 1);
     return Math.log(1 + CLOCK_K * u) / Math.log(1 + CLOCK_K);

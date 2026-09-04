@@ -17,23 +17,23 @@ OWN cadence machinery, unmodified, resolving the handle home. Row 6 is a second,
 that never once calls into any of this: the shipped drag's R/8 lean ceiling, driven the way U3 always
 drove it.
 
-WHAT ROW 2 (criterion 10, equal felt change) READS, AND WHY IT CANNOT BE A COMPARISON OF RAW
-PROGRESS. `unfold`'s own `mix` handle is a bare passthrough of `progress` (`unfold_cue`'s own node,
-`source: "progress"`), so reading `mix` back is reading exactly what was pinned — an affine
-(straight-line) drive of N equally spaced hand positions therefore ALWAYS produces perfectly equal
-`mix` steps, the mathematical floor no curved drive can beat. Comparing raw `mix` spreads would make
-the straight line win by construction, every time. What criterion 10 asks for — equal hand movement,
-equal FELT change — is a claim about a THIRD quantity, the felt magnitude of a change, and this row
-supplies the one fixed, generic model criterion 10's own text names: "perception is logarithmic in
-many dimensions." `felt(p) = ((1+K)^p - 1) / K` is that model's own inverse, paired with
-`clockCurve`'s `log(1+K*u)/log(1+K)` by construction (`felt(clockCurve(u)) == u`, exactly, for the
-same `K`) — never read off `unfold`'s own shader, which is exactly what the brief this unit answers
-to says has no curve to compare against. Both `mix` sequences are read off the SAME running
-transaction in the SAME run; `felt` is arithmetic this file does on numbers it read off `report()`,
-the same road tests/test_pass_feel.py already takes to turn a raw reading into a measured step.
+WHAT ROW 2 (criterion 10, equal felt change) READS. Criterion 10 asks for equal hand movement to
+read as equal FELT change — a claim about what actually renders, not about the `mix` number alone
+(`unfold`'s `mix` handle is a bare passthrough of `progress`, so raw `mix` spreads would make an
+affine, straight-line drive win by construction every time; that comparison is skipped entirely).
+Instead, at each of N equally spaced hand positions this row captures a real compositor screenshot
+(`Page.captureScreenshot`, the same road tests/test_pass_boxfold.py already takes — WebGL here is
+refused `preserveDrawingBuffer`, so it is the only road to a real frame) and reads the actual pixel
+difference between consecutive frames. That gives eight real "how much the picture changed" numbers
+for the profile-driven walk and eight for a straight-line-driven walk, both captured in the SAME run
+on the SAME transaction. Criterion 10 holds when the profile's spread of real frame-to-frame change
+is strictly below the straight line's — equal hand steps read as more even real screen change than
+an unshaped, straight-line drive of the same handle.
 """
+import base64
 import json
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -233,20 +233,28 @@ def unfold_score(id_a, id_b):
     }
 
 
-# felt(p) = ((1+K)^p - 1) / K — the fixed inverse of pass-hand.js's own `clockCurve`
-# (log(1+K*u)/log(1+K)), for the SAME K (15) both files carry as their own paired constant. Neither
-# number is read off `unfold`; `felt` never touches a `pass-inst-*.js` file, and it exists only to
-# turn a raw `mix` reading into criterion 10's own "felt" magnitude.
-CLOCK_K = 15.0
-
-
-def felt(p):
-    return ((1.0 + CLOCK_K) ** p - 1.0) / CLOCK_K
-
-
 def spread(vals):
     deltas = [vals[i + 1] - vals[i] for i in range(len(vals) - 1)]
     return max(deltas) - min(deltas)
+
+
+# tests/test_pass_boxfold.py's own `png`/`diff` (lines 687-701) — the only road to a real frame here,
+# `preserveDrawingBuffer` being refused at registration (pass-layer.js:457).
+def png(br, path):
+    d = br._cmd("Page.captureScreenshot", format="png", captureBeyondViewport=False)
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_bytes(base64.b64decode(d["data"]))
+    return path
+
+
+def diff(p, q):
+    from PIL import Image, ImageChops, ImageStat
+    a = Image.open(p).convert("RGB")
+    c = Image.open(q).convert("RGB")
+    if a.size != c.size:
+        return 255.0, 255.0
+    st = ImageStat.Stat(ImageChops.difference(a, c))
+    return sum(st.mean) / 3.0, max(m for _, m in st.extrema)
 
 
 if not chrome_available():
@@ -299,19 +307,32 @@ else:
             # ---- rows 1, 2: N equally spaced hand positions, driven two ways on the same handle ----
             N = 9
             us = [i / (N - 1) for i in range(N)]
+            FRAMES = Path(tempfile.mkdtemp(prefix="synth_pass_hand_frames_"))
+
+            # `clock` (unfold's own real-time sway, unfold_cue's "clock" track) is pinned still for
+            # this walk, the same way tilt/shade/depth/stagger/mask/field/parquet* are already held
+            # static in unfold_cue: `mix` is the ONE handle row 2 measures, so it is the only one this
+            # walk lets move. Cleared again before rows 3/4, which need the layer's own real cadence.
+            if running:
+                br.evaluate("window.__exPass.host.configure({clockPin: 0}); 0")
 
             def drive(mode):
                 mixes = []
-                for u in us:
+                frames = []
+                for i, u in enumerate(us):
                     p = (float(br.evaluate("window.__exPass.hand().clockCurve(%r)" % u))
                          if mode == "profile" else u)
                     br.evaluate("window.__exPass.host.configure({progressPin: %r}); 0" % p)
                     m = br.evaluate("window.__exPass.host.report().handles.mix")
                     mixes.append(float(m))
-                return mixes
+                    frames.append(png(br, FRAMES / f"{mode}-{i}.png"))
+                return mixes, frames
 
-            profile_mix = drive("profile") if running else []
-            straight_mix = drive("straight") if running else []
+            profile_mix, profile_frames = drive("profile") if running else ([], [])
+            straight_mix, straight_frames = drive("straight") if running else ([], [])
+
+            if running:
+                br.evaluate("window.__exPass.host.configure({clockPin: null}); 0")
 
             mono = bool(profile_mix) and all(
                 profile_mix[i] <= profile_mix[i + 1] + 1e-9 for i in range(len(profile_mix) - 1))
@@ -322,13 +343,23 @@ else:
                   f"offered={offered} running={running} profile_mix={profile_mix} "
                   f"declared_span=({MIX_MIN},{MIX_MAX})")
 
-            profile_spread = spread([felt(m) for m in profile_mix]) if profile_mix else None
-            straight_spread = spread([felt(m) for m in straight_mix]) if straight_mix else None
+            # row 2: the REAL frame-to-frame change at each hand step, profile-driven vs straight-line-
+            # driven, both read off the SAME compositor road (test_pass_boxfold.py's own `png`/`diff`)
+            # in the SAME run — no algebraic model of "felt" change, the actual rendered pixels.
+            def frame_diffs(frames):
+                return [diff(frames[i], frames[i + 1])[0] for i in range(len(frames) - 1)]
+
+            profile_diffs = frame_diffs(profile_frames) if profile_frames else []
+            straight_diffs = frame_diffs(straight_frames) if straight_frames else []
+            shutil.rmtree(FRAMES, ignore_errors=True)
+
+            profile_spread = spread(profile_diffs) if profile_diffs else None
+            straight_spread = spread(straight_diffs) if straight_diffs else None
             check(ROWS[1],
                   profile_spread is not None and straight_spread is not None
                   and profile_spread < straight_spread,
                   f"profile_spread={profile_spread} straight_spread={straight_spread} "
-                  f"profile_mix={profile_mix} straight_mix={straight_mix}")
+                  f"profile_diffs={profile_diffs} straight_diffs={straight_diffs}")
 
             # ---- rows 3, 4: release — clear the pin and let it go, the layer's own road only -------
             mid_p = float(br.evaluate("window.__exPass.hand().clockCurve(0.5)")) if running else None
@@ -401,8 +432,6 @@ else:
                   f"cap={cap} v1={v1} returned={returned}")
 
 # ---------------------------------------------------------------- report
-import shutil  # noqa: E402
-
 shutil.rmtree(TMP, ignore_errors=True)
 
 passed = sum(1 for _, s, _ in results if s == "PASS")
