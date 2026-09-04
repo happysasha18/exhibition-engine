@@ -61,6 +61,14 @@ ROW_NO_NEW = "PASS-SEAM-READERS no instrument beyond the known fifteen has grown
 # references to `.seams` anywhere in its own shipped file. Named here exactly as
 # `test_pass_feel.py`'s own KNOWN_JERK names its twelve, so a repair (or a regression naming a new
 # sixteenth) is a fact this row states rather than a silence nobody notices.
+#
+# What each of the fifteen would cost to connect is sorted once in
+# docs/design/SEAM-DECLARATIONS.md (2026-09-04), so a reader arriving here stops re-deriving it:
+# eleven carry a flat constant and wait on the same decision PLAN.md row S-99 holds for three others,
+# two are a design question rather than a wiring job, `hero` holds a deliberately wider crease the
+# shared clamp would shrink, and `parquet` closes its seam by exact coordinate agreement and has no
+# width to receive. That document also records the defect this set cannot see: `seamsOf` keys its
+# output by `kind` alone, and the key `ring` carries two incompatible units across the fleet.
 KNOWN_UNREAD = {
     "beat", "boxfold", "droste", "gates", "grid-colour", "hero", "lens", "parquet", "studio",
     "tilt", "unfold", "veil", "waterline", "weave", "wind",
