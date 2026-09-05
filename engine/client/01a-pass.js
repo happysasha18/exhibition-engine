@@ -3299,6 +3299,12 @@
   // contract is the same for all of them, whatever the picture does.
   function passStart(a) {
     passEnd("nav-abort", "superseded");
+    // EX-STANDING (S-112): the standing breath comes off the picture BEFORE this step composes.
+    // The conductor already stills every work while a crossing runs (Requirement 39 criterion 17),
+    // and the renderer's own loop would answer that on its next frame — but the hang is read
+    // inside this call (`hangGeometry`, S-91), so the box a crossing is seated in would carry one
+    // frame of somebody else's breath. Taken off here, it never does.
+    standClear();
     // THE DWELL JUST ENDED IS CLOSED BEFORE THIS STEP COMPOSES, so the crossing being declared reads
     // a memory that already includes the work the person is walking away from. Closing it after
     // would compose every step against the visit as it stood one step ago.
@@ -4250,6 +4256,9 @@
         // holds — who is the soloist, who rides the cheapest register, who stands still, who is
         // paused, and how many surfaces are alive at this instant.
         conductor: conductorReport,
+        // EX-STANDING (S-112): the work being drawn breathing this instant, the box it is drawn in,
+        // and the fractions Requirement 37 grants that breath.
+        standing: standingReport,
       };
     } catch (e) {}
   }

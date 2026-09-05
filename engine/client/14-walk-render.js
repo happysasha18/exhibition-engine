@@ -33,6 +33,7 @@
     stage.querySelectorAll(".exh-frame:not(.observed)").forEach((f) => {
       f.classList.add("observed"); io.observe(f); condWatch(f);   // EX-CONDUCTOR (S-39) watches too
     });
+    standWake();                       // EX-STANDING (S-112): the seated work is drawn breathing
     // the walk's closing screen: onward while the budget lasts, the door ALWAYS (INV-29/30/31).
     // Its copy speaks the visitor's language like the door does (his word 2026-07-06: the exit
     // is «выход», localized — never «к двери»); built-ins only carry a missing cache.

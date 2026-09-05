@@ -185,6 +185,10 @@ SUITES = [
     # of each stands, breathes on its family's own letter, and a still of it is still the work.
     # Registered in the pass that wrote it.
     "pass_families",
+    # S-112 (2026-09-05): the standing work is drawn breathing on the walk — the voice from S-37,
+    # the seat from S-39 and the box from S-91 reaching the picture a visitor is looking at.
+    # Registered in the pass that wrote it.
+    "pass_standing",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A

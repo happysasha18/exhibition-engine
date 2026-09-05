@@ -25,9 +25,10 @@
 // (`seatGain` below) instead of always sounding: a work the conductor has not seated writes a
 // breath of zero, and while a crossing runs no work breathes at all.
 //
-// THERE IS NO SURFACE THAT RENDERS A STANDING WORK YET (the drawing layer only ever plays a
-// crossing) — this file plays no pixel. What it computes is reported on `report()`, the one surface
-// a test (or a future renderer) reads.
+// S-112 GIVES THE VOICE A SURFACE ON THE WALK. This file still plays no pixel: it publishes the
+// breath, and `engine/client/08b-standing.js` draws the work the conductor seated with it, inside
+// the box the hang measured. The narrow door for that renderer is `unit()` below — the curve at its
+// own two gains, in no letter's units — beside `voice()`, which is the conductor's.
 //
 // The six verbs answer mouse and touch alike from one set of listeners, gated by the same reach
 // `.exh-frame img.work` names, added and released passively (capture, no `preventDefault`) so the
@@ -149,8 +150,18 @@
     if (register === "still" || register === "paused") return 0;
     return 1;
   }
+  // THE CURVE ITSELF, at its own two gains and in no letter's units: the sine of the phase, dimmed
+  // by the hold and by the seat. One home for the shape of the breath, read twice — by the value
+  // below, which puts it on the letter it rides, and by the standing renderer
+  // (engine/client/08b-standing.js), which puts it on the work the conductor seated. A renderer
+  // reading `breathValue` instead would have to divide by an amplitude that is nil wherever the
+  // settings record declares no span for the letter, so it would go silent for a reason that has
+  // nothing to do with whether the work is breathing.
+  function breathUnit(t) {
+    return Math.sin(breathPhase(t) * 2 * Math.PI) * breath.gain * seatGain();
+  }
   function breathValue(t) {
-    return breathAmplitude() * Math.sin(breathPhase(t) * 2 * Math.PI) * breath.gain * seatGain();
+    return breathAmplitude() * breathUnit(t);
   }
 
   // ---- the six verbs' own state ------------------------------------------------------------------
@@ -382,6 +393,9 @@
         span: passHandleSpan("unfold", "mix"),
         breathAmplitude: breathAmplitude(),
         breathValue: breathValue(t),
+        // The same reading in no units at all, between -1 and 1, both gains already in it — what a
+        // renderer writes onto whatever travel it owns (S-112).
+        unit: breathUnit(t),
         phase: breathPhase(t),
         gain: breath.gain,
         // The voice is a pure function of wall time: it is running before the first pointer event
@@ -429,7 +443,11 @@
     return { attached: attached, phase: breathPhase(t), periodMs: periodAt(t), floorMs: PERIOD_MS };
   }
 
+  // The renderer's own door, beside the conductor's. One number per frame, no object built: the
+  // breath's curve at its own two gains, which is everything a renderer needs from this file.
+  function unit() { return breathUnit(now()); }
+
   join({ attach: attach, detach: detach, report: report, resetPhase: resetPhase, setGain: setGain,
          host: host, handleSpan: passHandleSpan, ringFreq: RING_FREQ, residual: RESIDUAL,
-         voice: voice, clockCurve: clockCurve, clockProfile: clockProfile });
+         voice: voice, unit: unit, clockCurve: clockCurve, clockProfile: clockProfile });
 })();
