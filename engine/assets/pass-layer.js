@@ -141,13 +141,14 @@
   var stage = null;          // {canvas, gl, vao, quad, texA, texB, sceneTex, programs}
   var stageGen = 0;          // bumped by every canvas reveal, read by `stageHideAfterPresent`
   var stepIx = 0, W = 1, H = 1, cssW = 1, cssH = 1, dpr = 1;
-  // THE FRAME A PASSAGE PLAYS IN IS THE WORK'S OWN BOX, NOT THE WINDOW (S-91, 2026-09-03).
-  // `frameRect` is that box in viewport coordinates, or null before any hang has been read, where
-  // the window stands in for it — a bench with no layout to measure has no wall to play on.
-  // `cssW`/`cssH` are the frame's size and `frameX`/`frameY` its origin, so every geometry below
-  // (the neutral of `planeAt`, `containCss`, `hangPoseOf`, the camera's perspective, the seam
-  // scale) goes on reading "the frame" and reads the work's rectangle instead of the window's.
-  var frameRect = null, frameX = 0, frameY = 0, frameEl = null;
+  // THE FRAME A PASSAGE PLAYS IN IS THE WHOLE WINDOW (2026-09-05, reversing S-91 of 2026-09-03,
+  // which had named the work's own hang box as the frame). A crossing is the gesture that carries a
+  // visitor from one work to another, and it is given the screen for the length of it; cropping it
+  // to the photograph's rectangle left a desk visitor watching an effect play in a square while the
+  // room around it stood still. `cssW`/`cssH` are the window's size, and the frame's origin is the
+  // window's own, so every geometry below (the neutral of `planeAt`, `containCss`, `hangPoseOf`,
+  // the camera's perspective, the seam scale) reads "the frame" and means the window.
+  var frameEl = null;
   var times = [], changes = 0, sinceChange = 0, lastAt = 0;
   // The census (§7). `stage` counts what the host holds for everyone; `grant` counts what was created
   // for the instrument holding the frame, and that is the half the manifest's declaration is judged
@@ -187,12 +188,12 @@
     canvas.setAttribute("aria-hidden", "true");
     canvas.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;display:block;" +
       "z-index:2147483000;background:#08080a;pointer-events:none;visibility:hidden;";
-    // THE FRAME IS A REAL ELEMENT, AND IT IS WHAT CROPS THE PASSAGE (S-91). A `clip-path` on the
-    // canvas itself is applied in the canvas's OWN coordinates, before the camera's transform, so a
-    // pose that pans, dollies or turns carries the already-clipped pixels straight back out of the
-    // frame — which is exactly what a passage in the work's box must never do. An ancestor with
-    // `overflow:hidden` crops what its descendants paint AFTER their transforms, so the frame is
-    // this element and the canvas travels inside it.
+    // THE FRAME IS A REAL ELEMENT, AND IT IS WHAT THE CANVAS'S COORDINATES ARE READ AGAINST. It is
+    // `position:fixed` at the window's four corners, so a child positioned at `left:0;top:0` stands
+    // at the viewport's origin — which is where `hangGeometry` measures, `getBoundingClientRect`
+    // being viewport-relative. Its `overflow:hidden` crops what descendants paint AFTER their
+    // transforms, so a carrier grown past the window (`camFit`, below) is cut at the window's edge
+    // rather than handed to the compositor as off-screen pixels.
     frameEl = document.createElement("div");
     frameEl.setAttribute("aria-hidden", "true");
     frameEl.style.cssText = "position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;" +
@@ -249,8 +250,7 @@
     if (frameEl) frameEl.style.visibility = on ? "visible" : "hidden";
     if (!on) {
       stage.canvas.style.transform = "";
-      // Back to filling the frame it stands in — which is now the frame ELEMENT, so the reset is
-      // the element's whole box rather than the window's (S-91).
+      // Back to filling the frame it stands in — the frame element, which is the window.
       stage.canvas.style.left = "0"; stage.canvas.style.top = "0";
       stage.canvas.style.width = "100%"; stage.canvas.style.height = "100%";
     }
@@ -297,17 +297,11 @@
 
   function stageResize() {
     if (!stage) return;
-    var f = frameRect;
-    frameX = f ? f.x : 0;
-    frameY = f ? f.y : 0;
-    cssW = Math.max(1, Math.round((f ? f.w : window.innerWidth) || 1));
-    cssH = Math.max(1, Math.round((f ? f.h : window.innerHeight) || 1));
-    if (frameEl) {
-      frameEl.style.left = frameX.toFixed(3) + "px";
-      frameEl.style.top = frameY.toFixed(3) + "px";
-      frameEl.style.width = cssW + "px";
-      frameEl.style.height = cssH + "px";
-    }
+    // THE FRAME IS THE WINDOW, read off the browser rather than off any layout. The frame element
+    // itself was sized `100%` of the viewport once, at `stageMake`, so a resize moves it with the
+    // window without a write here.
+    cssW = Math.max(1, Math.round(window.innerWidth || 1));
+    cssH = Math.max(1, Math.round(window.innerHeight || 1));
     dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
     var s = STEPS[stepIx];
     var w = Math.max(1, Math.round(cssW * dpr * s));
@@ -1563,9 +1557,9 @@
     var k = geom.w / full.w;
     if (!isFinite(k) || k <= 0) return null;
     return {
-      // Frame-local, because the frame is the work's box and no longer the window (S-91).
-      panX: (geom.x - frameX + geom.w / 2 - cssW / 2) / cssW,
-      panY: (geom.y - frameY + geom.h / 2 - cssH / 2) / cssH,
+      // Frame-local, and the frame is the window, so a viewport rectangle needs no origin subtracted.
+      panX: (geom.x + geom.w / 2 - cssW / 2) / cssW,
+      panY: (geom.y + geom.h / 2 - cssH / 2) / cssH,
       logScale: Math.log(k), pitch: 0, yaw: 0, roll: 0, fov: null,
       // What the two readings of one scale disagree by. Both roads keep the work's aspect, so this
       // stands at zero; it is written down rather than asserted, because a layout that began to crop
@@ -1629,25 +1623,22 @@
       return { x: a.x + (b.x - a.x) * q, y: a.y + (b.y - a.y) * q,
                w: a.w + (b.w - a.w) * q, h: a.h + (b.h - a.h) * q };
     }
-    // The two hangs are measured off the DOM in viewport coordinates; every rectangle below lives
-    // in the FRAME'S own coordinates, whose origin is the frame's top-left corner (S-91).
-    function local(g) { return { x: g.x - frameX, y: g.y - frameY, w: g.w, h: g.h }; }
+    // The two hangs are measured off the DOM in viewport coordinates, and the frame's own origin is
+    // the viewport's, so the two boxes are already in the frame's coordinates.
     if (rec.hangA && e.rise > 0 && seconds <= e.rise) {
       var qo = doorEase(seconds / e.rise);
-      box = lerpBox(local(rec.hangA), full, qo); door = 1 - qo;
+      box = lerpBox(rec.hangA, full, qo); door = 1 - qo;
       radius = (Number(rec.hangA.radius) || 0) * (1 - qo);
     } else if (rec.hangB && e.fall > 0 && seconds >= e.dur - e.fall) {
       var qi = doorEase((seconds - (e.dur - e.fall)) / e.fall);
-      box = lerpBox(full, local(rec.hangB), qi); door = qi;
+      box = lerpBox(full, rec.hangB, qi); door = qi;
       radius = (Number(rec.hangB.radius) || 0) * qi;
     }
-    // THE CARRIER MAY REACH FURTHER THAN THE FRAME, AND THE FRAME CROPS IT. Where the frame was the
-    // window, a carrier grown to cover a bared edge simply spilled off-screen and cost nothing. With
-    // the frame the work's own box, the same growth would paint over the room around the work — the
-    // very thing this file already refuses at a door ("enlarging it would paint over the room"). The
-    // growth stays, because it is what keeps a turned pose from baring an edge; what stops it
-    // reaching the room is the frame element's own `overflow:hidden` (`stageMake`), which crops
-    // after the camera's transform rather than before it.
+    // THE CARRIER MAY REACH FURTHER THAN THE FRAME, AND THE FRAME CROPS IT. The growth is what keeps
+    // a turned or panned pose from baring an edge of the window; what it reaches past the window is
+    // cut by the frame element's own `overflow:hidden` (`stageMake`), which crops after the camera's
+    // transform rather than before it. At a door the carrier is still the work's own rectangle and
+    // is not grown, because there the walk around the passage is meant to be seen.
     var fit = (door === 0 && art) ? camFit(art, rec.caps, box) : { over: 1, hold: 1, pose: art };
     if (fit.over !== 1) {
       box = { x: box.x - box.w * (fit.over - 1) / 2, y: box.y - box.h * (fit.over - 1) / 2,
@@ -1660,10 +1651,10 @@
   function planeApply(plane) {
     if (!stage || !plane) return;
     var c = stage.canvas;
-    // Frame-local coordinates, which are the frame ELEMENT's own coordinates: the canvas is its
-    // child and the element carries the frame's origin, so nothing is added back here (S-91). What
-    // reaches past the frame — a grown carrier, a pose that pans or turns — is cropped by that
-    // element's own `overflow:hidden`, after the transform below rather than before it.
+    // Frame-local coordinates, which are the frame ELEMENT's own: the canvas is its child and the
+    // element stands at the window's corner, so nothing is added back here. What reaches past the
+    // window — a grown carrier, a pose that pans or turns — is cropped by that element's own
+    // `overflow:hidden`, after the transform below rather than before it.
     c.style.left = plane.cssX.toFixed(3) + "px";
     c.style.top = plane.cssY.toFixed(3) + "px";
     c.style.width = plane.cssW.toFixed(3) + "px";
@@ -1738,33 +1729,6 @@
     return out;
   }
 
-  // THE FRAME IS READ FROM THE HANG, NEVER FROM THE WINDOW (S-91, his row of 2026-09-03; the S-34
-  // fresh-chair audit's finding 5). A desk visit hangs the work in a centred box with the plaque,
-  // the counter, the share and the sound glyph standing outside it, and a passage that played on
-  // the window painted straight over all of them: measured on 1440x900 before this change, 56 of a
-  // passage's 70 drawn frames reached past the window's own edges, the largest carrier standing at
-  // 2161x1623 against a 738x738 work — 6.4 times the work's box. A phone visit never showed it,
-  // because there the work already fills the width, and every drive of this road had been a phone
-  // drive.
-  //
-  // WHICH OF THE TWO HANGS IS THE FRAME: the one standing in the window, by its own centre. The two
-  // boxes are a viewport apart until the walk is re-hung under cover half way through the passage
-  // (`placeUnderCover`), and that re-hang swaps which of them is on screen. Reading the nearer one
-  // to the window's middle therefore names the SAME rectangle on both sides of the swap, so the
-  // frame does not move under a passage that is already flying. Two works of different shapes give
-  // two different frames, and `reseatHang` — which re-reads both boxes and carries the pose across
-  // the difference — is the road that already exists for exactly that.
-  function setFrame(rec) {
-    var f = null, best = Infinity, mid = (window.innerHeight || 1) / 2;
-    [rec && rec.hangA, rec && rec.hangB].forEach(function (g) {
-      if (!g || !(g.w > 0) || !(g.h > 0)) return;
-      var d = Math.abs(g.y + g.h / 2 - mid);
-      if (d < best) { best = d; f = g; }
-    });
-    frameRect = f ? { x: f.x, y: f.y, w: f.w, h: f.h } : null;
-    stageResize();
-  }
-
   // Both boxes, read now. The product measures; the host only asks and seats.
   function readHang(rec) {
     var ask = rec.hooks && rec.hooks.hangGeometry;
@@ -1772,8 +1736,6 @@
     var aId = rec.cmd.from && rec.cmd.from.id, bId = rec.cmd.to && rec.cmd.to.id;
     try { rec.hangA = aId ? ask(aId) : null; } catch (e) { rec.hangA = null; }
     try { rec.hangB = bId ? ask(bId) : null; } catch (e) { rec.hangB = null; }
-    // The frame is named BEFORE the two poses are read, because both are read against it (S-91).
-    setFrame(rec);
     rec.hangPoseA = hangPoseOf(rec.hangA, rec.inst, rec.src.aw, rec.src.ah);
     rec.hangPoseB = hangPoseOf(rec.hangB, rec.inst, rec.src.bw, rec.src.bh);
     if (!rec.hangPoseB && !rec.said.hang) {

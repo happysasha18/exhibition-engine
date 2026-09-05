@@ -474,9 +474,9 @@ CADENCE_CAPTURE_HOOK = """
             copy.getContext('2d').drawImage(c, 0, 0);
             window.__cadenceLandCanvas = copy;
             window.__cadenceLandCss = c.style.cssText;
-            // WHERE IT HANGS IS PART OF WHAT IT LOOKED LIKE. Since S-91 (2026-09-03) the layer's
-            // canvas is positioned inside a frame element rather than fixed to the window, so its
-            // own inline `left`/`top` are that frame's coordinates. Re-attached to the body the
+            // WHERE IT HANGS IS PART OF WHAT IT LOOKED LIKE. The layer's canvas is positioned
+            // inside a frame element rather than fixed to the window itself, so its own inline
+            // `left`/`top` are that frame's coordinates. Re-attached to the body the
             // copy would land at those coordinates against the page instead, in a different place
             // and with no crop, and the comparison below would read a region the passage never
             // painted. Remembering the parent puts the copy back exactly where the live one stood.

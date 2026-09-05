@@ -322,25 +322,24 @@ else:
             if not step_until_live(br):
                 skip(BROWSER_ROWS[3], "no composed passage on this hang reached the drawing layer")
             else:
-                # WHAT "THE FRAME TURNED" IS A READING OF (S-91/S-96, 2026-09-04). This row used to
-                # read the DRAWING BUFFER alone and require it to change across the turn. That was
-                # the right proxy while the frame a passage plays in was the browser window: turn
-                # the window and the buffer follows. S-91 named the frame the ARRIVING WORK'S OWN
-                # BOX instead, and the buffer now follows THAT — so on this suite's fixture, whose
-                # works are the 64x64 squares `tests/make_synthetic.py` writes and whose hang box is
-                # therefore 64x64 at any viewport, the buffer correctly does not move at all and the
-                # row's own premise died with the change (measured: "the frame turned from 64x64 to
-                # 64x64"). In the real product the hang box does re-lay-out on a turn; it is this
-                # fixture's fixed square that does not, so widening the reading is the repair and
-                # loosening the claim is not.
+                # WHAT "THE FRAME TURNED" IS A READING OF (2026-09-04, widened; 2026-09-05, the
+                # frame is the window again). This row once read the DRAWING BUFFER alone and
+                # required it to change across the turn — the right proxy while the frame a passage
+                # plays in is the browser window, since turning the window moves the buffer. For the
+                # two days the frame was the arriving work's own box the buffer followed THAT, and
+                # on this suite's fixture — works that are the 64x64 squares
+                # `tests/make_synthetic.py` writes, hung 64x64 at any viewport — it did not move at
+                # all and the row's premise died with it (measured then: "the frame turned from
+                # 64x64 to 64x64").
                 #
-                # The HANG the frame is read from is the reading that stays alive on both: it is
-                # measured off the DOM in viewport coordinates, so a centred square that keeps its
-                # size across a turn still moves, and a work that re-lays-out changes size too. The
-                # row therefore asks that the frame this passage plays in MOVED — by its buffer or
-                # by the box that buffer is sized from — inside one unbroken generation. Everything
-                # else the row asserts is untouched: same generation throughout, and the pass at
-                # rest on the arriving work's own box within the same 1e-3.
+                # The reading was widened rather than narrowed, and it is left wide: the row asks
+                # that the frame this passage plays in MOVED — by its buffer or by the hang box that
+                # buffer is sized from, the latter measured off the DOM in viewport coordinates, so
+                # a centred square that keeps its size across a turn still moves. Either answer is
+                # a frame that turned, and the row goes on holding whichever of the two the layer's
+                # current reading of the frame makes true. Everything else it asserts is untouched:
+                # same generation throughout, and the pass at rest on the arriving work's own box
+                # within the same 1e-3.
                 FRAME = ("var r = window.__exPass.layer().report();"
                          "var hb = (r.hang && r.hang.b) || null;"
                          "return {gen: (window.__exPass.report().nav || {}).gen,"

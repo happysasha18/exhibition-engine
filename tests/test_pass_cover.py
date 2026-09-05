@@ -218,7 +218,7 @@ def marker_share(path, box=None):
 
     `box`, when given, restricts the read to the canvas's OWN rect (CSS px, DPR 1 on this site,
     so it maps straight onto the screenshot's pixels) — the region a passage actually claims,
-    which S-91 shrank from the whole window to the work's own hang box. The whole-viewport read
+    which is the frame element the canvas travels inside. The whole-viewport read
     stays the right one for proving the marker was on screen at all (the row that hides the
     canvas and asks whether magenta is visible anywhere), but "did the frame get left bare" is
     a claim about the canvas's own box, not about the room around it that a passage was never
@@ -558,9 +558,9 @@ else:
                       return {took: cmd ? window.__exPass.layer().offer(cmd, window.HOOKS()) : false};
                     """ % (json.dumps(score(tr)), A, B))
                     running = wait_state(br, "running")
-                    # THE FRAME, READ ONCE. S-91 made "the frame" the work's own hang box rather
-                    # than the window — the fixed `frameEl` the canvas travels inside, which crops
-                    # a grown carrier with its own `overflow:hidden` (pass-layer.js `stageMake`).
+                    # THE FRAME, READ ONCE. "The frame" is the fixed `frameEl` the canvas travels
+                    # inside, which crops a grown carrier with its own `overflow:hidden`
+                    # (pass-layer.js `stageMake`) and stands at the window's four corners.
                     # That element, not the canvas's own (pose-grown, and clipped) rect, is the
                     # box this row's "no pixel of the frame unpainted" claim is about.
                     frame_rect = js(br, "var c = document.querySelector('canvas');"
