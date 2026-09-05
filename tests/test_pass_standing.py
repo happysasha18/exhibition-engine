@@ -34,12 +34,13 @@ WHERE THE NUMBERS COME FROM.
 
 WHAT REDDENS THIS SUITE. The plant the row itself names: a renderer that ignores the voice. With the
 breath's own reading replaced by nothing in `engine/client/08b-standing.js`, the two photographs of
-the drawn work become identical — 0.0000 of 255 where a breathing work reads about 2 — and rows 1, 2
-and 3 all go red on both forms.
+the drawn work become identical — 0.0000 of 255, where a breathing work reads about 0.45 — and rows
+1, 2 and 3 all go red on both forms.
 
 WHAT THE FIXTURE CAN AND CANNOT SAY. The synthetic gallery hangs 64 px works, so the box is the same
 on the phone form and on the desk form and the two rows read the same amplitude. Both forms are run
-because the row asks for both; what differs between them is the walk around the work, not the work.
+because the row asks for both; what differs between them is the walk around the work, while the work
+itself is hung the same size on each.
 
 Run: python3 tests/test_pass_standing.py
 """
@@ -226,7 +227,8 @@ else:
         # THE PAGE IS PHOTOGRAPHED UNTIL IT HAS SETTLED, and the settling is read rather than waited
         # out by a clock. A picture given a breath is composited on its own layer from that frame on,
         # and the first rasterings after that promotion differ from the later ones by up to 3 of 255
-        # — a difference of the promotion, not of the breath. So the drawn work is photographed at
+        # — a difference the promotion itself makes, which the breath has no part in. So the drawn
+        # work is photographed at
         # the SAME point of its breath over and over until three of those photographs running are
         # identical. The settling comes in stages, so one identical pair is not yet stillness; three
         # running is. After that a photograph pair costs nothing of its own.
