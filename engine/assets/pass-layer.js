@@ -2489,6 +2489,9 @@
   //
   // A FIELD THE DEVICE DECLARES NOTHING FOR IS NOT JUDGED — framebuffers, ping-pong pairs, programs
   // and passes have no published limit — so the reading refuses nothing on their account.
+  // CAPABILITY — the size of one texel in the one format every target on this stage is made in.
+  // `gl.RGBA` with `gl.UNSIGNED_BYTE` is four channels of one byte each, so this is the format's
+  // own arithmetic and not a reading of anything: change the format above and this changes with it.
   var BYTES_PER_TEXEL = 4;
   function readDevice() {
     // The canvas is never attached and the context is dropped the moment the numbers are out of it,
