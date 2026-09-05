@@ -138,7 +138,9 @@ BROWSER_ROWS = [
     "EX-DOOR-4 the full circle deals fresh (differs, ≤⌊n/3⌋ repeats, novelty reaches outside the circle)",
     "EX-DOOR-4 one circle, one deal (door↔walk holds the hand; an unfold reopens the count; the regrown circle re-deals)",
     "EX-DOOR-4 an unconsumed circle outranks the reload; the fresh hand's next reload keeps ≥60%",
-    "EX-DOOR-4 marks count the moment they are made (see the last work and exit in one breath → circle counts)",
+    "EX-DOOR-4 marks count the moment they are made, read as an order: every hung work is marked "
+    "exactly once, each mark stands against the work the eye was on, every mark stands before the "
+    "walk is asked for the next thing, and the circle fires a fresh deal",
     "EX-DOOR-4 degrade + versions (vm-off reload holds; a circle-less old hand deals once; a stale-version hand drops whole)",
 ]
 
@@ -693,27 +695,86 @@ else:
               f"r1_door={r1_door} r1_dealt={r1_dealt} (overlap={r1_overlap}/{MAXREP}) "
               f"r2_reload_law={r2_reload_law} kept={kept2}/{len(r1_hand)} floor={floor2}")
 
-        # 28 · EX-DOOR-4: the circle counts marks the MOMENT they are made (F3 folded 11:50) — see the
-        #      LAST shown work and EXIT in one breath (no wait for the debounced seen-flush) and the
-        #      circle still fires a fresh deal.
+        # 28 · EX-DOOR-4: the circle counts a mark WHEN IT IS MADE — read as an ORDER.
+        #
+        # WHAT THIS ROW USED TO READ, AND WHY IT WAS THE WRONG QUANTITY. It scrolled the last work
+        # into view and scrolled straight on to the finale in the same instant, with no room in
+        # between, and then asked whether the circle had counted. That is a race against the
+        # browser's own scheduling of when an IntersectionObserver delivers, and nothing else: on
+        # 2026-09-05, driving the walk with a standing work breathing (plan row S-112), the last
+        # work's mark was measured landing 12 ms after the scroll against 10 ms without it, and the
+        # row went red on those two milliseconds. It reddened under ANY continuously animating page
+        # — a script loop that wrote nothing at all, a pure CSS keyframe, and the same keyframe moved
+        # onto chrome this walk's observer never watches — which is the proof that what it read was
+        # the scheduler rather than anything a person meets. Two milliseconds is the same instant to
+        # every visitor there has ever been.
+        #
+        # WHAT IT READS NOW. The promise underneath is that a mark is counted when it is made, so
+        # that no mark is lost and none is attributed to the wrong work. Both halves are statements
+        # about ORDER, and the walk publishes the order itself: `landOn` calls `window.__exSeen` with
+        # the work's own id at the instant it makes the mark (08-plaque-caption-io.js, the read-side
+        # 06-ground-load-doorwarm.js names). The row chains that hook, writes its own moves into the
+        # same list, and reads one sequence: every hung work marked exactly once, each mark standing
+        # against the work the visitor was actually on, and every mark standing before the walk was
+        # asked for the next thing — the next work, and the finale. No clock is read and no window,
+        # tolerance or settle time is named anywhere in it.
+        #
+        # WHAT IT STILL CATCHES. F3, the defect it was written for (a mark made only at the debounced
+        # flush): marks would then land in one batch after the visitor had moved on, so they would
+        # stand after their own moves and after the finale, and the sequence reds. A mark that never
+        # lands: the work is missing from the sequence. A mark against the neighbouring work: the id
+        # sits in the wrong slot. Both of the last two were planted and each reddens this row.
         fresh(br, base)
         retired28 = br.evaluate(DOOR_IDS)
+        # the walk's own mark sequence, chained rather than replaced so a bake with the coat-check on
+        # keeps reporting; the row's own moves go into the same list, so one reading carries both.
+        # Installed BEFORE the walk is entered, because the walk's own arrival makes the first mark:
+        # it opens standing on its first work, and that mark is as much part of the sequence as any.
+        br.evaluate("(function(){window.__exOrder=[];const p=window.__exSeen;"
+                    "window.__exSeen=function(id){window.__exOrder.push('mark:'+String(id));"
+                    "if(p)p(id);};})()")
         enter(br)
         n28 = br.evaluate(N_FRAMES)
-        for i in range(n28 - 1):                              # every frame but the last
-            br.evaluate(f"document.querySelectorAll('.exh-frame')[{i}]"
-                        ".scrollIntoView({behavior:'instant'})")
-            br.sleep(0.18)
-        br.evaluate(f"document.querySelectorAll('.exh-frame')[{n28 - 1}]"
-                    ".scrollIntoView({behavior:'instant'})")   # the LAST work…
-        to_fin(br); br.click("#ex-return", settle=0.8)        # …and straight out (debounce has NOT run)
+        frames28 = br.evaluate(FRAME_IDS)
+        for i in range(1, n28):                           # the walk already stands on the first work
+            br.evaluate("window.__exOrder.push('move:'+%s);"
+                        "document.querySelectorAll('.exh-frame')[%d]"
+                        ".scrollIntoView({behavior:'instant'})" % (json.dumps(frames28[i]), i))
+            br.sleep(0.18)                                # the walk's own room, this row's from the start
+        br.evaluate("window.__exOrder.push('finale')")
+        to_fin(br); br.click("#ex-return", settle=0.8)
+        order28 = br.evaluate("JSON.stringify(window.__exOrder||[])")
+        order28 = json.loads(order28) if order28 else []
+        # A WORK IS MARKED ONCE, AND IT IS THE FIRST MARK THAT COUNTS. Coming back through the door
+        # puts the walk's first work in view again and the walk reports it again; that later report
+        # re-states a mark already made and is not the making of one, so the reading below is of each
+        # work's FIRST mark and the repeats are passed over rather than read as marks out of place.
+        fin_at = order28.index("finale") if "finale" in order28 else len(order28)
+        first28, seen_ids = [], set()                      # (work, the work the eye stood on, where)
+        standing_move = frames28[0] if frames28 else None  # where the walk's own arrival left the eye
+        for at, e in enumerate(order28):
+            if e.startswith("move:"):
+                standing_move = e[5:]
+            elif e.startswith("mark:") and e[5:] not in seen_ids:
+                seen_ids.add(e[5:])
+                first28.append((e[5:], standing_move, at))
+        marks28 = [work for work, _, _ in first28]
+        on_its_own_work = [work == stood for work, stood, _ in first28]
+        after_finale = [work for work, _, at in first28 if at > fin_at]
         hand28 = br.evaluate(DOOR_IDS)
         rec28 = br.evaluate("JSON.parse(localStorage.getItem('ex.hand')||'null')")
         check(BROWSER_ROWS[28],
               br.evaluate(AT_DOOR)
+              and sorted(marks28) == sorted(frames28)
+              and len(marks28) == len(set(marks28))
+              and on_its_own_work != [] and all(on_its_own_work)
+              and after_finale == []
               and set(hand28) != set(retired28)
               and len(set(hand28) & set(retired28)) <= MAXREP
               and bool(rec28) and rec28.get("circle") is not None,
+              f"hung={frames28} marked={marks28} "
+              f"each mark on the work the visitor stood on={on_its_own_work} "
+              f"marks after the finale was entered={after_finale} "
               f"retired={retired28} hand={hand28} "
               f"circle={rec28.get('circle') if rec28 else None}")
 
