@@ -25,9 +25,17 @@
 // (`seatGain` below) instead of always sounding: a work the conductor has not seated writes a
 // breath of zero, and while a crossing runs no work breathes at all.
 //
-// THERE IS NO SURFACE THAT RENDERS A STANDING WORK YET (the drawing layer only ever plays a
-// crossing) — this file plays no pixel. What it computes is reported on `report()`, the one surface
-// a test (or a future renderer) reads.
+// S-38 GIVES THE READING A SINK (`paint` below). Until it, the six verbs were computed, reported,
+// and reached no pixel at all: the drawing layer plays a crossing alone, nothing on the walk read
+// `report()`, and a visitor pressing a work on the served page met no answer — measured 2026-09-05
+// on a staged bake of tlvphotos.com, where a tap fired `verb: "strike"` on this file's own report
+// while the pressed picture's computed transform stayed `none`. The reading is now written back
+// onto the picture through the SAME space it was read in: `normPos` normalises a contact to -1..1
+// over the element's half-extents, so a chart value carried as a fraction of its letter's declared
+// travel comes back out over those very half-extents. No number is introduced to do it — the two
+// caps, the ring's bound and the ring's frequency are the ones the verbs already carry, and the
+// declared spans are the manifest's, read through the host as everything else here is. `report()`
+// stays the surface a test reads; it now reports a reading that reaches the frame.
 //
 // The six verbs answer mouse and touch alike from one set of listeners, gated by the same reach
 // `.exh-frame img.work` names, added and released passively (capture, no `preventDefault`) so the
@@ -44,6 +52,11 @@
   }
   function detach() {
     attached = null;
+    // S-38: the host detaches while the closer look covers this very picture. The reading may still
+    // be standing on it, so the picture is handed back before the hand lets go of it — otherwise a
+    // work would sit off its rest under a layer that owns the whole viewport.
+    unpaint();
+    currentEl = null; overWork = false;
   }
 
   // ---- the manifest span, read through the host's own reader, never fetched and never typed in ---
@@ -188,10 +201,16 @@
     if (rafId !== null) return;
     var step = function () {
       tick();
-      if (handOn() || ring.kind !== null || Math.abs(lean.value) > 1e-4) {
+      paint();
+      // The free point eases home once the hand leaves (`pointerout` below), so the loop has to
+      // outlive the hand by that ease — otherwise it stops on a work still held off its rest and
+      // `paint`'s own clear becomes a snap the visitor sees.
+      if (handOn() || ring.kind !== null || Math.abs(lean.value) > 1e-4
+          || Math.abs(attend.x) > 1e-3 || Math.abs(attend.y) > 1e-3) {
         rafId = requestAnimationFrame(step);
       } else {
         rafId = null;
+        unpaint();
       }
     };
     rafId = requestAnimationFrame(step);
@@ -248,6 +267,11 @@
     var el = pick(e);
     if (!el || el !== currentEl) return;
     overWork = false;
+    // The free point goes home the way the lean already does — over the release time constant
+    // `tick` reads for an unpressed hand — so a work the hand leaves settles rather than snapping
+    // back the instant the loop lets go of it. Touch reaches this too: a lifted touch pointer fires
+    // `pointerout` right behind its own `pointerup`.
+    attend.target = { x: 0, y: 0 };
   }, { capture: true, passive: true });
 
   addEventListener("pointerdown", function (e) {
@@ -326,12 +350,68 @@
   // sixth of that travel". The three fractions nest — the lean's eighth plus the breath's
   // thirty-second is five thirty-seconds of the travel, under the sixth — so the cap stands over
   // what this file plays today with room to spare, and it holds the letter a third voice would add.
+  //
+  // THE RING RIDES THE HINGE (criterion 9's "two hinge tremors", criterion 11's 700 ms exhale
+  // bound). Both are already named above as `RING_FREQ` and `RING_MS`; the tremor's own size is the
+  // breath's, because every amplitude this file plays is the breath's thirty-second, and it decays
+  // linearly to nothing exactly at the bound rather than trailing past it. Nothing new is measured
+  // or chosen here. Before S-38 the ring was a pair of booleans on `report()` and reached nothing,
+  // so a tap on a work — strike, the one verb with no travel of its own — was felt as no answer.
+  function ringValue(t) {
+    if (!ring.kind) return 0;
+    var e = (t - ring.startedAt) / RING_MS;
+    if (e < 0 || e > 1) return 0;
+    return breathAmplitude() * (1 - e) * Math.sin(2 * Math.PI * RING_FREQ * (t - ring.startedAt) / 1000);
+  }
   function handHandles(t) {
     var amp = breathAmplitude();
     var capTilt = handSpan("tilt") / 6;
     var capMix = handSpan("mix") / 6;
     return { mix: clamp(lean.value + breathValue(t), -capMix, capMix),
-             tilt: clamp(attend.y * amp, -capTilt, capTilt) };
+             tilt: clamp(attend.y * amp + ringValue(t), -capTilt, capTilt) };
+  }
+
+  // ---- the sink: the reading, written onto the picture the hand stands on ------------------------
+  // The hinge carries the free point's thirty-second and the ring's thirty-second, a sixteenth of
+  // the travel together, so criterion 3's sixth still stands over both with room, exactly as it
+  // does over the lean's eighth plus the breath's thirty-second on the making axis.
+  //
+  // A visitor who asked for less motion gets none of it: the reading goes on being computed and
+  // reported, and only the write is skipped, so a row reads the same verbs either way.
+  var reduce;
+  function still() {
+    if (reduce === undefined) {
+      try { reduce = matchMedia("(prefers-reduced-motion: reduce)"); } catch (e) { reduce = null; }
+    }
+    return !!(reduce && reduce.matches);
+  }
+  var painted = null;
+  function paint() {
+    var el = currentEl;
+    if (!el) return;
+    if (still()) { unpaint(); return; }
+    var t = now();
+    var h = handHandles(t);
+    var sMix = passHandleSpan("unfold", "mix"), sTilt = passHandleSpan("unfold", "tilt");
+    // Read fresh rather than off `downRect`: that rect belongs to a press, and a hover arrives with
+    // no press at all. Only the two extents are read, and a translate moves neither of them, so the
+    // write below can never feed its own reading.
+    var r = el.getBoundingClientRect();
+    // The element's own half-extents are the units the contact was read in, so the reading returns
+    // in them. A letter the settings record does not carry reads as absent and writes nothing on
+    // its axis, the same refusal `passHandleSpan` already makes everywhere else in this file.
+    var x = (sMix && sMix.span) ? (h.mix / sMix.span) * (r.width / 2) : 0;
+    var y = (sTilt && sTilt.span) ? (h.tilt / sTilt.span) * (r.height / 2) : 0;
+    painted = el;
+    el.style.transform = "translate3d(" + x.toFixed(2) + "px," + y.toFixed(2) + "px,0)";
+  }
+  // The picture is handed back exactly as the walk laid it out — the walk writes no inline
+  // transform on a work of its own (the door ceremony and the closer look each own their own
+  // elements), so clearing the property is the whole of putting it back.
+  function unpaint() {
+    if (!painted) return;
+    try { painted.style.transform = ""; } catch (e) {}
+    painted = null;
   }
 
   // ---- the hand as clock (Requirement 40 criteria 1, 9, 10 — unit U5) ----------------------------
