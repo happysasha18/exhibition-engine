@@ -1158,13 +1158,13 @@ else:
                 real_road = png(br, SHOTS / "plane-door-real.png")
                 # The host raises its own canvas inside a position:fixed FRAME element and the lab
                 # module's stands absolute inside #moduleStage, so the host's is the one whose own
-                # parent is fixed. Until S-91 (2026-09-03) the host's canvas was itself the fixed
-                # element and was found by that; since the frame a passage plays in became the
-                # work's own box rather than the window, the fixed element is the frame around it.
+                # parent is fixed. Before 2026-09-03 the host's canvas was itself the fixed element
+                # and was found by that; the canvas now travels inside a fixed frame element, so the
+                # fixed element is that frame rather than the canvas.
                 # THE FRAME IS ALSO WHAT THIS ROW COMPARES AGAINST. It asks that at a door the plane
                 # hands the buffer over whole — one buffer point to one point of the frame — and the
-                # frame is the rectangle the layer was given, which is now named rather than assumed
-                # to be the window.
+                # frame is the rectangle the layer was given, read off the element rather than
+                # assumed.
                 box = js(br, "var cs = document.querySelectorAll('canvas'), k = null;"
                              "for (var i = 0; i < cs.length; i++) "
                              "  if (cs[i].parentNode && getComputedStyle(cs[i].parentNode).position"
