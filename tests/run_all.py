@@ -181,6 +181,10 @@ SUITES = [
     # else still or paused, and a crossing in flight taking the solo. Registered in the pass that
     # wrote it.
     "pass_conductor",
+    # S-40 (2026-09-05): the six matter families, each by its own row of the matter table — a work
+    # of each stands, breathes on its family's own letter, and a still of it is still the work.
+    # Registered in the pass that wrote it.
+    "pass_families",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A

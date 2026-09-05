@@ -1,0 +1,66 @@
+{
+  "name": "The matter table — one row per matter family",
+  "law": "SPEC.md Requirement 39 case «the five families» (criteria 1 to 5) and Requirement 37 case «visual acoustics» (criteria 9 to 11). Six families stand: five that criterion 1 names one bullet each, and the multi-exposure of criterion 4. Every family is a row here and nowhere else, so the breath a family answers with and the timbre it rings with have one home. This file carries only what is written down — the criteria's own words, and the instruments the plan row's own address names. What a run measures on the drawn frame — where a family's letter rests, how far the screenshot law grants it to travel — is printed by tests/test_pass_families.py and is not copied back here, because a measured number kept in two places is a number that drifts.",
+  "columns": {
+    "matter": "the family's own name, in Requirement 39 criterion 1's own words",
+    "instruments": "the instruments of the engine that draw this family's matter. The list is the S-40 row's own address, and its eight names across the six rows are exactly the eight it names",
+    "letter": "the letter a work of this family moves at rest. It is the making axis — Requirement 37 criterion 6's «final letter of the recipe» and Requirement 39 criterion 19's making-axis verb at micro-gain — under the name that instrument publishes it as. `weave` publishes its making axis as `bal`, the balance between the two sides of the fabric; the other seven publish theirs as `mix`",
+    "breath": "how the family breathes at rest, in Requirement 39 criterion 1's own words (criterion 4's for the multi-exposure)",
+    "ring": "Requirement 37 criteria 9 to 11: one impulse response per matter, a decaying oscillation, and this table its one home. `shape` is the criterion's own words; `cycles` is how many the criterion counts, and is null where the criterion counts none. The bound the ring finishes inside is criterion 11's own 700 ms exhale, which engine/assets/pass-hand.js already holds as RING_MS; a family's ring frequency is its own cycles over that bound, so the count lives here and the bound stays where it already was",
+    "selfSimilar": "Requirement 37 criterion 5 and Requirement 39 criterion 2: the family whose travel is the slow dive names the level its screenshot comparison runs against, and where that level is published. Null for a family with no dive"
+  },
+  "families": [
+    {
+      "matter": "hinged panels",
+      "instruments": ["livemirror", "parquet"],
+      "letter": "mix",
+      "breath": "a micro-hinge of a degree or two",
+      "ring": { "shape": "stiff, two fast hinge tremors and then stillness", "cycles": 2 },
+      "selfSimilar": null
+    },
+    {
+      "matter": "curved film",
+      "instruments": ["kaleidoscope", "planet"],
+      "letter": "mix",
+      "breath": "a wedge-breath, or a micro-curl of the horizon",
+      "ring": { "shape": "a rotational shudder damping in two cycles", "cycles": 2 },
+      "selfSimilar": null
+    },
+    {
+      "matter": "yarn",
+      "instruments": ["weave"],
+      "letter": "bal",
+      "breath": "tension, re-tensioning strips one at a time in golden-angle order",
+      "ring": { "shape": "one slow shiver to the selvage", "cycles": 1 },
+      "selfSimilar": null
+    },
+    {
+      "matter": "a corridor",
+      "instruments": ["tunnel"],
+      "letter": "mix",
+      "breath": "the air of the room, far walls carrying more amplitude than near ones",
+      "ring": { "shape": "a perspective shudder receding wall by wall", "cycles": null },
+      "selfSimilar": null
+    },
+    {
+      "matter": "a crystal in a crystal",
+      "instruments": ["droste"],
+      "letter": "mix",
+      "breath": "the slow dive, which Requirement 39 criterion 2 names the one lawful unbounded travel",
+      "ring": { "shape": "a rotational settle one level in", "cycles": 1 },
+      "selfSimilar": {
+        "instrument": "droste",
+        "level": "period",
+        "published": "the instrument's own values() block publishes `period`, one self-similar level of the dive, as log(40) over the number of copies standing in it; `front` publishes how far into the dive a pose stands, in the same unit"
+      }
+    },
+    {
+      "matter": "a multi-exposure",
+      "instruments": ["overlay"],
+      "letter": "mix",
+      "breath": "the two exposures' balance moving a fraction of a percent",
+      "ring": { "shape": "one beat of the moire", "cycles": 1 },
+      "selfSimilar": null
+    }
+  ]
+}

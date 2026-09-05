@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>the six matter families — one host frame, any instrument, any pose</title>
+<style>
+  html, body { margin:0; height:100%; background:#050507; overflow:hidden; }
+  #walk { position:absolute; left:-10000px; top:0; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<!-- ONE ROAD ONLY: the host's own canvas, raised by pass-layer.js itself. Every per-instrument
+     fixture in this tree stands a lab module beside the host so the two roads can be compared; that
+     comparison is each instrument's own suite's question and is settled there. THIS page asks a
+     different one — does a work of this family, standing at its own door, move when its family's
+     own letter breathes — and that question is answered on the frame a visitor meets, which is the
+     host's. So there is no lab road here and no module file is fetched.
+
+     The page is instrument-agnostic on purpose: the six families name eight instruments between
+     them, and eight copies of one bench is eight places for one question to drift. The pose comes
+     from the instrument's own published neutral pose, so the door this page draws is the door the
+     instrument declares rather than one typed here. -->
+<div id="walk">
+  <section class="exh-frame" data-id="a"><img id="imgA" src="photos/towers.jpg" alt=""></section>
+  <section class="exh-frame" data-id="b"><img id="imgB" src="photos/glassgrid.jpg" alt=""></section>
+</div>
+<script>
+  window.__errs = [];
+  window.addEventListener("error", function (e) { window.__errs.push(String((e && e.message) || e)); });
+  window.addEventListener("unhandledrejection", function (e) {
+    window.__errs.push("rejection: " + String((e && e.reason) || e));
+  });
+  (function () {
+    var real = console.error;
+    console.error = function () {
+      window.__errs.push(Array.prototype.join.call(arguments, " "));
+      return real.apply(console, arguments);
+    };
+  })();
+  // The two names pass-layer.js joins through, exactly as every other fixture in this tree stands
+  // them up: the file under test is the real built artifact and nothing about it is stubbed.
+  window.__exPass = {};
+  window.__exPassLayer = function (h) { window.__host = h; };
+</script>
+<script src="pass-layer.js"></script>
+<script>
+(function () {
+  var imgs = [document.getElementById("imgA"), document.getElementById("imgB")];
+  var left = imgs.length;
+  imgs.forEach(function (im) {
+    if (im.complete && im.naturalWidth) { if (!--left) go(); return; }
+    im.onload = function () { if (!--left) go(); };
+    im.onerror = function () { window.__errs.push("picture did not load: " + im.src); };
+  });
+
+  var asked = false, warmed = false;
+  function go() {
+    if (!window.__exPass.bench || !window.__host) { setTimeout(go, 20); return; }
+    // Each instrument travels as its own file and is asked for by the same road an offer takes.
+    // This page draws poses rather than offering commands, so it asks for every instrument the
+    // site's own settings record names and waits for the answer before it draws anything.
+    if (!warmed) {
+      if (!asked) {
+        asked = true;
+        window.__exPass.bench.load(window.__host.report().record.names, function (whys) {
+          window.__loaded = whys;
+          warmed = true;
+        });
+      }
+      setTimeout(go, 20);
+      return;
+    }
+    var bench = window.__exPass.bench;
+    if (!bench.make()) { window.__errs.push("the host raised no stage"); return; }
+    bench.show(true);
+
+    // ONE WORK ON BOTH SIDES, WHICH IS WHAT A STANDING WORK IS. Every instrument here is armed for a
+    // crossing and reads two pictures; a work standing alone in the gallery has only itself, so both
+    // sides carry the same photograph and every letter that would fetch «the other work» fetches
+    // this one. Standing two different pictures on the bench measures a crossing instead, and on a
+    // two-work letter the whisper band then reads as the second photograph arriving rather than as
+    // this work breathing — which is a reading of a different question altogether.
+    var pairedAt = null;
+    window.__stand = function (which) {
+      var im = (which === "b") ? imgs[1] : imgs[0];
+      bench.pair(im, im);
+      pairedAt = im;
+      return im.src;
+    };
+    window.__cross = function () { bench.pair(imgs[0], imgs[1]); pairedAt = null; return true; };
+    window.__stand("a");
+
+    window.__manifest = function (id) {
+      var m = bench.manifest(id);
+      if (!m) return null;
+      return { handles: m.handles, neutral: m.neutralPose, arity: m.arity };
+    };
+
+    // THE POSE, BUILT FROM THE INSTRUMENT'S OWN DECLARED REST. `neutralPose` is what the instrument
+    // publishes as its entry door — the photograph standing whole — and the frame's own size and
+    // the two pictures' own sizes are read off this page rather than typed. A caller names only
+    // the letters it is moving; everything else stands where the instrument put it.
+    window.__drawAt = function (id, over) {
+      var m = bench.manifest(id);
+      if (!m) return null;
+      var pose = {};
+      Object.keys(m.neutralPose || {}).forEach(function (k) { pose[k] = m.neutralPose[k]; });
+      var im = pairedAt || imgs[0];
+      pose.aw = im.naturalWidth; pose.ah = im.naturalHeight;
+      pose.bw = (pairedAt ? im : imgs[1]).naturalWidth;
+      pose.bh = (pairedAt ? im : imgs[1]).naturalHeight;
+      pose.cssWidth = innerWidth; pose.cssHeight = innerHeight;
+      pose.reduced = false;
+      Object.keys(over || {}).forEach(function (k) { pose[k] = over[k]; });
+      return bench.draw(id, pose) ? pose : null;
+    };
+
+    window.__ready = true;
+  }
+})();
+</script>
+</body>
+</html>
