@@ -417,7 +417,8 @@
   // what this file plays today with room to spare, and it holds the letter a third voice would add.
   //
   // THE RING RIDES THE HINGE (criterion 9's "two hinge tremors", criterion 11's 700 ms exhale
-  // bound). Both are already named above as `RING_FREQ` and `RING_MS`; the tremor's own size is the
+  // bound). Both are already named above, the bound as `RING_MS` and the rate as `ringFreq()`, which
+  // S-112 turned from a typed constant into the matter table's own row; the tremor's own size is the
   // breath's, because every amplitude this file plays is the breath's thirty-second, and it decays
   // linearly to nothing exactly at the bound rather than trailing past it. Nothing new is measured
   // or chosen here. Before S-38 the ring was a pair of booleans on `report()` and reached nothing,
@@ -426,7 +427,12 @@
     if (!ring.kind) return 0;
     var e = (t - ring.startedAt) / RING_MS;
     if (e < 0 || e > 1) return 0;
-    return breathAmplitude() * (1 - e) * Math.sin(2 * Math.PI * RING_FREQ * (t - ring.startedAt) / 1000);
+    // The frequency is the matter table's own, through `ringFreq()` above — the family's cycles
+    // inside criterion 11's bound. A family whose criterion counts no cycles publishes no frequency,
+    // and a tremor at an unnamed rate would be a number this file invented, so it plays none.
+    var freq = ringFreq();
+    if (freq == null || !isFinite(freq)) return 0;
+    return breathAmplitude() * (1 - e) * Math.sin(2 * Math.PI * freq * (t - ring.startedAt) / 1000);
   }
   function handHandles(t) {
     var amp = breathAmplitude();
