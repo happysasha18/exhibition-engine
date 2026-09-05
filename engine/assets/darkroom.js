@@ -317,3 +317,335 @@ function engage(instrumentId, state, manifests) {
 
   return next;
 }
+
+// ================================================================================================
+// S-47 — THE RESULT'S LIFE. The link is the work: a making is written as one word, the word is read
+// back, and the film of that making is compiled through the crossing skeleton — the same
+// `passageFor` every edge of the walk comes through — with the seam check and the no-cut lint run
+// on every film before it is handed back.
+//
+// SPEC.md Requirement 41, criteria 13 (the word), 15 (compiled through the skeleton, never replayed
+// step by step), 16 (both checks on every compiled movie), 18 (the card), 35 and 36 (a word whose
+// referents moved). The word's own shape is donated by lab/make-your-own.js:38, :421, :472 — the
+// photograph by NAME, the chain in order with each step's numbers, and the recursion depth, with a
+// step resting at its quiet value writing nothing and a depth of 1 leaving no mark.
+//
+// NOTHING HERE IS KEYED BY A PAIR. The film is composed at the moment the link is opened, out of
+// the two records in front of it, exactly as Requirement 12 binds every other crossing.
+// ================================================================================================
+
+// FOUR DECIMALS, AND THE PLACE THAT NUMBER IS READ FROM: every value a work record carries is
+// already written at four (lab/analyze/recipes.py rounds each of its own readings with `round(x, 4)`),
+// so a word written at the same precision can never say more about a handle than the collection
+// says about a photograph.
+function darkroomRound4(v) {
+  var n = Number(v);
+  if (n !== n || !isFinite(n)) return 0;
+  return Math.round(n * 10000) / 10000;
+}
+
+function darkroomClamp(v, lo, hi) {
+  if (typeof lo === "number" && v < lo) return lo;
+  if (typeof hi === "number" && v > hi) return hi;
+  return v;
+}
+
+// THE WORD. `making` is `{photo, chain: [{instrument, handles}], depth}`; `manifests` is the fleet's
+// own registration map, the one place a handle's range and its quiet value are declared.
+function darkroomWord(making, manifests) {
+  making = making || {};
+  manifests = manifests || {};
+  var photo = making.photo === undefined || making.photo === null ? "" : String(making.photo);
+  var steps = [];
+  (making.chain || []).forEach(function (step) {
+    var id = step && (step.instrument || step.id);
+    if (!id) return;
+    var declared = (manifests[id] || {}).handles || {};
+    var handles = (step && step.handles) || {};
+    var parts = [String(id)];
+    Object.keys(handles).sort().forEach(function (h) {
+      var v = darkroomRound4(handles[h]);
+      var spec = declared[h];
+      // A STEP RESTING AT ITS QUIET VALUE WRITES NONE, so a word stays as short as the making was
+      // (lab/make-your-own.js:435-438, the same rule and the same reason).
+      if (spec && typeof spec.def === "number" && v === darkroomRound4(spec.def)) return;
+      parts.push(h + "=" + v);
+    });
+    steps.push(parts.join(","));
+  });
+  var word = photo + "/" + steps.join(";");
+  var depth = Math.round(Number(making.depth) || 1);
+  if (depth > 1) word += "/x" + depth;
+  return word;
+}
+
+// THE WORD READ BACK. A step naming an instrument the registry no longer carries keeps its place in
+// the order and names no handle of its own — Requirement 41 criterion 36's «held at its declared
+// neutral», so the surviving steps still read in their own order.
+function darkroomReadWord(text, manifests) {
+  if (typeof text !== "string" || !text) return null;
+  manifests = manifests || {};
+  var parts = text.split("/");
+  var photo = parts[0];
+  if (!photo) return null;
+  var chain = [];
+  (parts[1] ? parts[1].split(";") : []).forEach(function (token) {
+    if (!token) return;
+    var fields = token.split(",");
+    var id = fields.shift();
+    if (!id) return;
+    var manifest = manifests[id];
+    var declared = (manifest || {}).handles || {};
+    var handles = {};
+    if (manifest) {
+      Object.keys(declared).forEach(function (h) {
+        var d = declared[h] && declared[h].def;
+        handles[h] = typeof d === "number" ? d : 0;
+      });
+      fields.forEach(function (field) {
+        var at = field.indexOf("=");
+        if (at < 0) return;
+        var h = field.slice(0, at);
+        var v = Number(field.slice(at + 1));
+        if (v !== v || !isFinite(v) || !declared[h]) return;
+        handles[h] = darkroomClamp(v, declared[h].min, declared[h].max);
+      });
+    }
+    chain.push({ instrument: id, handles: handles, held: !manifest });
+  });
+  var depth = 1;
+  if (parts[2] && parts[2].charAt(0) === "x") {
+    var d = parseInt(parts[2].slice(1), 10);
+    if (d >= 1) depth = d;
+  }
+  return { photo: photo, chain: chain, depth: depth };
+}
+
+// THE MADE WORK'S OWN RECORD. Requirement 41 criterion 19 — the analysers run on the result, so the
+// visitor's work carries the same measurements as the collection's own. The room measures the lit
+// print live through darkroom-measure.js's `bestAxis`, and the two readings that measurement answers
+// are the two the record already names: `symmetry.reflection.leftOntoRight` and `topOntoBottom`
+// (lab/build-workrecords-v1.py:242-245, filled from recipes.py's own `best_axis`). Every other
+// reading is carried across untouched — the making did not measure it, so this file does not claim
+// it. The id is the word itself, which is what the made work is called.
+function darkroomMadeRecord(record, word, measured) {
+  var made = {};
+  Object.keys(record || {}).forEach(function (k) { made[k] = record[k]; });
+  made.id = String(word);
+  measured = measured || {};
+  var sym = record && record.symmetry;
+  if (!sym || !sym.reflection) return made;
+  var reflection = {};
+  Object.keys(sym.reflection).forEach(function (k) { reflection[k] = sym.reflection[k]; });
+  function write(name, axisKey, read) {
+    if (!read || typeof read.position !== "number" || typeof read.score !== "number") return;
+    var was = reflection[name] || {};
+    var now = {};
+    Object.keys(was).forEach(function (k) { now[k] = was[k]; });
+    now[axisKey] = darkroomRound4(read.position);
+    now.reading = darkroomRound4(read.score);
+    reflection[name] = now;
+  }
+  write("leftOntoRight", "axisX", measured.leftOntoRight);
+  write("topOntoBottom", "axisY", measured.topOntoBottom);
+  var symmetry = {};
+  Object.keys(sym).forEach(function (k) { symmetry[k] = sym[k]; });
+  symmetry.reflection = reflection;
+  made.symmetry = symmetry;
+  return made;
+}
+
+// A NUMBER IS UNWRAPPED THE ONE WAY THE COMPOSER'S OWN READERS UNWRAP IT — the score carries
+// Python's floats as `{v: n}` (pass-composer.js's `Flt`), and every reader of a composed plan in
+// this tree does exactly this (tests/test_pass_step_sequencer.py's own `unwrap`).
+function darkroomNum(v) {
+  if (v && typeof v === "object" && "v" in v) return Number(v.v);
+  return Number(v);
+}
+
+// THE GROUND OF A FILM — the one cue that spans it whole. The composer builds the pivot's window at
+// `[0, duration]` before it reads an argument, so the ground never sequences, and it is the voice a
+// film's own travel rides.
+function darkroomFilmGround(plan) {
+  var cues = (plan && plan.cues) || [];
+  var duration = darkroomNum(plan && plan.duration) / 1000;
+  for (var i = 0; i < cues.length; i++) {
+    var w = cues[i].window || [];
+    if (darkroomNum(w[0]) <= 0 && Math.abs(darkroomNum(w[1]) - duration) < 0.001) return cues[i];
+  }
+  return null;
+}
+
+// THE TWO CHECKS EVERY COMPILED MOVIE IS RUN THROUGH — Requirement 41 criterion 16. Both read the
+// compiled plan and nothing else: no clock, no browser, no frame.
+//
+// THE SEAM. A handoff is a change of authority (tests/test_pass_seam.py's own words), and on a plan
+// the authority change is the cue's own door: the handle it enters on and the handle it leaves on.
+// A cue with no door on a side hands the frame over with nothing standing at the handover, which is
+// the seam vanishing. The film's own two ends are the same fact at the outside: the camera rests on
+// the departing work at the head and the arriving one at the foot (Requirement 14 criterion 3).
+//
+// THE NO CUT. Shelf 18 (SPEC.md Requirement 30 criterion 9) — «playing whole operations one after
+// another, each from start to finish, is banned». Three counts, each a splice the ban names:
+// the ground must span the film whole (a ground that opens late or closes early leaves the film
+// with a head or a tail nothing holds); no voice may be laid end to end after another, which is the
+// same predicate tests/test_pass_step_sequencer.py reads off `cues[i].window`; and the camera's own
+// knots must run forward inside the film's own span, because a knot out of order is a camera cut,
+// and Requirement 14 criterion 2 makes a camera cut one instance of the same ban.
+function darkroomFilmChecks(plan) {
+  var cues = (plan && plan.cues) || [];
+  var track = ((plan && plan.camera) || {}).track || [];
+  var duration = darkroomNum(plan && plan.duration) / 1000;
+  var seam = [];
+  var cut = [];
+
+  cues.forEach(function (c) {
+    ["in", "out"].forEach(function (side) {
+      var door = c && c.doors && c.doors[side];
+      var value = door ? darkroomNum(door.value) : NaN;
+      if (!door || typeof door.handle !== "string" || !door.handle || value !== value) {
+        seam.push("the voice «" + ((c && c.id) || "?") + "» has no " + side + " door");
+      }
+    });
+  });
+  if (!track.length) seam.push("the film carries no camera track");
+  else {
+    if (track[0].at !== "a") seam.push("the camera does not rest on the departing work");
+    if (track[track.length - 1].at !== "b") seam.push("the camera does not rest on the arriving work");
+  }
+
+  var ground = darkroomFilmGround(plan);
+  if (!ground) cut.push("no voice spans the film whole, so its head or its tail is held by nothing");
+
+  var spans = cues.filter(function (c) { return c !== ground; })
+    .map(function (c) {
+      return { id: c.id, open: darkroomNum((c.window || [])[0]), close: darkroomNum((c.window || [])[1]) };
+    })
+    .sort(function (p, q) { return p.open - q.open; });
+  for (var i = 1; i < spans.length; i++) {
+    if (!(spans[i].open < spans[i - 1].close)) {
+      cut.push("the voice «" + spans[i].id + "» opens only after «" + spans[i - 1].id
+               + "» has already closed");
+    }
+  }
+
+  var last = null;
+  track.forEach(function (knot, at) {
+    var t = knot.at === "a" ? 0 : (knot.at === "b" ? duration : darkroomNum(knot.at));
+    if (t !== t) { cut.push("camera knot " + at + " stands at no time"); return; }
+    if (t < 0 || t > duration + 0.001) cut.push("camera knot " + at + " stands outside the film");
+    if (last !== null && t < last) cut.push("camera knot " + at + " stands before the knot ahead of it");
+    last = t;
+  });
+
+  return { seam: { ok: seam.length === 0, faults: seam },
+           cut: { ok: cut.length === 0, faults: cut } };
+}
+
+// THE FILM ITSELF. One call into the crossing skeleton — `composer.passageFor`, the same entry every
+// edge of the walk comes through — from the photograph as it stands to the work as it was made, and
+// the two checks run on what comes back before it is handed on.
+//
+// THE ROLE IS `middle` AND IT IS READ, NOT CHOSEN: Requirement 41 criterion 11 says the room runs at
+// middle tier, and `ROLE_BUDGETS` (pass-composer.js:4942-4948) is the one place a role's tier is
+// declared — `middle` is the role whose budget names that tier.
+//
+// THE DIE IS THE WORD'S OWN. The link is the work, so the same link must play the same film; the
+// seed is therefore a plain reading of the word's own characters, and the composer wraps a seed
+// outside its published span into it by itself.
+function darkroomFilmSeed(word) {
+  var h = 0;
+  for (var i = 0; i < word.length; i++) h = ((h * 31) + word.charCodeAt(i)) % 2147483647;
+  return h;
+}
+
+function darkroomFilm(making, records, room, composer) {
+  room = room || {};
+  var manifests = room.manifests || {};
+  var word = darkroomWord(making, manifests);
+  var from = (records || {})[String(making && making.photo)];
+  // Requirement 41 criterion 35 — a link naming a photograph the collection no longer holds is not
+  // an error and is never resolved to a different photograph. It is refused here, wordlessly, and
+  // the room answers it in its own grammar.
+  if (!from) return { word: word, refused: "the collection holds no such photograph" };
+  if (!composer || typeof composer.passageFor !== "function") {
+    return { word: word, refused: "no composer" };
+  }
+  var made = darkroomMadeRecord(from, word, room.measured);
+  var envelope = composer.passageFor({
+    workRecordA: from,
+    workRecordB: made,
+    routeRole: "middle",
+    direction: "a-to-b",
+    seed: darkroomFilmSeed(word),
+    deviceCeiling: room.deviceCeiling || null
+  });
+  var plan = envelope && envelope.plan;
+  if (!plan) return { word: word, refused: "the skeleton composed no passage" };
+  return { word: word, plan: plan, made: made, checks: darkroomFilmChecks(plan) };
+}
+
+// THE FILM'S OWN FRAME AT ONE INSTANT, read off the compiled plan and nothing else. The making's
+// travel rides the ground's own door — the handle it enters on and the value it leaves on — and the
+// eye stands where the camera's own track puts it, its knots read the way the host reads them
+// (pass-layer.js:1298, the applied factor is exp of `logScale`; pan is a share of the frame).
+function darkroomFilmFrame(plan, seconds) {
+  var duration = darkroomNum(plan && plan.duration) / 1000;
+  var t = darkroomClamp(Number(seconds) || 0, 0, duration);
+  var ground = darkroomFilmGround(plan);
+  var travel = duration > 0 ? t / duration : 1;
+  if (ground && ground.doors && ground.doors.in && ground.doors.out) {
+    var from = darkroomNum(ground.doors.in.value);
+    var to = darkroomNum(ground.doors.out.value);
+    if (from === from && to === to) travel = from + (to - from) * (duration > 0 ? t / duration : 1);
+  }
+  var track = ((plan && plan.camera) || {}).track || [];
+  function timeOf(k) { return k.at === "a" ? 0 : (k.at === "b" ? duration : darkroomNum(k.at)); }
+  function poseOf(k) {
+    return { x: darkroomNum((k.pan || {}).x) || 0, y: darkroomNum((k.pan || {}).y) || 0,
+             logScale: darkroomNum(k.logScale) || 0, roll: darkroomNum(k.roll) || 0 };
+  }
+  var pose = { x: 0, y: 0, logScale: 0, roll: 0 };
+  for (var i = 0; i < track.length; i++) {
+    var t1 = timeOf(track[i]);
+    if (t <= t1 || i === track.length - 1) {
+      if (i === 0) { pose = poseOf(track[0]); break; }
+      var t0 = timeOf(track[i - 1]);
+      var f = t1 > t0 ? darkroomClamp((t - t0) / (t1 - t0), 0, 1) : 1;
+      var a = poseOf(track[i - 1]), b = poseOf(track[i]);
+      pose = { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f,
+               logScale: a.logScale + (b.logScale - a.logScale) * f,
+               roll: a.roll + (b.roll - a.roll) * f };
+      break;
+    }
+  }
+  return { travel: travel, panX: pose.x, panY: pose.y, roll: pose.roll,
+           scale: Math.exp(pose.logScale) };
+}
+
+// THE CONTACT STRIP — Requirement 41 criterion 18, «the print plus a thin contact strip of its
+// making». A contact strip is what a photographer lays a sheet of exposures out as, and the
+// exposures of a making are its own steps: one frame per step, each carrying the chain as it stood
+// when that step landed. The strip therefore reads the chain and names no instant of its own, so a
+// making of n steps hands back exactly n frames whatever the film's own length turned out to be.
+// The first frame is the picture after the first step, never the bare print — the bare print is the
+// card's own large frame and would be shown twice.
+function darkroomStripStates(making) {
+  var stood = {};
+  var out = [];
+  ((making || {}).chain || []).forEach(function (step) {
+    var id = step && (step.instrument || step.id);
+    if (!id) return;
+    var handles = (step && step.handles) || {};
+    var next = {};
+    Object.keys(stood).forEach(function (iid) {
+      next[iid] = {};
+      Object.keys(stood[iid]).forEach(function (h) { next[iid][h] = stood[iid][h]; });
+    });
+    next[id] = next[id] || {};
+    Object.keys(handles).forEach(function (h) { next[id][h] = Number(handles[h]); });
+    stood = next;
+    out.push(next);
+  });
+  return out;
+}
