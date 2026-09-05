@@ -4079,6 +4079,10 @@
     // accessibility handoff is one of the chrome's named parts, and two owners would move focus
     // twice.
     chromeReveal(cmd);
+    // EX-STANDING (S-112): the crossing is over and a work is standing again, so the renderer that
+    // draws it breathing is woken. `passStart` took the breath off at the other end of this same
+    // road, and between the two the room was the crossing's.
+    standWake();
   }
 
   // ---- hangGeometry (PASS-API §1.1) --------------------------------------------------------------
@@ -6648,6 +6652,7 @@
           if (x.isIntersecting) condInView.add(x.target);
           else condInView.delete(x.target);
         });
+        standWake();   // EX-STANDING (S-112): a work coming into view is a work to draw
       }, { threshold: 0 })
     : null;
   function condWatch(frame) {
@@ -6905,26 +6910,43 @@
     try { const u = +passHand.unit(); return isFinite(u) ? u : 0; } catch (e) { return 0; }
   }
 
+  // Answers whether a breath was actually written, which is what the loop below runs on.
   function standDraw() {
     const id = conductorVoiced();
-    if (id == null) { standClear(); return; }
+    if (id == null) { standClear(); return false; }
     if (id !== standId || standViewport() !== standAt || !document.body.contains(standEl)) {
-      if (!standTake(id)) return;
+      if (!standTake(id)) return false;
     }
     const swell = (1 + standUnit()) / 2;      // the voice's own curve, ridden out of the hang alone
     standEl.style.scale = String(1 + swell * standAmp / standReach);
+    return true;
   }
 
-  // ONE LOOP, AND ONLY WHILE THERE ARE WORKS TO DRAW. It starts when the walk hangs its first frame
-  // (`14-walk-render.js` calls `standWake` beside the conductor's own `condWatch`) and it is
-  // requestAnimationFrame all the way down, so a hidden tab is not drawing and this file is asleep
-  // with it — no timer, no scroll listener, no visibility listener of its own. A breathing work is
-  // a frame written per frame; that write is what the row exists for, and there is one of it.
+  // ONE LOOP, AND ONLY WHILE A WORK IS ACTUALLY BEING DRAWN. It is requestAnimationFrame all the way
+  // down, so a hidden tab is not drawing and this file is asleep with it, and it holds no timer and
+  // no scroll listener. A breathing work is a frame written per frame; that write is what the row
+  // exists for, and there is one of it.
+  //
+  // IT STOPS THE INSTANT THERE IS NOTHING TO DRAW, and this is not thrift for its own sake — it is
+  // Requirement 39's own battery argument, and the first shape of this file got it wrong. That shape
+  // re-armed unconditionally while the walk had ever hung a frame, so it went on running with the
+  // visitor standing at the door, and with a crossing covering the room, and — worst — over frames
+  // the walk had already taken out of the document, where every frame re-read a hang that was no
+  // longer there. Across a session that walks door to walk and back many times it left the page
+  // rendering continuously and forcing a layout per frame for nothing, and the walk's own in-view
+  // marks began to land late enough that the door's circle row (tests/test_door.py's EX-DOOR-4, "the
+  // marks count the moment they are made") went red — a row this row never touched.
+  //
+  // THREE THINGS WAKE IT, and each is a moment when a work becomes drawable: the walk hanging frames
+  // (`14-walk-render.js`), a work coming into view (the conductor's own observer, `08a-conductor.js`)
+  // and a crossing landing (`dock`, 01a-pass.js). Nothing else has to, because nothing else can make
+  // a work drawable that was not drawable before.
   function standTick() {
     standRaf = null;
     if (!condFrames.length) return;
-    try { standDraw(); } catch (e) { standClear(); }
-    standWake();
+    let drew = false;
+    try { drew = standDraw(); } catch (e) { standClear(); drew = false; }
+    if (drew) standWake();
   }
   function standWake() {
     if (standRaf !== null || typeof requestAnimationFrame !== "function") return;

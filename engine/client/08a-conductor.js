@@ -43,6 +43,7 @@
           if (x.isIntersecting) condInView.add(x.target);
           else condInView.delete(x.target);
         });
+        standWake();   // EX-STANDING (S-112): a work coming into view is a work to draw
       }, { threshold: 0 })
     : null;
   function condWatch(frame) {

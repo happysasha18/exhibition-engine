@@ -3474,6 +3474,10 @@
     // accessibility handoff is one of the chrome's named parts, and two owners would move focus
     // twice.
     chromeReveal(cmd);
+    // EX-STANDING (S-112): the crossing is over and a work is standing again, so the renderer that
+    // draws it breathing is woken. `passStart` took the breath off at the other end of this same
+    // road, and between the two the room was the crossing's.
+    standWake();
   }
 
   // ---- hangGeometry (PASS-API §1.1) --------------------------------------------------------------
