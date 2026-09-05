@@ -12,7 +12,10 @@
 // the attachment itself: which work, if any, the hand currently stands on.
 //
 // U3 ADDS THE VOICE AND THE SIX VERBS (Requirement 37 case "the band"; Requirement 38 case "the six
-// verbs" and case "the chart law"). This file runs outside 01a-pass.js's own closure — it cannot
+// verbs" and case "the chart law"). S-37 then gave the voice the rest of Requirement 37: it runs at
+// rest with no hand on the work, it rides the letter a standing work can actually move, its rubato
+// holds the eight-second floor at every instant, and it publishes the period and the hard cap so a
+// row reads those laws off the voice. This file runs outside 01a-pass.js's own closure — it cannot
 // call that file's `passHandleSpan` directly — so the client hands that very function over at join
 // (`host` below), and a handle's declared `min`/`max` is read through it, out of the settings record
 // the walk already holds. Nobody types the span in here and this file fetches nothing of its own.
@@ -76,21 +79,44 @@
   function now() { return performance.now(); }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-  // ---- the whisper voice (Requirement 37 case "the band") — tilt's own resting breath -----------
+  // ---- the whisper voice (Requirement 37, standing life at rest) ---------------------------------
+  //
+  // IT RUNS AT REST, WITH NO HAND ANYWHERE (Requirement 37's own title, "standing life at rest",
+  // and criterion 13, "micro-motion shall survive every state"). The phase is a pure function of
+  // wall time and of the last arrival, so it needs no loop of its own to keep going and it is
+  // running before the first pointer event ever lands. `resetPhase` greets a hand, `setGain` dims
+  // the voice under a held press, and neither of them starts it.
   var breath = { t0: 0, gain: 1 };
   function resetPhase() { breath.t0 = now(); }     // arrive uses this
   function setGain(g) { breath.gain = clamp(+g || 0, 0, 1); }  // hold uses this
   var PERIOD_MS = 8000;   // Requirement 37 c1's own floor — "a period of at least 8 s"
-  function breathPhase(t) {
-    // rubato on the period: a slow wobble on the period itself, its depth the same 1/32 fraction
-    // the amplitude already carries and its own timescale twice the base period — no fresh number
-    // invented for the wobble.
-    var wobble = 1 + (1 / 32) * Math.sin(((t - breath.t0) / (PERIOD_MS * 2)) * 2 * Math.PI);
-    var period = PERIOD_MS * wobble;
-    return ((t - breath.t0) / period) % 1;
+  var RUBATO = 1 / 32;    // the depth of the wobble: the same thirty-second the amplitude carries
+  // The rubato rides ONE-SIDED, out of the floor and back into it. A wobble centred on the base
+  // period puts the period below the base for half of its own cycle, and the base IS the floor
+  // criterion 1 names — so a two-sided wobble spends half its life under the law. This one wanders
+  // between eight seconds and a thirty-second more, and the floor holds at every instant.
+  function periodAt(t) {
+    var wobble = 1 + RUBATO * (1 - Math.cos(((t - breath.t0) / (PERIOD_MS * 2)) * 2 * Math.PI)) / 2;
+    return PERIOD_MS * wobble;
   }
+  function breathPhase(t) { return ((t - breath.t0) / periodAt(t)) % 1; }
+  // WHICH LETTER THE VOICE RIDES, AND WHY IT IS THE MAKING AXIS.
+  //
+  // U3 gave the voice `tilt`, the hinge, on Requirement 39 criterion 1's reading that hinged panels
+  // breathe by a micro-hinge. On a work STANDING AT ITS DOOR that letter is frozen: walked to both
+  // ends at the door, tilt, shade, depth, stagger, the panel count, the clock, the parquet's three
+  // and the field each move exactly 0.000 of 255 (measured 2026-09-05 on the pass bench, printed by
+  // tests/test_pass_whisper.py's own run). It is the instrument's own repair of 2026-08-13 that put
+  // it there — the sheet stands square at its door at any tilt and at any second — and a voice on a
+  // letter the door freezes is a work that does not breathe.
+  //
+  // So the standing voice rides `mix`, the making axis: Requirement 37 criterion 6, "the final
+  // letter of the recipe shall be one candidate for the breath", and Requirement 39 criterion 19,
+  // the making-axis verb at micro-gain. It is also what gives criterion 3's cap something to bite
+  // on: the lean rides the same letter, so the eighth and the thirty-second add on one travel and
+  // land under the sixth, exactly as criteria 1, 2 and 3 read together.
   function breathAmplitude() {
-    var span = handSpan("tilt");
+    var span = handSpan("mix");
     return span / 32;   // Requirement 37 c1 — "a thirty-second of a letter's full crossing travel"
   }
   function breathValue(t) {
@@ -256,11 +282,26 @@
   // The hand's own two-parameter field maps onto exactly two of unfold's parameters: its horizontal
   // reading onto `mix` (lean — toward the source photograph or deeper into the construction) and its
   // vertical reading onto `tilt` (attend's own free point, inside the same whisper band the breath
-  // already keeps). `HAND_HANDLES` is the one list this file ever writes through; a third entry here
-  // is the defect S-38's row exists to catch.
-  function handHandles() {
-    var tiltAmp = breathAmplitude();
-    return { mix: lean.value, tilt: attend.y * tiltAmp };
+  // keeps). This list is the one thing this file ever writes through; a third entry here is the
+  // defect S-38's row exists to catch.
+  //
+  // THE BREATH RIDES UNDER THE HAND'S OWN READING ON THE SAME LETTER (Requirement 37 criterion 13,
+  // "micro-motion shall survive every state, the held press included"). At rest the hand's reading
+  // is zero and what the frame carries is the breath alone, which is Requirement 37's own title;
+  // under a held press the breath is at a quarter of itself, because `breathValue` already carries
+  // the gain hold sets. Before this the voice was computed and reported and reached no handle at
+  // all, so a standing work stood still — S-37's own defect.
+  //
+  // AND THE HARD CAP (criterion 3): "combined instantaneous displacement shall be hard-capped at a
+  // sixth of that travel". The three fractions nest — the lean's eighth plus the breath's
+  // thirty-second is five thirty-seconds of the travel, under the sixth — so the cap stands over
+  // what this file plays today with room to spare, and it holds the letter a third voice would add.
+  function handHandles(t) {
+    var amp = breathAmplitude();
+    var capTilt = handSpan("tilt") / 6;
+    var capMix = handSpan("mix") / 6;
+    return { mix: clamp(lean.value + breathValue(t), -capMix, capMix),
+             tilt: clamp(attend.y * amp, -capTilt, capTilt) };
   }
 
   // ---- the hand as clock (Requirement 40 criteria 1, 9, 10 — unit U5) ----------------------------
@@ -294,22 +335,38 @@
                          range: { min: 0, max: 1 }, neutral: 0, resting: 0 };
   function clockProfile() { return CLOCK_PROFILE; }
 
+  // ONE INSTANT PER REPORT. Every time-read below comes off the same `t`, so the breath's own value
+  // and the letter it is written onto agree exactly rather than by a few microseconds.
   function report() {
     var t = now();
-    var handles = handHandles();
+    var handles = handHandles(t);
     var ringElapsed = ring.kind ? (t - ring.startedAt) : null;
     return {
       attached: attached,
       verb: lastVerb,
       kind: kind,
-      tilt: {
-        span: passHandleSpan("unfold", "tilt"),
+      // THE VOICE. Its own block, named for the letter it rides. The five keys U3 published under
+      // `tilt` keep their names here: they were always the voice's own.
+      breath: {
+        handle: "mix",
+        span: passHandleSpan("unfold", "mix"),
         breathAmplitude: breathAmplitude(),
         breathValue: breathValue(t),
         phase: breathPhase(t),
         gain: breath.gain,
-        running: handOn(),
+        // The voice is a pure function of wall time: it is running before the first pointer event
+        // and it goes on running after the last one (Requirement 37, standing life at rest).
+        running: true,
+        // The period, published as the three numbers criterion 1 names, so a row reads the law off
+        // the voice itself: the base, the floor the rubato never crosses, and the ceiling it
+        // reaches. `periodMs` is the period this very instant is being measured on.
+        period: { baseMs: PERIOD_MS, minMs: PERIOD_MS, maxMs: PERIOD_MS * (1 + RUBATO),
+                  rubato: RUBATO, periodMs: periodAt(t) },
+        // Criterion 3's hard cap on the letter this voice rides, in the units that letter carries.
+        cap: handSpan("mix") / 6,
       },
+      // The hinge, which the hand's own free point rides (Requirement 38 criterion 4's chart law).
+      tilt: { span: passHandleSpan("unfold", "tilt"), cap: handSpan("tilt") / 6 },
       hold: { active: hold.active, stretch: hold.stretch },
       lean: { value: lean.value, cap: leanCap(), direction: lean.direction, engaged: lean.engaged },
       attend: { x: attend.x, y: attend.y, target: attend.target },

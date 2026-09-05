@@ -92,7 +92,8 @@ ROWS = [
     "one wheel turn still advances exactly one",
     # ---- U3: Requirement 37's band, Requirement 38's six verbs and chart law ----------------------
     "EX-HAND row7 Requirement 37 c1 the band: while the hand is on the work, the breath's amplitude "
-    "on tilt stays at or under R/32, R read off the instrument's own declared span and never typed in",
+    "stays at or under R/32 on the letter it rides, R read off the instrument's own declared span "
+    "and never typed in",
     "EX-HAND row8 Requirement 38 c1 both input kinds: twelve driven gestures (six mouse, six touch) "
     "each print the verb that fired, and all six verb names appear under each input kind",
     "EX-HAND row9 Requirement 38 c1 arrive: it fires on pointer entry, and the breath's phase after "
@@ -385,7 +386,7 @@ else:
             R = (sp["hi"] - sp["lo"]) if sp else None
             bad = None
             for _ in range(8):
-                amp = hand_report(br)["tilt"]["breathAmplitude"]
+                amp = hand_report(br)["breath"]["breathAmplitude"]
                 if R is not None and amp > R / 32 + 1e-9:
                     bad = amp
                 br.sleep(0.15)
@@ -420,10 +421,10 @@ else:
             fire(br, WORK, "pointerover", "mouse", 0.5, 0.5, 41)
             arrived1 = wait_for(br, verb_expr("arrive"))
             br.sleep(1.0)   # let the phase move well away from its just-reset value
-            before = hand_report(br)["tilt"]["phase"]
+            before = hand_report(br)["breath"]["phase"]
             fire(br, WORK, "pointerover", "mouse", 0.5, 0.5, 42)
             arrived2 = wait_for(br, verb_expr("arrive"))
-            after = hand_report(br)["tilt"]["phase"]
+            after = hand_report(br)["breath"]["phase"]
             check(ROWS[8],
                   bool(arrived1) and bool(arrived2) and abs(after - before) > 0.01,
                   f"arrived1={arrived1} arrived2={arrived2} phase_before={before} phase_after={after}")
@@ -482,7 +483,7 @@ else:
             fire(br, WORK, "pointerdown", "mouse", 0.5, 0.5, 71)
             held = wait_for(br, verb_expr("hold"), timeout=3.0)
             rep = hand_report(br)
-            gain, running, stretch = rep["tilt"]["gain"], rep["tilt"]["running"], rep["hold"]["stretch"]
+            gain, running, stretch = rep["breath"]["gain"], rep["breath"]["running"], rep["hold"]["stretch"]
             print(f"\nhold — the deep fold's own measured stretch: {stretch}")
             fire(br, WORK, "pointerup", "mouse", 0.5, 0.5, 71)
             check(ROWS[11],

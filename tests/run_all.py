@@ -174,6 +174,9 @@ SUITES = [
     # S-110 (2026-09-05): the device is read once while the page loads, and the row it publishes is
     # the ceiling a crossing is cast under. Registered in the pass that wrote it.
     "pass_device",
+    # S-37 (2026-09-05): the whisper law — a work at rest breathes, and a still taken at any instant
+    # is still the work. Registered in the pass that wrote it.
+    "pass_whisper",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A
