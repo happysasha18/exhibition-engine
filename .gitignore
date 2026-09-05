@@ -13,3 +13,4 @@ tests/suite_timings.json
 
 # Written by every suite run, like tests/suite_timings.json above it: machine output, never source.
 tests/route_wire_fence.txt
+tests/suite_verdicts.json

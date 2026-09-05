@@ -20,6 +20,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 TIMINGS_PATH = HERE / "suite_timings.json"
 SKIP_RATCHET_PATH = HERE / "skip_ratchet.json"
+VERDICTS_PATH = HERE / "suite_verdicts.json"
 
 # Every suite's own final line answers "how many rows did I SKIP" in one of a small number of
 # shapes already in use across tests/ — "N passed / M failed / K skipped", "rows: N pass, M fail,
@@ -340,6 +341,33 @@ def check_expected_red(failed):
     return True
 
 
+def record_verdicts(results):
+    """Write each suite's own verdict to tests/suite_verdicts.json, beside the timings and the
+    ratchet this runner already keeps.
+
+    It exists for a reader outside this tree: ~/tlvphotos/scripts/plan_checks.py computes a plan
+    row's status at every session start, and a row whose criterion is "this suite passes" had no
+    cheap way to ask. Asking whether the test FILE exists goes green on an empty file; running the
+    suite from that table drives Chrome at every session start. This record is the third answer —
+    the run that already happened says how it went, and the reader spends one file read.
+
+    The entry is per suite and merged into whatever stands, rather than replacing the file: this
+    runner's own invocation may cover a subset (the site's twin takes an `only` batch), and a suite
+    absent from this run keeps the last verdict actually recorded for it. Each entry carries the
+    head the tree stood on and when, so a reader can see a verdict is old without treating age as
+    failure — nothing here judges staleness, it only records enough for someone else to.
+    """
+    head = subprocess.run(["git", "-C", str(HERE.parent), "rev-parse", "--short", "HEAD"],
+                          capture_output=True, text=True)
+    record = json.loads(VERDICTS_PATH.read_text()) if VERDICTS_PATH.exists() else {}
+    when = time.strftime("%Y-%m-%d %H:%M")
+    for name, (rc, _tail) in results.items():
+        record[name] = {"passed": rc == 0,
+                        "head": head.stdout.strip() or "unknown",
+                        "when": when}
+    VERDICTS_PATH.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+
+
 def ordered_suites():
     """Queue order: longest-first, from the last FULL run's recorded durations in
     tests/suite_timings.json. A suite absent from the record (never timed, e.g. brand new)
@@ -432,6 +460,11 @@ def main():
     # caller asked to skip the rewrite (release/CI, where a clean checkout shouldn't get dirtied).
     if not args.no_record_timings:
         TIMINGS_PATH.write_text(json.dumps(durations, indent=2, sort_keys=True) + "\n")
+
+    # Every run records its verdicts, including a run that goes red: a red verdict is the one a
+    # reader most needs, and a record only written on green would read as "never run" for exactly
+    # the suite that just failed.
+    record_verdicts(results)
 
     # The skip ratchet runs AFTER every suite is harvested, because its number is the sum of what
     # every suite already reported of itself (see suite_skip_count()) — there is nothing to compare
