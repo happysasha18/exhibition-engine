@@ -500,6 +500,11 @@
   // is the proposal's own word choice, used throughout its text — pending his word on the open
   // question of what it should be called (the doc names the collision with «меньше движения»).
   const CALM_EN = "calm";
+  // S-115: the two roads' own names, on the closing screen's link to whichever one a visitor is
+  // not already standing on (EX-ABOUT's reasoning applies here too — the closing screen already
+  // offers a choice of where to go). Fallback ENGLISH, the same law as every other T.* word above.
+  const CLASSIC_EN = "classic";
+  const CROSSINGS_EN = "crossings";
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
@@ -8455,6 +8460,13 @@
     const aboutHref = !AB ? "" :
       (FL && AB.langs.indexOf(FL.code) >= 0 && FL.code !== AB.fallback)
         ? "/about/" + FL.code : "/about";
+    // S-115: a link to the OTHER road, beside "more" and "exit" — his word of 2026-09-05: a visitor
+    // on either road can reach the other. Which road this bundle is serving is read off cfg.pass AS
+    // BAKED, never passGet() — a visitor's own calm toggle (S-33) changes only what plays this
+    // session, not which address served the page, and the two must not be confused.
+    const onClassic = ((cfg && cfg.pass) || {}).visualLayer !== "pass";
+    const roadHref = onClassic ? "/" : "/classic/";
+    const roadWord = onClassic ? (FT.crossings || CROSSINGS_EN) : (FT.classic || CLASSIC_EN);
     const fin = document.createElement("section");
     fin.className = "exh-fin"; fin.id = "exh-fin";
     if (FL) {
@@ -8466,6 +8478,7 @@
       '<div class="row">' +
       (spent ? "" : `<button type="button" class="more" id="ex-unfold">${moreLabel} ↓</button>`) +
       (aboutHref && aboutWord ? `<a class="about" id="ex-about" href="${aboutHref}">${aboutWord}</a>` : "") +
+      `<a class="road" id="ex-road" href="${roadHref}">${roadWord}</a>` +
       (doorAvailable ? `<button type="button" class="back" id="ex-return">${FT.exit || "выход"}</button>` : "") +
       "</div>" +
       // the archive signs its rooms (EX-COPY) — one baked line; missing field renders nothing
