@@ -35,6 +35,7 @@ MANIFEST = [
     "06-ground-load-doorwarm.js",
     "07-door-face-ceremony.js",
     "08-plaque-caption-io.js",
+    "08a-conductor.js",
     "09-story-voice.js",
     "10-share-toast.js",
     "11-protect-gift.js",

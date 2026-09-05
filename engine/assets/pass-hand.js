@@ -20,6 +20,11 @@
 // (`host` below), and a handle's declared `min`/`max` is read through it, out of the settings record
 // the walk already holds. Nobody types the span in here and this file fetches nothing of its own.
 //
+// S-39 PUTS THE VOICE UNDER A CONDUCTOR (Requirement 39 case "the conductor"). The gallery seats
+// one work as the soloist and stills the rest, and this voice reads its own gain off that seat
+// (`seatGain` below) instead of always sounding: a work the conductor has not seated writes a
+// breath of zero, and while a crossing runs no work breathes at all.
+//
 // THERE IS NO SURFACE THAT RENDERS A STANDING WORK YET (the drawing layer only ever plays a
 // crossing) — this file plays no pixel. What it computes is reported on `report()`, the one surface
 // a test (or a future renderer) reads.
@@ -56,8 +61,10 @@
   // instruments its own score names" went red naming that very file. The settings record carries
   // the same two numbers and is already on the visit's bill.
   var hostSpan = null;
+  var hostSeat = null;
   function host(api) {
     hostSpan = (api && typeof api.handleSpan === "function") ? api.handleSpan : null;
+    hostSeat = (api && typeof api.seatRegister === "function") ? api.seatRegister : null;
   }
   // passHandleSpan("unfold", handle) — asked of the host each time rather than cached, so a settings
   // record that lands after this file does is never missed, and a handle the record does not carry
@@ -89,6 +96,13 @@
   var breath = { t0: 0, gain: 1 };
   function resetPhase() { breath.t0 = now(); }     // arrive uses this
   function setGain(g) { breath.gain = clamp(+g || 0, 0, 1); }  // hold uses this
+  // The residual quarter-breath, Requirement 38 criterion 1's own hold verb — "self-life dims to a
+  // residual quarter-breath". Named once here and read twice: by `hold` below, and by the seat, for
+  // whom it is Requirement 39 criterion 15's "cheapest register". Every gain the voice plays is
+  // this file's, so the conductor names registers and carries no number of its own.
+  // DERIVED — a quarter is the word Requirement 38 criterion 1 uses for what hold leaves running,
+  // and this is that word written as a fraction; nothing measured it and nothing tuned it.
+  var RESIDUAL = 0.25;
   var PERIOD_MS = 8000;   // Requirement 37 c1's own floor — "a period of at least 8 s"
   var RUBATO = 1 / 32;    // the depth of the wobble: the same thirty-second the amplitude carries
   // The rubato rides ONE-SIDED, out of the floor and back into it. A wobble centred on the base
@@ -119,8 +133,24 @@
     var span = handSpan("mix");
     return span / 32;   // Requirement 37 c1 — "a thirty-second of a letter's full crossing travel"
   }
+  // THE SEAT, WHICH DECIDES WHETHER THIS VOICE SOUNDS AT ALL (Requirement 39 case "the conductor").
+  // The gallery conductor (`engine/client/08a-conductor.js`) seats one work as the soloist at full
+  // whisper, at most two neighbours at the cheapest register, and everything else at a register with
+  // no voice — a work in view standing as a still, a work outside the viewport paused. It hands this
+  // file the register through `host` above, and the register becomes the gain here, because every
+  // gain the voice plays is this file's own. A host that hands over no seat — an older bundle, or a
+  // bench driving this file alone — reads as the soloist's, which is exactly what this voice played
+  // before the conductor existed.
+  function seatGain() {
+    if (!hostSeat) return 1;
+    var register = null;
+    try { register = hostSeat(); } catch (e) { register = null; }
+    if (register === "neighbour") return RESIDUAL;
+    if (register === "still" || register === "paused") return 0;
+    return 1;
+  }
   function breathValue(t) {
-    return breathAmplitude() * Math.sin(breathPhase(t) * 2 * Math.PI) * breath.gain;
+    return breathAmplitude() * Math.sin(breathPhase(t) * 2 * Math.PI) * breath.gain * seatGain();
   }
 
   // ---- the six verbs' own state ------------------------------------------------------------------
@@ -185,7 +215,7 @@
       hold.active = true;
       fireVerb("hold");
     }
-    setGain(hold.active ? 0.25 : 1);   // hold dims to a residual quarter
+    setGain(hold.active ? RESIDUAL : 1);   // hold dims to a residual quarter
     if (hold.active) {
       hold.stretch += Math.hypot(attend.x - hold.lastX, attend.y - hold.lastY);
       hold.lastX = attend.x; hold.lastY = attend.y;
@@ -364,6 +394,12 @@
                   rubato: RUBATO, periodMs: periodAt(t) },
         // Criterion 3's hard cap on the letter this voice rides, in the units that letter carries.
         cap: handSpan("mix") / 6,
+        // The seat the conductor gave this voice, and the gain that register comes to. A voice with
+        // no seat writes a breath of zero, which is Requirement 39 criteria 15 to 17 reaching the
+        // frame rather than standing as a name on a report.
+        seat: { register: hostSeat ? (function () {
+                  try { return hostSeat(); } catch (e) { return null; } })() : null,
+                gain: seatGain() },
       },
       // The hinge, which the hand's own free point rides (Requirement 38 criterion 4's chart law).
       tilt: { span: passHandleSpan("unfold", "tilt"), cap: handSpan("tilt") / 6 },
@@ -383,7 +419,17 @@
     };
   }
 
+  // THE VOICE'S NARROW DOOR, for the conductor alone. `report()` computes the breath, and the
+  // breath asks the conductor for its gain, so a conductor reading `report()` would close a ring.
+  // What it actually needs is the work this hand stands on and where the breath is in its own
+  // cycle — the phase, the period this instant, and the floor criterion 1 names — and not one of
+  // those depends on a gain.
+  function voice() {
+    var t = now();
+    return { attached: attached, phase: breathPhase(t), periodMs: periodAt(t), floorMs: PERIOD_MS };
+  }
+
   join({ attach: attach, detach: detach, report: report, resetPhase: resetPhase, setGain: setGain,
-         host: host, handleSpan: passHandleSpan, ringFreq: RING_FREQ,
-         clockCurve: clockCurve, clockProfile: clockProfile });
+         host: host, handleSpan: passHandleSpan, ringFreq: RING_FREQ, residual: RESIDUAL,
+         voice: voice, clockCurve: clockCurve, clockProfile: clockProfile });
 })();

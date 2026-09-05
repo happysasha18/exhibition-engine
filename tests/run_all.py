@@ -177,6 +177,10 @@ SUITES = [
     # S-37 (2026-09-05): the whisper law — a work at rest breathes, and a still taken at any instant
     # is still the work. Registered in the pass that wrote it.
     "pass_whisper",
+    # S-39 (2026-09-05): the gallery conductor — one soloist, at most two neighbours, everything
+    # else still or paused, and a crossing in flight taking the solo. Registered in the pass that
+    # wrote it.
+    "pass_conductor",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A

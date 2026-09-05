@@ -31,7 +31,7 @@
     const html = slice.map((id, i) => frameHTML(id, startN + i)).join("");
     stage.insertAdjacentHTML("beforeend", html);
     stage.querySelectorAll(".exh-frame:not(.observed)").forEach((f) => {
-      f.classList.add("observed"); io.observe(f);
+      f.classList.add("observed"); io.observe(f); condWatch(f);   // EX-CONDUCTOR (S-39) watches too
     });
     // the walk's closing screen: onward while the budget lasts, the door ALWAYS (INV-29/30/31).
     // Its copy speaks the visitor's language like the door does (his word 2026-07-06: the exit

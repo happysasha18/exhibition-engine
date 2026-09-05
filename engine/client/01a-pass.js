@@ -3952,8 +3952,13 @@
     // tests/test_pass_pack.py's "a drawing visit fetches the host, then only the instruments its own
     // score names" refuses. Feature-detected, so a hand file older than this hand-off simply never
     // asks and keeps whatever road it had.
+    // `seatRegister` is EX-CONDUCTOR's own door (08a-conductor.js, Requirement 39 case "the
+    // conductor"): the voice asks which register the work it plays for is seated at, and turns that
+    // name into its own gain. Handed over the same way and for the same reason as the span above —
+    // the hand's file runs outside this closure and asks for nothing of its own.
     if (passHand && typeof passHand.host === "function") {
-      try { passHand.host({ handleSpan: passHandleSpan }); } catch (e) {}
+      try { passHand.host({ handleSpan: passHandleSpan, seatRegister: conductorVoiceRegister }); }
+      catch (e) {}
     }
   }
   function passHandOpen() {
@@ -4241,6 +4246,10 @@
                    hangGeometry: hangGeometry, handoff: handoff, chromeReveal: chromeReveal },
         layer: function () { return passLayer; },
         hand: function () { return passHand; },
+        // EX-CONDUCTOR (S-39, Requirement 39 case "the conductor"): the seating this viewport
+        // holds — who is the soloist, who rides the cheapest register, who stands still, who is
+        // paused, and how many surfaces are alive at this instant.
+        conductor: conductorReport,
       };
     } catch (e) {}
   }
