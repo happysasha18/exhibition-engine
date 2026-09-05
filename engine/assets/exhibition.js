@@ -3909,6 +3909,12 @@
   // contract is the same for all of them, whatever the picture does.
   function passStart(a) {
     passEnd("nav-abort", "superseded");
+    // EX-STANDING (S-112): the standing breath comes off the picture BEFORE this step composes.
+    // The conductor already stills every work while a crossing runs (Requirement 39 criterion 17),
+    // and the renderer's own loop would answer that on its next frame — but the hang is read
+    // inside this call (`hangGeometry`, S-91), so the box a crossing is seated in would carry one
+    // frame of somebody else's breath. Taken off here, it never does.
+    standClear();
     // THE DWELL JUST ENDED IS CLOSED BEFORE THIS STEP COMPOSES, so the crossing being declared reads
     // a memory that already includes the work the person is walking away from. Closing it after
     // would compose every step against the visit as it stood one step ago.
@@ -4078,6 +4084,10 @@
     // accessibility handoff is one of the chrome's named parts, and two owners would move focus
     // twice.
     chromeReveal(cmd);
+    // EX-STANDING (S-112): the crossing is over and a work is standing again, so the renderer that
+    // draws it breathing is woken. `passStart` took the breath off at the other end of this same
+    // road, and between the two the room was the crossing's.
+    standWake();
   }
 
   // ---- hangGeometry (PASS-API §1.1) --------------------------------------------------------------
@@ -4550,6 +4560,66 @@
   // Unlike the drawing layer it needs no capability probe and no setting: it carries no picture of
   // its own, only the attach/detach bookkeeping of which work, if any, a touch currently stands on.
   const PASS_HAND_SRC = "pass-hand.js";
+  // ---- the matter table (plan row S-40's own file), on the wire ---------------------------------
+  // One row per matter family — the instruments that draw it, the letter a work of it moves at rest,
+  // and its ring. Requirement 37 criterion 11 asks the impulse-response table to be the ONE home of
+  // that curve, so nothing here copies a number out of it: this reads the served file and answers
+  // rows.
+  //
+  // IT IS ASKED FOR BESIDE THE HAND AND NEVER BEFORE IT. `passMatterOpen` is called from
+  // `passHandOpen`, which is itself only reached once the walk lands on a work, so the door's own
+  // road never asks for this file and a visitor who never reaches a work never pays for it. A bake
+  // that serves no table answers 404, the rows stay empty, and every reader falls back to what it
+  // held before this file existed.
+  const PASS_MATTER_SRC = "matter-response.json";
+  let passMatterRows = null, passMatterAsked = false, passMatterState = "absent";
+  function passMatterOpen() {
+    if (passMatterAsked) return;
+    passMatterAsked = true;
+    passMatterState = "asked";
+    try {
+      fetch(PASS_MATTER_SRC, { credentials: "omit" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const rows = j && Array.isArray(j.families) ? j.families : null;
+          passMatterRows = rows;
+          passMatterState = rows ? "read" : "refused";
+        })
+        .catch(() => { passMatterState = "refused"; });
+    } catch (e) { passMatterState = "refused"; }
+  }
+  // The family an instrument draws, by that instrument's own name — the table's `instruments` column
+  // read forward. An instrument the table names nowhere answers null, which is the honest "this
+  // matter has no family row" rather than a guess at the nearest one.
+  function passMatterFamily(instrument) {
+    if (!passMatterRows || instrument == null) return null;
+    const name = String(instrument);
+    for (let i = 0; i < passMatterRows.length; i++) {
+      const row = passMatterRows[i];
+      const list = row && Array.isArray(row.instruments) ? row.instruments : [];
+      if (list.indexOf(name) >= 0) return row;
+    }
+    return null;
+  }
+  // WHICH MATTER IS IN HAND THIS INSTANT, and — asked with a matter's own name — that family's row
+  // instead. The one place the engine says out loud what matter is being drawn is the drawing
+  // layer's own report, which names the instrument the crossing in flight cast. At rest no
+  // instrument is drawing, so no family is determined and this answers null; the reader in
+  // `pass-hand.js` says what it falls back to and why, and asks for that fallback by matter through
+  // this same door so the table stays the one home of every row.
+  function passMatterInHand(named) {
+    if (named != null) {
+      const want = String(named);
+      const rows = passMatterRows || [];
+      for (let i = 0; i < rows.length; i++) if (rows[i] && rows[i].matter === want) return rows[i];
+      return null;
+    }
+    if (!passLayer || typeof passLayer.report !== "function") return null;
+    let inst = null;
+    try { inst = passLayer.report().instrument; } catch (e) { inst = null; }
+    return passMatterFamily(inst);
+  }
+
   let passHand = null, passHandAsked = false, passHandLastEl = null;
   function passHandSet(h) {
     passHand = (h && typeof h.attach === "function" && typeof h.detach === "function"
@@ -4566,14 +4636,20 @@
     // conductor"): the voice asks which register the work it plays for is seated at, and turns that
     // name into its own gain. Handed over the same way and for the same reason as the span above —
     // the hand's file runs outside this closure and asks for nothing of its own.
+    // `matterInHand` is S-40's matter table read through the same door, for the same reason: the
+    // ring a matter answers with is that family's own row, and the hand asks rather than holding a
+    // second copy of a count the table already carries.
     if (passHand && typeof passHand.host === "function") {
-      try { passHand.host({ handleSpan: passHandleSpan, seatRegister: conductorVoiceRegister }); }
-      catch (e) {}
+      try {
+        passHand.host({ handleSpan: passHandleSpan, seatRegister: conductorVoiceRegister,
+                        matterInHand: passMatterInHand });
+      } catch (e) {}
     }
   }
   function passHandOpen() {
     if (passHandAsked) return;
     passHandAsked = true;
+    passMatterOpen();          // the matter table travels beside the hand, never before it
     try {
       window.__@@NS@@PassHand = passHandSet;
       const s = document.createElement("script");
@@ -4860,6 +4936,17 @@
         // holds — who is the soloist, who rides the cheapest register, who stands still, who is
         // paused, and how many surfaces are alive at this instant.
         conductor: conductorReport,
+        // The matter table (S-40) as this visit read it: where it stands, the rows it carries, the
+        // family an instrument draws, and the family in hand this instant.
+        matter: function (instrument) {
+          return { src: PASS_MATTER_SRC, state: passMatterState,
+                   families: (passMatterRows || []).map((r) => r.matter),
+                   of: instrument === undefined ? undefined : passMatterFamily(instrument),
+                   inHand: passMatterInHand() };
+        },
+        // EX-STANDING (S-112): the work being drawn breathing this instant, the box it is drawn in,
+        // and the fractions Requirement 37 grants that breath.
+        standing: standingReport,
       };
     } catch (e) {}
   }
@@ -6570,6 +6657,7 @@
           if (x.isIntersecting) condInView.add(x.target);
           else condInView.delete(x.target);
         });
+        standWake();   // EX-STANDING (S-112): a work coming into view is a work to draw
       }, { threshold: 0 })
     : null;
   function condWatch(frame) {
@@ -6677,16 +6765,25 @@
     return { crossing: crossing, solo: crossing ? null : solo, seats: seats };
   }
 
-  // What `pass-hand.js` asks for. The voice belongs to the work the hand stands on, and with no
+  // WHICH WORK CARRIES THE VOICE. The voice belongs to the work the hand stands on, and with no
   // hand anywhere it is the soloist's — which is the one work Requirement 37's own title, standing
-  // life at rest, is about. The hand turns this name into its own gain.
-  // `seating` is handed in by the report, which has one already; every other caller — the voice
-  // asking for its gain — takes a fresh one, which is the same one read a moment later.
+  // life at rest, is about. While a crossing runs no work carries it at all (criterion 17).
+  // Two readers need this one name: the register below, which `pass-hand.js` turns into its own
+  // gain, and the standing renderer (08b-standing.js), which draws that work. One rule, one home,
+  // so the work that is voiced and the work that is drawn can never be two different works.
+  // `seating` is handed in by a caller that has one already; every other caller takes a fresh one,
+  // which is the same one read a moment later.
+  function conductorVoiced(seating) {
+    seating = seating || condSeating();
+    if (seating.crossing) return null;
+    const voice = condVoice();
+    return (voice && voice.attached != null) ? String(voice.attached) : seating.solo;
+  }
+  // What `pass-hand.js` asks for: the register the voiced work sits at. The hand turns this name
+  // into its own gain.
   function conductorVoiceRegister(seating) {
     seating = seating || condSeating();
-    if (seating.crossing) return "still";
-    const voice = condVoice();
-    const id = (voice && voice.attached != null) ? String(voice.attached) : seating.solo;
+    const id = conductorVoiced(seating);
     if (id == null) return "still";
     for (let i = 0; i < seating.seats.length; i++) {
       if (seating.seats[i].id === id) return seating.seats[i].register;
@@ -6717,6 +6814,165 @@
                        register: conductorVoiceRegister(seating) } : null,
       tenure: { periods: CONDUCTOR_TENURE, heldMs: performance.now() - condSoloAt,
                 exhale: voice ? condExhale(voice) : null, handover: condHandover },
+    };
+  }
+/*!08b-standing.js*/
+  // ---- EX-STANDING (S-112): the standing work is drawn breathing on the walk ---------------------
+  // SPEC.md Requirement 37, standing life at rest. The whisper voice (`engine/assets/pass-hand.js`,
+  // S-37) computes a breath and the conductor (`08a-conductor.js`, S-39) says whose it is; until
+  // this file both stopped at a report, and a visitor walking the gallery met neither. This file is
+  // the surface: the work the conductor seated is drawn breathing, inside the box the hang measured
+  // (`hangGeometry`, S-91), and every other work stands exactly as still as it stood before.
+  //
+  // THE THREE PIECES, EACH READ AND NONE REBUILT.
+  //   · the voice — `passHand.unit()`: the breath's own curve between -1 and 1, with the hold's gain
+  //     and the seat's gain already in it. A work the conductor gave no seat reads 0 here, and 0 is
+  //     what this file writes, which is a work standing still.
+  //   · the seat — `conductorVoiced()`: the one work carrying the voice this instant, by the very
+  //     rule the voice reads its own gain by. One name, one home, so the work that is voiced and the
+  //     work that is drawn cannot be two different works.
+  //   · the frame — `hangGeometry(id)`: the box the walk hung that work in, read the way a crossing
+  //     reads it.
+  //
+  // WHERE EVERY NUMBER COMES FROM, AND WHY NONE IS TYPED HERE BUT THE CRITERIA'S OWN FRACTIONS.
+  // Requirement 37 states the band as fractions of a letter's full crossing travel — criterion 1's
+  // thirty-second for the breath, criterion 3's sixth for the hard cap — and then states the SAME
+  // ceiling a second time in the units a drawn frame actually has: criterion 4, "at rest, any frame
+  // shall differ from the canonical work by under 1 % of frame width in any pixel's displacement".
+  // Criterion 3's sixth and criterion 4's one percent are the same ceiling read from two sides, so
+  // on the shipped frame the letter's full travel is six percent of the frame's own width, and
+  // criterion 1's thirty-second of that travel is the amplitude below. Nothing is measured, nothing
+  // is tuned, and the peak displacement this file ever draws is a fifth of what criterion 4 allows.
+  //
+  // WHAT IS DRAWN, AND WHY IT IS STILL THE WORK. A uniform scale about the work's own centre: the
+  // swell. A photograph scaled by a fraction of a percent is that photograph, so criterion 4's
+  // screenshot law holds in kind as well as in magnitude, and the amplitude above is the
+  // displacement of the pixel furthest from the centre — the corner — which is the quantity the
+  // criterion names. The letter is written with the standalone `scale` property rather than
+  // `transform`, so the computed `transform` the hang reads (`hangGeometry`) stays untouched.
+  //
+  // AND THE SWELL RIDES ONE-SIDED, OUT OF THE HANG AND BACK INTO IT — never through it. This is the
+  // same argument `pass-hand.js` already makes for the rubato on the period: a swing centred on the
+  // resting point spends half its life on the wrong side of the very thing that point names, and
+  // here that point is the box the walk hung the work in. A work that spent half its breath SMALLER
+  // than its hang would make its own box disagree with the hang by up to the amplitude, and the box
+  // is a shared fact — the site's own frame row (S-91) reads it to ask whether a crossing painted
+  // outside the work, and it went red by exactly this amplitude while the breath swung both ways.
+  // Riding outward only, the picture is never smaller than the box anyone else reads, and the whole
+  // travel is still the amplitude above. The one-sided reading is the voice's own curve mapped onto
+  // its positive half — no second curve, and the phase, the period and the two gains are all the
+  // voice's.
+  //
+  // NOTHING BRANCHES ON THE DEVICE. One CSS property on one element, at any ceiling S-110 reads;
+  // this file takes no reading of its own and holds no fallback of its own.
+  const STAND_STILL = 0.01;   // criterion 4 — "under 1 % of frame width in any pixel's displacement"
+  const STAND_CAP = 6;        // criterion 3 — the hard cap is a sixth of the travel
+  const STAND_BREATH = 32;    // criterion 1 — the breath is a thirty-second of the travel
+  // The travel in the frame's own width, and the breath's share of it: 6 % and 6/32 of a percent.
+  const STAND_AMPLITUDE = STAND_STILL * STAND_CAP / STAND_BREATH;
+
+  let standId = null;      // the work being drawn, or null
+  let standEl = null;      // its own picture, the one element this file ever writes
+  let standAmp = 0;        // the peak displacement in CSS pixels, off that work's own box
+  let standReach = 0;      // the distance from the box's centre to its furthest corner
+  let standAt = "";        // the viewport the box above was measured on
+  let standRaf = null;
+
+  function standViewport() { return innerWidth + "x" + innerHeight; }
+
+  // The work stops being written the instant it stops being the one the conductor voiced, so a work
+  // left behind by a scroll is left standing rather than frozen mid-breath at somebody else's phase.
+  function standClear() {
+    if (standEl) { standEl.style.scale = ""; }
+    standId = null; standEl = null; standAmp = 0; standReach = 0; standAt = "";
+  }
+
+  // The box, taken once per work and again when the viewport changes shape. It is read while the
+  // picture carries no scale of its own — a fresh work has none, and `standClear` above takes the
+  // old one off first — so the reading is of the hang and never of this file's own last frame.
+  //
+  // A WORK WHOSE PIXELS HAVE NOT ARRIVED HANGS IN A BOX OF NOTHING, and nothing is taken from it:
+  // the reading is refused and tried again on the next frame, so the work is taken the moment it
+  // has a box, and the same road answers a work whose box grows when its picture lands. The
+  // assignment happens only once the box is real, so no half-taken work is ever left cached.
+  function standTake(id) {
+    const frame = condFrameOf(id);
+    const el = (frame && frame.querySelector) ? frame.querySelector("img.work") : null;
+    standClear();
+    if (!el) return false;
+    const g = hangGeometry(id);
+    const reach = g ? Math.hypot(g.w, g.h) / 2 : 0;
+    if (!reach) return false;
+    standId = id; standEl = el;
+    standAmp = g.w * STAND_AMPLITUDE;
+    standReach = reach;
+    standAt = standViewport();
+    return true;
+  }
+
+  function standUnit() {
+    if (!passHand || typeof passHand.unit !== "function") return 0;
+    try { const u = +passHand.unit(); return isFinite(u) ? u : 0; } catch (e) { return 0; }
+  }
+
+  // Answers whether a breath was actually written, which is what the loop below runs on.
+  function standDraw() {
+    const id = conductorVoiced();
+    if (id == null) { standClear(); return false; }
+    if (id !== standId || standViewport() !== standAt || !document.body.contains(standEl)) {
+      if (!standTake(id)) return false;
+    }
+    const swell = (1 + standUnit()) / 2;      // the voice's own curve, ridden out of the hang alone
+    standEl.style.scale = String(1 + swell * standAmp / standReach);
+    return true;
+  }
+
+  // ONE LOOP, AND ONLY WHILE A WORK IS ACTUALLY BEING DRAWN. It is requestAnimationFrame all the way
+  // down, so a hidden tab is not drawing and this file is asleep with it, and it holds no timer and
+  // no scroll listener. A breathing work is a frame written per frame; that write is what the row
+  // exists for, and there is one of it.
+  //
+  // IT STOPS THE INSTANT THERE IS NOTHING TO DRAW, and this is not thrift for its own sake — it is
+  // Requirement 39's own battery argument, and the first shape of this file got it wrong. That shape
+  // re-armed unconditionally while the walk had ever hung a frame, so it went on running with the
+  // visitor standing at the door, and with a crossing covering the room, and — worst — over frames
+  // the walk had already taken out of the document, where every frame re-read a hang that was no
+  // longer there. Across a session that walks door to walk and back many times it left the page
+  // rendering continuously and forcing a layout per frame for nothing, and the walk's own in-view
+  // marks began to land late enough that the door's circle row (tests/test_door.py's EX-DOOR-4, "the
+  // marks count the moment they are made") went red — a row this row never touched.
+  //
+  // THREE THINGS WAKE IT, and each is a moment when a work becomes drawable: the walk hanging frames
+  // (`14-walk-render.js`), a work coming into view (the conductor's own observer, `08a-conductor.js`)
+  // and a crossing landing (`dock`, 01a-pass.js). Nothing else has to, because nothing else can make
+  // a work drawable that was not drawable before.
+  function standTick() {
+    standRaf = null;
+    if (!condFrames.length) return;
+    let drew = false;
+    try { drew = standDraw(); } catch (e) { standClear(); drew = false; }
+    if (drew) standWake();
+  }
+  function standWake() {
+    if (standRaf !== null || typeof requestAnimationFrame !== "function") return;
+    standRaf = requestAnimationFrame(standTick);
+  }
+
+  // The report, on the diagnostic surface beside the conductor's (01a-pass.js): which work is being
+  // drawn, on what box, how far its breath is granted to travel, and the three fractions that
+  // granted it. The scale actually standing on the picture is read off the element rather than
+  // recomputed, so a row reads what a visitor is looking at.
+  function standingReport() {
+    return {
+      version: 1,
+      drawing: standId,
+      unit: standUnit(),
+      scale: standEl ? (standEl.style.scale || null) : null,
+      swell: standEl ? (1 + standUnit()) / 2 : 0,
+      frame: standId ? { amplitudePx: standAmp, reachPx: standReach, at: standAt } : null,
+      law: { stillOfFrameWidth: STAND_STILL, capOfTravel: STAND_CAP, breathOfTravel: STAND_BREATH,
+             amplitudeOfFrameWidth: STAND_AMPLITUDE },
+      running: standRaf !== null,
     };
   }
 /*!09-story-voice.js*/
@@ -8444,6 +8700,7 @@
     stage.querySelectorAll(".exh-frame:not(.observed)").forEach((f) => {
       f.classList.add("observed"); io.observe(f); condWatch(f);   // EX-CONDUCTOR (S-39) watches too
     });
+    standWake();                       // EX-STANDING (S-112): the seated work is drawn breathing
     // the walk's closing screen: onward while the budget lasts, the door ALWAYS (INV-29/30/31).
     // Its copy speaks the visitor's language like the door does (his word 2026-07-06: the exit
     // is «выход», localized — never «к двери»); built-ins only carry a missing cache.

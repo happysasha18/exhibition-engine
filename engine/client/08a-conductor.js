@@ -43,6 +43,7 @@
           if (x.isIntersecting) condInView.add(x.target);
           else condInView.delete(x.target);
         });
+        standWake();   // EX-STANDING (S-112): a work coming into view is a work to draw
       }, { threshold: 0 })
     : null;
   function condWatch(frame) {
@@ -150,16 +151,25 @@
     return { crossing: crossing, solo: crossing ? null : solo, seats: seats };
   }
 
-  // What `pass-hand.js` asks for. The voice belongs to the work the hand stands on, and with no
+  // WHICH WORK CARRIES THE VOICE. The voice belongs to the work the hand stands on, and with no
   // hand anywhere it is the soloist's — which is the one work Requirement 37's own title, standing
-  // life at rest, is about. The hand turns this name into its own gain.
-  // `seating` is handed in by the report, which has one already; every other caller — the voice
-  // asking for its gain — takes a fresh one, which is the same one read a moment later.
+  // life at rest, is about. While a crossing runs no work carries it at all (criterion 17).
+  // Two readers need this one name: the register below, which `pass-hand.js` turns into its own
+  // gain, and the standing renderer (08b-standing.js), which draws that work. One rule, one home,
+  // so the work that is voiced and the work that is drawn can never be two different works.
+  // `seating` is handed in by a caller that has one already; every other caller takes a fresh one,
+  // which is the same one read a moment later.
+  function conductorVoiced(seating) {
+    seating = seating || condSeating();
+    if (seating.crossing) return null;
+    const voice = condVoice();
+    return (voice && voice.attached != null) ? String(voice.attached) : seating.solo;
+  }
+  // What `pass-hand.js` asks for: the register the voiced work sits at. The hand turns this name
+  // into its own gain.
   function conductorVoiceRegister(seating) {
     seating = seating || condSeating();
-    if (seating.crossing) return "still";
-    const voice = condVoice();
-    const id = (voice && voice.attached != null) ? String(voice.attached) : seating.solo;
+    const id = conductorVoiced(seating);
     if (id == null) return "still";
     for (let i = 0; i < seating.seats.length; i++) {
       if (seating.seats[i].id === id) return seating.seats[i].register;
