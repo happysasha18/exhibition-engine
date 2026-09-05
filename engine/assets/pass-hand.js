@@ -63,9 +63,11 @@
   // the same two numbers and is already on the visit's bill.
   var hostSpan = null;
   var hostSeat = null;
+  var hostMatter = null;
   function host(api) {
     hostSpan = (api && typeof api.handleSpan === "function") ? api.handleSpan : null;
     hostSeat = (api && typeof api.seatRegister === "function") ? api.seatRegister : null;
+    hostMatter = (api && typeof api.matterInHand === "function") ? api.matterInHand : null;
   }
   // passHandleSpan("unfold", handle) — asked of the host each time rather than cached, so a settings
   // record that lands after this file does is never missed, and a handle the record does not carry
@@ -177,7 +179,53 @@
   var lean = { value: 0, engaged: false, direction: null };
   var hold = { active: false, stretch: 0, lastX: 0, lastY: 0 };
   var RING_MS = 700;               // criterion 11's own exhale bound
-  var RING_FREQ = 2 / 0.700;       // criterion 9's two hinge tremors inside that bound
+  // ---- the ring, which is the matter's own (Requirement 37 criteria 9 to 11) ---------------------
+  //
+  // "Every matter shall own one impulse response", and criterion 11 makes the impulse-response table
+  // "the one home of the curve". That table exists now — `engine/assets/matter-response.json`, plan
+  // row S-40 — with one row per family carrying the shape its criterion words and the number of
+  // cycles its criterion counts. So the count is READ from the family in hand rather than typed
+  // here, and a family that rings differently rings differently: hinged panels ring two tremors,
+  // yarn one slow shiver, the corridor's shudder counts none at all.
+  //
+  // The bound stays where it already was. Criterion 11's 700 ms exhale is `RING_MS` above, and the
+  // table's own `ring` column says so in as many words — "a family's ring frequency is its own
+  // cycles over that bound, so the count lives here and the bound stays where it already was". A
+  // frequency is the one over the other, and neither number is written twice.
+  //
+  // WHICH FAMILY IS IN HAND. The host answers (`matterInHand`, 01a-pass.js), off the drawing layer's
+  // own report of the instrument the crossing in flight cast — the one place the engine says out
+  // loud what matter is being drawn. THREE ROADS ANSWER NOTHING, and all three fall back to the same
+  // row: a walk at rest, where no instrument is drawing and a standing work names no family; an
+  // instrument the table names in no row, of which `unfold` — the letter this file's own voice rides
+  // — is one; and a bake that serves no table at all.
+  //
+  // THE FALLBACK IS THE HINGED PANELS' ROW, and it is the honest one rather than a neutral invented
+  // for the occasion: the count that stood in this file before the table existed was that family's
+  // own two tremors, so a work whose family is not determined rings exactly as every work rang
+  // before this hand-off, and nothing that already shipped moves. It is named here by matter rather
+  // than by number, so the day the table gives hinged panels a different count, the fallback follows
+  // it too. A table that carries no such row leaves the frequency unread, and a reader is told so.
+  var RING_FALLBACK = "hinged panels";
+  function matterRow(name) {
+    if (!hostMatter) return null;
+    try { return hostMatter(name) || null; } catch (e) { return null; }
+  }
+  function ringRow() {
+    var row = matterRow();
+    if (row && row.ring) return { matter: row.matter, ring: row.ring, determined: true };
+    var back = matterRow(RING_FALLBACK);
+    return { matter: RING_FALLBACK, ring: back && back.ring ? back.ring : null, determined: false };
+  }
+  // The frequency criterion 9 asks for: the family's own cycles inside criterion 11's own bound. A
+  // family whose criterion counts no cycles (the corridor's receding shudder) has no frequency to
+  // publish, and this answers null rather than standing a number in for a count nobody made.
+  function ringFreq() {
+    var row = ringRow();
+    var cycles = row.ring && Number(row.ring.cycles);
+    return (row.ring && row.ring.cycles != null && isFinite(cycles))
+      ? cycles / (RING_MS / 1000) : null;
+  }
   var ring = { kind: null, startedAt: 0 };  // kind: "strike" | "release" | null
   var rafId = null;
 
@@ -426,6 +474,17 @@
         afterglow: ringElapsed <= RING_MS * 2,
       } : null,
       strike: ring.kind === "strike" ? { ring: ringElapsed <= RING_MS } : null,
+      // THE MATTER THE RING BELONGS TO, and whether it was determined at all: the family's own row
+      // out of the matter table, the cycles its criterion counts, the bound they finish inside, and
+      // the frequency that is the one over the other. `determined` false is the fallback road, and
+      // `matter` then names the row it fell back to.
+      matter: (function () {
+        var row = ringRow();
+        return { matter: row.matter, determined: row.determined,
+                 shape: row.ring ? row.ring.shape : null,
+                 cycles: row.ring ? row.ring.cycles : null,
+                 boundMs: RING_MS, freq: ringFreq() };
+      })(),
       chart: {
         unfold: { x: { handle: "mix", value: handles.mix }, y: { handle: "tilt", value: handles.tilt } },
         moves: Object.keys(handles),
@@ -448,6 +507,7 @@
   function unit() { return breathUnit(now()); }
 
   join({ attach: attach, detach: detach, report: report, resetPhase: resetPhase, setGain: setGain,
-         host: host, handleSpan: passHandleSpan, ringFreq: RING_FREQ, residual: RESIDUAL,
+         host: host, handleSpan: passHandleSpan, ringFreq: ringFreq, ringRow: ringRow,
+         residual: RESIDUAL,
          voice: voice, unit: unit, clockCurve: clockCurve, clockProfile: clockProfile });
 })();

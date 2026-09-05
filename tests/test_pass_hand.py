@@ -115,6 +115,11 @@ ROWS = [
     "prior claim on it",
     "EX-HAND row16 the walk's frame index is unchanged across all twelve gestures, and one wheel "
     "turn still advances exactly one frame",
+    "EX-HAND row17 Requirement 37 c9 to c11 the ring is the matter's own: the matter table is served "
+    "beside the hand and read by it, every family's ring the hand answers is that family's own row "
+    "of the table word for word, the six do not all ring alike, and a work whose family is not "
+    "determined falls back by name to the hinged panels' row — the count this file carried before "
+    "the table existed",
 ]
 
 # ---------------------------------------------------------------- row 1: the bake, a string proof
@@ -587,6 +592,64 @@ else:
               idxt1 == idxt0 and idxm1 == idxm0 and idxw1 == idxw0 + 1,
               f"touch: {idxt0}->{idxt1} (want unchanged) — mouse: {idxm0}->{idxm1} (want unchanged) — "
               f"wheel: {idxw0}->{idxw1} (want {idxw0 + 1})")
+
+        # row 17 — the ring is the matter's own, read off the served matter table
+        #
+        # WHAT THE ROW ANCHORS ON, so that typing the number back would redden it. A frequency alone
+        # cannot say where it came from: 2/0.700 typed here and 2/0.700 read out of the hinged
+        # panels' row are the same float. What the table carries and a typed count cannot is the
+        # criterion's own WORDS for the ring's shape, so the row reads those back off the hand's own
+        # report and against the file the bake served. It also reads the six families' counts, which
+        # are three different answers, and the one the hand falls back to when no crossing is drawing.
+        #
+        # NO CROSSING IS DRIVEN HERE. The determined road runs off the drawing layer's own report of
+        # the instrument it is casting; the walk at rest casts none, which is the fallback road, and
+        # the row reads both the fallback the hand takes and the rows the host answers by name for
+        # every family the table carries.
+        with Browser(width=1280, height=900) as br:
+            room(br, base)
+            wait_for(br, HAND_READY)
+            served = json.loads((TMP / "matter-response.json").read_text(encoding="utf-8"))
+            fams = served["families"]
+            read = wait_for(br, "String(window.__exPass.matter().state==='read')==='true'",
+                            timeout=8.0)
+            surface = json.loads(br.evaluate("JSON.stringify(window.__exPass.matter())"))
+            # every family's row, asked of the host by the instruments the table itself names
+            by_inst = {}
+            for f in fams:
+                by_inst[f["matter"]] = json.loads(br.evaluate(
+                    "JSON.stringify(window.__exPass.matter(%s).of||null)"
+                    % json.dumps(f["instruments"][0])))
+            rings_match = all(by_inst[f["matter"]]
+                              and by_inst[f["matter"]]["ring"] == f["ring"] for f in fams)
+            counts = [f["ring"]["cycles"] for f in fams]
+            mine = json.loads(br.evaluate(
+                "JSON.stringify(window.__exPass.hand().report().matter)"))
+            hinged = [f for f in fams if f["matter"] == "hinged panels"][0]
+            bound_s = mine["boundMs"] / 1000.0
+            print("\nthe matter table on the wire: %r, %d families, the run reading %r"
+                  % (surface["src"], len(surface["families"]), surface["state"]))
+            for f in fams:
+                cyc = f["ring"]["cycles"]
+                print("  %-24s %s over %.3f s = %s"
+                      % (f["matter"], cyc, bound_s,
+                         "none" if cyc is None else "%.4f Hz" % (cyc / bound_s)))
+            print("  no crossing drawing, so the hand falls back to %r, determined=%r, at %r Hz"
+                  % (mine["matter"], mine["determined"], mine["freq"]))
+            check(ROWS[16],
+                  bool(read) and surface["state"] == "read"
+                  and surface["families"] == [f["matter"] for f in fams]
+                  and rings_match
+                  and len(set(str(c) for c in counts)) >= 3
+                  and mine["determined"] is False
+                  and mine["matter"] == "hinged panels"
+                  and mine["shape"] == hinged["ring"]["shape"]
+                  and mine["cycles"] == hinged["ring"]["cycles"]
+                  and abs(mine["freq"] - hinged["ring"]["cycles"] / bound_s) < 1e-12,
+                  f"the table read {surface['state']!r} carrying {surface['families']!r}; every "
+                  f"family's ring answered word for word={rings_match}; the counts across the six "
+                  f"are {counts!r}; the hand at rest reads {mine!r} against the served hinged "
+                  f"panels' row {hinged['ring']!r}")
 
 # ---------------------------------------------------------------- report
 import shutil  # noqa: E402

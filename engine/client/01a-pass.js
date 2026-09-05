@@ -3946,6 +3946,66 @@
   // Unlike the drawing layer it needs no capability probe and no setting: it carries no picture of
   // its own, only the attach/detach bookkeeping of which work, if any, a touch currently stands on.
   const PASS_HAND_SRC = "pass-hand.js";
+  // ---- the matter table (plan row S-40's own file), on the wire ---------------------------------
+  // One row per matter family — the instruments that draw it, the letter a work of it moves at rest,
+  // and its ring. Requirement 37 criterion 11 asks the impulse-response table to be the ONE home of
+  // that curve, so nothing here copies a number out of it: this reads the served file and answers
+  // rows.
+  //
+  // IT IS ASKED FOR BESIDE THE HAND AND NEVER BEFORE IT. `passMatterOpen` is called from
+  // `passHandOpen`, which is itself only reached once the walk lands on a work, so the door's own
+  // road never asks for this file and a visitor who never reaches a work never pays for it. A bake
+  // that serves no table answers 404, the rows stay empty, and every reader falls back to what it
+  // held before this file existed.
+  const PASS_MATTER_SRC = "matter-response.json";
+  let passMatterRows = null, passMatterAsked = false, passMatterState = "absent";
+  function passMatterOpen() {
+    if (passMatterAsked) return;
+    passMatterAsked = true;
+    passMatterState = "asked";
+    try {
+      fetch(PASS_MATTER_SRC, { credentials: "omit" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const rows = j && Array.isArray(j.families) ? j.families : null;
+          passMatterRows = rows;
+          passMatterState = rows ? "read" : "refused";
+        })
+        .catch(() => { passMatterState = "refused"; });
+    } catch (e) { passMatterState = "refused"; }
+  }
+  // The family an instrument draws, by that instrument's own name — the table's `instruments` column
+  // read forward. An instrument the table names nowhere answers null, which is the honest "this
+  // matter has no family row" rather than a guess at the nearest one.
+  function passMatterFamily(instrument) {
+    if (!passMatterRows || instrument == null) return null;
+    const name = String(instrument);
+    for (let i = 0; i < passMatterRows.length; i++) {
+      const row = passMatterRows[i];
+      const list = row && Array.isArray(row.instruments) ? row.instruments : [];
+      if (list.indexOf(name) >= 0) return row;
+    }
+    return null;
+  }
+  // WHICH MATTER IS IN HAND THIS INSTANT, and — asked with a matter's own name — that family's row
+  // instead. The one place the engine says out loud what matter is being drawn is the drawing
+  // layer's own report, which names the instrument the crossing in flight cast. At rest no
+  // instrument is drawing, so no family is determined and this answers null; the reader in
+  // `pass-hand.js` says what it falls back to and why, and asks for that fallback by matter through
+  // this same door so the table stays the one home of every row.
+  function passMatterInHand(named) {
+    if (named != null) {
+      const want = String(named);
+      const rows = passMatterRows || [];
+      for (let i = 0; i < rows.length; i++) if (rows[i] && rows[i].matter === want) return rows[i];
+      return null;
+    }
+    if (!passLayer || typeof passLayer.report !== "function") return null;
+    let inst = null;
+    try { inst = passLayer.report().instrument; } catch (e) { inst = null; }
+    return passMatterFamily(inst);
+  }
+
   let passHand = null, passHandAsked = false, passHandLastEl = null;
   function passHandSet(h) {
     passHand = (h && typeof h.attach === "function" && typeof h.detach === "function"
@@ -3962,14 +4022,20 @@
     // conductor"): the voice asks which register the work it plays for is seated at, and turns that
     // name into its own gain. Handed over the same way and for the same reason as the span above —
     // the hand's file runs outside this closure and asks for nothing of its own.
+    // `matterInHand` is S-40's matter table read through the same door, for the same reason: the
+    // ring a matter answers with is that family's own row, and the hand asks rather than holding a
+    // second copy of a count the table already carries.
     if (passHand && typeof passHand.host === "function") {
-      try { passHand.host({ handleSpan: passHandleSpan, seatRegister: conductorVoiceRegister }); }
-      catch (e) {}
+      try {
+        passHand.host({ handleSpan: passHandleSpan, seatRegister: conductorVoiceRegister,
+                        matterInHand: passMatterInHand });
+      } catch (e) {}
     }
   }
   function passHandOpen() {
     if (passHandAsked) return;
     passHandAsked = true;
+    passMatterOpen();          // the matter table travels beside the hand, never before it
     try {
       window.__@@NS@@PassHand = passHandSet;
       const s = document.createElement("script");
@@ -4256,6 +4322,14 @@
         // holds — who is the soloist, who rides the cheapest register, who stands still, who is
         // paused, and how many surfaces are alive at this instant.
         conductor: conductorReport,
+        // The matter table (S-40) as this visit read it: where it stands, the rows it carries, the
+        // family an instrument draws, and the family in hand this instant.
+        matter: function (instrument) {
+          return { src: PASS_MATTER_SRC, state: passMatterState,
+                   families: (passMatterRows || []).map((r) => r.matter),
+                   of: instrument === undefined ? undefined : passMatterFamily(instrument),
+                   inHand: passMatterInHand() };
+        },
         // EX-STANDING (S-112): the work being drawn breathing this instant, the box it is drawn in,
         // and the fractions Requirement 37 grants that breath.
         standing: standingReport,

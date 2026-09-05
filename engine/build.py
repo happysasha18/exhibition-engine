@@ -1002,6 +1002,19 @@ def copy_exhibition_assets():
         if "@@NS@@" in _src or "@@NS_UPPER@@" in _src:
             _src = apply_namespace(_src, _NAMESPACE)
         write(OUT / _name, strip_js_comments(_src))
+    # THE MATTER TABLE TRAVELS THE SAME WAY (plan row S-40's own file, plan row S-112's reader). It
+    # is the one home of what each matter family breathes with and rings with, and until it was
+    # served it was a record no running page could reach: `pass-hand.js` reads its family's ring
+    # count through the host, and the host reads it here. It is data rather than a script, so it
+    # takes neither the namespace nor the comment strip the six above take, and it is copied whole.
+    #
+    # IT COSTS THE FRONT DOOR NOTHING. Nothing on the door's own road asks for it: the fetch belongs
+    # to the client's hand layer, which is itself only asked for once the walk lands, so a visitor
+    # who never reaches a work never pays for either. A bake without the table simply serves none,
+    # the fetch answers 404, and the ring falls back to the count named in `pass-hand.js`.
+    _matter = client_asset("matter-response.json")
+    if _matter.exists():
+        shutil.copy2(_matter, OUT / "matter-response.json")
     for name in ("favicon.svg", "favicon.png", "apple-touch-icon.png"):
         cand = _INSTANCE_ASSETS / name if _INSTANCE_ASSETS else None
         if cand and cand.exists():
