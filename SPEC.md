@@ -577,6 +577,14 @@ owns none of the door, the story, the series, the quiz, the gift, the zoom, soun
 any input method, resize/orientation/DPR, RTL, reduced motion, Save-Data, or the static face, and it
 changes not one pixel of any of them. With `visualLayer=off`, or wherever a pass declines before it
 takes the frame, the walk plays exactly as `EX-GLIDE` states.
+**Where the device is measured.** Device capability and frame timing are measured only in the
+visitor browser at runtime. Build and CI never measure the builder host. Tests inject deterministic
+capability values. (The owner's word, 2026-09-06 16:31.) The layer reads the device once while the
+page loads (`readDevice()`, the limits the graphics processor publishes about itself) and casts
+every crossing under that ceiling for the visit; its quality ladder moves on the visitor's own frame
+gaps; the diagnostics panel may show frame percentiles on a really open site, as observations. No
+suite, headless drive or verifier reads a frame time, a percentile or a wall clock as an
+acceptance signal; `tests/test_pass_device.py` states capability readings and reads the cast.
 The pass's full contract — every field, every conformance row, its own build status — is
 `docs/design/PASS-API-V1.md`; that document is the live record of what stands built and this section
 does not repeat or shadow it. What this section states is what a reader of THIS spec must already
