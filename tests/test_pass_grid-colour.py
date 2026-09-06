@@ -61,7 +61,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
 
-LAB = Path(os.environ.get("TLVPHOTOS_LAB_ROOT", "/Users/sashaabramovich/tlvphotos-immersive/lab"))
+LAB = Path(os.environ.get("TLVPHOTOS_LAB_ROOT", "/Users/sashaabramovich/tlvphotos/lab"))
 PHOTOS = [Path("/Users/sashaabramovich/tlvphotos/lab/photos/towers.jpg"),
           Path("/Users/sashaabramovich/tlvphotos/lab/photos/glassgrid.jpg")]
 MODULE = LAB / "effects" / "grid-colour.js"

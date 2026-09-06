@@ -51,7 +51,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
 
-LAB = Path(os.environ.get("TLVPHOTOS_LAB_ROOT", "/Users/sashaabramovich/tlvphotos-immersive/lab"))
+LAB = Path(os.environ.get("TLVPHOTOS_LAB_ROOT", "/Users/sashaabramovich/tlvphotos/lab"))
 # The two photographs lab/carrier-check.py itself compares on; they live in the main worktree, which
 # the immersive one does not copy. Either root is read only here.
 PHOTOS = [Path("/Users/sashaabramovich/tlvphotos/lab/photos/towers.jpg"),

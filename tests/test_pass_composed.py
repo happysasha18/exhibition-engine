@@ -3650,7 +3650,12 @@ else:
         # pass (2026-08-27) closed — reading no walk history at all — which would have climbed past
         # two; this plant stays at exactly two, confirming the row reddens on the walk-vs-name
         # question and not on the older, already-closed one.
-        _rr_red = node_run(plants=[["return isWorldFold(iid) && walkMiracles.length === 0;",
+        # THE PLANT'S ANCHOR MOVED, and the plant moved with it (2026-09-06). The world path now
+        # asks its own predicate — `!walkHasSpentTheMiracle()` — where it used to read
+        # `walkMiracles.length === 0` inline; the reading is the same one, the walk's. A plant whose
+        # "from" text is no longer in the source changes nothing and reports itself as a failure to
+        # plant, which is what this row printed until this line was re-anchored.
+        _rr_red = node_run(plants=[["return isWorldFold(iid) && !walkHasSpentTheMiracle();",
                                     "return isWorldFold(iid) && walkMiracles.indexOf(iid) < 0;"]],
                            sweep=1)
         _rr_red_mr = (_rr_red.get("miracleRarity") or {}) if isinstance(_rr_red, dict) else {}
@@ -3660,7 +3665,7 @@ else:
               bool(_rr_red_mr) and _rr_red_mr.get("totalMiracles", 0) == 2,
               f"with `spendsTheMiracle` counted by the instrument's own name again "
               f"(`walkMiracles.indexOf(iid) < 0`) rather than by the walk "
-              f"(`walkMiracles.length === 0`), the same nine steps of the same edge give "
+              f"(`!walkHasSpentTheMiracle()`), the same nine steps of the same edge give "
               f"{_rr_red_mr.get('totalMiracles')} total play(s) of the miracle "
               f"({_rr_red_counts or 'none'}) against the shipped run's {mr['totalMiracles']} — two "
               f"distinct folds, each once, still reddens the row above even though neither name "
