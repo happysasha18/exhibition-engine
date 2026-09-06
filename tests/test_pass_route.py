@@ -169,6 +169,8 @@ MIRACLE_ROWS = [
     "short says which gate refused it",
     "EX-ROUTE the hold ends at the crest and never outlives it, and the walk spends no more "
     "impossible events than it did",
+    "EX-ROUTE the arriving work's own world reads the walk's spent log through the same predicate "
+    "the fold reads — no route spends the walk's one impossible event twice",
     "EX-ROUTE the hold is authored in one place, the request is built through it, and the step's "
     "own record says when it stood",
 ]
@@ -316,17 +318,17 @@ if not NODE or not FIXTURE_WORKS.exists() or not MIRACLE_HELD_LINE \
     if _missing:
         # NOT A SKIP. The policy is the subject of these rows; a tree that does not carry it is a
         # tree where the walk spends its one impossible event before it reaches its crest.
-        for _n in MIRACLE_ROWS[:3]:
+        for _n in MIRACLE_ROWS[:4]:
             check(_n, False, "engine/client/01a-pass.js carries no %s, so the walk holds nothing "
                              "back for the step it names its culmination" % ", ".join(_missing))
     else:
-        for _n in MIRACLE_ROWS[:3]:
+        for _n in MIRACLE_ROWS[:4]:
             skip(_n, "node is not on this machine" if not NODE
                  else "tests/fixture_pass_works.json is not on this machine")
 else:
     _run = miracle_run()
     if not isinstance(_run, list):
-        for _n in MIRACLE_ROWS[:3]:
+        for _n in MIRACLE_ROWS[:4]:
             check(_n, False, "the route driver itself failed: " + json.dumps(_run)[:800])
     else:
         _before = [r["before"] for r in _run]
@@ -395,9 +397,21 @@ else:
               "the middles AFTER the crest played %d before and %d after"
               % (len(_late_hold), len(_twice_b), len(_twice_a), _wow_b, len(_run), _wow_a,
                  _late_b, _late_a))
+        # ---- ROW 3.5: THE RESIDUE ITSELF — the world path no longer leaks a second event -----------
+        # `_twice_a` already counts every route whose walk played an impossible event twice under the
+        # hold; the rows above only asked that this number never grow past `_twice_b`. This asks the
+        # sharper question the residue paragraph above named: the world path (`mayFold`, beside
+        # `spendsTheMiracle`) now reads the same `walkMiracles` log the fold path reads, so the walk's
+        # law — one impossible event, never two — holds for every route, not merely no worse than
+        # before.
+        check(MIRACLE_ROWS[3],
+              len(_twice_a) == 0,
+              "%d of %d routes spent the walk's one impossible event twice with no hold sent, %d "
+              "under the shipped hold (routes %s) — the world path's own residue this row is for"
+              % (len(_twice_b), len(_run), len(_twice_a), sorted(_twice_a)))
 
 # ---- ROW 4: one home for the policy, one write of the list, one field on the record --------------
-check(MIRACLE_ROWS[3],
+check(MIRACLE_ROWS[4],
       SRC.count("function passMiraclesToSend(") == 1
       and SRC.count("passMiraclesToSend(") == 2
       and SRC.count("req.walkMiracles = ") == 1

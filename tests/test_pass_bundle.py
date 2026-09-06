@@ -250,6 +250,101 @@ else:
               "the plant left the two-fold refusal standing, so it is not what shelf 6's one-slot "
               "law holds up")
 
+    # ---------------------------------------------------------------- ONE-MIRACLE-WORLD
+    # THE WORLD PATH READS THE SAME SPENT LOG THE FOLD PATH READS, THROUGH THE SAME PREDICATE.
+    # `bundleFoldsAndWorld` is exposed exactly as `bundleWorldLegal` above, and RULE 1's own rows
+    # already prove it refuses a SECOND fold inside one bundle. What RULE 1 cannot show is the
+    # residue this row is for: `mayFold` (inside `bundleFoldsAndWorld`) used to open the arriving
+    # work's own world off `road.miracle && roleBudget.miracle` alone, never asking whether the
+    # WALK itself had already spent its one impossible event on an EARLIER crossing — a fact
+    # `walkMiracles` alone carries, module state `scoreFor` sets and `bundleFoldsAndWorld` cannot
+    # see through a single `run()` call (every `run()` starts a fresh module, so `walkMiracles`
+    # always reads empty there). This driver calls the real `scoreFor` on the fixture pair FIRST,
+    # exactly as the "one home for the policy" proof above does, so `walkMiracles` is left however
+    # the walk's own `miraclesPlayed` argument set it, then calls `bundleFoldsAndWorld` straight
+    # after in the SAME module instance — the one shared state `spendsTheMiracle` and the world
+    # path both read, never a second copy of it built for this row.
+    _wg_world_fold_ids = {iid for iid, mm in FIX["consts"]["manifests"].items()
+                          if mm.get("surface") and "WORLD" in (mm.get("levels") or [])}
+    _wg_non_fold_ids = sorted(set(FIX["consts"]["manifests"].keys()) - _wg_world_fold_ids)
+    WG_GROUND, WG_TRAVEL = _wg_non_fold_ids[0], _wg_non_fold_ids[1]
+    # A synthetic arriving work whose own structure reads a ring, so `worldOf` names a real world
+    # rather than the null it reads off the fixture's own two works (an unrelated, real reading
+    # neither of them happens to carry) — the ONLY thing this row invents, because `mayFold`'s bug
+    # is on the ARRIVING WORK'S own world path and needs one that actually opens to show it.
+    WG_TOW = {"structure": {"radial": {"subType": "ring"}, "polar": {"planet": 0.9}}}
+    WG_AXIS = {"axis": "radial"}
+    WG_ROAD = {"miracle": True}
+    WG_ROLE_BUDGET = {"miracle": True}
+    WG_PAIR_KEY = FIX["pair"]["a"] + "__" + FIX["pair"]["b"] + "__ab"
+
+    WORLD_GUARD_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const source = %(source)s;
+const consts = %(consts)s;
+const scoreArgs = %(scoreArgs)s;
+const bundleArgs = %(bundleArgs)s;
+
+let joined = null;
+const sandbox = { window: { __PassComposer: (m) => { joined = m; } }, console: console };
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, { filename: "pass-composer.js" });
+const composer = joined.make(consts);
+
+let scoreErr = null;
+try { composer.scoreFor.apply(null, scoreArgs); } catch (e) { scoreErr = String(e && e.stack || e); }
+let out;
+try { out = composer.bundleFoldsAndWorld.apply(null, bundleArgs); }
+catch (e) { out = { error: String(e && e.stack || e) }; }
+console.log(JSON.stringify({ scoreErr: scoreErr, result: out }));
+"""
+
+    WG_PLANT = ["&& !walkHasSpentTheMiracle());", ");"]
+
+    def world_guard(miracles_played, planted=False):
+        score_args = [FIX["works"][FIX["pair"]["a"]], FIX["works"][FIX["pair"]["b"]], "a-to-b",
+                      FIX["seeds"][WG_PAIR_KEY], "middle", None, [], None, "dominant", None, [],
+                      miracles_played]
+        bundle_args = [WG_GROUND, WG_TRAVEL, None, WG_ROAD, WG_ROLE_BUDGET, WG_TOW, WG_AXIS]
+        source = RAW.replace(WG_PLANT[0], WG_PLANT[1]) if planted else RAW
+        driver_text = WORLD_GUARD_DRIVER % {
+            "source": json.dumps(source), "consts": json.dumps(FIX["consts"]),
+            "scoreArgs": json.dumps(score_args), "bundleArgs": json.dumps(bundle_args),
+        }
+        tag = ("held" if miracles_played else "cold") + ("-planted" if planted else "")
+        driver_path = TMP / ("world-guard-%s.js" % tag)
+        driver_path.write_text(driver_text, encoding="utf-8")
+        proc = subprocess.run(["node", str(driver_path)], capture_output=True, text=True,
+                              timeout=60)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-1200:]}
+        lines = (proc.stdout or "").strip().splitlines()
+        got = json.loads(lines[-1]) if lines else {"error": "the driver said nothing"}
+        return got.get("result") if isinstance(got, dict) else None
+
+    _wg_cold = world_guard([])
+    _wg_held = world_guard(["already-spent"])
+    check("RULE 1 (one WORLD) · a cold walk's world opens, and the same bundle's world stands "
+          "down once the walk has already spent its one impossible event",
+          isinstance(_wg_cold, dict) and isinstance(_wg_held, dict)
+          and _wg_cold.get("mayFold") is True and bool(_wg_cold.get("world"))
+          and _wg_held.get("mayFold") is False and not _wg_held.get("world"),
+          "ground=%s travel=%s (neither in worldFoldInstruments); cold walk (walkMiracles=[]) "
+          "read %s; held walk (walkMiracles=['already-spent']) read %s"
+          % (WG_GROUND, WG_TRAVEL, json.dumps(_wg_cold), json.dumps(_wg_held)))
+
+    if WG_PLANT[0] not in RAW:
+        skip("RULE 1 red-on-bug · removing the walk's own spent-log read lets a held walk's world "
+             "open anyway", "the guard this plant names is not in the shipped source")
+    else:
+        _wg_broke = world_guard(["already-spent"], planted=True)
+        check("RULE 1 red-on-bug · removing the walk's own spent-log read lets a held walk's "
+              "world open anyway",
+              isinstance(_wg_broke, dict) and _wg_broke.get("mayFold") is True
+              and bool(_wg_broke.get("world")),
+              "planted held walk read " + json.dumps(_wg_broke))
+
     # ================================================================================= RULE 2
     # `beat` and `droste` both declare exactly one level, SURFACE, and nothing else — the ground's
     # own window is always [0, 1], so a travelling voice on the same one level, live at any point
