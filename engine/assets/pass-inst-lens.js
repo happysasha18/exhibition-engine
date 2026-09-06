@@ -369,8 +369,68 @@
       if (mix >= HOLD_IN && mix <= HOLD_OUT) return 1;
       var u = mix < HOLD_IN ? (mix - FEEL_D0) / (HOLD_IN - FEEL_D0)
                             : ((1 - FEEL_D0) - mix) / ((1 - FEEL_D0) - HOLD_OUT);
+      return table(FEEL_Q, 0, clamp(u, 0, 1));
+    }
+    function feelPower(u) {
       return Math.pow(clamp(u, 0, 1), FEEL_G);
     }
+
+    /* HOW THE POWER LAW IS READ BETWEEN TWO OF ITS OWN POINTS (2026-09-06). Stevens' law with an
+       exponent under one is INFINITELY steep at nothing: the reach was held at exactly nothing
+       across the dead band and then left it at a speed no measurement can name — read at twenty
+       thousand samples the step was 623 of the reach's own travel a unit of the hand and it GREW to
+       931 when the sampling was doubled, which is what a slope with no value at all looks like from
+       a distance. The plateau is the same corner the other way up: the law arrives at the hold at
+       0.42 of its travel a unit and the hold is standing still. Four corners, one at each edge of
+       the two legs, and every one of them is the jolt his word of 2026-08-28 named.
+
+       THE REPAIR is the fleet's own, carried over rather than re-invented. The law is SAMPLED at
+       twenty-one evenly spaced shares of one leg's own domain — the width every measured table in
+       this tree already carries — and read back through the Fritsch-Carlson spline
+       `pass-inst-adrift.js` carries (`tangentsOf`/`table`, copied character for character, the same
+       way `pass-inst-tilt.js` copied them on 2026-09-01). The spline passes through all twenty-one
+       points of the module's own fitted exponent exactly, cannot overshoot or turn back, and rests
+       at both its own ends — so the glass leaves the dead band at the dead band's own rate, nothing,
+       and arrives at the plateau at the plateau's own rate, nothing, with the module's measured
+       shape standing at every point it was read at. Both dead bands still hold exactly nothing and
+       the middle third still stands exactly whole: `reachOf`'s two guards above are untouched and
+       the spline answers exactly 0 and exactly 1 at the two ends of a leg. */
+    var FEEL_TANGENTS = [];
+    function tangentsOf(q) {
+      var t, n, h, d, m, i, a, b, s;
+      for (t = 0; t < FEEL_TANGENTS.length; t++) {
+        if (FEEL_TANGENTS[t][0] === q) return FEEL_TANGENTS[t][1];
+      }
+      n = q.length; h = 1 / (n - 1); d = []; m = [];
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      FEEL_TANGENTS.push([q, m]);
+      return m;
+    }
+    function table(q, d0, u) {
+      var x = clamp(d0 > 0 ? (clamp(u, 0, 1) - d0) / (1 - 2 * d0) : clamp(u, 0, 1), 0, 1);
+      var n = q.length, h = 1 / (n - 1), m = tangentsOf(q);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * q[i] + (s3 - 2 * s2 + s) * h * m[i]
+           + (3 * s2 - 2 * s3) * q[i + 1] + (s3 - s2) * h * m[i + 1];
+    }
+    // The twenty-one shares of a curve's own travel, read off the curve itself rather than typed a
+    // second time, so no digit of it can drift between the shape and the points that carry it.
+    function feelKnots(f) {
+      var q = [], i;
+      for (i = 0; i <= 20; i++) q.push(f(i / 20));
+      return q;
+    }
+    var FEEL_Q = feelKnots(feelPower);
 
     // HOW FAR THE TWO WORKS HAVE CHANGED HANDS. Exactly nothing up to the plateau and exactly whole
     // from its far end, so the handover lives inside the stretch the glass covers the frame over and

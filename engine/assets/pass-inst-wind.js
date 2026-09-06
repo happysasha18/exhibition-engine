@@ -253,8 +253,66 @@
        watched would be a number nobody read reaching the picture. What the hand gets is the dead
        bands and nothing else. What a viewer actually feels is the gust's own body passing, which is
        geometry rather than taste. */
+    /* HOW THE HAND'S OWN CURVE IS READ BETWEEN TWO OF ITS OWN POINTS (2026-09-06). Read as a bare
+       clamped ramp, this curve is right in VALUE everywhere and steps in SPEED at each dead band's
+       own edge: the picture is held perfectly still under FEEL_D0 and past 1 - FEEL_D0, and then
+       leaves at the ramp's whole speed at once — measured, 1.111 of the dial a unit of the hand arriving
+       out of nothing at all. That is the same corner S-20 carried out of `matter`, `beat`, `gears`,
+       `gates`, `adrift` and `waterline`, and Phase 7 out of `tilt`: a corner no measurement ever
+       had, and the jolt his word of 2026-08-28 named.
+
+       THE REPAIR is the fleet's own, carried over rather than re-invented. The curve is SAMPLED at
+       twenty-one evenly spaced shares of its own travel — the width every measured table in this
+       tree already carries — and read back through the Fritsch-Carlson spline `pass-inst-adrift.js`
+       carries (`tangentsOf`/`table`, copied character for character, the same way
+       `pass-inst-tilt.js` copied them on 2026-09-01). The spline passes through all twenty-one
+       points exactly, cannot overshoot or turn back, and rests at both its own ends — so the hold is
+       left, and re-entered, at the hold's own rate, which is nothing. Both doors stand exactly where
+       they stood, the travel between them is the same even travel, and what changed is only the line
+       drawn between the curve's own points. */
+    var FEEL_TANGENTS = [];
+    function tangentsOf(q) {
+      var t, n, h, d, m, i, a, b, s;
+      for (t = 0; t < FEEL_TANGENTS.length; t++) {
+        if (FEEL_TANGENTS[t][0] === q) return FEEL_TANGENTS[t][1];
+      }
+      n = q.length; h = 1 / (n - 1); d = []; m = [];
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      FEEL_TANGENTS.push([q, m]);
+      return m;
+    }
+    function table(q, d0, u) {
+      var x = clamp(d0 > 0 ? (clamp(u, 0, 1) - d0) / (1 - 2 * d0) : clamp(u, 0, 1), 0, 1);
+      var n = q.length, h = 1 / (n - 1), m = tangentsOf(q);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * q[i] + (s3 - 2 * s2 + s) * h * m[i]
+           + (3 * s2 - 2 * s3) * q[i + 1] + (s3 - s2) * h * m[i + 1];
+    }
+    // The twenty-one shares of a curve's own travel, read off the curve itself rather than typed a
+    // second time, so no digit of it can drift between the shape and the points that carry it.
+    function feelKnots(f) {
+      var q = [], i;
+      for (i = 0; i <= 20; i++) q.push(f(i / 20));
+      return q;
+    }
+    // This hand's travel between its two dead bands is EVEN — equal movement of the hand, equal felt
+    // change, which is the whole of what this curve claims — so its twenty-one shares are the hand's
+    // own twenty-one equal marks. `table` re-applies the dead band the way `adrift`'s and `tilt`'s
+    // already do.
+    var FEEL_Q = feelKnots(function (x) { return x; });
+
     function feelOf(u) {
-      return clamp((clamp(u, 0, 1) - FEEL_D0) / (1 - 2 * FEEL_D0), 0, 1);
+      return table(FEEL_Q, FEEL_D0, u);
     }
 
     /* THE SPAN THE SCORE'S DIE ARRIVES ON, and what this instrument spends it on: HOW HARD EACH ROW

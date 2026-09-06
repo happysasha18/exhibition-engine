@@ -37,11 +37,30 @@ mechanism carried one file further rather than a new one. Twelve more instrument
 `liquid`, `pour`, `tunnel`, `veil`, `wind` — a linear ramp held flat at a hard-clamped dead band,
 and `strata-light`, `strata-scale`, `weave`, `grid-colour`, `hero`, `lens` — a two-piece hinge off
 the middle, so the two slopes at the join are not forced equal) turned out to carry the identical
-class of defect, LIVE, in code nobody had pointed this row at before. Repairing all twelve is core
-logic and stands outside this phase's write-set (curve declaration, not derivation, for the fleet's
-remaining instruments) — so KNOWN_JERK below names each one, cites its own measured break, and
-CHECKS that the break is still there every run, so a silent regression (or a silent fix nobody told
-this file about) reds instead of going unnoticed either way.
+class of defect, LIVE, in code nobody had pointed this row at before. Repairing them was outside
+that phase's write-set, so a catalogue named each one, cited its own measured break, and checked the
+break was still there every run.
+
+2026-09-06 — A CATALOGUE OF BREAKS IS A LIST OF WORK, NOT A LIST OF PARDONS. His word on the twelve:
+these are not acceptable exceptions for the final product. All twelve are repaired, with the
+construction this file already judges and no other — no new curve family, and not one per
+instrument. Each file's own curve is SAMPLED at twenty-one evenly spaced shares of its own domain,
+the width every measured table in this tree already carries, and read back through the
+Fritsch–Carlson spline `pass-inst-adrift.js` carries (`tangentsOf`/`table`, copied character for
+character into each file exactly as `pass-inst-tilt.js` copied it on 2026-09-01). The shares are
+read off the closed form the file still carries, at load, rather than typed a second time beside it,
+so the shape and the points that carry it cannot drift apart and no measured digit is transcribed at
+all. The spline passes through every one of those points exactly, cannot overshoot or turn back, and
+rests at both its own ends — so a dead band still holds its pose, and is now left and re-entered at
+the pose's own rate, which is nothing.
+
+WHAT THE REPAIR MOVED AND WHAT IT DID NOT. Both doors of every one of the twelve stand at exactly
+the number they stood at; every curve declared monotone is still monotone; every point each curve
+passed through it still passes through. What changed is the line drawn between those points. The
+catalogue is empty and has been removed, and each repaired instrument is judged by the row that
+measures its own kind of curve — monotone, or excursion — so it is watched rather than forgiven.
+`REPAIR_PLANTS` below puts each repaired shape's own corner back into a copy of the file it was
+repaired in and requires that row to fail against it.
 
 THE DEFECT, IN ARITHMETIC. Read with straight lines between the points, a table's own VALUE is right
 at every knot and its SPEED is a staircase: constant inside each share and stepping at every one of
@@ -87,7 +106,9 @@ planted back in, character for character as it stood. A row that could not tell 
 be proving nothing, so the planted run must fail exactly where the shipped run passes. Phase 7 adds
 two more plants in the same spirit, for the two shapes a table never had to answer for: an identity
 handle nudged off the raw hand (§ IDENTITY below), and a point-symmetric mirror pushed off its own
-centre into the same off-centre hinge KNOWN_JERK already reads live (§ MONOTONE ANALYTIC below).
+centre into an off-centre hinge (§ MONOTONE ANALYTIC below). The 2026-09-06 repair adds one more,
+`REPAIR_PLANTS`: each shape it straightened, put back the way it stood, against the row that now
+judges the instrument it was straightened in.
 
 WHAT IS OUT OF SCOPE, AND IT IS SAID RATHER THAN SKIPPED IN SILENCE. `unfold` carries the same table
 and the same defect and is NOT repaired here: its hold's own swing was built on 2026-08-27 (S-03) to
@@ -198,27 +219,6 @@ def tables_of(source):
 # A table that nothing reads carries no speed and no jerk. Two instruments publish tables they
 # DECLARE and do not apply (`applied: false` beside the knots in their own manifests), and those are
 # out of these rows for that reason and not by omission.
-ALL_TABLES, CARRIERS, DECLARED_ONLY = {}, {}, {}
-ALL_INSTRUMENT_FILES = sorted(ASSETS.glob("pass-inst-*.js"))
-for path in ALL_INSTRUMENT_FILES:
-    src = path.read_text(encoding="utf-8")
-    t = tables_of(src)
-    if not t:
-        continue
-    name = path.stem.replace("pass-inst-", "")
-    ALL_TABLES[name] = sorted(t)
-    reads_line = any(r in src for r in LINE_READS)
-    reads_spline = SPLINE_READ in src
-    if reads_line or reads_spline:
-        CARRIERS[name] = {"path": path, "src": src, "tables": t,
-                          "line": reads_line, "spline": reads_spline}
-    else:
-        DECLARED_ONLY[name] = sorted(t)
-
-# EVERY INSTRUMENT IN THE TREE, table or not — the fleet Phase 7 widens the law across.
-ALL_NAMES = sorted(p.stem.replace("pass-inst-", "") for p in ALL_INSTRUMENT_FILES)
-ALL_SRC = {p.stem.replace("pass-inst-", ""): p for p in ALL_INSTRUMENT_FILES}
-
 # AND «NOT APPLIED» IS READ OFF THE FILE RATHER THAN INFERRED FROM THE ABSENCE OF A READER. A table
 # a manifest publishes under `knots:` and nothing else touches is a declaration; a table named
 # anywhere else in the file is one something reads. The row below asks for both to agree, so a file
@@ -233,6 +233,36 @@ def declared_only_holds(name, tables):
                           % (name, t, len(uses), len(knots))
     return True, ""
 
+
+ALL_TABLES, CARRIERS, DECLARED_ONLY = {}, {}, {}
+ALL_INSTRUMENT_FILES = sorted(ASSETS.glob("pass-inst-*.js"))
+for path in ALL_INSTRUMENT_FILES:
+    src = path.read_text(encoding="utf-8")
+    t = tables_of(src)
+    if not t:
+        continue
+    name = path.stem.replace("pass-inst-", "")
+    ALL_TABLES[name] = sorted(t)
+    reads_line = any(r in src for r in LINE_READS)
+    reads_spline = SPLINE_READ in src
+    # WHETHER A TABLE IS READ IS A QUESTION ABOUT THE TABLE, NOT ABOUT THE FILE (2026-09-06). A file
+    # can carry a spline read that belongs to no table of its own: `weave`'s repaired knee is sampled
+    # at load and read through the same spline every table carrier rides, while its own four tables
+    # stay declared and never applied. Reading the spelling as «this file's tables are read» would
+    # move that instrument into the group that judges table carriers — and then ask it for a door at
+    # exactly 1 it never claimed, and for knots on a manifest it never published. So a file is a
+    # carrier only where its own tables are reached by something other than the `knots:` line that
+    # publishes them, which is the very question `declared_only_holds` already answers.
+    only_declared, _ = declared_only_holds(name, sorted(t))
+    if (reads_line or reads_spline) and not only_declared:
+        CARRIERS[name] = {"path": path, "src": src, "tables": t,
+                          "line": reads_line, "spline": reads_spline}
+    else:
+        DECLARED_ONLY[name] = sorted(t)
+
+# EVERY INSTRUMENT IN THE TREE, table or not — the fleet Phase 7 widens the law across.
+ALL_NAMES = sorted(p.stem.replace("pass-inst-", "") for p in ALL_INSTRUMENT_FILES)
+ALL_SRC = {p.stem.replace("pass-inst-", ""): p for p in ALL_INSTRUMENT_FILES}
 
 declared_bad = []
 for n, v in sorted(DECLARED_ONLY.items()):
@@ -526,6 +556,19 @@ else:
     MONOTONE_ANALYTIC = sorted(n for n, r in frows.items()
                                 if r.get("feelClass") == "monotone" and n not in JUDGED)
 
+    # ---- THE CATALOGUE OF ALREADY-KNOWN, NOT-YET-REPAIRED JERKS IS EMPTY, AND SO IT IS GONE ------
+    # It stood here from 2026-09-01 to 2026-09-06 and named twelve instruments whose speed had a
+    # measured break — six dead-band ramps, five off-centre knees, one power-law edge — asking each
+    # run to prove the break was still exactly where it was cited. It was never a list of pardons; it
+    # was a list of work. All twelve are repaired, so the catalogue has nothing left to name and a
+    # row that asks nothing is not kept for its own sake.
+    #
+    # WHERE EACH OF THE TWELVE IS JUDGED NOW, and this is the whole point of removing the entry
+    # rather than blanking it: `droste`, `grid-colour`, `liquid`, `pour`, `strata-light`,
+    # `strata-scale`, `tunnel`, `veil`, `weave` and `wind` are read by the monotone row below, and
+    # `hero` and `lens` by the excursion row after it — the same bar, the same halving argument, the
+    # same doors. There is no group left in this file that measures a curve and forgives it.
+
     # ---- IDENTITY-BECAUSE-NO-TRAVEL --------------------------------------------------------------
     # `kaleidoscope`, `livemirror` and `planet` declare their `feel` a written "no": the raw hand,
     # clamped, and nothing else. The law for that shape is not continuity (a straight line's own
@@ -541,16 +584,15 @@ else:
            % IDENTITY
            if not id_bad and not ferr else "off the raw hand: %s" % id_bad))
 
-    # ---- MONOTONE ANALYTIC, DECLARED CLEAN -------------------------------------------------------
+    # ---- MONOTONE ANALYTIC, JUDGED FOR CONTINUITY ------------------------------------------------
     # `parquet`, `overlay`, `studio` and `boxfold` mirror a curve POINT-SYMMETRICALLY about its own
     # middle (`u <= 0.5 ? 0.5*f(2u) : 1-0.5*f(2-2u)`, or a single one-sided exponential with no
     # internal join at all), which forces the two slopes at any join to agree by construction —
-    # unlike a hinge held off-centre (KNOWN_JERK, below), there is no join left for a jerk to hide
-    # at. These are the four analytic instruments Phase 7 finds already passing, cold, per the Opus
-    # consultation's own count.
-    CLEAN_MONOTONE = sorted(n for n in MONOTONE_ANALYTIC if n not in
-                            {"droste", "grid-colour", "liquid", "pour", "strata-light",
-                             "strata-scale", "tunnel", "veil", "weave", "wind"})
+    # unlike a hinge held off-centre, there is no join left for a jerk to hide at. Those four are the
+    # ones Phase 7 found already passing, cold. Every monotone instrument the catalogue above no
+    # longer names joins them here, and is measured under exactly the same law: continuity, no
+    # turning back, and its own declared ends.
+    CLEAN_MONOTONE = MONOTONE_ANALYTIC
     clean_bad = []
     for n in CLEAN_MONOTONE:
         r = frows[n]
@@ -562,79 +604,49 @@ else:
         elif (abs(r["ends"]["at0"] - want_ends[0]) > ARITHMETIC_SLACK
               or abs(r["ends"]["at1"] - want_ends[1]) > ARITHMETIC_SLACK):
             clean_bad.append((n, "ends %s, wanted %s" % (r["ends"], want_ends)))
-    check("PASS-FEEL every monotone analytic curve declared clean is continuous, monotone, and "
-          "stands at its own declared ends",
+    check("PASS-FEEL every monotone analytic curve is continuous, monotone, and stands at its own "
+          "declared ends",
           not ferr and CLEAN_MONOTONE and not clean_bad,
-          ("every one of %s already reads a continuous, monotone curve at its own declared ends, "
-           "cold, with no repair spent on it this phase — %s"
+          ("every one of %s reads a continuous, monotone curve at its own declared ends — %s"
            % (CLEAN_MONOTONE,
               "; ".join("%s ×%.3f" % (m, frows[m]["halving"]) for m in CLEAN_MONOTONE))
            if not clean_bad and not ferr else "off the law: %s" % clean_bad))
 
-    # ---- THE FLEET'S OWN CATALOGUE OF ALREADY-KNOWN, NOT-YET-REPAIRED JERKS -----------------------
-    # Extending the roll call past the seven table carriers put this row in front of twelve more
-    # instruments that carry the identical class of defect — a dead band held flat and left at full
-    # speed, or a two-piece hinge whose two slopes were never forced to agree — LIVE, in code nobody
-    # had pointed this check at before. Fixing any of them is core logic and stands outside this
-    # phase's write-set (curve declaration, not derivation). So this row does not ask them to pass:
-    # it asks that the break BE THERE, measured, exactly as cited — which reds the moment either
-    # direction of drift happens unnoticed: a fix landing without this file being told, or a
-    # regression opening where the measurement below said the curve was merely known-bad rather than
-    # actively watched.
-    KNOWN_JERK = {
-        "droste": "a dead-band ramp (feelOf, droste.js): held flat under WIND_HOLD and past "
-                  "1 - WIND_HOLD, leaving each edge at the ramp's own full speed at once",
-        "liquid": "a dead-band ramp (feelOf, liquid.js): held flat under FEEL_D0 = 0.05 and past "
-                  "0.95, leaving each edge at the ramp's own full speed at once",
-        "pour": "a dead-band ramp (feelOf, pour.js): held flat under FEEL_D0 = 0.05 and past 0.95, "
-               "leaving each edge at the ramp's own full speed at once",
-        "tunnel": "a dead-band ramp (feelOf, tunnel.js): held flat under FEEL_D0 = 0.05 and past "
-                  "0.95, leaving each edge at the ramp's own full speed at once",
-        "veil": "a dead-band ramp (feelOf, veil.js): held flat under FEEL_D0 = 0.05 and past 0.95, "
-               "leaving each edge at the ramp's own full speed at once",
-        "wind": "a dead-band ramp (feelOf, wind.js): held flat under FEEL_D0 = 0.05 and past 0.95, "
-               "leaving each edge at the ramp's own full speed at once",
-        "strata-light": "a two-piece hinge off centre (feelOf, strata-light.js): FEEL_C = 0.37, so "
-                        "the join's two slopes are not forced to agree",
-        "strata-scale": "a two-piece hinge off centre (feelOf, strata-scale.js): FEEL_C = 0.47, so "
-                        "the join's two slopes are not forced to agree",
-        "weave": "a two-piece hinge off centre (feelOf, weave.js): FEEL_C = 0.43, so the join's two "
-                "slopes are not forced to agree (its dead band is a separate, legitimate fact — "
-                "see `feelEnds` — and is not this row's complaint)",
-        "grid-colour": "a two-piece hinge off centre (feelOf, grid-colour.js): the \"stripes\" "
-                      "kind's own FEEL.stripes.c is not 0.5, so the join's two slopes are not "
-                      "forced to agree",
-        "hero": "the same off-centre hinge, inherited: `feel()` (hero.js) is a two-piece knee at "
-               "FEEL_C = 0.61 folded into the excursion `feelOf` rides, so the fold carries the "
-               "join's own mismatch with it",
-        "lens": "a power-law edge (reachOf, lens.js): Math.pow(u, FEEL_G) with FEEL_G = 0.42 has an "
-                "infinite slope at the dead band's own edge, the same held-flat-then-leaves shape "
-                "in a steeper key",
-    }
-    jerk_rows, jerk_bad = [], []
-    for n in sorted(KNOWN_JERK):
-        r = frows.get(n)
-        if not r or r.get("error"):
-            jerk_bad.append((n, "driver could not read it: %s" % (r or {}).get("error")))
-            continue
-        jerk_rows.append((n, r["halving"], r["atCoarse"]))
-        if not (r["halving"] > BAR):
-            jerk_bad.append((n, "now reads continuous (×%.3f) — the catalogue is stale: either it "
-                                 "was repaired and this entry should be removed, or the measurement "
-                                 "moved and the reason above needs a second look" % r["halving"]))
-    check("PASS-FEEL the fleet's own catalogue of already-known, not-yet-repaired jerks still reads "
-          "its own break, live",
-          not ferr and set(KNOWN_JERK) <= set(frows) and not jerk_bad,
-          ("all %d catalogued instruments still measure a real speed break, exactly where their own "
-           "cited reason says one stands — %s"
-           % (len(KNOWN_JERK),
-              "; ".join("%s ×%.3f at %.2f" % (n, h, at) for n, h, at in jerk_rows))
-           if not jerk_bad and not ferr else "the catalogue disagrees with a fresh measurement: %s"
-                                              % jerk_bad))
+    # ---- EXCURSIONS, JUDGED FOR CONTINUITY ALONE -------------------------------------------------
+    # An excursion goes out and comes back (`hero` rides a story out to its far end and home again;
+    # `lens` opens the glass, holds it whole across the middle third and closes it), so it turns back
+    # BY CONSTRUCTION and the monotone law is not the right law for it. Two laws are, and neither is
+    # weaker than what a monotone curve answers. CONTINUITY, at the same bar and on the same halving
+    # argument. And BOTH DOORS AT ONE PLACE: an excursion that came home to a different number than
+    # it left from would have moved the picture across a passage that is supposed to return it, so
+    # `feel(0)` and `feel(1)` must be the same number exactly — which is the door law in the shape
+    # this kind of curve can carry it, and it is read off the curve rather than off any declaration
+    # the file makes about itself. Where a file also publishes `feelEnds`, that claim is held to as
+    # well.
+    exc_bad = []
+    for n in EXCURSION:
+        r = frows[n]
+        want_ends = r.get("feelEnds")
+        if r.get("error") or r["halving"] > BAR:
+            exc_bad.append((n, "continuity \u00d7%.3f" % r.get("halving", -1)))
+        elif r["ends"]["at0"] != r["ends"]["at1"]:
+            exc_bad.append((n, "left from %r and came home to %r"
+                               % (r["ends"]["at0"], r["ends"]["at1"])))
+        elif want_ends and (abs(r["ends"]["at0"] - want_ends[0]) > ARITHMETIC_SLACK
+                            or abs(r["ends"]["at1"] - want_ends[1]) > ARITHMETIC_SLACK):
+            exc_bad.append((n, "ends %s, wanted the declared %s" % (r["ends"], want_ends)))
+    check("PASS-FEEL every excursion curve is continuous and comes home to the door it left from",
+          not ferr and EXCURSION and not exc_bad,
+          ("%s each read a curve with no break in its speed anywhere along the hand, and each ends "
+           "the passage at the very number it began it at \u2014 %s"
+           % (EXCURSION,
+              "; ".join("%s \u00d7%.3f, both doors at %g"
+                        % (m, frows[m]["halving"], frows[m]["ends"]["at0"]) for m in EXCURSION))
+           if not exc_bad and not ferr else "off the law: %s" % exc_bad))
 
     # ---- TWO MORE PLANTS, FOR THE TWO SHAPES A TABLE NEVER HAD TO ANSWER FOR --------------------
     # An identity handle nudged a hair off the raw hand, and a point-symmetric mirror pushed off its
-    # own centre into the same off-centre hinge KNOWN_JERK reads live above. Both are planted into a
+    # own centre into an off-centre hinge. Both are planted into a
     # COPY of a currently-clean file, character for character as it stood otherwise, so a row that
     # could not tell clean from planted would be proving nothing — the same standard the table plant
     # above already carries.
@@ -698,25 +710,76 @@ else:
            if not id_plant_bad and not hinge_plant_bad and not ferr
            else "identity plant: %s; hinge plant: %s" % (id_plant_bad or "ok", hinge_plant_bad or "ok")))
 
+    # ---- THE RED ON THIS REPAIR'S OWN SHAPES -----------------------------------------------------
+    # The 2026-09-06 repair takes the corner out of two shapes: a dead band left at the ramp's whole
+    # speed at once, and a two-piece knee hinged off the middle. Neither is proved by the repaired
+    # file passing — a row that could not tell the repair from what stood before it would be proving
+    # nothing. So each shape's OWN pre-repair spelling is planted back into a COPY of the file it was
+    # repaired in, character for character as it stood, and the row that now judges that instrument
+    # must fail against the plant. The planted spelling is not typed from memory either: it is the
+    # closed form the file still carries and the spline now samples (`feelKnee`), or the bare clamped
+    # ramp, so a plant that stopped reaching would red as a missing spelling rather than pass quietly.
+    #
+    # ONE VEHICLE PER SHAPE, not one per instrument: the repair is the same construction in every
+    # file, so twelve plants would measure one mechanism twelve times. The four shapes it
+    # straightened are the dead-band ramp (`liquid`), the knee hinged off the middle inside a
+    # monotone curve (`grid-colour`) and inside an excursion (`hero`) — one for each of the two rows
+    # a knee can be judged by — and the power-law edge with no slope at all at nothing (`lens`).
+    REPAIR_PLANTS = {
+        "liquid": ("return table(FEEL_Q, FEEL_D0, u);",
+                   "return clamp((clamp(u, 0, 1) - FEEL_D0) / (1 - 2 * FEEL_D0), 0, 1);"),
+        "grid-colour": ("return live * table(knotsOf(kind), 0, u);",
+                        "return live * feelKnee(FEEL[kind] || FEEL.stripes, u);"),
+        "hero": ("return FEEL_D0 + (1 - FEEL_D0) * table(FEEL_Q, 0, u);",
+                 "return FEEL_D0 + (1 - FEEL_D0) * feelKnee(u);"),
+        "lens": ("return table(FEEL_Q, 0, clamp(u, 0, 1));",
+                 "return feelPower(u);"),
+    }
+    repair_rows, repair_bad = [], []
+    for n in sorted(REPAIR_PLANTS):
+        repaired, corner = REPAIR_PLANTS[n]
+        rsrc = ALL_SRC[n].read_text(encoding="utf-8")
+        if rsrc.count(repaired) != 1:
+            repair_bad.append((n, "the repaired spelling stands %d times in the file, not once"
+                                  % rsrc.count(repaired)))
+            continue
+        got = run_node(DRIVER, {ALL_SRC[n].name: rsrc.replace(repaired, corner)})
+        prow = None if isinstance(got, dict) else next(
+            (r for r in got if r["file"] == ALL_SRC[n].name), None)
+        if not prow or prow.get("error") or not (prow["halving"] > BAR):
+            repair_bad.append((n, "the corner planted back and the row did not catch it (%s)"
+                                  % (prow.get("halving") if prow else "driver error")))
+        else:
+            repair_rows.append((n, frows[n]["halving"], prow["halving"]))
+    check("PASS-FEEL each repaired shape's own corner, planted back, breaks the row that now judges "
+          "it",
+          not ferr and not repair_bad,
+          ("%s \u2014 each reads about a half as it ships and about a whole with its own corner put "
+           "back, so the rows above are measuring the repair and not the weather"
+           % "; ".join("%s \u00d7%.3f shipped, \u00d7%.3f planted" % r for r in repair_rows)
+           if not repair_bad and not ferr else "planted and not caught: %s" % repair_bad))
+
     # ---- THE FLEET'S OWN REACH, PRINTED EVERY RUN (item 4) -----------------------------------------
     # Every instrument but the one named exception falls into exactly one of four buckets: judged for
-    # continuity as a table carrier, read as a clean analytic curve, read as an honest identity, or
-    # named in the jerk catalogue above. A instrument that fell into none of the four — a new file
-    # that declared a `feelClass` this row does not yet know, or one that slipped through undeclared —
-    # would be invisible to every check above without this row catching it, which is exactly the kind
-    # of silent rot item 4 asks not to happen.
-    COVERED = set(JUDGED) | set(CLEAN_MONOTONE) | set(IDENTITY) | set(KNOWN_JERK)
+    # continuity as a table carrier, as a monotone curve, as an excursion, or read as an honest
+    # identity. There is no fifth bucket any more — the one that held a known break unrepaired was
+    # emptied on 2026-09-06 and removed. An instrument that fell into none of the four — a new file
+    # that declared a `feelClass` this row does not yet know, or one that slipped through undeclared
+    # — would be invisible to every check above without this row catching it, which is exactly the
+    # kind of silent rot item 4 asks not to happen.
+    COVERED = set(JUDGED) | set(CLEAN_MONOTONE) | set(EXCURSION) | set(IDENTITY)
     expected_all = set(ALL_NAMES) - set(EXCEPTED)
     uncovered = sorted(expected_all - COVERED)
     overcounted = sorted(COVERED - expected_all)
     check("PASS-FEEL the roll call reaches every instrument in the fleet, and prints its own count "
           "every run",
           not ferr and not uncovered and not overcounted,
-          ("%d of %d instruments reached (%d table carriers judged for continuity, %d analytic "
-           "curves read clean, %d identities read exact, %d catalogued as known, not-yet-repaired "
-           "jerks), against 7 of 27 before this phase — %s excepted by name and read nowhere else"
-           % (len(COVERED), len(expected_all), len(JUDGED), len(CLEAN_MONOTONE), len(IDENTITY),
-              len(KNOWN_JERK), sorted(EXCEPTED))
+          ("%d of %d instruments reached, and every one of them judged for the speed of its own "
+           "curve (%d table carriers, %d monotone curves, %d excursions, %d identities read exact) "
+           "— against 7 of 27 before Phase 7, and 14 judged with 12 catalogued as known breaks "
+           "before the 2026-09-06 repair — %s excepted by name and read nowhere else"
+           % (len(COVERED), len(expected_all), len(JUDGED), len(CLEAN_MONOTONE), len(EXCURSION),
+              len(IDENTITY), sorted(EXCEPTED))
            if not uncovered and not overcounted and not ferr
            else "uncovered: %s; wrongly counted twice or not in the tree: %s"
                 % (uncovered, overcounted)))
