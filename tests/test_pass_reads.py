@@ -16,13 +16,27 @@ WHAT THIS FILE IS FOR.
   moves. This file is that mechanism generalised to the fleet — one driver over a list of
   instruments, not a row per instrument.
 
+WHAT THE READINGS ARE VARIED ON, AND WHY IT IS NOT THE COLLECTION.
+
+  Until 2026-09-06 the walk ran on `tests/fixture_pass_works.json` — the 121 real per-work records of
+  the photographs that hang today. Every seat was searched for over all 121 by 121 ordered pairs and
+  every donor value was lifted out of another photograph's record. That was a sweep of a collection
+  standing in for a proof of a law: it proves nothing about a photograph that is not in it, its green
+  moves when a photograph is added or removed, and its cost grows with the square of the collection.
+
+  It now runs on `tests/synthetic_works.py` — a FIXED corpus of deterministic WorkRecords built from
+  the BOUNDARY VALUES of the measurements a record carries and from the BEHAVIOUR CLASSES the
+  composer's own source branches on. That file says, per record, which boundary or class it stands
+  for. The claim a row makes is therefore stronger than the one it made before: «this handle moves
+  when its own named measurement is varied at every boundary of that measurement and in every class
+  the composer distinguishes», rather than «it moved somewhere inside one collection».
+
 HOW A READING IS VARIED, AND WHERE THE NEW VALUE COMES FROM.
 
   Never from a number this file invented. The declared measurement is varied ACROSS TWO WORKS: the
-  value is lifted from another work in `tests/fixture_pass_works.json`, whose records are the
-  collection's own measurements. So «vary structure.polar.tunnel» means «stand a second, real
-  photograph's own corridor reading in the first one's record», and the reading that comes back is
-  the composer's answer to real measured data rather than to a figure typed here.
+  value is lifted from another record of the synthetic corpus, so «vary structure.polar.tunnel» means
+  «stand another class's own corridor reading — the top of that reading's span, or its bottom — in
+  this one's record».
 
   A donor that changes which cue is cast is passed over — a different cue is a different question —
   and the next donor is tried.
@@ -37,10 +51,18 @@ WHAT EACH ROW ASSERTS.
 WHAT IS SKIPPED, AND WHY IT IS PRINTED.
 
   Some declarations name no field of a work record at all — «the score's own die», «handover»,
-  «nothing of either photograph», `reads: null`. Some name a field the fixture's 121 records do not
-  carry, or carry identically in every one. Neither can be varied, so neither is claimed. Every one
-  is printed by name with its own reason and counted, so a reading that goes unproven is visible
-  rather than quietly folded into a green row.
+  «nothing of either photograph», `reads: null`. Some name a field the corpus's records do not carry,
+  or carry identically in every one. Neither can be varied, so neither is claimed. Every one is
+  printed by name with its own reason and counted, so a reading that goes unproven is visible rather
+  than quietly folded into a green row.
+
+THE SMOKE ON REAL RECORDS, WHICH CARRIES NO LAW.
+
+  Two rows at the end still touch `tests/fixture_pass_works.json`, and they prove SCHEMA AND WIRING
+  and nothing else: that a real record still carries exactly the field paths the synthetic base
+  carries, and that a handful of real pairs still feed the real composer and come back with a cast
+  passage whose handles resolve. Neither is a law about the composition, and neither grows when a
+  photograph is added — both read a fixed handful.
 """
 import json
 import os
@@ -52,9 +74,14 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tests"))
+import synthetic_works  # noqa: E402
+
 ASSETS = ROOT / "engine" / "assets"
 COMPOSER_MODULE = ASSETS / "pass-composer.js"
 FIXTURE_COMPOSED = ROOT / "tests" / "fixture_pass_composed.json"
+# The real per-work records. NO ROW THAT VARIES A READING TOUCHES THEM ANY MORE — they are read by
+# the two schema-and-wiring smoke rows at the end of this file and by nothing else.
 FIXTURE_WORKS = ROOT / "tests" / "fixture_pass_works.json"
 
 # The fourteen the sweep of 2026-09-03 found standing on a grep of their own `reads:` line
@@ -122,14 +149,17 @@ def node_available():
 
 
 # THE DRIVER'S OWN CEILING, SIZED FOR THE GATE THAT RUNS IT RATHER THAN FOR A LONE RUN. This driver
-# is CPU-bound: it walks nineteen instruments through a real composer in one node process. A lone run
-# of this suite measured 570 s on 2026-09-04. tests/run_all.py's own default is `--jobs 8`, so under
-# the gate that same work shares the host with seven other suites, and at 900 s it was killed there
-# while passing standalone minutes later — the whole suite reported red on a cap, with no instrument
-# actually failing. The ceiling is therefore the lone-run cost against the gate's own job count,
-# 570 s x 8, both numbers read off what is already written down: this suite's own measured duration
-# and run_all.py's declared default. A driver that truly hangs still ends here rather than never.
-NODE_TIMEOUT_S = 570 * 8
+# is CPU-bound: it walks twenty-one instruments through a real composer in one node process. A lone
+# run of this suite measured 570 s on 2026-09-04, when the walk searched all 121 by 121 real records
+# for every seat; on the constructed corpus that search is a fixed square whose side is the number of
+# classes, and the lone run of 2026-09-07 measured 142 s. tests/run_all.py's own default is
+# `--jobs 8`, so under the gate that same work shares the host with seven other
+# suites, and at 900 s it was once killed there while passing standalone minutes later — the whole
+# suite reported red on a cap, with no instrument actually failing. The ceiling is therefore the
+# lone-run cost against the gate's own job count, both numbers read off what is already written down:
+# this suite's own measured duration and run_all.py's declared default. A driver that truly hangs
+# still ends here rather than never.
+NODE_TIMEOUT_S = 142 * 8
 
 
 def run_node(driver_text, args=()):
@@ -309,9 +339,11 @@ function drop(o, path) {
   delete cur[last];
   return true;
 }
-// EVERY REPLACEMENT VALUE IS ANOTHER REAL WORK'S OWN READING at the same path — never a number this
-// driver made up. The list is every work in the fixture whose record differs from the standing one
-// there, which is also the honest answer to "can this measurement be varied at all".
+// EVERY REPLACEMENT VALUE IS ANOTHER RECORD OF THE CORPUS'S OWN READING at the same path — never a
+// number this driver made up. The list is every record whose reading at that path differs from the
+// standing one, which on a corpus built from boundary values means the donor pool for a measurement
+// IS the ends of that measurement's own span. That is also the honest answer to "can this
+// measurement be varied at all".
 //
 // AND ONE VARIATION MORE: A RECORD THAT CARRIES NO SUCH READING. Several readings are taken as
 // presence rather than as a quantity — the fit asks whether a work has a measured horizon at all,
@@ -366,33 +398,63 @@ function castingFor(instrument, want) {
 // The walk above takes the FIRST seats the fixture offers, which all come from the collection's own
 // first works, and a handle whose fill branch is gated on something rare is never driven on any of
 // them. `tunnel`'s `ribs` is the case that taught this: it is filled only where BOTH works were cut
-// as rings, eight of the 121 records are, and of the 56 ordered pairs those eight make exactly ONE
-// casts the corridor — at fixture positions 119 and 70, about 14,350 pairs into a walk that stops
-// at forty. So this scans the whole ordered-pair space for a seat publishing a DIFFERENT node for
-// this one handle, and the declared reading is then varied there.
+// as rings, and on the 121-record collection this walk used to run on exactly one of the 56 ordered
+// pairs those works make cast the corridor — about 14,350 pairs into a walk that stops at forty. So
+// this scans the whole ordered-pair space of the CORPUS for a seat publishing a DIFFERENT node for
+// this one handle, and the declared reading is then varied there. That space is a fixed square whose
+// side is the number of classes, so the scan costs the same however many photographs hang.
 //
 // IT EXCUSES NOTHING. A handle wired to no measurement publishes the same node on every seat, so
 // this scan ends empty and the reading is still reported unanswered — the scan either finds a seat
 // where the fill ran, and tests the declaration honestly there, or proves there is no such seat.
 // It is paid only by a handle already about to be called unread; every reading that answers on the
 // first seats pays nothing.
-function seatWhereDriven(instrument, handle, from) {
+//
+// THE SEARCH AND THE VARIATION RUN TOGETHER, AND THAT IS THE WHOLE REPAIR. It used to return the
+// FIRST seat publishing a different node, on the assumption that a seat where the handle moved at
+// all is a seat where the handle's own reading fills it. That assumption is false where a fill has
+// BRANCHES: `livemirror`'s `centreY` is the two works' own `structure.regions.line.y.at` where the
+// departing work bands vertically (pass-composer.js:8531, :8571) and the midpoint of their radial
+// centres where it does not, so the first differing seat is usually a seat under the OTHER branch —
+// the handle is driven there, the declared reading is genuinely not what drives it, varying it moves
+// nothing, and a correctly wired handle read as unread. So each differing seat is TRIED, with the
+// declared reading varied on it, and the first seat that answers stops the walk.
+//
+// IT COSTS ONLY A HANDLE ALREADY ABOUT TO BE CALLED UNREAD, exactly as the single-seat version did.
+// A handle that answers on the first four seats never reaches this function at all.
+//
+// AND THE WALK IS BOUNDED BY THE CORPUS ITSELF, not by a number chosen here. Trying every differing
+// seat would be the whole ordered-pair square, and a handle that genuinely reads nothing would then
+// pay all of it. A fill reads ONE of the two works, so a seat is worth trying when it stands a
+// record this walk has not yet seen departing, or one it has not yet seen arriving: every class then
+// gets its turn on both sides and the walk stops after at most twice as many seats as the corpus has
+// records.
+function seatWhereDriven(instrument, handle, path, from) {
   const base = cueOf(instrument, works.works[from.a], works.works[from.b], from.dir);
   const was = base ? JSON.stringify(nodeOf(base, handle)) : null;
+  const triedFrom = {}, triedTo = {};
+  let softest = null;
   for (let i = 0; i < ids.length; i++) {
     for (let j = 0; j < ids.length; j++) {
       if (i === j) continue;
       for (const dir of ["a-to-b", "b-to-a"]) {
+        const departing = dir === "b-to-a" ? ids[j] : ids[i];
+        const arriving = dir === "b-to-a" ? ids[i] : ids[j];
+        if (triedFrom[departing] && triedTo[arriving]) continue;
         const cue = cueOf(instrument, works.works[ids[i]], works.works[ids[j]], dir);
         if (!cue) continue;
         const n = nodeOf(cue, handle);
-        if (n !== undefined && JSON.stringify(n) !== was) {
-          return {a: ids[i], b: ids[j], dir: dir, cue: cue.id};
-        }
+        if (n === undefined || JSON.stringify(n) === was) continue;
+        triedFrom[departing] = true;
+        triedTo[arriving] = true;
+        const seat = {a: ids[i], b: ids[j], dir: dir, cue: cue.id};
+        const r = moveOnSeat(instrument, seat, handle, path);
+        if (r.moved || r.noField || r.presence) return r;
+        if (softest === null) softest = r;
       }
     }
   }
-  return null;
+  return softest;
 }
 
 function cueOf(instrument, A, B, dir) {
@@ -526,9 +588,10 @@ for (const entry of plan) {
           if (wide.length > seat.length) r = moveTest(id, wide, h.handle, h.field);
         }
         if (!r.moved && !r.noField && !r.presence) {
-          // Still standing after forty seats: look for one where this handle was driven at all.
-          const driven = seatWhereDriven(id, h.handle, seat[0]);
-          if (driven) r = moveTest(id, [driven], h.handle, h.field);
+          // Still standing after forty seats: walk every seat where this handle was driven at all
+          // and vary the declared measurement on each, taking the first that answers.
+          const driven = seatWhereDriven(id, h.handle, h.field, seat[0]);
+          if (driven) r = driven;
         }
         rec.handles.push(Object.assign({handle: h.handle, field: h.field}, r));
       }
@@ -573,7 +636,11 @@ else:
     try:
         plan_path = tmp / "plan.json"
         plan_path.write_text(json.dumps(plan), encoding="utf-8")
-        ran = run_node(DRIVER, args=[COMPOSER_MODULE, FIXTURE_COMPOSED, FIXTURE_WORKS,
+        # THE CORPUS THE WALK RUNS ON, written out in the same shape the real fixture had, so the
+        # driver reads one shape and nothing inside it knows which corpus it is walking.
+        corpus_path = tmp / "synthetic-works.json"
+        corpus_path.write_text(json.dumps({"works": synthetic_works.corpus()}), encoding="utf-8")
+        ran = run_node(DRIVER, args=[COMPOSER_MODULE, FIXTURE_COMPOSED, corpus_path,
                                      ASSETS, plan_path])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -604,8 +671,8 @@ else:
             notes.append("SKIP %s — %s" % (u["what"], u["why"]))
 
         if rec.get("noCast"):
-            bad.append("no pair in the 121 fixture works casts this instrument, so no handle of it "
-                       "could be moved at all")
+            bad.append("no pair of the constructed corpus casts this instrument, so no handle of "
+                       "it could be moved at all")
         for h in rec.get("handles", []):
             what = "`%s` ← %s" % (h["handle"], h["field"])
             if h.get("moved"):
@@ -615,7 +682,7 @@ else:
                 good.append("%s answers to whether the reading is there at all — no donor value "
                             "moves it, a record carrying no such reading does" % what)
             elif h.get("noField"):
-                notes.append("SKIP %s — the fixture's records carry no such field" % what)
+                notes.append("SKIP %s — the corpus's records carry no such field" % what)
             elif h.get("absent"):
                 notes.append("SKIP %s — the cast cue publishes no node for this handle" % what)
             elif h.get("recast"):
@@ -638,7 +705,7 @@ else:
                 good.append("%s answers to whether the reading is there at all — the fit asks "
                             "whether a work carries it, not where it stands" % what)
             elif s.get("noField"):
-                notes.append("SKIP %s — the fixture's records carry no such field" % what)
+                notes.append("SKIP %s — the corpus's records carry no such field" % what)
             elif s.get("noFit"):
                 notes.append("SKIP %s — the composer's own ranking publishes no fit for this "
                              "instrument" % what)
@@ -675,7 +742,7 @@ else:
           isinstance(got, dict),
           "%d declared readings varied through a real run; %d printed as SKIP with the reason on "
           "the instrument's own row above — a reading that names no measurement, a field the "
-          "fixture's 121 records do not carry, or one that cannot be moved without recasting the "
+          "corpus's records do not carry, or one that cannot be moved without recasting the "
           "passage; %s"
           % (proven, skipped_readings + unvariable_total,
              "none unanswered" if not unanswered
@@ -693,6 +760,90 @@ else:
            if fresh else "")
           + ("recorded as unanswered and now answering, so the record is stale and has to shrink: "
              "%s" % ", ".join("%s %s ← %s" % k for k in repaired) if repaired else ""))
+
+# ---------------------------------------------------------------- the smoke on real records
+# It carries no law. The walk above proves what the composer does; these two prove that the SHAPE the
+# corpus was built to imitate is still the shape the site writes, and that the real shape still feeds
+# this composer and comes back with a cast passage. Both read a FIXED handful — six real records and
+# the six ordered pairs they make in a ring — so hanging a photograph costs them nothing.
+SMOKE_REAL = json.loads(FIXTURE_WORKS.read_text(encoding="utf-8"))["works"]
+SMOKE_IDS = sorted(SMOKE_REAL)[:6]
+_missing, _extra = set(), set()
+for _sid in SMOKE_IDS:
+    _paths = synthetic_works.field_paths(SMOKE_REAL[_sid])
+    _missing |= _paths - synthetic_works.BASE_PATHS
+    _extra |= synthetic_works.BASE_PATHS - _paths
+check("PASS-READS schema smoke · a real per-work record still carries exactly the field paths the "
+      "constructed corpus is built on",
+      not _missing and not _extra,
+      "%d real record(s) read against the synthetic base's own %d field paths"
+      % (len(SMOKE_IDS), len(synthetic_works.BASE_PATHS))
+      + ("; the records carry, and the corpus does not: %s" % sorted(_missing) if _missing else "")
+      + ("; the corpus carries, and the records do not: %s" % sorted(_extra) if _extra else ""))
+
+SMOKE_ROW = ("PASS-READS wiring smoke · a handful of real records still cast a passage through the "
+             "real composer and publish a node for every handle they drive")
+SMOKE_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [composerPath, fixPath, worksPath] = process.argv.slice(2);
+let joined = null;
+const sandbox = {window: {}, console: {log: () => {}, warn: () => {}, error: () => {}}};
+sandbox.window.__PassComposer = (m) => { joined = m; };
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(composerPath, "utf8").replace(/@@NS@@/g, ""), sandbox,
+                {filename: composerPath});
+if (!joined) { console.log(JSON.stringify({error: "the composer joined nothing"})); process.exit(0); }
+const fix = JSON.parse(fs.readFileSync(fixPath, "utf8"));
+const works = JSON.parse(fs.readFileSync(worksPath, "utf8")).works;
+const composer = joined.make(fix.consts);
+const ids = Object.keys(works).sort().slice(0, 6);
+const bad = [];
+let played = 0, driven = 0;
+for (let i = 0; i < ids.length; i++) {
+  const x = ids[i], y = ids[(i + 1) % ids.length];
+  if (x === y) continue;
+  let p = null;
+  try {
+    p = composer.passageFor({workRecordA: works[x], workRecordB: works[y],
+                             direction: i % 2 ? "b-to-a" : "a-to-b", seed: 3.3,
+                             routeRole: "middle"});
+  } catch (e) { bad.push(x + "->" + y + ": threw " + String(e && e.message).slice(0, 90)); continue; }
+  if (!p || p.declined || !p.score) { bad.push(x + "->" + y + ": nothing came back"); continue; }
+  played++;
+  for (const c of (p.plan.cues || [])) {
+    const man = (fix.consts.manifests[c.instrument.id] || {}).handles || {};
+    for (const h of Object.keys(c.tracks || {})) {
+      driven++;
+      if (!(h in man)) bad.push(x + "->" + y + ": " + c.instrument.id + " drives \u00ab" + h + "\u00bb, undeclared");
+      else if (!c.nodes[((c.tracks[h] || {}).node) || (c.id + "-" + h)]) {
+        bad.push(x + "->" + y + ": " + c.instrument.id + " drives \u00ab" + h + "\u00bb with no node");
+      }
+    }
+  }
+}
+console.log(JSON.stringify({pairs: ids.length, played: played, driven: driven,
+                            bad: bad.slice(0, 6)}));
+"""
+
+if not node_available():
+    skip(SMOKE_ROW, "node is not installed (pinned expected skip)")
+else:
+    _smoke = run_node(SMOKE_DRIVER, args=[COMPOSER_MODULE, FIXTURE_COMPOSED, FIXTURE_WORKS])
+    if not isinstance(_smoke, dict) or _smoke.get("error"):
+        check(SMOKE_ROW, False, "driver result: %s" % _smoke)
+    else:
+        _smoke_detail = ("%d real record(s), %d ordered pair(s); %d cast a passage and every one of "
+                         "the %d handle(s) they drive is declared by its own instrument's manifest "
+                         "and resolves to a node"
+                         % (len(SMOKE_IDS), _smoke.get("pairs", 0), _smoke.get("played", 0),
+                            _smoke.get("driven", 0)))
+        if _smoke.get("bad"):
+            _smoke_detail += "; what did not: %s" % _smoke["bad"]
+        check(SMOKE_ROW,
+              not _smoke.get("bad") and _smoke.get("played") == _smoke.get("pairs")
+              and (_smoke.get("driven") or 0) > 0,
+              _smoke_detail)
 
 passed = sum(1 for _, s, _ in results if s == "PASS")
 failed = sum(1 for _, s, _ in results if s == "FAIL")

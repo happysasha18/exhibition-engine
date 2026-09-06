@@ -5,7 +5,8 @@ but calls engine/build.py with the synthetic fixture content.
 Interface contract (must stay compatible with an instance's build_site interface):
   - OUT              : Path — set by the test before calling build()
   - SITE_CONFIG      : dict — the synthetic site identity (test parameterises from this)
-  - build(site_url)  : calls engine.build.build() with fixture content + synthetic site identity
+  - build(site_url)  : gives OUT a complete baked site + leaves engine.build's module globals
+                       set exactly as a bake leaves them
   - load_json(rel)   : reads JSON from fixture_content/<rel>
   - work_slug        : re-exported from engine.build
 
@@ -14,9 +15,40 @@ The test sets:
     build_site.OUT = TMP
     build_site.build(SITE_URL)
     build_site.load_json("gallery/gallery_data.json")
+
+WHAT build() DOES NOW, AND WHAT A CALLER GETS. Every one of the ~109 build() calls across the
+suites used to run engine/build.py's whole bake — Pillow image tiers included — into its own temp
+directory, and nearly all of them asked for byte-identical output. build() now bakes ONCE per
+distinct input and hands every caller a fresh private copy of that one stage.
+
+  - The stage is keyed by everything the bake reads: the contents of engine/ (build.py,
+    assemble_client.py, assets, client), the contents of tests/fixture_content/, the live
+    SITE_CONFIG dict, this call's own site_url / ga_id / enable / display_max, and the calendar
+    date (the bake stamps today's year into the copyright and today's date into the sitemap).
+  - The caller ALWAYS gets its own `shutil.copytree` copy in OUT. A cached stage is never handed
+    out and never written to after it lands, so a suite that plants a defect in its own OUT — the
+    red-on-bug rig in tests/test_pass_hang.py, say — cannot reach another suite's.
+  - A suite that must bake its own stage says so: build(..., own_stage="the reason"). That bakes
+    straight into OUT, reads nothing from the cache and writes nothing to it, and prints the
+    reason. A blank reason is refused — an unrecorded opt-out is the hole this closes.
+  - build()'s return value and the engine module globals a bake leaves behind (SITE_NAME,
+    COPYRIGHT, _ENGINE_ASSETS, …) are restored on a cache hit, because suites read them straight
+    off build_site._engine after building.
+
+BASE_STAGE_CACHE and stages_built() are read by tests/run_all.py, which prints how many base
+stages a full gate baked.
 """
+import fcntl
+import hashlib
 import json
+import os
+import pickle
+import shutil
 import sys
+import tempfile
+import time
+import types
+from datetime import date
 from pathlib import Path
 
 # engine/ → on sys.path so we can import build.py as a module
@@ -69,9 +101,81 @@ def load_json(relpath):
         return json.load(fh)
 
 
-def build(site_url, ga_id="", enable=None, display_max=None):
-    """Bake the synthetic fixture into OUT.  The caller must set OUT first.
-    display_max caps the served images + writes the EX-LADDER tiers (needs Pillow)."""
+# ----------------------------------------------------------------- the shared base stage
+
+# Outside the repository tree on purpose: nothing here is ever committed, and a gate that runs on a
+# fresh checkout simply finds an empty cache and bakes. The key of a stage carries the digest of
+# engine/ and of the fixture, so two commits never share a stage and no expiry rule is needed.
+BASE_STAGE_CACHE = Path(tempfile.gettempdir()) / "exhibition-engine-base-stages"
+_BUILD_LOG = BASE_STAGE_CACHE / "stages-built.log"
+
+# How long a process waits for whichever process is baking the same stage. The lock is an flock, so
+# a HOLDER THAT DIED needs no bound — the kernel drops its lock and the next waiter walks straight
+# in. This bound is for the other failure: a holder still alive but wedged (a bake blocked forever
+# on something outside itself). Without it the whole gate would wait on that one process; with it a
+# waiter gives up, bakes its own private stage into OUT, and the suite still answers.
+_STAGE_WAIT_SECONDS = 600
+
+
+def stages_built():
+    """How many distinct base stages this cache has ever baked — one line per real bake."""
+    try:
+        with _BUILD_LOG.open(encoding="utf-8") as fh:
+            return sum(1 for line in fh if line.strip())
+    except FileNotFoundError:
+        return 0
+
+
+def _freshen_client_bundle():
+    """Reassemble engine/assets/exhibition.js from its engine/client/ fragments, exactly as the
+    bake's own first step does (engine/build.py, EX-BUNDLE-FRESH), and for the same reason: suites
+    read that file directly as the SOURCE the served copy must match.
+
+    It has to happen HERE, before the key is computed, not only inside the bake. A cache hit skips
+    the bake, so a stale bundle left on disk would be compared against a fresh served copy and the
+    suite would go red through no fault of its own. Freshening first also makes the key a function
+    of the fragments alone, so it does not change under its own bake.
+
+    Written through a neighbour and renamed for the reason build.py records: eight suites bake at
+    once against this one checkout, and a truncating write hands a concurrent reader a short file.
+    """
+    assemble = _engine.assemble_client
+    fresh = assemble.OUT_PATH.with_name(assemble.OUT_PATH.name + ".fresh-%d" % os.getpid())
+    fresh.write_text(assemble.assemble(), encoding="utf-8")
+    os.replace(fresh, assemble.OUT_PATH)
+
+
+def _digest_tree(h, root):
+    """Fold every file under root into h — path then bytes, in sorted order."""
+    for p in sorted(root.rglob("*")):
+        # `*.fresh-<pid>` is another process's half-written neighbour on its way to a rename (see
+        # _freshen_client_bundle). Hashing it would make the key depend on who else is running.
+        if p.is_dir() or "__pycache__" in p.parts or ".fresh-" in p.name:
+            continue
+        try:
+            body = p.read_bytes()
+        except FileNotFoundError:
+            continue                      # a neighbour renamed away between listing and reading
+        h.update(str(p.relative_to(root)).encode("utf-8") + b"\0")
+        h.update(body)
+
+
+def _stage_key(site_url, ga_id, enable, display_max):
+    """Everything that can change what the bake produces, in one digest."""
+    h = hashlib.sha256()
+    _digest_tree(h, _ENGINE_ROOT / "engine")
+    _digest_tree(h, FIXTURE)
+    h.update(json.dumps(SITE_CONFIG, sort_keys=True, ensure_ascii=False).encode("utf-8"))
+    h.update(json.dumps([site_url, ga_id, sorted(enable or []), display_max],
+                        sort_keys=True).encode("utf-8"))
+    # The bake stamps the current year into the copyright and today's date into the sitemap, and
+    # test_site.py checks the year. A stage may therefore not outlive the day it was baked on.
+    h.update(date.today().isoformat().encode("utf-8"))
+    return h.hexdigest()
+
+
+def _bake(out, site_url, ga_id, enable, display_max):
+    """The bake itself — engine/build.py against the fixture, into `out`."""
     engine_assets = _ENGINE_ROOT / "engine" / "assets"
     inst_assets = FIXTURE / "instance-assets"
     return _engine.build(
@@ -79,12 +183,102 @@ def build(site_url, ga_id="", enable=None, display_max=None):
         ga_id=ga_id,
         enable=enable or [],
         content_dir=FIXTURE,
-        out_dir=OUT,
+        out_dir=out,
         engine_assets_dir=engine_assets,
         instance_assets_dir=inst_assets if inst_assets.exists() else None,
         site_config=SITE_CONFIG,
         display_max=display_max,
     )
+
+
+# A bake leaves its answers in engine/build.py's module globals as well as in OUT — SITE_NAME,
+# COPYRIGHT, _ENGINE_ASSETS and the rest — and suites read them off build_site._engine after
+# building. A cache hit runs no bake, so those globals are captured with the stage and restored.
+# Captured by kind rather than by a typed list of names, so a global added to build.py later comes
+# along by itself instead of quietly staying unset on the hit path only.
+_NOT_STATE = (types.FunctionType, types.BuiltinFunctionType, types.ModuleType, type)
+
+
+def _engine_state():
+    state = {}
+    for name, val in vars(_engine).items():
+        if name.startswith("__") or isinstance(val, _NOT_STATE):
+            continue
+        try:
+            pickle.dumps(val)
+        except Exception:
+            continue
+        state[name] = val
+    return state
+
+
+def _restore_engine_state(state, out):
+    vars(_engine).update(state)
+    # The paths are re-pointed rather than restored: the stage may have been baked by another
+    # process, in another checkout, into a temp directory that is already gone.
+    _engine.OUT = out
+    _engine.ROOT = FIXTURE
+    _engine._ENGINE_ASSETS = _ENGINE_ROOT / "engine" / "assets"
+    inst = FIXTURE / "instance-assets"
+    _engine._INSTANCE_ASSETS = inst if inst.exists() else None
+
+
+def _fill_stage(stage, key, site_url, ga_id, enable, display_max):
+    """Bake the base stage for `key` under the lock, unless another process already did.
+
+    Returns False when the wait ran out and the caller must bake its own — see _STAGE_WAIT_SECONDS.
+    """
+    BASE_STAGE_CACHE.mkdir(parents=True, exist_ok=True)
+    with (BASE_STAGE_CACHE / (key + ".lock")).open("w") as lock:
+        deadline = time.monotonic() + _STAGE_WAIT_SECONDS
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() > deadline:
+                    return False
+                time.sleep(0.25)
+        if stage.exists():
+            return True                   # the holder we waited for baked it
+        # Built under a temp name and renamed into place, so a killed bake leaves litter rather
+        # than a half-written stage that the next process would read as complete.
+        work = Path(tempfile.mkdtemp(dir=BASE_STAGE_CACHE, prefix="baking-"))
+        result = _bake(work / "site", site_url, ga_id, enable, display_max)
+        (work / "state.pkl").write_bytes(pickle.dumps({"result": result,
+                                                       "globals": _engine_state()}))
+        os.replace(work, stage)
+        with _BUILD_LOG.open("a", encoding="utf-8") as log:
+            log.write(key + "\n")         # one short line, O_APPEND — safe from eight processes
+    return True
+
+
+def build(site_url, ga_id="", enable=None, display_max=None, own_stage=None):
+    """Give OUT a complete baked site.  The caller must set OUT first.
+    display_max caps the served images + writes the EX-LADDER tiers (needs Pillow).
+    own_stage: the reason this suite must bake its own — no cache is read or written."""
+    out = Path(OUT)
+    if own_stage is not None:
+        reason = str(own_stage).strip()
+        if not reason:
+            raise ValueError("own_stage needs the reason this suite bakes its own stage")
+        print("engine_build: own stage, outside the shared base — %s" % reason)
+        return _bake(out, site_url, ga_id, enable, display_max)
+
+    _freshen_client_bundle()
+    key = _stage_key(site_url, ga_id, enable, display_max)
+    stage = BASE_STAGE_CACHE / key
+    if not stage.exists() and not _fill_stage(stage, key, site_url, ga_id, enable, display_max):
+        return _bake(out, site_url, ga_id, enable, display_max)
+
+    state = pickle.loads((stage / "state.pkl").read_bytes())
+    if out.exists():
+        shutil.rmtree(out)                # the bake's own contract: OUT is a fresh bundle
+    # A real copy, never a link: a suite plants its defect by writing into OUT, and a link would
+    # reach through into the shared stage.
+    shutil.copytree(stage / "site", out)
+    _restore_engine_state(state["globals"], out)
+    return state["result"]
 
 
 def manifest_block(*instrument_ids):

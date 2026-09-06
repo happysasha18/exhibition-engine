@@ -31,10 +31,38 @@ WHAT IT MEASURES.
   would turn a record of where the road was into a claim about where it is. What the fixture is still
   READ for is its two work records, the collection's constants and the two dice.
 
-  The seven roads. tests/fixture_pass_works.json carries the 121 REAL per-work records the settings
-  record ships, so every road row below stands on a real pair and names the measurement that
-  qualified it. Each road carries a red-on-bug proof: its own qualification is removed in a COPY of
-  the module and the pair stops taking it.
+  The seven roads. Every road row below stands on a pair case of the constructed corpus and names the
+  measurement that qualified it. Each road carries a red-on-bug proof: its own qualification is
+  removed in a COPY of the module and the pair stops taking it.
+
+THE CORPUS THE LAWS STAND ON, AND WHY IT IS NOT THE COLLECTION.
+
+  Until 2026-09-06 every collection-wide row here walked 192 ordered pairs cut out of the 121 real
+  per-work records in tests/fixture_pass_works.json, and three searches walked all 121 by 121. His
+  word of that day ends it: a full enumeration of today's photographs is not a proof of a general
+  law, hanging one more photograph must not multiply what this suite costs, and what is checked is
+  the law of the generative composer rather than today's particular pairs.
+
+  What the law rows walk now is tests/synthetic_works.py — a FIXED corpus of deterministic
+  WorkRecords built from the boundary values of the measurements a record carries and from the
+  behaviour classes this composer's own source branches on, plus a FIXED list of ordered pair cases
+  chosen the same way. Every record and every pair in that file carries the sentence saying which
+  boundary or class it stands for. A row that used to read «over 192 real pairs, X held» now reads
+  «over the constructed corpus, X holds at every boundary and in every class», which is the stronger
+  claim: it covers the ends of every span rather than the middle of one collection, and it covers
+  them whether or not a photograph exists today that reads that way.
+
+  Three rows here carried a claim that was never a law but a census of the collection — a mean share
+  against a fence set just above a measured figure, a count of distinct values one walk happened to
+  see. Each says at its own site what it now claims instead and why the number it dropped proved
+  nothing.
+
+THE SMOKE ON REAL RECORDS, WHICH CARRIES NO LAW.
+
+  Two rows at the end still read tests/fixture_pass_works.json, and they prove SCHEMA AND WIRING and
+  nothing else: that a real record still carries exactly the field paths the synthetic base carries,
+  and that a handful of real pairs still feed the real composer and come back with a playable
+  passage. Neither is a claim about the composition, and neither grows when a photograph is hung.
 
   The step's role. One pair at the five route roles composes five passages a person can tell apart,
   each inside charter shelf 17's budget for that role: a quiet link one letter and no miracle, a
@@ -48,7 +76,7 @@ WHAT IT MEASURES.
   declares OPEN is driven at all, because that state belongs to the instrument's own door reading.
 
   The two fences a filled score has to pass. The client refuses a score over its byte fence whole and
-  an intent over its character fence whole, and both are measured here over the real collection.
+  an intent over its character fence whole, and both are measured here over the constructed corpus.
 
   The entry's defaults and fences, unchanged from stage 0: every field the request gained reproduces
   the four-value call when left unsaid; a route role outside the five, a session memory naming a
@@ -118,14 +146,16 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
+import synthetic_works  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
 
 SITE_URL = "https://synth.example.com"
 MODULE = ROOT / "engine" / "assets" / "pass-composer.js"
 FIXTURE = Path(__file__).resolve().parent / "fixture_pass_composed.json"
 # The 121 real per-work records the settings record ships, copied out of the site's own
-# lab/build-workrecords-v1.py output on 2026-08-17. Every collection-wide row below reads them, so
-# a road, a budget and a fence are all measured against the works that actually hang.
+# lab/build-workrecords-v1.py output on 2026-08-17. NO LAW BELOW READS THEM ANY MORE — they are read
+# by the schema-and-wiring smoke at the end of this file and by nothing else. What every law row
+# below stands on is `tests/synthetic_works.py`; see THE CORPUS THE LAWS STAND ON, above.
 WORKS = Path(__file__).resolve().parent / "fixture_pass_works.json"
 
 results = []
@@ -138,6 +168,16 @@ def check(name, cond, detail=""):
 def skip(name, detail):
     results.append((name, "SKIP", detail))
 
+
+# ---------------------------------------------------------------- the corpus the laws stand on
+# Written out once, handed to the node driver as a file exactly as the real fixture used to be, so
+# the driver reads one shape and nothing inside it knows which corpus it is walking. It lives in its
+# own directory: the bake below empties the one it writes into.
+CORPUS_DIR = Path(tempfile.mkdtemp(prefix="synth_composed_corpus_"))
+CORPUS_PATH = CORPUS_DIR / "synthetic-works.json"
+CORPUS_PATH.write_text(json.dumps({"works": synthetic_works.corpus(),
+                                   "pairs": synthetic_works.pairs(),
+                                   "contrasts": synthetic_works.contrasts()}), encoding="utf-8")
 
 # ---------------------------------------------------------------- bake once
 TMP = Path(tempfile.mkdtemp(prefix="synth_composed_"))
@@ -543,15 +583,14 @@ ROW_ROAD_POOL_RED = NODE_ROWS[-1]
 
 # THE DRIVER, run in node against a COPY of the module held in memory. `PLANTS` names the rules to
 # change before the module is loaded, which is how every red-on-bug row below is run: the repair is
-# reverted in the copy alone and the answer must move. `SWEEP` says how many of the collection's
-# works the collection-wide readings walk, so a planted run can walk a corner of it and the standing
-# rows walk all 121.
+# reverted in the copy alone and the answer must move. Every run walks the same corpus and the same
+# pair cases, planted or not, so a planted answer and the standing answer are comparable by
+# construction rather than by a sweep size somebody remembered to match.
 DRIVER = r"""
 "use strict";
 const fs = require("fs"), vm = require("vm"), path = require("path");
-const [modulePath, fixturePath, worksPath] = process.argv.slice(2);
+const [modulePath, fixturePath, worksPath, corpusPath] = process.argv.slice(2);
 const plants = JSON.parse(process.env.PLANTS || "[]");
-const sweepN = parseInt(process.env.SWEEP || "0", 10);
 
 let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
 const planted = [];
@@ -570,7 +609,11 @@ vm.runInContext(source, sandbox, {filename: "pass-composer.js"});
 if (!joined) { console.log(JSON.stringify({error: "the module joined nothing"})); process.exit(0); }
 
 const fix = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
-const works = JSON.parse(fs.readFileSync(worksPath, "utf8"));
+// THE REAL RECORDS, read by the schema-and-wiring smoke at the very end of this driver and by
+// nothing else. `works` below — the corpus every law row walks — is the synthetic one.
+const realWorks = JSON.parse(fs.readFileSync(worksPath, "utf8"));
+const corpus = JSON.parse(fs.readFileSync(corpusPath, "utf8"));
+const works = {works: corpus.works};
 // THE TWO FENCES, READ FROM THE CLIENT AND HANDED IN — never typed here. Anchor 1 of the four the
 // docstring names: the number this suite measures against is the number the client applies, parsed
 // out of the served client's own PASS_LIMITS literal on the Python side, so a client that raises a
@@ -1020,30 +1063,43 @@ out.memory = {
     (c) => c.id + ":" + Object.keys(c.measuredHandles || {}).sort().join("/")) : [])
 };
 
-// 6 · THE READINGS TAKEN ON REAL RECORDS, and they are readings of RECORDS rather than a census of
-//     a collection. His word of 2026-08-18 09:51 strikes out counting how many pairs of some
-//     collection reach anything — «не надо считать пары которые получает пакет» — so what stood
-//     here, a double loop over all 14 520 ordered pairs asking how many composed and how many
-//     declined, is gone with the question it answered. What is left is a settled handful of real
-//     ordered pairs, walked so the per-record laws below stand on records that actually hang: every
-//     driven handle names its measurement, no handle an instrument declares open is driven, the fold
-//     spends the one miracle, the camera leads only at a tonic step, and every instrument the record
-//     ships can be chosen. None of those is a count of a collection; each is a law about one
-//     crossing, checked on enough crossings to catch a breach.
-// HOW MANY CROSSINGS «ENOUGH» IS, and it is a measurement rather than a habit. The handful stood at
-// 48 while the record published five instruments; on a field of sixteen, whose rarest plays about
-// two cues in a hundred, 48 ordered pairs miss it about as often as they catch it — this suite read
-// ««liquid» can never be chosen» off a spot of 48 while the same module casts it 2 948 times over
-// the whole collection. Swept at 96, 144, 192, 240 and 363 pairs every one of the sixteen is cast;
-// 192 is taken, which puts the rarest at 37 casts rather than at the edge of its own noise. The
-// planted runs below still walk a corner of 24 — a plant that reddens needs one breach, not a
-// margin.
+// 6 · THE READINGS TAKEN ON THE CONSTRUCTED CORPUS, and they are readings of RECORDS rather than a
+//     census of a collection. His word of 2026-08-18 09:51 struck out counting how many pairs of
+//     some collection reach anything — «не надо считать пары которые получает пакет» — and his word
+//     of 2026-09-06 struck out the rest of it: a sweep of the photographs that hang today is not a
+//     proof of a general law, it costs more every time one is hung, and its green moves when one is
+//     taken down.
+//
+// WHAT STOOD HERE. `SPOT` was 192 ordered pairs cut out of the 121 real records by an arithmetic
+// stride, `ids` was all 121, and a dozen rows below read counts, maxima and distributions off that
+// walk — «the rarest instrument got 37 casts», «the commonest instrument carries at most 65 % of a
+// route». Every one of those was a fact about which photographs are on disk this week.
+//
+// WHAT STANDS HERE NOW. `tests/synthetic_works.py` builds a FIXED corpus of WorkRecords from the
+// boundary values of the measurements a record carries and from the behaviour classes this very
+// module branches on, and a FIXED list of ordered pair cases chosen the same way — one per class
+// contrast a law has to hold across. Each record and each pair carries, in that file, the sentence
+// saying which boundary or class it stands for. So a row that used to say «over 192 real pairs, X
+// held» now says «over the constructed corpus, X holds at every boundary and in every class», which
+// is the stronger statement: it covers the ends of every span rather than whatever the middle of one
+// collection happened to offer, and it covers them all whether or not a photograph exists that
+// reads that way.
+//
+// THE SIZE OF THE WALK IS A FUNCTION OF THE DIMENSIONS AND THE CLASSES, never of the collection.
+// Hanging a photograph adds no record here and no pair here, so it cannot make this suite cost more.
 const allIds = Object.keys(works.works).sort();
-const SPOT = [];
-for (let i = 0; i < (sweepN > 0 ? Math.min(sweepN, 192) : 192); i++) {
-  const x = allIds[(i * 7) % allIds.length], y = allIds[(i * 13 + 3) % allIds.length];
-  if (x !== y) SPOT.push([x, y]);
-}
+// A RUN WITH A RULE PLANTED WALKS THE CLASS CONTRASTS ALONE. A plant is judged on whether an answer
+// MOVES, and one breach is a move, so a planted run does not need the control column beside the
+// contrasts — it needs the cases where two classes stand against each other. The subset is a NAMED
+// list in `tests/synthetic_works.py`, not a count chosen here, and the one row below that compares a
+// count across a planted run and the standing one reads a SHARE instead, so the two are comparable
+// whatever each walked. Nothing else here reads across two runs: the two that do (`fences.noA` and
+// the route spread) stand on readings this list never sizes.
+const SPOT = plants.length ? corpus.contrasts : corpus.pairs;
+// THE WITNESS SEARCHES BELOW WALK THE WHOLE LIST, PLANTED OR NOT. A witness is a pair case that
+// meets a row's own stated precondition, and a red-on-bug row compares a planted answer against the
+// standing one on the SAME witness — so the witness may not move with what a run happens to walk.
+const ALL_PAIRS = corpus.pairs;
 const ids = allIds;
 const roads = {}, declines = {}, byRoad = {};
 let composed = 0, declined = 0, maxBytes = 0, maxIntent = 0, overByte = 0, overIntent = 0;
@@ -1223,9 +1279,11 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
                       "The work folds along its own region lines. ",
                       "Along what the two works do not share. "];
 {
-  for (const [xi, yi] of SPOT) {
+  for (const [xi, yi, di] of SPOT) {
     const wa = works.works[xi], wb = works.works[yi];
-    const dir = xi < yi ? "a-to-b" : "b-to-a";
+    // THE DIRECTION IS THE PAIR CASE'S OWN, not derived from how the two ids sort. A pair case
+    // states which record departs and which arrives, because the composer branches on it.
+    const dir = di;
     const key = wa.id + "__" + wb.id + "__" + (dir === "a-to-b" ? "ab" : "ba");
     const p = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: dir,
                                    seed: die(key)});
@@ -1328,6 +1386,12 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
     // role will not see it, because the shape a role reaches for is the role's own. This walks all
     // five and records the first pair and role that threw, which is exactly how the folding
     // culmination's missing line was found.
+    // THE FIVE PLANS THIS PAIR COMPOSES ARE KEPT, because the handle readings collected below are
+    // readings of the composition and the ROUTE ROLE is one of the composer's own branch dimensions:
+    // which instrument is cast, and therefore which handle is driven off which measurement, changes
+    // with the role. Reading them off the default role alone left whole lanes — the drifting
+    // instrument's seams, the water's grain, the light's two levels — with nothing to read at all.
+    const rolePlans = [];
     for (const r of ROLES_ALL) {
       let q = null;
       try {
@@ -1341,6 +1405,7 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
       if (r === "middle" && bf && bf.ok) boxQualified++;
       if (!q.score) continue;
       roleN[r]++;
+      rolePlans.push(q.plan);
       // CHANGE C, at every role: see `collectVoiceHandles`'s own note on why one role's sample
       // undercounts a pivot instrument's chances to own LIGHT-COLOUR. Read off `q.plan.cues`, not
       // `q.score.cues`, for the same reason the note above `p.plan.cues` gives — the wire-fitting
@@ -1474,7 +1539,7 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
     // which instrument was cast — `plan` and `score` hold separate deep copies of the same cues
     // (`serialise`'s own `copy()`), so `plan.cues[*].nodes[*].note` carries what the composer wrote
     // whether or not the wire form later lost it.
-    for (const cue of p.plan.cues) {
+    for (const cue of [].concat.apply([], [p.plan].concat(rolePlans).map((pl) => pl.cues))) {
       for (const name of Object.keys(cue.nodes)) {
         const node = cue.nodes[name];
         const note = String(node.note || "");
@@ -1502,12 +1567,17 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
         if (cue.instrument.id === "waterline" && handle === "tideCells") {
           tideCellsSeen.push(toNum(startValue(node)));
         }
-        // CHANGE D: strata-light's own levelA/levelB — proves each moves off its 0.5 default.
-        if (cue.instrument.id === "strata-light" && handle === "levelA") {
-          levelASeen.push(toNum(startValue(node)));
-        }
-        if (cue.instrument.id === "strata-light" && handle === "levelB") {
-          levelBSeen.push(toNum(startValue(node)));
+        // CHANGE D: strata-light's own levelA/levelB, read against the two works' own recorded
+        // `luminance.level` — the same shape `adriftSeams` above takes, and for the same reason.
+        // The handle's own published span is [0, 1] (the manifest, read here rather than typed) and
+        // a median luminance stands inside it, so the applied value IS the record's own reading and
+        // a per-sighting equality is the whole law. That replaces a count of how many distinct
+        // values one walk happened to see, which was a reading of a collection.
+        if (cue.instrument.id === "strata-light" && (handle === "levelA" || handle === "levelB")) {
+          const lFromWork = dir === "b-to-a" ? wb : wa, lToWork = dir === "b-to-a" ? wa : wb;
+          const lRec = toNum(((handle === "levelA" ? lFromWork : lToWork).luminance || {}).level);
+          (handle === "levelA" ? levelASeen : levelBSeen).push(
+            {applied: toNum(startValue(node)), record: lRec});
         }
         // GATE-SLOT LANE PART 1: gates' slotPlace/slotHalf/slotAxis all read the DEPARTING work
         // only (pass-inst-gates.js: "the departing work's own slot is what parts"), so the record
@@ -1725,10 +1795,10 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
   const DAY_ONE = Date.UTC(2026, 0, 15, 3, 0, 0), DAY_TWO = Date.UTC(2026, 6, 2, 15, 0, 0);
   let pairs = 0, moved = 0, unstable = 0, dayUnstable = 0;
   const firstMove = [];
-  // A SLICE OF THE CORNER, EVERY FOURTH PAIR, and the slice is a cost rather than a claim: each
+  // A SLICE OF THE PAIR CASES, EVERY FOURTH ONE, and the slice is a cost rather than a claim: each
   // pair here composes five whole passages and what is being asked is whether the day reaches a die
   // at all, which one pair answers and the rest only make louder. The slice is taken by position in
-  // the corner's own settled order, so it is the same slice on every run.
+  // the corpus's own settled order, so it is the same slice on every run.
   for (const [x, y] of SPOT.filter((_, k) => k % 4 === 0)) {
     const none1 = askDay(x, y), none2 = askDay(x, y);
     const one = askDay(x, y, DAY_ONE), oneAgain = askDay(x, y, DAY_ONE);
@@ -1793,11 +1863,23 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
     return composer.passageFor(req);
   };
   // 1 · THE FENCE. One pair, one seed, one role, three ways of stating the function.
-  const [fx, fy] = SPOT[0];
+  //
+  // THE PAIR IS DERIVED, NEVER PINNED. What the row asks of it is that STATING the function change
+  // the composition — so the pair has to be one whose crest reads differently under «dominant» than
+  // under the function the step's own role implies. A pair taken by position answers that only by
+  // luck: `SPOT[0]`'s crest passes through under both, and the row then reads «the distinction is
+  // dropped» when nothing is dropped at all. So the precondition is stated and searched for over
+  // the pair cases, and the row reports whether the search found one.
+  let fx = SPOT[0][0], fy = SPOT[0][1];
+  for (const [x, y] of SPOT) {
+    const a1 = ask(x, y, "middle"), a2 = ask(x, y, "middle", "dominant");
+    if (!a1.score || !a2.score) continue;
+    if (JSON.stringify(holdsIn(a1)) !== JSON.stringify(holdsIn(a2))) { fx = x; fy = y; break; }
+  }
   const plain = ask(fx, fy, "middle");
   const asDom = ask(fx, fy, "middle", "dominant");
   const stray = ask(fx, fy, "middle", "plagal");
-  // 2 · THE CREST, over the same settled corner every other row here walks, at every role.
+  // 2 · THE CREST, over the same pair cases every other row here walks, at every role.
   let tonicHeld = 0, tonicSeen = 0, domSeen = 0, domHeld = 0, subHeld = 0, subSeen = 0;
   const tonicWitness = [], subWitness = [];
   for (const [x, y] of SPOT) {
@@ -1877,7 +1959,7 @@ out.voices = {checked: voiceChecked, silentDeclared: voiceSilentDeclared, worst:
 // where a grid would only ever land on round values. A red here is a red for all inputs and not for
 // 190 of them.
 //
-// IT RUNS ON THE STANDING RUN ONLY. A planted run walks a corner of the collection to prove one
+// IT RUNS ON THE STANDING RUN ONLY. A planted run is judged on whether one
 // guard, and the arithmetic below is the same arithmetic whatever is planted elsewhere in the
 // module — re-walking every span once per plant would buy nothing and cost the suite its whole
 // budget. The row that reads it reads the standing run.
@@ -2073,7 +2155,8 @@ function rnd() { rseed = (rseed * 1103515245 + 12345) & 0x7fffffff; return rseed
 // and his 19:13 word about a route's breadth is what they serve. The two readings stand side by side
 // so the row below can measure the cooldown's own effect rather than a fence's.
 function walkRoutes(withMemory) {
-  let shapesSum = 0, shapesMax = 0, shareSum = 0, shareMax = 0, casted = 0, stepsRun = 0, lost = 0;
+  let shapesSum = 0, shapesMax = 0, shapesMin = Infinity, shareSum = 0, shareMax = 0, casted = 0,
+      stepsRun = 0, lost = 0;
   const spread = {};
   for (const R of ROUTES) {
     const seen = new Set(), per = {};
@@ -2104,6 +2187,7 @@ function walkRoutes(withMemory) {
     }
     shapesSum += seen.size;
     if (seen.size > shapesMax) shapesMax = seen.size;
+    if (seen.size < shapesMin) shapesMin = seen.size;
     const worst = Math.max.apply(null, Object.keys(per).map((k) => per[k]).concat([0]))
       / Math.max(n, 1);
     shareSum += worst;
@@ -2114,12 +2198,31 @@ function walkRoutes(withMemory) {
   for (const k of Object.keys(spread).sort()) share[k] = Math.round(1000 * spread[k] / tot) / 10;
   return { routes: ROUTES.length, steps: stepsRun, composed: casted, lost: lost,
            shapesMean: Math.round(10 * shapesSum / ROUTES.length) / 10, shapesMax,
+           shapesMin: shapesMin === Infinity ? 0 : shapesMin,
            topShareMean: Math.round(1000 * shareSum / ROUTES.length) / 10,
            topShareWorst: Math.round(1000 * shareMax) / 10, spread: share,
            letters: Object.keys(spread).length };
 }
 out.route = walkRoutes(false);
-out.routeRemembered = walkRoutes(true);
+// THE SEARCHES AND SWEEPS NO PLANT EVER READS ARE NOT RUN UNDER A PLANT. A planted run exists to
+// move ONE reading, and the row that reads it names which; every other block of this driver is
+// computed, serialised and thrown away twenty-two times over. `STANDING` is that question asked
+// once. Nothing about a claim changes: the standing run computes everything, every row above reads
+// its answer from the standing run, and a block a plant does read — the routes' own spread, the
+// length, the two world witnesses, the crystallized seed — is computed under a plant exactly as it
+// always was. A block skipped says so in its own place, so a future plant that reaches for one
+// finds a sentence rather than an empty object.
+const STANDING = plants.length === 0;
+// AND THE WITNESSES A RED-ON-BUG ROW STANDS ON ARE DERIVED ONCE, IN THE STANDING RUN, AND HANDED IN.
+// Three rows below name a pair case by a PRECONDITION rather than by position — the two crossings
+// that put two folds within reach of one world ground, the edge whose nine steps cast two different
+// folds, the two pairs that come out at different milliseconds inside one tier. Each search reads
+// what the composer composes, so a planted run re-deriving them would find its own, different
+// witness, and the row would then compare a planted answer on one pair against a standing answer on
+// another. The standing run publishes what it found and every planted run replays it, exactly as the
+// camera-handoff row already replays the request its own green half found.
+const WITNESS = process.env.WITNESS ? JSON.parse(process.env.WITNESS) : null;
+out.routeRemembered = STANDING ? walkRoutes(true) : {skippedUnderPlant: true};
 
 // 8j-2 · THE COOLDOWN'S OWN FLOOR, PROVED OVER THE WHOLE SPAN OF `at` AND `poolSize` RATHER THAN
 // walked on any route. His 2026-08-26 word: «разнообразие необходимо, вопрос в ранжировании» — the
@@ -2208,9 +2311,11 @@ out.roadPool = {
 const handed = joined.make(Object.assign({}, fix.consts, {intentFenceChars: 300}));
 let handedMax = 0, handedShort = 0, handedN = 0, handedRoadKept = 0;
 {
-  for (const [xi, yi] of SPOT) {
+  for (const [xi, yi, di] of SPOT) {
     const wa = works.works[xi], wb = works.works[yi];
-    const dir = xi < yi ? "a-to-b" : "b-to-a";
+    // THE DIRECTION IS THE PAIR CASE'S OWN, not derived from how the two ids sort. A pair case
+    // states which record departs and which arrives, because the composer branches on it.
+    const dir = di;
     const key = wa.id + "__" + wb.id + "__" + (dir === "a-to-b" ? "ab" : "ba");
     const p = handed.passageFor({workRecordA: wa, workRecordB: wb, direction: dir, seed: die(key)});
     if (!p.json) continue;
@@ -2235,9 +2340,11 @@ delete silentConsts.intentFenceChars;
 const silent = joined.make(silentConsts);
 let silentMax = 0, silentShort = 0, silentN = 0;
 {
-  for (const [xi, yi] of SPOT) {
+  for (const [xi, yi, di] of SPOT) {
     const wa = works.works[xi], wb = works.works[yi];
-    const dir = xi < yi ? "a-to-b" : "b-to-a";
+    // THE DIRECTION IS THE PAIR CASE'S OWN, not derived from how the two ids sort. A pair case
+    // states which record departs and which arrives, because the composer branches on it.
+    const dir = di;
     const key = wa.id + "__" + wb.id + "__" + (dir === "a-to-b" ? "ab" : "ba");
     const p = silent.passageFor({workRecordA: wa, workRecordB: wb, direction: dir, seed: die(key)});
     if (!p.json) continue;
@@ -2451,7 +2558,7 @@ const HARD = {
 //       never through an internal function this suite would otherwise have to reach past. Each
 //       built pair raises exactly the one reading its own arrival's fit reads and leaves every
 //       other reading at `fullRecord`'s own zero, so the winning name is a genuine ranking rather
-//       than a coincidence of the real collection's 121 records.
+//       than a coincidence of whichever records a walk happened to reach.
 {
   // MISMATCH THE PAIR'S OWN TWO RHYTHMS, so INTERFERED's own fit — which two untouched
   // `fullRecord`s would otherwise hand a perfect 1, both carrying the same default step and
@@ -2530,7 +2637,7 @@ const HARD = {
 // `adrift` publishes handles on two levels: its seam and its grain read the whole SURFACE, and its
 // flights, voids and homes belong to what stands inside a cell. So it is the plain case for the
 // law's two halves, and both are read here on NAMED ordered pairs rather than on whatever the
-// ranking happens to choose across a corner of the collection.
+// ranking happens to choose across the pair cases.
 //
 //   · `owns` — a pair where adrift's cue owns SURFACE. Its seam handles are driven, off the
 //     departing work's own measured seam.
@@ -2562,11 +2669,11 @@ const HARD = {
   // pinned witness goes stale again on the next correction to any declaration, silently, because a
   // pair that no longer casts adrift reads `{cast: false}` and says nothing about why.
   //
-  // So the two witnesses are searched for instead, over the same settled corner of ordered pairs
+  // So the two witnesses are searched for instead, over the same settled pair cases
   // every other row here walks, in the same settled order: the first pair on which adrift is cast
   // and OWNS the surface, and the first on which it is cast and does NOT. Both are properties of
   // the composition rather than of any pair chosen in advance, so a declaration corrected tomorrow
-  // moves which pair is found and not whether one is. Where the corner carries no such pair, the
+  // moves which pair is found and not whether one is. Where the corpus carries no such pair, the
   // witness says `{cast: false}` and the row reds with that on its face — which is the honest
   // answer: the law's half could not be exercised at all.
   // THE OWNING WITNESS ALSO NEEDS A SEAM WORTH READING, and the condition is put on the RECORD and
@@ -2594,7 +2701,9 @@ const HARD = {
     }
     return {cast: false, searched: SPOT.length, needRealSeam: !!needRealSeam};
   };
-  out.adriftBothWays = {owns: findAdrift(true, true), accompanies: findAdrift(false, false)};
+  out.adriftBothWays = STANDING
+    ? {owns: findAdrift(true, true), accompanies: findAdrift(false, false)}
+    : {skippedUnderPlant: true};
 
   // ---- THE GATE SLOT'S OWN WITNESSES, SOUGHT RATHER THAN HOPED FOR --------------------------
   // The gate-slot row asks three things: every applied slot matches the departing work's own
@@ -2613,9 +2722,11 @@ const HARD = {
   // So the witnesses are DERIVED, the way the drifting instrument's two above are. Ordered pairs
   // are walked in the collection's own id order until a `gates` cast is found on a departing work
   // of each axis and at more than one place. The walk is bounded and it reports what it reached, so
-  // a corner that genuinely holds no such pair REDS SAYING SO rather than passing on a thinner
+  // a corpus that genuinely holds no such pair REDS SAYING SO rather than passing on a thinner
   // sample — the clauses are not loosened, they are given something to stand on.
-  {
+  if (!STANDING) {
+    out.gateSlotWitness = {skippedUnderPlant: true};
+  } else {
     const seen = [], readings = [];
     let tried = 0;
     const axesFound = () => new Set(seen.map((s) => s.axis));
@@ -2691,7 +2802,10 @@ const HARD = {
   // witness and the plant measures the guard rather than measuring which pair each run happened to
   // pick. The track lists are what is then read off that one witness, and they are exactly what the
   // guard changes.
-  {
+  if (!STANDING) {
+    out.groundVoice = {cast: [], byLevel: {}, shared: [], declaredOverlap: [], walked: 0,
+                       none: true, skippedUnderPlant: true};
+  } else {
     const levelsOfCue = (cue) => {
       const man = fix.consts.manifests[cue.instrument.id].handles;
       const out2 = {};
@@ -2735,11 +2849,11 @@ const HARD = {
       }).sort();
       return {cast: cast, byLevel: byLevel, shared: shared};
     };
-    // THE WALK IS THE COLLECTION'S OWN, IN ITS OWN ID ORDER, and not the 192-pair corner. The
-    // corner is what every ranking row here stands on and it is the right sample for a reading; it
-    // is the wrong one for a SHAPE, because whether any pair reaches this door is the cast's
-    // business and a corner that misses it says nothing about the collection. The walk is bounded
-    // and it reports how far it went, so "none found" is a statement with a number behind it.
+    // THE WALK IS THE WHOLE CORPUS'S, IN ITS OWN ID ORDER, and not the pair-case list. The pair
+    // cases are what every ranking row here stands on and they are the right cases for a reading;
+    // they are the wrong ones for a SHAPE, because whether any pair reaches this door is the cast's
+    // business and a list that misses it says nothing. The walk is bounded and it reports how far it
+    // went, so "none found" is a statement with a number behind it.
     //
     // THE BOUND IS 600 AND IT IS A COST, NOT A CLAIM. Each step composes a whole passage; the walk
     // stops at the first witness and pays the whole bound only when there is none to find, so the
@@ -2819,7 +2933,7 @@ const HARD = {
 }
 
 // ---- SHELF 6'S ONE SLOT, ON THE TWO ORDERED PAIRS THAT REACH FOR IT TWICE -------------------
-// THE LAW HAS THREE DOORS AND EACH NEEDS ITS OWN PAIR. A sweep of a corner of the collection reads
+// THE LAW HAS THREE DOORS AND EACH NEEDS ITS OWN PAIR. A sweep of the pair cases reads
 // what the ranking happens to choose there; these two ordered pairs are named because each one puts
 // two world-declaring instruments within reach of one another by a DIFFERENT road, so the guard on
 // that road is what decides the answer rather than the ranking.
@@ -2829,30 +2943,97 @@ const HARD = {
 //     clause (every level taken) does not catch it and only the world clause does.
 //   · `swap` — the ground is re-cast mid-loop by §7's coverage law, AFTER the arrival is already
 //     cast, so no levels test stands between the two at all and only the swap's own gate does.
+// THE TWO WITNESSES ARE DERIVED, NEVER PINNED. Two real work-id pairs stood written out here and had
+// to be re-searched by hand twice inside one week, because what a named pair casts moves whenever the
+// composition moves — and a witness that has stopped meeting the row's own precondition goes quietly
+// vacuous rather than red. So the PRECONDITION is stated and searched for instead, over the corpus's
+// own pair cases: a crossing whose bundle ledger puts TWO different world-folding instruments within
+// reach is a crossing where the levels test's world clause has something to refuse. The search reads
+// the ledger the planner already publishes; it computes nothing new.
+const REACH_ROLES = ["middle", "culmination"];
+function worldWitnessAt(x, y, dir, role) {
+  let p;
+  try {
+    p = composer.passageFor({workRecordA: works.works[x], workRecordB: works.works[y],
+                             direction: dir, seed: die(x + "__" + y + "__" + role),
+                             routeRole: role});
+  } catch (e) { return {reach: [], pivotFold: null}; }
+  const reach = [];
+  ((((p.diagnostics || {}).bundles || {}).considered) || []).forEach((bn) => {
+    [bn.ground, bn.travel, bn.arrival].forEach((iid) => {
+      if (iid && SPENDS_THE_MIRACLE.indexOf(iid) >= 0 && reach.indexOf(iid) < 0) reach.push(iid);
+    });
+  });
+  const pivot = (p && p.score) ? (p.plan.cues || []).find((c) => c.id === "pivot") : null;
+  return {reach: reach,
+          pivotFold: pivot && SPENDS_THE_MIRACLE.indexOf(pivot.instrument.id) >= 0
+            ? pivot.instrument.id : null};
+}
+function foldsInReachAt(x, y, dir, role) { return worldWitnessAt(x, y, dir, role).reach; }
+// WHETHER THE PLANNER WEIGHED ONE BUNDLE CARRYING TWO DIFFERENT FOLDS. That is the precondition the
+// levels test's world clause exists to refuse: two impossible events proposed for one crossing. It is
+// read off the planner's own ledger of what it considered, so nothing here re-derives a ranking.
+function bundleCarryingTwoFolds(x, y, dir, role) {
+  let p;
+  try {
+    p = composer.passageFor({workRecordA: works.works[x], workRecordB: works.works[y],
+                             direction: dir, seed: die(x + "__" + y + "__" + role),
+                             routeRole: role});
+  } catch (e) { return false; }
+  if (!p || !p.score) return false;
+  const cons = ((((p.diagnostics || {}).bundles || {}).considered) || []);
+  for (const bn of cons) {
+    const folds = [];
+    for (const iid of [bn.ground, bn.travel, bn.arrival]) {
+      if (iid && SPENDS_THE_MIRACLE.indexOf(iid) >= 0 && folds.indexOf(iid) < 0) folds.push(iid);
+    }
+    if (folds.length >= 2) return true;
+  }
+  return false;
+}
+// AND THE GROUND ITSELF HAS TO BE A FOLD, which is the other half of the precondition and was
+// missing while the witnesses were two pinned real pairs that happened to satisfy it. The clause the
+// plant strikes only bites where a WORLD ground is already standing and a second world-declaring
+// instrument is within reach of the same crossing; a case whose ground is an ordinary instrument
+// gives the clause nothing to refuse and the plant nothing to move.
+// EVERY CROSSING WHOSE OWN PLANNER WEIGHED A BUNDLE CARRYING TWO FOLDS, and not the first two of
+// them. Which of those crossings the struck clause actually lets stand two worlds on is a fact about
+// the RANKING under the plant, and the ranking is only knowable by running the planted module — so a
+// witness picked by any property the standing run can read is a guess, and a witness picked by
+// position is the «lucky pair» this suite's own law forbids. The standing run therefore publishes
+// the whole set, every run walks all of it, and the row reads the STRONGEST answer any of them gave:
+// with the clause in place not one of them stands two worlds, and with it struck one of them does.
+const TWO_FOLD_CASES = [];
+if (WITNESS && WITNESS.oneSlot) {
+  for (const c of WITNESS.oneSlot) TWO_FOLD_CASES.push(c);
+} else {
+  for (const [x, y, d] of ALL_PAIRS) {
+    for (const role of REACH_ROLES) {
+      if (bundleCarryingTwoFolds(x, y, d, role)) TWO_FOLD_CASES.push([x, y, d, role]);
+    }
+  }
+}
 {
   const twoWorlds = (p) => (p.score ? p.plan.cues
     .filter((c) => SPENDS_THE_MIRACLE.indexOf(c.instrument.id) >= 0).length : -1);
-  const at = (a, b, role) => {
+  const at = (c) => {
+    if (!c) return {cues: null, worlds: -1, missing: true};
+    const [a, b, dir, role] = c;
     const wa = works.works[a], wb = works.works[b];
     if (!wa || !wb) return {cues: null, worlds: -1};
-    const p = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: "a-to-b",
-                                   seed: die(a + "__" + b + "__ab"), routeRole: role});
-    return {cues: p.score ? p.plan.cues.map((c) => c.id + ":" + c.instrument.id) : null,
-            worlds: twoWorlds(p), declined: p.declined || null};
+    const p = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: dir,
+                                   seed: die(a + "__" + b + "__" + role), routeRole: role});
+    return {cues: p.score ? p.plan.cues.map((c2) => c2.id + ":" + c2.instrument.id) : null,
+            worlds: twoWorlds(p), declined: p.declined || null, pair: a + "__" + b, role: role};
   };
+  const everyCase = TWO_FOLD_CASES.map(at);
   out.oneSlot = {
-    // THE PAIR CHANGED, 2026-09-02: the old pair's own arrival locks to CRYSTALLIZED -> pour under
-    // `ARRIVAL_WANTS_INSTRUMENT`, and pour declares no WORLD level, so the scenario this row proves
-    // — a world ground taking a world arrival beside it — was unreachable on that pair no matter
-    // which gate the plant struck. This pair puts a world-declaring arrival within reach instead.
-    // AND MOVED AGAIN 2026-09-02, for the ground-is-the-pivot repair in `placeTheStack`: that
-    // pair's own arrival is no longer a world-declaring instrument under either the standing cast
-    // or the planted one, so the plant had nothing to move. Searched again over the whole fleet:
-    // this pair casts «boxfold» the ground and «pour» the arrival with the clause in place, and
-    // «boxfold» beside «tilt» — two worlds in one crossing — with it struck.
-    levels: at("17843080526947498", "18158795992274002", "middle"),
-    swap: at("17843153263050281", "17856720509033958", "middle")
+    levels: everyCase[0] || {cues: null, worlds: -1, missing: true},
+    swap: everyCase[1] || {cues: null, worlds: -1, missing: true},
+    worldsMax: everyCase.reduce((n, c) => Math.max(n, c.worlds), 0),
+    walked: everyCase.length
   };
+  out.twoFoldCases = TWO_FOLD_CASES.length;
 }
 
 // ---- SHELF 6'S ONE SLOT, READ OFF THE WALK RATHER THAN THE MANIFEST (naряд S-18) --------------
@@ -2885,15 +3066,57 @@ const HARD = {
   // to «tilt» before and to nothing after: the law's second half had nothing left to show. Searched
   // again over the whole fleet, both roles a miracle is granted at, for an edge where two folds
   // stand within reach AND the second step actually hands the slot to the other one.
-  const a = "17843080526947498", b = "18021749102649971";
+  // THE EDGE IS DERIVED, and for the reason the pinned real edge that stood here had to be
+  // re-searched by hand on 2026-09-01 and again on 2026-09-02: what an edge casts moves under it.
+  //
+  // WHAT THE LAW'S SECOND HALF NEEDS OF AN EDGE, stated rather than hoped for. It is not enough that
+  // two folds stand within reach of the crossing — the nine steps have to actually HAND THE SLOT ON,
+  // casting one fold at the first step and a DIFFERENT one at a later step, because that is the case
+  // where counting the miracle by the instrument's own name would give a second first-time and
+  // counting it by the walk does not. So the search runs the nine-step walk itself and keeps the
+  // first edge whose steps cast two different folds between them. The ledger test above prunes the
+  // candidates so only a crossing that could ever do it pays for the walk.
+  function foldsCastOverNineSteps(x, y, dir, role) {
+    const seedHere = die(x + "__" + y + "__" + role);
+    const cast = [];
+    let wm = [];
+    for (let i = 0; i < 9; i++) {
+      const req = {workRecordA: works.works[x], workRecordB: works.works[y], direction: dir,
+                   seed: seedHere, routeRole: role};
+      if (wm.length) req.walkMiracles = wm.slice();
+      let q;
+      try { q = composer.passageFor(req); } catch (e) { break; }
+      if (!q || !q.score) break;
+      for (const c of q.score.cues) {
+        if (SPENDS_THE_MIRACLE.indexOf(c.instrument.id) >= 0 && cast.indexOf(c.instrument.id) < 0) {
+          cast.push(c.instrument.id);
+        }
+      }
+      const mir = (q.score.cues || []).find((c) => c.voice === "miracle");
+      if (mir) wm = [mir.instrument.id].concat(wm);
+    }
+    return cast;
+  }
+  let _mrCase = (WITNESS && WITNESS.miracle) || null;
+  if (!_mrCase) {
+    for (const [x, y, d] of ALL_PAIRS) {
+      for (const role of REACH_ROLES) {
+        if (foldsInReachAt(x, y, d, role).length < 2) continue;
+        if (foldsCastOverNineSteps(x, y, d, role).length >= 2) { _mrCase = [x, y, d, role]; break; }
+      }
+      if (_mrCase) break;
+    }
+  }
+  _mrCase = _mrCase || TWO_FOLD_CASES[0] || [SPOT[0][0], SPOT[0][1], SPOT[0][2], "middle"];
+  const a = _mrCase[0], b = _mrCase[1], mrDir = _mrCase[2], mrRole = _mrCase[3];
   const wa = works.works[a], wb = works.works[b];
-  const seed = die(a + "__" + b + "__ab");
+  const seed = die(a + "__" + b + "__" + mrRole);
   let walkMiracles = [];
   const steps = [];
   const foldsWithinReach = [];
   for (let i = 0; i < 9; i++) {
-    const req = {workRecordA: wa, workRecordB: wb, direction: "a-to-b", seed: seed,
-                 routeRole: "middle"};
+    const req = {workRecordA: wa, workRecordB: wb, direction: mrDir, seed: seed,
+                 routeRole: mrRole};
     if (walkMiracles.length) req.walkMiracles = walkMiracles.slice();
     const p = (wa && wb) ? composer.passageFor(req) : {declined: "fixture is missing the work"};
     const cues = p.score ? p.score.cues.map((c) => ({id: c.id, instrument: c.instrument.id,
@@ -2929,6 +3152,7 @@ const HARD = {
   const mostVoiced = Object.keys(miracleVoicedCount)
     .reduce((n, id) => Math.max(n, miracleVoicedCount[id]), 0);
   out.miracleRarity = {
+    edge: _mrCase,
     steps: steps,
     foldsWithinReach: foldsWithinReach.slice().sort(),
     distinctFolds: Object.keys(miracleVoicedCount).sort(),
@@ -2992,7 +3216,6 @@ const HARD = {
   }
 
   // THE SAME LENGTH, ASKED OF THE COMPOSER ITSELF, on two ordered pairs that are not the same pair.
-  const [p1a, p1b] = SPOT[0], [p2a, p2b] = SPOT[SPOT.length - 1];
   const pairOf = (xi, yi, role) => {
     const wa = works.works[xi], wb = works.works[yi];
     const key = wa.id + "__" + wb.id + "__ab";
@@ -3000,6 +3223,42 @@ const HARD = {
                                    seed: die(key), routeRole: role});
     return p.score ? {ms: p.score.duration, tier: p.plan.tier} : null;
   };
+  // THE TWO PAIRS ARE DERIVED, NEVER TAKEN BY POSITION. What the row asks of them is that they come
+  // out at DIFFERENT milliseconds at every role, and what the plant below asks is that dropping the
+  // pair's own share make them the SAME — which needs the two to reach the same tier at each role,
+  // since the tier is what names the band the floor is taken from. Two pairs picked by position
+  // answer both only by luck: taken as the first and last of the list they reached different tiers,
+  // so the plant could never make them equal, and two roles read the band's own floor for both.
+  // So the precondition is stated and searched for. The search reads each pair case's length at each
+  // role once and then looks for a couple that meets it; nothing is computed twice.
+  const roleNames = Object.keys(bands);
+  let p1a = SPOT[0][0], p1b = SPOT[0][1];
+  let p2a = SPOT[SPOT.length - 1][0], p2b = SPOT[SPOT.length - 1][1];
+  if (WITNESS && WITNESS.length) {
+    p1a = WITNESS.length[0]; p1b = WITNESS.length[1];
+    p2a = WITNESS.length[2]; p2b = WITNESS.length[3];
+  } else {
+    const lengthsByPair = SPOT.map(([x, y]) => {
+      const per = {};
+      for (const role of roleNames) per[role] = pairOf(x, y, role);
+      return {x: x, y: y, per: per};
+    });
+    outerLength:
+    for (let i = 0; i < lengthsByPair.length; i++) {
+      for (let j = i + 1; j < lengthsByPair.length; j++) {
+        const A = lengthsByPair[i], B = lengthsByPair[j];
+        let ok = true;
+        for (const role of roleNames) {
+          const one = A.per[role], two = B.per[role];
+          if (!one || !two || one.tier !== two.tier || one.ms === two.ms) { ok = false; break; }
+        }
+        if (ok) {
+          p1a = A.x; p1b = A.y; p2a = B.x; p2b = B.y;
+          break outerLength;
+        }
+      }
+    }
+  }
   const perRole = {};
   for (const role of Object.keys(bands)) {
     const one = pairOf(p1a, p1b, role), two = pairOf(p2a, p2b, role);
@@ -3010,9 +3269,65 @@ const HARD = {
                      tierOne: one ? tierBands[one.tier] : null,
                      tierTwo: two ? tierBands[two.tier] : null};
   }
+  out.witness = {oneSlot: TWO_FOLD_CASES, miracle: (out.miracleRarity || {}).edge || null,
+                 length: [p1a, p1b, p2a, p2b]};
   out.length = {bands: bands, tierBands: tierBands, broke: broke, shareLo: shareLo,
                 shareHi: shareHi, perRole: perRole,
                 walked: shares.length * Object.keys(everyBand).length + asks.length};
+}
+
+// ---- THE SCHEMA AND WIRING SMOKE, ON REAL RECORDS. IT CARRIES NO LAW. -----------------------
+// Every row above walks the constructed corpus. This one walks a HANDFUL of the real records the
+// settings record ships, and it asks one question only: does the shape the site actually writes
+// still feed this composer and come back with a playable passage. It proves nothing about the
+// composition — which road, which cast, which handle — because a handful of photographs cannot.
+//
+// A HANDFUL, AND THE SIZE IS FIXED. Six real records in their own sorted order and the six ordered
+// pairs they make in a ring, both directions. Hanging a photograph adds no record and no pair here,
+// so the smoke costs the same whatever the collection holds.
+{
+  const realIds = Object.keys(realWorks.works).sort().slice(0, 6);
+  const cases = [];
+  for (let i = 0; i < realIds.length; i++) {
+    const x = realIds[i], y = realIds[(i + 1) % realIds.length];
+    if (x !== y) cases.push([x, y, i % 2 ? "b-to-a" : "a-to-b"]);
+  }
+  const bad = [];
+  let played = 0, cued = 0;
+  for (const [x, y, dir] of cases) {
+    const wa = realWorks.works[x], wb = realWorks.works[y];
+    let p = null;
+    try {
+      p = composer.passageFor({workRecordA: wa, workRecordB: wb, direction: dir,
+                               seed: die(x + "__" + y + "__" + dir)});
+    } catch (e) { bad.push(x + "→" + y + ": threw " + String(e && e.message).slice(0, 90)); continue; }
+    if (!p || p.declined || !p.score) { bad.push(x + "→" + y + ": " + ((p && p.declined) || "nothing came back")); continue; }
+    played++;
+    const cues = p.score.cues || [];
+    if (!cues.length) { bad.push(x + "→" + y + ": no cue"); continue; }
+    if (cues.some((c) => !c.instrument || !c.instrument.id)) { bad.push(x + "→" + y + ": a cue names no instrument"); continue; }
+    // THE WIRING HALF, READ FROM THE TRACK LIST RATHER THAN FROM THE NODE NAMES. A cue's `tracks`
+    // are the handles the composition decided to drive, and each has to be a handle the instrument's
+    // own manifest declares and to resolve to a node the client can read. The other direction — every
+    // NODE naming a handle — is not the wiring: the composer publishes nodes of its own beside the
+    // handle-derived ones (`course`, an authored twin such as `turn-authored`), and those are the
+    // module's business rather than the manifest's.
+    for (const c of cues) {
+      const man = (fix.consts.manifests[c.instrument.id] || {}).handles || {};
+      for (const h of Object.keys(c.tracks || {})) {
+        if (!(h in man)) {
+          bad.push(x + "→" + y + ": " + c.instrument.id + " drives «" + h
+                   + "», which its manifest does not declare");
+        } else if (!c.nodes[((c.tracks[h] || {}).node) || (c.id + "-" + h)]) {
+          bad.push(x + "→" + y + ": " + c.instrument.id + " drives «" + h
+                   + "» with no node the client could read");
+        }
+        cued++;
+      }
+    }
+  }
+  out.realSmoke = {records: realIds.length, pairs: cases.length, played: played, cues: cued,
+                   bad: bad.slice(0, 6)};
 }
 
 console.log(JSON.stringify(out));
@@ -3022,14 +3337,28 @@ DRIVER_PATH = TMP / "composed-driver.js"
 DRIVER_PATH.write_text(DRIVER, encoding="utf-8")
 
 
-def node_run(plants=(), sweep=0):
+# THE WITNESSES THE STANDING RUN DERIVED, handed to every planted run so a red-on-bug row compares
+# two answers about ONE pair case. Filled in once, from the standing run's own output, below.
+WITNESS = None
+
+
+def node_run(plants=()):
     # The client's own two fences travel to the driver rather than being restated inside it, which
     # is anchor 1 of the four the docstring names.
-    env = dict(os.environ, PLANTS=json.dumps(list(plants)), SWEEP=str(sweep),
+    #
+    # `SWEEP` STOOD HERE AND IS GONE WITH THE COLLECTION SWEEP IT SIZED. It said how many of the
+    # collection's ordered pairs a run walked, so a planted run could walk a corner of 24 while the
+    # standing run walked 192 — and one row below actually compared the two, which the sample sizes
+    # alone could satisfy. The corpus is now a fixed 34 pair cases, every run walks all of them, and
+    # a planted run and the standing run are therefore the same size by construction.
+    env = dict(os.environ, PLANTS=json.dumps(list(plants)),
                CLIENT_CAPS=json.dumps({"bytes": CLIENT_BYTES, "intent": CLIENT_INTENT,
                                        "cameraPoints": CLIENT_CAMERA_POINTS,
                                        "dollyCap": DOLLY_CAP_VALUE}))
-    proc = subprocess.run(["node", str(DRIVER_PATH), str(MODULE), str(FIXTURE), str(WORKS)],
+    if plants and WITNESS:
+        env["WITNESS"] = json.dumps(WITNESS)
+    proc = subprocess.run(["node", str(DRIVER_PATH), str(MODULE), str(FIXTURE), str(WORKS),
+                           str(CORPUS_PATH)],
                           capture_output=True, text=True, env=env, timeout=600)
     if proc.returncode != 0:
         return {"error": (proc.stderr or "").strip()[-400:]}
@@ -3081,6 +3410,7 @@ if not node_available():
         skip(r, "node is not installed (pinned expected skip)")
 else:
     got = node_run()
+    WITNESS = got.get("witness") if isinstance(got, dict) else None
     if got.get("error"):
         for r in NODE_ROWS:
             skip(r, "the module would not load: " + got["error"])
@@ -3188,7 +3518,7 @@ else:
         # --- row 2 · every role composes for every pair -------------------------------------------
         threw = {r: w for r, w in sweep["roleThrew"].items() if w}
         check(NODE_ROWS[2], not threw,
-              "over the real collection at all five roles — "
+              "over the constructed corpus at all five roles — "
               + ", ".join(f"{r}: {sweep['roleN'][r]}" for r in ROLES_ALL_PY)
               + f" composed — nothing threw inside the entry: {threw or 'none'}")
 
@@ -3197,10 +3527,10 @@ else:
         # The unfold cut on panels all along; the folding instrument landed on the same kind, a rule
         # naming one instrument per kind gave the kind to the fold outright, and the only instrument
         # that shows a person how a work was made travelled to every visitor and could never be
-        # chosen. This counts CHOICES over the whole collection at all five roles.
+        # chosen. This counts CHOICES over the whole constructed corpus at all five roles.
         unreachable = [i for i in sweep["cast"] if not sweep["chosen"].get(i)]
         check(NODE_ROWS[3], not unreachable,
-              "over the real collection at all five roles the cast is chosen "
+              "over the constructed corpus at all five roles the cast is chosen "
               + json.dumps(sweep["chosen"], ensure_ascii=False)
               + f"; instruments that travel to a visitor and can never be chosen: "
                 f"{unreachable or 'none'}")
@@ -3212,22 +3542,33 @@ else:
               f"run: {d['pinnedRepeats']}")
 
         # --- row 4 · what reaches the eye on a cast route ----------------------------------------
-        # THE SHARE, AND WHY IT IS THIS NUMBER. Over 300 cast routes the commonest instrument carries
-        # 59.1 percent of a route's steps on average; the project's own convention is a fence just
-        # above the measured figure, so it stands at 65. The reading it guards is not a near miss:
-        # when the ground was gated on the collection's top quartile the same measurement read 91.9
-        # percent — one instrument in nine steps of ten — which is the state the judge saw on the
-        # filmed route, matter in 15 of 17 passages. The MEAN is what the row holds because it is
-        # stable over routes; the worst single route is printed beside it as a reading, since a short
-        # route of mostly quiet links can be carried by one instrument without anything being wrong.
+        # WHAT THIS ROW ASKED UNTIL 2026-09-06, AND WHY IT WAS NOT A LAW. It held two typed fences:
+        # the commonest instrument may carry at most 65 % of a route on average, and a route must
+        # show at least 7.0 distinct shapes on average. Both numbers were a CENSUS OF THE
+        # COLLECTION — «over 300 cast routes the commonest instrument carries 59.1 percent», with
+        # the fence set just above the measured figure — so what they guarded was that this week's
+        # photographs keep behaving as they did on the day somebody measured them. Change the
+        # collection and the readings move under the fences; nothing about the composer is proved
+        # either way.
+        #
+        # WHAT STANDS IN THEIR PLACE, AND IT IS A LAW ABOUT EVERY ROUTE RATHER THAN A MEAN OVER SOME.
+        # Routes are cast over the constructed corpus, which reaches every published instrument by
+        # construction, and the row asks of EACH route that no single instrument carried the whole of
+        # it and that it showed more than one shape — the per-route universal the mean was standing
+        # in for — plus that the routes between them reach the whole cast, which is the breadth his
+        # 19:13 word is about. The means and the worst single route are printed beside it as
+        # readings, exactly as the docstring's anchor 4 says a reading is printed and never gated.
         rt = got["route"]
+        rt_letters = rt["letters"]
+        rt_cast = len(sweep["cast"])
         check(NODE_ROWS[4],
-              rt["topShareMean"] <= 65.0 and rt["shapesMean"] >= 7.0,
-              f"over {rt['routes']} cast routes of 21 steps: {rt['shapesMean']} distinct shapes on "
-              f"average and {rt['shapesMax']} at most; the commonest instrument carries "
-              f"{rt['topShareMean']}% of a route on average (fence 65%) and {rt['topShareWorst']}% "
-              f"on the most one-sided single route; the spread across every step is "
-              + json.dumps(rt["spread"], ensure_ascii=False))
+              rt["topShareWorst"] < 100.0 and rt["shapesMin"] > 1 and rt_letters == rt_cast,
+              f"over {rt['routes']} cast routes of 21 steps every route shows more than one shape "
+              f"(fewest {rt['shapesMin']}, most {rt['shapesMax']}, {rt['shapesMean']} on average) "
+              f"and none is carried by one instrument alone (the most one-sided single route stands "
+              f"at {rt['topShareWorst']}%, {rt['topShareMean']}% on average); the routes reach "
+              f"{rt_letters} of the {rt_cast} instruments the record ships; the spread across every "
+              f"step is " + json.dumps(rt["spread"], ensure_ascii=False))
 
         # --- row 4 · the camera-led passage ------------------------------------------------------
         check(NODE_ROWS[6],
@@ -3468,7 +3809,7 @@ else:
               f"one pair at one role on one die: stating nothing reads «{hm['read']}» and its "
               f"course {hm['plainHolds']}, stating «dominant» reads «{hm['readWhenStated']}» and "
               f"its course {hm['statedHolds']}, and «plagal» reads «{hm['readWhenStray']}» with "
-              f"{len(hm['strayRecorded'])} note(s) on the request. Over the corner at all five "
+              f"{len(hm['strayRecorded'])} note(s) on the request. Over the corpus at all five "
               f"roles: {hm['domHeld']} of {hm['domSeen']} dominant courses suspend, and no tonic "
               f"({hm['tonicSeen']} course(s)) or subdominant ({hm['subSeen']}) course does"
               + ("; " + "; ".join(hmbad) if hmbad else ""))
@@ -3550,9 +3891,11 @@ else:
         # sweep sends none, so every read below still answers "first play" for each of the four,
         # exactly as the retired manifest mark always did — the row proving the history itself is
         # its own, separate row (below, the rarity-on-a-walk check).
-        # A planted run walks a corner of the collection rather than all of it, because a plant is
-        # judged on whether the answer MOVES and twenty-four works are 552 ordered pairs of proof.
-        CORNER = 24
+        # EVERY RUN BELOW, PLANTED OR NOT, WALKS THE WHOLE CORPUS. A planted run used to walk a
+        # corner of 24 pairs while the standing run walked 192, which is fine for a plant judged on
+        # whether an answer MOVES — and not fine for the one plant that compared a count from the
+        # planted run against a count from the standing one, where the two sweep sizes alone
+        # satisfied the inequality. The corpus is 34 pair cases and every run walks all of them.
         sw = got["sweep"]
         worlds = sw["spendsTheMiracle"]
         unvoiced = {r: n for r, n in sw["worldNotVoiced"].items() if n}
@@ -3573,7 +3916,7 @@ else:
         no_miracle_roles = ("entrance", "quiet link", "return")
         opened = {r: sw["worldsCast"][r] for r in no_miracle_roles if sw["worldsCast"][r]}
         nudged = node_run([["        var base = (cuts ? 0 : 2) + ((noMiracle && folds) ? 1 : 0);",
-                            "        var base = (cuts ? 0 : 2);"]], sweep=CORNER)
+                            "        var base = (cuts ? 0 : 2);"]])
         nudged_opened = ({} if nudged.get("error") else
                          {r: nudged["sweep"]["worldsCast"][r] for r in no_miracle_roles
                           if nudged["sweep"]["worldsCast"][r]})
@@ -3593,15 +3936,19 @@ else:
         # that road and by no other.
         one = got["oneSlot"]
         stacked_roles = {r: n for r, n in sw["worldStack"].items() if n}
-        doors = {k: v for k, v in one.items() if v["worlds"] != 1 and v["worlds"] != 0}
+        # THE WITNESSES ARE DERIVED AND THE ROW READS ALL OF THEM. Every crossing of the corpus
+        # whose own planner weighed a bundle carrying two folds is walked, and the row asks that not
+        # one of them stands two worlds — `worldsMax`. It also says how many such crossings the
+        # search found, because a witness set that has gone empty would otherwise read as a green
+        # negative over nothing at all.
+        found_cases = got.get("twoFoldCases", 0)
         check(NODE_ROWS[58],
-              not stacked_roles and not doors,
-              "no crossing of the sweep carries two instruments that declare the world; the pair "
-              "that reaches for it through the levels test composes "
-              f"{one['levels']['cues']} and the pair that reaches for it through §7's ground swap "
-              f"composes {one['swap']['cues']}"
-              + (f"; crossings carrying two: {stacked_roles}" if stacked_roles else "")
-              + (f"; the two named pairs: {doors}" if doors else ""))
+              not stacked_roles and one["worldsMax"] <= 1 and found_cases >= 2,
+              f"no crossing of the sweep carries two instruments that declare the world; of the "
+              f"{found_cases} crossing(s) whose own bundle ledger weighed two folds together, the "
+              f"most any one of them stands is {one['worldsMax']}; the first two compose "
+              f"{one['levels']['cues']} and {one['swap']['cues']}"
+              + (f"; crossings carrying two: {stacked_roles}" if stacked_roles else ""))
 
         # --- row 5e · the miracle is a reading of the WALK, never of one instrument's own name ----
         # Naряд S-18, his word of 2026-08-26 20:17: a miracle is a wow, a concept, it is subjective,
@@ -3656,8 +4003,7 @@ else:
         # "from" text is no longer in the source changes nothing and reports itself as a failure to
         # plant, which is what this row printed until this line was re-anchored.
         _rr_red = node_run(plants=[["return isWorldFold(iid) && !walkHasSpentTheMiracle();",
-                                    "return isWorldFold(iid) && walkMiracles.indexOf(iid) < 0;"]],
-                           sweep=1)
+                                    "return isWorldFold(iid) && walkMiracles.indexOf(iid) < 0;"]])
         _rr_red_mr = (_rr_red.get("miracleRarity") or {}) if isinstance(_rr_red, dict) else {}
         _rr_red_counts = ", ".join(f"«{k}» {v}×"
                                    for k, v in sorted((_rr_red_mr.get("voicedCount") or {}).items()))
@@ -3754,7 +4100,7 @@ else:
         # --- row 7 · the geometry sweep ---------------------------------------------------------
         check(NODE_ROWS[10],
               not sweep["drivenUnmeasured"] and not sweep["drivenNoteMissing"],
-              f"over {sweep['composed']} composed passages of the real collection, every driven "
+              f"over {sweep['composed']} composed passages of the constructed corpus, every driven "
               f"handle's own note names its measurement; handles driven from something no "
               f"measurement bears on: {sweep['drivenUnmeasured']}")
 
@@ -3772,7 +4118,7 @@ else:
         # (proving the wire, not a stand-in), and the values seen are not confined to {0, 1} (proving
         # the strength survived rather than being read back down to presence-or-absence).
         # READ ON TWO NAMED PAIRS, ONE FOR EACH SIDE OF THE LEVELS LAW, and no longer on whichever
-        # adrift cues a corner of the collection happens to cast. Since every handle declares the
+        # adrift cues the corpus happens to cast. Since every handle declares the
         # level it drives, adrift's seam is written only where adrift's cue OWNS SURFACE — on a pair
         # whose ground drives SURFACE the ground owns it and adrift rests there, which is the law
         # rather than a wire that stopped working. So the wire is proved where the wire is live, and
@@ -3824,9 +4170,15 @@ else:
         # the manifest's own 0.5 default on every pair — HANDLE_SOURCE's own row for it named a
         # measurement the composer never read. The fix positions the departing work's own grain
         # (said as cells across its frame) against the arriving work's, the same uncalibrated-ratio
-        # idiom `grain`/`squeeze` already take on this exact reading. This row asks the sweep for at
-        # least one value off the 0.5 default and more than one distinct value, so a fix that always
-        # lands on one new constant cannot pass it either.
+        # idiom `grain`/`squeeze` already take on this exact reading. The row asks for at least one
+        # value off the 0.5 default and more than one distinct value, so a fix that always lands on
+        # one new constant cannot pass it either.
+        #
+        # ON THE CONSTRUCTED CORPUS BOTH ARE CONSTRUCTIONS RATHER THAN HOPES, which is what changed
+        # on 2026-09-06. The corpus carries a pair whose two works stand at the two ends of the grain
+        # span with a measured seam on both (`seam` against `seam-fine`), and a ratio of one cannot
+        # come out of two counts four octaves apart — so a composer that reads the record must move
+        # this handle here, and one that rests on the manifest's own default cannot.
         tc = sweep["tideCellsSeen"]
         tcOffDefault = [v for v in tc if abs(v - 0.5) > 1e-9]
         check(NODE_ROWS[36],
@@ -3844,11 +4196,13 @@ else:
         # the "owns" bucket only; the sibling row below reads the "accompanies" bucket and proves the
         # opposite half of the same law.
         #
-        # PERIOD AND AMPLITUDE READ A MEASUREMENT AND SO MUST DIFFER ACROSS PAIRS: each is the
-        # departing work's own colour.sat or colour.contrast carried through BEAT_DIAL/VOICE_SHARE,
-        # and Part 1's own sweep found 111 and 107 distinct readings of those two measures over the
-        # 121 works, so a period or an amplitude landing on one value across the whole spot-check
-        # would itself be the defect.
+        # PERIOD AND AMPLITUDE READ A MEASUREMENT AND SO MUST DIFFER ACROSS THE PAIR CASES: each is
+        # the departing work's own colour.sat or colour.contrast carried through BEAT_DIAL/
+        # VOICE_SHARE, and the corpus carries those two readings at both ends of their own span on a
+        # work that also carries the lattice this instrument's fit needs (`lattice-dim` against
+        # `lattice-vivid`). So a period or an amplitude landing on one value across the whole walk is
+        # a handle that does not read its own measurement, and the corpus makes that a construction
+        # rather than a reading of whichever photographs happened to be walked.
         #
         # PHASE DOES NOT, AND THAT IS THE LAB'S OWN LAW RATHER THAN A GAP IN THE PORT. A voice's phase
         # is its own fixed place among this instrument's voices (`i / N`, step4-assembler.js:2000),
@@ -3988,22 +4342,33 @@ else:
         # resolved both to the manifest's own 0.5 default on every pair. The fix reads each work's
         # own `luminance.level` — the median luminance lab/analyze/recipes.py:551-613 colour_stats()
         # ports from `measure(image)`, lab/effects/strata-light.js:108-113 — A the departing work's,
-        # B the arriving work's. Unlike the eighteen voice handles above, level is not gated by
-        # LIGHT-COLOUR ownership (it drives the CELL-level cut, not the accompaniment voice), so it
-        # is driven on every strata-light cue and the row asks for at least one value off the 0.5
-        # default and more than one distinct value over the sweep.
+        # B the arriving work's. `levelA`/`levelB` are CELL-level handles, so they carry a node only
+        # on a strata-light cue that owns CELL; where the cue does not own it the handles are off its
+        # track list and there is nothing to read.
+        #
+        # WHAT THE ROW ASKED BEFORE, AND WHY IT WAS REPLACED. It asked for at least one value off the
+        # 0.5 default and MORE THAN ONE DISTINCT VALUE over the sweep. Both are readings of a walk:
+        # they say what one collection happened to offer, not what the composer does, and a walk that
+        # offered one value twice would have reddened a correct composer. The claim now is the law
+        # itself, per sighting: the applied value IS the work's own recorded `luminance.level`, A the
+        # departing work's and B the arriving one's. The corpus puts a pair at the two ends of that
+        # reading by construction (`bare-dark` against `bare-bright`), so at least one sighting off
+        # the manifest's own default is a construction rather than a hope, and it is asked for so
+        # that an equality between two defaults cannot stand in for the law.
         levelASeen = sweep["levelASeen"]
         levelBSeen = sweep["levelBSeen"]
-        levelAOffDefault = [v for v in levelASeen if abs(v - 0.5) > 1e-9]
-        levelBOffDefault = [v for v in levelBSeen if abs(v - 0.5) > 1e-9]
+        levelSeen = levelASeen + levelBSeen
+        levelWrong = [r for r in levelSeen if abs(r["applied"] - r["record"]) > 1e-4]
+        levelOffDefault = [r for r in levelSeen if abs(r["record"] - 0.5) > 1e-9]
         check(NODE_ROWS[40],
               bool(levelASeen) and bool(levelBSeen)
-              and bool(levelAOffDefault) and bool(levelBOffDefault)
-              and len(set(levelASeen)) > 1 and len(set(levelBSeen)) > 1,
-              f"{len(levelASeen)} levelA readings ({len(set(levelASeen))} distinct), "
-              f"{len(levelBSeen)} levelB readings ({len(set(levelBSeen))} distinct); "
-              f"levelA sample {sorted(set(levelASeen))[:8]}, "
-              f"levelB sample {sorted(set(levelBSeen))[:8]}")
+              and not levelWrong and bool(levelOffDefault),
+              f"{len(levelASeen)} levelA reading(s) and {len(levelBSeen)} levelB reading(s) over the "
+              f"constructed corpus; every one carries the work's own recorded luminance.level — A "
+              f"the departing work's, B the arriving one's — rather than the manifest's own 0.5 "
+              f"rest, and {len(levelOffDefault)} of them stand off that rest"
+              + (f"; readings that do not match their own record: {levelWrong[:4]}"
+                 if levelWrong else ""))
 
         # --- row 8h · GATE-SLOT LANE PART 1: gates' slotPlace/slotHalf/slotAxis read the -----------
         #     departing work's own measured slot
@@ -4240,7 +4605,7 @@ else:
         # the mixed list's own length, near a thirty-sixth where the design says a ninth.
         _rp_red = node_run(plants=[["roadPlayedDistinct = dedupeMostRecent("
                                     "Array.isArray(roadPlayed) ? roadPlayed : []);",
-                                    "roadPlayedDistinct = walkPlayedDistinct;"]], sweep=1)
+                                    "roadPlayedDistinct = walkPlayedDistinct;"]])
         _rp_red_rp = (_rp_red.get("roadPool") or {}) if isinstance(_rp_red, dict) else {}
         check(ROW_ROAD_POOL_RED,
               bool(_rp_red_rp)
@@ -4452,6 +4817,13 @@ else:
               f"unread")
 
         # --- rows 15-25 · the same repairs, each reverted in a copy ---------------------------------
+        def _ground_share(run):
+            """The share of a run's own composed pairs that reach the shared-ground road. A share
+            rather than a count, because a planted run walks the class contrasts alone while the
+            standing run walks those and the control column beside them."""
+            sw2 = run["sweep"]
+            return (sw2["roads"].get("shared-ground", 0) / sw2["composed"]) if sw2["composed"] else 0
+
         PLANTS = [
             # THE ONE FENCE LEFT IN THE ENTRY, and it says there is no PAIR. Removed, a request
             # naming one work no longer meets a refusal: it walks into the pair arithmetic, which
@@ -4705,13 +5077,31 @@ else:
             # the strict «fewer» below reads. The old note in this place carried two counts over the
             # fixture as the gate's cost; they were a reading of 190 arbitrary pairs and never the
             # argument, which is above.
+            #
+            # IT READS A SHARE AND NOT A COUNT, and that repair is this row's own (2026-09-06). The
+            # planted run and the standing run had been reading two DIFFERENT-SIZED walks — a corner
+            # of 24 pairs against a sweep of 192 — and the inequality below was satisfied by the two
+            # sample sizes alone, whatever the plant did. A planted run still walks the smaller,
+            # named subset, so the reading is taken as the share of that run's own composed pairs and
+            # the two are comparable however many each walked.
+            # AND THE PLANT ITSELF WAS INERT UNTIL 2026-09-06, which is the second half of the
+            # same repair. It read `consts.thresholds[m]` — the per-measure floors the settings
+            # record used to ship — and the composer stopped reading `consts.floors`/
+            # `consts.thresholds` at all (pass-composer.js:1497-1513), so neither fixture carries
+            # the key any more: `th` was `undefined` on every measure, the ternary took its second
+            # branch every time, and the planted module composed exactly what the shipped one does.
+            # The row was green on the two runs' different sweep sizes and on nothing else. The
+            # plant now carries its own gate rather than reaching for a key that is gone, and the
+            # gate is the TOP of the span `clamp01` holds a reading in — a boundary in the
+            # source, not a policy number invented here. Which floor it is was never the row's
+            # claim: the claim is that gating the ground reading at all sends fewer pairs down the
+            # shared-ground road, and that holds for any floor whatever.
             (NODE_ROWS[33],
              [["        per[m] = { min: r4(Math.min(sa, sb)), a: r4(sa), b: r4(sb) };",
-               "        var th = (consts.thresholds || {})[m];"
-               " per[m] = { min: r4((th !== undefined && (sa < th || sb < th)) ? 0 : Math.min(sa, sb)),"
+               "        var th = 1;"
+               " per[m] = { min: r4((sa < th || sb < th) ? 0 : Math.min(sa, sb)),"
                " a: r4(sa), b: r4(sb) };"]],
-             lambda g: g["sweep"]["roads"].get("shared-ground", 0)
-             < got["sweep"]["roads"].get("shared-ground", 0)),
+             lambda g: _ground_share(g) < _ground_share(got)),
             # THE FOLD IS COUNTED WHEREVER THE FOLDING CUE STANDS, so the plant has to take the
             # reading away at all three slots. It named the PIVOT alone, and it went red only while
             # the folding instrument could reach no slot but the ground: since the arrival is cast
@@ -4819,7 +5209,7 @@ else:
                "          if (everyLevelTaken) {"],
               ["              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }",
                "              if (false) { row.why = check1.why; considered.push(row); continue; }"]],
-             lambda g: g["oneSlot"]["levels"]["worlds"] > 1),
+             lambda g: g["oneSlot"]["worldsMax"] > 1),
             # THE SECOND ROAD TO A SECOND WORLD HAD A ROW HERE AND IT IS RETIRED, WITH ITS REASON.
             # It planted out the ground swap's own gate and read a named pair that then seated a
             # world instrument under another. That plant can no longer fire. Two things closed the
@@ -4913,7 +5303,7 @@ else:
               f"up")
 
         for name, plants, reddens in PLANTS:
-            g = node_run(plants, sweep=CORNER)
+            g = node_run(plants)
             if g.get("error"):
                 check(name, False, "the planted run failed: " + g["error"])
             else:
@@ -5987,6 +6377,55 @@ else:
 
 
 # ================================================================================================
+# THE SMOKE ON REAL RECORDS. IT CARRIES NO LAW.
+# ================================================================================================
+# Every law row above walks the constructed corpus. These two walk the real per-work records the
+# settings record ships, and they ask two questions that a constructed corpus cannot answer for
+# itself: is the SHAPE the corpus was built to imitate still the shape the site writes, and does that
+# real shape still feed this composer and come back with something playable. Neither says anything
+# about which road, which cast or which handle — a handful of photographs cannot say that, which is
+# the whole reason the laws moved off them.
+#
+# BOTH READ A FIXED HANDFUL. The schema row reads six real records; the wiring row composes the six
+# ordered pairs they make in a ring. Hanging a photograph adds nothing to either.
+SMOKE_SCHEMA_ROW = ("EX-COMPOSED schema smoke · a real per-work record still carries exactly the "
+                    "field paths the constructed corpus is built on, so a field the site starts or "
+                    "stops writing shows up here rather than as a handle quietly reading nothing")
+SMOKE_WIRING_ROW = ("EX-COMPOSED wiring smoke · a handful of real records still feed the real "
+                    "composer and come back with a playable passage whose every node names a handle "
+                    "its own instrument declares")
+
+_smoke_real = json.loads(WORKS.read_text(encoding="utf-8"))["works"]
+_smoke_ids = sorted(_smoke_real)[:6]
+_smoke_missing, _smoke_extra = set(), set()
+for _sid in _smoke_ids:
+    _paths = synthetic_works.field_paths(_smoke_real[_sid])
+    _smoke_missing |= _paths - synthetic_works.BASE_PATHS
+    _smoke_extra |= synthetic_works.BASE_PATHS - _paths
+check(SMOKE_SCHEMA_ROW,
+      not _smoke_missing and not _smoke_extra,
+      f"{len(_smoke_ids)} real record(s) read against the synthetic base's own {len(synthetic_works.BASE_PATHS)} "
+      f"field paths"
+      + (f"; the records carry, and the corpus does not: {sorted(_smoke_missing)}"
+         if _smoke_missing else "")
+      + (f"; the corpus carries, and the records do not: {sorted(_smoke_extra)}"
+         if _smoke_extra else ""))
+
+if not node_available():
+    skip(SMOKE_WIRING_ROW, "node is not installed (pinned expected skip)")
+elif not isinstance(got, dict) or got.get("error") or not got.get("realSmoke"):
+    skip(SMOKE_WIRING_ROW, "the module would not load, so no real pair was composed")
+else:
+    _rs = got["realSmoke"]
+    check(SMOKE_WIRING_ROW,
+          not _rs["bad"] and _rs["played"] == _rs["pairs"] and _rs["cues"] > 0,
+          f"{_rs['records']} real record(s), {_rs['pairs']} ordered pair(s); {_rs['played']} "
+          f"composed a playable passage, and every one of the {_rs['cues']} handle(s) those "
+          f"passages drive is declared by its own instrument's manifest and resolves to a node"
+          + (f"; what did not: {_rs['bad']}" if _rs["bad"] else ""))
+
+
+# ================================================================================================
 # REAL-DATA CAMERA HANDOFF (V2-CONVERGENCE-PLAN-2026-08-31 Phase 4, item 3). The inventory this
 # phase's brief carries found the composer's own `cameraAuthority` field — P3's declared-surface
 # capability, comment above `pass-composer.js:4187-4191` — never once read by this file: a `grep
@@ -5994,16 +6433,21 @@ else:
 # field states is a HANDOFF — camera control passes from the stage's own track to the one cast cue
 # whose instrument declares its own surface pose (`boxfold` is the one shipped carrier today), and
 # back — and no test anywhere in this file asked a real composed plan whether that handoff actually
-# happened. This searches the real 121-work fleet (never a hand-picked pair) for a real winning
-# plan that casts an own-authority instrument, and proves two things a silent regression could break
-# without any other row here noticing: the cast own-authority cue is actually marked `"own"`, and
-# every other cue sharing that same real plan is left `"stage"` — one authority handed to one voice,
-# never asserted, never assumed.
-_HANDOFF_ROW = ("EX-COMPOSED real-data camera handoff · a real composed plan hands "
+# happened. This searches the CONSTRUCTED CORPUS (never a hand-picked pair) for a winning plan that
+# casts an own-authority instrument, and proves two things a silent regression could break without
+# any other row here noticing: the cast own-authority cue is actually marked `"own"`, and every other
+# cue sharing that same plan is left `"stage"` — one authority handed to one voice, never asserted,
+# never assumed.
+#
+# IT SEARCHED THE 121-WORK FLEET UNTIL 2026-09-06. A search over the photographs on disk answers
+# «some pair of this week's collection reaches the handoff», which is not the claim; the claim is
+# that the handoff happens wherever an own-authority instrument is cast, and the corpus reaches that
+# instrument by construction rather than by luck.
+_HANDOFF_ROW = ("EX-COMPOSED camera handoff · a composed plan hands "
                 "cameraAuthority to its one own-authority instrument and leaves every other cue "
                 "stage-held")
-_HANDOFF_RED_ROW = ("EX-COMPOSED real-data camera handoff red-on-bug · collapsing the declared-"
-                     "surface read to always stage silently erases that same real handoff")
+_HANDOFF_RED_ROW = ("EX-COMPOSED camera handoff red-on-bug · collapsing the declared-"
+                     "surface read to always stage silently erases that same handoff")
 _HANDOFF_DRIVER = r"""
 "use strict";
 const fs = require("fs"), vm = require("vm");
@@ -6043,7 +6487,7 @@ function cast(from, to, seed, role, fn) {
 // re-searched — the plant below touches only the field's own value, never which pair or bundle
 // wins, so re-composing the SAME real request is the direct proof and an exhaustive re-search
 // under a plant that (by construction) can never again satisfy the search's own stopping
-// condition would otherwise never terminate inside this fleet's own 121*120*6*2 request space.
+// condition would otherwise never terminate inside the corpus's own request space.
 const replay = process.env.HANDOFF_REPLAY ? JSON.parse(process.env.HANDOFF_REPLAY) : null;
 if (replay) {
   const cues = cast(replay.from, replay.to, replay.seed, replay.role, replay.fn);
@@ -6096,7 +6540,7 @@ def _handoff_run(plants=None, replay=None):
               HANDOFF_FIXTURE=str(FIXTURE))
     if replay is not None:
         env["HANDOFF_REPLAY"] = json.dumps(replay)
-    proc = subprocess.run(["node", str(driver_path), str(MODULE), str(WORKS)],
+    proc = subprocess.run(["node", str(driver_path), str(MODULE), str(CORPUS_PATH)],
                           capture_output=True, text=True, env=env, timeout=180)
     if proc.returncode != 0:
         return {"error": (proc.stderr or "").strip()[-1200:]}
@@ -6109,9 +6553,9 @@ def _handoff_run(plants=None, replay=None):
 if not _handoff_node_available():
     skip(_HANDOFF_ROW, "node is not on this machine")
     skip(_HANDOFF_RED_ROW, "node is not on this machine")
-elif not (MODULE.exists() and FIXTURE.exists() and WORKS.exists()):
+elif not (MODULE.exists() and FIXTURE.exists()):
     skip(_HANDOFF_ROW, "the composer or its fixtures are not on this machine")
-    skip(_HANDOFF_RED_ROW, "no real pair to replant")
+    skip(_HANDOFF_RED_ROW, "no pair case to replant")
 else:
     _handoff_green = _handoff_run()
     _handoff_found = (_handoff_green.get("found")
@@ -6126,18 +6570,18 @@ else:
         _owner_cue = []
     check(_HANDOFF_ROW,
           isinstance(_handoff_found, dict) and len(_owner_cue) == 1 and _others_stage,
-          ("real pair %s→%s (seed %s, role %s/%s): the planner's own real winning plan casts %s, "
+          ("pair case %s→%s (seed %s, role %s/%s): the planner's own winning plan casts %s, "
            "cameraAuthority %s"
            % (_handoff_found["from"], _handoff_found["to"], _handoff_found["seed"],
               _handoff_found["role"], _handoff_found["fn"],
               [c["instrument"] for c in _handoff_found["cues"]],
               {c["id"]: c["cameraAuthority"] for c in _handoff_found["cues"]}))
           if isinstance(_handoff_found, dict) else
-          ("the real 121-work fleet's own search cast no own-authority instrument (%s) on any "
-           "real pair at all" % (_own_ids,)))
+          ("the corpus's own search cast no own-authority instrument (%s) on any "
+           "pair case at all" % (_own_ids,)))
 
     if not isinstance(_handoff_found, dict):
-        skip(_HANDOFF_RED_ROW, "no real pair found above to replant")
+        skip(_HANDOFF_RED_ROW, "no pair case found above to replant")
     else:
         _handoff_plant = [['? "own" : "stage",', '? "stage" : "stage",']]
         _handoff_replay = {"from": _handoff_found["from"], "to": _handoff_found["to"],
@@ -6153,15 +6597,16 @@ else:
                               if isinstance(_replayed, list) else None)
             check(_HANDOFF_RED_ROW,
                   isinstance(_replayed, list) and not _replayed_owns,
-                  ("re-composing the exact same real request under the plant reads %s — the "
+                  ("re-composing the exact same request under the plant reads %s — the "
                    "handoff this row's green above proved is now silently gone"
                    % json.dumps(_replayed))
                   if isinstance(_replayed, list) else
-                  "re-composing the exact same real request under the plant produced no plan at "
+                  "re-composing the exact same request under the plant produced no plan at "
                   "all: " + json.dumps(_handoff_red))
 
 import shutil  # noqa: E402
 shutil.rmtree(TMP, ignore_errors=True)
+shutil.rmtree(CORPUS_DIR, ignore_errors=True)
 
 passed = sum(1 for _, s, _ in results if s == "PASS")
 failed = sum(1 for _, s, _ in results if s == "FAIL")

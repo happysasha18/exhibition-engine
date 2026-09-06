@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
-"""The one gate command — run every suite in parallel (E3).
+"""The one gate command, in three modes (plan row S-114).
 
-Adapted from the reference instance's run_all.py for exhibition-engine.
-Each suite is isolated (its own baked TMP, its own http port, its own headless Chrome).
+Each suite is isolated: its own copy of the base stage, its own http port, its own headless Chrome.
 
-Usage: python tests/run_all.py [--jobs 8]
-Exit 0 only if EVERY suite exits 0.
+Usage: python tests/run_all.py [--mode row|integration|release] [--jobs 8]
+                              [--acceptance a,b,c] [--changed path ...]
+Exit 0 only if every suite that RAN exits 0, and only if the roster, the frozen cast, the skip
+ratchet and the expected-red list all say the run may go green.
+
+WHY THERE ARE MODES AT ALL, AND WHY THE DEFAULT IS STILL THE WHOLE ROSTER. `TEST_MATRIX.md` is a
+catalogue of requirements and of the proof each one owes; it was being read as a list of runs owed
+after every commit, so a one-line edit stood behind the better part of an hour of browsers. What a
+fact owes is named by its PROOF LAYER, and the five layers are stated in the same words here, in
+`TEST_MATRIX.md` and in `.live-spec/profile.md`. The two narrow modes exist for work in progress and
+each one PRINTS what it left out and why. Naming no mode still runs everything, because the safe
+answer must be the one nobody has to remember to ask for, and a push certifies on that.
 """
 import argparse
 import json
@@ -193,6 +202,11 @@ SUITES = [
     # the seat from S-39 and the box from S-91 reaching the picture a visitor is looking at.
     # Registered in the pass that wrote it.
     "pass_standing",
+    # S-114 (2026-09-06): the gate's own laws — the five proof layers stated in one vocabulary in
+    # three homes, the three modes and the full-roster default, what widens a selection and what may
+    # never narrow one, the one immutable base stage, and the absence of a product pair table.
+    # Registered in the pass that wrote it.
+    "gate_modes",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A
@@ -208,6 +222,160 @@ SUITES = [
 # those comments point to have since landed — so nothing is named here right now. Add a suite here,
 # with its own one-line reason, the day it ships red on purpose again.
 EXPECTED_RED = {}
+
+# ---------------------------------------------------------------- the five proof layers (S-114)
+# THE SAME FIVE NAMES, IN THE SAME WORDS, that `.live-spec/profile.md` and `TEST_MATRIX.md` carry.
+# Three homes, one vocabulary; `tests/test_gate_modes.py` holds the standing verdict that they have
+# not drifted apart, and the plan row's own acceptance reads all three.
+LAYER_STATIC = "static/source contract"
+LAYER_NODE = "pure Node/function composition"
+LAYER_RUNTIME = "browser runtime contract"
+LAYER_PIXEL = "pixel/WebGL/layout/interaction"
+LAYER_DEVICE = "live-device runtime observation"
+PROOF_LAYERS = (LAYER_STATIC, LAYER_NODE, LAYER_RUNTIME, LAYER_PIXEL, LAYER_DEVICE)
+
+# NO SUITE IN THIS TREE STANDS AT `LAYER_DEVICE`, and that is the honest state rather than a gap.
+# A live-device fact is read in the visitor's own browser after a deploy (`lab/perf.html`,
+# `lab/perf-serve.py`); the builder host is never the device (plan row S-113), so a suite here that
+# claimed that layer would be claiming exactly the measurement the owner banned.
+
+
+def layer_of(name):
+    """This suite's proof layer, read off the suite's OWN SOURCE rather than off a hand-kept table.
+
+    A table of 122 names mapping suite to layer would be wrong within the week — the same drift
+    `check_roster` below exists to stop, in a second place. What a suite actually needs is a fact
+    about what it does: a suite that constructs `headless.Browser` needs a browser, and no sentence
+    anywhere can make that untrue. So the reading is:
+
+      · it constructs a Browser and reads pixels back (a screenshot, or Pillow over one) — the fact
+        is about the picture or the hand, so `pixel/WebGL/layout/interaction`;
+      · it constructs a Browser and does not — the fact is about what the runtime does, so
+        `browser runtime contract`;
+      · it runs `node` — the REAL shipped block is run against stated inputs, so
+        `pure Node/function composition`;
+      · neither — it reads the source, so `static/source contract`.
+
+    The order matters and is not arbitrary: a suite that drives a browser AND shells out to node is
+    at the browser layer, because the browser is the part that cannot be spared.
+    """
+    src = (HERE / f"test_{name}.py").read_text(encoding="utf-8", errors="replace")
+    if "Browser(" in src:
+        reads_pixels = ("captureScreenshot" in src or "from PIL" in src
+                        or "import PIL" in src or "Image.open" in src)
+        return LAYER_PIXEL if reads_pixels else LAYER_RUNTIME
+    if '"node"' in src or "'node'" in src:
+        return LAYER_NODE
+    return LAYER_STATIC
+
+
+# ---------------------------------------------------------------- what widens a selection to all
+# A CHANGE TO ONE OF THESE REACHES EVERY SUITE, so no narrow mode may stand over one. They are the
+# shared renderer and composer, the thing that bakes the stage every browser suite stands on, the
+# driver every browser suite is driven by, and this runner itself. The list is short on purpose: a
+# long one is a list of guesses, and each name here is a file that literally every suite of some
+# layer loads or is built by.
+CROSS_CUTTING = (
+    "engine/assets/pass-layer.js",     # the host: every passage every browser suite plays
+    "engine/assets/pass-composer.js",  # the composer: every score every suite reads or drives
+    "engine/assets/exhibition.js",     # the walk itself, which every browser suite enters through
+    "engine/build.py",                 # the bake every stage is made by
+    "tests/engine_build.py",           # the shared stage builder
+    "tests/headless.py",               # the browser driver
+    "tests/run_all.py",                # this file
+)
+
+# THE ARCHITECTURAL INVARIANTS EVERY MODE CARRIES, however small the change. Each is a law of the
+# engine already derived from SPEC.md rather than a favourite suite: the four pass laws, the
+# coverage law, the levels law, the matter gate, the route wire fence, and this runner's own laws.
+# They are here because a change that looks local can still break a law that holds everywhere, and
+# because a narrow mode with nothing constant in it is a narrow mode that proves only what its
+# author already suspected.
+ARCH_INVARIANTS = ("pass_lawful", "pass_coverage", "pass_levels", "pass_matter_gate",
+                   "route_wire_fence", "gate_modes")
+
+
+def suites_naming(paths):
+    """Every suite whose own source names one of these paths — evidence, never a guess from a name.
+
+    A suite is selected because its text mentions the file that changed, by repo-relative path or by
+    basename. That is a fact about the suite, and it is the reason the selection is printed: a reader
+    can check it. Matching on a suite's NAME instead ("pass_hero must be about hero") is the guess
+    this project has already been burned by, and it is not done here.
+    """
+    hit = {}
+    for suite in SUITES:
+        src = (HERE / f"test_{suite}.py").read_text(encoding="utf-8", errors="replace")
+        for p in paths:
+            if p in src or Path(p).name in src:
+                hit.setdefault(suite, []).append(p)
+    return hit
+
+
+def select(mode, acceptance, changed):
+    """Which suites this run covers, and — for every suite it does not — the reason it does not.
+
+    Returns `(chosen, why, omitted_reason)`: an ordered list, a map from suite to the sentence that
+    put it there, and one sentence covering everything left out. Nothing is ever dropped silently:
+    a run that cannot ATTRIBUTE a changed path to any suite widens to the whole roster and says so,
+    because an unattributable change is exactly the one a narrow selection would step over.
+    """
+    if mode == "release":
+        return list(SUITES), {s: "release · the whole roster" for s in SUITES}, None
+
+    changed = list(changed or [])
+    acceptance = [a for a in (acceptance or []) if a]
+    unknown = [a for a in acceptance if a not in SUITES]
+    if unknown:
+        print(f"gate · --acceptance names {', '.join(unknown)}, which no suite answers to. A row's "
+              f"acceptance that names nothing runnable is a row with no acceptance.")
+        raise SystemExit(2)
+
+    crossing = [p for p in changed if any(c in p for c in CROSS_CUTTING)]
+    if crossing:
+        why = f"{mode} · widened to the whole roster: {', '.join(crossing)} is shared by every suite"
+        return list(SUITES), {s: why for s in SUITES}, None
+
+    docs = [p for p in changed if p.endswith(".md")]
+    code = [p for p in changed if not p.endswith(".md")]
+
+    named = suites_naming(code) if code else {}
+    unattributed = [p for p in code if not any(p in v for v in named.values())]
+    if unattributed:
+        why = (f"{mode} · widened to the whole roster: no suite's own source names "
+               f"{', '.join(unattributed)}, so nothing here can say what proves it")
+        return list(SUITES), {s: why for s in SUITES}, None
+
+    why = {}
+    for s in acceptance:
+        why[s] = f"{mode} · named by the row's own acceptance"
+    for s, paths in named.items():
+        why.setdefault(s, f"{mode} · its own source names {', '.join(sorted(set(paths)))}")
+
+    # INTEGRATION TAKES THE WHOLE OF EVERY LAYER IT TOUCHES, which is what makes it wider than a row
+    # gate rather than a row gate with more names in it. A row proves its own change; an integration
+    # proves that everything standing at the same rung of proof still stands.
+    if mode == "integration":
+        touched = sorted({layer_of(s) for s in named} | {layer_of(s) for s in acceptance})
+        for s in SUITES:
+            if layer_of(s) in touched:
+                why.setdefault(s, f"integration · every proof at the «{layer_of(s)}» layer, "
+                                  f"which this change touches")
+
+    for s in ARCH_INVARIANTS:
+        if s in SUITES:
+            why.setdefault(s, f"{mode} · an architectural invariant every mode carries")
+
+    chosen = [s for s in SUITES if s in why]
+    left = [s for s in SUITES if s not in why]
+    reason = None
+    if left:
+        reason = (f"left out: {len(left)} suite(s) — no changed path is named in their own source, "
+                  f"they are not this row's acceptance, and they are not architectural invariants"
+                  + (f". The {len(docs)} changed document(s) reach no suite's source at all"
+                     if docs and not code else "")
+                  + f": {', '.join(left)}")
+    return chosen, why, reason
 
 
 def check_roster():
@@ -387,34 +555,91 @@ def record_verdicts(results):
     VERDICTS_PATH.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
 
 
-def ordered_suites():
+def ordered_suites(suites):
     """Queue order: longest-first, from the last FULL run's recorded durations in
     tests/suite_timings.json. A suite absent from the record (never timed, e.g. brand new)
     sorts first — unknown cost is assumed expensive, so a new suite never lands at the tail
     behind a stale queue. With no record yet, keep today's declaration order exactly."""
     if not TIMINGS_PATH.exists():
-        return list(SUITES)
+        return list(suites)
     timings = json.loads(TIMINGS_PATH.read_text())
-    unknown = [s for s in SUITES if s not in timings]
-    known = sorted((s for s in SUITES if s in timings), key=lambda s: timings[s], reverse=True)
+    unknown = [s for s in suites if s not in timings]
+    known = sorted((s for s in suites if s in timings), key=lambda s: timings[s], reverse=True)
     return unknown + known
+
+
+def stages_built_now():
+    """How many distinct base stages the shared cache has ever baked, or None if it cannot say.
+
+    `tests/engine_build.py` keeps one immutable stage per distinct bake request and hands every
+    suite its own copy. Reading this number before and after a run is how a full gate proves
+    STRUCTURALLY that it baked once rather than once per browser suite — a count of builds, never a
+    count of seconds. A tree whose shim predates that cache answers None, and the run says so
+    instead of printing a zero it cannot stand behind.
+    """
+    try:
+        sys.path.insert(0, str(HERE))
+        import engine_build
+        return engine_build.stages_built()
+    except Exception:
+        return None
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--jobs", type=int, default=8,
-                    help="parallel suites (each spawns its own Chrome); default 8")
+    ap.add_argument("--mode", choices=("row", "integration", "release"), default="release",
+                    help="row: this row's acceptance, the suites naming what changed, and the "
+                         "architectural invariants. integration: that, plus every proof at each "
+                         "layer the change touches. release (the default): the whole roster.")
+    ap.add_argument("--acceptance", default="",
+                    help="comma-separated suite names this row's own definition of done names")
+    ap.add_argument("--changed", nargs="*", default=None,
+                    help="the write-set: repo-relative paths this work actually changed. Given "
+                         "explicitly rather than guessed; with none given, read off git.")
+    # SEQUENTIAL BY DEFAULT, on his word of 06.09.2026: "запускается последовательно по умолчанию;
+    # параллельность не должна быть способом «доказать под нагрузкой»". Eight Chromes on one machine
+    # is a load test wearing a gate's clothes — it is how a suite comes back red for being crowded
+    # rather than for being wrong, which is how this row's own predecessor (S-113) started. Asking
+    # for parallelism is still allowed and still useful while work is in progress; it is never what a
+    # verdict rests on.
+    ap.add_argument("--jobs", type=int, default=1,
+                    help="parallel suites (each spawns its own Chrome); default 1, one at a time")
     ap.add_argument("--no-record-timings", action="store_true",
                     help="run the full gate without rewriting suite_timings.json (release/CI)")
     args = ap.parse_args()
 
     # BEFORE A SINGLE SUITE IS SPAWNED. Both of these answer off a directory listing, and both make
-    # a claim that already stands true rather than adding a new demand of anyone.
+    # a claim that already stands true rather than adding a new demand of anyone. THEY RUN IN EVERY
+    # MODE: a narrow run over a wrong roster is as worthless as a full one.
     check_roster()
     check_pass_fixture()
 
+    changed = args.changed
+    if changed is None and args.mode != "release":
+        done = subprocess.run(["git", "-C", str(HERE.parent), "diff", "--name-only", "HEAD"],
+                              capture_output=True, text=True)
+        changed = [ln for ln in done.stdout.splitlines() if ln.strip()]
+        print(f"write-set · not given, so read off git: "
+              f"{', '.join(changed) if changed else '(nothing uncommitted)'}")
+    chosen, why, omitted = select(args.mode,
+                                  [a.strip() for a in args.acceptance.split(",")],
+                                  changed)
+
+    # THE SELECTION IS ALWAYS PRINTED, WITH THE REASON EACH SUITE IS IN IT, and the omission is
+    # printed too. A selector nobody can read is a selector that skips checks in silence, and the
+    # whole point of naming modes was to stop that rather than to industrialise it.
+    print(f"mode · {args.mode} · {len(chosen)} of {len(SUITES)} suite(s) selected")
+    if args.mode != "release":
+        # A release run's 123 identical reasons would be noise, and its omission is the empty set;
+        # a narrow run's reasons are the whole point, so they print one to a line with the layer
+        # each suite stands at.
+        for s in chosen:
+            print(f"  [{layer_of(s)}] {s}: {why[s]}")
+    print("  " + (omitted or "left out: nothing — this selection is the whole roster"))
+    stages_before = stages_built_now()
+
     t0 = time.time()
-    queue = ordered_suites()
+    queue = ordered_suites(chosen)
     running = {}    # name → Popen
     starts = {}     # name → monotonic start, paired at harvest for that suite's duration
     results = {}    # name → (rc, tail)
@@ -462,22 +687,37 @@ def main():
     shutil.rmtree(log_dir, ignore_errors=True)
 
     wall = time.time() - t0
-    failed = [n for n in SUITES if results[n][0] != 0]
-    for n in SUITES:
+    failed = [n for n in chosen if results[n][0] != 0]
+    for n in chosen:
         rc, tail = results[n]
         print(f"[{'OK ' if rc == 0 else 'RED'}] {n}: {tail}")
-    print(f"\n{len(SUITES) - len(failed)}/{len(SUITES)} suites green · wall {wall:.0f}s"
+    print(f"\n{len(chosen) - len(failed)}/{len(chosen)} suites green · wall {wall:.0f}s"
           + (f" · RED: {', '.join(failed)}" if failed else ""))
 
-    # Timing report: slowest suite first, so a stretched wall points straight at its cause.
-    print("\nsuite timings, slowest first:")
+    # HOW MANY BASE STAGES THIS RUN HAD TO BAKE. Every browser suite stands on a copy of an immutable
+    # stage the shared cache keeps, one per distinct bake request, so a full gate that reports ONE
+    # here has proved structurally that it baked once and not once per suite. It is a count of
+    # builds. Nothing here is a duration and nothing here is a budget: how fast this machine bakes is
+    # the machine's business (plan row S-113).
+    stages_after = stages_built_now()
+    if stages_before is None or stages_after is None:
+        print("\nbase stages · the shared stage cache could not be read, so this run cannot say how "
+              "many stages it baked")
+    else:
+        print(f"\nbase stages · {stages_after - stages_before} baked by this run "
+              f"({stages_after} distinct stages in the cache)")
+
+    # Timing report: slowest suite first, so a stretched wall points straight at its cause. It is a
+    # READING and never a gate: no row anywhere passes or fails on a number in this block.
+    print("\nsuite timings, slowest first (a reading, never a gate):")
     for n in sorted(durations, key=durations.get, reverse=True):
         print(f"  {n}: {durations[n]:.1f}s")
 
-    # This runner has no suite-selection flag — every invocation covers the full SUITES set, so
-    # every run is a FULL run and the committed record is always safe to replace here, unless the
-    # caller asked to skip the rewrite (release/CI, where a clean checkout shouldn't get dirtied).
-    if not args.no_record_timings:
+    # ONLY A RELEASE RUN REWRITES THE RECORD, because only a release run covers the whole roster: a
+    # narrow run's durations would leave every unrun suite's entry standing at its old value beside
+    # a handful of fresh ones, and `ordered_suites` would then queue a stale mixture. The caller may
+    # also decline the rewrite outright (release/CI, where a clean checkout should not get dirtied).
+    if not args.no_record_timings and args.mode == "release":
         TIMINGS_PATH.write_text(json.dumps(durations, indent=2, sort_keys=True) + "\n")
 
     # Every run records its verdicts, including a run that goes red: a red verdict is the one a
@@ -490,8 +730,19 @@ def main():
     # until the whole run has spoken. It joins check_roster() and check_pass_fixture() in deciding
     # this run's exit code, same as any other gate here: a growth here is refused same as a RED
     # suite is, not layered on top as a separate kind of failure.
+    # THE RATCHET IS A WHOLE-ROSTER FACT AND ONLY A RELEASE RUN HOLDS ONE. A narrow run's total is
+    # lower simply because fewer suites spoke, and letting that lower the recorded number would make
+    # the very next full run read as GROWTH and refuse itself. So a narrow run abstains out loud
+    # rather than writing a number it cannot stand behind — and abstaining is not passing: the
+    # ratchet's own claim is untouched and the next release run still answers for it.
     total_skips = sum(skips.values())
-    ratchet_ok = check_skip_ratchet(total_skips)
+    if args.mode == "release":
+        ratchet_ok = check_skip_ratchet(total_skips)
+    else:
+        ratchet_ok = True
+        print(f"\nskip ratchet · not read: this run covered {len(chosen)} of {len(SUITES)} suites, "
+              f"and the ratchet's number is the whole roster's. This run skipped {total_skips}; the "
+              f"record is left exactly as it stood.")
 
     # EXPECTED_RED runs last, same reason as the skip ratchet: it reads what every suite already
     # reported of itself. A suite named in EXPECTED_RED keeps this run from going green on the

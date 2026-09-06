@@ -35,6 +35,39 @@ match on source.
 
 ---
 
+## What this matrix is, and what it is not (2026-09-06, plan row S-114)
+
+This file is a CATALOGUE of requirements and of the proof each one owes. It is not a list of runs
+owed after every commit. Read as the latter it says: drive every browser in the roster after any
+change at all, including a change to a document — which is how a gate that costs the better part of
+an hour came to stand between a one-line edit and its verdict.
+
+What a fact owes is named by its PROOF LAYER, and there are five. `.live-spec/profile.md` and
+`tests/run_all.py` carry the same five in the same words, so the three cannot drift into three
+vocabularies:
+
+1. **static/source contract** — the fact stands in the source and is read off it. No process starts.
+2. **pure Node/function composition** — the REAL shipped block runs in Node against stated inputs.
+   No browser is part of the claim.
+3. **browser runtime contract** — what the page's runtime does: state, events, the host's own report,
+   what a module publishes at load. A browser is needed; pixels are not.
+4. **pixel/WebGL/layout/interaction** — the picture and the hand: a real render path, a pixel landing,
+   camera and canvas geometry, touch and mouse, DOM layout, context loss and fallback.
+5. **live-device runtime observation** — read in the visitor's own browser after a deploy
+   (`lab/perf.html`, `lab/perf-serve.py`). No suite in this tree answers for it and none may pretend
+   to: the builder host is never the device (plan row S-113).
+
+A browser is owed only by layers 3 and 4. Legality, ranking, tier selection, voices and roles, handle
+derivation, a measurement read, a deterministic seed and a route-memory decision are all layer 2:
+putting one of them in a browser proves nothing extra and costs a Chrome.
+
+The runner reads each suite's layer off the suite's OWN SOURCE rather than off a table kept here by
+hand — a suite that drives `headless.Browser` is at layer 3 or 4 whatever any table says, and a table
+of 122 names would be wrong the first week. `tests/test_gate_modes.py` holds the standing verdict on
+that reading. What this file owes the runner is the five names, and it owes them verbatim.
+
+---
+
 ## §1 — Entities (from `SPEC.md`'s new section)
 
 - **Pass** — the optional composed visual transaction between two hung works (`EX-PASS`).
