@@ -322,8 +322,8 @@
        fall's own acceleration, which is physics and not taste. */
     /* HOW THE HAND'S OWN CURVE IS READ BETWEEN TWO OF ITS OWN POINTS (2026-09-06). Read as a bare
        clamped ramp, this curve is right in VALUE everywhere and steps in SPEED at each dead band's
-       own edge: the picture is held perfectly still under FEEL_D0 and past 1 - FEEL_D0 and then leaves
-       at the ramp's whole speed at once — measured, 1.111 of the dial a unit of the hand arriving
+       own edge: the picture is held perfectly still under FEEL_D0 and past 1 - FEEL_D0, and then
+       leaves at the ramp's whole speed at once — measured, 1.111 of the dial a unit of the hand arriving
        out of nothing at all. That is the same corner S-20 carried out of `matter`, `beat`, `gears`,
        `gates`, `adrift` and `waterline`, and Phase 7 out of `tilt`: a corner no measurement ever
        had, and the jolt his word of 2026-08-28 named.

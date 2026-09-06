@@ -316,9 +316,67 @@
     function feelLog(x, k) {
       return Math.abs(k) < 1e-6 ? x : (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
     }
-    function feelOf(u) {
+    function feelKnee(u) {
       return u <= 0.5 ? FEEL_C * feelLog(2 * u, FEEL_K1)
                       : FEEL_C + (1 - FEEL_C) * feelLog(2 * u - 1, FEEL_K2);
+    }
+
+    /* HOW THE KNEE IS READ BETWEEN TWO OF ITS OWN POINTS (2026-09-06). The two pieces above meet at
+       the hand's own middle in VALUE — both stand at FEEL_C there — and NOT in the rate the picture
+       is moving at: the knee is hinged at 0.47 rather than at a half, so a mirror about the middle
+       does not put the two slopes at the join equal: the dial's speed stepped by 1.393 of its own
+       travel a unit of the hand there. It is the same corner S-20
+       carried out of `matter`, `beat`, `gears`, `gates`, `adrift` and `waterline`, and Phase 7 out
+       of `tilt` — whose knee is this knee in another key — and the jolt his word of 2026-08-28
+       named.
+
+       THE REPAIR is the fleet's own, carried over rather than re-invented. The knee is SAMPLED at
+       twenty-one evenly spaced shares of its own domain — the width every measured table in this
+       tree already carries — and read back through the Fritsch-Carlson spline `pass-inst-adrift.js`
+       carries (`tangentsOf`/`table`, copied character for character, the same way
+       `pass-inst-tilt.js` copied them on 2026-09-01). The spline passes through all twenty-one
+       points exactly — the measured median itself among them, `feelKnee(0.5) = FEEL_C`, so the
+       hinge stands exactly where it was measured — cannot overshoot or turn back, and rests at both
+       its own ends. Not one digit of the module's measurement moves; what changed is only the line
+       drawn between its own points. */
+    var FEEL_TANGENTS = [];
+    function tangentsOf(q) {
+      var t, n, h, d, m, i, a, b, s;
+      for (t = 0; t < FEEL_TANGENTS.length; t++) {
+        if (FEEL_TANGENTS[t][0] === q) return FEEL_TANGENTS[t][1];
+      }
+      n = q.length; h = 1 / (n - 1); d = []; m = [];
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      FEEL_TANGENTS.push([q, m]);
+      return m;
+    }
+    function table(q, d0, u) {
+      var x = clamp(d0 > 0 ? (clamp(u, 0, 1) - d0) / (1 - 2 * d0) : clamp(u, 0, 1), 0, 1);
+      var n = q.length, h = 1 / (n - 1), m = tangentsOf(q);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * q[i] + (s3 - 2 * s2 + s) * h * m[i]
+           + (3 * s2 - 2 * s3) * q[i + 1] + (s3 - s2) * h * m[i + 1];
+    }
+    // The twenty-one shares of a curve's own travel, read off the curve itself rather than typed a
+    // second time, so no digit of it can drift between the shape and the points that carry it.
+    function feelKnots(f) {
+      var q = [], i;
+      for (i = 0; i <= 20; i++) q.push(f(i / 20));
+      return q;
+    }
+    var FEEL_Q = feelKnots(feelKnee);
+    function feelOf(u) {
+      return table(FEEL_Q, 0, u);
     }
 
     // THE HANDOVER (strata-scale.js:450-506): «ONE MOTION THIS MODULE KEPT TO ITSELF, now a handle a
