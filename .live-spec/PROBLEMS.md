@@ -3,6 +3,21 @@
 Seeded at first adoption (2026-07-12) from issues already documented in the tree. Each line cites where
 the evidence lives; nothing here is asserted from memory.
 
+- WATCHED 2026-09-06 ~21:39 · `pass_seam`'s interruption-cadence row reds inside the full sequential
+  gate and passes alone. The gate at `2025333` read 121/122 with `pass_seam` 26 passed / 1 failed:
+  "no cadence frame was caught: {'got': True, 'took': True, 'gen': 30} running=True box=None
+  report={'cadence': None, 'state': 'idle'}". The same suite run alone on the same commit read
+  27 passed / 0 failed, and that run's own line says the cadence landed on door «out» in 2026 ms
+  against the score's declared interruption window of 2000 ms. So the row's pass rests on the host
+  reaching its own door inside a window it clears by 26 ms on a quiet machine. The row cuts the
+  passage after 1.5 s of WALL time (`CUT_AT`) with the clock deliberately unpinned, which is what
+  makes it read differently on a busy machine. Parked, not dammed, per the same treatment the
+  2026-07-12 glide-timing entry below got: a re-run gates any commit, and a SECOND occurrence owns
+  it with a cut driven by the passage's own progress rather than by wall time. What must NOT be
+  done to it is widening the 2000 ms: that is the builder's clock deciding a product law, which
+  plan row S-113 exists to remove. Source: this session's own two sequential runs, logs in the
+  session scratchpad, and `tests/test_pass_seam.py:930-960`.
+
 - OWNER-ROW 2026-07-10 · `tests/make_synthetic.py` is STALE and destructive — running it emits a smaller
   `greetings.json` (drops `quiz_ask`/`gift_*`/`enjoy`) and unexpectedly rewrites `engine/harness/headless.py`
   and a `tokens.css`; it already clobbered an uncommitted harness fix once. Fix owed: bring the generator
