@@ -73,7 +73,7 @@ BROWSER_ROWS = [
     "S-01/A2 the diagnostic surface exposes ONE joined per-step record, read by the panel and the "
     "export alike",
     "S-01/DIAG-RECORD a real crossing's joined record carries cameraLed/cameraTrack/cameraPose/"
-    "measurementsRead/realisedTier well-typed",
+    "measurementsRead/realisedTier well-typed, and at least one entry names the genre it supported",
     "S-01/DIAG-RECORD at 390x844 the panel's content box stays inside the viewport and the export "
     "still carries the fuller record whole",
 ]
@@ -269,13 +269,25 @@ else:
             tier_ok = isinstance(step0.get("realisedTier"), str) and bool(step0.get("realisedTier"))
             led_ok = isinstance(step0.get("cameraLed"), bool)
             role_ok = "requestedRole" in step0 and "downgradeReason" in step0
+            # MEASUREMENT-SUPPORTS (diagnostics lane gap, commit a181632): at least one
+            # `measurementsRead` entry now names which genre its field actually backed —
+            # `pass-composer.js`'s own genre vocabulary (`genresFor`'s eight `say()` ids), checked
+            # against a list held here rather than against `step0` itself, so a `supports` value
+            # that merely echoes some OTHER field of this same record (never proving it came from
+            # the real genre ranking at all) cannot pass this row.
+            GENRE_IDS = {"shared-ground", "kaleidoscope", "spin", "symmetry-slide", "stripes",
+                         "box-fold", "dissimilar-mystery", "tonal-and-spectral"}
+            mr_supports = [e.get("supports") for e in mr if e.get("supports") is not None]
+            supports_ok = bool(mr_supports) and all(
+                isinstance(s, str) and s in GENRE_IDS for s in mr_supports)
             check(BROWSER_ROWS[8],
                   bool(step0) and poses_distinct and mr_shaped and mr_numeric and tier_ok
-                  and led_ok and role_ok,
+                  and led_ok and role_ok and supports_ok,
                   f"cameraPose={cam_pose} measurementsRead[:2]={mr[:2]} "
                   f"realisedTier={step0.get('realisedTier')!r} cameraLed={step0.get('cameraLed')!r} "
                   f"requestedRole={step0.get('requestedRole')!r} "
-                  f"downgradeReason={step0.get('downgradeReason')!r}")
+                  f"downgradeReason={step0.get('downgradeReason')!r} "
+                  f"supports-values={mr_supports}")
 
         # ---- row 1 · no trace at all without the key ------------------------------------------
         with Browser(width=1280, height=900) as br2:

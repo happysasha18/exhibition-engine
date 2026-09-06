@@ -4662,12 +4662,39 @@
     // answering, not a bar this file set.
     function genresFor(fromW, toW) {
       var all = groundReadings(fromW, toW), genres = [], notes = [];
-      function say(id, genre, fit, why) {
+      // MEASUREMENT-SUPPORTS LINK (2026-09-06 gap, diagnostics lane commit a181632): `why` above
+      // has always named which measurement backed a genre, but only as prose keyed by the genre's
+      // own id — never by the field name `01a-pass.js`'s `measurementsRead` reads off the same two
+      // records. `say`'s new fifth argument is that link, structured, emitted at the exact site the
+      // prose is written so the two can never drift: a caller passes the field(s) its own `why`
+      // just named, and `id` (the genre this note is FOR) is filled in once here rather than
+      // repeated at every call site. A field `why` never names gets no entry — no new computation,
+      // no field read here that the prose does not already put into words.
+      function say(id, genre, fit, why, fields) {
         genre.id = id;
         genre.fit = clamp01(fit);
         genre.why = why;
         genres.push(genre);
-        notes.push({ genre: id, road: id, fit: r4(clamp01(fit)), why: why });
+        var supports = (fields || []).map(function (f) {
+          return { field: f.field, supports: id, from: f.from, to: f.to };
+        });
+        notes.push({ genre: id, road: id, fit: r4(clamp01(fit)), why: why, supports: supports });
+      }
+      // THE RAW READING BEHIND A SUPPORTS ENTRY — the SAME PATH `01a-pass.js`'s own
+      // `measurementsRead` reads (`work.measures[m]`/`work.matter.materialVotes`), so the two never
+      // report a different number for the same field. Never `readingOf`'s clamped share, which is
+      // this file's own ranking value and not the record's own reading.
+      function rawOf(v) {
+        var n = Number(v);
+        return (n === n && isFinite(n)) ? n : null;
+      }
+      function measureField(m) {
+        return { field: "measures." + m, from: rawOf((fromW.measures || {})[m]),
+                to: rawOf((toW.measures || {})[m]) };
+      }
+      function matterField() {
+        return { field: "matter.materialVotes", from: rawOf((fromW.matter || {}).materialVotes),
+                to: rawOf((toW.matter || {}).materialVotes) };
       }
       var rFrom = (fromW.structure || {}).radial || {}, rTo = (toW.structure || {}).radial || {};
       var bFrom = (fromW.structure || {}).banding || {}, bTo = (toW.structure || {}).banding || {};
@@ -4693,7 +4720,8 @@
         say("shared-ground", { ground: heldGround, free: null, axis: "near", miracle: false,
                                moves: 2 }, 0,
             "beside the shared " + pyText(heldGround) + " no axis reads on both works, so there is "
-            + "no similar axis to run along");
+            + "no similar axis to run along",
+            [measureField(heldGround)]);
       } else {
         var closeness = 1 - clamp01(num(nearAxis.delta));
         var groundFit = num(all.per[heldGround].min) * closeness;
@@ -4705,8 +4733,10 @@
           groundWhy += "; the two works agree on what they are made of or depict, held at "
             + pyText(flt(r4(matterShare))) + " by their own vote confidence";
         }
+        var sgFields = [measureField(heldGround), measureField(nearAxis.axis)];
+        if (matterShare > 0) sgFields.push(matterField());
         say("shared-ground", { ground: heldGround, free: null, axis: "near", miracle: false,
-                               moves: 2 }, groundFit, groundWhy);
+                               moves: 2 }, groundFit, groundWhy, sgFields);
       }
 
       // 2 and 3 · BUILT FROM HOW A RADIAL WORK IS MADE. The radial reading has to stand on BOTH
@@ -4744,14 +4774,15 @@
         }
       }
       say("kaleidoscope", { ground: null, free: "radial", axis: "radial", miracle: true, moves: 3 },
-          kalFit, kalWhy);
+          kalFit, kalWhy, [measureField("radial")]);
       say("spin", { ground: null, free: "radial", axis: "radial", miracle: false, moves: 2 },
           arrivesOnRings ? 0 : radialFit,
           arrivesOnRings
             ? "the arriving work's radial reading is on rings, which open rather than turn"
             : ("the arriving work reads radial at " + pyText(flt(r4(readingOf(rTo.score))))
                + " on " + pyText(rTo.subType) + " and the pair holds radial at "
-               + pyText(flt(r4(radialPair))) + ", so its own turn is what travels"));
+               + pyText(flt(r4(radialPair))) + ", so its own turn is what travels"),
+          [measureField("radial")]);
 
       // 4 and 5 · BUILT FROM HOW A SYMMETRIC WORK IS MADE. A band family is a translational symmetry
       // the measure files actually carry, so it is the symmetry these two read. The fit is the
@@ -4776,14 +4807,16 @@
                   + " px, and the pair holds banding at " + pyText(flt(r4(bandPair)))
                   + ", so the parts slide along one symmetry")
                : "the two band families run different ways, so there is no one symmetry to slide "
-                 + "along"));
+                 + "along"),
+          [measureField("banding")]);
       say("stripes", { ground: null, free: "banding", axis: "banding", miracle: false, moves: 2 },
           sameWay ? 0 : bandFit,
           !periods ? "one of the two band families carries no measured period"
             : (sameWay ? "the two band families run the same way, so nothing crosses"
                : ("the two band families cross — " + pyText(bFrom.axis) + " against "
                   + pyText(bTo.axis) + " — and the pair holds banding at "
-                  + pyText(flt(r4(bandPair))) + ", so the fabric becomes stripes")));
+                  + pyText(flt(r4(bandPair))) + ", so the fabric becomes stripes")),
+          [measureField("banding")]);
 
       // 6 · A WORK FOLDING ALONG STRONG DIRECTIONS FOLDS INTO A SOLID. The crease is placed on the
       // departing work's own measured region line, so the fit is that work's region reading. What
@@ -4822,7 +4855,7 @@
         }
       }
       say("box-fold", { ground: "regions", free: null, axis: "far", miracle: true, mustFold: true,
-                        moves: 3 }, boxFit, boxWhy);
+                        moves: 3 }, boxFit, boxWhy, [measureField("regions")]);
 
       // 7 · ALONG THE PAIR'S DISSIMILAR AXES, WITH THE MYSTERY IN THE MIDDLE. The distance between
       // the pair's widest two readings IS the fit — a pair standing far apart suits this genre and a
@@ -4831,7 +4864,8 @@
       say("dissimilar-mystery", { ground: null, free: null, axis: "far", miracle: true, moves: 2 },
           farAxis === null ? 0 : clamp01(num(farAxis.delta)),
           farAxis === null ? "no measure carries a reading on both works"
-            : ("the two works read " + farAxis.axis + " " + pyText(farAxis.delta) + " apart"));
+            : ("the two works read " + farAxis.axis + " " + pyText(farAxis.delta) + " apart"),
+          farAxis === null ? [] : [measureField(farAxis.axis)]);
 
       // 8 · THE TONAL ZONES AND THE DETAIL SCALES. The highlights leave before the shadows, and the
       // arriving work's blurred mass grows first with its detail growing into it — two

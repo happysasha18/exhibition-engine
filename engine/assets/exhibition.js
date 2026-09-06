@@ -3707,11 +3707,27 @@
     // one off `matter` for the stack that actually got cast. Read straight off the SAME two records
     // the composer was handed (`passWorkRecords()`, the identical lookup `passRequestFor` already
     // makes), never recomputed or re-ranked here.
-    // `supports` stays null throughout: the composer keeps which field fed which genre only as prose
-    // inside `roadNotes[].why` (keyed by the genre's own id, never by a field name), and turning that
-    // into a structured field→choice link needs `pass-composer.js` itself to publish it — outside
-    // this row's write set. A reader wanting that link today reads the `why` sentence of the note
-    // whose `genre` equals this record's own `road`.
+    // `supports` NOW FILLS FROM THE COMPOSER'S OWN LINK (measurement-supports gap, diagnostics lane
+    // commit a181632): `genresFor`'s `say()` (pass-composer.js) pushes a structured
+    // `{field, supports, from, to}` entry onto its own note's `supports` array at the exact site its
+    // `why` names that field, so the two can never drift. `row.roadNotes` is that same array of
+    // notes, unchanged since P1.1/A2 — this reads it, never recomputes a ranking. Where more than one
+    // note names the same field (the pair's radial reading backs both "kaleidoscope" and "spin"),
+    // the note for the road that actually played wins; where the played road named nothing, the
+    // first note that did stands, which is still an honest reading — a field no note ever names
+    // stays null, exactly as it did before this link existed.
+    const roadNotes = row && Array.isArray(row.roadNotes) ? row.roadNotes : [];
+    const chosenRoad = row ? (row.road || null) : null;
+    const fieldSupports = {};
+    roadNotes.forEach((n) => {
+      (n.supports || []).forEach((s) => {
+        if (!s || !s.field) return;
+        if (fieldSupports[s.field] === undefined || n.road === chosenRoad) {
+          fieldSupports[s.field] = s.supports;
+        }
+      });
+    });
+    const supportsOf = (field) => (fieldSupports[field] !== undefined ? fieldSupports[field] : null);
     const worksAll = (typeof passWorkRecords === "function") ? (passWorkRecords() || {}) : {};
     const fromWork = worksAll[fromId] || null, toWork = worksAll[toId] || null;
     const measurementsRead = [];
@@ -3720,13 +3736,17 @@
       ["banding", "grid", "regions", "dominant_object", "texture", "radial", "named_objects"]
         .forEach((m) => measurementsRead.push({
           field: "measures." + m, from: numOf((fromWork.measures || {})[m]),
-          to: numOf((toWork.measures || {})[m]), supports: null }));
+          to: numOf((toWork.measures || {})[m]), supports: supportsOf("measures." + m) }));
+      // `colour.*` stays null: no `say()` site in `pass-composer.js` names a colour field in its
+      // `why` today (`fillPlan`'s own colour voicing is a different note channel, `sayVoice`, not
+      // this one) — an honest empty, not an oversight.
       ["sat", "brightness", "contrast"].forEach((c) => measurementsRead.push({
         field: "colour." + c, from: numOf((fromWork.colour || {})[c]),
         to: numOf((toWork.colour || {})[c]), supports: null }));
       measurementsRead.push({ field: "matter.materialVotes",
                               from: numOf((fromWork.matter || {}).materialVotes),
-                              to: numOf((toWork.matter || {}).materialVotes), supports: null });
+                              to: numOf((toWork.matter || {}).materialVotes),
+                              supports: supportsOf("matter.materialVotes") });
     }
     return {
       from: fromId, to: toId,
