@@ -522,9 +522,49 @@ else:
            else "driver: %s; no feelClass read off: %s" % (ferr, undeclared)))
 
     IDENTITY = sorted(n for n, r in frows.items() if r.get("feelClass") == "identity")
-    EXCURSION = sorted(n for n, r in frows.items() if r.get("feelClass") == "excursion")
+    EXCURSION_ALL = sorted(n for n, r in frows.items() if r.get("feelClass") == "excursion")
     MONOTONE_ANALYTIC = sorted(n for n, r in frows.items()
                                 if r.get("feelClass") == "monotone" and n not in JUDGED)
+
+    # ---- THE FLEET'S OWN CATALOGUE OF ALREADY-KNOWN, NOT-YET-REPAIRED JERKS ----------------------
+    # Extending the roll call past the seven table carriers put this row in front of twelve more
+    # instruments that carry the identical class of defect — a dead band held flat and left at full
+    # speed, or a two-piece hinge whose two slopes were never forced to agree — LIVE, in code nobody
+    # had pointed this check at before. This row does not ask a catalogued instrument to pass: it
+    # asks that the break BE THERE, measured, exactly as cited, so a fix landing without this file
+    # being told reds just as loudly as a regression opening.
+    #
+    # THE CATALOGUE IS THE ONE PLACE A KNOWN BREAK IS NAMED (2026-09-06). It used to be typed twice —
+    # here, and again as a literal list of names the monotone group below subtracted — and two copies
+    # of one fact drift. The groups below are now derived FROM it, so removing an entry here is what
+    # moves that instrument into the group whose law actually measures its speed. An instrument
+    # repaired but left in the catalogue reds the catalogue's own row; one removed from the catalogue
+    # but not repaired reds its new group's row. There is no third place to hide.
+    #
+    # THE FOUR THE ROUTE WALKED LEFT IT ON 2026-09-06: `hero`, `liquid`, `pour` and `grid-colour`,
+    # each repaired with the Fritsch–Carlson spline the seven table carriers and `tilt` already ride
+    # (`tangentsOf`/`table` in each file, copied character for character from `pass-inst-adrift.js`),
+    # reading twenty-one evenly spaced shares of the file's OWN curve. Not one measured number moved.
+    KNOWN_JERK = {
+        "droste": "a dead-band ramp (feelOf, droste.js): held flat under WIND_HOLD and past "
+                  "1 - WIND_HOLD, leaving each edge at the ramp's own full speed at once",
+        "tunnel": "a dead-band ramp (feelOf, tunnel.js): held flat under FEEL_D0 = 0.05 and past "
+                  "0.95, leaving each edge at the ramp's own full speed at once",
+        "veil": "a dead-band ramp (feelOf, veil.js): held flat under FEEL_D0 = 0.05 and past 0.95, "
+               "leaving each edge at the ramp's own full speed at once",
+        "wind": "a dead-band ramp (feelOf, wind.js): held flat under FEEL_D0 = 0.05 and past 0.95, "
+               "leaving each edge at the ramp's own full speed at once",
+        "strata-light": "a two-piece hinge off centre (feelOf, strata-light.js): FEEL_C = 0.37, so "
+                        "the join's two slopes are not forced to agree",
+        "strata-scale": "a two-piece hinge off centre (feelOf, strata-scale.js): FEEL_C = 0.47, so "
+                        "the join's two slopes are not forced to agree",
+        "weave": "a two-piece hinge off centre (feelOf, weave.js): FEEL_C = 0.43, so the join's two "
+                "slopes are not forced to agree (its dead band is a separate, legitimate fact — "
+                "see `feelEnds` — and is not this row's complaint)",
+        "lens": "a power-law edge (reachOf, lens.js): Math.pow(u, FEEL_G) with FEEL_G = 0.42 has an "
+                "infinite slope at the dead band's own edge, the same held-flat-then-leaves shape "
+                "in a steeper key",
+    }
 
     # ---- IDENTITY-BECAUSE-NO-TRAVEL --------------------------------------------------------------
     # `kaleidoscope`, `livemirror` and `planet` declare their `feel` a written "no": the raw hand,
@@ -541,16 +581,15 @@ else:
            % IDENTITY
            if not id_bad and not ferr else "off the raw hand: %s" % id_bad))
 
-    # ---- MONOTONE ANALYTIC, DECLARED CLEAN -------------------------------------------------------
+    # ---- MONOTONE ANALYTIC, JUDGED FOR CONTINUITY ------------------------------------------------
     # `parquet`, `overlay`, `studio` and `boxfold` mirror a curve POINT-SYMMETRICALLY about its own
     # middle (`u <= 0.5 ? 0.5*f(2u) : 1-0.5*f(2-2u)`, or a single one-sided exponential with no
     # internal join at all), which forces the two slopes at any join to agree by construction —
-    # unlike a hinge held off-centre (KNOWN_JERK, below), there is no join left for a jerk to hide
-    # at. These are the four analytic instruments Phase 7 finds already passing, cold, per the Opus
-    # consultation's own count.
-    CLEAN_MONOTONE = sorted(n for n in MONOTONE_ANALYTIC if n not in
-                            {"droste", "grid-colour", "liquid", "pour", "strata-light",
-                             "strata-scale", "tunnel", "veil", "weave", "wind"})
+    # unlike a hinge held off-centre, there is no join left for a jerk to hide at. Those four are the
+    # ones Phase 7 found already passing, cold. Every monotone instrument the catalogue above no
+    # longer names joins them here, and is measured under exactly the same law: continuity, no
+    # turning back, and its own declared ends.
+    CLEAN_MONOTONE = sorted(n for n in MONOTONE_ANALYTIC if n not in KNOWN_JERK)
     clean_bad = []
     for n in CLEAN_MONOTONE:
         r = frows[n]
@@ -562,55 +601,51 @@ else:
         elif (abs(r["ends"]["at0"] - want_ends[0]) > ARITHMETIC_SLACK
               or abs(r["ends"]["at1"] - want_ends[1]) > ARITHMETIC_SLACK):
             clean_bad.append((n, "ends %s, wanted %s" % (r["ends"], want_ends)))
-    check("PASS-FEEL every monotone analytic curve declared clean is continuous, monotone, and "
-          "stands at its own declared ends",
+    check("PASS-FEEL every monotone analytic curve is continuous, monotone, and stands at its own "
+          "declared ends",
           not ferr and CLEAN_MONOTONE and not clean_bad,
-          ("every one of %s already reads a continuous, monotone curve at its own declared ends, "
-           "cold, with no repair spent on it this phase — %s"
+          ("every one of %s reads a continuous, monotone curve at its own declared ends — %s"
            % (CLEAN_MONOTONE,
               "; ".join("%s ×%.3f" % (m, frows[m]["halving"]) for m in CLEAN_MONOTONE))
            if not clean_bad and not ferr else "off the law: %s" % clean_bad))
 
-    # ---- THE FLEET'S OWN CATALOGUE OF ALREADY-KNOWN, NOT-YET-REPAIRED JERKS -----------------------
-    # Extending the roll call past the seven table carriers put this row in front of twelve more
-    # instruments that carry the identical class of defect — a dead band held flat and left at full
-    # speed, or a two-piece hinge whose two slopes were never forced to agree — LIVE, in code nobody
-    # had pointed this check at before. Fixing any of them is core logic and stands outside this
-    # phase's write-set (curve declaration, not derivation). So this row does not ask them to pass:
-    # it asks that the break BE THERE, measured, exactly as cited — which reds the moment either
-    # direction of drift happens unnoticed: a fix landing without this file being told, or a
-    # regression opening where the measurement below said the curve was merely known-bad rather than
-    # actively watched.
-    KNOWN_JERK = {
-        "droste": "a dead-band ramp (feelOf, droste.js): held flat under WIND_HOLD and past "
-                  "1 - WIND_HOLD, leaving each edge at the ramp's own full speed at once",
-        "liquid": "a dead-band ramp (feelOf, liquid.js): held flat under FEEL_D0 = 0.05 and past "
-                  "0.95, leaving each edge at the ramp's own full speed at once",
-        "pour": "a dead-band ramp (feelOf, pour.js): held flat under FEEL_D0 = 0.05 and past 0.95, "
-               "leaving each edge at the ramp's own full speed at once",
-        "tunnel": "a dead-band ramp (feelOf, tunnel.js): held flat under FEEL_D0 = 0.05 and past "
-                  "0.95, leaving each edge at the ramp's own full speed at once",
-        "veil": "a dead-band ramp (feelOf, veil.js): held flat under FEEL_D0 = 0.05 and past 0.95, "
-               "leaving each edge at the ramp's own full speed at once",
-        "wind": "a dead-band ramp (feelOf, wind.js): held flat under FEEL_D0 = 0.05 and past 0.95, "
-               "leaving each edge at the ramp's own full speed at once",
-        "strata-light": "a two-piece hinge off centre (feelOf, strata-light.js): FEEL_C = 0.37, so "
-                        "the join's two slopes are not forced to agree",
-        "strata-scale": "a two-piece hinge off centre (feelOf, strata-scale.js): FEEL_C = 0.47, so "
-                        "the join's two slopes are not forced to agree",
-        "weave": "a two-piece hinge off centre (feelOf, weave.js): FEEL_C = 0.43, so the join's two "
-                "slopes are not forced to agree (its dead band is a separate, legitimate fact — "
-                "see `feelEnds` — and is not this row's complaint)",
-        "grid-colour": "a two-piece hinge off centre (feelOf, grid-colour.js): the \"stripes\" "
-                      "kind's own FEEL.stripes.c is not 0.5, so the join's two slopes are not "
-                      "forced to agree",
-        "hero": "the same off-centre hinge, inherited: `feel()` (hero.js) is a two-piece knee at "
-               "FEEL_C = 0.61 folded into the excursion `feelOf` rides, so the fold carries the "
-               "join's own mismatch with it",
-        "lens": "a power-law edge (reachOf, lens.js): Math.pow(u, FEEL_G) with FEEL_G = 0.42 has an "
-                "infinite slope at the dead band's own edge, the same held-flat-then-leaves shape "
-                "in a steeper key",
-    }
+    # ---- EXCURSIONS, JUDGED FOR CONTINUITY ALONE -------------------------------------------------
+    # An excursion goes out and comes back (`hero` rides a story out to its far end and home again;
+    # `lens` opens the glass, holds it whole across the middle third and closes it), so it turns back
+    # BY CONSTRUCTION and the monotone law is not the right law for it. Two laws are, and neither is
+    # weaker than what a monotone curve answers. CONTINUITY, at the same bar and on the same halving
+    # argument. And BOTH DOORS AT ONE PLACE: an excursion that came home to a different number than
+    # it left from would have moved the picture across a passage that is supposed to return it, so
+    # `feel(0)` and `feel(1)` must be the same number exactly — which is the door law in the shape
+    # this kind of curve can carry it, and it is read off the curve rather than off any declaration
+    # the file makes about itself. Where a file also publishes `feelEnds`, that claim is held to as
+    # well.
+    EXCURSION = sorted(n for n in EXCURSION_ALL if n not in KNOWN_JERK)
+    exc_bad = []
+    for n in EXCURSION:
+        r = frows[n]
+        want_ends = r.get("feelEnds")
+        if r.get("error") or r["halving"] > BAR:
+            exc_bad.append((n, "continuity \u00d7%.3f" % r.get("halving", -1)))
+        elif r["ends"]["at0"] != r["ends"]["at1"]:
+            exc_bad.append((n, "left from %r and came home to %r"
+                               % (r["ends"]["at0"], r["ends"]["at1"])))
+        elif want_ends and (abs(r["ends"]["at0"] - want_ends[0]) > ARITHMETIC_SLACK
+                            or abs(r["ends"]["at1"] - want_ends[1]) > ARITHMETIC_SLACK):
+            exc_bad.append((n, "ends %s, wanted the declared %s" % (r["ends"], want_ends)))
+    check("PASS-FEEL every excursion curve is continuous and comes home to the door it left from",
+          not ferr and EXCURSION and not exc_bad,
+          ("%s each read a curve with no break in its speed anywhere along the hand, and each ends "
+           "the passage at the very number it began it at \u2014 %s"
+           % (EXCURSION,
+              "; ".join("%s \u00d7%.3f, both doors at %g"
+                        % (m, frows[m]["halving"], frows[m]["ends"]["at0"]) for m in EXCURSION))
+           if not exc_bad and not ferr else "off the law: %s" % exc_bad))
+
+    # ---- THE CATALOGUE, MEASURED LIVE ------------------------------------------------------------
+    # The catalogue above does not ask a named instrument to pass: it asks that its break BE THERE,
+    # measured, exactly as cited. So a repair landing without this file being told reds here, and a
+    # regression opening in a curve the catalogue does not name reds in that curve's own group.
     jerk_rows, jerk_bad = [], []
     for n in sorted(KNOWN_JERK):
         r = frows.get(n)
@@ -698,25 +733,72 @@ else:
            if not id_plant_bad and not hinge_plant_bad and not ferr
            else "identity plant: %s; hinge plant: %s" % (id_plant_bad or "ok", hinge_plant_bad or "ok")))
 
+    # ---- THE RED ON THIS REPAIR'S OWN SHAPES -----------------------------------------------------
+    # The 2026-09-06 repair takes the corner out of two shapes: a dead band left at the ramp's whole
+    # speed at once, and a two-piece knee hinged off the middle. Neither is proved by the repaired
+    # file passing — a row that could not tell the repair from what stood before it would be proving
+    # nothing. So each shape's OWN pre-repair spelling is planted back into a COPY of the file it was
+    # repaired in, character for character as it stood, and the row that now judges that instrument
+    # must fail against the plant. The planted spelling is not typed from memory either: it is the
+    # closed form the file still carries and the spline now samples (`feelKnee`), or the bare clamped
+    # ramp, so a plant that stopped reaching would red as a missing spelling rather than pass quietly.
+    #
+    # ONE VEHICLE PER SHAPE, not one per instrument: the repair is the same construction in every
+    # file, so twelve plants would measure one mechanism twelve times.
+    REPAIR_PLANTS = {
+        "liquid": ("return table(FEEL_Q, FEEL_D0, u);",
+                   "return clamp((clamp(u, 0, 1) - FEEL_D0) / (1 - 2 * FEEL_D0), 0, 1);"),
+        "grid-colour": ("return live * table(knotsOf(kind), 0, u);",
+                        "return live * feelKnee(FEEL[kind] || FEEL.stripes, u);"),
+        "hero": ("return FEEL_D0 + (1 - FEEL_D0) * table(FEEL_Q, 0, u);",
+                 "return FEEL_D0 + (1 - FEEL_D0) * feelKnee(u);"),
+    }
+    repair_rows, repair_bad = [], []
+    for n in sorted(REPAIR_PLANTS):
+        repaired, corner = REPAIR_PLANTS[n]
+        rsrc = ALL_SRC[n].read_text(encoding="utf-8")
+        if rsrc.count(repaired) != 1:
+            repair_bad.append((n, "the repaired spelling stands %d times in the file, not once"
+                                  % rsrc.count(repaired)))
+            continue
+        got = run_node(DRIVER, {ALL_SRC[n].name: rsrc.replace(repaired, corner)})
+        prow = None if isinstance(got, dict) else next(
+            (r for r in got if r["file"] == ALL_SRC[n].name), None)
+        if not prow or prow.get("error") or not (prow["halving"] > BAR):
+            repair_bad.append((n, "the corner planted back and the row did not catch it (%s)"
+                                  % (prow.get("halving") if prow else "driver error")))
+        else:
+            repair_rows.append((n, frows[n]["halving"], prow["halving"]))
+    check("PASS-FEEL each repaired shape's own corner, planted back, breaks the row that now judges "
+          "it",
+          not ferr and not repair_bad,
+          ("%s \u2014 each reads about a half as it ships and about a whole with its own corner put "
+           "back, so the rows above are measuring the repair and not the weather"
+           % "; ".join("%s \u00d7%.3f shipped, \u00d7%.3f planted" % r for r in repair_rows)
+           if not repair_bad and not ferr else "planted and not caught: %s" % repair_bad))
+
     # ---- THE FLEET'S OWN REACH, PRINTED EVERY RUN (item 4) -----------------------------------------
-    # Every instrument but the one named exception falls into exactly one of four buckets: judged for
-    # continuity as a table carrier, read as a clean analytic curve, read as an honest identity, or
-    # named in the jerk catalogue above. A instrument that fell into none of the four — a new file
-    # that declared a `feelClass` this row does not yet know, or one that slipped through undeclared —
-    # would be invisible to every check above without this row catching it, which is exactly the kind
-    # of silent rot item 4 asks not to happen.
-    COVERED = set(JUDGED) | set(CLEAN_MONOTONE) | set(IDENTITY) | set(KNOWN_JERK)
+    # Every instrument but the one named exception falls into exactly one of five buckets: judged for
+    # continuity as a table carrier, read as a monotone curve, read as an excursion, read as an
+    # honest identity, or still named in the jerk catalogue above. An instrument that fell into none
+    # of the five — a new file that declared a `feelClass` this row does not yet know, or one that
+    # slipped through undeclared — would be invisible to every check above without this row catching
+    # it, which is exactly the kind of silent rot item 4 asks not to happen.
+    COVERED = (set(JUDGED) | set(CLEAN_MONOTONE) | set(EXCURSION) | set(IDENTITY)
+               | set(KNOWN_JERK))
     expected_all = set(ALL_NAMES) - set(EXCEPTED)
     uncovered = sorted(expected_all - COVERED)
     overcounted = sorted(COVERED - expected_all)
     check("PASS-FEEL the roll call reaches every instrument in the fleet, and prints its own count "
           "every run",
           not ferr and not uncovered and not overcounted,
-          ("%d of %d instruments reached (%d table carriers judged for continuity, %d analytic "
-           "curves read clean, %d identities read exact, %d catalogued as known, not-yet-repaired "
-           "jerks), against 7 of 27 before this phase — %s excepted by name and read nowhere else"
-           % (len(COVERED), len(expected_all), len(JUDGED), len(CLEAN_MONOTONE), len(IDENTITY),
-              len(KNOWN_JERK), sorted(EXCEPTED))
+          ("%d of %d instruments reached (%d table carriers judged for continuity, %d monotone "
+           "curves judged for continuity, %d excursions judged for continuity, %d identities read "
+           "exact, %d still catalogued as known, not-yet-repaired jerks), against 7 of 27 before "
+           "Phase 7 and 15 of 26 before the 2026-09-06 repair — %s excepted by name and read "
+           "nowhere else"
+           % (len(COVERED), len(expected_all), len(JUDGED), len(CLEAN_MONOTONE), len(EXCURSION),
+              len(IDENTITY), len(KNOWN_JERK), sorted(EXCEPTED))
            if not uncovered and not overcounted and not ferr
            else "uncovered: %s; wrongly counted twice or not in the tree: %s"
                 % (uncovered, overcounted)))

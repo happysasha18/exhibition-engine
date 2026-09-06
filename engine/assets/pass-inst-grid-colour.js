@@ -480,15 +480,83 @@
     function feelLog(x, k) {
       return Math.abs(k) < 1e-6 ? x : (Math.exp(k * x) - 1) / (Math.exp(k) - 1);
     }
+    // The module's own knee, one kind's own three numbers handed in rather than looked up.
+    function feelKnee(F, u) {
+      u = clamp(u, 0, 1);
+      return u <= 0.5 ? F.c * feelLog(2 * u, F.k1)
+                      : F.c + (1 - F.c) * feelLog(2 * u - 1, F.k2);
+    }
+
+    /* HOW A KNEE IS READ BETWEEN TWO OF ITS OWN POINTS (2026-09-06). Each kind's two pieces meet at
+       the hand's own middle in VALUE — both stand at that kind's own `c` there — and NOT in the rate
+       the picture is moving at: not one of the four kinds is hinged at a half (0.30, 0.24, 0.28,
+       0.32), so a mirror about the middle does not put the two slopes at the join equal. Measured on
+       the departing layer's own curve, the speed stepped by 0.278 of the dial a unit of the hand at
+       0.50. It is the same corner S-20 carried out of `matter`, `beat`, `gears`, `gates`, `adrift`
+       and `waterline`, and Phase 7 out of `tilt` — whose knee is this knee in another key — and the
+       jolt his word of 2026-08-28 named.
+
+       THE REPAIR is the fleet's own, carried over rather than re-invented. Each kind's knee is
+       SAMPLED at twenty-one evenly spaced shares of its own domain — the width every measured table
+       in this tree already carries — and read back through the Fritsch-Carlson spline
+       `pass-inst-adrift.js` carries (`tangentsOf`/`table`, copied character for character, the same
+       way `pass-inst-tilt.js` copied them on 2026-09-01). The spline passes through all twenty-one
+       points exactly — each kind's own measured median among them, at the middle where it was
+       measured — cannot overshoot or turn back, and rests at both its own ends. Not one digit of the
+       four measurements moves; what changed is only the line drawn between their points. */
+    var FEEL_TANGENTS = [];
+    function tangentsOf(q) {
+      var t, n, h, d, m, i, a, b, s;
+      for (t = 0; t < FEEL_TANGENTS.length; t++) {
+        if (FEEL_TANGENTS[t][0] === q) return FEEL_TANGENTS[t][1];
+      }
+      n = q.length; h = 1 / (n - 1); d = []; m = [];
+      for (i = 0; i < n - 1; i++) d.push((q[i + 1] - q[i]) / h);
+      for (i = 0; i < n; i++) m.push(i === 0 || i === n - 1 ? 0 : (d[i - 1] + d[i]) / 2);
+      for (i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        a = m[i] / d[i]; b = m[i + 1] / d[i];
+        if (a < 0) { a = 0; m[i] = 0; }
+        if (b < 0) { b = 0; m[i + 1] = 0; }
+        s = a * a + b * b;
+        if (s > 9) { s = 3 / Math.sqrt(s); m[i] = s * a * d[i]; m[i + 1] = s * b * d[i]; }
+      }
+      FEEL_TANGENTS.push([q, m]);
+      return m;
+    }
+    function table(q, d0, u) {
+      var x = clamp(d0 > 0 ? (clamp(u, 0, 1) - d0) / (1 - 2 * d0) : clamp(u, 0, 1), 0, 1);
+      var n = q.length, h = 1 / (n - 1), m = tangentsOf(q);
+      var i = Math.min(n - 2, Math.floor(x * (n - 1)));
+      var s = (x - i * h) / h, s2 = s * s, s3 = s2 * s;
+      return (2 * s3 - 3 * s2 + 1) * q[i] + (s3 - 2 * s2 + s) * h * m[i]
+           + (3 * s2 - 2 * s3) * q[i + 1] + (s3 - s2) * h * m[i + 1];
+    }
+    // The twenty-one shares of a curve's own travel, read off the curve itself rather than typed a
+    // second time, so no digit of it can drift between the shape and the points that carry it.
+    function feelKnots(f) {
+      var q = [], i;
+      for (i = 0; i <= 20; i++) q.push(f(i / 20));
+      return q;
+    }
+    // One kind's own twenty-one points, built the first time that kind is asked for and kept, since
+    // every frame of a passage reads the same one.
+    var FEEL_QS = {};
+    function knotsOf(kind) {
+      var F = FEEL[kind] || FEEL.stripes;
+      if (!FEEL_QS[kind]) {
+        FEEL_QS[kind] = feelKnots(function (x) { return feelKnee(F, x); });
+      }
+      return FEEL_QS[kind];
+    }
     // The module's own `feel`, with `live` handed in rather than looked up.
     function feelOf(kind, u, live) {
-      var F = FEEL[kind] || FEEL.stripes;
-      u = clamp(u, 0, 1);
-      var f = u <= 0.5 ? F.c * feelLog(2 * u, F.k1)
-                       : F.c + (1 - F.c) * feelLog(2 * u - 1, F.k2);
-      return live * f;
+      return live * table(knotsOf(kind), 0, u);
     }
-    // The same walk read backwards, so a bench can put the two roads at ONE raw dial.
+    // The same walk read backwards, so a bench can put the two roads at ONE raw dial. It inverts the
+    // KNEE — the measured shape itself — so it answers exactly at each of the twenty-one points the
+    // curve above is built from, and between two of them to within the difference a straight line
+    // and the spline make there. It is a bench aid and no picture rides it.
     function feelInv(kind, y) {
       var F = FEEL[kind] || FEEL.stripes;
       y = clamp(y, 0, 1);
