@@ -465,7 +465,15 @@
     var amp = breathAmplitude();
     var capTilt = handSpan("tilt") / 6;
     var capMix = handSpan("mix") / 6;
-    return { mix: clamp(lean.value + breathValue(t), -capMix, capMix),
+    // 2026-09-06, measured live at 1440x900 (CDP input, img.work.style.transform): a plain hover
+    // painted only 0.012 of the frame's width, next to a press-and-drag's 0.054 — because mix's
+    // own driver, `lean`, answers a press alone, and a hover's mix carried nothing but the breath.
+    // Attend's free point already rides `tilt` on its y (below); the same point's x now rides
+    // `mix` too, at the SAME amp the breath already plays there, gated to zero while `lean` is
+    // engaged so a press keeps summing exactly `lean.value + breathValue` as it always has. A
+    // hover now reads ~0.027, about half the press reach, through this file's own attend/lean verbs.
+    var hoverMix = lean.engaged ? 0 : attend.x * amp;
+    return { mix: clamp(lean.value + hoverMix + breathValue(t), -capMix, capMix),
              tilt: clamp(attend.y * amp + ringValue(t), -capTilt, capTilt) };
   }
 
