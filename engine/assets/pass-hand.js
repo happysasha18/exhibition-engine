@@ -56,6 +56,33 @@
 
   function attach(el, workRecord) {
     attached = (workRecord && workRecord.id != null) ? workRecord.id : null;
+    // THE ROOT OF S-38's OWN DEFECT, STILL STANDING FOR EVERY CALLER OF THIS DOOR (measured
+    // 2026-09-06): three roads call `attach` — a press, a hover (both 01a-pass.js), and the
+    // zoom-close re-attach a few lines below THAT file's own MutationObserver — and until now none
+    // of them repainted anything here. `attached` is bookkeeping only; `paint()` reads `currentEl`,
+    // set solely by this file's OWN pointerover/pointerdown listeners below, which never re-fire on
+    // a re-attach with no fresh pointer event. Proven on a real run: press a work, pinch it open,
+    // Escape it closed with the mouse held still — `report().attached` names the work correctly and
+    // `img.style.transform` stays "" (S-38's own defect: computed, reported, painted nowhere).
+    // Fixed once here, where every caller already converges, rather than patched on each of the
+    // three callers separately.
+    //
+    // `overWork` IS ASKED OF THE BROWSER, NOT ASSUMED (found 2026-09-06 reviewing this very fix): a
+    // press and a hover call this door FROM the native event that makes it true — the pointer really
+    // is on `el` this instant. The zoom-close re-attach a few lines below calls it from
+    // `passHandLastEl`, a name remembered from BEFORE the closer look ever opened; nothing says the
+    // pointer is still there once it closes; a mouse is free to leave while the closer look covers
+    // the page and never fire a real `pointerout` for a picture it already stopped hit-testing.
+    // Setting `overWork` unconditionally would paint a work the pointer had already left, and no
+    // event was left behind to ever correct it — `:hover` is the one live, zero-cost answer this
+    // file can ask instead of assuming. A touch press does not read `:hover` reliably; it does not
+    // need to, since `handOn()` below is already `overWork || pointerId !== null`, and a genuine
+    // press keeps `pointerId` set through this file's OWN `pointerdown` handler regardless of what
+    // this line decides.
+    if (!el) return;
+    currentEl = el;
+    try { overWork = el.matches(":hover"); } catch (e) { overWork = true; }
+    ensureLoop();
   }
   function detach() {
     attached = null;

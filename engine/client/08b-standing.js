@@ -98,6 +98,16 @@
 
   // Answers whether a breath was actually written, which is what the loop below runs on.
   function standDraw() {
+    // OWNER'S WORD, 2026-09-06: a work that moves while nobody is touching it is excess, and the
+    // motion belongs under the hand instead (`pass-hand.js`'s own `paint()`, which this stand-down
+    // never touches — the breath it rides, `breathUnit`, is unchanged). Standing off unconditionally
+    // — `standClear()` takes whatever `scale` a picture still carries back off it, and returning
+    // `false` is `standTick` below's own signal to stop re-arming, so the loop goes back to sleep
+    // for good rather than drawing nothing forever. The rest of this function is kept rather than
+    // deleted — a later "bring the ambient breath back" has a real body to re-enable, not a rewrite
+    // from nothing — but nothing below this line runs any more.
+    standClear();
+    return false;
     const id = conductorVoiced();
     if (id == null) { standClear(); return false; }
     if (id !== standId || standViewport() !== standAt || !document.body.contains(standEl)) {

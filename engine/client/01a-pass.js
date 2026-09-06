@@ -4063,14 +4063,26 @@
   // stands (#ex-zoom.show, inset:0), so a real press during zoom always lands on ITS OWN elements —
   // never back through to the covered `.exh-frame img.work` — and the target test excludes it same
   // as any other foreign element, by construction rather than by a second flag.
-  addEventListener("pointerdown", (e) => {
+  // The one door both a press and a hover walk through — a shared function rather than the same
+  // four lines copied onto a second listener, so a later third road (S-112's zoom-close re-attach
+  // below already is one) never has to re-derive what counts as "the reach".
+  function passHandAttachFrom(e) {
     const img = e.target.closest && e.target.closest(".exh-frame img.work");
     if (!img) return;
     const w = passHandWorkFor(img);
     if (!w) return;
     passHandLastEl = img;
     if (passHand) passHand.attach(img, w);
-  }, { capture: true, passive: true });
+  }
+  addEventListener("pointerdown", passHandAttachFrom, { capture: true, passive: true });
+  // THE HAND ANSWERS A HOVER TOO (measured 2026-09-06 on a staged headless sweep of tlvphotos.com:
+  // 25 mouse-move steps across a standing work with no button held left `img.style.transform`
+  // untouched). The door above opened only on `pointerdown`, so a visitor who never presses — most
+  // of a desktop visit — never reached this file's own `attach`, and the zoom-close re-attach below
+  // (`passHandLastEl`) never had a hover to remember either. Same door, same reach, no fresh gate:
+  // `pointerover` fires once per entry (the capture test below refuses everything `pointerdown`
+  // already refuses), and the press path is untouched — this listener never fires on a pointerdown.
+  addEventListener("pointerover", passHandAttachFrom, { capture: true, passive: true });
   // EX-ZOOM covers the very same picture with its own face, in its own file (never edited here): the
   // hand steps off while it stands and returns the instant it clears, without waiting for a fresh
   // press. `document.body`'s `ex-zoom` class is that layer's own already-shipped signal — set

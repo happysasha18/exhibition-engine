@@ -14,6 +14,21 @@ the six verbs of Requirement 38 criterion 1 — arrive, attend, lean, hold, rele
 by mouse and touch alike (rows 8-15), plus the chart law of criterion 4 (row 14) and a fresh proof
 that the walk's own frame index still never moves under any of it (row 16).
 
+2026-09-06: THE ATTACH DOOR OPENS ON A HOVER TOO (row 18), and every reading it feeds — `attend`
+and `lean` — now reaches the picture with no button held, the same door a press already opened. The
+row reads the DOM's own `img.style.transform`, never `report()` alone: a hover that reaches
+`attach()` but never restores `currentEl` would still show `report().attached` correctly while
+painting nothing, exactly the class of defect S-38's own row 4 comment already names ("computed,
+reported, and reached no pixel at all") — measured here on the zoom-close re-attach road, the one
+place this tree could show it standing today (a plain hover alone already painted something, off
+the ambient breath sharing this file's one `currentEl`, so it could not carry the proof on its own).
+
+A second phone-floor pass through this file (`PHONE_REACH_FLOOR`, a clamp in `paint()`, and a row
+19 proving it) was REMOVED the same day: the desktop measurement behind it was retracted — a fresh
+re-measurement driving the identical relative drag on both frame sizes reads the same proportion on
+each to three decimals, so the hand already scales with the screen and the floor was a step with no
+reading left behind it.
+
 Run: python tests/test_pass_hand.py
 """
 import json
@@ -120,6 +135,9 @@ ROWS = [
     "of the table word for word, the six do not all ring alike, and a work whose family is not "
     "determined falls back by name to the hinged panels' row — the count this file carried before "
     "the table existed",
+    "EX-HAND row18 the attach door opens on a hover too: a hovered work that is carried through a "
+    "closer-look open/close with no fresh press reads a non-empty img.style.transform once the "
+    "closer look clears, where before this pass it read empty",
 ]
 
 # ---------------------------------------------------------------- row 1: the bake, a string proof
@@ -650,6 +668,45 @@ else:
                   f"family's ring answered word for word={rings_match}; the counts across the six "
                   f"are {counts!r}; the hand at rest reads {mine!r} against the served hinged "
                   f"panels' row {hinged['ring']!r}")
+
+        # row 18 — the attach door opens on a hover too (2026-09-06). The plain hover-alone case
+        # already paints SOMETHING even before this pass — the ambient breath shares the one
+        # `currentEl` this file's own internal pointerover listener sets on any real hover — so it
+        # cannot carry a red-before-this-pass proof on its own. The zoom-close re-attach can: it is
+        # the one road this tree already drives (row 4 above) where `attach()` runs with NO native
+        # pointer event behind it, so before this pass it only ever bookkept `report().attached` and
+        # never restored `currentEl` — the picture stayed at whatever `detach()`'s own `unpaint()`
+        # had already cleared it to. This row never fires a fresh pointer event after the closer
+        # look clears, and reads the DOM directly rather than `report()` alone.
+        with Browser(width=1280, height=900) as br:
+            br.touch(True, 2)
+            room(br, base)
+            wait_for(br, HAND_READY)
+            fire(br, WORK, "pointerover", "mouse", 0.3, 0.5, 201)  # a hover — no pointerdown, ever
+            for i in range(25):
+                fire(br, WORK, "pointermove", "mouse", 0.3 + i * (0.5 / 24.0), 0.5, 201)
+            transform_before_zoom = br.evaluate(
+                "document.querySelector(%s).style.transform" % json.dumps(WORK))
+            attached_before_zoom = hand_report(br)["attached"]
+            br.evaluate(PINCH_OPEN_ZOOM)
+            wait_for(br, ZOOM_UP)
+            transform_during_zoom = br.evaluate(
+                "document.querySelector(%s).style.transform" % json.dumps(WORK))
+            br.key("Escape")
+            wait_for(br, ZOOM_GONE)
+            br.sleep(0.5)   # no further pointer event fires — the closer look alone must restore it
+            transform_after_zoom = br.evaluate(
+                "document.querySelector(%s).style.transform" % json.dumps(WORK))
+            attached_after_zoom = hand_report(br)["attached"]
+            check(ROWS[17],
+                  bool(transform_before_zoom) and transform_during_zoom == ""
+                  and bool(transform_after_zoom) and attached_before_zoom is not None
+                  and attached_after_zoom == attached_before_zoom,
+                  f"transform: before_zoom={transform_before_zoom!r} during_zoom="
+                  f"{transform_during_zoom!r} after_zoom={transform_after_zoom!r} (want non-empty "
+                  f"before, empty during, non-empty after with no fresh pointer event) — "
+                  f"attached: before_zoom={attached_before_zoom!r} after_zoom={attached_after_zoom!r}")
+
 
 # ---------------------------------------------------------------- report
 import shutil  # noqa: E402
