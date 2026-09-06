@@ -1522,6 +1522,13 @@ lightens the score first, then drops accompaniment voices to 30 frames a second 
 gesture keeps 60, then eases resolution toward 0.75 of device pixels, and stops at a floor below
 which the plain fallback plays instead of a thin miracle.
 
+**Where the device is measured, added 2026-09-06.** Device capability and frame timing are measured
+only in the visitor browser at runtime. Build and CI never measure the builder host. Tests inject
+deterministic capability values. The ceiling a crossing is cast under comes from `readDevice()`,
+read once at load; the ladder above moves on the visitor's own frame gaps. A headless drive on the
+builder proves contracts and casts; it proves nothing about any phone's speed, and no row of this
+document reads a frame time as an acceptance signal.
+
 **The frame state names the drawing buffer, added 2026-08-16.** The state handed to `frame` carries
 the CSS frame as `viewport.w`/`viewport.h` and the drawing buffer as `viewport.bufferW`/
 `viewport.bufferH` — the same two numbers the host binds as the `resolution` uniform source. The
