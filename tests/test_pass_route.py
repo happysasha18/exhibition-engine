@@ -59,6 +59,7 @@ temporary bake this suite serves and is restored byte for byte afterwards.
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -131,6 +132,283 @@ check("EX-ROUTE the role is derived in one place and put on the request in one p
       "passRouteRole is declared %d time(s) and the request is written %d time(s); the %d further "
       "mention(s) of the name read the role back off a request that already carries it"
       % (SRC.count("function passRouteRole("), len(ROLE_WRITES), ROLE_READS))
+
+# ==================================================================================================
+# THE WALK'S ONE IMPOSSIBLE EVENT IS HELD FOR THE STEP IT NAMES THE CULMINATION
+# ==================================================================================================
+#
+# THE DEFECT, MEASURED. With the composer repaired (729bd13 — a role whose tier shelf 17 floors with
+# a miracle is PLANNED for), a step named a culmination still reached one on 7 of 40 simulated
+# routes, and 20 of the 40 were refused with the composer's own new sentence: «the walk had already
+# spent its one impossible event on an earlier crossing». The two laws collided. A walk spends ONE
+# impossible event and the first fold anywhere on it is that event (naряд S-18); a culmination FLOORS
+# at exactly one; and `ROLE_BUDGETS.middle.miracle` is true, so any of the several middles a route
+# puts before its crest could spend the walk's only one on the way there.
+#
+# WHAT IS AUTHORED IS THE DIRECTOR'S OWN INTENT, and it is soft: while the route still holds an
+# uncrossed crest, a middle before it is sent a walk log saying the event is not its to spend, so a
+# fold it casts plays as an ordinary letter — which is exactly what a fold after the crest already
+# does. The crest itself, and every step after it, are sent the walk's own true log. Where the crest's
+# own pair is refused by the composer's gate, the hold ends with that crossing rather than with the
+# tier it managed, so the steps after it are free.
+#
+# HOW THIS IS MEASURED, AND WHY BOTH ARMS RUN IN ONE PROCESS. 40 routes of ten works are walked
+# through the composer's own `passageFor` — real WorkRecords out of `tests/fixture_pass_works.json`,
+# nine crossings each, at the nine names the walk's own grammar reads off a ten-work hang (the
+# grammar itself is what the browser rows above judge; these rows judge what the walk does with the
+# one slot once the names are read). `walkMemory`, `walkGenres` and `walkMiracles` are threaded
+# forward exactly as `01a-pass.js` builds them at the dock. The two arms differ in ONE thing: the
+# BEFORE arm sends the walk's own spent list as this file sent it before today, and the AFTER arm
+# sends it through the shipped policy — `passMiraclesToSend` and `passCrestAhead` lifted out of
+# `engine/client/01a-pass.js` as text and run, never retyped here, so a policy deleted or renamed
+# reddens these rows rather than quietly leaving them measuring a copy.
+MIRACLE_ROWS = [
+    "EX-ROUTE the walk holds its one impossible event for the step it names the culmination — the "
+    "crest reaches one far more often, and hardly any walk spends it before getting there",
+    "EX-ROUTE no route that reached its crest lawfully loses it, and every crest that still falls "
+    "short says which gate refused it",
+    "EX-ROUTE the hold ends at the crest and never outlives it, and the walk spends no more "
+    "impossible events than it did",
+    "EX-ROUTE the hold is authored in one place, the request is built through it, and the step's "
+    "own record says when it stood",
+]
+
+FIXTURE_WORKS = Path(__file__).resolve().parent / "fixture_pass_works.json"
+NODE = shutil.which("node")
+# The nine names a ten-work hang reads, in the order shelf 15's own grammar puts them: the visit's
+# opening, the homes the eye settles in, the motions away, the crest, and the way back.
+ROUTE_ROLES = ["entrance", "quiet link", "middle", "middle", "culmination",
+               "middle", "quiet link", "middle", "return"]
+
+
+def lift(name):
+    """The shipped policy's own text, taken out of `01a-pass.js` whole. The functions stand at one
+    indent inside the module closure, so the body runs to the first line that closes at that indent;
+    a name this cannot find is a red below and never a silently skipped reading."""
+    m = re.search(r"\n  function %s\(.*?\n  \}\n" % re.escape(name), SRC, re.S)
+    return m.group(0) if m else None
+
+
+MIRACLE_HELD_LINE = re.search(r'\n  const PASS_MIRACLE_HELD = "[^"]*";\n', SRC)
+POLICY_PARTS = {name: lift(name) for name in ("passCrestAhead", "passMiraclesToSend")}
+
+MIRACLE_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const job = %(job)s;
+
+let joined = null;
+const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
+vm.createContext(sandbox);
+vm.runInContext(%(source)s, sandbox, {filename: "pass-composer.js"});
+const composer = joined.make(%(consts)s);
+const works = %(works)s;
+
+// THE DIRECTOR'S OWN POLICY, run as the text it ships as. Nothing here re-states it.
+const policy = new Function(job.policy + "\nreturn {held: PASS_MIRACLE_HELD, "
+  + "crestAhead: passCrestAhead, toSend: passMiraclesToSend};")();
+
+// A DIE PER CROSSING, ON THE EDGE'S OWN NAME, inside the composer's own published seed span — the
+// same shape `passSeedFor` strikes, without the visit seed a simulation has no visit to read.
+const SPAN = composer.seedSpan;
+function seedOf(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return SPAN[0] + ((h >>> 0) / 4294967296) * (SPAN[1] - SPAN[0]);
+}
+
+// ONE WALK. `played` is the walk's own route record as `passEdgeRemember` files it — one row per
+// crossing that landed, carrying the edge's key, the road it ran on, the instruments its stack
+// carried and the fold, if any, its score voiced the miracle on. The three lists the request carries
+// are read back off it exactly as `passWalkMemory` / `passWalkGenres` / `passWalkMiracles` read it.
+function walk(ids, holding) {
+  const shape = {ids: ids, crest: job.roles.indexOf("culmination")};
+  const played = [], steps = [];
+  for (let i = 0; i < job.roles.length; i++) {
+    const from = String(ids[i]), to = String(ids[i + 1]);
+    const forward = from <= to;
+    const edgeKey = forward ? from + "__" + to : to + "__" + from;
+    const memory = [], genres = [], spent = [];
+    for (let j = played.length - 1; j >= 0; j--) {
+      if (played[j].genre) { memory.push(played[j].genre); genres.push(played[j].genre); }
+      played[j].stack.forEach((id) => { if (id) memory.push(id); });
+      if (played[j].miracle) spent.push(played[j].miracle);
+    }
+    const sent = holding
+      ? policy.toSend(spent, policy.crestAhead(shape, played), job.roles[i])
+      : spent;
+    const got = composer.passageFor({
+      workRecordA: works[forward ? from : to], workRecordB: works[forward ? to : from],
+      direction: forward ? "a-to-b" : "b-to-a", seed: seedOf(edgeKey),
+      routeRole: job.roles[i], walkMemory: memory, walkGenres: genres, walkMiracles: sent});
+    const cues = (got && got.plan && got.plan.cues) || [];
+    const miracleCue = cues.filter((c) => c.voice === "miracle")[0] || null;
+    const miracle = (miracleCue && miracleCue.instrument && miracleCue.instrument.id) || null;
+    steps.push({role: job.roles[i], realisedTier: got ? (got.realisedTier || null) : null,
+                why: got ? (got.downgradeReason || null) : null, miracle: miracle,
+                held: sent.indexOf(policy.held) >= 0,
+                declined: got ? (got.declined || null) : "the entry answered nothing"});
+    played.push({edgeKey: edgeKey, genre: (got && got.plan && got.plan.genre) || null,
+                 stack: cues.map((c) => c.instrument && c.instrument.id),
+                 miracle: miracle});
+  }
+  return steps;
+}
+
+const out = [];
+for (const ids of job.routes) out.push({before: walk(ids, false), after: walk(ids, true)});
+console.log(JSON.stringify(out));
+"""
+
+
+def miracle_run():
+    fix = json.loads(FIXTURE_WORKS.read_text(encoding="utf-8"))
+    ids = sorted(fix["works"])
+    # 40 ROUTES, DEALT OFF THE FIXTURE ITSELF rather than chosen: each starts three works further on
+    # and steps by seven, which is coprime with the fixture's own count, so every route is ten
+    # distinct works and the forty between them cross the whole collection rather than one corner.
+    routes = [[ids[(r * 3 + i * 7) % len(ids)] for i in range(len(ROUTE_ROLES) + 1)]
+              for r in range(40)]
+    driver = TMP / "route-miracle.js"
+    driver.write_text(MIRACLE_DRIVER % {
+        # The namespace token the build fills in, emptied here exactly as the composer's own suite
+        # empties it (`tests/test_pass_bundle.py`) — the file ships as a template.
+        "source": json.dumps(COMPOSER.read_text(encoding="utf-8").replace("@@NS@@", "")),
+        "consts": json.dumps(fix["consts"]),
+        "works": json.dumps(fix["works"]),
+        "job": json.dumps({"routes": routes, "roles": ROUTE_ROLES,
+                           "policy": MIRACLE_HELD_LINE.group(0) + POLICY_PARTS["passCrestAhead"]
+                                     + POLICY_PARTS["passMiraclesToSend"]}),
+    }, encoding="utf-8")
+    proc = subprocess.run([NODE, str(driver)], capture_output=True, text=True, timeout=900)
+    if proc.returncode != 0:
+        return {"error": (proc.stderr or "").strip()[-1200:]}
+    lines = (proc.stdout or "").strip().splitlines()
+    return json.loads(lines[-1]) if lines else {"error": "the route driver said nothing"}
+
+
+CREST_AT = ROUTE_ROLES.index("culmination")
+SPENT_SAYS = "already spent its one impossible event"
+
+
+def tally(arm):
+    """Every route whose crest fell short, counted by the gate that refused it — the composer's own
+    sentence, cut at its first clause so four reasons do not read as forty."""
+    out = {}
+    for steps in arm:
+        step = steps[CREST_AT]
+        if step["realisedTier"] == "culmination":
+            continue
+        why = step["why"] or step["declined"] or "nothing said"
+        key = ("the walk had already spent its one impossible event" if SPENT_SAYS in why
+               else "no arrival voice at all" if "no arrival voice" in why
+               else "every bundle that would have made one was refused" if "every bundle" in why
+               else "no instrument in the ranking opens a world" if "opens a world" in why
+               else why[:70])
+        out[key] = out.get(key, 0) + 1
+    return out
+
+
+if not NODE or not FIXTURE_WORKS.exists() or not MIRACLE_HELD_LINE \
+        or not all(POLICY_PARTS.values()):
+    _missing = [n for n, t in POLICY_PARTS.items() if not t] + \
+               ([] if MIRACLE_HELD_LINE else ["PASS_MIRACLE_HELD"])
+    if _missing:
+        # NOT A SKIP. The policy is the subject of these rows; a tree that does not carry it is a
+        # tree where the walk spends its one impossible event before it reaches its crest.
+        for _n in MIRACLE_ROWS[:3]:
+            check(_n, False, "engine/client/01a-pass.js carries no %s, so the walk holds nothing "
+                             "back for the step it names its culmination" % ", ".join(_missing))
+    else:
+        for _n in MIRACLE_ROWS[:3]:
+            skip(_n, "node is not on this machine" if not NODE
+                 else "tests/fixture_pass_works.json is not on this machine")
+else:
+    _run = miracle_run()
+    if not isinstance(_run, list):
+        for _n in MIRACLE_ROWS[:3]:
+            check(_n, False, "the route driver itself failed: " + json.dumps(_run)[:800])
+    else:
+        _before = [r["before"] for r in _run]
+        _after = [r["after"] for r in _run]
+        _reached_b = {i for i, s in enumerate(_before) if s[CREST_AT]["realisedTier"] == "culmination"}
+        _reached_a = {i for i, s in enumerate(_after) if s[CREST_AT]["realisedTier"] == "culmination"}
+        _tally_b, _tally_a = tally(_before), tally(_after)
+        _spent_b = sum(v for k, v in _tally_b.items() if "already spent" in k)
+        _spent_a = sum(v for k, v in _tally_a.items() if "already spent" in k)
+        _early_b = sum(1 for s in _before if any(x["miracle"] for x in s[:CREST_AT]))
+        _early_a = sum(1 for s in _after if any(x["miracle"] for x in s[:CREST_AT]))
+        # THE RESIDUE, NAMED RATHER THAN ROUNDED OFF. A step the hold was in force on that spent the
+        # event anyway spent it by a road `spendsTheMiracle` does not read: `mayFold` opens the
+        # ARRIVING WORK'S OWN WORLD off the role's budget alone, and a world voices the miracle on
+        # the travelling move exactly as a fold does. The walk has no lever on that road — it is the
+        # composer's, beside `spendsTheMiracle` — so it is measured here and left where it lives.
+        _leaked = [(i, j) for i, s in enumerate(_after) for j, x in enumerate(s)
+                   if x["held"] and x["miracle"]]
+        # ---- ROW 1: the crest reaches its tier far more often, and hardly anything is spent before
+        check(MIRACLE_ROWS[0],
+              len(_reached_a) > len(_reached_b) and _early_a < _early_b and _spent_a < _spent_b,
+              "%d of %d routes reached a culmination at the step named one before, %d after; %d "
+              "walks spent the event before reaching their crest before, %d after. Crests refused "
+              "before: %s. After: %s. The %d step(s) that spent it under the hold spent it on the "
+              "arriving work's own world (%s), which is the composer's own road and not the walk's."
+              % (len(_reached_b), len(_run), len(_reached_a), _early_b, _early_a,
+                 json.dumps(_tally_b, sort_keys=True), json.dumps(_tally_a, sort_keys=True),
+                 len(_leaked), _leaked))
+        # ---- ROW 2: nothing lawful is taken from a route that already had its crest --------------
+        # A CREST REACHED ON A WALK THAT SPENT TWO IMPOSSIBLE EVENTS was never lawfully reached:
+        # shelf 6 gives a walk one. Those are read out of the before arm rather than counted as
+        # losses — the composer's `mayFold` road hands a second event to a walk that has already
+        # spent one, and a crest bought with it is a crest bought against the charter.
+        _twice_b = {i for i, s in enumerate(_before) if sum(1 for x in s if x["miracle"]) > 1}
+        _lost = sorted((_reached_b - _twice_b) - _reached_a)
+        _traded = sorted((_reached_b & _twice_b) - _reached_a)
+        _silent = [i for i, s in enumerate(_after)
+                   if s[CREST_AT]["realisedTier"] != "culmination"
+                   and not (s[CREST_AT]["why"] or s[CREST_AT]["declined"])]
+        check(MIRACLE_ROWS[1],
+              not _lost and not _silent,
+              "%d route(s) lost a crest reached on a walk that spent one event%s; %d route(s) lost "
+              "a crest that had been bought with a SECOND event on the same walk (routes %s); %d "
+              "crest(s) fell short with nothing said"
+              % (len(_lost), "" if not _lost else " (routes " + str(_lost) + ")",
+                 len(_traded), _traded, len(_silent)))
+        # ---- ROW 3: the hold ends at the crest, and the one-event law is not loosened ------------
+        # WHY THIS IS THE GUARANTEE A WALK GETS. The hold never survives the crest, so a walk that
+        # ends with no impossible event at all is one whose own pairs offered none from the crest
+        # onward — never one the walk's intent went on forbidding. That is what the first clause
+        # measures, and it is why no floor under the event count is asserted: a floor would be a
+        # number chosen here rather than read.
+        _late_hold = [(i, j) for i, s in enumerate(_after)
+                      for j in range(CREST_AT, len(ROUTE_ROLES)) if s[j]["held"]]
+        _twice_a = {i for i, s in enumerate(_after) if sum(1 for x in s if x["miracle"]) > 1}
+        _wow_b = sum(1 for s in _before if any(x["miracle"] for x in s))
+        _wow_a = sum(1 for s in _after if any(x["miracle"] for x in s))
+        _late_b = sum(1 for s in _before for j in range(CREST_AT + 1, len(ROUTE_ROLES))
+                      if s[j]["miracle"])
+        _late_a = sum(1 for s in _after for j in range(CREST_AT + 1, len(ROUTE_ROLES))
+                      if s[j]["miracle"])
+        check(MIRACLE_ROWS[2],
+              not _late_hold and len(_twice_a) <= len(_twice_b),
+              "%d step(s) at or after the crest were held; %d route(s) spent two events on one walk "
+              "before, %d after; %d of %d walks played an impossible event at all before, %d after; "
+              "the middles AFTER the crest played %d before and %d after"
+              % (len(_late_hold), len(_twice_b), len(_twice_a), _wow_b, len(_run), _wow_a,
+                 _late_b, _late_a))
+
+# ---- ROW 4: one home for the policy, one write of the list, one field on the record --------------
+check(MIRACLE_ROWS[3],
+      SRC.count("function passMiraclesToSend(") == 1
+      and SRC.count("passMiraclesToSend(") == 2
+      and SRC.count("req.walkMiracles = ") == 1
+      and "req.walkMiracles = passMiraclesToSend(" in SRC
+      and SRC.count("function passCrestAhead(") == 1
+      and SRC.count("passage.miracleHeldForCrest = passMiracleHeldSaid(request.walkMiracles)") == 1,
+      "passMiraclesToSend is declared %d time(s) and called %d time(s); the walk's miracle list is "
+      "written onto the request %d time(s); the step's own record is written %d time(s)"
+      % (SRC.count("function passMiraclesToSend("), SRC.count("passMiraclesToSend(") - 1,
+         SRC.count("req.walkMiracles = "),
+         SRC.count("passage.miracleHeldForCrest = passMiracleHeldSaid(request.walkMiracles)")))
 
 # ---------------------------------------------------------------- the browser rows
 BROWSER_ROWS = [

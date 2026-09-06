@@ -2278,7 +2278,12 @@
     // the ONE the crossing spent its miracle on. `passWalkMiracles` reads the one thing that does:
     // which cue, if any, `pass-composer.js` itself voiced `"miracle"` on the step's own score,
     // filed at the dock exactly where `passWalkMemory`/`passWalkGenres` already read.
-    req.walkMiracles = passWalkMiracles();
+    // …AND THE WALK'S OWN INTENT FOR THAT ONE SLOT, which is the only thing standing between the
+    // list and the request (`passMiraclesToSend` above, and the whole of why it does): while the
+    // route still holds an uncrossed crest, a step that is not the crest is sent a log saying the
+    // event is not its to spend, so the crest finds it unspent when it gets there.
+    req.walkMiracles = passMiraclesToSend(passWalkMiracles(),
+                                          passCrestAhead(passRouteShape(), passRoutePlayed), role);
     // …AND THE VISIT'S OWN MEMORY OF ITSELF, shelf 16's fourth step, filled at this one place for
     // the same reason `walkMemory` is: the walk is the one that knows. Left OFF the request where
     // the visit has been shown nothing yet, rather than sent as three empty lists — an absent field
@@ -2347,6 +2352,76 @@
       if (step && step.miracle) out.push(step.miracle);
     }
     return out;
+  }
+
+  // ---- THE ONE IMPOSSIBLE EVENT IS HELD FOR THE STEP THE ROUTE NAMES ITS CULMINATION -------------
+  // TWO LAWS THIS FILE ALREADY STATES MEET HERE, AND UNTIL THIS THEY CONTRADICTED EACH OTHER ON
+  // MOST ROUTES. The first: a walk spends ONE impossible event, and the first fold anywhere on it is
+  // that event (naряд S-18 — `spendsTheMiracle` in pass-composer.js reads whether the walk has
+  // played the miracle at all). The second: the widest step of the route is its culmination, and
+  // shelf 17's culmination row FLOORS at exactly one impossible event, so a step named a culmination
+  // that carries none is not one. A middle is granted a miracle too (`ROLE_BUDGETS.middle.miracle`),
+  // and a route puts several middles before its crest — so the two laws collide BY CONSTRUCTION and
+  // not by luck: the crest is the LAST of the steps granted the one event, every middle ahead of it
+  // may take it, and whichever of them first casts a fold ends the matter. The crest was then
+  // refused in the composer's own words — «the walk had already spent its one impossible event on
+  // an earlier crossing» — for a reason that had nothing to do with the pair standing at the crest.
+  // What that costs a walked route is measured, before and after, in tests/test_pass_route.py.
+  //
+  // WHAT IS AUTHORED HERE IS THE WALK'S OWN INTENT, and it is a SOFT one — no quota, no pair map, no
+  // instrument named for a role, and nothing new measured. While the route still holds a step this
+  // director named the crest, the event is held for it: a middle crossed before the crest asks under
+  // its own name and its own letters exactly as it always did, and only the one slot is closed to
+  // it — a fold it casts plays as an ordinary letter, which is what a fold after the crest already
+  // does today. A middle crossed AFTER the crest, and a middle on a route with no crest left ahead,
+  // keep today's budget untouched.
+  //
+  // AND THE HOLD IS RELEASED BY THE CREST ITSELF, whichever way that step goes. Where the crest
+  // spends the event, the walk's own log says so from then on and this reads it there. Where the
+  // composer's gate refuses every candidate for that pair — a crossing with no arrival voice, no
+  // world-folding instrument in the ranking, every shaped bundle refused — the crest is still a step
+  // the walk has WALKED, so the hold ends there too and the steps after it are free. That is the
+  // fallback, and it needs no second reading: what the hold waits on is the crest EDGE being
+  // crossed, never the tier it managed.
+  //
+  // THE CREST EDGE, NOT THE CREST'S NAME. The two visit facts outrank the curve when the name is
+  // read (`passRouteStation`): the crest edge crossed as the visit's own first step asks as an
+  // entrance, and re-crossed inside the visit window it asks as a return — so a walk that waited for
+  // a step named `culmination` could wait for one that can never come, and play no miracle at all.
+  // What is read instead is whether that EDGE has been walked, off the walk's own route record.
+  const PASS_MIRACLE_HELD = "held for the step this route names its culmination";
+  // The crest edge's own key is the two work ids sorted and joined, which is the one shape an edge
+  // is ever named by on this walk (`passEdgeContext` authors it, and `passRoutePlayed` files it).
+  function passCrestAhead(shape, played) {
+    if (!shape || !Array.isArray(shape.ids) || shape.ids.length < 2) return false;
+    const x = String(shape.ids[shape.crest]), y = String(shape.ids[shape.crest + 1]);
+    const key = x <= y ? x + "__" + y : y + "__" + x;
+    for (let i = 0; i < played.length; i++) {
+      if (played[i] && played[i].edgeKey === key) return false;
+    }
+    return true;
+  }
+  // WHAT THE WALK SENDS AS ITS LOG OF SPENT EVENTS. A walk that has already spent one sends what it
+  // spent, and the hold has nothing left to hold. A step whose own role cannot spend one anyway — a
+  // quiet link, an entrance, a return — sends the same list it always did, so nothing outside the
+  // one granted slot moves. What is left is a middle, or a step the walk states no name for (which
+  // the composer reads as a middle), crossed while the crest is still ahead: that step is sent a log
+  // saying the event is not available to it, in the walk's own words.
+  function passMiraclesToSend(spent, crestAhead, role) {
+    if (spent.length || !crestAhead) return spent;
+    if (role && role !== "middle") return spent;
+    return [PASS_MIRACLE_HELD];
+  }
+  // AND THE STEP'S OWN RECORD SAYS SO IN ONE FIELD. `requestedRole`, `realisedTier` and
+  // `downgradeReason` stay the composer's, and the only place the composed outcome is explained;
+  // this is the walk's own half of the same sentence, and it is what a middle that carried no
+  // miracle is answered with. It is read back off the list the composer was actually sent, so the
+  // record cannot say one thing while the wire carried another.
+  function passMiracleHeldSaid(sent) {
+    return (Array.isArray(sent) && sent.indexOf(PASS_MIRACLE_HELD) >= 0)
+      ? "the walk's one impossible event was held for the step this route names its culmination, "
+        + "which has not been crossed yet — so this step carried none"
+      : null;
   }
 
   // HOW LONG THIS CROSSING ITSELF LASTS, read off the command the walk froze — the score's own
@@ -2877,6 +2952,11 @@
                        // instrument's cost off without a second instrument having to be built.
                        race: { ms: Math.round(raceMs * 100) / 100, dice: raceDice,
                                examined: examinedInRace, examinedCap: examinedCap } };
+    // WHETHER THE WALK HELD ITS ONE IMPOSSIBLE EVENT FOR THE CREST AT THIS STEP — the director's own
+    // half of the record, beside the composer's `requestedRole`/`realisedTier`/`downgradeReason` and
+    // never instead of them. Empty on every step that was free to spend the event, and one plain
+    // sentence on a step that was not, which is the reason a middle before the crest carried none.
+    passage.miracleHeldForCrest = passMiracleHeldSaid(request.walkMiracles);
     passNote(passPassages, passage);
     if (passage.declined) {
       // THE ONE ROAD LEFT TO THE GLIDE FROM HERE, and it means one of the two works carries no
