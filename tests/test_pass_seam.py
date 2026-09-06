@@ -153,9 +153,8 @@ STRADDLE = 0.000001
 # HANDOVER, and `second` closes at CLOSE — so one score carries a door opening, a door closing and a
 # level handover, each at a second of its own.
 OPEN, HANDOVER, CLOSE = 3.0, 6.0, 9.0
-# Where the interruption row cuts in. Early enough that the cadence's nearest door is the departing
-# one, so the row measures a cadence that walks somewhere rather than one already standing still.
-CUT_AT = 1.5
+# Where the interruption row cuts in is no longer a number of seconds on this machine: see
+# `CUT_WATCH` / `arm_cut_at_travel` below, which take the cut off the passage's own travel.
 
 # ---------------------------------------------------------------- real, planner-composed scores
 # ITEM 5'S OWN REAL-PAIR EVIDENCE (Phase 2, 2026-08-31/09-01). The same three scores
@@ -518,6 +517,113 @@ def read_cadence_capture(br, shots, tag):
            "if (c && c.parentNode) c.parentNode.removeChild(c);"
            "window.__cadenceLandCanvas = null; return null;")
     return path, box
+
+
+# ---- where the interruption row cuts in, read off the passage rather than off this machine -------
+# WHAT WAS WRONG. The two cadence rows used to cut in after `br.sleep(CUT_AT)` — a wall-clock nap on
+# the machine running the tests. Nothing anchored that nap to the passage: the cut actually landed at
+# `however long wait_state("running") took` + CUT_AT, and the first of those two is unbounded. Alone
+# on a quiet machine it came to a fraction of a second and the cut landed where the row wanted it.
+# Inside the full gate, with eight suites and eight Chromes sharing the machine, the polling that
+# waits for "running" stretched — and a short real bundle (hero's is 5.9 s) could reach its own end
+# and settle before the nap was over, so `cancel` had nothing left to interrupt and the row read "no
+# cadence frame was caught". That is the builder host's speed deciding a pass/fail, which is the one
+# thing no row here is allowed to do.
+#
+# WHAT DECIDES IT NOW. The passage's own door-to-door travel, read off the host's last drawn frame:
+# `report().handles.mix` is the primary voice's `mix` handle, and every score these two rows drive —
+# the synthetic `ground_cue` and the three real planner-composed pivots — puts `mix` on the pass's own
+# progress, door to door, running 0 → 1 across the whole passage. The cut is taken on the first drawn
+# frame whose travel stands STRICTLY BETWEEN the two doors, which is the host's own definition of a
+# transaction that is away (`rec.midflightSeen`, pass-layer.js): the passage has left its entry door
+# and has not reached its arriving one, so an interruption here has a cadence to walk and the whole
+# distance to walk it.
+#
+# WHY THAT PREDICATE RATHER THAN A SHARE OF THE TRAVEL. A share needs frames to be reached, and how
+# many frames a passage gets per second is the machine's business, not the passage's. Headless Chrome
+# rasterises in software: `boxfold` and `hero` draw fast enough to cross any share almost at once, and
+# `liquid`'s own shader draws about three frames in eleven seconds — so a share of 0.125 is reached by
+# two of the three bundles and never by the third, whose wall clock meanwhile carries `progress` to 1
+# and settles it. That is the builder host's speed deciding a pass/fail again, wearing a different
+# hat. "Strictly between the doors" needs one drawn frame, and one drawn frame is what every passage
+# gets on every machine.
+#
+# WHERE THE CADENCE ACTUALLY LANDS IS NOT THIS CUT'S BUSINESS. `nearest-door` resolves to the door the
+# visit is landing on — the host says so in its own `interruption-resolve` row, because that is where
+# the dock and §6's rest already stand — so the arriving door is the destination from any instant
+# inside the passage. Cutting early lengthens the cadence's walk; it never shortens it.
+#
+# WHERE THE WATCH ITSELF RUNS, AND WHY IT MATTERS AS MUCH AS WHAT IT WATCHES. In the browser, on the
+# renderer's own animation frames, armed before the offer and never spoken to again until it is over.
+# The first shape written for this fix polled the host from Python over CDP instead, and that was its
+# own version of the same defect: a `Runtime.evaluate` is a round trip into the page's main thread, and
+# during liquid's real bundle one of those calls sat in the queue for eleven seconds while the passage
+# ran out underneath it. A test that has to interrupt a running renderer must not be standing in that
+# renderer's own queue to do it. Here the watch is a `requestAnimationFrame` chain inside the page: it
+# reads the travel off the same frames the passage is drawing anyway and calls `cancel` from inside
+# one of them, so the cut lands on the frame it was decided on and no message crosses a process to
+# make it. Python arms it, offers, and then only waits for the host to go idle the way every other row
+# in this file already does.
+#
+# A passage that ends without the travel ever crossing disarms the watch and records exactly that,
+# with the last travel it actually read — a red the row can be repaired from, never a silent skip.
+CUT_WATCH = """
+  window.__cutWatch = {armed: true, cut: null, seen: null, why: null, frames: 0};
+  (function () {
+    var H = window.__exPass.host, cause = %s, W = window.__cutWatch;
+    function tick() {
+      if (!W.armed) return;
+      W.frames += 1;
+      var r = H.report();
+      var h = (r.state === 'running' && r.handles) ? r.handles : null;
+      if (h && typeof h.mix === 'number') {
+        W.seen = h.mix;
+        if (h.mix > 0 && h.mix < 1) {
+          W.armed = false;
+          W.cut = h.mix;
+          H.cancel(cause);
+          return;
+        }
+      } else if (r.state !== 'running' && W.seen !== null) {
+        W.armed = false;
+        W.why = 'the passage left \\u00abrunning\\u00bb (now \\u00ab' + r.state + '\\u00bb) with its '
+              + 'own travel last read as ' + W.seen + ', never drawing a frame strictly between '
+              + 'its two doors';
+        return;
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  })();
+  return null;
+"""
+
+
+# HOW LONG THE HARNESS WAITS FOR THE CADENCE TO BE OVER. The cadence's own envelope is named by the
+# score (`interruption.withinMs`, 2000 ms here and unchanged), but how long this machine takes to DRAW
+# that envelope is the machine's business: on the software rasteriser `liquid`'s cadence walked its
+# 2000 ms of passage clock across eleven seconds of wall clock. The default `wait_state` allowance of
+# six seconds is the read arriving before the thing it reads, so these two rows wait on the host's own
+# idle instead, and a wait that runs out is folded into the row rather than passed over — nothing here
+# asserts a duration, it only declines to photograph a passage that is still running.
+def wait_cadence_over(br):
+    return wait_state(br, "idle", tries=600)
+
+
+def arm_cut_at_travel(br, cause):
+    """Arm the in-browser watch. Call it BEFORE the offer, then read it with `cut_taken` after."""
+    js(br, CUT_WATCH % json.dumps(cause))
+
+
+def cut_taken(br):
+    """What the armed watch did, in the shape the caller folds into its own failure message."""
+    w = js(br, "var W = window.__cutWatch || {};"
+               "return {cut: W.cut !== null && W.cut !== undefined, at: W.seen,"
+               " armed: !!W.armed, frames: W.frames || 0, why: W.why || null};")
+    if not w["cut"] and not w["why"]:
+        w["why"] = (f"the watch was still armed after the passage was done: it saw {w['frames']} "
+                    f"frame(s) and the travel last read as {w['at']}")
+    return w
 
 
 def shot_scale(br, path):
@@ -943,19 +1049,21 @@ else:
                     solo = score(within=2000)
                     solo["cues"] = [ground_cue(DUR / 1000.0)]
                     arm_cadence_capture(br)
+                    arm_cut_at_travel(br, "seam-cadence")
                     r6 = offer(br, A, B, "seam-cadence", solo)
                     running = wait_state(br, "running")
-                    br.sleep(CUT_AT)
-                    js(br, "window.__exPass.host.cancel('seam-cadence'); return null;")
-                    wait_state(br, "idle")
+                    over6 = wait_cadence_over(br)
+                    cut6 = cut_taken(br)
                     br.sleep(0.5)
                     last_canvas, last_box = read_cadence_capture(br, SHOTS, "cadence")
                     cadence_dom = png(br, SHOTS / "cadence-dom.png")
                     rep6 = js(br, "var r = window.__exPass.host.report();"
                                   "return {cadence: r.cadence, state: r.state};")
-                    if not (r6["took"] and running and last_canvas and last_box):
+                    if not (r6["took"] and running and cut6["cut"] and over6
+                            and last_canvas and last_box):
                         check(ROWS[7], False, f"no cadence frame was caught: {r6} "
-                                              f"running={running} box={last_box} report={rep6}")
+                                              f"running={running} cut={cut6} over={over6} "
+                                              f"box={last_box} report={rep6}")
                     else:
                         e = cropped_excess(last_canvas, cadence_dom, last_box, scale, SHOTS,
                                            "cadence")
@@ -1076,23 +1184,24 @@ else:
                         _rsolo["cues"] = [_rpivot]
                         _rsolo["interruption"] = {"withinMs": 2000, "resolve": "nearest-door"}
                         arm_cadence_capture(br)
+                        arm_cut_at_travel(br, "real-" + _name + "-cadence")
                         _rr6 = offer(br, A, B, "real-" + _name + "-cadence", _rsolo)
                         _rrunning = wait_state(br, "running")
-                        br.sleep(min(CUT_AT, _rdur / 2))
-                        js(br, "window.__exPass.host.cancel('real-%s-cadence'); return null;"
-                           % _name)
-                        wait_state(br, "idle")
+                        _rover = wait_cadence_over(br)
+                        _rcut = cut_taken(br)
                         br.sleep(0.5)
                         _rlast_canvas, _rlast_box = read_cadence_capture(br, SHOTS,
                                                                          _name + "-cadence")
                         _rcadence_dom = png(br, SHOTS / (_name + "-cadence-dom.png"))
                         _rrep6 = js(br, "var r = window.__exPass.host.report();"
-                                        "return {cadence: r.cadence, state: r.state};")
+                                        "return {cadence: r.cadence, state: r.state,"
+                                        " events: r.events.slice(-12)};")
                         _row = REAL_ROW_NAMES[(_name, "cadence")]
-                        if not (_rr6["took"] and _rrunning and _rlast_canvas and _rlast_box):
+                        if not (_rr6["took"] and _rrunning and _rcut["cut"] and _rover
+                                and _rlast_canvas and _rlast_box):
                             check(_row, False,
                                   f"no cadence frame was caught: {_rr6} running={_rrunning} "
-                                  f"box={_rlast_box} report={_rrep6}")
+                                  f"cut={_rcut} over={_rover} box={_rlast_box} report={_rrep6}")
                         else:
                             _re = cropped_excess(_rlast_canvas, _rcadence_dom, _rlast_box, scale,
                                                  SHOTS, _name + "-cadence")
