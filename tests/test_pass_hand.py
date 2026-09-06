@@ -32,6 +32,7 @@ reading left behind it.
 Run: python tests/test_pass_hand.py
 """
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -138,6 +139,9 @@ ROWS = [
     "EX-HAND row18 the attach door opens on a hover too: a hovered work that is carried through a "
     "closer-look open/close with no fresh press reads a non-empty img.style.transform once the "
     "closer look clears, where before this pass it read empty",
+    "EX-HAND row19 2026-09-06 the hover must be felt: a plain mouse hover swept across the work "
+    "paints |x| at or above 0.02 of the frame's width, and under whatever the same row's own "
+    "press-and-drag reaches, on the DOM's own img.style.transform",
 ]
 
 # ---------------------------------------------------------------- row 1: the bake, a string proof
@@ -685,6 +689,10 @@ else:
             fire(br, WORK, "pointerover", "mouse", 0.3, 0.5, 201)  # a hover — no pointerdown, ever
             for i in range(25):
                 fire(br, WORK, "pointermove", "mouse", 0.3 + i * (0.5 / 24.0), 0.5, 201)
+            # `paint()` writes on its own rAF, a frame away from the dispatch above — wait for the
+            # write rather than risk reading the DOM one frame early (found flaky here 2026-09-06,
+            # pre-existing and independent of the hover-reach change below).
+            wait_for(br, "!!document.querySelector(%s).style.transform" % json.dumps(WORK), timeout=3.0)
             transform_before_zoom = br.evaluate(
                 "document.querySelector(%s).style.transform" % json.dumps(WORK))
             attached_before_zoom = hand_report(br)["attached"]
@@ -706,6 +714,57 @@ else:
                   f"{transform_during_zoom!r} after_zoom={transform_after_zoom!r} (want non-empty "
                   f"before, empty during, non-empty after with no fresh pointer event) — "
                   f"attached: before_zoom={attached_before_zoom!r} after_zoom={attached_after_zoom!r}")
+
+
+        # row 19 — 2026-09-06: a hover across the work must be felt, not merely present. Measured
+        # live at 1440x900 before this pass: a plain hover painted x ~0.012 of the frame's width (8
+        # px on a 1271 px frame, invisible) against a press-and-drag's ~0.054 — the mix channel's own
+        # driver, `lean`, answers a press alone, so a hover's mix carried nothing but the ambient
+        # breath. This row reads the DOM's own `img.style.transform`, never `report()` alone (the
+        # same discipline row18 already keeps), and checks BOTH directions of regression: a hover
+        # term shrunk back toward the breath alone (under 0.02) and one that grew past the press's
+        # own reach (no longer "about half").
+        def frame_frac(br, sel=WORK):
+            # The write is a requestAnimationFrame away from the event that drove it (`paint()`
+            # runs once per frame, not synchronously off the dispatch) — poll the DOM's own
+            # transform rather than reading it the instant the verb lands.
+            wait_for(br, "!!document.querySelector(%s).style.transform" % json.dumps(sel), timeout=3.0)
+            style = br.evaluate("document.querySelector(%s).style.transform" % json.dumps(sel))
+            width = br.evaluate(
+                "document.querySelector(%s).getBoundingClientRect().width" % json.dumps(sel))
+            m = re.search(r"translate3d\(([-\d.]+)px", style or "")
+            if not m or not width:
+                return None
+            return abs(float(m.group(1))) / width
+
+        with Browser(width=1440, height=900) as br:
+            room(br, base)
+            wait_for(br, HAND_READY)
+            wait_span(br, "mix")
+            fire(br, WORK, "pointerover", "mouse", 0.1, 0.5, 211)
+            for i in range(30):
+                fire(br, WORK, "pointermove", "mouse", 0.1 + i * (0.8 / 29.0), 0.5, 211)
+                br.sleep(0.03)
+            wait_for(br, "(()=>{const r=window.__exPass.hand().report();const t=r.attend.target;"
+                         "return !!t&&Math.hypot(r.attend.x-t.x,r.attend.y-t.y)<0.05;})()", timeout=6.0)
+            hover_frac = frame_frac(br)
+
+        with Browser(width=1440, height=900) as br:
+            room(br, base)
+            wait_for(br, HAND_READY)
+            wait_span(br, "mix")
+            fire(br, WORK, "pointerover", "mouse", 0.5, 0.5, 221)
+            fire(br, WORK, "pointerdown", "mouse", 0.5, 0.5, 221)
+            fire(br, WORK, "pointermove", "mouse", 0.95, 0.5, 221)
+            wait_for(br, verb_expr("lean"))
+            press_frac = frame_frac(br)
+
+        print(f"\nhover reach vs press reach — hover_frac={hover_frac} press_frac={press_frac}")
+        check(ROWS[18],
+              hover_frac is not None and press_frac is not None
+              and hover_frac >= 0.02 and hover_frac < press_frac,
+              f"hover_frac={hover_frac} (want >= 0.02) press_frac={press_frac} "
+              f"(want hover_frac < press_frac)")
 
 
 # ---------------------------------------------------------------- report
