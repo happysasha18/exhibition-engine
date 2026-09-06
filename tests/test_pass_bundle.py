@@ -868,6 +868,39 @@ STANDARD_CEILING = {"variant": "standard",
                     "budget": {"textures": 4, "textureSlots": 8, "framebuffers": 2, "pingPong": 1,
                                "programs": 4, "passes": 4, "bytesEstimate": 33554432}}
 
+# ============================================================================ MEASUREMENT-SUPPORTS
+# The diagnostics lane (commit a181632) left `01a-pass.js`'s `measurementsRead[].supports` null
+# throughout: the composer said which measurement backed which genre only as prose inside
+# `roadNotes[].why`, keyed by the genre's own id and never by a field name. `genresFor`'s `say()`
+# now also pushes a structured `{field, supports, from, to}` entry onto that same note wherever its
+# own `why` names a field, at the exact site the prose is written. RADIAL (above) is the fixture's
+# own strongest RADIAL reading; crossed with itself it holds radial at its own full strength on
+# both ends and reads on rings (`subType: "ring"`), so both "kaleidoscope" and "spin" — the two
+# genres `genresFor` builds off a radial reading — carry their own `measures.radial` entry.
+MS_NAME = ("MEASUREMENT-SUPPORTS · a strongly radial fixture pair's measures.radial entry "
+           "supports a radial-family genre")
+if not NODE or not FIXTURE_WORKS.exists():
+    skip(MS_NAME, "node is not on this machine" if not NODE
+         else "tests/fixture_pass_works.json is not on this machine")
+else:
+    _ms_works = json.loads(FIXTURE_WORKS.read_text(encoding="utf-8"))["works"]
+    _ms_radial = _ms_works[RADIAL]
+    _ms_genres = run("genresFor", [_ms_radial, _ms_radial])
+    _ms_notes = _ms_genres.get("notes", []) if isinstance(_ms_genres, dict) else []
+    _ms_radial_entries = []
+    for _n in _ms_notes:
+        for _s in (_n.get("supports") or []):
+            if isinstance(_s, dict) and _s.get("field") == "measures.radial":
+                _ms_radial_entries.append(_s)
+    _ms_supports_seen = {_s.get("supports") for _s in _ms_radial_entries}
+    check(MS_NAME,
+          bool(_ms_supports_seen & {"kaleidoscope", "spin"})
+          and all(isinstance(_s.get("from"), (int, float)) and isinstance(_s.get("to"), (int, float))
+                  for _s in _ms_radial_entries),
+          "genresFor(%s, %s) — a work crossed with itself, strongly radial and on rings — put "
+          "these measures.radial entries on its own notes: %s"
+          % (RADIAL, RADIAL, json.dumps(_ms_radial_entries)))
+
 CULM_NAMES = (
     "CULMINATION · the real route's own pair class — the step now realises the tier it is named "
     "for, in band and in budget",
