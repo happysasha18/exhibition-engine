@@ -1754,8 +1754,11 @@
     // it, is an ordinary letter. `isWorldFold` above is unaffected by any of this — a road built
     // around the fold (`mustFold`) still finds the instrument that fold IS, whether or not this walk
     // has already spent its one miracle.
+    function walkHasSpentTheMiracle() {
+      return walkMiracles.length > 0;
+    }
     function spendsTheMiracle(iid) {
-      return isWorldFold(iid) && walkMiracles.length === 0;
+      return isWorldFold(iid) && !walkHasSpentTheMiracle();
     }
 
     // Every instrument this collection publishes that cuts on a kind, in one settled order.
@@ -5202,7 +5205,16 @@
       var bundleFolds = spendsTheMiracle(g) || (!!t && spendsTheMiracle(t))
         || (!!a && spendsTheMiracle(a));
       var couldFold = t ? worldOf(toW, axis) : null;
-      var mayFold = !!(road.miracle && roleBudget.miracle && !bundleFolds);
+      // THE WORLD PATH READS THE SAME SPENT LOG THE FOLD PATH READS, THROUGH THE SAME PREDICATE.
+      // `bundleFolds` above only asks whether THIS bundle's own cast already spends the miracle —
+      // and `spendsTheMiracle` reads back false for every instrument once the walk has already
+      // spent it (that is the point: a repeat fold on an already-spent walk is an ordinary
+      // letter, not a refusal). A world that opens because `roleBudget.miracle` allows one is a
+      // SECOND impossible event whenever the walk already played its one on an earlier crossing,
+      // and nothing above ever asked that — `walkHasSpentTheMiracle()` is the one place the
+      // question lives, and this is that same function, not a second reading of `walkMiracles`.
+      var mayFold = !!(road.miracle && roleBudget.miracle && !bundleFolds
+                       && !walkHasSpentTheMiracle());
       var w = mayFold ? couldFold : null;
       var foldsOnHere = spendsTheMiracle(g) ? "pivot"
         : ((t && spendsTheMiracle(t)) ? "travel" : ((a && spendsTheMiracle(a)) ? "arrival" : null));
@@ -5967,10 +5979,13 @@
         ? (folds
            ? "the frame folds into a solid, which is this crossing's one miracle, so the arriving "
              + "work's own folded space stands down beside it"
-           : (road.miracle
-              ? ("the step is a " + role + " and shelf 17 spends no miracle there")
-              : ("the " + road.id + " road holds its ground and spends no miracle on a folded "
-                 + "space")))
+           : (walkHasSpentTheMiracle()
+              ? "the walk's one impossible event is already spent on an earlier crossing, so the "
+                + "arriving work's own folded space may not spend it again"
+              : (road.miracle
+                 ? ("the step is a " + role + " and shelf 17 spends no miracle there")
+                 : ("the " + road.id + " road holds its ground and spends no miracle on a folded "
+                    + "space"))))
         : null;
       var voices, tier, letters, accs, k, instrumentOf, stackOrder, placed, capped = [];
       var colourVoice = true, accCeiling = 0, foldsOn = null, singsHere = false;
