@@ -72,6 +72,10 @@ BROWSER_ROWS = [
     "S-01/A1 one collapsed row per played step, independently expandable to the full reading",
     "S-01/A2 the diagnostic surface exposes ONE joined per-step record, read by the panel and the "
     "export alike",
+    "S-01/DIAG-RECORD a real crossing's joined record carries cameraLed/cameraTrack/cameraPose/"
+    "measurementsRead/realisedTier well-typed",
+    "S-01/DIAG-RECORD at 390x844 the panel's content box stays inside the viewport and the export "
+    "still carries the fuller record whole",
 ]
 
 RECORDS_ROUTE = "/api/pass/verdict-records"
@@ -250,6 +254,29 @@ else:
                       f"{on_disk == copied if (copied and on_disk) else False} "
                       f"saved-files={[f.name for f in saved]}")
 
+            # ---- row 8 · DIAG-RECORD — the new fields, off the SAME real composed step above ------
+            # `copied["steps"][0]` is `passStepJoinedRecord`'s own output for the step just landed
+            # (verdictHistory, read at the same export click row 2 already drove) — a real crossing
+            # through the real host and the real composer, never a synthetic dock.
+            step0 = (copied.get("steps") or [{}])[0] if copied else {}
+            cam_pose = step0.get("cameraPose") or {}
+            poses_distinct = all(cam_pose.get(k) is not None for k in ("start", "middle", "end"))
+            mr = step0.get("measurementsRead") or []
+            mr_shaped = bool(mr) and all(
+                isinstance(e, dict) and "field" in e and "from" in e and "to" in e for e in mr)
+            mr_numeric = any(isinstance(e.get("from"), (int, float))
+                             and isinstance(e.get("to"), (int, float)) for e in mr)
+            tier_ok = isinstance(step0.get("realisedTier"), str) and bool(step0.get("realisedTier"))
+            led_ok = isinstance(step0.get("cameraLed"), bool)
+            role_ok = "requestedRole" in step0 and "downgradeReason" in step0
+            check(BROWSER_ROWS[8],
+                  bool(step0) and poses_distinct and mr_shaped and mr_numeric and tier_ok
+                  and led_ok and role_ok,
+                  f"cameraPose={cam_pose} measurementsRead[:2]={mr[:2]} "
+                  f"realisedTier={step0.get('realisedTier')!r} cameraLed={step0.get('cameraLed')!r} "
+                  f"requestedRole={step0.get('requestedRole')!r} "
+                  f"downgradeReason={step0.get('downgradeReason')!r}")
+
         # ---- row 1 · no trace at all without the key ------------------------------------------
         with Browser(width=1280, height=900) as br2:
             enter(br2, base, None, step=True)
@@ -407,6 +434,36 @@ else:
                   f"clicking-again-closes-it={first_closed_again} "
                   f"row-0-detail-carries-the-joined-shape={has_shape}: {detail[:300]}")
 
+        # ---- row 9 · DIAG-RECORD at 390x844 — the fuller record neither clips the panel nor drops
+        # a field off the export. A real crossing, on the phone frame the наряд's own brief names
+        # (device tier, buffer, touch and real frame rate all differ there).
+        with Browser(width=390, height=844) as br7:
+            br7.inject(CLIP_STUB)
+            enter(br7, base, "diagnostics:on", step=True)
+            wait_for(br7, "(()=>{var p=document.getElementById('ex-verdict');"
+                         "return !!(p && p.hidden===false && p.dataset.pending==='1');})()")
+            fit = js(br7, """
+              var p = document.getElementById('ex-verdict');
+              if (!p) return {present: false};
+              var r = p.getBoundingClientRect();
+              return {present: true,
+                      fitsViewport: r.bottom <= innerHeight + 1 && r.right <= innerWidth + 1
+                                    && r.top >= 0 && r.left >= 0};
+            """)
+            br7.click(".exv-dump", settle=0.5)
+            copied_raw = br7.evaluate(
+                "window.__copied && window.__copied.length "
+                "? window.__copied[window.__copied.length - 1] : null")
+            copied7 = json.loads(copied_raw) if copied_raw else None
+            step0 = (copied7.get("steps") or [{}])[0] if copied7 else {}
+            new_fields = {"cameraLed", "cameraTrack", "cameraPose", "measurementsRead",
+                          "requestedRole", "realisedTier", "downgradeReason"}
+            export_whole = bool(step0) and new_fields.issubset(set(step0.keys()))
+            check(BROWSER_ROWS[9],
+                  fit.get("present") and fit.get("fitsViewport") and export_whole,
+                  f"fit={fit} export-carries-new-fields={export_whole} "
+                  f"step0-keys={sorted(step0.keys()) if step0 else []}")
+
         # ---- row 7 · P1.1/A2 — one joined shape, read by both the panel and the export -----------
         with Browser(width=1280, height=900) as br6:
             enter(br6, base, "diagnostics:on", step=False)
@@ -417,7 +474,12 @@ else:
             """)
             named = {"from", "to", "route", "road", "family", "pivot", "voices", "camera",
                      "quality", "frames", "cadence", "landedInMs", "durationMs", "movedBy",
-                     "bundles"}
+                     "bundles",
+                     # 2026-09-06, his word: cameraLed, the score's own camera track, its pose at
+                     # start/middle/end, the WorkRecord fields the ranking read for this pair, and
+                     # the role/tier/downgrade the composer already names.
+                     "cameraLed", "cameraTrack", "cameraPose", "measurementsRead",
+                     "requestedRole", "realisedTier", "downgradeReason"}
             ok = (isinstance(joined, dict) and set(joined.keys()) == named
                   and joined.get("from") == "zz-a2-a" and joined.get("to") == "zz-a2-b"
                   and isinstance(joined.get("route"), dict)
@@ -430,7 +492,15 @@ else:
                   # P1.2's own room — left empty rather than fabricated, and the honest answer for a
                   # synthetic dock this suite drove with no real score behind it at all.
                   and joined.get("movedBy") is None and joined.get("bundles") == []
-                  and isinstance(joined.get("durationMs"), (int, float)))
+                  and isinstance(joined.get("durationMs"), (int, float))
+                  # A synthetic dock carries no score and names two ids no WorkRecord was ever put
+                  # under, so every new field reads its own honest empty rather than a fabricated
+                  # reading — the same room P1.2 already left for movedBy/bundles above.
+                  and joined.get("cameraLed") is False and joined.get("cameraTrack") is None
+                  and joined.get("cameraPose") == {"start": None, "middle": None, "end": None}
+                  and joined.get("measurementsRead") == []
+                  and joined.get("requestedRole") is None and joined.get("realisedTier") is None
+                  and joined.get("downgradeReason") is None)
             check(BROWSER_ROWS[7], ok, f"window.__exPass.joined(cmd) = "
                                        f"{json.dumps(joined, ensure_ascii=False)[:600]}")
 

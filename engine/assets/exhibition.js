@@ -3676,6 +3676,58 @@
     let station = { role: null, fn: null };
     try { station = passRouteStation(fromId, toId, null) || station; } catch (e) {}
     const qualityTier = (cmd.params && cmd.params.qualityTier) ? cmd.params.qualityTier.base : null;
+    // HIS WORD, 2026-09-06: cameraLed, the score's own camera track, and the pose the host's own
+    // camera arithmetic reads at this step's start/middle/end. `cameraLed` is `pass-layer.js`'s own
+    // one-line `camLed` (`!!(score && score.camera && score.camera.lead)`) copied rather than called,
+    // because that file is outside this row's write set and the line is a pure read of the score this
+    // function already holds — nothing to drift against. The three poses are NOT re-derived the same
+    // way: they come off the diagnostic bench `pass-layer.js` already publishes
+    // (`window.__@@NS@@Pass.bench.cameraWalk`), the exact `camPoseAt`/`camStagePose` evaluator a
+    // running frame calls, spared the transaction — the arithmetic (anchor, carry, handoff) is real
+    // and belongs to that file alone.
+    const scoreCam = (cmd.score && cmd.score.camera) || null;
+    const cameraLed = !!(scoreCam && scoreCam.lead);
+    const cameraTrack = scoreCam ? (scoreCam.track || null) : null;
+    let cameraPose = { start: null, middle: null, end: null };
+    try {
+      const diagObj = window.__@@NS@@Pass;
+      const bench = diagObj && diagObj.bench;
+      if (bench && typeof bench.cameraWalk === "function" && cmd.score) {
+        const durSec = Math.max(0, (cmd.score.duration || 0) / 1000);
+        const walked = bench.cameraWalk(cmd.score, [0, durSec / 2, durSec], null);
+        const poses = (walked && walked.poses) || [];
+        cameraPose = { start: (poses[0] && poses[0].pose) || null,
+                       middle: (poses[1] && poses[1].pose) || null,
+                       end: (poses[2] && poses[2].pose) || null };
+      }
+    } catch (e) {}
+    // THE WORKRECORD FIELDS THE COMPOSER'S OWN RANKING ACTUALLY READ FOR THIS PAIR — `groundReadings`
+    // (called from every `genresFor`, on every composition) reads one number per measure off each
+    // work's own `measures` object, and `fillPlan` reads three more off each work's own `colour` and
+    // one off `matter` for the stack that actually got cast. Read straight off the SAME two records
+    // the composer was handed (`passWorkRecords()`, the identical lookup `passRequestFor` already
+    // makes), never recomputed or re-ranked here.
+    // `supports` stays null throughout: the composer keeps which field fed which genre only as prose
+    // inside `roadNotes[].why` (keyed by the genre's own id, never by a field name), and turning that
+    // into a structured field→choice link needs `pass-composer.js` itself to publish it — outside
+    // this row's write set. A reader wanting that link today reads the `why` sentence of the note
+    // whose `genre` equals this record's own `road`.
+    const worksAll = (typeof passWorkRecords === "function") ? (passWorkRecords() || {}) : {};
+    const fromWork = worksAll[fromId] || null, toWork = worksAll[toId] || null;
+    const measurementsRead = [];
+    const numOf = (v) => { const n = Number(v); return (n === n && isFinite(n)) ? n : null; };
+    if (fromWork && toWork) {
+      ["banding", "grid", "regions", "dominant_object", "texture", "radial", "named_objects"]
+        .forEach((m) => measurementsRead.push({
+          field: "measures." + m, from: numOf((fromWork.measures || {})[m]),
+          to: numOf((toWork.measures || {})[m]), supports: null }));
+      ["sat", "brightness", "contrast"].forEach((c) => measurementsRead.push({
+        field: "colour." + c, from: numOf((fromWork.colour || {})[c]),
+        to: numOf((toWork.colour || {})[c]), supports: null }));
+      measurementsRead.push({ field: "matter.materialVotes",
+                              from: numOf((fromWork.matter || {}).materialVotes),
+                              to: numOf((toWork.matter || {}).materialVotes), supports: null });
+    }
     return {
       from: fromId, to: toId,
       // ROUTE ROLE/FUNCTION AND THE HARMONIC READING (charter shelf 15).
@@ -3710,6 +3762,18 @@
       // A synthetic command can have no composer row at all (the diagnostic dock's own empty
       // state). That has no bundles rather than an invented one; a real row carries its ledger.
       bundles: row && row.diagnostics ? (row.diagnostics.bundles || null) : [],
+      // DID THE CAMERA LEAD THIS STEP, ITS OWN TRACK WHOLE, AND ITS POSE AT START/MIDDLE/END.
+      cameraLed: cameraLed,
+      cameraTrack: cameraTrack,
+      cameraPose: cameraPose,
+      // THE WORKRECORD FIELDS THE RANKING ACTUALLY READ FOR THIS PAIR, from/to and unsupported
+      // (see the note above `measurementsRead` is built from).
+      measurementsRead: measurementsRead,
+      // THE ROLE ASKED FOR, THE TIER REALISED, AND WHY THEY DIFFER — already the composer's own
+      // words (`pass-composer.js`'s `scoreFor`), carried through rather than recomputed.
+      requestedRole: row ? (row.requestedRole || null) : null,
+      realisedTier: row ? (row.realisedTier || null) : null,
+      downgradeReason: row && row.downgradeReason !== undefined ? row.downgradeReason : null,
     };
   }
 
