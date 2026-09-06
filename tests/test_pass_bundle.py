@@ -760,6 +760,218 @@ console.log(JSON.stringify({ goals: goals, neverFiresHandover: neverFiresHandove
           "" if not found else
           "the P1.2 block contains: " + ", ".join(found))
 
+# ==================================================================================================
+# THE CULMINATION IS PLANNED FOR, OR THE DOWNGRADE IS SAID OUT LOUD
+# ==================================================================================================
+#
+# THE DEFECT, MEASURED ON A REAL ROUTE. A step the route director assigned `role = culmination`
+# played `unfold + pour + grid-colour` for 5281 ms and realised the tier `middle` — and was shown
+# under the name culmination anyway. The composer's own contract (pass-composer.js, the `TIERS`
+# table: a culmination is 9-14 s, two or three letters, exactly one impossible event) was not met
+# and nothing anywhere said so.
+#
+# WHERE THE SILENCE WAS. `voiceTheCues` names the top tier only where a world or a fold stands
+# beside an arrival, and `tierFor` then answers a shape that falls short of the row the role reached
+# for with the row BELOW it — correctly, since a plan must declare what it realised. What neither of
+# them did was plan FOR the tier the step is named after: the joint bundle planner offered each move
+# slot its first two ranked readings and silence, and `scoreBundle` ranks by voices carried, where a
+# miracle is not a voice — so where neither of a slot's two readings opened a world or folded the
+# frame, no bundle of the whole enumeration could reach the culmination row, and where one could, it
+# scored level with a rival that could not and the tie die decided between them.
+#
+# THE THREE ROWS BELOW, and the road they walk. A pair of REAL WorkRecords out of the shipped
+# fixture is composed through the composer's own `passageFor` at `role = culmination` — never a
+# hand-typed cast — under two sources at once in one process: the SHIPPED one, and the same source
+# with the two repair lines planted out, which is the pre-fix composer. Row 1 shows the real route's
+# own pair class realising a middle under the plant and a culmination, in band and in budget,
+# unplanted. Row 2 forces the device tier to `lean` and shows the downgrade stated rather than
+# taken. Row 3 sweeps every pair, seed and device tier of the sample and shows no record anywhere
+# carrying the culmination's name without either the tier or a reason.
+CULM_DRIVER = r"""
+"use strict";
+const vm = require("vm");
+const rawSource = %(source)s;
+const consts = %(consts)s;
+const works = %(works)s;
+const job = %(job)s;
+
+function build(plants) {
+  let source = rawSource;
+  for (const [from, to] of (plants || [])) {
+    if (source.indexOf(from) < 0) return {missed: from};
+    source = source.split(from).join(to);
+  }
+  let joined = null;
+  const sandbox = {window: {__PassComposer: (m) => { joined = m; }}, console};
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox, {filename: "pass-composer.js"});
+  return {composer: joined.make(consts)};
+}
+
+const shipped = build([]);
+const planted = build(job.plants);
+if (planted.missed) { console.log(JSON.stringify({missed: planted.missed})); process.exit(0); }
+
+function read(composer, j) {
+  const req = {workRecordA: works[j.a], workRecordB: works[j.b], direction: "a-to-b",
+               seed: j.seed, routeRole: "culmination"};
+  if (j.device) req.deviceCeiling = j.device;
+  const got = composer.passageFor(req);
+  if (!got || !got.plan) return {declined: (got && got.declined) || "no plan"};
+  const cues = got.plan.cues || [];
+  return {
+    tier: got.plan.tier,
+    requestedRole: got.requestedRole === undefined ? null : got.requestedRole,
+    realisedTier: got.realisedTier === undefined ? null : got.realisedTier,
+    downgradeReason: got.downgradeReason === undefined ? null : got.downgradeReason,
+    duration: got.plan.duration,
+    letters: cues.filter((c) => c.voice === "letter").length,
+    miracles: cues.filter((c) => c.voice === "miracle").length,
+    arrivals: cues.filter((c) => c.id === "arrival").length,
+    cast: cues.map((c) => c.instrument.id).join("+"),
+  };
+}
+
+const out = [];
+for (const j of job.jobs) {
+  out.push({job: j, shipped: read(shipped.composer, j), planted: read(planted.composer, j)});
+}
+console.log(JSON.stringify(out));
+"""
+
+# THE PLANT — the whole of the repair and nothing else, so the red row below cannot pass by naming a
+# line that does not carry it. Line one is the planner's own preference for a bundle that actually
+# realises the tier the role is named for; line two is the extra ranked reading a move slot offers
+# at such a role, which is what lets a culmination-capable bundle exist for a pair whose two
+# best-ranked readings fold nothing. With both planted out the composer is 8538c46 exactly, and the
+# `downgradeReason` field stays live on purpose: the red row is about the TIER, and a reason
+# published beside a wrong tier would still be a defect.
+PLANT_CULM = [
+    ["var reaching = wantsTier && reachTies.length ? reachTies : ties;",
+     "var reaching = ties;"],
+    ["""        if (roleBudget.miracle && tierNeedsAMiracle(roleBudget.tier)
+            && !out.some(function (iid) { return spendsTheMiracle(iid); })) {""",
+     """        if (false) {"""],
+]
+
+# THE PAIR CLASS THE REAL ROUTE HIT, found in the shipped fixture rather than invented: at
+# `role = culmination` and seed 3, the pre-fix composer casts `unfold + pour + grid-colour` — the
+# cited step's own three instruments — and realises `middle`. The three works beside it are the
+# fixture's own strongest RADIAL reading, its strongest BANDED reading, and one that is neither, so
+# the sweep below crosses the three pair classes a route actually meets rather than one lucky pair.
+REAL_A, REAL_B, REAL_SEED = "17851786745424687", "17854888390061165", 3
+RADIAL, BANDED, NEITHER = "17897050660015868", "17847744487144891", "17843153263050281"
+LEAN_CEILING = {"variant": "lean",
+                "budget": {"textures": 2, "textureSlots": 4, "framebuffers": 1, "pingPong": 0,
+                           "programs": 2, "passes": 2, "bytesEstimate": 8388608}}
+STANDARD_CEILING = {"variant": "standard",
+                    "budget": {"textures": 4, "textureSlots": 8, "framebuffers": 2, "pingPong": 1,
+                               "programs": 4, "passes": 4, "bytesEstimate": 33554432}}
+
+CULM_NAMES = (
+    "CULMINATION · the real route's own pair class — the step now realises the tier it is named "
+    "for, in band and in budget",
+    "CULMINATION red-on-bug · with the two planning lines planted out, the same pair at the same "
+    "seed plays a middle under the culmination's own name",
+    "CULMINATION · the device tier forbids one — the step is downgraded explicitly, never silently",
+    "CULMINATION · no record anywhere carries the culmination's name without either the tier or a "
+    "reason",
+)
+
+
+def culm_run(jobs):
+    if not FIXTURE_WORKS.exists():
+        return {"error": "tests/fixture_pass_works.json is not on this machine"}
+    fix_works = json.loads(FIXTURE_WORKS.read_text(encoding="utf-8"))
+    driver_path = TMP / "bundle-culmination.js"
+    driver_path.write_text(CULM_DRIVER % {
+        "source": json.dumps(RAW),
+        "consts": json.dumps(FIX["consts"]),
+        "works": json.dumps(fix_works["works"]),
+        "job": json.dumps({"jobs": jobs, "plants": PLANT_CULM}),
+    }, encoding="utf-8")
+    proc = subprocess.run(["node", str(driver_path)], capture_output=True, text=True, timeout=300)
+    if proc.returncode != 0:
+        return {"error": (proc.stderr or "").strip()[-1200:]}
+    lines = (proc.stdout or "").strip().splitlines()
+    if not lines:
+        return {"error": "the culmination driver said nothing"}
+    return json.loads(lines[-1])
+
+
+if not NODE or not FIXTURE_WORKS.exists():
+    for _n in CULM_NAMES:
+        skip(_n, "node is not on this machine" if not NODE
+             else "tests/fixture_pass_works.json is not on this machine")
+else:
+    _culm_jobs = [{"a": REAL_A, "b": REAL_B, "seed": REAL_SEED, "device": None},
+                  {"a": REAL_A, "b": REAL_B, "seed": REAL_SEED, "device": LEAN_CEILING}]
+    for _x in (RADIAL, BANDED, NEITHER, REAL_A, REAL_B):
+        for _y in (RADIAL, BANDED, NEITHER, REAL_A, REAL_B):
+            if _x == _y:
+                continue
+            for _s in (1, 3, 7, 11, 33):
+                for _d in (None, STANDARD_CEILING, LEAN_CEILING):
+                    _culm_jobs.append({"a": _x, "b": _y, "seed": _s, "device": _d})
+    _culm = culm_run(_culm_jobs)
+    if not isinstance(_culm, list):
+        for _n in CULM_NAMES:
+            skip(_n, "the culmination driver itself failed: " + json.dumps(_culm)[:800])
+    elif isinstance(_culm[0], dict) and _culm[0].get("missed"):
+        for _n in CULM_NAMES:
+            skip(_n, "the plant's own anchor text is not in the shipped source: "
+                 + str(_culm[0]["missed"])[:300])
+    else:
+        _real = _culm[0]
+        _shipped, _planted = _real["shipped"], _real["planted"]
+        # ---- ROW 1: the real class reaches the tier, and reaches it lawfully ---------------------
+        check(CULM_NAMES[0],
+              _shipped.get("realisedTier") == "culmination"
+              and _shipped.get("tier") == "culmination"
+              and 2 <= _shipped.get("letters", 0) <= 3
+              and _shipped.get("miracles") == 1
+              and _shipped.get("arrivals") == 1
+              and 9000 <= _shipped.get("duration", 0) <= 14000
+              and _shipped.get("downgradeReason") is None,
+              "pair %s→%s at seed %d composed %s" % (REAL_A, REAL_B, REAL_SEED,
+                                                     json.dumps(_shipped)))
+        # ---- ROW 2 (red-on-bug): the same pair, pre-fix, is a middle wearing the name ------------
+        check(CULM_NAMES[1],
+              _planted.get("realisedTier") != "culmination"
+              and _planted.get("miracles") == 0
+              and "pour" in (_planted.get("cast") or "")
+              and "grid-colour" in (_planted.get("cast") or ""),
+              "the plant left the composition at %s" % json.dumps(_planted))
+        # ---- ROW 3: the device tier forbids it, and the record says so ---------------------------
+        _lean = _culm[1]["shipped"]
+        check(CULM_NAMES[2],
+              _lean.get("requestedRole") == "culmination"
+              and _lean.get("realisedTier") is not None
+              and _lean.get("realisedTier") != "culmination"
+              and isinstance(_lean.get("downgradeReason"), str)
+              and len(_lean.get("downgradeReason") or "") > 0,
+              "the same pair at «lean» composed " + json.dumps(_lean))
+        # ---- ROW 4: the fallthrough is loud, over every job of the sweep -------------------------
+        _silent = [r for r in _culm
+                   if r["shipped"].get("realisedTier") != "culmination"
+                   and not r["shipped"].get("downgradeReason")]
+        _misnamed = [r for r in _culm
+                     if r["shipped"].get("realisedTier") == "culmination"
+                     and not (2 <= r["shipped"].get("letters", 0) <= 3
+                              and r["shipped"].get("miracles") == 1
+                              and r["shipped"].get("arrivals") == 1
+                              and 9000 <= r["shipped"].get("duration", 0) <= 14000)]
+        _roled = [r for r in _culm if r["shipped"].get("requestedRole") != "culmination"]
+        check(CULM_NAMES[3],
+              not _silent and not _misnamed and not _roled,
+              "%d compositions swept (%d pairs × 5 seeds × 3 device tiers); %d realised a lower "
+              "tier with no reason given, %d realised a culmination outside shelf 17's own row, "
+              "%d lost the requested role.%s"
+              % (len(_culm), len({(r["job"]["a"], r["job"]["b"]) for r in _culm}), len(_silent),
+                 len(_misnamed), len(_roled),
+                 "" if not (_silent or _misnamed) else
+                 " First: " + json.dumps((_silent or _misnamed)[0])[:600]))
+
 print("P1.2 — the joint phrase planner's own legality rules, score and return widening")
 print("module: " + str(MODULE))
 print()

@@ -648,6 +648,15 @@ INSIDE the row it declares. The code holds a third path for a count no row takes
 arithmetic that keeps the function total for a voice record handed in from outside a composition; no
 crossing reaches it, and `tests/test_pass_lawful.py` asks that of every composed passage. A crossing
 that reached for a culmination and made a middle is a middle, and no count ever refuses a crossing.
+**A crossing that made a middle is never SHOWN as a culmination.** Every composed passage carries the
+role it was asked under and the tier it actually realised; and where the role reached for a tier the
+row FLOORS with a miracle — the culmination row, and no other, since every other row's floor is nought
+and a role is a ceiling rather than a promise there — and the crossing realised something lower, the
+passage also carries one plain sentence naming the gate that refused it: the rule that turned down
+the bundles which would have made one, the arriving work's own mode leaving no arrival voice to carry
+the second letter, the walk having already spent its one impossible event, or this pair's own ranking
+offering no instrument that opens a world in any slot. The sentence is empty exactly where the two
+agree, so a downgrade is never read off a missing field. `EX-PASS-VOICE`
 Two voices that are not cues count in the composer's own sum: the camera's own
 track, which always counts as one accompaniment, since every composed plan carries a camera record;
 and the colour voice, counted once wherever a cue that survives the cast still claims the
@@ -670,7 +679,13 @@ paragraph above does not name.** A **route role** is what the walk's own step is
 `quiet link`, `middle`, `culmination` or `return` — and it sets the ceiling of the tier its pass may
 reach for and is the only thing that opens a culmination; between a quiet and a middle the pair's own
 cast decides, by whether a travelling move or an arrival stands and whether anything folds. A step
-whose role the walk never states reads as a middle. A **cue role** is what one cue does dramatically
+whose role the walk never states reads as a middle. **A route role whose tier the row floors with a
+miracle is PLANNED for, not merely permitted.** Where the role names such a tier — the culmination
+row, and no other — the composer's own bundle planner offers each move slot one further reading, this
+pair's first ranked instrument that opens a world or folds the frame, and the bundle that actually
+realises the tier wins over an equally-scored one that cannot. Both readings come from the ranking
+this crossing already built out of the two work records in hand; no instrument is named for a role, no
+pair is looked up, and where the ranking offers none the slot stands exactly as it did. A **cue role** is what one cue does dramatically
 inside the pass, drawn from the set of nine. Three of the
 five route-role names are spelled exactly like the three tier names, and that spelling is the whole of
 what a route role and a cue role have in common. `EX-PASS-ROLE`

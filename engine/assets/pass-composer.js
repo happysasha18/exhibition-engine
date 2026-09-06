@@ -4963,6 +4963,18 @@
       for (i = 0; i < TIERS.length; i++) if (TIERS[i].tier === tier) return TIERS[i][column][1];
       return TIERS[1][column][1];
     }
+    // WHETHER A NAMED TIER CANNOT BE REACHED WITHOUT AN IMPOSSIBLE EVENT — shelf 17's own miracle
+    // FLOOR for the row, read off `TIERS` rather than named here. Today exactly one row has a floor
+    // above nought, the culmination's «exactly one», and that is the whole reason the planner below
+    // needs this question: the bundle scorer ranks by how many VOICES a bundle carries, and a
+    // miracle is not a voice — so a bundle that reaches a miracle-floored row is invisible to the
+    // scorer and loses to a voice-equal rival that cannot reach it. A row given a floor later
+    // carries this reading with it, and a row without one is unaffected.
+    function tierNeedsAMiracle(tier) {
+      var i;
+      for (i = 0; i < TIERS.length; i++) if (TIERS[i].tier === tier) return TIERS[i].miracles[0] > 0;
+      return false;
+    }
 
     // ================================================================================================
     // P1.2 — THE JOINT PHRASE PLANNER'S OWN LEGALITY RULES (2026-08-28, his sprint brief)
@@ -5165,7 +5177,19 @@
     // colour states is 36.  The planner needs that small cross because a first-ranked travelling
     // voice can collide with a first-ranked arrival while their second choices form the phrase.
     // The cap is published onto diagnostics rather than hidden in enumeration order.
-    var BUNDLE_CAP = 36;
+    //
+    // AND IT IS THE SIZE OF THE CROSS THE CROSSING ACTUALLY BUILT, read off the candidate lists
+    // themselves rather than typed beside them. It stood as a typed 36 while every slot always
+    // offered exactly three readings; a role whose tier asks for a miracle now leaves a move slot
+    // one reading wider (`slotCandidates`), and a typed number would have truncated exactly the
+    // bundles that widening exists to reach — the cap would have become a quality gate, which the
+    // paragraph above says it must never be. The arithmetic is unchanged for every other role: two
+    // grounds, three readings a slot, two colour states, which is the same 36.
+    function bundleCapFor(grounds, travels, arrivalsOf) {
+      var n = 0, i;
+      for (i = 0; i < travels.length; i++) n += arrivalsOf(travels[i]).length;
+      return 2 * grounds.length * n;
+    }
 
     // P1.2's own per-bundle re-derivation of `folds`/`world`/`foldsOn` — the same reading `compose`
     // took once, sequentially, for the stack the old cast happened to build (`folds` — does any of
@@ -5993,6 +6017,28 @@
         function add(iid) { if (iid && out.indexOf(iid) < 0 && out.length < 2) out.push(iid); }
         add(primary);
         (ranked || []).forEach(function (row) { if (row && row.order < 8) add(row.id); });
+        // AT A ROLE WHOSE OWN TIER ASKS FOR A MIRACLE, THE SLOT ALSO OFFERS THE BEST-RANKED READING
+        // THAT CAN ACTUALLY MAKE ONE. A culmination is two or three letters and EXACTLY one
+        // impossible event (shelf 17), so a slot offering its first two readings and silence offers
+        // no culmination at all whenever neither of those two opens a world or folds the frame —
+        // and that is the ordinary case, because the instruments that declare the WORLD level are
+        // four out of twenty-seven. The step then played a middle under the culmination's own name.
+        //
+        // IT IS ONE MORE READING, NOT A SEARCH, AND NOT A REPLACEMENT. Every candidate the slot
+        // offered before is still offered, so no bundle this planner could build yesterday is lost
+        // and no crossing that already reached its tier can stop reaching it; the one addition is
+        // this pair's own ranking's FIRST miracle-capable reading, wherever in that ranking it
+        // falls, and where the ranking offers none the slot is left exactly as it was. No
+        // instrument is named here and no pair is looked up. The enumeration grows by exactly this
+        // one reading per move slot, which the cap below reads off the lists themselves.
+        if (roleBudget.miracle && tierNeedsAMiracle(roleBudget.tier)
+            && !out.some(function (iid) { return spendsTheMiracle(iid); })) {
+          (ranked || []).some(function (row) {
+            if (!row || row.order >= 8 || !spendsTheMiracle(row.id)) return false;
+            if (out.indexOf(row.id) < 0) out.push(row.id);
+            return true;
+          });
+        }
         out.push(null);
         return out;
       }
@@ -6063,6 +6109,17 @@
         return slotCandidates(offered.length ? offered[0].id : null, offered);
       }
 
+      // THE TIER THE ROLE IS NAMED FOR, and whether the scorer can see it. `wantsTier` is true only
+      // where shelf 17's row for the role's own tier has a miracle floor — the culmination row, and
+      // no other — because that is the one reach `scoreBundle` is blind to (the note over
+      // `tierNeedsAMiracle`). `reachTies` collects the legal bundles that ACTUALLY REALISE that
+      // tier, judged by `tierFor` exactly as the winning bundle will be judged below, never by the
+      // shape the voicing reached for; a bundle whose letters fall short of the row realises a
+      // middle and belongs with the rest.
+      var wantsTier = roleBudget.miracle && tierNeedsAMiracle(roleBudget.tier)
+        ? roleBudget.tier : null;
+      var reachTies = [], reachScore = -1;
+      var bundleCap = bundleCapFor(groundCandidates, travelCandidates, arrivalCandidatesFor);
       var examined = 0, considered = [], ties = [], winnerScore = -1, gi, ti, ai, ci2, bg, bt, ba, bc;
       outerBundleLoop:
       for (gi = 0; gi < groundCandidates.length; gi++) {
@@ -6083,17 +6140,24 @@
             });
             var colourCandidates = bundleSingsHere ? [true, false] : [true];
             for (ci2 = 0; ci2 < colourCandidates.length; ci2++) {
-              if (examined >= BUNDLE_CAP) break outerBundleLoop;
+              if (examined >= bundleCap) break outerBundleLoop;
               examined++;
               bc = colourCandidates[ci2];
               var row = { ground: bg, travel: bt, arrival: ba, colour: bc, ok: false, why: null,
-                          score: null };
+                          score: null, tier: null, couldReach: false };
               if ((bt && bt === bg) || (ba && ba === bg) || (bt && ba && bt === ba)) {
                 row.why = "the same instrument would play two slots of one bundle";
                 considered.push(row);
                 continue;
               }
               var bfw = bundleFoldsAndWorld(bg, bt, ba, road, roleBudget, toW, axis);
+              // WHETHER THIS CANDIDATE IS EVEN SHAPED LIKE THE TIER THE ROLE IS NAMED FOR, read
+              // before any rule refuses it — so that where the tier is not reached, the plan can
+              // name the gate that refused the candidates which WOULD have reached it rather than
+              // reporting a bare absence. A miracle-floored row asks one impossible event and two
+              // letters, `voiceTheCues` writes at most one letter for the ground and one for each
+              // move, so the shape is exactly: both moves standing, and a world or a fold.
+              row.couldReach = !!(wantsTier && bt && ba && (bfw.world || bfw.foldsOn));
               var check1 = bundleWorldLegal(bg, bt, ba, bfw.world, roleBudget);
               if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }
               var check2 = bundleLevelsLegal(entriesForColour);
@@ -6117,10 +6181,20 @@
                 continue;
               }
               row.ok = true;
+              // WHAT THIS BUNDLE WOULD ACTUALLY REALISE, by the same `tierFor` that judges the
+              // winner below and on the same two readings it will be handed there — the voiced cast
+              // and whether a surviving cue owns LIGHT-COLOUR. Every cue this bundle stands carries
+              // a voice, so the colour reading over `entriesForColour` is the reading over the
+              // surviving stack; nothing is re-derived and no second copy of the ladder stands here.
+              row.tier = tierFor(check3.voices, check3.tier, bc && bundleSingsHere)[0].tier;
               row.score = scoreBundle(bg, bt, ba, bc, role, bundleSingsHere, routeFunction);
               considered.push(row);
               if (row.score > winnerScore) { winnerScore = row.score; ties = [row]; }
               else if (row.score === winnerScore) { ties.push(row); }
+              if (wantsTier && row.tier === wantsTier) {
+                if (row.score > reachScore) { reachScore = row.score; reachTies = [row]; }
+                else if (row.score === reachScore) { reachTies.push(row); }
+              }
             }
           }
         }
@@ -6147,11 +6221,30 @@
       // own size sidesteps the same low-bit degeneracy the note over the arrival-order flip above
       // names — asking `dieAmong` directly for a die the size of a small tied set (as small as 2)
       // would read next to nothing but the key's own trailing digit.
+      // A STEP NAMED FOR A TIER PLAYS THAT TIER WHERE A LAWFUL BUNDLE MAKES ONE. Where `wantsTier`
+      // stands and any legal bundle of this crossing actually realises it, the winner is drawn from
+      // those and from no others; the scorer still orders them among themselves, and the die still
+      // breaks a tie the same way on the same key. This is the whole of the repair's own choice:
+      // `scoreBundle` ranks by voices carried and a miracle is not a voice, so a bundle that
+      // reaches the culmination row and a bundle that cannot both score the same and the die
+      // decided between them — which is how a step the walk called a culmination came to play a
+      // middle with nothing said. Nothing is loosened: every bundle here already cleared all five
+      // legality rules, and where none of them reaches the tier the field below is where the step
+      // says so out loud rather than taking the name anyway.
+      //
+      // AND NO VOICE IS EVER LOST TO THIS PREFERENCE, which is `scoreBundle`'s own standing
+      // sentence («among legal bundles, one that keeps a move is never outscored by one that drops
+      // it») and holds here by construction rather than by care: the culmination row asks two
+      // letters and one miracle, and `voiceTheCues` writes at most one letter for the ground and
+      // one for each of the two moves — so every bundle that realises it carries BOTH the
+      // travelling move and the arrival, which is the most voices any bundle of this crossing can
+      // carry. A preference among bundles that all carry two moves can only move the shaping terms.
       var winner = null;
-      if (ties.length > 1) {
-        winner = ties[dieAmong(pair.seed, key + "|bundle|" + passIndex, 1009) % ties.length];
-      } else if (ties.length === 1) {
-        winner = ties[0];
+      var reaching = wantsTier && reachTies.length ? reachTies : ties;
+      if (reaching.length > 1) {
+        winner = reaching[dieAmong(pair.seed, key + "|bundle|" + passIndex, 1009) % reaching.length];
+      } else if (reaching.length === 1) {
+        winner = reaching[0];
       } else {
         // THE GROUND-ALONE BUNDLE CLEARS EVERY RULE ABOVE FOR ANY TWO REAL WORKS — the one invariant
         // this whole planner is built to keep (shelf 9: a measurement ranks, it never gates). Falling
@@ -6159,7 +6252,7 @@
         // reached it, which a wider cap would close; the plan says so rather than hiding it.
         winner = { ground: pivotInstr, travel: null, arrival: null, colour: false, ok: true,
                   score: 0 };
-        stood.push("the bundle cap (" + BUNDLE_CAP + " examined) was reached before the ground-alone "
+        stood.push("the bundle cap (" + bundleCap + " examined) was reached before the ground-alone "
                   + "bundle came up in this walk's own order, so the ground plays alone");
       }
 
@@ -6221,7 +6314,7 @@
       // bundles it actually examined against that cap, every one of them with its own legal/refused
       // reading and — where legal — its own score, and which one won. `passStepJoinedRecord`
       // (01a-pass.js) carries this straight onto the diagnostic row's own `bundles` field.
-      var bundleLedger = { cap: BUNDLE_CAP, examined: examined, considered: considered,
+      var bundleLedger = { cap: bundleCap, examined: examined, considered: considered,
                            winner: winner };
 
       // THE LOOP ABOVE ALWAYS REACHES A LAWFUL STACK, because a one-cue score is exempt from §7's
@@ -6260,6 +6353,46 @@
       var reordered = stackOrder.filter(function (c, i2) { return stacks[c] !== i2; });
 
       var judged = tierFor(voices, tier, singsColour), row = judged[0], counts = judged[1];
+      // THE STEP IS NEVER SHOWN UNDER A NAME IT DID NOT REACH. Where the role asked for a tier
+      // shelf 17 floors with a miracle and the crossing realised something lower, the plan carries
+      // the DOWNGRADE explicitly — the role that was asked for, the tier that was actually made,
+      // and one plain sentence naming the gate that refused it — and `scoreFor` hands all three out
+      // beside the score. Until this stood, `tierFor` above simply returned the row below the one
+      // the role reached for and the step played on under the culmination's own name, 5 seconds
+      // long, with nothing anywhere saying a culmination had been asked for at all.
+      //
+      // THE SENTENCE IS READ OFF THE ENUMERATION THAT JUST RAN, never composed from a guess. The
+      // bundles shaped like the tier (`couldReach`) are the ones whose refusal is the answer, and
+      // the first of them in this walk's own order — which is the ranking's order — carries the
+      // rule's own words. Where the crossing could build no such bundle at all, the missing half is
+      // named instead: a crossing with no arrival voice has no second letter to spend, and a
+      // crossing whose ranking offers no world-folding instrument in any slot has no miracle —
+      // either because the walk had already spent its one on an earlier step, or because no
+      // instrument this pair ranks opens a world.
+      var requestedRole = role, realisedTier = row.tier, downgradeReason = null;
+      if (wantsTier && realisedTier !== wantsTier) {
+        var blockedBundle = null;
+        for (i = 0; i < considered.length; i++) {
+          if (considered[i].couldReach && !considered[i].ok) { blockedBundle = considered[i]; break; }
+        }
+        if (blockedBundle) {
+          downgradeReason = "the step asked for a " + wantsTier + " and every bundle that would "
+            + "have made one was refused — " + blockedBundle.why;
+        } else if (!considered.some(function (r) { return !!r.arrival; })) {
+          downgradeReason = "the step asked for a " + wantsTier + " and this crossing carries no "
+            + "arrival voice at all (the arriving work's own mode reads «" + arrival + "»), so the "
+            + "second letter shelf 17's " + wantsTier + " row asks for beside its one impossible "
+            + "event has nothing to stand on";
+        } else if (walkMiracles.length) {
+          downgradeReason = "the step asked for a " + wantsTier + " and the walk had already spent "
+            + "its one impossible event on an earlier crossing, so no instrument here may spend it "
+            + "again and shelf 17's " + wantsTier + " row asks for exactly one";
+        } else {
+          downgradeReason = "the step asked for a " + wantsTier + " and no instrument this pair's "
+            + "own ranking offers in any slot opens a world or folds the frame, so the crossing "
+            + "carries no impossible event and shelf 17's " + wantsTier + " row asks for exactly one";
+        }
+      }
       // THE STEP'S OWN LENGTH, COMPOSED FROM THE PAIR INSIDE THE BAND ITS TIER ALLOWS. The band is
       // the REALISED tier's, which `tierFor` has just settled: a role reaches for a tier and gets
       // the band of the tier it actually made, so a plan never declares a tier its length
@@ -6373,6 +6506,12 @@
         road: road.id, genre: road.id, roadWhy: road.why, genreFit: r4(road.fit === undefined ? 0
                                                                       : road.fit),
         role: role, routeFunction: routeFunction, passIndex: passIndex,
+        // THE NAME THE STEP WAS ASKED UNDER, THE TIER IT ACTUALLY MADE, AND WHY THEY DIFFER. Three
+        // fields rather than one because that is what a reader of the walk has to be able to tell
+        // apart: `role`/`requestedRole` is the route director's word, `realisedTier` is what this
+        // composition realised, and `downgradeReason` is empty exactly when the two agree.
+        requestedRole: requestedRole, realisedTier: realisedTier,
+        downgradeReason: downgradeReason,
         capped: capped, miracleDecline: miracleDecline, castNotes: castNotes,
         // P1.2's own room, filled: the joint phrase planner's full ledger — the cap, how many
         // bundles this walk actually examined, every one with its own legal/refused reading and
@@ -10398,6 +10537,13 @@
                // The derivation's own reading, for the diagnostic surface and for the walk's edge
                // record: which genre this passage ran on and how well it suited the pair, the whole
                // vocabulary ranked, what each genre read, and every shaping the crossing took.
+               // THE STEP'S OWN NAME AND WHAT IT REALISED, beside the score rather than inside it
+               // for the same reason the ledger above is: the walk's per-step record needs them and
+               // the score has a byte fence to keep. `downgradeReason` is null exactly where
+               // `realisedTier` is the tier `requestedRole` reaches for, so a reader never has to
+               // infer a downgrade from a missing field.
+               requestedRole: plan.requestedRole, realisedTier: plan.realisedTier,
+               downgradeReason: plan.downgradeReason,
                road: plan.road, genre: plan.genre, genreFit: plan.genreFit,
                ranking: chosen.ranking, stood: plan.stood,
                family: chosen.family, roads: chosen.qualified,
@@ -10851,7 +10997,7 @@
              scoreBundle: scoreBundle,
              bundleFoldsAndWorld: bundleFoldsAndWorld,
              resourceCeiling: RESOURCE_CEILING,
-             bundleCap: BUNDLE_CAP,
+             bundleCapFor: bundleCapFor,
              castForKindsRanked: castForKindsRanked,
              dieAmong: dieAmong,
              // P1.3's own connection of `record.symmetry` and `record.matter`/`record.substance` —
