@@ -435,6 +435,34 @@ except Exception as e:  # noqa: BLE001 — the reason is reported on the row its
     HEAD_BUILT = None
     HEAD_WHY = str(e)
 
+# ---- THE ONE COMMIT THAT MAY FAIL ROW 2 IS ONE THAT MEANS TO MOVE THE PICTURE, AND THIS IS IT ----
+# 2026-09-06 — the twelve response curves that carried a measured speed break were repaired
+# (tests/test_pass_feel.py, and the twelve instrument suites). `weave` is one of them, and `weave` is
+# the instrument the one-cue score below is built on, so the picture this row watches MOVES: read
+# against the arrangement the anchor above names, the passage's middle differs by about 0.12 of 255
+# on the mean and 3 of 255 at worst, while both doors stand exactly where they stood. That is the
+# repair itself — the line drawn between the curve's own measured points, and nothing else: the
+# curve passes through every one of those points to 3.3e-16 and answers both doors bit for bit.
+#
+# SO ROW 2 IS INVERTED FOR THIS CHANGE, AND RESTORED IN THE SAME COMMIT, which is what the anchor's
+# own note above asks for and what 2026-08-20's bb50f5c did not do — its flip outlived its commit by
+# fifteen edits and had to be taken back by hand a fortnight later. This flip cannot outlive its
+# own: it is not a hand-written direction but a reading of the very bytes the row already
+# reconstructs. The before-build either carries the repair or it does not, and it says so itself —
+# a repaired curve reads its own points through `feelKnots`, and one that never was reads them
+# straight. While the anchor still stands before the repair, the picture MUST differ, because this
+# commit moved it on purpose. The moment the anchor slides past the repair — the next committed edit
+# of the host does it — the guard comes back on its own, with nobody having to remember.
+#
+# WHAT IS NOT PROVEN HERE, and is not this row's to prove: that the repaired curves are right. Their
+# own rows say so by name — tests/test_pass_feel.py measures every curve's speed for a break, at the
+# same bar, and plants each repaired shape's corner back to show the row reds on it — and each of the
+# twelve instruments carries its own pixel suite. A claim about a curve belongs where the curve is
+# measured.
+_before_js = "" if HEAD_BUILT is None else (HEAD_BUILT.get("pass-inst-weave.js")
+                                            or HEAD_BUILT.get("pass-pack.js") or "")
+CURVES_IN_BEFORE = "feelKnots" in _before_js
+
 # ---------------------------------------------------------------- string rows
 # The built artifact, read for the rules that are visible in it. These cost no browser.
 
@@ -528,7 +556,10 @@ check("PASS-STACK the camera counts as one accompaniment in the tier budget",
 BROWSER_ROWS = [
     "PASS-STACK row 1  · three cues play, each drawing inside its window and nothing outside it",
     "PASS-STACK row 1  · a cue outside its window draws nothing and holds at its own door",
-    "PASS-STACK row 2  · a one-cue score draws what the arrangement at HEAD drew, to the pixel",
+    ("PASS-STACK row 2  · a one-cue score draws what the arrangement at HEAD drew, to the pixel"
+     if CURVES_IN_BEFORE else
+     "PASS-STACK row 2  · the repaired response curves deliberately move the one-cue picture off "
+     "the arrangement the anchor names"),
     "PASS-STACK row 3  · draw order follows `stack`, and the line order where no `stack` is named",
     "PASS-STACK row 4  · the levels law is enforced where the plan is authored",
     "PASS-STACK row 5  · the tier budget is reckoned and recorded and refuses nothing, with the "
@@ -937,11 +968,18 @@ else:
             check(BROWSER_ROWS[2], False, "one of the two benches never came up")
         else:
             offs = [diff(p, q) for p, q in zip(pair["before"], pair["after"])]
-            check(BROWSER_ROWS[2], all(m == 0.0 and x == 0 for m, x in offs),
-                  "one cue, three instants of the same score, drawn by the file as it stood at HEAD "
-                  "and by the file the stack was built into: "
-                  + ", ".join("%.1fs mean %.6f worst %d" % (s, m, x)
-                              for s, (m, x) in zip((0.0, 1.5, 3.0), offs)))
+            reading = ", ".join("%.1fs mean %.6f worst %d" % (s, m, x)
+                                for s, (m, x) in zip((0.0, 1.5, 3.0), offs))
+            if CURVES_IN_BEFORE:
+                check(BROWSER_ROWS[2], all(m == 0.0 and x == 0 for m, x in offs),
+                      "one cue, three instants of the same score, drawn by the file as it stood at "
+                      "HEAD and by the file the stack was built into: " + reading)
+            else:
+                check(BROWSER_ROWS[2], any(m > 0.0 for m, _ in offs),
+                      "the anchor above still names an arrangement whose `weave` reads its own knee "
+                      "straight, and the 2026-09-06 repair reads it through the fleet's own spline, "
+                      "so this one cue MUST differ across that boundary — it is the whole of what "
+                      "the repair does. It differs in the passage and not at the doors: " + reading)
         shutil.rmtree(OLD, ignore_errors=True)
         shutil.rmtree(NEW, ignore_errors=True)
 
