@@ -4452,6 +4452,44 @@
           return levels[cues[i].id][lv] === "owns";
         });
       }
+      // A VOICE THAT CAME OUT OF THAT LOOP WITH NOTHING TO SAY DOES NOT STAND IN THE STACK, and
+      // until 2026-09-07 it did. The stripping above is right — a cue that does not own a level
+      // rests on it — but a cue can lose EVERY levelled handle it had, and `ownTheLevels`'s own
+      // give-back cannot always rescue it: the rival holding the level it needs may have nowhere
+      // else to be, and then it rightly keeps it. What was left standing was a seated voice driving
+      // no structural handle at all: a name in the score, a draw call, a share of the budget, and
+      // nothing a person can see.
+      //
+      // S-115's audit put a number on it — grid-colour on 165 of 1258 castings and overlay on 55 of
+      // 85 were seated exactly that way — and it is the plainest form of his own complaint that
+      // polyphony exists on paper while the voices do not differ. Item 7 of the row says a voice
+      // counts only where its contribution is visible, and a voice with no levelled handle cannot
+      // have one.
+      //
+      // THE GROUND IS NEVER DROPPED, whatever it owns. Stack nought is the one cue that fills the
+      // frame and the floor every voice above it is drawn onto; a passage without it has no picture
+      // at all. A ground stripped bare still draws the crossing through its own door dial, which is
+      // the passage's own idiom rather than a structural level, so it is never silent in the way
+      // this drop is about.
+      //
+      // The drop is RECORDED rather than done quietly: the plan carries the cue's own name, its
+      // instrument and the levels it lost, so the diagnostics chain can say which candidate stood
+      // and why it left, and a reader is never left wondering where a voice went.
+      var mute = [];
+      for (i = cues.length - 1; i >= 0; i--) {
+        if (num(cues[i].stack) <= 0) continue;
+        if (Object.keys(cues[i].tracks).some(function (h) {
+          return !!levelOf(cues[i].instrument.id, h);
+        })) continue;
+        mute.push({ id: cues[i].id, instrument: cues[i].instrument.id,
+                    lost: Object.keys(levels[cues[i].id] || {}).filter(function (lv) {
+                      return levels[cues[i].id][lv] !== "owns";
+                    }).sort(),
+                    why: "seated with no levelled handle of its own left, so it would draw a call "
+                         + "and say nothing" });
+        cues.splice(i, 1);
+      }
+      mute.reverse();
       // THE WITNESS CAMERA'S OWN FLIGHT (charter shelf 2). THE TWO ENDS STAY HONEST — the
       // departing work stands at "a" and the arriving one rests at "b", each at the plain neutral
       // pose, pan and logScale at zero and pitch, yaw and roll at zero — and NOTHING BELOW EVER
@@ -4489,6 +4527,10 @@
         middle: spec.middle,
         budget: spec.budget,
         cues: cues,
+        // THE VOICES THAT WERE SEATED AND LEFT, each with the levels it lost and why. Empty on the
+        // ordinary passage; a reader of the diagnostics chain needs it to answer "where did that
+        // candidate go", which is the one question a silently shorter stack cannot be asked.
+        muted: mute,
         camera: { owner: "stage", rests: "b", track: track },
         interruption: { withinMs: 500, resolve: "nearest-door" },
         failLand: "arrive",
