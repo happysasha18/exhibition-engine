@@ -929,9 +929,33 @@
     // window as the dip and the turn, so this is a surface pose the host can own without moving
     // either exact hang. The carrier itself continues to travel through the measured DOM hang boxes;
     // this pose is only the motion riding on that physical carrier, never a second seating.
-    function surfaceCameraPose(v) {
-      return { panX: Number(v.cam[2]) || 0, panY: Number(v.cam[3]) || 0,
-               logScale: 0, pitch: 0, yaw: 0, roll: 0, orbit: 0, tilt: 0, fov: null };
+    // A PLACE THIS INSTRUMENT DOES NOT WRITE IS REPORTED AS NULL, never as a zero. The two are
+    // different statements and the host now acts on the difference: since 2026-09-07 an own-camera
+    // cue holds only the places it actually writes and the stage's own flight fills the rest, so a
+    // zero here would be this instrument CLAIMING that place and pinning it flat — which is what
+    // kept every composed turn off a world fold in the first place.
+    //
+    // The rotational places and the dolly are none of this instrument's business: it turns its solid
+    // inside its own shader, and reporting a turn here would turn the carrier as well and rotate the
+    // picture twice. The pan is its own, because the carrier is where the fold's own drift actually
+    // lives.
+    //
+    // AND THE PAN IS REPORTED ONLY WHEN IT IS REALLY A NUMBER. The box's own arithmetic hands back
+    // values like 2.77e-17 at a face that has not drifted at all, and under the host's rule a
+    // non-zero reading is a claim: floating-point noise was taking the pan away from a flight the
+    // composer had written a real 0.0155 into. What is not a drift is not a claim, and the honest way
+    // to say so is the same null every other place here uses. The bound is the picture's own: the
+    // carrier is measured in the frame's own units, so a pan smaller than one part in the buffer's
+    // longest side cannot move a pixel and is not a pose.
+    function surfaceCameraPose(v, side) {
+      var floor = side > 0 ? 1 / side : 0;
+      function drift(x) {
+        var n = Number(x) || 0;
+        return Math.abs(n) > floor ? n : null;
+      }
+      return { panX: drift(v.cam[2]), panY: drift(v.cam[3]),
+               logScale: null, pitch: null, yaw: null, roll: null,
+               orbit: null, tilt: null, fov: null };
     }
 
     var manifest = {
@@ -1233,7 +1257,11 @@
         // box state the shader receives, so the host camera and the folded surface cannot drift
         // onto two independently invented paths.
         var surface = posed(pose);
-        if (st.reportPose) st.reportPose(surfaceCameraPose(surface));
+        if (st.reportPose) {
+          st.reportPose(surfaceCameraPose(surface,
+                                          Math.max(Number(st.viewport.bufferW) || 0,
+                                                   Number(st.viewport.bufferH) || 0)));
+        }
         // AT A DOOR THE INSTRUMENT SAYS WHAT IT APPLIED, and says it before it refuses. The reading is
         // taken on the buffer this frame is drawn on, so it is the run-time truth his 18:00 decision
         // asks for. `request` is the travel a landing asks of the standing face — none — and

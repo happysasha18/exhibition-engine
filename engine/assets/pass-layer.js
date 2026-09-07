@@ -1863,8 +1863,15 @@
                   : (typeof live[k] === "number" ? live[k] : null);
           return;
         }
-        var o = typeof ownArt[k] === "number" ? ownArt[k] : 0;
-        held[k] = o !== 0 ? o : (typeof live[k] === "number" ? live[k] : 0);
+        // A NUMBER IS A CLAIM AND A NULL IS NOT ONE, and the rule reads exactly that. It used to
+        // read "non-zero is a claim", which handed a place to the own cue on the strength of
+        // floating-point noise: the box fold's own arithmetic reports a pan of 2.77e-17 at a face
+        // that has not drifted, and that took the pan away from a flight the composer had written a
+        // real 0.0155 into. An instrument that does not write a place says so with a null now
+        // (`surfaceCameraPose`, pass-inst-boxfold.js), which is the honest statement and needs no
+        // threshold here at all.
+        held[k] = typeof ownArt[k] === "number" ? ownArt[k]
+                : (typeof live[k] === "number" ? live[k] : 0);
       });
       pose = camCompose(anchor, held, rec.carry, carryWeight(rec, tSec));
     }
