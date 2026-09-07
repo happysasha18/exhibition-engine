@@ -3392,6 +3392,53 @@
       requestedRole: row ? (row.requestedRole || null) : null,
       realisedTier: row ? (row.realisedTier || null) : null,
       downgradeReason: row && row.downgradeReason !== undefined ? row.downgradeReason : null,
+      // THE DEVICE'S OWN CEILING, WHICH IS NOT THE TIER THE STEP ASKED FOR (S-115, item 9). Those
+      // two were being read as one: `quality.tier` above is what this crossing requested, and it
+      // says nothing about what this machine published about itself when the page loaded. The
+      // ceiling is read once at load (row S-110) and every candidate bundle is held against it, so a
+      // reader trying to explain why a step came out simpler needs the ceiling beside the request.
+      // The frame reading rides with it and is what it has always been: an observation taken in the
+      // visitor's own browser, never a gate and never a measurement of any builder (S-113).
+      deviceTier: (function () {
+        var d = rep && rep.device ? rep.device : null;
+        return { ceiling: d || null,
+                 askedFor: qualityTier,
+                 frameObservation: rep ? (rep.frames || null) : null,
+                 note: "the ceiling is this device's own published row, read once at load; the "
+                     + "frame reading is an observation in this browser and gates nothing" };
+      }()),
+      // THE WORLD GESTURE, NAMED RATHER THAN INFERRED. A step carries one when a cue actually owns
+      // the WORLD level — the charter's own level for a folded space, a journey between places
+      // rather than something happening to a picture. Read off the cues that PLAYED, so a rescued
+      // step says honestly that it carried none.
+      spatialGesture: (function () {
+        var cues = (cmd.score && cmd.score.cues) || [];
+        var world = [];
+        for (var i = 0; i < cues.length; i++) {
+          var lv = cues[i].levels || [];
+          if (lv.indexOf("WORLD") >= 0) {
+            world.push({ cue: cues[i].id,
+                         instrument: (cues[i].instrument || {}).id || null,
+                         window: cues[i].window || null,
+                         holdsTheCamera: cues[i].cameraAuthority === "own" });
+          }
+        }
+        return { carried: world.length > 0, by: world,
+                 note: world.length ? null
+                     : "no cue of this step owns the WORLD level, so nothing here is a journey "
+                       + "between places" };
+      }()),
+      // THE RETURN RELATION — what this step remembers of the pass already played on this same edge
+      // in this visit, which is the whole of §4.8 and nothing wider. Absent on an edge crossed for
+      // the first time, which is the honest reading rather than an empty shape.
+      returnRelation: (function () {
+        var m = row && row.request ? row.request.sessionMemory : null;
+        if (!m) return { returning: false, of: null,
+                         note: "nothing has played on this edge in this visit" };
+        return { returning: true, of: m,
+                 note: "the family and the die of the pass already played on this edge; the "
+                     + "crossing keeps the family and takes a different die" };
+      }()),
     };
     // WHAT ACTUALLY PLAYED, AND WHOSE IT WAS (S-115). Every field above `road`/`family`/`pivot`
     // included is the COMPOSER'S plan; on a rescued step the host played something else, and until

@@ -491,7 +491,11 @@ else:
                      # start/middle/end, the WorkRecord fields the ranking read for this pair, and
                      # the role/tier/downgrade the composer already names.
                      "cameraLed", "cameraTrack", "cameraPose", "measurementsRead",
-                     "requestedRole", "realisedTier", "downgradeReason"}
+                     "requestedRole", "realisedTier", "downgradeReason",
+                     # 2026-09-07, S-115 item 9: the device's own ceiling held apart from the tier
+                     # the step asked for, the world gesture named off the cues that played, and the
+                     # return relation this edge remembers.
+                     "deviceTier", "spatialGesture", "returnRelation"}
             ok = (isinstance(joined, dict) and set(joined.keys()) == named
                   and joined.get("from") == "zz-a2-a" and joined.get("to") == "zz-a2-b"
                   and isinstance(joined.get("route"), dict)
